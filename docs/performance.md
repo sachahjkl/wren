@@ -3631,6 +3631,102 @@ Read plainly. **`Gc` -36 % on npr.org and -28 % on cnn.com, ranges apart; -34 % 
 
 **Tests.** `hotcheck.js` (passes in Node): a function's `prototype` reached every way (read, `new`, `instanceof`, a descriptor, `defineProperty`, `Reflect.set`, an assignment, `delete`, `freeze`, a dictionary shape, keys in order before and after keys of its own, a generator's eager one); slots, closure cells, arguments and match values past what their cell holds; destructuring, map iterators kept open, for-in. `cost.js`: three new cases, and the limits of the closures and of `new Promise` brought down to a tenth over the round. Under `-define:JSRT_GC_STRESS=8192 -define:JSRT_GC_POISON=true`: `hotcheck.js`, `jitcheck.js` (also `verify -jit -jit-threshold 1`), `objectspread.js`, `realworld.js`, `recursion.js` pass. test262 on the native judge, all of it: 43 233 of 43 267, the same 34 failures as before.
 
+## Round 51: a bench that can prove 1 %
+
+Two arms of one binary differed by 180 ms on cnn.com in `wrentool waterfall` (round 48): a public site changes its requests with its ads and a run changes with the network, so a gain of 1 to 5 % could not be told from nothing. This round builds the bench that can, and uses it for three measures. No engine optimization; the 32-byte `Value` of measure 3 was a temporary patch, gone.
+
+**The bench** ([testing](testing.md#the-replay-bench)). `wrentool replay record` keeps what a site served for one load (`src/net/record.odin`, one file per answer under `build/replay/<site>`, out of git); `run` serves those bytes from wrentool's own process (`tools/testserver/replay.go`) to a page with a seeded random and a clock of its own (`src/base/test_world.odin`: `WREN_TEST_WORLD`, which a release never reads). Every name reaches the server by `network.hosts=*=127.0.0.1:<port>` (new: one line sends every connection to one address, whatever its name and port), each certificate comes from the test authority (`network.tls.extra_ca_file`), `network.loopback_only` keeps the load on the machine: neither the hosts file nor the trust store is touched. Per load: **visually ready** (the first frame from which the first viewport stays within 0.5 % of its last picture, carousels left out by a rule), **settled** (the window thread idle for 500 ms after the load event, idle being at most 25 % on a processor) and **CPU to settled** (the window thread's cycle counter, read from outside it), with FCP, load, DOMContentLoaded, CPU and `Guest` to the load event beside them. A gain is visually ready or settled sooner with the ranges apart and CPU to settled no worse (`measure.verdict`); work moved past an event says `Moved`.
+
+**What building it found.**
+- A redirect never comes to its end: the browser follows it from its head and cancels the request. The first recording of cnn.com had no document (`www.cnn.com` answers 301): a redirect is recorded from its head now.
+- The page's clock, at 0.1 ms a read, saw 0.1 s of a 4 s load of cnn.com (1 000 reads): a script that yields after so many ms never would. At 2 ms a read cnn.com sees 1.4 s of 3.3, npr.org 4.9 s of 9 (`page_clock`), and the number of reads is the same from one load to the next to 0.5 % on cnn.com, 3 % on npr.org: the same work.
+- **cnn.com and theverge.com never go idle.** Once their work is done the window thread stays 15 to 20 % busy for as long as they are open (frames and timers of their own, one sample a second over 20 s), npr.org and bbc.com/news go below 5 %. Hence the 25 % of `settled`.
+- The copy of each frame costs the window thread about a ms: on a page that draws all the time, recording the frames alone kept the thread from ever looking idle, and moved CPU to the load by 6 %. The frames come from a second load of each run, up to the moment the first one settled.
+- The machine is shared. During this round other agents and test runs kept it at 20 to 100 % for hours; theverge.com's load went from 3.5 s to 11. A load now starts when at most a fifth of the processors are at work, and one during which the rest of the machine took more than 35 % (`others`) is dropped and made again.
+
+**The noise floor.** Two arms of one binary (`wren_base.exe` twice), 7 runs each after one warm-up, the order turning, frames on; the other agents' work took 8 to 35 % of the machine during the loads (`others`). Per metric, the distance of the two medians, then the floor of `measure.noise_floor` (the larger of that distance and of how far one run strays from its median), % of the median:
+
+| | visually ready | settled | CPU to settled | FCP | load | DOMContentLoaded | CPU to load | `Guest` to load |
+|---|---|---|---|---|---|---|---|---|
+| cnn.com | 1.3 / 10.6 | 1.5 / 11.1 | 2.1 / 8.7 | 3.2 / 43 | 0.1 / 10.2 | 3.2 / 15.4 | 2.0 / 12.7 | 1.5 / 20.7 |
+| npr.org | 0.5 / 20.3 | 1.1 / 12.7 | 0.2 / 11.4 | 6.6 / 85 | 0.8 / 25.6 | 1.9 / 17.1 | 1.7 / 18.3 | 0.5 / 21.7 |
+| theverge.com | 0.3 / 37.2 | 0.6 / 22.6 | 2.4 / 23.4 | 7.1 / 11.0 | 0.4 / 19.3 | 6.4 / 12.9 | 0.3 / 18.8 | 0.4 / 20.5 |
+| bbc.com/news | 1.3 / 12.9 | 2.5 / 4.9 | 2.1 / 4.4 | 5.1 / 14.4 | 1.3 / 6.9 | 1.1 / 11.6 | 1.4 / 7.2 | 1.2 / 8.7 |
+
+Medians in ms: cnn.com ready 3 318, settled 3 466, CPU to settled 3 108, load 2 645; npr.org 7 234, 9 210, 8 321, 3 649; theverge.com 3 990, 5 587, 4 769, 3 447; bbc.com/news 1 337, 1 974, 1 904, 1 942. (`build/replay/aa.<site>.tsv`.)
+
+Read plainly. **The medians of 7 agree to 0 to 2.5 % on the three primary metrics, on every site; a single run strays 4 to 37 %.** So a series of 7 tells a change of about 3 % in its medians, and proves one of 5 to 10 % with the ranges apart, on this machine as it was: not 1 %. FCP and DOMContentLoaded are ten times shorter and stray most. bbc.com/news has one mode now, where round 46 saw two (450 ms or 2 s): the modes were the network.
+
+**Why it stays noisy: the machine, not the page.** The page does the same work. Its clock reads, which follow every branch a script takes, are the same from load to load to 1 % on cnn.com (1 382 to 1 394 ms of page clock at 2 ms a read, one load at 1 422), 3 to 5 % on npr.org, theverge.com and bbc.com/news (three values there: 1 905, 2 003, 2 095), and so are the requests (cnn.com 160 or 161, all exact). What moves is how long the same work takes, and it moves with the rest of the machine: cnn.com's CPU to settled is 2 891 to 2 980 ms in the six loads where others took at most 19 % of the processors, 3 043 to 3 308 in the eight where they took 22 to 32 %; npr.org 7 554 and 7 795 at 8 and 10 %, 8 302 to 9 252 above 19 %. The cycle counter counts time on a processor, which a neighbour on the other half of a core or in the shared cache makes longer. theverge.com adds one of its own: settled is a threshold, and its tail of timers after the load either leaves a window of 500 ms idle at 4.3 to 4.7 s or not until 5.3 to 6.4 (two groups, both arms). On a quiet machine the floor would be the first group's: about 3 % on cnn.com's CPU to settled, in six runs.
+
+**1. What the filter lists change.** `wrentool waterfall` forced `blocker.update.enabled=false` on a throwaway profile: every measure until now ran on the built-in list. A user has, about 15 s after a first start, not two lists but the ten on by default (`blocker/conf.odin`: EasyList, EasyPrivacy, AdGuard Base, the five of uBlock, Peter Lowe's, URLhaus; 22 MB of text, an engine of 35 MB): `wrentool replay lists` fetched them once, and `run -Lists` puts them in the profile. Three arms, 5 runs each, no frames, the blocker off (`none`), the built-in list (`builtin`), the lists (`lists`); requests answered by the server, then median (range), ms:
+
+| | | asked | FCP | load | CPU to load | `Guest` to load | settled | CPU to settled |
+|---|---|---|---|---|---|---|---|---|
+| cnn.com | none | 161-163 | 362 (341-372) | 3 093 (3 015-3 134) | 2 698 | 1 764 | 3 383 | 3 003 (2 934-3 067) |
+| | builtin | 160-161 | 365 (348-400) | 2 348 (2 311-2 797) | 2 106 | 1 335 | 2 973 | 2 684 (2 670-2 698) |
+| | lists | 131-132 | **948** (837-962) | 3 147 (3 117-3 234) | 2 349 | 1 497 | 3 697 | 2 776 (2 717-2 825) |
+| npr.org | none | 200-205 | 316 (307-321) | 3 669 (3 627-3 681) | 3 459 | 2 918 | 8 970 | 7 944 (7 321-8 055) |
+| | builtin | 189-192 | 322 (320-324) | 3 155 (3 126-3 182) | 2 935 | 2 431 | 8 317 | 7 313 (6 557-7 562) |
+| | lists | 158-160 | **828** (810-837) | 2 496 (2 465-2 543) | 1 806 | 1 446 | 6 776 | 5 527 (5 352-6 083) |
+| theverge.com | none | 251-253 | 237 (225-277) | 6 245 (6 216-6 448) | 6 065 | 5 463 | 7 975 | 7 543 (6 762-7 669) |
+| | builtin | 224-227 | 329 (222-339) | 3 204 (3 197-3 295) | 3 044 | 2 595 | 4 546 | 4 066 (3 852-4 967) |
+| | lists | 185 | **773** (756-795) | **924** (899-930) | **375** | **94** | 2 705 | **2 091** (2 065-2 148) |
+| bbc.com/news | none | 117 | 65 (62-66) | 1 762 (1 531-1 792) | 1 707 | 1 510 | 1 823 | 1 734 (1 709-1 776) |
+| | builtin | 117 | 72 (65-79) | 1 754 (1 589-1 785) | 1 703 | 1 495 | 1 796 | 1 731 (1 719-1 778) |
+| | lists | 110 | **613** (593-636) | 1 472 (1 458-2 323) | 903 | 683 | 2 386 | 1 808 (1 754-1 827) |
+
+Read plainly. **Of what we have been optimizing, a user with the lists runs a fraction**: theverge.com's `Guest` to the load event 94 ms of 2 595 (4 %), its CPU to the load 12 %; npr.org's `Guest` 59 %, cnn.com's 112 % (the lists block fewer requests there; why its script costs more with them was not looked into), bbc.com/news 46 %. By CPU to settled, the measure that cannot be moved past an event: theverge.com 51 % of the built-in list's, npr.org 76 %, cnn.com 103 %, bbc.com/news 104 %. **And every first contentful paint comes 440 to 590 ms later with the lists**, DOMContentLoaded with it: by the look of it the first navigation after a start waits for the engine of 35 MB, which the built-in list does not have (`process_cpu` 1 s more on cnn.com; not traced). That is the cost a user pays at each start of the browser, measured here at each run because each run is a start; a page after the first does not pay it, and that was not measured. On bbc.com/news the lists bring the load event sooner and settled later: a `Moved` by the rule.
+
+**The bench should default to the lists**, two arms or one: measuring with the built-in list optimizes work most users never run (three quarters of theverge.com's script), and misses what they do (the engine's start, cnn.com's cosmetic filters). Not done in this round: `-Lists` is a flag, the folder has to be fetched first (`wrentool replay lists`), and the default of a bench should move with the round that takes it up. The first-paint cost at start-up is the largest single thing on the table here, ahead of anything the engine could give these pages.
+
+**2. The slope of a bigger `Value`.** `Value` is 16 bytes (`src/engine/jsrt/value.odin`), `jscapi` already NaN-boxes to a `u64`. Not rewritten: as round 49 did for time, the slope was measured upward. A temporary patch padded `Value` to 32 bytes (`pad: [2]u64`, `VALUE_SHIFT` 5, the two size asserts), built as `build\wren_v32.exe`, then taken out (`git checkout` of the three files; the tree has none of it). Both arms `javascript.jit.enabled=false`, 7 runs, no frames, median (range), ms:
+
+| | | CPU to load | `Guest` to load | load | CPU to settled |
+|---|---|---|---|---|---|
+| cnn.com | 16 bytes | 2 175 (2 069-2 308) | 1 355 (1 344-1 515) | 2 416 (2 331-2 587) | 2 833 (2 703-2 850) |
+| | 32 bytes | 2 181 (2 155-2 288) | 1 422 (1 406-1 504) | 2 436 (2 416-2 585) | 2 894 (2 808-3 041) |
+| npr.org | 16 bytes | 3 363 (3 216-3 481) | 2 832 (2 726-2 907) | 3 581 (3 437-3 677) | 8 162 (7 734-8 411) |
+| | 32 bytes | 3 406 (3 352-3 522) | 2 903 (2 850-2 974) | 3 604 (3 542-3 717) | 8 337 (7 755-8 918) |
+| theverge.com | 16 bytes | 3 026 (2 978-3 078) | 2 531 (2 488-2 597) | 3 195 (3 154-3 293) | 4 738 (3 973-4 795) |
+| | 32 bytes | **3 219** (3 184-3 359) | **2 734** (2 693-2 824) | 3 368 (3 343-3 563) | 5 065 (4 981-5 349) |
+| bbc.com/news | 16 bytes | 1 706 (1 676-1 747) | 1 506 (1 474-1 537) | 1 772 (1 734-1 810) | 1 735 (1 702-1 774) |
+| | 32 bytes | **1 850** (1 838-1 865) | **1 649** (1 638-1 668) | 1 910 (1 894-1 925) | 1 877 (1 867-1 895) |
+
+Read plainly. **Doubling `Value` costs theverge.com 8 % of `Guest` and 6.4 % of the window thread's CPU to the load, bbc.com/news 9.5 and 8.4 %, ranges apart; npr.org 2.5 and 1.3 %, cnn.com 4.9 and 0.3 %, ranges overlapping.** The engine is a third of cnn.com's thread (round 46: its imports are style and layout), which is why it moves least. An upward slope only suggests the downward one: 8 bytes would save the copies and half the cache lines of the operand stack, the locals and the properties, and add what a NaN-boxed value costs to tag and untag at each operation, which 32 bytes never paid. Read it as "the size of a value is worth up to about 5 to 10 % of `Guest` on script-heavy pages", not as what 8 bytes would give.
+
+**3. The Wasm tax.** The same script work on the engine compiled natively (`judge eval`, `src/engine/jsrt/judge`, `-o:speed -debug`, the engine's own allocator on the system heap) and through the shipped image (`jsengine run`, Wasmtime, the image's polls), interpreter only and with the JIT (`-jit`, which translates hot functions to Wasm); the same file in both, `console.log` shimmed to `print`. `examples/jsbench` micro, macro and realworld (55 cases, ns per iteration), and the 40 largest scripts of the four recordings, compiled and not run (`new Function` of the text: run without a DOM, a page's script reaches the web API, which the image traps on and the judge has not), interleaved, best of 3 rounds:
+
+| | native, ns | Wasm / native | Wasm with the JIT / native |
+|---|---|---|---|
+| `int loop (sum += i)` | 19.6 | 1.18 | 0.02 |
+| `float loop` | 23.1 | 1.14 | 0.05 |
+| `property get (o.x + o.y)` | 30.2 | 1.25 | 0.04 |
+| `call of a small function` | 43.4 | 1.44 | 0.02 |
+| `recursion (fib, per call)` | 42.4 | 1.33 | 0.54 |
+| `object allocation (new Point)` | 118.3 | 1.59 | 0.38 |
+| `Map set/get (int keys)` | 93.1 | 1.57 | 0.98 |
+| `generator (per yield)` | 66.8 | 1.63 | 1.64 |
+| `regexp test /\d+/` | 279.7 | 1.70 | 1.51 |
+| `string replace /o/g` | 2 319 | 1.88 | 1.93 |
+| `JSON records: parse + sum` | 747.7 | 2.12 | 2.12 |
+| **55 cases, geometric mean** | | **1.46** (1.14-2.12) | 0.32 |
+| **40 page scripts, compile, ms in all** | 2 085 | **1.59** (3 317) | 1.59 (3 323) |
+
+Read plainly. **Through Wasm the interpreter takes 1.46 times the native time, geometric mean of 55 cases** (1.14 for a loop of numbers, 1.2 to 1.3 for properties, 1.4 to 1.6 for calls, allocation and collections, 1.7 to 2.1 for regular expressions, strings and JSON), and compiling the pages' scripts 1.59 times. That is the ceiling of a native engine on the window thread, before what it would cost to have one (the sandbox, a second engine for workers). With the JIT the tight loops run 20 to 50 times faster than the native interpreter, and what allocates, compiles a regexp or calls natives gains nothing; a load runs almost nothing in compiled code (round 46: 2 samples of 2 266 on theverge.com), so the JIT's column says little of a page. Limits: the judge is the engine with the judge's host (no browser imports, `Date.now` from the system), so a page's calls into the browser, 10 to 43 % of `Guest` (round 46), are not in it; jsbench measures the interpreter's own cases, not a page's mix; the machine was shared (as above), which moves both arms alike in each pair but not the absolute times.
+
+**Found on the way: the judge built `-o:speed` without `-debug` runs a plain loop 10 times slower** (50 million `s += i`: 14.9 and 15.4 s, against 1.46 and 1.40 s with `-debug`, the same flags otherwise). Its profile then has no names, so where was not looked for; `wrentool engine test262` and the CI build the judge their own way, which was not checked. Every number above is of the `-debug` build.
+
+**Measured, built, not kept.**
+- `settled` at 5 % of the thread in 250 ms (the first rule): cnn.com and theverge.com never settled within 20 s (their floor of 15 to 20 %), and npr.org did one load in three.
+- The frames in the measured load: the copy of each frame on the window thread kept npr.org from settling at all and added 6 % to its CPU to the load; they are in a second load now.
+- A guard that waited for 8 % of the machine: in five hours of other agents' work it found almost no window at all.
+
+**Left, by what was seen.** The engine's start with the lists (440 to 590 ms of every first paint after a start) is the largest thing measured here. Then the lists' cost on cnn.com's script (`Guest` +12 % with the lists against the built-in one), not looked into. The bench: a quiet machine, or a measure robust to a neighbour (a process of its own on reserved cores, or the counts of what a load did, which the page clock shows are stable, rather than its time); theverge.com's settled in two groups; TEST_WORLD_TICK_MS chosen by two sites. The noise floor above is the one to beat: a change of a few percent needs more than 7 runs or a quieter machine.
+
+**Tests.** `src/tools/wrentool/measure/measure_test.odin` (settled after the load and not before, a short gap, a frame loop that never settles, ready against the last picture, a fade, a carousel left out, the floor, the verdict), `tools/testserver/replay_test.go` (order, the near answer, a 404 counted, TLS and plain http on one port over HTTP/2, a rewind, the head served less what is of the hop, a folder that is no recording), `src/tools/e2e/replay_bench.odin` (any name through `network.hosts=*` to the recording with its certificate, the same seed giving the same `Math.random`, `getRandomValues` and `randomUUID` twice and another seed others, a cookie of the recording's date kept, the page's year, a clock that moves by its reads, the unknown script counted; and a load recorded as the host was given it, its body decoded), the resolver's `*` line in `native/net` (Rust). `build\test_all.exe -Quick -NoAsan`: 208 steps pass, 3 fail with the machine loaded: the documentation site (regenerated after), `the lines of text decoration by their pixels` and WPT's `text-decoration-thickness-interpolation.html`; those two pass alone, again, on the same tree.
+
+**Not verified.** The release build (the test world and the recorder are out of it by `WREN_CHANNEL`, not run), Linux (`base.thread_cycles` is 0 there and the bench is a Windows tool), a long session, the full WPT, test262, AddressSanitizer. The noise floor on a quiet machine: none was had. Whether a page under the test world behaves as it does in real time beyond the counts above (its timers keep real time while its clock moves by reads). Recordings are of one load each, on 2026-11-07: a site's next version is another recording.
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)

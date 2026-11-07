@@ -36,10 +36,10 @@ REPLAY_SETTLE_LOOK_EVERY :: 100 * time.Millisecond
 // No tool holds a lock, and agents and test runs share this machine: a load starts when at most REPLAY_QUIET_SHARE of the processors are at work, and one during which others took
 // more than REPLAY_OTHERS_MOST of them is said, dropped and made again, at most REPLAY_RETRIES times. A loaded machine took a load of theverge.com from 3.5 s to 11.
 // -Loaded measures all the same, every load with its `others`: for a machine that does not go quiet, and a floor that says so.
-REPLAY_QUIET_SHARE :: 0.08
+REPLAY_QUIET_SHARE :: 0.20
 REPLAY_QUIET_LIMIT :: 5 * time.Minute
 REPLAY_QUIET_LOOK :: time.Second
-REPLAY_OTHERS_MOST :: 0.08
+REPLAY_OTHERS_MOST :: 0.35
 REPLAY_RETRIES :: 5
 // The frames: scaled to this share of the viewport (1280 x 800 less the shell: about 160 by 90 cells), as many as a load can draw.
 REPLAY_FRAME_SCALE :: 0.125
