@@ -43,7 +43,6 @@ Span :: struct {
 	start, end: f64,
 	kind:       string,
 	label:      string,
-	owned:      bool,
 	owner:      Owner,
 }
 
@@ -134,7 +133,7 @@ load_read :: proc(text: string) -> Load {
 			if len(r.cols) < COLUMNS_OWNED { continue }
 			origin, known := origins[r.cols[7]]
 			at := strings.last_index(r.cols[4], SOURCES)
-			append(&spans, Span{start = r.start, end = r.start + r.ms, kind = r.cols[3], label = at >= 0 ? r.cols[4][at + len(SOURCES):] : r.cols[4], owned = true,
+			append(&spans, Span{start = r.start, end = r.start + r.ms, kind = r.cols[3], label = at >= 0 ? r.cols[4][at + len(SOURCES):] : r.cols[4],
 				owner = Owner{r.cols[5], known ? origin : BROWSER_ORIGIN, r.cols[8] == "true"}})
 		}
 	}

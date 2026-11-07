@@ -3476,6 +3476,50 @@ Read plainly. **cnn.com -18 %, ranges apart by 323 ms**; the same three changes 
 
 Sweeping beside the scripts and marking on helper threads, an image of the collector's code run on the realm's memory (2 100 lines, branch `worktree-agent-aaee441ddb1f64870`). `Gc` on the window thread halved on theverge.com (288 to 137 ms, 8 runs), and no site's load was proven faster: every median went down by 1 to 8.6 %, every range overlapped. Linear memories +4 to +8 %. Merged with master, the binary finished no load of theverge.com or npr.org (9 of 9 runs, load 0; one process seen with three threads at 100 % for two minutes; the cause was not established). A review found a lock held across polls that a page can reach, through `worker.terminate()`. So it is out, on its measures as much as on that. What it established stands: a load's `Gc` is mostly the sweep (theverge.com 153 of 297 ms) and the marking (103), and round 47's `gc_collect` off only removed the DOM's collection: the safe points never went through it.
 
+## What changed, round 51: whose work the window thread does, and no scheduler
+
+`host.run_ready` ran tasks that said who posted them and nothing of whom they were for. Now every posted task and timer has a `base.Work`: the page, the origin of the script behind it, a class (`Arrival`: parsing and what arrives for it; `Input`: input and paint; `Background`: timers and the rest). A task or a timer inherits from what makes it (`Loop.work`, `host.work_now`), so an origin follows a script's timers, its responses (`fetch.Task.work`), its listeners, its animation frames and idle callbacks. `js_run` says the origin of the script it runs; the pump, a document's bytes and a response open a `host.work_enter` scope. The engine does not say which script a function came from: a function of one script called from another's task counts for the latter. What a class is a call site says; the pump's timers, image pumps and events, sheets' syncs are `Arrival` though they are timers: **a timer is not a class**, and a scheduler that went by the queue they sit in would have put the parser's own turns behind the ads.
+
+`WREN_SPANS` writes class, page, origin and party on `Task` and `Work` rows; `wrentool threadtime <files>` gives each instant of the window thread to the innermost owner, a frame's phases outside a task to the browser's `Input`, a frame's wait to nobody. Windows: from the navigation to the first contentful paint, to the last largest contentful paint, to settled (the first end of work after the load event followed by 500 ms with under 10 % busy; `SETTLE_*`). `wrentool waterfall -AfterMs n` lets a page run on for it. Busy time is the thread's wall clock, not its CPU.
+
+**What it says.** Development build, a fresh process and a throwaway profile for each load, 10 s after the load event, the sites interleaved, 3 runs, median (range), ms. Three other agents were at work: the machine stood at 96 % in a look taken between series, so times are of a loaded machine, and shares are what to read.
+
+| | first contentful paint | largest | load | settled | busy to the paint | busy to settled |
+|---|---|---|---|---|---|---|
+| cnn.com | 660 (556-682) | 1 104 (1 003-1 146) | 3 953 (3 950-4 422) | none in the trace | 238 (214-247) | 6 539 (6 231-6 626) |
+| npr.org | 883 (761-926) | 1 784 (1 752-2 714) | 5 240 (5 104-5 649) | 11 083 (10 885-11 223) | 496 (407-502) | 10 562 (10 290-10 563) |
+| theverge.com | 464 (458-541) | 464 (458-541) | 5 866 (4 744-5 960) | none in the trace | 397 (342-454) | 9 338 (8 746-9 700) |
+| bbc.com/news | 155 (148-162) | 201 (192-227) | 2 390 (2 318-2 524) | 2 644 (2 571-2 791) | 66 (64-76) | 2 347 (2 325-2 479) |
+
+The same busy time by class and party, up to the paint / the largest / settled (settled: the end of the trace where there is none):
+
+| | `Background` third party | `Background` first party and browser | `Arrival` third party | `Arrival` first party and browser | `Input` |
+|---|---|---|---|---|---|
+| cnn.com | 0 / 0 (0-3) / 846 (322-944) | 23 / 23 / 955 | 14 / 55 / 482 | 120 / 271 / 1 665 | 82 / 337 / 2 974 |
+| npr.org | 1 (0-1) / 19 (17-28) / 448 (111-956) | 8 / 484 / 4 443 | 90 (40-97) / 212 / 1 727 | 112 / 214 (153-1 212) / 1 670 | 263 / 423 / 1 981 |
+| theverge.com | 0 / 0 / 2 987 (2 837-3 215) | 4 / 4 / 1 479 | 110 (12-133) / 110 / 1 440 | 107 / 107 / 601 | 209 / 209 / 2 842 |
+| bbc.com/news | 0 / 0 / 1 688 (1 656-1 798) | 2 / 2 / 40 | 0 / 4 / 263 | 12 / 24 / 94 | 52 / 69 / 284 |
+
+By origin, to settled: theverge.com `cdn.concert.io` 1 917 of timers and responses, `cdn.cookielaw.org` 893 of script and 305 of timers, `gstatic.com` and `google.com` 600 through ports (recaptcha's frame); bbc.com/news `static.files.bbci.co.uk` 1 482, which is the BBC's own under another site, so "third party" by the site overstates; cnn.com `registry.api.cnn.io` 837, the same case; npr.org `prod-eks-bundles.npr.org` 1 534 and `www.npr.org` 2 451, first party. Frames are `Input (browser)`, 1 967 to 2 961 ms on the three heavy sites: as large as any origin. cnn.com and theverge.com did not settle within 10 s of the load event.
+
+**No scheduler was built, on these numbers.** The proposal was parser, script arrival and paint ahead of third-party timers while a document loads.
+- **Ready.** Third-party timers ran 0 to 1 ms before the first contentful paint on all four sites, and 0, 19, 0 and 0 ms before the largest. That is the whole of what moving them could give a paint, at the slope of 1 of round 49: nothing, or 19 ms on a page whose largest paint ranges over 960 ms. The scripts that set them have not arrived yet at that moment, or have only just.
+- **Settled.** Reordering removes no work. A thread settles when its work is done, and the timers run anyway, so at best settled stays. That leaves only the load event to move, which is the scheduler this brief forbids and what round 48 saw of a body handed over sooner.
+- **What the turn does already.** `run_ready` runs all posted tasks before any timer, and timers for a slice of 8 ms at most past the first: arrivals, compile results and responses already go first. All that could be added is the order among due timers.
+- **npr.org's 473 ms before the largest paint** are no timer: a checkpoint run as a task (`host_post_checkpoint`), promise jobs of the page's own script, which it needs.
+
+So a built scheduler would have had to be tested for starvation and for cnn.com's 940 to 18 200 ms (docs/blocker.md: a heavy script let through before the first frame) to buy a measured 0 to 19 ms. The ceiling was computed, not measured by a build, as in round 47: the sums above are what ran, and no run of a held-back timer was made.
+
+**If it is ever built, what HTML allows.** Checked in the specification, not assumed. A user agent chooses among task queues freely ("chosen in an implementation-defined manner"), and its example is input preferred three quarters of the time without starving the others, but one task source is never processed out of order. Timers: the timer task source, "wait a further implementation-defined length of time" is allowed, and the wait of *run steps after a timeout* holds per global and ordering identifier: a timer waits for those started before it with an equal or shorter timeout. So the unit is the global, not the origin: **two timers of one window keep their order whichever script set them**, and a third-party script's timer cannot be passed by a later first-party one in the same window with an equal or longer timeout. Only a whole global, a third party's frame, can be held behind another; `host.Timer.work.page` is what that needs. `Work.third_party` alone would break the rule.
+
+**Where the numbers point instead.** Nothing here is a scheduling cause. Before the first paint, on the three heavy sites, the thread is on the paint's own path: `Input` and first-party `Arrival` are 200 to 375 of 238 to 496 busy ms. theverge.com's third-party `Arrival` before the paint went from 12 to 133 ms between runs and is the one thing there that a paint could wait for (not looked into). Up to settled what is left is less work: frames first (19 to 45 % of the thread on the heavy sites), then concert.io, OneTrust and recaptcha's frame, each with a name now.
+
+Owners cost nothing that shows: base and round, no spans, 6 runs interleaved, the order turning, first contentful paint / load / CPU to the load: cnn.com 591 (556-931) / 4 042 (3 703-5 361) / 7 953 (7 250-9 297) against 589 (542-1 346) / 3 887 (3 659-8 458) / 7 500 (7 062-15 500); theverge.com 418 (405-616) / 6 255 (6 153-8 010) / 10 062 (9 578-12 203) against 402 (388-497) / 6 148 (5 812-7 931) / 9 656 (8 844-11 375). Ranges overlap: nothing to claim either way.
+
+**Tests.** `work_passes_from_a_task_to_what_it_makes`, `a_post_from_another_thread_inherits_nothing` (host, a virtual clock), `work_of_a_timer_is_the_script_that_set_it_and_what_it_scheduled` (a page with a script of another site: its timers, a timer it chained, its fetch's answer, its listener called by the page's script; the page's own timer is first party), `threadtime_counts_each_instant_once_for_the_innermost_owner`, `threadtime_settles_at_the_first_quiet_window_after_the_load`, the spans' columns in `spans_keep_what_was_added_and_stop_at_their_room`. `build\test_all.exe -Quick -NoAsan`: 210 steps pass, the two of `base` failed on that test's old expectation, and pass since it says the new columns.
+
+**Not verified.** Three runs of each site on a loaded machine; a final series on the bench is to come. `Input` holds what a frame does for a page without saying which. The origin of a callback is who registered it as far as a scope said so; promise jobs count for whoever runs the checkpoint. `third_party` compares sites, and a company's own CDN counts as a third party. Workers have owners on their own loops, which the report does not read. The ceiling assumes a paint can only gain what ran before it on the thread.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
