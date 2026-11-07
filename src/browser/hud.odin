@@ -41,7 +41,7 @@ HUD_PREFS := [?]config.Def{
 	{name = "browser.status_bar.metrics", kind = .String, default = {s = "graph,fps,cpu,gpu,memory"},
 		description = "What the right side of the status bar shows, in order, comma separated: graph (time of the recent frames by phase; click it for details), fps (frames per second), cpu (milliseconds of work per frame), gpu (milliseconds of GPU drawing per frame), memory (working set of the process)."},
 	{name = "browser.status_bar.link_preview", kind = .Bool, default = {b = true},
-		description = "While the pointer is on a link, the left side of the status bar shows where it goes."},
+		description = "While the pointer is on a link, a small box over the bottom left corner of the page shows where it goes (over the page, not in the status bar)."},
 	{name = "browser.status_bar.refresh_ms", kind = .Int, default = {i = 500}, bounded = true, min = 50, max = 10_000, unit = "ms",
 		description = "How often the status bar's numbers change (they are averages over browser.status_bar.rate_window_ms). The graph follows every frame."},
 	{name = "browser.status_bar.rate_window_ms", kind = .Int, default = {i = 1000}, bounded = true, min = 100, max = 10_000, unit = "ms",

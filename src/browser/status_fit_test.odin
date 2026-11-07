@@ -1,6 +1,7 @@
 package browser
 
 import "core:testing"
+import "toolkit:draw"
 
 // The left part of the status bar in a narrow window (status_left_fit): short forms first, then items left out by
 // priority, the page state kept, and nothing wider than the room (no item cut against the graph).
@@ -45,4 +46,15 @@ status_left_items_yield :: proc(t: ^testing.T) {
 	status_left_fit(tiny[:], 50, SEP, measure)
 	testing.expect(t, tiny[0].shown && tiny[0].cut == 50, "the state alone, cut to the room")
 	for it in tiny[1:] { testing.expect(t, !it.shown, "every other item left out") }
+}
+
+// The box of the link under the pointer: at the page's bottom left corner, at the bottom right one while the pointer is on the first place.
+@(test)
+link_bubble_goes_where_the_pointer_is_not :: proc(t: ^testing.T) {
+	area := draw.Rect{{10, 50}, {810, 650}}
+	size := draw.Vec2{200, 24}
+	left := link_bubble_rect(area, size, {400, 300})
+	testing.expect_value(t, left, draw.Rect{{10, 626}, {210, 650}})
+	right := link_bubble_rect(area, size, {20, 640})
+	testing.expect_value(t, right, draw.Rect{{610, 626}, {810, 650}})
 }
