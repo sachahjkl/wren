@@ -5,8 +5,11 @@
 // and 22 MB each is a lot for what they do with it).
 package js_code
 
+// The folder of build\ the image and its code are in (js_image.JS_DIR).
+JS_DIR :: #config(WREN_JS_DIR, "js")
+
 when #config(WREN_SHIPPED_CODE, false) {
-	CODE := #load("../../../../build/js/wren_js.code")
+	CODE := #load("../../../../build/" + JS_DIR + "/wren_js.code")
 } else {
 	CODE: []byte
 }
