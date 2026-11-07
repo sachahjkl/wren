@@ -1412,9 +1412,9 @@ INFO_FN_N_ARR :: u32(offset_of(Jit_Info, fn) + offset_of(Jit_Loop, n_arr))
 RT_POOL_FREE :: u32(offset_of(Runtime, pool_free))
 RT_POOL_BUMP :: u32(offset_of(Runtime, pool_bump))
 RT_POOL_LEFT :: u32(offset_of(Runtime, pool_left))
-RT_CELLS_DATA :: u32(offset_of(Runtime, cells) + offset_of(runtime.Raw_Dynamic_Array, data))
-RT_CELLS_LEN :: u32(offset_of(Runtime, cells) + offset_of(runtime.Raw_Dynamic_Array, len))
-RT_CELLS_CAP :: u32(offset_of(Runtime, cells) + offset_of(runtime.Raw_Dynamic_Array, cap))
+RT_CELL_COUNT :: u32(offset_of(Runtime, cell_count))
+RT_CHUNK_TABLE :: u32(offset_of(Runtime, chunk_table))
+RT_CHUNK_LO :: u32(offset_of(Runtime, chunk_lo))
 RT_HEAP_BYTES :: u32(offset_of(Runtime, heap_bytes))
 RT_PEAK_HEAP_BYTES :: u32(offset_of(Runtime, peak_heap_bytes))
 CELL_SIZE :: u32(offset_of(Cell, size))
@@ -1484,8 +1484,9 @@ I_T3 :: 14
 I_T4 :: 15
 I_T5 :: 16
 I_T6 :: 17
-I_NEXT :: 18   // the leader a back edge goes to (Jc.inner)
-I_FIRST :: 19
+I_CHUNK :: 18  // the chunk of a cell the code makes (j_cell_new)
+I_NEXT :: 19   // the leader a back edge goes to (Jc.inner)
+I_FIRST :: 20
 
 Jit_Outcome :: enum u8 {ok, refuse, restart}
 
@@ -2376,20 +2377,37 @@ j_pool_take :: proc(c: ^Jc, bytes: int, out: u32, taken: []Jit_Block) {
 	j_op(c, W_END)
 }
 
-// Before any block is taken for a cell: the list of cells full, the code leaves $slow, to the helper (cell_new grows it).
-// Emitted in $slow itself (j_alloc_open).
+// The address of the group of the bits of the cell in local `out`, less CHUNK_HEAD (cell_bits: the offset of a memory access adds
+// it), into I_CHUNK: its chunk from Runtime.chunk_table (which moves when it grows: read each time), then the group.
 @(private = "file")
-j_cell_room :: proc(c: ^Jc) {
+j_cell_group :: proc(c: ^Jc, out: u32) {
 	rtp := uintptr(c.rt)
-	j_ld32(c, rtp, RT_CELLS_LEN)
-	j_ld32(c, rtp, RT_CELLS_CAP)
-	j_op(c, W_I32_GE_U)
-	j_op(c, W_BR_IF)
-	w_uleb(&c.out, 0)
+	j_ld32(c, rtp, RT_CHUNK_TABLE)
+	j_lget(c, out)
+	j_ld32(c, rtp, RT_CHUNK_LO)
+	j_op(c, W_I32_SUB)
+	j_i32(c, CHUNK_UNIT_SHIFT - 2) // (an entry is 4 bytes)
+	j_op(c, W_I32_SHR_U)
+	j_i32(c, ~i32(3))
+	j_op(c, W_I32_AND)
+	j_op(c, W_I32_ADD)
+	j_mem(c, W_I32_LOAD, 2, 0)
+	j_op(c, W_LOCAL_TEE)
+	w_uleb(&c.out, u64(I_CHUNK))
+	j_lget(c, out)
+	j_lget(c, I_CHUNK)
+	j_op(c, W_I32_SUB)
+	j_i32(c, CHUNK_GROUP_SHIFT)
+	j_op(c, W_I32_SHR_U)
+	j_i32(c, 3) // (size_of(Chunk_Bits): 8)
+	j_op(c, W_I32_SHL)
+	j_op(c, W_I32_ADD)
+	j_op(c, W_LOCAL_SET)
+	w_uleb(&c.out, u64(I_CHUNK))
 }
 
-// The block in local `out` made a cell of `size` bytes, as cell_new makes it: its size and kind, listed in the runtime's
-// cells (j_cell_room said it has room); `charge` bytes (the cell's and the blocks it owns) charged to the heap, and its peak.
+// The block in local `out` made a cell of `size` bytes of the pool, as cell_new makes it: its size and kind, its bit set in
+// the cells and in the marks of its chunk, counted; `charge` bytes (the cell's and the blocks it owns) charged to the heap, and its peak.
 @(private = "file")
 j_cell_new :: proc(c: ^Jc, out: u32, size: int, charge: int) {
 	rtp := i32(uintptr(c.rt))
@@ -2397,18 +2415,27 @@ j_cell_new :: proc(c: ^Jc, out: u32, size: int, charge: int) {
 	j_lget(c, out)
 	j_i32(c, i32(Cell_Kind.object))
 	j_mem(c, W_I32_STORE8, 0, CELL_KIND)
-	j_ld32(c, uintptr(rtp), RT_CELLS_DATA)
-	j_ld32(c, uintptr(rtp), RT_CELLS_LEN)
-	j_i32(c, size_of(^Cell) == 4 ? 2 : 3)
-	j_op(c, W_I32_SHL)
-	j_op(c, W_I32_ADD)
+	// both words of the group at once: the cell's bit at k in the low one (cells) and at 32 + k (marks)
+	j_cell_group(c, out)
+	j_lget(c, I_CHUNK)
+	j_lget(c, I_CHUNK)
+	j_mem(c, W_I64_LOAD, 3, CHUNK_HEAD)
+	j_op(c, W_I64_CONST)
+	w_sleb(&c.out, i64(1) << 32 | 1)
 	j_lget(c, out)
-	j_mem(c, W_I32_STORE, 2, 0)
+	j_i32(c, POOL_GRAIN_SHIFT)
+	j_op(c, W_I32_SHR_U)
+	j_i32(c, CHUNK_GROUP_GRAINS - 1)
+	j_op(c, W_I32_AND)
+	j_op(c, W_I64_EXTEND_I32_U)
+	j_op(c, W_I64_SHL)
+	j_op(c, W_I64_OR)
+	j_mem(c, W_I64_STORE, 3, CHUNK_HEAD)
 	j_i32(c, rtp)
-	j_ld32(c, uintptr(rtp), RT_CELLS_LEN)
+	j_ld32(c, uintptr(rtp), RT_CELL_COUNT)
 	j_i32(c, 1)
 	j_op(c, W_I32_ADD)
-	j_mem(c, W_I32_STORE, 2, RT_CELLS_LEN)
+	j_mem(c, W_I32_STORE, 2, RT_CELL_COUNT)
 	j_i32(c, rtp)
 	j_i32(c, rtp)
 	j_mem(c, W_I64_LOAD, 3, RT_HEAP_BYTES)
@@ -2458,7 +2485,6 @@ j_object_init :: proc(c: ^Jc, out: u32, class: Class_ID, bits: u8, sh: ^Shape, s
 // collects, as with the helper: the object is in the code's hands until its next call or exit.
 @(private = "file")
 j_alloc :: proc(c: ^Jc, sh: ^Shape, out: u32) {
-	j_cell_room(c)
 	j_pool_take(c, JIT_OBJ_BYTES, out, nil)
 	j_cell_new(c, out, JIT_OBJ_BYTES, JIT_OBJ_BYTES)
 	j_object_init(c, out, .object, 0, sh, 0, INLINE_SLOTS)
@@ -2515,7 +2541,6 @@ jit_array_from :: proc(c: ^Jc, argc: int) -> bool {
 		// I_T0 the object, its slots and its values, one block (the entries' locals hold them until they are stored)
 		values_at := size_of(Object) + slot_bytes
 		j_alloc_open(c)
-		j_cell_room(c)
 		j_pool_take(c, values_at + value_bytes, I_T0, nil)
 		for d in base ..< c.st.n {j_store_entry(c, d, I_T0, u32(values_at + (d - base) * size_of(Value)), true, true)}
 		j_cell_new(c, I_T0, values_at + value_bytes, values_at + value_bytes)

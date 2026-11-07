@@ -1,5 +1,6 @@
 package jsrt
 
+import "base:intrinsics"
 import "core:mem"
 
 // heap_profile_field: the index from which the counters are the entries of cell_sizes, then those of the census of what died (-define:JSRT_GC_CENSUS=true).
@@ -39,7 +40,7 @@ Prof_Row :: enum u8 {
 	module,
 	atom_table, // count = atoms, extra = entry array + hash
 	pool_free,  // small blocks sitting on the free lists (cell_bytes)
-	pool_chunks,// count = chunks, cell_bytes = chunk bytes, slack = never handed out yet
+	pool_chunks,// count = chunks, cell_bytes = chunk bytes, extra = their headers and the bits of their cells, slack = never handed out yet
 	runtime_misc, // value stack segments, gray/temp_roots capacity
 	arenas,     // count = compiles, cell_bytes = largest front-end arena (blocks), extra = retained scratch + regexp arena blocks
 	functions,  // count = functions read, cell_bytes = those that ran (their body read and verified)
@@ -109,7 +110,6 @@ census_cell :: proc(p: ^Heap_Profile, c: ^Cell, dead: bool) {
 			extra += int(d.count) * size_of(rawptr)
 			row = .obj_arguments
 		case Func_Data:
-			if d.bc != nil {extra += int(d.bc.closure_var_count) * size_of(rawptr)}
 			row = .obj_function
 		case Native_Data:
 			extra += native_data_len(&o.data.(Native_Data)) * size_of(Value) + (d.data != nil && !native_data_is_raw(&o.data.(Native_Data)) ? NATIVE_DATA_HEADER : 0)
@@ -168,9 +168,17 @@ census_cell :: proc(p: ^Heap_Profile, c: ^Cell, dead: bool) {
 }
 
 heap_profile :: proc(rt: ^Runtime) -> (p: Heap_Profile) {
-	gc_sweep_finish(rt) // (a sweep in progress has cells that are gone in the list)
+	gc_sweep_finish(rt) // (a sweep in progress leaves dead cells in the bits of the chunks it has not reached)
 	p.heap_bytes = rt.heap_bytes
-	for c in rt.cells {census_cell(&p, c, false)}
+	for ch := rt.pool_chunks; ch != nil; ch = ch.next {
+		for g, gi in chunk_groups(ch) {
+			for cells := g.cells; cells != 0; cells &= cells - 1 {
+				k := intrinsics.count_trailing_zeros(cells)
+				census_cell(&p, cast(^Cell)(uintptr(ch) + uintptr(gi * CHUNK_GROUP_GRAINS + int(k)) << POOL_GRAIN_SHIFT), false)
+			}
+		}
+	}
+	for c in rt.big_cells {census_cell(&p, c, false)}
 	p.rows[.atom_table] = {i64(len(rt.atoms)), 0, i64(cap(rt.atoms) * size_of(Atom_Entry) + len(rt.atom_hash) * size_of(u32)), i64((cap(rt.atoms) - len(rt.atoms)) * size_of(Atom_Entry))}
 	for cls in 1 ..< POOL_CLASSES {
 		for b := rt.pool_free[cls]; b != nil; b = b.next {
@@ -178,16 +186,17 @@ heap_profile :: proc(rt: ^Runtime) -> (p: Heap_Profile) {
 			p.rows[.pool_free].cell_bytes += i64(cls * POOL_GRAIN)
 		}
 	}
-	for ch := rt.pool_chunks; ch != nil; ch = (cast(^rawptr)ch)^ {
+	for ch := rt.pool_chunks; ch != nil; ch = ch.next {
 		p.rows[.pool_chunks].count += 1
-		p.rows[.pool_chunks].cell_bytes += i64((cast(^int)(uintptr(ch) + size_of(rawptr)))^)
+		p.rows[.pool_chunks].cell_bytes += i64(ch.size)
+		p.rows[.pool_chunks].extra_bytes += i64(chunk_blocks_at(ch.size)) // (the header and the bits of its cells)
 	}
 	p.rows[.pool_chunks].slack_bytes = i64(rt.pool_left)
 	for seg in rt.vstack {p.rows[.runtime_misc].extra_bytes += i64(len(seg.data) * size_of(Value))}
-	p.rows[.runtime_misc].extra_bytes += i64(cap(rt.cells) + cap(rt.gray) + cap(rt.temp_roots)) * size_of(rawptr)
+	p.rows[.runtime_misc].extra_bytes += i64(cap(rt.big_cells) + cap(rt.gray) + cap(rt.temp_roots)) * size_of(rawptr)
 	p.rows[.arenas] = {i64(rt.compile_count), i64(rt.compile_peak_bytes), i64(arena_blocks(&rt.scratch) + arena_blocks(&rt.regexp_arena)), i64(rt.compile_peak_blocks)}
 	p.rows[.functions] = {i64(rt.functions_read), i64(rt.functions_verified), 0, 0}
-	p.rows[.collections] = {i64(rt.gc_count), i64(len(rt.cells)), i64(rt.gc_sweep_steps), 0}
+	p.rows[.collections] = {i64(rt.gc_count), i64(rt.cell_count), i64(rt.gc_sweep_steps), 0}
 	p.rows[.swept] = {rt.gc_swept.dead, rt.gc_swept.kept, 0, 0}
 	return
 }

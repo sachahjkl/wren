@@ -181,10 +181,11 @@ Heap_Stats :: struct {
 	gc_count:        int,
 	gc_last_pause_ns: i64,
 	gc_max_pause_ns:  i64,
+	gc_ns:           i64, // the time of the markings and of the sweeps, all of them
 }
 
 heap_stats :: proc(rt: ^Runtime) -> Heap_Stats {
-	return Heap_Stats{rt.heap_bytes, rt.peak_heap_bytes, len(rt.cells), rt.gc_count, rt.gc_last_pause_ns, rt.gc_max_pause_ns}
+	return Heap_Stats{rt.heap_bytes, rt.peak_heap_bytes, rt.cell_count, rt.gc_count, rt.gc_last_pause_ns, rt.gc_max_pause_ns, rt.gc_ns}
 }
 
 // Collect now (only call between host turns, when no native code holds unrooted values).

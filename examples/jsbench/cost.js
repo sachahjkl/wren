@@ -21,7 +21,7 @@ var COST_CASES = [
 	["{a, b, c}", 2100, function (n) {for (var i = 0; i < n; i++) sink = {a: 1, b: 2, c: 3};}],
 	["a function expression", 2100, function (n) {for (var i = 0; i < n; i++) sink = function () {};}],
 	["an arrow function", 2200, function (n) {for (var i = 0; i < n; i++) sink = () => i;}],
-	["arguments of a sloppy function", 3550, function (n) {for (var i = 0; i < n; i++) count_arguments(i);}],
+	["arguments of a sloppy function", 3400, function (n) {for (var i = 0; i < n; i++) count_arguments(i);}],
 ];
 
 // Objects used as maps: each first key a transition of the shape of `{}`, which every object literal starts from.
@@ -46,9 +46,13 @@ COST_CASES.push(["new with three fields", 4350, function (n) {for (var i = 0; i 
 var run_of_text = "https://example.com/a-long-path-of-an-article/with?utm_source=abc&utm_medium=social&id=0123456789#fragment";
 var email_like = /\S+(@|%40)\S+\.\S+/;
 var vendor = 1234;
-COST_CASES.push(["a number made a string, again", 2300, function (n) {for (var i = 0; i < n; i++) sink = vendor.toString() + ":true";}]);
+COST_CASES.push(["a number made a string, again", 2050, function (n) {for (var i = 0; i < n; i++) sink = vendor.toString() + ":true";}]);
 var pairs = [[1, 2], [3, 4]];
-COST_CASES.push(["destructured pairs", 5400, function (n) {for (var i = 0; i < n; i++) {var [a, b] = pairs[i & 1]; sink = a + b;}}]);
+COST_CASES.push(["destructured pairs", 3800, function (n) {for (var i = 0; i < n; i++) {var [a, b] = pairs[i & 1]; sink = a + b;}}]);
 var counted = new Map([[1, 1], [2, 2], [3, 3]]);
 COST_CASES.push(["a map's entries by next()", 5200, function (n) {for (var i = 0; i < n; i++) {var it = counted.values(); sink = it.next().value + it.next().value;}}]);
+COST_CASES.push(["for-of over 8", 8600, function (n) {for (var i = 0; i < n; i++) {var t = 0; for (var x of numbers) t += x; sink = t;}}]);
+var described = {a: 1};
+COST_CASES.push(["a descriptor's field", 1800, function (n) {for (var i = 0; i < n; i++) sink = Object.getOwnPropertyDescriptor(described, "a").enumerable;}]);
+COST_CASES.push(["defineProperty of a literal", 4800, function (n) {for (var i = 0; i < n; i++) Object.defineProperty(described, "a", {value: i, enumerable: true, configurable: true, writable: true});}]);
 COST_CASES.push(["a search that starts with a run", 133000, function (n) {for (var i = 0; i < n; i++) sink = email_like.test(run_of_text);}]);

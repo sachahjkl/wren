@@ -1017,7 +1017,7 @@ eval_main :: proc(path: string) -> int {
 	}
 	dt := time.tick_since(t0)
 	st := js.heap_stats(rt)
-	fmt.eprintf("[%.1f ms, heap %d KiB (peak %d KiB), %d GCs, max pause %.2f ms]\n", time.duration_milliseconds(dt), st.heap_bytes / 1024, st.peak_heap_bytes / 1024, st.gc_count, f64(st.gc_max_pause_ns) / 1e6)
+	fmt.eprintf("[%.1f ms, heap %d KiB (peak %d KiB), %d GCs, max pause %.2f ms, %.1f ms collecting]\n", time.duration_milliseconds(dt), st.heap_bytes / 1024, st.peak_heap_bytes / 1024, st.gc_count, f64(st.gc_max_pause_ns) / 1e6, f64(st.gc_ns) / 1e6)
 	if os.get_env("JSRT_MEMPROF", context.temp_allocator) == "1" {
 		js.collect(rt)
 		print_heap_profile(rt)

@@ -822,7 +822,7 @@ object_finalize :: proc(rt: ^Runtime, o: ^Object) {
 	case Mapped_Args_Data:
 		if d.refs != nil {mem_free(rt, d.refs, int(d.count) * size_of(^Var_Ref))}
 	case Func_Data:
-		if d.var_refs != nil && d.bc != nil && !cell_holds(o, d.var_refs) {mem_free(rt, d.var_refs, int(d.bc.closure_var_count) * size_of(^Var_Ref))}
+		// (its closure cells are in its cell: function_refs)
 	case Native_Data:
 		native_data_free(rt, &o.data.(Native_Data))
 	case ^Bound_Data:

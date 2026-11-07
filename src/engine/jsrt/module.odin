@@ -256,15 +256,12 @@ create_module_function :: proc(ctx: ^Context, m: ^Module) {
 	if m.func_bc == nil {return} // a module made by the host has no body
 	rt := ctx.rt
 	b := m.func_bc
-	fo := object_new_proto(ctx, ctx.function_proto, .bytecode_function)
-	fd := Func_Data{bc = b}
-	if b.closure_var_count > 0 {
-		fd.var_refs = cast([^]^Var_Ref)mem_alloc(rt, int(b.closure_var_count) * size_of(^Var_Ref))
-		for i in 0 ..< int(b.closure_var_count) {
-			cv := &b.closure_vars[i]
-			if cv.closure_type == .module_decl {
-				fd.var_refs[i] = var_ref_new_detached(rt, cv.is_lexical ? UNINITIALIZED : UNDEFINED)
-			}
+	fo := function_object_new(ctx, ctx.function_proto, b)
+	fd := Func_Data{bc = b, var_refs = function_refs(fo, b)}
+	for i in 0 ..< int(b.closure_var_count) {
+		cv := &b.closure_vars[i]
+		if cv.closure_type == .module_decl {
+			fd.var_refs[i] = var_ref_new_detached(rt, cv.is_lexical ? UNINITIALIZED : UNDEFINED)
 		}
 	}
 	fo.data = fd

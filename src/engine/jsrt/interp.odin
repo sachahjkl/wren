@@ -1252,7 +1252,22 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				sp += 2
 			case .for_of_start, .for_await_of_start:
 				f.pc = pc
-				it := get_iterator(ctx, stack[sp - 1], op == .for_await_of_start)
+				it: Value
+				// (yield* drops the catch offset and calls the iterator's methods itself: it needs the iterator)
+				if op == .for_of_start && Opcode(code[pc]) != .drop {
+					obj := stack[sp - 1]
+					m := get(ctx, obj, well_known_atom(.iterator))
+					if is_exception(m) {exc = true; break}
+					if for_of_fast(ctx, obj, m) {
+						stack[sp] = for_of_index(0)
+						stack[sp + 1] = mk_catch(0, b)
+						sp += 2
+						break
+					}
+					it = iterator_from_method(ctx, obj, m)
+				} else {
+					it = get_iterator(ctx, stack[sp - 1], op == .for_await_of_start)
+				}
 				if is_exception(it) {exc = true; break}
 				stack[sp - 1] = it
 				m := get(ctx, it, pa(.A_next))
@@ -1270,7 +1285,12 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				if !is_undefined(stack[itp]) {
 					v: Value
 					d, ok: bool
-					if is_builtin_array_iter(stack[itp], stack[itp + 1]) {
+					if stack[itp + 1].tag == .uninitialized {
+						// an object and an index, for an iterator nothing made (for_of_fast)
+						i := i64(stack[itp + 1].u.f)
+						v, d, ok = array_values_at(ctx, as_obj(stack[itp]), i)
+						stack[itp + 1] = for_of_index(i + 1)
+					} else if is_builtin_array_iter(stack[itp], stack[itp + 1]) {
 						// no result object for the built-in array iterator (unobservable)
 						v, d, ok = array_iterator_step(ctx, as_obj(stack[itp]).data.(^Iter_State))
 					} else if is_builtin_generator_next(stack[itp], stack[itp + 1]) {
@@ -1319,7 +1339,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				it := stack[sp - 1]
 				if !is_undefined(it) {
 					f.pc = pc
-					if iterator_close(ctx, it, false) < 0 {exc = true; break}
+					if for_of_close(ctx, it, stack[sp], false) < 0 {exc = true; break}
 				}
 				sp -= 1
 			case .iterator_next:
@@ -1728,7 +1748,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 					if pos == 0 {
 						// a for-of iterator: close it, keeping the pending exception
 						sp -= 1
-						iterator_close(ctx, stack[sp - 1], true)
+						for_of_close(ctx, stack[sp - 1], stack[sp], true)
 					} else {
 						stack[sp] = take_exception(ctx)
 						sp += 1
@@ -1804,6 +1824,29 @@ build_arguments :: proc(ctx: ^Context, args: []Value) -> Value {
 	return mk_obj(o)
 }
 
+// The closure cells of a function's mapped arguments object can be in the object's cell (build_mapped_arguments) when nothing but that
+// object and the frame ever holds them: no function inside captures an argument, no direct eval may, and the frame is no coroutine's
+// (which holds its cells by its own object). Found at the function's first arguments object, kept in the bytecode's Cell.flags.
+BC_ARGS_SEEN :: u8(1)
+BC_ARGS_IN_CELL :: u8(2)
+
+mapped_args_in_cell :: proc(b: ^Function_Bytecode) -> bool {
+	if b.flags & BC_ARGS_SEEN == 0 {
+		b.flags |= BC_ARGS_SEEN
+		ok := b.func_kind == .normal
+		for v in b.cpool {
+			if v.tag != .function_bc {continue}
+			for cv in (cast(^Function_Bytecode)v.u.ptr).closure_vars {if cv.closure_type == .arg {ok = false}}
+		}
+		code := b.code
+		for pc := 0; ok && pc < len(code); pc += int(opcode_info[Opcode(code[pc])].size) {
+			if int(code[pc]) >= OPCODE_COUNT || Opcode(code[pc]) == .eval || Opcode(code[pc]) == .apply_eval {ok = false}
+		}
+		if ok {b.flags |= BC_ARGS_IN_CELL}
+	}
+	return b.flags & BC_ARGS_IN_CELL != 0
+}
+
 // What a mapped arguments object has beside its elements: length, its iterator, callee.
 MAPPED_ARGUMENTS_OTHER_PROPERTIES :: 3
 // The argument counts whose shapes a realm keeps, by how many are mapped.
@@ -1815,8 +1858,24 @@ build_mapped_arguments :: proc(ctx: ^Context, f: ^Frame, mapped: int) -> Value {
 	rt := ctx.rt
 	known := f.argc < MAPPED_ARGUMENTS_SHAPES ? ctx.mapped_args_shapes[f.argc][mapped] : nil
 	if known != nil {
-		o := object_new_shape(rt, known, .mapped_arguments)
-		for i in 0 ..< mapped {o.slots[i].var_ref = get_var_ref(rt, f, i, true)}
+		in_cell := mapped_args_in_cell(f.bc)
+		o := object_new_shape(rt, known, .mapped_arguments, in_cell ? mapped * size_of(Var_Ref) : 0)
+		if in_cell {
+			// the closure cells of the arguments in the object's own cell: the frame's while it runs (its var_refs, which close them
+			// at its return), and the arguments object's only, by mapped_args_in_cell. An open one keeps its object alive (owner).
+			refs := cast([^]Var_Ref)object_tail(o)
+			for i in 0 ..< mapped {
+				vr := &refs[i]
+				vr.size = size_of(Var_Ref)
+				vr.kind = .var_ref
+				vr.pvalue = &f.args[i]
+				vr.owner = o
+				f.var_refs[f.bc.vardefs[i].var_ref_idx] = vr
+				o.slots[i].var_ref = vr
+			}
+		} else {
+			for i in 0 ..< mapped {o.slots[i].var_ref = get_var_ref(rt, f, i, true)}
+		}
 		for i in mapped ..< f.argc {o.slots[i].value = f.args[i]}
 		o.slots[f.argc].value = mk_int(i32(f.argc))
 		o.slots[f.argc + 1].value = mk_obj(ctx.array_proto_values)
@@ -2110,7 +2169,7 @@ define_class :: #force_no_inline proc(ctx: ^Context, stack: []Value, sp: int, na
 	}
 	proto := object_new_proto(ctx, parent_proto)
 	fb := cast(^Function_Bytecode)bfunc.u.ptr
-	ctor := object_new_proto(ctx, ctor_proto, .bytecode_function)
+	ctor := function_object_new(ctx, ctor_proto, fb)
 	closure_bind(ctx, ctor, fb, var_refs, f)
 	ctor.is_constructor = true
 	ctor.is_class_ctor = true

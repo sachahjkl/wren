@@ -267,7 +267,15 @@ hot_call :: #force_no_inline proc(h: ^Hot, op: Opcode) -> bool {
 		}
 		h.ip = ip[isz:]
 		f.pc = int(uintptr(h.ip) - uintptr(h.regs.code))
-		r := call_native(ctx, fo, nd, this, first[:argc])
+		r: Value
+		if Opcode(h.ip[0]) == .get_field && is_native_get_descriptor(nd) {
+			// Object.getOwnPropertyDescriptor(o, p).enumerable: the field, without the descriptor
+			read: bool
+			r, read = descriptor_field(ctx, first[:argc], Atom(rd32(h.ip[1:])))
+			if read {h.ip = h.ip[opcode_info[Opcode.get_field].size:]}
+		} else {
+			r = call_native(ctx, fo, nd, this, first[:argc])
+		}
 		if r.tag == .exception {
 			h.thrown = true
 			return false
@@ -459,10 +467,89 @@ hot_define_field :: #force_no_inline proc(h: ^Hot) -> bool {
 
 // What makes a cell and cannot fail: a plain object, a closure, an array of the stack's top entries, the name of a type.
 @(private = "file")
-hot_object :: #force_no_inline proc(h: ^Hot) {
+hot_object :: #force_no_inline proc(h: ^Hot) -> bool {
+	// (a native under the object and the key: maybe Object.defineProperty)
+	if uintptr(h.s) - uintptr(h.regs.stack) >= 3 * size_of(Value) && h.s[-3].tag == .object && as_obj(h.s[-3]).class == .c_function {
+		if done, go := hot_define_literal(h); done {return go}
+	}
 	h.s[0] = mk_obj(new_plain_object(h.ctx))
 	h.s = h.s[1:]
 	h.ip = h.ip[1:]
+	return true
+}
+
+// The fields of a literal hot_define_literal reads, at most.
+LITERAL_FIELDS_MAX :: 8
+
+// `Object.defineProperty(o, p, {value: v, enumerable: !0, ...})`, a literal of loads and constants given to the call that follows it:
+// no object, its fields read as the instructions would push them (define_property_literal). done: the call made and passed, its
+// result where it goes (go = false: it threw); not done: anything else ahead, and the object is made.
+@(private = "file")
+hot_define_literal :: proc(h: ^Hot) -> (done: bool, go: bool) {
+	s := h.s
+	fv := s[-3] // (the callee, under the object and the key: a native, hot_object saw)
+	if !is_native_define_property(&as_obj(fv).data.(Native_Data)) {return}
+	keys: [LITERAL_FIELDS_MAX]Atom
+	values: [LITERAL_FIELDS_MAX]Value
+	n := 0
+	pending := false
+	v: Value
+	ip := h.ip[1:]
+	for {
+		op := Opcode(ip[0])
+		#partial switch op {
+		case .get_arg0, .get_arg1, .get_arg2, .get_arg3: v = h.regs.args[int(op) - int(Opcode.get_arg0)]
+		case .get_arg: v = h.regs.args[rd16(ip[1:])]
+		case .get_loc0, .get_loc1, .get_loc2, .get_loc3: v = h.regs.locals[int(op) - int(Opcode.get_loc0)]
+		case .get_loc8: v = h.regs.locals[ip[1]]
+		case .get_loc: v = h.regs.locals[rd16(ip[1:])]
+		case .get_var_ref0, .get_var_ref1, .get_var_ref2, .get_var_ref3: v = h.regs.var_refs[int(op) - int(Opcode.get_var_ref0)].pvalue^
+		case .get_var_ref: v = h.regs.var_refs[rd16(ip[1:])].pvalue^
+		case .push_true, .push_false: v = mk_bool(op == .push_true)
+		case .undefined: v = UNDEFINED
+		case .null: v = NULL
+		case .push_minus1, .push_0, .push_1, .push_2, .push_3, .push_4, .push_5, .push_6, .push_7: v = mk_int(i32(op) - i32(Opcode.push_0))
+		case .push_i8: v = mk_int(i32(i8(ip[1])))
+		case .push_i32: v = mk_int(i32(rd32(ip[1:])))
+		case .lnot:
+			if !pending {return}
+			v = mk_bool(!to_boolean(v))
+			ip = ip[1:]
+			continue
+		case .define_field:
+			if !pending || n == LITERAL_FIELDS_MAX {return}
+			keys[n], values[n] = Atom(rd32(ip[1:])), v
+			n += 1
+			pending = false
+			ip = ip[opcode_info[op].size:]
+			continue
+		case .call, .call_method:
+			if pending || rd16(ip[1:]) != 3 {return}
+			// (the fields' values only here while a key's toString or a proxy's trap runs: rooted as the literal would hold them)
+			for x in values[:n] {root(h.rt, x)}
+			pc := h.f.pc
+			h.f.pc = int(uintptr(ip) - uintptr(h.regs.code)) + int(opcode_info[op].size)
+			r, ok := define_property_literal(h.ctx, s[-2], s[-1], keys[:n], values[:n])
+			if !ok {
+				h.f.pc = pc
+				return
+			}
+			slot := intrinsics.ptr_offset(s, op == .call_method ? -4 : -3) // (the callee's place, or `this`'s)
+			h.ip = ip[opcode_info[op].size:]
+			if r.tag == .exception {
+				h.thrown = true
+				return true, false
+			}
+			slot[0] = r
+			h.s = slot[1:]
+			return true, true
+		case:
+			return
+		}
+		if pending || v.tag == .uninitialized {return}
+		pending = true
+		ip = ip[opcode_info[op].size:]
+	}
 }
 
 @(private = "file")
@@ -538,7 +625,7 @@ hot_run :: #force_no_inline proc(h: ^Hot) {
 		case .get_length:   go = hot_get_length(h)
 		case .put_field:    go = hot_put_field(h)
 		case .define_field: go = hot_define_field(h)
-		case .object:       hot_object(h)
+		case .object:       go = hot_object(h)
 		case .closure:
 			if op == .fclosure8 {hot_closure(h, int(h.ip[1]), 2)} else {hot_closure(h, int(rd32(h.ip[1:])), 5)}
 		case .array_from:   hot_array_from(h)

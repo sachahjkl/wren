@@ -277,6 +277,64 @@ obj_get_own_property_descriptor :: proc(ctx: ^Context, this: Value, args: []Valu
 	return from_property_descriptor(ctx, &d)
 }
 
+// --- the descriptors of Object.getOwnPropertyDescriptor and Object.defineProperty that nothing sees (interp_hot.odin: hot_call, hot_object) ---
+
+is_native_get_descriptor :: #force_inline proc "contextless" (nd: ^Native_Data) -> bool {return nd.fn == obj_get_own_property_descriptor}
+is_native_define_property :: #force_inline proc "contextless" (nd: ^Native_Data) -> bool {return nd.fn == obj_define_property}
+
+// Object.getOwnPropertyDescriptor(args...) whose result is read at `key` at once: the value read, and true. Or what the call returns, and
+// false: undefined (the read throws), or the descriptor made when it has no `key` of its own (the read goes on to Object.prototype).
+descriptor_field :: proc(ctx: ^Context, args: []Value, key: Atom) -> (Value, bool) {
+	o := to_obj_this(ctx, arg(args, 0))
+	if o == nil {return EXCEPTION, false}
+	a, ok := to_property_key(ctx, arg(args, 1))
+	if !ok {return EXCEPTION, false}
+	d: Prop_Desc
+	r := get_own_property_resolved(ctx, o, a, &d)
+	if r < 0 {return EXCEPTION, false}
+	if r == 0 {return UNDEFINED, false}
+	for f in DESC_FIELDS {
+		if f not_in d.has || desc_field_atom(f) != key {continue}
+		switch f {
+		case .value: return d.value, true
+		case .get: return d.getter, true
+		case .set: return d.setter, true
+		case .writable: return mk_bool(.writable in d.flags), true
+		case .enumerable: return mk_bool(.enumerable in d.flags), true
+		case .configurable: return mk_bool(.configurable in d.flags), true
+		}
+	}
+	return from_property_descriptor(ctx, &d), false
+}
+
+// Object.defineProperty(o, p, literal) with the literal's own data properties as `keys` and `values` (the last of a key wins), from a
+// literal whose prototype is this realm's Object.prototype: what the call does, without the literal. ok = false: Object.prototype has
+// a field of a descriptor the literal does not (ToPropertyDescriptor would read it there), and nothing was done.
+define_property_literal :: proc(ctx: ^Context, o, p: Value, keys: []Atom, values: []Value) -> (r: Value, ok: bool) {
+	proto := ctx.class_proto[.object]
+	if proto.shape.proto != nil || proto.shape.lazy != nil {return}
+	for f in DESC_FIELDS {
+		a := desc_field_atom(f)
+		given := false
+		for k in keys {given ||= k == a}
+		if !given && shape_find(proto.shape, a) >= 0 {return}
+	}
+	if o.tag != .object {return throw_type_error(ctx, "Object.defineProperty called on non-object"), true}
+	a, key_ok := to_property_key(ctx, p)
+	if !key_ok {return EXCEPTION, true}
+	d := Prop_Desc{value = UNDEFINED, getter = UNDEFINED, setter = UNDEFINED}
+	for f in DESC_FIELDS {
+		fa := desc_field_atom(f)
+		for i := len(keys) - 1; i >= 0; i -= 1 {
+			if keys[i] != fa {continue}
+			if !desc_field_set(ctx, &d, f, values[i]) {return EXCEPTION, true}
+			break
+		}
+	}
+	if !desc_check(ctx, &d) || define_own_property(ctx, as_obj(o), a, d, true) < 0 {return EXCEPTION, true}
+	return o, true
+}
+
 @(private = "file")
 obj_get_own_property_descriptors :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 	o := to_obj_this(ctx, arg(args, 0))

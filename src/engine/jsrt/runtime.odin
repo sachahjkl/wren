@@ -159,12 +159,15 @@ Host_Snapshot :: struct {
 	off, n: int,
 }
 
-// The sweep of a collection in progress, from the end of Runtime.cells as it was at the marking: a mark bit says what lives.
+// The sweep of a collection in progress: the chunks of the pool down their list, from the newest, then the big cells from the end of
+// Runtime.big_cells as it was at the marking. A mark says what lives.
 Gc_Sweep :: struct {
-	left: int, // the cells not looked at yet are the first `left` (0: no sweep in progress)
-	kept: int, // cells[kept:] are the survivors so far, then the cells made since the marking
-	heap: i64, // the heap after the last step
-	made: i64, // what was allocated since the marking: it says nothing of what the collection left
+	active:   bool,        // a sweep is in progress
+	chunk:    ^Pool_Chunk, // the next chunk to sweep (nil: the chunks are done)
+	big:      int,         // the big cells not looked at yet are the first `big`
+	big_kept: int,         // big_cells[big_kept:] are the survivors so far, then the cells made since the marking
+	heap:     i64,         // the heap after the last step
+	made:     i64,         // what was allocated since the marking: it says nothing of what the collection left
 }
 
 // A number and its string (Runtime.int_strings).
@@ -176,9 +179,17 @@ Int_String :: struct {
 // Slots of Runtime.int_strings, a power of two.
 INT_STRINGS :: 256
 
+// Two strings that come again and again and what they make together (Runtime.concat_strings, str_concat).
+Concat_String :: struct {
+	a, b, s: ^JS_String,
+}
+
+// Slots of Runtime.concat_strings, a power of two.
+CONCAT_STRINGS :: 256
+
 // What the sweeps did since the runtime began.
 Gc_Swept :: struct {
-	dead, kept: i64, // cells freed, cells looked at and kept
+	dead, kept: i64, // cells freed, cells kept (counted from the bits of their chunks, not read)
 }
 
 Runtime :: struct {
@@ -189,7 +200,8 @@ Runtime :: struct {
 	config:         Host_Config,
 
 	// heap
-	cells:          [dynamic]^Cell, // every cell, oldest first: the sweep reads them from here and not from one to the next
+	big_cells:      [dynamic]^Cell, // the cells over POOL_MAX_BYTES, oldest first (those of the pool are in the bits of their chunks)
+	cell_count:     int,   // the cells in the heap
 	heap_bytes:     i64,   // bytes currently allocated through the runtime
 	gc_threshold:   i64,   // run a collection at the next safe point once heap_bytes passes this
 	gc_growth_percent: i64,   // ... set after a collection to this much of what it left (javascript.gc_heap_growth_percent)
@@ -201,6 +213,7 @@ Runtime :: struct {
 	gc_dead:        Heap_Profile, // -define:JSRT_GC_CENSUS=true: what the sweeps freed, by kind (memprof.odin)
 	gc_last_pause_ns: i64,
 	gc_max_pause_ns:  i64,
+	gc_ns:            i64, // the time of the markings and of the sweeps, all of them (clock_hook)
 	peak_heap_bytes:  i64,
 	gray:           [dynamic]^Cell,
 	gc_shapes:      [dynamic]^Shape,   // during a collection: the live shapes with transitions (weak: gc_sweep drops the dead ones)
@@ -210,6 +223,7 @@ Runtime :: struct {
 	gc_hooked:      [dynamic]^Object,     // host objects whose class exposes its references to the collector
 	host_finals:    [dynamic]^Object,     // the live host objects whose class has a finalizer
 	weak_list:      [dynamic]^Object, // WeakMap/WeakSet/WeakRef/FinalizationRegistry objects
+	map_iters:      [dynamic]^Object, // the Map and Set iterators not done (gc_release_map_iters: one that dies lets its map compact again)
 	in_gc:          bool,
 	gc_disabled:    int,
 
@@ -217,8 +231,12 @@ Runtime :: struct {
 	pool_free:      [POOL_CLASSES]^Pool_Block,
 	pool_bump:      [^]byte,
 	pool_left:      int,
-	pool_chunks:    rawptr,
+	pool_chunks:    ^Pool_Chunk, // the newest first
 	pool_chunk_count: int,
+	pool_chunk_bytes: int,
+	chunk_table:    [^]^Pool_Chunk, // the chunk of each CHUNK_UNIT of the addresses from chunk_lo (cell_bits)
+	chunk_table_len: int,
+	chunk_lo:       uintptr,
 
 	// atoms (atom.odin)
 	atoms:          [dynamic]Atom_Entry,
@@ -228,6 +246,7 @@ Runtime :: struct {
 	// interned singletons
 	char_strings:   [256]^JS_String, // one-unit Latin-1 strings
 	int_strings:    [INT_STRINGS]Int_String, // the strings of numbers made lately (str_from_u64), cleared by each collection
+	concat_strings: [CONCAT_STRINGS]Concat_String, // a number's string joined to a constant lately (str_concat), cleared by each collection
 	empty_string:   ^JS_String,
 	well_known:     [Well_Known]^Symbol,
 	symbol_registry: map[Atom]^Symbol, // Symbol.for, keyed by the atom of the key string
@@ -426,7 +445,7 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	rt.gc_growth_percent, rt.gc_min_growth = GC_DEFAULT_GROWTH_PERCENT, GC_DEFAULT_MIN_GROWTH
 	rt.chain_generation = 1
 	rt.exception = UNINITIALIZED
-	rt.cells = make([dynamic]^Cell, 0, GC_LIST_INITIAL_CAP, allocator)
+	rt.big_cells = make([dynamic]^Cell, allocator)
 	rt.gray = make([dynamic]^Cell, 0, GC_LIST_INITIAL_CAP, allocator)
 	rt.gc_shapes = make([dynamic]^Shape, 0, GC_LIST_INITIAL_CAP, allocator)
 	rt.temp_roots = make([dynamic]^Cell, 0, GC_LIST_INITIAL_CAP, allocator)
@@ -435,6 +454,7 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	rt.gc_hooked = make([dynamic]^Object, allocator)
 	rt.host_finals = make([dynamic]^Object, allocator)
 	rt.weak_list = make([dynamic]^Object, allocator)
+	rt.map_iters = make([dynamic]^Object, allocator)
 	rt.contexts = make([dynamic]^Context, allocator)
 	rt.jobs = make([dynamic]Job, allocator)
 	rt.modules = make([dynamic]^Module, allocator)
@@ -469,7 +489,7 @@ runtime_free :: proc(rt: ^Runtime) {
 	stack_segments_free(rt)
 	for &seg in rt.vstack {delete(seg.data, allocator)}
 	delete(rt.vstack)
-	delete(rt.cells)
+	delete(rt.big_cells)
 	delete(rt.gray)
 	delete(rt.gc_shapes)
 	delete(rt.temp_roots)
@@ -478,6 +498,7 @@ runtime_free :: proc(rt: ^Runtime) {
 	delete(rt.gc_hooked)
 	delete(rt.host_finals)
 	delete(rt.weak_list)
+	delete(rt.map_iters)
 	delete(rt.contexts)
 	delete(rt.jobs)
 	delete(rt.modules)

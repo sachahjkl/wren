@@ -28,7 +28,10 @@ package jsrt
 // per-prototype root shapes are weak too.
 //
 // A collection marks at a safe point, all at once; its sweep may go by steps at the next ones (gc_sweep_step): nothing
-// reaches a dead cell any more, so it can wait. What needs the list of cells whole finishes the sweep first (gc_sweep_finish).
+// reaches a dead cell any more, so it can wait. What needs every cell to be one that lives finishes the sweep first (gc_sweep_finish).
+//
+// The marks of the cells of the pool are bits of their chunk (Chunk_Bits), beside the bits that say where cells start: the sweep
+// visits the dead cells only. A cell over POOL_MAX_BYTES has its own block, its mark in its header, and is listed (Runtime.big_cells).
 
 import "base:intrinsics"
 import "base:runtime"
@@ -41,10 +44,11 @@ GC_DEFAULT_GROWTH_PERCENT :: 250
 GC_DEFAULT_MIN_GROWTH :: 4 << 20
 // -define:JSRT_GC_STRESS=<bytes>: a collection each time this much was allocated, to find what is not rooted (0: off). Never in a shipped build.
 GC_STRESS_BYTES :: #config(JSRT_GC_STRESS, 0)
-// A sweep of more cells than this is done in steps, after the mutator has allocated a little: one of a heap of a million cells takes longer
-// than the marking, under a frame. A step takes about a quarter of a millisecond, and frees more than was allocated since the last.
-GC_SWEEP_LAZY_CELLS :: 0 when GC_STRESS_BYTES > 0 else 64 * 1024
-GC_SWEEP_STEP_CELLS :: 4096 when GC_STRESS_BYTES > 0 else 8192
+// A sweep of more chunks than this is done in steps, after the mutator has allocated a little: one of a heap of a million cells takes
+// longer than the marking, under a frame. A step sweeps GC_SWEEP_STEP_CHUNK_BYTES of chunks for each GC_SWEEP_STEP_BYTES allocated
+// since the last, and frees more than that.
+GC_SWEEP_LAZY_BYTES :: 0 when GC_STRESS_BYTES > 0 else 8 << 20
+GC_SWEEP_STEP_CHUNK_BYTES :: POOL_CHUNK_BYTES when GC_STRESS_BYTES > 0 else 1 << 20
 GC_SWEEP_STEP_BYTES :: GC_STRESS_BYTES / 4 when GC_STRESS_BYTES > 0 else 128 * 1024
 // -define:JSRT_GC_POISON=true: a swept cell is finalized but its memory is never reused and its kind becomes CELL_DEAD, and reading a value
 // that points at one traps there (as_obj & co., mark_cell): the first use of what was collected too early has a stack, instead of reading
@@ -74,7 +78,7 @@ Cell :: struct {
 		in_ext: bool | 1, // listed in Runtime.ext_cells
 		flags:  u8 | 2,   // per-kind bits
 	},
-	mark:       bool,
+	mark:       bool, // a cell over POOL_MAX_BYTES (a cell of the pool is marked in the bits of its chunk)
 	ext:        u16, // references held by the host (persist / the C API's owned references): each one is a root
 }
 
@@ -91,28 +95,103 @@ CELL_EXT_STUCK :: max(u16)
 // accounting needs it too), which is what selects the class; blocks are zeroed when handed out.
 POOL_MAX_BYTES :: 512
 POOL_GRAIN :: 8
+POOL_GRAIN_SHIFT :: 3
 POOL_CLASSES :: POOL_MAX_BYTES / POOL_GRAIN + 1
 POOL_CHUNK_BYTES :: 256 * 1024 // the largest chunk: the first ones are smaller (pool_chunk_size)
+// A chunk starts at a multiple of this, and its size is one: the unit of Runtime.chunk_table, by which a cell finds its chunk. (Aligned
+// on its own size, a chunk cost the Wasm allocator up to its size again, which it leaves in front of it.)
+CHUNK_UNIT_SHIFT :: 12
+CHUNK_UNIT :: 1 << CHUNK_UNIT_SHIFT
 
 Pool_Block :: struct {
 	next: ^Pool_Block,
 }
 
+// A chunk of the pool: this, the bits of its cells (Chunk_Bits, one per CHUNK_GROUP_GRAINS grains of the chunk), then its blocks.
+// The sweep reads the bits, not the cells: a cell that lives is not touched, and a group whose cells all live is one load.
+Pool_Chunk :: struct {
+	next: ^Pool_Chunk,
+	size: int,
+}
+CHUNK_HEAD :: (size_of(Pool_Chunk) + 15) &~ 15
+CHUNK_GROUP_GRAINS :: 32
+CHUNK_GROUP_SHIFT :: POOL_GRAIN_SHIFT + 5
+
+Chunk_Bits :: struct {
+	cells: u32, // the grains where a cell starts (cell_new sets it, the sweep clears it)
+	marks: u32, // the cells the marking reached, and those made since: a cell is made marked, and the marking starts by clearing them all
+}
+
 @(private = "file")
 pool_refill :: proc(rt: ^Runtime) {
 	size := pool_chunk_size(rt.pool_chunk_count)
-	p, err := mem.alloc(size, 16, rt.allocator)
+	p, err := mem.alloc(size, CHUNK_UNIT, rt.allocator)
 	if err != nil || p == nil {
 		panic("jsrt: out of memory")
 	}
-	// the first 16 bytes link the chunks (freed with the runtime) and record the size
-	(cast(^rawptr)p)^ = rt.pool_chunks
-	(cast(^int)(uintptr(p) + size_of(rawptr)))^ = size
-	rt.pool_chunks = p
+	ch := cast(^Pool_Chunk)p
+	ch.next = rt.pool_chunks
+	ch.size = size
+	rt.pool_chunks = ch
 	rt.pool_chunk_count += 1
+	rt.pool_chunk_bytes += size
+	chunk_table_add(rt, ch)
+	head := chunk_blocks_at(size)
 	rt.pool_bump = cast([^]byte)p
-	rt.pool_bump = rt.pool_bump[16:]
-	rt.pool_left = size - 16
+	rt.pool_bump = rt.pool_bump[head:]
+	rt.pool_left = size - head
+}
+
+// The units of `ch` in Runtime.chunk_table, which covers the addresses of every chunk from chunk_lo: made larger, and moved when a
+// chunk comes below it.
+@(private = "file")
+chunk_table_add :: proc(rt: ^Runtime, ch: ^Pool_Chunk) {
+	lo := uintptr(ch)
+	hi := lo + uintptr(ch.size)
+	old_lo := rt.chunk_lo
+	old_hi := old_lo + uintptr(rt.chunk_table_len) << CHUNK_UNIT_SHIFT
+	if rt.chunk_table == nil || lo < old_lo || hi > old_hi {
+		new_lo := rt.chunk_table == nil ? lo : min(lo, old_lo)
+		new_hi := rt.chunk_table == nil ? hi : max(hi, old_hi + (old_hi - old_lo) / 2) // (room to grow upward, where a heap grows)
+		n := int((new_hi - new_lo) >> CHUNK_UNIT_SHIFT)
+		block, err := mem.alloc(n * size_of(^Pool_Chunk), align_of(rawptr), rt.allocator) // (not from the pool: a chunk is what it is making)
+		if err != nil || block == nil {panic("jsrt: out of memory")}
+		table := cast([^]^Pool_Chunk)block
+		if rt.chunk_table != nil {
+			copy(table[(old_lo - new_lo) >> CHUNK_UNIT_SHIFT:][:rt.chunk_table_len], rt.chunk_table[:rt.chunk_table_len])
+			mem.free(rt.chunk_table, rt.allocator)
+		}
+		rt.chunk_table, rt.chunk_table_len, rt.chunk_lo = table, n, new_lo
+	}
+	first := int((lo - rt.chunk_lo) >> CHUNK_UNIT_SHIFT)
+	for i in first ..< first + ch.size >> CHUNK_UNIT_SHIFT {rt.chunk_table[i] = ch}
+}
+
+// Where the blocks of a chunk of `size` bytes start: after its header and its bits.
+chunk_blocks_at :: #force_inline proc "contextless" (size: int) -> int {
+	return (CHUNK_HEAD + (size >> CHUNK_GROUP_SHIFT) * size_of(Chunk_Bits) + 15) &~ 15
+}
+
+chunk_groups :: #force_inline proc "contextless" (ch: ^Pool_Chunk) -> []Chunk_Bits {
+	return (cast([^]Chunk_Bits)(uintptr(ch) + CHUNK_HEAD))[:ch.size >> CHUNK_GROUP_SHIFT]
+}
+
+// The group of the bits of a cell of the pool, and its bit in them.
+cell_bits :: #force_inline proc "contextless" (rt: ^Runtime, c: ^Cell) -> (^Chunk_Bits, u32) {
+	a := uintptr(c)
+	ch := uintptr(rt.chunk_table[(a - rt.chunk_lo) >> CHUNK_UNIT_SHIFT])
+	off := a - ch
+	g := cast(^Chunk_Bits)(ch + CHUNK_HEAD + (off >> CHUNK_GROUP_SHIFT) * size_of(Chunk_Bits))
+	return g, u32(1) << ((off >> POOL_GRAIN_SHIFT) & (CHUNK_GROUP_GRAINS - 1))
+}
+
+// Is the cell marked? Outside a marking, every cell that lives is: a cell is made marked, the sweep frees the others.
+cell_marked :: #force_inline proc "contextless" (rt: ^Runtime, c: ^Cell) -> bool {
+	if c.size <= POOL_MAX_BYTES {
+		g, bit := cell_bits(rt, c)
+		return g.marks & bit != 0
+	}
+	return c.mark
 }
 
 // A realm that stays small does not pay for a whole 256 KiB chunk it never fills.
@@ -126,12 +205,15 @@ pool_chunk_size :: #force_inline proc "contextless" (index: int) -> int {
 
 pool_free_chunks :: proc(rt: ^Runtime) {
 	for c := rt.pool_chunks; c != nil; {
-		next := (cast(^rawptr)c)^
+		next := c.next
 		mem.free(c, rt.allocator)
 		c = next
 	}
+	if rt.chunk_table != nil {mem.free(rt.chunk_table, rt.allocator)}
+	rt.chunk_table, rt.chunk_table_len, rt.chunk_lo = nil, 0, 0
 	rt.pool_chunks = nil
 	rt.pool_chunk_count = 0
+	rt.pool_chunk_bytes = 0
 	rt.pool_free = {}
 	rt.pool_left = 0
 }
@@ -250,7 +332,15 @@ cell_new :: proc(rt: ^Runtime, $T: typeid, kind: Cell_Kind, extra := 0) -> ^T {
 	c := cast(^Cell)mem_alloc(rt, size)
 	c.size = u32(size)
 	c.kind = kind
-	list_push(&rt.cells, c)
+	if size <= POOL_MAX_BYTES {
+		g, bit := cell_bits(rt, c)
+		g.cells |= bit
+		g.marks |= bit
+	} else {
+		c.mark = true
+		list_push(&rt.big_cells, c)
+	}
+	rt.cell_count += 1
 	list_push(&rt.temp_roots, c)
 	return cast(^T)c
 }
@@ -334,11 +424,11 @@ gc_should_run :: #force_inline proc "contextless" (rt: ^Runtime) -> bool {
 gc_safepoint :: proc(ctx: ^Context) -> bool {
 	rt := ctx.rt
 	if gc_should_run(rt) {
-		if rt.sweep.left > 0 {
+		if rt.sweep.active {
 			gc_sweep_step(rt)
 		} else {
 			gc_mark(rt)
-			if rt.sweep.left < GC_SWEEP_LAZY_CELLS {gc_sweep_finish(rt)} else {rt.gc_threshold = rt.heap_bytes + GC_SWEEP_STEP_BYTES}
+			if rt.pool_chunk_bytes < GC_SWEEP_LAZY_BYTES {gc_sweep_finish(rt)} else {rt.gc_threshold = rt.heap_bytes + GC_SWEEP_STEP_BYTES}
 		}
 		if rt.config.malloc_limit >= 0 && rt.heap_bytes > rt.config.malloc_limit {
 			gc_sweep_finish(rt)
@@ -355,11 +445,17 @@ gc_safepoint :: proc(ctx: ^Context) -> bool {
 
 mark_cell :: #force_inline proc(rt: ^Runtime, c: ^Cell) {
 	poison_check(c)
-	if c != nil && !c.mark {
+	if c == nil {return}
+	if c.size <= POOL_MAX_BYTES {
+		g, bit := cell_bits(rt, c)
+		if g.marks & bit != 0 {return}
+		g.marks |= bit
+	} else {
+		if c.mark {return}
 		c.mark = true
-		// (a plain string holds no cell: it does not go through the list, nearly half of what a page's heap has)
-		if c.kind != .string || c.flags & STR_TAIL != 0 {list_push(&rt.gray, c)}
 	}
+	// (a plain string holds no cell: it does not go through the list, nearly half of what a page's heap has)
+	if c.kind != .string || c.flags & STR_TAIL != 0 {list_push(&rt.gray, c)}
 }
 
 mark_value :: #force_inline proc(rt: ^Runtime, v: Value) {
@@ -391,21 +487,25 @@ gc_mark :: proc(rt: ^Runtime) {
 	defer span_stage(.gc, false)
 	t0 := now_ns(rt)
 	if rt.config.gc_prologue != nil {rt.config.gc_prologue(rt, rt.config.gc_prologue_user)}
+	gc_clear_marks(rt) // (after the prologue: what it makes, the host's groups, is traced like the rest)
 
-	rt.int_strings = {} // (what they hold may die: they are a cache, not roots)
+	rt.int_strings = {} // (what they hold may die: they are caches, not roots)
+	rt.concat_strings = {}
 	gc_mark_roots(rt)
 	gc_drain(rt)
 	gc_process_weak(rt)
 	gc_prune_ext(rt)
+	gc_release_map_iters(rt)
 	host_run_finalizers(rt)
 	gc_clear_weak_caches(rt)
-	rt.sweep = {left = len(rt.cells), kept = len(rt.cells), heap = rt.heap_bytes}
+	rt.sweep = {active = true, chunk = rt.pool_chunks, big = len(rt.big_cells), big_kept = len(rt.big_cells), heap = rt.heap_bytes}
 
 	rt.gc_count += 1
 	if rt.config.gc_epilogue != nil {rt.config.gc_epilogue(rt, rt.config.gc_prologue_user)}
 	dt := now_ns(rt) - t0
 	rt.gc_last_pause_ns = dt
 	if dt > rt.gc_max_pause_ns {rt.gc_max_pause_ns = dt}
+	rt.gc_ns += dt
 }
 
 now_ns :: proc(rt: ^Runtime) -> i64 {
@@ -490,7 +590,7 @@ gc_mark_ext :: proc(rt: ^Runtime) {
 gc_prune_ext :: proc(rt: ^Runtime) {
 	j := 0
 	for c in rt.ext_cells {
-		if c.mark || c.pinned {
+		if cell_marked(rt, c) || c.pinned {
 			rt.ext_cells[j] = c
 			j += 1
 		} else {
@@ -624,13 +724,13 @@ gc_process_weak :: proc(rt: ^Runtime) {
 	for {
 		changed := false
 		for o in rt.weak_list {
-			if !o.mark {continue}
+			if !cell_marked(rt, o) {continue}
 			#partial switch d in o.data {
 			case ^Map_State:
 				if o.class == .weakmap {
 					for &e in d.entries {
 						if e.deleted {continue}
-						if weak_key_live(e.key) && is_heap(e.value) && !as_cell(e.value).mark {
+						if weak_key_live(rt, e.key) && is_heap(e.value) && !cell_marked(rt, as_cell(e.value)) {
 							mark_value(rt, e.value)
 							changed = true
 						}
@@ -643,30 +743,30 @@ gc_process_weak :: proc(rt: ^Runtime) {
 	}
 	// clear dead entries
 	for o in rt.weak_list {
-		if !o.mark {continue}
+		if !cell_marked(rt, o) {continue}
 		#partial switch d in o.data {
 		case ^Map_State:
 			d.iterators += 1 // no compaction while scanning
 			for i in 0 ..< len(d.entries) {
 				e := d.entries[i]
 				if e.deleted {continue}
-				if !weak_key_live(e.key) {
+				if !weak_key_live(rt, e.key) {
 					map_delete_index(rt, d, i)
 				}
 			}
 			d.iterators -= 1
 		case ^Weak_Ref_Data:
-			if is_heap(d.target) && !as_cell(d.target).mark {d.target = UNDEFINED}
+			if is_heap(d.target) && !cell_marked(rt, as_cell(d.target)) {d.target = UNDEFINED}
 		case ^Fin_Rec_Data:
 			for i := 0; i < len(d.cells); {
 				cell := d.cells[i]
-				if is_heap(cell.target) && !as_cell(cell.target).mark {
+				if is_heap(cell.target) && !cell_marked(rt, as_cell(cell.target)) {
 					append(&rt.finrec_cleanup, mk_obj(o), cell.held)
 					mark_value(rt, cell.held)
 					unordered_remove(&d.cells, i)
 					continue
 				}
-				if is_heap(cell.token) && !as_cell(cell.token).mark {cell.token = UNDEFINED; d.cells[i] = cell}
+				if is_heap(cell.token) && !cell_marked(rt, as_cell(cell.token)) {cell.token = UNDEFINED; d.cells[i] = cell}
 				i += 1
 			}
 		}
@@ -675,8 +775,8 @@ gc_process_weak :: proc(rt: ^Runtime) {
 }
 
 @(private = "file")
-weak_key_live :: proc(v: Value) -> bool {
-	return !is_heap(v) || as_cell(v).mark
+weak_key_live :: proc(rt: ^Runtime, v: Value) -> bool {
+	return !is_heap(v) || cell_marked(rt, as_cell(v))
 }
 
 @(private = "file")
@@ -686,7 +786,7 @@ gc_clear_weak_caches :: proc(rt: ^Runtime) {
 	for sh in rt.gc_shapes {
 		before := len(sh.transitions)
 		for i := 0; i < len(sh.transitions); {
-			if !sh.transitions[i].to.mark {
+			if !cell_marked(rt, sh.transitions[i].to) {
 				unordered_remove(&sh.transitions, i)
 			} else {
 				i += 1
@@ -696,12 +796,12 @@ gc_clear_weak_caches :: proc(rt: ^Runtime) {
 	}
 	clear(&rt.gc_shapes)
 	for proto, sh in rt.shape_root {
-		if !sh.mark || (proto != nil && !proto.mark) {
+		if !cell_marked(rt, sh) || (proto != nil && !cell_marked(rt, proto)) {
 			delete_key(&rt.shape_root, proto)
 		}
 	}
 	for i := 0; i < len(rt.weak_list); {
-		if !rt.weak_list[i].mark {
+		if !cell_marked(rt, rt.weak_list[i]) {
 			unordered_remove(&rt.weak_list, i)
 		} else {
 			i += 1
@@ -709,53 +809,39 @@ gc_clear_weak_caches :: proc(rt: ^Runtime) {
 	}
 }
 
-// More of the sweep, in proportion to what was allocated since the last step, from the newest (a finalizer reads what is older than its cell: a function its bytecode, an
-// iterator its map; those are still there). The survivors gather up to the cells made since the marking, in their order.
+// More of the sweep, in proportion to what was allocated since the last step: chunk after chunk down the list, then the big cells.
+// A chunk's bits say where its dead cells are (made, not marked); a cell that lives is not read. A dead cell is freed at once, in
+// the order of the addresses, so a finalizer reads nothing of another cell (a closure's cells are in its own; a map iterator that
+// dies lets go of its map at the marking, gc_release_map_iters).
 gc_sweep_step :: proc(rt: ^Runtime, all := false) {
 	rt.in_gc = true
 	defer rt.in_gc = false
 	span_stage(.gc, true)
 	defer span_stage(.gc, false)
+	t0 := now_ns(rt)
+	defer rt.gc_ns += now_ns(rt) - t0
 	sw := &rt.sweep
-	cells := rt.cells[:]
 	rt.gc_sweep_steps += 1
 	made := max(rt.heap_bytes - sw.heap, 0)
 	sw.made += made
-	stop := all ? 0 : max(sw.left - GC_SWEEP_STEP_CELLS * int(1 + made / GC_SWEEP_STEP_BYTES), 0)
-	kept_before := sw.kept
+	budget := GC_SWEEP_STEP_CHUNK_BYTES * int(1 + made / GC_SWEEP_STEP_BYTES)
 	freed: i64
 	dead: [dynamic]^Cell // GC_POISON: the cells of this step (a finalizer may still read another one of them)
-	for i := sw.left - 1; i >= stop; i -= 1 {
-		c := cells[i]
-		if c.mark || c.pinned {
-			c.mark = false
-			sw.kept -= 1
-			cells[sw.kept] = c
-		} else {
-			when GC_CENSUS {census_cell(&rt.gc_dead, c, true)}
-			if !cell_alone(c) {cell_finalize(rt, c)}
-			freed += i64(c.size)
-			when GC_POISON {
-				append(&dead, c)
-			} else {
-				raw_free(rt, c, int(c.size))
-			}
-		}
+	for sw.chunk != nil && (all || budget > 0) {
+		freed += chunk_sweep(rt, sw.chunk, &dead)
+		budget -= sw.chunk.size
+		sw.chunk = sw.chunk.next
 	}
+	if sw.chunk == nil {freed += big_sweep(rt, &dead)}
 	rt.heap_bytes -= freed
-	rt.gc_swept.kept += i64(kept_before - sw.kept)
-	rt.gc_swept.dead += i64(sw.left - stop - (kept_before - sw.kept))
-	sw.left = stop
 	for d in dead {d.kind = CELL_DEAD}
 	delete(dead)
 	sw.heap = rt.heap_bytes
-	if sw.left > 0 {
+	if sw.chunk != nil {
 		rt.gc_threshold = rt.heap_bytes + GC_SWEEP_STEP_BYTES
 		return
 	}
-	survivors := len(cells) - sw.kept
-	copy(cells, cells[sw.kept:])
-	resize(&rt.cells, survivors)
+	sw.active = false
 	// Next collection when the heap has grown by gc_growth_percent of what the collection left (gc_min_growth of headroom at least).
 	left := rt.heap_bytes - sw.made
 	if GC_STRESS_BYTES > 0 {
@@ -765,19 +851,86 @@ gc_sweep_step :: proc(rt: ^Runtime, all := false) {
 	}
 }
 
-// What is left of the sweep, at once.
-gc_sweep_finish :: proc(rt: ^Runtime) {
-	if rt.sweep.left > 0 && !rt.in_gc {gc_sweep_step(rt, all = true)}
+// The dead cells of a chunk, group by group: the cells made and not marked. The cells kept are counted, not read.
+@(private = "file")
+chunk_sweep :: proc(rt: ^Runtime, ch: ^Pool_Chunk, dead_list: ^[dynamic]^Cell) -> (freed: i64) {
+	base := uintptr(ch)
+	for &g, gi in chunk_groups(ch) {
+		dead := g.cells &~ g.marks
+		rt.gc_swept.kept += i64(intrinsics.count_ones(g.cells & g.marks))
+		for dead != 0 {
+			k := intrinsics.count_trailing_zeros(dead)
+			bit := u32(1) << k
+			dead &~= bit
+			c := cast(^Cell)(base + uintptr(gi * CHUNK_GROUP_GRAINS + int(k)) << POOL_GRAIN_SHIFT)
+			if c.pinned {rt.gc_swept.kept += 1; continue}
+			g.cells &~= bit
+			freed += cell_free(rt, c, dead_list)
+		}
+	}
+	return
 }
 
-// A cell that owns nothing but its block, as most of what dies (a plain object, a flat string, a closure cell): the sweep frees it
-// without a finalizer.
+// The cells over POOL_MAX_BYTES, listed apart (Runtime.big_cells): from the newest, the survivors gathered up to those made since the marking.
+@(private = "file")
+big_sweep :: proc(rt: ^Runtime, dead_list: ^[dynamic]^Cell) -> (freed: i64) {
+	sw := &rt.sweep
+	cells := rt.big_cells[:]
+	for i := sw.big - 1; i >= 0; i -= 1 {
+		c := cells[i]
+		if c.mark || c.pinned {
+			sw.big_kept -= 1
+			cells[sw.big_kept] = c
+			rt.gc_swept.kept += 1
+		} else {
+			freed += cell_free(rt, c, dead_list)
+		}
+	}
+	survivors := len(cells) - sw.big_kept
+	copy(cells, cells[sw.big_kept:])
+	resize(&rt.big_cells, survivors)
+	sw.big = 0
+	return
+}
+
+@(private = "file")
+cell_free :: #force_inline proc(rt: ^Runtime, c: ^Cell, dead_list: ^[dynamic]^Cell) -> i64 {
+	when GC_CENSUS {census_cell(&rt.gc_dead, c, true)}
+	if !cell_alone(c) {cell_finalize(rt, c)}
+	size := c.size
+	rt.gc_swept.dead += 1
+	rt.cell_count -= 1
+	when GC_POISON {
+		append(dead_list, c)
+	} else {
+		raw_free(rt, c, int(size))
+	}
+	return i64(size)
+}
+
+// Every mark cleared, before a marking: a cell made since the last one was made marked, and the sweep left the others marked.
+@(private = "file")
+gc_clear_marks :: proc(rt: ^Runtime) {
+	for ch := rt.pool_chunks; ch != nil; ch = ch.next {
+		for &g in chunk_groups(ch) {g.marks = 0}
+	}
+	for c in rt.big_cells {c.mark = false}
+}
+
+// What is left of the sweep, at once.
+gc_sweep_finish :: proc(rt: ^Runtime) {
+	if rt.sweep.active && !rt.in_gc {gc_sweep_step(rt, all = true)}
+}
+
+// A cell that owns nothing but its block, as most of what dies (a plain object, a closure, a flat string, a closure cell): the sweep
+// frees it without a finalizer.
 @(private = "file")
 cell_alone :: #force_inline proc "contextless" (c: ^Cell) -> bool {
 	#partial switch c.kind {
 	case .object:
 		o := cast(^Object)c
-		return o.data == nil && (o.slots == nil || slots_are_inline(o))
+		_, closure := o.data.(Func_Data)
+		return (o.data == nil || closure) && (o.slots == nil || slots_are_inline(o))
 	case .string:
 		return !(cast(^JS_String)c).owns_buf
 	case .symbol, .var_ref:
@@ -812,11 +965,24 @@ gc_free_all :: proc(rt: ^Runtime) {
 	gc_sweep_finish(rt)
 	host_finalize_all(rt)
 	if rt.config.gc_epilogue != nil {rt.config.gc_epilogue(rt, rt.config.gc_prologue_user)}
-	#reverse for c in rt.cells {
+	for ch := rt.pool_chunks; ch != nil; ch = ch.next {
+		base := uintptr(ch)
+		for &g, gi in chunk_groups(ch) {
+			for g.cells != 0 {
+				k := intrinsics.count_trailing_zeros(g.cells)
+				g.cells &~= u32(1) << k
+				c := cast(^Cell)(base + uintptr(gi * CHUNK_GROUP_GRAINS + int(k)) << POOL_GRAIN_SHIFT)
+				cell_finalize(rt, c)
+				mem_free(rt, c, int(c.size))
+			}
+		}
+	}
+	for c in rt.big_cells {
 		cell_finalize(rt, c)
 		mem_free(rt, c, int(c.size))
 	}
-	clear(&rt.cells)
+	clear(&rt.big_cells)
+	rt.cell_count = 0
 }
 
 // A context-allocator wrapper so packages that allocate through `context.allocator` (bigint,
