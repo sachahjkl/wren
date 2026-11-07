@@ -1321,6 +1321,15 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 		}
 		derive_fields(&ov.c, ctx.alloc)
 		props = ps_union(props, animated)
+		if !paint_only(animated) { // TMPDBG
+			n := dom.get(doc, ea.node); id, _ := dom.get_attribute(doc, ea.node, "id"); cl, _ := dom.get_attribute(doc, ea.node, "class")
+			b := strings.builder_make(context.temp_allocator)
+			strings.write_string(&b, dbg_layout_anim)
+			strings.write_string(&b, n != nil ? n.name : "?"); strings.write_string(&b, "#"); strings.write_string(&b, id); strings.write_string(&b, "."); strings.write_string(&b, cl[:min(len(cl), 40)])
+			for pp in Prop { if ps_has(animated, pp) && !ps_has(paint_set, pp) { strings.write_string(&b, ":"); strings.write_string(&b, prop_name(pp)) } }
+			strings.write_string(&b, " ")
+			dbg_layout_anim = strings.to_string(b)
+		}
 		push := ps_intersect(animated, inherited_set)
 		if !ps_empty(push) {
 			pseudo_inherit(&ov.c, push, ctx.alloc)
@@ -1342,14 +1351,14 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 		}
 		sig := structure_sig(&ov.c)
 		crossed := sig != ov.sig
-		if crossed { layout = true; ov.sig = sig }
+		if crossed { layout = true; ov.sig = sig; dbg_layout_anim = strings.concatenate({dbg_layout_anim, "CROSSED "}, context.temp_allocator) } // TMPDBG
 		journal_add(s, h, crossed ? .Box : max(level, Change_Level.Paint))   // the overlay record (and its pseudo-elements')
 	}
 	for h in stale {
 		overlay_retire(s, tl.overlays[h])
 		delete_key(&tl.overlays, h)
 	}
-	if !paint_only(ps_union(props, tl.last_props)) { layout = true }
+	if !paint_only(ps_union(props, tl.last_props)) { layout = true; if !paint_only(tl.last_props) && paint_only(props) { dbg_layout_anim = strings.concatenate({dbg_layout_anim, "LASTPROPS "}, context.temp_allocator) } } // TMPDBG
 	s.animated = ps_union(props, tl.last_props)
 	tl.last_props = props
 	return
@@ -1406,3 +1415,5 @@ push_inherited :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, h: base.Ha
 		for ch := cn.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev { append(&stack, Item{ch, &ov.c, take}) }
 	}
 }
+
+dbg_layout_anim: string // TMPDBG

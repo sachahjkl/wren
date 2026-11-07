@@ -8,6 +8,7 @@ package browser
 import "core:fmt"
 import "core:time"
 import draw "toolkit:draw"
+import "wb:base"
 import lay "wb:layout"
 import "wb:page"
 import "wb:style"
@@ -40,7 +41,10 @@ js_layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 	ls := &app.page_render.settings
 	page.set_layout_journal(p, ls.incremental ? ls.inc_journal : 0)
 	t_read := time.tick_now()
+	// (spans, WREN_SPANS: a reading's style pass and layout, apart from what read them; inside a task they are the task's)
+	read_styles := base.span_now()
 	styled := page.styles(p, size.x / scale, size.y / scale, f64(scale))
+	base.span_add(.Phase, read_styles, fmt.tprintf("read_styles:%s:%s", app.rendering == t ? page.dbg_step : "task", page.dbg_kind), copy_label = true) // TMPDBG
 	style_took := time.tick_since(t_read)
 	// natural sizes of images, canvases, videos and inline SVG come from the page being laid out. A layout asked for by a
 	// script before any frame of this page made it the shell's page (the first read of a layout in a page just navigated to)
@@ -52,7 +56,10 @@ js_layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 	// lay out again what the first read of a new page just laid out)
 	t.image_sizes = page.images_sizes_generation(p)
 	if layout_stale(&t.layout, p.doc, styled, size, scale, t.image_sizes, fonts_gen) {
+		read_layout := base.span_now()
+		l0 := &t.layout; dbg_why := !l0.valid ? "invalid" : l0.mutations != p.doc.mutations ? "mutations" : l0.serial != styled.serial ? (l0.layout_serial == styled.layout_serial ? "serial-paint" : "serial") : l0.viewport != size ? "viewport" : l0.inc.images_gen != t.image_sizes ? "images" : l0.inc.fonts_gen != fonts_gen ? "fonts" : l0.anchor_stale ? "anchor" : "?" // TMPDBG
 		page_layout(app, t, styled, size, scale, fonts_gen)   // page_thread.odin: a long one on the page thread, the chrome drawing meanwhile
+		base.span_add(.Phase, read_layout, fmt.tprintf("read_layout:%s:%v:%s:%s:steps %.1f %.1f %.1f %.1f %.1f laid %d", app.rendering == t ? page.dbg_step : "task", t.layout.last_pass, dbg_why, t.layout.inc.fallback, t.layout.stats[0], t.layout.stats[1], t.layout.stats[2], t.layout.stats[3], t.layout.stats[4], t.layout.inc.last_laid), copy_label = true) // TMPDBG
 		prof_layout(&t.layout)
 		layout_trace("read", &t.layout, time.duration_milliseconds(style_took), time.duration_milliseconds(time.tick_since(t_read) - style_took))
 	}
