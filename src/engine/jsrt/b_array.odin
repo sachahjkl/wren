@@ -132,8 +132,7 @@ array_ctor :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) -> Value
 			array_push_fast(ctx.rt, a, l)
 		}
 	} else {
-		ad := array_data(a)
-		array_reserve(ctx.rt, ad, u32(len(args)))
+		array_reserve(ctx.rt, a, u32(len(args)))
 		for v in args {array_push_fast(ctx.rt, a, v)}
 	}
 	return mk_obj(a)
@@ -601,7 +600,7 @@ ap_push :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 		if o.class == .array && o.fast_array && o.extensible && .writable in o.shape.props[0].flags && array_append_ok(ctx, o) {
 			ad := array_data(o)
 			if ad.count == array_length_u32(o) && u64(ad.count) + u64(len(args)) <= 0xffffffff {
-				array_reserve(rt, ad, ad.count + u32(len(args)))
+				array_reserve(rt, o, ad.count + u32(len(args)))
 				for v in args {array_push_fast(rt, o, v)}
 				return mk_u32(ad.count)
 			}

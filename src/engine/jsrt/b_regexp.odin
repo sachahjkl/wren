@@ -402,18 +402,10 @@ match_array_new :: proc(ctx: ^Context, ncap: int, index: int, input: ^JS_String)
 		define_value(ctx, t, pa(.A_groups), UNDEFINED, CWE)
 		ctx.match_shape = t.shape
 	}
-	o := object_new_shape(rt, ctx.match_shape, .array)
-	o.fast_array = true
-	o.slots[0].value = mk_int(0)
+	o := array_like_new(rt, ctx.match_shape, .array, ncap)
 	o.slots[1].value = mk_int(i32(index))
 	o.slots[2].value = mk_str(input)
 	o.slots[3].value = UNDEFINED
-	ad := Array_Data{}
-	if ncap > 0 {
-		ad.values = mem_array(rt, Value, ncap)
-		ad.cap = u32(ncap)
-	}
-	o.data = ad
 	return o
 }
 

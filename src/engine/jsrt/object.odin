@@ -743,19 +743,34 @@ new_plain_object :: proc(ctx: ^Context) -> ^Object {
 	return object_new_shape(ctx.rt, ctx.plain_shape, .object)
 }
 
+// An array of at most this many values made with its room has them in its cell (after its slot, `length`), as the slots
+// of an object: an array literal, a `slice`, a `split` are one block. One that grows past them takes a block of its own.
+ARRAY_INLINE_VALUES :: (POOL_MAX_BYTES - size_of(Object) - size_of(Prop_Slot)) / size_of(Value)
+
 // A fresh Array with `n` slots of capacity and length 0.
 array_new :: proc(ctx: ^Context, cap := 0) -> ^Object {
-	rt := ctx.rt
-	o := object_new_shape(rt, ctx.array_shape, .array)
+	return array_like_new(ctx.rt, ctx.array_shape, .array, cap)
+}
+
+// An object of shape `sh` whose elements are an Array_Data with room for `cap` values (an Array, an arguments object, a match),
+// in its cell when they fit a block of the pool.
+array_like_new :: proc(rt: ^Runtime, sh: ^Shape, class: Class_ID, cap: int) -> ^Object {
+	inline := size_of(Object) + (len(sh.props) + cap) * size_of(Value) <= POOL_MAX_BYTES
+	o := object_new_shape(rt, sh, class, inline ? cap * size_of(Value) : 0)
 	o.fast_array = true
 	o.slots[0].value = mk_int(0)
 	ad := Array_Data{}
 	if cap > 0 {
-		ad.values = mem_array(rt, Value, cap)
+		ad.values = inline ? cast([^]Value)object_tail(o) : mem_array(rt, Value, cap)
 		ad.cap = u32(cap)
 	}
 	o.data = ad
 	return o
+}
+
+// The values of an Array_Data, when they are not in its object's cell.
+array_values_free :: proc(rt: ^Runtime, o: ^Object, ad: Array_Data) {
+	if ad.values != nil && !cell_holds(o, ad.values) {mem_free(rt, ad.values, int(ad.cap) * size_of(Value))}
 }
 
 // An Array holding a copy of `vals`.
@@ -772,17 +787,25 @@ array_data :: #force_inline proc(o: ^Object) -> ^Array_Data {
 	return &o.data.(Array_Data)
 }
 
-array_reserve :: proc(rt: ^Runtime, ad: ^Array_Data, n: u32) {
+array_reserve :: proc(rt: ^Runtime, o: ^Object, n: u32) {
+	ad := cast(^Array_Data)&o.data // (an array's: the variant's payload is at the start of the union)
 	if n <= ad.cap {return}
 	new_cap := max(n, ad.cap * 3 / 2 + 4)
-	ad.values = cast([^]Value)mem_resize(rt, ad.values, int(ad.cap) * size_of(Value), int(new_cap) * size_of(Value))
+	if ad.values != nil && cell_holds(o, ad.values) {
+		// (the values in the cell stay there, unused, until it dies)
+		nv := mem_array(rt, Value, int(new_cap))
+		for i in 0 ..< int(ad.count) {nv[i] = ad.values[i]}
+		ad.values = nv
+	} else {
+		ad.values = cast([^]Value)mem_resize(rt, ad.values, int(ad.cap) * size_of(Value), int(new_cap) * size_of(Value))
+	}
 	ad.cap = new_cap
 }
 
 // Push onto a fast array (caller guarantees fast_array and that length == count).
 array_push_fast :: proc(rt: ^Runtime, o: ^Object, v: Value) {
 	ad := &o.data.(Array_Data)
-	array_reserve(rt, ad, ad.count + 1)
+	if ad.count >= ad.cap {array_reserve(rt, o, ad.count + 1)}
 	ad.values[ad.count] = v
 	ad.count += 1
 	o.slots[0].value = mk_u32(ad.count)
@@ -795,7 +818,7 @@ object_finalize :: proc(rt: ^Runtime, o: ^Object) {
 	o.slots = nil
 	switch d in o.data {
 	case Array_Data:
-		if d.values != nil {mem_free(rt, d.values, int(d.cap) * size_of(Value))}
+		array_values_free(rt, o, d)
 	case Mapped_Args_Data:
 		if d.refs != nil {mem_free(rt, d.refs, int(d.count) * size_of(^Var_Ref))}
 	case Func_Data:

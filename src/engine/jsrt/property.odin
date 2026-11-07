@@ -215,7 +215,7 @@ fast_array_define :: proc(ctx: ^Context, o: ^Object, idx: u32, d: ^Prop_Desc) ->
 	}
 	if idx == ad.count && o.extensible && .writable in d.flags && .enumerable in d.flags && .configurable in d.flags &&
 	   d.has >= {.writable, .enumerable, .configurable} {
-		array_reserve(ctx.rt, ad, ad.count + 1)
+		array_reserve(ctx.rt, o, ad.count + 1)
 		ad.values[ad.count] = .value in d.has ? d.value : UNDEFINED
 		ad.count += 1
 		return 1, true
@@ -236,7 +236,7 @@ convert_to_slow_array :: proc(ctx: ^Context, o: ^Object) {
 		s := add_property(rt, o, atom_from_u32(i), CWE)
 		s.value = ad.values[i]
 	}
-	if ad.values != nil {mem_free(rt, ad.values, int(ad.cap) * size_of(Value))}
+	array_values_free(rt, o, ad)
 	o.data = Array_Data{}
 }
 
@@ -889,7 +889,7 @@ create_data_index :: proc(ctx: ^Context, o: ^Object, idx: i64, val: Value, throw
 			return 1
 		}
 		if idx == i64(ad.count) {
-			array_reserve(ctx.rt, ad, ad.count + 1)
+			array_reserve(ctx.rt, o, ad.count + 1)
 			ad.values[ad.count] = val
 			ad.count += 1
 			if l := o.slots[0].value; l.tag == .int && i64(l.u.i) <= idx {o.slots[0].value = mk_u32(ad.count)}
