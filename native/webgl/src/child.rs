@@ -143,7 +143,7 @@ fn read_loop(rx: &mut RingReader, bell: &'static sys::Bell, out: &'static Out, h
         let limit = match kind {
             ToChild::Commands => ipc::MAX_COMMAND_BYTES,
             ToChild::Query => ipc::MAX_QUESTION_BYTES,
-            ToChild::Create => (ATTR_WORDS * 4 + 8) as u64,
+            ToChild::Create | ToChild::Prepare => (ATTR_WORDS * 4 + 8) as u64,
             ToChild::Target => 40,
             ToChild::Resize => 8,
             _ => 0,
@@ -176,6 +176,13 @@ fn read_loop(rx: &mut RingReader, bell: &'static sys::Bell, out: &'static Out, h
                         let text = format!("no thread: {e}");
                         out.send(ToParent::CreateFailed, head.ctx, head.arg, &[text.as_bytes()]);
                     }
+                }
+            }
+            ToChild::Prepare => {
+                // (attributes that cannot be prepare nothing: the Create that follows them is refused)
+                let body = rx.body(head.len, bell)?;
+                if let Some(a) = attrs_of(&body) {
+                    host::prepare(host::Key::of(&a));
                 }
             }
             ToChild::Commands => {
