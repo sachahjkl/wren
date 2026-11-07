@@ -1262,6 +1262,8 @@ settle :: proc(w: ^Walker, h: base.Handle, c: ^Computed) -> (cur: ^Computed, cha
 	level := max(layout_level(old, c), Change_Level.Paint)
 	if level >= .Layout { w.layout_changed = true }
 	shown := old_base != nil && old_base.display == .None && c.display != .None
+	// (the only list of a page may be what comes out of display: none: no walk ever gave its markers. A style thread cannot look at what others write)
+	if shown && !s.counters_used && (w.task || subtree_feeds(s, w.doc, h)) { w.rewalk = true }
 	if has_transitions(c) || has_animations(c) { w.motion = true }
 	w.changed += 1
 	if w.task {

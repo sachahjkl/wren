@@ -536,6 +536,16 @@ inc_hidden_option_of_a_select :: proc(t: ^testing.T) {
 	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
 	testing.expect_value(t, d.l.last_pass, Pass_Kind.Incremental)
 }
+// A page's only list, shown after display: none: no walk of the counters had reached its items, and nothing feeds them in what is restyled.
+@(test)
+inc_list_shown_after_display_none :: proc(t: ^testing.T) {
+	d := demo_load(`<div id=d style="display:none"><ol type=A><li id=l>item</li></ol></div>` + FILLER_BLOCKS)
+	defer demo_unload(d)
+	dom.set_attribute(d.doc, dom.find_by_id(d.doc, "d"), "style", "display:block")
+	testing.expect_value(t, demo_frame(d, ""), "")
+	testing.expect_value(t, style.style_of(d.st, dom.find_by_id(d.doc, "l")).marker_text, "A. ")
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+}
 // An orthogonal box whose frame has no block size takes its inline size from the viewport, under inputs from its frame that
 // stay the same: a viewport that changes, in either axis, reaches it and the shrink-to-fit box around it.
 @(test)

@@ -296,7 +296,7 @@ folder; it says nothing about the subtests Wren does not run yet.</p>
 <tr><td><code>WebCryptoAPI</code></td><td style="text-align:right">52,488</td><td style="text-align:right">70,401</td><td style="text-align:right">75%</td></tr>
 <tr><td><code>console</code></td><td style="text-align:right">90</td><td style="text-align:right">107</td><td style="text-align:right">84%</td></tr>
 <tr><td><code>css/css-anchor-position</code></td><td style="text-align:right">12,584</td><td style="text-align:right">13,641</td><td style="text-align:right">92%</td></tr>
-<tr><td><code>css/css-highlight-api</code></td><td style="text-align:right">155</td><td style="text-align:right">176</td><td style="text-align:right">88%</td></tr>
+<tr><td><code>css/css-highlight-api</code></td><td style="text-align:right">157</td><td style="text-align:right">176</td><td style="text-align:right">89%</td></tr>
 <tr><td><code>css/css-multicol</code></td><td style="text-align:right">1,112</td><td style="text-align:right">1,616</td><td style="text-align:right">69%</td></tr>
 <tr><td><code>css/css-nesting</code></td><td style="text-align:right">118</td><td style="text-align:right">126</td><td style="text-align:right">94%</td></tr>
 <tr><td><code>css/css-pseudo</code></td><td style="text-align:right">316</td><td style="text-align:right">863</td><td style="text-align:right">37%</td></tr>
@@ -347,7 +347,7 @@ folder; it says nothing about the subtests Wren does not run yet.</p>
 <tr><td><code>scroll-animations/css</code></td><td style="text-align:right">473</td><td style="text-align:right">743</td><td style="text-align:right">64%</td></tr>
 <tr><td><code>scroll-animations/scroll-timelines</code></td><td style="text-align:right">207</td><td style="text-align:right">374</td><td style="text-align:right">55%</td></tr>
 <tr><td><code>scroll-animations/view-timelines</code></td><td style="text-align:right">24</td><td style="text-align:right">81</td><td style="text-align:right">30%</td></tr>
-<tr><td><code>shadow-dom</code></td><td style="text-align:right">9,389</td><td style="text-align:right">9,858</td><td style="text-align:right">95%</td></tr>
+<tr><td><code>shadow-dom</code></td><td style="text-align:right">9,390</td><td style="text-align:right">9,858</td><td style="text-align:right">95%</td></tr>
 <tr><td><code>streams</code></td><td style="text-align:right">1,762</td><td style="text-align:right">2,065</td><td style="text-align:right">85%</td></tr>
 <tr><td><code>url</code></td><td style="text-align:right">12,294</td><td style="text-align:right">12,323</td><td style="text-align:right">100%</td></tr>
 <tr><td><code>urlpattern</code></td><td style="text-align:right">1,518</td><td style="text-align:right">1,636</td><td style="text-align:right">93%</td></tr>
@@ -362,7 +362,7 @@ folder; it says nothing about the subtests Wren does not run yet.</p>
 <tr><td><code>webstorage</code></td><td style="text-align:right">1,227</td><td style="text-align:right">1,284</td><td style="text-align:right">96%</td></tr>
 <tr><td><code>workers</code></td><td style="text-align:right">1,160</td><td style="text-align:right">1,323</td><td style="text-align:right">88%</td></tr>
 <tr><td><code>xhr</code></td><td style="text-align:right">1,845</td><td style="text-align:right">2,025</td><td style="text-align:right">91%</td></tr>
-<tr><td><strong>All measured folders</strong></td><td style="text-align:right"><strong>1,368,931</strong></td><td style="text-align:right"><strong>1,402,189</strong></td><td style="text-align:right"><strong>98%</strong></td></tr>
+<tr><td><strong>All measured folders</strong></td><td style="text-align:right"><strong>1,368,934</strong></td><td style="text-align:right"><strong>1,402,189</strong></td><td style="text-align:right"><strong>98%</strong></td></tr>
 </tbody>
 </table></div>
 <p>The <code>/workers/</code> folder has its own page, <a href="../../docs/wpt-workers/">WPT /workers/</a>, with what still fails and why.</p>
@@ -374,7 +374,7 @@ hand, so it cannot drift from the recorded results.</p>
 <p>The test server does not run Python: the handlers the measured folders use are ported to Go (<code>tools/testserver/wpt_python.go</code>: wptserve's request, response and stash; <code>wpt_xhr.go</code>, <code>wpt_fetch.go</code>...), and a handler that is not answers 501, its tests counting as failing.</p>
 <p>Most folders run without layout: what their tests read of geometry is 0, and their expectations say so. The folders that
 test geometry (<code>LAYOUT_FOLDERS</code> in <code>src/tools/wpt/layout_host.odin</code>: <code>dom/events/scrolling</code>, <code>scroll-animations</code>, <code>css/css-anchor-position</code>, <code>css/css-highlight-api</code>, <code>css/css-multicol</code>,
-<code>css/css-nesting</code>, <code>css/css-writing-modes</code>, <code>css/cssom</code>, <code>html/semantics/interactive-elements/the-dialog-element</code>, <code>navigation-api/scroll-behavior</code>) get a layout of an 800 x 600 with fixed text metrics, so that <code>getComputedStyle</code>, <code>offsetTop</code> or <code>getBoundingClientRect</code> answer there as a page's;
+<code>css/css-nesting</code>, <code>css/css-writing-modes</code>, <code>css/cssom</code>, <code>html/semantics/interactive-elements/the-dialog-element</code>, <code>navigation-api/scroll-behavior</code>, and the <code>HighlightRegistry</code> tests of <code>shadow-dom</code>) get a layout of an 800 x 600 with fixed text metrics, so that <code>getComputedStyle</code>, <code>offsetTop</code> or <code>getBoundingClientRect</code> answer there as a page's;
 the documents of their frames are laid out too, each in its container's content box.
 A page's <code>autofocus</code> runs once its scripts had their turn, as the shell runs it. The windows a test opens (<code>window.open</code>, a link to
 <code>_blank</code>) are windows without a shell (<code>src/tools/headless</code>): their first document keeps the initial about:blank's <code>Window</code>, they keep a
