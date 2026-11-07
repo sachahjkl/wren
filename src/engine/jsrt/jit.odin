@@ -1418,7 +1418,7 @@ RT_CELLS_CAP :: u32(offset_of(Runtime, cells) + offset_of(runtime.Raw_Dynamic_Ar
 RT_HEAP_BYTES :: u32(offset_of(Runtime, heap_bytes))
 RT_PEAK_HEAP_BYTES :: u32(offset_of(Runtime, peak_heap_bytes))
 CELL_SIZE :: u32(offset_of(Cell, size))
-CELL_KIND :: u32(offset_of(Cell, kind))
+CELL_KIND :: u32(offset_of(Cell, gc))
 POOL_BLOCK_NEXT :: u32(offset_of(Pool_Block, next))
 JIT_OBJ_BYTES :: size_of(Object) + INLINE_SLOTS * size_of(Prop_Slot)               // a plain object with its inline slots
 JIT_ARR_MAX :: POOL_MAX_BYTES / size_of(Value)   // the entries of an array literal the code allocates itself, at most
@@ -2490,8 +2490,8 @@ jit_object :: proc(c: ^Jc) -> bool {
 	return true
 }
 
-// array_from: an Array of the argc top entries, made by the code as array_from_values makes it (array_new: the object,
-// its slots, its values, three pool blocks; the length in its slot) when the values fit a pool block; else, or when the
+// array_from: an Array of the argc top entries, made by the code as array_from_values makes it (array_new: the object
+// with its slots, its values, two pool blocks; the length in its slot) when the values fit a pool block; else, or when the
 // pool has no block for one of them, by the helper, the entries written to the frame for it to copy.
 @(private = "file")
 jit_array_from :: proc(c: ^Jc, argc: int) -> bool {
@@ -2512,8 +2512,8 @@ jit_array_from :: proc(c: ^Jc, argc: int) -> bool {
 		if !j_keep(c, sh) {return false}
 		slot_bytes := len(sh.props) * size_of(Prop_Slot)
 		value_bytes := argc * size_of(Value)
-		// I_T2 the values, I_T1 the slots, I_T0 the object (the entries' locals hold them until they are stored)
-		taken: [2]Jit_Block
+		// I_T2 the values, I_T0 the object with its slots (the entries' locals hold them until they are stored)
+		taken: [1]Jit_Block
 		nt := 0
 		j_alloc_open(c)
 		j_cell_room(c)
@@ -2523,13 +2523,10 @@ jit_array_from :: proc(c: ^Jc, argc: int) -> bool {
 			taken[nt] = {I_T2, value_bytes}
 			nt += 1
 		}
-		j_pool_take(c, slot_bytes, I_T1, taken[:nt])
-		taken[nt] = {I_T1, slot_bytes}
-		nt += 1
-		j_pool_take(c, size_of(Object), I_T0, taken[:nt])
-		j_cell_new(c, I_T0, size_of(Object), size_of(Object) + slot_bytes + value_bytes)
-		j_object_init(c, I_T0, .array, c.fast_bit, sh, I_T1, len(sh.props))
-		j_st_value(c, I_T1, u32(at * size_of(Prop_Slot)), .int, i64(argc))
+		j_pool_take(c, size_of(Object) + slot_bytes, I_T0, taken[:nt])
+		j_cell_new(c, I_T0, size_of(Object) + slot_bytes, size_of(Object) + slot_bytes + value_bytes)
+		j_object_init(c, I_T0, .array, c.fast_bit, sh, 0, len(sh.props))
+		j_st_value(c, I_T0, u32(size_of(Object) + at * size_of(Prop_Slot)), .int, i64(argc))
 		// its data: an Array_Data (the union's tag, as an Object_Data of that variant has it), argc values
 		tmpl: Object
 		tmpl.data = Array_Data{}

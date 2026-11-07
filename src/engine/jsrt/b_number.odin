@@ -465,7 +465,7 @@ math_intrinsic_of :: proc(o: ^Object) -> Math_Intrinsic {
 	nd, ok := o.data.(Native_Data)
 	if !ok {return .none}
 	if nd.fn == math_unary {
-		#partial switch Math_Fn(nd.magic) {
+		#partial switch Math_Fn(o.magic) {
 		case .abs: return .abs
 		case .floor: return .floor
 		case .ceil: return .ceil
@@ -473,11 +473,11 @@ math_intrinsic_of :: proc(o: ^Object) -> Math_Intrinsic {
 		case .sqrt: return .sqrt
 		}
 	} else if nd.fn == math_nary {
-		switch nd.magic {
+		switch o.magic {
 		case 0: return .max
 		case 1: return .min
 		}
-	} else if nd.fn == math_binary && nd.magic == 2 {
+	} else if nd.fn == math_binary && o.magic == 2 {
 		return .imul
 	}
 	return .none

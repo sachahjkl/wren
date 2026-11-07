@@ -511,3 +511,68 @@ for (var width = 0; width < 2; width++) {
 }
 same("a".repeat(30).concat("b").indexOf("aab"), 28, "candidates in a row");
 same("abc".indexOf("\u4e2d"), -1, "a unit no string of this width holds");
+
+// A function's `prototype`, made when something first looks at it: every way to reach it sees the same object, with its constructor,
+// in the place of the keys a function has, whatever came before.
+function make_fn() {return function () {"use strict";};}   // (strict: a sloppy function has `arguments` and `caller` of its own in V8)
+var lazy = make_fn();
+same(Object.getOwnPropertyNames(lazy).join(), "length,name,prototype", "the keys of a function");
+var lp = lazy.prototype;
+same(lazy.prototype, lp, "the same prototype twice");
+same(lp.constructor, lazy, "its constructor");
+same(Object.getPrototypeOf(new lazy()), lp, "what new makes");
+var desc = Object.getOwnPropertyDescriptor(make_fn(), "prototype");
+same(desc.writable && !desc.enumerable && !desc.configurable, true, "its attributes");
+same(typeof desc.value, "object", "a descriptor's value");
+var with_key = make_fn();
+with_key.x = 1;
+same(new with_key() instanceof with_key, true, "instanceof, after a key of its own");
+same(Object.getOwnPropertyNames(with_key).join(), "length,name,prototype,x", "the keys, after one of its own");
+var replaced = make_fn(), given = {k: 7};
+replaced.prototype = given;
+same(new replaced().k, 7, "a prototype assigned");
+same(replaced.prototype, given, "the one assigned");
+same(Object.getOwnPropertyNames(replaced).join(), "length,name,prototype", "the keys, after an assignment");
+var frozen = Object.freeze(make_fn());
+same(Object.isFrozen(frozen) && typeof frozen.prototype, "object", "frozen");
+throws(function () {"use strict"; frozen.prototype = {};}, TypeError, "a frozen prototype assigned");
+var defined = make_fn();
+Object.defineProperty(defined, "prototype", {value: given});
+same(defined.prototype, given, "a prototype defined");
+var reflected = make_fn();
+same(Reflect.set(reflected, "prototype", given, reflected) && reflected.prototype, given, "a prototype set by Reflect");
+var deleted = make_fn();
+same(delete deleted.prototype, false, "a prototype is not deleted");
+same("prototype" in make_fn() && make_fn().hasOwnProperty("prototype"), true, "in and hasOwnProperty");
+var dict = make_fn();
+delete dict.name;
+same(typeof dict.prototype, "object", "a function's dictionary shape");
+same(Object.getOwnPropertyNames(dict).join(), "length,prototype", "the keys of a dictionary shape");
+same((() => 1).hasOwnProperty("prototype"), false, "an arrow function has none");
+same(Object.getPrototypeOf((function* () {}).prototype), Object.getPrototypeOf(function* () {}).prototype, "a generator's");
+var objs = [];
+for (var i = 0; i < 2000; i++) objs.push(make_fn());
+for (var i = 0; i < objs.length; i++) if (i % 3 == 0) same(objs[i].prototype.constructor, objs[i], "the prototype of one of many");
+
+// Slots in the object's cell: an array, a closure and the arguments growing past what they were made with
+var grown = [1, 2];
+grown.extra = "e";
+for (var i = 0; i < 40; i++) grown["k" + i] = i;
+same(grown.length + grown.extra + grown.k39, "2e39", "an array's keys past its slots");
+function counter() {var n = 0; return function () {return ++n;};}
+var tick = counter();
+tick.a = 1; tick.b = 2; tick.c = 3;
+tick(); tick();
+same(tick() + tick.a + tick.c, 7, "a closure's cells and its keys past its slots");
+function args_grow() {arguments.extra = 5; for (var i = 0; i < 10; i++) arguments["x" + i] = i; return arguments.length + arguments.extra + arguments.x9 + arguments[1];}
+same(args_grow(1, 2), 18, "arguments past their slots");
+
+// Iterators: their state in the cell, many of them, some left half done
+var total = 0;
+for (var i = 0; i < 3000; i++) {var [a, b] = [i, 1]; total += a + b;}
+same(total, 4501500, "destructuring");
+var open_iters = [];
+for (var i = 0; i < 100; i++) {var it = new Map([[i, i]]).entries(); open_iters.push(it);}
+same(open_iters[99].next().value[1], 99, "a map's iterator kept");
+for (var k in {p: 1, q: 2}) total += k.length;
+same(total, 4501502, "for in");

@@ -233,7 +233,7 @@ JS_DefineHostAutoInitProperty :: proc "c" (c: ^Context, obj: JSValue, prop: Atom
 @(private)
 is_auto_init_getter :: proc(fn: ^js.Object) -> bool {
 	nd, ok := &fn.data.(js.Native_Data)
-	if !ok || nd.magic != 0 || nd.fn != js.Native_Proc(bridge_native) || js.native_data_len(nd) < 1 { return false }
+	if !ok || fn.magic != 0 || nd.fn != js.Native_Proc(bridge_native) || js.native_data_len(nd) < 1 { return false }
 	return nd.data[0].u.ptr == rawptr(auto_init_native)
 }
 

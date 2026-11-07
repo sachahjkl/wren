@@ -12,10 +12,13 @@ import "wb:wasm"
 PROF_ROWS := [?]string{"str_flat8", "str_flat16", "str_rope", "symbol", "bigint", "shape", "shape_dict", "obj_plain", "obj_array",
 	"obj_function", "obj_native", "obj_bound", "obj_arguments", "obj_error", "obj_collection", "obj_buffer", "obj_promise",
 	"obj_other", "function_bc", "bc_code", "bc_cpool", "bc_defs", "bc_image", "var_ref", "module", "atom_table",
-	"pool_free", "pool_chunks", "runtime_misc", "arenas", "functions", "collections"}
+	"pool_free", "pool_chunks", "runtime_misc", "arenas", "functions", "collections", "swept"}
 // jsrt's Cell_Sizes, in order
 PROF_SIZES := [?]string{"Object", "String", "Var_Ref", "Shape", "Function_Bytecode", "Value", "Symbol", "Array_Data", "Func_Data",
 	"Native_Data", "Object_Data", "Prop_Slot"}
+
+// Where the census of what the sweeps freed starts (jsrt's PROF_DEAD_INDEX, an engine built with -define:JSRT_GC_CENSUS=true).
+PROF_DEAD :: 2000
 
 prof_field :: proc(inst: ^wasm.Instance, index: int) -> i64 {
 	argv := [2]u32{u32(index), 0}
@@ -25,13 +28,13 @@ prof_field :: proc(inst: ^wasm.Instance, index: int) -> i64 {
 
 // What the engine read of the scripts it met: the heads of their functions, and the bodies of those that ran (jsrt serialize.odin).
 function_counts :: proc(inst: ^wasm.Instance) -> (heads, bodies: i64) {
-	row := (len(PROF_ROWS) - 2) * 4
+	row := (len(PROF_ROWS) - 3) * 4
 	return prof_field(inst, row), prof_field(inst, row + 1)
 }
 
 // How many collections the realm ran, the cells in its heap, the steps their sweeps took (jsrt gc.odin).
 collection_counts :: proc(inst: ^wasm.Instance) -> (collections, cells, sweep_steps: i64) {
-	row := (len(PROF_ROWS) - 1) * 4
+	row := (len(PROF_ROWS) - 2) * 4
 	return prof_field(inst, row), prof_field(inst, row + 1), prof_field(inst, row + 2)
 }
 
@@ -51,8 +54,12 @@ print_profile :: proc(inst: ^wasm.Instance, label: string) -> bool {
 		n, cb, eb, sb := prof_field(inst, i * 4), prof_field(inst, i * 4 + 1), prof_field(inst, i * 4 + 2), prof_field(inst, i * 4 + 3)
 		if n == 0 && cb == 0 && eb == 0 { continue }
 		fmt.eprintfln("PROF %-14s %9d %11d %11d %11d", name, n, cb, eb, sb)
-		if name != "pool_free" && name != "pool_chunks" && name != "runtime_misc" && name != "arenas" && name != "functions" && name != "collections" { tc += cb; te += eb; ts += sb }
+		if name != "pool_free" && name != "pool_chunks" && name != "runtime_misc" && name != "arenas" && name != "functions" && name != "collections" && name != "swept" { tc += cb; te += eb; ts += sb }
 	}
 	fmt.eprintfln("PROF cells+extra %d, slack %d", tc + te, ts)
+	for name, i in PROF_ROWS {
+		n, cb, eb := prof_field(inst, PROF_DEAD + i * 4), prof_field(inst, PROF_DEAD + i * 4 + 1), prof_field(inst, PROF_DEAD + i * 4 + 2)
+		if n > 0 { fmt.eprintfln("DEAD %-14s %9d %11d %11d", name, n, cb, eb) }
+	}
 	return true
 }

@@ -980,6 +980,7 @@ the_end :: proc(p: ^Page) -> bool {
 		s.timing.load_ms = now_ms(p)
 		if frame_navigable_of(p) == nil { base.span_mark("load") }
 		fire_window_event(p, dom.Event{type = "load"})
+		if frame_navigable_of(p) == nil { js_census_at_load(p) }   // (WREN_JS_MEMPROF: js_profile.odin)
 		s.timing.load_end_ms = now_ms(p)
 		if p.closed { return true }
 		frames_document_complete(p)   // a nested document: its container's load event (frames.odin)

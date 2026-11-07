@@ -39,9 +39,11 @@ Iter_State :: struct {
 	buf:     [dynamic]Value, // helper chunks/windows: buffered values
 }
 
+// The state is in the object's cell (an iterator of a `for...of` or of a destructuring lives as long as its state).
 iter_state_new :: proc(ctx: ^Context, proto: ^Object, class: Class_ID, kind: Iter_Kind, target: Value) -> ^Object {
-	o := object_new_proto(ctx, proto, class)
-	st := mem_new(ctx.rt, Iter_State)
+	rt := ctx.rt
+	o := object_new_shape(rt, shape_root_for(rt, proto), class, size_of(Iter_State))
+	st := cast(^Iter_State)object_tail(o)
 	st.kind = kind
 	st.target = target
 	st.a = UNDEFINED
@@ -58,7 +60,6 @@ iter_state_free :: proc(rt: ^Runtime, st: ^Iter_State) {
 	}
 	delete(st.keys)
 	delete(st.buf)
-	mem_delete(rt, st)
 }
 
 iter_state_trace :: proc(rt: ^Runtime, st: ^Iter_State) {
@@ -362,7 +363,7 @@ is_builtin_generator_next :: #force_inline proc(it, next: Value) -> bool {
 	if it.tag != .object || next.tag != .object {return false}
 	if as_obj(it).class != .generator || as_obj(next).class != .c_function {return false}
 	nd, ok := as_obj(next).data.(Native_Data)
-	return ok && nd.fn == generator_resume && nd.magic == GEN_NEXT
+	return ok && nd.fn == generator_resume && as_obj(next).magic == GEN_NEXT
 }
 
 // Is `next` the realm's own %ArrayIteratorPrototype%.next, applied to an Array Iterator?
