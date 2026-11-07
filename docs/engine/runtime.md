@@ -71,6 +71,20 @@ in the 64‑bit NaN‑boxed word QuickJS uses on wasm32, because Wren's glue is 
   slots of exotic kinds (Array, Function, Native, Bound, wrappers, ArrayBuffer/TypedArray/DataView,
   Map/Set, Proxy, Date, RegExp, Promise, Generator, Module namespace, Host…). Arrays keep a dense
   `[]Value` fast path.
+- **The layout on wasm32**, what ships (`#assert`ed in `object.odin`): a `Cell` header is 8 bytes (`size`; the kind in a
+  nibble with `pinned`, `in_ext` and two bits of the kind's own in a byte; `mark` a byte; the host's count of references
+  in 16 bits, which sticks at its top and makes the cell a root for good); an `Object` 40 (a native function's `magic`
+  in it, so that `Object_Data` is 16, the size of its largest variant); a string header 28, a closure cell (`Var_Ref`) 32
+  (detached when `pvalue` points at its own `value`). An object's slots follow it in its cell when it is made with them
+  (`object_new_shape`: an empty plain object has room for 4, one of a known shape exactly its keys), and so do what was
+  out of line and lives as long as the object: a closure's cells (`object_tail`), an iterator's state, the values of an
+  array, of an arguments object or of a match made with their room (`array_like_new`, up to a block of the pool). Slots
+  or values that grow past it take a block of their own; what was in the cell stays there, unused. A plain object is 104
+  bytes, a closure 72 with its two cells, `[a, b]` 88, in one block each.
+- **A function's `prototype`** is made when something first reads, defines or describes it (`Prop_Kind.lazy_prototype`,
+  `function_prototype_make`): the slot is empty and the property's kind says so, every path that looks at a property's
+  value goes by its kind, and the object then takes the shape the same keys have as data properties. An assignment
+  (`F.prototype = {...}`) makes no object first (`function_prototype_settle`).
 
 ## Memory management (`gc.odin`)
 
@@ -104,7 +118,13 @@ special pass.
   `gc.odin`; callers always pass the size they allocated with). A cell costs a pop and a push, not a host
   allocation.
 - The heap is capped by `Host_Config.malloc_limit`; all allocation goes through the injected allocator.
-  A collection runs when the heap passes `max(2 × live, live + 4 MiB)`.
+  A collection runs when the heap passes `max(2.5 × live, live + 4 MiB)`.
+- **The sweep** frees a cell that owns nothing but its block (a plain object with its slots inline, a flat string, a
+  closure cell, a symbol) without a finalizer (`cell_alone`), and charges the heap once a step. `Runtime.gc_swept`
+  counts the cells freed and kept; `-define:JSRT_GC_CENSUS=true` counts what died by kind, as the census of the heap
+  does (`Runtime.gc_dead`, `jsengine mem`, `WREN_JS_MEMPROF=1`: the census of a window's realm at its load event).
+- The strings of numbers made lately (`str_from_u64`: `n.toString()`, an index as a key) are kept in 256 slots until the
+  next collection clears them: a page that makes the same number a string for each element of a list makes it once.
 
 ### Where the memory of a realm and of a page goes (Wasm, `jsengine mem|startup`)
 
@@ -249,5 +269,5 @@ The 34 test262 failures above (all shared with QuickJS‑ng). Speed is at parity
 benchmarks; the slow cases are the ones that pay one dispatch per bytecode (`switch` on integers 62 %,
 nested integer loops 69 %: next step is superinstructions or a pre‑decoded code array), native‑to‑JS
 callbacks (`sort` comparators, `forEach`: a new `interp_run` activation each, ~1.9× slower than QuickJS) and
-destructuring. Memory is 1.4× QuickJS on allocation‑heavy scripts (a plain object costs 168 bytes: `Object`
-104 + 4 inline slots; a string header is 80 bytes; both can shrink).
+destructuring. Memory is 1.4× QuickJS on allocation‑heavy scripts (natively a plain object costs 136 bytes;
+on wasm32, what ships, 104: `Object` 40 + 4 inline slots of 16; a string header is 28 bytes; what is left is mostly the 16 bytes of a `Value`).

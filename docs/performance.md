@@ -3568,6 +3568,69 @@ Read plainly. **cnn.com: the window thread's style before the load -27 %, ranges
 
 **Not verified.** The release build, a long session, the full WPT, AddressSanitizer: not run. The series ran with other work on the machine: the final series on a replay bench is to come.
 
+## What changed, round 53: a smaller heap, for a shorter collection
+
+No thread, no barrier: fewer and smaller cells, so that the marking has less to visit and the sweep less to free. Development builds; base 4753a790 (`build/js_base`), the round's engine passed to the same `wren.exe` with `WREN_JS_IMAGE`, compiled code from the disk cache (`WREN_TEST_WASM_CACHE`) for both. Public sites; other agents were at work on the machine.
+
+**The measure.** `-define:JSRT_GC_CENSUS=true` counts each cell the sweep frees, by the rows of the heap's census (`memprof.odin`: `census_cell`, `Runtime.gc_dead`); `Runtime.gc_swept` counts cells freed and kept in every build (the census's `swept` row). `WREN_JS_MEMPROF=1` now prints the census of a window's realm at its load event too (`js_census_at_load`), with what died (`DEAD` rows) from such an engine. A temporary change, not in the tree, also counted each cell made by (native function, function of the script), and each field of `Cell` and `Object` in use. Counts of one load; a page does not run the same work twice, so the census says what a load is made of, the page loads below say what it costs.
+
+**What dies in a load** (base, two loads each, the second in brackets):
+
+| | theverge.com | npr.org | cnn.com |
+|---|---|---|---|
+| cells freed | 3.26 M (3.25) | 5.31 M (5.29) | 1.50 M (1.51) |
+| cells kept, visited by the sweeps | 1.72 M (1.72) | 1.54 M (1.57) | 0.85 M (0.83) |
+| bytes freed, cells and what they own, MB | 325 (325) | 382 (378) | 142 (143) |
+| plain objects | 937 k | 526 k | 441 k |
+| strings | 606 k | 3 150 k | 130 k |
+| arrays (and `arguments`) | 545 k | 872 k | 286 k |
+| closures, their cells (`Var_Ref`) | 374 k, 394 k | 256 k, 284 k | 219 k, 265 k |
+| iterators, generators, promises, mapped `arguments`... | 326 k | 187 k | 131 k |
+
+Read by what made them: **94 % of the function expressions that died had their `prototype` made, and dead with them**: 408 k of the plain objects of theverge.com, 243 k of npr.org's. Half the objects (1.37 M of 2.7 M on theverge.com) had their slots in a block of their own: every array, closure, arguments object. 145 k mapped `arguments` objects on theverge.com, 83 k array iterators, 61 k for-in iterators. Of npr.org's strings, 2.4 M are made in one callback of OneTrust's `otBannerSdk.js`, `legIntVendors.findIndex(e => e.includes(t.toString() + ":true") || ...)`: the same number made a string twice per element; 576 k in `OtAutoBlock.js`'s `replace` of each URL, needed. OneTrust's `otTCF.js` makes about 800 k cells on each of the three pages, babel's `_objectSpread2` and `ownKeys` (`Object.keys`, `getOwnPropertySymbols`, `filter`, `forEach`): what the language asks, arrays that are new each time. The fields: `Cell.ext` (references the host holds) is not zero in 1.5 % of the live cells and never over 65 535 (two cells over 255 on theverge.com); `pinned`, `in_ext` and the kind's flags are bits; a native's `magic` was in each object's union. The sizes on wasm32, what ships: `Cell` 16, `Object` 52 (plain: 116 with its 4 slots, unaligned), string header 36, `Var_Ref` 48, `Object_Data` 20, an iterator's state 152 in a block of its own.
+
+**1. The header and the objects** (`gc.odin`, `object.odin`). `Cell` is 8 bytes: the kind in a nibble beside `pinned`, `in_ext` and two bits of the kind's own, `mark` a byte, the host's count in 16 bits, which sticks at its top (the cell is then a root for good: a cell, not a correctness). `Object` 40: a native's `magic` in the object (`Object.magic`), so `Native_Data` is 12 and the union 16. String header 28, `Var_Ref` 32 (detached when `pvalue` points at its own `value`: `var_ref_is_detached`). `#assert`ed on wasm32. **Measured, not kept:** the same 8 bytes as a `bit_field` of 32 bits with a 22-bit count made the engine's code 430 KiB larger and each read of a kind a shift and a mask; a byte for `mark` and a nibble for the kind cost 27 KiB.
+
+**2. One block per object** (`object_new_shape`, `object_tail`, `array_like_new`). Slots follow the object in its cell whenever it is made with them (an empty plain object has room for 4; one of a known shape, exactly its keys: an iterator's result is 72 bytes, was 116). After them, what lives as long as the object: a closure's cells, an iterator's state, the values of an array, an arguments object or a match made with their room (`Object.keys`, `map`, `slice`, an array literal, the JIT's too). What grows past it takes a block of its own, and the cell's room stays unused. An iterator of an array, a map, a string or a for-in carries 64 bytes of state, its helpers' and regexps' 84 more after it (`Iter_Extra`).
+
+**3. A function's `prototype` when first used** (`Prop_Kind.lazy_prototype`, `function_prototype_make`). The slot stays empty and the property's kind says so; what reads, defines or describes it makes the object and moves the function to the shape the same keys have as data; `F.prototype = ...` makes nothing first (`function_prototype_settle`). The fast paths of the interpreter and of the JIT take only `.data`; the others go by the kind, and `switch` on it is exhaustive.
+
+**4. The strings of numbers** (`str_from_u64`). The last string of each of 256 slots by value, cleared by each collection: `t.toString()` for each element of a list is one string.
+
+**5. The sweep** (`gc_sweep_step`). A cell that owns nothing but its block (a plain object with its slots inline, a flat string, a closure cell) is freed without a finalizer (`cell_alone`), into the free list at once; the heap is charged once a step.
+
+What each case of `cost.js` costs, Wasm instructions an iteration, interpreted (fuel; collections included), base -> round: a function expression 2 808 -> 1 898, an arrow function 2 185 -> 1 986, `new Promise` 5 882 -> 5 622, a number made a string again 2 497 -> 2 075, a map's entries by `next()` 5 349 -> 4 729, destructured pairs 5 036 -> 4 854, arguments of a sloppy function 3 303 -> 3 204, `{a, b, c}` 1 625 -> 1 616; slice of 8 4 332 -> 4 246, concat 7 947 -> 7 882, filter 15 134 -> 15 058, forEach the same. `realworld.js` under `jsengine mem`: 100 -> 87 collections, the module's linear memory 65.4 -> 48.8 MB. A fresh realm: JS heap 1 469 -> 1 351 KiB, linear memory 6 848 -> 6 592 KiB; the image 9 377 -> 9 328 KB.
+
+**What dies in a load, after** (two loads each, interleaved with the base's above):
+
+| | theverge.com | npr.org | cnn.com |
+|---|---|---|---|
+| cells freed | 3.22 M (1.97) | 3.90 M (5.07) | 1.54 M (1.51) |
+| cells kept, visited by the sweeps | 1.75 M (1.28) | 1.14 M (1.26) | 0.81 M (0.81) |
+| bytes freed, MB | 302 (191) | 292 (336) | 134 (131) |
+| bytes a cell freed, on average | 94 (97), was 100 | 75 (66), was 72 | 87 (87), was 94 |
+| plain objects | 674 k (390) | 280 k (309) | 293 k (284) |
+| out of line, MB | 72 (46), was 98 | 47 (47), was 79 | 26 (25), was 34 |
+
+The plain objects go down by 260 to 280 k on each page, the bytes owned out of line by 27 to 40 %. The number of cells did not go down as much as that says: on the round's engine theverge.com and cnn.com made 60 to 100 k more arrays, closures and closure cells before their load event, and npr.org's second load made its 2.4 M strings again (its first did not): the pages do not run the same work twice, cause not looked for.
+
+**Page loads**, base and round, 7 runs, interleaved, the order turning, median (range), ms; `Gc` and `Guest` the window thread's up to the load event (`WREN_SPANS`):
+
+| | | load | CPU | `Gc` | `Guest` |
+|---|---|---|---|---|---|
+| theverge.com | base | 4 088 (3 005-5 190) | 7 297 | 308 (199-485) | 3 282 (2 197-4 095) |
+| | round | 3 860 (3 666-4 329) | 6 453 | 202 (177-255) | 2 948 (2 828-3 225) |
+| npr.org | base | 4 635 (4 097-4 807) | 6 094 | 298 (245-328) | 3 495 (2 790-3 766) |
+| | round | **3 854 (3 596-4 378)** | 5 531 | **190 (171-228)** | 2 887 (2 603-3 209) |
+| cnn.com | base | 2 609 (2 406-2 897) | 5 266 | 90 (85-100) | 1 408 (1 198-1 547) |
+| | round | 2 745 (2 533-3 031) | 5 547 | **65 (46-75)** | 1 370 (1 272-1 475) |
+
+Read plainly. **`Gc` -36 % on npr.org and -28 % on cnn.com, ranges apart; -34 % on theverge.com, ranges overlapping** (one run of the base at 199). By pairs, the round's `Gc` over the base's: theverge.com 0.39 to 1.02, median 0.62; npr.org 0.57 to 0.93, median 0.63; cnn.com 0.51 to 0.87, median 0.70. npr.org's load -17 % and `Guest` -17 %, ranges overlapping by 281 ms; theverge.com's load -6 %, inside its range. cnn.com's load +5 % and CPU +5 %, inside their ranges, with more of the page's own work before its load (above): not proven either way. An earlier series of the first three items, with more load on the machine (loads of 3 to 17 s): `Gc` by pairs 0.60 to 0.99 on theverge.com, 0.51 to 1.01 on npr.org, 0.57 to 1.23 on cnn.com.
+
+**Left, by what was seen.** Mapped `arguments` (145 k a load on theverge.com) make a closure cell for each mapped parameter: an arguments object that reads the frame while it lives, copied at its return, would make none. A `for...of` or a destructuring of a plain array makes an iterator object nothing sees (83 k a load); the operand stack could hold the array and an index. The sweep still visits each survivor: a mark bit beside the cell, in a bitmap of its chunk, would leave survivors untouched, at the price of the pool's chunks becoming aligned blocks. A `Value` of 8 bytes is the large one left (another round measures its ceiling).
+
+**Tests.** `hotcheck.js` (passes in Node): a function's `prototype` reached every way (read, `new`, `instanceof`, a descriptor, `defineProperty`, `Reflect.set`, an assignment, `delete`, `freeze`, a dictionary shape, keys in order before and after keys of its own, a generator's eager one); slots, closure cells, arguments and match values past what their cell holds; destructuring, map iterators kept open, for-in. `cost.js`: three new cases, and the limits of the closures and of `new Promise` brought down to a tenth over the round. Under `-define:JSRT_GC_STRESS=8192 -define:JSRT_GC_POISON=true`: `hotcheck.js`, `jitcheck.js` (also `verify -jit -jit-threshold 1`), `objectspread.js`, `realworld.js`, `recursion.js` pass. test262 on the native judge, all of it: 43 233 of 43 267, the same 34 failures as before.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
