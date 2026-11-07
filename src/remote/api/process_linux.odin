@@ -4,6 +4,7 @@ package api
 // /proc/<pid>/stat's start time and /proc/<pid>/exe. A child is reaped by the wait that sees it end (its pid is not given
 // to another process before that); a process that is not our child is watched through /proc and signalled.
 
+import "base:runtime"
 import "core:os"
 import "core:strconv"
 import "core:strings"
@@ -12,23 +13,33 @@ import "core:time"
 import "wb:base"
 
 Process :: struct {
-	pid:    posix.pid_t,
-	child:  bool,   // ours: waitpid reaps it
-	ended:  bool,
-	status: i32,
+	pid:      posix.pid_t,
+	child:    bool,   // ours: waitpid reaps it
+	ended:    bool,
+	status:   i32,
+	out, err: Maybe(posix.FD),   // the read ends of the pipes it writes to, those it was given (Start_Options)
 }
+
+// What a pipe of Output holds before the program writing to it waits (a program that writes more waits for process_output), as on Windows.
+OUTPUT_PIPE_BYTES :: 1 << 20
+// Linux's fcntl that sets a pipe's size (F_SETPIPE_SZ; core:sys/posix has not got it).
+@(private = "file") FCNTL_SETPIPE_SZ :: posix.FCNTL_Cmd(1031)
+@(private = "file") NULL_DEVICE :: cstring("/dev/null")
+@(private = "file") OUTPUT_FILE_MODE :: posix.mode_t{.IRUSR, .IWUSR}
+// What process_output reads at a time.
+@(private = "file") OUTPUT_CHUNK_BYTES :: 64 << 10
 
 // posix_spawn's list of what to do in the child (core:sys/posix has the call, not these): an opaque block, 80 bytes in glibc.
 @(private = "file") Spawn_Actions :: [128]u8
-@(private = "file") STDERR_FILE_MODE :: posix.mode_t{.IRUSR, .IWUSR}
 
 foreign import libc "system:c"
 
 @(private = "file", default_calling_convention = "c")
 foreign libc {
-	posix_spawn_file_actions_init    :: proc(actions: ^Spawn_Actions) -> posix.Errno ---
-	posix_spawn_file_actions_destroy :: proc(actions: ^Spawn_Actions) -> posix.Errno ---
-	posix_spawn_file_actions_addopen :: proc(actions: ^Spawn_Actions, fd: posix.FD, path: cstring, flags: posix.O_Flags, mode: posix.mode_t) -> posix.Errno ---
+	posix_spawn_file_actions_init      :: proc(actions: ^Spawn_Actions) -> posix.Errno ---
+	posix_spawn_file_actions_destroy   :: proc(actions: ^Spawn_Actions) -> posix.Errno ---
+	posix_spawn_file_actions_adddup2   :: proc(actions: ^Spawn_Actions, fd, to: posix.FD) -> posix.Errno ---
+	posix_spawn_file_actions_addchdir_np :: proc(actions: ^Spawn_Actions, path: cstring) -> posix.Errno ---   // glibc 2.29
 }
 
 this_pid :: proc() -> int { return int(posix.getpid()) }
@@ -86,23 +97,63 @@ wait_process_exit :: proc(pid: int, ms: int) -> (code: int, ended: bool) {
 // (Windows only for now: gdb -p does it here.)
 process_stacks :: proc(pid: int, minidump := "") -> (text: string, ok: bool) { return "reading another process's stacks is not written for this system", false }
 
-// Starts `args` (args[0] the program, a path) with this process's environment and `o.env` over it. err "": started. (A
-// folder and outputs of its own are not written for this system.)
+// Starts `args` (args[0] the program, a path) with this process's environment and `o.env` over it, in `o.cwd`, its outputs
+// where `o` says (as on Windows: an output left out of a redirected start goes nowhere). err "": started.
 process_start :: proc(args: []string, o := Start_Options{}) -> (p: Process, pid: int, err: string) {
-	if o.cwd != "" || o.stdout != {} || o.stderr.pipe || o.merged { return {}, 0, "a folder or outputs of its own are not written for this system" }
 	argv := make([]cstring, len(args) + 1, context.temp_allocator)
 	for a, i in args { argv[i] = strings.clone_to_cstring(a, context.temp_allocator) }
-	child: posix.pid_t
+	redirected := o.stdout != {} || o.stderr != {} || o.merged
 	actions: Spawn_Actions
-	if o.stderr.file != "" {
-		posix_spawn_file_actions_init(&actions)
-		posix_spawn_file_actions_addopen(&actions, posix.STDERR_FILENO, strings.clone_to_cstring(o.stderr.file, context.temp_allocator), posix.O_Flags{.WRONLY, .CREAT, .TRUNC}, STDERR_FILE_MODE)
+	posix_spawn_file_actions_init(&actions)
+	defer posix_spawn_file_actions_destroy(&actions)
+	if o.cwd != "" { posix_spawn_file_actions_addchdir_np(&actions, strings.clone_to_cstring(o.cwd, context.temp_allocator)) }
+	// the ends the child writes to, closed here once it has them
+	given: [2]posix.FD = {-1, -1}
+	defer for fd in given { if fd >= 0 { posix.close(fd) } }
+	if redirected {
+		out_fd, out_read, ok := output_for_child(o.stdout)
+		if !ok { return {}, 0, "its output could not be made" }
+		given[0] = out_fd
+		if out_read >= 0 { p.out = out_read }
+		posix_spawn_file_actions_adddup2(&actions, out_fd, posix.STDOUT_FILENO)
+		if o.merged {
+			posix_spawn_file_actions_adddup2(&actions, out_fd, posix.STDERR_FILENO)
+		} else {
+			err_fd, err_read, ok2 := output_for_child(o.stderr)
+			if !ok2 { process_release(&p); return {}, 0, "its error output could not be made" }
+			given[1] = err_fd
+			if err_read >= 0 { p.err = err_read }
+			posix_spawn_file_actions_adddup2(&actions, err_fd, posix.STDERR_FILENO)
+		}
 	}
-	defer if o.stderr.file != "" { posix_spawn_file_actions_destroy(&actions) }
-	if e := posix.posix_spawn(&child, argv[0], o.stderr.file != "" ? &actions : nil, nil, raw_data(argv), environment_with(o.env)); e != .NONE {
+	child: posix.pid_t
+	if e := posix.posix_spawn(&child, argv[0], &actions, nil, raw_data(argv), environment_with(o.env)); e != .NONE {
+		process_release(&p)
 		return {}, 0, string(posix.strerror(e))
 	}
-	return {pid = child, child = true}, int(child), ""
+	p.pid, p.child = child, true
+	return p, int(child), ""
+}
+
+// The descriptor a child writes one of its outputs to (closed on exec here: the child gets it by dup2) and, for a pipe, the read end
+// this process keeps, which never blocks (process_output). Neither pipe nor file: /dev/null.
+@(private = "file")
+output_for_child :: proc(o: Output) -> (write, read: posix.FD, ok: bool) {
+	read = -1
+	if o.file != "" {
+		write = posix.open(strings.clone_to_cstring(o.file, context.temp_allocator), {.WRONLY, .CREAT, .TRUNC, .CLOEXEC}, OUTPUT_FILE_MODE)
+		return write, -1, write >= 0
+	}
+	if !o.pipe {
+		write = posix.open(NULL_DEVICE, {.WRONLY, .CLOEXEC})
+		return write, -1, write >= 0
+	}
+	fds: [2]posix.FD
+	if posix.pipe(&fds) != .OK { return -1, -1, false }
+	for fd in fds { posix.fcntl(fd, .SETFD, i32(posix.FD_CLOEXEC)) }
+	posix.fcntl(fds[0], .SETFL, i32(posix.O_NONBLOCK))
+	posix.fcntl(fds[1], FCNTL_SETPIPE_SZ, i32(OUTPUT_PIPE_BYTES))   // (as on Windows: what a program writes before it waits for process_output)
+	return fds[1], fds[0], true
 }
 
 // This process's environment with `over` ("NAME=value" sets it, "NAME=" leaves it out), nil-terminated.
@@ -154,8 +205,22 @@ process_wait :: proc(p: ^Process, ms: int) -> bool {
 // Has it been ended?
 process_ended :: proc(p: ^Process) -> bool { return !process_alive(p) }
 
-// What it wrote to its pipes (it has none here).
-process_output :: proc(p: ^Process, allocator := context.temp_allocator) -> (out, err: string) { return "", "" }
+// What the program wrote to its pipes since the last look, without waiting (the program may go on, and what it started may hold the pipes for ever).
+process_output :: proc(p: ^Process, allocator := context.temp_allocator) -> (out, err: string) {
+	drain :: proc(pipe: Maybe(posix.FD), allocator: runtime.Allocator) -> string {
+		fd, open := pipe.?
+		if !open { return "" }
+		b := strings.builder_make(allocator)
+		chunk: [OUTPUT_CHUNK_BYTES]u8
+		for {
+			n := posix.read(fd, &chunk[0], len(chunk))
+			if n <= 0 { break }   // nothing more now (EAGAIN), or the end
+			strings.write_bytes(&b, chunk[:n])
+		}
+		return strings.to_string(b)
+	}
+	return drain(p.out, allocator), drain(p.err, allocator)
+}
 
 // The time it has spent on the processors (ms): not read here.
 process_cpu_ms :: proc(p: ^Process) -> f64 { return 0 }
@@ -164,11 +229,16 @@ process_kill :: proc(p: ^Process) { if !p.ended { posix.kill(p.pid, .SIGKILL) } 
 
 process_release :: proc(p: ^Process) {
 	if p.child && !p.ended { process_wait(p, 0) }
-	p^ = {}
+	process_detach(p)
 }
 
 // Lets the process go on alone (a session `wren ctl stop` ends later): when this one exits, init adopts and reaps it.
-process_detach :: proc(p: ^Process) { p^ = {} }
+// (closes the read ends of its pipes: what it writes after goes nowhere)
+process_detach :: proc(p: ^Process) {
+	if fd, open := p.out.?; open { posix.close(fd) }
+	if fd, open := p.err.?; open { posix.close(fd) }
+	p^ = {}
+}
 
 // The exit code of a process that has ended (process_wait said so): that of a child of ours; -1 when a signal ended it, or it is not our child.
 process_exit_code :: proc(p: ^Process) -> int {
