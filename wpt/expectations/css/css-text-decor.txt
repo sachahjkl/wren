@@ -350,10 +350,10 @@
 	CSS Animations: property <text-decoration-thickness> from [100%] to [0px] at (0.3) should be [70%]: PASS
 	CSS Animations: property <text-decoration-thickness> from [100%] to [0px] at (0.6) should be [40%]: PASS
 	CSS Animations: property <text-decoration-thickness> from [100%] to [0px] at (1) should be [0%]: FAIL
-	CSS Animations: property <text-decoration-thickness> from [100%] to [200%] at (0) should be [100%]: PASS|FAIL
-	CSS Animations: property <text-decoration-thickness> from [100%] to [200%] at (0.3) should be [130%]: PASS|FAIL
-	CSS Animations: property <text-decoration-thickness> from [100%] to [200%] at (0.6) should be [160%]: PASS|FAIL
-	CSS Animations: property <text-decoration-thickness> from [100%] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Animations: property <text-decoration-thickness> from [100%] to [200%] at (0) should be [100%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	CSS Animations: property <text-decoration-thickness> from [100%] to [200%] at (1) should be [200%]: PASS
 	CSS Animations: property <text-decoration-thickness> from [100%] to [2em] at (0) should be [100%]: PASS
 	CSS Animations: property <text-decoration-thickness> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
 	CSS Animations: property <text-decoration-thickness> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
@@ -374,10 +374,10 @@
 	CSS Animations: property <text-decoration-thickness> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
 	CSS Animations: property <text-decoration-thickness> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
 	CSS Animations: property <text-decoration-thickness> from [16px] to [0px] at (1) should be [0px]: PASS
-	CSS Animations: property <text-decoration-thickness> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	CSS Animations: property <text-decoration-thickness> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	CSS Animations: property <text-decoration-thickness> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	CSS Animations: property <text-decoration-thickness> from [16px] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Animations: property <text-decoration-thickness> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [16px] to [200%] at (1) should be [200%]: PASS
 	CSS Animations: property <text-decoration-thickness> from [16px] to [2em] at (0) should be [16px]: PASS
 	CSS Animations: property <text-decoration-thickness> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
 	CSS Animations: property <text-decoration-thickness> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
@@ -398,10 +398,10 @@
 	CSS Animations: property <text-decoration-thickness> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
 	CSS Animations: property <text-decoration-thickness> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
 	CSS Animations: property <text-decoration-thickness> from [1em] to [0px] at (1) should be [0px]: PASS
-	CSS Animations: property <text-decoration-thickness> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	CSS Animations: property <text-decoration-thickness> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	CSS Animations: property <text-decoration-thickness> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	CSS Animations: property <text-decoration-thickness> from [1em] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Animations: property <text-decoration-thickness> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Animations: property <text-decoration-thickness> from [1em] to [200%] at (1) should be [200%]: PASS
 	CSS Animations: property <text-decoration-thickness> from [1em] to [2em] at (0) should be [16px]: PASS
 	CSS Animations: property <text-decoration-thickness> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
 	CSS Animations: property <text-decoration-thickness> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
@@ -422,10 +422,10 @@
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0px] at (0.3) should be [70%]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0px] at (0.6) should be [40%]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [0px] at (1) should be [0%]: FAIL
-	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [200%] at (0) should be [100%]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [200%] at (0.3) should be [130%]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [200%] at (0.6) should be [160%]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [200%] at (0) should be [100%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [200%] at (1) should be [200%]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [2em] at (0) should be [100%]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
@@ -446,10 +446,10 @@
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [0px] at (1) should be [0px]: PASS
-	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [200%] at (1) should be [200%]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [2em] at (0) should be [16px]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
@@ -470,10 +470,10 @@
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [0px] at (1) should be [0px]: PASS
-	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [200%] at (1) should be [200%]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [2em] at (0) should be [16px]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
 	CSS Transitions with transition: all: property <text-decoration-thickness> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
@@ -494,10 +494,10 @@
 	CSS Transitions: property <text-decoration-thickness> from [100%] to [0px] at (0.3) should be [70%]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [100%] to [0px] at (0.6) should be [40%]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [100%] to [0px] at (1) should be [0%]: FAIL
-	CSS Transitions: property <text-decoration-thickness> from [100%] to [200%] at (0) should be [100%]: PASS|FAIL
-	CSS Transitions: property <text-decoration-thickness> from [100%] to [200%] at (0.3) should be [130%]: PASS|FAIL
-	CSS Transitions: property <text-decoration-thickness> from [100%] to [200%] at (0.6) should be [160%]: PASS|FAIL
-	CSS Transitions: property <text-decoration-thickness> from [100%] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [200%] at (0) should be [100%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [100%] to [200%] at (1) should be [200%]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [100%] to [2em] at (0) should be [100%]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
@@ -518,10 +518,10 @@
 	CSS Transitions: property <text-decoration-thickness> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [16px] to [0px] at (1) should be [0px]: PASS
-	CSS Transitions: property <text-decoration-thickness> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	CSS Transitions: property <text-decoration-thickness> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	CSS Transitions: property <text-decoration-thickness> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	CSS Transitions: property <text-decoration-thickness> from [16px] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [16px] to [200%] at (1) should be [200%]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [16px] to [2em] at (0) should be [16px]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
@@ -542,10 +542,10 @@
 	CSS Transitions: property <text-decoration-thickness> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [1em] to [0px] at (1) should be [0px]: PASS
-	CSS Transitions: property <text-decoration-thickness> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	CSS Transitions: property <text-decoration-thickness> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	CSS Transitions: property <text-decoration-thickness> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	CSS Transitions: property <text-decoration-thickness> from [1em] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions: property <text-decoration-thickness> from [1em] to [200%] at (1) should be [200%]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [1em] to [2em] at (0) should be [16px]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
 	CSS Transitions: property <text-decoration-thickness> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
@@ -566,10 +566,10 @@
 	Web Animations: property <text-decoration-thickness> from [100%] to [0px] at (0.3) should be [70%]: PASS
 	Web Animations: property <text-decoration-thickness> from [100%] to [0px] at (0.6) should be [40%]: PASS
 	Web Animations: property <text-decoration-thickness> from [100%] to [0px] at (1) should be [0%]: FAIL
-	Web Animations: property <text-decoration-thickness> from [100%] to [200%] at (0) should be [100%]: PASS|FAIL
-	Web Animations: property <text-decoration-thickness> from [100%] to [200%] at (0.3) should be [130%]: PASS|FAIL
-	Web Animations: property <text-decoration-thickness> from [100%] to [200%] at (0.6) should be [160%]: PASS|FAIL
-	Web Animations: property <text-decoration-thickness> from [100%] to [200%] at (1) should be [200%]: PASS|FAIL
+	Web Animations: property <text-decoration-thickness> from [100%] to [200%] at (0) should be [100%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	Web Animations: property <text-decoration-thickness> from [100%] to [200%] at (1) should be [200%]: PASS
 	Web Animations: property <text-decoration-thickness> from [100%] to [2em] at (0) should be [100%]: PASS
 	Web Animations: property <text-decoration-thickness> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
 	Web Animations: property <text-decoration-thickness> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
@@ -590,10 +590,10 @@
 	Web Animations: property <text-decoration-thickness> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
 	Web Animations: property <text-decoration-thickness> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
 	Web Animations: property <text-decoration-thickness> from [16px] to [0px] at (1) should be [0px]: PASS
-	Web Animations: property <text-decoration-thickness> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	Web Animations: property <text-decoration-thickness> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	Web Animations: property <text-decoration-thickness> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	Web Animations: property <text-decoration-thickness> from [16px] to [200%] at (1) should be [200%]: PASS|FAIL
+	Web Animations: property <text-decoration-thickness> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [16px] to [200%] at (1) should be [200%]: PASS
 	Web Animations: property <text-decoration-thickness> from [16px] to [2em] at (0) should be [16px]: PASS
 	Web Animations: property <text-decoration-thickness> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
 	Web Animations: property <text-decoration-thickness> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
@@ -614,10 +614,10 @@
 	Web Animations: property <text-decoration-thickness> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
 	Web Animations: property <text-decoration-thickness> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
 	Web Animations: property <text-decoration-thickness> from [1em] to [0px] at (1) should be [0px]: PASS
-	Web Animations: property <text-decoration-thickness> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	Web Animations: property <text-decoration-thickness> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	Web Animations: property <text-decoration-thickness> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	Web Animations: property <text-decoration-thickness> from [1em] to [200%] at (1) should be [200%]: PASS|FAIL
+	Web Animations: property <text-decoration-thickness> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	Web Animations: property <text-decoration-thickness> from [1em] to [200%] at (1) should be [200%]: PASS
 	Web Animations: property <text-decoration-thickness> from [1em] to [2em] at (0) should be [16px]: PASS
 	Web Animations: property <text-decoration-thickness> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
 	Web Animations: property <text-decoration-thickness> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
@@ -643,10 +643,10 @@
 	CSS Animations: property <text-underline-offset> from [100%] to [0px] at (0.3) should be [70%]: PASS
 	CSS Animations: property <text-underline-offset> from [100%] to [0px] at (0.6) should be [40%]: PASS
 	CSS Animations: property <text-underline-offset> from [100%] to [0px] at (1) should be [0%]: FAIL
-	CSS Animations: property <text-underline-offset> from [100%] to [200%] at (0) should be [100%]: PASS|FAIL
-	CSS Animations: property <text-underline-offset> from [100%] to [200%] at (0.3) should be [130%]: PASS|FAIL
-	CSS Animations: property <text-underline-offset> from [100%] to [200%] at (0.6) should be [160%]: PASS|FAIL
-	CSS Animations: property <text-underline-offset> from [100%] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Animations: property <text-underline-offset> from [100%] to [200%] at (0) should be [100%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	CSS Animations: property <text-underline-offset> from [100%] to [200%] at (1) should be [200%]: PASS
 	CSS Animations: property <text-underline-offset> from [100%] to [2em] at (0) should be [100%]: PASS
 	CSS Animations: property <text-underline-offset> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
 	CSS Animations: property <text-underline-offset> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
@@ -671,10 +671,10 @@
 	CSS Animations: property <text-underline-offset> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
 	CSS Animations: property <text-underline-offset> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
 	CSS Animations: property <text-underline-offset> from [16px] to [0px] at (1) should be [0px]: PASS
-	CSS Animations: property <text-underline-offset> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	CSS Animations: property <text-underline-offset> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	CSS Animations: property <text-underline-offset> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	CSS Animations: property <text-underline-offset> from [16px] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Animations: property <text-underline-offset> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Animations: property <text-underline-offset> from [16px] to [200%] at (1) should be [200%]: PASS
 	CSS Animations: property <text-underline-offset> from [16px] to [2em] at (0) should be [16px]: PASS
 	CSS Animations: property <text-underline-offset> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
 	CSS Animations: property <text-underline-offset> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
@@ -695,10 +695,10 @@
 	CSS Animations: property <text-underline-offset> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
 	CSS Animations: property <text-underline-offset> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
 	CSS Animations: property <text-underline-offset> from [1em] to [0px] at (1) should be [0px]: PASS
-	CSS Animations: property <text-underline-offset> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	CSS Animations: property <text-underline-offset> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	CSS Animations: property <text-underline-offset> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	CSS Animations: property <text-underline-offset> from [1em] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Animations: property <text-underline-offset> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Animations: property <text-underline-offset> from [1em] to [200%] at (1) should be [200%]: PASS
 	CSS Animations: property <text-underline-offset> from [1em] to [2em] at (0) should be [16px]: PASS
 	CSS Animations: property <text-underline-offset> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
 	CSS Animations: property <text-underline-offset> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
@@ -723,10 +723,10 @@
 	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0px] at (0.3) should be [70%]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0px] at (0.6) should be [40%]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [0px] at (1) should be [0%]: FAIL
-	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [200%] at (0) should be [100%]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [200%] at (0.3) should be [130%]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [200%] at (0.6) should be [160%]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [200%] at (0) should be [100%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [200%] at (1) should be [200%]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [2em] at (0) should be [100%]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
@@ -751,10 +751,10 @@
 	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [0px] at (1) should be [0px]: PASS
-	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [200%] at (1) should be [200%]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [2em] at (0) should be [16px]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
@@ -775,10 +775,10 @@
 	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [0px] at (1) should be [0px]: PASS
-	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [200%] at (1) should be [200%]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [2em] at (0) should be [16px]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
 	CSS Transitions with transition: all: property <text-underline-offset> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
@@ -803,10 +803,10 @@
 	CSS Transitions: property <text-underline-offset> from [100%] to [0px] at (0.3) should be [70%]: PASS
 	CSS Transitions: property <text-underline-offset> from [100%] to [0px] at (0.6) should be [40%]: PASS
 	CSS Transitions: property <text-underline-offset> from [100%] to [0px] at (1) should be [0%]: FAIL
-	CSS Transitions: property <text-underline-offset> from [100%] to [200%] at (0) should be [100%]: PASS|FAIL
-	CSS Transitions: property <text-underline-offset> from [100%] to [200%] at (0.3) should be [130%]: PASS|FAIL
-	CSS Transitions: property <text-underline-offset> from [100%] to [200%] at (0.6) should be [160%]: PASS|FAIL
-	CSS Transitions: property <text-underline-offset> from [100%] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Transitions: property <text-underline-offset> from [100%] to [200%] at (0) should be [100%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	CSS Transitions: property <text-underline-offset> from [100%] to [200%] at (1) should be [200%]: PASS
 	CSS Transitions: property <text-underline-offset> from [100%] to [2em] at (0) should be [100%]: PASS
 	CSS Transitions: property <text-underline-offset> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
 	CSS Transitions: property <text-underline-offset> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
@@ -831,10 +831,10 @@
 	CSS Transitions: property <text-underline-offset> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
 	CSS Transitions: property <text-underline-offset> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
 	CSS Transitions: property <text-underline-offset> from [16px] to [0px] at (1) should be [0px]: PASS
-	CSS Transitions: property <text-underline-offset> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	CSS Transitions: property <text-underline-offset> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	CSS Transitions: property <text-underline-offset> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	CSS Transitions: property <text-underline-offset> from [16px] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Transitions: property <text-underline-offset> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [16px] to [200%] at (1) should be [200%]: PASS
 	CSS Transitions: property <text-underline-offset> from [16px] to [2em] at (0) should be [16px]: PASS
 	CSS Transitions: property <text-underline-offset> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
 	CSS Transitions: property <text-underline-offset> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
@@ -855,10 +855,10 @@
 	CSS Transitions: property <text-underline-offset> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
 	CSS Transitions: property <text-underline-offset> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
 	CSS Transitions: property <text-underline-offset> from [1em] to [0px] at (1) should be [0px]: PASS
-	CSS Transitions: property <text-underline-offset> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	CSS Transitions: property <text-underline-offset> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	CSS Transitions: property <text-underline-offset> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	CSS Transitions: property <text-underline-offset> from [1em] to [200%] at (1) should be [200%]: PASS|FAIL
+	CSS Transitions: property <text-underline-offset> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	CSS Transitions: property <text-underline-offset> from [1em] to [200%] at (1) should be [200%]: PASS
 	CSS Transitions: property <text-underline-offset> from [1em] to [2em] at (0) should be [16px]: PASS
 	CSS Transitions: property <text-underline-offset> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
 	CSS Transitions: property <text-underline-offset> from [1em] to [2em] at (0.6) should be [25.6px]: PASS
@@ -883,10 +883,10 @@
 	Web Animations: property <text-underline-offset> from [100%] to [0px] at (0.3) should be [70%]: PASS
 	Web Animations: property <text-underline-offset> from [100%] to [0px] at (0.6) should be [40%]: PASS
 	Web Animations: property <text-underline-offset> from [100%] to [0px] at (1) should be [0%]: FAIL
-	Web Animations: property <text-underline-offset> from [100%] to [200%] at (0) should be [100%]: PASS|FAIL
-	Web Animations: property <text-underline-offset> from [100%] to [200%] at (0.3) should be [130%]: PASS|FAIL
-	Web Animations: property <text-underline-offset> from [100%] to [200%] at (0.6) should be [160%]: PASS|FAIL
-	Web Animations: property <text-underline-offset> from [100%] to [200%] at (1) should be [200%]: PASS|FAIL
+	Web Animations: property <text-underline-offset> from [100%] to [200%] at (0) should be [100%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [200%] at (0.3) should be [130%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [200%] at (0.6) should be [160%]: PASS
+	Web Animations: property <text-underline-offset> from [100%] to [200%] at (1) should be [200%]: PASS
 	Web Animations: property <text-underline-offset> from [100%] to [2em] at (0) should be [100%]: PASS
 	Web Animations: property <text-underline-offset> from [100%] to [2em] at (0.3) should be [calc(70% + 9.6px)]: PASS
 	Web Animations: property <text-underline-offset> from [100%] to [2em] at (0.6) should be [calc(40% + 19.2px)]: PASS
@@ -911,10 +911,10 @@
 	Web Animations: property <text-underline-offset> from [16px] to [0px] at (0.3) should be [11.2px]: PASS
 	Web Animations: property <text-underline-offset> from [16px] to [0px] at (0.6) should be [6.4px]: PASS
 	Web Animations: property <text-underline-offset> from [16px] to [0px] at (1) should be [0px]: PASS
-	Web Animations: property <text-underline-offset> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	Web Animations: property <text-underline-offset> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	Web Animations: property <text-underline-offset> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	Web Animations: property <text-underline-offset> from [16px] to [200%] at (1) should be [200%]: PASS|FAIL
+	Web Animations: property <text-underline-offset> from [16px] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	Web Animations: property <text-underline-offset> from [16px] to [200%] at (1) should be [200%]: PASS
 	Web Animations: property <text-underline-offset> from [16px] to [2em] at (0) should be [16px]: PASS
 	Web Animations: property <text-underline-offset> from [16px] to [2em] at (0.3) should be [20.8px]: PASS
 	Web Animations: property <text-underline-offset> from [16px] to [2em] at (0.6) should be [25.6px]: PASS
@@ -935,10 +935,10 @@
 	Web Animations: property <text-underline-offset> from [1em] to [0px] at (0.3) should be [11.2px]: PASS
 	Web Animations: property <text-underline-offset> from [1em] to [0px] at (0.6) should be [6.4px]: PASS
 	Web Animations: property <text-underline-offset> from [1em] to [0px] at (1) should be [0px]: PASS
-	Web Animations: property <text-underline-offset> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS|FAIL
-	Web Animations: property <text-underline-offset> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS|FAIL
-	Web Animations: property <text-underline-offset> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS|FAIL
-	Web Animations: property <text-underline-offset> from [1em] to [200%] at (1) should be [200%]: PASS|FAIL
+	Web Animations: property <text-underline-offset> from [1em] to [200%] at (0) should be [calc(0% + 16px)]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [200%] at (0.3) should be [calc(60% + 11.2px)]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [200%] at (0.6) should be [calc(120% + 6.4px)]: PASS
+	Web Animations: property <text-underline-offset> from [1em] to [200%] at (1) should be [200%]: PASS
 	Web Animations: property <text-underline-offset> from [1em] to [2em] at (0) should be [16px]: PASS
 	Web Animations: property <text-underline-offset> from [1em] to [2em] at (0.3) should be [20.8px]: PASS
 	Web Animations: property <text-underline-offset> from [1em] to [2em] at (0.6) should be [25.6px]: PASS

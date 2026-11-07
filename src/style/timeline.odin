@@ -253,8 +253,10 @@ overlay_retire :: proc(s: ^Styled, ov: ^Overlay) {
 @(private)
 advance :: proc(tl: ^Timeline, wall_ms: f64) {
 	if !tl.has_wall { tl.has_wall, tl.last_wall = true, wall_ms; return }
+	// (a task's time, held, may be older than a frame made meanwhile: the clock never goes back, nor counts a span twice)
 	d := wall_ms - tl.last_wall
-	if d > 0 { tl.now += d * f64(max(tl.engine.settings.anim_time_scale, ANIM_TIME_SCALE_MIN)) }
+	if d <= 0 { return }
+	tl.now += d * f64(max(tl.engine.settings.anim_time_scale, ANIM_TIME_SCALE_MIN))
 	tl.last_wall = wall_ms
 }
 
@@ -508,6 +510,9 @@ sync_runs :: proc(tl: ^Timeline, ea: ^Element_Anim, c: ^Computed) {
 			_ = base.arena_init_growing(&r.frames_arena, 64 * 1024)
 			tl.running += 1
 		}
+		// the time since its last tick went by under the spec it had: a paused run was not ticked while the page drew nothing
+		if r.timeline.kind == .Auto && run_running(r) { r.local += tl.now - r.last_now }
+		r.last_now = tl.now
 		spec := animation_at(c, i)
 		base.arena_free_all(&r.spec_arena)
 		spec.easing = clone_easing(spec.easing, base.arena_allocator(&r.spec_arena))
