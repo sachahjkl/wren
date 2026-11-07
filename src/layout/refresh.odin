@@ -105,6 +105,7 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 			b.cs.inherited_group = pc.inherited_group
 			b.cs.custom = pc.custom   // (its custom properties too: paint-only values may be all that changed, with them; and that table goes with the old record)
 			for p in anon { style.copy_prop(b.cs, pc, p) }
+			anon_current_color(b.cs)
 			continue
 		}
 		el := style.style_of(st, b.node)

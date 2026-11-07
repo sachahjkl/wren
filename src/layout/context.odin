@@ -368,12 +368,18 @@ anon_style :: proc(c: ^Ctx, parent: ^style.Computed, display: style.Display) -> 
 	style.reset_noninherited(s, c.st.initial)
 	s.display = display
 	s.before, s.after = nil, nil
-	// currentcolor of the initial border colors follows the inherited color
-	for side in style.Side { s.border_color[side] = s.color }
+	anon_current_color(s)
 	s.border_width = {}
 	s.outline_width = 0
-	s.text_decoration_color = s.color
 	c.anon_cs[key] = s
 	return s
+}
+
+// currentcolor of an anonymous box's initial colors follows the color it inherits: when it is made, and when a refresh
+// gives it a new one.
+@(private)
+anon_current_color :: proc(s: ^style.Computed) {
+	for side in style.Side { s.border_color[side] = s.color }
+	s.text_decoration_color = s.color
 }
 
