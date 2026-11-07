@@ -322,3 +322,38 @@ thread priorities and `instance` have a Linux-only file to extend.
 ## Slice 8 (2026-10-31): a Linux package
 
 `./build.sh release` then `wrentool package` make `build/dist/wren-<version>-linux-x64.tar.gz`; the workflow `linux-package.yml` builds it on ubuntu-24.04 (so glibc 2.39 or later), unpacks it and runs `wrentool smoke` under xvfb before the release adds it. The engine image comes from a Windows job. Two things it took: the sealed Rust archives need `ld -r --force-group-allocation` (otherwise the linker discards their `DW.ref.rust_eh_personality`); the main thread raises its own stack limit (`host.main_stack_ensure`).
+
+## Slice 9 (2026-11-07): the browser with its scripts, real pages and the end-to-end scenarios on Linux
+
+A Linux machine (Xvfb, the software Vulkan adapter, an HTTPS proxy of the environment) with nothing but `./build.sh deps`, `check`, `wren`.
+
+**What ran before without saying so.** `build/js/wren_js.wasm` was the empty stub `test_all` leaves for `odin check`, and `./build.sh wren`
+linked it: a browser that ran no script (the CI's Linux sweep too). `./build.sh deps` builds the engine now and `wren` refuses the stub.
+
+**What runs.**
+- `./build.sh check`: 78 steps pass (with the engine, the tests that need it run).
+- `wrentool sweep` on the 74 pages of `tools/site_compare_list*.txt` (scroll, developer tools, a link, back, reload, a tab, close),
+  scripts on: **74 pass, no crash, no hang**.
+- The portable end-to-end scenarios of `src/tools/e2e` (those without `#+build windows`), built as `test_all` builds them for Windows
+  (`-build-mode:test`, every allocation tracked, the engine's code shipped), under Xvfb: 231 tests. Before this slice 55 failed, most behind
+  one that stopped the run; after it, all pass but the ones below.
+
+**What they found, fixed.**
+- A second start of a profile took the Wren running on it for a crash (reopened its tabs, took over its files): the start time of a
+  process was read from the time now less `/proc/uptime`, different at each reading. It is `/proc/stat`'s `btime` now.
+- H.264 never played: the vtable of openh264's decoder lacked a slot (each call went to the method beside it) and `SBufferInfo` a field
+  (the decoder wrote past it); the layout is asserted at compile time. `wrentool fetch openh264` is pinned and `deps` fetches it.
+- A proxy of the environment took the names that `network.hosts` routes to a local server out to the network: the replay bench could not run
+  behind one. What the settings route goes direct.
+- `remote/api` started a process with neither a folder nor outputs of its own: the check build's scenarios could not run. They pass: a
+  scripted session and a driven one leave nothing allocated.
+- A custom cursor said the image's own size, not the one shown at the window's scale: a toolkit change (`custom_cursor_info`), not in its
+  release yet.
+
+**Not done on Linux.**
+- The picture of a drag for the system (`dnd_end_to_end`: the drag itself, its drop and its effect pass): X11's drag protocol has no
+  picture; it takes a window of its own that follows the pointer (the toolkit).
+- The stacks of a process that hangs (`shutdown_report`, `wren ctl stacks`): `process_stacks` is Windows only.
+- The `web_*` scenarios (`#+build windows`): their harness is Windows's.
+- Measures: live pages from a datacenter on a software adapter say where time goes (spans), not how fast a desktop is; the replay
+  recordings are on the Windows machine.
