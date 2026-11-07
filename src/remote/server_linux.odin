@@ -16,7 +16,6 @@ package remote
 // connection, and a page cannot reach the channel.
 
 import "core:strings"
-import "core:sync"
 import "core:sys/linux"
 import "core:thread"
 import "wb:base"
