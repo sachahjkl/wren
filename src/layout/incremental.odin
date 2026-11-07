@@ -620,7 +620,9 @@ remap_styles :: proc(c: ^Ctx) -> bool {
 		} else if b.node == base.NIL_HANDLE {
 			if b.parent == NONE { continue }
 			p := &l.boxes[b.parent]
-			if changed[b.parent] || .Dirty in p.inc {
+			// (an animated parent keeps its record, an overlay rewritten in place: its inherited group says that it moved, and the old one
+			// goes with the pass it was of)
+			if changed[b.parent] || .Dirty in p.inc || b.cs.inherited_group != p.cs.inherited_group {
 				b.cs = anon_style(c, p.cs, b.cs.display)
 			}
 		} else {

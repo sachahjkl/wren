@@ -433,6 +433,38 @@ inc_orthogonal_box_padding_in_a_box_that_shrinks :: proc(t: ^testing.T) {
 	demo_frame(d, "")
 	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
 }
+// A paint-only restyle gives an anonymous box its parent's new color, and with it what currentcolor is for it: a link
+// made a flex container, whose text is in an anonymous flex item, left by the pointer (its border color stayed the hover's).
+@(test)
+inc_anonymous_box_current_color_after_refresh :: proc(t: ^testing.T) {
+	d := demo_load(`<style>a { color: blue } a:hover { color: red }</style><a id=a href=x style="display:flex">link</a><p id=p>after</p>`)
+	defer demo_unload(d)
+	d.state.hover = dom.find_by_id(d.doc, "a")
+	demo_frame(d, "")
+	testing.expect_value(t, d.l.last_pass, Pass_Kind.Refresh)
+	dom.set_attribute(d.doc, dom.find_by_id(d.doc, "p"), "style", "padding:7px")
+	demo_frame(d, "")
+	testing.expect_value(t, d.l.last_pass, Pass_Kind.Incremental)
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+}
+// An animated element's record is an overlay, the same address from one style pass to the next: its anonymous flex item was
+// not made again, and kept the inherited group of a pass that goes (an access violation in the verification, reading it).
+@(test)
+inc_anonymous_box_of_an_animated_parent_after_a_style_pass :: proc(t: ^testing.T) {
+	d := demo_load(`<style>@keyframes spin { to { transform: rotate(360deg) } } .c { display: flex; animation: spin 4s linear infinite }</style><div class=c id=c>text</div><p>after</p>`)
+	defer demo_unload(d)
+	demo_frame(d, "")
+	c := box_index(&d.l, dom.find_by_id(d.doc, "c"))
+	overlay := d.l.boxes[c].cs
+	d.eng.restyle_needed = true
+	demo_frame(d, "")
+	testing.expect_value(t, d.l.last_pass, Pass_Kind.Incremental)
+	testing.expect(t, d.l.boxes[c].cs == overlay, "the overlay's record stays where it is")
+	testing.expect(t, d.l.inc.verify_failures == 0, d.l.inc.verify_report)
+	first := d.l.boxes[c].first
+	testing.expect(t, .Anonymous in d.l.boxes[first].flags, "the text is in an anonymous flex item")
+	testing.expect(t, d.l.boxes[first].cs.inherited_group == d.l.boxes[c].cs.inherited_group, "the inherited group of this pass")
+}
 // A paint-only restyle of an element whose ::before sits in an anonymous block beside block children: that generated
 // box is re-pointed to the new ::before record too (it kept the old one, and its old color).
 @(test)
