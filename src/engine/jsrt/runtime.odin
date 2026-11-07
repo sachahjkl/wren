@@ -167,6 +167,15 @@ Gc_Sweep :: struct {
 	made: i64, // what was allocated since the marking: it says nothing of what the collection left
 }
 
+// A number and its string (Runtime.int_strings).
+Int_String :: struct {
+	v: u64,
+	s: ^JS_String,
+}
+
+// Slots of Runtime.int_strings, a power of two.
+INT_STRINGS :: 256
+
 // What the sweeps did since the runtime began.
 Gc_Swept :: struct {
 	dead, kept: i64, // cells freed, cells looked at and kept
@@ -218,6 +227,7 @@ Runtime :: struct {
 
 	// interned singletons
 	char_strings:   [256]^JS_String, // one-unit Latin-1 strings
+	int_strings:    [INT_STRINGS]Int_String, // the strings of numbers made lately (str_from_u64), cleared by each collection
 	empty_string:   ^JS_String,
 	well_known:     [Well_Known]^Symbol,
 	symbol_registry: map[Atom]^Symbol, // Symbol.for, keyed by the atom of the key string

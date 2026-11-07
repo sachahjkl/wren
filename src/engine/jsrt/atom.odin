@@ -253,6 +253,10 @@ atom_utf8 :: proc(rt: ^Runtime, a: Atom) -> string {
 
 str_from_u64 :: proc(rt: ^Runtime, v: u64) -> ^JS_String {
 	if v < 10 {return rt.char_strings['0' + v]}
+	// the same number made a string again and again (`t.toString() + ":true"` for each element of a list: a million strings of a
+	// load of npr.org): the last string of each slot, until the next collection (gc_mark clears them)
+	at := &rt.int_strings[v & (INT_STRINGS - 1)]
+	if at.s != nil && at.v == v {return at.s}
 	buf: [24]u8
 	n := 0
 	x := v
@@ -261,7 +265,9 @@ str_from_u64 :: proc(rt: ^Runtime, v: u64) -> ^JS_String {
 		x /= 10
 		n += 1
 	}
-	return str_from_latin1(rt, buf[24 - n:])
+	s := str_from_latin1(rt, buf[24 - n:])
+	at^ = {v, s}
+	return s
 }
 
 symbol_new_raw :: proc(rt: ^Runtime, description: Value, private: bool) -> ^Symbol {

@@ -689,7 +689,7 @@ object_proto :: #force_inline proc "contextless" (o: ^Object) -> ^Object {return
 
 // --- creation ---
 
-// Plain objects have room inline for this many slots, whatever they start with: they grow.
+// A plain object made empty has room inline for this many slots: it grows.
 INLINE_SLOTS :: 4
 // An object's slots follow it in its cell when they fit a block of the pool: one allocation, one block the sweep frees and
 // nothing for it to do. Past that they have a block of their own.
@@ -698,7 +698,7 @@ INLINE_SLOTS_MAX :: (POOL_MAX_BYTES - size_of(Object)) / size_of(Prop_Slot)
 // `tail`: bytes of the cell after its slots, for the caller (object_tail).
 object_new_shape :: proc(rt: ^Runtime, sh: ^Shape, class: Class_ID, tail := 0) -> ^Object {
 	n := len(sh.props)
-	room := class == .object ? max(n, INLINE_SLOTS) : n
+	room := class == .object && n == 0 ? INLINE_SLOTS : n // (a shape with keys is what the object will have: an iterator's result, a prototype)
 	inline := room <= INLINE_SLOTS_MAX
 	o := cell_new(rt, Object, .object, (inline ? room * size_of(Prop_Slot) : 0) + tail)
 	o.class = class
