@@ -55,7 +55,7 @@ TAB_PREFS := [?]config.Def{
 	{name = "browser.tabs.favicon_cache_entries", kind = .Int, default = {i = 128}, bounded = true, min = 4, max = 100_000,
 		description = "Icons kept decoded (one texture each, shared by the tabs of a site); the least recently shown go first."},
 	{name = "browser.tabs.spinner_fps", kind = .Float, default = {f = 30}, bounded = true, min = 1, max = 240, unit = "Hz",
-		description = "How often the loading indicator of a tab turns while the tab loads. Nothing is drawn for it once the load is over."},
+		description = "How often the loading indicators move while a tab loads: the icon of its tab, and the bar along the top of a page not painted yet. Nothing is drawn for them once the load is over."},
 	{name = "browser.tabs.spinner_max_s", kind = .Float, default = {f = 120}, bounded = true, min = 0, max = 86_400, unit = "s",
 		description = "A tab still loading after this long (a resource that never ends: the load event waits for it) keeps its loading indicator but no longer animates it, so the browser stops drawing for it. 0 = always animate."},
 	{name = "browser.tabs.title_refresh_ms", kind = .Int, default = {i = 250}, bounded = true, min = 0, max = 60_000, unit = "ms",
@@ -370,8 +370,8 @@ spinner_wake :: proc(app: ^App) {
 	app.favs.spin = host.set_timer(&app.loop, f64(1000 / max(app.favs.cfg.spinner_fps, 1)), 0, proc(data: rawptr) {
 		app := (^App)(data)
 		app.favs.spin = base.NIL_HANDLE
-		a := (^App)(data)
-		request_frames(a, 1)
+		host.quiet_note(&app.loop)   // (the one frame it asks for, not the two of a task)
+		request_frames(app, 1)
 	}, app)
 }
 

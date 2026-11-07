@@ -175,6 +175,7 @@ App :: struct {
 	front:    ^Browser_Window,            // the one commands, remote calls and the tasks of the loop act on (the last used)
 	bare:     Browser_Window,             // active_window of an App with no window (the tests'), or between two
 	pass_first: bool,                     // the next frame of this pass of the loop is the first: it runs the tasks of the loop
+	rendering:  ^Tab,                     // the tab whose rendering update the frame runs (its animation frame callbacks, then its page phase): what it lays out, this frame paints
 	headless:   bool,                     // no window at all (`--headless`)
 	hidden:     bool,                     // windows that are made and never shown (--hidden)
 	frames_at_once: bool,                 // a program in this process drives the browser: a headless window's frames wait for nothing (control.odin)
@@ -1434,6 +1435,8 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	// are painted
 	if autoscroll_tick(app, current_tab(app)) { request_frames(app, 2) }   // page_autoscroll.odin: drives the scroller before smooth_tick samples it
 	if smooth_tick(app, current_tab(app)) { request_frames(app, 2) }   // smooth_scroll.odin
+	// from here to the end of the page phase the tab's styles and layout are this frame's: a script's reading lays out what this frame paints (js_layout_shell.odin)
+	app.rendering = current_tab(app)
 	// the frame's time (pacing.odin: its vblank) is the animation frame callbacks' timestamp and the CSS clock
 	if t := current_tab(app); t != nil && t.page != nil && page.page_visible(t.page) {
 		prof_begin(.Animation)
@@ -1445,6 +1448,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	}
 	fullscreen_shell_frame(app, app.active)   // a page's full screen ends with its tab being shown (fullscreen_shell.odin)
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
+	app.rendering = nil
 	events = shell_page_phase_end(app, events)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
 	platform.frame_gate_stage(gate, .Building)
 	shell_snapshots_frame(app)

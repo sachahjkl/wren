@@ -335,7 +335,9 @@ loading_bar :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect) {
 	draw.push_clip(dc, r)
 	draw.rect(dc, {{x, r.min.y}, {x + seg, r.min.y + h}}, accent)
 	draw.pop_clip(dc)
-	request_frames(app, 2)
+	// it moves at the rate of the tabs' loading indicators (favicon.odin spinner_wake, browser.tabs.spinner_fps), not at every refresh:
+	// a frame per refresh made the chrome and its present again and again on the window thread the document's first paint waits for
+	spinner_wake(app)
 }
 
 // The tab is loading a document that has not painted yet.
