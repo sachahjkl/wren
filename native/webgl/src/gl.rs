@@ -707,8 +707,8 @@ fn base_limits(adapter: &wgpu::Adapter) -> wgpu::Limits {
 }
 
 impl Ctx {
-    /// A context with the device it was given. Err: nothing could be made of it (the page's getContext gives null).
-    pub fn new(device: wgpu::Device, queue: wgpu::Queue, adapter: &wgpu::Adapter, attrs: Attrs, flags: Arc<Flags>) -> Result<Ctx, String> {
+    /// A context with the device it was given and the device's own shaders. Err: nothing could be made of it (the page's getContext gives null).
+    pub fn new(device: wgpu::Device, queue: wgpu::Queue, adapter: &wgpu::Adapter, utility: crate::draw::Utility, attrs: Attrs, flags: Arc<Flags>) -> Result<Ctx, String> {
         let lim = base_limits(adapter);
         let max_dim = attrs.max_dimension.max(1);
         let features = device.features();
@@ -815,7 +815,6 @@ impl Ctx {
         };
         let mut vaos = HashMap::new();
         vaos.insert(0, Vao::default());
-        let utility = crate::draw::Utility::new(&device)?;
         let mut ctx = Ctx {
             device,
             queue,

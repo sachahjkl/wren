@@ -636,6 +636,28 @@ fn it_goes_when_nobody_needs_it_and_comes_back_when_somebody_does() {
     drop(p);
 }
 
+#[test]
+fn started_ahead_a_page_finds_its_process_and_device_ready() {
+    let gpu = private_gpu();
+    let attrs = test_attrs(8, 8);
+    gpu.start_ahead(&attrs);
+    wait_for(LONG_ENOUGH, "the process started ahead", || gpu.current().is_some());
+    gpu.start_ahead(&attrs);
+    let Some(a) = context_or_skip(gpu, attrs) else { return };
+    assert_eq!(gpu.starts(), 1, "the context took the process started ahead, a second start ahead started nothing");
+    assert!(a.draws_and_reads(), "the device made ahead draws");
+    let b = make(gpu, attrs).unwrap();
+    b.clear(0.0, 0.0, 1.0);
+    assert_eq!(b.pixel(), Some([0, 0, 255, 255]), "and the next context has a device of its own");
+    assert!(a.draws_and_reads());
+    // a process that ended badly is started again by a page that asks, never ahead
+    let p = gpu.current().unwrap();
+    p.kill_for_test();
+    wait_for(LONG_ENOUGH, "the end of the process", || gpu.current().is_none());
+    gpu.start_ahead(&attrs);
+    assert!(gpu.current().is_none() && gpu.starts() == 1, "nothing started ahead after a crash");
+}
+
 /// The other half of the next test: a parent that starts a process, says its id in a file and waits to be killed.
 #[test]
 fn parent_for_the_death_test() {
