@@ -5,7 +5,8 @@
 use crate::child::Out;
 use crate::gl::{self, Attrs, Ctx, Flags, FrameRead, Reply};
 use crate::ipc::{self, sys, FrameView, ToParent, Words};
-use crate::{WgAttrs, WgInfo, BACKEND_DX12, BACKEND_VULKAN};
+use crate::spare::Spare;
+use crate::{WgAttrs, WgInfo, BACKEND_DX12, BACKEND_VULKAN, THREAD_STACK_BYTES};
 use std::collections::VecDeque;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -59,11 +60,78 @@ fn software_turn(software: bool) -> Option<std::sync::MutexGuard<'static, ()>> {
     }
 }
 
-struct Init {
-    result: Result<(WgInfo, wgpu::Device, wgpu::Queue, wgpu::Adapter), String>,
+/// What decides which adapter a device comes from (webgl.force_software, webgl.backend): a device made for one fits any context
+/// asked with it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Key {
+    force_software: bool,
+    backend: i32,
 }
 
-fn make_device(a: &WgAttrs, take_turn: bool) -> Init {
+impl Key {
+    pub fn of(a: &WgAttrs) -> Key {
+        Key { force_software: a.force_software != 0, backend: a.backend }
+    }
+}
+
+/// A device and what a context makes of it before its attributes count: made ahead (SPARE) or when a context asks.
+pub struct Made {
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    adapter: wgpu::Adapter,
+    utility: crate::draw::Utility,
+    features: wgpu::Features,
+    software: bool,
+    msaa_ok: bool,
+}
+
+/// The next context's device. Made after the process's start when the browser asks (ToChild::Prepare), and after each context
+/// took one: a page's getContext then waits for an answer, not for a driver.
+static SPARE: Spare<Key, Result<Made, String>> = Spare::new();
+
+/// Makes the next context's device on a thread of its own, unless one is made or being made.
+pub fn prepare(key: Key) {
+    if !SPARE.begin(key) {
+        return;
+    }
+    let made = std::thread::Builder::new().name("wren webgl spare".to_string()).stack_size(THREAD_STACK_BYTES).spawn(move || {
+        SPARE.fill(catch_unwind(|| make_device(key, true)).unwrap_or_else(|_| Err("the device panicked while starting".to_string())));
+    });
+    if made.is_err() {
+        SPARE.cancel();
+    }
+}
+
+/// The spare when it fits (waiting for it if it is being made), else one made now. (A spare that failed is made again: what failed
+/// then may not now.)
+fn take_or_make(key: Key) -> Result<Made, String> {
+    match SPARE.take(key) {
+        Some(Ok(m)) => Ok(m),
+        _ => catch_unwind(|| make_device(key, true)).unwrap_or_else(|_| Err("the device panicked while starting".to_string())),
+    }
+}
+
+/// What the page learns of a device for these attributes, or why it gets none.
+fn info_of(m: &Made, a: &WgAttrs) -> Result<WgInfo, String> {
+    if m.software && a.allow_software == 0 {
+        return Err("software rendering is switched off (webgl.allow_software)".to_string());
+    }
+    if m.software && a.fail_if_major_performance_caveat != 0 {
+        return Err("failIfMajorPerformanceCaveat: the only adapter is a software one".to_string());
+    }
+    Ok(WgInfo {
+        software: m.software as i32,
+        has_s3tc: m.features.contains(wgpu::Features::TEXTURE_COMPRESSION_BC) as i32,
+        has_float_linear: m.features.contains(wgpu::Features::FLOAT32_FILTERABLE) as i32,
+        has_float_blend: m.features.contains(wgpu::Features::FLOAT32_BLENDABLE) as i32,
+        max_samples: if m.msaa_ok { gl::ANTIALIAS_SAMPLES } else { 1 },
+        width: a.width,
+        height: a.height,
+        antialias: (a.antialias != 0 && m.msaa_ok) as i32,
+    })
+}
+
+fn make_device(key: Key, take_turn: bool) -> Result<Made, String> {
     let _turn = software_turn(take_turn);
     let request = |backends: wgpu::Backends, fallback: bool| -> Option<wgpu::Adapter> {
         let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
@@ -76,11 +144,11 @@ fn make_device(a: &WgAttrs, take_turn: bool) -> Init {
     // A GPU: on Windows through Vulkan first (FXC, the compiler behind Direct3D 12's path, takes seconds on the large shaders
     // of real pages, for every state a shader is drawn with), if its adapter is a real one. Otherwise Direct3D 12, then software.
     let mut adapter = None;
-    if a.force_software == 0 {
-        if cfg!(windows) && a.backend != BACKEND_DX12 {
+    if !key.force_software {
+        if cfg!(windows) && key.backend != BACKEND_DX12 {
             adapter = request(wgpu::Backends::VULKAN, false).filter(|x| x.get_info().device_type != wgpu::DeviceType::Cpu);
         }
-        if adapter.is_none() && (cfg!(windows) && a.backend != BACKEND_VULKAN) {
+        if adapter.is_none() && (cfg!(windows) && key.backend != BACKEND_VULKAN) {
             adapter = request(wgpu::Backends::DX12, false);
         }
         if adapter.is_none() && !cfg!(windows) {
@@ -91,16 +159,9 @@ fn make_device(a: &WgAttrs, take_turn: bool) -> Init {
         adapter = request(if cfg!(windows) { wgpu::Backends::DX12 } else { wgpu::Backends::VULKAN }, true);
     }
     let Some(adapter) = adapter else {
-        return Init { result: Err("no graphics adapter (Direct3D 12 or Vulkan)".to_string()) };
+        return Err("no graphics adapter (Direct3D 12 or Vulkan)".to_string());
     };
-    let info = adapter.get_info();
-    let software = info.device_type == wgpu::DeviceType::Cpu;
-    if software && a.allow_software == 0 {
-        return Init { result: Err("software rendering is switched off (webgl.allow_software)".to_string()) };
-    }
-    if software && a.fail_if_major_performance_caveat != 0 {
-        return Init { result: Err("failIfMajorPerformanceCaveat: the only adapter is a software one".to_string()) };
-    }
+    let software = adapter.get_info().device_type == wgpu::DeviceType::Cpu;
     let wanted = wgpu::Features::TEXTURE_COMPRESSION_BC | wgpu::Features::FLOAT32_FILTERABLE | wgpu::Features::FLOAT32_BLENDABLE | wgpu::Features::RG11B10UFLOAT_RENDERABLE | wgpu::Features::DEPTH32FLOAT_STENCIL8 | wgpu::Features::ADDRESS_MODE_CLAMP_TO_ZERO | wgpu::Features::VERTEX_WRITABLE_STORAGE;
     let features = adapter.features() & wanted;
     let mut limits = adapter.limits();
@@ -116,20 +177,11 @@ fn make_device(a: &WgAttrs, take_turn: bool) -> Init {
     }));
     let (device, queue) = match device {
         Ok(x) => x,
-        Err(e) => return Init { result: Err(format!("the device could not be made: {e}")) },
+        Err(e) => return Err(format!("the device could not be made: {e}")),
     };
     let msaa_ok = adapter.get_texture_format_features(wgpu::TextureFormat::Rgba8Unorm).flags.contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X4);
-    let w = WgInfo {
-        software: software as i32,
-        has_s3tc: features.contains(wgpu::Features::TEXTURE_COMPRESSION_BC) as i32,
-        has_float_linear: features.contains(wgpu::Features::FLOAT32_FILTERABLE) as i32,
-        has_float_blend: features.contains(wgpu::Features::FLOAT32_BLENDABLE) as i32,
-        max_samples: if msaa_ok { gl::ANTIALIAS_SAMPLES } else { 1 },
-        width: a.width,
-        height: a.height,
-        antialias: (a.antialias != 0 && msaa_ok) as i32,
-    };
-    Init { result: Ok((w, device, queue, adapter)) }
+    let utility = crate::draw::Utility::new(&device)?;
+    Ok(Made { device, queue, adapter, utility, features, software, msaa_ok })
 }
 
 fn attrs_of(a: &WgAttrs) -> Attrs {
@@ -155,7 +207,8 @@ thread_local! {
 }
 
 /// Makes a Ctx; the device's errors now go to its flags.
-fn make_ctx(device: wgpu::Device, queue: wgpu::Queue, adapter: &wgpu::Adapter, attrs: Attrs, flags: Arc<Flags>) -> Result<Ctx, String> {
+fn make_ctx(made: Made, attrs: Attrs, flags: Arc<Flags>) -> Result<Ctx, String> {
+    let Made { device, queue, adapter, utility, .. } = made;
     let f = flags.clone();
     device.on_uncaptured_error(Arc::new(move |e: wgpu::Error| {
         match e {
@@ -172,19 +225,19 @@ fn make_ctx(device: wgpu::Device, queue: wgpu::Queue, adapter: &wgpu::Adapter, a
     device.set_device_lost_callback(move |_, _| {
         f.device_lost.store(true, Ordering::SeqCst);
     });
-    Ctx::new(device, queue, adapter, attrs, flags)
+    Ctx::new(device, queue, &adapter, utility, attrs, flags)
 }
 
 /// A context's thread, from its first instruction: the device, the answer to Create, then its messages.
 pub fn run(id: u32, qid: u64, a: WgAttrs, rx: Receiver<Msg>, flags: Arc<Flags>, out: &'static Out) {
-    let init = catch_unwind(AssertUnwindSafe(|| make_device(&a, true))).map(|i| i.result).unwrap_or_else(|_| Err("the device panicked while starting".to_string()));
-    let (device, queue, adapter, software) = match init {
-        Ok((w, device, queue, adapter)) => {
+    let key = Key::of(&a);
+    let init = take_or_make(key).and_then(|m| info_of(&m, &a).map(|w| (w, m)));
+    let (made, software) = match init {
+        Ok((w, made)) => {
             let mut body = Words::default();
             body.u32(w.software as u32).u32(w.has_s3tc as u32).u32(w.has_float_linear as u32).u32(w.has_float_blend as u32).u32(w.max_samples).u32(w.width).u32(w.height).u32(w.antialias as u32);
-            let software = w.software != 0;
             out.send(ToParent::Created, id, qid, &[&body.0]);
-            (device, queue, adapter, software)
+            (made, w.software != 0)
         }
         Err(e) => {
             let n = e.len().min(ipc::MAX_ERROR_BYTES as usize);
@@ -196,7 +249,7 @@ pub fn run(id: u32, qid: u64, a: WgAttrs, rx: Receiver<Msg>, flags: Arc<Flags>, 
     let mut t = Thread { id, attrs: attrs_of(&a), wg: a, out, flags, ctx: None, target: None, reading: VecDeque::new(), lost: false, software };
     {
         let _turn = software_turn(software);
-        match make_ctx(device, queue, &adapter, t.attrs, t.flags.clone()) {
+        match make_ctx(made, t.attrs, t.flags.clone()) {
             Ok(c) => t.ctx = Some(c),
             Err(e) => {
                 t.note(format!("WebGL: {e}"));
@@ -204,7 +257,11 @@ pub fn run(id: u32, qid: u64, a: WgAttrs, rx: Receiver<Msg>, flags: Arc<Flags>, 
             }
         }
     }
-    drop(adapter);
+    // The next one, after this context is made rather than beside it. Not on a software adapter: devices are made there in turns, a
+    // whole device at a time, and this context's first messages would wait for one nobody may ask for.
+    if !software {
+        prepare(key);
+    }
     t.main(rx);
     out.send(ToParent::Stopped, id, 0, &[]);
 }
@@ -373,12 +430,10 @@ impl Thread {
             Msg::Restore(qid) => {
                 let mut ok = self.ctx.is_some();
                 if self.ctx.is_none() {
-                    let mut a = self.wg;
-                    a.fail_if_major_performance_caveat = 0;
-                    a.allow_software = 1;
-                    let init = make_device(&a, false); // (this message has the turn, or does not need it)
-                    if let Ok((_, device, queue, adapter2)) = init.result {
-                        if let Ok(c) = make_ctx(device, queue, &adapter2, self.attrs, self.flags.clone()) {
+                    // (any adapter: a page that asked for its context back takes what there is; this message has the turn, or does
+                    // not need it, so it does not wait for a spare being made, which may need the turn)
+                    if let Ok(made) = make_device(Key::of(&self.wg), false) {
+                        if let Ok(c) = make_ctx(made, self.attrs, self.flags.clone()) {
                             self.ctx = Some(c);
                             self.lost = false;
                             ok = true;

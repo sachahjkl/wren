@@ -77,6 +77,22 @@ adapter_probe :: proc(s: Settings) -> (Adapter_Verdict, string) {
 	return .Unknown, said
 }
 
+// The size a context made ahead is said to have: its device fits a context of any size.
+@(private = "file") AHEAD_SIZE :: 1
+
+// A page showed its first content: the GPU process and the device of the next context are made now, on threads of their own, so that a
+// getContext waits for neither (each costs a page's thread about a hundred milliseconds or more). Nothing when WebGL or this is
+// off, when the process runs, or when it ended badly lately; never a wait.
+start_ahead :: proc(s: Settings) {
+	if !s.enabled || !s.gpu_start_ahead { return }
+	attrs := Attrs{
+		width = AHEAD_SIZE, height = AHEAD_SIZE, max_dimension = AHEAD_SIZE,
+		allow_software = s.allow_software ? 1 : 0, force_software = s.force_software ? 1 : 0, backend = s.backend, max_bytes = s.max_bytes, wait_ms = s.wait_ms,
+		hang_ms = s.gpu_hang_ms, max_restarts = s.gpu_max_restarts, restart_window_ms = s.gpu_restart_window_ms, idle_exit_ms = s.gpu_idle_exit_ms, keep_rights = s.gpu_keep_rights ? 1 : 0,
+	}
+	wg_start_ahead(&attrs)
+}
+
 Handle :: distinct rawptr
 
 // What wg_take_frame says.
@@ -113,6 +129,7 @@ Info :: struct {
 @(default_calling_convention = "c")
 foreign wren_native {
 	wg_create :: proc(attrs: ^Attrs, info: ^Info, err: [^]u8, err_cap: uint, err_len: ^uint) -> Handle ---
+	wg_start_ahead :: proc(attrs: ^Attrs) ---
 	wg_destroy :: proc(h: Handle) ---
 	wg_submit :: proc(h: Handle, a: [^]u8, an: uint, b: [^]u8, bn: uint) ---
 	wg_query :: proc(h: Handle, req: [^]u8, n: uint, out: [^]u8, cap: uint) -> i64 ---
@@ -142,6 +159,7 @@ Settings :: struct {
 	wait_ms:        u32,
 	gpu_hang_ms, gpu_max_restarts, gpu_restart_window_ms, gpu_idle_exit_ms: u32,
 	gpu_keep_rights: bool,
+	gpu_start_ahead: bool,
 }
 
 WEBGL_PREFS := [?]config.Def{
@@ -169,6 +187,8 @@ WEBGL_PREFS := [?]config.Def{
 		description = "The time webgl.gpu_max_restarts counts within."},
 	{name = "webgl.gpu_idle_exit_s", kind = .Int, default = {i = DEFAULT_GPU_IDLE_EXIT_S}, bounded = true, min = 0, max = 86_400, unit = "s",
 		description = "How long the GPU process stays with no WebGL context left: a page that comes back soon does not pay for its start, the memory of the drivers is given back after. 0: it stays."},
+	{name = "webgl.gpu_start_ahead", kind = .Bool, default = {b = true},
+		description = "Start the GPU process, and the device of the next WebGL context, once a page has shown its first content: a page's first getContext then waits for neither (about a quarter of a second of its thread). Off: the first getContext of the browser starts them, and a browser that sees no WebGL starts no process."},
 	{name = "webgl.gpu_keep_rights", kind = .Bool, default = {b = false},
 		description = "The GPU process keeps the rights it would give up (Windows: Low integrity, privileges, some DLL loading; Linux: new privileges). For a driver that needs them; less protection against a compromised process."},
 }
@@ -195,5 +215,6 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		gpu_restart_window_ms = u32(config.int_of(p, "webgl.gpu_restart_window_s")) * MS_PER_S,
 		gpu_idle_exit_ms = u32(config.int_of(p, "webgl.gpu_idle_exit_s")) * MS_PER_S,
 		gpu_keep_rights = config.bool_of(p, "webgl.gpu_keep_rights"),
+		gpu_start_ahead = config.bool_of(p, "webgl.gpu_start_ahead"),
 	}
 }

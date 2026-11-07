@@ -1,8 +1,9 @@
 //! WebGL's device side, behind a C ABI for the browser (src/page/bindings_webgl.odin). A context's device is in the GPU process,
 //! the program started again with a role argument, on a thread of its own there (host.rs): a crash in a driver or a hung shader
 //! costs contexts, never the browser. This side (parent.rs) sends command buffers through shared memory and waits only for what a
-//! page must wait for (getError, readPixels, getShaderParameter), always with a deadline. Nothing here starts before the first
-//! getContext of the browser.
+//! page must wait for (getError, readPixels, getShaderParameter), always with a deadline. The process starts when a page has shown
+//! its first content (`wg_start_ahead`, webgl.gpu_start_ahead) or at the first getContext of the browser, and holds the next context's
+//! device made ahead (spare.rs): a page's getContext waits for an answer, not for a process and a driver.
 //!
 //! How a canvas gets to the screen: `wg_present` asks for the drawing buffer; the context's thread copies it to a staging buffer
 //! and, once mapped, the pixels (premultiplied, top row first) go into the shared section of that canvas, for `wg_take_frame`,
@@ -19,6 +20,7 @@ pub mod ipc;
 pub mod ops;
 pub mod parent;
 pub mod query;
+pub mod spare;
 pub mod translate;
 
 use parent::{Gpu, Handle};
@@ -148,6 +150,14 @@ pub(crate) unsafe fn create_on(gpu: &'static Gpu, attrs: *const WgAttrs, info: *
             std::ptr::null_mut()
         }
     }
+}
+
+/// The GPU process started, and a device for a context with these attributes made in it, before any page asks: it returns at once,
+/// whatever happens (webgl.gpu_start_ahead).
+#[no_mangle]
+pub unsafe extern "C" fn wg_start_ahead(attrs: *const WgAttrs) {
+    let Some(a) = attrs.as_ref().copied() else { return };
+    guard((), || BROWSER_GPU.start_ahead(&a));
 }
 
 /// Ends a context: its thread frees everything, in its own time.

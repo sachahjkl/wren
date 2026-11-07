@@ -7,6 +7,7 @@ import "wb:css"
 import "wb:dom"
 import "wb:host"
 import "wb:style"
+import "wb:webgl"
 
 // What the first paint of a document waits for (HTML "render-blocking"; CSS Fonts 4 font-display), so that it is not
 // shown unstyled or with the wrong fonts and then re-shown:
@@ -64,7 +65,12 @@ first_contentful_done :: proc(p: ^Page) {
 	p.render.contentful = true
 	timeline_contentful(p)
 	if p.scripts != nil { p.scripts.timing.contentful_ms = now_ms(p) }
-	if frame_navigable_of(p) == nil { base.span_mark("first-contentful-paint") }
+	if frame_navigable_of(p) == nil {
+		base.span_mark("first-contentful-paint")
+		// A getContext of this page then waits for neither the GPU process nor a device (webgl.gpu_start_ahead). Not sooner: started
+		// at the navigation, the process and its driver came while the first frame was made, and it came later.
+		webgl.start_ahead(p.settings.webgl)
+	}
 }
 
 // Whether `owner` (<link> or <style>) may block the first paint: a parser's element before that paint, or any element
