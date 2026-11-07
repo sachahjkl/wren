@@ -1308,6 +1308,24 @@ jsload_a_paint_turn_ends_at_its_deadline_once :: proc(t: ^testing.T) {
 	close_page(pr, min_checks = 1)
 }
 
+// A long inline script whose compile is not done leaves the loop running: what is ready runs, the parser waits, the order of the document stands.
+@(test)
+jsload_a_long_inline_compile_holds_the_parser_and_not_the_loop :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
+	code := concat(`var filler = "`, strings.repeat("x", page.COMPILE_AHEAD_HOLD_BYTES, context.temp_allocator), `"; log("long inline")`)
+	page.compile_hold(true)
+	pr := load(t, "held", concat(`<!doctype html>`, PRELUDE, `<script>setTimeout(function () { log("a timer") }, 0)</script><script>`, code, `</script><script>log("after")</script>`))
+	check(pr, wait_note(pr, "a timer"), "the loop runs while the compile is under way")
+	check(pr, !noted(pr, "long inline") && !noted(pr, "after"), "the parser waits for it")
+	page.compile_hold(false)
+	check(pr, wait_note(pr, "after"), "it ends, and the parser goes on")
+	check(pr, in_order(pr, "a timer", "long inline", "after"), "in the document's order")
+	close_page(pr, min_checks = 1)
+}
+
 // What a load's end runs has the turn too: a <head> with a deferred script gives the parser no turn, and it arrives once the body is there.
 @(test)
 jsload_a_deferred_script_goes_behind_the_first_paint :: proc(t: ^testing.T) {
