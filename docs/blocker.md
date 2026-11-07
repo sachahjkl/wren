@@ -13,7 +13,7 @@ and its frame or image leaves no empty box. Measurements are at the end.
 ```
  lists (text) --compile--> index (one binary blob) --load--> adblock.Engine --match--> Verdict
    downloaded in the background        cached in the profile        read-only, no allocation per request
-   (conditional requests, checked)     (loaded in ~13 ms)
+   (conditional requests, checked)     (mapped off the window thread at start, 17-34 ms)
                                                     ^
  fetch.Loader --Interceptor--> blocker (counts, journal, dynamic rules, site switches) ----+
  page --embedder hooks--> element hiding before the first paint, procedural selectors, scriptlets
@@ -51,8 +51,8 @@ a filter remembers (list, offset), and the journal reads the line from the `.src
 - Lists: `CATALOG` (uBlock filters family, EasyList, EasyPrivacy, AdGuard, Peter Lowe's list, URLhaus, regional and
   annoyance lists), custom lists by URL. A round downloads what is due (`blocker.update.interval_hours`), one list at a
   time, with `If-None-Match` / `If-Modified-Since`; a body that is not a filter list is refused and the previous copy stays;
-  compilation runs on a thread named `wren-blocker-compile` at below-normal priority and the loop thread swaps the
-  engine (documents keep the engine their cosmetic result came from until they end).
+  compilation runs on a thread named `wren-blocker-compile` at below-normal priority (the job at start-up, which the network waits for, at
+  the browser's) and the loop thread swaps the engine (documents keep the engine their cosmetic result came from until they end).
 - HTML filters (`html_filter.odin`): the `##^` filters of the visited host are applied to the body of its document (and
   frame) response, on the loader, before the parser reads it (`rewrite_filter`, a `fetch.Body_Filter`). The whole HTML body
   is held (up to `blocker.html_filters.max_body`, past which it streams through untouched), scanned with a tolerant byte
@@ -115,11 +115,22 @@ read by `json-prune-*-response` and `xml-prune`.
 
 ### The first pages of a session
 
-While the real filter index is not there (no valid cache in the profile: first start, a format change, lists changed on disk), only the small base
-list is in force and the lists are compiled on a thread. A request let through meanwhile would escape every rule of the lists: the first page of
-the session would carry its ad data (a YouTube watch page: `ytInitialPlayerResponse.adPlacements` intact). So the loader parks the requests to the
-network (`fetch.hold_requests`) from the start until the compile job is done, for at most 20 s (`BOOT_HOLD_MS`), then starts them in order through the
-real rules. With a valid cache the index is loaded in a few milliseconds at start and nothing is held. `about:`, `data:` and `file:` are never held.
+At start the window thread compiles only the base list and the user's filters (well under a millisecond) and starts a job on a thread of its own
+(`engine_build.odin`, `Job_Kind.Boot`). A request let through before the index of the lists is in force would escape every rule of the lists: the
+first page of the session would carry its ad data (a YouTube watch page: `ytInitialPlayerResponse.adPlacements` intact). So the loader parks the
+requests to the network (`fetch.hold_requests`) from the start until the job is done, for at most 20 s (`BOOT_HOLD_MS`), then starts them in order
+through the real rules. `about:`, `data:` and `file:` are never held, and nothing of the window thread waits: it builds the window and paints meanwhile.
+
+- **The index the profile keeps** (`cache/engine-<generation>.bin`, about 36 MB for the ten default lists) is mapped read-only (`base.file_map`):
+  nothing is copied, its pages come from the file and are the system's to drop. Checked by its checksum and its tables of hashes built, it is in force
+  in 17 to 34 ms, before the first page has asked for anything (the window's first frame comes later than that).
+- **Its key** (`cache/engine.key`): the generation, what the index was made from (index format, base list, the user's filters, the size and a 64-bit
+  hash of each list's text), and the size and time of each list's file. The times are the quick check; a file with another time (a profile copied,
+  restored, synced) is read and hashed again (the job then takes 34 to 40 ms for the ten default lists, on its own thread), and the index stays when the text is the same. The key is
+  written by the job that compiled the index.
+- **Compiled again** only when the text changed (a list edited on disk), the index format changed, or there is none yet (first start): then the job
+  compiles (0.6 to 0.8 s for the ten default lists) and the network waits for it, as above. A list updated by the browser is compiled while the
+  previous engine stays in force: nothing waits.
 
 Stand-ins for `$redirect`: `noop.js`, `noop.css`, `noop.html` / `noopframe`, `noop.txt`, `empty`, `1x1.gif`, `2x2.png`,
 `3x2.png`, `32x32.png` (generated), `noopmp3-0.1s`, `noopmp4-1s`, `google-analytics.com/ga.js`, `analytics.js`,

@@ -64,7 +64,7 @@ and its frame or image leaves no empty box. Measurements are at the end.</p>
 <h2 id="architecture"><a class="anchor" href="#architecture" aria-hidden="true">#</a>Architecture</h2>
 <div class="code"><pre><code> lists (text) --compile--&gt; index (one binary blob) --load--&gt; adblock.Engine --match--&gt; Verdict
    downloaded in the background        cached in the profile        read-only, no allocation per request
-   (conditional requests, checked)     (loaded in ~13 ms)
+   (conditional requests, checked)     (mapped off the window thread at start, 17-34 ms)
                                                     ^
  fetch.Loader --Interceptor--&gt; blocker (counts, journal, dynamic rules, site switches) ----+
  page --embedder hooks--&gt; element hiding before the first paint, procedural selectors, scriptlets</code></pre></div>
@@ -100,8 +100,8 @@ fonts); then the engine.</li>
 <li>Lists: <code>CATALOG</code> (uBlock filters family, EasyList, EasyPrivacy, AdGuard, Peter Lowe's list, URLhaus, regional and
 annoyance lists), custom lists by URL. A round downloads what is due (<code>blocker.update.interval_hours</code>), one list at a
 time, with <code>If-None-Match</code> / <code>If-Modified-Since</code>; a body that is not a filter list is refused and the previous copy stays;
-compilation runs on a thread named <code>wren-blocker-compile</code> at below-normal priority and the loop thread swaps the
-engine (documents keep the engine their cosmetic result came from until they end).</li>
+compilation runs on a thread named <code>wren-blocker-compile</code> at below-normal priority (the job at start-up, which the network waits for, at
+the browser's) and the loop thread swaps the engine (documents keep the engine their cosmetic result came from until they end).</li>
 <li>HTML filters (<code>html_filter.odin</code>): the <code>##^</code> filters of the visited host are applied to the body of its document (and
 frame) response, on the loader, before the parser reads it (<code>rewrite_filter</code>, a <code>fetch.Body_Filter</code>). The whole HTML body
 is held (up to <code>blocker.html_filters.max_body</code>, past which it streams through untouched), scanned with a tolerant byte
@@ -157,11 +157,23 @@ inline ad script or a tracker iframe never exists (not hidden — gone). The sel
 (text or <code>/regex/</code>, colons and spaces allowed) that is the URL's. <code>trusted-rpfr</code> / <code>trusted-rpxhr</code> are aliases. The <code>url:</code> form is also
 read by <code>json-prune-*-response</code> and <code>xml-prune</code>.</p>
 <h3 id="the-first-pages-of-a-session"><a class="anchor" href="#the-first-pages-of-a-session" aria-hidden="true">#</a>The first pages of a session</h3>
-<p>While the real filter index is not there (no valid cache in the profile: first start, a format change, lists changed on disk), only the small base
-list is in force and the lists are compiled on a thread. A request let through meanwhile would escape every rule of the lists: the first page of
-the session would carry its ad data (a YouTube watch page: <code>ytInitialPlayerResponse.adPlacements</code> intact). So the loader parks the requests to the
-network (<code>fetch.hold_requests</code>) from the start until the compile job is done, for at most 20 s (<code>BOOT_HOLD_MS</code>), then starts them in order through the
-real rules. With a valid cache the index is loaded in a few milliseconds at start and nothing is held. <code>about:</code>, <code>data:</code> and <code>file:</code> are never held.</p>
+<p>At start the window thread compiles only the base list and the user's filters (well under a millisecond) and starts a job on a thread of its own
+(<code>engine_build.odin</code>, <code>Job_Kind.Boot</code>). A request let through before the index of the lists is in force would escape every rule of the lists: the
+first page of the session would carry its ad data (a YouTube watch page: <code>ytInitialPlayerResponse.adPlacements</code> intact). So the loader parks the
+requests to the network (<code>fetch.hold_requests</code>) from the start until the job is done, for at most 20 s (<code>BOOT_HOLD_MS</code>), then starts them in order
+through the real rules. <code>about:</code>, <code>data:</code> and <code>file:</code> are never held, and nothing of the window thread waits: it builds the window and paints meanwhile.</p>
+<ul>
+<li><strong>The index the profile keeps</strong> (<code>cache/engine-&lt;generation&gt;.bin</code>, about 36 MB for the ten default lists) is mapped read-only (<code>base.file_map</code>):
+nothing is copied, its pages come from the file and are the system's to drop. Checked by its checksum and its tables of hashes built, it is in force
+in 17 to 34 ms, before the first page has asked for anything (the window's first frame comes later than that).</li>
+<li><strong>Its key</strong> (<code>cache/engine.key</code>): the generation, what the index was made from (index format, base list, the user's filters, the size and a 64-bit
+hash of each list's text), and the size and time of each list's file. The times are the quick check; a file with another time (a profile copied,
+restored, synced) is read and hashed again (the job then takes 34 to 40 ms for the ten default lists, on its own thread), and the index stays when the text is the same. The key is
+written by the job that compiled the index.</li>
+<li><strong>Compiled again</strong> only when the text changed (a list edited on disk), the index format changed, or there is none yet (first start): then the job
+compiles (0.6 to 0.8 s for the ten default lists) and the network waits for it, as above. A list updated by the browser is compiled while the
+previous engine stays in force: nothing waits.</li>
+</ul>
 <p>Stand-ins for <code>$redirect</code>: <code>noop.js</code>, <code>noop.css</code>, <code>noop.html</code> / <code>noopframe</code>, <code>noop.txt</code>, <code>empty</code>, <code>1x1.gif</code>, <code>2x2.png</code>,
 <code>3x2.png</code>, <code>32x32.png</code> (generated), <code>noopmp3-0.1s</code>, <code>noopmp4-1s</code>, <code>google-analytics.com/ga.js</code>, <code>analytics.js</code>,
 <code>inpage_linkid.js</code>, <code>googletagmanager.com/gtm.js</code>, <code>googletagservices.com/gpt.js</code>, <code>googlesyndication.com/adsbygoogle.js</code>,
