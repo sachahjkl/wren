@@ -294,7 +294,7 @@ build\wrentool sweep -List tools\site_compare_list.txt,tools\site_compare_list2.
 
 ## The replay bench
 
-`wrentool waterfall` loads public sites: a request changes with the ads, a run with the network, and two arms of one binary differ by 5 %. `wrentool replay` loads what a site served once, so that a change of 1 to 5 % can be told from nothing ([round 51](performance.md#round-51-a-bench-that-can-prove-1)).
+`wrentool waterfall` loads public sites: a request changes with the ads, a run with the network, and two arms of one binary differ by 5 %. `wrentool replay` loads what a site served once, so that a change of 1 to 5 % can be told from nothing ([round 51](performance.md#round-56-a-replay-bench-and-what-it-can-prove)).
 
 ```
 build\wrentool desktop build\wrentool.exe replay record -Urls https://www.cnn.com/,https://www.npr.org/
@@ -326,7 +326,7 @@ What a load says, in `<Out>` (one line a load) and `<Out>.summary.txt`; the rule
 | CPU, `Guest` to the load event | `cpu_load`, `guest` | The window thread from the first request to the load event, and its time in the engine. |
 | what was asked | `requests`, `failed`, `exact`, `near`, `unknown` | A load that left its recording shows here. |
 
-**What counts as a gain** (`measure.verdict`): visually ready or settled comes sooner, with the ranges of the two arms apart, and CPU to settled does not get worse. A mark that comes sooner with more CPU says `Moved`: work put past an event is no gain. The noise floor of each metric is in [round 51](performance.md#round-51-a-bench-that-can-prove-1): below it, a series of 7 says nothing.
+**What counts as a gain** (`measure.verdict`): visually ready or settled comes sooner, with the ranges of the two arms apart, and CPU to settled does not get worse. A mark that comes sooner with more CPU says `Moved`: work put past an event is no gain. The noise floor of each metric is in [round 51](performance.md#round-56-a-replay-bench-and-what-it-can-prove): below it, a series of 7 says nothing.
 
 No tool holds a lock, and agents share this machine: a load starts when at most a fifth of the processors are at work, and one during which the rest of the machine took more than 35 % of it (the background of a shared machine, the browser's own helper processes) is said, dropped and made again (`others`: their share). `-Loaded` measures all the same, for a machine that does not go quiet; its floor says so. `wrentool desktop` ends a command after 30 minutes: a long series goes site by site.
 

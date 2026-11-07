@@ -3631,7 +3631,7 @@ Read plainly. **`Gc` -36 % on npr.org and -28 % on cnn.com, ranges apart; -34 % 
 
 **Tests.** `hotcheck.js` (passes in Node): a function's `prototype` reached every way (read, `new`, `instanceof`, a descriptor, `defineProperty`, `Reflect.set`, an assignment, `delete`, `freeze`, a dictionary shape, keys in order before and after keys of its own, a generator's eager one); slots, closure cells, arguments and match values past what their cell holds; destructuring, map iterators kept open, for-in. `cost.js`: three new cases, and the limits of the closures and of `new Promise` brought down to a tenth over the round. Under `-define:JSRT_GC_STRESS=8192 -define:JSRT_GC_POISON=true`: `hotcheck.js`, `jitcheck.js` (also `verify -jit -jit-threshold 1`), `objectspread.js`, `realworld.js`, `recursion.js` pass. test262 on the native judge, all of it: 43 233 of 43 267, the same 34 failures as before.
 
-## Round 51: a bench that can prove 1 %
+## Round 56: a replay bench, and what it can prove
 
 Two arms of one binary differed by 180 ms on cnn.com in `wrentool waterfall` (round 48): a public site changes its requests with its ads and a run changes with the network, so a gain of 1 to 5 % could not be told from nothing. This round builds the bench that can, and uses it for three measures. No engine optimization; the 32-byte `Value` of measure 3 was a temporary patch, gone.
 
