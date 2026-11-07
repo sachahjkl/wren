@@ -64,6 +64,7 @@ first_contentful_done :: proc(p: ^Page) {
 	p.render.contentful = true
 	timeline_contentful(p)
 	if p.scripts != nil { p.scripts.timing.contentful_ms = now_ms(p) }
+	if frame_navigable_of(p) == nil { base.span_mark("first-contentful-paint") }
 }
 
 // Whether `owner` (<link> or <style>) may block the first paint: a parser's element before that paint, or any element

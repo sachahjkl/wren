@@ -500,6 +500,8 @@ invoke_listener :: proc(user: rawptr, l: dom.Listener, event: base.Handle) -> bo
 	if inst == nil { return true }   // that module is gone: its listener has nothing to call
 	argv := [3]u32{l.user, u32(u64(event)), u32(u64(event) >> 32)}   // (user: i32, event: i64)
 	loaf_set_invoker(p, .Event_Listener, dom.event_type(&p.dp, event))   // Long Animation Frames: invoker = event type
+	scope := host.work_enter(p.loop, callback_work(l.work, p.loop.work.class))
 	call_guest(p, inst, l.callback, argv[:])
+	host.work_leave(p.loop, scope)
 	return true   // one failing listener does not stop the others
 }

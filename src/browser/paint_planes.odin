@@ -228,7 +228,7 @@ matrix_signature :: proc(m: style.Matrix4) -> u64 {
 plane_arm_settle :: proc() {
 	if the_app == nil { return }
 	if the_app.plane_settle != base.NIL_HANDLE { host.clear_timer(&the_app.loop, the_app.plane_settle) }
-	the_app.plane_settle = host.set_timer(&the_app.loop, the_app.plane_settings.settle_ms, 0, proc(data: rawptr) { the_app.plane_settle = base.NIL_HANDLE }, nil)
+	the_app.plane_settle = host.set_timer(&the_app.loop, the_app.plane_settings.settle_ms, 0, proc(data: rawptr) { the_app.plane_settle = base.NIL_HANDLE }, nil, class = .Input)
 }
 
 @(private)

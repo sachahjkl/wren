@@ -26,6 +26,7 @@ Frame_Callback :: struct {
 	callback:  u32,
 	user:      u32,
 	cancelled: bool,
+	work:      base.Work,   // who asked for it
 }
 
 Idle_Callback :: struct {
@@ -34,6 +35,7 @@ Idle_Callback :: struct {
 	callback:    u32,
 	user:        u32,
 	timeout_ns:  i64,   // loop clock; 0 = no timeout
+	work:        base.Work,   // who asked for it
 }
 
 ////////////////////////////////
@@ -161,7 +163,7 @@ requestAnimationFrame :: proc(c: ^Call, callback: u32, user: i32) -> u64 {
 	w := p.web
 	if len(w.frames) >= p.settings.web.max_frame_callbacks { return 0 }
 	w.next_frame_id += 1
-	append(&w.frames, Frame_Callback{id = w.next_frame_id, instance = c.owner, callback = callback, user = u32(user)})
+	append(&w.frames, Frame_Callback{id = w.next_frame_id, instance = c.owner, callback = callback, user = u32(user), work = page_work(p, .Input)})
 	return w.next_frame_id
 }
 
@@ -218,7 +220,9 @@ run_animation_frames :: proc(p: ^Page, now_ms: f64) -> int {
 		bits := transmute(u64)ts
 		argv := [3]u32{f.user, u32(bits), u32(bits >> 32)}   // (user: i32, timestamp: f64)
 		loaf_set_invoker(p, .User_Callback, "requestAnimationFrame")   // Long Animation Frames
+		scope := host.work_enter(p.loop, f.work)
 		call_guest(p, inst, f.callback, argv[:])
+		host.work_leave(p.loop, scope)
 		ran += 1
 		if p.closed { break }
 	}
@@ -235,7 +239,7 @@ requestIdleCallback :: proc(c: ^Call, callback: u32, user: i32, timeout_ms: f64)
 	w := p.web
 	if len(w.idle) >= p.settings.web.max_idle_callbacks { return 0 }
 	w.next_idle_id += 1
-	ic := Idle_Callback{id = w.next_idle_id, instance = c.owner, callback = callback, user = u32(user)}
+	ic := Idle_Callback{id = w.next_idle_id, instance = c.owner, callback = callback, user = u32(user), work = page_work(p, .Background)}
 	if !math.is_nan(timeout_ms) && timeout_ms > 0 {
 		ic.timeout_ns = host.now_ns(p.loop) + i64(min(timeout_ms, f64(max(i32))) * 1e6)
 	}
@@ -320,6 +324,8 @@ idle_invoke :: proc(p: ^Page, c: Idle_Callback, deadline_ms: f64, did_timeout: b
 	bits := transmute(u64)deadline_ms
 	argv := [4]u32{c.user, u32(bits), u32(bits >> 32), did_timeout ? 1 : 0}   // (user: i32, deadline: f64, did_timeout: i32)
 	loaf_set_invoker(p, .User_Callback, "requestIdleCallback")   // Long Animation Frames
+	scope := host.work_enter(p.loop, c.work)
+	defer host.work_leave(p.loop, scope)
 	call_guest(p, inst, c.callback, argv[:])
 }
 

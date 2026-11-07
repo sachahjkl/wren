@@ -210,12 +210,12 @@ forms_shell_frame :: proc(app: ^App) {
 			// (one frame per toggle: counted as a task as well, it asked for two)
 			if the_app != nil { host.quiet_note(&the_app.loop) }
 			if w := forms_timer_window(the_app, data); w != nil { w.own.forms.blink_timer = base.NIL_HANDLE; window_request_errand(the_app, w, .Caret) }
-		}, wid)
+		}, wid, class = .Input)
 	}
 	if _, _, shown := forms.current_report(f); shown && fv.report_timer == base.NIL_HANDLE {
 		fv.report_timer = host.set_timer(&app.loop, FORMS_REPORT_POLL_MS, 0, proc(data: rawptr) {
 			if w := forms_timer_window(the_app, data); w != nil { w.own.forms.report_timer = base.NIL_HANDLE; window_request(the_app, w, 1) }
-		}, wid)
+		}, wid, class = .Input)
 	}
 }
 

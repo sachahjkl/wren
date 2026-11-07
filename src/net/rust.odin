@@ -200,7 +200,7 @@ rust_destroy :: proc(c: ^Client) {
 rust_notify :: proc "c" (user: rawptr) {
 	context = base.process_context()
 	c := (^Client)(user)
-	host.post(c.loop, rust_drain, c)
+	host.post(c.loop, rust_drain, c, .Arrival)
 }
 
 @(private)

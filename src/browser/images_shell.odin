@@ -257,7 +257,7 @@ images_after_paint :: proc(app: ^App) {
 			the_app.images_shell.wake = base.NIL_HANDLE
 			a := (^App)(data)
 			request_frames(a, 2)
-		}, app)
+		}, app, class = .Input)
 	}
 	enforce_texture_budget(app)
 	video_shell_after_paint(app)

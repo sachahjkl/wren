@@ -316,7 +316,7 @@ first_paint_wake :: proc(app: ^App, t: ^Tab) {
 		if w == nil { return }
 		w.own.first_paint_timer = base.NIL_HANDLE
 		window_request(the_app, w, 2)
-	}, rawptr(uintptr(active_window(app).id)))
+	}, rawptr(uintptr(active_window(app).id)), class = .Input)
 }
 
 // A thin bar along the top of the page while the tab loads a document that has not painted yet. (The pointer shows

@@ -96,7 +96,7 @@ video_shell_after_paint :: proc(app: ^App) {
 			// exactly the frame this picture needs: the timer is the one that asked, the loop does not add its own two
 			host.quiet_note(&a.loop)
 			request_frames(a, 1)
-		}, app)
+		}, app, class = .Input)
 	}
 	for k, t in app.vshell.targets {
 		if app.vshell.epoch - t.epoch > 120 {

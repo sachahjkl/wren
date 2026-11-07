@@ -105,7 +105,7 @@ EventTarget_addEventListener :: proc(c: ^Call, target: u64, type: string, callba
 	d := call_doc(c)
 	if d == nil { return 0, fail(c, .Invalid_Handle, "no document in a worker") }
 	id, err := dom.add_listener(d, H(target), type, callback, u32(user),
-		capture = .Capture in options, once = .Once in options, passive = .Passive in options, owner = c.owner)
+		capture = .Capture in options, once = .Once in options, passive = .Passive in options, owner = c.owner, work = page_work(c.page, .Background))
 	if err != .None { return 0, dom_error(err) }
 	return i32(id), .None
 }

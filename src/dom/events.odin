@@ -119,7 +119,7 @@ legacy_event_type :: proc(type: string) -> string {
 	return ""
 }
 
-add_listener :: proc(d: ^Document, target: base.Handle, type: string, callback, user: u32, capture, once, passive: bool, owner: u32 = 0) -> (Listener_Id, Error) {
+add_listener :: proc(d: ^Document, target: base.Handle, type: string, callback, user: u32, capture, once, passive: bool, owner: u32 = 0, work := base.Work{}) -> (Listener_Id, Error) {
 	n := get(d, target)
 	if n == nil { return 0, .Invalid_Handle }
 	if type == "" { return 0, .Invalid_Argument }
@@ -130,7 +130,7 @@ add_listener :: proc(d: ^Document, target: base.Handle, type: string, callback, 
 	id := d.next_listener
 	d.next_listener += 1
 	d.listener_changes += 1
-	append(&n.listeners, Listener{id = id, type = strings.clone(type), callback = callback, user = user, owner = owner, capture = capture, once = once, passive = passive})
+	append(&n.listeners, Listener{id = id, type = strings.clone(type), callback = callback, user = user, owner = owner, capture = capture, once = once, passive = passive, work = work})
 	return id, .None
 }
 

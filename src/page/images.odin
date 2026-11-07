@@ -549,7 +549,7 @@ images_pump_soon :: proc(p: ^Page) {
 		p := (^Page)(data)
 		p.images.pump_armed = false
 		images_pump(p)
-	}, p, p.scope)
+	}, p, p.scope, .Arrival)
 }
 
 // Starts queued downloads up to the page's limit, nearest the viewport first.
@@ -1166,7 +1166,7 @@ queue_element_event :: proc(p: ^Page, node: base.Handle, type: string, media_err
 			delete(ev.type)
 		}
 		scripts_pump(p)   // (the document's load event waited for these: not for the poll)
-	}, p, p.scope)
+	}, p, p.scope, .Arrival)
 }
 
 // The shell reports how far an element is from the viewport (CSS px, 0 = visible; max(f32) = no box): lazy images

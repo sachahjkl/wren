@@ -492,7 +492,7 @@ Module_import :: proc(c: ^Call, id: i32, specifier: string, base_url: string, ty
 	}
 	append(&ms.graphs, g)
 	// settled from a task of its own: the engine is in the middle of import()
-	post_page_task(p, proc(pg: ^Page, data: rawptr) { if pg != nil && !pg.closed { modules_check(pg) } }, nil)
+	post_page_task(p, proc(pg: ^Page, data: rawptr) { if pg != nil && !pg.closed { modules_check(pg) } }, nil, .Arrival)
 	return .None
 }
 

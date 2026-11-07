@@ -700,7 +700,7 @@ post_script_event :: proc(p: ^Page, el: base.Handle, type: string) {
 		if pg == nil || pg.closed { return }
 		dispatch_event(pg, t.node, dom.Event{type = t.type})
 		if pg.scripts != nil { scripts_pump(pg) }
-	}, t)
+	}, t, .Arrival)
 }
 
 ////////////////////////////////
@@ -857,6 +857,8 @@ script_retire :: proc(p: ^Page, sc: ^Page_Script) {
 scripts_pump :: proc(p: ^Page) {
 	s := p.scripts
 	if s == nil || p.closed || s.pump.state != .Idle { return }
+	scope := host.work_enter(p.loop, page_work(p, .Arrival))
+	defer host.work_leave(p.loop, scope)
 	pump_to(p, .Running)
 	slice := pump_slice(p)
 	start := now_ms(p) - s.pump.ran_ms
@@ -948,7 +950,7 @@ pump_to :: proc(p: ^Page, to: Pump_State) {
 		if s.pump.state == .Yield_Paint { s.parser.paint_turns = PAINT_TURNS_MAX }   // (past the deadline: no frame is coming)
 		pump_to(pg, .Idle)
 		scripts_pump(pg)
-	}, p, p.scope)
+	}, p, p.scope, .Arrival)
 }
 
 // HTML "the end", past the deferred scripts (the pump's): DOMContentLoaded, then (once async and in-order scripts ran and the
@@ -1029,7 +1031,7 @@ poll_schedule :: proc(p: ^Page) {
 		if pg.closed || pg.scripts == nil { return }
 		pg.scripts.poll = base.NIL_HANDLE
 		scripts_pump(pg)
-	}, p, p.scope)
+	}, p, p.scope, .Arrival)
 }
 
 ////////////////////////////////

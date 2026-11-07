@@ -454,7 +454,7 @@ decoder_thread :: proc(data: rawptr) {
 			append(&p.done, j)
 			if !p.posted {
 				p.posted = true
-				host.post(p.loop, port_drain, rawptr(uintptr(j.port)))
+				host.post(p.loop, port_drain, rawptr(uintptr(j.port)), .Arrival)
 			}
 		}
 		sync.mutex_unlock(&d.mu)

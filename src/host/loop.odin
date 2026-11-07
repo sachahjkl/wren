@@ -13,6 +13,7 @@ package host
 
 import "base:runtime"
 import "core:container/priority_queue"
+import "core:strings"
 import "core:sync"
 import "core:time"
 import "wb:base"
@@ -23,12 +24,14 @@ Task :: struct {
 	fn:   Task_Proc,
 	data: rawptr,
 	by:   runtime.Source_Code_Location,   // who posted it (Loop.last_ran)
+	work: base.Work,                     // who it works for
 }
 
 Timer :: struct {
 	fn:          Task_Proc,
 	data:        rawptr,
 	by:          runtime.Source_Code_Location,   // who set it (Loop.last_ran)
+	work:        base.Work,                      // who it works for
 	deadline:    i64,   // ns since loop origin
 	interval:    i64,   // 0 = one-shot
 	scope:       ^base.Scope,
@@ -73,6 +76,48 @@ Loop :: struct {
 	// Debug builds: the thread that runs the loop (the first one to touch its timers or run it); everything but post and
 	// signal asserts it is that one (loop_owned). 0: none yet.
 	owner:     int,
+	// Who the loop's thread works for now (Work_Scope, run_one): what a timer or a task made here inherits. Loop thread only.
+	work:      base.Work,
+	thread:    int,   // atomic: the thread that runs the loop, so that a post from another one inherits nothing (0: none yet)
+	origins:   map[string]u32,   // the numbers of Work.origin (origin_number); as many as the origins this loop's pages ran scripts of
+}
+
+// What work a thread does inside a task for someone else: a script of another origin, the response of a request made
+// by one. Between work_enter and work_leave what is made here inherits `w`; the spans nest, the innermost says.
+Work_Scope :: struct {
+	saved: base.Work,
+	at:    i64,
+}
+
+// Loop thread.
+work_enter :: proc(l: ^Loop, w: base.Work) -> Work_Scope {
+	s := Work_Scope{l.work, base.span_now()}
+	l.work = w
+	return s
+}
+
+work_leave :: proc(l: ^Loop, s: Work_Scope) {
+	base.span_add(.Work, s.at, "", work = l.work)
+	l.work = s.saved
+}
+
+// Loop thread. The number of an origin in this loop's Work records: a span then names it once.
+origin_number :: proc(l: ^Loop, origin: string) -> u32 {
+	if n, known := l.origins[origin]; known { return n }
+	n := u32(len(l.origins) + 1)
+	l.origins[strings.clone(origin, base.process_allocator())] = n
+	base.span_add(.Origin, base.span_now(), origin, copy_label = true, work = {origin = n})
+	return n
+}
+
+// Any thread.
+on_loop_thread :: proc(l: ^Loop) -> bool { return sync.atomic_load(&l.thread) == sync.current_thread_id() }
+
+// Any thread. What something made now works for: on the loop's thread, who the thread works for; elsewhere the browser. Its class is the maker's to say.
+work_now :: proc(l: ^Loop, class: base.Work_Class) -> (w: base.Work) {
+	if on_loop_thread(l) { w = l.work }
+	w.class = class
+	return
 }
 
 // Debug builds: the calling thread must be the loop's own (the first one that used it claims it). A loop handed to
@@ -104,6 +149,7 @@ loop_init :: proc(l: ^Loop, wake: proc(user: rawptr) = nil, wake_user: rawptr = 
 	// `post` is called from foreign threads whose context allocator is the process heap: keep these arrays there.
 	l.posted = make([dynamic]Task, base.process_allocator())
 	l.scratch = make([dynamic]Task, base.process_allocator())
+	l.origins = make(map[string]u32, base.process_allocator())
 	l.wake = wake
 	l.wake_user = wake_user
 	l.timer_slice_ns = DEFAULT_TIMER_SLICE_NS
@@ -113,6 +159,8 @@ loop_init :: proc(l: ^Loop, wake: proc(user: rawptr) = nil, wake_user: rawptr = 
 loop_destroy :: proc(l: ^Loop) {
 	delete(l.posted)
 	delete(l.scratch)
+	for origin in l.origins { delete(origin, base.process_allocator()) }
+	delete(l.origins)
 	priority_queue.destroy(&l.queue)
 	base.pool_destroy(&l.timers)
 }
@@ -181,10 +229,15 @@ discard_posted :: proc(l: ^Loop, fn: Task_Proc, discard: proc(data: rawptr)) {
 	for d in taken { discard(d) }
 }
 
-// Any thread.
-post :: proc(l: ^Loop, fn: Task_Proc, data: rawptr, by := #caller_location) {
+// Any thread. The task works for whoever posts it (work_now).
+post :: proc(l: ^Loop, fn: Task_Proc, data: rawptr, class := base.Work_Class.Background, by := #caller_location) {
+	post_work(l, fn, data, work_now(l, class), by)
+}
+
+// Any thread. A task for someone other than who posts it.
+post_work :: proc(l: ^Loop, fn: Task_Proc, data: rawptr, work: base.Work, by := #caller_location) {
 	sync.mutex_lock(&l.mu)
-	append(&l.posted, Task{fn, data, by})
+	append(&l.posted, Task{fn, data, by, work})
 	sync.mutex_unlock(&l.mu)
 	signal(l)
 }
@@ -197,11 +250,11 @@ signal :: proc(l: ^Loop) {
 	}
 }
 
-// Loop thread. Registers a timer; with a scope the timer dies with it. Returns NIL_HANDLE never.
-set_timer :: proc(l: ^Loop, delay_ms: f64, interval_ms: f64, fn: Task_Proc, data: rawptr, scope: ^base.Scope = nil, by := #caller_location) -> base.Handle {
+// Loop thread. Registers a timer, which works for whoever sets it (work_now); with a scope the timer dies with it. Returns NIL_HANDLE never.
+set_timer :: proc(l: ^Loop, delay_ms: f64, interval_ms: f64, fn: Task_Proc, data: rawptr, scope: ^base.Scope = nil, class := base.Work_Class.Background, by := #caller_location) -> base.Handle {
 	loop_owned(l, "host.set_timer off the loop's thread")
 	t := Timer{
-		fn = fn, data = data, by = by,
+		fn = fn, data = data, by = by, work = work_now(l, class),
 		deadline = now_ns(l) + timer_ns(delay_ms),
 		interval = timer_ns(interval_ms),
 		scope = scope,
@@ -291,17 +344,20 @@ quiet_take :: proc(l: ^Loop) -> int {
 }
 
 @(private = "file")
-run_one :: proc(l: ^Loop, fn: Task_Proc, data: rawptr, by: runtime.Source_Code_Location) {
+run_one :: proc(l: ^Loop, fn: Task_Proc, data: rawptr, by: runtime.Source_Code_Location, work: base.Work) {
 	quiet := l.quiet
 	at := base.span_now()
+	l.work = work
 	fn(data)
-	base.span_add(.Task, at, by.file_path, by.line)
+	l.work = {}
+	base.span_add(.Task, at, by.file_path, by.line, work = work)
 	if l.quiet == quiet { l.last_ran = by } else { l.last_quiet = by }
 }
 
 // Loop thread. Runs the posted tasks, then the timers due at this instant. Returns how many callbacks ran.
 run_ready :: proc(l: ^Loop) -> int {
 	loop_owned(l, "host.run_ready off the loop's thread")
+	sync.atomic_store(&l.thread, sync.current_thread_id())
 	sync.atomic_store(&l.pending, false)   // before draining: a post racing with us re-arms the wake
 	ran := 0
 	// timers set by this turn's callbacks wait for the next turn, even when already due: a timer a posted task sets runs after
@@ -311,7 +367,7 @@ run_ready :: proc(l: ^Loop) -> int {
 	sync.mutex_lock(&l.mu)
 	l.posted, l.scratch = l.scratch, l.posted
 	sync.mutex_unlock(&l.mu)
-	for task in l.scratch { run_one(l, task.fn, task.data, task.by); ran += 1 }
+	for task in l.scratch { run_one(l, task.fn, task.data, task.by, task.work); ran += 1 }
 	clear(&l.scratch)
 
 	cutoff := now_ns(l)
@@ -324,7 +380,7 @@ run_ready :: proc(l: ^Loop) -> int {
 		priority_queue.pop(&l.queue)
 		t := base.pool_get(&l.timers, e.handle)
 		if t == nil || t.deadline != e.deadline { continue }
-		fn, data, by := t.fn, t.data, t.by
+		fn, data, by, work := t.fn, t.data, t.by, t.work
 		if t.interval > 0 {
 			// next tick counted from now, not from the missed deadline: a stalled loop must not replay a burst
 			t.deadline = max(e.deadline + t.interval, cutoff + 1)
@@ -334,7 +390,7 @@ run_ready :: proc(l: ^Loop) -> int {
 			done, _ := base.pool_remove(&l.timers, e.handle)
 			if done.scope != nil { release_scope_hook(done) }
 		}
-		run_one(l, fn, data, by)
+		run_one(l, fn, data, by, work)
 		ran += 1
 		timers_ran += 1
 	}

@@ -57,6 +57,7 @@ Listener :: struct {
 	once:     bool,
 	passive:  bool,
 	removed:  bool,   // tombstone while a dispatch is walking the list
+	work:     base.Work,   // who registered it: a callback works for them
 }
 
 Node :: struct {

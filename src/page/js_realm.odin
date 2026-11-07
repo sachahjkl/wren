@@ -143,7 +143,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 	if p.js != nil { return p.js.failed ? nil : p.js }
 	if p.closed || !js_enabled(p) { return nil }
 	at := base.span_now()
-	defer base.span_add(.Realm, at, p.env.location.href, copy_label = true)
+	defer base.span_add(.Realm, at, p.env.location.href, copy_label = true, work = page_work(p, .Arrival))
 	r := new(Js_Realm)
 	p.js = r
 	base.on_close(p.scope, proc(data: rawptr) { free((^Js_Realm)(data)) }, r)
@@ -271,6 +271,8 @@ js_run :: proc(p: ^Page, source: []byte, url: string, line: i32 = 1, module := f
 	if r == nil { return .Trapped }
 	at := base.span_now()
 	defer base.span_add(.Script, at, url, copy_label = true)
+	scope := host.work_enter(p.loop, script_work(p, url))
+	defer host.work_leave(p.loop, scope)
 	flags: js.Eval_Flags
 	if module { flags += {.Module} }
 	if print_result { flags += {.Print_Result} }

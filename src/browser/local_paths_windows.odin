@@ -128,7 +128,7 @@ drop_subclass :: proc "system" (hwnd: win.HWND, msg: win.UINT, wparam: win.WPARA
 	}
 	win.DragFinish(hdrop)
 	if len(d.paths) > 0 {
-		host.post(&d.app.loop, drop_open, d)
+		host.post(&d.app.loop, drop_open, d, .Input)
 	} else {
 		dropped_free(d)
 	}

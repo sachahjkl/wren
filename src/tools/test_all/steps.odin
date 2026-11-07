@@ -363,6 +363,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	unit(&t, "unit tests: wasm", "src/wasm", exe("build/wasm_test"), {WB, ONE_THREAD})
 	unit(&t, "unit tests: WPT reference tests (links and fuzzy annotations as WPT reads them, comparison, PNG, the rasteriser from markup to pixels)", "src/tools/wpt/reftest", exe("build/wpt_reftest_test"), {TOOLKIT, WB})
 	unit(&t, "unit tests: bindgen (description language, determinism)", "src/tools/bindgen/idl", exe("build/bindgen_test"), {WB})
+	unit(&t, "unit tests: wrentool threadtime (whose work the window thread did, by its spans; when it settled)", "src/tools/wrentool/threadtime", exe("build/wrentool_threadtime_test"), {WB})
 	append(&t, Step{name = "process allocators: no runtime.default_context / heap_allocator / default_allocator outside src\\base\\memory.odin (base.process_context, process_allocator, permanent_allocator: what the check builds track; a line that must not use the tracker says why after // memcheck:)",
 		actions = slice_of(Task{"the allocators", task_process_allocators, ""}), inputs = .Tree})
 	// (its own exe: the browser's build, which a parallel step may run, runs bindgen too)
@@ -476,6 +477,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	web_step(&t, "style run-time test (web fonts, transitions, animations)", "style")
 	web_step(&t, "image formats end-to-end test (AVIF, WebP, SVG images and backgrounds, inline <svg>, Accept, <picture>)", "media", {.Ui_Only})
 	web_step(&t, "images end-to-end test (events, srcset, picture, lazy, CSS images, cache, cancellation, 200 x 1 Mpx)", "images", {.Light})
+	web_step(&t, "whose work a timer is end-to-end test (src\\tools\\e2e\\web_work.odin: a script of another site, through its timers, responses and listeners)", "work", {.Light})
 	wpt_args := join({exe("build/wpt"), "-timeout", fmt.aprint(WPT_TIMEOUT_MS * cfg.slow)}, cfg.quick ? strs("-quick") : nil)
 	append(&t, Step{name = "web-platform-tests (wpt\\suites.txt, pinned; -Quick: a sample; fails on a regression against wpt\\expectations)",
 		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "wpt quick" : "wpt"}, Command{argv = wpt_args}), weight = 50, needs = COMMON_NEEDS + {.Test_Server, .Browser}, inputs = .Tree, limit = LONG_STEP_SECONDS})   // (.Browser: the runner links build/native, which the browser's build makes; built before it, it had the old network stack)

@@ -7,6 +7,7 @@ package page
 
 import "core:fmt"
 import "wb:base"
+import "wb:host"
 import "wb:dom"
 
 // dom.Dispatcher.window: runs the Window's listeners of one phase for the event being dispatched.
@@ -30,7 +31,11 @@ window_phase :: proc(user: rawptr, eh: base.Handle, capture: bool) -> bool {
 		if !still { continue }
 		if l.once { object_remove_listener(p, win, l.id) }
 		argv := [3]u32{l.user, u32(u64(eh)), u32(u64(eh) >> 32)}
-		if inst := instance_by_index(p, l.owner); inst != nil { call_guest(p, inst, l.callback, argv[:]) }
+		if inst := instance_by_index(p, l.owner); inst != nil {
+			scope := host.work_enter(p.loop, callback_work(l.work, p.loop.work.class))
+			call_guest(p, inst, l.callback, argv[:])
+			host.work_leave(p.loop, scope)
+		}
 		e = base.pool_get(&p.dp.events, eh)
 		if e == nil || e.stop_immediate { break }
 		e.current_target = base.Handle(win)

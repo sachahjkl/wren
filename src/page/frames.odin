@@ -899,7 +899,7 @@ frame_ready_check :: proc(c: ^Page) {
 	f.ready_poll = base.NIL_HANDLE
 	if f.complete || c.closed { return }
 	if resources_delay_load(c) || frames_delay_load(c) {
-		f.ready_poll = host.set_timer(c.loop, c.settings.js_load.poll_ms, 0, proc(data: rawptr) { frame_ready_check((^Page)(data)) }, c, c.scope)
+		f.ready_poll = host.set_timer(c.loop, c.settings.js_load.poll_ms, 0, proc(data: rawptr) { frame_ready_check((^Page)(data)) }, c, c.scope, .Arrival)
 		return
 	}
 	frames_document_complete(c)
