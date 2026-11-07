@@ -194,9 +194,14 @@ run_animation_frames :: proc(p: ^Page, now_ms: f64) -> int {
 	pin := !p.anim.pinned
 	if pin { set_frame_time(p, now_ms) }
 	defer if pin { set_frame_time(p, 0, unpin = true) }
+	// (each step a span of its own, WREN_SPANS: the scroll steps hold the frame's first style pass and layout, round 59)
+	stepped := base.span_now()
 	run_scroll_steps(p)   // the step before: scroll events of what scrolled since the last frame (scroll_events.odin)
+	base.span_add(.Phase, stepped, "scroll_steps")
 	if p.closed { return 0 }
+	sampled := base.span_now()
 	scroll_timelines_frame(p)   // what scroll-driven animations read, before the update (scroll_timelines.odin)
+	base.span_add(.Phase, sampled, "scroll_timelines")
 	updated := base.span_now()
 	web_animations_update(p)   // update animations and send events (web_animations.odin)
 	base.span_add(.Phase, updated, "web_animations")

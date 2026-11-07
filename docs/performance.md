@@ -3977,6 +3977,36 @@ Read plainly. **theverge.com settles 13 % sooner, visually ready 13 % sooner and
 
 **Not verified.** The release build. The other sites of the series (bbc.com/news). Pages whose scripts read the layout in many tasks between frames while an animation waits unseen: each such task still lays out once, which round 54 asked for and no page here showed in its spans. Whether a frame callback that reads `document.timeline.currentTime` or a style now sees the frame's time on every page as other browsers give it (the frame's own pass read it already; tests of animations pass).
 
+## What changed, round 59: the frame's animation phase is its first style pass (nothing kept but spans)
+
+The second cost of "what is left" below, the frame's animation phase (292 / 369 / 276 / 67 ms to settled on the bench), had no finer span.
+Spans now: `scroll_steps` and `scroll_timelines` beside `web_animations`, `resize_observers`, `intersection_observers` (`run_animation_frames`,
+`page/bindings_timers.odin`).
+
+**What they say.** Live loads on Linux (Xvfb, the software Vulkan adapter, a datacenter's network: not the bench, see "Linux" below), one
+page each, `WREN_SPANS`, 6 s after the load: all of the phase outside the animation frame callbacks is `scroll_steps`, and all of
+`scroll_steps` is one style pass and one layout. `run_scroll_steps` asks `js_layout_now` for the scroll offsets: the first reading of the
+frame, so the frame's own style pass and layout happen there, under the scroll steps' span, and `page_prepare`'s `styles` then finds
+nothing to do (3 to 5 ms a load).
+
+**Tried, not kept.** The scroll steps reading the last layout as it is (the offsets of what the user scrolled are in it): the pass is
+not made twice, it moves to the frame's `styles`. 3 loads an arm, interleaved, ms to 6 s after the load, the phase / styles and layout of
+the frame / their sum:
+
+| | before | after |
+|---|---|---|
+| cnn.com | 560 / 7 / 567 (547-579) | 451 / 133 / 587 (561-598) |
+| npr.org | 620 / 31 / 651 (595-691) | 475 / 239 / 673 (662-734) |
+| theverge.com | 538 / 53 / 595 (566-689) | 546 / 131 / 689 (555-774) |
+
+The same work, elsewhere. It also needed care: the seen probe of animations (`animations_seen.odin`) and the scroll steps read the
+embedder's layout, which only a reading brings to a page that no script makes read (an animation far below the fold then drew at every
+frame: `frames_at_rest.odin` caught it). Not worth its risk.
+
+**What it changes in the ranking.** Item 2 is not a cost of its own: it is the frame's style pass and layout, counted under the
+animation phase, plus the callbacks. What can be removed there is what makes those passes long (incremental style and layout, item 3),
+not the phase.
+
 ## What changed, round 60: WebGL contexts made ahead
 
 The fourth cost of "what is left" below: on npr.org a script asks for four WebGL contexts after the load event (two of them in
