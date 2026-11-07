@@ -37,7 +37,7 @@ STACK_BYTES :: 64 << 20
 TEMP_ALLOCATOR_BACKING_BYTES :: 64 << 10
 SEPARATE_MODULES :: "-use-separate-modules"
 
-Variant :: enum { Dev, Debug, Profile, Check, Release }
+Variant :: enum { Dev, Quick, Debug, Profile, Check, Release }
 
 Variant_Spec :: struct {
 	name, about:      string,
@@ -48,12 +48,17 @@ Variant_Spec :: struct {
 	release_channel:  bool,       // amber icon, the release channel
 	store_symbols:    bool,       // the linker's map also kept in build/symbols (the builds that are handed out: a later crash report names them)
 	channel_file:     bool,       // writes build/wren.channel (the programs named build/wren*.exe)
+	js_opt:           string,     // the JavaScript engine's optimisation ("": speed, what is measured and shipped)
+	js_dir:           string,     // the folder of build\ its image goes to ("": js, the one every other program embeds)
 }
 
 VARIANTS := [Variant]Variant_Spec{
 	// -debug is there for the PDB: a crash report then names functions and lines (crashtrace). It also makes ODIN_DEBUG true, which would turn on
 	// the Direct3D debug layer (the toolkit's D3D_DEBUG): every draw call validated, the licence card's frame twice the CPU; the debug variant keeps it
 	.Dev     = {name = "dev", about = "(default) optimised, PDB, fast to compile          -> build\\wren.exe", program = "wren", flags = {"-o:speed", "-debug", "-define:D3D_DEBUG=false"}, separate_modules = true, channel_file = true},
+	// the fastest to make while a feature is written: no optimisation, the engine at -o:minimal (12 s against 107 at -o:speed, measured on 2026-11-07)
+	// in a folder of its own, so that a dev build and a quick one do not rebuild the engine in turn; a program of its own, never one a bench measures
+	.Quick   = {name = "quick", about = "fastest to build: no optimisation, engine -o:minimal  -> build\\wren_quick.exe (never for measuring)", program = "wren_quick", flags = {"-debug", "-define:D3D_DEBUG=false"}, separate_modules = true, js_opt = "minimal", js_dir = "js_quick"},
 	.Debug   = {name = "debug", about = "debug information, no optimisation                 -> build\\wren.exe", program = "wren", flags = {"-debug"}, separate_modules = true, channel_file = true},
 	// one module, as the release; a PDB for the profiler; no Direct3D debug layer (GPU and present times as shipped)
 	.Profile = {name = "profile", about = "optimised, PDB, the built-in profiler (bench perf) -> build\\wren_prof.exe", program = "wren_prof", flags = {"-o:speed", "-debug", "-define:PROFILE=true", "-define:D3D_DEBUG=false"}, native_release = true},
@@ -165,7 +170,7 @@ browser :: proc(o: Options) -> bool {
 	// 3. Generated code: the web API from its description (api\*.widl: host bindings, guest SDK, docs, conformance tests; only what changed), the JavaScript engine (build\js\wren_js.wasm, embedded in
 	// wren.exe), the console launcher (build\wren.com, embedded in wren.exe)
 	if !bindgen(o) { return false }
-	if !tooling.build_js_engine({odin_flags = o.js_odin_flags, log = o.log}) { return say_fail(o, "building the JavaScript engine failed: run  odin run src/tools/buildjs -collection:wb=src -out:build/buildjs.exe") }
+	if !tooling.build_js_engine({odin_flags = o.js_odin_flags, log = o.log, odin_opt = spec.js_opt, out = spec.js_dir != "" ? fmt.tprintf("build/%s", spec.js_dir) : ""}) { return say_fail(o, "building the JavaScript engine failed: run  odin run src/tools/buildjs -collection:wb=src -out:build/buildjs.exe") }
 	if !launcher(o.log) { return false }
 
 	// 4. Common flags; the version resource of wren.exe (publisher, product, File version) takes its numbers from APP_VERSION
@@ -183,6 +188,7 @@ browser :: proc(o: Options) -> bool {
 	append(&command, tooling.odin_program(), "build", "src/browser", fmt.tprintf("-out:%s", program))
 	append(&command, ..flags)
 	append(&command, ..spec.flags)
+	if spec.js_dir != "" { append(&command, fmt.tprintf("-define:WREN_JS_DIR=%s", spec.js_dir)) }
 	if spec.separate_modules { append(&command, SEPARATE_MODULES) }
 	if tooling.run({command = command[:], log = o.log}) != 0 { return false }
 	// a variant without -debug has no PDB: one left beside it by an earlier build is another program's, and would name its
