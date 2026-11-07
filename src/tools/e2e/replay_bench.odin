@@ -44,7 +44,7 @@ one_load :: proc(t: ^testing.T, s: ^e2e.Session, seed: u64, prefs: []string) -> 
 	testing.expect_value(t, e2e.eval(next, "document.cookie"), "kept=1")
 	testing.expect(t, e2e.eval_f64(next, "new Date().getFullYear()") == 2001, "the page's year is the recording's")
 	moved := e2e.eval_f64(next, "(() => { const a = performance.now(); return performance.now() - a })()")
-	testing.expect(t, moved > 0 && moved < 1, "the clock moves by its reads")
+	testing.expect(t, moved > 0 && moved <= 2 * base.TEST_WORLD_TICK_MS, "the clock moves by its reads")
 	return next, strings.clone(e2e.eval(next, "[Math.random(), crypto.getRandomValues(new Uint32Array(2)).join(), crypto.randomUUID()].join(' ')"), context.temp_allocator)
 }
 

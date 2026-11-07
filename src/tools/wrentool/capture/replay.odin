@@ -297,7 +297,7 @@ replay_run :: proc(f: tooling.Flags) -> int {
 				l, loaded := replay_watched(arm, out_dir, url, world, prefs[:], rate, spec, tooling.flag_has(f, "-Loaded"))
 				if !loaded { fmt.eprintfln("%s %s run %d: no load", spec, arm.name, run); continue }
 				if frames { replay_frames(&l, arm.exe, out_dir, url, world, prefs[:], arm.lists) }
-				line := fmt.tprintf("%s\t%s\t%d\t%.0f\t%.0f\t%.0f\t%.1f\t%.0f\t%.0f\t%.1f\t%.1f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%.3f", spec, arm.name, run, l.fcp, l.ready, l.settled, l.cpu_settled, l.load, l.dcl, l.cpu_load, l.guest, l.process_cpu, l.requests, l.failed, l.exact, l.near, l.unknown, l.frames, l.moving, l.others, l.page_clock)
+				line := fmt.tprintf("%s\t%s\t%d\t%.0f\t%.0f\t%.0f\t%.1f\t%.0f\t%.0f\t%.1f\t%.1f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%.3f\t%.3f\t%.0f", spec, arm.name, run, l.fcp, l.ready, l.settled, l.cpu_settled, l.load, l.dcl, l.cpu_load, l.guest, l.process_cpu, l.requests, l.failed, l.exact, l.near, l.unknown, l.frames, l.moving, l.others, l.page_clock)
 				fmt.println(line)
 				if run >= 0 {
 					fmt.sbprintln(&table, line)
