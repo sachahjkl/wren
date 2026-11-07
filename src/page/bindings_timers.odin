@@ -189,6 +189,11 @@ wants_animation_frame :: proc(p: ^Page) -> bool {
 // for the next frame. Returns how many ran.
 run_animation_frames :: proc(p: ^Page, now_ms: f64) -> int {
 	if p == nil || p.closed || p.web.frozen { return 0 }
+	// the whole update reads the frame's time, as HTML moves the document's timeline to it: its scroll steps, callbacks and observations
+	// see one instant, so an animation nobody sees (style.timeline_behind) is ticked by the first reading, not again at each one
+	pin := !p.anim.pinned
+	if pin { set_frame_time(p, now_ms) }
+	defer if pin { set_frame_time(p, 0, unpin = true) }
 	run_scroll_steps(p)   // the step before: scroll events of what scrolled since the last frame (scroll_events.odin)
 	if p.closed { return 0 }
 	scroll_timelines_frame(p)   // what scroll-driven animations read, before the update (scroll_timelines.odin)

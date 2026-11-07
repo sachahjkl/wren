@@ -773,6 +773,44 @@ jsdom_unseen_animation_reads_the_clock :: proc(t: ^testing.T) {
 	close_page(pr, min_checks = UNSEEN_CHECKS + 1)
 }
 
+// A frame's rendering update reads one instant, the frame's: with an animation nobody sees waiting for its tick, the first reading of the
+// layout ticks it and lays out, and the callback's readings, the resize and the intersection observations after it find that layout as it is.
+// The rendering update was on the live clock: each of them read a later time, ticked the animation again and laid the page out again (four
+// layouts a frame, theverge.com's carousel at 60 frames a second: round 58 of docs/performance.md). Each layout here takes 1 ms of the virtual clock;
+// the animation is one long step, so that its ticks change no style and the layout the probe reads stays the page as it is.
+UNSEEN_FRAME_PAGE :: `<!doctype html><style>@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } } body { margin: 0 } #s { width: 40px; height: 40px; animation: spin 1000s steps(1) infinite }</style><div style="height: 20000px"></div><div id=s></div>`
+UNSEEN_FRAME_SCRIPT :: `document.body.offsetTop; new ResizeObserver(() => {}).observe(document.body); new IntersectionObserver(() => {}).observe(document.body); requestAnimationFrame(() => { document.body.offsetTop; document.getElementById("s").getBoundingClientRect() })`
+UNSEEN_LAYOUT_TAKES :: time.Millisecond
+UNSEEN_FRAME_CHECKS :: 3
+
+@(test)
+jsdom_a_frame_lays_out_once_for_an_unseen_animation :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t, .Pages)
+	defer end()
+	virtual_clock(t)
+	lh := layout_host_make()
+	defer layout_host_destroy(lh)
+	pr := page_make(t, "unseen_frame.html", strings.concatenate({ADDRESS, "unseen_frame.html"}, context.temp_allocator))
+	slow_layout :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
+		l := layout_update(user, p)
+		host.clock_advance(&loop, UNSEEN_LAYOUT_TAKES)
+		return l
+	}
+	page.set_layout_embedder(pr.p, {user = lh, update = slow_layout, viewport = layout_viewport, scroll_to = layout_scroll})
+	page_load(pr, UNSEEN_FRAME_PAGE)
+	drain()
+	run(pr, UNSEEN_FRAME_SCRIPT)   // (its first reading lays the page out: the layout the probe reads)
+	_ = layout_update(lh, pr.p)   // a frame's style pass and layout: nobody sees #s
+	check(pr, page.animations_next_ms(pr.p) > 0, "the animation waits for its unseen tick")
+	host.clock_advance(&loop, UNSEEN_READ_GAP)
+	before := page.layout_updates(pr.p)
+	check(pr, page.run_animation_frames(pr.p, now_ms()) == 1, "the frame runs the callback")
+	laid := page.layout_updates(pr.p) - before
+	check(pr, laid == 1, fmt.tprintf("one layout for the frame's readings, observations included: %d", laid))
+	close_page(pr, min_checks = UNSEEN_FRAME_CHECKS)
+}
+
 // (the micro-benchmarks only measure: a performance run, test_all -Perf)
 @(test)
 jsdom_bench :: proc(t: ^testing.T) {

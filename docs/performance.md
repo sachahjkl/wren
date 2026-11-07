@@ -3935,6 +3935,48 @@ Read plainly. **Proven by the bench's rule: nothing; no site says `Gain`, none s
 
 Not proven, then: that rounds 51 to 57 made any of the four pages visually ready or settled sooner, or that theverge.com's later settled is a regression. A series of 9 on a quiet machine still has single runs 7 to 12 % from their median on cnn.com and theverge.com: what the medians say (cnn.com's CPU, npr.org's load) needs more runs, or a load's counts rather than its time, to be proven by ranges apart. Not measured: the release build, the second load of a session (`-Second`), memory.
 
+## What changed, round 58: theverge.com's later settled, found and fixed
+
+The series above left theverge.com settling 11 % later than before rounds 51 to 57, ranges overlapping. This round confirmed it, bisected it to round 54, traced it, and fixed it. The same quiet machine (no other agent; `others` 13 to 34 % in every load below, the browser's helpers and the sampler), `wrentool replay run` with the default lists, development builds (`build.bat`), the arms interleaved, the order turning.
+
+**1. Confirmed, 15 runs a side** (`build/replay/c58.theverge.tsv`, frames on), base `wren_base51.exe` against master 201743ac, median (range), ms: visually ready 2 492 (2 384-2 653) and 2 631 (2 527-3 017), **settled 2 510 (2 342-2 676) and 2 650 (2 554-3 151)**, CPU to settled 2 334 (2 196-2 448) and 2 316 (2 243-2 544). The bench's verdict is `Nothing` (ranges overlap), but no load of master settled before 2 554 ms and 13 of 15 of the base's did: settled later by 5.6 % in the medians, with the same CPU, and the page clock lower (4 497 to 4 784 ms base, 4 070 to 4 460 master).
+
+**2. Bisected.** A binary at the master commit of each round, 4753a790's bench hooks (fec6bde9 and 60716374 less `src/tools` and `tools`) applied to those before the bench. Ten arms in one series, 5 runs, no frames (`build/replay/b58a.theverge.tsv`), median, ms; page clock, the range:
+
+| arm | commit | settled | CPU to settled | page clock |
+|---|---|---|---|---|
+| base | 4753a790 + hooks | 2 345 | 2 202 | 4 462-4 972 |
+| 51, owners | 27cbde1b + hooks | 2 361 | 2 212 | 4 611-4 847 |
+| 52, matched rules | 0d276b31 + hooks | 2 294 | 2 129 | 4 528-4 669 |
+| clock held in a task | 0b3a62cd + hooks | 2 294 | 2 134 | 4 524-4 762 |
+| `fonts.ready`, -0 | 84e96e73 + hooks | 2 338 | 2 167 | 4 513-4 781 |
+| 53, smaller heap | c3b79321 + hooks | 2 174 | 2 020 | 4 734-4 816 (one load broke off: 19 ms, left out) |
+| nth-of | f5e497cd | 2 224 | 2 050 | 4 654-4 837 |
+| **54, unseen frames** | 15ec064e | **2 704** | **2 332** | **4 257-4 668** |
+| 57, lists at start-up | 274719c1 | 2 600 | 2 313 | 3 975-4 551 |
+| 55, sweep (master) | 66f3a9ee | 2 554 | 2 229 | 4 185-4 484 |
+
+The step is round 54: +480 ms of settled and +280 ms of CPU against the round before it, and the page clock falls with it. Rounds 53 and 55 take CPU off and hide part of it, hence a later settled with the same CPU in item 1. Then the round's binary with its own switch (`build/replay/b58b.theverge.tsv`, 7 runs, no frames): nth-of 2 173 (2 136-2 187) settled and 2 028 (2 012-2 035) CPU, master 2 508 (2 458-2 698) and 2 226 (2 183-2 277), **master with `style.animations.unseen_tick_ms=0` 2 183 (2 133-2 254) and 2 013 (1 998-2 067)**, ranges apart: the unseen tick, not the poll, the bar or the clock held in a task.
+
+**3. The cause: the rendering update read the live clock.** `WREN_SPANS` on three replayed loads with the tick and three without, `wrentool threadtime`: the thread busy to settled 2 582 (2 580-2 636) against 2 356 (2 348-2 392) ms; of the difference, the frames' `resize_observers` 119 ms against 1 and `intersection_observers` 118 against 0, at 80 and 74 frames. Each frame from 2.2 s on did three layouts of 3 ms: one in the scroll steps, one in the resize observations, one in the intersection observations. Why: `run_animation_frames` ran before `page_update` pinned the frame's time, so its readings were on the live clock (`document_time_ms`), which moves between two readings outside a task. While an unseen animation waits for its tick (theverge.com's carousel at y = 7 000), round 54's `style.timeline_behind` sends every reading of a later time through a tick and a layout (that is what keeps a script's readings exact): the scroll steps', each observation's, the first of each callback, each one a later time than the last. The frames themselves were the page's own (a frame callback each frame), as before round 54; what each one cost tripled. With the tick off the timeline is never behind, so the frame's layout served all its readings.
+
+**The fix** (`page/bindings_timers.odin` `run_animation_frames`): the whole rendering update reads the frame's time, as HTML moves the document's timeline to it at the update of animations: its scroll steps, callbacks and observations see one instant, so a waiting animation is ticked by the first reading and the others find its layout as it is. A caller that pinned the clock already keeps its pin. A reading in a task between frames still ticks it once (the clock holds still in a task). Test: `jsdom_a_frame_lays_out_once_for_an_unseen_animation` (web_jsdom.odin: a one-step animation 20 000 px below, a frame callback with two readings, a resize and an intersection observer, each layout taking 1 ms of the virtual clock; one layout in the frame, six before the fix). `build\test_all.exe -Quick -NoAsan` on the final tree: 215 steps pass.
+
+**4. The series**, master 201743ac against the fix, 9 runs after a warm-up, frames on, median (range), ms (`build/replay/f58.<site>.tsv`):
+
+| | | visually ready | settled | CPU to settled | FCP | load | verdict |
+|---|---|---|---|---|---|---|---|
+| theverge.com | master | 2 492 (2 454-2 698) | 2 508 (2 483-2 716) | 2 226 (2 183-2 334) | 240 (237-244) | 385 (375-405) | |
+| | fix | **2 160 (1 983-2 202)** | **2 173 (2 140-2 215)** | **2 034 (2 005-2 054)** | 243 (222-252) | 391 (382-2 051) | **Gain** |
+| cnn.com | master | 2 973 (2 804-3 017) | 3 035 (2 892-3 102) | 2 486 (2 459-2 528) | 360 (279-386) | 2 232 (2 100-2 409) | |
+| | fix | 2 859 (2 812-2 909) | 2 885 (2 840-2 936) | 2 445 (2 426-2 473) | 376 (276-405) | 2 253 (2 197-2 421) | Nothing |
+| npr.org | master | 4 403 (4 164-5 802) | 5 314 (5 218-5 961) | 4 600 (4 475-5 191) | 249 (233-268) | 1 968 (1 852-2 450) | |
+| | fix | 4 380 (4 272-4 475) | 5 470 (5 271-6 279) | 4 691 (4 519-5 174) | 254 (237-264) | 1 919 (1 867-1 994) | Nothing |
+
+Read plainly. **theverge.com settles 13 % sooner, visually ready 13 % sooner and its CPU to settled is 8.6 % lower, ranges apart** (`Gain`), below the base of item 1 (2 510 settled, 2 334 CPU, another day's loads, most of them in the page's late mode): round 54 keeps what it gave and loses what it cost. Its frames to settled 16 to 19 against 24 to 35, its page clock back to 4 488-4 779 ms. cnn.com: settled -4.9 %, CPU -1.7 %, ranges overlapping by 50 ms; npr.org the same within its floor (+2.9 % of a 15 % floor, one slow load in each arm): the gains of rounds 51 to 57 stay. All of theverge.com's loads in this series came in its early mode (load at 0.4 s) but one of the fix's.
+
+**Not verified.** The release build. The other sites of the series (bbc.com/news). Pages whose scripts read the layout in many tasks between frames while an animation waits unseen: each such task still lays out once, which round 54 asked for and no page here showed in its spans. Whether a frame callback that reads `document.timeline.currentTime` or a style now sees the frame's time on every page as other browsers give it (the frame's own pass read it already; tests of animations pass).
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
