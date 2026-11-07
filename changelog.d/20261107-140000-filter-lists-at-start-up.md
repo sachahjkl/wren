@@ -1,0 +1,3 @@
+type: Fixed
+
+**The filter lists are loaded off the window thread at start-up**: the compiled index of the lists (36 MB with the default ones) is mapped from the profile on a thread of its own, where the window thread read and checked it before showing anything (about 30 ms of every start). A profile copied or restored (its files with other times) keeps its index when the lists' text is the same, where its first start compiled the lists again while the page's requests waited (0.5 s of its first paint). Blocking is unchanged: requests made before the lists' rules are in force still wait for them.

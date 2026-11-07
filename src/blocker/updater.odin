@@ -36,6 +36,7 @@ Updater :: struct {
 	status:       string,            // owned: a line for the dashboard
 	last_round:   i64,               // unix seconds
 	last_compile_ms: f64,
+	last_outcome: Job_Outcome,        // how the last job ended: the index of the profile loaded, the lists compiled, or nothing
 	errors:       int,
 	forced:       bool,
 	pending_etag, pending_lm: string,   // owned: the headers of the answer being read
@@ -212,7 +213,7 @@ updater_finish :: proc(b: ^Blocker) {
 		dl := make([]Download, len(b.upd.downloads), context.temp_allocator)
 		copy(dl, b.upd.downloads[:])
 		clear(&b.upd.downloads)
-		start_job(b, dl)
+		start_job(b, dl, .Rebuild)
 	} else {
 		conf_save(b)
 		if b.on_event != nil { ev := Event{kind = .Lists}; b.on_event(b.event_user, &ev) }

@@ -99,6 +99,7 @@ Doc :: struct {
 Engine_Ref :: struct {
 	engine:   ^adblock.Engine,
 	refs:     int,           // documents holding cosmetic ids of this engine, plus 1 while it is the current one
+	mapping:  base.File_Map, // the profile's index file the engine reads in place, when it was loaded from there
 	src_path: string,        // the lists' text the index was built from (rule lines are read from it)
 	sources:  []adblock.Source_Info,   // owned
 	generation: u64,
@@ -158,6 +159,7 @@ Blocker :: struct {
 	last_doc:   ^Doc,
 	watch:      int,
 	shutting_down: bool,
+	job_gate:   Job_Gate,           // a test's: called on each job's thread before its work (engine_build.odin); set before `start`
 }
 
 // The blocker of this thread's App (an App runs its loader and its pages on the thread of its loop; another App's thread has its own).
@@ -699,6 +701,7 @@ engine_ref_drop :: proc(b: ^Blocker, e: ^Engine_Ref) {
 	e.refs -= 1
 	if e.refs > 0 { return }
 	adblock.engine_destroy(e.engine)
+	base.file_unmap(&e.mapping)
 	for _, s in e.texts { delete(s) }
 	delete(e.texts)
 	delete(e.sources)

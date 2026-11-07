@@ -19,8 +19,11 @@ import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
 import "wb:tools/wrentool/measure"
 
-REPLAY_FLAGS :: "-Urls= -Sites= -Dir= -Exe= -Arms= -ArmPref= -ListArms= -Runs= -Warmup= -Pref= -Lists= -Seed= -Out= -NoFrames -Loaded"
+REPLAY_FLAGS :: "-Urls= -Sites= -Dir= -Exe= -Arms= -ArmPref= -ListArms= -Runs= -Warmup= -Pref= -Lists= -NoLists -Seed= -Out= -NoFrames -Loaded -Second"
 REPLAY_DIR :: "build/replay"
+// The lists a user has (`replay lists`), under -Dir: every arm loads with them unless -NoLists or -ListArms says otherwise. Without them a measure
+// optimizes work most users never run (round 56: three quarters of theverge.com's script).
+REPLAY_LISTS_DIR :: "lists"
 REPLAY_WORLD_FILE :: "world.txt"   // "<seed>,<unix ms>\n<url>\n"
 REPLAY_SEED :: 51
 REPLAY_RUNS :: 7
@@ -88,7 +91,7 @@ run_replay :: proc(args: []string) -> int {
 replay_usage :: proc() -> int {
 	fmt.eprintln("wrentool replay record -Urls a,b [-Dir d] [-Exe path] [-Seed n]")
 	fmt.eprintln("wrentool replay lists [-Dir d] [-Exe path]")
-	fmt.eprintln("wrentool replay run -Sites a,b [-Dir d] [-Arms x=path,y=path] [-ArmPref x:a=b,y:c=d] [-Runs n] [-Warmup n] [-Pref a=b] [-Lists folder [-ListArms x,y]] [-Out file] [-NoFrames] [-Loaded]")
+	fmt.eprintln("wrentool replay run -Sites a,b [-Dir d] [-Arms x=path,y=path] [-ArmPref x:a=b,y:c=d] [-Runs n] [-Warmup n] [-Pref a=b] [-Lists folder] [-ListArms x,y | -NoLists] [-Out file] [-NoFrames] [-Loaded] [-Second]")
 	return EXIT_USAGE
 }
 
@@ -216,12 +219,30 @@ replay_lists :: proc(f: tooling.Flags) -> int {
 	}
 	bench.stop(&w)
 	if !done { fmt.eprintln("the lists did not come"); return 1 }
-	out := fmt.tprintf("%s/lists", dir)
+	out := fmt.tprintf("%s/%s", dir, REPLAY_LISTS_DIR)
 	base.remove_tree(out)
-	if err := os.copy_directory_all(out, fmt.tprintf("%s/blocker", profile)); err != nil { fmt.eprintfln("cannot copy to %s: %v", out, err); return 1 }
+	if err := copy_keeping_times(out, fmt.tprintf("%s/blocker", profile)); err != nil { fmt.eprintfln("cannot copy to %s: %v", out, err); return 1 }
 	lists, _ := os.read_all_directory_by_path(fmt.tprintf("%s/lists", out), context.temp_allocator)
 	fmt.printfln("%d lists -> %s", len(lists), out)
 	return 0
+}
+
+// A profile's folder copied as a user has it, with the times of its files: the blocker's key of its compiled index looks at them first, and a plain
+// copy would make every list look changed (each load would then check the lists' text again, which a user's start does not).
+@(private = "file")
+copy_keeping_times :: proc(dst, src: string) -> os.Error {
+	if err := os.copy_directory_all(dst, src); err != nil { return err }
+	infos, err := os.read_all_directory_by_path(src, context.temp_allocator)
+	if err != nil { return err }
+	for fi in infos {
+		to := fmt.tprintf("%s/%s", dst, fi.name)
+		if fi.type == .Directory {
+			if e := copy_keeping_times(to, fi.fullpath); e != nil { return e }
+		} else if e := os.change_times(to, fi.access_time, fi.modification_time); e != nil {
+			return e
+		}
+	}
+	return nil
 }
 
 // A recording's folder: its world and its address.
@@ -250,9 +271,32 @@ replay_arms :: proc(f: tooling.Flags) -> []Replay_Arm {
 		}
 		arm.prefs = mine[:]
 		chosen := tooling.flag_list(f, "-ListArms")
-		if len(chosen) == 0 || slice.contains(chosen, arm.name) { arm.lists = tooling.flag(f, "-Lists") }
+		if !tooling.flag_has(f, "-NoLists") && (len(chosen) == 0 || slice.contains(chosen, arm.name)) {
+			arm.lists = tooling.flag(f, "-Lists", fmt.tprintf("%s/%s", tooling.flag(f, "-Dir", REPLAY_DIR), REPLAY_LISTS_DIR))
+		}
 	}
 	return arms[:]
+}
+
+// The lists as the arm's own build keeps them: one start of the arm on a copy of the folder, up to a load (the requests wait for the engine of the lists,
+// so it is in force and its compiled index is written by then), kept for its loads. A user's profile has the index its own browser compiled: a folder made by
+// another build would be compiled again at each start of this one (another index format), which is not what a user pays.
+@(private = "file")
+replay_lists_prepare :: proc(arm: ^Replay_Arm, out_dir, url, world: string, prefs: []string) -> bool {
+	if arm.lists == "" { return true }
+	if !os.exists(arm.lists) { fmt.eprintfln("no lists in %s: wrentool replay lists, or -NoLists", arm.lists); return false }
+	profile := fmt.tprintf("%s/profile", out_dir)
+	defer base.remove_tree(profile)
+	w: bench.Wren
+	if !replay_open(&w, arm.exe, profile, world, prefs, arm.lists) { return false }
+	e := api.navigate(&w.session, url, .Load, REPLAY_LOAD_LIMIT)
+	bench.stop(&w)
+	if e != .None { fmt.eprintfln("%s: the load that compiles the lists did not end", arm.name); return false }
+	own := fmt.aprintf("%s/lists_%s", out_dir, arm.name)
+	base.remove_tree(own)
+	if err := copy_keeping_times(own, fmt.tprintf("%s/blocker", profile)); err != nil { fmt.eprintfln("cannot copy to %s: %v", own, err); return false }
+	arm.lists = own
+	return true
 }
 
 @(private = "file")
@@ -264,6 +308,7 @@ replay_run :: proc(f: tooling.Flags) -> int {
 	runs := tooling.flag_int(f, "-Runs", REPLAY_RUNS)
 	warmup := tooling.flag_int(f, "-Warmup", REPLAY_WARMUP)
 	frames := !tooling.flag_has(f, "-NoFrames")
+	second := tooling.flag_has(f, "-Second")
 	rate := cycles_per_ms()
 	if _, why := testserver.start(); why != "" { fmt.eprintln(why); return 1 }
 	out_dir, _ := filepath.abs(fmt.tprintf("%s/out", dir), context.allocator)
@@ -274,6 +319,7 @@ replay_run :: proc(f: tooling.Flags) -> int {
 	fmt.sbprintln(&table, REPLAY_HEADER)
 	fmt.println(REPLAY_HEADER)
 	summary := strings.builder_make()
+	lists_ready := false
 	for spec in sites {
 		folder := fmt.aprintf("%s/%s", dir, compare_slug(spec))
 		abs_folder, _ := filepath.abs(folder, context.allocator)
@@ -285,6 +331,10 @@ replay_run :: proc(f: tooling.Flags) -> int {
 		common := make([dynamic]string)
 		append(&common, fmt.aprintf("network.hosts=*=127.0.0.1:%d", port), fmt.aprintf("network.tls.extra_ca_file=%s", ca), "network.loopback_only=true", "network.http3.enabled=false", "network.proxy.mode=none", "blocker.update.enabled=false", "blocker.welcome_toast=false")
 		for p in tooling.flag_list(f, "-Pref") { append(&common, p) }
+		if !lists_ready {
+			for &arm in arms { if !replay_lists_prepare(&arm, out_dir, url, world, common[:]) { return 1 } }
+			lists_ready = true
+		}
 		results := make([][dynamic]Replay_Load, len(arms))
 		for run in -warmup ..< runs {
 			for i in 0 ..< len(arms) {
@@ -294,9 +344,9 @@ replay_run :: proc(f: tooling.Flags) -> int {
 				prefs := make([dynamic]string, context.temp_allocator)
 				append(&prefs, ..common[:])
 				append(&prefs, ..arm.prefs)
-				l, loaded := replay_watched(arm, out_dir, url, world, prefs[:], rate, spec, tooling.flag_has(f, "-Loaded"))
+				l, loaded := replay_watched(arm, out_dir, url, world, prefs[:], rate, spec, tooling.flag_has(f, "-Loaded"), second)
 				if !loaded { fmt.eprintfln("%s %s run %d: no load", spec, arm.name, run); continue }
-				if frames { replay_frames(&l, arm.exe, out_dir, url, world, prefs[:], arm.lists) }
+				if frames { replay_frames(&l, arm.exe, out_dir, url, world, prefs[:], arm.lists, second) }
 				line := fmt.tprintf("%s\t%s\t%d\t%.0f\t%.0f\t%.0f\t%.1f\t%.0f\t%.0f\t%.1f\t%.1f\t%.0f\t%d\t%d\t%d\t%d\t%d\t%d\t%.3f\t%.3f\t%.0f", spec, arm.name, run, l.fcp, l.ready, l.settled, l.cpu_settled, l.load, l.dcl, l.cpu_load, l.guest, l.process_cpu, l.requests, l.failed, l.exact, l.near, l.unknown, l.frames, l.moving, l.others, l.page_clock)
 				fmt.println(line)
 				if run >= 0 {
@@ -316,26 +366,35 @@ replay_run :: proc(f: tooling.Flags) -> int {
 	return 0
 }
 
-// A Wren of its own for one load, on a profile with nothing in it but the lists it is given.
+// A Wren of its own for one load, on a profile with nothing in it but the lists it is given. With `second`, the load to measure is its second one: the
+// site was loaded once and left for about:blank, so that what a start costs (the engine of the lists, the first realm) is behind it and the HTTP cache has the site.
 @(private = "file")
-replay_open :: proc(w: ^bench.Wren, exe, profile, world: string, prefs: []string, lists: string) -> bool {
+replay_open :: proc(w: ^bench.Wren, exe, profile, world: string, prefs: []string, lists: string, url := "", second := false) -> bool {
 	base.remove_tree(profile)
 	if lists != "" {
 		_ = os.make_directory_all(profile)
-		if err := os.copy_directory_all(fmt.tprintf("%s/blocker", profile), lists); err != nil { fmt.eprintfln("cannot copy %s: %v", lists, err); return false }
+		if err := copy_keeping_times(fmt.tprintf("%s/blocker", profile), lists); err != nil { fmt.eprintfln("cannot copy %s: %v", lists, err); return false }
 	}
 	testserver.replay_rewind()
 	env := []string{fmt.tprintf("%s=%s", base.TEST_WORLD_ENV, world)}
-	return bench.start(w, {exe = exe, profile = profile, window = .Headless, size = SWEEP_SIZE, prefs = prefs, env = env})
+	if !bench.start(w, {exe = exe, profile = profile, window = .Headless, size = SWEEP_SIZE, prefs = prefs, env = env}) { return false }
+	if !second { return true }
+	if api.navigate(&w.session, url, .Load, REPLAY_LOAD_LIMIT) != .None || api.navigate(&w.session, "about:blank", .Load, REPLAY_LOAD_LIMIT) != .None {
+		fmt.eprintln("the first load of a -Second did not end")
+		bench.stop(w)
+		return false
+	}
+	testserver.replay_rewind()
+	return true
 }
 
 // The load that is measured: nothing watches it but the sampler, which asks nothing of the browser.
 @(private = "file")
-replay_load :: proc(exe, out_dir, url, world: string, prefs: []string, lists: string, rate: f64, site: string) -> (l: Replay_Load, ok: bool) {
+replay_load :: proc(exe, out_dir, url, world: string, prefs: []string, lists: string, rate: f64, site: string, second: bool) -> (l: Replay_Load, ok: bool) {
 	profile := fmt.tprintf("%s/profile", out_dir)
 	defer base.remove_tree(profile)
 	w: bench.Wren
-	if !replay_open(&w, exe, profile, world, prefs, lists) { return }
+	if !replay_open(&w, exe, profile, world, prefs, lists, url, second) { return }
 	defer bench.stop(&w)
 	session := &w.session
 	before, _ := api.stats(session)
@@ -372,11 +431,11 @@ replay_load :: proc(exe, out_dir, url, world: string, prefs: []string, lists: st
 // The same load again with its frames kept, for as long as the measured one took to settle. Apart: a copy of each frame costs the window thread about a ms, which would
 // show in its CPU and, on a page that draws all the time, keep it from ever looking idle.
 @(private = "file")
-replay_frames :: proc(l: ^Replay_Load, exe, out_dir, url, world: string, prefs: []string, lists: string) {
+replay_frames :: proc(l: ^Replay_Load, exe, out_dir, url, world: string, prefs: []string, lists: string, second: bool) {
 	profile := fmt.tprintf("%s/profile", out_dir)
 	defer base.remove_tree(profile)
 	w: bench.Wren
-	if !replay_open(&w, exe, profile, world, prefs, lists) { return }
+	if !replay_open(&w, exe, profile, world, prefs, lists, url, second) { return }
 	defer bench.stop(&w)
 	session := &w.session
 	if api.timeline_start(session, REPLAY_FRAME_SCALE, REPLAY_FRAMES_MOST, page = true) != .None { return }
@@ -468,11 +527,11 @@ replay_wait_quiet :: proc() {
 
 // The measured load, made again when others took the machine during it.
 @(private = "file")
-replay_watched :: proc(arm: Replay_Arm, out_dir, url, world: string, prefs: []string, rate: f64, site: string, loaded: bool) -> (l: Replay_Load, ok: bool) {
+replay_watched :: proc(arm: Replay_Arm, out_dir, url, world: string, prefs: []string, rate: f64, site: string, loaded, second: bool) -> (l: Replay_Load, ok: bool) {
 	for try in 0 ..= REPLAY_RETRIES {
 		if !loaded { replay_wait_quiet() }
 		busy0, total0 := bench.machine_times()
-		l, ok = replay_load(arm.exe, out_dir, url, world, prefs, arm.lists, rate, site)
+		l, ok = replay_load(arm.exe, out_dir, url, world, prefs, arm.lists, rate, site, second)
 		busy1, total1 := bench.machine_times()
 		// (a tick of the system is 100 ns: process_cpu is in ms)
 		own := l.process_cpu * 10_000 / f64(max(total1 - total0, 1))

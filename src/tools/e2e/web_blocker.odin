@@ -9,7 +9,9 @@ package e2e_scenarios
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:sync"
 import "core:testing"
+import "core:time"
 import "wb:base"
 import "wb:blocker"
 import "wb:config"
@@ -41,11 +43,22 @@ Setup :: struct {
 }
 
 setup :: proc(t: ^testing.T, w: ^Setup) {
+	profile_make(CONF_HEAD + MY_FILTERS)
+	start_browser(t, w)
+}
+
+// A profile with this configuration and nothing else.
+profile_make :: proc(conf: string) {
+	_ = os.remove_all(PROFILE)
+	_ = os.make_directory_all(PROFILE + "/blocker/lists")
+	_ = os.write_entire_file(PROFILE + "/blocker/blocker.conf", transmute([]byte)conf)
+}
+
+// The blocker started on the profile as it is (a start of the browser), with the gate of its jobs when one is given.
+start_browser :: proc(t: ^testing.T, w: ^Setup, gate: ^Engine_Gate = nil) {
 	w.t = t
 	serve(t)
-	_ = os.remove_all(PROFILE)
-	_ = os.make_directory_all(PROFILE + "/blocker")
-	_ = os.write_entire_file(PROFILE + "/blocker/blocker.conf", transmute([]byte)string(CONF_HEAD + MY_FILTERS))
+	if gate != nil { w.b.job_gate = {wait = proc(user: rawptr) { sync.sema_wait(&(^Engine_Gate)(user).sema) }, user = gate} }
 	cache_settings := httpcache.settings_default()
 	profile.cache = httpcache.create(&loop, cache_settings, "")
 	httpcache.settings_destroy(&cache_settings)
@@ -65,6 +78,12 @@ index_ready :: proc(w: ^Setup) -> bool {
 }
 
 shut :: proc(w: ^Setup) {
+	stop_browser(w)
+	_ = os.remove_all(PROFILE)
+}
+
+// The browser closed: the profile stays for the next start.
+stop_browser :: proc(w: ^Setup) {
 	blocker.shutdown(&w.b, &loader)
 	config.prefs_destroy(&w.prefs)
 	base.scope_close(w.tab)
@@ -72,8 +91,12 @@ shut :: proc(w: ^Setup) {
 	profile.cache = nil
 	cookies.clear_all(&profile.jar)
 	drain()
-	_ = os.remove_all(PROFILE)
 }
+
+// Where a test holds the job of the engine (Blocker.job_gate): on its thread, until the test opens it. Nothing spins.
+Engine_Gate :: struct { sema: sync.Sema }
+
+gate_open :: proc(g: ^Engine_Gate) { sync.sema_post(&g.sema) }
 
 // A document navigated to as the browser does it (fetch, destination document), its page under the tab.
 Doc :: struct {
@@ -108,17 +131,31 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		page.set_embedder(d.page, {user = d, tab_key = d.scope.name})
 	case .Done:
 		if d.page == nil { d.failed = "no response"; return }
-		page.parse_document(d.page, ev.data, d.charset, proc(p: ^page.Page, user: rawptr, pd: ^page.Parsed_Document) {
-			d := (^Doc)(user)
-			if !pd.decoded { d.failed = "the document could not be decoded"; return }
-			page.adopt_document(p, pd)
-			if !p.render.adopted { page.render_begin(p) }
-			d.parsed = true
-			page.scripts_start(p)
-		}, d, "")
+		page.parse_document(d.page, ev.data, d.charset, document_parsed, d, "")
 	case .Failed:
 		d.failed = strings.clone(ev.detail != "" ? ev.detail : "the request failed", keep)
 	}
+}
+
+document_parsed :: proc(p: ^page.Page, user: rawptr, pd: ^page.Parsed_Document) {
+	d := (^Doc)(user)
+	if !pd.decoded { d.failed = "the document could not be decoded"; return }
+	page.adopt_document(p, pd)
+	if !p.render.adopted { page.render_begin(p) }
+	d.parsed = true
+	page.scripts_start(p)
+}
+
+// A document made of its text, as the shell makes its own pages: nothing of it asks the network.
+doc_of_text :: proc(w: ^Setup, text: string) -> ^Doc {
+	d := new(Doc, context.temp_allocator)
+	d.w = w
+	d.scope = base.scope_make("navigation", w.tab)
+	base.on_close(d.scope, proc(data: rawptr) { (^Doc)(data).page = nil }, d)
+	d.page = page.page_create(&loop, &loader, &settings, d.scope, "about:blank", proc(user: rawptr, level: page.Log_Level, message: string) {}, d)
+	page.set_embedder(d.page, {user = d, tab_key = d.scope.name})
+	page.parse_document(d.page, transmute([]byte)text, "utf-8", document_parsed, d, "")
+	return d
 }
 
 // Failed, or parsed and every script ran.
@@ -423,6 +460,90 @@ blocker_the_journal :: proc(t: ^testing.T) {
 	blocked_entries := 0
 	for i in 0 ..< blocker.journal_len(&w.b.journal) { if blocker.journal_get(&w.b.journal, i).outcome == .Blocked { blocked_entries += 1 } }
 	testing.expect_value(t, blocked_entries, BLOCKED_ON_THE_ADS_PAGE)
+}
+
+// A filter list, not a real one: it blocks the ads page's third party (what MY_FILTERS does for the other tests), and nothing the base list does.
+FAKE_LIST :: "! Title: a list of the test\n||localhost^$third-party\n"
+FAKE_LIST_CHANGED :: "! Title: a list of the test\n||localhost^$third-party\n||example.invalid^\n"
+FAKE_LIST_PATH :: PROFILE + "/blocker/lists/easylist.txt"
+CONF_WITH_A_LIST :: "version\t1\n[lists]\nlist\teasylist\t1\t0\tEasyList\thttps://easylist.invalid/easylist.txt\n[sites]\n[rules]\n[my-filters]\n"
+// The time a copy of the profile gives the list's file (a restore, another machine): any other than the one it was written at.
+LIST_TIME_OF_A_COPY :: 1_700_000_000
+SOME_DOCUMENT :: "<!doctype html><p>a document that needs no network</p>"
+
+// A second start of the browser: the index of the lists is in the profile. Its load is a job on its own thread, held here at its gate (a load as
+// slow as the test likes): start has returned without it, a document that needs no network is ready to paint meanwhile, the network waits, and once
+// the job is let go the page asked for meanwhile is filtered by the list. The list's file has another time (a copied profile) and the same text: the
+// index is loaded, not compiled again.
+@(test)
+blocker_the_index_of_the_lists_loads_off_the_window_thread :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	profile_make(CONF_WITH_A_LIST)
+	defer os.remove_all(PROFILE)
+	_ = os.write_entire_file(FAKE_LIST_PATH, transmute([]byte)string(FAKE_LIST))
+	{
+		first: Setup
+		start_browser(t, &first)
+		index_ready(&first)
+		testing.expect_value(t, first.b.upd.last_outcome, blocker.Job_Outcome.Compiled)
+		stop_browser(&first)
+	}
+	copied := time.unix(LIST_TIME_OF_A_COPY, 0)
+	testing.expect(t, os.change_times(FAKE_LIST_PATH, copied, copied) == nil, "the list's file takes the time of a copy")
+
+	gate: Engine_Gate
+	w: Setup
+	start_browser(t, &w, &gate)
+	defer stop_browser(&w)
+	opened := false
+	defer if !opened { gate_open(&gate) }   // (before the stop above: a failing check must not leave the job's thread held, shutdown joins it)
+	testing.expect(t, w.b.upd.job != nil, "start returned with the job of the engine still to run")
+	testing.expect(t, loader.hold, "the requests to the network wait for the engine")
+
+	quick := doc_of_text(&w, SOME_DOCUMENT)
+	defer close_doc(quick)
+	if !wait_until(t, "a document of text", quick, is_loaded) { return }
+	state, why := page.first_paint_state(quick.page)
+	testing.expectf(t, state == .Ready && loader.hold, "a document that needs no network can be painted while the engine loads (%v %s)", state, why)
+	ads := open_doc(&w, ADS)
+	defer close_doc(ads)
+	drain()
+	testing.expect(t, ads.page == nil && ads.failed == "" && loader.hold, "the page's request waits for the engine")
+
+	gate_open(&gate)
+	opened = true
+	index_ready(&w)
+	testing.expect_value(t, w.b.upd.last_outcome, blocker.Job_Outcome.Loaded)
+	if !wait_until(t, ADS, ads, is_loaded) { load_stuck(&w, ads); return }
+	ads_settled(ads)
+	text := log_text(ads)
+	testing.expectf(t, strings.contains(text, "ad.js ran: false") && strings.contains(text, "tracker fetch: failed"), "the page asked for while the engine loaded is filtered by the list: its script and its fetch are blocked (%q)", text)
+	testing.expect(t, strings.contains(text, "first party fetch: ok"), "what the list allows goes through")
+}
+
+// The text of a list changed on disk with its size: the profile's index is not the list's any more, and is compiled again.
+@(test)
+blocker_a_changed_list_is_compiled_again :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	begin(t)
+	defer end()
+	profile_make(CONF_WITH_A_LIST)
+	defer os.remove_all(PROFILE)
+	_ = os.write_entire_file(FAKE_LIST_PATH, transmute([]byte)string(FAKE_LIST))
+	{
+		first: Setup
+		start_browser(t, &first)
+		index_ready(&first)
+		stop_browser(&first)
+	}
+	_ = os.write_entire_file(FAKE_LIST_PATH, transmute([]byte)string(FAKE_LIST_CHANGED))
+	w: Setup
+	start_browser(t, &w)
+	defer stop_browser(&w)
+	index_ready(&w)
+	testing.expect_value(t, w.b.upd.last_outcome, blocker.Job_Outcome.Compiled)
 }
 
 // Switched off: no filtering.

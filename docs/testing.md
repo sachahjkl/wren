@@ -305,6 +305,7 @@ build\wrentool sweep -List tools\site_compare_list.txt,tools\site_compare_list2.
 
 ```
 build\wrentool desktop build\wrentool.exe replay record -Urls https://www.cnn.com/,https://www.npr.org/
+build\wrentool desktop build\wrentool.exe replay lists
 build\wrentool desktop build\wrentool.exe replay run -Sites https://www.cnn.com/,https://www.npr.org/ -Arms base=build\wren_base.exe,new=build\wren.exe -Runs 7 -Out build\replay\new.tsv
 ```
 
@@ -337,7 +338,7 @@ What a load says, in `<Out>` (one line a load) and `<Out>.summary.txt`; the rule
 
 No tool holds a lock, and agents share this machine: a load starts when at most a fifth of the processors are at work, and one during which the rest of the machine took more than 35 % of it (the background of a shared machine, the browser's own helper processes) is said, dropped and made again (`others`: their share). `-Loaded` measures all the same, for a machine that does not go quiet; its floor says so. `wrentool desktop` ends a command after 30 minutes: a long series goes site by site.
 
-`wrentool replay lists` fetches and compiles the lists on by default, as a user has them some seconds after a first start, into `build/replay/lists`; `run -Lists build/replay/lists -ListArms x` puts them in the profile of arm `x`.
+**The filter lists are on by default** ([round 57](performance.md#what-changed-round-57-the-filter-lists-at-start-up)): what a user runs. `wrentool replay lists` fetches and compiles the ten lists on by default, as a user has them some seconds after a first start, into `build/replay/lists` (once; `run` says so when the folder is missing). Before its loads each arm starts once on a copy of the folder and loads the site, so that the profile holds the index its own build compiled (a folder made by another build would be compiled again at each start: another format), and every load copies that profile with the times of its files, as a user's stays. `-Lists folder` takes another folder, `-ListArms x,y` gives the lists to those arms only, `-NoLists` to none (the built-in list). `-Second` measures the second load of each Wren: the site once, then `about:blank`, then the load measured, with what a start costs behind it and the HTTP cache holding the site.
 
 ## Tools beside the tests
 
