@@ -124,7 +124,7 @@ inlined, compiled functions called directly, natives and getters called, objects
 [engine/jit.md](engine/jit.md)), and the numeric, Unicode, regexp and date libraries. `jscapi` gives it
 the QuickJS C API, which the glue (`native/js/odin`, all Odin) is written against; the web platform's objects are
 hand-written members plus bindings generated from the Web IDL of webref (`src/tools/bindgen`, package `jsgen`, into
-`native/js/odin/bindings_gen.odin`). `src\tools\buildjs` compiles it all to one wasm32 module (Odin, linked by Odin's own `wasm-ld`, no C library:
+`native/js/odin/bindings_gen.odin`). `src\tools\buildjs` compiles it all to one wasm32 module (Odin, linked by Odin's own `wasm-ld` (on Linux, lld's), no C library:
 no C of ours is compiled) and pre-initializes it at build time (`src/wasm/preinit.odin`: interfaces,
 prototypes and preludes already built in the memory image); the image is embedded in the exe (`src/js/image`). Each page
 and each JavaScript worker gets its own instance (a realm), whose

@@ -3,7 +3,7 @@
 # Linux window (Wayland + X11, dlopen so no window library is hard-linked) and a wgpu render path, and src/browser now
 # type-checks for Linux too (docs/portability.md). Linking build/wren needs libwgpu_native.a beside Odin's wgpu vendor
 # package and the native libraries from `./build.sh deps`; `./build.sh wren` attempts it so any remaining errors show.
-#   ./build.sh deps       the native libraries for this system: Wasmtime (pinned release, SHA-256), Lexbor, the Rust library
+#   ./build.sh deps       the native libraries for this system: Wasmtime (pinned release, SHA-256), Lexbor, the Rust library, the JavaScript engine
 #   ./build.sh check      odin check for Linux and the unit tests of every portable package (src/tools/test_all)
 #   ./build.sh crash      the crash reports end to end (wrentool crash-e2e)
 #   ./build.sh wren       attempt to link build/wren (needs libwgpu_native.a and ./build.sh deps; src/browser type-checks now)
@@ -34,6 +34,10 @@ deps() {
   CC="${CC:-clang}" wrentool build lexbor
   # the features of the browser's (wren below): the unit tests link the same library (src/tools/test_all: the browser's own shape text)
   wrentool build native -Profile "$PROFILE" -Features text,a11y
+  # the JavaScript engine's image (build/js: nothing to do when up to date), which the browser embeds: without it the browser runs
+  # no script, and the tests that need the engine are skipped. Its pre-initialization calls the module, which needs the 64 MiB stack
+  # (wasm.wasmtime.max_stack_bytes); the linker is the system's wasm-ld (lld), which Odin's Linux release does not ship.
+  ( ulimit -s 65536 && "$ODIN" run src/tools/buildjs -collection:wb=src -out:build/buildjs )
 }
 
 # odin check and the unit tests: the test program of the repository, built each time (a second).
@@ -63,7 +67,12 @@ wren() {
   # The text and accessibility backends are compiled into the native library here (build.bat's default features);
   # the toolkit is then told not to link them itself (-define:FONT_NATIVE_LINK=false / -define:A11Y_NATIVE_LINK=false).
   wrentool build native -Profile "$PROFILE" -Features text,a11y
-  # the engine's machine code, which the program ships: made here, it is this system's (the image comes from Windows, code does not travel)
+  # an empty image is the stub that lets odin check go through (src/tools/test_all/desktop_other.odin): a browser linked with it runs no script
+  if [ ! -s build/js/wren_js.wasm ]; then
+    echo "build/js/wren_js.wasm is missing or empty (a stub): ./build.sh deps builds the JavaScript engine" >&2
+    exit 1
+  fi
+  # the engine's machine code, which the program ships: made here, it is this system's (from build/js/wren_js.wasm, ./build.sh deps)
   wrentool build jscode
   local flags=(-collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -target:linux_amd64 -define:WREN_SHIPPED_CODE=true)
   flags+=(-extra-linker-flags:"$(link_flags)")
