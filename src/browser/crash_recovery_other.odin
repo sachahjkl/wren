@@ -11,10 +11,11 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
-import "core:time"
 
 @(private = "file") CLK_TCK :: 100   // Linux USER_HZ, as base/process_times_other.odin
 @(private = "file") FILETIME_UNIX_EPOCH_100NS :: 116_444_736_000_000_000
+@(private = "file") BTIME_KEY :: "btime "   // /proc/stat's line of the boot time
+@(private = "file") NS_PER_S :: 1_000_000_000
 
 current_pid :: proc() -> u32 {
 	when ODIN_OS == .Linux {
@@ -44,7 +45,7 @@ process_created :: proc(pid: u32) -> (created: u64, alive: bool) {
 		if !ok { return 0, true }
 		boot_unix_ns, bok := boot_time_unix_ns()
 		if !bok { return 0, true }
-		start_unix_ns := boot_unix_ns + start_ticks * 1_000_000_000 / CLK_TCK
+		start_unix_ns := boot_unix_ns + start_ticks * NS_PER_S / CLK_TCK
 		created = u64(start_unix_ns / 100 + FILETIME_UNIX_EPOCH_100NS)
 		return created, true
 	} else {
@@ -54,14 +55,20 @@ process_created :: proc(pid: u32) -> (created: u64, alive: bool) {
 	}
 }
 
+// When the system started, ns since 1970: /proc/stat's btime, whole seconds and the same for every reading of a boot. (Not now less
+// /proc/uptime: two readings of that differ by the time between them and uptime's hundredths, so a process's creation time
+// read by another process never equalled the one its marker wrote, and a second start of a profile took the Wren running on it
+// for a crash: it opened its tabs again and took over its files.)
 @(private = "file")
 boot_time_unix_ns :: proc() -> (i64, bool) {
-	data, err := os.read_entire_file("/proc/uptime", context.temp_allocator)
+	data, err := os.read_entire_file("/proc/stat", context.temp_allocator)
 	if err != nil { return 0, false }
-	text := string(data)
-	if sp := strings.index_byte(text, ' '); sp > 0 { text = text[:sp] }
-	up_s, ok := strconv.parse_f64(strings.trim_space(text))
-	if !ok { return 0, false }
-	now_ns := time.time_to_unix_nano(time.now())
-	return now_ns - i64(up_s * 1e9), true
+	rest := string(data)
+	for line in strings.split_lines_iterator(&rest) {
+		if !strings.has_prefix(line, BTIME_KEY) { continue }
+		s, ok := strconv.parse_i64(strings.trim_space(line[len(BTIME_KEY):]))
+		if !ok { return 0, false }
+		return s * NS_PER_S, true
+	}
+	return 0, false
 }
