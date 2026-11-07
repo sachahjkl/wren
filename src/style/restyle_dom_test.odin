@@ -1243,6 +1243,8 @@ section > :first-child + * { line-height: 2 } .a:nth-child(3) ~ li { color: purp
 :first-child + .b { text-indent: 1px } :last-child > .g { color: teal } .c:only-child span { color: tan } :nth-child(1) .e { word-spacing: 3px } :nth-last-child(1) + * { color: pink }
 .a:not(:has(.b)) { text-indent: 2px } .c:is(:has(+ .d), :has(~ .e)) span { color: coral } :not(:has(+ .h)) > .g { margin-right: 1px } div:has(+ .a .b) { text-indent: 4px } p:has(+ .a ~ .c) { text-indent: 5px }
 .b:has(~ .c .d) { text-indent: 6px }
+li:nth-child(3) { padding-right: 1px } :nth-last-child(-n + 3) > span { color: wheat } :nth-child(-n + 2) .c { color: bisque }
+span { padding-top: var(--w, 1px) } [class*="a b"] span { color: khaki } [data-x^="1"] + * { color: linen } [class~="c"] > span { color: plum }
 `
 
 @(private = "file")
@@ -1299,7 +1301,7 @@ restyle_dom_random_from :: proc(t: ^testing.T, seed: u64) {
 		if len(els) < 10 { break }
 		x := els[rand.int_max(len(els))]
 		what := ""
-		switch rand.int_max(9) {
+		switch rand.int_max(10) {
 		case 0, 1:
 			what = "class"
 			cls := strings.concatenate({CLASSES[rand.int_max(len(CLASSES))], " ", CLASSES[rand.int_max(len(CLASSES))]}, context.temp_allocator)
@@ -1333,6 +1335,10 @@ restyle_dom_random_from :: proc(t: ^testing.T, seed: u64) {
 		case 8:
 			what = "style"
 			dom.set_attribute(f.doc, x, "style", rand.int_max(2) == 0 ? "font-size: 12px" : "color: teal")
+		case 9:
+			// what every element inherits: all restyled, from what they matched, beside what else this batch changed
+			what = "inherited"
+			dom.set_attribute(f.doc, by_id(f, "root"), "style", fmt.tprintf("--w: %dpx", step))
 		}
 		{ xn := dom.get(f.doc, x); cl := ""; if xn != nil { cl, _ = attr(xn, "class") }; append(&batch, fmt.tprintf("%s on <%s class=%q> %v", what, xn != nil ? xn.name : "?", cl, x)) }
 		// sometimes several mutations before a restyle

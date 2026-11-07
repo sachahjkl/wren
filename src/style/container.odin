@@ -85,6 +85,7 @@ restyle_containers :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled) -> (chang
 	defer pass_destroy(p)
 	p.compare = true
 	defer if !ok && p.changed { styled_superseded(s) }
+	p.unmarked = true   // (a size is read in the cascade: @container conditions, cq units. The document is as the styles have it: above)
 	for r in roots_in_order(doc, pending) {
 		n := dom.get(doc, r)
 		if n == nil || n.kind != .Element || base_style_of(s, r) == nil { return cq_fail(e, "a container left the document") }
@@ -102,6 +103,7 @@ restyle_containers :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled) -> (chang
 		style_subtree(p, r, base_style_of(s, par), bloom, root_ctx = node_ctx(p, r))
 		if p.unscoped { return cq_fail(e, "a counter is reached") }
 	}
+	e.last_restyle.taken = p.matched_taken
 	if p.changed {
 		s.serial = sync.atomic_add(&styled_serial, 1) + 1   // (atomic: the style threads stamp too)
 		if p.layout_changed { s.layout_serial = s.serial }
