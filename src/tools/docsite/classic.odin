@@ -51,7 +51,7 @@ classic_pages := [?]Classic_Page{
 // The nav line: classic addresses, or the outside ones.
 classic_nav := [?][2]string{
 	{"/", "home"},
-	{REPO_URL + "/releases/latest", "download"},
+	{"/#download", "download"},   // (the home page's links: each system's file)
 	{"/features/", "features"},
 	{"/gallery/", "screenshots"},
 	{"/architecture/", "architecture"},
@@ -163,7 +163,7 @@ build_classic_home :: proc(releases: []Release) {
 	page = stamp(page, "<!-- classic:top -->", "<!-- /classic:top -->", site_relative(strings.concatenate({"\n", strings.to_string(top)}), "index.html"))
 	page = stamp(page, "<!-- classic:foot -->", "<!-- /classic:foot -->", site_relative(strings.concatenate({"\n", strings.to_string(foot)}), "index.html"))
 	page = stamp(page, "<!-- news:begin -->", "<!-- news:end -->", site_relative(strings.to_string(news), "index.html"))
-	if len(releases) > 0 { page = stamp(page, "<!-- latest -->", "<!-- /latest -->", releases[0].version) }
+	if len(releases) > 0 { page = stamp_download_links(stamp(page, "<!-- latest -->", "<!-- /latest -->", releases[0].version), releases[0].version) }
 	emit(CLASSIC_HOME, page)
 }
 
