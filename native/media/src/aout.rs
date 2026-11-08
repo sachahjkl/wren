@@ -53,6 +53,24 @@ pub struct Output {
 // Mutex), which is what the callback touches.
 unsafe impl Send for Output {}
 
+// Why Output::open failed (wm_aout_open's answer): the host has no default output device, the device offers no
+// configuration, or the stream could not be built.
+pub const OPEN_NO_DEVICE: i32 = 1;
+pub const OPEN_NO_CONFIG: i32 = 2;
+pub const OPEN_NO_STREAM: i32 = 3;
+
+// How good an output configuration is for us (lower is better), None when the stream cannot write its sample format:
+// float first (no conversion), then 16-bit; exactly our channels before more of them (the extra ones get silence).
+fn config_rank(format: SampleFormat, channels: u16) -> Option<u32> {
+    let f = match format {
+        SampleFormat::F32 => 0,
+        SampleFormat::I16 => 1,
+        SampleFormat::U16 => 2,
+        _ => return None,
+    };
+    Some(f * 2 + u32::from(channels as usize != CHANNELS))
+}
+
 fn mono_ns() -> i64 {
     // CLOCK_MONOTONIC, as the Odin side stamps its times (thread_linux.odin: time.tick_now).
     let mut ts = libc::timespec { tv_sec: 0, tv_nsec: 0 };
@@ -64,24 +82,29 @@ fn mono_ns() -> i64 {
 impl Output {
     pub fn open(rate: u32) -> Result<Box<Output>, i32> {
         let host = cpal::default_host();
-        let device = host.default_output_device().ok_or(1i32)?;
-        // A configuration with our two channels and, if the device allows it, our rate; else the device's default.
+        let device = host.default_output_device().ok_or(OPEN_NO_DEVICE)?;
+        // A configuration at our rate in a sample format the stream below writes, the best by `config_rank` (float, then
+        // exactly our two channels); else the device's default. The first range that fit was taken before: through
+        // PipeWire's ALSA plugin that is an 8-bit or 32-bit integer one, which no stream here writes, and every video
+        // played without sound.
         let wanted = cpal::SampleRate(rate);
         let mut chosen: Option<cpal::SupportedStreamConfig> = None;
+        let mut best = u32::MAX;
         if let Ok(ranges) = device.supported_output_configs() {
             for r in ranges {
-                if r.channels() as usize >= CHANNELS
-                    && r.min_sample_rate() <= wanted
-                    && r.max_sample_rate() >= wanted
-                {
-                    chosen = Some(r.with_sample_rate(wanted));
-                    break;
+                if r.channels() as usize >= CHANNELS && r.min_sample_rate() <= wanted && r.max_sample_rate() >= wanted {
+                    if let Some(rank) = config_rank(r.sample_format(), r.channels()) {
+                        if rank < best {
+                            best = rank;
+                            chosen = Some(r.with_sample_rate(wanted));
+                        }
+                    }
                 }
             }
         }
         let supported = match chosen {
             Some(c) => c,
-            None => device.default_output_config().map_err(|_| 1i32)?,
+            None => device.default_output_config().map_err(|_| OPEN_NO_CONFIG)?,
         };
         let device_rate = supported.sample_rate().0;
         let sample_format = supported.sample_format();
@@ -133,7 +156,7 @@ impl Output {
                 _ => Err(cpal::BuildStreamError::StreamConfigNotSupported),
             }
         };
-        let stream = build(sample_format).map_err(|_| 1i32)?;
+        let stream = build(sample_format).map_err(|_| OPEN_NO_STREAM)?;
         Ok(Box::new(Output {
             shared,
             stream: Some(stream),
@@ -295,4 +318,19 @@ pub unsafe fn close(handle: *mut c_void) {
         return;
     }
     drop(Box::from_raw(handle as *mut Output));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // PipeWire's ALSA plugin lists 8-bit and 32-bit integer ranges before float ones: they must lose, not be taken first.
+    #[test]
+    fn config_rank_prefers_float_stereo_and_refuses_what_no_stream_writes() {
+        assert_eq!(config_rank(SampleFormat::I8, 2), None);
+        assert_eq!(config_rank(SampleFormat::I32, 2), None);
+        assert!(config_rank(SampleFormat::F32, 2) < config_rank(SampleFormat::F32, 6));
+        assert!(config_rank(SampleFormat::F32, 6) < config_rank(SampleFormat::I16, 2));
+        assert!(config_rank(SampleFormat::I16, 2) < config_rank(SampleFormat::U16, 2));
+    }
 }
