@@ -211,7 +211,8 @@ video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle,
 	if app == nil { return true }
 	t, view, ok := video_current(app, p, node)
 	if !ok { return true }
-	if view.ready { draw.rect(dc, content, draw.Color{0, 0, 0, 1}) }
+	// (no fill behind the picture: the bands object-fit leaves show the element's background, transparent unless the
+	// page sets one, as in other browsers)
 	if t != nil && t.frames > 0 {
 		dst := fit_rect(content, {f32(t.size.x), f32(t.size.y)}, cs, scale)
 		radii := content_radii(cs, border, content, scale)
