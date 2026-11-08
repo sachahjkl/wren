@@ -25,7 +25,7 @@
 <li><a href="../../write/">Write a page</a></li>
 <li><a href="../../changelog/">Changelog</a></li>
 <li><a href="../../pricing/">Pricing</a></li>
-<li><a class="btn primary nav-dl" href="/#download">Download</a></li>
+<li><a class="btn primary nav-dl" href="../../#download">Download</a></li>
 </ul>
 </div>
 </header>
@@ -353,7 +353,7 @@ inlined, compiled functions called directly, natives and getters called, objects
 <a href="../../docs/engine/jit/">engine/jit.md</a>), and the numeric, Unicode, regexp and date libraries. <code>jscapi</code> gives it
 the QuickJS C API, which the glue (<code>native/js/odin</code>, all Odin) is written against; the web platform's objects are
 hand-written members plus bindings generated from the Web IDL of webref (<code>src/tools/bindgen</code>, package <code>jsgen</code>, into
-<code>native/js/odin/bindings_gen.odin</code>). <code>src\tools\buildjs</code> compiles it all to one wasm32 module (Odin, linked by Odin's own <code>wasm-ld</code>, no C library:
+<code>native/js/odin/bindings_gen.odin</code>). <code>src\tools\buildjs</code> compiles it all to one wasm32 module (Odin, linked by Odin's own <code>wasm-ld</code> (on Linux, lld's), no C library:
 no C of ours is compiled) and pre-initializes it at build time (<code>src/wasm/preinit.odin</code>: interfaces,
 prototypes and preludes already built in the memory image); the image is embedded in the exe (<code>src/js/image</code>). Each page
 and each JavaScript worker gets its own instance (a realm), whose
