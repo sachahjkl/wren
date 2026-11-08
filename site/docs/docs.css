@@ -127,6 +127,9 @@ body.docs { overflow-x: hidden; }
 .doc-article img { border-radius: 8px; border: 1px solid var(--line); margin: 1em 0; }
 .doc-article table { margin: 1em 0; }
 .doc-article .table-box { margin: 1em 0; }
+/* a phone: each column keeps room for its text and the table scrolls sideways in its frame (a cell's width is the least its
+   column gets; browsers ignore a cell's min-width) */
+@media (max-width: 800px) { .doc-article .table-box th, .doc-article .table-box td { width: min(26ch, 70vw); } }
 
 /* heading anchors appear on hover */
 .doc-article h1 .anchor, .doc-article h2 .anchor, .doc-article h3 .anchor,

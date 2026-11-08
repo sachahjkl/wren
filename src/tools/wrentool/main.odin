@@ -41,6 +41,8 @@ COMMANDS := []Command{
 	{name = "sweep", about = "-Urls a,b | -List f[,g] [-OutDir d] [-Exe path] [-Shard i -Shards n] [-Pref a=b] [-OneProcess] [-MemoryReports]: real pages visited headless (scroll, devtools, a link, back, reload, a tab, close); crashes, hangs, times", run = capture.run_sweep},
 	{name = "gen", about = "psl | unicode [-Force] | idna | media-fixtures | video-fixtures | perf-media [-Force] | rust-crates [-Check]", run = gen.run_gen},
 	{name = "docs", about = "[-Check] [-NoBuild] [-ChartUpdate]: the documentation site, its links checked", run = gen.run_docs},
+	{name = "site_meta", about = "<site> <out>: each page's sharing tags, feed.xml, sitemap.xml, site.webmanifest, llms.txt, 404.html (the Pages workflow)", run = gen.run_site_meta},
+	{name = "site_card", about = "the sharing card, site/img/card.png, drawn in a local Chromium", run = gen.run_site_card},
 	{name = "logo", about = "[-Out folder] [-Variant amber|dev|violet|amber-plain] [-Single]: the logo and the icon (assets/, assets/dev/ for dev), drawn by the toolkit's paint package; -Single: one picture and a sheet of every size", run = gen.run_logo},
 	{name = "paddle", about = "[-Apply] [-Environment sandbox|live] [-ProductName n] [-Amount 2900] [-Currency EUR]: Wren's Paddle catalog (a dry run without -Apply)", run = gen.run_paddle},
 	{name = "license", about = "keygen | pubkey | issue | verify ...: Wren's licences (docs/licence.md)", run = gen.run_license},

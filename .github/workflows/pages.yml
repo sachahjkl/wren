@@ -10,7 +10,8 @@ on:
     paths:
       - "site/**"
       - "CHANGELOG.md"
-      - "tools/site_meta.mjs"
+      - "src/tools/wrentool/gen/site_meta.odin"
+      - "ext/gui_toolkit"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -32,7 +33,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/configure-pages@v6
-      - run: node tools/site_meta.mjs site _site
+      - run: git submodule update --init ext/gui_toolkit
+      # what each page says when shared, the feed, the sitemap: wrentool site_meta (Odin, the same pinned archive as the toolkit's)
+      - name: Odin dev-2026-11a
+        env:
+          ODIN_TAG: dev-2026-11a
+          ODIN_SHA256: 65c9f6e97d6f8a30930e151f270ce5aeaa98fe8b2ba49fe067394e2af04f7618
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang lld
+          curl -fsSL -o "$RUNNER_TEMP/odin.tar.gz" "https://github.com/odin-lang/Odin/releases/download/$ODIN_TAG/odin-linux-amd64-$ODIN_TAG.tar.gz"
+          echo "$ODIN_SHA256  $RUNNER_TEMP/odin.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/odin" && tar -xzf "$RUNNER_TEMP/odin.tar.gz" -C "$RUNNER_TEMP/odin"
+          dirname "$(find "$RUNNER_TEMP/odin" -maxdepth 3 -name odin -type f | head -1)" >> "$GITHUB_PATH"
+      - run: mkdir -p build && odin run src/tools/wrentool -collection:wb=src -out:build/wrentool -- site_meta site _site
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
