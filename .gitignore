@@ -37,3 +37,5 @@ examples/site/mutation_class.wasm
 
 # direnv
 .direnv
+# written by the pre-commit hooks of flake.nix (nix develop)
+.pre-commit-config.yaml

@@ -266,8 +266,12 @@ common_flags :: proc(o: Options) -> []string {
 }
 
 // The version of the sources (about.odin: APP_COMMIT, APP_COMMIT_DATE): g<short hash> as git describe writes it (Odin would read an all-digit value as a number), "+" when the tree has uncommitted
-// changes, and its date; "dev" and no date without git.
+// changes, and its date; "dev" and no date without git. WREN_SOURCE_COMMIT and WREN_SOURCE_DATE say them for a build that has the
+// sources without git (flake.nix: the flake's revision).
 source_commit :: proc() -> (commit, date: string) {
+	if c := os.get_env("WREN_SOURCE_COMMIT", context.temp_allocator); c != "" {
+		return fmt.tprintf("g%s", c), os.get_env("WREN_SOURCE_DATE", context.temp_allocator)
+	}
 	hash, code := tooling.capture({"git", "rev-parse", "--short", "HEAD"}, allocator = context.temp_allocator)
 	if code != 0 || strings.trim_space(hash) == "" { return "dev", "" }
 	commit = fmt.tprintf("g%s", strings.trim_space(hash))
