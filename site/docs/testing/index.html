@@ -141,11 +141,11 @@
 <li><a href="../../docs/api/webassembly/">Module webassembly</a></li>
 <li><a href="../../docs/api/webaudio/">Module webaudio</a></li>
 <li><a href="../../docs/api/webcodecs/">Module webcodecs</a></li>
-<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecsaudiodecoder</a></li>
-<li><a href="../../docs/api/webcodecs_codec/">Module webcodecscodec</a></li>
-<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecsencoders</a></li>
-<li><a href="../../docs/api/webcodecs_image/">Module webcodecsimage</a></li>
-<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecsvideodecoder</a></li>
+<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecs_audio_decoder</a></li>
+<li><a href="../../docs/api/webcodecs_codec/">Module webcodecs_codec</a></li>
+<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecs_encoders</a></li>
+<li><a href="../../docs/api/webcodecs_image/">Module webcodecs_image</a></li>
+<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecs_video_decoder</a></li>
 <li><a href="../../docs/api/webgl/">Module webgl</a></li>
 <li><a href="../../docs/api/websocket/">Module websocket</a></li>
 <li><a href="../../docs/api/workers/">Module workers</a></li>
@@ -288,7 +288,7 @@ that compiles and runs a package is that compile and that run; a check on files 
 <p>A step has a limit (<code>-StepTimeoutSec</code>, 900 s; hours for what is legitimately long). Past it, what its threads are doing goes to its log (the code of <code>wren ctl stacks</code>), its whole process tree is killed (on Windows a step is a job object, on Linux a process group) and the report says <code>stuck</code>. Nothing
 of a step outlives it. A test that talks to the test server starts it in its own process, on a block of ports of its own (<a href="#the-test-server">below</a>), so several worktrees test side by side. <code>-Perf</code> and <code>-Ui</code> add the steps that depend on the machine's speed or on a desktop
 (<a href="https://github.com/sachahjkl/wren/blob/master/CONTRIBUTING.md">CONTRIBUTING</a>); a full run adds the check build, the AddressSanitizer unit tests (one step per package, three at a time), the whole of WPT and test262, the network stress.</p>
-<p>On Linux <code>build/test_all</code> (<code>./build.sh check</code>) runs <code>odin check</code> for every portable package and their unit tests (<code>steps_linux.odin</code>, <a href="../../docs/portability/">portability</a>).</p>
+<p>On Linux <code>build/test_all</code> (<code>odin run src/tools/test_all -collection:wb=src -out:build/test_all -keep-executable</code>) runs <code>odin check</code> for every portable package and their unit tests (<code>steps_linux.odin</code>, <a href="../../docs/portability/">portability</a>).</p>
 <h2 id="the-result-cache"><a class="anchor" href="#the-result-cache" aria-hidden="true">#</a>The result cache</h2>
 <p>With <code>-Quick</code> on a developer's machine, a step that has passed with exactly the same inputs says <code>CACHED</code> and does not run again (<code>src\tools\test_all\cache.odin</code>, results in <code>build\test_cache\</code>). That is what makes the second run of the day short:
 a change in <code>src/url</code> reruns the packages that import <code>url</code>, and the steps that use the browser.</p>

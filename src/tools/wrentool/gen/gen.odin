@@ -324,7 +324,7 @@ run_docs :: proc(args: []string) -> int {
 		append(&cmd, ..pass[:])
 		return tooling.run({command = cmd[:]})
 	}
-	return tool_run("src/tools/docsite", exe, {"src/base"}, pass[:])
+	return tool_run("src/tools/docsite", exe, {"src/base", "ext/gui_toolkit/src/site"}, pass[:])   // (its pages are the toolkit's site package)
 }
 
 ////////////////////////////////

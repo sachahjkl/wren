@@ -141,11 +141,11 @@
 <li><a href="../../docs/api/webassembly/">Module webassembly</a></li>
 <li><a href="../../docs/api/webaudio/">Module webaudio</a></li>
 <li><a href="../../docs/api/webcodecs/">Module webcodecs</a></li>
-<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecsaudiodecoder</a></li>
-<li><a href="../../docs/api/webcodecs_codec/">Module webcodecscodec</a></li>
-<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecsencoders</a></li>
-<li><a href="../../docs/api/webcodecs_image/">Module webcodecsimage</a></li>
-<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecsvideodecoder</a></li>
+<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecs_audio_decoder</a></li>
+<li><a href="../../docs/api/webcodecs_codec/">Module webcodecs_codec</a></li>
+<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecs_encoders</a></li>
+<li><a href="../../docs/api/webcodecs_image/">Module webcodecs_image</a></li>
+<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecs_video_decoder</a></li>
 <li><a href="../../docs/api/webgl/">Module webgl</a></li>
 <li><a href="../../docs/api/websocket/">Module websocket</a></li>
 <li><a href="../../docs/api/workers/">Module workers</a></li>
@@ -316,13 +316,13 @@ source: the patent licence covers only Cisco's binaries, <code>wrentool fetch op
 <code>vaapi_linux.odin</code> probes the GPU's VA-API H.264 support (libva / libva-drm by <code>dlopen</code>, a DRM render node) and is
 preferred when <code>media.h264.backend</code> allows; the VA-API decode path itself (slice-level) is not written, so it falls
 back to openh264 — the first thing to try under WSL is openh264.</li>
-<li><strong>Desktop</strong> (<code>desktop</code>): <code>watch_linux.odin</code> watches the integration directories (applications, icons, <code>~/.local/bin</code>)
+<li><strong>Desktop</strong> (<code>desktop</code>, since moved to the toolkit: <code>ext/gui_toolkit/src/desktop</code>): <code>watch_linux.odin</code> watches the integration directories (applications, icons, <code>~/.local/bin</code>)
 with <strong>inotify</strong> (an eventfd to stop, retries when a place is missing). <code>xdg_linux.odin</code> centralises the XDG base
 directories. The Linux backend gains a <strong>PATH</strong> part: a symlink in <code>~/.local/bin</code> (the "Add to PATH" of Linux).</li>
 <li><strong>Web Authentication</strong> (<code>webauthn</code>): <code>platform_fido2_linux.odin</code> reaches USB / NFC security keys through
 <strong>libfido2</strong> (<code>dlopen</code>), behind the same <code>Platform</code> as Windows' webauthn.dll. Client PINs, on-device user
 verification and hybrid (a phone) are reported unsupported until the toolkit has a prompt.</li>
-<li><strong><code>build.sh</code></strong>: a <code>wren</code> target with the Linux link flags (<code>--build-id</code>, <code>-lpthread</code>, <code>-ldl</code>, <code>-lm</code>, a
+<li><strong><code>wrentool build</code></strong> on Linux: the Linux link flags (<code>--build-id</code>, <code>-lpthread</code>, <code>-ldl</code>, <code>-lm</code>, a
 non-executable stack); it links as far as it can and states what still blocks (the toolkit's Linux window and the
 shell).</li>
 </ul>
@@ -402,7 +402,7 @@ split; Windows is byte-for-byte the same (the Windows code was moved, not rewrit
 <tr><td>appearance (<code>appearance</code>)</td><td>theme / accent registry + <code>RegNotifyChangeKeyValue</code></td><td><code>platform.dark_mode_preferred</code> / <code>watch_color_scheme</code> off Windows (<code>appearance_&lt;os&gt;.odin</code>); accent / selection to defaults</td></tr>
 <tr><td>crash markers (<code>crash_recovery</code>)</td><td><code>OpenProcess</code>, <code>GetProcessTimes</code>, <code>GetCurrentProcessId</code></td><td><code>crash_recovery_&lt;os&gt;.odin</code> (<code>/proc/&lt;pid&gt;/stat</code> on Linux, FILETIME-scale start time kept)</td></tr>
 <tr><td>input / chrome frames (<code>app_commands</code>, <code>local_paths</code>, <code>smooth_scroll</code>, <code>shell_frames</code>)</td><td>mouse subclass, <code>WM_DROPFILES</code>, <code>SystemParametersInfoW</code>, <code>GetQueueStatus</code></td><td>split (<code>app_commands/local_paths/scroll_steps/shell_frames_&lt;os&gt;.odin</code>); file drops ride the toolkit DnD</td></tr>
-<tr><td>paths (<code>demos</code>, <code>local_paths</code>)</td><td><code>GetModuleFileNameW</code>, drive letters, <code>\</code></td><td><code>desktop.executable_path</code> + <code>filepath</code>; POSIX paths on Linux (<code>local_paths_other.odin</code>)</td></tr>
+<tr><td>paths (<code>demos</code>, <code>local_paths</code>)</td><td><code>GetModuleFileNameW</code>, drive letters, <code>\</code></td><td><code>process.executable_path</code> (toolkit:process) + <code>filepath</code>; POSIX paths on Linux (<code>local_paths_other.odin</code>)</td></tr>
 <tr><td>glyph outlines / colour (<code>canvas_shell</code>, <code>fonts</code>)</td><td><code>font.dwrite_outline_provider</code></td><td>neutral <code>font.glyph_outline</code> / <code>font.color_renderable</code> (toolkit)</td></tr>
 <tr><td>memory trim (<code>memory_trim</code>)</td><td><code>IDXGIDevice3::Trim</code>, <code>HeapCompact</code></td><td>split (<code>memory_trim_&lt;os&gt;.odin</code>); the wgpu driver manages its own pools</td></tr>
 <tr><td>CDP over TCP (<code>cdp</code> via <code>remote</code>)</td><td>raw Winsock</td><td><code>remote/tcp_server_other.odin</code> reports the channel unavailable (not ported)</td></tr>
@@ -419,7 +419,7 @@ z-order; X11 can but the toolkit does not surface it yet), the desktop's <strong
 <strong>wheel-scroll</strong> lines-per-notch (defaults used until the platform layer reports them), and the dev-tools preview of
 audio formats the built-in player cannot demux (MP3, WAV, …; MCI is Windows-only).</p>
 <h2 id="slice-7-2026-10-30-wren-links-and-runs-on-linux"><a class="anchor" href="#slice-7-2026-10-30-wren-links-and-runs-on-linux" aria-hidden="true">#</a>Slice 7 (2026-10-30): Wren links and runs on Linux</h2>
-<p><code>./build.sh deps</code> then <code>./build.sh wren</code> makes <code>build/wren</code>, and it runs (verified in NixOS under WSLg, Wayland, with the
+<p><code>./build.sh deps</code> then <code>./build.sh</code> makes <code>build/wren</code>, and it runs (verified in NixOS under WSLg, Wayland, with the
 software Vulkan of Mesa, lavapipe): the window, the start page, <code>wren ctl</code> (start, nav, shot, eval, console), example.com
 and GitHub's repository page load and draw. What it took:</p>
 <ul>
@@ -433,7 +433,7 @@ a Vulkan or GL driver at run time. On NixOS: <code>nix shell</code> with clang, 
 <li><code>build/js/wren_js.wasm</code> is the JS engine's image: <code>./build.sh deps</code> makes it on Linux too (<code>src/tools/buildjs</code>; the linker
 is the system's <code>wasm-ld</code> from lld, which Odin's Linux release does not ship, and its pre-initialization needs the 64 MiB
 stack: <code>ulimit -s 65536</code>). The file is portable, so a copy from Windows does as well. Its machine code
-(<code>build/js/wren_js.code</code>, which the program ships) is not: <code>./build.sh wren</code> makes it from that image (<code>wrentool build jscode</code>),
+(<code>build/js/wren_js.code</code>, which the program ships) is not: <code>./build.sh</code> makes it from that image (<code>wrentool build jscode</code>),
 and refuses the empty stub <code>test_all</code> leaves for <code>odin check</code>: a browser linked with it ran no script, and nothing said so
 (the CI's Linux sweep ran so until now).</li>
 </ul>
@@ -537,7 +537,7 @@ effort there.</li>
 <li>The Wasm compiled-code cache key is not wrapped by a keyring on Linux (a file readable by its owner only).</li>
 <li><code>src/tools/test_all</code> as a whole takes more than 8 minutes in WSL on a Windows drive (/mnt/s): run it by package
 (<code>build/test_all -Only "(net|fetch)"</code>) there; the CI runner (native ext4) is well inside its 45 minutes.</li>
-<li>An executable linked without <code>--build-id</code> gives crash reports without a build line's id (<code>build.sh</code> and
+<li>An executable linked without <code>--build-id</code> gives crash reports without a build line's id (<code>wrentool build</code> and
 <code>wrentool crash-e2e</code> ask for it; the browser's Linux link must too).</li>
 <li>core:sys/linux's <code>getsockopt</code> passes the size of the pointer, not of the value: <code>remote.same_user</code> calls the system
 call itself.</li>
@@ -547,12 +547,12 @@ runtime is process-wide.</li>
 <h2 id="slice-8-2026-10-31-a-linux-package"><a class="anchor" href="#slice-8-2026-10-31-a-linux-package" aria-hidden="true">#</a>Slice 8 (2026-10-31): a Linux package</h2>
 <p><code>./build.sh release</code> then <code>wrentool package</code> make <code>build/dist/wren-&lt;version&gt;-linux-x64.tar.gz</code>; the workflow <code>linux-package.yml</code> builds it on ubuntu-24.04 (so glibc 2.39 or later), unpacks it and runs <code>wrentool smoke</code> under xvfb before the release adds it. The engine image comes from a Windows job. Two things it took: the sealed Rust archives need <code>ld -r --force-group-allocation</code> (otherwise the linker discards their <code>DW.ref.rust_eh_personality</code>); the main thread raises its own stack limit (<code>host.main_stack_ensure</code>).</p>
 <h2 id="slice-9-2026-11-07-the-browser-with-its-scripts-real-pages-and-the-end-to-end-scenarios-on-linux"><a class="anchor" href="#slice-9-2026-11-07-the-browser-with-its-scripts-real-pages-and-the-end-to-end-scenarios-on-linux" aria-hidden="true">#</a>Slice 9 (2026-11-07): the browser with its scripts, real pages and the end-to-end scenarios on Linux</h2>
-<p>A Linux machine (Xvfb, the software Vulkan adapter, an HTTPS proxy of the environment) with nothing but <code>./build.sh deps</code>, <code>check</code>, <code>wren</code>.</p>
-<p><strong>What ran before without saying so.</strong> <code>build/js/wren_js.wasm</code> was the empty stub <code>test_all</code> leaves for <code>odin check</code>, and <code>./build.sh wren</code>
+<p>A Linux machine (Xvfb, the software Vulkan adapter, an HTTPS proxy of the environment) with nothing but <code>./build.sh deps</code>, the tests (<code>odin run src/tools/test_all -collection:wb=src -out:build/test_all -keep-executable</code>) and <code>./build.sh</code>.</p>
+<p><strong>What ran before without saying so.</strong> <code>build/js/wren_js.wasm</code> was the empty stub <code>test_all</code> leaves for <code>odin check</code>, and <code>./build.sh</code>
 linked it: a browser that ran no script (the CI's Linux sweep too). <code>./build.sh deps</code> builds the engine now and <code>wren</code> refuses the stub.</p>
 <p><strong>What runs.</strong></p>
 <ul>
-<li><code>./build.sh check</code>: 78 steps pass (with the engine, the tests that need it run).</li>
+<li>The tests (<code>odin run src/tools/test_all -collection:wb=src -out:build/test_all -keep-executable</code>): 78 steps pass (with the engine, the tests that need it run).</li>
 <li><code>wrentool sweep</code> on the 74 pages of <code>tools/site_compare_list*.txt</code> (scroll, developer tools, a link, back, reload, a tab, close),
 scripts on: <strong>74 pass, no crash, no hang</strong>.</li>
 <li>The portable end-to-end scenarios of <code>src/tools/e2e</code> (those without <code>#+build windows</code>), built as <code>test_all</code> builds them for Windows

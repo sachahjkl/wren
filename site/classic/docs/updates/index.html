@@ -76,7 +76,8 @@
 <p>Sign your manifests with <code>wrentool update keygen</code> / <code>manifest</code> / <code>sign</code>. Turning <code>require_signature</code> off makes Wren take an unsigned manifest: only the length and SHA-256 are then checked, which proves nothing about who made the file, and About Wren says "UNSIGNED". The version rules (for this platform, the announced version, strictly newer) apply either way.</p>
 <h2 id="for-maintainers"><a class="anchor" href="#for-maintainers" aria-hidden="true">#</a>For maintainers</h2>
 <ul>
-<li>The private key is <code>UPDATE_SIGNING_KEY</code> in <code>secrets/production.yaml</code> and the GitHub secret <code>WREN_UPDATE_SIGNING_KEY</code>. The public key is <code>src/update/public_key.odin</code>.</li>
+<li>The checks and the placement are the toolkit's update package (<code>ext/gui_toolkit/src/update</code>, its <code>docs/update.md</code>); <code>src/update/product.odin</code> is what Wren is to it (name, signing context, key).</li>
+<li>The private key is <code>UPDATE_SIGNING_KEY</code> in <code>secrets/production.yaml</code> and the GitHub secret <code>WREN_UPDATE_SIGNING_KEY</code>. The public key is <code>PRODUCT.public_key</code> in <code>src/update/product.odin</code>.</li>
 <li><code>wrentool update keygen</code>, <code>pubkey</code>, <code>manifest</code>, <code>sign</code>, <code>verify</code>. The release workflow runs <code>wrentool package -RequireUpdateManifest</code> and publishes both files.</li>
 <li>Preferences for tests: <code>browser.update.base_url</code>, <code>browser.update.public_key</code>, <code>browser.update.allow_development_build</code>.</li>
 </ul>
@@ -194,11 +195,11 @@
 <li><a href="../../docs/api/webassembly/">Module webassembly</a></li>
 <li><a href="../../docs/api/webaudio/">Module webaudio</a></li>
 <li><a href="../../docs/api/webcodecs/">Module webcodecs</a></li>
-<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecsaudiodecoder</a></li>
-<li><a href="../../docs/api/webcodecs_codec/">Module webcodecscodec</a></li>
-<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecsencoders</a></li>
-<li><a href="../../docs/api/webcodecs_image/">Module webcodecsimage</a></li>
-<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecsvideodecoder</a></li>
+<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecs_audio_decoder</a></li>
+<li><a href="../../docs/api/webcodecs_codec/">Module webcodecs_codec</a></li>
+<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecs_encoders</a></li>
+<li><a href="../../docs/api/webcodecs_image/">Module webcodecs_image</a></li>
+<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecs_video_decoder</a></li>
 <li><a href="../../docs/api/webgl/">Module webgl</a></li>
 <li><a href="../../docs/api/websocket/">Module websocket</a></li>
 <li><a href="../../docs/api/workers/">Module workers</a></li>

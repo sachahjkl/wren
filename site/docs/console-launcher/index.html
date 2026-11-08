@@ -141,11 +141,11 @@
 <li><a href="../../docs/api/webassembly/">Module webassembly</a></li>
 <li><a href="../../docs/api/webaudio/">Module webaudio</a></li>
 <li><a href="../../docs/api/webcodecs/">Module webcodecs</a></li>
-<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecsaudiodecoder</a></li>
-<li><a href="../../docs/api/webcodecs_codec/">Module webcodecscodec</a></li>
-<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecsencoders</a></li>
-<li><a href="../../docs/api/webcodecs_image/">Module webcodecsimage</a></li>
-<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecsvideodecoder</a></li>
+<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecs_audio_decoder</a></li>
+<li><a href="../../docs/api/webcodecs_codec/">Module webcodecs_codec</a></li>
+<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecs_encoders</a></li>
+<li><a href="../../docs/api/webcodecs_image/">Module webcodecs_image</a></li>
+<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecs_video_decoder</a></li>
 <li><a href="../../docs/api/webgl/">Module webgl</a></li>
 <li><a href="../../docs/api/websocket/">Module websocket</a></li>
 <li><a href="../../docs/api/workers/">Module workers</a></li>
@@ -278,7 +278,7 @@ from Wren, so they are not in the <code>i18n</code> catalogue.</p>
 <li><code>wren.exe</code> embeds it (<code>#load</code>, <code>src/browser/console_launcher.odin</code>): the release stays one file.</li>
 <li><strong>Setup writes it</strong> beside the installed <code>wren.exe</code> when "Add Wren to PATH" is ticked and <strong>removes it</strong> when it is
 unticked, when the integration is removed (<code>--desktop-integration=remove</code>) and when Wren is uninstalled or the installation is
-moved (<code>src/desktop/launcher.odin</code>). It is never written anywhere else, and never without the PATH entry that makes it
+moved (the toolkit's <code>ext/gui_toolkit/src/desktop/launcher.odin</code>, with Wren's mark from <code>src/desktop/identity.odin</code>). It is never written anywhere else, and never without the PATH entry that makes it
 reachable. <code>--desktop-integration=install</code> does the same for a copy that is not installed.</li>
 <li>It carries a mark (<code>(Wren console launcher)</code> in every message): a <code>wren.com</code> without it is another program's, and is
 neither replaced nor deleted. An installation that has the PATH entry but no <code>wren.com</code> (older Setup) is shown as "to
@@ -290,7 +290,7 @@ write or removal (on uninstall it is reported with the other files a running pro
 <ul>
 <li><code>odin test src/tools/wrencom -vet</code>: the decision (wait / let go), the target (<code>wren.com</code> to <code>wren.exe</code>, refusing a <code>.exe</code>), and
 the quoting of the command line (read back by <code>CommandLineToArgvW</code>).</li>
-<li><code>odin test src/desktop</code>: Setup's side (written with the PATH option, replaced by a new version, removed with it, never
+<li>The toolkit's <code>odin test src/desktop</code> (in <code>ext/gui_toolkit</code>): Setup's side (written with the PATH option, replaced by a new version, removed with it, never
 over another program's file, removed with the install folder).</li>
 <li><code>src\tools\e2e\wrencom.odin</code> (a step of <code>test_all</code>): the launcher and <code>wren.exe</code> copied into a scratch folder; <code>ctl help</code>,
 an unknown command, what <code>&gt; file</code>, <code>2&gt;</code>, <code>2&gt;&amp;1</code> and <code>|</code> hand over to it, its exit code, <code>--desktop-integration=status</code>, the integration

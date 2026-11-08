@@ -141,11 +141,11 @@
 <li><a href="../../docs/api/webassembly/">Module webassembly</a></li>
 <li><a href="../../docs/api/webaudio/">Module webaudio</a></li>
 <li><a href="../../docs/api/webcodecs/">Module webcodecs</a></li>
-<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecsaudiodecoder</a></li>
-<li><a href="../../docs/api/webcodecs_codec/">Module webcodecscodec</a></li>
-<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecsencoders</a></li>
-<li><a href="../../docs/api/webcodecs_image/">Module webcodecsimage</a></li>
-<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecsvideodecoder</a></li>
+<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecs_audio_decoder</a></li>
+<li><a href="../../docs/api/webcodecs_codec/">Module webcodecs_codec</a></li>
+<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecs_encoders</a></li>
+<li><a href="../../docs/api/webcodecs_image/">Module webcodecs_image</a></li>
+<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecs_video_decoder</a></li>
 <li><a href="../../docs/api/webgl/">Module webgl</a></li>
 <li><a href="../../docs/api/websocket/">Module websocket</a></li>
 <li><a href="../../docs/api/workers/">Module workers</a></li>
@@ -246,6 +246,11 @@
 desktop anyway: a launcher in the application menu, its icon, and the registration as a program that can open web
 addresses. It is added and removed by one switch, in the user's own profile, never system-wide and never with
 administrator rights.</p>
+<p>The code that writes, reads and removes all of it is the toolkit's desktop package (<code>ext/gui_toolkit/src/desktop</code>,
+<a href="https://github.com/sachahjkl/wren/blob/master/ext/gui_toolkit/docs/desktop.md">its documentation</a>). Wren gives it its names and marks (<code>src/desktop/identity.odin</code>:
+the same ones an installed Wren already carries, so it is still recognised and removed), its preferences
+(<code>src/desktop/settings.odin</code>) and the links that open in it (<code>src/desktop/links.odin</code>); <code>src/browser/desktop_shell.odin</code> and
+<code>setup.odin</code> decide when.</p>
 <p>Where: the box <strong>Integrate Wren with the desktop</strong> at the top of <code>about:config</code> (and the command of the same name in the
 palette). Its state is read from the disk every time it is shown, never from a preference, so it is always true.</p>
 <div class="table-box"><table>
@@ -291,10 +296,31 @@ the Desktop Entry Specification says, <code>%U</code>), <code>TryExec</code>, <c
 repair".
 <code>update-desktop-database</code> runs afterwards when installed. The entry passes <code>desktop-file-validate</code>.</li>
 <li><code>$XDG_DATA_HOME/icons/hicolor/&lt;n&gt;x&lt;n&gt;/apps/wren.png</code> for the sizes Wren embeds (16, 32, 64, 256, 512).</li>
+<li><code>~/.local/bin/wren</code>: a symlink to the executable (the Path part). Only a link that runs this program is replaced or removed.</li>
+</ul>
+<h3 id="nixos"><a class="anchor" href="#nixos" aria-hidden="true">#</a>NixOS</h3>
+<p>The release is linked for a usual Linux: the loader <code>/lib64/ld-linux-x86-64.so.2</code> and the libraries in the system's
+folders. NixOS has neither, so the downloaded program starts only in an FHS sandbox (<code>steam-run</code>) or with nix-ld. Two ways
+to install it:</p>
+<ul>
+<li><strong>The Nix package</strong> (<code>nix profile install github:sachahjkl/wren</code>, or <code>packages.default</code> of <code>flake.nix</code> in a system
+configuration). It has the menu entry and the icons, and Nix updates it. The release workflow points
+<code>nix/release.json</code> to each new Linux file. A copy that runs from the Nix store does not offer Setup by itself.</li>
+<li><p><strong>Setup from the downloaded program.</strong> On NixOS (<code>ID=nixos</code> in <code>/etc/os-release</code>), the install also does this
+(the toolkit's <code>nixos_linux.odin</code>):</p>
+<ol>
+<li><code>nix-build --out-link &lt;install&gt;/nix-runtime</code> builds a profile of the loader and the libraries the program links
+and opens (<code>NIXOS_LIBRARIES</code>, the same list as <code>runtimeLibs</code> in <code>flake.nix</code>), from the system's nixpkgs
+(<code>NIX_PATH</code>, else the flake registry). The link is a root of the garbage collector.</li>
+<li><code>patchelf</code> sets the installed copy's loader to the profile's and puts the profile first in its search path.</li>
+</ol>
+<p>The menu entry and <code>~/.local/bin/wren</code> then run the copy directly. The link is in the manifest: uninstalling removes it,
+and the next garbage collection frees the profile. If the profile is gone, the copy is <em>Repair</em>, and Repair builds it
+again.</p></li>
 </ul>
 <h2 id="macos"><a class="anchor" href="#macos" aria-hidden="true">#</a>macOS</h2>
-<p>Not provided: what macOS lists is an application bundle, and Wren is an executable outside any bundle. See
-<code>src/desktop/integration_darwin.odin</code>.</p>
+<p>Not provided: what macOS lists is an application bundle, and Wren is an executable outside any bundle. See the
+toolkit's <code>integration_darwin.odin</code>.</p>
 <h2 id="parts-and-what-the-options-map-to"><a class="anchor" href="#parts-and-what-the-options-map-to" aria-hidden="true">#</a>Parts, and what the options map to</h2>
 <p>The integration is a set of <strong>parts</strong>; <code>install</code> writes the ones the options ask for and takes away the ones they do not
 (that is what <em>Modify</em> does); <code>remove</code> takes away every part that carries Wren's mark.</p>
@@ -304,7 +330,7 @@ repair".
 <tr><td>Launcher</td><td>Add to Start menu</td><td><code>Wren.lnk</code> in the Start menu</td><td>the <code>.desktop</code> file</td></tr>
 <tr><td>Desktop shortcut</td><td>Create desktop shortcut</td><td>a second <code>.lnk</code> (same AppUserModelID) in the Desktop folder</td><td>not provided</td></tr>
 <tr><td>Registration</td><td>Register as a web browser</td><td>the <code>StartMenuInternet</code> / ProgID / link scheme keys above</td><td><code>MimeType=</code> in the <code>.desktop</code> file</td></tr>
-<tr><td>Path</td><td>Add Wren to PATH</td><td>the program's folder in <code>HKCU\Environment\Path</code></td><td>not provided</td></tr>
+<tr><td>Path</td><td>Add Wren to PATH</td><td>the program's folder in <code>HKCU\Environment\Path</code></td><td>the symlink <code>~/.local/bin/wren</code></td></tr>
 <tr><td>Icons</td><td>-</td><td>-</td><td>the hicolor icons</td></tr>
 </tbody>
 </table></div>
@@ -318,7 +344,7 @@ there by hand is never taken out (except the folder of a copy that is being unin
 uninstall delete it, and the Path part is "incomplete" (Repair) while the entry is there and the launcher is not. A file
 of that name without the launcher's mark is never replaced or deleted.</p>
 <h2 id="setup-the-installed-copy"><a class="anchor" href="#setup-the-installed-copy" aria-hidden="true">#</a>Setup: the installed copy</h2>
-<p><code>src/desktop/install.odin</code> (platform agnostic) and <code>src/browser/setup.odin</code>, <code>setup_ui.odin</code> (the dialog).</p>
+<p>The toolkit's <code>install.odin</code> (platform agnostic) and <code>src/browser/setup.odin</code>, <code>setup_ui.odin</code> (the dialog).</p>
 <ul>
 <li><strong>Where</strong>: <code>%LOCALAPPDATA%\Programs\Wren\wren.exe</code> (<code>Wren Dev</code> for the development channel), or any folder that passes
 <code>check_install_dir</code>: an absolute path on a local drive, no forbidden character, not a drive root, not inside Windows,
@@ -408,16 +434,17 @@ it ("or open <code>about:wren</code> in Wren") and never tries to find out with 
 <code>.register_browser</code> (also register as a browser, or only the menu entry), <code>.file_types</code>, <code>browser.update.check_daily</code>,
 <code>browser.update.url</code>.</p>
 <h2 id="tests"><a class="anchor" href="#tests" aria-hidden="true">#</a>Tests</h2>
-<p><code>odin test src/desktop</code> runs the backend and the installed copy on scratch folders and a scratch registry key
-(<code>HKCU\Software\WrenTest_&lt;id&gt;</code>, deleted afterwards), and, on Linux, on scratch directories. <code>odin test src/browser</code> has the
+<p>The toolkit's <code>odin test src/desktop</code> runs the backends and the installed copy on scratch folders and a scratch registry
+key, with an identity of its own. <code>odin test src/desktop</code> here checks Wren's identity: the <code>.desktop</code> text an installed
+Wren has, both channels, and NixOS's libraries against <code>flake.nix</code>. <code>odin test src/browser</code> has the
 states of the dialog and install -&gt; every state -&gt; uninstall on scratch roots. A run can be pointed at scratch roots by the
 environment too: <code>WREN_DESKTOP_MENU_DIR</code>, <code>WREN_DESKTOP_DESKTOP_DIR</code>, <code>WREN_DESKTOP_REGISTRY_ROOT</code>,
 <code>WREN_DESKTOP_ENVIRONMENT_ROOT</code> (the key that stands for <code>HKCU\Environment</code>), <code>WREN_DESKTOP_INSTALL_DIR</code> (Windows),
-<code>WREN_DESKTOP_APPLICATIONS_DIR</code>, <code>WREN_DESKTOP_ICONS_DIR</code> (Linux). <code>src\tools\e2e\setup.odin</code> drives the real dialog of a built
+<code>WREN_DESKTOP_APPLICATIONS_DIR</code>, <code>WREN_DESKTOP_ICONS_DIR</code>, <code>WREN_DESKTOP_BIN_DIR</code> (Linux, the link of the Path part). <code>src\tools\e2e\setup.odin</code> drives the real dialog of a built
 <code>wren.exe</code> on such a scratch desktop, through Wren's own input (install with Enter, uninstall of the running copy and its deferred deletion, standalone,
 the automatic opening and its exceptions, a portable copy) and compares the real Start menu, PATH, StartMenuInternet and
-Settings &gt; Apps before and after. The one test that touches the real desktop runs only with <code>WREN_TEST_DESKTOP_REAL=1</code> and
-uses an identity of its own.</p>
+Settings &gt; Apps before and after. The toolkit's one test that touches the real desktop runs only with
+<code>TK_TEST_DESKTOP_REAL=1</code> and uses an identity of its own.</p>
 <h1 id="one-wren-per-profile"><a class="anchor" href="#one-wren-per-profile" aria-hidden="true">#</a>One Wren per profile</h1>
 <p><code>src/instance</code>, <code>src/browser/instance_shell.odin</code>. The first Wren of a channel and a profile owns it (a named mutex
 <code>Local\WrenInstance.Wren.&lt;channel&gt;.&lt;hash of the profile folder&gt;</code> and a message-only window titled with that key); a second
@@ -451,6 +478,7 @@ to the user's Wren and end. <code>src\tools\e2e\instance.odin</code> checks the 
 <ul>
 <li><a href="#windows">Windows</a></li>
 <li><a href="#linux">Linux</a></li>
+<li class="lvl3"><a href="#nixos">NixOS</a></li>
 <li><a href="#macos">macOS</a></li>
 <li><a href="#parts-and-what-the-options-map-to">Parts, and what the options map to</a></li>
 <li><a href="#setup-the-installed-copy">Setup: the installed copy</a></li>

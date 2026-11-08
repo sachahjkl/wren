@@ -3957,7 +3957,7 @@ comparison has compared (<code>style/journal.odin</code>, round 8), which live w
 <div class="table-box"><table>
 <thead><tr><th>where</th><th>what</th><th>hot on</th></tr></thead>
 <tbody>
-<tr><td><code>ext/gui_toolkit/font/shape.odin:400-460</code></td><td><code>Word_Cache</code>: 64 shards of shaped words, a mutex each, plus <code>l1_words</code> per thread</td><td>every word measured or painted</td></tr>
+<tr><td><code>ext/gui_toolkit/src/font/shape.odin:400-460</code></td><td><code>Word_Cache</code>: 64 shards of shaped words, a mutex each, plus <code>l1_words</code> per thread</td><td>every word measured or painted</td></tr>
 <tr><td><code>style/inline_cache.odin:47-129</code>, <code>cascade.odin:124-125</code></td><td>compiled <code>style</code> attributes by text</td><td>every element with a style attribute</td></tr>
 <tr><td><code>style/match.odin:58-67</code></td><td><code>sibs</code>, <code>filled</code>, <code>has_memo</code>: maps by handle per pass</td><td>nth-child and <code>:has()</code></td></tr>
 <tr><td><code>layout/types.odin:459</code></td><td><code>font_lookup</code>: fonts by content across partial passes (the per-pass map and its one-entry memo went in round 4)</td><td>a font a pass has not found yet</td></tr>
@@ -3967,7 +3967,7 @@ comparison has compared (<code>style/journal.odin</code>, round 8), which live w
 <tr><td><code>browser/compositor.odin:251-293</code></td><td><code>raster_hash</code> memo per call</td><td>compositor rebuild</td></tr>
 <tr><td><code>browser/effects_cache.odin:51</code></td><td>content keys per group for the GPU layer cache</td><td>filters</td></tr>
 <tr><td><code>browser/web_font_faces.odin:166</code></td><td>family list -&gt; invisible while loading</td><td>paint</td></tr>
-<tr><td><code>ext/gui_toolkit/ui/text_wrap.odin:61</code>, <code>ext/gui_toolkit/ui/rich_text.odin:370</code></td><td>wrapped and rich text of the chrome</td><td>chrome frames</td></tr>
+<tr><td><code>ext/gui_toolkit/src/ui/text_wrap.odin:61</code>, <code>ext/gui_toolkit/src/ui/rich_text.odin:370</code></td><td>wrapped and rich text of the chrome</td><td>chrome frames</td></tr>
 </tbody>
 </table></div>
 <h3 id="hash-tables-on-hot-paths"><a class="anchor" href="#hash-tables-on-hot-paths" aria-hidden="true">#</a>Hash tables on hot paths</h3>
@@ -3977,7 +3977,7 @@ of every element, plus a concatenation per indexed attribute at <code>cascade.od
 (<code>anon_cs</code>, <code>frame_cs</code>; <code>font_cache</code> gone in round 4); <code>layout/types.odin:479</code> (<code>scroll</code>, read per space); <code>browser/compositor.odin:114</code>
 (<code>node_items</code>, a heap list per node) and <code>:419-554</code> (per rebuild); <code>page/images.odin</code> <code>css_images_sync</code> and
 <code>page/fonts.odin</code> <code>fonts_sync</code> (a <code>seen</code> table of shared lists, now only when something new may be used);
-<code>ext/gui_toolkit/font/raster.odin:77-82</code> (per glyph, under the atlas lock); <code>page/timeline.odin</code> <code>et_seen</code> (per
+<code>ext/gui_toolkit/src/font/raster.odin:77-82</code> (per glyph, under the atlas lock); <code>page/timeline.odin</code> <code>et_seen</code> (per
 element with <code>elementtiming</code> only). Gone in round 1: <code>page/timeline_lcp.odin</code> <code>ls_prev</code> (per box, per mutated frame).
 Added in round 4, flat: <code>style/share.odin</code> (a style pass's shared styles: open addressing, the keys' words in one array,
 one lookup per element). Gone in round 5: <code>style/restyle_dom.odin</code> <code>inserted_exceed</code> (the inserted nodes of a restyle,
@@ -4265,11 +4265,11 @@ must call nothing itself (<code>interp_hot.odin</code>'s header says how).</li>
 <li><a href="../../docs/api/webassembly/">Module webassembly</a></li>
 <li><a href="../../docs/api/webaudio/">Module webaudio</a></li>
 <li><a href="../../docs/api/webcodecs/">Module webcodecs</a></li>
-<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecsaudiodecoder</a></li>
-<li><a href="../../docs/api/webcodecs_codec/">Module webcodecscodec</a></li>
-<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecsencoders</a></li>
-<li><a href="../../docs/api/webcodecs_image/">Module webcodecsimage</a></li>
-<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecsvideodecoder</a></li>
+<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecs_audio_decoder</a></li>
+<li><a href="../../docs/api/webcodecs_codec/">Module webcodecs_codec</a></li>
+<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecs_encoders</a></li>
+<li><a href="../../docs/api/webcodecs_image/">Module webcodecs_image</a></li>
+<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecs_video_decoder</a></li>
 <li><a href="../../docs/api/webgl/">Module webgl</a></li>
 <li><a href="../../docs/api/websocket/">Module websocket</a></li>
 <li><a href="../../docs/api/workers/">Module workers</a></li>

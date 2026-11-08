@@ -2,7 +2,9 @@
 
 Every page of the documentation site is a Markdown file under `docs/`. The generator `src/tools/docsite` turns them
 into the static site under `site/docs/`. There is no framework and nothing is fetched at runtime; the pages render in
-Wren itself.
+Wren itself. The pages, their sidebar, search, Markdown, highlighter and link check are the toolkit's site package
+(`ext/gui_toolkit/src/site`, documented in `ext/gui_toolkit/docs/site.md`); `src/tools/docsite` gives it Wren's names,
+header, footer, colours, the WIDL language and the directives below, and makes the classic presentation.
 
 The site has a second, classic presentation under `site/classic/` (plain links, one column of text, light and dark;
 `site/classic/classic.css`), reached by "Classic version" in every footer and back by "Modern version". The same tool
@@ -46,7 +48,7 @@ The generator implements the slice of CommonMark and GitHub-flavored Markdown th
   paths; do not hand-write `.html`.
 - **Images** `![alt](src)`. Put image files under `docs/` and reference them relatively.
 - **Blockquotes** `>` and **thematic breaks** (`---`).
-- **Tables**, GitHub style, with `:---:` alignment.
+- **Tables**, GitHub style, with `:---:` alignment. A `|` inside a code span does not split a cell.
 - **Fenced code blocks** with a language for syntax highlighting:
 
       ```odin

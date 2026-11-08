@@ -141,11 +141,11 @@
 <li><a href="../../docs/api/webassembly/">Module webassembly</a></li>
 <li><a href="../../docs/api/webaudio/">Module webaudio</a></li>
 <li><a href="../../docs/api/webcodecs/">Module webcodecs</a></li>
-<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecsaudiodecoder</a></li>
-<li><a href="../../docs/api/webcodecs_codec/">Module webcodecscodec</a></li>
-<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecsencoders</a></li>
-<li><a href="../../docs/api/webcodecs_image/">Module webcodecsimage</a></li>
-<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecsvideodecoder</a></li>
+<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecs_audio_decoder</a></li>
+<li><a href="../../docs/api/webcodecs_codec/">Module webcodecs_codec</a></li>
+<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecs_encoders</a></li>
+<li><a href="../../docs/api/webcodecs_image/">Module webcodecs_image</a></li>
+<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecs_video_decoder</a></li>
 <li><a href="../../docs/api/webgl/">Module webgl</a></li>
 <li><a href="../../docs/api/websocket/">Module websocket</a></li>
 <li><a href="../../docs/api/workers/">Module workers</a></li>
@@ -251,7 +251,7 @@ loaded again, its scripts, timers, videos, forms, history, zoom and (when open) 
 <tr><td>New window</td><td><code>Ctrl+N</code>, the command <code>window.new</code></td></tr>
 <tr><td>Tab to a window of its own</td><td>the tab's menu <code>Move tab to a new window</code>, the command <code>tab.move_to_new_window</code>, or drag the tab away from the tab bar</td></tr>
 <tr><td>Tab to another window</td><td>the tab's menu <code>Move to window</code> (windows are named by the title of their current tab), or drag the tab onto the tab bar of that window (a mark shows where it will go)</td></tr>
-<tr><td>From a script</td><td><code>wren ctl windows</code>, `wren ctl tab move &lt;id&gt; --to new</td></tr>
+<tr><td>From a script</td><td><code>wren ctl windows</code>, <code>wren ctl tab move &lt;id&gt; --to new|&lt;window id&gt; [--index n]</code>, <code>--win-id &lt;id&gt;</code> on any command</td></tr>
 </tbody>
 </table></div>
 <p>Dragging: while a tab is dragged along the bar it reorders. Further from the bar than <code>browser.tabs.detach_distance_em</code> (above or

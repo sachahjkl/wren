@@ -14,6 +14,7 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 import "wb:base"
+import tk_site "../../../ext/gui_toolkit/src/site"
 
 CLASSIC_DIR          :: "site/classic"
 CLASSIC_HOME         :: "site/classic/index.html"
@@ -97,44 +98,44 @@ build_classic_page :: proc(cp: Classic_Page, page: string) -> bool {
 		title = strings.concatenate({cp.title, " - Wren"}, context.allocator)
 	}
 
-	dir := posix_dir(from)
+	dir := from[:max(strings.last_index_byte(from, '/'), 0)]
 	b := strings.builder_make(context.allocator)
 	ws := strings.write_string
 	write_classic_head(&b, title, between(src, "<meta name=\"description\" content=\"", "\""), between(src, "<meta name=\"robots\" content=\"", "\""), between(src, "<meta name=\"referrer\" content=\"", "\""))
 	write_classic_top(&b, cp.nav)
 	ws(&b, main_open)
-	ws(&b, classic_paths(rooted(content, dir)))
+	ws(&b, classic_paths(tk_site.rooted(content, dir)))
 	ws(&b, "</main>\n")
 	write_classic_foot(&b, strings.concatenate({SITE_ROOT, cp.modern != "" ? cp.modern : cp.folder}, context.temp_allocator))
-	ws(&b, classic_paths(rooted(scripts_of(src[:m0]), dir)))
-	ws(&b, classic_paths(rooted(scripts_of(src[m1:]), dir)))
+	ws(&b, classic_paths(tk_site.rooted(scripts_of(src[:m0]), dir)))
+	ws(&b, classic_paths(tk_site.rooted(scripts_of(src[m1:]), dir)))
 	ws(&b, "</body>\n</html>\n")
-	emit(filepath.join({CLASSIC_DIR, page}) or_else "", site_relative(strings.to_string(b), page))
+	emit(filepath.join({CLASSIC_DIR, page}) or_else "", tk_site.site_relative(strings.to_string(b), page))
 	return true
 }
 
 // A doc in the classic frame: the sidebar beside it, its contents after its title.
-classic_doc_page :: proc(p: ^Page, nav: ^Nav, by_rel: map[string]^Page, body: Rendered) -> string {
+classic_doc_page :: proc(p: ^tk_site.Doc_Page, body: ^tk_site.Markdown) -> string {
 	ws := strings.write_string
 	content := strings.builder_make(context.allocator)
-	write_breadcrumb(&content, p)
+	tk_site.write_docs_breadcrumb(&content, p)
 	toc := strings.builder_make(context.temp_allocator)
-	write_toc(&toc, body.headings[:])
+	tk_site.write_docs_toc(&toc, body.headings[:])
 	h1_end := strings.index(body.html, "</h1>")
 	h1_end = h1_end < 0 ? 0 : h1_end + len("</h1>")
 	ws(&content, body.html[:h1_end])
 	ws(&content, strings.to_string(toc))
 	ws(&content, body.html[h1_end:])
-	write_prev_next(&content, nav, p, by_rel)
-	write_edit_link(&content, p)
+	tk_site.write_docs_prev_next(&content, &docs, p)
+	tk_site.write_docs_edit_link(&content, &docs, p)
 	side := strings.builder_make(context.allocator)
-	write_sidebar(&side, nav, p.rel)
+	tk_site.write_docs_sidebar(&side, docs.nav, p.rel)
 
 	title := strings.builder_make(context.temp_allocator)
 	base.write_escaped(&title, p.title)
 	ws(&title, " · Wren docs")
 	desc := strings.builder_make(context.temp_allocator)
-	base.write_escaped(&desc, meta_description(body.plain, p.title), {.Quote})
+	base.write_escaped(&desc, tk_site.docs_description(&docs, body.plain, p.title), {.Quote})
 
 	b := strings.builder_make(context.allocator)
 	write_classic_head(&b, strings.to_string(title), strings.to_string(desc))
@@ -144,7 +145,7 @@ classic_doc_page :: proc(p: ^Page, nav: ^Nav, by_rel: map[string]^Page, body: Re
 	ws(&b, "</main>\n<aside class=\"doc-side\" aria-label=\"Documentation sections\">\n<nav class=\"doc-tree\" aria-label=\"Documentation\">\n")
 	ws(&b, classic_paths(strings.to_string(side)))
 	ws(&b, "</nav>\n</aside>\n</div>\n")
-	write_classic_foot(&b, strings.concatenate({SITE_ROOT[:len(SITE_ROOT) - 1], url_of(p.out_rel)}, context.temp_allocator))
+	write_classic_foot(&b, strings.concatenate({SITE_ROOT[:len(SITE_ROOT) - 1], tk_site.docs_page_url(p.out_rel)}, context.temp_allocator))
 	ws(&b, "<script src=\"/docs/search.js\" defer></script>\n</body>\n</html>\n")
 	return strings.to_string(b)
 }
@@ -160,9 +161,9 @@ build_classic_home :: proc(releases: []Release) {
 	write_classic_foot(&foot, SITE_ROOT)
 	news := strings.builder_make(context.temp_allocator)
 	write_news(&news, releases)
-	page = stamp(page, "<!-- classic:top -->", "<!-- /classic:top -->", site_relative(strings.concatenate({"\n", strings.to_string(top)}), "index.html"))
-	page = stamp(page, "<!-- classic:foot -->", "<!-- /classic:foot -->", site_relative(strings.concatenate({"\n", strings.to_string(foot)}), "index.html"))
-	page = stamp(page, "<!-- news:begin -->", "<!-- news:end -->", site_relative(strings.to_string(news), "index.html"))
+	page = stamp(page, "<!-- classic:top -->", "<!-- /classic:top -->", tk_site.site_relative(strings.concatenate({"\n", strings.to_string(top)}), "index.html"))
+	page = stamp(page, "<!-- classic:foot -->", "<!-- /classic:foot -->", tk_site.site_relative(strings.concatenate({"\n", strings.to_string(foot)}), "index.html"))
+	page = stamp(page, "<!-- news:begin -->", "<!-- news:end -->", tk_site.site_relative(strings.to_string(news), "index.html"))
 	if len(releases) > 0 { page = stamp_download_links(stamp(page, "<!-- latest -->", "<!-- /latest -->", releases[0].version), releases[0].version) }
 	emit(CLASSIC_HOME, page)
 }
@@ -276,39 +277,6 @@ scripts_of :: proc(part: string) -> string {
 		rest = rest[a + e:]
 	}
 	return strings.to_string(b)
-}
-
-// The relative href and src of a part of the page in the folder `dir` made root-absolute: "../img/x.webp" from
-// "gallery" -> "/img/x.webp", "./" -> "/".
-rooted :: proc(html, dir: string) -> string {
-	b := strings.builder_make(context.allocator)
-	i := 0
-	scan: for i < len(html) {
-		for attr in ([?]string{" href=\"", " src=\""}) {
-			if !strings.has_prefix(html[i:], attr) { continue }
-			v0 := i + len(attr)
-			v1 := strings.index_byte(html[v0:], '"')
-			if v1 < 0 { break scan }
-			strings.write_string(&b, html[i:v0])
-			strings.write_string(&b, root_of(html[v0:v0 + v1], dir))
-			i = v0 + v1
-			continue scan
-		}
-		strings.write_byte(&b, html[i])
-		i += 1
-	}
-	strings.write_string(&b, html[i:])
-	return strings.to_string(b)
-}
-
-root_of :: proc(href, dir: string) -> string {
-	if href == "" || is_external(href) || strings.has_prefix(href, "#") || strings.has_prefix(href, "/") || strings.has_prefix(href, "data:") || strings.has_prefix(href, "javascript:") || strings.has_prefix(href, "wren-") { return href }
-	target, frag := href, ""
-	if h := strings.index_byte(href, '#'); h >= 0 { target, frag = href[:h], href[h:] }
-	path := posix_normalize(posix_join(dir, target))
-	folder := target == "." || target == ".." || strings.has_suffix(target, "/") || strings.has_suffix(target, "/..")
-	if folder && path != "" { path = strings.concatenate({path, "/"}, context.allocator) }
-	return strings.concatenate({"/", path, frag}, context.allocator)
 }
 
 // The site's root-absolute paths of a part of a classic page in the classic tree: a page ("/pricing/") is its classic

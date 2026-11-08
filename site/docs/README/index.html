@@ -141,11 +141,11 @@
 <li><a href="../../docs/api/webassembly/">Module webassembly</a></li>
 <li><a href="../../docs/api/webaudio/">Module webaudio</a></li>
 <li><a href="../../docs/api/webcodecs/">Module webcodecs</a></li>
-<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecsaudiodecoder</a></li>
-<li><a href="../../docs/api/webcodecs_codec/">Module webcodecscodec</a></li>
-<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecsencoders</a></li>
-<li><a href="../../docs/api/webcodecs_image/">Module webcodecsimage</a></li>
-<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecsvideodecoder</a></li>
+<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecs_audio_decoder</a></li>
+<li><a href="../../docs/api/webcodecs_codec/">Module webcodecs_codec</a></li>
+<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecs_encoders</a></li>
+<li><a href="../../docs/api/webcodecs_image/">Module webcodecs_image</a></li>
+<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecs_video_decoder</a></li>
 <li><a href="../../docs/api/webgl/">Module webgl</a></li>
 <li><a href="../../docs/api/websocket/">Module websocket</a></li>
 <li><a href="../../docs/api/workers/">Module workers</a></li>
@@ -244,7 +244,9 @@
 <h1 id="writing-documentation"><a class="anchor" href="#writing-documentation" aria-hidden="true">#</a>Writing documentation</h1>
 <p>Every page of the documentation site is a Markdown file under <code>docs/</code>. The generator <code>src/tools/docsite</code> turns them
 into the static site under <code>site/docs/</code>. There is no framework and nothing is fetched at runtime; the pages render in
-Wren itself.</p>
+Wren itself. The pages, their sidebar, search, Markdown, highlighter and link check are the toolkit's site package
+(<code>ext/gui_toolkit/src/site</code>, documented in <code>ext/gui_toolkit/docs/site.md</code>); <code>src/tools/docsite</code> gives it Wren's names,
+header, footer, colours, the WIDL language and the directives below, and makes the classic presentation.</p>
 <p>The site has a second, classic presentation under <code>site/classic/</code> (plain links, one column of text, light and dark;
 <code>site/classic/classic.css</code>), reached by "Classic version" in every footer and back by "Modern version". The same tool
 makes it from the same sources: each doc is rendered a second time in the classic frame, and each hand-written page of
@@ -280,7 +282,7 @@ to the site's URL automatically. A link that leaves <code>docs/</code> becomes a
 paths; do not hand-write <code>.html</code>.</li>
 <li><strong>Images</strong> <code>![alt](src)</code>. Put image files under <code>docs/</code> and reference them relatively.</li>
 <li><strong>Blockquotes</strong> <code>&gt;</code> and <strong>thematic breaks</strong> (<code>---</code>).</li>
-<li><strong>Tables</strong>, GitHub style, with <code>:---:</code> alignment.</li>
+<li><strong>Tables</strong>, GitHub style, with <code>:---:</code> alignment. A <code>|</code> inside a code span does not split a cell.</li>
 <li><p><strong>Fenced code blocks</strong> with a language for syntax highlighting:</p>
 <div class="code"><div class="file">Odin</div><pre><code>    main :: <span class="k">proc</span>() { }</code></pre></div>
 <p>The highlighter knows <code>odin</code>, <code>c</code>, <code>js</code> / <code>javascript</code>, <code>powershell</code>, <code>json</code>, <code>rust</code> and <code>widl</code>. Colouring happens

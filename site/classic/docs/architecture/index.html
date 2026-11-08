@@ -126,7 +126,7 @@ the image decoders, the layout threads, the decoded web fonts, the crash session
 preferences and profile configure them.</p>
 <p><code>src/tools/e2e/two_apps.odin</code> runs two Apps, each on a thread of its own, at once: each sees only its own tabs, pages,
 storage, channel messages and frame, and nothing of either is left once both have stopped. The toolkit keeps the
-interface state it draws with in one variable of the process (<code>ext/gui_toolkit/ui/state.odin</code>, <code>g</code>): until it is the
+interface state it draws with in one variable of the process (<code>ext/gui_toolkit/src/ui/state.odin</code>, <code>g</code>): until it is the
 thread's (<code>@(private, thread_local) g: ^State</code>), the two Apps' own threads take turns between the test's meetings (what
 they run besides runs at once); with that one change they run at once too.</p>
 <h2 id="wasm-engine"><a class="anchor" href="#wasm-engine" aria-hidden="true">#</a>Wasm engine</h2>
@@ -424,11 +424,11 @@ matrices. The painter (<code>src/browser/render.odin</code>) maps the display li
 <li><a href="../../docs/api/webassembly/">Module webassembly</a></li>
 <li><a href="../../docs/api/webaudio/">Module webaudio</a></li>
 <li><a href="../../docs/api/webcodecs/">Module webcodecs</a></li>
-<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecsaudiodecoder</a></li>
-<li><a href="../../docs/api/webcodecs_codec/">Module webcodecscodec</a></li>
-<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecsencoders</a></li>
-<li><a href="../../docs/api/webcodecs_image/">Module webcodecsimage</a></li>
-<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecsvideodecoder</a></li>
+<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecs_audio_decoder</a></li>
+<li><a href="../../docs/api/webcodecs_codec/">Module webcodecs_codec</a></li>
+<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecs_encoders</a></li>
+<li><a href="../../docs/api/webcodecs_image/">Module webcodecs_image</a></li>
+<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecs_video_decoder</a></li>
 <li><a href="../../docs/api/webgl/">Module webgl</a></li>
 <li><a href="../../docs/api/websocket/">Module websocket</a></li>
 <li><a href="../../docs/api/workers/">Module workers</a></li>

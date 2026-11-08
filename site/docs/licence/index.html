@@ -141,11 +141,11 @@
 <li><a href="../../docs/api/webassembly/">Module webassembly</a></li>
 <li><a href="../../docs/api/webaudio/">Module webaudio</a></li>
 <li><a href="../../docs/api/webcodecs/">Module webcodecs</a></li>
-<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecsaudiodecoder</a></li>
-<li><a href="../../docs/api/webcodecs_codec/">Module webcodecscodec</a></li>
-<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecsencoders</a></li>
-<li><a href="../../docs/api/webcodecs_image/">Module webcodecsimage</a></li>
-<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecsvideodecoder</a></li>
+<li><a href="../../docs/api/webcodecs_audio_decoder/">Module webcodecs_audio_decoder</a></li>
+<li><a href="../../docs/api/webcodecs_codec/">Module webcodecs_codec</a></li>
+<li><a href="../../docs/api/webcodecs_encoders/">Module webcodecs_encoders</a></li>
+<li><a href="../../docs/api/webcodecs_image/">Module webcodecs_image</a></li>
+<li><a href="../../docs/api/webcodecs_video_decoder/">Module webcodecs_video_decoder</a></li>
 <li><a href="../../docs/api/webgl/">Module webgl</a></li>
 <li><a href="../../docs/api/websocket/">Module websocket</a></li>
 <li><a href="../../docs/api/workers/">Module workers</a></li>
@@ -497,6 +497,8 @@ create the namespace yourself: <code>cf kv namespaces create --title wren-licenc
 npx wrangler secret bulk secrets.sandbox.json --env sandbox    <span class="c"># {"LICENSE_PRIVATE_KEY": "...", ...}</span>
 npx wrangler tail --env sandbox                         <span class="c"># live logs</span></code></pre></div>
 <h3 id="4-paddle-sandbox"><a class="anchor" href="#4-paddle-sandbox" aria-hidden="true">#</a>4. Paddle sandbox</h3>
+<p><code>wrentool paddle -Apply</code> (with <code>PADDLE_API_KEY</code>) makes the product and its price below, or finds them; without <code>-Apply</code> it prints
+what it would send.</p>
 <ol>
 <li><strong>Catalog → Products → New product</strong>: "Wren User Licence" (category: standard digital goods). Add two <strong>one-time</strong> prices
 (no billing period): <em>Supporter</em> 29 EUR and <em>Patron</em> 79 EUR, tax mode "inclusive" so that the buyer pays the displayed
