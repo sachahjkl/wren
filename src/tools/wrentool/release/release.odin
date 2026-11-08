@@ -54,7 +54,7 @@ It needs, from your distribution:
   for dialogs   zenity or kdialog
 
 NixOS: start it once with steam-run (or nix-ld with the libraries above) and choose Install in Setup. The installed
-copy gets its libraries from Nix and then starts by itself. Or install the Nix package: nix profile install github:sachahjkl/wren
+copy gets its libraries from Nix and then starts by itself. Or install the Nix package: nix profile add git+https://github.com/sachahjkl/wren
 
 https://github.com/sachahjkl/wren
 `

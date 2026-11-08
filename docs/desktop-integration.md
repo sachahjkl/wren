@@ -63,7 +63,7 @@ The release is linked for a usual Linux: the loader `/lib64/ld-linux-x86-64.so.2
 folders. NixOS has neither, so the downloaded program starts only in an FHS sandbox (`steam-run`) or with nix-ld. Two ways
 to install it:
 
-- **The Nix package** (`nix profile add github:sachahjkl/wren`, or `packages.default` of `flake.nix` in a system
+- **The Nix package** (`nix profile add git+https://github.com/sachahjkl/wren`, or `packages.default` of `flake.nix` in a system
   configuration). Nix builds it from the sources, as `wrentool build release` does, with the menu entry and the icons, and
   `nix profile upgrade` updates it. A copy that runs from the Nix store does not offer Setup by itself.
 - **Setup from the downloaded program.** On NixOS (`ID=nixos` in `/etc/os-release`), the install also does this

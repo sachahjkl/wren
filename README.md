@@ -214,8 +214,9 @@ On Linux, download `wren-<version>-linux-x64.tar.gz`, unpack it and run `./wren`
 distribution (glibc 2.39 or later, libopus, libasound, libfontconfig; for a window, libwayland-client and libxkbcommon or libxcb, and a
 Vulkan or OpenGL driver).
 
-With Nix: `nix run github:sachahjkl/wren` builds Wren from the sources and runs it, and `nix profile add github:sachahjkl/wren`
-installs it with its menu entry. `nix develop` gives what `build.sh` needs, and `nix flake check` builds the package and runs the
+With Nix: `nix run git+https://github.com/sachahjkl/wren` builds Wren from the sources and runs it, and `nix profile add git+https://github.com/sachahjkl/wren`
+installs it with its menu entry (the address is `git+https://`, not `github:`: the build needs the submodules, and GitHub's
+archives, which `github:` fetches, never hold them). `nix develop` gives what `build.sh` needs, and `nix flake check` builds the package and runs the
 pre-commit hooks. On NixOS, the downloaded release starts with
 `steam-run`, and its Setup makes the installed copy start without it ([docs/desktop-integration.md](docs/desktop-integration.md#nixos)).
 
