@@ -2,7 +2,6 @@
 # A test simulates a failure, it does not wait for it (docs/testing.md, Waits): a fake at a seam, the loop's virtual clock, a condition, a gate of the test server.
 src/base/process_times_test.odin 1  # the system's count of a process's threads goes down some time after a thread ended: nothing signals it
 src/browser/pacing_wait_test.odin 1  # poll of a flag set by the thread under test, bounded by one slot: what is checked is that thread's real wait
-src/desktop/integration_test_windows.odin 4  # another process (the cleanup batch) and the shell's change notifications: looked at until they hold, on the system's time
 src/e2e/e2e.odin 1  # stop_test: the thread of a test that failed waits to be ended by the runner
 src/e2e/process.odin 1  # wait_for: what another process does to the disk or the registry, looked at until it holds: nothing can run its loop
 src/host/thread_test.odin 1  # -Perf only: how often a hook runs in real time is the measure

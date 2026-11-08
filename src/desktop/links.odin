@@ -1,4 +1,4 @@
-package desktop
+package wren_desktop
 
 // Links that open in Wren from any web page: the integration registers the schemes `<prefix>http`, `<prefix>https` and
 // `<prefix>about` (prefix "wren-": wren-https://example.org/a?b#c) with the system, which runs
@@ -15,8 +15,8 @@ import "wb:base"
 import "wb:url"
 
 LINK_FLAG :: "--open-url"
-// The release's prefix, what the web site's links use. A development build registers its own (Identity.link_prefix) and
-// opens both from its command line.
+// The release's prefix, what the web site's links use. A development build registers its own (DEV_LINK_PREFIX,
+// identity.odin) and opens both from its command line.
 LINK_PREFIX :: "wren-"
 LINK_MAX_BYTES :: 8 * 1024
 LINK_ABOUT :: "about:wren"

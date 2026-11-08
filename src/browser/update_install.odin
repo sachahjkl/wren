@@ -21,7 +21,7 @@ import "core:strings"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
-import "wb:desktop"
+import process "toolkit:process"
 import "wb:fetch"
 import update "toolkit:update"
 import wren_update "wb:update"
@@ -226,7 +226,7 @@ update_download_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event)
 		app.upd.bin_status = int(ev.response.status)
 	case .Done:
 		if app.upd.bin_status != 200 { update_fail(app, "the release file could not be downloaded"); return }
-		exe := desktop.executable_path(context.temp_allocator)
+		exe := process.executable_path(context.temp_allocator)
 		if problem := update_apply(exe, app.upd.manifest, ev.data); problem != "" { update_fail(app, problem); return }
 		delete(app.upd.installed); app.upd.installed = strings.clone(app.upd.manifest.version)
 		app.upd.phase = .Installed
@@ -287,6 +287,6 @@ update_install_ready :: proc(app: ^App) -> bool { return app.upd.phase == .Ready
 
 // At start, before anything else: the files a previous update left (the old program, a half-written new one). Local, no network.
 update_cleanup :: proc() {
-	exe := desktop.executable_path(context.temp_allocator)
+	exe := process.executable_path(context.temp_allocator)
 	if exe != "" { update.remove_leftovers(exe) }
 }

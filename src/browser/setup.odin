@@ -22,11 +22,13 @@ package browser
 
 import "core:fmt"
 import "core:os"
+import "core:path/filepath"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:ui"
 import "wb:config"
-import "wb:desktop"
+import desktop "toolkit:desktop"
+import process "toolkit:process"
 import "wb:host"
 
 // What is installed beside wren.exe: nothing. The release is the program alone (its licenses, its version and the C runtime
@@ -192,7 +194,7 @@ setup_job_start :: proc(app: ^App, kind: Setup_Job_Kind, reason: Setup_Reason) {
 	job.app = app
 	job.kind, job.reason = kind, reason
 	job.opts = desktop.options_clone(setup_options(app))
-	job.running_exe = strings.clone(desktop.executable_path())
+	job.running_exe = strings.clone(process.executable_path())
 	app.stp.busy += 1
 	host.run_blocking(&app.blocking, setup_job_work, setup_job_done, job)
 }
@@ -206,7 +208,7 @@ setup_job_work :: proc(data: rawptr) {
 	case .Apply:     setup_apply_work(job)
 	case .Uninstall: setup_uninstall_work(job)
 	case .Clean:     // the `.old` files an earlier replacement left beside this installed copy; nothing is read
-		desktop.clean_old(desktop.parent_dir(job.running_exe))
+		desktop.clean_old(o, process.parent_dir(job.running_exe))
 		return
 	}
 	job.result.detail = strings.clone(job.result.detail)
@@ -217,7 +219,7 @@ setup_job_work :: proc(data: rawptr) {
 	job.folder_left = strings.clone(job.folder_left)
 	// the state, as it is now
 	job.facts = setup_read_facts(o, job.running_exe)
-	if job.kind == .Read || job.reason == .Startup { desktop.clean_old(desktop.parent_dir(job.running_exe)) }
+	if job.kind == .Read || job.reason == .Startup { desktop.clean_old(&job.opts, process.parent_dir(job.running_exe)) }
 }
 
 // Reads the installed copy and the integration: what the dialog shows. Heap allocations: the caller owns them.
@@ -255,13 +257,14 @@ set_exe :: proc(o: ^desktop.Options, exe: string) {
 setup_apply_work :: proc(job: ^Setup_Job) {
 	o := &job.opts
 	id := o.identity
-	if problem := desktop.check_install_dir(job.target_dir, probe = true); problem != "" {
+	if problem := desktop.check_install_dir(job.target_dir, id.name, probe = true); problem != "" {
 		job.result = {.Bad_Options, problem}
 		return
 	}
 	exe_name := desktop.exe_name_of(id)
-	target_exe := strings.concatenate({strings.trim_right(job.target_dir, "\\/"), desktop.PATH_SEP, exe_name}, context.temp_allocator)
+	target_exe := strings.concatenate({strings.trim_right(job.target_dir, "\\/"), filepath.SEPARATOR_STRING, exe_name}, context.temp_allocator)
 	plan := desktop.Install_Plan{
+		identity = id,
 		src_exe = job.running_exe, dir = job.target_dir, exe_name = exe_name,
 		payload = SETUP_PAYLOAD[:], version = APP_VERSION, channel = channel_name(),
 		adapt = o.notify_system,   // (a scratch install of the tests stays as copied)
@@ -275,7 +278,7 @@ setup_apply_work :: proc(job: ^Setup_Job) {
 	// a copy that is moved: the old folder goes (its PATH entry, its files; what a running program holds is left for later)
 	if job.old_dir != "" && !desktop.same_path(job.old_dir, job.target_dir) {
 		old := o^
-		old.exe = strings.concatenate({strings.trim_right(job.old_dir, "\\/"), desktop.PATH_SEP, exe_name}, context.temp_allocator)
+		old.exe = strings.concatenate({strings.trim_right(job.old_dir, "\\/"), filepath.SEPARATOR_STRING, exe_name}, context.temp_allocator)
 		desktop.forget_path(&old, job.old_dir)
 		rm := desktop.files_remove(&old, job.old_dir)
 		for l in rm.leftovers { append(&job.leftovers, l) }
@@ -288,7 +291,7 @@ setup_uninstall_work :: proc(job: ^Setup_Job) {
 	o := &job.opts
 	dir := job.target_dir   // the installed folder
 	exe_name := desktop.exe_name_of(o.identity)
-	set_exe(o, dir != "" ? strings.concatenate({strings.trim_right(dir, "\\/"), desktop.PATH_SEP, exe_name}, context.temp_allocator) : job.running_exe)
+	set_exe(o, dir != "" ? strings.concatenate({strings.trim_right(dir, "\\/"), filepath.SEPARATOR_STRING, exe_name}, context.temp_allocator) : job.running_exe)
 	if r := desktop.remove(o); r.error != .None { job.result = r }   // (keep going: the files should go even when a key would not)
 	if dir != "" {
 		desktop.forget_path(o, dir)
@@ -370,8 +373,9 @@ setup_shutdown :: proc(app: ^App) {
 	if len(app.stp.cleanup) > 0 {
 		files := make([dynamic]string, context.temp_allocator)
 		for f in app.stp.cleanup { append(&files, f) }
-		if app.stp.cleanup_dir != "" { append(&files, strings.concatenate({app.stp.cleanup_dir, desktop.PATH_SEP, desktop.MANIFEST_NAME}, context.temp_allocator)) }
-		desktop.cleanup_later(files[:], app.stp.cleanup_dir, desktop.current_process_id())
+		o := desktop.Options{identity = desktop_identity()}   // (the deferred deletion needs only its names)
+		if app.stp.cleanup_dir != "" { append(&files, strings.concatenate({app.stp.cleanup_dir, filepath.SEPARATOR_STRING, o.identity.manifest_name}, context.temp_allocator)) }
+		desktop.cleanup_later(&o, files[:], app.stp.cleanup_dir, desktop.current_process_id())
 	}
 	setup_destroy(app)
 }
@@ -459,23 +463,23 @@ setup_should_offer :: proc(f: ^Setup_Facts) -> bool {
 PORTABLE_MARKER :: "wren.portable"
 
 portable_profile_dir :: proc() -> string {
-	exe := desktop.executable_path(context.temp_allocator)
-	dir := desktop.parent_dir(exe)
+	exe := process.executable_path(context.temp_allocator)
+	dir := process.parent_dir(exe)
 	if dir == "" { return "" }
-	if !os.exists(strings.concatenate({dir, desktop.PATH_SEP, PORTABLE_MARKER}, context.temp_allocator)) { return "" }
-	return strings.concatenate({dir, desktop.PATH_SEP, "data"}, context.temp_allocator)
+	if !os.exists(strings.concatenate({dir, filepath.SEPARATOR_STRING, PORTABLE_MARKER}, context.temp_allocator)) { return "" }
+	return strings.concatenate({dir, filepath.SEPARATOR_STRING, "data"}, context.temp_allocator)
 }
 
 // After the first tab exists. `force`: --setup (open it whatever the build and the profile).
 setup_startup :: proc(app: ^App, profile_explicit: bool, force: bool) {
 	if !desktop.supported() { return }
 	// an installed copy removes what a replacement left beside it (the `.old` files), whatever else is decided below
-	if os.exists(strings.concatenate({desktop.parent_dir(desktop.executable_path(context.temp_allocator)), desktop.PATH_SEP, desktop.MANIFEST_NAME}, context.temp_allocator)) { setup_job_start(app, .Clean, .Startup) }
+	if os.exists(strings.concatenate({process.parent_dir(process.executable_path(context.temp_allocator)), filepath.SEPARATOR_STRING, desktop_identity().manifest_name}, context.temp_allocator)) { setup_job_start(app, .Clean, .Startup) }
 	if force { setup_open(app, .Cli); return }
 	if v, ok := os.lookup_env("WREN_DESKTOP_INTEGRATION", context.temp_allocator); ok && v == "off" { return }   // src/e2e sets it for every test
 	if desktop_profile_is_disposable(app, profile_explicit) { return }
 	if app.portable { return }
-	if desktop.in_nix_store(desktop.executable_path(context.temp_allocator)) { return }   // a Nix package: Nix installs and updates it
+	if desktop.in_nix_store(process.executable_path(context.temp_allocator)) { return }   // a Nix package: Nix installs and updates it
 	if !config.bool_of(&app.prefs, "browser.desktop_integration.on_first_run") { return }
 	if setup_choice_blocks(app) { return }
 	setup_job_start(app, .Read, .Startup)
@@ -504,7 +508,7 @@ setup_apply :: proc(app: ^App) {
 	o.add_to_path = app.stp.opts[.Add_To_Path]
 	o.register_browser = app.stp.opts[.Register_Browser]
 	job.opts = desktop.options_clone(o)
-	job.running_exe = strings.clone(desktop.executable_path())
+	job.running_exe = strings.clone(process.executable_path())
 	job.target_dir = strings.clone(setup_target(app))
 	if app.stp.facts.inst.exe_present && setup_moving(app) { job.old_dir = strings.clone(app.stp.facts.inst.dir) }
 	// the checkboxes are the preferences from now on (Modify, --desktop-integration and the box in about:config agree)
@@ -532,7 +536,7 @@ setup_uninstall :: proc(app: ^App) {
 	job.app = app
 	job.kind, job.reason = .Uninstall, .Command
 	job.opts = desktop.options_clone(setup_options(app))
-	job.running_exe = strings.clone(desktop.executable_path())
+	job.running_exe = strings.clone(process.executable_path())
 	job.target_dir = app.stp.facts.inst.exe_present || app.stp.facts.inst.manifest ? strings.clone(app.stp.facts.inst.dir) : ""
 	app.stp.busy += 1
 	app.stp.acting += 1
@@ -584,5 +588,5 @@ setup_validate :: proc(app: ^App) {
 	delete(app.stp.path_text)
 	app.stp.path_text = strings.clone(text)
 	delete(app.stp.path_problem)
-	app.stp.path_problem = strings.clone(desktop.check_install_dir(text))
+	app.stp.path_problem = strings.clone(desktop.check_install_dir(text, desktop_identity().name))
 }

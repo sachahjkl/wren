@@ -26,7 +26,7 @@ import "core:math"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:ui"
-import "wb:desktop"
+import desktop "toolkit:desktop"
 import "wb:i18n"
 
 @(private = "file")

@@ -15,7 +15,7 @@ package wrencom
 import "core:strings"
 
 // Said in every message of the launcher: Setup tells its own wren.com from a file of the same name by this text
-// (package desktop, LAUNCHER_MARK). Keep the two equal.
+// (src/desktop/identity.odin, LAUNCHER_MARK). Keep the two equal.
 MARK :: "(Wren console launcher)"
 
 Mode :: enum u8 {

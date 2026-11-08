@@ -22,7 +22,9 @@ import "wb:canvas2d"
 import "wb:base"
 import "wb:config"
 import "wb:cookies"
-import "wb:desktop"
+import desktop "toolkit:desktop"
+import process "toolkit:process"
+import wren_desktop "wb:desktop"
 import "wb:dom"
 import "wb:fetch"
 import "wb:host"
@@ -1545,9 +1547,9 @@ main :: proc() {
 	trace_start()   // prof.odin: Tracy, ETW, when built in
 	prof_mark(.Main)
 	// (UTF-8 from the UTF-16 command line: os.args is the C runtime's ANSI)
-	app := app_start(desktop.command_line_args(base.permanent_allocator()))
+	app := app_start(process.command_line_args(base.permanent_allocator()))
 	if app == nil { return }
-	host.shutdown_stacks_program = desktop.executable_path(base.permanent_allocator())   // (`wren ctl stacks`: a teardown that hangs says where)
+	host.shutdown_stacks_program = process.executable_path(base.permanent_allocator())   // (`wren ctl stacks`: a teardown that hangs says where)
 	for app_turn(app) {}
 	app_stop(app, process_ends = true)
 	host.process_end(remote_exit_code)   // (at once: unloading the system's libraries takes longer than the whole teardown, and leaves nothing done)
@@ -1572,15 +1574,15 @@ app_start :: proc(args: []string) -> ^App {
 	// script engine): only as the first argument (a file or host named ctl is written ./ctl)
 	if len(args) > 0 && args[0] == "ctl" { os.exit(ctl_main(args[1:])) }
 	// `wren --version`, `wren version`, `wren --help`, `wren help` (cli_usage.odin): said on the console, nothing else is set up
-	if info := cli_info_of(args); info != .None { desktop.console_write(cli_info_text(info)); os.exit(0) }
+	if info := cli_info_of(args); info != .None { process.console_write(cli_info_text(info)); os.exit(0) }
 	host.phase("arguments and preferences")
 	// `--open-url wren-https://...` (what a link of a web page runs) and the links among the arguments: addresses from here on, or nothing opens (desktop/links.odin)
-	linked, link_err := desktop.links_in_args(args, {desktop_identity().link_prefix, desktop.LINK_PREFIX})
-	if link_err != .None { desktop.console_write(fmt.tprintf("refused: %s\n", desktop.link_error_text(link_err))); os.exit(desktop.LINK_REFUSED_EXIT) }
+	linked, link_err := wren_desktop.links_in_args(args, {desktop_link_prefix(), wren_desktop.LINK_PREFIX})
+	if link_err != .None { process.console_write(fmt.tprintf("refused: %s\n", wren_desktop.link_error_text(link_err))); os.exit(wren_desktop.LINK_REFUSED_EXIT) }
 	profile_override, a1 := extract_flag(linked[:], "--profile")
 	policy_file, a2 := extract_flag(a1[:], "--policy")
 	purge_requested, a2b := extract_switch(a2[:], "--purge")   // with --uninstall: also delete the profile (desktop_shell.odin)
-	cli_mode, a3, cli_bad := desktop.parse_cli(a2b[:])   // --desktop-integration=install|remove|status|uninstall, --uninstall (desktop_shell.odin)
+	cli_mode, a3, cli_bad := desktop.parse_cli(desktop_identity(), a2b[:])   // --desktop-integration=install|remove|status|uninstall, --uninstall (desktop_shell.odin)
 	setup_requested, a4 := extract_switch(a3[:], "--setup")   // opens the Setup dialog (setup.odin)
 	new_window, a5 := extract_switch(a4[:], "--new-window")   // a window of its own, not a tab of the Wren that runs (instance_shell.odin)
 	no_single, a6 := extract_switch(a5[:], "--no-single-instance")
@@ -1599,17 +1601,17 @@ app_start :: proc(args: []string) -> ^App {
 	crashtrace.set_report_dir(strings.concatenate({app.profile_dir, "/crashes"}, context.temp_allocator), fmt.tprintf("%s %s (%s %s)", APP_NAME, APP_VERSION, app_commit(), APP_COMMIT_DATE))
 	_, _, prefs_file := profile_paths(app)
 	config.load_file(&app.prefs, prefs_file, .User)
-	if policy_file == "" { policy_file = default_policy_file(desktop.executable_path(context.temp_allocator)) }   // beside the program, not in the working directory (policy_file.odin)
+	if policy_file == "" { policy_file = default_policy_file(process.executable_path(context.temp_allocator)) }   // beside the program, not in the working directory (policy_file.odin)
 	if policy_file != "" { config.load_file(&app.prefs, policy_file, .Policy) }
 	register_all_prefs(&app.prefs)
 	app.cfg = settings_from_prefs(&app.prefs)
 	memory_trim_settings(app, &app.prefs)   // memory_trim.odin
 	prof_mark(.Prefs)
-	if cli_bad != "" { desktop.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove, status or uninstall)\n", cli_bad)); os.exit(2) }
+	if cli_bad != "" { process.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove, status or uninstall)\n", cli_bad)); os.exit(2) }
 	// `ctl` as an address is nearly always `wren ctl ...` meant for the remote control client that did not run as such (an option before it:
 	// `ctl` is only the first argument; or a wren.exe from before the client existed): it would open https://ctl, and in the user's Wren, not here
 	if len(rest) > 0 && is_info_word(rest[0]) {
-		desktop.console_write(fmt.tprintf("`%s` is a command only as the first argument (wren ctl <command>, wren help, wren version). To open a file or host named %s, write ./%s\n", rest[0], rest[0], rest[0]))
+		process.console_write(fmt.tprintf("`%s` is a command only as the first argument (wren ctl <command>, wren help, wren version). To open a file or host named %s, write ./%s\n", rest[0], rest[0], rest[0]))
 		os.exit(2)
 	}
 	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode, purge_requested)) }   // no window: a script's call

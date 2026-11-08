@@ -1,7 +1,8 @@
 package browser
 
+import "core:path/filepath"
 import "core:strings"
-import "wb:desktop"
+import process "toolkit:process"
 
 POLICY_FILE_NAME :: "policies.txt"
 
@@ -11,7 +12,7 @@ POLICY_FILE_NAME :: "policies.txt"
 // (security.file_access.policy, security.csp.enabled, browser.license.path...) for whoever planted it. "" when the
 // executable's own path is unknown: no policy file then.
 default_policy_file :: proc(exe: string, allocator := context.temp_allocator) -> string {
-	dir := desktop.parent_dir(exe)
+	dir := process.parent_dir(exe)
 	if dir == "" { return "" }
-	return strings.concatenate({dir, desktop.PATH_SEP, POLICY_FILE_NAME}, allocator)
+	return strings.concatenate({dir, filepath.SEPARATOR_STRING, POLICY_FILE_NAME}, allocator)
 }

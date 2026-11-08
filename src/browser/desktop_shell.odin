@@ -1,6 +1,7 @@
 package browser
 
-// Wren on the user's desktop: the shell side of package desktop (src/desktop). That package knows how to add and remove
+// Wren on the user's desktop: the shell side of the toolkit's desktop package (toolkit:desktop, with Wren's identity and
+// preferences in src/desktop). That package knows how to add and remove
 // the Start menu shortcut, the registration as a candidate browser, the freedesktop.org entry...; this file decides when,
 // and shows the state:
 //
@@ -27,7 +28,9 @@ import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
-import "wb:desktop"
+import desktop "toolkit:desktop"
+import process "toolkit:process"
+import wren_desktop "wb:desktop"
 import "wb:host"
 import "wb:i18n"
 
@@ -39,20 +42,17 @@ DESKTOP_PREFS := [?]config.Def{
 }
 
 register_desktop_shell_prefs :: proc(p: ^config.Prefs) {
-	desktop.register_prefs(p)
+	wren_desktop.register_prefs(p)
 	config.register(p, DESKTOP_PREFS[:])
 	config.register(p, SETUP_PREFS[:])
 }
 
-// What Wren is called on the desktop. A development build has its own entries (name, keys, AppUserModelID), so it never
-// takes over those of the release.
-desktop_identity :: proc() -> desktop.Identity {
-	when IS_DEV_BUILD {
-		return {name = APP_NAME + " Dev", key = APP_NAME + "Dev", slug = "wren-dev", aumid = "FromentSoftware.Wren.Dev", description = APP_TAGLINE, vendor = "Froment Software", exe_name = "wren.exe", link_prefix = "wren-dev-"}
-	} else {
-		return {name = APP_NAME, key = APP_NAME, slug = "wren", aumid = "FromentSoftware.Wren", description = APP_TAGLINE, vendor = "Froment Software", exe_name = "wren.exe", link_prefix = desktop.LINK_PREFIX}
-	}
-}
+// What Wren is called on the desktop (src/desktop/identity.odin). A development build has its own entries (name, keys,
+// AppUserModelID, link schemes), so it never takes over those of the release.
+desktop_identity :: proc() -> desktop.Identity { return wren_desktop.identity(APP_NAME, APP_TAGLINE, IS_DEV_BUILD) }
+
+// The prefix of the links this build registers (links.odin).
+desktop_link_prefix :: proc() -> string { return wren_desktop.link_prefix(IS_DEV_BUILD) }
 
 // The window's AppUserModelID is the shortcut's: before the first window exists.
 desktop_early_init :: proc() {
@@ -84,7 +84,7 @@ env_lookup :: proc(name: string) -> string {
 // The options of an integration of this program, from the preferences (and WREN_DESKTOP_* roots of the environment).
 desktop_options :: proc(app: ^App) -> desktop.Options {
 	o := desktop.options_make(desktop_identity())
-	desktop.options_apply_prefs(&o, &app.prefs)
+	wren_desktop.options_apply_prefs(&o, &app.prefs)
 	o.icons = desktop_icons()
 	when ODIN_OS == .Windows { o.launcher = CONSOLE_LAUNCHER }
 	desktop.roots_from_env(&o, env_lookup)
@@ -96,15 +96,15 @@ desktop_options :: proc(app: ^App) -> desktop.Options {
 // licence); without it the profile is kept, so a reinstall finds everything as it was.
 desktop_cli :: proc(app: ^App, mode: desktop.Cli_Mode, purge := false) -> int {
 	o := desktop_options(app)
-	code := desktop.cli_run(mode, &o, desktop.console_write)
-	if mode == .Uninstall && purge && (code == 0 || code == 5) {
+	code := desktop.cli_run(mode, &o, process.console_write)
+	if mode == .Uninstall && purge && (code == 0 || code == desktop.CLI_UNINSTALL_LATER) {
 		// delete the profile after the files (the profile is the browser's, not the desktop package's concern). A profile
 		// given with --profile or a portable one is still removed when asked for, since --purge is an explicit request.
 		if app.profile_dir != "" && os.is_dir(app.profile_dir) {
 			if base.remove_tree(app.profile_dir) {
-				desktop.console_write(fmt.tprintf("profile deleted: %s\n", app.profile_dir))
+				process.console_write(fmt.tprintf("profile deleted: %s\n", app.profile_dir))
 			} else {
-				desktop.console_write(fmt.tprintf("the profile could not be fully deleted: %s\n", app.profile_dir))
+				process.console_write(fmt.tprintf("the profile could not be fully deleted: %s\n", app.profile_dir))
 				if code == 0 { code = 1 }
 			}
 		}
@@ -207,7 +207,7 @@ desktop_job_done :: proc(data: rawptr) {
 			app.dsk.failure = fmt.aprintf("Could not %s the desktop integration: %s (%s)", what, desktop.error_text(job.result.error), job.result.detail)
 			ui.toast(.Warn, "%s", app.dsk.failure)
 		} else if job.reason == .User {
-			ui.toast(.Info, job.kind == .Install ? "%s is integrated with the desktop (%s)" : "%s is no longer integrated with the desktop", APP_NAME, desktop.targets())
+			ui.toast(.Info, job.kind == .Install ? "%s is integrated with the desktop (%s)" : "%s is no longer integrated with the desktop", APP_NAME, desktop.targets(browser = true))
 		}
 		changed = true
 	}
@@ -222,6 +222,7 @@ desktop_note_activate :: proc() { sync.atomic_store(&the_app.dsk.stale, true) }
 // The watcher's thread: a place the integration lives changed on the disk.
 @(private = "file")
 desktop_watch_wake :: proc(user: rawptr) {
+	context = base.process_context()   // (the watcher's thread runs with the default context)
 	app := (^App)(user)
 	sync.atomic_store(&app.dsk.stale, true)
 	sync.atomic_add(&app.dsk.changes, 1)
@@ -376,4 +377,4 @@ desktop_config_switch :: proc(app: ^App) -> bool {
 }
 
 // The integration's subtitle: what it touches ("Start menu, default apps").
-desktop_config_targets :: proc() -> string { return desktop.targets() }
+desktop_config_targets :: proc() -> string { return desktop.targets(browser = true) }

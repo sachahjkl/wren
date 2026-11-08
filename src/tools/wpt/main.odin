@@ -48,7 +48,7 @@ import "core:slice"
 import "core:strings"
 import "core:time"
 import "wb:config"
-import "wb:desktop"
+import process "../../../ext/gui_toolkit/src/process"
 import "wb:fetch"
 import "wb:forms"
 import "wb:host"
@@ -132,7 +132,7 @@ main :: proc() {
 		timeout_ms = 10_000, idle_ms = IDLE_MS_DEFAULT, jobs = max(1, host.processor_count() / 2), chunk = 25, self = os.args[0], history_limits = true,
 	}
 	opts.dump = dump_dir_from_env()
-	args := desktop.command_line_args(context.allocator)   // (os.args is the C runtime's ANSI: a folder may have accents)
+	args := process.command_line_args(context.allocator)   // (os.args is the C runtime's ANSI: a folder may have accents)
 	if len(args) >= 2 && args[0] == "-child" {
 		parse_options(args[2:])
 		os.exit(child_on_its_stack(args[1]))

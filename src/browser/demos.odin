@@ -5,7 +5,7 @@ import "core:path/filepath"
 import "core:strings"
 import "wb:base"
 import "wb:config"
-import "wb:desktop"
+import process "toolkit:process"
 import "wb:fetch"
 import "wb:page"
 
@@ -303,12 +303,12 @@ with_slash :: proc(s: string, allocator := context.temp_allocator) -> string {
 	return strings.has_suffix(s, "/") ? strings.clone(s, allocator) : strings.concatenate({s, "/"}, allocator)
 }
 
-// The folder of the running executable (no trailing separator), from desktop.executable_path (neutral:
+// The folder of the running executable (no trailing separator), from process.executable_path (neutral:
 // os.get_executable_path on every system).
 exe_directory :: proc() -> string {
-	exe := desktop.executable_path(context.temp_allocator)
+	exe := process.executable_path(context.temp_allocator)
 	if exe == "" { return "" }
-	return desktop.parent_dir(exe)
+	return process.parent_dir(exe)
 }
 
 // Joins path parts with the system separator (filepath.join returns an allocator error too; here the temp allocator
@@ -325,7 +325,7 @@ repository_of :: proc(dir: string) -> string {
 	d := dir
 	for _ in 0 ..< 4 {
 		if is_file(jpath(d, "examples", "site", "index.html")) { return d }
-		parent := desktop.parent_dir(d)
+		parent := process.parent_dir(d)
 		if parent == "" || parent == d { break }
 		d = parent
 	}

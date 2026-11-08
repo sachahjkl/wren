@@ -25,7 +25,7 @@ import "core:strings"
 import "toolkit:platform"
 import "toolkit:render"
 import "wb:base"
-import "wb:desktop"
+import process "toolkit:process"
 import "wb:fetch"
 import "wb:host"
 import "wb:i18n"
@@ -143,7 +143,7 @@ ctl_main :: proc(args: []string) -> int {
 	cfg_dir := platform.config_dir(context.temp_allocator)
 	profile := cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/", APP_NAME}, context.temp_allocator)
 	if dir := portable_profile_dir(); dir != "" { profile = dir }
-	return client.run(args, profile, desktop.executable_path())
+	return client.run(args, profile, process.executable_path())
 }
 
 // `--remote` or `--remote=<name>`: taken out of the arguments.
@@ -175,7 +175,7 @@ remote_start :: proc(app: ^App, requested: bool, arg_name: string) {
 	r.cfg.name = ""
 	if err := remote.start(&app.loop, name, r.cfg.max_message, r.cfg.max_clients, remote_handle, remote_closed, nil); err != "" {
 		r.error = strings.clone(fmt.tprintf(i18n.tr("Remote control: %[0]s (%[1]s)"), err, name))
-		desktop.console_error(strings.concatenate({r.error, "\n"}, context.temp_allocator))   // (a script that redirected stderr sees it)
+		process.console_error(strings.concatenate({r.error, "\n"}, context.temp_allocator))   // (a script that redirected stderr sees it)
 		return
 	}
 	r.active, r.started = true, true

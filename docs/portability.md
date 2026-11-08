@@ -78,7 +78,7 @@ behaviour behind packages that already passed `odin check` for Linux:
   `vaapi_linux.odin` probes the GPU's VA-API H.264 support (libva / libva-drm by `dlopen`, a DRM render node) and is
   preferred when `media.h264.backend` allows; the VA-API decode path itself (slice-level) is not written, so it falls
   back to openh264 — the first thing to try under WSL is openh264.
-- **Desktop** (`desktop`): `watch_linux.odin` watches the integration directories (applications, icons, `~/.local/bin`)
+- **Desktop** (`desktop`, since moved to the toolkit: `ext/gui_toolkit/src/desktop`): `watch_linux.odin` watches the integration directories (applications, icons, `~/.local/bin`)
   with **inotify** (an eventfd to stop, retries when a place is missing). `xdg_linux.odin` centralises the XDG base
   directories. The Linux backend gains a **PATH** part: a symlink in `~/.local/bin` (the "Add to PATH" of Linux).
 - **Web Authentication** (`webauthn`): `platform_fido2_linux.odin` reaches USB / NFC security keys through
@@ -172,7 +172,7 @@ split; Windows is byte-for-byte the same (the Windows code was moved, not rewrit
 | appearance (`appearance`) | theme / accent registry + `RegNotifyChangeKeyValue` | `platform.dark_mode_preferred` / `watch_color_scheme` off Windows (`appearance_<os>.odin`); accent / selection to defaults |
 | crash markers (`crash_recovery`) | `OpenProcess`, `GetProcessTimes`, `GetCurrentProcessId` | `crash_recovery_<os>.odin` (`/proc/<pid>/stat` on Linux, FILETIME-scale start time kept) |
 | input / chrome frames (`app_commands`, `local_paths`, `smooth_scroll`, `shell_frames`) | mouse subclass, `WM_DROPFILES`, `SystemParametersInfoW`, `GetQueueStatus` | split (`app_commands/local_paths/scroll_steps/shell_frames_<os>.odin`); file drops ride the toolkit DnD |
-| paths (`demos`, `local_paths`) | `GetModuleFileNameW`, drive letters, `\` | `desktop.executable_path` + `filepath`; POSIX paths on Linux (`local_paths_other.odin`) |
+| paths (`demos`, `local_paths`) | `GetModuleFileNameW`, drive letters, `\` | `process.executable_path` (toolkit:process) + `filepath`; POSIX paths on Linux (`local_paths_other.odin`) |
 | glyph outlines / colour (`canvas_shell`, `fonts`) | `font.dwrite_outline_provider` | neutral `font.glyph_outline` / `font.color_renderable` (toolkit) |
 | memory trim (`memory_trim`) | `IDXGIDevice3::Trim`, `HeapCompact` | split (`memory_trim_<os>.odin`); the wgpu driver manages its own pools |
 | CDP over TCP (`cdp` via `remote`) | raw Winsock | `remote/tcp_server_other.odin` reports the channel unavailable (not ported) |

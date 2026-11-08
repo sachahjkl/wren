@@ -27,7 +27,7 @@ import "core:strings"
 import "toolkit:instance"
 import "toolkit:ui"
 import "wb:config"
-import "wb:desktop"
+import process "toolkit:process"
 import "wb:host"
 import win "core:sys/windows"
 
@@ -117,7 +117,7 @@ instance_name :: proc(app: ^App) -> string {
 instance_early :: proc(app: ^App, rest: []string, setup, new_window, driven: bool) {
 	env, _ := os.lookup_env("WREN_SINGLE_INSTANCE", context.temp_allocator)
 	if !instance_wanted(config.bool_of(&app.prefs, "browser.single_instance"), new_window, driven, env, app.cfg.persist_profile) { return }
-	exe := desktop.executable_path()
+	exe := process.executable_path()
 	addresses := make([dynamic]string, context.temp_allocator)
 	for a in rest { if s := command_line_address(a); s != "" { append(&addresses, s) } }
 	message := encode_message({setup = setup, addresses = addresses[:]})

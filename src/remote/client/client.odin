@@ -12,7 +12,7 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
-import "wb:desktop"
+import process "../../../ext/gui_toolkit/src/process"
 import "wb:remote"
 import "wb:remote/api"
 
@@ -47,9 +47,9 @@ CONNECT_WAIT_MOST_MS :: 5000
 @(private) BOOL_OPTIONS := [?]string{"json", "await", "tab", "window", "clear", "right", "double", "visible", "bytes", "help", "quiet", "override",
 	"headless", "middle", "all", "timing", "reset-latency", "reset-frames", "leave", "front", "close", "hold", "resume"}
 
-out :: proc(s: string) { desktop.console_write(s) }
-outln :: proc(s: string) { desktop.console_write(strings.concatenate({s, "\n"}, context.temp_allocator)) }
-errln :: proc(s: string) { desktop.console_error(strings.concatenate({s, "\n"}, context.temp_allocator)) }
+out :: proc(s: string) { process.console_write(s) }
+outln :: proc(s: string) { process.console_write(strings.concatenate({s, "\n"}, context.temp_allocator)) }
+errln :: proc(s: string) { process.console_error(strings.concatenate({s, "\n"}, context.temp_allocator)) }
 
 parse_options :: proc(args: []string) -> (o: Options, err: string) {
 	o.vals = make(map[string]string, 8, context.temp_allocator)

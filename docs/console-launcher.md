@@ -43,7 +43,7 @@ from Wren, so they are not in the `i18n` catalogue.
 - `wren.exe` embeds it (`#load`, `src/browser/console_launcher.odin`): the release stays one file.
 - **Setup writes it** beside the installed `wren.exe` when "Add Wren to PATH" is ticked and **removes it** when it is
   unticked, when the integration is removed (`--desktop-integration=remove`) and when Wren is uninstalled or the installation is
-  moved (`src/desktop/launcher.odin`). It is never written anywhere else, and never without the PATH entry that makes it
+  moved (the toolkit's `ext/gui_toolkit/src/desktop/launcher.odin`, with Wren's mark from `src/desktop/identity.odin`). It is never written anywhere else, and never without the PATH entry that makes it
   reachable. `--desktop-integration=install` does the same for a copy that is not installed.
 - It carries a mark (`(Wren console launcher)` in every message): a `wren.com` without it is another program's, and is
   neither replaced nor deleted. An installation that has the PATH entry but no `wren.com` (older Setup) is shown as "to
@@ -55,7 +55,7 @@ from Wren, so they are not in the `i18n` catalogue.
 
 - `odin test src/tools/wrencom -vet`: the decision (wait / let go), the target (`wren.com` to `wren.exe`, refusing a `.exe`), and
   the quoting of the command line (read back by `CommandLineToArgvW`).
-- `odin test src/desktop`: Setup's side (written with the PATH option, replaced by a new version, removed with it, never
+- The toolkit's `odin test src/desktop` (in `ext/gui_toolkit`): Setup's side (written with the PATH option, replaced by a new version, removed with it, never
   over another program's file, removed with the install folder).
 - `src\tools\e2e\wrencom.odin` (a step of `test_all`): the launcher and `wren.exe` copied into a scratch folder; `ctl help`,
   an unknown command, what `> file`, `2>`, `2>&1` and `|` hand over to it, its exit code, `--desktop-integration=status`, the integration

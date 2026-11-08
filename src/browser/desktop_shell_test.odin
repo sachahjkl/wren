@@ -4,9 +4,9 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 import "wb:config"
-import "wb:desktop"
+import wren_desktop "wb:desktop"
 
-_ :: desktop.LAUNCHER_MARK   // (Linux uses nothing of it: the import stays, as -vet counts)
+_ :: wren_desktop.LAUNCHER_MARK   // (Linux uses nothing of it: the import stays, as -vet counts)
 
 @(test)
 desktop_identity_is_well_formed :: proc(t: ^testing.T) {
@@ -29,7 +29,7 @@ the_embedded_console_launcher_is_the_launcher :: proc(t: ^testing.T) {
 	when ODIN_OS == .Windows {
 		exe := CONSOLE_LAUNCHER
 		testing.expect(t, len(exe) > 4096 && exe[0] == 'M' && exe[1] == 'Z', "a program")
-		testing.expect(t, strings.contains(string(exe), desktop.LAUNCHER_MARK), "it carries the mark")
+		testing.expect(t, strings.contains(string(exe), wren_desktop.LAUNCHER_MARK), "it carries the mark")
 		pe := int(exe[0x3C]) | int(exe[0x3D]) << 8 | int(exe[0x3E]) << 16 | int(exe[0x3F]) << 24
 		testing.expect(t, pe + 0x5C < len(exe), "a PE header")
 		if pe + 0x5C < len(exe) {

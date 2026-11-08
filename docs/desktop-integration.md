@@ -5,6 +5,12 @@ desktop anyway: a launcher in the application menu, its icon, and the registrati
 addresses. It is added and removed by one switch, in the user's own profile, never system-wide and never with
 administrator rights.
 
+The code that writes, reads and removes all of it is the toolkit's desktop package (`ext/gui_toolkit/src/desktop`,
+[its documentation](../ext/gui_toolkit/docs/desktop.md)). Wren gives it its names and marks (`src/desktop/identity.odin`:
+the same ones an installed Wren already carries, so it is still recognised and removed), its preferences
+(`src/desktop/settings.odin`) and the links that open in it (`src/desktop/links.odin`); `src/browser/desktop_shell.odin` and
+`setup.odin` decide when.
+
 Where: the box **Integrate Wren with the desktop** at the top of `about:config` (and the command of the same name in the
 palette). Its state is read from the disk every time it is shown, never from a preference, so it is always true.
 
@@ -61,7 +67,7 @@ to install it:
   configuration). It has the menu entry and the icons, and Nix updates it. The release workflow points
   `nix/release.json` to each new Linux file. A copy that runs from the Nix store does not offer Setup by itself.
 - **Setup from the downloaded program.** On NixOS (`ID=nixos` in `/etc/os-release`), the install also does this
-  (`src/desktop/nixos_linux.odin`):
+  (the toolkit's `nixos_linux.odin`):
   1. `nix-build --out-link <install>/nix-runtime` builds a profile of the loader and the libraries the program links
      and opens (`NIXOS_LIBRARIES`, the same list as `runtimeLibs` in `flake.nix`), from the system's nixpkgs
      (`NIX_PATH`, else the flake registry). The link is a root of the garbage collector.
@@ -73,8 +79,8 @@ to install it:
 
 ## macOS
 
-Not provided: what macOS lists is an application bundle, and Wren is an executable outside any bundle. See
-`src/desktop/integration_darwin.odin`.
+Not provided: what macOS lists is an application bundle, and Wren is an executable outside any bundle. See the
+toolkit's `integration_darwin.odin`.
 
 ## Parts, and what the options map to
 
@@ -102,7 +108,7 @@ of that name without the launcher's mark is never replaced or deleted.
 
 ## Setup: the installed copy
 
-`src/desktop/install.odin` (platform agnostic) and `src/browser/setup.odin`, `setup_ui.odin` (the dialog).
+The toolkit's `install.odin` (platform agnostic) and `src/browser/setup.odin`, `setup_ui.odin` (the dialog).
 
 - **Where**: `%LOCALAPPDATA%\Programs\Wren\wren.exe` (`Wren Dev` for the development channel), or any folder that passes
   `check_install_dir`: an absolute path on a local drive, no forbidden character, not a drive root, not inside Windows,
@@ -208,16 +214,17 @@ it ("or open `about:wren` in Wren") and never tries to find out with a script.
 
 ## Tests
 
-`odin test src/desktop` runs the backend and the installed copy on scratch folders and a scratch registry key
-(`HKCU\Software\WrenTest_<id>`, deleted afterwards), and, on Linux, on scratch directories. `odin test src/browser` has the
+The toolkit's `odin test src/desktop` runs the backends and the installed copy on scratch folders and a scratch registry
+key, with an identity of its own. `odin test src/desktop` here checks Wren's identity: the `.desktop` text an installed
+Wren has, both channels, and NixOS's libraries against `flake.nix`. `odin test src/browser` has the
 states of the dialog and install -> every state -> uninstall on scratch roots. A run can be pointed at scratch roots by the
 environment too: `WREN_DESKTOP_MENU_DIR`, `WREN_DESKTOP_DESKTOP_DIR`, `WREN_DESKTOP_REGISTRY_ROOT`,
 `WREN_DESKTOP_ENVIRONMENT_ROOT` (the key that stands for `HKCU\Environment`), `WREN_DESKTOP_INSTALL_DIR` (Windows),
-`WREN_DESKTOP_APPLICATIONS_DIR`, `WREN_DESKTOP_ICONS_DIR` (Linux). `src\tools\e2e\setup.odin` drives the real dialog of a built
+`WREN_DESKTOP_APPLICATIONS_DIR`, `WREN_DESKTOP_ICONS_DIR`, `WREN_DESKTOP_BIN_DIR` (Linux, the link of the Path part). `src\tools\e2e\setup.odin` drives the real dialog of a built
 `wren.exe` on such a scratch desktop, through Wren's own input (install with Enter, uninstall of the running copy and its deferred deletion, standalone,
 the automatic opening and its exceptions, a portable copy) and compares the real Start menu, PATH, StartMenuInternet and
-Settings > Apps before and after. The one test that touches the real desktop runs only with `WREN_TEST_DESKTOP_REAL=1` and
-uses an identity of its own.
+Settings > Apps before and after. The toolkit's one test that touches the real desktop runs only with
+`TK_TEST_DESKTOP_REAL=1` and uses an identity of its own.
 
 # One Wren per profile
 

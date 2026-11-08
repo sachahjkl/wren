@@ -1,10 +1,14 @@
-package desktop
+package wren_desktop
 
 import "core:strings"
+import tk "../../ext/gui_toolkit/src/desktop"
 import "wb:config"
 
 // Preferences of the integration itself. The shell's own policy (when to integrate, whether to offer an update) is in
 // src/browser/desktop_shell.odin: it depends on the build's channel, which this package does not know.
+
+// The web documents Wren is registered for unless the preference says otherwise.
+DEFAULT_FILE_TYPES :: ".htm,.html,.xhtml,.svg,.webp,.avif"
 
 PREFS := [?]config.Def{
 	{name = "browser.desktop_integration.register_browser", kind = .Bool, default = {b = true},
@@ -22,15 +26,15 @@ PREFS := [?]config.Def{
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
 
 // Takes what the preferences decide into `o` (the file types are in the temporary allocator).
-options_apply_prefs :: proc(o: ^Options, p: ^config.Prefs) {
+options_apply_prefs :: proc(o: ^tk.Options, p: ^config.Prefs) {
 	o.register_browser = config.bool_of(p, "browser.desktop_integration.register_browser")
 	o.start_menu = config.bool_of(p, "browser.desktop_integration.start_menu")
 	o.desktop_shortcut = config.bool_of(p, "browser.desktop_integration.desktop_shortcut")
 	o.add_to_path = config.bool_of(p, "browser.desktop_integration.add_to_path")
-	exts := split_list(config.string_of(p, "browser.desktop_integration.file_types"))
+	exts := tk.split_list(config.string_of(p, "browser.desktop_integration.file_types"))
 	norm := make([dynamic]string, context.temp_allocator)
 	for e in exts {
-		n := normalize_extension(e)
+		n := tk.normalize_extension(e)
 		if n == "" || strings.contains_any(n, "\\/:*?\"<>|") { continue }
 		append(&norm, n)
 	}

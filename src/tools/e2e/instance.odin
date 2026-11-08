@@ -13,7 +13,7 @@ import "core:testing"
 import "core:time"
 import "wb:base"
 import "wb:browser"
-import "wb:desktop"
+import wren_desktop "wb:desktop"
 import "wb:e2e"
 import "wb:remote/api"
 
@@ -165,7 +165,7 @@ a_link_opens_as_a_tab_of_the_wren_that_runs :: proc(t: ^testing.T) {
 	api.wait_load(a.s)
 	testing.expect_value(t, e2e.program_wait(later(t, e2e.wren_exe(), profile, SINGLE_ON, "--open-url", strings.concatenate({"wren-", page}, context.temp_allocator))), 0)
 	api.wait_until(a.s, proc(s: ^api.Session) -> bool { targets, _ := api.targets(s); return len(targets.tabs) == 2 }, "the link's tab")
-	testing.expect_value(t, e2e.program_wait(later(t, e2e.wren_exe(), profile, SINGLE_ON, "--open-url", "wren-file:///c:/windows/win.ini")), desktop.LINK_REFUSED_EXIT)
+	testing.expect_value(t, e2e.program_wait(later(t, e2e.wren_exe(), profile, SINGLE_ON, "--open-url", "wren-file:///c:/windows/win.ini")), wren_desktop.LINK_REFUSED_EXIT)
 	testing.expect_value(t, e2e.program_wait(later(t, e2e.wren_exe(), profile, SINGLE_ON, "--open-url", "wren-about:wren")), 0)
 	api.wait_until(a.s, proc(s: ^api.Session) -> bool { targets, _ := api.targets(s); return len(targets.tabs) == 3 }, "about:wren's tab")
 	testing.expect_value(t, tabs_of(a), fmt.tprintf("about:config %s about:wren", page))

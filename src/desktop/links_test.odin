@@ -1,4 +1,4 @@
-package desktop
+package wren_desktop
 
 import "core:strings"
 import "core:testing"

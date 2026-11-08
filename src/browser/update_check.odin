@@ -20,7 +20,7 @@ import "core:time"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
-import "wb:desktop"
+import desktop "toolkit:desktop"
 import "wb:fetch"
 import update "toolkit:update"
 
