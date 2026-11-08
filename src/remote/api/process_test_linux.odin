@@ -1,5 +1,7 @@
 package api
 
+import "core:fmt"
+import "core:os"
 import "core:sys/posix"
 import "core:testing"
 
@@ -33,4 +35,19 @@ a_child_is_waited_for_told_again_and_ended :: proc(t: ^testing.T) {
 	process_release(&o)
 	_, ended := wait_process_exit(spid, 1000)
 	testing.expect(t, ended, "a process that ended is seen as ended")
+}
+
+// A child started with its outputs left out writes nowhere (as a program with no console does): it does not hold the
+// caller's outputs, or `name=$(wren ctl start)` waits for the Wren it started to end.
+@(test)
+a_child_does_not_keep_the_callers_outputs :: proc(t: ^testing.T) {
+	where_to := fmt.tprintf("%s/wren_outputs_%d.txt", os.get_env("TMPDIR", context.temp_allocator) != "" ? os.get_env("TMPDIR", context.temp_allocator) : "/tmp", posix.getpid())
+	defer os.remove(where_to)
+	p, _, err := process_start({"/bin/sh", "-c", fmt.tprintf("readlink /proc/$$/fd/0 /proc/$$/fd/1 /proc/$$/fd/2 > %s", where_to)})
+	testing.expect_value(t, err, "")
+	testing.expect(t, process_wait(&p, 10_000), "the child ends")
+	process_release(&p)
+	data, rerr := os.read_entire_file(where_to, context.temp_allocator)
+	testing.expect(t, rerr == nil, "the child wrote where its outputs go")
+	testing.expect_value(t, string(data), "/dev/null\n/dev/null\n/dev/null\n")
 }

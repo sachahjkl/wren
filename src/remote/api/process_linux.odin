@@ -125,6 +125,15 @@ process_start :: proc(args: []string, o := Start_Options{}) -> (p: Process, pid:
 			if err_read >= 0 { p.err = err_read }
 			posix_spawn_file_actions_adddup2(&actions, err_fd, posix.STDERR_FILENO)
 		}
+	} else {
+		// left out: where a program with no console writes (Start_Options), as on Windows. Inherited, a started Wren kept
+		// the caller's outputs open for as long as it ran: `name=$(wren ctl start)` waited for it to end
+		null_fd := posix.open(NULL_DEVICE, {.RDWR, .CLOEXEC})
+		if null_fd < 0 { return {}, 0, "/dev/null could not be opened" }
+		given[0] = null_fd
+		posix_spawn_file_actions_adddup2(&actions, null_fd, posix.STDIN_FILENO)
+		posix_spawn_file_actions_adddup2(&actions, null_fd, posix.STDOUT_FILENO)
+		posix_spawn_file_actions_adddup2(&actions, null_fd, posix.STDERR_FILENO)
 	}
 	child: posix.pid_t
 	if e := posix.posix_spawn(&child, argv[0], &actions, nil, raw_data(argv), environment_with(o.env)); e != .NONE {

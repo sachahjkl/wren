@@ -50,14 +50,75 @@ fn system_fonts() -> Arc<fontdb::Database> {
         .get_or_init(|| {
             let mut db = fontdb::Database::new();
             db.load_system_fonts();
-            db.set_serif_family("Times New Roman");
-            db.set_sans_serif_family("Arial");
-            db.set_monospace_family("Consolas");
-            db.set_cursive_family("Comic Sans MS");
-            db.set_fantasy_family("Impact");
+            db.set_serif_family(generic_family("serif", "Times New Roman"));
+            db.set_sans_serif_family(generic_family("sans-serif", "Arial"));
+            db.set_monospace_family(generic_family("monospace", "Consolas"));
+            db.set_cursive_family(generic_family("cursive", "Comic Sans MS"));
+            db.set_fantasy_family(generic_family("fantasy", "Impact"));
             Arc::new(db)
         })
         .clone()
+}
+
+/// The family of a generic name: on Linux the one the system's configuration picks (fc-match monospace), as the page's
+/// own text gets (src/style/settings.odin, FONT_*); elsewhere the font Windows has.
+fn generic_family(generic: &str, windows: &str) -> String {
+    #[cfg(target_os = "linux")]
+    if let Some(family) = fontconfig::configured_family(generic) {
+        return family;
+    }
+    let _ = generic;
+    windows.to_string()
+}
+
+/// fontconfig, which the program links already (the toolkit's system fonts): the family its configuration matches a name to.
+#[cfg(target_os = "linux")]
+mod fontconfig {
+    use std::ffi::{c_char, c_int, c_void, CStr, CString};
+
+    const FC_MATCH_PATTERN: c_int = 0;
+    const FC_RESULT_MATCH: c_int = 0;
+
+    #[link(name = "fontconfig")]
+    extern "C" {
+        fn FcInit() -> c_int;
+        fn FcPatternCreate() -> *mut c_void;
+        fn FcPatternDestroy(p: *mut c_void);
+        fn FcPatternAddString(p: *mut c_void, object: *const c_char, s: *const c_char) -> c_int;
+        fn FcConfigSubstitute(config: *mut c_void, p: *mut c_void, kind: c_int) -> c_int;
+        fn FcDefaultSubstitute(p: *mut c_void);
+        fn FcFontMatch(config: *mut c_void, p: *mut c_void, result: *mut c_int) -> *mut c_void;
+        fn FcPatternGetString(p: *mut c_void, object: *const c_char, n: c_int, s: *mut *const c_char) -> c_int;
+    }
+
+    pub fn configured_family(name: &str) -> Option<String> {
+        let name = CString::new(name).ok()?;
+        // SAFETY: fontconfig's documented C API; every pattern made here is destroyed here, and the family string read
+        // from the match is copied before the match is destroyed.
+        unsafe {
+            if FcInit() == 0 {
+                return None;
+            }
+            let p = FcPatternCreate();
+            if p.is_null() {
+                return None;
+            }
+            FcPatternAddString(p, c"family".as_ptr(), name.as_ptr());
+            FcConfigSubstitute(std::ptr::null_mut(), p, FC_MATCH_PATTERN);
+            FcDefaultSubstitute(p);
+            let mut result: c_int = 0;
+            let m = FcFontMatch(std::ptr::null_mut(), p, &mut result);
+            FcPatternDestroy(p);
+            if m.is_null() {
+                return None;
+            }
+            let mut family: *const c_char = std::ptr::null();
+            let found = FcPatternGetString(m, c"family".as_ptr(), 0, &mut family) == FC_RESULT_MATCH && !family.is_null();
+            let out = found.then(|| CStr::from_ptr(family).to_string_lossy().into_owned());
+            FcPatternDestroy(m);
+            out
+        }
+    }
 }
 
 thread_local! {
@@ -610,4 +671,33 @@ pub fn render(d: &Doc, l: &Limits, w: u32, h: u32, out: &mut [u8]) -> Result<(),
     resvg::render(&d.tree, ts, &mut pm);
     scale::unpremultiply(out);
     Ok(())
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::*;
+
+    fn limits() -> Limits {
+        Limits {
+            max_dimension: 4096, max_frames: 1, max_pixels: 1 << 24, max_image_bytes: 1 << 24, min_delay_ms: 0, default_delay_ms: 0,
+            first_frame_only: 1, color_manage: 0, svg_text: 1, svg_data_images: 0, svg_max_nodes: 10_000, svg_max_depth: 64,
+            svg_max_expansion: 1 << 20, svg_max_render_cost: u64::MAX, target_w: 0, target_h: 0,
+        }
+    }
+
+    // A generic family is the one the system configures (fontconfig), not a Windows font that Linux does not have: text
+    // in monospace, sans-serif or serif is drawn. (Diagrams that name Consolas, Menlo and then monospace had no text.)
+    #[test]
+    fn text_in_a_generic_family_is_drawn() {
+        for family in ["monospace", "sans-serif", "serif", "Consolas, Menlo, monospace"] {
+            let svg = format!(r#"<svg xmlns="http://www.w3.org/2000/svg" width="200" height="40"><text x="4" y="30" font-size="24" font-family="{family}" fill="black">Wren 0:00</text></svg>"#);
+            let l = limits();
+            let mut info = Info::default();
+            let d = parse(svg.as_bytes(), &l, &mut info).expect("parses");
+            let mut px = vec![0u8; 200 * 40 * 4];
+            render(&d, &l, 200, 40, &mut px).expect("renders");
+            let inked = px.chunks(4).filter(|p| p[3] > 0).count();
+            assert!(inked > 100, "{family}: {inked} pixels drawn");
+        }
+    }
 }

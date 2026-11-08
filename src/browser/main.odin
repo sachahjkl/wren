@@ -1589,6 +1589,9 @@ app_start :: proc(args: []string) -> ^App {
 	remote_asked, remote_name, a7 := extract_remote(a6[:])   // --remote[=name]: the remote control channel (remote_shell.odin)
 	hidden_mode, a7h := extract_switch(a7[:], "--hidden")   // a window that is made but never shown (UI Automation, the system's hit test and the remote channel still see it): `wren ctl start`
 	headless_mode, a8 := extract_switch(a7h[:], "--headless")   // the window is never shown (it renders all the same: remote captures read the frame)
+	// a system where no window exists unseen (Wayland, X11): a hidden Wren is a headless one, or `wren ctl start` would put a
+	// window on the user's desktop
+	if hidden_mode && !platform.can_hide_windows() { hidden_mode, headless_mode = false, true }
 	cdp_port, cdp_have_port, cdp_address, a9 := cdp_extract_args(a8[:])   // --remote-debugging-port[=N] / --remote-debugging-address (cdp.odin)
 	app.prefs = config.prefs_make()
 	rest, arg_errors := config.apply_args(&app.prefs, a9[:], context.temp_allocator)   // (read before the first frame)
