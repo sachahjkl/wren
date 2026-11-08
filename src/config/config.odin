@@ -10,7 +10,7 @@
 // `config` package here); it is imported with an alias and every public symbol is re-exported below by `::`.
 package config
 
-import tc "../../ext/gui_toolkit/config"
+import tc "../../ext/gui_toolkit/src/config"
 
 // Types
 Kind :: tc.Kind

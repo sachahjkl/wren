@@ -3,7 +3,7 @@
 // bindings end to end — the same code that compiles to wasm32 — checking the result against the native `wb:url`.
 // Then it times a hot function over 1 M calls to measure what the serialised boundary costs per call.
 //
-//   odin run native/js/odin_abi/check -collection:wb=src -collection:toolkit=ext/gui_toolkit -out:build/abi_check.exe
+//   odin run native/js/odin_abi/check -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/abi_check.exe
 package abi_check
 
 import "core:fmt"

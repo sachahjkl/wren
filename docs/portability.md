@@ -84,7 +84,7 @@ behaviour behind packages that already passed `odin check` for Linux:
 - **Web Authentication** (`webauthn`): `platform_fido2_linux.odin` reaches USB / NFC security keys through
   **libfido2** (`dlopen`), behind the same `Platform` as Windows' webauthn.dll. Client PINs, on-device user
   verification and hybrid (a phone) are reported unsupported until the toolkit has a prompt.
-- **`build.sh`**: a `wren` target with the Linux link flags (`--build-id`, `-lpthread`, `-ldl`, `-lm`, a
+- **`wrentool build`** on Linux: the Linux link flags (`--build-id`, `-lpthread`, `-ldl`, `-lm`, a
   non-executable stack); it links as far as it can and states what still blocks (the toolkit's Linux window and the
   shell).
 
@@ -190,7 +190,7 @@ audio formats the built-in player cannot demux (MP3, WAV, …; MCI is Windows-on
 
 ## Slice 7 (2026-10-30): Wren links and runs on Linux
 
-`./build.sh deps` then `./build.sh wren` makes `build/wren`, and it runs (verified in NixOS under WSLg, Wayland, with the
+`./build.sh deps` then `./build.sh` makes `build/wren`, and it runs (verified in NixOS under WSLg, Wayland, with the
 software Vulkan of Mesa, lavapipe): the window, the start page, `wren ctl` (start, nav, shot, eval, console), example.com
 and GitHub's repository page load and draw. What it took:
 
@@ -204,7 +204,7 @@ and GitHub's repository page load and draw. What it took:
 - `build/js/wren_js.wasm` is the JS engine's image: `./build.sh deps` makes it on Linux too (`src/tools/buildjs`; the linker
   is the system's `wasm-ld` from lld, which Odin's Linux release does not ship, and its pre-initialization needs the 64 MiB
   stack: `ulimit -s 65536`). The file is portable, so a copy from Windows does as well. Its machine code
-  (`build/js/wren_js.code`, which the program ships) is not: `./build.sh wren` makes it from that image (`wrentool build jscode`),
+  (`build/js/wren_js.code`, which the program ships) is not: `./build.sh` makes it from that image (`wrentool build jscode`),
   and refuses the empty stub `test_all` leaves for `odin check`: a browser linked with it ran no script, and nothing said so
   (the CI's Linux sweep ran so until now).
 
@@ -312,7 +312,7 @@ thread priorities and `instance` have a Linux-only file to extend.
 - The Wasm compiled-code cache key is not wrapped by a keyring on Linux (a file readable by its owner only).
 - `src/tools/test_all` as a whole takes more than 8 minutes in WSL on a Windows drive (/mnt/s): run it by package
   (`build/test_all -Only "(net|fetch)"`) there; the CI runner (native ext4) is well inside its 45 minutes.
-- An executable linked without `--build-id` gives crash reports without a build line's id (`build.sh` and
+- An executable linked without `--build-id` gives crash reports without a build line's id (`wrentool build` and
   `wrentool crash-e2e` ask for it; the browser's Linux link must too).
 - core:sys/linux's `getsockopt` passes the size of the pointer, not of the value: `remote.same_user` calls the system
   call itself.
@@ -325,13 +325,13 @@ thread priorities and `instance` have a Linux-only file to extend.
 
 ## Slice 9 (2026-11-07): the browser with its scripts, real pages and the end-to-end scenarios on Linux
 
-A Linux machine (Xvfb, the software Vulkan adapter, an HTTPS proxy of the environment) with nothing but `./build.sh deps`, `check`, `wren`.
+A Linux machine (Xvfb, the software Vulkan adapter, an HTTPS proxy of the environment) with nothing but `./build.sh deps`, the tests (`odin run src/tools/test_all -collection:wb=src -out:build/test_all -keep-executable`) and `./build.sh`.
 
-**What ran before without saying so.** `build/js/wren_js.wasm` was the empty stub `test_all` leaves for `odin check`, and `./build.sh wren`
+**What ran before without saying so.** `build/js/wren_js.wasm` was the empty stub `test_all` leaves for `odin check`, and `./build.sh`
 linked it: a browser that ran no script (the CI's Linux sweep too). `./build.sh deps` builds the engine now and `wren` refuses the stub.
 
 **What runs.**
-- `./build.sh check`: 78 steps pass (with the engine, the tests that need it run).
+- The tests (`odin run src/tools/test_all -collection:wb=src -out:build/test_all -keep-executable`): 78 steps pass (with the engine, the tests that need it run).
 - `wrentool sweep` on the 74 pages of `tools/site_compare_list*.txt` (scroll, developer tools, a link, back, reload, a tab, close),
   scripts on: **74 pass, no crash, no hang**.
 - The portable end-to-end scenarios of `src/tools/e2e` (those without `#+build windows`), built as `test_all` builds them for Windows

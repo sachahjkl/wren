@@ -4,7 +4,7 @@
 // alongside for a same-machine reading. Build + run:
 //   odin build native/js/odin_abi/bench_guest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator \
 //       -collection:wb=src -out:build/abi_bench.wasm -o:size
-//   odin run native/js/odin_abi/bench -collection:wb=src -collection:toolkit=ext/gui_toolkit -out:build/abi_bench_host.exe -- build/abi_bench.wasm
+//   odin run native/js/odin_abi/bench -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/abi_bench_host.exe -- build/abi_bench.wasm
 package abi_bench
 
 import "core:fmt"

@@ -95,7 +95,7 @@ POISON :: "-define:WREN_POISON_MEMORY=true"
 // How long a close and the interface's answer may take on the check build (no optimisation, every allocation tracked).
 SWEEP_CHECK_MS :: "60000"
 ONE_THREAD :: "-define:ODIN_TEST_THREADS=1"
-TOOLKIT :: "-collection:toolkit=ext/gui_toolkit"
+TOOLKIT :: "-collection:toolkit=ext/gui_toolkit/src"
 WB :: "-collection:wb=src"
 GUEST_FLAGS :: []string{"-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-collection:wren=sdk/odin", "-o:size"}
 // (WREN_SHIPPED_CODE: the engine's machine code in the program, src/js/image/code: with every block on pages of its own, a compile of the image is minutes, past the limits of a test under load.)

@@ -120,7 +120,7 @@
         program = lib.getExe wren;
       };
 
-      # `nix develop`, then `./build.sh deps` and `./build.sh wren` (docs/portability.md). The Rust toolchain is pinned by the scripts:
+      # `nix develop`, then `./build.sh deps` and `./build.sh` (docs/portability.md). The Rust toolchain is pinned by the scripts:
       # `rustup toolchain install 1.99.1 --profile minimal` once. build/js/wren_js.wasm comes from a Windows build or the release workflow.
       devShells.${system}.default = pkgs.mkShell {
         packages = (with pkgs; [

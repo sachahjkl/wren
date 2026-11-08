@@ -452,7 +452,7 @@ run_i18n :: proc(args: []string) -> int {
 // Portability
 
 PORTABILITY_TARGET :: "linux_amd64"
-PORTABILITY_FLAGS := []string{"-no-entry-point", "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit", "-max-error-count:2000", "-define:FONT_NATIVE_LINK=false", "-define:A11Y_NATIVE_LINK=false"}
+PORTABILITY_FLAGS := []string{"-no-entry-point", "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit/src", "-max-error-count:2000", "-define:FONT_NATIVE_LINK=false", "-define:A11Y_NATIVE_LINK=false"}
 
 @(private)
 packages_under :: proc(dir: string, into: ^[dynamic]string) {

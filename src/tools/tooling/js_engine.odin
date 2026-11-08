@@ -55,7 +55,7 @@ collect_inputs :: proc(dir: string, recursive: bool, suffixes: []string, out: ^[
 // #load. Not the folders beside them that nothing imports (the engine's judges and generators, the ABI's benches and checks): a change there builds nothing again.
 GLUE_PACKAGE :: "native/js/odin"
 WB_COLLECTION :: "src"
-TOOLKIT_COLLECTION :: "ext/gui_toolkit"
+TOOLKIT_COLLECTION :: "ext/gui_toolkit/src"
 
 @(private = "file")
 quoted_after :: proc(line, prefix: string) -> (string, bool) {
@@ -185,7 +185,7 @@ build_js_engine :: proc(options: Js_Options) -> bool {
 	append(&cmd, odin_program(), "build", "native/js/odin", "-build-mode:obj", "-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-vet",
 		fmt.tprintf("-o:%s", o.odin_opt))
 	append(&cmd, ..o.odin_flags)
-	append(&cmd, "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit", "-define:WJ_JSRT=true", "-define:JSCAPI_EXPORT=true")
+	append(&cmd, "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit/src", "-define:WJ_JSRT=true", "-define:JSCAPI_EXPORT=true")
 	if o.test262 { append(&cmd, "-define:WREN_TEST262=true") }
 	append(&cmd, fmt.tprintf("-out:%s", object))
 	if run({command = cmd[:], log = o.log}) != 0 { say(o.log, "the odin build of native/js/odin failed\n"); return false }

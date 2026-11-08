@@ -8,7 +8,7 @@ import "wb:config"
 
 // The palette's search, timed: the registry, every preference (the largest source of rows) and a source of 5000 pages.
 // Runs only with -define:BENCH_PALETTE=true:
-//   odin test src/browser -collection:wb=src -collection:toolkit=ext/gui_toolkit -o:speed -define:BENCH_PALETTE=true -define:ODIN_TEST_NAMES=browser.bench_palette
+//   odin test src/browser -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -o:speed -define:BENCH_PALETTE=true -define:ODIN_TEST_NAMES=browser.bench_palette
 
 @(private = "file") BENCH_PALETTE :: #config(BENCH_PALETTE, false)
 

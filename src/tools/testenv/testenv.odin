@@ -10,7 +10,7 @@ package testenv
 
 import "core:sync"
 import "core:testing"
-import tk "../../../ext/gui_toolkit/testkit"
+import tk "../../../ext/gui_toolkit/src/testkit"
 import "wb:testserver"
 
 DEFAULT_BASE_PORT :: 8765

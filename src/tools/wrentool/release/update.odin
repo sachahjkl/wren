@@ -14,7 +14,7 @@ import "core:path/filepath"
 import "core:strings"
 import "core:time"
 import "wb:tools/tooling"
-import update "../../../../ext/gui_toolkit/update"
+import update "../../../../ext/gui_toolkit/src/update"
 import wren_update "wb:update"
 
 UPDATE_KEY_ENV :: "UPDATE_SIGNING_KEY"

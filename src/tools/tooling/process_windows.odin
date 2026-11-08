@@ -258,3 +258,6 @@ process_image_path :: proc(process: win.HANDLE, allocator := context.temp_alloca
 	text, _ := win.utf16_to_utf8(path[:size], allocator)
 	return text
 }
+
+// (Windows: the programs carry their stack size, /STACK)
+raise_stack :: proc() {}

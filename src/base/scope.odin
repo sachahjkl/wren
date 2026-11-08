@@ -15,7 +15,7 @@ package base
 
 @(require) import "base:runtime"
 @(require) import "core:sync"
-import "../../ext/gui_toolkit/arena"
+import "../../ext/gui_toolkit/src/arena"
 
 Cleanup_Proc :: arena.Cleanup_Proc
 Cleanup_Id :: arena.Cleanup_Id

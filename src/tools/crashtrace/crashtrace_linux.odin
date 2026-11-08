@@ -60,7 +60,7 @@ foreign libdl {
 @(private = "file")
 SIGNALS := [?]posix.Signal{.SIGSEGV, .SIGBUS, .SIGILL, .SIGFPE, .SIGABRT, .SIGTRAP}
 
-// The GNU build id of the executable (the note the linker writes with --build-id: build.sh asks for it), as hex: it names
+// The GNU build id of the executable (the note the linker writes with --build-id: wrentool build asks for it), as hex: it names
 // one build, as the PE time stamp and size do on Windows. `base` is ignored here (the running executable's). "" without
 // a build id.
 build_fingerprint :: proc(buf: []u8, base: uintptr = 0) -> string {

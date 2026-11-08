@@ -266,7 +266,7 @@ run_all :: proc(cfg: ^Config, table: []Step) -> int {
 		for s in steps { fmt.printfln("%5s inputs  %s", fmt.tprint(len(step_inputs(cache, s))), s.name); free_all(context.temp_allocator) }
 		return 0
 	}
-	when ODIN_OS == .Linux { linux_raise_stack() }
+	tooling.raise_stack()
 	fetch_emoji_when_missing()
 	warn_programs_running()
 	fmt.printfln("test_all: %s, -Jobs %d, started %s", here("."), cfg.jobs, now_stamp())

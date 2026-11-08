@@ -4,7 +4,7 @@
 // (src/browser/update_install.odin), the release tool signs with it (src/tools/wrentool/release/update.odin). Wren has no channels.
 package wren_update
 
-import update "../../ext/gui_toolkit/update"
+import update "../../ext/gui_toolkit/src/update"
 
 PRODUCT :: update.Product{
 	name         = "wren",

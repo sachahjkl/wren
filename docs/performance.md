@@ -4124,7 +4124,7 @@ To remove:
 
 | where | what | hot on |
 |---|---|---|
-| `ext/gui_toolkit/font/shape.odin:400-460` | `Word_Cache`: 64 shards of shaped words, a mutex each, plus `l1_words` per thread | every word measured or painted |
+| `ext/gui_toolkit/src/font/shape.odin:400-460` | `Word_Cache`: 64 shards of shaped words, a mutex each, plus `l1_words` per thread | every word measured or painted |
 | `style/inline_cache.odin:47-129`, `cascade.odin:124-125` | compiled `style` attributes by text | every element with a style attribute |
 | `style/match.odin:58-67` | `sibs`, `filled`, `has_memo`: maps by handle per pass | nth-child and `:has()` |
 | `layout/types.odin:459` | `font_lookup`: fonts by content across partial passes (the per-pass map and its one-entry memo went in round 4) | a font a pass has not found yet |
@@ -4134,7 +4134,7 @@ To remove:
 | `browser/compositor.odin:251-293` | `raster_hash` memo per call | compositor rebuild |
 | `browser/effects_cache.odin:51` | content keys per group for the GPU layer cache | filters |
 | `browser/web_font_faces.odin:166` | family list -> invisible while loading | paint |
-| `ext/gui_toolkit/ui/text_wrap.odin:61`, `ext/gui_toolkit/ui/rich_text.odin:370` | wrapped and rich text of the chrome | chrome frames |
+| `ext/gui_toolkit/src/ui/text_wrap.odin:61`, `ext/gui_toolkit/src/ui/rich_text.odin:370` | wrapped and rich text of the chrome | chrome frames |
 
 ### Hash tables on hot paths
 
@@ -4144,7 +4144,7 @@ of every element, plus a concatenation per indexed attribute at `cascade.odin:57
 (`anon_cs`, `frame_cs`; `font_cache` gone in round 4); `layout/types.odin:479` (`scroll`, read per space); `browser/compositor.odin:114`
 (`node_items`, a heap list per node) and `:419-554` (per rebuild); `page/images.odin` `css_images_sync` and
 `page/fonts.odin` `fonts_sync` (a `seen` table of shared lists, now only when something new may be used);
-`ext/gui_toolkit/font/raster.odin:77-82` (per glyph, under the atlas lock); `page/timeline.odin` `et_seen` (per
+`ext/gui_toolkit/src/font/raster.odin:77-82` (per glyph, under the atlas lock); `page/timeline.odin` `et_seen` (per
 element with `elementtiming` only). Gone in round 1: `page/timeline_lcp.odin` `ls_prev` (per box, per mutated frame).
 Added in round 4, flat: `style/share.odin` (a style pass's shared styles: open addressing, the keys' words in one array,
 one lookup per element). Gone in round 5: `style/restyle_dom.odin` `inserted_exceed` (the inserted nodes of a restyle,

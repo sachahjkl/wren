@@ -77,7 +77,7 @@ preferences and profile configure them.
 
 `src/tools/e2e/two_apps.odin` runs two Apps, each on a thread of its own, at once: each sees only its own tabs, pages,
 storage, channel messages and frame, and nothing of either is left once both have stopped. The toolkit keeps the
-interface state it draws with in one variable of the process (`ext/gui_toolkit/ui/state.odin`, `g`): until it is the
+interface state it draws with in one variable of the process (`ext/gui_toolkit/src/ui/state.odin`, `g`): until it is the
 thread's (`@(private, thread_local) g: ^State`), the two Apps' own threads take turns between the test's meetings (what
 they run besides runs at once); with that one change they run at once too.
 

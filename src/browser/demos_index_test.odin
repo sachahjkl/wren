@@ -8,7 +8,7 @@ import "core:testing"
 
 // examples\site\index.html is made from the DEMOS table (demos_index.odin). Run from the repository root, as the test
 // suite does. After a change to the table:
-//   odin test src/browser -collection:toolkit=ext/gui_toolkit -collection:wb=src -define:WREN_WRITE_DEMOS_INDEX=true -define:ODIN_TEST_NAMES=browser.demos_index_is_up_to_date
+//   odin test src/browser -collection:toolkit=ext/gui_toolkit/src -collection:wb=src -define:WREN_WRITE_DEMOS_INDEX=true -define:ODIN_TEST_NAMES=browser.demos_index_is_up_to_date
 @(test)
 demos_index_is_up_to_date :: proc(t: ^testing.T) {
 	test_app(t)

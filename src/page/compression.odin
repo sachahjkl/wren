@@ -3,7 +3,7 @@ package page
 import "core:fmt"
 // the toolkit's codec by path rather than through the toolkit: collection, so the many tools that link package page
 // build with -collection:wb=src alone
-import "../../ext/gui_toolkit/flate"
+import "../../ext/gui_toolkit/src/flate"
 
 // The inflate limit never goes below this, however low page.max_fetch_bytes is set.
 DECOMPRESS_LIMIT_FLOOR_BYTES :: 1 << 20

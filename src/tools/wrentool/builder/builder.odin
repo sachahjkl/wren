@@ -1,6 +1,7 @@
-// Package builder: Wren's build on Windows, from the sources to build\wren.exe (what build.bat did; build.bat now only hands its arguments to `wrentool build`).
+// Package builder: Wren's build on Windows and Linux, from the sources to build/wren(.exe) (build.bat and build.sh only hand their arguments to `wrentool build`).
 //   wrentool build [dev|debug|profile|check|release|bench]  the browser (dev by default; `wrentool build help` lists the variants and the environment)
 //   wrentool build lexbor|native|tracy [-Force] [-Profile p]  one dependency (package deps)
+//   wrentool build deps  everything a build or the tests need on this system, the JavaScript engine's image included
 //
 // Channel: every build is a *development* build (blueprint icon, "development build" in about:home and the menu) but `release` (amber icon). It goes in as -define:WREN_CHANNEL (about.odin:
 // APP_CHANNEL) with its icon, and in build\wren.channel, which wrentool package checks before packaging.
@@ -27,7 +28,7 @@ VERSION_MARK :: "APP_VERSION"
 VERSION_H :: "build/wren_version.h"
 ODIN_VERSION_FILE :: "odin.version"
 TOOLKIT_DEFAULT :: "ext/gui_toolkit"
-TOOLKIT_PROBE :: "ext/gui_toolkit/ui"   // empty when the submodule was not checked out
+TOOLKIT_PROBE :: "ext/gui_toolkit/src/ui"   // empty when the submodule was not checked out
 CHANNEL_FILE :: "build/wren.channel"
 LAUNCHER :: "build/wren.com"
 LAUNCHER_SOURCES :: "src/tools/wrencom"
@@ -113,6 +114,7 @@ run :: proc(args: []string) -> int {
 	switch what {
 	case "lexbor", "native", "tracy": return deps.run_build(args)
 	case "jscode": return tooling.build_js_code({}) ? 0 : 1
+	case "deps":   return all_dependencies(options_from_env(.Dev)) ? 0 : 1
 	case "help", "-h", "--help", "/?": usage(); return 0
 	}
 	for spec, v in VARIANTS {
@@ -129,6 +131,7 @@ usage :: proc() {
 	fmt.println("usage: wrentool build [variant]   (or build.bat [variant])\n")
 	for spec in VARIANTS { fmt.printfln("  %-9s %s", spec.name, spec.about) }
 	fmt.println("  lexbor | native | tracy [-Force] [-Profile quick|release]: one dependency")
+	fmt.println("  deps      everything a build or the tests need here, the JavaScript engine's image included")
 	fmt.println("  help      this text\n")
 	fmt.println("environment:")
 	fmt.println("  WREN_RENDER=wgpu      the WebGPU render backend (-> wren_wgpu.exe, wren_prof_wgpu.exe...)")
@@ -152,13 +155,20 @@ program_of :: proc(o: Options) -> string {
 // makes them a step of their own, which every step that links build\native waits for: no program links the library while it is
 // being replaced (a dev and a release build use different profiles of it).
 dependencies :: proc(o: Options) -> bool {
-	return deps.all({profile = VARIANTS[o.variant].native_release ? "release" : "quick", tracy = o.tracy, log = o.log})
+	// (Linux: the text backend and the accessibility adapter are built into Wren's Rust library, as on Windows by default)
+	features := ODIN_OS == .Windows ? "" : "text,a11y"
+	return deps.all({profile = VARIANTS[o.variant].native_release ? "release" : "quick", features = features, tracy = o.tracy, log = o.log})
+}
+
+// What a build and the tests need: the dependencies, and the JavaScript engine's image (its pre-initialization runs Wasm on the
+// calling thread: on Linux the stack limit is raised for it, as /STACK does on Windows).
+all_dependencies :: proc(o: Options) -> bool {
+	if !dependencies(o) { return false }
+	tooling.raise_stack()
+	return tooling.build_js_engine({odin_flags = o.js_odin_flags, log = o.log}) || say_fail(o, "building the JavaScript engine failed: run  odin run src/tools/buildjs -collection:wb=src -out:build/buildjs")
 }
 
 browser :: proc(o: Options) -> bool {
-	when ODIN_OS != .Windows {
-		return say_fail(o, "wrentool build is Windows' build: on Linux, ./build.sh wren")
-	}
 	spec := VARIANTS[o.variant]
 
 	// 1. Checks
@@ -174,11 +184,12 @@ browser :: proc(o: Options) -> bool {
 	// 3. Generated code: the web API from its description (api\*.widl: host bindings, guest SDK, docs, conformance tests; only what changed), the JavaScript engine (build\js\wren_js.wasm, embedded in
 	// wren.exe), the console launcher (build\wren.com, embedded in wren.exe)
 	if !bindgen(o) { return false }
+	tooling.raise_stack()
 	if !tooling.build_js_engine({odin_flags = o.js_odin_flags, log = o.log, odin_opt = spec.js_opt, out = spec.js_dir != "" ? fmt.tprintf("build/%s", spec.js_dir) : ""}) { return say_fail(o, "building the JavaScript engine failed: run  odin run src/tools/buildjs -collection:wb=src -out:build/buildjs.exe") }
-	if !launcher(o.log) { return false }
+	when ODIN_OS == .Windows { if !launcher(o.log) { return false } }
 
 	// 4. Common flags; the version resource of wren.exe (publisher, product, File version) takes its numbers from APP_VERSION
-	if !version_h(o.label) { return say_fail(o, fmt.tprintf("%s cannot be written (%s in %s)", VERSION_H, VERSION_MARK, ABOUT_FILE)) }
+	when ODIN_OS == .Windows { if !version_h(o.label) { return say_fail(o, fmt.tprintf("%s cannot be written (%s in %s)", VERSION_H, VERSION_MARK, ABOUT_FILE)) } }
 	flags := common_flags(o)
 	// wgpu links wgpu-native as a DLL (wgpu_native.dll beside the program: Wren already links one Rust static library, and two cannot coexist), with the DXC DLLs next to it so that Direct3D 12
 	// compiles the shaders in 0.3 s instead of 2.8 s: the toolkit's own tool fetches them
@@ -199,10 +210,12 @@ browser :: proc(o: Options) -> bool {
 	// frames wrong (crash reports, wren ctl stacks)
 	if !slice.contains(spec.flags, "-debug") { _ = os.remove(fmt.tprintf("%s.pdb", strings.trim_suffix(program, ".exe"))) }
 
-	// the linker's map becomes <exe>-<fingerprint>.map beside the exe (wrentool crash-symbolize reads them)
-	named, ok := deps.publish_symbols(program, spec.store_symbols)
-	if !ok { return say_fail(o, fmt.tprintf("naming the symbols of %s failed: run  wrentool symbols -Publish %s", program, program)) }
-	tooling.say(o.log, fmt.tprintfln("symbols: %s%s", named, spec.store_symbols ? " (and in build/symbols)" : ""))
+	// the linker's map becomes <exe>-<fingerprint>.map beside the exe (wrentool crash-symbolize reads them; Linux: the build id names the build)
+	when ODIN_OS == .Windows {
+		named, ok := deps.publish_symbols(program, spec.store_symbols)
+		if !ok { return say_fail(o, fmt.tprintf("naming the symbols of %s failed: run  wrentool symbols -Publish %s", program, program)) }
+		tooling.say(o.log, fmt.tprintfln("symbols: %s%s", named, spec.store_symbols ? " (and in build/symbols)" : ""))
+	}
 	channel := channel_of(o)
 	if spec.channel_file {
 		if os.write_entire_file(CHANNEL_FILE, fmt.tprintf("%s\r\n", channel)) != nil { return say_fail(o, fmt.tprintf("%s cannot be written", CHANNEL_FILE)) }
@@ -218,12 +231,19 @@ channel_of :: proc(o: Options) -> string { return VARIANTS[o.variant].release_ch
 // The flags every variant shares, in the order build.bat gave them.
 common_flags :: proc(o: Options) -> []string {
 	f := make([dynamic]string, context.temp_allocator)
-	release := VARIANTS[o.variant].release_channel
 	// collections: "toolkit:<package>" and "wb:<package>"; the channel and its icon
-	append(&f, fmt.tprintf("-collection:toolkit=%s", o.toolkit != "" ? o.toolkit : TOOLKIT_DEFAULT), "-collection:wb=src")
-	append(&f, fmt.tprintf("-resource:%s", release ? "src/browser/wren.rc" : "src/browser/wren_dev.rc"), fmt.tprintf("-define:WREN_CHANNEL=%s", channel_of(o)))
-	// /MAP: the linker's map (every function's address) next to the exe, the symbols of a release, which has no PDB (it changes nothing in the exe)
-	append(&f, fmt.tprintf("-extra-linker-flags:/STACK:%d /MAP", STACK_BYTES))
+	append(&f, fmt.tprintf("-collection:toolkit=%s/src", o.toolkit != "" ? o.toolkit : TOOLKIT_DEFAULT), "-collection:wb=src")
+	append(&f, fmt.tprintf("-define:WREN_CHANNEL=%s", channel_of(o)))
+	when ODIN_OS == .Windows {
+		append(&f, fmt.tprintf("-resource:%s", VARIANTS[o.variant].release_channel ? "src/browser/wren.rc" : "src/browser/wren_dev.rc"))
+		// /MAP: the linker's map (every function's address) next to the exe, the symbols of a release, which has no PDB (it changes nothing in the exe)
+		append(&f, fmt.tprintf("-extra-linker-flags:/STACK:%d /MAP", STACK_BYTES))
+	} else {
+		// --build-id: a crash report names the build (wrentool crash-symbolize); -z noexecstack: the stack not executable; threads,
+		// dlopen (openh264, libfido2, libva at run time), the maths of the Rust and C libraries, Opus and ALSA. (--no-as-needed keeps
+		// -lpthread when only the static archives refer to it.) The 64 MiB stack is the soft limit at run time (ulimit -s), not a link option.
+		append(&f, "-extra-linker-flags:-Wl,--build-id -Wl,-z,noexecstack -Wl,--no-as-needed -lpthread -ldl -lm -lopus -lasound", "-target:linux_amd64")
+	}
 	append(&f, fmt.tprintf("-define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=%d", TEMP_ALLOCATOR_BACKING_BYTES))
 	commit, date := source_commit()
 	append(&f, fmt.tprintf("-define:WREN_COMMIT=%s", commit))
@@ -232,7 +252,8 @@ common_flags :: proc(o: Options) -> []string {
 	if o.accept_dev_key { append(&f, "-define:WREN_ACCEPT_DEV_LICENSE_KEY=true") }
 	if o.embedded_license != "" { append(&f, fmt.tprintf("-define:WREN_EMBEDDED_LICENSE=%s", o.embedded_license)) }
 	append(&f, "-define:WREN_SHIPPED_CODE=true")   // (the engine's machine code in the program: src/js/image/code)
-	append(&f, "-vet", "-subsystem:windows")
+	append(&f, "-vet")
+	when ODIN_OS == .Windows { append(&f, "-subsystem:windows") }
 	if o.wgpu { append(&f, "-define:TOOLKIT_RENDER=wgpu", "-define:WGPU_SHARED=true") }
 	if o.tracy { append(&f, "-define:WREN_TRACY=true") }
 	append(&f, ..strings.fields(o.odin_extra, context.temp_allocator))

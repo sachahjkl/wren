@@ -245,5 +245,5 @@ jobs:
       - name: Local pages with freed memory poisoned (wrentool sweep)
         run: |
           sudo apt-get install -y -qq libfontconfig1-dev xvfb mesa-vulkan-drivers libxkbcommon-x11-0 libxkbcommon0 libwayland-client0
-          ./build.sh wren-check
+          ./build.sh check
           xvfb-run -a build/wrentool sweep -List tools/sweep_local.txt -Exe build/wren_check -OutDir build/sweep_local -CloseMs 60000 -PingMs 60000

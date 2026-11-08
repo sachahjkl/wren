@@ -117,3 +117,12 @@ release :: proc(p: ^Process) {
 	}
 	p.pid = 0
 }
+
+// What /STACK is on Windows: Wasm calls run on the calling thread (the JavaScript engine's pre-initialization, the browser's window
+// thread). The soft limit of this process's stack, which every child inherits (no more than the hard limit).
+raise_stack :: proc() {
+	limit: linux.RLimit
+	if linux.getrlimit(.STACK, &limit) != nil { return }
+	limit.cur = min(JS_THREAD_STACK_BYTES, limit.max)
+	_ = linux.setrlimit(.STACK, &limit)
+}

@@ -323,6 +323,9 @@ npx wrangler tail --env sandbox                         # live logs
 
 ### 4. Paddle sandbox
 
+`wrentool paddle -Apply` (with `PADDLE_API_KEY`) makes the product and its price below, or finds them; without `-Apply` it prints
+what it would send.
+
 1. **Catalog → Products → New product**: "Wren User Licence" (category: standard digital goods). Add two **one-time** prices
    (no billing period): *Supporter* 29 EUR and *Patron* 79 EUR, tax mode "inclusive" so that the buyer pays the displayed
    price, quantity 1 to 1. Copy both **price ids** (`pri_…`).

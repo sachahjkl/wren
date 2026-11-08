@@ -251,7 +251,7 @@ resolve_import :: proc(c: ^Cache, dir, path: string) -> (pkg: string, known: boo
 		switch path[:colon] {
 		case "core", "base", "vendor": return "", true
 		case "wb": resolved = strings.concatenate({"src/", rest}, context.temp_allocator)
-		case "toolkit": resolved = strings.concatenate({"ext/gui_toolkit/", rest}, context.temp_allocator)
+		case "toolkit": resolved = strings.concatenate({"ext/gui_toolkit/src/", rest}, context.temp_allocator)
 		case "wren": resolved = strings.concatenate({"sdk/odin/", rest}, context.temp_allocator)
 		case: return "", false
 		}

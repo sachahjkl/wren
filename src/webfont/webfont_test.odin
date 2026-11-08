@@ -7,7 +7,7 @@ import "core:testing"
 // The tests build WOFF files from a real TrueType font, its tables compressed by core:compress/deflate.
 
 @(private = "file")
-FONT_PATH :: "ext/gui_toolkit/font/data/Roboto-Regular.ttf"
+FONT_PATH :: "ext/gui_toolkit/src/font/data/Roboto-Regular.ttf"
 
 @(private = "file")
 zlib_compress :: proc(data: []byte) -> []byte {

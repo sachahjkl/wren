@@ -4,7 +4,6 @@ package test_all
 import "core:fmt"
 import "core:os"
 import "core:strings"
-import "core:sys/linux"
 import "wb:tools/tooling"
 
 // What the steps of Linux run has no window: no desktop of its own.
@@ -15,15 +14,6 @@ process_stacks_text :: proc(pid: int) -> string { return fmt.tprintfln("process 
 warn_programs_running :: proc() {}
 
 fetch_emoji_when_missing :: proc() {}
-
-// What /STACK is on Windows: Wasm calls run on the calling thread. Every child inherits it.
-
-linux_raise_stack :: proc() {
-	limit: linux.RLimit
-	if linux.getrlimit(.STACK, &limit) != nil { return }
-	limit.cur = min(tooling.JS_THREAD_STACK_BYTES, limit.max)
-	_ = linux.setrlimit(.STACK, &limit)
-}
 
 // libwgpu_native.a beside Odin's wgpu vendor package: present on the CI runner, maybe not in a bare WSL checkout. Without it the wgpu vendor panics at check time.
 linux_has_wgpu_library :: proc() -> bool {

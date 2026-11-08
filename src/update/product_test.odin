@@ -1,7 +1,7 @@
 package wren_update
 
 import "core:testing"
-import update "../../ext/gui_toolkit/update"
+import update "../../ext/gui_toolkit/src/update"
 
 @(test)
 the_update_key_is_a_key :: proc(t: ^testing.T) {

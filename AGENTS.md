@@ -11,14 +11,16 @@ Read first: [docs/architecture.md](docs/architecture.md) (design rules, security
 
 Windows:
 
-- `build.bat` builds the browser (`-vet`). `build\wrentool build quick` is the fastest rebuild while you write code.
+- `build.bat` builds the browser (`-vet`). `build.bat quick` is the fastest rebuild while you write code.
 - `build\test_all.exe -Quick` runs the tests. Use `-Changed`, `-Only <pattern>` or `-Failed` while you work.
 
 Linux (`nix develop` first):
 
 - `./build.sh deps` fetches and builds the native libraries and the JavaScript engine image.
-- `./build.sh check` runs `odin check` for Linux and the unit tests of every portable package.
-- `./build.sh wren` links `build/wren`. `./build.sh wren-check` links the build that tracks memory.
+- `odin run src/tools/test_all -collection:wb=src -out:build/test_all -keep-executable` runs `odin check` for Linux and the unit tests of every portable package.
+- `./build.sh` links `build/wren`. `./build.sh check` links the build that tracks memory.
+
+`build.bat` and `./build.sh` are shortcuts of `wrentool build`: the same variants on both systems.
 - Run the browser with a 64 MiB stack: `ulimit -s 65536`.
 
 All other project commands are in `wrentool` (`src/tools/wrentool`, `build/wrentool help`).

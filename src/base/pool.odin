@@ -5,7 +5,7 @@ package base
 // object bumps the slot's generation, so an old copy fails to resolve instead of reaching whatever reused the slot).
 
 import "base:intrinsics"
-import "../../ext/gui_toolkit/arena"
+import "../../ext/gui_toolkit/src/arena"
 
 Handle :: arena.Handle
 NIL_HANDLE :: arena.NIL_HANDLE

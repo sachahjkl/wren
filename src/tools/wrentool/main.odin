@@ -41,6 +41,7 @@ COMMANDS := []Command{
 	{name = "sweep", about = "-Urls a,b | -List f[,g] [-OutDir d] [-Exe path] [-Shard i -Shards n] [-Pref a=b] [-OneProcess] [-MemoryReports]: real pages visited headless (scroll, devtools, a link, back, reload, a tab, close); crashes, hangs, times", run = capture.run_sweep},
 	{name = "gen", about = "psl | unicode [-Force] | idna | media-fixtures | video-fixtures | perf-media [-Force] | rust-crates [-Check]", run = gen.run_gen},
 	{name = "docs", about = "[-Check] [-NoBuild] [-ChartUpdate]: the documentation site, its links checked", run = gen.run_docs},
+	{name = "paddle", about = "[-Apply] [-Environment sandbox|live] [-ProductName n] [-Amount 2900] [-Currency EUR]: Wren's Paddle catalog (a dry run without -Apply)", run = gen.run_paddle},
 	{name = "license", about = "keygen | pubkey | issue | verify ...: Wren's licences (docs/licence.md)", run = gen.run_license},
 	{name = "i18n", about = "[-Missing] [-Json f]: the texts passed to tr, the interface's that are not", run = gen.run_i18n},
 	{name = "portability", about = "[-Target t] [-Only a,b] [-Csv f] [-Expect f]: every package checked for another target", run = gen.run_portability},
