@@ -41,19 +41,26 @@
     </div>
     <p class="tagline">A browser where WebAssembly runs everything, JavaScript included</p>
     <div class="actions" id="download">
-      <a class="btn primary" id="dl-main" href="https://github.com/sachahjkl/wren/releases/download/v0.6.32/wren-0.6.32-windows-x64.exe"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 17v3h16v-3"/></svg><span id="dl-label">Download for Windows</span></a>
+      <a class="btn primary" id="dl-main" href="https://github.com/sachahjkl/wren/releases/download/v0.6.32/wren-0.6.32-windows-x64.exe"><svg class="btn-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 17v3h16v-3"/></svg><span id="dl-label">Download for Windows</span></a>
       <a class="btn" href="https://github.com/sachahjkl/wren">View on GitHub</a>
     </div>
     <p class="fine">Version <!-- latest -->0.6.32<!-- /latest -->, an early preview · <a id="dl-other" href="https://github.com/sachahjkl/wren/releases/download/v0.6.32/wren-0.6.32-linux-x64.tar.gz">Linux x86-64</a> · <a href="https://github.com/sachahjkl/wren/releases">other versions</a> · PolyForm Strict license</p>
     <script>
-      // The button is the file for this system: Windows unless the browser says Linux (not Android); the other system's below it.
+      // The button is the file for this system: Windows's as written, Linux's when the browser says Linux, the other system's below it.
+      // A system Wren does not run on (a phone, a tablet, macOS, ChromeOS) gets the releases page, which has both, not a file it cannot open.
       (() => {
-        const ua = navigator.userAgentData?.platform || navigator.platform || navigator.userAgent
-        if (!/linux/i.test(ua) || /android/i.test(navigator.userAgent)) return
-        const main = document.getElementById('dl-main'), other = document.getElementById('dl-other')
-        ;[main.href, other.href] = [other.href, main.href]
-        document.getElementById('dl-label').textContent = 'Download for Linux'
-        other.textContent = 'Windows x64'
+        const ua = navigator.userAgent, platform = navigator.userAgentData?.platform || navigator.platform || ''
+        const os = /android|iphone|ipad|ipod|cros/i.test(ua) || /mac/i.test(platform) ? 'other' : /linux|x11|bsd/i.test(platform + ' ' + ua) ? 'linux' : 'windows'
+        const main = document.getElementById('dl-main'), other = document.getElementById('dl-other'), label = document.getElementById('dl-label')
+        if (os === 'linux') {
+          ;[main.href, other.href] = [other.href, main.href]
+          label.textContent = 'Download for Linux'
+          other.textContent = 'Windows x64'
+        } else if (os === 'other') {
+          main.href = 'https://github.com/sachahjkl/wren/releases/latest'
+          label.textContent = 'Download'
+          other.replaceWith('for Windows and Linux')
+        }
       })()
     </script>
 
