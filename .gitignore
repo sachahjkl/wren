@@ -34,3 +34,6 @@ secrets/*.plain.env
 # big media made by wrentool gen perf-media (the yt_* scenarios of wrentool bench perf)
 examples/site/media/video/perf_*
 examples/site/mutation_class.wasm
+
+# direnv
+.direnv
