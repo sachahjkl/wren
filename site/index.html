@@ -41,7 +41,7 @@
     </div>
     <p class="tagline">A browser where WebAssembly runs everything, JavaScript included</p>
     <div class="actions" id="download">
-      <a class="btn primary" id="dl-main" href="https://github.com/sachahjkl/wren/releases/download/v0.6.32/wren-0.6.32-windows-x64.exe">Download for Windows</a>
+      <a class="btn primary" id="dl-main" href="https://github.com/sachahjkl/wren/releases/download/v0.6.32/wren-0.6.32-windows-x64.exe"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 17v3h16v-3"/></svg><span id="dl-label">Download for Windows</span></a>
       <a class="btn" href="https://github.com/sachahjkl/wren">View on GitHub</a>
     </div>
     <p class="fine">Version <!-- latest -->0.6.32<!-- /latest -->, an early preview · <a id="dl-other" href="https://github.com/sachahjkl/wren/releases/download/v0.6.32/wren-0.6.32-linux-x64.tar.gz">Linux x86-64</a> · <a href="https://github.com/sachahjkl/wren/releases">other versions</a> · PolyForm Strict license</p>
@@ -52,7 +52,7 @@
         if (!/linux/i.test(ua) || /android/i.test(navigator.userAgent)) return
         const main = document.getElementById('dl-main'), other = document.getElementById('dl-other')
         ;[main.href, other.href] = [other.href, main.href]
-        main.textContent = 'Download for Linux'
+        document.getElementById('dl-label').textContent = 'Download for Linux'
         other.textContent = 'Windows x64'
       })()
     </script>

@@ -163,6 +163,8 @@ strong, b { color: var(--text); font-weight: 650; }
 .btn:hover { text-decoration: none; background: var(--surface-2); border-color: rgba(255, 255, 255, 0.28); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .btn.primary:hover { background: #7ad3ff; border-color: #7ad3ff; }
+/* an icon before a button's words (the download arrow), in the words' colour */
+.btn-icon { width: 18px; height: 18px; margin-right: 8px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .btn:disabled { opacity: 0.55; cursor: default; }
 /* a button named in the text, drawn as a small copy of the real one (not clickable) */
 .mini-btn { display: inline-block; padding: 0 9px; border-radius: 5px; line-height: 1.5; font-size: 0.88em; font-weight: 600;
