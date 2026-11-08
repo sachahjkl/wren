@@ -96,6 +96,17 @@ anim_mode_effective :: proc(s: ^Settings) -> Anim_Mode {
 	return s.anim_mode
 }
 
+// The fonts of the generic families. On Linux, fontconfig's own generic names: the system's configuration picks the font
+// (fc-match monospace), as it does for every other program. Elsewhere, the fonts Windows has.
+FONT_SERIF      :: "serif" when ODIN_OS == .Linux else "Times New Roman"
+FONT_SANS_SERIF :: "sans-serif" when ODIN_OS == .Linux else "Arial"
+FONT_MONOSPACE  :: "monospace" when ODIN_OS == .Linux else "Consolas"
+FONT_CURSIVE    :: "cursive" when ODIN_OS == .Linux else "Comic Sans MS"
+FONT_FANTASY    :: "fantasy" when ODIN_OS == .Linux else "Impact"
+FONT_SYSTEM_UI  :: "system-ui" when ODIN_OS == .Linux else "Segoe UI"
+FONT_EMOJI      :: "emoji" when ODIN_OS == .Linux else "Segoe UI Emoji"
+FONT_MATH       :: "math" when ODIN_OS == .Linux else "Cambria Math"
+
 PREFS := [?]config.Def{
 	{name = "style.max_nesting_depth", kind = .Int, default = {i = 256}, bounded = true, min = 8, max = 4096,
 		description = "Deepest nesting of blocks and functions in a stylesheet; deeper ones are skipped (stack protection: parsing, var() and calc() recurse once per level, so the bound stays far below what a thread stack holds)."},
@@ -141,12 +152,12 @@ PREFS := [?]config.Def{
 	{name = "font.size.minimum", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 48, unit = "px", description = "Text is never smaller than this. 0 = no minimum."},
 	{name = "font.family.default_generic", kind = .String, default = {s = "serif"}, choices = {"serif", "sans-serif", "monospace"},
 		description = "Generic family of text whose page names no font."},
-	{name = "font.family.serif", kind = .String, default = {s = "Times New Roman"}, description = "Font used for the generic family `serif`."},
-	{name = "font.family.sans_serif", kind = .String, default = {s = "Arial"}, description = "Font used for the generic family `sans-serif`."},
-	{name = "font.family.monospace", kind = .String, default = {s = "Consolas"}, description = "Font used for the generic family `monospace`."},
-	{name = "font.family.cursive", kind = .String, default = {s = "Comic Sans MS"}, description = "Font used for the generic family `cursive`."},
-	{name = "font.family.fantasy", kind = .String, default = {s = "Impact"}, description = "Font used for the generic family `fantasy`."},
-	{name = "font.family.system_ui", kind = .String, default = {s = "Segoe UI"}, description = "Font used for `system-ui`."},
+	{name = "font.family.serif", kind = .String, default = {s = FONT_SERIF}, description = "Font used for the generic family `serif`."},
+	{name = "font.family.sans_serif", kind = .String, default = {s = FONT_SANS_SERIF}, description = "Font used for the generic family `sans-serif`."},
+	{name = "font.family.monospace", kind = .String, default = {s = FONT_MONOSPACE}, description = "Font used for the generic family `monospace`."},
+	{name = "font.family.cursive", kind = .String, default = {s = FONT_CURSIVE}, description = "Font used for the generic family `cursive`."},
+	{name = "font.family.fantasy", kind = .String, default = {s = FONT_FANTASY}, description = "Font used for the generic family `fantasy`."},
+	{name = "font.family.system_ui", kind = .String, default = {s = FONT_SYSTEM_UI}, description = "Font used for `system-ui`."},
 	{name = "font.line_height.normal", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 3,
 		description = "What `line-height: normal` means, as a multiple of the font size. 0: from the font, its ascent + descent + line gap, as other browsers do (Arial: about 1.15, Verdana 1.22); the lh unit then takes 1.2."},
 	{name = "page.body_margin", kind = .Float, default = {f = 8}, bounded = true, min = 0, max = 200, unit = "px", description = "Margin around the body of a page."},

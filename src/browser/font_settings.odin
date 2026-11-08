@@ -4,6 +4,7 @@ import "core:strings"
 import "toolkit:font"
 import "wb:config"
 import "wb:host"
+import "wb:style"
 
 ////////////////////////////////
 // Text rendering and shaping (toolkit:font on DirectWrite): glyph bitmaps, the atlas, color glyphs, the system fallback
@@ -47,8 +48,8 @@ FONT_PREFS := [?]config.Def{
 		description = "Built-in emoji: vertical samples per pixel row when a color glyph's shapes are drawn (horizontal coverage is exact). 8 matches Chrome's emoji to within a third of a percent; more is slower and not visibly better."},
 	{name = "text.emoji.outline_cache", kind = .Int, default = {i = 8192}, bounded = true, min = 64, max = 1048576, unit = "KiB",
 		description = "Built-in emoji: outlines of the emoji font's glyphs kept for drawing at other sizes (page zoom, device scale). Over this size they are all dropped and read again as needed."},
-	{name = "font.family.emoji", kind = .String, default = {s = "Segoe UI Emoji"}, description = "Font used for the generic family `emoji`."},
-	{name = "font.family.math", kind = .String, default = {s = "Cambria Math"}, description = "Font used for the generic family `math`."},
+	{name = "font.family.emoji", kind = .String, default = {s = style.FONT_EMOJI}, description = "Font used for the generic family `emoji`."},
+	{name = "font.family.math", kind = .String, default = {s = style.FONT_MATH}, description = "Font used for the generic family `math`."},
 	{name = "font.family.fangsong", kind = .String, default = {s = "FangSong"}, description = "Font used for the generic family `fangsong`."},
 }
 

@@ -46,23 +46,24 @@ Page_Fonts :: struct {
 	blocking: Blocking_Text,                       // text drawn invisible while its web font loads (web_font_faces.odin)
 }
 
-// Names pages use for fonts that do not exist on Windows.
+// Names pages use for fonts this system may not have, and what stands for them: the font of a generic family
+// (style.FONT_*: Windows's fonts, or fontconfig's generic names on Linux, where fontconfig's own aliases come first).
 @(private = "file")
 ALIASES := [?][2]string{
-	{"helvetica", "arial"}, {"helvetica neue", "arial"}, {"liberation sans", "arial"}, {"nimbus sans", "arial"},
-	{"times", "times new roman"}, {"liberation serif", "times new roman"},
+	{"helvetica", style.FONT_SANS_SERIF}, {"helvetica neue", style.FONT_SANS_SERIF}, {"liberation sans", style.FONT_SANS_SERIF}, {"nimbus sans", style.FONT_SANS_SERIF},
+	{"times", style.FONT_SERIF}, {"liberation serif", style.FONT_SERIF},
 	{"courier", "courier new"}, {"liberation mono", "courier new"},
-	{"menlo", "consolas"}, {"monaco", "consolas"}, {"sf mono", "consolas"}, {"dejavu sans mono", "consolas"},
-	{"-apple-system", "segoe ui"}, {"blinkmacsystemfont", "segoe ui"}, {"system-ui", "segoe ui"}, {"sf pro text", "segoe ui"},
-	{"roboto", "segoe ui"}, {"ubuntu", "segoe ui"}, {"open sans", "segoe ui"}, {"noto sans", "segoe ui"},
-	{"apple color emoji", "segoe ui emoji"}, {"noto color emoji", "segoe ui emoji"}, {"android emoji", "segoe ui emoji"},
+	{"menlo", style.FONT_MONOSPACE}, {"monaco", style.FONT_MONOSPACE}, {"sf mono", style.FONT_MONOSPACE}, {"dejavu sans mono", style.FONT_MONOSPACE},
+	{"-apple-system", style.FONT_SYSTEM_UI}, {"blinkmacsystemfont", style.FONT_SYSTEM_UI}, {"system-ui", style.FONT_SYSTEM_UI}, {"sf pro text", style.FONT_SYSTEM_UI},
+	{"roboto", style.FONT_SYSTEM_UI}, {"ubuntu", style.FONT_SYSTEM_UI}, {"open sans", style.FONT_SYSTEM_UI}, {"noto sans", style.FONT_SYSTEM_UI},
+	{"apple color emoji", style.FONT_EMOJI}, {"noto color emoji", style.FONT_EMOJI}, {"android emoji", style.FONT_EMOJI},
 }
 
 page_fonts_init :: proc(pf: ^Page_Fonts, state: ^font.State, ui_font: font.Font_Id) {
 	pf.state, pf.ui = state, ui_font
 	pf.resolved = make(map[string]font.Font_Id)
 	pf.owned = make(map[rawptr][dynamic]font.Font_Id)
-	pf.emoji, pf.math, pf.fangsong = strings.clone("Segoe UI Emoji"), strings.clone("Cambria Math"), strings.clone("FangSong")
+	pf.emoji, pf.math, pf.fangsong = strings.clone(style.FONT_EMOJI), strings.clone(style.FONT_MATH), strings.clone("FangSong")
 }
 
 page_fonts_destroy :: proc(pf: ^Page_Fonts) {
