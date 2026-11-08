@@ -188,3 +188,24 @@ test("the document base URL resolves a request's URL", async () => {
 });
 
 __run();
+
+// LOADING: the body is readable as it arrives (XMLHttpRequest Standard, "process response body chunk"). video.js reads
+// the first bytes of a whole video that way (its container) and aborts: a body seen only at its end never came.
+test("the body as it arrives: LOADING, progress, responseText, then abort", async () => {
+  const x = new XMLHttpRequest();
+  const states = [];
+  x.onreadystatechange = () => states.push(x.readyState);
+  const first = new Promise(resolve => {
+    x.onprogress = e => { if (x.readyState === XMLHttpRequest.LOADING && x.responseText.length >= 3) resolve(e.loaded); };
+  });
+  x.open("GET", "/slow");   // 100 bytes, one every 100 ms
+  x.overrideMimeType("text/plain; charset=x-user-defined");
+  x.send();
+  const loaded = await Promise.race([first, new Promise(resolve => setTimeout(() => resolve(-1), 5000))]);
+  ok(loaded >= 3, "progress events while the body arrives (" + loaded + " bytes after at most 5 s)");
+  ok(x.responseText.length >= 3 && x.responseText.length < 100, "responseText has what came: " + x.responseText.length + " of 100");
+  ok(/^\.+$/.test(x.responseText), "the bytes that came");
+  eq(states.slice(0, 2).join(" "), "2 3", "HEADERS_RECEIVED, then LOADING");
+  x.abort();
+  eq(x.readyState, XMLHttpRequest.UNSENT, "aborted");
+});

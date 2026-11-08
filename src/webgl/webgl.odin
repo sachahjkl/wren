@@ -21,7 +21,7 @@ when ODIN_OS == .Windows {
 		"system:libvcruntime.lib",
 	}
 } else {
-	foreign import wren_native { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:dl", "system:pthread", "system:m" }
+	foreign import wren_native { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:fontconfig", "system:dl", "system:pthread", "system:m" }
 }
 
 // How much of a waiting page's life a context may take when it does not answer, by default (webgl.wait_ms).

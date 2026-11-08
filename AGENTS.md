@@ -23,6 +23,16 @@ Linux (`nix develop` first):
 `build.bat` and `./build.sh` are shortcuts of `wrentool build`: the same variants on both systems.
 - Run the browser with a 64 MiB stack: `ulimit -s 65536`.
 
+While you iterate (a bug, a try, a check of a page), build `quick`, never `dev` or `release`:
+
+- `./build.sh quick` (Windows: `build.bat quick`) makes `build/wren_quick`: no optimisation, the JavaScript engine at
+  `-o:minimal`. It takes about 5 s after a change of the browser and 12 s more after a change of the engine. `dev`
+  takes 18 s and 107 s.
+- Use `dev` or `release` only to measure speed or to check what ships.
+
+Drive a test Wren headless, so that no window opens on the user's desktop:
+`wren ctl start --headless` or `wren ctl run --headless`. On Linux, `ctl start` is headless by default.
+
 All other project commands are in `wrentool` (`src/tools/wrentool`, `build/wrentool help`).
 
 ## Key prompts

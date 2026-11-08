@@ -7,8 +7,8 @@ import "../abi"
 // A request and, once it arrived, its response (module net: Fetch; module fetch's Response is the same record).
 Fetch :: distinct abi.Handle
 
-// Where a request is (what a callback reports).
-FetchState :: enum i32 { Pending, Response, Done, Failed }
+// Where a request is (what a callback reports). Body: a part of the body arrived (a callback state only).
+FetchState :: enum i32 { Pending, Response, Done, Failed, Body }
 // Response.type
 ResponseType :: enum i32 { Basic, Cors, Opaque, Opaque_Redirect }
 // RequestInit.mode

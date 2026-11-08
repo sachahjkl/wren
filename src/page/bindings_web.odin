@@ -7,6 +7,7 @@ package page
 // guest's FetchOptions travel packed in a u32 (fetch_options_pack), the form a worker's request is relayed in.
 
 import "core:strings"
+import "core:time"
 import "wb:base"
 import "wb:cookies"
 import "wb:fetch"
@@ -82,6 +83,7 @@ fetch_update :: proc(f: ^Fetch, ev: Fetch_Update) {
 		}
 		p.held += len(ev.data)
 		append(&f.body, ..ev.data)
+		fetch_tell_body(p, f)
 		return
 	case .Done:
 		f.state, f.task = 2, base.NIL_HANDLE
@@ -101,6 +103,25 @@ fetch_update :: proc(f: ^Fetch, ev: Fetch_Update) {
 	// the guest learns about it through its callback: (user: i32, fetch: i64, state: i32)
 	h := f.self
 	argv := [4]u32{f.user, u32(u64(h)), u32(u64(h) >> 32), u32(f.state)}
+	call_guest(p, inst, f.callback, argv[:])
+}
+
+// The callback hears that a part of the body arrived (state Body of net.FetchState): the first part at once, then at most
+// every FETCH_BODY_TELL_MS, as XMLHttpRequest's progress events go (XMLHttpRequest Standard, "process response body").
+// A player that reads the first bytes of a whole video and aborts (video.js: the container of a DASH segment) waited
+// for the end of a body that never comes otherwise.
+FETCH_BODY_TELL_MS :: 50
+FETCH_STATE_BODY :: 4   // net.FetchState.Body: a callback state only (Fetch_state says Response meanwhile)
+
+@(private)
+fetch_tell_body :: proc(p: ^Page, f: ^Fetch) {
+	if f.callback == 0 { return }
+	if f.body_told != {} && time.tick_since(f.body_told) < FETCH_BODY_TELL_MS * time.Millisecond { return }
+	inst := instance_by_index(p, f.instance)
+	if inst == nil { return }
+	f.body_told = time.tick_now()
+	h := f.self
+	argv := [4]u32{f.user, u32(u64(h)), u32(u64(h) >> 32), FETCH_STATE_BODY}
 	call_guest(p, inst, f.callback, argv[:])
 }
 

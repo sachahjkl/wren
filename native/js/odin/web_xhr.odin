@@ -4,11 +4,12 @@
 //
 // The browser reports the response headers, then the end of the body (or a failure): the states follow (OPENED,
 // HEADERS_RECEIVED, LOADING, DONE) with their readystatechange, progress, load / error / abort / timeout and loadend
-// events, upload events when there is a body. The body is copied once into the engine when it is complete; responseText,
-// response (text, json, arraybuffer, blob) are made from it on demand. A request in flight keeps its object alive.
+// events, upload events when there is a body. As the body arrives (callback state Body: the first part at once, then at
+// most every 50 ms) the request is LOADING: what came is copied into the engine, readystatechange and progress fire, and
+// responseText reads it (video.js reads the first bytes of a whole video that way, then aborts). response (json,
+// arraybuffer, blob) is made from the whole body on demand. A request in flight keeps its object alive.
 // timeout uses a timeout signal of the browser; abort() releases the request (no callback comes after it).
-// Synchronous requests: the thread waits for them (Fetch_sync). Not supported: progress events while the body arrives (one
-// before load).
+// Synchronous requests: the thread waits for them (Fetch_sync).
 //
 // Every call into the browser is a declaration of api_decl/fetch.odin (and abort.odin) through jsb.host.
 package odin_glue
@@ -42,6 +43,7 @@ Xhr :: struct {
 	with_credentials:     bool,
 	failed:               bool,
 	body_done:            bool,
+	told:                 int,                    // the bytes the last progress event counted (Body), so Done does not repeat it
 	timeout:              u32,
 	method:               wj.JSValue,
 	url:                  wj.JSValue,
@@ -163,6 +165,7 @@ reset_response :: proc(ctx: ^wj.Context, x: ^Xhr) {
 	wj.JS_FreeValue(ctx, x.document); x.document = wj.UNDEFINED
 	clear(&x.body)
 	x.body_done = false
+	x.told = 0
 }
 
 @(private = "file")
@@ -214,16 +217,15 @@ take_head :: proc(ctx: ^wj.Context, x: ^Xhr, f: api_decl.Fetch) {
 	}
 }
 
-// The whole body of the record, in one copy.
+// What the record has of the body beyond what was copied already (the whole body at the end: `x.body_done`).
 @(private = "file")
-take_body :: proc(x: ^Xhr, f: api_decl.Fetch) {
+take_body :: proc(x: ^Xhr, f: api_decl.Fetch, done := true) {
 	n: u64
 	jsb.host(&n, api_decl.Fetch_bodyLength, wj.wr_Fetch_bodyLength, f)
-	clear(&x.body)
 	// a length past the address space (the size is 32 bits here) is out of memory, not a truncated buffer
-	if n < u64(max(u32)) {
+	if n < u64(max(u32)) && n > u64(len(x.body)) {
+		filled := len(x.body)
 		resize(&x.body, int(n))
-		filled := 0
 		for filled < len(x.body) {
 			chunk := min(len(x.body) - filled, 0x4000_0000)
 			got: i32
@@ -233,10 +235,37 @@ take_body :: proc(x: ^Xhr, f: api_decl.Fetch) {
 		}
 		resize(&x.body, filled)
 	}
-	x.body_done = true
+	x.body_done = done
 }
 
-// The browser calls back: headers (1), the whole body (2), or a failure (3).
+// What a progress event says of the body: the bytes that came, and its length when Content-Length gives it.
+@(private = "file")
+body_progress :: proc(x: ^Xhr) -> (loaded, total: f64, computable: bool) {
+	loaded = f64(len(x.body))
+	if wj.is_object(x.response_headers) {
+		length: uint
+		if cl := web_headers_get(x.response_headers, "content-length", &length); cl != nil {
+			if n, ok := strconv_u64(string(cl[:length])); ok { total, computable = f64(n), true }
+			wj.libc_free(cl)
+		}
+	}
+	if x.body_done && !computable { total = 0 }
+	if x.body_done && computable { total = max(total, loaded) }
+	return
+}
+
+@(private = "file")
+strconv_u64 :: proc(s: string) -> (n: u64, ok: bool) {
+	t := strings.trim_space(s)
+	if t == "" { return 0, false }
+	for c in t {
+		if c < '0' || c > '9' { return 0, false }
+		n = n * 10 + u64(c - '0')
+	}
+	return n, true
+}
+
+// The browser calls back: headers (1), the whole body (2), a failure (3), or a part of the body (4).
 @(export, link_name = "wj_cb_xhr")
 wj_cb_xhr :: proc "c" (user: i32, fetch: u64, state: i32) {
 	context = wj.heap_context()
@@ -262,22 +291,22 @@ wj_cb_xhr :: proc "c" (user: i32, fetch: u64, state: i32) {
 		}
 		take_head(ctx, x, f)
 		set_state(ctx, x, .Headers_Received)
+	case .Body:
+		// XMLHttpRequest Standard, "process response body chunk": LOADING, readystatechange, progress
+		take_body(x, f, done = false)
+		if x.state == .Headers_Received { set_state(ctx, x, .Loading) } else { wj.web_fire_simple(ctx, x.self, "readystatechange") }
+		if x.fetch != f { return }
+		loaded, total, computable := body_progress(x)
+		x.told = len(x.body)
+		fire_progress(ctx, x.self, "progress", loaded, total, computable)
 	case .Done:
 		if x.state == .Headers_Received { set_state(ctx, x, .Loading) }
 		if x.fetch != f { return }
 		take_body(x, f)
-		computable := false
-		if wj.is_object(x.response_headers) {
-			length: uint
-			if cl := web_headers_get(x.response_headers, "content-length", &length); cl != nil {
-				computable = true
-				wj.libc_free(cl)
-			}
-		}
 		release_request(x)
-		loaded := f64(len(x.body))
-		total := computable ? loaded : 0
-		fire_progress(ctx, x.self, "progress", loaded, total, computable)
+		loaded, total, computable := body_progress(x)
+		// (one progress for what came last: none when a Body step counted it already, as browsers fire one for a short body)
+		if x.told == 0 || x.told != len(x.body) { fire_progress(ctx, x.self, "progress", loaded, total, computable) }
 		x.state = .Done
 		x.send_flag = false
 		wj.web_fire_simple(ctx, x.self, "readystatechange")
@@ -895,7 +924,9 @@ wjr_XMLHttpRequest_get_responseText :: proc "c" (ctx: ^wj.Context, this_val: wj.
 	if x.rtype != .Empty && x.rtype != .Text {
 		return wj.wj_throw_dom(ctx, "InvalidStateError", "Failed to read the 'responseText' property from 'XMLHttpRequest': The value is only accessible if the object's 'responseType' is '' or 'text'.")
 	}
-	if (x.state != .Loading && x.state != .Done) || x.failed || !x.body_done { return wj.new_string(ctx, "") }
+	if (x.state != .Loading && x.state != .Done) || x.failed { return wj.new_string(ctx, "") }
+	// LOADING: what came so far, made again at each read (it grows); the whole text is kept once the body is complete
+	if !x.body_done { return response_text(ctx, x) }
 	if wj.is_undefined(x.response) {
 		x.response = response_text(ctx, x)
 		if wj.is_exception(x.response) { x.response = wj.UNDEFINED; return wj.EXCEPTION }

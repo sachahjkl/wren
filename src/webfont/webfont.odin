@@ -25,7 +25,7 @@ when ODIN_OS == .Windows {
 	}
 } else {
 	// wrentool build native (cargo for this system)
-	foreign import wren_native { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:opus", "system:asound", "system:dl", "system:pthread", "system:m" }
+	foreign import wren_native { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:fontconfig", "system:opus", "system:asound", "system:dl", "system:pthread", "system:m" }
 }
 
 @(private)

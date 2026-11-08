@@ -13,6 +13,7 @@ package page
 
 import "core:fmt"
 import "core:strings"
+import "core:time"
 import "wb:base"
 import "wb:csp"
 import "wb:dom"
@@ -37,6 +38,7 @@ Fetch :: struct {
 	callback:   u32,
 	user:       u32,
 	state:      i32,            // 0 pending, 1 response, 2 done, 3 failed
+	body_told:  time.Tick,      // when the callback last heard of a part of the body (state Body: fetch_tell_body)
 	status:     int,
 	type:       fetch.Response_Type,
 	redirected: bool,

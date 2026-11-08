@@ -14,12 +14,13 @@ Fetch :: distinct u64
 // The response of a fetch (what Fetch_promise settles with): the same record as its Fetch.
 Response :: distinct Fetch
 
-// Where a request is.
+// Where a request is. Body: a part of the body arrived (a callback state only; Fetch_state says Response meanwhile).
 FetchState :: enum i32 {
 	Pending = 0,
 	Response = 1,
 	Done = 2,
 	Failed = 3,
+	Body = 4,
 }
 
 // Response.type
@@ -86,7 +87,8 @@ FetchOptions :: struct {
 	cache: RequestCache,
 }
 
-// Called when the response arrives (Response), when the body is complete (Done) or on failure (Failed).
+// Called when the response arrives (Response), as the body arrives (Body: at most every 50 ms, the first part at once;
+// Fetch_bodyLength and Fetch_readBody read what is there), when the body is complete (Done) or on failure (Failed).
 FetchCallback :: #type proc "contextless" (user: i32, request: Fetch, state: FetchState)
 
 foreign import _m_net "net"

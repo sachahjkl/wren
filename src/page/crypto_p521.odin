@@ -32,7 +32,7 @@ when ODIN_OS == .Windows {
 		"system:libvcruntime.lib",
 	}
 } else {
-	foreign import wren_native { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:dl", "system:pthread", "system:m", "system:c" }
+	foreign import wren_native { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:fontconfig", "system:dl", "system:pthread", "system:m", "system:c" }
 }
 
 @(private = "file", default_calling_convention = "c")

@@ -635,12 +635,13 @@ Api_Fetch :: struct {
 	data:   ^Fetch,
 }
 
-// Where a request is.
+// Where a request is. Body: a part of the body arrived (a callback state only; Fetch_state says Response meanwhile).
 Api_FetchState :: enum i32 {
 	Pending = 0,
 	Response = 1,
 	Done = 2,
 	Failed = 3,
+	Body = 4,
 }
 
 // Response.type
@@ -1047,7 +1048,7 @@ _valid_ScreenField :: #force_inline proc "contextless" (v: i32) -> bool { switch
 _valid_LockMode :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
 
 @(private = "file")
-_valid_FetchState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3: return true }; return false }
+_valid_FetchState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4: return true }; return false }
 
 @(private = "file")
 _valid_ResponseType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3: return true }; return false }
@@ -1155,7 +1156,8 @@ invoke_VideoFrameRequestCallback :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u
 	return call_guest(ctx, inst, fn, argv[:3])
 }
 
-// Called when the response arrives (Response), when the body is complete (Done) or on failure (Failed).
+// Called when the response arrives (Response), as the body arrives (Body: at most every 50 ms, the first part at once;
+// Fetch_bodyLength and Fetch_readBody read what is there), when the body is complete (Done) or on failure (Failed).
 // Calls a guest's FetchCallback (a function of its table) as a task of the realm; false when it trapped.
 invoke_FetchCallback :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, request: u64, state: Api_FetchState) -> bool {
 	argv := [4]u32{u32(user), u32(u64(request)), u32(u64(request) >> 32), u32(state)}

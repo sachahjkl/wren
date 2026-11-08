@@ -212,7 +212,10 @@ fetch_ext_event :: proc(fp: ^Fetch, ev: Fetch_Update) {
 				append(&f.body, ..data)
 			}
 		}
-		if ev.kind == .Data { return }
+		if ev.kind == .Data {
+			if !e.promise_mode { fetch_tell_body(p, f) }   // the callback API (XMLHttpRequest): its LOADING state and progress events
+			return
+		}
 		if f = base.pool_get(&p.fetches, self); f == nil { return }
 		fetch_ext_finished(p, f)
 		if e.promise_mode && e.integrity != "" {

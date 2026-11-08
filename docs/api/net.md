@@ -24,7 +24,7 @@ The response of a fetch (what Fetch_promise settles with): the same record as it
 
 ### enum `FetchState` : i32
 
-Where a request is.
+Where a request is. Body: a part of the body arrived (a callback state only; Fetch_state says Response meanwhile).
 
 | member | value | |
 |---|---:|---|
@@ -32,6 +32,7 @@ Where a request is.
 | `Response` | 1 |  |%!(EXTRA false)
 | `Done` | 2 |  |%!(EXTRA false)
 | `Failed` | 3 |  |%!(EXTRA false)
+| `Body` | 4 |  |%!(EXTRA false)
 
 ### enum `ResponseType` : i32
 
@@ -122,7 +123,8 @@ RequestInit beyond method, headers and body. The zero value is the Fetch API def
 void FetchCallback(i32 user, Fetch request, FetchState state)
 ```
 
-Called when the response arrives (Response), when the body is complete (Done) or on failure (Failed).
+Called when the response arrives (Response), as the body arrives (Body: at most every 50 ms, the first part at once;
+Fetch_bodyLength and Fetch_readBody read what is there), when the body is complete (Done) or on failure (Failed).
 
 ## Functions
 

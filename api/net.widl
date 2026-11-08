@@ -8,8 +8,8 @@ module net {
   /// The response of a fetch (what Fetch_promise settles with): the same record as its Fetch.
   handle Response : Fetch;
 
-  /// Where a request is.
-  enum FetchState : i32 { Pending, Response, Done, Failed }
+  /// Where a request is. Body: a part of the body arrived (a callback state only; Fetch_state says Response meanwhile).
+  enum FetchState : i32 { Pending, Response, Done, Failed, Body }
   /// Response.type
   enum ResponseType : i32 { Basic, Cors, Opaque, Opaque_Redirect }
   /// RequestInit.mode
@@ -36,7 +36,8 @@ module net {
     RequestCache cache;
   }
 
-  /// Called when the response arrives (Response), when the body is complete (Done) or on failure (Failed).
+  /// Called when the response arrives (Response), as the body arrives (Body: at most every 50 ms, the first part at once;
+  /// Fetch_bodyLength and Fetch_readBody read what is there), when the body is complete (Done) or on failure (Failed).
   callback FetchCallback(i32 user, Fetch request, FetchState state);
 
   /// fetch(url, {method, headers, body, ...}) with a callback. `headers` are "Name: value" lines (CR LF or LF). A
