@@ -159,7 +159,11 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 		own.strip.offset = strip_offset(own.strip.offset, n, w, view_w, wnd.current, follow)
 
 		// (classic: the area also holds the new-tab button, which reaches back under the last tab)
-		ui.next({width = ui.px(classic ? area_w + plus_w - plus_pull : area_w), height = ui.pct(1), axis = .X})
+		// tabs scrolled out of view on a side: the tabs fade out toward that edge (as Firefox's strip does), not cut straight
+		fade_w := math.round(em * 1.6)
+		limit := max(f32(n) * w - view_w, 0)
+		fade := [4]f32{own.strip.offset > 0.5 ? fade_w : 0, 0, own.strip.offset < limit - 0.5 ? fade_w : 0, 0}
+		ui.next({width = ui.px(classic ? area_w + plus_w - plus_pull : area_w), height = ui.pct(1), axis = .X, edge_fade = classic ? nil : fade})
 		area := ui.build_box({.Clip, .Scroll_Self}, "###tabs_area")
 		tab_list_a11y(area, false)
 		add: ui.Signal
@@ -179,7 +183,7 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 				// the button first: the tabs draw over its left foot as each draws over the one before it, and take the clicks;
 				// the tabs themselves are clipped to their own part of the area (when they scroll they must not run under the button)
 				add = classic_new_tab_button(app, &cg, cc, h, plus_w, area_w - plus_pull)
-				ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(area_w), height = ui.pct(1), axis = .X})
+				ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(area_w), height = ui.pct(1), axis = .X, edge_fade = fade})
 				clip := ui.build_box({.Clip}, "###tabs_clip")
 				own.strip.area_key = clip.key   // (the tabs' keys derive from the clip)
 				ui.push_parent(clip)
