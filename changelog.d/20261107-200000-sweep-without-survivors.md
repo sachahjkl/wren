@@ -1,3 +1,0 @@
-type: Changed
-
-**JavaScript collections read only what dies**: the marks of the engine's small cells are bits beside them, so the sweep skips what lives (a third less collecting time on a heap with many survivors), and the list of every cell is gone. Fewer objects made for nothing: `for…of` over an array makes no iterator, the closure cells of a sloppy function's `arguments` are in the object, `Object.getOwnPropertyDescriptor(o, k).enumerable` and `Object.defineProperty(o, k, {value: v, ...})` make no descriptor object, and a number's string joined to a constant is made once until the next collection.

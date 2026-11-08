@@ -1,3 +1,0 @@
-type: Changed
-
-**Fewer frames for what nobody sees** (`style.animations.unseen_tick_ms`): a CSS animation or transition of an element that is not rendered, or that only paints and lies far from the viewport, is painted four times a second and at its events instead of at every refresh (a script reading it still gets the value of the moment), so a page whose only motion is a hidden loader or a carousel far below the fold comes to rest (cnn.com, theverge.com). A page waiting for its stylesheets or its load event no longer draws a frame each time it looks again, and the bar along the top of a page not painted yet moves at the rate of the tabs' loading indicators (`browser.tabs.spinner_fps`).

@@ -1,3 +1,0 @@
-type: Added
-
-**Highlight pseudo-elements as CSS Pseudo 4 paints them**: `::selection`, `::target-text`, `::spelling-error`, `::grammar-error` and `::highlight()` with `*`, each with `color`, `background-color`, `text-decoration*`, `text-shadow`, `-webkit-text-fill-color`, `-webkit-text-stroke-*`, `fill`, `stroke` and `stroke-width`, each property from the same highlight of the parent where an element's rules say nothing. Overlays stack by kind, by `Highlight.priority` then by the last registered, cut the text they are over and recolour its lines, and the paired defaults hold: a page's `color` alone leaves no background.
