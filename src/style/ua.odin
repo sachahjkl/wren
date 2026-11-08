@@ -78,6 +78,7 @@ nobr { white-space: nowrap; }
 br { display: inline; }
 center { text-align: -webkit-center; }
 img, video, canvas, iframe, embed, object { display: inline-block; }
+video { object-fit: contain; }
 img { overflow: clip; }
 /* (SVG 2 §6.4: an inline <svg> clips what it holds, its foreign objects, to its viewport) */
 svg:not(:root) { overflow: hidden; }
