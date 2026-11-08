@@ -328,6 +328,30 @@ describe :: proc(s: ^Status) -> string {
 	return ""
 }
 
+// The system is NixOS: ID=nixos in /etc/os-release (also seen inside an FHS sandbox, which hides /etc/NIXOS). The
+// installed copy needs its runtime there (nixos_linux.odin).
+is_nixos :: proc() -> bool {
+	when ODIN_OS == .Linux {
+		data, err := os.read_entire_file("/etc/os-release", context.temp_allocator)
+		return err == nil && os_release_is_nixos(string(data))
+	} else {
+		return false
+	}
+}
+
+os_release_is_nixos :: proc(text: string) -> bool {
+	rest := text
+	for line in strings.split_lines_iterator(&rest) {
+		l := strings.trim_space(line)
+		if !strings.has_prefix(l, "ID=") { continue }
+		return strings.trim(l[len("ID="):], "\"'") == "nixos"
+	}
+	return false
+}
+
+// The program is in the Nix store: a Nix package made it, and the package makes it run and lists it in the menu.
+in_nix_store :: proc(exe: string) -> bool { return strings.has_prefix(exe, "/nix/store/") }
+
 // Same file? Windows paths ignore case and slash direction; the others are exact.
 same_path :: proc(a, b: string) -> bool {
 	if a == "" || b == "" { return false }

@@ -105,3 +105,28 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ github.ref_name }}" dist/*.tar.gz dist/SHA256SUMS-linux.txt --repo "${{ github.repository }}"
+
+  # The flake's package (nix profile install github:sachahjkl/wren) follows the release: nix/release.json on master names
+  # the Linux file and its SHA-256.
+  flake:
+    needs: [release, publish-linux]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - uses: actions/download-artifact@v4
+        with:
+          name: wren-linux-x64
+          path: dist
+      - name: Point nix/release.json at this release
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          sha=$(awk -v f="wren-$VERSION-linux-x64.tar.gz" '$2 == f { print $1 }' dist/SHA256SUMS-linux.txt)
+          [ -n "$sha" ] || { echo "no SHA-256 for wren-$VERSION-linux-x64.tar.gz in SHA256SUMS-linux.txt"; exit 1; }
+          printf '{\n  "version": "%s",\n  "sha256": "%s"\n}\n' "$VERSION" "$sha" > nix/release.json
+          git diff --quiet && exit 0
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "nix/release.json: Wren $VERSION" nix/release.json
+          git push origin HEAD:master

@@ -49,6 +49,27 @@ Nothing else: the user's choices (`UserChoice`), other programs' keys, a `Wren.l
   repair".
   `update-desktop-database` runs afterwards when installed. The entry passes `desktop-file-validate`.
 - `$XDG_DATA_HOME/icons/hicolor/<n>x<n>/apps/wren.png` for the sizes Wren embeds (16, 32, 64, 256, 512).
+- `~/.local/bin/wren`: a symlink to the executable (the Path part). Only a link that runs this program is replaced or removed.
+
+### NixOS
+
+The release is linked for a usual Linux: the loader `/lib64/ld-linux-x86-64.so.2` and the libraries in the system's
+folders. NixOS has neither, so the downloaded program starts only in an FHS sandbox (`steam-run`) or with nix-ld. Two ways
+to install it:
+
+- **The Nix package** (`nix profile install github:sachahjkl/wren`, or `packages.default` of `flake.nix` in a system
+  configuration). It has the menu entry and the icons, and Nix updates it. The release workflow points
+  `nix/release.json` to each new Linux file. A copy that runs from the Nix store does not offer Setup by itself.
+- **Setup from the downloaded program.** On NixOS (`ID=nixos` in `/etc/os-release`), the install also does this
+  (`src/desktop/nixos_linux.odin`):
+  1. `nix-build --out-link <install>/nix-runtime` builds a profile of the loader and the libraries the program links
+     and opens (`NIXOS_LIBRARIES`, the same list as `runtimeLibs` in `flake.nix`), from the system's nixpkgs
+     (`NIX_PATH`, else the flake registry). The link is a root of the garbage collector.
+  2. `patchelf` sets the installed copy's loader to the profile's and puts the profile first in its search path.
+
+  The menu entry and `~/.local/bin/wren` then run the copy directly. The link is in the manifest: uninstalling removes it,
+  and the next garbage collection frees the profile. If the profile is gone, the copy is *Repair*, and Repair builds it
+  again.
 
 ## macOS
 
@@ -65,7 +86,7 @@ The integration is a set of **parts**; `install` writes the ones the options ask
 | Launcher | Add to Start menu | `Wren.lnk` in the Start menu | the `.desktop` file |
 | Desktop shortcut | Create desktop shortcut | a second `.lnk` (same AppUserModelID) in the Desktop folder | not provided |
 | Registration | Register as a web browser | the `StartMenuInternet` / ProgID / link scheme keys above | `MimeType=` in the `.desktop` file |
-| Path | Add Wren to PATH | the program's folder in `HKCU\Environment\Path` | not provided |
+| Path | Add Wren to PATH | the program's folder in `HKCU\Environment\Path` | the symlink `~/.local/bin/wren` |
 | Icons | - | - | the hicolor icons |
 
 PATH: the value stays a `REG_EXPAND_SZ`, entries are compared after expanding `%VARIABLES%` (case, slash direction and a

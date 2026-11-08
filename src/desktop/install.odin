@@ -50,6 +50,7 @@ Install_Plan :: struct {
 	payload:  []string,   // names next to src_exe (files or folders, relative; '/' or '\'): copied when they exist
 	version:  string,
 	channel:  string,
+	adapt:    bool,       // make the copy run on this system by itself (NixOS: nixos_linux.odin); off for scratch copies
 }
 
 // The executable's file name on the desktop: `identity.exe_name`, else the slug (with .exe on Windows).
@@ -90,7 +91,8 @@ installed_info :: proc(o: ^Options, dir: string, allocator := context.allocator)
 		i.version = strings.clone(m.version, allocator)
 		i.channel = strings.clone(m.channel, allocator)
 		i.files = len(m.files)
-		for f in m.files { if !os.is_file(join_path(dir, f)) { i.missing += 1 } }
+		// (exists, not is_file: NixOS's runtime is a link to a folder; a link whose target is gone counts as missing)
+		for f in m.files { if !os.exists(join_path(dir, f)) { i.missing += 1 } }
 	}
 	return i
 }
@@ -263,6 +265,11 @@ files_install :: proc(plan: Install_Plan) -> Result {
 			if r := place_tree(src, join_path(plan.dir, rel), rel, &files); r.error != .None { return r }
 		}
 	}
+	when ODIN_OS == .Linux {
+		if plan.adapt {
+			if r := nixos_adapt(plan.dir, plan.exe_name, &files); r.error != .None { return r }
+		}
+	}
 	text := manifest_text(plan, files[:])
 	manifest := join_path(plan.dir, MANIFEST_NAME)
 	if err := os.write_entire_file(manifest, text); err != nil { return {.Io, strings.concatenate({"cannot write ", manifest}, context.temp_allocator)} }
@@ -371,7 +378,7 @@ files_remove :: proc(o: ^Options, dir: string) -> Remove_Files_Result {
 	for f in names {
 		path := join_path(dir, f)
 		for cand in ([]string{path, strings.concatenate({path, OLD_SUFFIX}, context.temp_allocator)}) {
-			if !os.exists(cand) { continue }
+			if _, lerr := os.lstat(cand, context.temp_allocator); lerr != nil { continue }   // (lstat: a link whose target is gone goes too)
 			if err := os.remove(cand); err == nil {
 				r.removed += 1
 			} else {

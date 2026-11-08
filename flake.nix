@@ -53,23 +53,46 @@
         '';
       };
 
-      # The latest Linux release, as published (wrentool package). The tag and hash come from its SHA256SUMS-linux.txt.
-      wrenVersion = "0.6.28";
+      # The latest Linux release, as published (wrentool package). The release workflow writes nix/release.json from the
+      # release's SHA256SUMS-linux.txt.
+      release = lib.importJSON ./nix/release.json;
+      # The menu entry, as Setup writes it (src/desktop/desktop_entry.odin): http(s), the links that open in Wren
+      # (src/desktop/links.odin) and the file types of browser.desktop_integration.file_types.
+      desktopItem = pkgs.makeDesktopItem {
+        name = "wren";
+        desktopName = "Wren";
+        genericName = "Web Browser";
+        comment = "A browser where WebAssembly runs everything, JavaScript included";
+        exec = "wren %U";
+        icon = "wren";
+        startupNotify = true;
+        categories = [ "Network" "WebBrowser" ];
+        keywords = [ "Internet" "WWW" "Browser" "Web" "WebAssembly" ];
+        mimeTypes = [
+          "x-scheme-handler/http" "x-scheme-handler/https"
+          "x-scheme-handler/wren-http" "x-scheme-handler/wren-https" "x-scheme-handler/wren-about"
+          "text/html" "application/xhtml+xml" "image/svg+xml" "image/webp" "image/avif"
+        ];
+      };
       wren = pkgs.stdenv.mkDerivation {
         pname = "wren";
-        version = wrenVersion;
+        inherit (release) version;
         src = pkgs.fetchurl {
-          url = "https://github.com/sachahjkl/wren/releases/download/v${wrenVersion}/wren-${wrenVersion}-linux-x64.tar.gz";
-          sha256 = "9912502a1c1bf25e9eba5785b3ab4b1bd1e190a93b55376b3dc64d260b7c9e4f";
+          url = "https://github.com/sachahjkl/wren/releases/download/v${release.version}/wren-${release.version}-linux-x64.tar.gz";
+          inherit (release) sha256;
         };
-        nativeBuildInputs = [ pkgs.autoPatchelfHook pkgs.makeWrapper ];
+        nativeBuildInputs = [ pkgs.autoPatchelfHook pkgs.makeWrapper pkgs.copyDesktopItems ];
         buildInputs = runtimeLibs ++ [ pkgs.stdenv.cc.cc.lib ];
+        desktopItems = [ desktopItem ];
         dontBuild = true;
         dontStrip = true;
         installPhase = ''
           runHook preInstall
           install -Dm755 wren "$out/lib/wren/wren"
           install -Dm644 README.txt "$out/share/doc/wren/README.txt"
+          for size in 16 32 64 256; do
+            install -Dm644 ${./assets}/logo_$size.png "$out/share/icons/hicolor/''${size}x''${size}/apps/wren.png"
+          done
           # the window and GPU libraries are loaded with dlopen: autoPatchelf can't see them
           makeWrapper "$out/lib/wren/wren" "$out/bin/wren" \
             --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath runtimeLibs} \

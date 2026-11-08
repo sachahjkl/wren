@@ -247,7 +247,7 @@ run_tool :: proc(tool: string, args: []string) -> bool {
 	return werr == nil && state.success
 }
 
-@(private = "file")
+@(private)
 find_on_path :: proc(tool: string) -> (path: string, found: bool) {
 	paths, ok := os.lookup_env("PATH", context.temp_allocator)
 	if !ok { return }

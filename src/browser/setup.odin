@@ -50,6 +50,7 @@ Setup_Facts :: struct {
 	integ_exe:     string,              // ... which one that was
 	integ_complete: bool,
 	other_target:  string,              // an integration that runs a copy other than the one it is measured against (owned)
+	nixos:         bool,                // the system is NixOS: installing builds the copy's runtime with Nix (desktop/nixos_linux.odin)
 }
 
 setup_facts_destroy :: proc(f: ^Setup_Facts) {
@@ -239,6 +240,7 @@ setup_read_facts :: proc(o: ^desktop.Options, running_exe: string) -> Setup_Fact
 	f.integ_complete = f.integ.state == .Installed || (f.integ.state == .Absent && f.integ.wanted == {})
 	if f.integ.stale_exe != "" { f.other_target = strings.clone(f.integ.stale_exe) }
 	f.kind = setup_classify(running_exe, APP_VERSION, f.inst, f.integ_complete)
+	f.nixos = desktop.is_nixos()
 	return f
 }
 
@@ -262,6 +264,7 @@ setup_apply_work :: proc(job: ^Setup_Job) {
 	plan := desktop.Install_Plan{
 		src_exe = job.running_exe, dir = job.target_dir, exe_name = exe_name,
 		payload = SETUP_PAYLOAD[:], version = APP_VERSION, channel = channel_name(),
+		adapt = o.notify_system,   // (a scratch install of the tests stays as copied)
 	}
 	if r := desktop.files_install(plan); r.error != .None { job.result = r; return }
 	set_exe(o, target_exe)
@@ -472,6 +475,7 @@ setup_startup :: proc(app: ^App, profile_explicit: bool, force: bool) {
 	if v, ok := os.lookup_env("WREN_DESKTOP_INTEGRATION", context.temp_allocator); ok && v == "off" { return }   // src/e2e sets it for every test
 	if desktop_profile_is_disposable(app, profile_explicit) { return }
 	if app.portable { return }
+	if desktop.in_nix_store(desktop.executable_path(context.temp_allocator)) { return }   // a Nix package: Nix installs and updates it
 	if !config.bool_of(&app.prefs, "browser.desktop_integration.on_first_run") { return }
 	if setup_choice_blocks(app) { return }
 	setup_job_start(app, .Read, .Startup)

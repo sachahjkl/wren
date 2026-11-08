@@ -90,6 +90,7 @@ status_text :: proc(app: ^App, f: ^Setup_Facts) -> (text, tone: string) {
 	switch f.kind {
 	case .Loading:
 	case .Not_Installed:
+		if f.nixos { return fmt.tprintf("%s is running from %s, without being installed. On NixOS, installing builds the libraries of the copy with Nix (nix-build), so that it starts without steam-run. To install and update %s with Nix instead: nix profile install github:sachahjkl/wren", APP_NAME, f.running_exe, APP_NAME), "weak" }
 		if f.other_target != "" { return fmt.tprintf("%s is running from %s. Its shortcuts start %s: installing makes them start the installed copy.", APP_NAME, f.running_exe, f.other_target), "weak" }
 		return fmt.tprintf("%s is running from %s, without being installed.", APP_NAME, f.running_exe), "weak"
 	case .Running_Installed:
