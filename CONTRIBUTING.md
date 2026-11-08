@@ -121,12 +121,10 @@ commands, by family:
 - threadtime: whose work the window thread did in a load, from the files of `WREN_SPANS` (`waterfall -AfterMs n` gives the page the time to settle): by origin and class, up to the first contentful paint, the largest and settled; the frames begun and their own work by phase, their waits apart;
 - replay: `record`, `run`, `lists`: a load served again from what a site served, seeded, to prove a change of a percent ([the bench](docs/testing.md#the-replay-bench));
 - sweep: real pages visited headless as a person does (`-List tools/site_compare_list.txt`, `-Shard i -Shards n`, `-OneProcess`): crashes, hangs, unclean ends, the time of each step, in `build/sweep/summary_<shard>.tsv`;
-- gen: `gen psl|unicode|media-fixtures|video-fixtures|perf-media|rust-crates`;
+- gen: `gen psl|unicode|media-fixtures|video-fixtures|perf-media|rust-crates`; `logo [-Variant amber|dev|violet|amber-plain] [-Out folder] [-Single]` (the committed logos and icons, drawn by the toolkit's paint package);
 - docs and checks: `docs` (the documentation site), `license`, `i18n`, `portability`, `engine test262|rx-diff`, `changelog`;
 - release helpers: `package`, `sign`, `winget`, `notes`, `experimental`, `smoke`, `crash-e2e`;
 - `desktop <program> [arguments]`: a command on a Windows desktop of its own.
-
-The only script left is `tools/make_logo.ps1` (GDI+ drawing of the committed assets).
 
 ## Submodules
 
