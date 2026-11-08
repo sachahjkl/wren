@@ -125,12 +125,17 @@ build_if_stale :: proc(output, flags: string, command: []string, log := "") -> b
 	return os.write_entire_file(stamp, flags) == nil
 }
 
+// How often and how far apart a failed download is tried again (curl --retry, --retry-delay: seconds).
+DOWNLOAD_RETRIES :: "5"
+DOWNLOAD_RETRY_DELAY_S :: "10"
+
 // A pinned download: `file` when it has the digest, fetched otherwise (curl comes with Windows and with every Linux of the CI). The digest is checked, always.
 download_pinned :: proc(url, file, sha: string, log := "") -> bool {
 	if got, ok := sha256_of_file(file, context.temp_allocator); ok && got == sha { return true }
 	_ = os.make_directory_all(filepath.dir(file))
 	say(log, fmt.tprintfln("downloading %s", url))
-	if run({command = {"curl", "-fsSL", "-o", file, url}, log = log}) != 0 {
+	// (tried again on an error of the network or of the server: GitHub's release downloads answer 503 and 504 at times; the digest says whether what came is the file)
+	if run({command = {"curl", "-fsSL", "--retry", DOWNLOAD_RETRIES, "--retry-all-errors", "--retry-delay", DOWNLOAD_RETRY_DELAY_S, "-o", file, url}, log = log}) != 0 {
 		say(log, fmt.tprintfln("the download of %s failed", url))
 		return false
 	}
