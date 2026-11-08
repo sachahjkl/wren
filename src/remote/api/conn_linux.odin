@@ -76,3 +76,9 @@ read_line :: proc(c: ^Conn, deadline: time.Tick) -> (line: string, err: Error) {
 		append(&c.pending, ..buf[:n])
 	}
 }
+
+// Removes the socket of a Wren that has ended. A Wren that closes removes its own; one that was killed (`stop` of a
+// throwaway profile, `run` or `start` that gave up) cannot, and its socket stayed in the folder for good.
+channel_forget :: proc(name: string) {
+	linux.unlink(strings.clone_to_cstring(remote.pipe_path(name), context.temp_allocator))
+}

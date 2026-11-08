@@ -102,7 +102,7 @@ save_initial :: proc(ctx: ^Context) { _, _ = api.checkpoint_save(&ctx.s, "initia
 // A session
 
 @(private)
-state_file :: proc(name: string) -> string { return strings.concatenate({api.state_dir(), filepath.SEPARATOR_STRING, name, ".json"}, context.temp_allocator) }
+state_file :: proc(name: string) -> string { return strings.concatenate({api.sessions_dir(), filepath.SEPARATOR_STRING, name, ".json"}, context.temp_allocator) }
 
 cmd_start :: proc(ctx: ^Context, args: []string) -> int {
 	name := opt(&ctx.o, "name")
@@ -114,9 +114,10 @@ cmd_start :: proc(ctx: ^Context, args: []string) -> int {
 	if !connect_or_say(ctx, &l, ctx.s.timeout_ms > 0 ? ctx.s.timeout_ms : api.START_WAIT_MS) {
 		api.process_kill(&l.process)
 		api.process_release(&l.process)
+		api.channel_forget(name)
 		return EXIT_NO_SERVER
 	}
-	_ = os.make_directory_all(api.state_dir())
+	_ = os.make_directory_all(api.sessions_dir())
 	// (who the process is, now that it is held: `stop` ends nothing it cannot tell again by this)
 	who, _ := api.identity_of(&l.process)
 	state := fmt.tprintf(`{{"name":%s,"pid":%d,"created":%d,"image":%s,"profile":%s,"temp":%v}}`, base.json_quote(name), l.pid, who.created, base.json_quote(who.image), base.json_quote(l.profile), l.temp)
@@ -178,6 +179,7 @@ cmd_stop :: proc(ctx: ^Context, args: []string) -> int {
 		// (it had ended already)
 		base.remove_tree(profile)
 	}
+	api.channel_forget(name)
 	_ = os.remove(state_file(name))
 	return code
 }

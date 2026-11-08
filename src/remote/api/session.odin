@@ -174,6 +174,7 @@ finish :: proc(s: ^Session, l: ^Launched, ask: bool, code := 0, wait_ms := CLOSE
 		forced = true
 	}
 	exit_code = process_exit_code(&l.process)
+	channel_forget(l.name)
 	// (only a folder of state_dir: what a caller named is never removed)
 	if l.temp && strings.contains(l.profile, "wren-ctl") { remove_folder_of(&l.process, l.profile) }
 	process_release(&l.process)

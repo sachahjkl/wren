@@ -100,3 +100,6 @@ read_line :: proc(c: ^Conn, deadline: time.Tick) -> (line: string, err: Error) {
 }
 
 
+
+// (a named pipe ends with the last handle to it: nothing is left behind)
+channel_forget :: proc(name: string) {}

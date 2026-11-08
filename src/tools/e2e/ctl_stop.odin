@@ -26,12 +26,12 @@ victim :: proc(t: ^testing.T) -> ^e2e.Program {
 }
 
 @(private = "file")
-session_file :: proc(name: string) -> string { return fmt.tprintf(`%s\%s.json`, api.state_dir(), name) }
+session_file :: proc(name: string) -> string { return fmt.tprintf(`%s\%s.json`, api.sessions_dir(), name) }
 
 // A session file as `start` writes it, without what `who` leaves out.
 @(private = "file")
 write_session :: proc(name: string, pid: int, who: string) {
-	_ = os.make_directory_all(api.state_dir())
+	_ = os.make_directory_all(api.sessions_dir())
 	e2e.write_text(session_file(name), fmt.tprintf(`{{"name":%q,"pid":%d,%s"profile":"","temp":false}}`, name, pid, who))
 }
 
