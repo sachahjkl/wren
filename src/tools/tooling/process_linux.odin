@@ -7,6 +7,7 @@ import "core:time"
 import "core:os"
 import "core:sys/linux"
 import "core:sys/posix"
+import toolbox "../../../ext/gui_toolkit/src/toolbox"
 
 // A process in a process group of its own: what it starts stays in the group unless it asks otherwise, and a signal to the group stops the tree. Its CPU is
 // what wait4 reports: its own and that of the children it waited for.
@@ -48,7 +49,7 @@ spawn :: proc(d: Spawn) -> (p: Process, why: string) {
 	if program == "" { return p, "it is not on the PATH" }
 	program_c := strings.clone_to_cstring(program, context.temp_allocator)
 	argv := c_strings(d.command)
-	envp := c_strings(merged_env(d.env))
+	envp := c_strings(toolbox.env_with(nil, ..d.env))
 	dir_c := strings.clone_to_cstring(d.dir, context.temp_allocator)
 	log_c := strings.clone_to_cstring(d.log, context.temp_allocator)
 	pid := posix.fork()

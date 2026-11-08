@@ -13,6 +13,7 @@ import "wb:tools/wrentool/bench"
 import "wb:tools/wrentool/builder"
 import "wb:tools/wrentool/changelog"
 import "wb:tools/wrentool/deps"
+import toolbox "../../../../ext/gui_toolkit/src/toolbox"
 
 // An experimental build of Wren, ready to hand out: a release build (the amber one) with a label, the development licence key accepted, a demonstration licence inside (wrentool build: WREN_EMBEDDED_LICENSE)
 // unless -NoEmbed, notes made from what the next version brings (changelog.d), a zip, and the link of its upload to buzzheavier (anonymous: the link lives a few days) unless -NoUpload.
@@ -106,7 +107,7 @@ run_experimental :: proc(args: []string) -> int {
 	}
 	exe := fmt.tprintf("%s/%s.exe", DIST, name)
 	if !os.exists(exe) { return fail(exe, "is not there (a build with another label? run without -NoBuild)") }
-	sha, _ := tooling.sha256_of_file(exe, context.temp_allocator)
+	sha, _ := toolbox.sha256_file(exe)
 	fp, _ := deps.fingerprint_of(exe)
 	symbols_from := fmt.tprintf("%s/symbols/%s-%s.map", DIST, name, fp)
 	if !os.exists(symbols_from) { return fail("the symbols of", name, "are not there:", symbols_from) }
@@ -133,7 +134,7 @@ run_experimental :: proc(args: []string) -> int {
 	zip := fmt.tprintf("%s/%s.zip", EXPERIMENTAL_DIR, name)
 	_ = os.remove(zip)
 	if tooling.run({command = {"tar", "-a", "-c", "-f", fmt.tprintf("../%s.zip", name), "."}, dir = stage}) != 0 { return fail("the zip cannot be made") }
-	zip_sha, _ := tooling.sha256_of_file(zip, context.temp_allocator)
+	zip_sha, _ := toolbox.sha256_file(zip)
 
 	link := ""
 	if !tooling.flag_has(f, "-NoUpload") {

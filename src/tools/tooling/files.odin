@@ -1,13 +1,12 @@
 package tooling
 
-import "core:crypto/sha2"
-import "core:encoding/hex"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:slice"
 import "core:strings"
 import "core:time"
+import toolbox "../../../ext/gui_toolkit/src/toolbox"
 
 EXE_SUFFIX :: ".exe" when ODIN_OS == .Windows else ""
 // What programs that run Wasm are linked with: 64 MiB of thread stack (twice wasm.wasmtime.max_stack_bytes, for a call nested in a call). On Linux, `ulimit -s` of test_all.
@@ -16,7 +15,6 @@ STACK_FLAGS :: []string{"-extra-linker-flags:/STACK:67108864"} when ODIN_OS == .
 JS_THREAD_STACK_BYTES :: 64 << 20
 // What makes every Wren a test starts keep its connections on this machine (src/net/settings.odin: network.loopback_only).
 LOOPBACK_ONLY_ENV :: "WREN_NETWORK_LOOPBACK_ONLY"
-SHA256_BYTES :: 32
 NATIVE_LIBRARY :: "build/native/wren_native.lib" when ODIN_OS == .Windows else "build/native-linux/libwren_native.a"
 
 // The repository of the program that runs: its executable is in <repository>/build; WREN_REPO says otherwise.
@@ -42,21 +40,6 @@ odin_program :: proc() -> string {
 		if os.is_file(candidate) { if _, runs := capture({candidate, "version"}, allocator = context.temp_allocator); runs == 0 { found = candidate } }
 	}
 	return found
-}
-
-sha256_of_file :: proc(path: string, allocator := context.allocator) -> (digest: string, ok: bool) {
-	data, err := os.read_entire_file(path, context.temp_allocator)
-	if err != nil { return "", false }
-	return sha256_of(data, allocator), true
-}
-
-sha256_of :: proc(data: []u8, allocator := context.allocator) -> string {
-	ctx: sha2.Context_256
-	sha2.init_256(&ctx)
-	sha2.update(&ctx, data)
-	out: [SHA256_BYTES]u8
-	sha2.final(&ctx, out[:])
-	return string(hex.encode(out[:], allocator))
 }
 
 modified :: proc(path: string) -> (t: time.Time, ok: bool) {
@@ -125,27 +108,12 @@ build_if_stale :: proc(output, flags: string, command: []string, log := "") -> b
 	return os.write_entire_file(stamp, flags) == nil
 }
 
-// How often and how far apart a failed download is tried again (curl --retry, --retry-delay: seconds).
-DOWNLOAD_RETRIES :: "5"
-DOWNLOAD_RETRY_DELAY_S :: "10"
-
-// A pinned download: `file` when it has the digest, fetched otherwise (curl comes with Windows and with every Linux of the CI). The digest is checked, always.
+// A pinned download (the toolkit's toolbox.download_pinned: kept when it has the digest, else fetched with curl and checked). Why it
+// failed is said where `log` says, as every step of the tooling says it.
 download_pinned :: proc(url, file, sha: string, log := "") -> bool {
-	if got, ok := sha256_of_file(file, context.temp_allocator); ok && got == sha { return true }
-	_ = os.make_directory_all(filepath.dir(file))
-	say(log, fmt.tprintfln("downloading %s", url))
-	// (tried again on an error of the network or of the server: GitHub's release downloads answer 503 and 504 at times; the digest says whether what came is the file)
-	if run({command = {"curl", "-fsSL", "--retry", DOWNLOAD_RETRIES, "--retry-all-errors", "--retry-delay", DOWNLOAD_RETRY_DELAY_S, "-o", file, url}, log = log}) != 0 {
-		say(log, fmt.tprintfln("the download of %s failed", url))
-		return false
-	}
-	got, ok := sha256_of_file(file, context.temp_allocator)
-	if !ok || got != sha {
-		_ = os.remove(file)
-		say(log, fmt.tprintfln("SHA-256 mismatch for %s: expected %s, got %s", url, sha, got))
-		return false
-	}
-	return true
+	why := toolbox.download_pinned(url, file, sha, log = log)
+	if why != "" { say(log, fmt.tprintln(why)) }
+	return why == ""
 }
 
 say :: proc(log, text: string) {

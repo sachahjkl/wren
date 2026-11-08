@@ -19,6 +19,7 @@ import "wb:tools/wrentool/builder"
 import "wb:tools/wrentool/changelog"
 import "wb:tools/wrentool/deps"
 import "wb:tools/wrentool/gen"
+import toolbox "../../../../ext/gui_toolkit/src/toolbox"
 
 EXIT_USAGE :: 2
 DIST :: "build/dist"
@@ -94,7 +95,7 @@ package_linux :: proc(version: string) -> int {
 	_ = os.write_entire_file(fmt.tprintf("%s/README.txt", stage), fmt.tprintf(LINUX_README, version))
 	tar_name := fmt.tprintf("%s.tar.gz", name)
 	if tooling.run({command = {"tar", "-C", DIST, "-czf", fmt.tprintf("%s/%s", DIST, tar_name), name}}) != 0 { return fail("tar failed") }
-	sha, _ := tooling.sha256_of_file(fmt.tprintf("%s/%s", DIST, tar_name), context.temp_allocator)
+	sha, _ := toolbox.sha256_file(fmt.tprintf("%s/%s", DIST, tar_name))
 	_ = os.write_entire_file(fmt.tprintf("%s/SHA256SUMS-linux.txt", DIST), fmt.tprintf("%s  %s\n", sha, tar_name))
 	fmt.printfln("%s/%s", DIST, tar_name)
 	return 0
@@ -177,7 +178,7 @@ package_windows :: proc(f: tooling.Flags, version: string) -> int {
 	}
 	sums := strings.builder_make(context.temp_allocator)
 	for z in files {
-		sha, _ := tooling.sha256_of_file(z, context.temp_allocator)
+		sha, _ := toolbox.sha256_file(z)
 		fmt.sbprintfln(&sums, "%s  %s", sha, filepath.base(z))
 		fi, _ := os.stat(z, context.temp_allocator)
 		fmt.printfln("packaged %s (%d MB)", z, fi.size / BYTES_PER_MB)

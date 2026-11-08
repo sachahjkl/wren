@@ -5,6 +5,7 @@ import "core:os"
 import "core:path/filepath"
 import "core:slice"
 import "core:strings"
+import toolbox "../../../ext/gui_toolkit/src/toolbox"
 
 // Wren's JavaScript engine: the Odin engine (src/engine/jsrt, through the QuickJS C API of src/engine/jscapi) and the browser's bindings (native/js/odin, with the generated
 // native/js/odin/bindings_gen.odin), compiled to WebAssembly, then pre-initialized: the engine, its intrinsics and the bindings set up once, at build time, and stored in the module's
@@ -125,7 +126,7 @@ js_stamp :: proc(o: Js_Options) -> string {
 		strings.write_bytes(&all, data)
 	}
 	fmt.sbprintf(&all, "%v|%s|%v|%v", o.test262, o.odin_opt, o.odin_flags, o.names)
-	return sha256_of(all.buf[:], context.temp_allocator)
+	return toolbox.sha256_hex(all.buf[:])
 }
 
 // src/tools/jsengine, in <out>: the tool that pre-initializes the image and compiles it.

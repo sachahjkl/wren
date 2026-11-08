@@ -9,6 +9,7 @@ import "core:strings"
 import "core:time"
 import "wb:testserver"
 import "wb:tools/tooling"
+import toolbox "../../../ext/gui_toolkit/src/toolbox"
 
 // What a run of the suite is around the tests: the pinned checkout (a partial sparse clone of WPT_COMMIT: the measured folders and the shared ones, verified file by file against wpt/MANIFEST.txt),
 // the test server in this process (src/testserver: its WPT origin, on the block of ports it found free), the run, the second chance of what regressed. Outputs in build/wpt: report.md (pass rates per folder),
@@ -92,7 +93,7 @@ tree_hashes :: proc(dir: string, out: ^[dynamic]string, prefix: int) {
 	for e in entries {
 		if e.name == ".git" { continue }
 		if e.type == .Directory { tree_hashes(e.fullpath, out, prefix); continue }
-		digest, ok := tooling.sha256_of_file(e.fullpath, context.temp_allocator)
+		digest, ok := toolbox.sha256_file(e.fullpath)
 		if !ok { digest = "unreadable" }
 		rel, _ := strings.replace_all(e.fullpath[prefix:], "\\", "/", context.temp_allocator)
 		append(out, fmt.aprintf("%s  %s", digest, rel))

@@ -5,6 +5,7 @@ import "core:strings"
 import "core:sync"
 import "core:time"
 import win "core:sys/windows"
+import toolbox "../../../ext/gui_toolkit/src/toolbox"
 
 // A process in a job object of its own: everything it starts stays in it (no walk of parents to stop a tree, and the tree's CPU is the job's accounting,
 // nothing sampled), and when the job's last handle closes, whatever is left dies: a run that is killed leaves nothing behind.
@@ -95,7 +96,7 @@ command_line :: proc(command: []string, allocator := context.temp_allocator) -> 
 @(private = "file")
 environment_block :: proc(add: []string) -> [^]u16 {
 	b := make([dynamic]u16, context.temp_allocator)
-	for e in merged_env(add) {
+	for e in toolbox.env_with(nil, ..add) {
 		w := win.utf8_to_utf16(e, context.temp_allocator)
 		append(&b, ..w)
 		append(&b, 0)

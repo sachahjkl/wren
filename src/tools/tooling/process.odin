@@ -61,28 +61,6 @@ exe_argument :: proc(path: string, allocator := context.temp_allocator) -> strin
 	}
 }
 
-// The environment of a child: this process's, with `add` on top (a variable set here wins whatever its case on Windows).
-merged_env :: proc(add: []string, allocator := context.temp_allocator) -> []string {
-	all, _ := os.environ(allocator)
-	out := make([dynamic]string, 0, len(all) + len(add), allocator)
-	outer: for e in all {
-		k := strings.index_byte(e, '=')
-		// (Windows' own per-drive entries begin with =)
-		for a in add {
-			j := strings.index_byte(a, '=')
-			if k > 0 && j == k && env_name_equal(a[:j], e[:k]) { continue outer }
-		}
-		append(&out, e)
-	}
-	append(&out, ..add)
-	return out[:]
-}
-
-@(private)
-env_name_equal :: proc(a, b: string) -> bool {
-	when ODIN_OS == .Windows { return strings.equal_fold(a, b) } else { return a == b }
-}
-
 // Blocks until it ends: its exit code. `limit` 0: no limit; past it the tree is killed and `timed_out` true.
 wait :: proc(p: ^Process, limit := time.Duration(0)) -> (code: int, timed_out: bool) {
 	for {

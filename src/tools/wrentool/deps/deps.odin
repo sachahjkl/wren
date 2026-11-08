@@ -12,6 +12,7 @@ import "core:slice"
 import "core:strings"
 import "wb:base"
 import "wb:tools/tooling"
+import toolbox "../../../../ext/gui_toolkit/src/toolbox"
 
 TEMP_DIR :: "build/tmp"
 LOG_DIR :: "build/logs"
@@ -131,7 +132,7 @@ stamp_of :: proc(tag: string, files: []string) -> string {
 		data, err := os.read_entire_file(f, context.temp_allocator)
 		if err == nil { strings.write_bytes(&all, data) }
 	}
-	return tooling.sha256_of(all.buf[:], context.temp_allocator)
+	return toolbox.sha256_hex(all.buf[:])
 }
 
 // A fresh folder of its own for one step's work, gone with its `base.remove_tree`.
