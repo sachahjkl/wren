@@ -57,7 +57,7 @@ jobs:
           odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all.exe || exit /b 1
           build\test_all.exe -CI -NoAsan -Only "remote_channel|remote_state"
       # The signed manifest an installed Wren updates itself from (src/update, docs/updates.md): the key is the repository secret
-      # WREN_UPDATE_SIGNING_KEY (its public half is src/update/public_key.odin). -RequireUpdateManifest: a release that no Wren could
+      # WREN_UPDATE_SIGNING_KEY (its public half is PRODUCT.public_key in src/update/product.odin). -RequireUpdateManifest: a release that no Wren could
       # verify (no key, or not the key built in) is not published.
       - name: Package
         shell: cmd

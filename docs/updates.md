@@ -30,6 +30,7 @@ Sign your manifests with `wrentool update keygen` / `manifest` / `sign`. Turning
 
 ## For maintainers
 
-- The private key is `UPDATE_SIGNING_KEY` in `secrets/production.yaml` and the GitHub secret `WREN_UPDATE_SIGNING_KEY`. The public key is `src/update/public_key.odin`.
+- The checks and the placement are the toolkit's update package (`ext/gui_toolkit/update`, its `docs/update.md`); `src/update/product.odin` is what Wren is to it (name, signing context, key).
+- The private key is `UPDATE_SIGNING_KEY` in `secrets/production.yaml` and the GitHub secret `WREN_UPDATE_SIGNING_KEY`. The public key is `PRODUCT.public_key` in `src/update/product.odin`.
 - `wrentool update keygen`, `pubkey`, `manifest`, `sign`, `verify`. The release workflow runs `wrentool package -RequireUpdateManifest` and publishes both files.
 - Preferences for tests: `browser.update.base_url`, `browser.update.public_key`, `browser.update.allow_development_build`.

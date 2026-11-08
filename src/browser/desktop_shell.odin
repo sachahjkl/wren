@@ -23,6 +23,7 @@ import "core:os"
 import "core:strings"
 import "core:sync"
 import "core:time"
+import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
@@ -54,7 +55,11 @@ desktop_identity :: proc() -> desktop.Identity {
 }
 
 // The window's AppUserModelID is the shortcut's: before the first window exists.
-desktop_early_init :: proc() { desktop.set_process_identity(desktop_identity()) }
+desktop_early_init :: proc() {
+	id := desktop_identity()
+	desktop.set_process_identity(id)
+	platform.set_app_id(id.slug)   // Linux: the windows' app_id and WM_CLASS, the name of the .desktop file the desktop finds the icon by
+}
 
 // The icons of the theme on freedesktop.org desktops (Windows uses the executable's own).
 when ODIN_OS == .Windows {

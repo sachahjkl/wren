@@ -23,7 +23,8 @@ import "wb:base"
 import "wb:config"
 import "wb:desktop"
 import "wb:fetch"
-import "wb:update"
+import update "toolkit:update"
+import wren_update "wb:update"
 
 UPDATE_DOWNLOAD_BASE :: "https://github.com/sachahjkl/wren/releases/download/"
 
@@ -50,13 +51,13 @@ update_install_supported :: proc() -> bool {
 }
 
 update_platform :: proc() -> string {
-	when ODIN_OS == .Windows { return update.PLATFORM_WINDOWS_X64 } else { return "" }
+	when ODIN_OS == .Windows { return update.PLATFORM } else { return "" }
 }
 
 // The key manifests are checked with: the one built in, unless about:config names another (for the tests of this feature).
 update_public_key :: proc(app: ^App) -> string {
 	if k := config.string_of(&app.prefs, "browser.update.public_key"); k != "" { return k }
-	return update.UPDATE_PUBLIC_KEY
+	return wren_update.PRODUCT.public_key
 }
 
 // Whether a manifest must be signed (browser.update.require_signature, on unless a channel of the person's own says otherwise).
@@ -121,7 +122,7 @@ update_verify_start :: proc(app: ^App, version: string) {
 	app.upd.tag = strings.clone(version)
 	delete(app.upd.problem); app.upd.problem = ""
 	release := fmt.tprintf("%sv%s/", update_base_url(app), version)
-	name := fmt.tprintf("update-%s.json", update_platform())
+	name := update.manifest_name(update_platform(), "", context.temp_allocator)   // (Wren has no channels)
 	fetch.start(&app.loader, {
 		request = {url = strings.concatenate({release, name}, context.temp_allocator), mode = .Navigate, credentials = .Omit, redirect = .Follow, destination = .Empty, max_body = update.MAX_MANIFEST},
 		on_event = update_manifest_event, user = app, scope = app.process, collect = true,
@@ -173,7 +174,9 @@ update_signature_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event
 @(private = "file")
 update_verify_both :: proc(app: ^App) {
 	if !app.upd.got_manifest || !app.upd.got_sig { return }
-	m, err := update.check_release(app.upd.man_bytes, app.upd.sig_text, update_public_key(app), update_platform(), APP_VERSION, app.upd.tag, require_signature = update_signature_required(app))
+	product := wren_update.PRODUCT
+	product.public_key = update_public_key(app)
+	m, err := update.check_release(product, app.upd.man_bytes, app.upd.sig_text, update_platform(), "", APP_VERSION, app.upd.tag, require_signature = update_signature_required(app))
 	if err != .None { update_fail(app, update.error_text(err)); return }
 	update.manifest_destroy(&app.upd.manifest)
 	app.upd.manifest = m
@@ -234,33 +237,12 @@ update_download_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event)
 	}
 }
 
-// The downloaded bytes become the program at `exe`, or nothing changes. Returns "" on success, else what to say. The steps, in this
-// order, each of which can stop everything with the program untouched:
-//   1. the length and the SHA-256 are the signed ones (update.check_binary)
-//   2. it is a Windows program at all (the "MZ" header: a signed manifest that named a wrong file would be caught by 1, this is the
-//      belt to its braces)
-//   3. it is written beside the program (`exe`.update) and read back: the disk's copy has the signed hash too
-//   4. the running program's file is renamed aside and the new one renamed in (desktop.replace_file), the old one put back on failure
+// The downloaded bytes become the program at `exe`, or nothing changes (update.place: the signed length and SHA-256, a program of
+// this system, written beside it and read back, then put in its place; the old one put back on failure). Returns "" on success,
+// else what to say.
 update_apply :: proc(exe: string, m: update.Manifest, data: []byte) -> string {
-	if err := update.check_binary(m, data); err != .None { return update.error_text(err) }
-	when ODIN_OS == .Windows {
-		if len(data) < 2 || data[0] != 'M' || data[1] != 'Z' { return "the downloaded file is not a Windows program: refused" }
-	}
 	if exe == "" || !os.is_file(exe) { return "cannot tell which file is the running program" }
-	staged := strings.concatenate({exe, ".update"}, context.temp_allocator)
-	_ = os.remove(staged)
-	if err := os.write_entire_file(staged, data); err != nil {
-		_ = os.remove(staged)
-		return fmt.tprintf("cannot write %s: is the folder writable?", staged)
-	}
-	back, read_err := os.read_entire_file(staged, context.temp_allocator)
-	if read_err != nil || update.check_binary(m, back) != .None {
-		_ = os.remove(staged)
-		return "the file written to the disk does not match its signed checksum: nothing was installed"
-	}
-	r := desktop.replace_file(staged, exe)
-	_ = os.remove(staged)
-	if r.error != .None { return fmt.tprintf("cannot replace the program: %s", r.detail) }
+	if e := update.place(exe, data, m); e != .None { return update.error_text(e) }
 	return ""
 }
 
@@ -306,5 +288,5 @@ update_install_ready :: proc(app: ^App) -> bool { return app.upd.phase == .Ready
 // At start, before anything else: the files a previous update left (the old program, a half-written new one). Local, no network.
 update_cleanup :: proc() {
 	exe := desktop.executable_path(context.temp_allocator)
-	if exe != "" { desktop.remove_update_leftovers(exe) }
+	if exe != "" { update.remove_leftovers(exe) }
 }

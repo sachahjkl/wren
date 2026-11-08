@@ -5,24 +5,23 @@ import "core:os"
 import "core:testing"
 import "wb:base"
 import "wb:config"
-import "wb:desktop"
-import "wb:update"
+import update "toolkit:update"
+import wren_update "wb:update"
 
-// A fake "program": 1 MiB starting with the MZ header, as a Windows executable does (on another platform the header is not looked at,
-// and these bytes are as good as any).
+// A fake "program": 1 MiB starting as a program of this system does (the MZ header on Windows, ELF elsewhere).
 @(private = "file")
 fake_program :: proc(seed: byte) -> []byte {
 	data := make([]byte, update.MIN_BINARY, context.temp_allocator)
 	for i in 0 ..< len(data) { data[i] = byte(i * 13) ~ seed }
-	data[0], data[1] = 'M', 'Z'
+	copy(data, ODIN_OS == .Windows ? "MZ" : "\x7fELF")
 	return data
 }
 
 @(private = "file")
 manifest_of :: proc(version: string, data: []byte) -> update.Manifest {
 	return {
-		version = version, platform = update.PLATFORM_WINDOWS_X64,
-		file = update.expected_file_name(version, update.PLATFORM_WINDOWS_X64, context.temp_allocator),
+		version = version, platform = update.PLATFORM,
+		file = update.expected_file_name(wren_update.PRODUCT, version, update.PLATFORM, context.temp_allocator),
 		sha256 = update.sha256_hex(data, context.temp_allocator), size = i64(len(data)),
 	}
 }
@@ -119,8 +118,7 @@ a_wrong_length_changes_nothing :: proc(t: ^testing.T) {
 }
 
 @(test)
-what_is_not_a_windows_program_is_refused :: proc(t: ^testing.T) {
-	when ODIN_OS != .Windows { return }   // (the header is a Windows program's: what another platform installs is another file)
+what_is_not_a_program_of_this_system_is_refused :: proc(t: ^testing.T) {
 	dir, exe, old := installed_copy(t)
 	defer base.remove_tree(dir)
 	// signed and checksummed, but not an executable (a manifest that named the wrong file)
@@ -153,8 +151,8 @@ a_folder_that_cannot_be_written_leaves_the_program :: proc(t: ^testing.T) {
 leftovers_of_an_update_are_removed_at_start :: proc(t: ^testing.T) {
 	dir, exe, old := installed_copy(t)
 	defer base.remove_tree(dir)
-	for suffix in ([]string{".old", ".new", ".update"} ) { _ = os.write_entire_file(fmt.tprintf("%s%s", exe, suffix), []byte{1, 2, 3}) }
-	desktop.remove_update_leftovers(exe)
+	for suffix in ([]string{".old", ".update"} ) { _ = os.write_entire_file(fmt.tprintf("%s%s", exe, suffix), []byte{1, 2, 3}) }
+	update.remove_leftovers(exe)
 	testing.expectf(t, names_in(dir) == "wren.exe ", "only the program is left: %s", names_in(dir))
 	testing.expect(t, same(exe, old), "the program itself is untouched")
 }
@@ -170,7 +168,7 @@ only_a_release_may_install :: proc(t: ^testing.T) {
 	}
 	if !update_install_supported() { testing.expect(t, !ok, "not available on this platform") }
 	// the preference that the tests of the updater use lifts only the development-build rule
-	if IS_DEV_BUILD && update_install_supported() && update.UPDATE_PUBLIC_KEY != "" && APP_VERSION_LABEL == "" {
+	if IS_DEV_BUILD && update_install_supported() && wren_update.PRODUCT.public_key != "" && APP_VERSION_LABEL == "" {
 		testing.expect_value(t, config.set_from_string(&app.prefs, "browser.update.allow_development_build", "true", .User), config.Set_Error.None)
 		ok2, _ := update_install_allowed(app)
 		testing.expect(t, ok2, "the test preference allows it")
@@ -196,7 +194,7 @@ the_download_address_is_one_the_person_may_set :: proc(t: ^testing.T) {
 @(test)
 the_key_comes_from_the_build_unless_the_tests_name_one :: proc(t: ^testing.T) {
 	app := app_with_prefs(t)
-	testing.expect_value(t, update_public_key(app), update.UPDATE_PUBLIC_KEY)
+	testing.expect_value(t, update_public_key(app), wren_update.PRODUCT.public_key)
 	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.update.public_key", "abc", .User), config.Set_Error.None)
 	testing.expect_value(t, update_public_key(app), "abc")
 }

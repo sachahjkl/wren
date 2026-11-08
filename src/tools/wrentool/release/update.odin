@@ -14,13 +14,14 @@ import "core:path/filepath"
 import "core:strings"
 import "core:time"
 import "wb:tools/tooling"
-import "wb:update"
+import update "../../../../ext/gui_toolkit/update"
+import wren_update "wb:update"
 
 UPDATE_KEY_ENV :: "UPDATE_SIGNING_KEY"
 
 UPDATE_USAGE :: `usage: update <command> [options]
   keygen -Private FILE                   make the update key pair (FILE: outside the repository; a path inside a git work tree is refused);
-                                         prints the public key and the line to put in src/update/public_key.odin
+                                         prints the public key, for PRODUCT.public_key in src/update/product.odin
   pubkey [-Private FILE]                 the public key of FILE, or of $UPDATE_SIGNING_KEY
   manifest -Exe f -Version v [-Platform windows-x64] -Out f.json
                                          the manifest of a program: its size and SHA-256
@@ -105,7 +106,7 @@ update_keygen :: proc(args: []string) -> int {
 	if err := os.write_entire_file(path, body); err != nil { return fail("cannot write", path) }
 	fmt.printfln("private key written to %s", path)
 	fmt.printfln("public key: %s", pub)
-	fmt.printfln("\nPut this line in src/update/public_key.odin, then rebuild Wren:\n\nUPDATE_PUBLIC_KEY :: \"%s\"", pub)
+	fmt.printfln("\nPut it in PRODUCT.public_key, src/update/product.odin, then rebuild Wren:\n\npublic_key = \"%s\",", pub)
 	return 0
 }
 
@@ -136,12 +137,8 @@ update_make_manifest :: proc(exe, version, platform: string) -> (m: update.Manif
 	if !update.version_valid(version) { fmt.eprintfln("%q is not an X.Y.Z version", version); return {}, nil, false }
 	data, err := os.read_entire_file(exe, context.temp_allocator)
 	if err != nil { fmt.eprintfln("cannot read %s", exe); return {}, nil, false }
-	m = update.Manifest{
-		version = version, platform = platform,
-		file = update.expected_file_name(version, platform, context.temp_allocator),
-		sha256 = update.sha256_hex(data, context.temp_allocator), size = i64(len(data)), published = update_today(),
-	}
-	return m, update.manifest_bytes(m, context.temp_allocator), true
+	m = update.manifest_of(wren_update.PRODUCT, data, version, platform, "", update_today(), context.temp_allocator)   // (Wren has no channels)
+	return m, update.manifest_bytes(wren_update.PRODUCT, m, context.temp_allocator), true
 }
 
 @(private = "file")
@@ -153,7 +150,7 @@ update_manifest :: proc(args: []string) -> int {
 	m, bytes, good := update_make_manifest(exe, version, tooling.flag(f, "-Platform", update.PLATFORM_WINDOWS_X64))
 	if !good { return 1 }
 	// what a client will accept: size and name checked as it will check them
-	if _, err := update.verify(bytes, "x", "x", m.platform, context.temp_allocator); err == .Too_Long { return fail("the manifest is too large") }
+	if _, err := update.verify(wren_update.PRODUCT, bytes, "x", m.platform, "", context.temp_allocator); err == .Too_Long { return fail("the manifest is too large") }
 	if os.write_entire_file(out, bytes) != nil { return fail("cannot write", out) }
 	fmt.printfln("%s: %s, %d bytes, sha256 %s", out, m.file, m.size, m.sha256)
 	return 0
@@ -169,7 +166,7 @@ update_sign :: proc(args: []string) -> int {
 	if !got { return 1 }
 	manifest, err := os.read_entire_file(path, context.temp_allocator)
 	if err != nil { return fail("cannot read", path) }
-	sig, signed := update.sign(seed[:], manifest, context.temp_allocator)
+	sig, signed := update.sign(wren_update.PRODUCT, seed[:], manifest, context.temp_allocator)
 	if !signed { return fail("cannot sign with this key") }
 	out := fmt.tprintf("%s.sig", path)
 	if os.write_entire_file(out, fmt.tprintf("%s\n", sig)) != nil { return fail("cannot write", out) }
@@ -186,8 +183,9 @@ update_verify :: proc(args: []string) -> int {
 	manifest, e1 := os.read_entire_file(mpath, context.temp_allocator)
 	sig, e2 := os.read_entire_file(spath, context.temp_allocator)
 	if e1 != nil || e2 != nil { return fail("cannot read the manifest or its signature") }
-	key := tooling.flag(f, "-Public", update.UPDATE_PUBLIC_KEY)
-	m, err := update.verify(manifest, string(sig), key, tooling.flag(f, "-Platform", update.PLATFORM_WINDOWS_X64), context.temp_allocator)
+	product := wren_update.PRODUCT
+	product.public_key = tooling.flag(f, "-Public", product.public_key)
+	m, err := update.verify(product, manifest, string(sig), tooling.flag(f, "-Platform", update.PLATFORM_WINDOWS_X64), "", context.temp_allocator)
 	if err != .None { fmt.eprintfln("INVALID: %s", update.error_text(err)); return 1 }
 	fmt.printfln("VALID: Wren %s for %s, %s, %d bytes, sha256 %s, published %s", m.version, m.platform, m.file, m.size, m.sha256, m.published)
 	if cur := tooling.flag(f, "-Current", ""); cur != "" {
@@ -204,8 +202,8 @@ update_verify :: proc(args: []string) -> int {
 // not the release (a label, a development build: its file is not named as a release's). With `require` (the release workflow), a missing
 // key, or one that is not the key built into Wren, is an error: a release no Wren can verify must never be published.
 package_update_manifest :: proc(exe, version, platform, dist: string, require: bool) -> bool {
-	if filepath.base(exe) != update.expected_file_name(version, platform, context.temp_allocator) {
-		if require { fmt.eprintfln("update: %s is not named as a release's file (%s): no manifest", filepath.base(exe), update.expected_file_name(version, platform, context.temp_allocator)); return false }
+	if filepath.base(exe) != update.expected_file_name(wren_update.PRODUCT, version, platform, context.temp_allocator) {
+		if require { fmt.eprintfln("update: %s is not named as a release's file (%s): no manifest", filepath.base(exe), update.expected_file_name(wren_update.PRODUCT, version, platform, context.temp_allocator)); return false }
 		fmt.println("update: not a release build: no update manifest")
 		return true
 	}
@@ -219,18 +217,21 @@ package_update_manifest :: proc(exe, version, platform, dist: string, require: b
 	if !good { fmt.eprintfln("update: %s is not an update private key", UPDATE_KEY_ENV); return false }
 	m, bytes, made := update_make_manifest(exe, version, platform)
 	if !made { return false }
-	sig, signed := update.sign(seed[:], bytes, context.temp_allocator)
+	sig, signed := update.sign(wren_update.PRODUCT, seed[:], bytes, context.temp_allocator)
 	if !signed { fmt.eprintln("update: cannot sign with this key"); return false }
 	// the key built into Wren must verify it: otherwise no Wren accepts this release
-	built_in := update.UPDATE_PUBLIC_KEY
+	built_in := wren_update.PRODUCT.public_key
 	pub, _ := update.public_key_of(seed[:], context.temp_allocator)
 	if built_in == "" {
-		if require { fmt.eprintln("update: src/update/public_key.odin has no key: no Wren could verify this release"); return false }
+		if require { fmt.eprintln("update: src/update/product.odin has no key: no Wren could verify this release"); return false }
 		built_in = pub
 	}
 	if built_in != pub { fmt.eprintfln("update: the key that signs (%s) is not the one built into Wren (%s): no Wren would accept this release", pub, built_in); return false }
-	if _, err := update.verify(bytes, sig, built_in, platform, context.temp_allocator); err != .None { fmt.eprintfln("update: the manifest made here does not verify: %s", update.error_text(err)); return false }
-	json_path, sig_path := fmt.tprintf("%s/update-%s.json", dist, platform), fmt.tprintf("%s/update-%s.json.sig", dist, platform)
+	product := wren_update.PRODUCT
+	product.public_key = built_in
+	if _, err := update.verify(product, bytes, sig, platform, "", context.temp_allocator); err != .None { fmt.eprintfln("update: the manifest made here does not verify: %s", update.error_text(err)); return false }
+	json_path := fmt.tprintf("%s/%s", dist, update.manifest_name(platform, "", context.temp_allocator))
+	sig_path := fmt.tprintf("%s.sig", json_path)
 	if os.write_entire_file(json_path, bytes) != nil || os.write_entire_file(sig_path, fmt.tprintf("%s\n", sig)) != nil { fmt.eprintln("update: cannot write the manifest"); return false }
 	fmt.printfln("update manifest  %s (Wren %s, %s, sha256 %s) signed -> %s", json_path, m.version, m.file, m.sha256, sig_path)
 	return true

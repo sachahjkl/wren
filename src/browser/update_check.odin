@@ -22,7 +22,7 @@ import "wb:base"
 import "wb:config"
 import "wb:desktop"
 import "wb:fetch"
-import "wb:update"
+import update "toolkit:update"
 
 UPDATE_FILE :: "update.txt"
 UPDATE_EVERY_SECONDS :: 24 * 60 * 60

@@ -15,8 +15,8 @@ linux_table :: proc(cfg: ^Config) -> []Step {
 	t: [dynamic]Step
 	// (js/image is out until the JS engine's wasm can be built on Linux. idb is checked but its tests are out: two of them, a failed request and a failed write, fail on the GitHub runner and pass in WSL; not understood yet)
 	CHECK := []string{"base", "host", "config", "css", "http", "i18n", "xml", "adblock", "canvas2d", "license", "dom", "url", "html", "cookies", "csp", "forms", "style", "layout", "webfont", "wasm", "js", "idb", "httpcache", "images",
-		"webauthn", "desktop", "remote", "tools/testenv", "net", "fetch", "media", "page", "blocker", "remote/api", "remote/client", "tools/crashtrace", "tools/wpt/reftest", "tools/wpt", "tools/test_all", "tools/endurance", "browser", "e2e", "tools/e2e"}
-	UNITS := []string{"base", "host", "css", "http", "xml", "adblock", "canvas2d", "dom", "url", "html", "cookies", "csp", "forms", "style", "layout", "webfont", "js", "httpcache", "webauthn", "desktop", "net", "fetch", "media", "blocker", "page", "tools/crashtrace", "tools/wpt/reftest"}
+		"webauthn", "desktop", "update", "remote", "tools/testenv", "net", "fetch", "media", "page", "blocker", "remote/api", "remote/client", "tools/crashtrace", "tools/wpt/reftest", "tools/wpt", "tools/test_all", "tools/endurance", "browser", "e2e", "tools/e2e"}
+	UNITS := []string{"base", "host", "css", "http", "xml", "adblock", "canvas2d", "dom", "url", "html", "cookies", "csp", "forms", "style", "layout", "webfont", "js", "httpcache", "webauthn", "desktop", "update", "net", "fetch", "media", "blocker", "page", "tools/crashtrace", "tools/wpt/reftest"}
 	ONE_AT_A_TIME := []string{"wasm", "remote", "remote/api", "remote/client"}   // (one channel per process, as on Windows)
 	POISONED := []string{"base", "style", "layout"}
 	// browser is the first package that imports toolkit:render: its check needs libwgpu_native.a beside Odin's wgpu vendor package, which a bare WSL checkout may not have.
