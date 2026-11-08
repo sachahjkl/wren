@@ -26,7 +26,8 @@ runs:
       run: |
         $zip = Join-Path $env:RUNNER_TEMP "odin-$env:ODIN_TAG.zip"
         $ProgressPreference = 'SilentlyContinue'
-        Invoke-WebRequest "https://github.com/odin-lang/Odin/releases/download/$env:ODIN_TAG/odin-windows-amd64-$env:ODIN_TAG.zip" -OutFile $zip
+        # (tried again on an error of the network or of GitHub, a 504 at times: the digest below says whether what came is the archive)
+        Invoke-WebRequest "https://github.com/odin-lang/Odin/releases/download/$env:ODIN_TAG/odin-windows-amd64-$env:ODIN_TAG.zip" -OutFile $zip -MaximumRetryCount 5 -RetryIntervalSec 10
         $got = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
         if ($got -ne $env:ODIN_SHA256) { throw "Odin archive SHA-256 mismatch: $got" }
         $dir = Join-Path $env:RUNNER_TEMP 'odin'
