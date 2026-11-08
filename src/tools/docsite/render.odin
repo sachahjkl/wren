@@ -106,9 +106,7 @@ write_header :: proc(b: ^strings.Builder, current: string) {
 		base.write_escaped(b, it[1])
 		ws(b, "</a></li>\n")
 	}
-	ws(b, "<li><a class=\"btn primary nav-dl\" href=\"")
-	ws(b, REPO_URL)
-	ws(b, "/releases/latest\">Download</a></li>\n")
+	ws(b, "<li><a class=\"btn primary nav-dl\" href=\"/#download\">Download</a></li>\n")   // (the home page's button: the file for the visitor's system)
 	ws(b, "</ul>\n</div>\n</header>\n")
 }
 

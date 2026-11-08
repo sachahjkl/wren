@@ -224,11 +224,41 @@ write_inline :: proc(b: ^strings.Builder, s: string) {
 	if bold { strings.write_string(b, "</strong>") }
 }
 
-// A home page names the latest version between <!-- latest --> and <!-- /latest -->.
+// A home page names the latest version between <!-- latest --> and <!-- /latest -->, and its download links are that version's files.
 stamp_latest_version :: proc(path, version: string) {
 	data, err := os.read_entire_file(path, context.allocator)
 	if err != nil { return }
-	emit(path, stamp(string(data), "<!-- latest -->", "<!-- /latest -->", version))
+	emit(path, stamp_download_links(stamp(string(data), "<!-- latest -->", "<!-- /latest -->", version), version))
+}
+
+// The address of a release's file begins so; what follows is "v<version>/wren-<version>-<system>" (.github/workflows/release.yml).
+DOWNLOAD_PREFIX :: REPO_URL + "/releases/download/v"
+DOWNLOAD_FILE_PREFIX :: "/wren-"
+
+// `page` with each link to a release's file (DOWNLOAD_PREFIX) made a link to that file of `version`: the download starts at once,
+// no releases page in between, and a release changes no hand-written page.
+stamp_download_links :: proc(page, version: string) -> string {
+	b := strings.builder_make(context.allocator)
+	rest := page
+	for {
+		at := strings.index(rest, DOWNLOAD_PREFIX)
+		if at < 0 { break }
+		at += len(DOWNLOAD_PREFIX)
+		strings.write_string(&b, rest[:at])
+		rest = rest[at:]
+		slash := strings.index_byte(rest, '/')
+		if slash < 0 { break }
+		old := rest[:slash]
+		file := strings.concatenate({DOWNLOAD_FILE_PREFIX, old, "-"}, context.temp_allocator)
+		if !strings.has_prefix(rest[slash:], file) { continue }   // not a file of ours: left as it is
+		strings.write_string(&b, version)
+		strings.write_string(&b, DOWNLOAD_FILE_PREFIX)
+		strings.write_string(&b, version)
+		strings.write_byte(&b, '-')
+		rest = rest[slash + len(file):]
+	}
+	strings.write_string(&b, rest)
+	return strings.to_string(b)
 }
 
 // `page` with what is between the markers `begin` and `end` replaced by `content` (unchanged without them).
