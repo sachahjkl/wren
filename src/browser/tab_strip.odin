@@ -379,11 +379,11 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		// (classic: the next tab covers this one's right foot: the content stops before its slope)
 		ui.spacer(ui.px(classic ? tab_dims(paint.m).ext + max(cg.overlap - tab_dims(paint.m).run * 0.5, tab_dims(paint.m).run * 0.5) + math.round(em * 0.2) : math.round(em * 0.35)))
 	}
-	if closed { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
+	if closed { shell_after_build(app, {kind = .Close_Tab, tab = t.id, flag = true}); return }
 	sig := ui.signal(b)
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
-	if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
+	if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id, flag = true}); return }
 	if !(classic && own.strip.dragged != 0) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
 	// drag to reorder (straight down starts a drag too: it may leave the bar)
 	if sig.dragging && app.favs.cfg.drag_reorder && (n > 1 || app.favs.cfg.drag_detach) {

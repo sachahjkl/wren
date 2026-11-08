@@ -168,7 +168,7 @@ Shell_Action :: struct {
 	text:    string,   // owned: command name, address
 	delta:   int,      // history
 	entry:   u64,      // history entry id
-	flag:    bool,     // reload: bypass the cache; navigate: user activation
+	flag:    bool,     // reload: bypass the cache; navigate: user activation; close tab: the user's (tab_close_by_user)
 	record, restore: bool,
 	cache:   fetch.Cache_Mode,
 	origin:  Nav_Origin,       // navigate: who chose the address (nav_trust.odin), kept across the wait
@@ -808,7 +808,7 @@ shell_run_action :: proc(app: ^App, a: Shell_Action) {
 	case .Entry:
 		if e := page.session_find(&t.session, a.entry); e != nil { go_entry(app, t, e) }
 	case .Close_Tab:
-		tab_close_tab(app, t)
+		if a.flag { tab_close_by_user(app, t) } else { tab_close_tab(app, t) }
 	case .Tear_Off:
 		tab_drag_begin(app, t, a.at)
 	case .Prefs:

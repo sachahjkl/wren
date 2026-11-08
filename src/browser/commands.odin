@@ -195,7 +195,10 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(closed_items(app)) > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { reopen_closed_tab(app) }})
 	add(r, {name = "tab.close", title = "Close tab", category = "Tabs", glyph = GLYPH_CLOSE, keys = keys(&r.arena, {key = .W, mods = ctrl}, {key = .F4, mods = ctrl}),
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_close(app, active_window(app).current) }})
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) {
+			w := active_window(app)
+			if w.current >= 0 && w.current < len(w.tabs) { tab_close_by_user(app, w.tabs[w.current]) }
+		}})
 	add(r, {name = "tab.close_others", title = "Close other tabs", category = "Tabs",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(active_window(app).tabs) > 1 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { close_other_tabs(app, active_window(app).current) }})

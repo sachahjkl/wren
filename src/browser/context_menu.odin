@@ -334,7 +334,7 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 	tab_menu_group_items(app, t)   // tab_groups.odin: pin, groups
 	if !ui.ctx_menu_is_open(ui.key_from_string(0, CTX_MENU_ID)) { return }
 	ui.menu_separator()
-	if ui.menu_item("Close tab", "Ctrl+W", icon = GLYPH_CLOSE).clicked { tab_close(app, r.tab); return }
+	if ui.menu_item("Close tab", "Ctrl+W", icon = GLYPH_CLOSE).clicked { tab_close_by_user(app, t); return }
 	if ui.menu_item("Close other tabs", enabled = len(wnd.tabs) > 1).clicked { close_other_tabs(app, r.tab); return }
 	if ui.menu_item(closed_reopen_title(app), "Ctrl+Shift+T", enabled = len(closed_items(app)) > 0).clicked { reopen_closed_tab(app) }
 	ui.menu_separator()

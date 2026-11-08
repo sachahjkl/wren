@@ -367,6 +367,18 @@ tab_close_in :: proc(app: ^App, w: ^Browser_Window, index: int) {
 	recovery_touch(app)
 }
 
+// The user closes a tab (Ctrl+W, its close button, a middle click, the tab's menu). The last tab of the last window
+// closes the window, and so Wren, as the window's close button does (browser.tabs.close_window_with_last_tab); a close
+// by the program (a reset, the crash recovery's) takes tab_close_tab, which leaves a new tab instead.
+tab_close_by_user :: proc(app: ^App, t: ^Tab) {
+	w, _ := window_of_tab(app, t)
+	if w != nil && app.favs.cfg.close_with_last_tab && len(app.windows) == 1 && len(window_tabs(app, w)) == 1 {
+		platform.request_close(w.win)
+		return
+	}
+	tab_close_tab(app, t)
+}
+
 // Closes a tab of any window.
 tab_close_tab :: proc(app: ^App, t: ^Tab) {
 	if w, i := window_of_tab(app, t); w != nil { tab_close_in(app, w, i) }

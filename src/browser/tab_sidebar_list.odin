@@ -341,7 +341,7 @@ sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Clas
 			sig := ui.signal(b)
 			if (sig.pressed || sig.clicked) && !on { tab_select(app, k) }
 			if sig.right_clicked { tab_context_menu(app, k, ui.mouse_pos()) }
-			if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
+			if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id, flag = true}); return }
 			if own.strip.dragged == 0 { sidebar_tip(sig, t) }
 			if sig.pressed { own.sidebar.pin_grab = ui.mouse_pos() - b.rect.min + {gap, gap} }
 			if sig.dragging && app.favs.cfg.drag_reorder {
@@ -475,11 +475,11 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 			ui.spacer(ui.px(math.round(em * 0.35)))
 		}
 	}
-	if closed { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
+	if closed { shell_after_build(app, {kind = .Close_Tab, tab = t.id, flag = true}); return }
 	sig := ui.signal(b)
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
-	if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id}); return }
+	if sig.middle_clicked && app.favs.cfg.middle_close { shell_after_build(app, {kind = .Close_Tab, tab = t.id, flag = true}); return }
 	if own.strip.dragged == 0 { sidebar_tip(sig, t) }
 
 	// drag to reorder, along Y (straight out sideways starts a drag too: it may leave the bar)
