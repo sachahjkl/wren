@@ -56,7 +56,8 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq clang lld nasm pkg-config libasound2-dev libopus-dev libfontconfig1-dev \
             xvfb mesa-vulkan-drivers libxkbcommon-x11-0 libxkbcommon0 libwayland-client0
-          curl -fsSL -o "$RUNNER_TEMP/odin.tar.gz" "https://github.com/odin-lang/Odin/releases/download/$ODIN_TAG/odin-linux-amd64-$ODIN_TAG.tar.gz"
+          # (tried again on an error of the network or of GitHub, a 504 at times: the digest below says whether what came is the archive)
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o "$RUNNER_TEMP/odin.tar.gz" "https://github.com/odin-lang/Odin/releases/download/$ODIN_TAG/odin-linux-amd64-$ODIN_TAG.tar.gz"
           echo "$ODIN_SHA256  $RUNNER_TEMP/odin.tar.gz" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/odin" && tar -xzf "$RUNNER_TEMP/odin.tar.gz" -C "$RUNNER_TEMP/odin"
           dirname "$(find "$RUNNER_TEMP/odin" -maxdepth 2 -name odin -type f | head -1)" >> "$GITHUB_PATH"
