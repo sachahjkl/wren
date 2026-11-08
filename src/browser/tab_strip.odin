@@ -185,6 +185,9 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 				add = classic_new_tab_button(app, &cg, cc, h, plus_w, area_w - plus_pull)
 				ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(area_w), height = ui.pct(1), axis = .X, edge_fade = fade})
 				clip := ui.build_box({.Clip}, "###tabs_clip")
+				view_fade := ui.frame_new([4]f32)
+				view_fade^ = fade
+				clip.custom, clip.custom_user = tabs_view_draw, view_fade
 				own.strip.area_key = clip.key   // (the tabs' keys derive from the clip)
 				ui.push_parent(clip)
 			}

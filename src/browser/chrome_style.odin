@@ -322,12 +322,22 @@ classic_colors_frame :: proc(app: ^App) -> ^Classic_Colors {
 // The tab bar's gradient; written once per frame it draws (the bar is built before its tabs).
 strip_bar_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	c := (^Classic_Colors)(user)
-	the_app.cur_gap.valid = false
+	the_app.cur_gap = {}
 	vgradient(dc, b.rect, b.rect.min.y, b.rect.max.y, c.strip_top, c.strip_bot)
 }
 
 // Where the current tab meets the toolbar (set by its drawing, read by the toolbar's: they have no line there; App.cur_gap).
-Cur_Gap :: struct { valid: bool, x0, x1: f32 }
+// `view_x0`, `view_x1`: the part of the bar where tabs show in full (not scrolled out, not faded: tabs_view_draw); the
+// meeting is cut to it, else a current tab scrolled out of view left a gap in the toolbar's line beside the strip.
+Cur_Gap :: struct { valid: bool, x0, x1: f32, has_view: bool, view_x0, view_x1: f32 }
+
+// The box that clips the tabs, drawn before them: where they show in full (Cur_Gap). `user`: its edge_fade widths.
+tabs_view_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	fade := (^[4]f32)(user)
+	the_app.cur_gap.has_view = true
+	the_app.cur_gap.view_x0 = b.rect.min.x + fade[0]
+	the_app.cur_gap.view_x1 = b.rect.max.x - fade[2]
+}
 
 // `r` filled with a vertical gradient from `top` at y0 to `bot` at y1 (absolute), dithered against banding.
 vgradient :: proc(dc: ^draw.Context, r: draw.Rect, y0, y1: f32, top, bot: draw.Color, tint := draw.WHITE, radii := [4]f32{}) {
@@ -396,7 +406,10 @@ classic_tab_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		return
 	}
 	if t.selected > 0.5 {
-		the_app.cur_gap = {true, r.min.x + d.ext - d.tangent, r.max.x - d.ext + d.tangent}
+		g := &the_app.cur_gap
+		g.x0, g.x1 = r.min.x + d.ext - d.tangent, r.max.x - d.ext + d.tangent
+		if g.has_view { g.x0, g.x1 = max(g.x0, g.view_x0), min(g.x1, g.view_x1) }
+		g.valid = g.x1 > g.x0
 	}
 }
 
