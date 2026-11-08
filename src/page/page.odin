@@ -78,6 +78,7 @@ Page :: struct {
 	route_busy:     int,       // import calls of other realms acting on this document now
 	origin_owner:   u64,       // the page whose origin this document has (an about:blank or srcdoc frame's: its parent's; 0: its own): document.domain sets it for all of them
 	dispatching:    int,       // events being dispatched at this document now (a listener of another realm may remove its frame)
+	trusted_runs:   int,       // the browser's own scripts running now (js_run trusted): their eval passes the page's CSP
 	checkpoint_owed: bool,     // a microtask checkpoint waits for those calls to end (frames_pay_checkpoint)
 	close_pending:  bool,      // closed while in use: closes once nothing runs in it (frames_access.odin)
 	frames_pending_parent: ^Page,   // the document it was a frame of, while it waits

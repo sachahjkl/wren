@@ -266,9 +266,13 @@ js_hooks :: proc(p: ^Page, spec: []byte) -> bool {
 	return js.hook_install(r.inst, spec, js_call, p) >= 0
 }
 
-js_run :: proc(p: ^Page, source: []byte, url: string, line: i32 = 1, module := false, print_result := false, muted := false) -> js.Eval_Status {
+// `trusted`: the browser's own script (wren ctl eval, the developer tools' console), whose eval the page's Content Security
+// Policy does not refuse, as other browsers' developer tools run whatever the page's policy says.
+js_run :: proc(p: ^Page, source: []byte, url: string, line: i32 = 1, module := false, print_result := false, muted := false, trusted := false) -> js.Eval_Status {
 	r := js_realm(p)
 	if r == nil { return .Trapped }
+	if trusted { p.trusted_runs += 1 }
+	defer if trusted { p.trusted_runs -= 1 }
 	at := base.span_now()
 	defer base.span_add(.Script, at, url, copy_label = true)
 	scope := host.work_enter(p.loop, script_work(p, url))
@@ -366,9 +370,9 @@ js_console_eval :: proc(p: ^Page, source: string) -> bool {
 	if js_realm(p) == nil { log(p, .Warn, "JavaScript is off for this page"); return false }
 	if p.worker == nil {
 		call := strings.concatenate({"console[Symbol.for(\"wren.devtools\")].eval(", base.json_quote(source), ")"}, context.temp_allocator)
-		return js_run(p, transmute([]byte)call, "console", 1) == .Ok
+		return js_run(p, transmute([]byte)call, "console", 1, trusted = true) == .Ok
 	}
-	st := js_run(p, transmute([]byte)source, "console", 1, print_result = true)
+	st := js_run(p, transmute([]byte)source, "console", 1, print_result = true, trusted = true)
 	return st == .Ok
 }
 _ :: strings

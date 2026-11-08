@@ -1412,6 +1412,7 @@ Script_allowInline :: proc(c: ^Call, element: u64, kind: Api_InlineScriptKind, s
 
 Script_allowEval :: proc(c: ^Call, source: string) -> bool {
 	p := c.page
+	if p.trusted_runs > 0 { return true }   // the browser's own script (wren ctl eval, the console): not the page's (js_run trusted)
 	if len(p.env.policies.policies) == 0 { return true }
 	return csp_report(p, csp.check_eval(&p.env.policies))
 }

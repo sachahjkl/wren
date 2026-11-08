@@ -516,7 +516,7 @@ eval_start :: proc(t: ^Tab, expression: string, await: bool) -> (id: int, ran: b
 	src := eval_source(id, expression, await)
 	r.start_id, r.start_tab = id, t.id
 	defer r.start_id, r.start_tab = 0, 0
-	if st := page.js_run(t.page, transmute([]byte)src, "wren-remote", 1); st == .Trapped { return id, false }
+	if st := page.js_run(t.page, transmute([]byte)src, "wren-remote", 1, trusted = true); st == .Trapped { return id, false }
 	page.js_checkpoint(t.page)
 	return id, true
 }
@@ -530,7 +530,7 @@ eval_sync :: proc(t: ^Tab, expression: string) -> (value: string, type: string, 
 	r.sync_id, r.sync_tab, r.sync_done = id, t.id, false
 	delete(r.sync_text); r.sync_text = ""
 	src := eval_source(id, expression, false)
-	st := page.js_run(t.page, transmute([]byte)src, "wren-remote", 1)
+	st := page.js_run(t.page, transmute([]byte)src, "wren-remote", 1, trusted = true)
 	r.sync_id = 0
 	if !r.sync_done {
 		return "", "", st == .Trapped ? "JavaScript is off for this page or its engine stopped" : "the script did not answer"
