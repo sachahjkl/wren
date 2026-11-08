@@ -207,6 +207,22 @@ white_space_modes :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(ifc_lines(f, "br")), 4)
 }
 
+// A box sized to its content with no room (a float in a box of no width, video.js's tooltip "0:00" in an absolute box):
+// overflow-wrap: break-word breaks a word only as a last resort of a line, so its min-content width is the whole word;
+// overflow-wrap: anywhere breaks it anywhere (CSS Text 3 §5.5).
+@(test)
+min_content_and_overflow_wrap :: proc(t: ^testing.T) {
+	f := fixture_load("<body style=\"margin:0;font-size:10px;line-height:10px\"><div style=\"width:0\">" +
+		"<div id=bw style=\"float:left;overflow-wrap:break-word\">aaaa</div>" +
+		"<div id=aw style=\"float:left;clear:left;overflow-wrap:anywhere\">aaaa</div>" +
+		"<div id=ba style=\"float:left;clear:left;word-break:break-all\">aaaa</div>" +
+		"</div></body>")
+	defer fixture_unload(f)
+	testing.expect_value(t, len(ifc_lines(f, "bw")), 1)
+	testing.expect_value(t, len(ifc_lines(f, "aw")), 4)
+	testing.expect_value(t, len(ifc_lines(f, "ba")), 4)
+}
+
 @(test)
 positioning :: proc(t: ^testing.T) {
 	f := fixture_load(`<body style="margin:0">

@@ -1246,6 +1246,14 @@ layout_inline_abs :: proc(c: ^Ctx, bi: i32) {
 ////////////////////////////////
 // Intrinsic widths of an inline formatting context
 
+// Whether a word's breaks anywhere count in the min-content width (CSS Text 3 §5.5): they do for overflow-wrap: anywhere
+// and word-break: break-all / break-word, not for overflow-wrap: break-word, whose break is a last resort of a line that
+// overflows. A tooltip in an absolutely positioned box with no room (video.js: "0:00") was one character wide otherwise.
+@(private)
+min_content_breaks_anywhere :: proc(cs: ^style.Computed) -> bool {
+	return cs.overflow_wrap == .Anywhere || cs.word_break == .Break_All || cs.word_break == .Break_Word
+}
+
 @(private)
 ifc_intrinsic :: proc(c: ^Ctx, bi: i32) -> [2]f32 {
 	b := &c.l.boxes[bi]
@@ -1262,7 +1270,7 @@ ifc_intrinsic :: proc(c: ^Ctx, bi: i32) -> [2]f32 {
 			unit += s.w
 			line += s.w
 			if s.kind == .Text { tail = 0 }
-			if s.kind == .Text && s.breakable {
+			if s.kind == .Text && s.breakable && min_content_breaks_anywhere(c.l.inline_items[s.item].cs) {
 				// may break anywhere: its widest character is what cannot be broken
 				itm := &c.l.inline_items[s.item]
 				widest: f32
