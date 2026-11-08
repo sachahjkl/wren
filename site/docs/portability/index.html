@@ -430,9 +430,12 @@ and GitHub's repository page load and draw. What it took:</p>
 <li>The system's <code>libopus</code>, <code>libasound</code> and <code>libfontconfig</code> to link; <code>libwayland-client</code>, <code>libxkbcommon</code> (or <code>libxcb</code>) and
 a Vulkan or GL driver at run time. On NixOS: <code>nix shell</code> with clang, lld, nasm, pkg-config, rustup (1.99.1), and
 <code>LIBRARY_PATH</code> / <code>LD_LIBRARY_PATH</code> for those libraries.</li>
-<li><code>build/js/wren_js.wasm</code> is the JS engine's image: a Windows build makes it (<code>src\tools\buildjs</code>) and the file is
-portable, so a Linux checkout copies it. Its machine code (<code>build/js/wren_js.code</code>, which the program ships) is not:
-<code>./build.sh wren</code> makes it from that image (<code>wrentool build jscode</code>).</li>
+<li><code>build/js/wren_js.wasm</code> is the JS engine's image: <code>./build.sh deps</code> makes it on Linux too (<code>src/tools/buildjs</code>; the linker
+is the system's <code>wasm-ld</code> from lld, which Odin's Linux release does not ship, and its pre-initialization needs the 64 MiB
+stack: <code>ulimit -s 65536</code>). The file is portable, so a copy from Windows does as well. Its machine code
+(<code>build/js/wren_js.code</code>, which the program ships) is not: <code>./build.sh wren</code> makes it from that image (<code>wrentool build jscode</code>),
+and refuses the empty stub <code>test_all</code> leaves for <code>odin check</code>: a browser linked with it ran no script, and nothing said so
+(the CI's Linux sweep ran so until now).</li>
 </ul>
 <p>A bug Linux found: <code>Performance_timeline</code> freed the navigation entry's strings (a <code>defer</code> in the <code>if</code> block) before
 marshalling them, so <code>performance.getEntriesByType("navigation")</code> read freed memory. The Windows heap kept the bytes,
@@ -543,6 +546,41 @@ runtime is process-wide.</li>
 </ul>
 <h2 id="slice-8-2026-10-31-a-linux-package"><a class="anchor" href="#slice-8-2026-10-31-a-linux-package" aria-hidden="true">#</a>Slice 8 (2026-10-31): a Linux package</h2>
 <p><code>./build.sh release</code> then <code>wrentool package</code> make <code>build/dist/wren-&lt;version&gt;-linux-x64.tar.gz</code>; the workflow <code>linux-package.yml</code> builds it on ubuntu-24.04 (so glibc 2.39 or later), unpacks it and runs <code>wrentool smoke</code> under xvfb before the release adds it. The engine image comes from a Windows job. Two things it took: the sealed Rust archives need <code>ld -r --force-group-allocation</code> (otherwise the linker discards their <code>DW.ref.rust_eh_personality</code>); the main thread raises its own stack limit (<code>host.main_stack_ensure</code>).</p>
+<h2 id="slice-9-2026-11-07-the-browser-with-its-scripts-real-pages-and-the-end-to-end-scenarios-on-linux"><a class="anchor" href="#slice-9-2026-11-07-the-browser-with-its-scripts-real-pages-and-the-end-to-end-scenarios-on-linux" aria-hidden="true">#</a>Slice 9 (2026-11-07): the browser with its scripts, real pages and the end-to-end scenarios on Linux</h2>
+<p>A Linux machine (Xvfb, the software Vulkan adapter, an HTTPS proxy of the environment) with nothing but <code>./build.sh deps</code>, <code>check</code>, <code>wren</code>.</p>
+<p><strong>What ran before without saying so.</strong> <code>build/js/wren_js.wasm</code> was the empty stub <code>test_all</code> leaves for <code>odin check</code>, and <code>./build.sh wren</code>
+linked it: a browser that ran no script (the CI's Linux sweep too). <code>./build.sh deps</code> builds the engine now and <code>wren</code> refuses the stub.</p>
+<p><strong>What runs.</strong></p>
+<ul>
+<li><code>./build.sh check</code>: 78 steps pass (with the engine, the tests that need it run).</li>
+<li><code>wrentool sweep</code> on the 74 pages of <code>tools/site_compare_list*.txt</code> (scroll, developer tools, a link, back, reload, a tab, close),
+scripts on: <strong>74 pass, no crash, no hang</strong>.</li>
+<li>The portable end-to-end scenarios of <code>src/tools/e2e</code> (those without <code>#+build windows</code>), built as <code>test_all</code> builds them for Windows
+(<code>-build-mode:test</code>, every allocation tracked, the engine's code shipped), under Xvfb: 231 tests. Before this slice 55 failed, most behind
+one that stopped the run; after it, all pass but the ones below.</li>
+</ul>
+<p><strong>What they found, fixed.</strong></p>
+<ul>
+<li>A second start of a profile took the Wren running on it for a crash (reopened its tabs, took over its files): the start time of a
+process was read from the time now less <code>/proc/uptime</code>, different at each reading. It is <code>/proc/stat</code>'s <code>btime</code> now.</li>
+<li>H.264 never played: the vtable of openh264's decoder lacked a slot (each call went to the method beside it) and <code>SBufferInfo</code> a field
+(the decoder wrote past it); the layout is asserted at compile time. <code>wrentool fetch openh264</code> is pinned and <code>deps</code> fetches it.</li>
+<li>A proxy of the environment took the names that <code>network.hosts</code> routes to a local server out to the network: the replay bench could not run
+behind one. What the settings route goes direct.</li>
+<li><code>remote/api</code> started a process with neither a folder nor outputs of its own: the check build's scenarios could not run. They pass: a
+scripted session and a driven one leave nothing allocated.</li>
+<li>A custom cursor said the image's own size, not the one shown at the window's scale: a toolkit change (<code>custom_cursor_info</code>), not in its
+release yet.</li>
+</ul>
+<p><strong>Not done on Linux.</strong></p>
+<ul>
+<li>The picture of a drag for the system (<code>dnd_end_to_end</code>: the drag itself, its drop and its effect pass): X11's drag protocol has no
+picture; it takes a window of its own that follows the pointer (the toolkit).</li>
+<li>The stacks of a process that hangs (<code>shutdown_report</code>, <code>wren ctl stacks</code>): <code>process_stacks</code> is Windows only.</li>
+<li>The <code>web_*</code> scenarios (<code>#+build windows</code>): their harness is Windows's.</li>
+<li>Measures: live pages from a datacenter on a software adapter say where time goes (spans), not how fast a desktop is; the replay
+recordings are on the Windows machine.</li>
+</ul>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/api/workers/"><span>Previous</span><strong>Module workers</strong></a>
 <a class="doc-next" href="../../docs/winget/"><span>Next</span><strong>Publishing Wren on winget</strong></a>
@@ -564,6 +602,7 @@ runtime is process-wide.</li>
 <li><a href="#order-recommended-in-slices">Order recommended, in slices</a></li>
 <li><a href="#risks">Risks</a></li>
 <li><a href="#slice-8-2026-10-31-a-linux-package">Slice 8 (2026-10-31): a Linux package</a></li>
+<li><a href="#slice-9-2026-11-07-the-browser-with-its-scripts-real-pages-and-the-end-to-end-scenarios-on-linux">Slice 9 (2026-11-07): the browser with its scripts, real pages and the end-to-end scenarios on Linux</a></li>
 </ul>
 </nav>
 </main>

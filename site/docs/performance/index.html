@@ -3936,6 +3936,52 @@ keyless: desc, all_next, all_prev, sib_desc, set = 0     (.flex-variant *)</code
 </table></div>
 <p>Read plainly. <strong>theverge.com settles 13 % sooner, visually ready 13 % sooner and its CPU to settled is 8.6 % lower, ranges apart</strong> (<code>Gain</code>), below the base of item 1 (2 510 settled, 2 334 CPU, another day's loads, most of them in the page's late mode): round 54 keeps what it gave and loses what it cost. Its frames to settled 16 to 19 against 24 to 35, its page clock back to 4 488-4 779 ms. cnn.com: settled -4.9 %, CPU -1.7 %, ranges overlapping by 50 ms; npr.org the same within its floor (+2.9 % of a 15 % floor, one slow load in each arm): the gains of rounds 51 to 57 stay. All of theverge.com's loads in this series came in its early mode (load at 0.4 s) but one of the fix's.</p>
 <p><strong>Not verified.</strong> The release build. The other sites of the series (bbc.com/news). Pages whose scripts read the layout in many tasks between frames while an animation waits unseen: each such task still lays out once, which round 54 asked for and no page here showed in its spans. Whether a frame callback that reads <code>document.timeline.currentTime</code> or a style now sees the frame's time on every page as other browsers give it (the frame's own pass read it already; tests of animations pass).</p>
+<h2 id="what-changed-round-59-the-frames-animation-phase-is-its-first-style-pass-nothing-kept-but-spans"><a class="anchor" href="#what-changed-round-59-the-frames-animation-phase-is-its-first-style-pass-nothing-kept-but-spans" aria-hidden="true">#</a>What changed, round 59: the frame's animation phase is its first style pass (nothing kept but spans)</h2>
+<p>The second cost of "what is left" below, the frame's animation phase (292 / 369 / 276 / 67 ms to settled on the bench), had no finer span.
+Spans now: <code>scroll_steps</code> and <code>scroll_timelines</code> beside <code>web_animations</code>, <code>resize_observers</code>, <code>intersection_observers</code> (<code>run_animation_frames</code>,
+<code>page/bindings_timers.odin</code>).</p>
+<p><strong>What they say.</strong> Live loads on Linux (Xvfb, the software Vulkan adapter, a datacenter's network: not the bench; <a href="../../docs/portability/">docs/portability.md</a>, slice 9), one
+page each, <code>WREN_SPANS</code>, 6 s after the load: all of the phase outside the animation frame callbacks is <code>scroll_steps</code>, and all of
+<code>scroll_steps</code> is one style pass and one layout. <code>run_scroll_steps</code> asks <code>js_layout_now</code> for the scroll offsets: the first reading of the
+frame, so the frame's own style pass and layout happen there, under the scroll steps' span, and <code>page_prepare</code>'s <code>styles</code> then finds
+nothing to do (3 to 5 ms a load).</p>
+<p><strong>Tried, not kept.</strong> The scroll steps reading the last layout as it is (the offsets of what the user scrolled are in it): the pass is
+not made twice, it moves to the frame's <code>styles</code>. 3 loads an arm, interleaved, ms to 6 s after the load, the phase / styles and layout of
+the frame / their sum:</p>
+<div class="table-box"><table>
+<thead><tr><th></th><th>before</th><th>after</th></tr></thead>
+<tbody>
+<tr><td>cnn.com</td><td>560 / 7 / 567 (547-579)</td><td>451 / 133 / 587 (561-598)</td></tr>
+<tr><td>npr.org</td><td>620 / 31 / 651 (595-691)</td><td>475 / 239 / 673 (662-734)</td></tr>
+<tr><td>theverge.com</td><td>538 / 53 / 595 (566-689)</td><td>546 / 131 / 689 (555-774)</td></tr>
+</tbody>
+</table></div>
+<p>The same work, elsewhere. It also needed care: the seen probe of animations (<code>animations_seen.odin</code>) and the scroll steps read the
+embedder's layout, which only a reading brings to a page that no script makes read (an animation far below the fold then drew at every
+frame: <code>frames_at_rest.odin</code> caught it). Not worth its risk.</p>
+<p><strong>What it changes in the ranking.</strong> Item 2 is not a cost of its own: it is the frame's style pass and layout, counted under the
+animation phase, plus the callbacks. What can be removed there is what makes those passes long (incremental style and layout, item 3),
+not the phase.</p>
+<h2 id="what-changed-round-60-webgl-contexts-made-ahead"><a class="anchor" href="#what-changed-round-60-webgl-contexts-made-ahead" aria-hidden="true">#</a>What changed, round 60: WebGL contexts made ahead</h2>
+<p>The fourth cost of "what is left" below: on npr.org a script asks for four WebGL contexts after the load event (two of them in
+<code>OffscreenCanvas</code>, one in a worker), and the window thread spent about 320 ms of the 3.2 s after the load waiting on them: the GPU
+process's start (about 200 ms on a desktop with a GPU) and a device made in it (70 ms, a quarter of it the context's own shaders).</p>
+<p><strong>What changed</strong> (<a href="../../docs/js/webgl/#the-gpu-process">docs/js/webgl.md</a>, "Made ahead"):</p>
+<ul>
+<li>the process is started on a thread of its own once a page has shown its first content (<code>webgl.gpu_start_ahead</code>, on); not at the
+navigation, where its start and its driver competed with the first frame;</li>
+<li>the process holds the next context's device, made on a thread of its own (<code>native/webgl/src/spare.rs</code>: empty, being made, ready),
+after its start and after each context that took one; a context waits for the one being made rather than make a second;</li>
+<li>what costs nothing to a browser that never sees WebGL, beyond one start: a process started ahead that goes idle without ever having
+had a context turns the start ahead off for the browser's life (<code>ahead_off</code> in <code>native/webgl/src/parent.rs</code>). Without it, the
+idle exit (60 s) and the next page's first paint would start a process a minute for nothing.</li>
+</ul>
+<p><strong>Tests</strong>: <code>spare.rs</code> (the state machine with plain values: one at a time, taken once, a taker waits for the one being made, one for
+other preferences dropped, a cancel frees a waiting taker); <code>ipc_tests.rs</code> <code>started_ahead_a_page_finds_its_process_and_device_ready</code>
+and <code>a_process_started_ahead_for_nothing_is_not_started_ahead_again</code> (on the software adapter, Linux); <code>src/tools/e2e/webgl_process.odin</code>
+in the real browser. <code>getError</code>, <code>readPixels</code> and <code>getParameter</code> are the device's answers as before.</p>
+<p><strong>Not measured yet</strong>: this round was finished on a Linux machine with no GPU and without the replay recordings (they are on the
+Windows machine). The npr.org window thread after the load is to be read again there with <code>wrentool replay run</code> and <code>threadtime</code>.</p>
 <h2 id="release-build-rounds-51-to-58-and-what-is-left"><a class="anchor" href="#release-build-rounds-51-to-58-and-what-is-left" aria-hidden="true">#</a>Release build, rounds 51 to 58, and what is left</h2>
 <p>Every series until now ran development builds (<code>-o:speed -debug</code>, one LLVM module per package). This one measures what is shipped: one module, no <code>-debug</code>, the Rust library's <code>release</code> profile (fat LTO). No engine change.</p>
 <p><strong>What it took.</strong></p>
@@ -4301,6 +4347,8 @@ must call nothing itself (<code>interp_hot.odin</code>'s header says how).</li>
 <li><a href="#what-changed-round-55-a-sweep-that-reads-what-dies-and-objects-nobody-sees">What changed, round 55: a sweep that reads what dies, and objects nobody sees</a></li>
 <li><a href="#measured-together-rounds-51-to-57-on-a-quiet-machine">Measured together: rounds 51 to 57 on a quiet machine</a></li>
 <li><a href="#what-changed-round-58-thevergecoms-later-settled-found-and-fixed">What changed, round 58: theverge.com's later settled, found and fixed</a></li>
+<li><a href="#what-changed-round-59-the-frames-animation-phase-is-its-first-style-pass-nothing-kept-but-spans">What changed, round 59: the frame's animation phase is its first style pass (nothing kept but spans)</a></li>
+<li><a href="#what-changed-round-60-webgl-contexts-made-ahead">What changed, round 60: WebGL contexts made ahead</a></li>
 <li><a href="#release-build-rounds-51-to-58-and-what-is-left">Release build, rounds 51 to 58, and what is left</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>

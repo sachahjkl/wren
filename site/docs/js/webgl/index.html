@@ -245,8 +245,9 @@
 <p><code>canvas.getContext("webgl")</code> and <code>("webgl2")</code>: OpenGL ES 2 and 3 for pages, drawn on the GPU through
 <a href="https://github.com/gfx-rs/wgpu" rel="noopener">wgpu</a>, with shaders translated by a rewrite of GLSL ES in front of
 <a href="https://github.com/gfx-rs/wgpu/tree/trunk/naga" rel="noopener">naga</a>. A page that never asks pays nothing but the size of the code: the script is
-evaluated at the first <code>getContext</code> or the first read of an interface, the GPU process is started by the first context of the browser, and
-the program does not link <code>d3d12.dll</code> (wgpu loads it when it is asked to, in that process).</p>
+evaluated at the first <code>getContext</code> or the first read of an interface, the GPU process is started once a page has shown its first content
+(<code>webgl.gpu_start_ahead</code>; off: by the first context of the browser), and the program does not link <code>d3d12.dll</code> (wgpu loads it when it is
+asked to, in that process).</p>
 <p>Checked: the Three.js examples (a crate, Littlest Tokyo, a Ferrari, shadow maps, particles, bloom, instancing), MapLibre GL JS on
 its own site, and a conformance set of ours (<code>examples/jsweb/webgl.js</code>, <code>native/webgl/src/tests.rs</code>). The <code>webgl</code> folder of
 web-platform-tests is in <code>wpt/suites.txt</code>.</p>
@@ -314,9 +315,28 @@ starts; matrices as attributes and varyings become their columns;</li>
 <p><code>getActiveUniform</code> and friends come from what was declared; offsets from naga's module. What naga does not check is not checked:
 implicit conversions from <code>int</code> to <code>float</code> compile, and the loop restrictions of GLSL ES 1.00 are not enforced.</p>
 <h2 id="the-gpu-process"><a class="anchor" href="#the-gpu-process" aria-hidden="true">#</a>The GPU process</h2>
-<p>One per browser: the same executable, started with <code>--wren-gpu-process=&lt;handles&gt;</code> by the first context of any page or worker. (A package
-initializer of <code>src/webgl</code> looks at the arguments before <code>main</code>, so any program that links the browser can be one. It costs that look; a page
-without WebGL starts nothing. Tests: <code>src/tools/e2e/webgl_process.odin</code>.) A process with no context left goes after <code>webgl.gpu_idle_exit_s</code>.</p>
+<p>One per browser: the same executable, started with <code>--wren-gpu-process=&lt;handles&gt;</code>. (A package initializer of <code>src/webgl</code> looks at the
+arguments before <code>main</code>, so any program that links the browser can be one. It costs that look. Tests: <code>src/tools/e2e/webgl_process.odin</code>.)
+A process with no context left goes after <code>webgl.gpu_idle_exit_s</code>.</p>
+<p><strong>Made ahead.</strong> A page's thread waits for its <code>getContext</code>: for a process to start (about 200 ms on a desktop with a GPU) and for a
+device to be made in it (70 ms; a quarter of it the context's own shaders). So both are made before a page asks:</p>
+<ul>
+<li>the browser starts the process when a page has shown its first content (<code>webgl.gpu_start_ahead</code>, on by default), on a thread of its own, with the
+attributes a context would have (<code>wg_start_ahead</code>): the page's thread never waits for it. Nothing when a process runs, or when one ended
+badly within <code>webgl.gpu_restart_window_s</code>: a restart is for a page that asks. A process started ahead that goes idle
+(<code>webgl.gpu_idle_exit_s</code>) without ever having had a context turns this off for the browser's life: a browser that sees no WebGL pays
+for one start, not one a minute. Off: the first context of the browser starts it, and a
+browser that sees no WebGL starts nothing;</li>
+<li>the process holds the next context's device, made on a thread of its own (<code>native/webgl/src/spare.rs</code>, a state machine: empty, being
+made, ready): after its start (<code>Prepare</code>), and after each context that took one. A context waits for the one being made rather than
+make a second; one made for other preferences (<code>webgl.force_software</code>, <code>webgl.backend</code>) is dropped. Not on a software adapter, where
+devices are made in turns and a context's first messages would wait for one nobody may ask for.</li>
+</ul>
+<p>What a page sees does not change: <code>getContext</code> still answers once its device exists, null when there is none, with the same
+attributes and extensions; <code>getError</code>, <code>readPixels</code> and <code>getParameter</code> are the device's answers as before. On npr.org a script asks for
+four contexts after the load event, two in <code>OffscreenCanvas</code> (one in a worker): 380 ms of the window thread before; after, not measured
+yet on a GPU (the round was finished on a Linux machine with a software adapter only)
+(<a href="../../../docs/performance/#what-changed-round-60-webgl-contexts-made-ahead">round 60</a>).</p>
 <div class="table-box"><table>
 <thead><tr><th>What crosses</th><th>How</th></tr></thead>
 <tbody>
@@ -366,7 +386,7 @@ shared memory is copied out before it is looked at.</p>
 <tr><td><code>bufferData</code>, 64 MB, with <code>finish</code></td><td>41 ms</td><td>47 ms</td></tr>
 <tr><td>working set on <code>webgl.html</code> (browser + process)</td><td>465 MB</td><td>187 + 334 MB</td></tr>
 <tr><td>on the stress page</td><td>727 MB</td><td>407 + 482 MB</td></tr>
-<tr><td>a page without WebGL</td><td>no process</td><td>no process</td></tr>
+<tr><td>a page without WebGL</td><td>no process</td><td>since round 60, by default: a process with one device, made ahead at the first paint, once a browser's life when nobody uses it (<code>webgl.gpu_start_ahead</code>)</td></tr>
 </tbody>
 </table></div>
 <p>On a machine (RTX 4070 SUPER, 16 logical processors) that other jobs were using: differences of a few percent mean nothing here. What can be told: frames cost the same, since a frame takes the same copies; large messages pay one copy more through a ring; the memory grows by what a second process has (its copy of the runtime's data and of the drivers' loaded state, its rings, a canvas's three pictures: about 55 MB on <code>webgl.html</code>, 160 MB on the stress page, of which the shared memory is counted on both sides).</p>
@@ -422,7 +442,7 @@ FXC compiles every pipeline, a page that asks right after a burst of new program
 <h2 id="preferences"><a class="anchor" href="#preferences" aria-hidden="true">#</a>Preferences</h2>
 <p><code>webgl.enabled</code>, <code>webgl.webgl2</code>, <code>webgl.allow_software</code>, <code>webgl.force_software</code>, <code>webgl.backend</code> (<code>auto</code>, <code>dx12</code>, <code>vulkan</code>),
 <code>webgl.max_contexts</code>, <code>webgl.max_mb</code>, <code>webgl.wait_ms</code>, <code>webgl.gpu_hang_ms</code>, <code>webgl.gpu_max_restarts</code>, <code>webgl.gpu_restart_window_s</code>,
-<code>webgl.gpu_idle_exit_s</code>, <code>webgl.gpu_keep_rights</code>.</p>
+<code>webgl.gpu_idle_exit_s</code>, <code>webgl.gpu_keep_rights</code>, <code>webgl.gpu_start_ahead</code> (the tests' browsers have it off unless they ask).</p>
 <h2 id="tests"><a class="anchor" href="#tests" aria-hidden="true">#</a>Tests</h2>
 <ul>
 <li><code>cargo test -p wren_webgl</code>: the translator, formats, and a context through the C ABI on the software adapter. They pass with <code>WREN_WEBGL_TEST_GPU=1</code>
