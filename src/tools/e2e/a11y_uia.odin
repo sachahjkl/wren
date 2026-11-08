@@ -9,7 +9,7 @@ import "core:fmt"
 import win "core:sys/windows"
 import "core:testing"
 import "core:time"
-import "toolkit:tools/uia"
+import "../../../ext/gui_toolkit/tools/uia"
 import "wb:e2e"
 import "wb:remote/api"
 
