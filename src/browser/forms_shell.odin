@@ -1578,11 +1578,6 @@ forms_click :: proc(app: ^App, t: ^Tab, target: base.Handle, ev: platform.Event,
 ////////////////////////////////
 // Submissions -> navigations
 
-@(private = "file")
-tab_of_page :: proc(app: ^App, p: ^page.Page) -> ^Tab {
-	for t in tabs_all(app) { if t.page == p { return t } }
-	return nil
-}
 
 @(private = "file")
 Post_Job :: struct {

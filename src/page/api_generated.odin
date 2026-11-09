@@ -30779,6 +30779,112 @@ _t_net_Fetch_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	return nil
 }
 
+// Notification_permission :: proc(c: ^Call) -> string
+@(private = "file")
+_t_notification_Notification_permission :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "notification.Notification_permission", "result buffer") }
+	_r := Notification_permission(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Notification_ask :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_notification_Notification_ask :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_r := Notification_ask(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Notification_show :: proc(c: ^Call, title: string, body: string, tag: string, silent: bool) -> u64
+@(private = "file")
+_t_notification_Notification_show :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "notification.Notification_show", "title") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "notification.Notification_show", "body") }
+	_n2 := wasm.addr(&f, a[5])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "notification.Notification_show", "tag") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "notification.Notification_show: argument title is not valid UTF-8") }
+		return wasm.trap_new("notification.Notification_show: argument title is not valid UTF-8")
+	}
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "notification.Notification_show: argument body is not valid UTF-8") }
+		return wasm.trap_new("notification.Notification_show: argument body is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "notification.Notification_show: argument tag is not valid UTF-8") }
+		return wasm.trap_new("notification.Notification_show: argument tag is not valid UTF-8")
+	}
+	_p3 := a[6].i32 != 0
+	_r := Notification_show(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Notification_next :: proc(c: ^Call, id: u64) -> u64
+@(private = "file")
+_t_notification_Notification_next :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	_r := Notification_next(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Notification_close :: proc(c: ^Call, id: u64)
+@(private = "file")
+_t_notification_Notification_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	Notification_close(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // Performance_now :: proc(c: ^Call) -> f64
 @(private = "file")
 _t_performance_Performance_now :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -40394,6 +40500,11 @@ api_imports := [?]wasm.Import{
 	{module = "net", name = "Fetch_bodyLength", fn = _t_net_Fetch_bodyLength, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "net", name = "Fetch_readBody", fn = _t_net_Fetch_readBody, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_release", fn = _t_net_Fetch_release, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "notification", name = "Notification_permission", fn = _t_notification_Notification_permission, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "notification", name = "Notification_ask", fn = _t_notification_Notification_ask, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "notification", name = "Notification_show", fn = _t_notification_Notification_show, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "notification", name = "Notification_next", fn = _t_notification_Notification_next, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "notification", name = "Notification_close", fn = _t_notification_Notification_close, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "performance", name = "Performance_now", fn = _t_performance_Performance_now, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.F64}},
 	{module = "performance", name = "Performance_timeOrigin", fn = _t_performance_Performance_timeOrigin, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.F64}},
 	{module = "performance", name = "Performance_mark", fn = _t_performance_Performance_mark, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .F64}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .F64}, wide_results = []wasm.Val_Kind{.I32}},

@@ -10,6 +10,7 @@ import "wb:wasm"
 // pages and before destroying its loader and loop; the browser's end (browser/main.odin) runs the same steps in its own order.
 pages_shutdown :: proc() {
 	webauthn_shutdown()
+	notifications_shutdown()
 	timeline_shutdown()
 	shutdown_threads()
 	images_shutdown()

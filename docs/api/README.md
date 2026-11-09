@@ -110,6 +110,7 @@ function not exposed to workers is not instantiated.
 | [`mediatracks`](mediatracks.md) | `wren:mediatracks` | 49 | Window | The track lists of a media element (src/page/media_tracks.odin, media_texttracks.odin): AudioTrackList, VideoTrackList |
 | [`navigation`](navigation.md) | `wren:navigation` | 12 | Window | The Navigation API (HTML): window.navigation over the tab's session history. The browser keeps the entries, their |
 | [`net`](net.md) | `wren:net` | 14 | Window, Worker | Fetch with a callback (Fetch Standard through the browser's loader: origin, CORS, cookies, referrer, CSP and mixed |
+| [`notification`](notification.md) | `wren:notification` | 5 | Window | System notifications (WHATWG Notifications API; src/page/notification.odin, the shell's notification_shell.odin; |
 | [`performance`](performance.md) | `wren:performance` | 20 | Window, Worker | High Resolution Time and User Timing: performance.now() and timeOrigin on the page's own timeline, mark / measure, |
 | [`popover`](popover.md) | `wren:popover` | 5 | Window | The Popover API (src/page/popover.odin): the `popover` attribute, showPopover / hidePopover / togglePopover, the |
 | [`ports`](ports.md) | `wren:ports` | 10 | Window, Worker | MessagePorts between realms (src/page/ports.odin; native/js/runtime/web_message.c, workers.c): a port whose other |
@@ -132,4 +133,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | `wren:websocket` | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | `wren:workers` | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1623 imports in 1524 functions.
+1628 imports in 1529 functions.

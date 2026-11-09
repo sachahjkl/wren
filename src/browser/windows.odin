@@ -224,6 +224,12 @@ window_request_errand :: proc(app: ^App, w: ^Browser_Window, errand: Frame_Erran
 request_frames :: proc(app: ^App, n := 2, loc := #caller_location) { window_request(app, active_window(app), n, loc) }
 
 // The window that holds the tab, and its place there.
+// The tab whose page is `p` (nil: none).
+tab_of_page :: proc(app: ^App, p: ^page.Page) -> ^Tab {
+	for t in tabs_all(app) { if t.page == p { return t } }
+	return nil
+}
+
 window_of_tab :: proc(app: ^App, t: ^Tab) -> (^Browser_Window, int) {
 	for w in app.windows {
 		for x, i in window_tabs(app, w)^ { if x == t { return w, i } }

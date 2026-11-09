@@ -7475,6 +7475,17 @@ wjg_SVGStyleElement_get_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 wjg_SVGStyleElement_set_media :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 368, "media", 0, v, 0, 0, 0, 0) }
 wjg_SVGStyleElement_get_title :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_reflect_get(ctx, this_val, 368, "title", 0, 0, 0, 0, 0) }
 wjg_SVGStyleElement_set_title :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_reflect_set(ctx, this_val, 368, "title", 0, v, 0, 0, 0, 0) }
+// Notification.permission -> notification.Notification_permission
+wjg_Notification_get_permission :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	_ = this_val
+	n := i32(wj.wr_Notification_permission(wj.wj_scratch.data, wj.wj_scratch.cap))
+	if n > 0 && u32(n) > wj.wj_scratch.cap {
+		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Notification_permission(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
+	}
+	if n < 0 { return wj.wj_throw_status(ctx, n, "Notification.permission") }
+	return wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
+}
+
 wjg_Notification_get_onclick :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 371, "click") }
 wjg_Notification_set_onclick :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue { return wj_event_handler_set(ctx, this_val, 371, "click", v, 0) }
 wjg_Notification_get_onshow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj_event_handler_get(ctx, this_val, 371, "show") }
@@ -28503,30 +28514,30 @@ wj_install_bindings :: proc "c" () {
 	m_SVGStyleElement[4] = wj.Member{name = "sheet", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_LinkStyle_get_sheet, set = nil}
 	m_SVGViewElement[0] = wj.Member{name = "viewBox", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 200, get = nil, set = nil}
 	m_SVGViewElement[1] = wj.Member{name = "preserveAspectRatio", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 201, get = nil, set = nil}
-	m_Notification[0] = wj.Member{name = "permission", kind = wj.M_STATIC_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
-	m_Notification[1] = wj.Member{name = "requestPermission", kind = wj.M_STATIC_METHOD, flags = wj.F_NOT_DEDICATED | wj.F_NOT_SHARED | wj.F_NOT_SERVICE, length = 0, fn = nil}
+	m_Notification[0] = wj.Member{name = "permission", kind = wj.M_STATIC_ATTRIBUTE, flags = 0, length = 0, get = wjg_Notification_get_permission, set = nil}
+	m_Notification[1] = wj.Member{name = "requestPermission", kind = wj.M_STATIC_METHOD, flags = wj.F_NOT_DEDICATED | wj.F_NOT_SHARED | wj.F_NOT_SERVICE, length = 0, fn = wjr_Notification_static_requestPermission}
 	m_Notification[2] = wj.Member{name = "maxActions", kind = wj.M_STATIC_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_Notification[3] = wj.Member{name = "onclick", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Notification_get_onclick, set = wjg_Notification_set_onclick}
 	m_Notification[4] = wj.Member{name = "onshow", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Notification_get_onshow, set = wjg_Notification_set_onshow}
 	m_Notification[5] = wj.Member{name = "onerror", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Notification_get_onerror, set = wjg_Notification_set_onerror}
 	m_Notification[6] = wj.Member{name = "onclose", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_Notification_get_onclose, set = wjg_Notification_set_onclose}
-	m_Notification[7] = wj.Member{name = "title", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
+	m_Notification[7] = wj.Member{name = "title", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Notification_get_title, set = nil}
 	m_Notification[8] = wj.Member{name = "dir", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_Notification[9] = wj.Member{name = "lang", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
-	m_Notification[10] = wj.Member{name = "body", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
+	m_Notification[10] = wj.Member{name = "body", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Notification_get_body, set = nil}
 	m_Notification[11] = wj.Member{name = "navigate", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
-	m_Notification[12] = wj.Member{name = "tag", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
+	m_Notification[12] = wj.Member{name = "tag", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Notification_get_tag, set = nil}
 	m_Notification[13] = wj.Member{name = "image", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_Notification[14] = wj.Member{name = "icon", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_Notification[15] = wj.Member{name = "badge", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_Notification[16] = wj.Member{name = "vibrate", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 202, get = nil, set = nil}
 	m_Notification[17] = wj.Member{name = "timestamp", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_Notification[18] = wj.Member{name = "renotify", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
-	m_Notification[19] = wj.Member{name = "silent", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
+	m_Notification[19] = wj.Member{name = "silent", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_Notification_get_silent, set = nil}
 	m_Notification[20] = wj.Member{name = "requireInteraction", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_Notification[21] = wj.Member{name = "data", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 203, get = nil, set = nil}
 	m_Notification[22] = wj.Member{name = "actions", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 204, get = nil, set = nil}
-	m_Notification[23] = wj.Member{name = "close", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
+	m_Notification[23] = wj.Member{name = "close", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_Notification_close}
 	m_OffscreenCanvas[0] = wj.Member{name = "width", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_OffscreenCanvas_get_width, set = wjg_OffscreenCanvas_set_width}
 	m_OffscreenCanvas[1] = wj.Member{name = "height", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_OffscreenCanvas_get_height, set = wjg_OffscreenCanvas_set_height}
 	m_OffscreenCanvas[2] = wj.Member{name = "getContext", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_OffscreenCanvas_getContext}
@@ -31838,7 +31849,7 @@ wj_install_bindings :: proc "c" () {
 		members = rawptr(&m_SVGViewElement[0]), n_members = 2, subtree_end = 371,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[371] = wj.Interface{name = "Notification", parent = 192, exposed = u16(wj.EXPOSE_WINDOW | wj.EXPOSE_WORKER | wj.EXPOSE_SHARED_WORKER | wj.EXPOSE_SERVICE_WORKER), flags = u16(wj.I_UNSUPPORTED | wj.I_CTOR_UNSUPPORTED), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 1, ctor = nil,
+	the_interfaces[371] = wj.Interface{name = "Notification", parent = 192, exposed = u16(wj.EXPOSE_WINDOW | wj.EXPOSE_WORKER | wj.EXPOSE_SHARED_WORKER | wj.EXPOSE_SERVICE_WORKER), flags = u16(0), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 1, ctor = rawptr(wjr_Notification_constructor),
 		members = rawptr(&m_Notification[0]), n_members = 24, subtree_end = 372,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}

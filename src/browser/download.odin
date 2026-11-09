@@ -579,6 +579,7 @@ download_finish :: proc(d: ^Download) {
 			dl.state = .Done
 			dl.size = dl.received
 			ui.toast(.Good, "Saved %s", filepath.base(dl.path))
+			notification_download(dl.app, dl)   // notification_shell.odin: told by the system when Wren is not in front
 		}
 		download_ended(dl)
 		request_frames(dl.app, 3)

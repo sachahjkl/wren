@@ -577,6 +577,8 @@ wr_FetchOptions :: struct {
 // Fetch_bodyLength and Fetch_readBody read what is there), when the body is complete (Done) or on failure (Failed).
 wr_FetchCallback :: #type proc "contextless" (user: i32, request: u64, state: i32)
 
+// module notification: types
+
 // module performance: types
 // The entries a query matches (Any: every user timing entry). The values from Navigation on are the browser's
 // timeline entries (Performance_timeline): the document's navigation, its resources, paints, slow inputs and long
@@ -3484,6 +3486,26 @@ foreign _wr_wj_net {
 	@(link_name = "Fetch_readBody") wr_Fetch_readBody :: proc(request: u64, offset: u64, buffer: [^]u8, buffer_cap: u32) -> i32 ---
 	// Cancels the request if needed and frees the record.
 	@(link_name = "Fetch_release") wr_Fetch_release :: proc(request: u64) -> i32 ---
+}
+
+// module notification
+foreign import _wr_wj_notification "notification"
+@(default_calling_convention = "contextless")
+foreign _wr_wj_notification {
+	// Notification.permission for the realm's origin: "default", "granted" or "denied".
+	@(link_name = "Notification_permission") wr_Notification_permission :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	// Notification.requestPermission(): a promise of the state after (0 default, 1 granted, 2 denied). The user is asked
+	// only after a click or a key press of theirs on the page; otherwise the state stays what it is.
+	@(link_name = "Notification_ask") wr_Notification_ask :: proc() -> u64 ---
+	// new Notification(title, {body, tag, silent}): the notification's id, 0 when it is not shown (no permission, no
+	// notification service on this system): the page's object then fires "error". A notification of the same tag
+	// replaces the one before it.
+	@(link_name = "Notification_show") wr_Notification_show :: proc(title: [^]u8, title_len: u32, body: [^]u8, body_len: u32, tag: [^]u8, tag_len: u32, silent: i32) -> u64 ---
+	// What happens next to a shown notification: a promise of 2 (it is shown: the first answer), 0 (a click on it: the
+	// browser brings its tab up) or 1 (it is gone; nothing comes after).
+	@(link_name = "Notification_next") wr_Notification_next :: proc(id: u64) -> u64 ---
+	// close(): the system takes it away.
+	@(link_name = "Notification_close") wr_Notification_close :: proc(id: u64) ---
 }
 
 // module performance

@@ -20,6 +20,7 @@ Pages :: struct {
 	sw_embedder:             Sw_Embedder,
 	storage_access_embedder: Storage_Access_Embedder,
 	webauthn_embedder:       Webauthn_Embedder,
+	notification_embedder:   Notification_Embedder,   // notification.odin: the permission, the system's notifications
 	canvas_text_engine:      canvas2d.Text_Engine,   // the embedder's fonts; `user` is replaced by the page when a context is made
 	canvas_gpu_host:         ^canvas2d.Gpu_Host,      // the GPU a canvas draws on; nil: every canvas is drawn in software
 	dev_console_max:         int,                     // devtools_api.odin: console calls describe their arguments while the developer tools are open
@@ -36,6 +37,7 @@ Pages :: struct {
 	cache_store:    Cache_Store,       // cache_store.odin: the Cache API's index of every origin
 	fs_store:       Fs_Store,          // fs_store.odin: file system roots, writables, locks
 	sw_registry:    Sw_Registry,       // service_worker.odin: the service worker registrations
+	notification_waits: map[u64]^Notification_Wait,   // notification.odin: the notifications shown, by their id
 	sa_decisions:   map[string]bool,   // storage_access.odin: owned keys "frame site TAB tab site": granted (true) or refused (false)
 	buckets_state:  Buckets_State,     // storage_buckets.odin
 	buckets_mu:     sync.Mutex,        // ... pages and workers (threads of their own) ask

@@ -259,6 +259,7 @@ App :: struct {
 	net_custom:    [dynamic]Net_Profile,     // devtools_net_throttle.odin: the profile's throttling profiles (owned strings)
 	sa_queue:      [dynamic]^page.Storage_Access_Ask,   // storage_access_shell.odin: the pages' storage access prompts
 	ask_state:     Ask_State,                // fs_shell.odin: a page's file system permission prompt
+	notes:         Notification_Shell,       // notification_shell.odin: the pages' system notifications
 	drag_probe:    Drag_Probe,               // drag_probe.odin
 	lm:            Load_Measure,             // blocker_measure.odin: WREN_BLOCKER_MEASURE
 	lm_report_path: string,
@@ -1103,6 +1104,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	palette_build(app)   // palette.odin: the command palette, over everything else
 	setup_build(app)   // setup_ui.odin: the Setup dialog (nothing while it is closed)
 	fs_shell_build(app)   // fs_shell.odin: a page's file permission prompt (nothing while none waits)
+	notification_shell_build(app)   // notification_shell.odin: a page's notification permission prompt
 	storage_access_shell_build(app)   // storage_access_shell.odin: a frame's storage access prompt
 	// notices go over the page, not over the title bar's window buttons
 	if pr := active_window(app).page_rect; pr.max.y > pr.min.y { ui.set_toast_area(pr) }
@@ -1420,6 +1422,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	shell_actions_run(app)   // shell_frames.odin: what the last build asked of the list of tabs (a tab closed, a tab out of its bar)
 	tab_drag_events(app, events)   // tab_drag.odin: a tab carried by this window's press
 	remote_record_events(app, events)   // remote_extras.odin: a recording of the input, when one runs
+	notification_events(app, events)   // notification_shell.odin: a click on a page's notification, its end
 	events = shell_frame_begin(app, events)   // shell_frames.odin: input held back by chrome frames first; the page phase
 	pacer_begin_frame(app, events)
 	if len(events) > 0 { request_frames(app, 4) }
@@ -1816,6 +1819,7 @@ app_start :: proc(args: []string) -> ^App {
 	fullscreen_shell_init(app)   // fullscreen_shell.odin: the Fullscreen API
 	sw_shell_init(app)   // sw_shell.odin: clients.openWindow, WindowClient.focus
 	fs_shell_init(app)   // fs_shell.odin: file pickers and file permission prompts
+	notification_shell_init(app)   // notification_shell.odin: system notifications of pages
 	storage_access_shell_init(app)
 	clipboard_js_init(app)   // clipboard_win.odin: navigator.clipboard
 	drop_files_init(app)   // local_paths.odin
@@ -1873,6 +1877,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	fullscreen_shell_destroy(app)   // (the pages closing below do not restore a window that is going away)
 	sw_shell_destroy(app)
 	fs_shell_destroy(app)
+	notification_shell_destroy(app)
 	storage_access_shell_destroy(app)
 	host.shutdown_step("session capture")
 	for t in tabs_all(app) { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was

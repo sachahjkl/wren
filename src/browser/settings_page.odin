@@ -31,7 +31,7 @@ SETTINGS_PAGES := [?]Settings_Page_Def{
 		"browser.homepage", "browser.newtab.focus_address", "browser.newtab.art.enabled", "browser.newtab.art.sources", "browser.newtab.art.show_caption"}},
 	{"search", "Search", lucide.SEARCH, {"browser.search.engine"}},
 	{"privacy", "Privacy", lucide.SHIELD, {
-		"blocker.enabled", "cookies.enabled", "privacy.third_party_cookies", "privacy.do_not_track", "history.global.enabled",
+		"blocker.enabled", "browser.notifications.enabled", "cookies.enabled", "privacy.third_party_cookies", "privacy.do_not_track", "history.global.enabled",
 		"history.global.retention_days", "browser.profile.persist"}},
 	{"downloads", "Downloads", lucide.DOWNLOAD, {"browser.download.ask", "browser.download.directory"}},
 	{"media", "Media", lucide.PLAY, {"media.autoplay.policy"}},

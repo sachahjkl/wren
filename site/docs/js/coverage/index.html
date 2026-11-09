@@ -126,6 +126,7 @@
 <li><a href="../../../docs/api/navigation/">Module navigation</a></li>
 <li><a href="../../../docs/api/navigator/">Module navigator</a></li>
 <li><a href="../../../docs/api/net/">Module net</a></li>
+<li><a href="../../../docs/api/notification/">Module notification</a></li>
 <li><a href="../../../docs/api/performance/">Module performance</a></li>
 <li><a href="../../../docs/api/popover/">Module popover</a></li>
 <li><a href="../../../docs/api/ports/">Module ports</a></li>
@@ -257,9 +258,9 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <thead><tr><th></th><th style="text-align:right">count</th></tr></thead>
 <tbody>
 <tr><td>interfaces, namespaces in the table</td><td style="text-align:right">608</td></tr>
-<tr><td>exposed by default</td><td style="text-align:right">395</td></tr>
+<tr><td>exposed by default</td><td style="text-align:right">396</td></tr>
 <tr><td>members</td><td style="text-align:right">5321</td></tr>
-<tr><td>members implemented</td><td style="text-align:right">3891 (73.1 %)</td></tr>
+<tr><td>members implemented</td><td style="text-align:right">3899 (73.3 %)</td></tr>
 </tbody>
 </table></div>
 <h2 id="by-specification"><a class="anchor" href="#by-specification" aria-hidden="true">#</a>By specification</h2>
@@ -312,7 +313,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <tr><td><code>mediasession.idl</code></td><td style="text-align:right">3 (0)</td><td style="text-align:right">0 / 16</td></tr>
 <tr><td><code>navigation-timing.idl</code></td><td style="text-align:right">4 (3)</td><td style="text-align:right">40 / 46</td></tr>
 <tr><td><code>netinfo.idl</code></td><td style="text-align:right">1 (0)</td><td style="text-align:right">1 / 6</td></tr>
-<tr><td><code>notifications.idl</code></td><td style="text-align:right">2 (0)</td><td style="text-align:right">4 / 28</td></tr>
+<tr><td><code>notifications.idl</code></td><td style="text-align:right">2 (1)</td><td style="text-align:right">12 / 28</td></tr>
 <tr><td><code>paint-timing.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">3 / 3</td></tr>
 <tr><td><code>performance-timeline.idl</code></td><td style="text-align:right">3 (3)</td><td style="text-align:right">15 / 15</td></tr>
 <tr><td><code>permissions.idl</code></td><td style="text-align:right">2 (2)</td><td style="text-align:right">4 / 4</td></tr>
@@ -4259,6 +4260,35 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>readonly viewBox</code> (SVGFitToViewBox): not supported</li>
 <li><code>readonly preserveAspectRatio</code> (SVGFitToViewBox): not supported</li>
 </ul>
+<h3 id="notification-eventtarget"><a class="anchor" href="#notification-eventtarget" aria-hidden="true">#</a>Notification : EventTarget</h3>
+<p>12 / 25 members.</p>
+<ul>
+<li><code>constructor()</code>: C <code>wjr_Notification_constructor</code></li>
+<li><code>static readonly permission</code>: import <code>notification.Notification_permission</code></li>
+<li><code>static requestPermission()</code>: C <code>wjr_Notification_static_requestPermission</code></li>
+<li><code>static readonly maxActions</code>: not supported</li>
+<li><code>onclick</code>: generic (event handler)</li>
+<li><code>onshow</code>: generic (event handler)</li>
+<li><code>onerror</code>: generic (event handler)</li>
+<li><code>onclose</code>: generic (event handler)</li>
+<li><code>readonly title</code>: C <code>wjr_Notification_get_title</code></li>
+<li><code>readonly dir</code>: not supported</li>
+<li><code>readonly lang</code>: not supported</li>
+<li><code>readonly body</code>: C <code>wjr_Notification_get_body</code></li>
+<li><code>readonly navigate</code>: not supported</li>
+<li><code>readonly tag</code>: C <code>wjr_Notification_get_tag</code></li>
+<li><code>readonly image</code>: not supported</li>
+<li><code>readonly icon</code>: not supported</li>
+<li><code>readonly badge</code>: not supported</li>
+<li><code>readonly vibrate</code>: not supported</li>
+<li><code>readonly timestamp</code>: not supported</li>
+<li><code>readonly renotify</code>: not supported</li>
+<li><code>readonly silent</code>: C <code>wjr_Notification_get_silent</code></li>
+<li><code>readonly requireInteraction</code>: not supported</li>
+<li><code>readonly data</code>: not supported</li>
+<li><code>readonly actions</code>: not supported</li>
+<li><code>close()</code>: C <code>wjr_Notification_close</code></li>
+</ul>
 <h3 id="offscreencanvas-eventtarget"><a class="anchor" href="#offscreencanvas-eventtarget" aria-hidden="true">#</a>OffscreenCanvas : EventTarget</h3>
 <p>8 / 8 members.</p>
 <ul>
@@ -6194,7 +6224,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>timeEnd()</code>: C <code>wjr_console_timeEnd</code></li>
 </ul>
 <h2 id="not-exposed-nothing-implemented"><a class="anchor" href="#not-exposed-nothing-implemented" aria-hidden="true">#</a>Not exposed (nothing implemented)</h2>
-<p>AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, BarProp, CSSNumericArray, CSSStartingStyleRule, CSSViewTransitionRule, CSSPageDescriptors, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, OverconstrainedError, QuotaExceededError, AudioProcessingEvent, BeforeUnloadEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, TrackEvent, TextEvent, EventCounts, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaStream, MediaStreamTrack, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, MediaDeviceInfo, InputDeviceInfo, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationPrecommitController, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor</p>
+<p>AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, BarProp, CSSNumericArray, CSSStartingStyleRule, CSSViewTransitionRule, CSSPageDescriptors, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, OverconstrainedError, QuotaExceededError, AudioProcessingEvent, BeforeUnloadEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, TrackEvent, TextEvent, EventCounts, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaStream, MediaStreamTrack, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, MediaDeviceInfo, InputDeviceInfo, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationPrecommitController, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/api/README/"><span>Previous</span><strong>Web API of Wren (Wasm imports)</strong></a>
 <a class="doc-next" href="../../../docs/api/README/"><span>Next</span><strong>Web API of Wren (Wasm imports)</strong></a>
@@ -6463,6 +6493,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li class="lvl3"><a href="#svgstyleelement-svgelement">SVGStyleElement : SVGElement</a></li>
 <li class="lvl3"><a href="#svgtitleelement-svgelement">SVGTitleElement : SVGElement</a></li>
 <li class="lvl3"><a href="#svgviewelement-svgelement">SVGViewElement : SVGElement</a></li>
+<li class="lvl3"><a href="#notification-eventtarget">Notification : EventTarget</a></li>
 <li class="lvl3"><a href="#offscreencanvas-eventtarget">OffscreenCanvas : EventTarget</a></li>
 <li class="lvl3"><a href="#performance-eventtarget">Performance : EventTarget</a></li>
 <li class="lvl3"><a href="#permissionstatus-eventtarget">PermissionStatus : EventTarget</a></li>
