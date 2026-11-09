@@ -1,8 +1,5 @@
 package reftest
 
-import "core:bytes"
-import "core:image"
-import "core:image/png"
 import "core:strings"
 import "core:testing"
 import "wb:dom"
@@ -188,33 +185,6 @@ difference_marks_what_differs :: proc(t: ^testing.T) {
 	d := difference_image(&a, &b, context.temp_allocator)
 	testing.expect_value(t, pixel(&d, 1, 0), RED)
 	testing.expect(t, pixel(&d, 0, 0) != RED)
-}
-
-@(test)
-png_round_trip :: proc(t: ^testing.T) {
-	W :: 64
-	H :: 48
-	img := image_make(W, H, context.temp_allocator)
-	for y in 0 ..< H {
-		for x in 0 ..< W {
-			p := img.rgba[(y * W + x) * CHANNELS:][:CHANNELS]
-			// flat areas, a gradient and noise: runs, far matches and literals
-			switch {
-			case y < 16: p[0], p[1], p[2] = 10, 200, 30
-			case y < 32: p[0], p[1], p[2] = u8(x * 4), u8(y * 5), u8(x + y)
-			case: p[0], p[1], p[2] = u8(x * 37 + y * 101), u8(x * x + y), u8(y * y + 3 * x)
-			}
-			p[3] = 255
-		}
-	}
-	data := png_encode(&img, context.temp_allocator)
-	back, err := png.load_from_bytes(data, {.alpha_add_if_missing}, context.temp_allocator)
-	testing.expectf(t, err == nil, "decoded: %v", err)
-	if err != nil { return }
-	defer image.destroy(back, context.temp_allocator)
-	testing.expect_value(t, back.width, W)
-	testing.expect_value(t, back.height, H)
-	testing.expect(t, bytes.equal(back.pixels[:], img.rgba), "the same pixels")
 }
 
 ////////////////////////////////

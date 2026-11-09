@@ -5,6 +5,7 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 import "core:time"
+import png "toolkit:png"
 import "wb:base"
 import "wb:dom"
 import lay "wb:layout"
@@ -399,7 +400,7 @@ dump_pair :: proc(test_path: string, k: ^Kept_Pair) {
 	base_path := filepath.join({opts.dump, strings.to_string(name)}, context.temp_allocator) or_else ""
 	_ = os.make_directory_all(opts.dump)
 	write :: proc(base_path, suffix: string, img: ^reftest.Image) {
-		data := reftest.png_encode(img, context.temp_allocator)
+		data := png.encode(img.rgba, img.width, img.height, .Fast, context.temp_allocator)
 		_ = os.write_entire_file(strings.concatenate({base_path, suffix}, context.temp_allocator), data)
 	}
 	write(base_path, ".test.png", &k.a)
