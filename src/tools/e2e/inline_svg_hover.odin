@@ -47,7 +47,9 @@ first_icon :: proc(s: ^e2e.Session) -> Icon {
 
 @(test)
 inline_svg_kept_through_a_hover :: proc(t: ^testing.T) {
-	s := e2e.start(t, {size = HOVER_SIZE, prefs = {"browser.newtab.art.enabled=true"}, url = "about:home"})
+	// no painting (no source: the page's own gradient): the icon's ink is measured against the chip's background, and a
+	// light painting under the translucent chip, one at random in two, left it under INK_DIFFERENCE (0 px) though it was drawn
+	s := e2e.start(t, {size = HOVER_SIZE, prefs = {"browser.newtab.art.enabled=true", "browser.newtab.art.sources="}, url = "about:home"})
 	e2e.wait_selector(s, ".art-chip svg", visible = true)
 	ic := first_icon(s)
 	e2e.wait_until(s, ic, proc(s: ^e2e.Session, ic: Icon) -> bool { n, _ := ink(e2e.capture(s, {target = .Page}), ic); return n > 0 }, "the icon drawn")
