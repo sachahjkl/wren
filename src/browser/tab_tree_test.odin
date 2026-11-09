@@ -125,3 +125,18 @@ tree_guides_follow_the_siblings :: proc(t: ^testing.T) {
 	testing.expect_value(t, g[4], Tree_Guide{})
 	testing.expect_value(t, g[5], Tree_Guide{rails = 0, last = true})
 }
+
+// Dragged sideways: the depth asked for, clamped to one more than the tab before's, gives the parent.
+@(test)
+tree_parent_at_depth_follows_the_tab_before :: proc(t: ^testing.T) {
+	tabs := tree_tabs(4)   // 1 > 2 > 3, and 4 (a root) after them
+	tabs[1].parent, tabs[2].parent = 1, 2
+	testing.expect_value(t, tree_parent_at_depth(tabs, 3, 0), u64(0))
+	testing.expect_value(t, tree_parent_at_depth(tabs, 3, 1), u64(1))   // a child of 1, after 3
+	testing.expect_value(t, tree_parent_at_depth(tabs, 3, 2), u64(2))
+	testing.expect_value(t, tree_parent_at_depth(tabs, 3, 3), u64(3))
+	testing.expect_value(t, tree_parent_at_depth(tabs, 3, 9), u64(3))   // (no deeper than under the tab before)
+	testing.expect_value(t, tree_parent_at_depth(tabs, 0, 2), u64(0))   // nothing before: a root
+	tabs[3].group = 7
+	testing.expect_value(t, tree_parent_at_depth(tabs, 3, 1), u64(0))   // another group than the tab before's
+}

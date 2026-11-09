@@ -86,6 +86,10 @@ Tab_Sidebar :: struct {
 	rename_field:   ui.Text_Field,
 	rename_focused: bool,   // the name's field had the keyboard (losing it commits the name)
 	items:     [dynamic]Side_Item,   // the list's rows, this frame (kept to reuse its memory)
+	// a tab dragged in the list (tab_tree.odin): sideways, it goes deeper or less deep in the tree
+	drag_tab:   u64,   // which (0: none)
+	drag_depth: int,   // its depth when the drag began
+	drag_dx:    f32,   // how far right of the press the pointer is (window px)
 }
 
 sidebar_destroy :: proc(s: ^Tab_Sidebar) {

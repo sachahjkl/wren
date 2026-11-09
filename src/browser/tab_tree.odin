@@ -147,3 +147,25 @@ tree_guides :: proc(depths: []int, out: []Tree_Guide) {
 		later |= 1 << u64(d)
 	}
 }
+
+// The parent that puts the tab at `i` at `depth` in the tree, after the tab before it: that tab (one level deeper than
+// it), one of its ancestors, or none (a root). The depth is clamped to what the order allows: at most one more than the
+// tab before's; a pinned tab, another group's, or none before: a root.
+tree_parent_at_depth :: proc(tabs: []^Tab, i, depth: int) -> u64 {
+	if i <= 0 || i >= len(tabs) || depth <= 0 { return 0 }
+	prev := tabs[i - 1]
+	if prev.pinned || tabs[i].pinned || prev.group != tabs[i].group { return 0 }
+	depths := make([]int, len(tabs), context.temp_allocator)
+	tree_depths(tabs, depths)
+	d := min(depth, depths[i - 1] + 1)
+	// up from the tab before to its ancestor at depth d - 1
+	at := i - 1
+	for depths[at] > d - 1 {
+		parent := tabs[at].parent
+		k := at - 1
+		for k >= 0 && tabs[k].id != parent { k -= 1 }
+		if k < 0 { return 0 }
+		at = k
+	}
+	return tabs[at].id
+}

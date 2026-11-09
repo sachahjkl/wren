@@ -272,7 +272,29 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 				own.strip.follow_id = wnd.tabs[wnd.current].id   // no jump of the scroll while dragging
 				request_frames(app, 2)
 			}
+			// tab_tree.odin: the pointer right of where it was pressed, one level deeper per indent step (under the tab
+			// before, or one of its ancestors); left, less deep
+			if tree {
+				i := -1
+				for x, k in wnd.tabs { if x == t { i = k; break } }
+				if own.sidebar.drag_tab != t.id {
+					depths := make([]int, len(wnd.tabs), context.temp_allocator)
+					tree_depths(wnd.tabs[:], depths)
+					own.sidebar.drag_tab, own.sidebar.drag_depth = t.id, i >= 0 ? depths[i] : 0
+				}
+				if i >= 0 {
+					want := max(own.sidebar.drag_depth + int(math.round(own.sidebar.drag_dx / max(tree_step(app), 1))), 0)
+					if p := tree_parent_at_depth(wnd.tabs[:], i, want); p != t.parent {
+						tree_detach(wnd.tabs[:], t)
+						t.parent = p
+						tabs_fix(app, wnd)
+						request_frames(app, 2)
+					}
+				}
+			}
 		}
+	} else {
+		own.sidebar.drag_tab = 0
 	}
 	tabs_frame(app, first, last, items)
 }
@@ -548,6 +570,7 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 	}
 	if ui.reorder_dragging(b.key) {
 		dragging = true
+		own.sidebar.drag_dx = sig.drag_delta.x   // (tab_tree.odin: sideways, deeper or less deep)
 		// the list follows the pointer to its ends: a row held past the edge scrolls it
 		area.view_target.y = ui.reorder_edge_scroll(y, rh, area.view_off.y, area.size.y, limit, area.view_target.y)
 		request_frames(app, 2)
