@@ -23,22 +23,27 @@ qr_build :: proc(app: ^App) {
 	em := ui.font_size()
 	open := true
 	close := false
-	if ui.modal("page_qr", em * (QR_SIDE_EM + 1), &open) {
-		ui.spacer(ui.px(em * 0.8))
-		ui.label(i18n.tr("Scan to open this page"))
-		ui.spacer(ui.px(em * 0.6))
-		ui.qr_code("###page_qr_code", app.qr_url, em * QR_SIDE_EM)
-		ui.spacer(ui.px(em * 0.6))
-		ui.push_tags("weak")
-		ui.label(app.qr_url)
-		ui.pop_tags()
-		ui.spacer(ui.px(em * 0.8))
-		if ui.row() {
-			if action_button(i18n.tr("Copy the address"), "qr_copy", em * 10) { clip_set(app.qr_url); ui.toast(.Info, "Address copied") }
+	if ui.modal("page_qr", em * (QR_SIDE_EM + 6), &open) {
+		// everything centred across the dialog: the code, its words, its buttons
+		ui.next({width = ui.fill(), height = ui.children_sum()})
+		if ui.column(.Center, {}, "###page_qr_col") {
+			ui.spacer(ui.px(em * 0.8))
+			ui.label(i18n.tr("Scan to open this page"))
 			ui.spacer(ui.px(em * 0.6))
-			if action_button(i18n.tr("Close"), "qr_close", em * 6) { close = true }
+			ui.qr_code("###page_qr_code", app.qr_url, em * QR_SIDE_EM)
+			ui.spacer(ui.px(em * 0.6))
+			ui.push_tags("weak")
+			ui.label(app.qr_url)
+			ui.pop_tags()
+			ui.spacer(ui.px(em * 0.8))
+			ui.next({width = ui.children_sum(), height = ui.children_sum()})
+			if ui.row(.Center, {}, "###page_qr_buttons") {
+				if action_button(i18n.tr("Copy the address"), "qr_copy", em * 10) { clip_set(app.qr_url); ui.toast(.Info, "Address copied") }
+				ui.spacer(ui.px(em * 0.6))
+				if action_button(i18n.tr("Close"), "qr_close", em * 6) { close = true }
+			}
+			ui.spacer(ui.px(em * 0.8))
 		}
-		ui.spacer(ui.px(em * 0.8))
 	}
 	if !open || close {
 		delete(app.qr_url)
