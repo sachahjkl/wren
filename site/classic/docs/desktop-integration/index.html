@@ -119,9 +119,9 @@ repair".
 folders. NixOS has neither, so the downloaded program starts only in an FHS sandbox (<code>steam-run</code>) or with nix-ld. Two ways
 to install it:</p>
 <ul>
-<li><strong>The Nix package</strong> (<code>nix profile install github:sachahjkl/wren</code>, or <code>packages.default</code> of <code>flake.nix</code> in a system
-configuration). It has the menu entry and the icons, and Nix updates it. The release workflow points
-<code>nix/release.json</code> to each new Linux file. A copy that runs from the Nix store does not offer Setup by itself.</li>
+<li><strong>The Nix package</strong> (<code>nix profile add git+https://github.com/sachahjkl/wren</code>, or <code>packages.default</code> of <code>flake.nix</code> in a system
+configuration). Nix builds it from the sources, as <code>wrentool build release</code> does, with the menu entry and the icons, and
+<code>nix profile upgrade</code> updates it. A copy that runs from the Nix store does not offer Setup by itself.</li>
 <li><p><strong>Setup from the downloaded program.</strong> On NixOS (<code>ID=nixos</code> in <code>/etc/os-release</code>), the install also does this
 (the toolkit's <code>nixos_linux.odin</code>):</p>
 <ol>
@@ -464,6 +464,7 @@ to the user's Wren and end. <code>src\tools\e2e\instance.odin</code> checks the 
 <li><a href="../../docs/releases/v0.6.8/">Wren 0.6.8</a></li>
 <li><a href="../../docs/releases/v0.6.9/">Wren 0.6.9</a></li>
 <li><a href="../../docs/releases/v0.7.0/">Wren 0.7.0</a></li>
+<li><a href="../../docs/releases/v0.7.1/">Wren 0.7.1</a></li>
 </ul>
 </details></li>
 </ul>

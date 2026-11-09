@@ -207,6 +207,7 @@
 <li><a href="../../../docs/releases/v0.6.8/">Wren 0.6.8</a></li>
 <li><a href="../../../docs/releases/v0.6.9/">Wren 0.6.9</a></li>
 <li><a href="../../../docs/releases/v0.7.0/">Wren 0.7.0</a></li>
+<li><a href="../../../docs/releases/v0.7.1/">Wren 0.7.1</a></li>
 </ul>
 </details></li>
 </ul>
@@ -256,7 +257,7 @@ the request record until Fetch_release. A Response (module fetch) is the same re
 <h3 id="handle-response-fetch"><a class="anchor" href="#handle-response-fetch" aria-hidden="true">#</a>handle <code>Response</code> : <code>Fetch</code></h3>
 <p>The response of a fetch (what Fetch_promise settles with): the same record as its Fetch.</p>
 <h3 id="enum-fetchstate-i32"><a class="anchor" href="#enum-fetchstate-i32" aria-hidden="true">#</a>enum <code>FetchState</code> : i32</h3>
-<p>Where a request is.</p>
+<p>Where a request is. Body: a part of the body arrived (a callback state only; Fetch_state says Response meanwhile).</p>
 <div class="table-box"><table>
 <thead><tr><th>member</th><th style="text-align:right">value</th><th></th></tr></thead>
 <tbody>
@@ -264,6 +265,7 @@ the request record until Fetch_release. A Response (module fetch) is the same re
 <tr><td><code>Response</code></td><td style="text-align:right">1</td><td></td></tr>
 <tr><td><code>Done</code></td><td style="text-align:right">2</td><td></td></tr>
 <tr><td><code>Failed</code></td><td style="text-align:right">3</td><td></td></tr>
+<tr><td><code>Body</code></td><td style="text-align:right">4</td><td></td></tr>
 </tbody>
 </table></div>
 <h3 id="enum-responsetype-i32"><a class="anchor" href="#enum-responsetype-i32" aria-hidden="true">#</a>enum <code>ResponseType</code> : i32</h3>
@@ -351,7 +353,8 @@ the request record until Fetch_release. A Response (module fetch) is the same re
 </table></div>
 <h3 id="callback-fetchcallback"><a class="anchor" href="#callback-fetchcallback" aria-hidden="true">#</a>callback <code>FetchCallback</code></h3>
 <div class="code"><pre><code>void FetchCallback(i32 user, Fetch request, FetchState state)</code></pre></div>
-<p>Called when the response arrives (Response), when the body is complete (Done) or on failure (Failed).</p>
+<p>Called when the response arrives (Response), as the body arrives (Body: at most every 50 ms, the first part at once;
+Fetch_bodyLength and Fetch_readBody read what is there), when the body is complete (Done) or on failure (Failed).</p>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
 <h3 id="fetch-start"><a class="anchor" href="#fetch-start" aria-hidden="true">#</a><code>Fetch_start</code></h3>
 <div class="code"><pre><code>Fetch Fetch_start(string url, FetchCallback callback, i32 user = 0, string method = "GET", string headers = "", optional bytes body, FetchOptions options = none)</code></pre></div>

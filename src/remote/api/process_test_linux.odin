@@ -3,9 +3,7 @@ package api
 import "core:fmt"
 import "core:os"
 import "core:sys/posix"
-import "core:strings"
 import "core:testing"
-import "core:time"
 
 @(test)
 a_child_is_waited_for_told_again_and_ended :: proc(t: ^testing.T) {
@@ -49,13 +47,7 @@ a_child_does_not_keep_the_callers_outputs :: proc(t: ^testing.T) {
 	testing.expect_value(t, err, "")
 	defer process_release(&p)
 	defer process_kill(&p)
-	// the child set its descriptors once it runs sleep (the shell's exec): wait for that, at most 10 s
-	deadline := time.tick_add(time.tick_now(), 10 * time.Second)
-	for time.tick_diff(time.tick_now(), deadline) > 0 {
-		cmd, _ := os.read_entire_file(fmt.tprintf("/proc/%d/cmdline", pid), context.temp_allocator)
-		if strings.has_prefix(string(cmd), "sleep") { break }
-		time.sleep(time.Millisecond)
-	}
+	// (posix_spawn returns once the child runs /bin/sh: its descriptors are set; exec sleep keeps them)
 	for fd in 0 ..< 3 {
 		target, rerr := os.read_link(fmt.tprintf("/proc/%d/fd/%d", pid, fd), context.temp_allocator)
 		testing.expect(t, rerr == nil, "the child's descriptor can be read")

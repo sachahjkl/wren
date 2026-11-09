@@ -205,7 +205,7 @@ test("the body as it arrives: LOADING, progress, responseText, then abort", asyn
   ok(loaded >= 3, "progress events while the body arrives (" + loaded + " bytes after at most 5 s)");
   ok(x.responseText.length >= 3 && x.responseText.length < 100, "responseText has what came: " + x.responseText.length + " of 100");
   ok(/^\.+$/.test(x.responseText), "the bytes that came");
-  eq(states.slice(0, 2).join(" "), "2 3", "HEADERS_RECEIVED, then LOADING");
+  eq(states.slice(0, 3).join(" "), "1 2 3", "OPENED (open, the handler set before it), HEADERS_RECEIVED, then LOADING");
   x.abort();
   eq(x.readyState, XMLHttpRequest.UNSENT, "aborted");
 });
