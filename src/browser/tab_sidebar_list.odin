@@ -15,6 +15,8 @@ import "core:math"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:ui"
+import lucide "toolkit:lucide"
+import "wb:config"
 import "wb:i18n"
 
 ////////////////////////////////
@@ -26,28 +28,49 @@ Side_Item :: struct {
 	kind:  Side_Item_Kind,
 	index: int,   // the tab's index in the window's tabs; a header's: its group's in the window's groups
 	y, h:  f32,   // in the list's content
+	depth: int,   // a tab's in the tree (tab_tree.odin; 0: a root, or the tree is off)
 }
 
 // The rows of the list (the tabs that are not pinned, `rh` high, and a header `hh` high before each group's tabs); the
-// tabs of a collapsed group are left out. Returns the content's height.
-side_list_layout :: proc(tabs: []^Tab, groups: []Tab_Group, rh, hh: f32, out: ^[dynamic]Side_Item) -> (height: f32) {
+// tabs of a collapsed group are left out, and the descendants of a folded tab (tab_tree.odin) unless the current tab
+// (`current`) is one of them. `tree` off: every tab at depth 0. Returns the content's height.
+side_list_layout :: proc(tabs: []^Tab, groups: []Tab_Group, rh, hh: f32, out: ^[dynamic]Side_Item, current := -1, tree := false) -> (height: f32) {
 	clear(out)
 	y: f32
 	prev: u64
 	hidden := false
+	depths := make([]int, len(tabs), context.temp_allocator)
+	if tree { tree_depths(tabs, depths) }
+	// the folded tabs that are ancestors of the current one fold nothing
+	open_chain := make(map[u64]bool, 8, context.temp_allocator)
+	if tree && current >= 0 && current < len(tabs) {
+		for id := tabs[current].parent; id != 0; {
+			open_chain[id] = true
+			next: u64 = 0
+			for u in tabs { if u.id == id { next = u.parent; break } }
+			id = next
+		}
+	}
+	fold_depth := -1   // the depth of the folded tab whose descendants are being skipped (-1: none)
 	for t, i in tabs {
 		if t.pinned { continue }
 		if t.group != prev {
 			prev, hidden = t.group, false
+			fold_depth = -1
 			if gi := group_index(groups, t.group); gi >= 0 {
-				append(out, Side_Item{.Header, gi, y, hh})
+				append(out, Side_Item{.Header, gi, y, hh, 0})
 				y += hh
 				hidden = groups[gi].collapsed
 			}
 		}
 		if hidden { continue }
-		append(out, Side_Item{.Tab, i, y, rh})
+		if fold_depth >= 0 {
+			if depths[i] > fold_depth { continue }
+			fold_depth = -1
+		}
+		append(out, Side_Item{.Tab, i, y, rh, depths[i]})
 		y += rh
+		if tree && t.fold && !open_chain[t.id] && tree_has_children(tabs, i) { fold_depth = depths[i] }
 	}
 	return y
 }
@@ -137,7 +160,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 	_ = ui.signal(area)   // the wheel
 	own.strip.area_key = area.key
 	tab_press_follows(wnd, own.sidebar.pins_key, area.key)   // (a pinned tab dragged down into the list: unpinned on the way)
-	total := side_list_layout(wnd.tabs[:], wnd.groups[:], rh, hh, &own.sidebar.items)
+	total := side_list_layout(wnd.tabs[:], wnd.groups[:], rh, hh, &own.sidebar.items, wnd.current, config.bool_of(&app.prefs, "browser.tabs.tree"))
 	if cc != nil {
 		// classic: the feet of the current tab reach beyond its row, above the first and below the last: room for them inside the
 		// clip, else they are cut and the tab's outline does not join the panel's edge line
@@ -184,7 +207,9 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 	// classic: the current tab is built after the others (its feet flare over its neighbours' rows)
 	late := cc != nil && wnd.current != dragged ? wnd.current : -1
 	row :: proc(app: ^App, it: Side_Item, rh, row_x, row_w, inset, open, total, limit: f32, area: ^ui.Box, cc: ^Classic_Colors, drag_y: ^f32) {
-		y, dragging := sidebar_row(app, it.index, it.y, rh, row_x, row_w, inset, open, area, limit, total, cc)
+		// (tab_tree.odin: a child is indented by its depth, while the sidebar shows the titles)
+		indent := it.depth > 0 && open >= 0.5 ? min(f32(it.depth) * math.round(ui.font_size() * TREE_INDENT_EM), row_w * 0.5) : 0
+		y, dragging := sidebar_row(app, it.index, it.y, rh, row_x + indent, row_w - indent, inset, open, area, limit, total, cc)
 		if dragging { drag_y^ = y }
 	}
 
@@ -239,6 +264,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 			to, g := side_drop(items, wnd.tabs[:], wnd.groups[:], dragged, drag_y + rh * 0.5)
 			if to != dragged || g != t.group {
 				t.group = g
+				tree_detach(wnd.tabs[:], t)   // tab_tree.odin: moved by hand, out of its tree
 				wnd.current = list_move(wnd.tabs[:], dragged, to, wnd.current)
 				tabs_fix(app, wnd)
 				own.strip.follow_id = wnd.tabs[wnd.current].id   // no jump of the scroll while dragging
@@ -451,8 +477,25 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 		// close button fade in behind it, clipped by the row while it widens)
 		ix := side_icon_x(row_w - window_own(app).sidebar.past_closed, isz, math.round(em * 0.65), open)
 		ui.spacer(ui.px(ix))
-		ui.next({width = ui.px(isz), height = ui.pct(1)})
-		ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
+		// tab_tree.odin: a tab with children shows, in its icon's place, a chevron that folds them away: while the pointer
+		// is on the row, and always while they are folded (the icons stay in line by depth)
+		if open >= 0.5 && config.bool_of(&app.prefs, "browser.tabs.tree") && tree_has_children(wnd.tabs[:], i) && (inside || t.fold) {
+			s := math.round(max(isz, em * 1.2))
+			ui.next({width = ui.px(isz), height = ui.pct(1), axis = .X, cross = .Center})
+			ui.push_parent(ui.build_box({}, "###twisty_slot"))
+			ui.spacer(ui.px(math.round((isz - s) * 0.5)))
+			ui.next({width = ui.px(s), height = ui.px(s), font = app.lucide, font_size = math.round(em * 0.95), text_pad = 0, radius = s * 0.5})
+			tw := ui.build_box({.Clickable, .Draw_Text, .Draw_Hot_Effects, .No_Text_Trunc}, fmt.aprintf("%s###twisty", t.fold ? lucide.CHEVRON_RIGHT : lucide.CHEVRON_DOWN, allocator = ui.frame_allocator()))
+			tw.text_align = .Center
+			ui.a11y_set(tw, {role = .Button, name = t.fold ? i18n.tr("Show the tabs it opened") : i18n.tr("Fold the tabs it opened"), expanded = !t.fold})
+			ui.pop_parent()
+			tsig := ui.signal(tw)
+			if tsig.clicked { tab_tree_toggle(app, t) }
+			tip(tsig, t.fold ? i18n.tr("Show the tabs it opened") : i18n.tr("Fold the tabs it opened"))
+		} else {
+			ui.next({width = ui.px(isz), height = ui.pct(1)})
+			ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
+		}
 		speaker := tab_speaker(app, t)
 		// the narrow column: the speaker over the icon's corner (the tab's menu mutes it); open: a button of its own
 		if open < 0.5 { tab_speaker_badge(speaker, {ix + isz * 0.45, math.round((rh - isz) * 0.5 + isz * 0.45)}, math.round(isz * 0.8), "###speaker_badge") }

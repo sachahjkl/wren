@@ -25,7 +25,7 @@ SETTINGS_PAGES := [?]Settings_Page_Def{
 		"browser.ui.theme", "browser.ui.theme_mode", "browser.ui.chrome_style", "browser.ui.machined_glow", "browser.ui.font_size",
 		"browser.ui.scale", "browser.ui.animations", "browser.status_bar.visible", "browser.ui.scrollbar_autohide"}},
 	{"tabs", "Tabs", lucide.LAYERS_2, {
-		"browser.tabs.position", "browser.tabs.sidebar_collapsed", "browser.tabs.close_window_with_last_tab", "browser.tabs.middle_click_close",
+		"browser.tabs.position", "browser.tabs.tree", "browser.tabs.sidebar_collapsed", "browser.tabs.close_window_with_last_tab", "browser.tabs.middle_click_close",
 		"browser.tabs.audio_indicator", "browser.tabs.restore_pinned", "browser.session.restore", "browser.tabs.closed_max"}},
 	{"startpage", "Start page", lucide.HOME, {
 		"browser.homepage", "browser.newtab.focus_address", "browser.newtab.art.enabled", "browser.newtab.art.sources", "browser.newtab.art.show_caption"}},

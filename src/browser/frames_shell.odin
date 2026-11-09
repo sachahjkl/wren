@@ -488,6 +488,22 @@ frames_link_target :: proc(app: ^App, t: ^Tab, clicked: base.Handle, href: strin
 	return true
 }
 
+// A link of a tab's document whose target is _blank, or a name no navigable has: a new window, as window.open makes it
+// (page/auxiliary.odin: its rel, the sandbox and the popup filters decide; page_open_window makes the tab). False for
+// any other target (the tab itself, _top, _parent, a frame: frames_link_target).
+link_opens_window :: proc(p: ^page.Page, clicked: base.Handle, href: string) -> bool {
+	a, _, ok := frame_anchor(p.doc, clicked)
+	if !ok { return false }
+	target, _ := dom.get_attribute(p.doc, a, "target")
+	target = strings.trim_space(target)
+	if target == "" || base.ascii_equal_fold(target, "_self") { return false }
+	rel, _ := dom.get_attribute(p.doc, a, "rel")
+	feat := page.link_open_features(rel, target)
+	if page.frames_find_target(p, target, feat.noopener) != nil { return false }
+	page.auxiliary_open(p, href, target, feat)
+	return true
+}
+
 ////////////////////////////////
 // Per frame
 

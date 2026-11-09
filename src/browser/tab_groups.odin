@@ -161,6 +161,7 @@ tabs_fix :: proc(app: ^App, w: ^Browser_Window) {
 	cur := window_current(app, w)
 	cur^ = tabs_normalize(tabs[:], cur^)
 	tab_groups_prune(tabs[:], &w.groups)
+	tree_repair(tabs[:])   // tab_tree.odin: a parent the order no longer allows goes
 	group_reveal_current(app, w)
 	window_request(app, w, 2)
 	recovery_touch(app)

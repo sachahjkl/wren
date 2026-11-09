@@ -312,6 +312,7 @@ tab_move_current :: proc(app: ^App, delta: int) {
 	t := wnd.tabs[wnd.current]
 	if wnd.tabs[to].pinned != t.pinned { return }   // (pinned tabs stay among themselves: tab_groups.odin)
 	if !t.pinned { t.group = wnd.tabs[to].group }   // into the group it moves into, out of its own past its ends
+	tree_detach(wnd.tabs[:], t)   // tab_tree.odin: moved by hand, out of its tree
 	wnd.current = list_move(wnd.tabs[:], wnd.current, to, wnd.current)
 	tabs_fix(app, wnd)
 }

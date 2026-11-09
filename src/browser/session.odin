@@ -78,6 +78,8 @@ Session_Tab :: struct {
 	current: u64,                  // id of the current entry (0: the last one)
 	pinned:  bool,
 	group:   u64,                  // the id of its group among its window's (0: none)
+	parent:  int,                  // tab_tree.odin: 1 + the index of its parent among the window's tabs (0: a root)
+	fold:    bool,
 }
 
 // One tab group of a window (tab_groups.odin).
@@ -136,6 +138,11 @@ session_write_tabs :: proc(sb: ^strings.Builder, tabs: []Session_Tab, current: i
 		strings.write_byte(sb, '\n')
 		if t.pinned { strings.write_string(sb, "pin\n") }
 		if t.group != 0 { fmt.sbprintf(sb, "group %d\n", t.group) }
+		if t.parent > 0 {
+			// (tab_tree.odin: the parent's place among the tabs written; one not written makes it a root)
+			for k, n in kept { if k == t.parent - 1 { fmt.sbprintf(sb, "parent %d\n", n); break } }
+		}
+		if t.fold { strings.write_string(sb, "fold\n") }
 		dropped := make(map[u64]u64, 8, context.temp_allocator)   // id -> its parent, for entries not written
 		for e in t.entries {
 			parent := e.parent
@@ -256,6 +263,12 @@ session_parse_windows :: proc(text: string, max_tabs, max_url_bytes: int, alloca
 		case line == "pin":
 			if skipping || len(out) == 0 { continue }
 			out[len(out) - 1].pinned = true
+		case line == "fold":
+			if skipping || len(out) == 0 { continue }
+			out[len(out) - 1].fold = true
+		case strings.has_prefix(line, "parent "):
+			if skipping || len(out) == 0 { continue }
+			if n, nok := strconv.parse_int(strings.trim_space(line[len("parent "):])); nok && n >= 0 { out[len(out) - 1].parent = n + 1 }
 		case strings.has_prefix(line, "group "):
 			if skipping || len(out) == 0 { continue }
 			if id, gok := strconv.parse_u64(strings.trim_space(line[len("group "):])); gok { out[len(out) - 1].group = id }
@@ -306,7 +319,7 @@ session_parse :: proc(text: string, max_tabs, max_url_bytes: int, allocator := c
 
 // The saved form of a tab's tree.
 session_tab_of :: proc(t: ^Tab) -> Session_Tab {
-	st := Session_Tab{url = t.url == "" && t.kind == .Web ? HOME_URL : t.url, pinned = t.pinned, group = t.group}
+	st := Session_Tab{url = t.url == "" && t.kind == .Web ? HOME_URL : t.url, pinned = t.pinned, group = t.group, fold = t.fold}
 	flat := page.session_flatten(&t.session)
 	entries := make([]page.Saved_Entry, len(flat), context.temp_allocator)
 	for e, i in flat {
@@ -319,6 +332,14 @@ session_tab_of :: proc(t: ^Tab) -> Session_Tab {
 	st.entries = entries
 	if cur := page.session_current(&t.session); cur != nil { st.current = cur.id }
 	return st
+}
+
+// The tree of a window's tabs in their saved forms: each one's parent as its index among them (tab_tree.odin).
+session_tree_of :: proc(list: []^Tab, tabs: []Session_Tab) {
+	for t, i in list {
+		if t.parent == 0 { continue }
+		for u, k in list[:i] { if u.id == t.parent { tabs[i].parent = k + 1; break } }
+	}
 }
 
 // A tab that shows nothing: the start page or a blank one, with nothing to go back to.
@@ -340,6 +361,7 @@ session_window_of :: proc(app: ^App, w: ^Browser_Window) -> Session_Window {
 		entry_capture_current(app, t)
 		tabs[i] = session_tab_of(t)
 	}
+	session_tree_of(list[:], tabs)
 	rect, maximized := window_placement(w)
 	return {has_rect = true, rect = rect, maximized = maximized, tabs = tabs, current = window_current(app, w)^, groups = session_groups_of(w.groups[:])}
 }
@@ -384,6 +406,7 @@ session_text :: proc(app: ^App) -> string {
 		entry_capture_current(app, t)
 		tabs[i] = session_tab_of(t)
 	}
+	session_tree_of(wnd.tabs[:], tabs)
 	return session_text_of(app, {{tabs = tabs, current = wnd.current, groups = session_groups_of(wnd.groups[:])}})
 }
 
@@ -498,8 +521,12 @@ session_open_tabs :: proc(app: ^App, tabs: []Session_Tab, current: int, groups: 
 		append(&wnd.groups, Tab_Group{id = next, name = group_name_clone(app, g.name), color = g.color, collapsed = g.collapsed})
 		next += 1
 	}
+	made := make([dynamic]^Tab, 0, len(tabs), context.temp_allocator)   // (the window's tabs read, in order: the parents)
 	for st in tabs {
 		t := tab_new(app)
+		append(&made, t)
+		if st.parent > 0 && st.parent < len(made) { t.parent = made[st.parent - 1].id }   // (tab_tree.odin; repaired by tabs_fix)
+		t.fold = st.fold
 		t.pinned = st.pinned
 		t.group = ids[st.group] or_else 0
 		delete(t.url); t.url = strings.clone(st.url)

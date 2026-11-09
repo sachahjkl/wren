@@ -132,6 +132,8 @@ Tab :: struct {
 	keyboard_frame: Frame_Document,   // keyboard.odin: the frame document that had the keyboard when another tab took the window
 	pinned:   bool,              // tab_groups.odin: at the start of the window's tabs, its icon alone
 	group:    u64,               // tab_groups.odin: the id of its group in its window (0: none)
+	parent:   u64,               // tab_tree.odin: the id of the tab that opened it in the window's tree (0: a root)
+	fold:     bool,              // tab_tree.odin: its children are folded away in the sidebar
 	muted:    bool,              // tab_sound.odin: its pages make no sound (they are not told)
 	sound:    Tab_Sound,         // tab_sound.odin: whether it plays sound, as the last frame saw
 }
@@ -323,6 +325,7 @@ tab_open :: proc(app: ^App, address := "", from: ^page.Page = nil, origin := Nav
 	if address != "" { t.url = strings.clone(address) }   // (what the field shows until navigate says better: that may wait for the page holding the thread)
 	// an empty address opens the homepage; one that is refused (nav_trust.odin) leaves the homepage too, not an empty tab
 	if !navigate(app, t, address, from, origin = origin) { navigate(app, t, "") }
+	if from != nil { tab_tree_opened(app, t, tab_of_page(app, from)) }   // tab_tree.odin: under the tab of the page that opened it
 	return t
 }
 
@@ -360,6 +363,7 @@ tab_close_in :: proc(app: ^App, w: ^Browser_Window, index: int) {
 	t := tabs[index]
 	if shell_defer({kind = .Close_Tab, tab = t.id}) { return }   // (shell_frames.odin: its page may be the one running)
 	closed_tab_push(app, w, t, index)   // closed_tabs.odin
+	tree_forget(tabs[:], t)   // tab_tree.odin: its children move up a level
 	ordered_remove(tabs, index)
 	tab_groups_prune(tabs[:], &w.groups)   // tab_groups.odin: its group goes with its last tab
 	key := strings.clone(tab_key(t), context.temp_allocator)
@@ -670,6 +674,7 @@ page_open_window :: proc(user: rawptr, p: ^page.Page, req: page.Open_Request) ->
 	} else {
 		navigate(app, t, req.url, req.source)   // (a noreferrer window still sends the Referer: the shell's navigations have no such option)
 	}
+	if req.source != nil { tab_tree_opened(app, t, tab_of_page(app, req.source)) }   // tab_tree.odin
 	request_frames(app, 2)
 	return t.top
 }
@@ -1263,6 +1268,12 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 					if page.follow_fragment_link(t.page, resolved) { continue }   // same document: page_draw scrolls to the target
 					if page.follow_javascript_url(t.page, resolved) { continue }  // javascript: runs in the page (js_load_realm.odin)
 					if frames_link_target(app, t, target, resolved.href) { continue }   // target="a frame's name" (frames_shell.odin)
+					if .Ctrl in ev.mods {
+						// Ctrl+click: a new tab, the page stays (under it in the tree: tab_tree.odin)
+						open_in_new_tab(app, resolved.href, t.page, origin = .Page)
+						continue
+					}
+					if link_opens_window(t.page, target, resolved.href) { continue }   // target=_blank or a name nothing has
 					if page.navigation_link(t.page, resolved) { continue }   // the document's navigate listener took it (Navigation API)
 					navigate(app, t, resolved.href, t.page, user_activation = true)
 					have_move = false

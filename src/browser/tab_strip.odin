@@ -225,6 +225,7 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 			move_to = mt.pinned ? clamp(move_to, 0, np - 1) : clamp(move_to, np, len(wnd.tabs) - 1)
 			if move_to != move_from {
 				if !mt.pinned { mt.group = wnd.tabs[move_to].group }
+				tree_detach(wnd.tabs[:], mt)   // tab_tree.odin: moved by hand, out of its tree
 				wnd.current = list_move(wnd.tabs[:], move_from, move_to, wnd.current)
 				tabs_fix(app, wnd)
 				own.strip.follow_id = wnd.tabs[wnd.current].id   // no jump of the scroll while dragging
