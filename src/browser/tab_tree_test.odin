@@ -110,3 +110,18 @@ tree_survives_the_session :: proc(t: ^testing.T) {
 	testing.expect_value(t, back[1].fold, true)
 	testing.expect_value(t, back[2].parent, 2)
 }
+
+// The guide lines: a child followed by a sibling continues its parent's line (├), the last one ends it (└); a deeper
+// row is crossed by the lines of the levels that go on below it; a group's header ends every line.
+@(test)
+tree_guides_follow_the_siblings :: proc(t: ^testing.T) {
+	//  0 Parent / 1 Child one / 2 Grandchild / 1 Child two / -1 header / 1 (a child after a header: nothing goes on)
+	depths := []int{0, 1, 2, 1, -1, 1}
+	g := make([]Tree_Guide, len(depths), context.temp_allocator)
+	tree_guides(depths, g)
+	testing.expect_value(t, g[1], Tree_Guide{rails = 0, last = false})
+	testing.expect_value(t, g[2], Tree_Guide{rails = 1, last = true})   // level 0 goes on to Child two
+	testing.expect_value(t, g[3], Tree_Guide{rails = 0, last = true})
+	testing.expect_value(t, g[4], Tree_Guide{})
+	testing.expect_value(t, g[5], Tree_Guide{rails = 0, last = true})
+}

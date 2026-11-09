@@ -198,6 +198,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 		row_w = extent - outer
 		row_x = pos == .Left ? outer : 0
 	}
+	tree := config.bool_of(&app.prefs, "browser.tabs.tree")
 	first, last := side_visible_items(items, area.view_off.y, area.view_target.y, view_h, rh * 2)
 	dragged := -1
 	for t, i in wnd.tabs {
@@ -209,7 +210,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 	row :: proc(app: ^App, it: Side_Item, rh, row_x, row_w, inset, open, total, limit: f32, area: ^ui.Box, cc: ^Classic_Colors, drag_y: ^f32) {
 		// (tab_tree.odin: a child is indented by its depth, while the sidebar shows the titles)
 		indent := it.depth > 0 && open >= 0.5 ? min(f32(it.depth) * math.round(ui.font_size() * TREE_INDENT_EM), row_w * 0.5) : 0
-		y, dragging := sidebar_row(app, it.index, it.y, rh, row_x + indent, row_w - indent, inset, open, area, limit, total, cc)
+		y, dragging := sidebar_row(app, it.index, it.y, rh, row_x + indent, row_w - indent, inset, open, area, limit, total, cc, indent)
 		if dragging { drag_y^ = y }
 	}
 
@@ -250,6 +251,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 			row(app, moved(items[drag_item], gap, rh), rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y)
 		}
 		if gap >= 0 { drop_ghost(app, area, true, gap - area.view_off.y, rh, row_x, row_w) }
+		if tree && open >= 0.5 { tree_guides_build(app, items[:], first, last, gap, rh, row_x, open) }
 	}
 	// the dragged row's place moves its tab: in the list (and in or out of a group), or up to the pinned tabs
 	if dragged >= 0 && drag_y >= 0 {
@@ -416,7 +418,7 @@ side_look_machined :: proc(app: ^App, l: ^Side_Look, b: ^ui.Box) {
 // One tab's row at `slot` (content y), animated when tabs move; a dragged row follows the pointer. Returns where it is
 // (content y) and whether it is the one dragged.
 @(private = "file")
-sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open: f32, area: ^ui.Box, limit, total: f32, cc: ^Classic_Colors) -> (y: f32, dragging: bool) {
+sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open: f32, area: ^ui.Box, limit, total: f32, cc: ^Classic_Colors, indent: f32 = 0) -> (y: f32, dragging: bool) {
 	wnd := active_window(app)
 	own := &wnd.own
 	t := wnd.tabs[i]
@@ -433,7 +435,8 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 	// a group's tabs: a rail of its colour on the outer side
 	if gi := group_index(wnd.groups[:], t.group); gi >= 0 {
 		th := max(math.round(2.5 * dpi), 2)
-		rx := app.favs.cfg.position == .Left ? math.round(row_x * 0.5 - th * 0.5) : math.round(row_x + row_w + (inset - th) * 0.5)
+		// (the list's edge, not the row's: a child of the tree is indented, its group's rail is not)
+		rx := app.favs.cfg.position == .Left ? math.round((row_x - indent) * 0.5 - th * 0.5) : math.round(row_x + row_w + (inset - th) * 0.5)
 		ui.next({fixed_x = rx, fixed_y = y, width = ui.px(th), height = ui.px(rh), bg = group_color(wnd.groups[gi].color)})
 		ui.build_box({.Draw_Background}, fmt.tprintf("###rail_%d", t.id))
 	}
@@ -689,4 +692,76 @@ side_row_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	cy := (r.min.y + r.max.y) * 0.5
 	x0 := l.left ? r.min.x : r.max.x - th
 	draw.rect(dc, {{x0, cy - h * 0.5}, {x0 + th, cy + h * 0.5}}, l.accent, th * 0.5)
+}
+
+// The guide lines of the tree (tab_tree.odin): over the indent of the rows first ..< last, from each parent's icon down
+// to its children's, thin and faint. `gap`: where a tab carried over the list makes room (-1: none).
+@(private = "file")
+tree_guides_build :: proc(app: ^App, items: []Side_Item, first, last: int, gap, rh, row_x, open: f32) {
+	depths := make([]int, len(items), context.temp_allocator)
+	any := false
+	for it, k in items {
+		depths[k] = it.kind == .Tab ? it.depth : -1
+		any ||= it.depth > 0
+	}
+	if !any { return }
+	guides := make([]Tree_Guide, len(items), context.temp_allocator)
+	tree_guides(depths, guides)
+	em := ui.font_size()
+	step := math.round(em * TREE_INDENT_EM)
+	isz := f32(tab_icon_px(app))
+	text := ui.color("text")
+	for k in first ..< last {
+		it := items[k]
+		if it.kind != .Tab || it.depth <= 0 { continue }
+		y := it.y
+		if gap >= 0 && y >= gap - 0.5 { y += rh }
+		w := f32(it.depth) * step
+		look := ui.frame_new(Tree_Guide_Look)
+		look^ = {guide = guides[k], depth = it.depth, step = step, icon_x = math.round(em * 0.65), icon = isz,
+			color = {text.r, text.g, text.b, text.a * 0.28 * clamp((open - 0.5) * 2, 0, 1)}, thick = max(math.round(ui_scale_of(app)), 1), radius = math.round(em * 0.35)}
+		// (a bit past the indent: the elbow reaches the icon of the row)
+		ui.next({fixed_x = row_x, fixed_y = y, width = ui.px(w + look.icon_x), height = ui.px(rh)})
+		b := ui.build_box({}, fmt.tprintf("###tree_guide_%d", it.index))
+		b.custom, b.custom_user = tree_guide_draw, look
+	}
+}
+
+@(private = "file")
+Tree_Guide_Look :: struct {
+	guide:                              Tree_Guide,
+	depth:                              int,
+	step, icon_x, icon, thick, radius:  f32,
+	color:                              draw.Color,
+}
+
+@(private = "file")
+tree_guide_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	l := (^Tree_Guide_Look)(user)
+	top, bottom := b.rect.min.y, b.rect.max.y
+	mid := math.round((top + bottom) * 0.5)
+	// the line of level k: under the icon of the tab of depth k
+	level_x :: proc(l: ^Tree_Guide_Look, left: f32, k: int) -> f32 { return math.round(left + f32(k) * l.step + l.icon_x + l.icon * 0.5 - l.thick * 0.5) }
+	left := b.rect.min.x
+	for k in 0 ..< l.depth - 1 {
+		if l.guide.rails & (1 << u64(k)) == 0 { continue }
+		x := level_x(l, left, k)
+		draw.rect(dc, {{x, top}, {x + l.thick, bottom}}, l.color)
+	}
+	// the elbow from the parent's line to this row's icon, rounded; the line goes on down when a sibling follows
+	x := level_x(l, left, l.depth - 1)
+	end := math.round(left + f32(l.depth) * l.step + l.icon_x - l.icon * 0.2)
+	r := min(l.radius, end - x - l.thick)
+	if !l.guide.last { draw.rect(dc, {{x, top}, {x + l.thick, bottom}}, l.color) } else { draw.rect(dc, {{x, top}, {x + l.thick, mid - r}}, l.color) }
+	if r > 0 {
+		pts: [7]draw.Vec2
+		cx, cy := x + l.thick * 0.5 + r, mid - r
+		// (a quarter circle from (x, mid - r) to (x + r, mid))
+		for s in 0 ..< len(pts) {
+			a := f32(s) / f32(len(pts) - 1) * math.PI * 0.5
+			pts[s] = {cx - r * math.cos(a), cy + r * math.sin(a)}
+		}
+		draw.polyline(dc, pts[:], l.thick, l.color)
+	}
+	draw.rect(dc, {{x + l.thick * 0.5 + r, mid - l.thick * 0.5}, {end, mid + l.thick * 0.5}}, l.color)
 }

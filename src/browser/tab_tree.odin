@@ -123,4 +123,27 @@ tab_tree_toggle :: proc(app: ^App, t: ^Tab) {
 	request_frames(app, 2)
 	recovery_touch(app)
 }
-TREE_INDENT_EM :: 1.1   // a child row's indent per level, in ems (tab_sidebar_list.odin)
+TREE_INDENT_EM :: 1.5   // a child row's indent per level, in ems (tab_sidebar_list.odin)
+
+// The guide lines of the tree in the sidebar, for one row: the vertical lines of its ancestors' levels that pass
+// through it (bit k: level k, the line from a tab of depth k down to its children), and whether it is the last child
+// of its parent (its elbow ends there: └, else ├).
+Tree_Guide :: struct {
+	rails: u64,
+	last:  bool,
+}
+
+// The guides of rows shown one under the other at these depths (-1: a row that is not a tab, a group's header, which
+// ends every line). Folded subtrees are not among the rows: their lines are not drawn.
+tree_guides :: proc(depths: []int, out: []Tree_Guide) {
+	later: u64   // bit l: a row of depth l comes later, before any row shallower than l
+	for i := len(depths) - 1; i >= 0; i -= 1 {
+		d := min(depths[i], 62)
+		if d < 0 { later = 0; out[i] = {}; continue }
+		g := Tree_Guide{last = d == 0 || later & (1 << u64(d)) == 0}
+		for k in 0 ..< max(d - 1, 0) { if later & (1 << u64(k + 1)) != 0 { g.rails |= 1 << u64(k) } }
+		out[i] = g
+		later &= (1 << u64(d + 1)) - 1   // (what is deeper belongs to another subtree above)
+		later |= 1 << u64(d)
+	}
+}
