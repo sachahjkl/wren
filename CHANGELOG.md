@@ -10,6 +10,12 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-11-09
+
+### Fixed
+- **The window on Linux moves and resizes**: dragging the tab strip's free space moves it, its edges and corners resize it (with the resize cursor), a double click there maximizes or restores it, a right click opens the compositor's window menu; where the system draws no frame around it, it has a 1-pixel outline (gui_toolkit 0.108.0).
+- **Pasting an image on Linux** (gui_toolkit 0.107.0): an image copied in another program (PNG, or JPEG or BMP when it offers no PNG) reaches the page, and a list of files copied in a file manager does too; the toolkit had no PNG codec off Windows, so a pasted image never arrived. The reftest runner writes its pictures with the toolkit's PNG codec, not one of its own.
+
 ## [0.7.1] - 2026-11-09
 
 ### Changed
@@ -1343,7 +1349,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/sachahjkl/wren/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/sachahjkl/wren/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/sachahjkl/wren/compare/v0.6.32...v0.7.0
 [0.6.32]: https://github.com/sachahjkl/wren/compare/v0.6.31...v0.6.32

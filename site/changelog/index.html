@@ -47,11 +47,24 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-7-1">
+      <article class="release latest" id="v0-7-2">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-11-09">November 9, 2026</time></p>
-          <div class="release-title"><h3>0.7.1</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.7.2</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>The window on Linux</strong>: drag the tab strip's free space to move it, its edges and corners to resize it, double click to maximize or restore it, right click for the compositor's window menu. Where the system draws no frame around it, it has a 1-pixel outline.</li>
+            <li><strong>Paste an image on Linux</strong>: a screenshot or a browser's "Copy image" pastes into a page (gui_toolkit's own PNG codec, which also reads JPEG and BMP).</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.7.2.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.7.2">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-7-1">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-11-09">November 9, 2026</time></p>
+          <div class="release-title"><h3>0.7.1</h3></div>
           <ul class="release-list">
             <li><strong>Sound on Linux</strong>: the audio output opens through PipeWire's ALSA plugin, where every video and sound played silent.</li>
             <li><strong>Videos</strong>: an Invidious video plays (XMLHttpRequest reads the body as it arrives), a video keeps its shape in its box, and the bands around it show the element's background.</li>
