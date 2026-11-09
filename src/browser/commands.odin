@@ -326,6 +326,9 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "page.copy_address", title = "Copy the page's address", category = "Page", glyph = GLYPH_COPY, keywords = "url link clipboard",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.url != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { clip_set(t.url); ui.toast(.Info, "Address copied") }})
+	add(r, {name = "page.qr_code", title = "QR code of the page's address", category = "Page", keywords = "share phone scan camera url link mobile",
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.kind == .Web && t.url != "" },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { qr_open(app, t.url) }})
 	add(r, {name = "page.info", title = "Page information", category = "Page", glyph = GLYPH_INFO, keywords = "security certificate cookies connection",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Page_Info) }})
 	add(r, {name = "page.javascript_site", title = "JavaScript on this site", category = "Page", keywords = "script js enable disable block allow",

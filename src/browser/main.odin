@@ -260,6 +260,7 @@ App :: struct {
 	sa_queue:      [dynamic]^page.Storage_Access_Ask,   // storage_access_shell.odin: the pages' storage access prompts
 	ask_state:     Ask_State,                // fs_shell.odin: a page's file system permission prompt
 	notes:         Notification_Shell,       // notification_shell.odin: the pages' system notifications
+	qr_url:        string,                   // qr_shell.odin: the address whose QR code is shown ("": none), owned
 	drag_probe:    Drag_Probe,               // drag_probe.odin
 	lm:            Load_Measure,             // blocker_measure.odin: WREN_BLOCKER_MEASURE
 	lm_report_path: string,
@@ -1105,6 +1106,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	setup_build(app)   // setup_ui.odin: the Setup dialog (nothing while it is closed)
 	fs_shell_build(app)   // fs_shell.odin: a page's file permission prompt (nothing while none waits)
 	notification_shell_build(app)   // notification_shell.odin: a page's notification permission prompt
+	qr_build(app)   // qr_shell.odin: the QR code of the page's address
 	storage_access_shell_build(app)   // storage_access_shell.odin: a frame's storage access prompt
 	// notices go over the page, not over the title bar's window buttons
 	if pr := active_window(app).page_rect; pr.max.y > pr.min.y { ui.set_toast_area(pr) }
@@ -1878,6 +1880,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	sw_shell_destroy(app)
 	fs_shell_destroy(app)
 	notification_shell_destroy(app)
+	delete(app.qr_url); app.qr_url = ""
 	storage_access_shell_destroy(app)
 	host.shutdown_step("session capture")
 	for t in tabs_all(app) { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was

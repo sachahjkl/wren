@@ -656,6 +656,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		}
 		menu_command(app, t, "page.find", force_disabled = !web)
 		menu_command(app, t, "page.save")
+		menu_command(app, t, "page.qr_code", force_disabled = !web)
 		menu_command(app, t, "page.view_source")
 		menu_command(app, t, "page.print", force_disabled = true)   // not available (print.odin)
 		menu_command(app, t, "browser.downloads")

@@ -301,6 +301,7 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		if ui.menu_item("Reload", "Ctrl+R", icon = GLYPH_RELOAD).clicked { reload(app, t); return }
 		ui.menu_separator()
 		if ui.menu_item("Save as…", "Ctrl+S", enabled = savable(t)).clicked { save_page(app, t) }
+		if ui.menu_item("QR code of the address").clicked { qr_open(app, t.url) }
 		ui.menu_separator()
 		if ui.menu_item("Select all", "Ctrl+A").clicked { page.selection_select_all(p) }
 		if ui.menu_item("Find…", "Ctrl+F").clicked { find_open(app) }
