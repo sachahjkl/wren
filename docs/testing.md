@@ -64,7 +64,7 @@ A step has a limit (`-StepTimeoutSec`, 900 s; hours for what is legitimately lon
 of a step outlives it. A test that talks to the test server starts it in its own process, on a block of ports of its own ([below](#the-test-server)), so several worktrees test side by side. `-Perf` and `-Ui` add the steps that depend on the machine's speed or on a desktop
 ([CONTRIBUTING](../CONTRIBUTING.md)); a full run adds the check build, the AddressSanitizer unit tests (one step per package, three at a time), the whole of WPT and test262, the network stress.
 
-On Linux `build/test_all` (`odin run src/tools/test_all -collection:wb=src -out:build/test_all -keep-executable`) runs `odin check` for every portable package and their unit tests (`steps_linux.odin`, [portability](portability.md)).
+On Linux `build/test_all` (`odin run src/tools/test_all -collection:wb=src -out:build/test_all -keep-executable`) runs `odin check` for every portable package and their unit tests (`steps_linux.odin`, [portability](portability.md)). It also type-checks for Windows what a Windows build compiles (`check (Windows): src/browser`, `src/desktop`, `src/e2e`, `src/tools/e2e`), under an Odin root of its own (`build/odin-windows-check`: links to the real one, and an empty `wgpu_native.lib` for the vendor's check): an error only Windows sees fails there, before the CI.
 ## The result cache
 
 With `-Quick` on a developer's machine, a step that has passed with exactly the same inputs says `CACHED` and does not run again (`src\tools\test_all\cache.odin`, results in `build\test_cache\`). That is what makes the second run of the day short:

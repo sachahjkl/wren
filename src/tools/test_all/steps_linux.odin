@@ -2,6 +2,7 @@
 package test_all
 
 import "core:fmt"
+import "core:os"
 import "core:strings"
 
 // What is portable already (docs/portability.md): odin check for Linux of every package that is, then the unit tests of those that have tests, with the flags of the Windows steps (-vet, the memory
@@ -22,6 +23,18 @@ linux_table :: proc(cfg: ^Config) -> []Step {
 	// browser is the first package that imports toolkit:render: its check needs libwgpu_native.a beside Odin's wgpu vendor package, which a bare WSL checkout may not have.
 	wgpu := linux_has_wgpu_library()
 	js_stub := linux_prepare_stubs()
+	// what Windows compiles, type-checked here: an error only Windows sees fails here, not twenty minutes into the CI
+	if win_root := linux_windows_check_root(); win_root != "" {
+		root_abs, _ := os.get_absolute_path(win_root, context.allocator)
+		if !os.exists("build/wren.com") { _ = os.write_entire_file("build/wren.com", "") }   // (package browser #loads the console launcher a Windows build makes)
+		for p in ([]string{"browser", "desktop", "e2e", "tools/e2e"}) {
+			append(&t, Step{name = fmt.aprintf("check (Windows): src/%s", p), actions = slice_of(Command{
+				argv = strs("odin", "check", fmt.aprintf("src/%s", p), "-target:windows_amd64", "-no-entry-point", "-vet", WB, TOOLKIT),
+				env = strs(fmt.aprintf("ODIN_ROOT=%s", root_abs)), pkg = fmt.aprintf("src/%s", p)})})
+		}
+	} else {
+		fmt.println("check skip Windows (no Odin root for it could be made)")
+	}
 	for p in CHECK {
 		needs_wgpu := p == "browser" || p == "e2e" || p == "tools/e2e"
 		if needs_wgpu && !wgpu { fmt.printfln("check skip src/%s (needs libwgpu_native.a for toolkit:render)", p); continue }
