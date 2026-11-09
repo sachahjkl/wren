@@ -10,6 +10,11 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-11-09
+
+### Fixed
+- **The developer tools docked at the bottom fit beside the tabs' sidebar**: they were laid out at the window's width while the page column beside the sidebar is narrower, so their right end (the message counters, the panel's menu, dock and close buttons) was cut off by the sidebar's width.
+
 ## [0.7.2] - 2026-11-09
 
 ### Fixed
@@ -1349,7 +1354,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.3...HEAD
+[0.7.3]: https://github.com/sachahjkl/wren/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/sachahjkl/wren/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/sachahjkl/wren/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/sachahjkl/wren/compare/v0.6.32...v0.7.0
