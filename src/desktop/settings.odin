@@ -31,12 +31,18 @@ options_apply_prefs :: proc(o: ^tk.Options, p: ^config.Prefs) {
 	o.start_menu = config.bool_of(p, "browser.desktop_integration.start_menu")
 	o.desktop_shortcut = config.bool_of(p, "browser.desktop_integration.desktop_shortcut")
 	o.add_to_path = config.bool_of(p, "browser.desktop_integration.add_to_path")
-	exts := tk.split_list(config.string_of(p, "browser.desktop_integration.file_types"))
+	o.file_types = file_types_of(config.string_of(p, "browser.desktop_integration.file_types"))
+}
+
+// The extensions of browser.desktop_integration.file_types, with their dot, those a file name cannot have left out
+// (temporary allocator; any thread).
+file_types_of :: proc(list: string) -> []string {
+	exts := tk.split_list(list)
 	norm := make([dynamic]string, context.temp_allocator)
 	for e in exts {
 		n := tk.normalize_extension(e)
 		if n == "" || strings.contains_any(n, "\\/:*?\"<>|") { continue }
 		append(&norm, n)
 	}
-	o.file_types = norm[:]
+	return norm[:]
 }

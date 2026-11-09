@@ -925,7 +925,8 @@ control_subscribe :: proc(app: ^App, conn: u64, on: bool) {
 control_setup_state :: proc(app: ^App, allocator := context.temp_allocator) -> api.Setup_State {
 	rect :: proc(r: draw.Rect) -> api.Rect { return {f64(r.min.x), f64(r.min.y), f64(r.max.x - r.min.x), f64(r.max.y - r.min.y)} }
 	return {
-		open = app.stp.open, known = app.stp.known, confirm_uninstall = app.stp.confirm_uninstall, busy = app.stp.busy, note = strings.clone(app.stp.note, allocator),
+		// busy: the dialog's work out, or the start still deciding whether to offer it
+		open = app.stp.d.open, known = app.stp.d.known, confirm_uninstall = app.stp.d.confirm, busy = app.stp.deciding + (app.stp.d.job != nil ? 1 : 0), note = strings.clone(app.stp.d.note, allocator),
 		primary = rect(app.stp.at_primary), uninstall = rect(app.stp.at_uninstall), secondary = rect(app.stp.at_secondary),
 	}
 }

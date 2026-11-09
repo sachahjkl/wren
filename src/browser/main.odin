@@ -204,7 +204,7 @@ App :: struct {
 	hcfg:          History_Settings,         // history_settings.odin
 	upd:           Update_State,             // update_check.odin: the daily check
 	cpal:          Palette_State,            // palette.odin: the command palette
-	stp:           Setup_Dialog,             // setup.odin: the Setup dialog
+	stp:           Setup_State,              // setup.odin: the Setup dialog (toolkit:setup)
 	wchrome:       Window_Chrome,            // window_chrome.odin: its preferences, the program's icon, the system menu asked for
 	tsh:           Touch_Shell,              // touch_shell.odin: touch input and its preferences
 	tab_drag:      Tab_Drag,                 // tab_drag.odin: the tab being dragged
@@ -1114,7 +1114,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	}
 	context_menus_build(app)
 	palette_build(app)   // palette.odin: the command palette, over everything else
-	setup_build(app)   // setup_ui.odin: the Setup dialog (nothing while it is closed)
+	setup_build(app)   // setup.odin: the Setup dialog (toolkit:setup; it also collects the work of its thread)
 	fs_shell_build(app)   // fs_shell.odin: a page's file permission prompt (nothing while none waits)
 	notification_shell_build(app)   // notification_shell.odin: a page's notification permission prompt
 	qr_build(app)   // qr_shell.odin: the QR code of the page's address

@@ -220,7 +220,7 @@ instance_open :: proc(d: ^Instance_Open, closing: bool) {
 		wnd.current = first
 	}
 	if closing { return }   // (nothing comes forward: the window is going)
-	if d.setup { setup_open(app, .Command) }
+	if d.setup { setup_open(app) }
 	// up with the keyboard: Windows through the instance's handover (the foreground right it was given), elsewhere the
 	// system's request (Wayland: xdg-activation, with the last input's serial)
 	when ODIN_OS == .Windows { instance.raise_window(rawptr(active_window(app).win.hwnd)) } else { platform.raise_window(active_window(app).win) }

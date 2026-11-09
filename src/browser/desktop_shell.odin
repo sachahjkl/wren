@@ -14,7 +14,8 @@ package browser
 //   * `--desktop-integration=install|remove|status`, without a window (an uninstall script, the tests).
 //
 // What used to be here (the silent integration of the first run, the line under the address bar that offered to update it)
-// is the Setup dialog now: setup.odin decides when it opens by itself, and setup_ui.odin draws it.
+// is the Setup dialog now: setup.odin decides when it opens by itself, and the toolkit's setup package draws it (and
+// watches the install itself while it is open).
 //
 // The disk is read and written by jobs of the blocking pool (COM and the registry are fast, but not the interface
 // thread's business); the box shows "working" meanwhile.
@@ -64,7 +65,7 @@ desktop_early_init :: proc() {
 
 // The icons of the theme on freedesktop.org desktops (Windows uses the executable's own).
 when ODIN_OS == .Windows {
-	@(private = "file") desktop_icons :: proc() -> []desktop.Icon { return nil }
+	desktop_icons :: proc() -> []desktop.Icon { return nil }
 } else {
 	// every size the logo is drawn at (assets/icons/<size>.png, wrentool logo): a desktop that asks for one at a scale
 	// (28 px at 125 %: 35) takes the nearest drawn one, not a smaller one stretched
@@ -73,16 +74,24 @@ when ODIN_OS == .Windows {
 	} else {
 		@(private = "file") DESKTOP_ICON_FILES := #load_directory("../../assets/icons")
 	}
-	@(private = "file") desktop_icons :: proc() -> []desktop.Icon {
-		icons := make([dynamic]desktop.Icon, 0, len(DESKTOP_ICON_FILES), context.temp_allocator)
-		for f in DESKTOP_ICON_FILES {
-			if size, ok := strconv.parse_int(strings.trim_suffix(f.name, ".png")); ok { append(&icons, desktop.Icon{size, f.data}) }
-		}
-		return icons[:]
+	@(private = "file") desktop_icon_list: [32]desktop.Icon   // (more than the sizes drawn)
+	@(private = "file") desktop_icon_count: int
+	@(private = "file") desktop_icon_once: sync.Once
+	// (made once, kept for the process: the Setup dialog's thread reads them after the frame that asked)
+	desktop_icons :: proc() -> []desktop.Icon {
+		sync.once_do(&desktop_icon_once, proc() {
+			for f in DESKTOP_ICON_FILES {
+				if desktop_icon_count == len(desktop_icon_list) { break }
+				if size, ok := strconv.parse_int(strings.trim_suffix(f.name, ".png")); ok {
+					desktop_icon_list[desktop_icon_count] = desktop.Icon{size, f.data}
+					desktop_icon_count += 1
+				}
+			}
+		})
+		return desktop_icon_list[:desktop_icon_count]
 	}
 }
 
-@(private = "file")
 env_lookup :: proc(name: string) -> string {
 	v, _ := os.lookup_env(name, context.temp_allocator)
 	return v
@@ -142,7 +151,6 @@ Desktop_Shell :: struct {
 	writes:          int,              // of those, the ones that change the integration (install / remove)
 	stale:           b32,              // atomic: the window came back, or the watcher saw a change on the disk
 	watcher:         ^desktop.Watcher, // nil: no system watcher here, the periodic read below stays
-	changes:         int,              // atomic: how many times the watcher saw the disk change (the Setup dialog reads again when it moves)
 	failure:         string,           // the last failed change, shown under the box (owned)
 }
 
@@ -232,7 +240,6 @@ desktop_watch_wake :: proc(user: rawptr) {
 	context = base.process_context()   // (the watcher's thread runs with the default context)
 	app := (^App)(user)
 	sync.atomic_store(&app.dsk.stale, true)
-	sync.atomic_add(&app.dsk.changes, 1)
 	if app != nil { host.post(&app.loop, desktop_changed_on_loop, app) }
 }
 
@@ -257,16 +264,12 @@ desktop_watch_begin :: proc(app: ^App, profile_explicit: bool) {
 	desktop_watch_ensure(app)
 }
 
-// Starts the watcher whatever the run (the Setup dialog asks for it when it opens: it must follow the disk it shows, also
-// on the scratch roots of a test).
+// Starts the watcher whatever the run (also on the scratch roots of a test).
 desktop_watch_ensure :: proc(app: ^App) {
 	if !desktop.supported() || app.dsk.watcher != nil { return }
 	o := desktop_options(app)
 	app.dsk.watcher = desktop.watch_start(&o, desktop_watch_wake, app)
 }
-
-// How many changes the watcher has seen (Setup compares it with the one it read at).
-desktop_changes :: proc() -> int { return sync.atomic_load(&the_app.dsk.changes) }
 
 desktop_status_poll :: proc(app: ^App) {
 	if app.dsk.jobs > 0 { return }

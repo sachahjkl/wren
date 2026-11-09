@@ -713,7 +713,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 // The keys the page did not use (forms_shell.odin routes them to the page first; the browser's own shortcuts are never
 // the page's: route_key lets them through).
 chrome_shortcuts :: proc(app: ^App) {
-	// the open command palette has the keyboard (palette.odin), and so has the Setup dialog (setup_ui.odin)
+	// the open command palette has the keyboard (palette.odin), and so has the Setup dialog (setup.odin)
 	if palette_open(app) || setup_is_open(app) { return }
 	t := current_tab(app)
 	n := len(active_window(app).tabs)

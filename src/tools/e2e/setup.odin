@@ -1,11 +1,11 @@
 #+build windows
 package e2e_scenarios
 
-// The Setup dialog of a real wren.exe (setup.odin, setup_ui.odin), and what it leaves on the disk and in the registry, against throwaway roots
+// The Setup dialog of a real wren.exe (setup.odin, the toolkit's setup package), and what it leaves on the disk and in the registry, against throwaway roots
 // (desktop_scratch.odin): the Start menu, the Desktop, HKCU\Software and HKCU\Environment are the test's, the install folder and the profiles too. The
 // dialog's input is Wren's own (no window of the system, no mouse): a key, a click at the place the dialog says its button is. What the real machine
 // has is compared at the end.
-//   A install with Enter (the main button has the keyboard)
+//   A install with a click on the main button
 //   B uninstall from the installed copy (two clicks; the running executable is deleted once the process has ended)
 //   C "Use standalone" (remembered in the profile)
 //   D the automatic opening at the first start, and not again after the answer
@@ -60,12 +60,12 @@ setup_ready :: proc(s: ^api.Session) -> api.Setup_State {
 		st, _ := api.setup_state(s)
 		return st.open && st.known && st.busy == 0 && st.primary.w > 0
 	}, "the Setup dialog")
-	// (the frame after the facts: the main button takes the keyboard there)
+	// (the frame after the facts: its buttons are placed there)
 	api.wait_frames(s)
 	return setup_still(s)
 }
 
-// The buttons are where they stay. What the dialog says takes frames to reach them: a box's rectangle is the last frame's layout, the height of the middle the frame's before (setup_ui.odin), so
+// The buttons are where they stay. What the dialog says takes frames to reach them: a box's rectangle is the last frame's layout (setup.Dialog.at), so
 // that a click on what two frames later still said was in the old place: nothing there, and an uninstall that never began.
 @(private = "file")
 setup_still :: proc(s: ^api.Session) -> api.Setup_State {
@@ -106,14 +106,14 @@ install_uninstall_standalone :: proc(t: ^testing.T) {
 	manifest := fmt.tprintf("%s/wren_install.txt", scratch.install)
 	options := e2e.Process_Options{profile = profile, extra = {"--setup"}, start = {env = scratch.env}}
 
-	// A: Enter on the main button
+	// A: the main button
 	p := e2e.launch(t, options)
-	setup_ready(p.s)
-	api.key(p.s, "Enter")
+	st := setup_ready(p.s)
+	click_button(p.s, st.primary)
 	e2e.wait_file(t, manifest)
 	e2e.wait_file(t, shortcut)
 	e2e.wait_for(t, apps, proc(key: string) -> bool { return registry_key_exists(key) }, "the Settings > Apps record")
-	st := setup_settled(p.s)
+	st = setup_settled(p.s)
 	testing.expectf(t, os.exists(installed), "wren.exe is in the install folder: %s", st.note)
 	testing.expect(t, registry_key_exists(client), "registered as a browser (the throwaway key)")
 	testing.expect(t, !os.exists(fmt.tprintf("%s/Wren Dev.lnk", scratch.desktop)), "no desktop shortcut (not ticked)")

@@ -109,7 +109,7 @@ remote_dispatch_in_window :: proc(app: ^App, c: ^Call) -> Reply {
 	case "Wren.listCommands":    return m_commands(app)
 	case "Wren.runCommand":      return m_command(app, c)
 	case "Wren.openDevTools":    return m_devtools(app, c)
-	case "Wren.openSetup":       setup_open(app, .Command); return done()
+	case "Wren.openSetup":       setup_open(app); return done()
 	case "Wren.setupState":      return m_setup_state(app)
 	case "Wren.updateState":     return done(fmt.tprintf(`{{"checking":%v}}`, control_update_checking(app)))
 	case "Wren.recordInput":     return m_record(app, c)
