@@ -23,6 +23,7 @@ import "core:strings"
 import "core:time"
 import "toolkit:platform"
 import "toolkit:ui"
+import desktop "toolkit:desktop"
 import "wb:base"
 import "wb:config"
 import "wb:fetch"
@@ -327,6 +328,10 @@ Downloads :: struct {
 	list:  [dynamic]^Download,
 	ids:   u64,
 	cfg:   struct { ask: bool, dir: string, max_bytes, flush, max_buffered, list_max: int, suffix: string, button: string },
+	// the applications that open the file of the download whose menu is open (downloads_ui.odin "Open with"): read once
+	// when its menu shows them, not at every frame
+	handlers_for: u64,
+	handlers:     []desktop.Handler,
 }
 
 
@@ -878,6 +883,7 @@ downloads_apply :: proc(app: ^App) { download_cfg(app) }
 downloads_shutdown :: proc(app: ^App) {
 	for d in app.dls.list { download_free(d) }
 	delete(app.dls.list)
+	desktop.handlers_destroy(app.dls.handlers, base.process_allocator())
 	delete(app.dls.cfg.dir); delete(app.dls.cfg.suffix); delete(app.dls.cfg.button)
 	app.dls = {}
 }

@@ -15,6 +15,7 @@ import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
 import "toolkit:ui"
+import desktop "toolkit:desktop"
 import "wb:base"
 import "wb:config"
 import "wb:host"
@@ -430,6 +431,26 @@ dl_menu_row :: proc(app: ^App) -> ^Download {
 dl_menu_items :: proc(app: ^App, d: ^Download) {
 	present := download_file_present(d)
 	if ui.menu_item("Open", enabled = present).clicked { download_open_file(d); return }
+	if present {
+		// the applications the system knows for the file's type, the default first (gui_toolkit desktop.open_with)
+		if app.dls.handlers_for != d.id {
+			desktop.handlers_destroy(app.dls.handlers, base.process_allocator())
+			app.dls.handlers = desktop.handlers_for_file(d.path, base.process_allocator())
+			app.dls.handlers_for = d.id
+		}
+		if len(app.dls.handlers) > 0 {
+			if ui.menu_submenu(fmt.tprintf("Open with###dlw_%d", d.id)) {
+				for h, i in app.dls.handlers {
+					label := h.default ? fmt.tprintf("%s (default)###dlh_%d", h.name, i) : fmt.tprintf("%s###dlh_%d", h.name, i)
+					if ui.menu_item(label).clicked {
+						if !desktop.open_with(d.path, h.id) { ui.toast(.Bad, "%s could not open %s", h.name, filepath.base(d.path)) }
+						ui.ctx_menu_close()
+						return
+					}
+				}
+			}
+		}
+	}
 	if ui.menu_item("Show in folder", enabled = d.path != "").clicked { download_reveal(d); return }
 	if ui.menu_item("Copy download link", icon = GLYPH_COPY).clicked { clip_set(d.url); return }
 	if ui.menu_item("Download again", enabled = d.url != "").clicked { download_retry(app, d); return }
