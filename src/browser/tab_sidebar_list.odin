@@ -209,7 +209,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 	late := cc != nil && wnd.current != dragged ? wnd.current : -1
 	row :: proc(app: ^App, it: Side_Item, rh, row_x, row_w, inset, open, total, limit: f32, area: ^ui.Box, cc: ^Classic_Colors, drag_y: ^f32) {
 		// (tab_tree.odin: a child is indented by its depth, while the sidebar shows the titles)
-		indent := it.depth > 0 && open >= 0.5 ? min(f32(it.depth) * math.round(ui.font_size() * TREE_INDENT_EM), row_w * 0.5) : 0
+		indent := it.depth > 0 && open >= 0.5 ? min(f32(it.depth) * tree_step(app), row_w * 0.5) : 0
 		y, dragging := sidebar_row(app, it.index, it.y, rh, row_x + indent, row_w - indent, inset, open, area, limit, total, cc, indent)
 		if dragging { drag_y^ = y }
 	}
@@ -251,7 +251,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 			row(app, moved(items[drag_item], gap, rh), rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y)
 		}
 		if gap >= 0 { drop_ghost(app, area, true, gap - area.view_off.y, rh, row_x, row_w) }
-		if tree && open >= 0.5 { tree_guides_build(app, items[:], first, last, gap, rh, row_x, open) }
+		if tree && open >= 0.5 { tree_guides_build(app, items[:], first, last, gap, rh, row_x, row_w, open) }
 	}
 	// the dragged row's place moves its tab: in the list (and in or out of a group), or up to the pinned tabs
 	if dragged >= 0 && drag_y >= 0 {
@@ -694,10 +694,17 @@ side_row_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.rect(dc, {{x0, cy - h * 0.5}, {x0 + th, cy + h * 0.5}}, l.accent, th * 0.5)
 }
 
-// The guide lines of the tree (tab_tree.odin): over the indent of the rows first ..< last, from each parent's icon down
-// to its children's, thin and faint. `gap`: where a tab carried over the list makes room (-1: none).
+// A level of the tree in the sidebar (tab_tree.odin): from a row's start to its icon's middle, where its children's line
+// goes down, and the elbow from there to the child's row (its edge: the line never enters a row).
+tree_step :: proc(app: ^App) -> f32 {
+	em := ui.font_size()
+	return math.round(em * 0.65) + math.round(f32(tab_icon_px(app)) * 0.5) + math.round(em * TREE_ELBOW_EM)
+}
+
+// The guide lines of the tree (tab_tree.odin): in the indent left of the rows first ..< last, from each parent's icon down
+// to its children's rows, with a rounded elbow to each. `gap`: where a tab carried over the list makes room (-1: none).
 @(private = "file")
-tree_guides_build :: proc(app: ^App, items: []Side_Item, first, last: int, gap, rh, row_x, open: f32) {
+tree_guides_build :: proc(app: ^App, items: []Side_Item, first, last: int, gap, rh, row_x, row_w, open: f32) {
 	depths := make([]int, len(items), context.temp_allocator)
 	any := false
 	for it, k in items {
@@ -708,20 +715,21 @@ tree_guides_build :: proc(app: ^App, items: []Side_Item, first, last: int, gap, 
 	guides := make([]Tree_Guide, len(items), context.temp_allocator)
 	tree_guides(depths, guides)
 	em := ui.font_size()
-	step := math.round(em * TREE_INDENT_EM)
-	isz := f32(tab_icon_px(app))
+	step := tree_step(app)
 	text := ui.color("text")
+	dpi := ui_scale_of(app)
 	for k in first ..< last {
 		it := items[k]
 		if it.kind != .Tab || it.depth <= 0 { continue }
+		w := f32(it.depth) * step
+		if w > row_w * 0.5 { continue }   // (the indent is capped there: the lines would not meet the rows)
 		y := it.y
 		if gap >= 0 && y >= gap - 0.5 { y += rh }
-		w := f32(it.depth) * step
 		look := ui.frame_new(Tree_Guide_Look)
-		look^ = {guide = guides[k], depth = it.depth, step = step, icon_x = math.round(em * 0.65), icon = isz,
-			color = {text.r, text.g, text.b, text.a * 0.28 * clamp((open - 0.5) * 2, 0, 1)}, thick = max(math.round(ui_scale_of(app)), 1), radius = math.round(em * 0.35)}
-		// (a bit past the indent: the elbow reaches the icon of the row)
-		ui.next({fixed_x = row_x, fixed_y = y, width = ui.px(w + look.icon_x), height = ui.px(rh)})
+		look^ = {guide = guides[k], depth = it.depth, step = step, axis = math.round(em * 0.65) + math.round(f32(tab_icon_px(app)) * 0.5),
+			color = {text.r, text.g, text.b, text.a * 0.42 * clamp((open - 0.5) * 2, 0, 1)}, thick = max(math.round(1.5 * dpi), 1),
+			radius = math.round(em * 0.4), gap = max(math.round(em * 0.12), 1)}
+		ui.next({fixed_x = row_x, fixed_y = y, width = ui.px(w), height = ui.px(rh)})
 		b := ui.build_box({}, fmt.tprintf("###tree_guide_%d", it.index))
 		b.custom, b.custom_user = tree_guide_draw, look
 	}
@@ -729,39 +737,38 @@ tree_guides_build :: proc(app: ^App, items: []Side_Item, first, last: int, gap, 
 
 @(private = "file")
 Tree_Guide_Look :: struct {
-	guide:                              Tree_Guide,
-	depth:                              int,
-	step, icon_x, icon, thick, radius:  f32,
-	color:                              draw.Color,
+	guide:                            Tree_Guide,
+	depth:                            int,
+	step, axis, thick, radius, gap:   f32,   // axis: from a level's start to its line
+	color:                            draw.Color,
 }
 
+// Draws only inside its box, which is the row's indent: nothing reaches into a row.
 @(private = "file")
 tree_guide_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	l := (^Tree_Guide_Look)(user)
 	top, bottom := b.rect.min.y, b.rect.max.y
 	mid := math.round((top + bottom) * 0.5)
-	// the line of level k: under the icon of the tab of depth k
-	level_x :: proc(l: ^Tree_Guide_Look, left: f32, k: int) -> f32 { return math.round(left + f32(k) * l.step + l.icon_x + l.icon * 0.5 - l.thick * 0.5) }
 	left := b.rect.min.x
+	level_x :: proc(l: ^Tree_Guide_Look, left: f32, k: int) -> f32 { return math.round(left + f32(k) * l.step + l.axis - l.thick * 0.5) }
 	for k in 0 ..< l.depth - 1 {
 		if l.guide.rails & (1 << u64(k)) == 0 { continue }
 		x := level_x(l, left, k)
 		draw.rect(dc, {{x, top}, {x + l.thick, bottom}}, l.color)
 	}
-	// the elbow from the parent's line to this row's icon, rounded; the line goes on down when a sibling follows
+	// the elbow: down the parent's line, a quarter circle, along to the row's edge; the line goes on when a sibling follows
 	x := level_x(l, left, l.depth - 1)
-	end := math.round(left + f32(l.depth) * l.step + l.icon_x - l.icon * 0.2)
+	end := b.rect.max.x - l.gap
 	r := min(l.radius, end - x - l.thick)
 	if !l.guide.last { draw.rect(dc, {{x, top}, {x + l.thick, bottom}}, l.color) } else { draw.rect(dc, {{x, top}, {x + l.thick, mid - r}}, l.color) }
+	cx := x + l.thick * 0.5
 	if r > 0 {
-		pts: [7]draw.Vec2
-		cx, cy := x + l.thick * 0.5 + r, mid - r
-		// (a quarter circle from (x, mid - r) to (x + r, mid))
+		pts: [9]draw.Vec2
 		for s in 0 ..< len(pts) {
 			a := f32(s) / f32(len(pts) - 1) * math.PI * 0.5
-			pts[s] = {cx - r * math.cos(a), cy + r * math.sin(a)}
+			pts[s] = {cx + r - r * math.cos(a), mid - r + r * math.sin(a)}
 		}
 		draw.polyline(dc, pts[:], l.thick, l.color)
 	}
-	draw.rect(dc, {{x + l.thick * 0.5 + r, mid - l.thick * 0.5}, {end, mid + l.thick * 0.5}}, l.color)
+	draw.rect(dc, {{cx + max(r, 0), mid - l.thick * 0.5}, {end, mid + l.thick * 0.5}}, l.color)
 }

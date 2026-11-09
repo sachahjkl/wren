@@ -123,7 +123,7 @@ tab_tree_toggle :: proc(app: ^App, t: ^Tab) {
 	request_frames(app, 2)
 	recovery_touch(app)
 }
-TREE_INDENT_EM :: 1.5   // a child row's indent per level, in ems (tab_sidebar_list.odin)
+TREE_ELBOW_EM :: 0.75   // the length of a guide's elbow, from the parent's line to the child's row (tab_sidebar_list.odin)
 
 // The guide lines of the tree in the sidebar, for one row: the vertical lines of its ancestors' levels that pass
 // through it (bit k: level k, the line from a tab of depth k down to its children), and whether it is the last child
