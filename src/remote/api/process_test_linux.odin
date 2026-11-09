@@ -3,7 +3,9 @@ package api
 import "core:fmt"
 import "core:os"
 import "core:sys/posix"
+import "core:strings"
 import "core:testing"
+import "core:time"
 
 @(test)
 a_child_is_waited_for_told_again_and_ended :: proc(t: ^testing.T) {
@@ -41,13 +43,22 @@ a_child_is_waited_for_told_again_and_ended :: proc(t: ^testing.T) {
 // caller's outputs, or `name=$(wren ctl start)` waits for the Wren it started to end.
 @(test)
 a_child_does_not_keep_the_callers_outputs :: proc(t: ^testing.T) {
-	where_to := fmt.tprintf("%s/wren_outputs_%d.txt", os.get_env("TMPDIR", context.temp_allocator) != "" ? os.get_env("TMPDIR", context.temp_allocator) : "/tmp", posix.getpid())
-	defer os.remove(where_to)
-	p, _, err := process_start({"/bin/sh", "-c", fmt.tprintf("readlink /proc/$$/fd/0 /proc/$$/fd/1 /proc/$$/fd/2 > %s", where_to)})
+	// (read from here, in /proc: a shell that looked at its own descriptors had them changed by its own redirection, dash
+	// applying it to itself while the command runs)
+	p, pid, err := process_start({"/bin/sh", "-c", "exec sleep 10"})
 	testing.expect_value(t, err, "")
-	testing.expect(t, process_wait(&p, 10_000), "the child ends")
-	process_release(&p)
-	data, rerr := os.read_entire_file(where_to, context.temp_allocator)
-	testing.expect(t, rerr == nil, "the child wrote where its outputs go")
-	testing.expect_value(t, string(data), "/dev/null\n/dev/null\n/dev/null\n")
+	defer process_release(&p)
+	defer process_kill(&p)
+	// the child set its descriptors once it runs sleep (the shell's exec): wait for that, at most 10 s
+	deadline := time.tick_add(time.tick_now(), 10 * time.Second)
+	for time.tick_diff(time.tick_now(), deadline) > 0 {
+		cmd, _ := os.read_entire_file(fmt.tprintf("/proc/%d/cmdline", pid), context.temp_allocator)
+		if strings.has_prefix(string(cmd), "sleep") { break }
+		time.sleep(time.Millisecond)
+	}
+	for fd in 0 ..< 3 {
+		target, rerr := os.read_link(fmt.tprintf("/proc/%d/fd/%d", pid, fd), context.temp_allocator)
+		testing.expect(t, rerr == nil, "the child's descriptor can be read")
+		testing.expectf(t, target == "/dev/null", "descriptor %d goes to %s", fd, target)
+	}
 }
