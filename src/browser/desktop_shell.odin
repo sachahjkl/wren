@@ -21,6 +21,7 @@ package browser
 
 import "core:fmt"
 import "core:os"
+import "core:strconv"
 import "core:strings"
 import "core:sync"
 import "core:time"
@@ -65,14 +66,20 @@ desktop_early_init :: proc() {
 when ODIN_OS == .Windows {
 	@(private = "file") desktop_icons :: proc() -> []desktop.Icon { return nil }
 } else {
-	@(private = "file") DESKTOP_ICON_SET := [?]desktop.Icon{
-		{16, #load("../../assets/dev/logo_16.png") when IS_DEV_BUILD else #load("../../assets/logo_16.png")},
-		{32, #load("../../assets/dev/logo_32.png") when IS_DEV_BUILD else #load("../../assets/logo_32.png")},
-		{64, #load("../../assets/dev/logo_64.png") when IS_DEV_BUILD else #load("../../assets/logo_64.png")},
-		{256, #load("../../assets/dev/logo_256.png") when IS_DEV_BUILD else #load("../../assets/logo_256.png")},
-		{512, #load("../../assets/dev/logo.png") when IS_DEV_BUILD else #load("../../assets/logo.png")},
+	// every size the logo is drawn at (assets/icons/<size>.png, wrentool logo): a desktop that asks for one at a scale
+	// (28 px at 125 %: 35) takes the nearest drawn one, not a smaller one stretched
+	when IS_DEV_BUILD {
+		@(private = "file") DESKTOP_ICON_FILES := #load_directory("../../assets/dev/icons")
+	} else {
+		@(private = "file") DESKTOP_ICON_FILES := #load_directory("../../assets/icons")
 	}
-	@(private = "file") desktop_icons :: proc() -> []desktop.Icon { return DESKTOP_ICON_SET[:] }
+	@(private = "file") desktop_icons :: proc() -> []desktop.Icon {
+		icons := make([dynamic]desktop.Icon, 0, len(DESKTOP_ICON_FILES), context.temp_allocator)
+		for f in DESKTOP_ICON_FILES {
+			if size, ok := strconv.parse_int(strings.trim_suffix(f.name, ".png")); ok { append(&icons, desktop.Icon{size, f.data}) }
+		}
+		return icons[:]
+	}
 }
 
 @(private = "file")

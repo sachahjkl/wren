@@ -40,7 +40,7 @@ APP_CHANNEL  :: App_Channel.Release when CHANNEL_DEFINE == "release" else App_Ch
 IS_DEV_BUILD :: APP_CHANNEL == .Dev
 
 // The logo of the channel, 256 px (shown at 112 CSS px by the start page and about:about: sharp up to 2x).
-APP_LOGO_PNG :: #load("../../assets/dev/logo_256.png") when IS_DEV_BUILD else #load("../../assets/logo_256.png")
+APP_LOGO_PNG :: #load("../../assets/dev/icons/256.png") when IS_DEV_BUILD else #load("../../assets/icons/256.png")
 
 // The logo as a data: URL for the built-in pages (in the temporary allocator, like the pages' HTML).
 app_logo_url :: proc() -> string {

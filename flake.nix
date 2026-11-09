@@ -200,8 +200,10 @@
         # dialogs (zenity) and links to other programs (xdg-open)
         makeWrapper "$out/libexec/wren/wren" "$out/bin/wren" \
           --prefix PATH : ${lib.makeBinPath [pkgs.zenity pkgs.xdg-utils]}
-        for size in 16 32 64 256; do
-          install -Dm644 assets/logo_$size.png "$out/share/icons/hicolor/''${size}x''${size}/apps/wren.png"
+        # every size the logo is drawn at (wrentool logo): a bar that asks for one at a fractional scale takes it, not a smaller one stretched
+        for icon in assets/icons/*.png; do
+          size=$(basename "$icon" .png)
+          install -Dm644 "$icon" "$out/share/icons/hicolor/''${size}x''${size}/apps/wren.png"
         done
         install -Dm644 -t "$out/share/doc/wren" LICENSE THIRD_PARTY.md
         runHook postInstall

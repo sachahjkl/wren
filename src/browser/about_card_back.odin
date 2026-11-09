@@ -14,7 +14,7 @@ import "toolkit:font"
 //    front is a trough here, the guilloche's ridges are furrows and its furrows ridges, the micro-lettering stands up in the frame; the grain is
 //    the same (about_card_relief.odin, relief_map with an `emboss` field);
 //  - in the middle, the logo of Wren RAISED out of the foil, big and quiet, an easter egg for whoever turns the card over: the height of
-//    the figure (logo_height_field) is the logo's own picture (assets/logo_256.png, the one the page already carries), its bird taken from the
+//    the figure (logo_height_field) is the logo's own picture (assets/icons/256.png, the one the page already carries), its bird taken from the
 //    light of the picture (white on the orange, or the blue, tile: the smallest of the three channels) and its alpha, softened for the bevel;
 //  - along the bottom, a line of lettering raised like the front's, in silver (back_engraving; texture 1 of the shader, the channels of
 //    about_card_engrave.odin): the brand, not translated, and nothing about the person the card is made out to.

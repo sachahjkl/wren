@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/logo_256.png" width="128" alt="Wren logo"></p>
+<p align="center"><img src="assets/icons/256.png" width="128" alt="Wren logo"></p>
 <h1 align="center">Wren</h1>
 
 <p align="center">

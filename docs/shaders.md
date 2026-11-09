@@ -72,7 +72,7 @@ tilt (which used to be derived from `pointer-x`, `pointer-y`) is `rx = -py * 14`
 
 `card-back` is the same module in mode 2 with its own textures: texture 0 is the **front's relief inside out** (`about_card_back.odin`,
 `relief_map` with an `emboss` field: the height field negated, so the lip is a trough and the furrows of the guilloche ridges; the same grain) with
-the **logo of Wren raised** in the middle (the bird of `assets/logo_256.png`, taken from the light of the picture and its alpha, blurred for the
+the **logo of Wren raised** in the middle (the bird of `assets/icons/256.png`, taken from the light of the picture and its alpha, blurred for the
 bevel: `logo_height_field`); texture 1 is a line of raised lettering along the bottom (`back_engraving`, the brand: `WREN · FROMENT SOFTWARE`,
 nothing about the person). Two faces back to back, each `backface-visibility: hidden`; the one turned away is not painted (`open_plane`).
 

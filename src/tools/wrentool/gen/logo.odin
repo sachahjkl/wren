@@ -9,8 +9,10 @@ package gen
 // The dev variant marks the development builds (every build but build.bat release): the same bird on a blueprint, a cyanotype blue
 // square ruled with a fine white grid drawn per size on whole pixels (draw_grid), gone at 32 px and below.
 //   wrentool logo [-Out assets] [-Variant amber|dev|violet|amber-plain]
-// Writes logo.png (512), logo_256/64/32/16.png and wren.ico (16/24/32/48/64/128/256) into -Out; for -Variant dev, into assets/dev by
-// default, the icon named wren_dev.ico (src/browser/wren_dev.rc).
+// Writes icons/<n>.png at every size of the hicolor icon theme's apps (LOGO_FILE_SIZES: what a desktop asks for, at any scale, is
+// drawn for that size, not stretched from the nearest) and wren.ico (16/24/32/48/64/128/256) into -Out; for -Variant dev, into
+// assets/dev by default, the icon named wren_dev.ico (src/browser/wren_dev.rc). The flake and the desktop integration
+// (src/browser/desktop_shell.odin) install every file of icons/.
 //   wrentool logo -Out build/logo_variants -Variant violet -Single
 // With -Single, only writes logo_<variant>.png (512) and a check sheet logo_<variant>_sizes.png: every size on a dark and on a light
 // background, plus 48/32/24/16 magnified (nearest neighbour) on both.
@@ -24,7 +26,7 @@ import paint "../../../../ext/gui_toolkit/src/paint"
 // Drawn at LOGO_UNITS * LOGO_SUPERSAMPLE in LOGO_UNITS-unit coordinates, then scaled down.
 LOGO_SUPERSAMPLE :: 4
 LOGO_UNITS :: 512
-LOGO_FILE_SIZES :: [?]int{512, 256, 64, 32, 16}
+LOGO_FILE_SIZES :: [?]int{16, 22, 24, 32, 36, 48, 64, 72, 96, 128, 192, 256, 512}   // the hicolor theme's <n>x<n>/apps
 LOGO_ICO_SIZES :: [?]int{16, 24, 32, 48, 64, 128, 256}
 // From this size an icon's picture is a PNG; below, a classic DIB.
 LOGO_ICO_PNG_FROM :: 64
@@ -84,8 +86,10 @@ run_logo :: proc(args: []string) -> int {
 		fmt.printfln("wrote %s and %s", single, sizes)
 		return 0
 	}
+	icons := fmt.tprintf("%s/icons", out)
+	if err := os.make_directory_all(icons); err != nil && !os.is_dir(icons) { fmt.eprintfln("logo: %s cannot be made", icons); return 1 }
 	for s in LOGO_FILE_SIZES {
-		path := s == 512 ? fmt.tprintf("%s/logo.png", out) : fmt.tprintf("%s/logo_%d.png", out, s)
+		path := fmt.tprintf("%s/%d.png", icons, s)
 		c := logo_render(variant, s, detail_for(s))
 		written := paint.write_png(c, path)
 		paint.canvas_destroy(&c)
@@ -100,7 +104,7 @@ run_logo :: proc(args: []string) -> int {
 	}
 	ico := fmt.tprintf("%s/%s", out, variant.name == "dev" ? "wren_dev.ico" : "wren.ico")
 	if os.write_entire_file(ico, paint.ico_encode(entries[:], context.temp_allocator)) != nil { fmt.eprintfln("logo: %s cannot be written", ico); return 1 }
-	fmt.printfln("wrote %s/logo.png, logo_256/64/32/16.png, %s", out, ico)
+	fmt.printfln("wrote %s/<size>.png (%v), %s", icons, LOGO_FILE_SIZES, ico)
 	return 0
 }
 
