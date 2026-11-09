@@ -68,7 +68,7 @@ frame_stats_body_keeps_its_size :: proc(t: ^testing.T) {
 	ui_font, ok := font.load_embedded(&fonts, font.FALLBACK_UI_DATA)
 	if !testing.expect(t, ok) { return }
 	theme: ui.Theme
-	ui.apply_palette(&theme, ui.PALETTE_GRAPHITE)
+	ui.apply_palette(&theme, ui.palette_of("Graphite"))
 	defer ui.theme_destroy(&theme)
 	s := new(ui.State)
 	defer free(s)

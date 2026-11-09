@@ -94,8 +94,7 @@ devtools_window_make :: proc(app: ^App) {
 		return
 	}
 	dw.win, dw.latency, dw.size_seen, dw.owner = w, 1, w.size, owner.id
-	pal, pal_ok := ui.palette_named(app.cfg.ui_theme)
-	platform.set_dark_title(w, pal_ok ? pal.dark : true)
+	platform.set_dark_title(w, chrome_palette(app).dark)
 	ui.init(&dw.ui, &app.fonts, &app.theme)
 	dw.ui.icon_font = app.icons
 	autoscroll_toolkit_setup(app, &dw.ui)   // page_autoscroll.odin: middle-click autoscroll for the detached tools' regions

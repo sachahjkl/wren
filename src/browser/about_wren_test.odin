@@ -96,14 +96,14 @@ every_shipped_license_text_is_shown :: proc(t: ^testing.T) {
 
 @(private = "file")
 test_page :: proc(theme: string, state: License_State = {}, notice: Wren_Notice = {}) -> Wren_Page {
-	pal, _ := ui.palette_named(theme)
+	pal := ui.palette_of(strings.trim_suffix(theme, " light"), strings.has_suffix(theme, " light"))
 	return {palette = pal, state = state, notice = notice, support_url = SUPPORT_URL, profile_dir = `C:\Users\x\AppData\Roaming\Wren`}
 }
 
 @(test)
 about_page_without_a_license :: proc(t: ^testing.T) {
 	test_app(t)
-	for theme in ([]string{"graphite", "daylight"}) {
+	for theme in ([]string{"graphite", "midnight light"}) {
 		html := wren_page_html(test_page(theme))
 		for want in ([]string{
 			"Unregistered", "free during the beta", "Support Wren", SUPPORT_URL,
@@ -116,7 +116,7 @@ about_page_without_a_license :: proc(t: ^testing.T) {
 		testing.expect(t, !strings.contains(html, "Registered to"), "an unregistered Wren does not claim a registration")
 		testing.expect(t, !strings.contains(html, "UNREGISTERED"), "no shouting")
 		testing.expect(t, !strings.contains(html, "Remove the licence"), "nothing to remove")
-		pal, _ := ui.palette_named(theme)
+		pal := ui.palette_of(strings.trim_suffix(theme, " light"), strings.has_suffix(theme, " light"))
 		testing.expectf(t, strings.contains(html, pal.dark ? "color-scheme: dark" : "color-scheme: light"), "%s's color scheme", theme)
 		testing.expect(t, !strings.contains(html, "$"), "every theme token was replaced")
 		testing.expect(t, !strings.contains(html, "<script") && !strings.contains(html, `id="lic"`), "no card, no script without a licence")

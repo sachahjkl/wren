@@ -421,8 +421,7 @@ licenses_page_html :: proc(d: Wren_Page) -> string {
 // Showing it
 
 wren_page_data :: proc(app: ^App, notice: Wren_Notice) -> Wren_Page {
-	pal, ok := ui.palette_named(app.cfg.ui_theme)
-	if !ok { pal = ui.PALETTE_GRAPHITE }
+	pal := chrome_palette(app)
 	return Wren_Page{
 		palette = pal, state = license_state(app), notice = notice,
 		support_url = license_support_url(app), profile_dir = app.profile_dir, update = update_summary(app),

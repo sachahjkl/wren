@@ -146,15 +146,19 @@ chrome_main_menu_scrolls_in_a_short_window :: proc(t: ^testing.T) {
 // Every theme of the interface paints the window from its own palette: in a real frame, on the offscreen renderer.
 @(test)
 chrome_themes_paint_from_their_palettes :: proc(t: ^testing.T) {
-	THEMES := []string{"Midnight", "Daylight", "Graphite"}
+	Shown :: struct { name: string, mode: ui.Theme_Mode }
+	THEMES := []Shown{{"Midnight", .Dark}, {"Midnight", .Light}, {"Graphite", .Dark}}
 	BRIGHT :: 128 * 3   // the sum of a pixel's channels: above it, a light theme's
 	w := chrome_start(t, {pixels = true})
 	seen := make(map[[3]u8]string, len(THEMES), context.temp_allocator)
-	for name in THEMES {
-		pal, known := ui.palette_named(name)
-		testing.expectf(t, known, "a theme of the interface: %s", name)
+	for th in THEMES {
+		_, _, known := ui.theme_find(ui.THEMES[:], th.name)
+		testing.expectf(t, known, "a theme of the interface: %s", th.name)
+		pal := ui.palette_of(th.name, th.mode == .Light)
+		name := fmt.tprintf("%s %v", th.name, th.mode)
 		delete(w.app.cfg.ui_theme)
-		w.app.cfg.ui_theme = strings.clone(name)   // (what a change of browser.ui.theme does)
+		w.app.cfg.ui_theme = strings.clone(th.name)   // (what a change of browser.ui.theme and browser.ui.theme_mode does)
+		w.app.cfg.ui_theme_mode = th.mode
 		session.frames(w.s, THEME_SETTLES)
 		img := session.capture(w.s)
 		c := session.pixel(img, img.width / 2, img.height - STATUS_BAR_INSIDE)

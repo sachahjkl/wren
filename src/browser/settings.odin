@@ -2,6 +2,8 @@ package browser
 
 import "core:strings"
 import "toolkit:platform"
+import "toolkit:ui"
+import "wb:base"
 import "wb:a11y"
 import "wb:config"
 import "wb:blocker"
@@ -28,7 +30,8 @@ Settings :: struct {
 	homepage:          string,   // owned
 	ui_font_size:      f32,
 	ui_scale:          f32,      // 0 = the display's
-	ui_theme:         string,   // owned: a name of ui.NAMED_PALETTES
+	ui_theme:         string,   // owned: the name of a theme of ui.THEMES (ASCII case ignored)
+	ui_theme_mode:    ui.Theme_Mode,   // its version shown: the system's, dark or light
 	persist_profile:   bool,
 	layout_band_px:    f32,
 	blocking_threads:  int,
@@ -56,8 +59,10 @@ PREFS := [?]config.Def{
 		description = "Distance of one arrow-key press when the page scrolls with the keyboard, in CSS pixels."},
 	{name = "browser.scroll.key_page_fraction", kind = .Float, default = {f = 0.875}, bounded = true, min = 0.1, max = 1,
 		description = "Page Up / Page Down / Space move by this share of the visible height (the rest stays visible for context)."},
-	{name = "browser.ui.theme", kind = .String, default = {s = "graphite"}, choices = {"graphite", "midnight", "daylight", "nord", "dracula", "amber", "aero", "bootstrap"},
-		description = "Palette of the browser's own interface (tabs, address bar, menus, status bar). Pages keep their own colors."},
+	{name = "browser.ui.theme", kind = .String, default = {s = "silver"},   // (choices: the toolkit's themes, theme_choices)
+		description = "Theme of the browser's own interface (tabs, address bar, menus, status bar): one of the toolkit's themes. Pages keep their own colors."},
+	{name = "browser.ui.theme_mode", kind = .String, default = {s = "system"}, choices = {"system", "dark", "light"},
+		description = "Which version of the theme the interface shows: the system's light or dark setting (and its changes), or always the dark or the light one. A theme with one version shows it whatever this says."},
 	{name = "browser.ui.font_size", kind = .Float, default = {f = 15}, bounded = true, min = 8, max = 48, unit = "px", restart = false,
 		description = "Font size of the browser's own interface (tabs, address bar, console)."},
 	{name = "browser.ui.scrollbar_autohide", kind = .Bool, default = {b = true},
@@ -71,6 +76,7 @@ PREFS := [?]config.Def{
 }
 
 register_all_prefs :: proc(p: ^config.Prefs) {
+	for &d in PREFS { if d.name == "browser.ui.theme" { d.choices = theme_choices() } }
 	config.register(p, PREFS[:])
 	net.register_prefs(p)
 	fetch.register_prefs(p)
@@ -147,9 +153,20 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		homepage = strings.clone(config.string_of(p, "browser.homepage")),
 		ui_font_size = f32(config.float_of(p, "browser.ui.font_size")),
 		ui_theme = strings.clone(config.string_of(p, "browser.ui.theme")),
+		ui_theme_mode = ui.theme_mode_of(config.string_of(p, "browser.ui.theme_mode")),
 		ui_scale = f32(config.float_of(p, "browser.ui.scale")),
 		persist_profile = config.bool_of(p, "browser.profile.persist"),
 		layout_band_px = f32(config.float_of(p, "browser.layout.band_height_px")),
 		blocking_threads = int(config.int_of(p, "browser.threads.blocking")),
 	}
+}
+
+// The values of browser.ui.theme: the names of the toolkit's themes, lower case (made once; the process keeps them).
+theme_choices :: proc() -> []string {
+	@(static) names: []string
+	if names == nil {
+		names = make([]string, len(ui.THEMES), base.process_allocator())
+		for t, i in ui.THEMES { names[i] = base.ascii_lower_clone(t.name, base.process_allocator()) }
+	}
+	return names
 }

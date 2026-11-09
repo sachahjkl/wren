@@ -148,6 +148,8 @@ App :: struct {
 	fonts_color: ^host.Thread,   // what color glyphs are drawn with, made meanwhile (fonts.odin fonts_color_start)
 	dc:       draw.Context,
 	theme:    ui.Theme,
+	theme_shown: ui.Theme_Shown,   // what ui.theme_show applied last (chrome_frame_style)
+	chrome_pal:  ui.Palette,       // the palette of the theme shown (chrome_palette), kept from theme_show to theme_show
 	ui_font:  font.Font_Id,
 	icons:    font.Font_Id,
 
@@ -1322,13 +1324,26 @@ on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 ////////////////////////////////
 // Loop
 
-// The chrome's palette (browser.ui.theme) applied, and the base style of its boxes: every frame, full or chrome only.
+// The interface's theme as asked (browser.ui.theme, browser.ui.theme_mode).
+chrome_theme_choice :: proc(app: ^App) -> ui.Theme_Choice {
+	return {name = app.cfg.ui_theme, mode = app.cfg.ui_theme_mode, finish = .Flat}
+}
+
+// The palette of the interface's theme, in the version its mode shows now (the first theme for a name that is none).
+chrome_palette :: proc(app: ^App) -> ui.Palette {
+	c := chrome_theme_choice(app)
+	def, _, ok := ui.theme_find(ui.THEMES[:], c.name)
+	if !ok { def = ui.THEMES[0] }
+	return ui.theme_palette(def, ui.theme_wants_light(c.mode), c.finish)
+}
+
+// The chrome's theme shown (ui.theme_show: applied when the choice, the system's light or dark or the blend space
+// changed), and the base style of its boxes: every frame, full or chrome only.
 chrome_frame_style :: proc(app: ^App) -> ui.Style {
 	wnd := active_window(app)
-	pal, pal_ok := ui.palette_named(app.cfg.ui_theme)   // browser.ui.theme
-	if !pal_ok { pal = ui.PALETTE_GRAPHITE }
-	ui.apply_palette(&app.theme, pal, render.blend_space(&app.r))
-	platform.set_dark_title(wnd.win, pal.dark)
+	if ui.theme_show(&app.theme, ui.THEMES[:], chrome_theme_choice(app), &app.theme_shown, render.blend_space(&app.r)) { app.chrome_pal = chrome_palette(app) }
+	pal := app.chrome_pal
+	platform.set_dark_title(wnd.win, !app.theme_shown.light)
 	// the system's frame line is half transparent along the top of an integrated title bar: the palette's, opaque
 	platform.set_border_color(wnd.win, platform.is_integrated_title(wnd.win) ? Maybe(u32)(pal.border >> 8) : nil)
 	return ui.Style{

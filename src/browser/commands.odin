@@ -436,14 +436,24 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.favs.cfg.position != .Top },
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.favs.cfg.side_collapsed },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tabs_toggle_collapsed(app) }})
-	for np in ui.NAMED_PALETTES {
-		name := base.ascii_lower_clone(np.name, base.arena_allocator(&r.arena))
+	for th in ui.THEMES {
+		name := base.ascii_lower_clone(th.name, base.arena_allocator(&r.arena))
 		slug, _ := strings.replace_all(name, " ", "_", context.temp_allocator)
-		add(r, {name = fmt.aprintf("view.theme.%s", slug, allocator = a), title = fmt.aprintf("Theme: %s", np.name, allocator = a), category = "View",
-			keywords = np.palette.dark ? "colors appearance palette dark" : "colors appearance palette light", arg = name,
+		add(r, {name = fmt.aprintf("view.theme.%s", slug, allocator = a), title = fmt.aprintf("Theme: %s", th.name, allocator = a), category = "View",
+			keywords = "colors appearance palette", arg = name,
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return base.ascii_equal_fold(app.cfg.ui_theme, c.arg) },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) {
 				if err := config.set_from_string(&app.prefs, "browser.ui.theme", c.arg, .User); err != .None { ui.toast(.Warn, "browser.ui.theme: %s", config.set_error_text(err)) }
+			}})
+	}
+
+	for mode in ui.Theme_Mode {
+		name := ui.THEME_MODE_NAMES[mode]
+		add(r, {name = fmt.aprintf("view.theme_mode.%s", name, allocator = a), title = fmt.aprintf("Theme version: %s", name, allocator = a), category = "View",
+			keywords = "colors appearance dark light system mode", arg = name,
+			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return ui.THEME_MODE_NAMES[app.cfg.ui_theme_mode] == c.arg },
+			run = proc(app: ^App, t: ^Tab, c: ^Command) {
+				if err := config.set_from_string(&app.prefs, "browser.ui.theme_mode", c.arg, .User); err != .None { ui.toast(.Warn, "browser.ui.theme_mode: %s", config.set_error_text(err)) }
 			}})
 	}
 

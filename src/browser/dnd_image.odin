@@ -16,7 +16,6 @@ import "core:math"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
-import "toolkit:ui"
 import "wb:base"
 import "wb:dom"
 import lay "wb:layout"
@@ -315,9 +314,7 @@ dnd_paint :: proc(app: ^App, dc: ^draw.Context) {
 	if window_own(app).dimg.target[2] > 0 && window_own(app).dimg.target[3] > 0 {
 		r := draw.Rect{{window_own(app).dimg.target[0], window_own(app).dimg.target[1]}, {window_own(app).dimg.target[0] + window_own(app).dimg.target[2], window_own(app).dimg.target[1] + window_own(app).dimg.target[3]}}
 		w := max(2 * page_scale(app), 1)
-		pal, pal_ok := ui.palette_named(app.cfg.ui_theme)
-		if !pal_ok { pal = ui.PALETTE_GRAPHITE }
-		c := pal.accent
+		c := chrome_palette(app).accent
 		accent := draw.srgb(f32(c >> 24) / 255, f32((c >> 16) & 255) / 255, f32((c >> 8) & 255) / 255, 1)
 		draw.rect(dc, draw.rect_pad(r, w), accent, 3 * page_scale(app), border = w)
 	}

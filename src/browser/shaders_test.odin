@@ -214,7 +214,7 @@ the_lettering_of_the_card_is_raised_on_every_system :: proc(t: ^testing.T) {
 // about:wren with the card's preview (the sample licence)
 @(private = "file")
 sample_card_page :: proc() -> Wren_Page {
-	pal, _ := ui.palette_named("graphite")
+	pal := ui.palette_of("graphite")
 	return {palette = pal, card_sample = true, support_url = SUPPORT_URL, profile_dir = `C:\Users\x\AppData\Roaming\Wren`}
 }
 

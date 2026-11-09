@@ -224,7 +224,7 @@ stack_order_puts_current_then_dragged_last :: proc(t: ^testing.T) {
 @(test)
 classic_colors_compose_with_palettes :: proc(t: ^testing.T) {
 	test_app(t)
-	for np in ui.NAMED_PALETTES {
+	for np in ui.theme_palettes(ui.THEMES[:]) {
 		base, border := draw.hex(np.palette.bg | 0xff), draw.hex(np.palette.border)
 		c := classic_colors(base, border, 1, 1)
 		testing.expectf(t, c.dark == np.palette.dark || np.name == "Aero" || np.name == "Bootstrap", "%s: dark = %v", np.name, c.dark)
@@ -239,9 +239,9 @@ classic_colors_compose_with_palettes :: proc(t: ^testing.T) {
 		testing.expectf(t, flat.lit_top == flat.idle_top && flat.idle_top == flat.strip_top, "%s: gloss 0 is flat", np.name)
 	}
 	// white-ish field on a light palette, darker than the toolbar on a dark one
-	light := classic_colors(draw.hex(ui.PALETTE_DAYLIGHT.bg | 0xff), draw.hex(ui.PALETTE_DAYLIGHT.border), 1, 1)
+	light := classic_colors(draw.hex(ui.palette_of("Midnight", true).bg | 0xff), draw.hex(ui.palette_of("Midnight", true).border), 1, 1)
 	testing.expect(t, luma(light.field) > 0.95, "white field")
-	dark := classic_colors(draw.hex(ui.PALETTE_GRAPHITE.bg | 0xff), draw.hex(ui.PALETTE_GRAPHITE.border), 1, 1)
+	dark := classic_colors(draw.hex(ui.palette_of("Graphite").bg | 0xff), draw.hex(ui.palette_of("Graphite").border), 1, 1)
 	testing.expect(t, luma(dark.field) < luma(dark.lit_bot), "sunken field")
 }
 
@@ -319,7 +319,7 @@ side_tab_lies_across_its_row :: proc(t: ^testing.T) {
 @(test)
 side_colors_compose_with_palettes :: proc(t: ^testing.T) {
 	test_app(t)
-	for np in ui.NAMED_PALETTES {
+	for np in ui.theme_palettes(ui.THEMES[:]) {
 		base, border := draw.hex(np.palette.bg | 0xff), draw.hex(np.palette.border)
 		c := classic_colors(base, border, 1, 1)
 		top, bot := side_hover_colors(c)
