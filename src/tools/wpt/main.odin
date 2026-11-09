@@ -3,7 +3,7 @@
 // to this tool as one console message. It fetches the pinned checkout and runs against the test server in its own process
 // (orchestrate.odin; tools/testserver/wpt.go).
 //
-//   odin build src/tools/wpt -collection:wb=src -vet -o:speed -use-separate-modules -out:build/wpt.exe   (test_all's step does)
+//   odin build src/tools/wpt -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -vet -o:speed -use-separate-modules -out:build/wpt.exe   (test_all's step does)
 //   build/wpt [-quick] [-update] [-timeouts] [-only prefix] [-jobs n] [-timeout ms] [-fast-timeouts | -no-fast-timeouts] [--pref name=value]... [-suites file]
 //       [-reftests | -no-reftests] [-reftest-folder folder]... [-dump dir] [-dump-all]
 //       [-fetch] [-update-manifest] [-no-server -server http://web-platform.test:8768] [-root another_checkout] [-edge]

@@ -71,7 +71,7 @@ task_runner :: proc(t: ^Task_Run) -> bool {
 	main_thread_wasm := name == "jsengine"
 	out := exe(fmt.tprintf("build/%s", program))
 	flags := fmt.tprintf("%s %v %s", name, quick, main_thread_wasm ? "main-stack" : "own-stack")
-	cmd := join({tooling.odin_program(), "build", fmt.tprintf("src/tools/%s", name), WB, "-vet", "-o:speed", out_flag(out)}, quick ? []string{"-use-separate-modules"} : nil, main_thread_wasm ? tooling.STACK_FLAGS : nil)
+	cmd := join({tooling.odin_program(), "build", fmt.tprintf("src/tools/%s", name), WB, TOOLKIT, "-vet", "-o:speed", out_flag(out)}, quick ? []string{"-use-separate-modules"} : nil, main_thread_wasm ? tooling.STACK_FLAGS : nil)
 	return tooling.build_if_stale(out, flags, cmd, t.log)
 }
 
