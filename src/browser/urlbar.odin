@@ -46,6 +46,10 @@ URLBAR_PREFS := [?]config.Def{
 		description = "Most open tabs (\"Switch to tab\") among the suggestions."},
 	{name = "browser.urlbar.suggest.history", kind = .Bool, default = {b = true},
 		description = "Suggest pages of the browsing history (not while history.global.enabled is off)."},
+	{name = "browser.urlbar.suggest.bookmarks", kind = .Bool, default = {b = true},
+		description = "Suggest bookmarks whose title or address has every word typed (bookmarks.odin), before the history."},
+	{name = "browser.urlbar.max_bookmark_rows", kind = .Int, default = {i = 3}, bounded = true, min = 0, max = 30,
+		description = "Most bookmarks among the suggestions."},
 	{name = "browser.urlbar.suggest.tabs", kind = .Bool, default = {b = true},
 		description = "Suggest open tabs whose title or address matches (\"Switch to tab\")."},
 	{name = "browser.urlbar.suggest.search", kind = .Bool, default = {b = true}, category = "search",
@@ -65,8 +69,8 @@ URLBAR_PREFS := [?]config.Def{
 register_urlbar_prefs :: proc(p: ^config.Prefs) { config.register(p, URLBAR_PREFS[:]) }
 
 Urlbar_Settings :: struct {
-	enabled, history, tabs, search, autofill, top_sites, engines_row: bool,
-	max_rows, max_tab_rows, min_chars:                   int,
+	enabled, history, tabs, bookmarks, search, autofill, top_sites, engines_row: bool,
+	max_rows, max_tab_rows, max_bookmark_rows, min_chars:                       int,
 }
 
 urlbar_settings_from_prefs :: proc(p: ^config.Prefs) -> Urlbar_Settings {
@@ -74,6 +78,8 @@ urlbar_settings_from_prefs :: proc(p: ^config.Prefs) -> Urlbar_Settings {
 		enabled = config.bool_of(p, "browser.urlbar.enabled"),
 		history = config.bool_of(p, "browser.urlbar.suggest.history"),
 		tabs = config.bool_of(p, "browser.urlbar.suggest.tabs"),
+		bookmarks = config.bool_of(p, "browser.urlbar.suggest.bookmarks"),
+		max_bookmark_rows = int(config.int_of(p, "browser.urlbar.max_bookmark_rows")),
 		search = config.bool_of(p, "browser.urlbar.suggest.search"),
 		engines_row = config.bool_of(p, "browser.urlbar.suggest.engines"),
 		autofill = config.bool_of(p, "browser.urlbar.autofill"),
@@ -84,12 +90,12 @@ urlbar_settings_from_prefs :: proc(p: ^config.Prefs) -> Urlbar_Settings {
 	}
 }
 
-Urlbar_Row_Kind :: enum u8 { Go, Search, Tab, History }
+Urlbar_Row_Kind :: enum u8 { Go, Search, Tab, Bookmark, History }
 
 Urlbar_Row :: struct {
 	kind:   Urlbar_Row_Kind,
 	entry:  int,    // History: index in ub.idx.entries
-	tab_id: u64,    // Tab
+	tab_id: u64,    // Tab; Bookmark: the bookmark's id (bookmarks.odin)
 	fill:   bool,   // History: the inline completion's address (always the first row)
 }
 
@@ -101,7 +107,7 @@ Urlbar_View :: struct {
 	sel:          int,                 // the chosen row (0: the first, what Enter does as typed)
 	fill_text:    string,              // owned: the field's text with the inline completion ("" = none)
 	fill_address: string,              // owned: what the completion opens
-	rows_serial:  u64,                 // app.ghist.serial the rows were made with
+	rows_serial:  u64,                 // urlbar_serial when the rows were made (the history's and the bookmarks')
 	tab_id:       u64,                 // the tab the list was opened for
 	focused:      bool,                // the address field had the keyboard last frame
 	just_focused: bool,                // ... and did not have it the frame before
@@ -295,7 +301,7 @@ urlbar_refresh :: proc(app: ^App, fill: Fill_Mode) {
 	clear(&uv.rows)
 	uv.sel = 0
 	if fill != .Keep { set_owned(&uv.fill_text, ""); set_owned(&uv.fill_address, "") }
-	uv.rows_serial = app.ghist.serial
+	uv.rows_serial = urlbar_serial(app)
 	q := uv.zero ? "" : strings.trim_space(uv.typed)
 	history := app.ub.cfg.history && app.hcfg.global
 	max_rows := max(app.ub.cfg.max_rows, 1)
@@ -355,17 +361,45 @@ urlbar_refresh :: proc(app: ^App, fill: Fill_Mode) {
 			n += 1
 		}
 	}
-	// the history, one row per address (an open tab's address is its tab row)
+	// the bookmarks that have every word (bookmarks.odin), one row per address
+	if app.ub.cfg.bookmarks {
+		n := 0
+		for b in app.bms.items {
+			if len(uv.rows) >= room || n >= app.ub.cfg.max_bookmark_rows { break }
+			if b.folder || skipped_address(b.url) || urlbar_has_address(app, uv, b.url) { continue }
+			lt, lu := strings.to_lower(b.title, context.temp_allocator), strings.to_lower(b.url, context.temp_allocator)
+			all := true
+			for term in terms { if !strings.contains(lt, term) && !strings.contains(lu, term) { all = false; break } }
+			if !all { continue }
+			append(&uv.rows, Urlbar_Row{kind = .Bookmark, tab_id = b.id})
+			n += 1
+		}
+	}
+	// the history, one row per address (an open tab's or a bookmark's address is its row)
 	for m in matches {
 		if len(uv.rows) >= room { break }
 		e := &app.ub.idx.entries[m.entry]
 		if m.entry == fill_entry || skipped_address(e.url) { continue }
-		dup := false
-		for r in uv.rows { if r.kind == .Tab { if x := tab_by_id(app, r.tab_id); x != nil && x.url == e.url { dup = true; break } } }
-		if !dup { append(&uv.rows, Urlbar_Row{kind = .History, entry = m.entry}) }
+		if !urlbar_has_address(app, uv, e.url) { append(&uv.rows, Urlbar_Row{kind = .History, entry = m.entry}) }
 	}
 	if extra_search { append(&uv.rows, Urlbar_Row{kind = .Search}) }
 	uv.open = true
+}
+
+// What the rows depend on besides the text: the history and the bookmarks.
+@(private = "file")
+urlbar_serial :: proc(app: ^App) -> u64 { return app.ghist.serial ~ (app.bms.serial << 32) }
+
+// Whether a tab or bookmark row of the list opens `address` already.
+@(private = "file")
+urlbar_has_address :: proc(app: ^App, uv: ^Urlbar_View, address: string) -> bool {
+	for r in uv.rows {
+		#partial switch r.kind {
+		case .Tab:      if x := tab_by_id(app, r.tab_id); x != nil && x.url == address { return true }
+		case .Bookmark: if i := bookmark_index(app.bms.items[:], r.tab_id); i >= 0 && app.bms.items[i].url == address { return true }
+		}
+	}
+	return false
 }
 
 @(private = "file")
@@ -396,6 +430,7 @@ row_address :: proc(app: ^App, r: Urlbar_Row) -> string {
 	case .Go:      return address_or_search(app, q)
 	case .Search:  engine, words := urlbar_search_of(app, uv); return search_url(app, words, engine)
 	case .Tab:     if x := tab_by_id(app, r.tab_id); x != nil { return x.url }
+	case .Bookmark: if i := bookmark_index(app.bms.items[:], r.tab_id); i >= 0 { return app.bms.items[i].url }
 	case .History:
 		if r.fill { return uv.fill_address }
 		if r.entry >= 0 && r.entry < len(app.ub.idx.entries) { return app.ub.idx.entries[r.entry].url }
@@ -496,7 +531,7 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 	uv.key_focus = false
 	uv.focused = true
 	if t != nil && t.id != uv.tab_id { urlbar_close(uv); uv.tab_id = t.id }
-	if uv.open && uv.rows_serial != app.ghist.serial { sel := uv.sel; urlbar_refresh(app, .Keep); urlbar_choose(app, sel) }
+	if uv.open && uv.rows_serial != urlbar_serial(app) { sel := uv.sel; urlbar_refresh(app, .Keep); urlbar_choose(app, sel) }
 
 	if ui.key_press(.Return, {.Alt}) || ui.key_press(.Return, {.Ctrl}) {
 		if uv.idle || !urlbar_open(app, t, uv.sel, true) {
@@ -701,6 +736,16 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 						if x := tab_by_id(app, r.tab_id); x != nil {
 							icon.tab = tab_icon_of(app, x, f32(tab_icon_px(app)))
 							title, detail, hint = x.title, shown_address(x.url), "Switch to tab"
+						}
+					case .Bookmark:
+						icon.kind = .Globe
+						if bi := bookmark_index(app.bms.items[:], r.tab_id); bi >= 0 {
+							b := app.bms.items[bi]
+							// (the icon the history knows for the address)
+							if k, ok := app.ub.idx.by_url[b.url]; ok && app.ub.idx.entries[k].icon != "" {
+								if tex, tok := favicon_texture(app, app.ub.idx.entries[k].icon); tok { icon.kind, icon.tex = .Favicon, tex }
+							}
+							title, detail, hint = b.title != "" ? b.title : default_tab_title(b.url), shown_address(b.url), i18n.tr("Bookmark")
 						}
 					case .History:
 						e := &app.ub.idx.entries[r.entry]
