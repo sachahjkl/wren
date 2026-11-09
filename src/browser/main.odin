@@ -1562,6 +1562,8 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	prof_begin(.UI_Draw)
+	// (the toolkit's automatic damage: each box is compared with its last frame; the page, replayed, is drawn every frame)
+	ui.set_partial_redraw(active_window(app).ui, config.bool_of(&app.prefs, "browser.ui.partial_redraw"))
 	ui.draw_tree(active_window(app).ui, &app.dc)
 	dnd_paint(app, &app.dc)   // dnd_image.odin: the picture of a drag from the page, over everything
 	autoscroll_paint(app, &app.dc)   // page_autoscroll.odin: the autoscroll anchor marker, over everything

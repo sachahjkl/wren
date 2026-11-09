@@ -1426,6 +1426,7 @@ stats_json :: proc(b: ^strings.Builder, s: api.Stats) {
 	j_int(b, "resizeEchoesSkipped", i64(s.resize_echoes_skipped)); j_str(b, "resizeFrameCauses", s.resize_frame_causes)
 	// how often the subsystems were configured again by preference writes (prefs_apply.odin)
 	j_int(b, "prefsCacheApplied", i64(s.prefs_cache_applied)); j_int(b, "prefsDownloadsApplied", i64(s.prefs_downloads_applied))
+	j_int(b, "uiPxDrawn", i64(s.ui_px_drawn)); j_int(b, "uiPxWindow", i64(s.ui_px_window)); j_str(b, "uiWhole", s.ui_whole)
 	if s.layout_items > 0 { j_int(b, "layoutItems", i64(s.layout_items)) }
 	// the process and the state a reset empties (so that a test can see both the cost of what it did and that a reset worked)
 	j_num(b, "cpuTimeMs", s.cpu_time_ms); j_num(b, "cpuUserMs", s.cpu_user_ms); j_num(b, "cpuKernelMs", s.cpu_kernel_ms); j_num(b, "windowThread", f64(s.window_thread))

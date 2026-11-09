@@ -63,6 +63,8 @@ PREFS := [?]config.Def{
 		description = "Theme of the browser's own interface (tabs, address bar, menus, status bar): one of the toolkit's themes. Pages keep their own colors."},
 	{name = "browser.ui.theme_mode", kind = .String, default = {s = "system"}, choices = {"system", "dark", "light"},
 		description = "Which version of the theme the interface shows: the system's light or dark setting (and its changes), or always the dark or the light one. A theme with one version shows it whatever this says."},
+	{name = "browser.ui.partial_redraw", kind = .Bool, default = {b = true},
+		description = "Each frame of the interface draws again only where something changed (the toolkit compares what every box draws with the last frame); the page is drawn whole. Off: every frame is drawn whole. For comparisons and for a driver that shows stale pixels."},
 	{name = "browser.ui.font_size", kind = .Float, default = {f = 15}, bounded = true, min = 8, max = 48, unit = "px", restart = false,
 		description = "Font size of the browser's own interface (tabs, address bar, console)."},
 	{name = "browser.ui.scrollbar_autohide", kind = .Bool, default = {b = true},

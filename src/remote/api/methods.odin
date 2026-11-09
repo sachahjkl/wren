@@ -855,6 +855,8 @@ Stats :: struct {
 	resize_echoes_skipped: int,
 	resize_frame_causes: string,   // the frames of resize bursts, by cause
 	prefs_cache_applied, prefs_downloads_applied: int,
+	ui_px_drawn, ui_px_window: int,   // the last frame of the window: pixels drawn (partial redraw), of the window
+	ui_whole:                  string,   // why that frame was drawn whole ("No": it was not)
 	layout_items:        int,
 	// the process, and what a reset takes away
 	cpu_time_ms, cpu_user_ms, cpu_kernel_ms: f64,
@@ -987,6 +989,7 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 		variable_refresh = b_of(o, "variableRefresh"), frame_cap_strict = b_of(o, "frameCapStrict"), frame_states = s_of(o, "frameStates"), frame_state = s_of(o, "frameState"),
 		resize_echoes_skipped = i_of(o, "resizeEchoesSkipped"), resize_frame_causes = s_of(o, "resizeFrameCauses"),
 		prefs_cache_applied = i_of(o, "prefsCacheApplied"), prefs_downloads_applied = i_of(o, "prefsDownloadsApplied"), layout_items = i_of(o, "layoutItems"),
+		ui_px_drawn = i_of(o, "uiPxDrawn"), ui_px_window = i_of(o, "uiPxWindow"), ui_whole = s_of(o, "uiWhole"),
 		cpu_time_ms = f_of(o, "cpuTimeMs"), cpu_user_ms = f_of(o, "cpuUserMs"), cpu_kernel_ms = f_of(o, "cpuKernelMs"), window_thread = int(f_of(o, "windowThread")), js_first_realm_ms = f_of(o, "jsFirstRealmMs"),
 		threads = i_of(o, "threads"), handles = i_of(o, "handles"), gdi_objects = i_of(o, "gdiObjects"), user_objects = i_of(o, "userObjects"),
 		cookies = i_of(o, "cookies"), storage_sites = i_of(o, "storageSites"), cache_entries = i_of(o, "cacheEntries"), history_visits = i_of(o, "historyVisits"), closed_tabs = i_of(o, "closedTabs"),
