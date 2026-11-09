@@ -10,6 +10,26 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-09
+
+### Changed
+- **Closing the last tab closes Wren** (`browser.tabs.close_window_with_last_tab`, on by default): Ctrl+W, the tab's close button, a middle click or the tab's menu on the only tab of the only window close the window as its close button does, where a new tab opened in its place. A tab the program closes (a reset, the crash recovery) still leaves a new tab.
+- **`flake.nix` builds Wren from the sources**: `nix run git+https://github.com/sachahjkl/wren` and `nix profile add` build it as `wrentool build release` does (submodules, crates vendored from `native/Cargo.lock`, Rust 1.99.1, the pinned Wasmtime and wgpu-native), with the menu entry and the icons, instead of fetching the latest release. `nix flake check` builds it and runs the pre-commit hooks (alejandra, deadnix, statix); `nix fmt` formats. `nix/release.json` and the release job that rewrote it are gone.
+
+### Fixed
+- **Sound on Linux with PipeWire**: the audio output took the first configuration of the default device that had the rate and the channels, whatever its sample format; through PipeWire's ALSA plugin that is an integer format the output does not write, so the output failed to open and every video and sound played silent. It now picks a float, then 16-bit, configuration, with exactly two channels when it can.
+- **The toolbar's top line no longer opens beside the tab strip**: when the current tab was scrolled out of view, the gap where it meets the toolbar stayed where the tab would be, and slid along under the window buttons as the strip scrolled; the gap is now cut to the part of the strip where tabs show in full.
+- **`wren ctl stop` finds a Wren started from another shell, and leaves no socket behind** (Linux): the files that name the Wrens `wren ctl start` made are kept beside their sockets (`$XDG_RUNTIME_DIR/wren`), not in the temporary folder, which a shell such as `nix develop` changes; `stop`, `run` and a `start` that gives up remove the socket of the Wren they end.
+- **The bands around a video's picture show the element's background**: where `object-fit` leaves room around the picture, Wren painted black; it now paints nothing there, so the element's background shows (transparent unless the page sets one), as in other browsers.
+- **Tabs that do not fit fade out at the edge of the tab strip**: where tabs are scrolled out of view, the strip fades them out toward that edge (as Firefox's does), where the last one visible was cut straight and ran under the new-tab button.
+- **`wren ctl eval` and the developer tools' console run on any page**: the page's Content Security Policy no longer refuses their eval (other browsers' developer tools run whatever the page's policy says); the page's own eval still obeys it.
+- **A video keeps its shape in its box**: the user agent's style has `video { object-fit: contain; }` (HTML Standard, rendering), so a frame of another shape than its box is drawn whole with bars, as other browsers do, instead of stretched to the box.
+- **`overflow-wrap: break-word` no longer narrows a box sized to its content**: only `overflow-wrap: anywhere` and `word-break: break-all` / `break-word` let a word break anywhere in its min-content width (CSS Text 3). A box with no room, such as video.js's time tooltip, showed "0:00" one character a line.
+- **XMLHttpRequest reads the body as it arrives**: the request is LOADING with readystatechange and progress events (the first part at once, then at most every 50 ms), and responseText has what came. The body was seen only at its end, so video.js, which reads the first bytes of a whole video to know its container and then aborts, waited for a video that never ended: an Invidious video never played. The callback API of module net tells a guest of each part of the body (FetchState.Body).
+- **`wren ctl start` on Linux**: the Wren it starts is headless where a window cannot exist unseen (Wayland, X11: `platform.can_hide_windows`), instead of a window on the desktop that stayed on about:blank and never answered, and it no longer keeps the caller's outputs (`name=$(wren ctl start)` waited for it to end): a started program with its outputs left out writes to /dev/null, as a program with no console does.
+- **Variable web fonts on Linux** (gui_toolkit 0.105.0): `font-weight`, `font-stretch` and `font-variation-settings` set the axes of a variable font; it was drawn at its default instance, so Fira Code's web font in `font-weight: 400` (default 300) came out light.
+- **SVG text on Linux**: the generic families of an SVG's text (`monospace`, `sans-serif`, `serif`, `cursive`, `fantasy`) are the fonts the system configures (fontconfig), as for the page's own text; they were Windows fonts Linux does not have, so the text of a diagram in `"Fira Code", ..., monospace` was not drawn at all.
+
 ## [0.7.0] - 2026-11-08
 
 ### Added
@@ -1323,7 +1343,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/sachahjkl/wren/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/sachahjkl/wren/compare/v0.6.32...v0.7.0
 [0.6.32]: https://github.com/sachahjkl/wren/compare/v0.6.31...v0.6.32
 [0.6.31]: https://github.com/sachahjkl/wren/compare/v0.6.30...v0.6.31
