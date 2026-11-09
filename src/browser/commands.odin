@@ -479,8 +479,8 @@ commands_build :: proc(r: ^Command_Registry) {
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_downloads(app) }})
 	add(r, {name = "browser.history_tree", title = "Tab history tree", category = "Browser", keywords = "branches back forward graph session",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { open_history(app, t, true) }})
-	add(r, {name = "browser.settings", title = "Settings", category = "Browser", glyph = GLYPH_GEAR, keywords = "about:config preferences options", url = "about:config",
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, "about:config", origin = .User) }})
+	add(r, {name = "browser.settings", title = "Settings", category = "Browser", glyph = GLYPH_GEAR, keywords = "about:settings preferences options", url = SETTINGS_URL,
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, SETTINGS_URL, origin = .User) }})
 	add(r, {name = "browser.setup", title = "Setup\u2026", category = "Browser", keywords = "install uninstall installer shortcut start menu path update repair standalone portable manage this installation",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_available() },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { setup_open(app) }})

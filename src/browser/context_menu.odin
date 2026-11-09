@@ -328,7 +328,7 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 	t := wnd.tabs[r.tab]
 	if ui.menu_item("New tab", "Ctrl+T", icon = GLYPH_ADD).clicked { tab_open_new(app); return }
 	ui.menu_separator()
-	if ui.menu_item("Reload", "Ctrl+R", icon = GLYPH_RELOAD, enabled = t.kind == .Web || t.kind == .Config).clicked { reload(app, t) }
+	if ui.menu_item("Reload", "Ctrl+R", icon = GLYPH_RELOAD, enabled = t.kind == .Web || t.kind == .Config || t.kind == .Settings).clicked { reload(app, t) }
 	if ui.menu_item("Duplicate").clicked { open_in_new_tab(app, t.url, origin = .Replay) }
 	ui.menu_separator()
 	tab_menu_group_items(app, t)   // tab_groups.odin: pin, groups

@@ -118,7 +118,7 @@ Page_State :: struct { text, tone, detail: string }
 // The first item of the bar: what the tab is doing.
 page_state :: proc(t: ^Tab) -> Page_State {
 	if t == nil { return {} }
-	if t.kind == .Config { return {"Settings", "weak", t.status} }
+	if t.kind == .Config || t.kind == .Settings { return {"Settings", "weak", t.status} }
 	if t.kind == .Blocker { return {"Blocker", "weak", t.status} }
 	if t.kind == .Downloads { return {"Downloads", "weak", t.status} }
 	load := t.load

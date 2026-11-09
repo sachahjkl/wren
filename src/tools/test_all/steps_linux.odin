@@ -9,7 +9,7 @@ import "core:strings"
 // Packages move from "not yet" to these lists as they are ported; tests that measure time stay out.
 
 // The tests of src/browser run on Linux (the package as a whole does not pass there yet).
-BROWSER_LINUX_TESTS :: "-define:ODIN_TEST_NAMES=browser.the_lettering_of_the_card_is_raised_on_every_system"
+BROWSER_LINUX_TESTS :: "-define:ODIN_TEST_NAMES=browser.the_lettering_of_the_card_is_raised_on_every_system,browser.settings_pages_name_registered_preferences,browser.every_definition_is_valid"
 
 linux_table :: proc(cfg: ^Config) -> []Step {
 	t: [dynamic]Step

@@ -125,6 +125,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	remote.register_prefs(p)   // src/remote
 	_ = wasm.PREFS
 	_ = html.PREFS
+	settings_pages_assign(p)   // settings_page.odin: about:settings's pages, after every preference is there
 }
 
 // The interface's scale: browser.ui.scale, else the display's of the window (`of`; the active one by default: window_chrome.odin,

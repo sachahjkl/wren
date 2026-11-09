@@ -3,6 +3,7 @@ package browser
 import "core:strings"
 import "toolkit:font"
 import "toolkit:ui"
+import lucide "toolkit:lucide"
 import "wb:base"
 import "wb:host"
 import lay "wb:layout"
@@ -436,6 +437,7 @@ fonts_preload_start :: proc(app: ^App) -> ^Font_Preload {
 fonts_preload_finish :: proc(app: ^App, fp: ^Font_Preload) -> (ok: bool) {
 	if fp.th != nil { host.thread_join(fp.th) } else { load_ui_fonts(fp) }
 	app.ui_font, app.icons = fp.ui_font, fp.icons
+	app.lucide, _ = font.load_embedded(fp.fonts, lucide.DATA)   // (about:settings's pages; nothing else needs it to start)
 	return fp.ui_ok && fp.icons_ok
 }
 

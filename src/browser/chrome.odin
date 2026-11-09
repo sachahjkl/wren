@@ -54,7 +54,7 @@ Security :: struct {
 
 security_of :: proc(t: ^Tab) -> Security {
 	if t == nil { return {GLYPH_INFO, "", .Weak, "", ""} }
-	if t.kind == .Config { return {GLYPH_GEAR, "Settings", .Weak, "Browser settings", "This page edits the preferences of the browser itself. It has no network connection."} }
+	if t.kind == .Config || t.kind == .Settings { return {GLYPH_GEAR, "Settings", .Weak, "Browser settings", "This page edits the preferences of the browser itself. It has no network connection."} }
 	if t.kind == .Blocker { return {GLYPH_GEAR, "Blocker", .Weak, "Content blocker", "This page shows and edits the content blocker of the browser. It has no network connection."} }
 	if t.kind == .Downloads { return {GLYPH_INFO, "Downloads", .Weak, "Downloads", "This page lists the files downloaded by the browser. It has no network connection."} }
 	if t.page == nil {

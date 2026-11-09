@@ -18,6 +18,7 @@ import "toolkit:font"
 import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
+import prefs_page "toolkit:prefs_page"
 import "wb:canvas2d"
 import "wb:base"
 import "wb:config"
@@ -88,7 +89,7 @@ Doc_Load :: struct {
 
 Load_Failure :: enum u8 { None, Other, Tls }
 
-Tab_Kind :: enum u8 { Web, Config, History, Blocker, Downloads }   // Blocker: about:blocker (blocker_dashboard.odin)   // History: about:history (history_ui.odin)   // Downloads: about:downloads (downloads_ui.odin)
+Tab_Kind :: enum u8 { Web, Config, Settings, History, Blocker, Downloads }   // Settings: about:settings (settings_page.odin)   // Blocker: about:blocker (blocker_dashboard.odin)   // History: about:history (history_ui.odin)   // Downloads: about:downloads (downloads_ui.odin)
 
 Tab :: struct {
 	id:       u64,           // unique for the process: keys its boxes of the tab strip (tab_strip.odin)
@@ -152,6 +153,7 @@ App :: struct {
 	chrome_pal:  ui.Palette,       // the palette of the theme shown (chrome_palette), kept from theme_show to theme_show
 	ui_font:  font.Font_Id,
 	icons:    font.Font_Id,
+	lucide:   font.Font_Id,   // the Lucide icons (toolkit:lucide): about:settings's pages
 
 	loop:     host.Loop,
 	client:   net.Client,
@@ -160,6 +162,7 @@ App :: struct {
 	cfg:      Settings,       // the shell's own, derived from prefs
 	page_settings: page.Settings,
 	config_view:   Config_View,
+	settings_view: prefs_page.Page,   // about:settings (settings_page.odin)
 	autosave_timer: base.Handle,
 	profile:  fetch.Profile,
 	loader:   fetch.Loader,
@@ -483,6 +486,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	license_file := is_license_file_address(target) && verdict.acts   // license_shell.odin
 	if is_builtin_address(target) || license_file || is_cache_address(target) || is_sites_address(target) { hold_step(app, t, .Over); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
 	if target == "about:config" { show_config(app, t); return }
+	if target == SETTINGS_URL { show_settings(app, t); return }
 	if is_history_address(target) { show_history(app, t, target); return }
 	if is_blocker_address(target) { show_blocker(app, t, target); return }   // blocker_dashboard.odin
 	if is_downloads_address(target) { show_downloads(app, t, target); return }   // downloads_ui.odin
@@ -700,6 +704,20 @@ load_closed :: proc(data: rawptr) {
 	delete(load.slots)
 	delete(load.mime); delete(load.charset); delete(load.final_url)
 	free(load)
+}
+
+SETTINGS_URL :: "about:settings"
+
+// about:settings, like about:config, is a view of the browser itself (settings_page.odin).
+show_settings :: proc(app: ^App, t: ^Tab) {
+	nav_show_view(app, t, .Settings)
+	layout_reset(&t.layout)
+	t.scroll_target = base.NIL_HANDLE
+	console_reset(t)
+	delete(t.url); t.url = strings.clone(SETTINGS_URL)
+	delete(t.title); t.title = strings.clone("Settings")
+	set_status(t, SETTINGS_URL)
+	prefs_page.focus_search(&app.settings_view)
 }
 
 // about:config is a view of the browser itself, not a document: it has no page, no origin, no scripts.
@@ -990,6 +1008,8 @@ page_view :: proc(app: ^App, t: ^Tab) {
 	ui.next({width = ui.fill(), height = ui.fill()})
 	if t != nil && t.kind == .Config {
 		config_page(app, &app.config_view, &app.prefs)
+	} else if t != nil && t.kind == .Settings {
+		settings_page(app)   // settings_page.odin
 	} else if t != nil && t.kind == .History {
 		history_page(app, t)   // history_ui.odin
 	} else if t != nil && t.kind == .Blocker {
@@ -1962,6 +1982,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	page_render_destroy()
 	host.shutdown_step("config_view_destroy")
 	config_view_destroy(&app.config_view)
+	prefs_page.destroy(&app.settings_view)
 	host.shutdown_step("interaction_destroy")
 	interaction_destroy(app)
 	host.shutdown_step("ui.field_destroy")
