@@ -30,7 +30,7 @@ SAFE_LABEL_MAX_RUNES :: 60
 HISTORY_URL :: "about:history"
 
 is_builtin_address :: proc(a: string) -> bool {
-	return a == "about:config" || a == SETTINGS_URL || is_blocker_address(a) || is_downloads_address(a) || is_history_address(a) || is_home_address(a) || a == DEMOS_URL || a == ABOUT_URL || is_wren_address(a)
+	return a == "about:config" || a == SETTINGS_URL || is_blocker_address(a) || is_downloads_address(a) || is_bookmarks_address(a) || is_history_address(a) || is_home_address(a) || a == DEMOS_URL || a == ABOUT_URL || is_wren_address(a)
 }
 
 History_Row_Kind :: enum u8 { Day, Visit }

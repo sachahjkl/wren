@@ -89,7 +89,7 @@ Doc_Load :: struct {
 
 Load_Failure :: enum u8 { None, Other, Tls }
 
-Tab_Kind :: enum u8 { Web, Config, Settings, History, Blocker, Downloads }   // Settings: about:settings (settings_page.odin)   // Blocker: about:blocker (blocker_dashboard.odin)   // History: about:history (history_ui.odin)   // Downloads: about:downloads (downloads_ui.odin)
+Tab_Kind :: enum u8 { Web, Config, Settings, History, Blocker, Downloads, Bookmarks }   // Bookmarks: about:bookmarks (bookmarks_ui.odin)   // Settings: about:settings (settings_page.odin)   // Blocker: about:blocker (blocker_dashboard.odin)   // History: about:history (history_ui.odin)   // Downloads: about:downloads (downloads_ui.odin)
 
 Tab :: struct {
 	id:       u64,           // unique for the process: keys its boxes of the tab strip (tab_strip.odin)
@@ -196,6 +196,7 @@ App :: struct {
 	watches:       [Pref_Watch]int,          // the preference watches of the subsystems that follow their preferences
 	cmds:          Command_Registry,         // commands.odin: the commands of the menu, the palette and the shortcuts
 	ghist:         Global_History,           // global_history.odin: the profile's history
+	bms:           Bookmarks,                // bookmarks.odin: the profile's bookmarks
 	favs:          Favicons,                 // favicon.odin: the tabs' icons
 	bf:            Bfcache,                  // bfcache.odin: the back/forward cache of the tabs
 	dls:           Downloads,                // download.odin: the profile's downloads
@@ -281,6 +282,7 @@ App :: struct {
 	ub:            Urlbar,                   // urlbar.odin: the history index and its build
 	dview:         Downloads_View,           // downloads_ui.odin: about:downloads
 	hview:         History_View,             // history_ui.odin: about:history
+	bview:         Bookmarks_View,           // bookmarks_ui.odin: about:bookmarks, the bookmark dialog
 	tview:         Tree_View_State,          // history_tree.odin: its tree
 	vshell:        Video_Shell,              // video_shell.odin: the pages' video players
 	cgpu:          Canvas_Gpu,               // canvas_gpu.odin: the canvases drawn on the renderer
@@ -497,6 +499,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if is_history_address(target) { show_history(app, t, target); return }
 	if is_blocker_address(target) { show_blocker(app, t, target); return }   // blocker_dashboard.odin
 	if is_downloads_address(target) { show_downloads(app, t, target); return }   // downloads_ui.odin
+	if is_bookmarks_address(target) { show_bookmarks(app, t, target); return }   // bookmarks_ui.odin
 	if target == HOME_URL { show_home(app, t); return }
 	if strings.has_prefix(target, HOME_URL + "?") { home_query(app, t, target, verdict.acts); return }   // newtab_art_page.odin
 	if target == DEMOS_URL { show_demos(app, t); return }
@@ -1024,6 +1027,8 @@ page_view :: proc(app: ^App, t: ^Tab) {
 		blocker_page(app, t)   // blocker_dashboard.odin
 	} else if t != nil && t.kind == .Downloads {
 		downloads_page(app, t)   // downloads_ui.odin
+	} else if t != nil && t.kind == .Bookmarks {
+		bookmarks_page(app, t)   // bookmarks_ui.odin
 	} else {
 		// a Tab stop of the chrome: reaching it hands the keyboard to the page (forms_focus_from_chrome)
 		pb := ui.custom("###page_area", page_draw, nil, {.Focusable})
@@ -1113,6 +1118,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	fs_shell_build(app)   // fs_shell.odin: a page's file permission prompt (nothing while none waits)
 	notification_shell_build(app)   // notification_shell.odin: a page's notification permission prompt
 	qr_build(app)   // qr_shell.odin: the QR code of the page's address
+	bookmarks_dialog_build(app)   // bookmarks_ui.odin: the dialog that names a bookmark
 	storage_access_shell_build(app)   // storage_access_shell.odin: a frame's storage access prompt
 	// notices go over the page, not over the title bar's window buttons
 	if pr := active_window(app).page_rect; pr.max.y > pr.min.y { ui.set_toast_area(pr) }
@@ -1754,6 +1760,7 @@ app_start :: proc(args: []string) -> ^App {
 	app.config_view.rows = make(map[string]^Row_State)
 	history_settings_init(app)   // history_settings.odin: before the first tab
 	global_history_init(app)
+	bookmarks_init(app)   // bookmarks.odin
 	app.show_console = app.cfg.show_console
 
 	host.phase("profile_load")
@@ -1923,6 +1930,9 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	sidebar_destroy(&window_own(app).sidebar)   // tab_sidebar.odin
 	host.shutdown_step("global_history_shutdown")
 	global_history_shutdown(app)
+	host.shutdown_step("bookmarks_shutdown")
+	bookmarks_shutdown(app)
+	bookmarks_ui_destroy(app)
 	host.shutdown_step("history_ui_destroy")
 	history_ui_destroy()
 	downloads_ui_destroy()

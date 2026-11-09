@@ -485,6 +485,16 @@ commands_build :: proc(r: ^Command_Registry) {
 		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Main_Menu) }})
 	add(r, {name = "browser.history", title = "History", category = "Browser", keywords = "about:history visited pages past", url = HISTORY_URL, keys = keys(&r.arena, {key = .H, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_history(app, t, false) }})
+	add(r, {name = "browser.bookmarks", title = i18n.tr("Bookmarks"), category = "Browser", keywords = "about:bookmarks favorites saved pages folders", url = BOOKMARKS_URL, keys = keys(&r.arena, {key = .O, mods = cs}),
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_bookmarks(app) }})
+	add(r, {name = "bookmark.page", title = i18n.tr("Bookmark this page"), category = "Page", keywords = "star favorite save keep", keys = keys(&r.arena, {key = .D, mods = ctrl}),
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return bookmarkable(t) },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && bookmark_of_url(app.bms.items[:], t.url) >= 0 },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { bookmark_star(app, t) }})
+	add(r, {name = "bookmarks.import", title = i18n.tr("Import bookmarks…"), category = "Browser", keywords = "html netscape chrome firefox edge favorites",
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { bookmarks_import_pick(app) }})
+	add(r, {name = "bookmarks.export", title = i18n.tr("Export bookmarks…"), category = "Browser", keywords = "html netscape backup save favorites",
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { bookmarks_export_pick(app) }})
 	add(r, {name = "browser.downloads", title = "Downloads", category = "Browser", keywords = "about:downloads files saved folder progress", url = DOWNLOADS_URL, keys = keys(&r.arena, {key = .J, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_downloads(app) }})
 	add(r, {name = "browser.history_tree", title = "Tab history tree", category = "Browser", keywords = "branches back forward graph session",

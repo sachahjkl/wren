@@ -121,6 +121,7 @@ page_state :: proc(t: ^Tab) -> Page_State {
 	if t.kind == .Config || t.kind == .Settings { return {"Settings", "weak", t.status} }
 	if t.kind == .Blocker { return {"Blocker", "weak", t.status} }
 	if t.kind == .Downloads { return {"Downloads", "weak", t.status} }
+	if t.kind == .Bookmarks { return {"Bookmarks", "weak", t.status} }
 	load := t.load
 	if load != nil && load.task != base.NIL_HANDLE { return {t.page == nil ? "Connecting…" : "Loading…", "", t.status} }
 	if load != nil {

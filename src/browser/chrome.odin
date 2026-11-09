@@ -57,6 +57,7 @@ security_of :: proc(t: ^Tab) -> Security {
 	if t.kind == .Config || t.kind == .Settings { return {GLYPH_GEAR, "Settings", .Weak, "Browser settings", "This page edits the preferences of the browser itself. It has no network connection."} }
 	if t.kind == .Blocker { return {GLYPH_GEAR, "Blocker", .Weak, "Content blocker", "This page shows and edits the content blocker of the browser. It has no network connection."} }
 	if t.kind == .Downloads { return {GLYPH_INFO, "Downloads", .Weak, "Downloads", "This page lists the files downloaded by the browser. It has no network connection."} }
+	if t.kind == .Bookmarks { return {GLYPH_INFO, "Bookmarks", .Weak, "Bookmarks", "This page lists the bookmarks of the browser. It has no network connection."} }
 	if t.page == nil {
 		// no response yet: nothing is known about the connection, so claim nothing
 		if t.load != nil { return {GLYPH_INFO, "Loading", .Weak, "Loading", "The connection is being established."} }
@@ -239,6 +240,7 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 // What follows the address bar only while it applies: a passkey dialog.
 address_chips :: proc(app: ^App, t: ^Tab) {
 	private_badge(app)   // private_browsing.odin: a private Wren's mark, first (whichever bar holds the chips)
+	bookmark_star_chip(app, t)   // bookmarks_ui.odin: the page is a bookmark or not
 	webauthn_chip(app, t)   // a passkey dialog is open for the page (webauthn_shell.odin)
 }
 
@@ -650,6 +652,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		menu_command(app, t, "nav.reload")
 		menu_command(app, t, "nav.home")
 		menu_command(app, t, "browser.history")
+		menu_command(app, t, "browser.bookmarks")
 		menu_command(app, t, "browser.history_tree")
 		ui.menu_separator()
 		if ui.menu_submenu(fmt.tprintf("Zoom (%d %%)###zoom_sub", zoom_percent(t)), enabled = web) {
