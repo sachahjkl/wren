@@ -184,6 +184,7 @@ App :: struct {
 	pass_first: bool,                     // the next frame of this pass of the loop is the first: it runs the tasks of the loop
 	rendering:  ^Tab,                     // the tab whose rendering update the frame runs (its animation frame callbacks, then its page phase): what it lays out, this frame paints
 	headless:   bool,                     // no window at all (`--headless`)
+	private:    bool,                     // a private Wren (--private): its profile is made for it and goes at its end (private_browsing.odin)
 	hidden:     bool,                     // windows that are made and never shown (--hidden)
 	frames_at_once: bool,                 // a program in this process drives the browser: a headless window's frames wait for nothing (control.odin)
 	quitting:   bool,                     // the browser ends (a remote Browser.close): every window goes, none is closed on its own first
@@ -1645,7 +1646,8 @@ app_start :: proc(args: []string) -> ^App {
 	no_single, a6 := extract_switch(a5[:], "--no-single-instance")
 	remote_asked, remote_name, a7 := extract_remote(a6[:])   // --remote[=name]: the remote control channel (remote_shell.odin)
 	hidden_mode, a7h := extract_switch(a7[:], "--hidden")   // a window that is made but never shown (UI Automation, the system's hit test and the remote channel still see it): `wren ctl start`
-	headless_mode, a8 := extract_switch(a7h[:], "--headless")   // the window is never shown (it renders all the same: remote captures read the frame)
+	headless_mode, a8p := extract_switch(a7h[:], "--headless")   // the window is never shown (it renders all the same: remote captures read the frame)
+	private_mode, a8 := extract_switch(a8p[:], "--private")   // private browsing: a profile of its own, gone at the end (private_browsing.odin)
 	// a system where no window exists unseen (Wayland, X11): a hidden Wren is a headless one, or `wren ctl start` would put a
 	// window on the user's desktop
 	if hidden_mode && !platform.can_hide_windows() { hidden_mode, headless_mode = false, true }
@@ -1656,6 +1658,15 @@ app_start :: proc(args: []string) -> ^App {
 	portable_dir := profile_override == "" ? portable_profile_dir() : ""   // a copy with wren.portable beside it keeps its profile beside it (setup.odin)
 	app.portable = portable_dir != ""
 	app.profile_dir = strings.clone(profile_override != "" ? profile_override : (app.portable ? portable_dir : (cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/", APP_NAME}, context.temp_allocator))))
+	if private_mode {
+		// a profile of its own in the temporary folder, with the user's settings copied in (private_browsing.odin)
+		if dir := private_profile_make(app.profile_dir); dir != "" {
+			delete(app.profile_dir)
+			app.profile_dir = dir
+			app.private = true
+			no_single = true
+		}
+	}
 	_ = os.make_directory_all(app.profile_dir)
 	net.user_agent_product = "Wren/" + APP_VERSION
 	crashtrace.set_report_dir(strings.concatenate({app.profile_dir, "/crashes"}, context.temp_allocator), fmt.tprintf("%s %s (%s %s)", APP_NAME, APP_VERSION, app_commit(), APP_COMMIT_DATE))
@@ -1664,6 +1675,7 @@ app_start :: proc(args: []string) -> ^App {
 	if policy_file == "" { policy_file = default_policy_file(process.executable_path(context.temp_allocator)) }   // beside the program, not in the working directory (policy_file.odin)
 	if policy_file != "" { config.load_file(&app.prefs, policy_file, .Policy) }
 	register_all_prefs(&app.prefs)
+	if app.private { private_prefs_apply(&app.prefs) }   // nothing written for later, no session restored
 	app.cfg = settings_from_prefs(&app.prefs)
 	memory_trim_settings(app, &app.prefs)   // memory_trim.odin
 	prof_mark(.Prefs)
@@ -2020,6 +2032,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	delete(app.cfg.homepage)
 	delete(app.cfg.ui_theme)
 	config.prefs_destroy(&app.prefs)
+	if app.private { base.remove_tree(app.profile_dir) }   // (a private Wren's profile goes with it)
 	delete(app.profile_dir)
 	delete(app.bare.tabs)
 	free(app)

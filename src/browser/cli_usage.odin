@@ -57,6 +57,7 @@ cli_usage_text :: proc() -> string {
 	fmt.sbprintf(&sb, "\n%s\n", i18n.tr("Options"))
 	row(&sb, "--new-window", i18n.tr("a window of its own, not a tab of the Wren that runs"))
 	row(&sb, "--no-single-instance", i18n.tr("never hands the addresses to a Wren that runs"))
+	row(&sb, "--private", i18n.tr("private browsing: a profile of its own with a copy of your settings, gone at the end"))
 	row(&sb, "--profile <dir>", i18n.tr("the profile folder to use"))
 	row(&sb, "--policy <file>", i18n.tr("a policy file (settings an administrator fixes)"))
 	row(&sb, "--pref name=value", i18n.tr("sets a preference for this run (about:config lists them)"))

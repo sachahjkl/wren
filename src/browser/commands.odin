@@ -255,6 +255,9 @@ commands_build :: proc(r: ^Command_Registry) {
 	}
 	add(r, {name = "window.new", title = "New window", category = "Window", keywords = "open another", keys = keys(&r.arena, {key = .N, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { window_new(app) }})
+	add(r, {name = "window.new_private", title = i18n.tr("New private window"), category = "Window", keywords = "incognito private browsing inprivate",
+		keys = keys(&r.arena, {key = .N, mods = cs}),
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { private_window_open(app) }})
 	add(r, {name = "browser.session_restore", title = i18n.tr("Restore tabs at start-up"), category = "Tabs", keywords = "session reopen previous startup",
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return config.bool_of(&app.prefs, "browser.session.restore") },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.session.restore", !config.bool_of(&app.prefs, "browser.session.restore")) }})

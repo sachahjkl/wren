@@ -238,6 +238,7 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 
 // What follows the address bar only while it applies: a passkey dialog.
 address_chips :: proc(app: ^App, t: ^Tab) {
+	private_badge(app)   // private_browsing.odin: a private Wren's mark, first (whichever bar holds the chips)
 	webauthn_chip(app, t)   // a passkey dialog is open for the page (webauthn_shell.odin)
 }
 
@@ -639,6 +640,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		// the items are commands of the registry (commands.odin): same titles, shortcuts and conditions as elsewhere
 		web := t != nil && t.kind == .Web
 		if menu_command(app, t, "tab.new") { return }
+		if menu_command(app, t, "window.new_private") { return }
 		if menu_command(app, t, "tab.reopen_closed", title = closed_reopen_title(app)) { return }
 		if menu_command(app, t, "tab.close") { return }
 		ui.menu_separator()

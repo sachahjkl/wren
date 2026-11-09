@@ -712,6 +712,7 @@ hud_title :: proc(app: ^App, now: f64) {
 	h.title_page, h.title_url, h.title_ms = page_title, page_url, now
 	text := title_compose(h.cfg.title_format, h.cfg.title_sep, title_values(app, t))
 	if text == "" { text = APP_NAME }
+	if app.private { text = fmt.tprintf("%s (Private)", text) }   // private_browsing.odin
 	if text == h.title_text { return }
 	delete(h.title_text)
 	h.title_text = strings.clone(text)
