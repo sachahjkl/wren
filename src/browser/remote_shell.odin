@@ -115,6 +115,7 @@ Remote :: struct {
 	checkpoints: map[string]^Checkpoint,  // the named ones (keys are the checkpoints' own names)
 	capture_window: int,                  // a capture waits for this window's next frame (0: none): remote_capture_arm
 	capture_rect:   [4]int,
+	capture_refused: int,                 // frames whose copy the renderer refused (another under way): asked again at the next
 	tl:         Timeline,                 // the frames being recorded (remote_timeline.odin)
 	busy:       Busy_Input,               // input for the chrome frames of a long script (busy_input.odin)
 	call_ns:    i64,                      // when the last request came (loop clock)
@@ -126,8 +127,14 @@ remote_capture_arm :: proc(app: ^App) {
 	r := &app.remote
 	if r.tl.on { timeline_frame(app) }   // remote_timeline.odin: every frame of the window, while one is recorded
 	if r.capture_window == 0 || r.capture_window != active_window(app).id { return }
+	// refused (a copy of the timeline or of a busy page's steps under way): asked again at the next frame, not dropped (the
+	// capture then waited for pixels nobody had asked for, until its time ran out)
+	if !render.capture_request(&app.r, r.capture_rect) {
+		r.capture_refused += 1
+		request_frames(app, 2)
+		return
+	}
 	r.capture_window = 0
-	_ = render.capture_request(&app.r, r.capture_rect)
 }
 
 Remote_Queued :: struct {

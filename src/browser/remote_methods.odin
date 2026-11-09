@@ -789,7 +789,7 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 			rect = {int(math.floor(x0)), int(math.floor(y0)), int(math.ceil(x1 - x0)), int(math.ceil(y1 - y0))}
 		}
 		// the renderer copies the next frame it ends, whichever window's: asked for in this window's own frame (remote_capture_arm)
-		r.capture_window, r.capture_rect = active_window(app).id, rect
+		r.capture_window, r.capture_rect, r.capture_refused = active_window(app).id, rect, 0
 		op.asked = true
 		op.stage = op.stage == -2 ? 3 : 1
 		request_frames(app, 2)
@@ -801,7 +801,17 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	if op.stage == 3 { op.stage = -2 }   // (finish() looks for -2)
 	switch st {
 	case .None, .Pending:
-		if timed_out { finish(app, op, fail(remote.ERR_TIMEOUT, "timed out waiting for the frame's pixels")); return }
+		if timed_out {
+			// which wait it was: the window drew no frame to copy, the renderer refused the copy, or the GPU did not give the pixels back
+			why := "the GPU did not give the frame's pixels back"
+			if app.remote.capture_window != 0 {
+				why = app.remote.capture_refused > 0 ? fmt.tprintf("the renderer refused the copy at %d frames (another copy under way)", app.remote.capture_refused) : "the window ended no frame to copy"
+			} else if st == .None {
+				why = "no copy was under way"
+			}
+			finish(app, op, fail(remote.ERR_TIMEOUT, fmt.tprintf("timed out waiting for the frame's pixels: %s", why)))
+			return
+		}
 		if op.stage == -2 && (st == .Pending || r.capture_window != 0) { op.stage = 3 }   // (asked, its frame not drawn yet: remote_capture_arm)
 	case .Failed: finish(app, op, fail(remote.ERR_FAILED, "the frame could not be read back (device lost, or an empty area)"))
 	case .Ready:
