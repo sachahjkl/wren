@@ -5,11 +5,10 @@ package browser
 // It shows the preferences of SETTINGS_PAGES, page by page; about:config keeps every preference (more than a thousand),
 // for what this page leaves out.
 //
-// A page is a category of the registry: settings_pages_assign gives each preference named below its page's category, so
-// about:config groups them under the same titles. The theme is chosen on cards in its own colours (prefs_page.theme_cards);
+// A page lists its preferences by name (prefs_page.Page_Info.names): the categories of the registry stay about:config's. The theme is chosen on cards in its own colours (prefs_page.theme_cards);
 // the default search engine is a choice among the profile's engines.
 
-import "core:strings"
+import "wb:base"
 import "wb:config"
 import "toolkit:ui"
 import lucide "toolkit:lucide"
@@ -38,20 +37,10 @@ SETTINGS_PAGES := [?]Settings_Page_Def{
 	{"system", "System", lucide.MONITOR, {"browser.update.check_daily", "browser.session.crash_recovery"}},
 }
 
-// Each preference of SETTINGS_PAGES in its page's category (after every preference is registered). A name the registry
-// lacks is skipped: settings_pages_test.odin keeps the list true.
-settings_pages_assign :: proc(p: ^config.Prefs) {
-	for pg in SETTINGS_PAGES {
-		for name in pg.names {
-			if i, ok := p.index[name]; ok { p.entries[i].def.category = pg.category }
-		}
-	}
-}
-
 // The settings page of the tab (page_view): the whole room.
 settings_page :: proc(app: ^App) {
 	pages: [len(SETTINGS_PAGES)]prefs_page.Page_Info
-	for pg, i in SETTINGS_PAGES { pages[i] = {pg.category, pg.title, pg.icon} }
+	for pg, i in SETTINGS_PAGES { pages[i] = {category = pg.category, title = pg.title, icon = pg.icon, names = pg.names} }
 	ui.next({width = ui.fill(), height = ui.fill()})
 	prefs_page.build(&app.settings_view, &app.prefs, {
 		user = app,
@@ -65,7 +54,7 @@ settings_page :: proc(app: ^App) {
 			app := (^App)(user)
 			if name != "browser.ui.theme" { return }
 			if at := prefs_page.theme_cards(ui.THEMES[:], app.cfg.ui_theme, app.theme_shown.light, em); at >= 0 {
-				_ = config.set_from_string(&app.prefs, "browser.ui.theme", strings.to_lower(ui.THEMES[at].name, context.temp_allocator), .User)
+				_ = config.set_from_string(&app.prefs, "browser.ui.theme", base.ascii_lower(ui.THEMES[at].name), .User)
 			}
 		},
 	})

@@ -53,3 +53,6 @@ src/remote/client/commands.odin filter := len(args) > 0 ? strings.to_lower(  # u
 src/remote/client/commands.odin strings.contains(strings.to_lower(line  # user text: a filter typed at the command line
 src/remote/names.odin p = strings.to_lower(p, context.temp_allocator)  # a Windows path
 src/testserver/testserver.odin lower := strings.to_lower(strings.trim_right(root  # a Windows path
+src/browser/bookmarks_ui.odin q := strings.to_lower(query  # user text: about:bookmarks' search
+src/browser/bookmarks_ui.odin if strings.contains(strings.to_lower(b.title  # user text: about:bookmarks' search
+src/browser/urlbar.odin lt, lu := strings.to_lower(b.title  # user text: the address bar's bookmarks

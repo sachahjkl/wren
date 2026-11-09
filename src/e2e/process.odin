@@ -85,7 +85,7 @@ launch_begin :: proc(t: ^testing.T, o := Process_Options{}, loc := #caller_locat
 	exe := o.exe != "" ? o.exe : wren_exe()
 	// (nothing of the internet's in a test: the content blocker's lists stay where they are; no GPU process a test does not ask for)
 	prefs := make([dynamic]string, context.temp_allocator)
-	append(&prefs, "blocker.update.enabled=false", "blocker.welcome_toast=false", "webgl.gpu_start_ahead=false")
+	append(&prefs, "blocker.update.enabled=false", "blocker.welcome_toast=false", "webgl.gpu_start_ahead=false", "browser.ui.theme_mode=dark")
 	append(&prefs, ..o.prefs)
 	l, err := api.launch({exe = exe, name = o.name, window = o.hidden ? .Hidden : .Headless, profile = o.profile, own_profile = o.own_profile, single_instance = o.single_instance, dpi = o.dpi, prefs = prefs[:], extra = o.extra, no_address = o.no_address, start = o.start}, context.allocator)
 	p.wren = l

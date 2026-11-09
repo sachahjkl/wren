@@ -821,11 +821,11 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 		set_xform(&e, lay.NONE)
 		fx_cache_under(&e, &ch)
 		if fx_cache_skipping(&e) { continue }   // a kept result of its group stands for it
-		res := draw.replay(dc, ch.pic, m)
+		res := draw.replay(dc, ch.pic, m, compare = true)   // (partial redraw: an unchanged chunk is not drawn again)
 		if res == .Stale {
 			// glyphs at another size, or the atlas was reset: record again at this scale
 			record_chunk(c, l, dc, d, &v, &ch, math.sqrt(abs(root[0] * root[3] - root[1] * root[2])) * ras)
-			res = draw.replay(dc, ch.pic, m)
+			res = draw.replay(dc, ch.pic, m, compare = true)
 		}
 		if res == .Drawn { composite_stats.replayed += 1 }
 		if res == .Drawn {

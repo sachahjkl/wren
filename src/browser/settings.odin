@@ -129,7 +129,6 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	remote.register_prefs(p)   // src/remote
 	_ = wasm.PREFS
 	_ = html.PREFS
-	settings_pages_assign(p)   // settings_page.odin: about:settings's pages, after every preference is there
 }
 
 // The interface's scale: browser.ui.scale, else the display's of the window (`of`; the active one by default: window_chrome.odin,
@@ -170,8 +169,9 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 theme_choices :: proc() -> []string {
 	@(static) names: []string
 	if names == nil {
-		names = make([]string, len(ui.THEMES), base.process_allocator())
-		for t, i in ui.THEMES { names[i] = base.ascii_lower_clone(t.name, base.process_allocator()) }
+		// (kept until the process ends on purpose: never a leak)
+		names = make([]string, len(ui.THEMES), base.permanent_allocator())
+		for t, i in ui.THEMES { names[i] = base.ascii_lower_clone(t.name, base.permanent_allocator()) }
 	}
 	return names
 }

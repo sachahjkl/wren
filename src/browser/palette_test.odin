@@ -82,7 +82,7 @@ registry_well_formed :: proc(t: ^testing.T) {
 	for name in ([]string{"tab.new", "tab.reopen_closed", "tab.close", "nav.back", "nav.forward", "nav.reload", "nav.home", "page.zoom_in",
 		"page.zoom_out", "page.zoom_reset", "page.find", "page.save", "page.view_source", "page.print", "view.status_bar",
 		"view.frame_statistics", "view.title_statistics", "view.console", "view.full_screen", "view.tabs_in_title_bar",
-		"browser.command_palette", "browser.settings", "view.theme.graphite", "view.theme.daylight"}) {
+		"browser.command_palette", "browser.settings", "view.theme.graphite", "view.theme.everforest"}) {
 		testing.expectf(t, name in r.index, "no command %q", name)
 	}
 	testing.expect_value(t, shortcut_text(r.list[r.index["tab.reopen_closed"]].keys[0]), "Ctrl+Shift+T")
@@ -135,8 +135,8 @@ query_prefixes :: proc(t: ^testing.T) {
 	palette_collect(app, ">refresh")   // a keyword of Reload
 	testing.expect(t, len(app.cpal.rows) >= 1 && first_named(app, "nav.reload") >= 0)
 
-	palette_collect(app, ">theme dayl")
-	testing.expect(t, len(app.cpal.rows) >= 1 && app.cpal.rows[0].kind == .Command && commands(app)[app.cpal.rows[0].index].name == "view.theme.daylight")
+	palette_collect(app, ">theme everf")
+	testing.expect(t, len(app.cpal.rows) >= 1 && app.cpal.rows[0].kind == .Command && commands(app)[app.cpal.rows[0].index].name == "view.theme.everforest")
 
 	palette_collect(app, ":ui.theme")
 	testing.expect(t, len(app.cpal.rows) >= 1)

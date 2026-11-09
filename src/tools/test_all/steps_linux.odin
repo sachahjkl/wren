@@ -35,6 +35,7 @@ linux_table :: proc(cfg: ^Config) -> []Step {
 	} else {
 		fmt.println("check skip Windows (no Odin root for it could be made)")
 	}
+	lint_steps(&t)   // steps.odin: the lints of the sources
 	for p in CHECK {
 		needs_wgpu := p == "browser" || p == "e2e" || p == "tools/e2e"
 		if needs_wgpu && !wgpu { fmt.printfln("check skip src/%s (needs libwgpu_native.a for toolkit:render)", p); continue }

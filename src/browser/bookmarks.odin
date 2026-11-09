@@ -236,8 +236,8 @@ bookmarks_import :: proc(items: ^[dynamic]Bookmark, next_id: ^u64, text: string,
 bookmark_address_ok :: proc(a: string) -> bool {
 	colon := strings.index_byte(a, ':')
 	if colon <= 0 { return false }
-	scheme := strings.to_lower(a[:colon], context.temp_allocator)
-	return scheme != "javascript" && scheme != "data"
+	scheme := a[:colon]
+	return !base.ascii_equal_fold(scheme, "javascript") && !base.ascii_equal_fold(scheme, "data")
 }
 
 ////////////////////////////////
