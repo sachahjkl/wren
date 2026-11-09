@@ -64,12 +64,12 @@ setup_captures :: proc(app: ^App) -> bool { return app.stp.d.open }
 // keeps a copy, whose strings and `user` (the App) outlive it.
 setup_config :: proc(app: ^App) -> setup.Config {
 	p := &app.prefs
-	app.stp.choices[Setup_Choice.Add_To_Path] = {label = "Add to PATH (run it from a terminal)", on = config.bool_of(p, "browser.desktop_integration.add_to_path")}
-	app.stp.choices[Setup_Choice.Register_Browser] = {label = "Register as a browser (open web addresses and pages with it)", on = config.bool_of(p, "browser.desktop_integration.register_browser")}
-	app.stp.choices[Setup_Choice.Check_Daily] = {label = "Check for updates once a day", on = config.bool_of(p, "browser.update.check_daily")}
+	app.stp.choices[Setup_Choice.Add_To_Path] = {label = "Add Wren to PATH", on = config.bool_of(p, "browser.desktop_integration.add_to_path")}
+	app.stp.choices[Setup_Choice.Register_Browser] = {label = "Register as a browser", on = config.bool_of(p, "browser.desktop_integration.register_browser")}
+	app.stp.choices[Setup_Choice.Check_Daily] = {label = "Check for updates once per day", on = config.bool_of(p, "browser.update.check_daily")}
 	return setup.Config{
 		identity = desktop_identity(), version = APP_VERSION, icons = desktop_icons(), choices = app.stp.choices[:],
-		prepare = setup_prepare, folder = true, user = app,
+		prepare = setup_prepare, folder = true, square = true, user = app,
 	}
 }
 
