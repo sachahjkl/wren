@@ -85,3 +85,18 @@ devtools_split_console :: proc(t: ^testing.T) { split_both_sides(t, "console") }
 
 @(test)
 devtools_split_elements :: proc(t: ^testing.T) { split_both_sides(t, "elements") }
+
+// Docked at the bottom beside the tabs' sidebar (either side): the panel is laid out at the page column's width, not at the
+// window's (it was, and its right end, with its counters and its buttons, was cut off by the width of the sidebar).
+@(test)
+devtools_bottom_beside_the_tabs_sidebar :: proc(t: ^testing.T) {
+	page := e2e.file_page(e2e.temp_folder(t), "static.html", STILL_PAGE)
+	s: ^e2e.Session
+	for side in ([]string{"left", "right"}) {
+		options := e2e.Options{size = SPLIT_SIZE, dpi = SPLIT_DPI, url = page, prefs = {"browser.devtools.visible=true", "browser.devtools.tab=console", "browser.devtools.dock=bottom", fmt.tprintf("browser.tabs.position=%s", side)}}
+		s = s == nil ? e2e.start(t, options) : e2e.restart(s, options)
+		e2e.wait_chrome_still(s)
+		st := e2e.stats(s)
+		testing.expectf(t, st.devtools_room_checks > 0 && st.devtools_room_wrong == 0, "tabs on the %s: the panel's width as asked differed from its layout's in %d of %d frames", side, st.devtools_room_wrong, st.devtools_room_checks)
+	}
+}

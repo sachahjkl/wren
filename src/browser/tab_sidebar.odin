@@ -323,7 +323,12 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 
 // The sidebar: header, list of tabs and, over its inner edge, the width handle. It is built whole: what changes the list of tabs
 // waits for the next frame (shell_after_build).
-tab_sidebar :: proc(app: ^App, pos: Tabs_Position) {
+// The sidebar's width this frame (physical px), once per frame before the sidebar and the page are built: the page column
+// beside it is laid out at the rest of the window's width (page_column), whichever side the sidebar is on.
+// `open`: 0 icons only, 1 the titles (between while it moves); `closed`: the width with icons only.
+Sidebar_Now :: struct { extent, open, closed: f32 }
+
+sidebar_extent_now :: proc(app: ^App, pos: Tabs_Position) -> Sidebar_Now {
 	own := window_own(app)
 	dpi := ui_scale_of(app)
 	// the held handle's width from this frame's pointer, before anything is built: the sidebar and the page are laid out at
@@ -341,6 +346,14 @@ tab_sidebar :: proc(app: ^App, pos: Tabs_Position) {
 	open := ui.tween(ui.key_from_string(0, "###side_open"), target, app.favs.cfg.side_anim_ms)
 	extent := sidebar_open_extent(closed_e, opened_e, open)
 	own.sidebar.past_closed = extent - closed_e
+	return {extent, open, closed_e}
+}
+
+// `now`: sidebar_extent_now's.
+tab_sidebar :: proc(app: ^App, pos: Tabs_Position, now: Sidebar_Now) {
+	own := window_own(app)
+	dpi := ui_scale_of(app)
+	extent, open, closed_e := now.extent, now.open, now.closed
 	own.strip.dragged = strip_dragged(active_window(app))
 	favicon_frame(app)
 

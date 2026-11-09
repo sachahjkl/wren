@@ -1005,7 +1005,9 @@ page_view :: proc(app: ^App, t: ^Tab) {
 
 // What is under the toolbar (beside the sidebar when the tabs are in one): the crash banner, the find bar, the page and the
 // developer tools docked next to it.
-page_column :: proc(app: ^App, t: ^Tab, elem_fs: bool) {
+// `width`: the column's (physical px): the window's, less the tabs' sidebar beside it. The developer tools docked at the bottom
+// are laid out at it (they took the window's width beside a sidebar, and their right end was cut off).
+page_column :: proc(app: ^App, t: ^Tab, elem_fs: bool, width: f32) {
 	if !elem_fs { crash_banner(app); find_bar(app, t) }   // crash_banner.odin
 	// the page, and the developer tools docked next to it (devtools.odin): the page takes what the panel leaves
 	dock, dev_on := devtools_dock(app, t)
@@ -1027,7 +1029,7 @@ page_column :: proc(app: ^App, t: ^Tab, elem_fs: bool) {
 	case dev_on && dock == .Bottom:
 		page_view(app, t)
 		devtools_splitter(app, false)
-		devtools_panel(app, t, false, {width = ui.fill(), height = ui.px(devtools_extent(app, false))}, fill = {f32(active_window(app).win.size.x), 0})
+		devtools_panel(app, t, false, {width = ui.fill(), height = ui.px(devtools_extent(app, false))}, fill = {width, 0})
 	case:
 		page_view(app, t)
 	}
@@ -1056,16 +1058,17 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 			elem_fs := fullscreen_shell_active(app.active)   // a page's element in full screen: the page has the whole window
 			if side {
 				pos := app.favs.cfg.position
+				side_now := sidebar_extent_now(app, pos)
 				ui.next({width = ui.fill(), height = ui.fill()})
 				if ui.row(.Start, {}, "###sidebar_row") {
-					if pos == .Left { tab_sidebar(app, pos) }
+					if pos == .Left { tab_sidebar(app, pos, side_now) }
 					ui.next({width = ui.fill(), height = ui.fill()})
-					if ui.column(.Start, {}, "###page_column") { page_column(app, t, elem_fs) }
-					if pos == .Right { tab_sidebar(app, pos) }
+					if ui.column(.Start, {}, "###page_column") { page_column(app, t, elem_fs, f32(active_window(app).win.size.x) - side_now.extent) }
+					if pos == .Right { tab_sidebar(app, pos, side_now) }
 				}
 			} else {
 				window_own(app).sidebar.shown = false
-				page_column(app, t, elem_fs)
+				page_column(app, t, elem_fs, f32(active_window(app).win.size.x))
 			}
 			// status bar (status_bar.odin)
 			if !elem_fs { status_bar_build(app, t) }
