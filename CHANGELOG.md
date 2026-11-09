@@ -10,6 +10,36 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-11-09
+
+### Added
+- A tab dragged in the sidebar goes deeper in the tree when the pointer moves right (one level per indent step, under the tab above it or one of that tab's ancestors) and less deep when it moves left: a tab can be put under another by hand.
+- The address bar suggests bookmarks: those whose title or address has every word typed, after the open tabs and before the history, marked "Bookmark" (`browser.urlbar.suggest.bookmarks`, at most `browser.urlbar.max_bookmark_rows`, 3).
+- The tab tree of the sidebar draws its guide lines: a thin, faint line from each tab's icon down to its children, with a rounded elbow to each child's icon; it goes on past a child that has a sibling below and ends at the last one. A group's colour rail stays at the edge of the list for indented tabs.
+- **Bookmarks.** The star at the end of the address bar (or Ctrl+D) keeps the page and opens a dialog to name it or remove it; the star is filled on a page that is a bookmark. **about:bookmarks** (Ctrl+Shift+O, the main menu) shows them as a tree of folders, searchable; a click opens one, a middle click or Ctrl+click in a new tab; a row's menu edits, moves (up, down, into a folder) or removes it, and opens every bookmark of a folder. **Import** reads the bookmark file of any browser (Chrome, Firefox, Edge, Safari: the HTML "Netscape" format), merged with yours; **Export** writes yours in that format. The palette finds them (prefix `*`). They are kept in `bookmarks.html` in the profile.
+- **Tabs as a tree** in the sidebar (`browser.tabs.tree`, on by default): a tab a page opens (a link in a new tab, Ctrl+click, a middle click, `target=_blank`, `window.open`) goes under the page's tab, after its other children, indented by its depth. A tab with children shows a chevron in its icon's place (on hover, and always when folded) that folds them away; the command "Fold or show the tabs this tab opened" does the same. Closing or moving a tab by hand moves its children up a level. The tree is saved with the session.
+- **Private browsing** (File menu's "New private window", Ctrl+Shift+N, or `wren --private`): a Wren of its own in a profile made for it, with a copy of your settings and search engines and nothing else: no cookie, storage, cache, history or session of yours comes in, nothing is kept for later, and its folder is removed when it ends. It never hands its addresses to your Wren nor takes theirs. Its windows say "Private" in the toolbar and in their title.
+- **The QR code of the page's address** (the main menu, the page's menu, the palette: "QR code of the page's address"; gui_toolkit's `ui.qr_code`): a phone's camera opens the page from it; a button copies the address.
+- **Downloads: Open with** (the row's menu, gui_toolkit's `desktop.open_with`): the applications the system knows for the file's type, the default first; the one chosen opens the file.
+- **System notifications** (gui_toolkit's `platform.notify`): pages may show them through the Notifications API (`new Notification(title, {body, tag, silent})`, `Notification.permission`, `Notification.requestPermission()`, the events show, click, close and error). A site asks once, after a click or a key press of yours on it, with a dialog over the page ("Allow" or "Block"), and the answer is kept for it in the profile (`notifications.txt`); a click on a notification brings its tab up. A notification with the tag of an earlier one replaces it. A download that ends while Wren is not the window you are in is told the same way; a click shows the file in its folder. `browser.notifications.enabled` (Settings > Privacy) off refuses every site. **An address opened from another program brings the window up with the keyboard on Linux too** (Wayland: xdg-activation).
+- **about:settings, the settings page** (gui_toolkit 0.128.0's `prefs_page`, the menu's Settings): the settings a person changes, in pages with their icons (Appearance, Tabs, Start page, Search, Privacy, Downloads, Media, System), a search over all of them, a switch, a choice, a slider or a field for each, a reset button when it was changed. The theme is chosen on cards in its own colours; the default search engine among the profile's engines. about:config keeps every preference.
+- **The machined style** (`browser.ui.chrome_style` = `machined`, View > Appearance: machined): the modern geometry in the toolkit's machined finish: the current tab a bevelled part that rises under the pointer (in the sidebar too), carved grooves between tabs, bevelled buttons and sunken fields, and the accent's halos around a focused field (`browser.ui.machined_glow`). A light theme draws it flat.
+
+### Changed
+- Partial redraw reaches the page (gui_toolkit 0.136.0, `draw.replay` compare): a frame that changes only the interface (a key in the address bar, a hover) no longer draws the page again; a page draws again only where its pictures changed.
+- `test_all` on Linux type-checks what Windows compiles (`check (Windows): src/browser` and the end-to-end packages), so that an error only a Windows build sees is caught before the CI.
+- The Setup dialog is dense and square again, as it was before it moved to the toolkit (gui_toolkit 0.132.0): a title bar, a header with the state as a badge, the install location, the options as a grid of boxes, a box of what the disk says, then the buttons.
+- **Setup** is the toolkit's Setup dialog (gui_toolkit 0.131.0): it reads, installs and uninstalls on a thread of its own (the window never freezes, also while NixOS builds the copy's libraries), and while it is open it follows the disk: an install changed or removed elsewhere shows at once. Its choices are the install folder (before the first install), the Desktop shortcut, the PATH, the registration as a browser and the daily update check; Uninstall asks for a second click; a newer installed copy is named as such.
+- The interface draws again only where it changed (`browser.ui.partial_redraw`, on): each frame, the toolkit compares what every box draws with the last frame and redraws the boxes that changed, came or went; the page is still drawn whole each frame. `wren ctl stats` tells the pixels the last frame drew (`uiPxDrawn` of `uiPxWindow`) and why a frame was whole (`uiWhole`).
+- **The interface follows the system's light or dark** (gui_toolkit 0.127.0): `browser.ui.theme` is one of the toolkit's themes (25, most with a dark and a light version; Silver by default) and `browser.ui.theme_mode` says which version shows: the system's setting and its changes (the default), or always the dark or the light one. Daylight is Midnight's light version. The commands "Theme version: system / dark / light" switch it. A theme with one version (Graphite, Amber, Aero...) shows it whatever the mode.
+
+### Fixed
+- about:config groups the preferences by their own categories again (about:settings had put them in its pages', so two read "Enabled" in one group and the cookies' category lost its switch); a leak of the list of themes at exit is gone.
+- The guide lines of the tab tree stop at the edge of each row instead of running into it, and are thicker (1.5 px at 100 %); the indent of a level leaves room for the elbow whatever the scale.
+- A click on a link with `target="_blank"` (or the name of no frame or window) opens a new tab, as `window.open` does, instead of replacing the page; Ctrl+click on a link opens it in a new tab.
+- **`wren ctl shot` no longer waits out its time for a copy that was never asked**: when the renderer refused the copy of a frame (another copy under way), the request was dropped and the capture waited for pixels until it timed out; it is now asked again at the next frame. A capture that times out says which wait it was: no frame drawn, the copy refused, or the GPU not giving the pixels back.
+- **A sharp icon in a Linux task bar at any scale**: the icon is drawn at every size of the hicolor theme (16 to 512 px, `assets/icons/`), and both the Nix package and the desktop integration install them all. With 16, 32, 64 and 256 only, a bar asking for 28 px at 125 % (35 px) stretched the 32 px one, blurred and without its wing.
+
 ## [0.7.3] - 2026-11-09
 
 ### Fixed
@@ -1354,7 +1384,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.4...HEAD
+[0.7.4]: https://github.com/sachahjkl/wren/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/sachahjkl/wren/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/sachahjkl/wren/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/sachahjkl/wren/compare/v0.7.0...v0.7.1
