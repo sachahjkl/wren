@@ -683,6 +683,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 			menu_command(app, t, "view.tabs_sidebar_collapse")
 			menu_command(app, t, "view.chrome_style.classic")
 			menu_command(app, t, "view.chrome_style.modern")
+			menu_command(app, t, "view.chrome_style.machined")
 		}
 		menu_command(app, t, "browser.session_restore")
 		menu_command(app, t, "browser.command_palette")

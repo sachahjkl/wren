@@ -262,6 +262,9 @@ Tab_Look :: struct {
 	hot:       bool,
 	divide:    bool,         // a divider on its right (between two tabs that are neither selected nor hovered)
 	group:     draw.Color,   // its group's colour, a line along its top (a = 0: in no group)
+	machined:  bool,         // the machined style: the current tab a bevelled part, grooves between tabs
+	face:      draw.Color,   // machined: the current tab's face
+	hot_t:     f32,          // machined: 0..1, the pointer over it (animated)
 }
 
 // One tab. Positions are the slot's, animated when tabs move; a dragged tab follows the pointer.
@@ -320,6 +323,10 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		next_on := i + 1 == wnd.current
 		look.divide = !on && !next_on && !inside && i + 1 < n && !dragging
 		if gi := group_index(wnd.groups[:], t.group); gi >= 0 { look.group = group_color(wnd.groups[gi].color) }
+		if machined_on(app) {
+			look.machined, look.face = true, ui.color("button background")
+			look.hot_t = ui.anim(ui.key_from_string(b.key, "mhot"), inside ? 1 : 0, CHROME_ANIM_HOVER_RATE)
+		}
 		b.custom, b.custom_user = tab_look_draw, look
 	}
 	b.cursor = .Arrow
@@ -426,6 +433,24 @@ close_cross_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 tab_look_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	l := (^Tab_Look)(user)
 	r := b.rect
+	if l.machined {
+		// the current tab a bevelled part (rising under the pointer), a groove between two others
+		if l.divide {
+			inset := (r.max.y - r.min.y) * 0.28
+			ui.machined_groove(dc, {r.max.x, r.min.y + inset}, {r.max.x, r.max.y - inset}, vertical = true)
+		}
+		if l.selected > 0.01 {
+			pad := max(math.round(2 * ui.scale()), 1)
+			face := l.face
+			face.a *= l.selected
+			ui.machined_bevel(dc, draw.rect_pad(r, -pad), b.radius, face, l.hot_t, 0)
+		}
+		if l.group.a > 0 {
+			gh := max(math.round(2 * ui.scale()), 2)
+			draw.rect(dc, {{r.min.x + b.radius * 0.5, r.min.y + gh}, {r.max.x - b.radius * 0.5, r.min.y + gh * 2}}, l.group, gh * 0.5)
+		}
+		return
+	}
 	if l.divide {
 		lw := max(math.round(ui.scale()), 1)
 		inset := (r.max.y - r.min.y) * 0.3

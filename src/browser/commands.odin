@@ -457,11 +457,12 @@ commands_build :: proc(r: ^Command_Registry) {
 			}})
 	}
 
-	for style in ([2]string{"classic", "modern"}) {
-		add(r, {name = fmt.aprintf("view.chrome_style.%s", style, allocator = a), category = "View", arg = style,
-			title = style == "classic" ? i18n.tr("Appearance: classic tabs") : i18n.tr("Appearance: modern tabs"),
-			keywords = "chrome tabs style look trapezoid sloped angular gradient flat pill appearance interface",
-			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return (c.arg == "classic") == (app.chrome_cfg.style == .Classic) },
+	for style in Chrome_Style {
+		titles := [Chrome_Style]string{.Classic = i18n.tr("Appearance: classic tabs"), .Modern = i18n.tr("Appearance: modern tabs"), .Machined = i18n.tr("Appearance: machined")}
+		add(r, {name = fmt.aprintf("view.chrome_style.%s", CHROME_STYLE_NAMES[style], allocator = a), category = "View", arg = CHROME_STYLE_NAMES[style],
+			title = titles[style],
+			keywords = "chrome tabs style look trapezoid sloped angular gradient flat pill machined bevel metal appearance interface",
+			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return CHROME_STYLE_NAMES[app.chrome_cfg.style] == c.arg },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) {
 				if err := config.set_from_string(&app.prefs, "browser.ui.chrome_style", c.arg, .User); err != .None { ui.toast(.Warn, "browser.ui.chrome_style: %s", config.set_error_text(err)) }
 			}})

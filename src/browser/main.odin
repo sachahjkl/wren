@@ -1326,7 +1326,9 @@ on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 
 // The interface's theme as asked (browser.ui.theme, browser.ui.theme_mode).
 chrome_theme_choice :: proc(app: ^App) -> ui.Theme_Choice {
-	return {name = app.cfg.ui_theme, mode = app.cfg.ui_theme_mode, finish = .Flat}
+	// (the machined style is the toolkit's machined finish: its widgets bevelled, its fields sunken; chrome_style.odin)
+	machined := machined_on(app)
+	return {name = app.cfg.ui_theme, mode = app.cfg.ui_theme_mode, finish = machined ? .Machined : .Flat, glow = machined && app.chrome_cfg.glow ? 1 : 0}
 }
 
 // The palette of the interface's theme, in the version its mode shows now (the first theme for a name that is none).

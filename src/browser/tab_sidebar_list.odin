@@ -325,6 +325,7 @@ sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Clas
 			look.accent = ui.color("accent")
 			look.left = pos == .Left
 			look.pin = true
+			side_look_machined(app, look, b)
 			b.custom, b.custom_user = side_row_draw, look
 			b.cursor = .Arrow
 			tab_a11y(b, t, k, len(wnd.tabs), on)
@@ -373,6 +374,17 @@ Side_Look :: struct {
 	accent:   draw.Color,
 	left:     bool,
 	pin:      bool,  // a pinned tab's square: the wash only
+	machined: bool,  // the machined style: the current row a bevelled part (its bar on the outer edge as ever)
+	face:     draw.Color,
+	hot_t:    f32,   // machined: 0..1, the pointer over it (animated)
+}
+
+// The machined style's part of a row's look (chrome_style.odin).
+@(private = "file")
+side_look_machined :: proc(app: ^App, l: ^Side_Look, b: ^ui.Box) {
+	if !machined_on(app) { return }
+	l.machined, l.face = true, ui.color("button background")
+	l.hot_t = ui.anim(ui.key_from_string(b.key, "mhot"), b.hot_t > 0.5 ? 1 : 0, CHROME_ANIM_HOVER_RATE)
 }
 
 // One tab's row at `slot` (content y), animated when tabs move; a dragged row follows the pointer. Returns where it is
@@ -425,6 +437,7 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 		look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, CHROME_ANIM_SELECT_RATE)
 		look.accent = ui.color("accent")
 		look.left = app.favs.cfg.position == .Left
+		side_look_machined(app, look, b)
 		b.custom, b.custom_user = side_row_draw, look
 	}
 	ui.pop_tags()
@@ -618,9 +631,15 @@ side_row_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	l := (^Side_Look)(user)
 	if l.selected < 0.01 { return }
 	r := b.rect
-	wash := l.accent
-	wash.a *= 0.16 * l.selected
-	draw.rect(dc, r, wash, b.radius)
+	if l.machined {
+		face := l.face
+		face.a *= l.selected
+		ui.machined_bevel(dc, r, b.radius, face, l.hot_t, 0)
+	} else {
+		wash := l.accent
+		wash.a *= 0.16 * l.selected
+		draw.rect(dc, r, wash, b.radius)
+	}
 	if l.pin { return }
 	th := max(math.round(2.5 * ui.scale()), 2)
 	h := (r.max.y - r.min.y) * 0.5 * l.selected

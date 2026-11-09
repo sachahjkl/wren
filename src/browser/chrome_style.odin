@@ -1,11 +1,14 @@
 package browser
 
-// The two looks of the browser's own chrome (browser.ui.chrome_style):
+// The three looks of the browser's own chrome (browser.ui.chrome_style):
 //   modern   flat: tabs are rounded pills on the window's color (the default; tab_strip.odin, chrome.odin as ever);
 //   classic  Chrome of 2010-2015: every tab is a trapezoid with sloped sides, rounded shoulders and a concave foot that
 //            flares into the toolbar's line; the current tab is *attached* to the toolbar (one gradient, no line between
 //            them), the others sit lower in value and behind it, overlapping by a few pixels; gradients on the tab bar,
-//            the tabs and the toolbar, light and dark hairlines that sculpt the shapes, a white sunken address field.
+//            the tabs and the toolbar, light and dark hairlines that sculpt the shapes, a white sunken address field;
+//   machined the modern geometry in the toolkit's machined finish (ui/machined.odin): the current tab a bevelled part
+//            that rises under the pointer, carved grooves between tabs, the toolkit's widgets bevelled and the fields
+//            sunken wells, halos where browser.ui.machined_glow asks. Made for the dark: a light palette is drawn flat.
 //
 // A style is not a palette: it composes with any of them. Every color of the classic look is derived from the palette's
 // background and border (shade: a mix toward white or black in sRGB values, how the toolkit steps its own states), so a
@@ -31,8 +34,10 @@ CHROME_ANIM_SELECT_RATE :: 34
 CHROME_ANIM_HOVER_RATE :: 40
 
 CHROME_PREFS := [?]config.Def{
-	{name = "browser.ui.chrome_style", kind = .String, default = {s = "classic"}, choices = {"modern", "classic"},
-		description = "How the browser's own interface (tab bar, tabs, toolbar, address field) is drawn. modern: flat, tabs are rounded pills. classic: tabs are trapezoids with sloped sides, rounded shoulders and a concave foot, the current tab is attached to the toolbar (one gradient, no line between them), the others are darker and overlap behind it, with gradients and light and dark hairlines; with the tabs in a sidebar (browser.tabs.position), the current tab is a panel with rounded outer corners that flows into the page's side, the others lie flat on the bar, engraved apart. Either one follows browser.ui.theme: the classic colors are derived from the palette, light or dark. Applies at once."},
+	{name = "browser.ui.chrome_style", kind = .String, default = {s = "classic"}, choices = {"modern", "classic", "machined"},
+		description = "How the browser's own interface (tab bar, tabs, toolbar, address field) is drawn. modern: flat, tabs are rounded pills. classic: tabs are trapezoids with sloped sides, rounded shoulders and a concave foot, the current tab is attached to the toolbar (one gradient, no line between them), the others are darker and overlap behind it, with gradients and light and dark hairlines; with the tabs in a sidebar (browser.tabs.position), the current tab is a panel with rounded outer corners that flows into the page's side, the others lie flat on the bar, engraved apart. machined: the modern geometry in the toolkit's machined finish: the current tab a bevelled part, grooves between tabs, bevelled buttons and sunken fields (a light theme draws it flat). Each one follows browser.ui.theme: the classic colors are derived from the palette, light or dark. Applies at once."},
+	{name = "browser.ui.machined_glow", kind = .Bool, default = {b = true},
+		description = "Machined style: halos of the accent around a focused field and a hovered accent button."},
 	{name = "browser.ui.classic_slope_deg", kind = .Float, default = {f = 22}, bounded = true, min = 8, max = 40, unit = "deg",
 		description = "Classic style: how far the sides of a tab lean from the vertical (Chrome of 2010-2015: about 17). The larger, the more angular the tabs and the more they overlap."},
 	{name = "browser.ui.classic_gloss", kind = .Float, default = {f = 1}, bounded = true, min = 0, max = 2,
@@ -41,21 +46,32 @@ CHROME_PREFS := [?]config.Def{
 
 register_chrome_prefs :: proc(p: ^config.Prefs) { config.register(p, CHROME_PREFS[:]) }
 
-Chrome_Style :: enum u8 { Modern, Classic }
+Chrome_Style :: enum u8 { Modern, Classic, Machined }
+
+CHROME_STYLE_NAMES := [Chrome_Style]string{.Modern = "modern", .Classic = "classic", .Machined = "machined"}
 
 Chrome_Style_Settings :: struct {
 	style:     Chrome_Style,
 	slope_deg: f32,
 	gloss:     f32,
+	glow:      bool,   // machined: the toolkit's halos (ui.Theme.glow)
 }
 
 chrome_settings_from_prefs :: proc(p: ^config.Prefs) -> Chrome_Style_Settings {
 	return {
-		style = config.string_of(p, "browser.ui.chrome_style") == "classic" ? .Classic : .Modern,
+		style = chrome_style_of(config.string_of(p, "browser.ui.chrome_style")),
+		glow = config.bool_of(p, "browser.ui.machined_glow"),
 		slope_deg = f32(config.float_of(p, "browser.ui.classic_slope_deg")),
 		gloss = f32(config.float_of(p, "browser.ui.classic_gloss")),
 	}
 }
+
+chrome_style_of :: proc(name: string) -> Chrome_Style {
+	for n, s in CHROME_STYLE_NAMES { if n == name { return s } }
+	return .Modern
+}
+
+machined_on :: proc(app: ^App) -> bool { return app.chrome_cfg.style == .Machined }
 
 chrome_style_init :: proc(app: ^App) {
 	app.chrome_cfg = chrome_settings_from_prefs(&app.prefs)
