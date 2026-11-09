@@ -25,7 +25,6 @@ package browser
 import "core:os"
 import "core:strings"
 import "toolkit:instance"
-import "toolkit:platform"
 import "toolkit:ui"
 import "wb:config"
 import process "toolkit:process"
@@ -223,7 +222,7 @@ instance_open :: proc(d: ^Instance_Open, closing: bool) {
 	if d.setup { setup_open(app) }
 	// up with the keyboard: Windows through the instance's handover (the foreground right it was given), elsewhere the
 	// system's request (Wayland: xdg-activation, with the last input's serial)
-	when ODIN_OS == .Windows { instance.raise_window(rawptr(active_window(app).win.hwnd)) } else { platform.raise_window(active_window(app).win) }
+	window_native_raise_handed(active_window(app).win)   // remote_window_*.odin
 	request_frames(app, 4)
 }
 

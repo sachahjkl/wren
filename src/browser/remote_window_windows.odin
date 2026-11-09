@@ -5,6 +5,7 @@ package browser
 // reading the HWND for a UI Automation client, and the show / raise / minimize choices a capture makes without taking
 // focus. All Windows-specific; remote_window_other.odin is the Linux counterpart (best effort, Wayland cannot position).
 
+import "toolkit:instance"
 import "toolkit:platform"
 import win "core:sys/windows"
 
@@ -60,3 +61,7 @@ window_native_show_no_activate :: proc(w: ^platform.Window) {
 window_native_minimize_no_activate :: proc(w: ^platform.Window) {
 	win.ShowWindow(w.hwnd, win.SW_SHOWMINNOACTIVE)
 }
+
+// Up with the keyboard when another program hands Wren an address: through the instance's handover (the foreground
+// right it was given).
+window_native_raise_handed :: proc(w: ^platform.Window) { instance.raise_window(rawptr(w.hwnd)) }
