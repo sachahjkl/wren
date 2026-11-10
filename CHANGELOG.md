@@ -10,6 +10,11 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.7.6] - 2026-11-10
+
+### Fixed
+- A slider of about:settings (the interface's font size, its scale, a zoom...) keeps the value it is let go at; it went back to where it was and nothing was saved (gui_toolkit 0.156.0).
+
 ## [0.7.5] - 2026-11-10
 
 ### Added
@@ -1396,7 +1401,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.5...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.6...HEAD
+[0.7.6]: https://github.com/sachahjkl/wren/compare/v0.7.5...v0.7.6
 [0.7.5]: https://github.com/sachahjkl/wren/compare/v0.7.4...v0.7.5
 [0.7.4]: https://github.com/sachahjkl/wren/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/sachahjkl/wren/compare/v0.7.2...v0.7.3
