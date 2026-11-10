@@ -1,0 +1,2 @@
+name=wren
+description=A small Windows browser where WebAssembly runs everything.
