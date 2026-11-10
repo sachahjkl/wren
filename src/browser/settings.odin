@@ -102,6 +102,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_chrome_prefs(p)   // chrome_style.odin
 	register_notification_prefs(p)   // notification_shell.odin
 	register_tab_tree_prefs(p)   // tab_tree.odin
+	register_bookmarks_bar_prefs(p)   // bookmarks_bar.odin
 	register_os_settings_prefs(p)   // os_settings.odin
 	register_demos_prefs(p)   // demos.odin
 	register_local_path_prefs(p)   // local_paths.odin

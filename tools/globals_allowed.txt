@@ -14,6 +14,7 @@ browser/blocker_ui.odin COLUMNS const  # a table
 browser/blocker_ui.odin SHIELD_AMBER const  # a table
 browser/blocker_ui.odin SHIELD_GREEN const  # a table
 browser/blocker_ui.odin SHIELD_GREY const  # a table
+browser/bookmarks_bar.odin BOOKMARKS_BAR_PREFS const  # a table
 browser/bookmarks_ui.odin HTML_FILTERS const  # a table
 browser/canvas_gpu_test.odin op_global test
 browser/canvas_gpu_test.odin test_glyph_a test

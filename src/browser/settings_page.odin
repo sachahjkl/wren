@@ -22,7 +22,7 @@ Settings_Page_Def :: struct {
 SETTINGS_PAGES := [?]Settings_Page_Def{
 	{"appearance", "Appearance", lucide.PALETTE, {
 		"browser.ui.theme", "browser.ui.theme_mode", "browser.ui.chrome_style", "browser.ui.machined_glow", "browser.ui.font_size",
-		"browser.ui.scale", "browser.ui.animations", "browser.status_bar.visible", "browser.ui.scrollbar_autohide"}},
+		"browser.ui.scale", "browser.ui.animations", "browser.status_bar.visible", "browser.bookmarks.bar", "browser.ui.scrollbar_autohide"}},
 	{"tabs", "Tabs", lucide.LAYERS_2, {
 		"browser.tabs.position", "browser.tabs.tree", "browser.tabs.sidebar_collapsed", "browser.tabs.close_window_with_last_tab", "browser.tabs.middle_click_close",
 		"browser.tabs.audio_indicator", "browser.tabs.restore_pinned", "browser.session.restore", "browser.tabs.closed_max"}},

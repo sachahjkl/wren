@@ -3,7 +3,7 @@ package browser
 // The status bar along the bottom of the window (browser.status_bar.*): on the left what the page is doing (loading,
 // HTTP status, size, origin, requests, cookies, DOM nodes, modules, zoom); on the right the graph of the recent frames
 // by phase (hud.odin) and compact counters. A click on the graph opens the frame statistics panel above it. Ctrl+B
-// shows / hides the bar, Ctrl+Shift+B the panel. Where the link under the pointer goes is not the bar's: a small box over
+// shows / hides the bar, Ctrl+Shift+F the panel. Where the link under the pointer goes is not the bar's: a small box over
 // the page's corner shows it (link_bubble).
 
 import "core:fmt"
@@ -316,7 +316,7 @@ status_right :: proc(app: ^App) -> (graph_box: ^ui.Box) {
 			res := ui.frame_graph("###sb_graph", &app.hud.history, opts)
 			graph_box = res.box
 			if res.clicked { app.hud.panel_open = !app.hud.panel_open }
-			if res.hovered >= 0 { graph_tooltip(app, res.hovered, colors) } else { tip(res.sig, "Time of the recent frames by phase: click for details (Ctrl+Shift+B)") }
+			if res.hovered >= 0 { graph_tooltip(app, res.hovered, colors) } else { tip(res.sig, "Time of the recent frames by phase: click for details (Ctrl+Shift+F)") }
 			ui.spacer(ui.px(em * 0.3))
 		case .Fps:
 			tip(ui.status_item(fmt.tprintf("%.0f fps###sb_fps", n.fps), mono = true), fmt.tprintf("Frames drawn per second (last %.0f ms). Nothing changes: no frames. The screen this window is on: %s Hz%s (frames aim for %s Hz).", app.hud.cfg.window_ms, fmt_hz(pacer.display.hz, c), pacer.display.max_hz > pacer.display.hz * 1.05 ? fmt.tprintf(", up to %s Hz%s", fmt_hz(pacer.display.max_hz, c), pacer.variable ? ": variable refresh, frames timed by the browser" : "") : "", fmt_hz(pacer.hz, c)))
@@ -507,7 +507,7 @@ frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 				ui.label(fmt.tprintf("Frame statistics, %s###fs_title", what))
 				ui.next({width = ui.px(em * 1.9), height = ui.px(em * 1.9), radius = em * CHROME_BUTTON_RADIUS})
 				close := ui.icon_button("###fs_close", GLYPH_CLOSE)
-				tip(close, "Close (Ctrl+Shift+B)")
+				tip(close, "Close (Ctrl+Shift+F)")
 				if close.clicked { app.hud.panel_open = false }
 				ui.spacer(ui.px(em * 0.4))
 			}
@@ -640,7 +640,7 @@ panel_lines :: proc(src: ^Panel_Source, section: Panel_Section) -> []Stat_Line {
 	return out[:]
 }
 
-// Ctrl+B / Ctrl+Shift+B, and the View menu.
+// Ctrl+B / Ctrl+Shift+F, and the View menu.
 toggle_status_bar :: proc(app: ^App) {
 	set_pref_bool(app, "browser.status_bar.visible", !app.hud.cfg.bar_visible)
 }

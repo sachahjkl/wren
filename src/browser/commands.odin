@@ -364,7 +364,7 @@ commands_build :: proc(r: ^Command_Registry) {
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			if err := config.set_from_string(&app.prefs, "browser.scroll.autoscroll.enabled", app.autoscroll_cfg.enabled ? "false" : "true", .User); err != .None { ui.toast(.Warn, "browser.scroll.autoscroll.enabled: %s", config.set_error_text(err)) }
 		}})
-	add(r, {name = "view.frame_statistics", title = "Frame statistics", category = "View", keywords = "fps performance hud timing", keys = keys(&r.arena, {key = .B, mods = cs}),
+	add(r, {name = "view.frame_statistics", title = "Frame statistics", category = "View", keywords = "fps performance hud timing", keys = keys(&r.arena, {key = .F, mods = cs}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.hud.panel_open },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_frame_stats(app) }})
 	add(r, {name = "view.title_statistics", title = "Statistics in the title", category = "View", keywords = "fps",
@@ -491,6 +491,10 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return bookmarkable(t) },
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && bookmark_of_url(app.bms.items[:], t.url) >= 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { bookmark_star(app, t) }})
+	add(r, {name = "view.bookmarks_bar", title = i18n.tr("Show the bookmarks bar"), category = "View", keywords = "favorites toolbar bookmarks bar",
+		keys = keys(&r.arena, {key = .B, mods = cs}),
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return bookmarks_bar_shown(app) },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { bookmarks_bar_toggle(app) }})
 	add(r, {name = "bookmarks.import", title = i18n.tr("Import bookmarks…"), category = "Browser", keywords = "html netscape chrome firefox edge favorites",
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { bookmarks_import_pick(app) }})
 	add(r, {name = "bookmarks.export", title = i18n.tr("Export bookmarks…"), category = "Browser", keywords = "html netscape backup save favorites",

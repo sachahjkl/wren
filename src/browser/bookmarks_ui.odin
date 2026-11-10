@@ -33,12 +33,14 @@ Bookmarks_View :: struct {
 	focus_search: bool,
 	list:         ui.Virtual_List,
 	open:         map[u64]bool,   // the folders shown open
+	bar:          Bookmarks_Bar_State,   // bookmarks_bar.odin
 	menu_id:      u64,            // the bookmark whose row menu is open
 	picking:      bool,           // an import or export dialog is open
 	// the dialog that names a bookmark or a folder (edit_id 0 and edit_folder: a new folder)
 	edit_open:    bool,
 	edit_id:      u64,
 	edit_folder:  bool,
+	edit_parent:  u64,            // a new folder: where it goes (0: the top level)
 	edit_title:   ui.Text_Field,
 	edit_url:     ui.Text_Field,
 	edit_focus:   bool,
@@ -72,7 +74,6 @@ open_bookmarks :: proc(app: ^App) {
 	tab_open(app, BOOKMARKS_URL, origin = .User)
 }
 
-@(private = "file")
 bookmark_open :: proc(app: ^App, t: ^Tab, address: string, new_tab: bool) {
 	a := strings.clone(address, context.temp_allocator)
 	if new_tab || t == nil { tab_open(app, a, origin = .User) } else { navigate(app, t, a, origin = .User) }
@@ -105,10 +106,10 @@ bookmark_edit_open :: proc(app: ^App, id: u64) {
 	request_frames(app, 2)
 }
 
-// Opens the dialog for a new folder at the top level.
-bookmark_folder_new :: proc(app: ^App) {
+// Opens the dialog for a new folder in `parent` (0: the top level).
+bookmark_folder_new :: proc(app: ^App, parent: u64 = 0) {
 	v := &app.bview
-	v.edit_open, v.edit_id, v.edit_folder, v.edit_focus = true, 0, true, true
+	v.edit_open, v.edit_id, v.edit_folder, v.edit_focus, v.edit_parent = true, 0, true, true, parent
 	ui.field_set(&v.edit_title, i18n.tr("New folder"))
 	ui.field_clear(&v.edit_url)
 	request_frames(app, 2)
@@ -213,7 +214,7 @@ bookmarks_dialog_build :: proc(app: ^App) {
 		addr := strings.trim_space(ui.field_string(&v.edit_url))
 		if !v.edit_folder && !bookmark_address_ok(addr) { ui.toast(.Warn, "That address cannot be a bookmark"); return }
 		if v.edit_id == 0 {
-			_ = bookmark_add(&app.bms.items, &app.bms.next_id, 0, name != "" ? name : i18n.tr("New folder"), "", true, now_ms())
+			_ = bookmark_add(&app.bms.items, &app.bms.next_id, v.edit_parent, name != "" ? name : i18n.tr("New folder"), "", true, now_ms())
 		} else {
 			b := &app.bms.items[i]
 			if name == "" { name = b.folder ? b.title : addr }
@@ -372,7 +373,6 @@ bookmarks_list :: proc(app: ^App, t: ^Tab, menu_key: ui.Key) {
 }
 
 // The menu of a row (choosing an item closes it).
-@(private = "file")
 bookmark_menu_items :: proc(app: ^App, t: ^Tab, i: int) {
 	b := app.bms.items[i]
 	if b.folder {
@@ -447,7 +447,7 @@ bookmarks_file_job :: proc(app: ^App, export: bool) {
 	j.app, j.export = app, export
 	j.owner = active_window(app).win
 	j.test = strings.clone(config.string_of(&app.prefs, "browser.dialogs.test_answer"))
-	if export { j.text = strings.clone(bookmarks_serialize(app.bms.items[:])) }
+	if export { j.text = strings.clone(bookmarks_serialize(app.bms.items[:], app.bms.toolbar)) }
 	host.run_blocking(&app.blocking, proc(data: rawptr) {
 		j := (^File_Job)(data)
 		path: string
@@ -492,7 +492,7 @@ bookmarks_file_job :: proc(app: ^App, export: bool) {
 			ui.toast(.Info, "Bookmarks exported to %s", j.path)
 			return
 		}
-		added, ok := bookmarks_import(&app.bms.items, &app.bms.next_id, j.text, 0, now_ms())
+		added, ok := bookmarks_import(&app.bms.items, &app.bms.next_id, j.text, 0, now_ms(), &app.bms.toolbar)
 		if !ok { ui.toast(.Bad, "%s is not a bookmark file", j.path); return }
 		if added > 0 { bookmarks_changed(app) }
 		ui.toast(.Info, added == 1 ? "%d bookmark imported" : "%d bookmarks imported", added)

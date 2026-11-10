@@ -50,7 +50,7 @@ SHOTS := []Shot{
 	{name = "sacha-house", url = "https://sacha.house"},
 	{name = "webassembly-org", url = "https://webassembly.org/news/2026-01-21-states-of-webassembly/"},
 	{name = "odin-lang-org", url = "https://odin-lang.org"},
-	{name = "frame-statistics", url = "site:transforms.html", actions = "key:Ctrl+Shift+B"},
+	{name = "frame-statistics", url = "site:transforms.html", actions = "key:Ctrl+Shift+F"},
 	{name = "about-config", url = "about:config"},
 	{name = "find", url = "https://sacha.house/cv", actions = "key:Ctrl+F; type:Angular"},
 	{name = "context-menu", url = "https://sacha.house/cv", actions = "dclick:600,695; rclick:600,695"},

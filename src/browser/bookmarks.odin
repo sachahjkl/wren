@@ -8,6 +8,9 @@ package browser
 //     address already in that folder is not added again.
 //   * Order: the list holds every bookmark and folder; the children of a folder are those whose `parent` is its id, in
 //     the order of the list (0: the top level).
+//   * The bookmarks bar (bookmarks_bar.odin) shows one folder, as other browsers do: the one the file marks with
+//     PERSONAL_TOOLBAR_FOLDER (Chrome's "Bookmarks bar", Firefox's "Bookmarks Toolbar"), made at the top level when the
+//     first bookmark goes in. A page the star keeps goes there. An import that has a bar of its own merges it into ours.
 //   * Written on a background thread to a temporary file moved over the old one, a second after a change, and when the
 //     browser closes. A file that cannot be read as bookmarks is moved aside to bookmarks.html.bad (and never
 //     overwritten if that name is taken).
@@ -39,6 +42,7 @@ Bookmark :: struct {
 Bookmarks :: struct {
 	items:      [dynamic]Bookmark,
 	next_id:    u64,
+	toolbar:    u64,          // the bookmarks bar's folder (0: none yet)
 	serial:     u64,          // bumped at every change (views rebuild)
 	path:       string,       // owned; "" = memory only
 	dirty:      bool,
@@ -128,6 +132,27 @@ bookmark_move_into :: proc(items: ^[dynamic]Bookmark, id, parent: u64) -> bool {
 	return true
 }
 
+// Moves the bookmark `id` into `parent` at `index` among its children (clamped: the end past the last). False: not moved
+// (unknown, or into itself).
+bookmark_move_to :: proc(items: ^[dynamic]Bookmark, id, parent: u64, index: int) -> bool {
+	i := bookmark_index(items[:], id)
+	if i < 0 || (parent != 0 && bookmark_within(items[:], parent, id)) { return false }
+	b := items[i]
+	ordered_remove(items, i)
+	b.parent = parent
+	// before the index-th of the folder's other children, else after the last of them, else at the end
+	at, k, last := -1, 0, -1
+	for x, j in items {
+		if x.parent != parent { continue }
+		if k == index { at = j; break }
+		k += 1
+		last = j
+	}
+	if at < 0 { at = last >= 0 ? last + 1 : len(items) }
+	inject_at(items, at, b)
+	return true
+}
+
 // Moves the bookmark `id` before (`delta` -1) or after (+1) its neighbour in its folder. False: it is at that end.
 bookmark_shift :: proc(items: ^[dynamic]Bookmark, id: u64, delta: int) -> bool {
 	i := bookmark_index(items[:], id)
@@ -143,11 +168,11 @@ bookmark_shift :: proc(items: ^[dynamic]Bookmark, id: u64, delta: int) -> bool {
 // The Netscape bookmark file
 
 // The file of `items` (every browser reads it).
-bookmarks_serialize :: proc(items: []Bookmark, allocator := context.temp_allocator) -> string {
+bookmarks_serialize :: proc(items: []Bookmark, toolbar: u64 = 0, allocator := context.temp_allocator) -> string {
 	sb := strings.builder_make(allocator)
 	strings.write_string(&sb, "<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<!-- This is an automatically generated file.\n     It will be read and overwritten.\n     DO NOT EDIT! -->\n")
 	strings.write_string(&sb, "<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">\n<TITLE>Bookmarks</TITLE>\n<H1>Bookmarks</H1>\n")
-	write_folder :: proc(sb: ^strings.Builder, items: []Bookmark, parent: u64, depth: int) {
+	write_folder :: proc(sb: ^strings.Builder, items: []Bookmark, parent: u64, depth: int, toolbar: u64) {
 		indent :: proc(sb: ^strings.Builder, n: int) { for _ in 0 ..< n { strings.write_string(sb, "    ") } }
 		indent(sb, depth)
 		strings.write_string(sb, "<DL><p>\n")
@@ -155,10 +180,10 @@ bookmarks_serialize :: proc(items: []Bookmark, allocator := context.temp_allocat
 			if b.parent != parent { continue }
 			indent(sb, depth + 1)
 			if b.folder {
-				fmt.sbprintf(sb, "<DT><H3 ADD_DATE=\"%d\">", b.added_ms / 1000)
+				fmt.sbprintf(sb, "<DT><H3 ADD_DATE=\"%d\"%s>", b.added_ms / 1000, b.id == toolbar ? " PERSONAL_TOOLBAR_FOLDER=\"true\"" : "")
 				base.write_escaped(sb, b.title)
 				strings.write_string(sb, "</H3>\n")
-				write_folder(sb, items, b.id, depth + 1)
+				write_folder(sb, items, b.id, depth + 1, toolbar)
 			} else {
 				strings.write_string(sb, "<DT><A HREF=\"")
 				base.write_escaped(sb, b.url, {.Quote})
@@ -170,7 +195,7 @@ bookmarks_serialize :: proc(items: []Bookmark, allocator := context.temp_allocat
 		indent(sb, depth)
 		strings.write_string(sb, "</DL><p>\n")
 	}
-	write_folder(&sb, items, 0, 0)
+	write_folder(&sb, items, 0, 0, toolbar)
 	return strings.to_string(sb)
 }
 
@@ -178,14 +203,16 @@ bookmarks_serialize :: proc(items: []Bookmark, allocator := context.temp_allocat
 // same name at the same place is the same folder, an address already in its folder is not added again. Addresses
 // that are not absolute, or are javascript:, are left out. `now_ms`: the date of those that have none.
 // Returns how many bookmarks were added; ok is false when the text holds no list of bookmarks (<DL>).
-bookmarks_import :: proc(items: ^[dynamic]Bookmark, next_id: ^u64, text: string, under: u64, now_ms: i64) -> (added: int, ok: bool) {
+// `toolbar` (nil: none kept): the bar's folder; a folder the file marks as its bar becomes it when there is none, else
+// what it holds goes into it.
+bookmarks_import :: proc(items: ^[dynamic]Bookmark, next_id: ^u64, text: string, under: u64, now_ms: i64, toolbar: ^u64 = nil) -> (added: int, ok: bool) {
 	d := dom.document_create()
 	defer dom.document_destroy(d)
 	html.parse_into(d, d.root, transmute([]byte)text, BOOKMARKS_MAX_NODES)
 	top := find_dl(d, d.root)
 	if top == base.NIL_HANDLE { return 0, false }
-	Walk :: struct { d: ^dom.Document, items: ^[dynamic]Bookmark, next_id: ^u64, now_ms: i64, added: int }
-	w := Walk{d, items, next_id, now_ms, 0}
+	Walk :: struct { d: ^dom.Document, items: ^[dynamic]Bookmark, next_id: ^u64, now_ms: i64, added: int, toolbar: ^u64 }
+	w := Walk{d, items, next_id, now_ms, 0, toolbar}
 	// `pending`: the folder an <H3> just named, which the next <DL> fills (they are siblings in a <DT>)
 	walk :: proc(w: ^Walk, n: base.Handle, folder: u64) {
 		pending: u64 = 0
@@ -205,8 +232,14 @@ bookmarks_import :: proc(items: ^[dynamic]Bookmark, next_id: ^u64, text: string,
 			case "h3":
 				title := strings.trim_space(dom.text_content(w.d, c))
 				pending = 0
+				bar, _ := dom.get_attribute(w.d, c, "personal_toolbar_folder")
+				if w.toolbar != nil && base.ascii_equal_fold(strings.trim_space(bar), "true") && w.toolbar^ != 0 && bookmark_index(w.items[:], w.toolbar^) >= 0 {
+					pending = w.toolbar^   // (the file's bar into ours)
+					continue
+				}
 				for b in w.items { if b.parent == folder && b.folder && b.title == title { pending = b.id; break } }
 				if pending == 0 { pending = bookmark_add(w.items, w.next_id, folder, title, "", true, date_of(w.d, c, w.now_ms)) }
+				if w.toolbar != nil && w.toolbar^ == 0 && base.ascii_equal_fold(strings.trim_space(bar), "true") { w.toolbar^ = pending }
 			case "dl":
 				walk(w, c, pending != 0 ? pending : folder)
 				pending = 0
@@ -248,7 +281,7 @@ bookmarks_init :: proc(app: ^App) {
 	app.bms.path = strings.concatenate({app.profile_dir, "/", BOOKMARKS_FILE})
 	data, err := os.read_entire_file(app.bms.path, context.temp_allocator)
 	if err != nil { return }
-	if _, ok := bookmarks_import(&app.bms.items, &app.bms.next_id, string(data), 0, now_ms()); !ok {
+	if _, ok := bookmarks_import(&app.bms.items, &app.bms.next_id, string(data), 0, now_ms(), &app.bms.toolbar); !ok {
 		bookmarks_list_destroy(&app.bms.items)
 		bad := strings.concatenate({app.bms.path, ".bad"}, context.temp_allocator)
 		if os.exists(bad) || os.rename(app.bms.path, bad) != nil { app.bms.unreadable = true }
@@ -258,6 +291,7 @@ bookmarks_init :: proc(app: ^App) {
 }
 
 bookmarks_changed :: proc(app: ^App) {
+	if app.bms.toolbar != 0 && bookmark_index(app.bms.items[:], app.bms.toolbar) < 0 { app.bms.toolbar = 0 }   // (the bar's folder removed)
 	app.bms.serial += 1
 	app.bms.dirty = true
 	request_frames(app, 2)
@@ -284,7 +318,7 @@ bookmarks_save :: proc(app: ^App) {
 	job := new(Save_Job)
 	job.app = app
 	job.path = strings.clone(app.bms.path)
-	job.text = strings.clone(bookmarks_serialize(app.bms.items[:]))
+	job.text = strings.clone(bookmarks_serialize(app.bms.items[:], app.bms.toolbar))
 	host.run_blocking(&app.blocking, proc(data: rawptr) {
 		j := (^Save_Job)(data)
 		j.ok = base.file_write_atomic(j.path, transmute([]byte)j.text, flush = true)
@@ -305,7 +339,7 @@ bookmarks_shutdown :: proc(app: ^App) {
 	if app.bms.saving { host.blocking_settle(&app.blocking) }
 	if app.bms.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.bms.timer) }
 	if app.bms.path != "" && app.bms.dirty && !app.bms.unreadable {
-		_ = base.file_write_atomic(app.bms.path, transmute([]byte)bookmarks_serialize(app.bms.items[:]), flush = true)
+		_ = base.file_write_atomic(app.bms.path, transmute([]byte)bookmarks_serialize(app.bms.items[:], app.bms.toolbar), flush = true)
 	}
 	bookmarks_list_destroy(&app.bms.items)
 	delete(app.bms.path)
@@ -317,7 +351,16 @@ bookmark_page :: proc(app: ^App, t: ^Tab) -> (id: u64, added: bool) {
 	if t == nil || !bookmark_address_ok(t.url) { return 0, false }
 	if i := bookmark_of_url(app.bms.items[:], t.url); i >= 0 { return app.bms.items[i].id, false }
 	title := t.title != "" ? t.title : t.url
-	id = bookmark_add(&app.bms.items, &app.bms.next_id, 0, title, t.url, false, now_ms())
+	id = bookmark_add(&app.bms.items, &app.bms.next_id, bookmarks_toolbar(app), title, t.url, false, now_ms())
 	bookmarks_changed(app)
 	return id, true
+}
+
+// The bookmarks bar's folder, made at the top of the top level when there is none.
+bookmarks_toolbar :: proc(app: ^App) -> u64 {
+	if app.bms.toolbar != 0 && bookmark_index(app.bms.items[:], app.bms.toolbar) >= 0 { return app.bms.toolbar }
+	app.bms.toolbar = bookmark_add(&app.bms.items, &app.bms.next_id, 0, "Bookmarks bar", "", true, now_ms())
+	_ = bookmark_move_to(&app.bms.items, app.bms.toolbar, 0, 0)
+	bookmarks_changed(app)
+	return app.bms.toolbar
 }

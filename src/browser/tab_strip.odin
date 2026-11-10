@@ -164,12 +164,14 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 		limit := max(f32(n) * w - view_w, 0)
 		fade := [4]f32{own.strip.offset > 0.5 ? fade_w : 0, 0, own.strip.offset < limit - 0.5 ? fade_w : 0, 0}
 		ui.next({width = ui.px(classic ? area_w + plus_w - plus_pull : area_w), height = ui.pct(1), axis = .X, edge_fade = classic ? nil : fade})
-		area := ui.build_box({.Clip, .Scroll_Self}, "###tabs_area")
+		area := ui.build_box({.Clip, .Scroll_Self, .Clickable}, "###tabs_area")
 		tab_list_a11y(area, false)
 		add: ui.Signal
 		own.strip.area_key = area.key
 		if app.active != nil { app.active.zone = {rect = area.rect, offset = own.strip.offset, pitch = w, n = n, valid = true} }
-		if s := ui.signal(area); s.scrolled != {} {
+		area_sig := ui.signal(area)
+		if area_sig.right_clicked { bookmarks_bar_menu(app, ui.mouse_pos()) }   // (where no tab is: bookmarks_bar.odin)
+		if s := area_sig; s.scrolled != {} {
 			// the wheel scrolls the strip by about a tab per notch
 			own.strip.offset = strip_offset(own.strip.offset + (s.scrolled.y + s.scrolled.x) * w, n, w, view_w, wnd.current, false)
 			request_frames(app, 2)

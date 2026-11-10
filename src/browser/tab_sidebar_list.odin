@@ -153,11 +153,11 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 	hh := math.round(rh * 0.8)
 
 	ui.next({width = ui.fill(), height = ui.fill(), axis = .Y})
-	area_flags := ui.Box_Flags{.Clip, .View_Scroll_Y, .View_Clamp_Y, .Allow_Overflow_Y}
+	area_flags := ui.Box_Flags{.Clip, .View_Scroll_Y, .View_Clamp_Y, .Allow_Overflow_Y, .Clickable}
 	if cc != nil && pos == .Left { area_flags += {.Scrollbar_Left} }   // (classic: the inner edge is the current tab's)
 	area := ui.build_box(area_flags, "###tabs_area")
 	tab_list_a11y(area, true)
-	_ = ui.signal(area)   // the wheel
+	if ui.signal(area).right_clicked { bookmarks_bar_menu(app, ui.mouse_pos()) }   // the wheel; a right click where no tab is (bookmarks_bar.odin)
 	own.strip.area_key = area.key
 	tab_press_follows(wnd, own.sidebar.pins_key, area.key)   // (a pinned tab dragged down into the list: unpinned on the way)
 	total := side_list_layout(wnd.tabs[:], wnd.groups[:], rh, hh, &own.sidebar.items, wnd.current, config.bool_of(&app.prefs, "browser.tabs.tree"))

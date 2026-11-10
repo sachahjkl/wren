@@ -108,3 +108,47 @@ bookmarks_remove_and_move :: proc(t: ^testing.T) {
 	testing.expect_value(t, bookmark_remove(&items, bar), 5)
 	testing.expect_value(t, len(items), 0)
 }
+
+// The bar's folder: the file's PERSONAL_TOOLBAR_FOLDER is the bar, written back so; another file's bar merges into it.
+@(test)
+bookmarks_bar_folder_is_kept_and_merged :: proc(t: ^testing.T) {
+	items: [dynamic]Bookmark
+	defer bookmarks_list_destroy(&items)
+	next, bar: u64
+	_, ok := bookmarks_import(&items, &next, CHROME_EXPORT, 0, 1_700_000_300_000, &bar)
+	testing.expect(t, ok)
+	testing.expect_value(t, bar, items[find_title(items[:], "Bookmarks bar")].id)
+	text := bookmarks_serialize(items[:], bar)
+	testing.expect(t, strings.contains(text, `PERSONAL_TOOLBAR_FOLDER="true">Bookmarks bar</H3>`), text)
+	// Firefox's bar, under another name: its bookmarks go into ours
+	firefox := `<DL><p><DT><H3 PERSONAL_TOOLBAR_FOLDER="true">Bookmarks Toolbar</H3><DL><p><DT><A HREF="https://kernel.org/">Kernel</A></DL><p></DL><p>`
+	n, fok := bookmarks_import(&items, &next, firefox, 0, 0, &bar)
+	testing.expect(t, fok)
+	testing.expect_value(t, n, 1)
+	testing.expect_value(t, find_title(items[:], "Bookmarks Toolbar"), -1)
+	testing.expect_value(t, items[find_title(items[:], "Kernel")].parent, bar)
+}
+
+// A bookmark moved to a place among its folder's children.
+@(test)
+bookmarks_move_to_a_place :: proc(t: ^testing.T) {
+	items: [dynamic]Bookmark
+	defer bookmarks_list_destroy(&items)
+	next: u64
+	a := bookmark_add(&items, &next, 0, "a", "https://a.example/", false, 0)
+	b := bookmark_add(&items, &next, 0, "b", "https://b.example/", false, 0)
+	f := bookmark_add(&items, &next, 0, "f", "", true, 0)
+	c := bookmark_add(&items, &next, f, "c", "https://c.example/", false, 0)
+	order :: proc(items: []Bookmark, parent: u64) -> []u64 {
+		out := make([dynamic]u64, context.temp_allocator)
+		for x in items { if x.parent == parent { append(&out, x.id) } }
+		return out[:]
+	}
+	testing.expect(t, bookmark_move_to(&items, a, 0, 2))   // after b and f
+	o := order(items[:], 0)
+	testing.expectf(t, len(o) == 3 && o[0] == b && o[1] == f && o[2] == a, "%v", o)
+	testing.expect(t, bookmark_move_to(&items, b, f, 0))   // into f, first
+	o = order(items[:], f)
+	testing.expectf(t, len(o) == 2 && o[0] == b && o[1] == c, "%v", o)
+	testing.expect(t, !bookmark_move_to(&items, f, f, 0), "not into itself")
+}

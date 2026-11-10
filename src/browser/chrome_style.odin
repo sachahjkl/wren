@@ -525,15 +525,13 @@ field_frame_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 toolbar_row :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
-	if !classic_on(app) {
-		if ui.row(.Center) { address_row(app, t) }
-		return
-	}
-	if ui.row(.Center, {}, "###toolbar") {
+	// (clickable: a right click where no button is opens the bookmarks bar's menu, bookmarks_bar.odin)
+	if ui.row(.Center, {.Clickable}, "###toolbar") {
 		b := ui.parent_box()
-		b.custom, b.custom_user = toolbar_draw, classic_colors_frame(app)
+		if classic_on(app) { b.custom, b.custom_user = toolbar_draw, classic_colors_frame(app) }
 		address_row(app, t)
 	}
+	if ui.signal(ui.prev_box("###toolbar")).right_clicked { bookmarks_bar_menu(app, ui.mouse_pos()) }
 }
 
 // The toolbar as the window's title bar (the tabs in a sidebar: sidebar_titlebar): its gradient and the line along its

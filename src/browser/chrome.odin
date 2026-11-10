@@ -653,6 +653,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		menu_command(app, t, "nav.home")
 		menu_command(app, t, "browser.history")
 		menu_command(app, t, "browser.bookmarks")
+		menu_command(app, t, "view.bookmarks_bar")
 		menu_command(app, t, "browser.history_tree")
 		ui.menu_separator()
 		if ui.menu_submenu(fmt.tprintf("Zoom (%d %%)###zoom_sub", zoom_percent(t)), enabled = web) {

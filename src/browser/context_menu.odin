@@ -358,6 +358,7 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 		menu_command(app, cur, "view.tabs_position.right")
 		menu_command(app, cur, "view.tabs_sidebar_collapse")
 	}
+	menu_command(app, current_tab(app), "view.bookmarks_bar")   // bookmarks_bar.odin
 }
 
 @(private = "file")

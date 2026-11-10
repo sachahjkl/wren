@@ -1044,7 +1044,7 @@ page_view :: proc(app: ^App, t: ^Tab) {
 // `width`: the column's (physical px): the window's, less the tabs' sidebar beside it. The developer tools docked at the bottom
 // are laid out at it (they took the window's width beside a sidebar, and their right end was cut off).
 page_column :: proc(app: ^App, t: ^Tab, elem_fs: bool, width: f32) {
-	if !elem_fs { crash_banner(app); find_bar(app, t) }   // crash_banner.odin
+	if !elem_fs { bookmarks_bar(app, t); crash_banner(app); find_bar(app, t) }   // bookmarks_bar.odin, crash_banner.odin
 	// the page, and the developer tools docked next to it (devtools.odin): the page takes what the panel leaves
 	dock, dev_on := devtools_dock(app, t)
 	switch {
@@ -1120,6 +1120,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	notification_shell_build(app)   // notification_shell.odin: a page's notification permission prompt
 	qr_build(app)   // qr_shell.odin: the QR code of the page's address
 	bookmarks_dialog_build(app)   // bookmarks_ui.odin: the dialog that names a bookmark
+	bookmarks_bar_menus(app)   // bookmarks_bar.odin: the bar's menus
 	storage_access_shell_build(app)   // storage_access_shell.odin: a frame's storage access prompt
 	// notices go over the page, not over the title bar's window buttons
 	if pr := active_window(app).page_rect; pr.max.y > pr.min.y { ui.set_toast_area(pr) }
