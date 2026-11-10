@@ -10,6 +10,18 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-11-10
+
+### Added
+- **The bookmarks bar** (Ctrl+Shift+B, a right click on the toolbar, on a tab or on the tabs' free room, the main menu, `browser.bookmarks.bar`): under the toolbar, the bar's folder as other browsers show it: a bookmark with its icon and title, a folder as a menu with its folders as submenus as deep as they go and "Open all in new tabs", what does not fit in a » menu; a bookmark or a folder dragged sideways takes another place; a right click on one opens its menu (open, edit, move, remove). The bar's folder is the one a file from Chrome, Firefox or Edge marks as theirs (an import merges its bar into Wren's), made when the first bookmark goes in; the star keeps a page there.
+- On about:bookmarks and about:downloads, typing anywhere on the page goes to the search field; a bookmark's menu is searched by typing (a folder of "Move to" found by its name).
+- A right click on Wren's launcher (the applications menu, a dock) offers "New Window" and "New Private Window" (the desktop entry's actions, also in the Nix package).
+
+### Changed
+- The frame statistics panel moves to Ctrl+Shift+F: Ctrl+Shift+B shows the bookmarks bar, as in other browsers.
+- The downloads show the system's icon of each file (the person's icon theme on Linux, the shell's on Windows), as the file manager shows it; a type the system has no icon for keeps its drawn tile.
+- gui_toolkit 0.143.0: on Windows, Setup no longer takes an install in the default folder for one to repair after a restart; the applications menu's entry names Wren's window class (a dock matches the window to it); the marks of menus and check boxes are drawn in the right font.
+
 ## [0.7.4] - 2026-11-09
 
 ### Added
@@ -1384,7 +1396,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.4...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.5...HEAD
+[0.7.5]: https://github.com/sachahjkl/wren/compare/v0.7.4...v0.7.5
 [0.7.4]: https://github.com/sachahjkl/wren/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/sachahjkl/wren/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/sachahjkl/wren/compare/v0.7.1...v0.7.2
