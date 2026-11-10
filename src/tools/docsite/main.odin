@@ -182,7 +182,6 @@ write_header :: proc(b: ^strings.Builder, current: string) {
 		{"/docs/", "Docs"},
 		{"/write/", "Write a page"},
 		{"/changelog/", "Changelog"},
-		{"/pricing/", "Pricing"},
 	}
 	for it in items {
 		ws(b, "<li><a href=\"")
@@ -193,7 +192,10 @@ write_header :: proc(b: ^strings.Builder, current: string) {
 		base.write_escaped(b, it[1])
 		ws(b, "</a></li>\n")
 	}
-	ws(b, "<li><a class=\"btn primary nav-dl\" href=\"/#download\">Download</a></li>\n")   // (the home page's button: the file for the visitor's system)
+	// (the licence, as a button: the home page has the download's)
+	ws(b, "<li><a class=\"btn primary nav-buy\" href=\"/pricing/\"")
+	if current == "Pricing" { ws(b, " aria-current=\"page\"") }
+	ws(b, ">Buy license</a></li>\n")
 	ws(b, "</ul>\n</div>\n</header>\n")
 }
 

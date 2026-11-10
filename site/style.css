@@ -129,8 +129,8 @@ strong, b { color: var(--text); font-weight: 650; }
 .nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; margin: 0; padding: 0; list-style: none; }
 .nav a { color: var(--muted); font-size: 13px; font-weight: 650; letter-spacing: 0.005em; }
 .nav a:hover, .nav a[aria-current="page"] { color: var(--text); text-decoration: none; }
-.nav .nav-dl { min-height: 32px; padding: 6px 14px; font-size: 13px; border-radius: 7px; }
-.nav .nav-dl:hover { background: #7ad3ff; border-color: #7ad3ff; color: var(--accent-ink); text-decoration: none; }
+.nav .nav-buy { min-height: 32px; padding: 6px 14px; font-size: 13px; border-radius: 7px; }
+.nav .nav-buy:hover { background: #7ad3ff; border-color: #7ad3ff; color: var(--accent-ink); text-decoration: none; }
 
 /* the menu on narrow screens: a checkbox and a burger, no script */
 .menu-check { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
@@ -554,7 +554,7 @@ td.n { font-family: var(--mono); white-space: nowrap; font-size: 13px; }
   }
   .menu-check:checked ~ .nav li { border-top: 1px solid var(--line); }
   .menu-check:checked ~ .nav a { display: block; padding: 11px 2px; font-size: 14.5px; }
-  .menu-check:checked ~ .nav .nav-dl { margin: 10px 0 6px; text-align: center; }
+  .menu-check:checked ~ .nav .nav-buy { margin: 10px 0 6px; text-align: center; }
 }
 
 @media (max-width: 880px) {
