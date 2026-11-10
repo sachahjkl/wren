@@ -13,7 +13,7 @@ Wren can install a new release itself. It never does so without you pressing "In
 
 - Windows only for now. On Linux Wren checks and tells you where the file is.
 - Development and labelled builds are not releases: they are updated by hand.
-- The update key is not the licence key. A leaked licence key cannot sign an update.
+- The update key is not the license key. A leaked license key cannot sign an update.
 
 ## Your own channel
 

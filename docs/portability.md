@@ -74,7 +74,7 @@ behaviour behind packages that already passed `odin check` for Linux:
   `Audio_Output`; `backend_linux.odin` picks cpal or the null output by `media.audio.backend`. The new crates are
   target-gated to non-Windows (Opus' C and cpal's ALSA stay out of the Windows build).
 - **H.264** (`media`): `h264_linux.odin` decodes through Cisco's **openh264**, `dlopen`ed at run time (never built from
-  source: the patent licence covers only Cisco's binaries, `wrentool fetch openh264`), behind `Video_Decoder`.
+  source: the patent license covers only Cisco's binaries, `wrentool fetch openh264`), behind `Video_Decoder`.
   `vaapi_linux.odin` probes the GPU's VA-API H.264 support (libva / libva-drm by `dlopen`, a DRM render node) and is
   preferred when `media.h264.backend` allows; the VA-API decode path itself (slice-level) is not written, so it falls
   back to openh264 — the first thing to try under WSL is openh264.
@@ -196,7 +196,7 @@ and GitHub's repository page load and draw. What it took:
 
 - `wrentool fetch wgpu`: wgpu-native (the release Odin's `vendor:wgpu` names), SHA-256 checked and sealed like Wasmtime
   (one object, only `wgpu*` kept), put where Odin looks for it. Two Rust libraries in one link otherwise stop on
-  `rust_eh_personality`. `wrentool fetch wasmtime` also fetches the licence text the browser bundles.
+  `rust_eh_personality`. `wrentool fetch wasmtime` also fetches the license text the browser bundles.
 - Four imports of `core:sys/windows` / `wb:desktop` that only Windows used (an unused import is an error under `-vet`).
 - The system's `libopus`, `libasound` and `libfontconfig` to link; `libwayland-client`, `libxkbcommon` (or `libxcb`) and
   a Vulkan or GL driver at run time. On NixOS: `nix shell` with clang, lld, nasm, pkg-config, rustup (1.99.1), and
@@ -226,7 +226,7 @@ system file dialogs through zenity, a real GPU in WSL (lavapipe was used), keybo
   `native/media`, behind `Audio_Decoder` / `Audio_Output`. New crates: pinned, `THIRD_PARTY.md`, `native/rust-crates.txt`.
   WMF / WASAPI stay the Windows default, the Rust path selectable by a preference until parity is measured.
 - **H.264**: not in this slice. The choice to make: `openh264` (Cisco's decoder, BSD, built from source by the crate:
-  but the patent licence Cisco pays covers only its own binaries, downloaded at run time) or the system's decoders
+  but the patent license Cisco pays covers only its own binaries, downloaded at run time) or the system's decoders
   (VA-API directly, or GStreamer / FFmpeg, out of scope by the brief). Proposal: VA-API for H.264 / HEVC / VP9 where the
   GPU has it (the Linux counterpart of DXVA), and openh264's downloaded binary as the software fallback, behind a
   preference, the way Firefox does.

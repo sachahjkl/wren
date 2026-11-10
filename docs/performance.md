@@ -1626,7 +1626,7 @@ are in waits (`ZwWaitForAlertByThreadId`), not identified.
    most of the work is on the style and layout threads, which this sampler does not see. A profile of the threads
    (`WREN_SAMPLE_THREADS=1`) is the next measure. **Not done this round**: the script stage of DOM-heavy pages (item 1).
 
-## What changed, round 19: the licence card of about:wren under the pointer
+## What changed, round 19: the license card of about:wren under the pointer
 
 `wrentool bench perf -Only card_hover -Shown` (about:wren?card=sample, the card scrolled into view, the pointer wandering
 over it every 8 ms; `card_idle`: the card at rest), profile builds, 3 interleaved runs, 60 Hz, RTX 4070 SUPER (the
@@ -4036,7 +4036,7 @@ Every series until now ran development builds (`-o:speed -debug`, one LLVM modul
 
 **What it took.**
 - **`wrentool build release` did not build on master**: `-vet` failed on `core:os` in `base/test_world.odin` and `wb:base` in `net/record.odin`, imports used only under `when WREN_CHANNEL != "release"` (since round 56). Each file now says `_ :: os` / `_ :: base`, as `adblock` and `blocker` do; nothing else of the code changes. The base needed the same two lines.
-- **A release ignores `WREN_TEST_WORLD` by design** (and `WREN_TEST_RECORD`, `WREN_JS_CODE`, `WREN_TEST_WASM_CACHE`): the reads are compiled out, which is what the vet error above shows. `WREN_ODIN_EXTRA=-define:WREN_CHANNEL=dev` cannot turn them back on: Odin refuses a second `-define` of a name. So **`wrentool build bench`** (new, `build\wren_bench.exe`): the release's flags and Rust profile on the development channel. The channel changes nothing else on a page's path (the icon, the about pages, the licences and updates accepted, the setup dialog's default at a first run, which a `--profile` never opens). The binaries differ by 2 KB, the icon. Every number below is of that build. One load of each through the bench, bbc.com/news: the release's page clock read 2 390 ms at the end, the bench build's 1 955, the test world's.
+- **A release ignores `WREN_TEST_WORLD` by design** (and `WREN_TEST_RECORD`, `WREN_JS_CODE`, `WREN_TEST_WASM_CACHE`): the reads are compiled out, which is what the vet error above shows. `WREN_ODIN_EXTRA=-define:WREN_CHANNEL=dev` cannot turn them back on: Odin refuses a second `-define` of a name. So **`wrentool build bench`** (new, `build\wren_bench.exe`): the release's flags and Rust profile on the development channel. The channel changes nothing else on a page's path (the icon, the about pages, the licenses and updates accepted, the setup dialog's default at a first run, which a `--profile` never opens). The binaries differ by 2 KB, the icon. Every number below is of that build. One load of each through the bench, bbc.com/news: the release's page clock read 2 390 ms at the end, the bench build's 1 955, the test world's.
 - **base**: 4753a790 with fec6bde9 and 60716374 less `src/tools` and `tools`, as in "Measured together", its toolkit at 3a3ee2e6, the two lines above, built `bench` in a worktree of its own; **now**: master 00be616e, the same.
 
 **1. The series.** `wrentool replay run`, the default lists on in both arms, frames on, 9 runs a site after a warm-up, the arms interleaved, the order turning, the quiet guard on (no other agent; `others` 9 to 19 % in every load, the browser's helpers and the sampler; no load dropped). Median (range), ms (`build/replay/rel58.<site>.tsv`):
@@ -4257,7 +4257,7 @@ that waits for its slot before the tasks, leads item 10 below. Item 1 is unchang
 After round 18. Round 17's item 10 is done for its first part (round 18: the loop's tasks run in the frame's wait for its
 slot, a first paint waits for no slot); p10k's first passes lead item 10 below. Item 1 is unchanged.
 
-After round 19. Off this list: the licence card of about:wren under the pointer (a document changed only in style
+After round 19. Off this list: the license card of about:wren under the pointer (a document changed only in style
 attributes is refreshed, not laid out; planes keep their raster scale; the development build lost the Direct3D debug
 layer).
 

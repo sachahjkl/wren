@@ -44,7 +44,7 @@ Features
   windows.md          Several windows
   chrome-style.md     The look of the chrome
   desktop-integration.md  Desktop integration
-  licence.md          Licences
+  licence.md          Licenses
 
 Web API
   api/README.md       Overview

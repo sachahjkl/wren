@@ -43,11 +43,11 @@
     <div class="hero">
       <div class="stage"><img class="bird" src="../../img/logo.png" alt="" width="133" height="133"></div>
       <h1>Thank you for supporting Wren</h1>
-      <p class="intro"><span id="status" role="status">Making your licence&hellip;</span><span class="dots" id="dots" aria-hidden="true" hidden><i></i><i></i><i></i></span></p>
+      <p class="intro"><span id="status" role="status">Making your license&hellip;</span><span class="dots" id="dots" aria-hidden="true" hidden><i></i><i></i><i></i></span></p>
     </div>
     <p class="warm" id="warm" hidden>You keep an independent browser, written from scratch, moving forward. It&nbsp;means&nbsp;a&nbsp;lot.</p>
 
-    <div id="licence" hidden>
+    <div id="license" hidden>
       <div class="card">
         <i class="spark" style="top: 14px; right: 36px; --sd: 0s" aria-hidden="true"></i>
         <i class="spark" style="top: 52px; right: 12px; width: 9px; height: 9px; --sd: 1.3s" aria-hidden="true"></i>
@@ -59,7 +59,7 @@
         <dl class="facts">
           <div><dt>Order</dt><dd id="order"></dd></div>
           <div><dt>Date</dt><dd id="date"></dd></div>
-          <div><dt>Edition</dt><dd>Wren User Licence</dd></div>
+          <div><dt>Edition</dt><dd>Wren User License</dd></div>
         </dl>
         <p class="keylabel">Your key</p>
         <div class="key" id="key" tabindex="0"></div>
@@ -84,7 +84,7 @@
     <aside id="questions">
       <span class="help-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24m5.66 0 4.24-4.24m-4.24 9.9 4.24 4.24m-9.9-4.24-4.24 4.24"/><circle cx="12" cy="12" r="4"/></svg></span>
       <div>
-        <h2>A problem with your licence? We are here.</h2>
+        <h2>A problem with your license? We are here.</h2>
         <p>No key, a key that is refused, a wrong name: write to us on GitHub with your <strong>order number</strong>
           (never the key itself) and we will sort it out.</p>
         <p class="links"><a class="btn primary" id="help-link" href="https://github.com/sachahjkl/wren/issues/new?template=licence-help.yml">Ask for help</a>
@@ -96,7 +96,7 @@
 
 </main>
 <footer class="foot">
-Wren is made by <a href="https://froment.software">Froment Software</a>. Wren User Licence: one payment of 29&nbsp;&euro;, personal and perpetual, two years of updates from 1.0.
+Wren is made by <a href="https://froment.software">Froment Software</a>. Wren User License: one payment of 29&nbsp;&euro;, personal and perpetual, two years of updates from 1.0.
 - <a href="../archive/">archive</a>
 - <a href="../privacy/">privacy</a>
 - <a href="../terms/">terms</a>
@@ -146,23 +146,23 @@ Wren is made by <a href="https://froment.software">Froment Software</a>. Wren Us
   }
 
   if (!/^txn_[0-9a-z]{20,40}$/.test(txn)) {
-    say("This page shows the licence of a purchase: it needs the transaction number that the checkout passes on. If you have just paid, your licence is also on its way to your e-mail address.");
+    say("This page shows the license of a purchase: it needs the transaction number that the checkout passes on. If you have just paid, your license is also on its way to your e-mail address.");
     return;
   }
   if (!worker) {
-    say("The licence service is not set up yet (this page's data-worker is empty).");
+    say("The license service is not set up yet (this page's data-worker is empty).");
     return;
   }
 
   function show(j) {
-    document.getElementById("who").textContent = "Wren User Licence for " + j.name;
+    document.getElementById("who").textContent = "Wren User License for " + j.name;
     document.getElementById("order").textContent = j.order;
     document.getElementById("date").textContent = j.date;
     document.getElementById("key").textContent = j.licence;
-    document.getElementById("licence").hidden = false;
+    document.getElementById("license").hidden = false;
     document.getElementById("warm").hidden = false;
     main.classList.add("ready");
-    say("Your licence is ready. Thank you!");
+    say("Your license is ready. Thank you!");
     celebrate();
 
     document.getElementById("download").addEventListener("click", function () {
@@ -199,7 +199,7 @@ Wren is made by <a href="https://froment.software">Froment Software</a>. Wren Us
     fetch(worker + "/licence?txn=" + encodeURIComponent(txn), { cache: "no-store" }).then(function (res) {
       if (res.status === 200) return res.json().then(show);
       if (res.status === 202 && Date.now() - started < giveUp) {
-        say("Making your licence (this takes a few seconds)", true);
+        say("Making your license (this takes a few seconds)", true);
         setTimeout(poll, every);
         return;
       }
@@ -210,10 +210,10 @@ Wren is made by <a href="https://froment.software">Froment Software</a>. Wren Us
   }
 
   function fail() {
-    say("The licence is not ready yet, or the service could not be reached. Nothing is lost: it is sent by e-mail to the address you gave at the checkout, within a few minutes. If nothing arrives, reload this page later or open an issue on GitHub with your order number.");
+    say("The license is not ready yet, or the service could not be reached. Nothing is lost: it is sent by e-mail to the address you gave at the checkout, within a few minutes. If nothing arrives, reload this page later or open an issue on GitHub with your order number.");
   }
 
-  say("Making your licence", true);
+  say("Making your license", true);
   poll();
 })();
 </script>

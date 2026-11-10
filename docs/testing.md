@@ -76,7 +76,7 @@ a change in `src/url` reruns the packages that import `url`, and the steps that 
 - for a step that compiles and runs Odin packages (`Input_Kind.Packages`): every file of those packages and of everything they import (`wb:`, `toolkit:`, `web:`, relative imports, parsed from the sources, for every build tag), what they `#load`, the libraries they
   link, the paths written in their strings (`"examples/site/images/%s"`: what a test reads while it runs), `examples\`, `assets\`, `api\`, `sdk\`, the test server, the native libraries, and what every step inherits (`src\tools\test_all\env.odin`);
 - for a step that runs a script or the browser (`.Tree`): the whole tree (`src`, `ext\gui_toolkit`, `tools`, `wpt`, `native`, `api`, `sdk`, `examples`, `assets`, `build.bat`, `odin.version`, the libraries), tests of packages aside;
-- for what is about the documentation or the changelog, what generates files, the licence Worker (`.Everything`): all of that and `docs`, `site`, `changelog.d`, `licence`.
+- for what is about the documentation or the changelog, what generates files, the license Worker (`.Everything`): all of that and `docs`, `site`, `changelog.d`, `license`.
 
 What cannot be resolved (an unknown collection, an import that names no folder) takes the whole tree: an input too many costs a rerun, one too few could hide a failure. The tests of `src/tools/test_all`, themselves a step, compare the packages found with the compiler's
 own import graph (`-show-import-graph`) and check that a change of each kind of input changes a key, and that a change of something else does not.

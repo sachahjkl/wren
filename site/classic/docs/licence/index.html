@@ -5,8 +5,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Wren User Licences · Wren docs</title>
-<meta name="description" content="Wren User Licences Wren is a beta under development and every version is free.">
+<title>Wren User Licenses · Wren docs</title>
+<meta name="description" content="Wren User Licenses Wren is a beta under development and every version is free.">
 <link rel="icon" type="image/png" sizes="32x32" href="../../../img/logo-32.png">
 <link rel="stylesheet" href="../../classic.css">
 </head>
@@ -36,9 +36,9 @@
 <nav class="doc-crumbs" aria-label="Breadcrumb"><ol>
 <li><a href="../../docs/">Docs</a></li>
 <li>Features</li>
-<li aria-current="page">Wren User Licences</li>
+<li aria-current="page">Wren User Licenses</li>
 </ol></nav>
-<h1 id="wren-user-licences"><a class="anchor" href="#wren-user-licences" aria-hidden="true">#</a>Wren User Licences</h1><nav class="doc-toc" aria-label="On this page">
+<h1 id="wren-user-licenses"><a class="anchor" href="#wren-user-licenses" aria-hidden="true">#</a>Wren User Licenses</h1><nav class="doc-toc" aria-label="On this page">
 <p class="doc-toc-title">On this page</p>
 <ul>
 <li><a href="#how-it-works">How it works</a></li>
@@ -46,7 +46,7 @@
 <li class="lvl3"><a href="#in-wren">In Wren</a></li>
 <li><a href="#the-maintainers-procedure">The maintainer's procedure</a></li>
 <li class="lvl3"><a href="#1-make-the-key-pair-once">1. Make the key pair (once)</a></li>
-<li class="lvl3"><a href="#2-issue-a-licence">2. Issue a licence</a></li>
+<li class="lvl3"><a href="#2-issue-a-license">2. Issue a license</a></li>
 <li class="lvl3"><a href="#3-development-key">3. Development key</a></li>
 <li class="lvl3"><a href="#4-without-the-worker">4. Without the Worker</a></li>
 <li><a href="#selling-with-paddle">Selling with Paddle</a></li>
@@ -63,40 +63,40 @@
 </ul>
 </nav>
 
-<p>Wren is a beta under development and every version is free. During the beta a <strong>supporter licence</strong> only supports its
+<p>Wren is a beta under development and every version is free. During the beta a <strong>supporter license</strong> only supports its
 development: it unlocks nothing, nothing in Wren checks it, and no window or reminder asks for one. Once Wren is out of
-beta, the updates that follow need a licence, and one bought during the beta covers them. The only visible effect is one
+beta, the updates that follow need a license, and one bought during the beta covers them. The only visible effect is one
 line of <code>about:wren</code>:</p>
 <ul>
-<li>without a licence: <code>Unregistered — free during the beta · Support Wren</code>;</li>
+<li>without a license: <code>Unregistered — free during the beta · Support Wren</code>;</li>
 <li>with one: <code>Registered to &lt;name&gt;</code>, with the edition, the date, the order number and a thank-you.</li>
 </ul>
-<p>The code is under the PolyForm Strict License 1.0.0 (<a href="https://github.com/sachahjkl/wren/blob/master/LICENSE">LICENSE</a>). A supporter licence is separate from the code's license.</p>
+<p>The code is under the PolyForm Strict License 1.0.0 (<a href="https://github.com/sachahjkl/wren/blob/master/LICENSE">LICENSE</a>). A supporter license is separate from the code's license.</p>
 <h2 id="how-it-works"><a class="anchor" href="#how-it-works" aria-hidden="true">#</a>How it works</h2>
-<p>A licence is a statement signed offline with an <strong>Ed25519</strong> private key that only the maintainer has. Wren holds the
+<p>A license is a statement signed offline with an <strong>Ed25519</strong> private key that only the maintainer has. Wren holds the
 matching public key and checks the signature on the user's computer, <strong>without any network access</strong>
 (<code>core:crypto/ed25519</code>, package <code>src/license</code>). No server is involved in checking. Issuing is either manual (the
-maintainer signs a licence with <code>wrentool license</code> and sends it) or automatic: licences are sold through
+maintainer signs a license with <code>wrentool license</code> and sends it) or automatic: licenses are sold through
 <a href="https://www.paddle.com" rel="noopener">Paddle</a> (the seller of record, who handles VAT), and a small Cloudflare Worker
-(<a href="https://github.com/sachahjkl/wren/tree/master/licence/worker"><code>licence/worker</code></a>, free plan) signs the licence when Paddle reports a paid transaction, keeps it,
-mails it, and shows it on the thank-you page. Both produce byte-identical licences; see
+(<a href="https://github.com/sachahjkl/wren/tree/master/licence/worker"><code>licence/worker</code></a>, free plan) signs the license when Paddle reports a paid transaction, keeps it,
+mails it, and shows it on the thank-you page. Both produce byte-identical licenses; see
 <a href="#selling-with-paddle">Selling with Paddle</a>.</p>
-<p>(The folder is <code>licence</code>, not <code>license</code>: on Windows <code>license</code> would collide with the <code>LICENSE</code> file at the root.)</p>
+<p>(The folder is <code>license</code>, not <code>license</code>: on Windows <code>license</code> would collide with the <code>LICENSE</code> file at the root.)</p>
 <h3 id="format"><a class="anchor" href="#format" aria-hidden="true">#</a>Format</h3>
-<p>The text of a licence (what is pasted in <code>about:wren</code>, or kept in a <code>.wrenlicense</code> file):</p>
+<p>The text of a license (what is pasted in <code>about:wren</code>, or kept in a <code>.wrenlicense</code> file):</p>
 <div class="code"><pre><code>WREN1.&lt;payload&gt;.&lt;signature&gt;</code></pre></div>
 <ul>
 <li><code>payload</code>: base64url (no padding) of a JSON object
 <code>{"product":"wren","edition":"supporter","name":"…","email":"…","date":"2026-10-22","order":"WREN-0001"}</code>.
-<code>edition</code> is <code>supporter</code> or <code>patron</code> (the same licence, a stronger support); unknown fields and unknown editions are
-read and ignored, so an older Wren keeps working with a newer licence. Each field is at most 256 bytes.</li>
+<code>edition</code> is <code>supporter</code> or <code>patron</code> (the same license, a stronger support); unknown fields and unknown editions are
+read and ignored, so an older Wren keeps working with a newer license. Each field is at most 256 bytes.</li>
 <li><code>signature</code>: base64url (no padding) of the Ed25519 signature over <code>"wren-license-v1\n"</code> followed by the payload's
 bytes exactly as they appear in the text (nothing to canonicalize; the prefix keeps a signature made for another use
-from passing as a licence).</li>
+from passing as a license).</li>
 </ul>
 <p>White space is ignored and lines starting with <code>#</code> are comments, so a key may be wrapped in an e-mail, and a
 <code>.wrenlicense</code> file starts with a header of comments:</p>
-<div class="code"><pre><code># Wren licence (Supporter) for Jeanne Dupont
+<div class="code"><pre><code># Wren license (Supporter) for Jeanne Dupont
 # Order WREN-0001, 2026-10-22. Open this file with Wren, or paste the key in about:wren.
 WREN1.eyJwcm9kdWN0Ijoid3JlbiIs…
 …</code></pre></div>
@@ -109,9 +109,9 @@ kept.</li>
 <li><strong>Stored</strong> in <code>license.wrenlicense</code> in the profile folder (<code>browser.license.path</code> points elsewhere; with
 <code>browser.profile.persist</code> off it lives in memory for the session). It is read and checked only when <code>about:wren</code> is
 opened.</li>
-<li><strong>Remove</strong> it with <em>Remove the licence from this computer</em> on the same page.</li>
+<li><strong>Remove</strong> it with <em>Remove the license from this computer</em> on the same page.</li>
 <li>Preferences (<code>about:config</code>): <code>browser.license.path</code>, <code>browser.license.public_key</code> (replaces the built-in key, to
-read licences of another issuer), <code>browser.license.support_url</code> (the <em>Support Wren</em> link, a web page).</li>
+read licenses of another issuer), <code>browser.license.support_url</code> (the <em>Support Wren</em> link, a web page).</li>
 </ul>
 <h2 id="the-maintainers-procedure"><a class="anchor" href="#the-maintainers-procedure" aria-hidden="true">#</a>The maintainer's procedure</h2>
 <h3 id="1-make-the-key-pair-once"><a class="anchor" href="#1-make-the-key-pair-once" aria-hidden="true">#</a>1. Make the key pair (once)</h3>
@@ -120,32 +120,32 @@ read licences of another issuer), <code>browser.license.support_url</code> (the 
 path inside a git work tree, and <code>.gitignore</code> keeps <code>.wren-license/</code>, <code>private.key</code> and <code>*.wrenlicense</code> out of git) and
 prints the public key and the line to paste in <code>src/license/public_key.odin</code>:</p>
 <div class="code"><div class="file">Odin</div><pre><code>PRODUCTION_PUBLIC_KEY :: <span class="s">"…"</span></code></pre></div>
-<p>Rebuild Wren. <strong>Back up the private key outside this computer</strong> (a password manager): if it is lost, no new licence can
-be issued for the builds that carry the public key, and if it leaks, anyone can issue licences. <code>keygen</code> will not
-overwrite an existing key without <code>-force</code>; a new key invalidates every licence issued with the old one.</p>
-<p>Until the public key is set, builds read no licence: <code>about:wren</code> stays on <em>Unregistered</em>, and pasting a key says that
+<p>Rebuild Wren. <strong>Back up the private key outside this computer</strong> (a password manager): if it is lost, no new license can
+be issued for the builds that carry the public key, and if it leaks, anyone can issue licenses. <code>keygen</code> will not
+overwrite an existing key without <code>-force</code>; a new key invalidates every license issued with the old one.</p>
+<p>Until the public key is set, builds read no license: <code>about:wren</code> stays on <em>Unregistered</em>, and pasting a key says that
 this build has no key to check it with.</p>
-<h3 id="2-issue-a-licence"><a class="anchor" href="#2-issue-a-licence" aria-hidden="true">#</a>2. Issue a licence</h3>
+<h3 id="2-issue-a-license"><a class="anchor" href="#2-issue-a-license" aria-hidden="true">#</a>2. Issue a license</h3>
 <div class="code"><div class="file">PowerShell</div><pre><code>wrentool license issue -name <span class="s">"Jeanne Dupont"</span> -email jeanne@example.org -edition supporter -order WREN-<span class="t">0001</span></code></pre></div>
 <p><code>-edition</code> is <code>supporter</code> or <code>patron</code>; <code>-date</code> defaults to today; <code>-private FILE</code> uses another key. The tool verifies
 what it signed, prints the key, and writes <code>%USERPROFILE%\.wren-license\issued\WREN-0001.wrenlicense</code> (<code>-out FILE</code> to
 choose). Send the file (or the key) to the buyer.</p>
-<p>Other commands: <code>wrentool license pubkey</code> (print the public key), <code>wrentool license verify FILE</code> (check a licence
+<p>Other commands: <code>wrentool license pubkey</code> (print the public key), <code>wrentool license verify FILE</code> (check a license
 against the built-in key; <code>-public KEY</code> against another).</p>
 <h3 id="3-development-key"><a class="anchor" href="#3-development-key" aria-hidden="true">#</a>3. Development key</h3>
 <p><code>-dev</code> uses a development pair that is public on purpose (<code>src/license/dev_keys.odin</code>: the tests and screenshots use
-it). A licence made with it is refused by a build that carries the production key. To try one in a build:
+it). A license made with it is refused by a build that carries the production key. To try one in a build:
 <code>wrentool license issue -dev …</code> and <code>--pref browser.license.public_key=&lt;wrentool license pubkey -dev&gt;</code>.</p>
-<p>An experimental build (<code>wrentool experimental</code>, which builds with <code>WREN_ACCEPT_DEV_LICENSE_KEY=1</code>: <code>build.bat</code> passes <code>-define:WREN_ACCEPT_DEV_LICENSE_KEY=true</code>) accepts the licences of this pair too, as a development build does, so that the demonstration licence it is handed out with shows its card with no setting. A release never does.</p>
-<p>A <strong>pre-registered</strong> build carries a licence inside: <code>build.bat</code> with <code>WREN_EMBEDDED_LICENSE=&lt;the one line of the .wrenlicense&gt;</code> (and a <code>WREN_VERSION_LABEL</code>, which it requires so that such a build is never an unlabelled one). The first time <code>about:wren</code> asks the profile for its licence and the profile holds none, the build's is written there (<code>license_seed</code>, <code>src/browser/license_shell.odin</code>) with a marker file <code>&lt;licence file&gt;.seeded</code>; it is then the profile's own: <code>Remove the licence</code> removes it and the marker stops it coming back, another licence replaces it, and a profile that already holds a licence keeps its own. A build that cannot check the text (a release with no key for it) puts nothing anywhere. <code>wrentool experimental</code> builds this way with the development pair's demonstration licence. A release has no <code>WREN_EMBEDDED_LICENSE</code>.</p>
+<p>An experimental build (<code>wrentool experimental</code>, which builds with <code>WREN_ACCEPT_DEV_LICENSE_KEY=1</code>: <code>build.bat</code> passes <code>-define:WREN_ACCEPT_DEV_LICENSE_KEY=true</code>) accepts the licenses of this pair too, as a development build does, so that the demonstration license it is handed out with shows its card with no setting. A release never does.</p>
+<p>A <strong>pre-registered</strong> build carries a license inside: <code>build.bat</code> with <code>WREN_EMBEDDED_LICENSE=&lt;the one line of the .wrenlicense&gt;</code> (and a <code>WREN_VERSION_LABEL</code>, which it requires so that such a build is never an unlabelled one). The first time <code>about:wren</code> asks the profile for its license and the profile holds none, the build's is written there (<code>license_seed</code>, <code>src/browser/license_shell.odin</code>) with a marker file <code>&lt;license file&gt;.seeded</code>; it is then the profile's own: <code>Remove the license</code> removes it and the marker stops it coming back, another license replaces it, and a profile that already holds a license keeps its own. A build that cannot check the text (a release with no key for it) puts nothing anywhere. <code>wrentool experimental</code> builds this way with the development pair's demonstration license. A release has no <code>WREN_EMBEDDED_LICENSE</code>.</p>
 <h3 id="4-without-the-worker"><a class="anchor" href="#4-without-the-worker" aria-hidden="true">#</a>4. Without the Worker</h3>
-<p><code>wrentool license issue</code> still works for a gift, a refund replacement or a licence given by hand, with the same key.
+<p><code>wrentool license issue</code> still works for a gift, a refund replacement or a license given by hand, with the same key.
 Use an order number that does not look like a Worker one (<code>GIFT-0001</code>).</p>
 <h2 id="selling-with-paddle"><a class="anchor" href="#selling-with-paddle" aria-hidden="true">#</a>Selling with Paddle</h2>
 <p>Nothing is for sale until the steps below are done: <a href="../../pricing/">the pricing page</a> shows <em>Coming soon</em> while
-its settings are empty. Cost: Paddle's fee per sale, the free plans of Cloudflare Workers + KV, and, to mail licences to
+its settings are empty. Cost: Paddle's fee per sale, the free plans of Cloudflare Workers + KV, and, to mail licenses to
 buyers you do not know, the Workers Paid plan (5 USD a month, 3000 mails a month included, then 0.35 USD per 1000: see
-"Mailing the licence" below).</p>
+"Mailing the license" below).</p>
 <div class="code"><pre><code>buyer ── Paddle checkout (overlay on pricing/) ────── pays
                 │                                       │
                 │ checkout.completed (browser)          │ transaction.completed (signed webhook)
@@ -165,21 +165,21 @@ globally-replicated copy the thank-you page reads, kept in step by the object.</
 <div class="table-box"><table>
 <thead><tr><th>Endpoint</th><th></th></tr></thead>
 <tbody>
-<tr><td><code>POST /paddle/webhook</code></td><td>Checks <code>Paddle-Signature</code> (<code>ts=…;h1=…</code>: HMAC-SHA256 of <code>ts:</code> + the raw body with the destination's secret, compared in constant time, <code>ts</code> within <code>WEBHOOK_TOLERANCE_SECONDS</code>, 300 by default; several <code>h1</code> are accepted during a secret rotation). Only <code>transaction.completed</code> acts. The transaction is handed to its <code>LicenseOrder</code> Durable Object: edition from the price ids, name and e-mail from the Paddle API (<code>GET /customers/{id}</code>), licence signed, stored under <code>txn:&lt;id&gt;</code>, mailed (or queued). Answers 200 when done <strong>or queued</strong>, <strong>401</strong> for a bad signature, <strong>422</strong> for a transaction that can never work (no customer e-mail: nothing to retry), <strong>500</strong> when the Paddle API is down (Paddle then delivers the webhook again). A mail that cannot go out now no longer makes the webhook fail: the object queues it and retries on its own alarm. A transaction with no Wren price is acknowledged and ignored.</td></tr>
+<tr><td><code>POST /paddle/webhook</code></td><td>Checks <code>Paddle-Signature</code> (<code>ts=…;h1=…</code>: HMAC-SHA256 of <code>ts:</code> + the raw body with the destination's secret, compared in constant time, <code>ts</code> within <code>WEBHOOK_TOLERANCE_SECONDS</code>, 300 by default; several <code>h1</code> are accepted during a secret rotation). Only <code>transaction.completed</code> acts. The transaction is handed to its <code>LicenseOrder</code> Durable Object: edition from the price ids, name and e-mail from the Paddle API (<code>GET /customers/{id}</code>), license signed, stored under <code>txn:&lt;id&gt;</code>, mailed (or queued). Answers 200 when done <strong>or queued</strong>, <strong>401</strong> for a bad signature, <strong>422</strong> for a transaction that can never work (no customer e-mail: nothing to retry), <strong>500</strong> when the Paddle API is down (Paddle then delivers the webhook again). A mail that cannot go out now no longer makes the webhook fail: the object queues it and retries on its own alarm. A transaction with no Wren price is acknowledged and ignored.</td></tr>
 <tr><td><code>POST /mail/bounce</code></td><td>The mail provider's delivery webhook (a bounce or complaint). Protected by <code>MAIL_BOUNCE_SECRET</code> (the <code>X-Bounce-Secret</code> header or a bearer token), <strong>closed</strong> when that is unset. Body <code>{"txn"|"order": …, "reason": …}</code>: marks that purchase's mail <code>failed</code> and dead-letters it. Cloudflare Email Service has no such webhook today, so this is deliberately provider-agnostic (use it by hand, or wire a provider that has one).</td></tr>
-<tr><td><code>GET /licence?txn=txn_…</code></td><td>For <code>thanks/</code>. 200 with the licence, 202 (<code>Retry-After: 3</code>) while the webhook has not been processed.</td></tr>
+<tr><td><code>GET /licence?txn=txn_…</code></td><td>For <code>thanks/</code>. 200 with the license, 202 (<code>Retry-After: 3</code>) while the webhook has not been processed.</td></tr>
 <tr><td><code>GET /licence/txn_….wrenlicense</code></td><td>The file, as a download.</td></tr>
-<tr><td><code>POST /resend</code> <code>{"email": "…"}</code></td><td>Mails the licences bought with that address again ("resend" as in "send again"; the settings keep that name). <strong>Off</strong> unless <code>RESEND_ENABLED</code> is <code>true</code> (and the <code>ADMIN_TOKEN</code> bearer when <code>RESEND_REQUIRE_TOKEN</code>). Same answer whether or not the address bought something; at most <code>RESEND_MAX_PER_HOUR</code> (3) mails per address and hour. Every mail goes back through the order's object (never sent straight from here). It ignores the mail state of the purchase, so it is also the way to get a licence whose first mail failed, was lost, or dead-lettered.</td></tr>
+<tr><td><code>POST /resend</code> <code>{"email": "…"}</code></td><td>Mails the licenses bought with that address again ("resend" as in "send again"; the settings keep that name). <strong>Off</strong> unless <code>RESEND_ENABLED</code> is <code>true</code> (and the <code>ADMIN_TOKEN</code> bearer when <code>RESEND_REQUIRE_TOKEN</code>). Same answer whether or not the address bought something; at most <code>RESEND_MAX_PER_HOUR</code> (3) mails per address and hour. Every mail goes back through the order's object (never sent straight from here). It ignores the mail state of the purchase, so it is also the way to get a license whose first mail failed, was lost, or dead-lettered.</td></tr>
 <tr><td><code>GET /admin/dead-letter</code></td><td>The mails that gave up (<code>Authorization: Bearer ADMIN_TOKEN</code>). An order, a code, a count, a time: no name, no address. <code>POST /admin/dead-letter/retry {"txn":"txn_…"}</code> re-queues one.</td></tr>
 <tr><td><code>GET /health</code></td><td><code>{"ok": true}</code>, or 503 with the names of the settings not set yet (<code>ORDERS</code> is one).</td></tr>
 </tbody>
 </table></div>
 <p>Properties worth knowing:</p>
 <ul>
-<li><strong>Idempotent, atomically.</strong> The licence is a function of the transaction (Ed25519 signatures are deterministic, the
+<li><strong>Idempotent, atomically.</strong> The license is a function of the transaction (Ed25519 signatures are deterministic, the
 date is the transaction's own, the order number is derived from its id: <code>txn_01hv8wptq8987qeep44cyrewp9</code> gives
 <code>WREN-EEP4-4CYR-EWP9</code>). The <code>LicenseOrder</code> Durable Object serialises every delivery of the same webhook, so two of
-them, even at the same instant, issue one licence and send one mail — the race KV alone could not close.
+them, even at the same instant, issue one license and send one mail — the race KV alone could not close.
 <code>order:&lt;number&gt;</code> in KV finds the transaction of an order number.</li>
 <li><p><strong>One mail per purchase, at least once and never twice.</strong> Email Service has no idempotency key (a second <code>send()</code>
 is a second mail), so the object's state decides, under its input gate. <code>mail</code> goes <code>pending → sending → sent</code>
@@ -199,7 +199,7 @@ small record lands under <code>dead:&lt;txn&gt;</code> (order, code, count, time
 final right away: <code>failed</code>, with the code in <code>mail_detail</code>.</li>
 </ul></li>
 <li><strong>The id is the only secret of <code>GET /licence</code>.</strong> It is a ULID (80 random bits): not guessable, known to the buyer and to
-Paddle. What it yields is a licence that unlocks nothing. Responses carry <code>Cache-Control: no-store</code>, and CORS is limited
+Paddle. What it yields is a license that unlocks nothing. Responses carry <code>Cache-Control: no-store</code>, and CORS is limited
 to <code>ALLOWED_ORIGIN</code>.</li>
 <li><strong>The key never leaves unchecked.</strong> The Worker verifies each signature against <code>LICENSE_PUBLIC_KEY</code> before using it, and
 refuses to start signing when the private key and the public key are not a pair.</li>
@@ -210,10 +210,10 @@ address, a key or a secret (the message of an Email Service error can quote the 
 <li><strong>KV writes</strong>: four per purchase (<code>txn:</code> when the mail starts, <code>order:</code>, <code>email:</code>, <code>txn:</code> again when it settles; one
 more per retry or bounce). Nothing else writes, except <code>/resend</code> for an address that really bought (so a flood of
 made-up addresses uses none).</li>
-<li><strong>Retention (RGPD).</strong> KV keeps the buyer's name and e-mail address next to the licence (that is how the page shows it
+<li><strong>Retention (RGPD).</strong> KV keeps the buyer's name and e-mail address next to the license (that is how the page shows it
 and how <code>/resend</code> mails it again). <code>PII_RETENTION_DAYS</code> days after the mail settles, the object purges them: the
-record's <code>name</code>, <code>email</code>, <code>licence</code> and <code>file</code> are blanked (<code>name</code> becomes <code>(purged)</code>), the <code>email:</code> index is dropped;
-what stays is the order number and a note that it was purged. The licence is reproducible from the public transaction
+record's <code>name</code>, <code>email</code>, <code>license</code> and <code>file</code> are blanked (<code>name</code> becomes <code>(purged)</code>), the <code>email:</code> index is dropped;
+what stays is the order number and a note that it was purged. The license is reproducible from the public transaction
 id, so nothing is really lost; the person is. Set <code>PII_RETENTION_DAYS=0</code> to keep forever. Delete one by hand before
 then: <code>npx wrangler kv key delete --binding LICENSES --remote "txn:txn_…"</code> (and <code>order:…</code>; the <code>email:</code> index only
 holds a hash).</li>
@@ -222,7 +222,7 @@ holds a hash).</li>
 <p>Each <code>LicenseOrder</code> keeps, in its own SQLite-backed storage (durable, transactional with its input gate):</p>
 <div class="code"><pre><code>OrderState {
   status: "received" | "issued" | "mailed" | "failed",
-  stored: { … the signed licence, the buyer, the mail state and attempts … } | undefined,
+  stored: { … the signed license, the buyer, the mail state and attempts … } | undefined,
   attempts: number,              // send() calls made
   next_attempt: ISO string | undefined,   // when the retry alarm will fire
   journal: [ { at, evt, detail? } ]        // the last ~40 steps, no personal data
@@ -257,8 +257,8 @@ and Paddle delivers again later. No half-issued state is left behind.</li>
 <li><strong>Paddle</strong>: a <strong>sandbox</strong> account first (<a href="https://sandbox-vendors.paddle.com" rel="noopener">https://sandbox-vendors.paddle.com</a>: separate from the live one, no
 verification, no money), the live account later.</li>
 </ul>
-<h4 id="mailing-the-licence-cloudflare-email-service"><a class="anchor" href="#mailing-the-licence-cloudflare-email-service" aria-hidden="true">#</a>Mailing the licence (Cloudflare Email Service)</h4>
-<p>The licence is mailed with Cloudflare's own sender (Email Service &gt; Email Sending, in beta), through a <code>send_email</code>
+<h4 id="mailing-the-license-cloudflare-email-service"><a class="anchor" href="#mailing-the-license-cloudflare-email-service" aria-hidden="true">#</a>Mailing the license (Cloudflare Email Service)</h4>
+<p>The license is mailed with Cloudflare's own sender (Email Service &gt; Email Sending, in beta), through a <code>send_email</code>
 binding named <code>EMAIL</code>: no other provider, no API key, no secret to keep. What it needs (the pages of
 <a href="https://developers.cloudflare.com/email-service/" rel="noopener">https://developers.cloudflare.com/email-service/</a> are the reference and change; read <em>Domain configuration</em>, <em>Send
 bindings</em> and <em>Pricing</em> before the first deploy):</p>
@@ -268,16 +268,16 @@ bindings</em> and <em>Pricing</em> before the first deploy):</p>
 adds the DNS records itself (SPF, DKIM and MX on <code>cf-bounce.&lt;domain&gt;</code>, DMARC on <code>_dmarc.&lt;domain&gt;</code>). They usually
 propagate in 5 to 15 minutes. Without this the sender is refused (<code>E_SENDER_NOT_VERIFIED</code>, <code>E_SENDER_DOMAIN_NOT_AVAILABLE</code>).</li>
 <li><strong>The Workers Paid plan.</strong> On the free plan the binding only sends to <em>verified destination addresses</em> of your account, so
-a buyer you do not know gets nothing (<code>E_RECIPIENT_NOT_ALLOWED</code>: the licence stays on the thank-you page). On Workers
+a buyer you do not know gets nothing (<code>E_RECIPIENT_NOT_ALLOWED</code>: the license stays on the thank-you page). On Workers
 Paid, any recipient: 3000 mails a month included per account, then 0.35 USD per 1000. At a few sales a month it is the
 plan's own price (5 USD a month) and nothing more. Sends to your own verified addresses are free, which is enough for a
 test on the free plan.</li>
 <li><strong><code>MAIL_FROM</code></strong> in <code>cloudflare.config.ts</code> and <code>wrangler.jsonc</code>: an address of the onboarded domain, for example
-<code>Wren &lt;licences@froment.software&gt;</code> (<code>MAIL_REPLY_TO</code> is optional, for example <code>contact@froment.software</code>: where a buyer's
+<code>Wren &lt;licenses@froment.software&gt;</code> (<code>MAIL_REPLY_TO</code> is optional, for example <code>contact@froment.software</code>: where a buyer's
 reply goes).</li>
 <li><strong>Deploy.</strong> The binding is declared in both config files (<code>EMAIL: bindings.sendEmail({})</code>, <code>"send_email": [{"name":
 "EMAIL"}]</code>) and <code>cf deploy</code> lists it. With <code>MAIL_FROM</code> empty, or when the binding is missing (a local test), the mail
-is <code>skipped</code>: the Worker still issues the licence and the thank-you page shows it.</li>
+is <code>skipped</code>: the Worker still issues the license and the thank-you page shows it.</li>
 <li><strong>Try it</strong>: a sandbox purchase (below) with your own e-mail address; <em>Email Sending</em> &gt; <em>Activity log</em> shows the message,
 and <code>npx wrangler tail</code> shows <code>mail</code> (<code>state: sent</code>) or <code>mail_refused</code> with the error <code>code</code>.</li>
 </ol>
@@ -293,7 +293,7 @@ wrentool license pubkey     <span class="c"># prints it again (LICENSE_PUBLIC_KE
 <h3 id="3-deploy-the-worker-sandbox-first"><a class="anchor" href="#3-deploy-the-worker-sandbox-first" aria-hidden="true">#</a>3. Deploy the Worker (sandbox first)</h3>
 <p>The Worker needs Paddle's webhook secret, which Paddle only gives once the Worker has an address. So: deploy, create the
 destination in Paddle, then put the secrets in.</p>
-<div class="code"><div class="file">PowerShell</div><pre><code>cd licence\worker
+<div class="code"><div class="file">PowerShell</div><pre><code>cd license\worker
 pnpm install                                   <span class="c"># cf and wrangler, dev dependencies used to build and deploy</span>
 cf auth login
 copy secrets.example.env secrets.sandbox.env   <span class="c"># fill LICENSE_PRIVATE_KEY now; the others after step 4</span></code></pre></div>
@@ -307,7 +307,7 @@ the sandbox and the live shop never mix. The command prints the address,
 runs the <code>v1</code> migration that creates its SQLite-backed class (declared in both config files: <code>migrations</code> with
 <code>new_sqlite_classes</code> in <code>wrangler.jsonc</code>, <code>newSqliteClasses</code> in <code>cloudflare.config.ts</code>). On the free plan the deploy is
 refused. Since mailing a stranger already needs Workers Paid (below), the shop needs the paid plan to run for real
-anyway; a free-plan deploy can still issue licences to the thank-you page if you drop the Durable Object, but then the
+anyway; a free-plan deploy can still issue licenses to the thank-you page if you drop the Durable Object, but then the
 double-webhook and the retry queue are gone. Later migrations get a new <code>tag</code> and are appended, never edited.</p>
 <p><code>cf deploy --dry-run --mode sandbox</code> builds and shows the bindings without uploading. To change one secret later:
 <code>cf workers secrets update PADDLE_API_KEY --worker wren-licence-sandbox --text …</code>, or edit the file and deploy again. To
@@ -321,7 +321,7 @@ npx wrangler tail --env sandbox                         <span class="c"># live l
 <p><code>wrentool paddle -Apply</code> (with <code>PADDLE_API_KEY</code>) makes the product and its price below, or finds them; without <code>-Apply</code> it prints
 what it would send.</p>
 <ol>
-<li><strong>Catalog → Products → New product</strong>: "Wren User Licence" (category: standard digital goods). Add two <strong>one-time</strong> prices
+<li><strong>Catalog → Products → New product</strong>: "Wren User License" (category: standard digital goods). Add two <strong>one-time</strong> prices
 (no billing period): <em>Supporter</em> 29 EUR and <em>Patron</em> 79 EUR, tax mode "inclusive" so that the buyer pays the displayed
 price, quantity 1 to 1. Copy both <strong>price ids</strong> (<code>pri_…</code>).</li>
 <li><strong>Developer tools → Notifications → New destination</strong>: type <em>Webhook</em>, URL
@@ -375,7 +375,7 @@ cf deploy --secrets-file secrets.env</code></pre></div>
 <tr><td><code>MAIL_FROM</code>, <code>MAIL_REPLY_TO</code></td><td>sender (<code>Name &lt;address&gt;</code> or an address, on a domain onboarded in Email Service &gt; Email Sending; empty: no mail) and optional reply address</td></tr>
 <tr><td><code>ALLOWED_ORIGIN</code></td><td>origins that may call <code>GET /licence</code> from a page, comma separated (<code>*</code> = any)</td></tr>
 <tr><td><code>WEBHOOK_TOLERANCE_SECONDS</code></td><td>how old a webhook may be (300)</td></tr>
-<tr><td><code>RESEND_ENABLED</code>, <code>RESEND_MAX_PER_HOUR</code></td><td><code>POST /resend</code> ("send the licence again") on/off (false) and its limit per address (3)</td></tr>
+<tr><td><code>RESEND_ENABLED</code>, <code>RESEND_MAX_PER_HOUR</code></td><td><code>POST /resend</code> ("send the license again") on/off (false) and its limit per address (3)</td></tr>
 <tr><td><code>RESEND_REQUIRE_TOKEN</code></td><td><code>true</code> also requires the <code>ADMIN_TOKEN</code> bearer on <code>/resend</code> (false)</td></tr>
 <tr><td><code>MAIL_BACKOFF_MINUTES</code></td><td>the mail retry ladder, minutes between attempts, comma separated (<code>1,5,30,120,720,2880</code>); the last rung repeats</td></tr>
 <tr><td><code>MAIL_MAX_ATTEMPTS</code></td><td>send tries before a mail goes to the dead-letter (7)</td></tr>
@@ -383,25 +383,25 @@ cf deploy --secrets-file secrets.env</code></pre></div>
 </tbody>
 </table></div>
 <p>Bindings: <code>LICENSES</code> (KV), <code>ORDERS</code> (the <code>LicenseOrder</code> Durable Object namespace), <code>EMAIL</code> (Email Service sending;
-absent: licences are not mailed, the thank-you page still shows them).</p>
+absent: licenses are not mailed, the thank-you page still shows them).</p>
 <p>Secrets (<code>secrets.env</code>, uploaded by <code>cf deploy --secrets-file</code>, never in a committed file): <code>LICENSE_PRIVATE_KEY</code>,
 <code>PADDLE_WEBHOOK_SECRET</code>, <code>PADDLE_API_KEY</code>, and optionally <code>ADMIN_TOKEN</code> (for <code>/admin/*</code> and, with
 <code>RESEND_REQUIRE_TOKEN</code>, <code>/resend</code>) and <code>MAIL_BOUNCE_SECRET</code> (for <code>/mail/bounce</code>). The mail itself needs no secret.</p>
 <h3 id="tests"><a class="anchor" href="#tests" aria-hidden="true">#</a>Tests</h3>
-<div class="code"><div class="file">PowerShell</div><pre><code>cd licence\worker
+<div class="code"><div class="file">PowerShell</div><pre><code>cd license\worker
 node --test <span class="s">"test/*.test.ts"</span>      <span class="c"># Node 22.18+ (or: bun test test/); no network, no dependency</span></code></pre></div>
 <p><code>src\tools\test_all</code> runs them (SKIP when neither node nor bun is installed). The tests drive the Durable Object through
 a fake <code>ORDERS</code> namespace (one in-memory <code>LicenseOrder</code> per id, with a fake storage and a manually-fired alarm). They
 cover the webhook signature (valid, altered, wrong secret, too old, malformed, rotation), a <code>transaction.completed</code> in
 Paddle Billing's format (<code>licence/worker/test/fixtures</code>), idempotency (a double webhook issues and mails once), the mail
 outcomes (a fake <code>EMAIL</code> binding: sent, skipped, a deferred mail that the retry alarm later sends, failed, the
-attachment, no second mail), the endpoints, <code>/resend</code>, and the cross-check: licences made by
+attachment, no second mail), the endpoints, <code>/resend</code>, and the cross-check: licenses made by
 the Worker with the development pair (<code>DEV_SEED</code> of <code>src/license/dev_keys.odin</code>, read from the Odin source) are verified
 by Wren's own tool (<code>license.exe verify -dev</code>) as a key and as a <code>.wrenlicense</code> file; altered ones and ones of another
 key are refused; and for the same fields the Worker and <code>license.exe issue -dev</code> produce the very same text.</p>
 <h3 id="losing-or-changing-the-key"><a class="anchor" href="#losing-or-changing-the-key" aria-hidden="true">#</a>Losing or changing the key</h3>
-<p>A new key pair invalidates every licence issued with the old one (Wren builds carry one public key). Keep the private key
-backed up outside this computer; if it leaks, anyone can issue licences, and the only remedy is a new pair, a new Wren
+<p>A new key pair invalidates every license issued with the old one (Wren builds carry one public key). Keep the private key
+backed up outside this computer; if it leaks, anyone can issue licenses, and the only remedy is a new pair, a new Wren
 build, and a re-issue to every buyer (<code>order:</code> and <code>txn:</code> in KV list them).</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/desktop-integration/"><span>Previous</span><strong>Desktop integration</strong></a>
@@ -456,7 +456,7 @@ build, and a re-issue to every buyer (<code>order:</code> and <code>txn:</code> 
 <li><a href="../../docs/windows/">Several windows</a></li>
 <li><a href="../../docs/chrome-style/">The look of the chrome</a></li>
 <li><a href="../../docs/desktop-integration/">Desktop integration</a></li>
-<li><a href="../../docs/licence/" aria-current="page" class="active">Licences</a></li>
+<li><a href="../../docs/licence/" aria-current="page" class="active">Licenses</a></li>
 </ul>
 </div>
 <div class="doc-sec">
@@ -621,7 +621,7 @@ build, and a re-issue to every buyer (<code>order:</code> and <code>txn:</code> 
 </aside>
 </div>
 <footer class="foot">
-Wren is made by <a href="https://froment.software">Froment Software</a>. Wren User Licence: one payment of 29&nbsp;&euro;, personal and perpetual, two years of updates from 1.0.
+Wren is made by <a href="https://froment.software">Froment Software</a>. Wren User License: one payment of 29&nbsp;&euro;, personal and perpetual, two years of updates from 1.0.
 - <a href="../../archive/">archive</a>
 - <a href="../../privacy/">privacy</a>
 - <a href="../../terms/">terms</a>

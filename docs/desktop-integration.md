@@ -146,7 +146,7 @@ copy* (a copy is installed elsewhere; same version or newer: **Replace installed
 
 *Standalone* is a copy that was not installed and keeps the **normal profile** (`%APPDATA%\Wren`). A *portable* copy is a
 folder with a file `wren.portable` next to `wren.exe`: its profile (preferences, cookies, history, session, crash reports,
-licence) is `<folder>\data`, it never offers Setup by itself, and `--profile DIR` still wins.
+license) is `<folder>\data`, it never offers Setup by itself, and `--profile DIR` still wins.
 
 ### Updates
 
@@ -176,7 +176,7 @@ output, else to the parent's console. It applies the preferences below (what the
 `wren --uninstall [--purge]` is the shorthand for `--desktop-integration=uninstall`: it removes the whole installed copy
 silently — the integration (shortcuts, the browser registration), the PATH entry, the Settings > Apps record and the
 files Setup placed — and keeps the user's profile unless `--purge` is given (which also deletes the profile: preferences,
-history, cookies, session, crash reports, licence). Exit codes: 0 done, 1 failed, 5 done but some files are in use and are
+history, cookies, session, crash reports, license). Exit codes: 0 done, 1 failed, 5 done but some files are in use and are
 removed when the running copy closes (the one being uninstalled is the one running). `remove` takes away only the
 integration; `uninstall` takes away the installed copy. `--install` is the shorthand for `--desktop-integration=install`.
 

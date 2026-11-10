@@ -1,6 +1,6 @@
 # Shaders in the browser's own pages (`-wren-shader`)
 
-The licence card of `about:wren` is lit by a real fragment shader reading a real normal map, not by layers of CSS. The toolkit gives Wren
+The license card of `about:wren` is lit by a real fragment shader reading a real normal map, not by layers of CSS. The toolkit gives Wren
 an application shader API (gui_toolkit 0.25.0, its [docs/shaders.md](../ext/gui_toolkit/docs/shaders.md): `render.create_app_shader`,
 `draw.app_shader`, `render.create_texture_data`); this page is what Wren builds on it.
 

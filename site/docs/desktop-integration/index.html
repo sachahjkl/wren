@@ -78,7 +78,7 @@
 <li><a href="../../docs/windows/">Several windows</a></li>
 <li><a href="../../docs/chrome-style/">The look of the chrome</a></li>
 <li><a href="../../docs/desktop-integration/" aria-current="page" class="active">Desktop integration</a></li>
-<li><a href="../../docs/licence/">Licences</a></li>
+<li><a href="../../docs/licence/">Licenses</a></li>
 </ul>
 </div>
 <div class="doc-sec">
@@ -387,7 +387,7 @@ without an answer (X, Escape, a click outside) is <code>choice=dismissed</code> 
 <h3 id="standalone-and-portable"><a class="anchor" href="#standalone-and-portable" aria-hidden="true">#</a>Standalone and portable</h3>
 <p><em>Standalone</em> is a copy that was not installed and keeps the <strong>normal profile</strong> (<code>%APPDATA%\Wren</code>). A <em>portable</em> copy is a
 folder with a file <code>wren.portable</code> next to <code>wren.exe</code>: its profile (preferences, cookies, history, session, crash reports,
-licence) is <code>&lt;folder&gt;\data</code>, it never offers Setup by itself, and <code>--profile DIR</code> still wins.</p>
+license) is <code>&lt;folder&gt;\data</code>, it never offers Setup by itself, and <code>--profile DIR</code> still wins.</p>
 <h3 id="updates"><a class="anchor" href="#updates" aria-hidden="true">#</a>Updates</h3>
 <p><code>browser.update.check_daily</code> (off: no request is made unless asked): one GET a day of GitHub's latest release
 (<code>browser.update.url</code>), compared with the running version, announced once per version; nothing is downloaded. The command
@@ -410,7 +410,7 @@ output, else to the parent's console. It applies the preferences below (what the
 <p><code>wren --uninstall [--purge]</code> is the shorthand for <code>--desktop-integration=uninstall</code>: it removes the whole installed copy
 silently — the integration (shortcuts, the browser registration), the PATH entry, the Settings &gt; Apps record and the
 files Setup placed — and keeps the user's profile unless <code>--purge</code> is given (which also deletes the profile: preferences,
-history, cookies, session, crash reports, licence). Exit codes: 0 done, 1 failed, 5 done but some files are in use and are
+history, cookies, session, crash reports, license). Exit codes: 0 done, 1 failed, 5 done but some files are in use and are
 removed when the running copy closes (the one being uninstalled is the one running). <code>remove</code> takes away only the
 integration; <code>uninstall</code> takes away the installed copy. <code>--install</code> is the shorthand for <code>--desktop-integration=install</code>.</p>
 <h2 id="links-that-open-in-wren"><a class="anchor" href="#links-that-open-in-wren" aria-hidden="true">#</a>Links that open in Wren</h2>
@@ -476,7 +476,7 @@ to the user's Wren and end. <code>src\tools\e2e\instance.odin</code> checks the 
 <code>wrentool bench startup</code> measures the cost of a start (one <code>CreateMutexW</code>: no measurable difference of the first present).</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/chrome-style/"><span>Previous</span><strong>The look of the browser's own interface</strong></a>
-<a class="doc-next" href="../../docs/licence/"><span>Next</span><strong>Wren User Licences</strong></a>
+<a class="doc-next" href="../../docs/licence/"><span>Next</span><strong>Wren User Licenses</strong></a>
 </nav>
 <p class="doc-edit"><a href="https://github.com/sachahjkl/wren/blob/master/docs/desktop-integration.md" rel="noopener">Edit this page on GitHub</a></p>
 </article>

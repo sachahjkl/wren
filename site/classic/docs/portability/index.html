@@ -127,7 +127,7 @@ and <code>wm_aout_*</code>. The Odin side (<code>audio_decode_rust.odin</code>, 
 <code>Audio_Output</code>; <code>backend_linux.odin</code> picks cpal or the null output by <code>media.audio.backend</code>. The new crates are
 target-gated to non-Windows (Opus' C and cpal's ALSA stay out of the Windows build).</li>
 <li><strong>H.264</strong> (<code>media</code>): <code>h264_linux.odin</code> decodes through Cisco's <strong>openh264</strong>, <code>dlopen</code>ed at run time (never built from
-source: the patent licence covers only Cisco's binaries, <code>wrentool fetch openh264</code>), behind <code>Video_Decoder</code>.
+source: the patent license covers only Cisco's binaries, <code>wrentool fetch openh264</code>), behind <code>Video_Decoder</code>.
 <code>vaapi_linux.odin</code> probes the GPU's VA-API H.264 support (libva / libva-drm by <code>dlopen</code>, a DRM render node) and is
 preferred when <code>media.h264.backend</code> allows; the VA-API decode path itself (slice-level) is not written, so it falls
 back to openh264 — the first thing to try under WSL is openh264.</li>
@@ -240,7 +240,7 @@ and GitHub's repository page load and draw. What it took:</p>
 <ul>
 <li><code>wrentool fetch wgpu</code>: wgpu-native (the release Odin's <code>vendor:wgpu</code> names), SHA-256 checked and sealed like Wasmtime
 (one object, only <code>wgpu*</code> kept), put where Odin looks for it. Two Rust libraries in one link otherwise stop on
-<code>rust_eh_personality</code>. <code>wrentool fetch wasmtime</code> also fetches the licence text the browser bundles.</li>
+<code>rust_eh_personality</code>. <code>wrentool fetch wasmtime</code> also fetches the license text the browser bundles.</li>
 <li>Four imports of <code>core:sys/windows</code> / <code>wb:desktop</code> that only Windows used (an unused import is an error under <code>-vet</code>).</li>
 <li>The system's <code>libopus</code>, <code>libasound</code> and <code>libfontconfig</code> to link; <code>libwayland-client</code>, <code>libxkbcommon</code> (or <code>libxcb</code>) and
 a Vulkan or GL driver at run time. On NixOS: <code>nix shell</code> with clang, lld, nasm, pkg-config, rustup (1.99.1), and
@@ -268,7 +268,7 @@ C built by cc: no pure-Rust decoder is mature), <code>cpal</code> (ALSA, which P
 <code>native/media</code>, behind <code>Audio_Decoder</code> / <code>Audio_Output</code>. New crates: pinned, <code>THIRD_PARTY.md</code>, <code>native/rust-crates.txt</code>.
 WMF / WASAPI stay the Windows default, the Rust path selectable by a preference until parity is measured.</li>
 <li><strong>H.264</strong>: not in this slice. The choice to make: <code>openh264</code> (Cisco's decoder, BSD, built from source by the crate:
-but the patent licence Cisco pays covers only its own binaries, downloaded at run time) or the system's decoders
+but the patent license Cisco pays covers only its own binaries, downloaded at run time) or the system's decoders
 (VA-API directly, or GStreamer / FFmpeg, out of scope by the brief). Proposal: VA-API for H.264 / HEVC / VP9 where the
 GPU has it (the Linux counterpart of DXVA), and openh264's downloaded binary as the software fallback, behind a
 preference, the way Firefox does.</li>
@@ -449,7 +449,7 @@ recordings are on the Windows machine.</li>
 <li><a href="../../docs/windows/">Several windows</a></li>
 <li><a href="../../docs/chrome-style/">The look of the chrome</a></li>
 <li><a href="../../docs/desktop-integration/">Desktop integration</a></li>
-<li><a href="../../docs/licence/">Licences</a></li>
+<li><a href="../../docs/licence/">Licenses</a></li>
 </ul>
 </div>
 <div class="doc-sec">
@@ -614,7 +614,7 @@ recordings are on the Windows machine.</li>
 </aside>
 </div>
 <footer class="foot">
-Wren is made by <a href="https://froment.software">Froment Software</a>. Wren User Licence: one payment of 29&nbsp;&euro;, personal and perpetual, two years of updates from 1.0.
+Wren is made by <a href="https://froment.software">Froment Software</a>. Wren User License: one payment of 29&nbsp;&euro;, personal and perpetual, two years of updates from 1.0.
 - <a href="../../archive/">archive</a>
 - <a href="../../privacy/">privacy</a>
 - <a href="../../terms/">terms</a>

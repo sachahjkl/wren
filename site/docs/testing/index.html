@@ -78,7 +78,7 @@
 <li><a href="../../docs/windows/">Several windows</a></li>
 <li><a href="../../docs/chrome-style/">The look of the chrome</a></li>
 <li><a href="../../docs/desktop-integration/">Desktop integration</a></li>
-<li><a href="../../docs/licence/">Licences</a></li>
+<li><a href="../../docs/licence/">Licenses</a></li>
 </ul>
 </div>
 <div class="doc-sec">
@@ -305,7 +305,7 @@ a change in <code>src/url</code> reruns the packages that import <code>url</code
 <li>for a step that compiles and runs Odin packages (<code>Input_Kind.Packages</code>): every file of those packages and of everything they import (<code>wb:</code>, <code>toolkit:</code>, <code>web:</code>, relative imports, parsed from the sources, for every build tag), what they <code>#load</code>, the libraries they
 link, the paths written in their strings (<code>"examples/site/images/%s"</code>: what a test reads while it runs), <code>examples\</code>, <code>assets\</code>, <code>api\</code>, <code>sdk\</code>, the test server, the native libraries, and what every step inherits (<code>src\tools\test_all\env.odin</code>);</li>
 <li>for a step that runs a script or the browser (<code>.Tree</code>): the whole tree (<code>src</code>, <code>ext\gui_toolkit</code>, <code>tools</code>, <code>wpt</code>, <code>native</code>, <code>api</code>, <code>sdk</code>, <code>examples</code>, <code>assets</code>, <code>build.bat</code>, <code>odin.version</code>, the libraries), tests of packages aside;</li>
-<li>for what is about the documentation or the changelog, what generates files, the licence Worker (<code>.Everything</code>): all of that and <code>docs</code>, <code>site</code>, <code>changelog.d</code>, <code>licence</code>.</li>
+<li>for what is about the documentation or the changelog, what generates files, the license Worker (<code>.Everything</code>): all of that and <code>docs</code>, <code>site</code>, <code>changelog.d</code>, <code>license</code>.</li>
 </ul>
 <p>What cannot be resolved (an unknown collection, an import that names no folder) takes the whole tree: an input too many costs a rerun, one too few could hide a failure. The tests of <code>src/tools/test_all</code>, themselves a step, compare the packages found with the compiler's
 own import graph (<code>-show-import-graph</code>) and check that a change of each kind of input changes a key, and that a change of something else does not.</p>

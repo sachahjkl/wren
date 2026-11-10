@@ -30,7 +30,7 @@ removed with **Clear browsing data** (the "cached responses" kind, for all sites
   to `images.web` (~900 px).
 - **`commons`** — [Wikimedia Commons](https://commons.wikimedia.org/w/api.php). The *Google Art Project works by artist*
   and *Featured pictures of paintings* categories, listed with `generator=categorymembers` and `prop=imageinfo`
-  (`iiurlwidth` for a bounded width, `extmetadata` for artist, title and licence). **Only freely licensed files are
+  (`iiurlwidth` for a bounded width, `extmetadata` for artist, title and license). **Only freely licensed files are
   kept** (public domain, CC0, CC-BY / CC-BY-SA); non-commercial, no-derivatives and fair-use files are refused. The
   attribution is shown in the caption.
 

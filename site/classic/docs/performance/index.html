@@ -75,7 +75,7 @@
 <li><a href="#what-changed-round-16-first-page-loads">What changed, round 16: first page loads</a></li>
 <li><a href="#what-changed-round-17-first-page-loads-what-they-wait-for">What changed, round 17: first page loads, what they wait for</a></li>
 <li><a href="#what-changed-round-18-the-frames-wait-for-its-slot-runs-the-loops-tasks">What changed, round 18: the frame's wait for its slot runs the loop's tasks</a></li>
-<li><a href="#what-changed-round-19-the-licence-card-of-aboutwren-under-the-pointer">What changed, round 19: the licence card of about:wren under the pointer</a></li>
+<li><a href="#what-changed-round-19-the-license-card-of-aboutwren-under-the-pointer">What changed, round 19: the license card of about:wren under the pointer</a></li>
 <li><a href="#what-changed-round-20-the-loop-jit-takes-properties-and-calls">What changed, round 20: the loop JIT takes properties and calls</a></li>
 <li><a href="#what-changed-round-21-the-jit-compiles-functions-calls-them-directly-makes-objects-and-strings-reads-dom-attributes">What changed, round 21: the JIT compiles functions, calls them directly, makes objects and strings, reads DOM attributes</a></li>
 <li><a href="#what-changed-round-22-what-the-user-does-while-the-pages-script-is-busy">What changed, round 22: what the user does while the page's script is busy</a></li>
@@ -1675,7 +1675,7 @@ above 1 sample in the frame of the first paint: <code>compute_styles</code>, <co
 most of the work is on the style and layout threads, which this sampler does not see. A profile of the threads
 (<code>WREN_SAMPLE_THREADS=1</code>) is the next measure. <strong>Not done this round</strong>: the script stage of DOM-heavy pages (item 1).</li>
 </ol>
-<h2 id="what-changed-round-19-the-licence-card-of-aboutwren-under-the-pointer"><a class="anchor" href="#what-changed-round-19-the-licence-card-of-aboutwren-under-the-pointer" aria-hidden="true">#</a>What changed, round 19: the licence card of about:wren under the pointer</h2>
+<h2 id="what-changed-round-19-the-license-card-of-aboutwren-under-the-pointer"><a class="anchor" href="#what-changed-round-19-the-license-card-of-aboutwren-under-the-pointer" aria-hidden="true">#</a>What changed, round 19: the license card of about:wren under the pointer</h2>
 <p><code>wrentool bench perf -Only card_hover -Shown</code> (about:wren?card=sample, the card scrolled into view, the pointer wandering
 over it every 8 ms; <code>card_idle</code>: the card at rest), profile builds, 3 interleaved runs, 60 Hz, RTX 4070 SUPER (the
 hardware adapter: <code>nvwgf2umx.dll</code> in the process, not WARP). GPU times are those of a GPU that the driver keeps at low
@@ -3874,7 +3874,7 @@ Windows machine). The npr.org window thread after the load is to be read again t
 <p><strong>What it took.</strong></p>
 <ul>
 <li><strong><code>wrentool build release</code> did not build on master</strong>: <code>-vet</code> failed on <code>core:os</code> in <code>base/test_world.odin</code> and <code>wb:base</code> in <code>net/record.odin</code>, imports used only under <code>when WREN_CHANNEL != "release"</code> (since round 56). Each file now says <code>_ :: os</code> / <code>_ :: base</code>, as <code>adblock</code> and <code>blocker</code> do; nothing else of the code changes. The base needed the same two lines.</li>
-<li><strong>A release ignores <code>WREN_TEST_WORLD</code> by design</strong> (and <code>WREN_TEST_RECORD</code>, <code>WREN_JS_CODE</code>, <code>WREN_TEST_WASM_CACHE</code>): the reads are compiled out, which is what the vet error above shows. <code>WREN_ODIN_EXTRA=-define:WREN_CHANNEL=dev</code> cannot turn them back on: Odin refuses a second <code>-define</code> of a name. So <strong><code>wrentool build bench</code></strong> (new, <code>build\wren_bench.exe</code>): the release's flags and Rust profile on the development channel. The channel changes nothing else on a page's path (the icon, the about pages, the licences and updates accepted, the setup dialog's default at a first run, which a <code>--profile</code> never opens). The binaries differ by 2 KB, the icon. Every number below is of that build. One load of each through the bench, bbc.com/news: the release's page clock read 2 390 ms at the end, the bench build's 1 955, the test world's.</li>
+<li><strong>A release ignores <code>WREN_TEST_WORLD</code> by design</strong> (and <code>WREN_TEST_RECORD</code>, <code>WREN_JS_CODE</code>, <code>WREN_TEST_WASM_CACHE</code>): the reads are compiled out, which is what the vet error above shows. <code>WREN_ODIN_EXTRA=-define:WREN_CHANNEL=dev</code> cannot turn them back on: Odin refuses a second <code>-define</code> of a name. So <strong><code>wrentool build bench</code></strong> (new, <code>build\wren_bench.exe</code>): the release's flags and Rust profile on the development channel. The channel changes nothing else on a page's path (the icon, the about pages, the licenses and updates accepted, the setup dialog's default at a first run, which a <code>--profile</code> never opens). The binaries differ by 2 KB, the icon. Every number below is of that build. One load of each through the bench, bbc.com/news: the release's page clock read 2 390 ms at the end, the bench build's 1 955, the test world's.</li>
 <li><strong>base</strong>: 4753a790 with fec6bde9 and 60716374 less <code>src/tools</code> and <code>tools</code>, as in "Measured together", its toolkit at 3a3ee2e6, the two lines above, built <code>bench</code> in a worktree of its own; <strong>now</strong>: master 00be616e, the same.</li>
 </ul>
 <p><strong>1. The series.</strong> <code>wrentool replay run</code>, the default lists on in both arms, frames on, 9 runs a site after a warm-up, the arms interleaved, the order turning, the quiet guard on (no other agent; <code>others</code> 9 to 19 % in every load, the browser's helpers and the sampler; no load dropped). Median (range), ms (<code>build/replay/rel58.&lt;site&gt;.tsv</code>):</p>
@@ -4069,7 +4069,7 @@ start that waits for nothing; Slug's data made while shaping measured and not ke
 that waits for its slot before the tasks, leads item 10 below. Item 1 is unchanged.</p>
 <p>After round 18. Round 17's item 10 is done for its first part (round 18: the loop's tasks run in the frame's wait for its
 slot, a first paint waits for no slot); p10k's first passes lead item 10 below. Item 1 is unchanged.</p>
-<p>After round 19. Off this list: the licence card of about:wren under the pointer (a document changed only in style
+<p>After round 19. Off this list: the license card of about:wren under the pointer (a document changed only in style
 attributes is refreshed, not laid out; planes keep their raster scale; the development build lost the Direct3D debug
 layer).</p>
 <p>After rounds 20, 21 and 23. Item 1's interpreter gave way to a JIT for hot loops and hot functions (round 20: loops,
@@ -4203,7 +4203,7 @@ must call nothing itself (<code>interp_hot.odin</code>'s header says how).</li>
 <li><a href="../../docs/windows/">Several windows</a></li>
 <li><a href="../../docs/chrome-style/">The look of the chrome</a></li>
 <li><a href="../../docs/desktop-integration/">Desktop integration</a></li>
-<li><a href="../../docs/licence/">Licences</a></li>
+<li><a href="../../docs/licence/">Licenses</a></li>
 </ul>
 </div>
 <div class="doc-sec">
@@ -4368,7 +4368,7 @@ must call nothing itself (<code>interp_hot.odin</code>'s header says how).</li>
 </aside>
 </div>
 <footer class="foot">
-Wren is made by <a href="https://froment.software">Froment Software</a>. Wren User Licence: one payment of 29&nbsp;&euro;, personal and perpetual, two years of updates from 1.0.
+Wren is made by <a href="https://froment.software">Froment Software</a>. Wren User License: one payment of 29&nbsp;&euro;, personal and perpetual, two years of updates from 1.0.
 - <a href="../../archive/">archive</a>
 - <a href="../../privacy/">privacy</a>
 - <a href="../../terms/">terms</a>

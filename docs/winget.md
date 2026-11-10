@@ -11,7 +11,7 @@ There is **no Microsoft Store** package (the Store needs an MSIX and a developer
 
 Every release publishes one file, `wren-<version>-windows-x64.exe` (see `wrentool package` and
 `.github\workflows\release.yml`), plus `SHA256SUMS.txt` with its SHA-256. It is not an installer: it is the program
-itself, which carries its licences, its version and the Visual C++ runtime it needs, and integrates into the desktop from
+itself, which carries its licenses, its version and the Visual C++ runtime it needs, and integrates into the desktop from
 within (Setup). So the winget installer type is **`portable`**: winget downloads the `.exe`, keeps it, and adds a link
 named `wren` to its own links folder (on the `PATH`), so `wren` launches it from a terminal.
 
@@ -35,7 +35,7 @@ It writes three YAML files under `build\winget\X.Y.Z\` (schema 1.6.0):
 
 - `FromentSoftware.Wren.yaml` — the version manifest;
 - `FromentSoftware.Wren.installer.yaml` — the installer (x64, `portable`, the URL, the hash, the `wren` command alias);
-- `FromentSoftware.Wren.locale.en-US.yaml` — the English description, publisher, licence and links.
+- `FromentSoftware.Wren.locale.en-US.yaml` — the English description, publisher, license and links.
 
 `-Out <folder>` changes where they go; `-PackageIdentifier` and `-Repo` change the identifier and the GitHub repository if
 they ever move.
