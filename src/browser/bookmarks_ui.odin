@@ -29,6 +29,7 @@ is_bookmarks_address :: proc(a: string) -> bool { return a == BOOKMARKS_URL || s
 
 Bookmarks_View :: struct {
 	search:       ui.Text_Field,
+	search_key:   ui.Key,         // the search field's box, last frame (typing anywhere on the page goes to it: ui.type_to_field)
 	focus_search: bool,
 	list:         ui.Virtual_List,
 	open:         map[u64]bool,   // the folders shown open
@@ -272,7 +273,9 @@ bookmarks_page :: proc(app: ^App, t: ^Tab) {
 				ui.label(fmt.tprintf("%s###bm_title", i18n.tr("Bookmarks")))
 				ui.spacer(ui.px(em * 1.0))
 				ui.next({width = ui.px(em * 22), height = ui.px(ui.dense(em * 2))})
+				if builtin_page_types(app) { _ = ui.type_to_field(v.search_key) }   // (just start typing to search)
 				res := ui.line_edit("###bm_search", &v.search, i18n.tr("Search bookmarks"))
+				if res.box != nil { v.search_key = res.box.key }
 				if v.focus_search && res.box != nil { v.focus_search = false; ui.set_focus(res.box.key); ui.field_select_all(&v.search) }
 				if res.focused && ui.key_press(.Down) { ui.set_focus(v.list.key); if v.list.sel < 0 { ui.list_select(&v.list.list, 0) } }
 				ui.spacer(ui.px(em * 0.6))
@@ -344,7 +347,7 @@ bookmarks_list :: proc(app: ^App, t: ^Tab, menu_key: ui.Key) {
 				if b.folder { v.open[b.id] = !v.open[b.id]; request_frames(app, 2) } else { open_at, new_tab = r.index, .Ctrl in row.mods }
 			}
 			if row.middle_clicked && !b.folder { open_at, new_tab = r.index, true }
-			if row.right_clicked { v.menu_id = b.id; ui.ctx_menu_open(menu_key, ui.mouse_pos()) }
+			if row.right_clicked { v.menu_id = b.id; ui.ctx_menu_open(menu_key, ui.mouse_pos(), search = true) }   // (typing finds an item, a folder of Move to)
 		}
 		if len(rows) == 0 {
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 4))})
@@ -512,4 +515,9 @@ palette_bookmark_activate :: proc(user: rawptr, app: ^App, key: string, new_tab:
 bookmarks_palette_source :: proc() -> Palette_Source {
 	return {name = "Bookmarks", prefix = '*', in_default = true, items = palette_bookmark_items, activate = palette_bookmark_activate,
 		version = proc(user: rawptr, app: ^App) -> u64 { return app.bms.serial }}
+}
+
+// Whether what is typed on a built-in page can go to its search field: no menu, dialog or palette takes it.
+builtin_page_types :: proc(app: ^App) -> bool {
+	return !ui.ctx_menu_any_open() && !app.bview.edit_open && !app.cpal.open && !setup_is_open(app) && app.qr_url == ""
 }

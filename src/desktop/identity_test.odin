@@ -23,10 +23,20 @@ TryExec=/home/u/bin/wren
 Icon=wren
 Terminal=false
 StartupNotify=true
+StartupWMClass=wren
 Categories=Network;WebBrowser;
 Keywords=Internet;WWW;Browser;Web;WebAssembly;
 MimeType=x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/wren-http;x-scheme-handler/wren-https;x-scheme-handler/wren-about;text/html;image/svg+xml;image/webp;
+Actions=new-window;new-private-window;
 X-Wren-Integration=wren
+
+[Desktop Action new-window]
+Name=New Window
+Exec=/home/u/bin/wren --new-window
+
+[Desktop Action new-private-window]
+Name=New Private Window
+Exec=/home/u/bin/wren --private
 `
 	testing.expect_value(t, tk.desktop_entry_text(&o), want)
 	o.register_browser = false

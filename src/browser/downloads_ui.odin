@@ -14,6 +14,7 @@ import "core:strings"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
+import "toolkit:render"
 import "toolkit:ui"
 import desktop "toolkit:desktop"
 import "wb:base"
@@ -31,6 +32,7 @@ is_downloads_address :: proc(a: string) -> bool { return a == DOWNLOADS_URL || s
 
 Downloads_View :: struct {
 	search:       ui.Text_Field,
+	search_key:   ui.Key,  // the search field's box, last frame (typing anywhere on the page goes to it: ui.type_to_field)
 	focus_search: bool,
 	menu_id:      u64,     // the download whose menu is open
 	popup_open:   bool,    // the button's drop-down was open last frame
@@ -164,6 +166,7 @@ Dl_Tile :: struct {
 	color: draw.Color,
 	dim:   bool,       // the file is gone
 	bad:   bool,       // failed or cancelled
+	icon:  render.Texture,   // the system's icon of the file (system_icons.odin; 0: the drawn tile)
 }
 
 @(private = "file")
@@ -176,6 +179,11 @@ dl_tile_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	sq.max = sq.min + {s, s}
 	col := d.bad ? ui.tuned(draw.Color{0.96, 0.42, 0.40, 1}) : d.color
 	fade: f32 = d.dim ? 0.45 : 1
+	if d.icon != 0 {
+		draw.push_alpha(dc, fade)
+		draw.image(dc, d.icon, sq)
+		draw.pop_alpha(dc)
+	} else {
 	fill, edge := col, col
 	fill.a, edge.a = 0.17 * fade, 0.5 * fade
 	draw.rect(dc, sq, fill, s * 0.26)
@@ -186,6 +194,7 @@ dl_tile_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	txt := col
 	txt.a = fade
 	draw.text(dc, d.app.ui_font, size, {math.round(c.x - tw * 0.5), math.round(c.y + size * 0.36)}, txt, d.ext)
+	}
 	if d.bad {
 		// a small cross knocked over the corner: it did not come
 		dot := s * 0.2
@@ -201,6 +210,8 @@ dl_tile :: proc(app: ^App, d: ^Download, size: f32) {
 	if len(ext) > 4 { ext = ext[:4] }
 	t^ = {app = app, ext = ext != "" ? ext : "FILE", color = dl_kind_color(dl_kind_of(d.name)),
 		dim = d.state == .Done && d.missing, bad = d.state == .Failed || d.state == .Cancelled}
+	// the system's icon of its type, as the file manager shows it (by the file once it is there, else by its name)
+	t.icon = system_file_icon(app, d.state == .Done && d.path != "" && !d.missing ? d.path : d.name, false, int(math.round(size)))
 	ui.next({width = ui.px(size), height = ui.px(size)})
 	ui.custom(fmt.tprintf("###dlt_%d", d.id), dl_tile_draw, t)
 }
@@ -477,7 +488,9 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 				ui.label("Downloads###dl_title")
 				ui.spacer(ui.px(em * 1.0))
 				ui.next({width = ui.px(em * 22), height = ui.px(ui.dense(em * 2))})
+				if builtin_page_types(app) { _ = ui.type_to_field(app.dview.search_key) }   // (just start typing to search)
 				res := ui.line_edit("###dl_search", &app.dview.search, "Search downloads")
+				if res.box != nil { app.dview.search_key = res.box.key }
 				if app.dview.focus_search && res.box != nil { app.dview.focus_search = false; ui.set_focus(res.box.key); ui.field_select_all(&app.dview.search) }
 				ui.spacer(ui.px(em * 0.6))
 				ui.next({width = ui.px(em * 8.5), height = ui.px(ui.dense(em * 2))})

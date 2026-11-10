@@ -35,6 +35,13 @@ DEV_SCHEMES     := [?]string{DEV_LINK_PREFIX + "http", DEV_LINK_PREFIX + "https"
 // The registry keys a test may delete: the desktop tests' and Setup's.
 SCRATCH_ROOTS := [?]string{`Software\WrenTest_`, `Software\WrenSetupTest\`}
 
+// What a launcher's right click on Wren offers (the desktop entry's actions, Linux): a new window of the Wren that runs, or
+// a private one (private_browsing.odin).
+DESKTOP_ACTIONS := [?]tk.Desktop_Action{
+	{id = "new-window", name = "New Window", arguments = "--new-window"},
+	{id = "new-private-window", name = "New Private Window", arguments = "--private"},
+}
+
 // What Wren is called on the desktop (`app_name` is a constant: the identity's strings are the program's, shared by every copy
 // of the options). A development build has its own entries (name, keys, AppUserModelID, link schemes),
 // so it never takes over those of the release.
@@ -49,6 +56,7 @@ identity :: proc($app_name: string, description: string, dev: bool) -> tk.Identi
 		generic_name = "Web Browser", categories = "Network;WebBrowser;", keywords = "Internet;WWW;Browser;Web;WebAssembly;",
 		nix_runtime_name = "wren-runtime", nixos_libraries = NIXOS_LIBRARIES[:],
 		watch_thread_name = "wren-desktop-watch", cleanup_name = "wren_cleanup", scratch_roots = SCRATCH_ROOTS[:],
+		actions = DESKTOP_ACTIONS[:],
 	}
 	if dev {
 		id.name = app_name + " Dev"

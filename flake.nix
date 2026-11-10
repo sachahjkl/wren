@@ -116,6 +116,17 @@
       startupWMClass = "wren";
       categories = ["Network" "WebBrowser"];
       keywords = ["Internet" "WWW" "Browser" "Web" "WebAssembly"];
+      # a launcher's right click (the same as src/desktop/identity.odin DESKTOP_ACTIONS)
+      actions = {
+        new-window = {
+          name = "New Window";
+          exec = "wren --new-window";
+        };
+        new-private-window = {
+          name = "New Private Window";
+          exec = "wren --private";
+        };
+      };
       # http(s), the links that open in Wren (src/desktop/links.odin), browser.desktop_integration.file_types
       mimeTypes = [
         "x-scheme-handler/http"

@@ -197,6 +197,7 @@ App :: struct {
 	cmds:          Command_Registry,         // commands.odin: the commands of the menu, the palette and the shortcuts
 	ghist:         Global_History,           // global_history.odin: the profile's history
 	bms:           Bookmarks,                // bookmarks.odin: the profile's bookmarks
+	sysicons:      System_Icons,             // system_icons.odin: the system's icons of files, as textures
 	favs:          Favicons,                 // favicon.odin: the tabs' icons
 	bf:            Bfcache,                  // bfcache.odin: the back/forward cache of the tabs
 	dls:           Downloads,                // download.odin: the profile's downloads
@@ -1951,6 +1952,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	art_destroy(app)   // newtab_art.odin: its requests cancelled, its cache files kept (temporary folder)
 	host.shutdown_step("favicons_destroy")
 	favicons_destroy(app)
+	system_icons_destroy(app)   // system_icons.odin
 	host.shutdown_step("images_shell_destroy")
 	images_shell_destroy(app)
 	canvas_shell_destroy(app)
