@@ -86,7 +86,7 @@ MEDIA_PREFS := [?]config.Def{
 	{name = "media.h264.backend", kind = .String, default = {s = "auto"}, choices = {"auto", "vaapi", "openh264", "off"},
 		description = "Which H.264 decoder to use where the system has no native one (Linux): auto prefers the GPU (VA-API) and falls back to Cisco's openh264 binary; vaapi uses only the GPU; openh264 uses only the software binary; off refuses H.264. No effect on Windows (Media Foundation / DXVA)."},
 	{name = "media.h264.openh264_path", kind = .String, default = {s = ""},
-		description = "Full path to Cisco's openh264 shared library (libopenh264.so) when it is not where the loader finds it by its soname. Empty: search the usual library paths. The binary must be Cisco's own (wrentool fetch openh264): the patent licence covers only their builds, never a library compiled from source."},
+		description = "Full path to Cisco's openh264 shared library (libopenh264.so) when it is not where the loader finds it by its soname. Empty: search the usual library paths. The binary must be Cisco's own (wrentool fetch openh264): the patent license covers only their builds, never a library compiled from source."},
 	{name = "media.software.vp9_fallback", kind = .Bool, default = {b = true},
 		description = "Decode VP9 in software (the built-in decoder) when the system has no VP9 decoder of its own (no Store extension). Off: VP9 then counts as unsupported and a page falls to another codec."},
 	{name = "media.software.av1_fallback", kind = .Bool, default = {b = true},

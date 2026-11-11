@@ -21,9 +21,9 @@ SUPPORT_URL :: "https://sachahjkl.github.io/wren/pricing/"
 
 LICENSE_PREFS := [?]config.Def{
 	{name = "browser.license.path", kind = .String, default = {s = ""},
-		description = "Where the licence key is kept, a file. Empty: license.wrenlicense in the profile folder (or in memory only when browser.profile.persist is off)."},
+		description = "Where the license key is kept, a file. Empty: license.wrenlicense in the profile folder (or in memory only when browser.profile.persist is off)."},
 	{name = "browser.license.public_key", kind = .String, default = {s = ""},
-		description = "The public key (base64url) licences are checked with. Empty: the key built into this version of Wren. Another key reads the licences of another issuer."},
+		description = "The public key (base64url) licenses are checked with. Empty: the key built into this version of Wren. Another key reads the licenses of another issuer."},
 	{name = "browser.license.support_url", kind = .String, default = {s = SUPPORT_URL},
 		description = "The page the 'Support Wren' link of about:wren opens."},
 }
@@ -109,7 +109,7 @@ license_seed :: proc(app: ^App, text: string) {
 	if dir := os.dir(path); dir != "" { _ = os.make_directory_all(dir) }
 	canonical := license.normalize(text, context.temp_allocator)
 	if write_file_atomic(path, strings.concatenate({canonical, "\n"}, context.temp_allocator)) {
-		_ = os.write_entire_file(marker, transmute([]byte)string("the licence of this build was put here once; removing it keeps it removed\n"))
+		_ = os.write_entire_file(marker, transmute([]byte)string("the license of this build was put here once; removing it keeps it removed\n"))
 	}
 }
 
@@ -170,7 +170,7 @@ is_license_file_address :: proc(a: string) -> bool {
 
 // Reads the file of a file: address and installs the key; about:wren then says how it went.
 license_open_file :: proc(app: ^App, t: ^Tab, address: string) {
-	notice := Wren_Notice{"That licence file could not be read.", true}
+	notice := Wren_Notice{"That license file could not be read.", true}
 	if u, ok := url.parse(address, allocator = context.temp_allocator); ok {
 		if path, pok := fetch.file_path_from_url(u, context.temp_allocator); pok {
 			notice = license_install_file(app, path)
@@ -185,12 +185,12 @@ license_open_file :: proc(app: ^App, t: ^Tab, address: string) {
 // Reads `path` (a licence is small: a larger file is not one) and installs it.
 license_install_file :: proc(app: ^App, path: string) -> Wren_Notice {
 	info, err := os.stat(path, context.temp_allocator)
-	if err != nil || info.size <= 0 { return {"That licence file could not be read.", true} }
+	if err != nil || info.size <= 0 { return {"That license file could not be read.", true} }
 	if info.size > license.MAX_TEXT { return {license.error_text(.Too_Long), true} }
 	data, rerr := os.read_entire_file(path, context.temp_allocator)
-	if rerr != nil { return {"That licence file could not be read.", true} }
+	if rerr != nil { return {"That license file could not be read.", true} }
 	if e := license_install(app, string(data)); e != .None { return {license.error_text(e), true} }
-	return {"Licence accepted. Thank you for supporting Wren!", false}
+	return {"License accepted. Thank you for supporting Wren!", false}
 }
 
 ////////////////////////////////
@@ -211,8 +211,8 @@ license_choose_file :: proc(app: ^App, t: ^Tab) {
 	host.run_blocking(&app.blocking, proc(data: rawptr) {
 		job := (^Choose_Job)(data)
 		patterns := [1]string{"*.wrenlicense"}
-		filters := [1]platform.File_Filter{{name = "Wren licence", patterns = patterns[:]}}
-		d := platform.File_Dialog{owner = job.owner, title = "Choose a Wren licence file", filters = filters[:], all_files = true, remember_id = "licence"}
+		filters := [1]platform.File_Filter{{name = "Wren license", patterns = patterns[:]}}
+		d := platform.File_Dialog{owner = job.owner, title = "Choose a Wren license file", filters = filters[:], all_files = true, remember_id = "licence"}
 		res := platform.open_file_dialog(d, context.allocator)
 		defer platform.dialog_result_destroy(&res, context.allocator)
 		if res.status == .Chosen && len(res.paths) > 0 { job.path, job.ok = strings.clone(res.paths[0]), true }

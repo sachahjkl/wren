@@ -25,6 +25,7 @@ package browser
 import "core:os"
 import "core:strings"
 import "toolkit:instance"
+import "toolkit:platform"
 import "toolkit:ui"
 import "wb:config"
 import process "toolkit:process"
@@ -45,6 +46,7 @@ register_instance_prefs :: proc(p: ^config.Prefs) { config.register(p, INSTANCE_
 Instance_Message :: struct {
 	setup:     bool,       // `--setup`: open the Setup dialog
 	addresses: []string,   // what was given to open, one tab each (already addresses: paths made into file: URLs)
+	token:     string,     // the activation token the launcher gave the second start (Wayland; "": none)
 }
 
 // The bytes of a message: lines "v1", "setup=0|1", then "addr=<address>" for each (an address with a line break in it is
@@ -54,6 +56,7 @@ encode_message :: proc(m: Instance_Message, allocator := context.temp_allocator)
 	sb := strings.builder_make(allocator)
 	strings.write_string(&sb, "v1\n")
 	strings.write_string(&sb, m.setup ? "setup=1\n" : "setup=0\n")
+	if m.token != "" && !strings.contains_any(m.token, "\r\n\x00") { strings.write_string(&sb, "token="); strings.write_string(&sb, m.token); strings.write_string(&sb, "\n") }
 	for a in m.addresses {
 		if a == "" || strings.contains_any(a, "\r\n\x00") { continue }
 		strings.write_string(&sb, "addr="); strings.write_string(&sb, a); strings.write_string(&sb, "\n")
@@ -74,6 +77,7 @@ decode_message :: proc(data: []byte, allocator := context.temp_allocator) -> (m:
 		case l == "setup=1":                 m.setup = true
 		case l == "setup=0":
 		case strings.has_prefix(l, "addr="): append(&addresses, l[len("addr="):])
+		case strings.has_prefix(l, "token="): m.token = l[len("token="):]
 		case l == "":
 		case: return {}, false
 		}
@@ -120,7 +124,8 @@ instance_early :: proc(app: ^App, rest: []string, setup, new_window, driven: boo
 	exe := process.executable_path()
 	addresses := make([dynamic]string, context.temp_allocator)
 	for a in rest { if s := command_line_address(a); s != "" { append(&addresses, s) } }
-	message := encode_message({setup = setup, addresses = addresses[:]})
+	// (the launcher's activation token: the first Wren comes forward with it, which a compositor honours)
+	message := encode_message({setup = setup, addresses = addresses[:], token = platform.activation_token_from_env(context.temp_allocator)})
 	outcome, owner := instance.acquire({name = instance_name(app), identity = exe, wait_ms = INSTANCE_ACQUIRE_WAIT_MS}, message)
 	switch outcome {
 	case .Forwarded:       os.exit(0)
@@ -171,6 +176,7 @@ Instance_Open :: struct {
 	app:       ^App,
 	addresses: [dynamic]string,
 	setup:     bool,
+	token:     string,   // owned
 }
 
 // Inside the window's message (the sender waits): decode Wren's message, take a copy and leave the work to the loop.
@@ -185,7 +191,7 @@ instance_handler :: proc(user: rawptr, message: []byte) {
 // A copy of the message, for the loop's next turn (or instance_end's, when that turn never comes).
 instance_accept :: proc(app: ^App, m: Instance_Message) {
 	d := new(Instance_Open)
-	d.app, d.setup = app, m.setup
+	d.app, d.setup, d.token = app, m.setup, strings.clone(m.token)
 	for a, i in m.addresses {
 		if i >= 64 { break }   // (a message from a program that means harm is not a way to open a thousand tabs)
 		append(&d.addresses, strings.clone(a))
@@ -205,6 +211,7 @@ instance_open :: proc(d: ^Instance_Open, closing: bool) {
 	defer {
 		for a in d.addresses { delete(a) }
 		delete(d.addresses)
+		delete(d.token)
 		free(d)
 	}
 	app := d.app
@@ -222,7 +229,7 @@ instance_open :: proc(d: ^Instance_Open, closing: bool) {
 	if d.setup { setup_open(app) }
 	// up with the keyboard: Windows through the instance's handover (the foreground right it was given), elsewhere the
 	// system's request (Wayland: xdg-activation, with the last input's serial)
-	window_native_raise_handed(active_window(app).win)   // remote_window_*.odin
+	window_native_raise_handed(active_window(app).win, d.token)   // remote_window_*.odin
 	request_frames(app, 4)
 }
 

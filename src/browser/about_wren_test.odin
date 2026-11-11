@@ -107,19 +107,19 @@ about_page_without_a_license :: proc(t: ^testing.T) {
 		html := wren_page_html(test_page(theme))
 		for want in ([]string{
 			"Unregistered", "free during the beta", "Support Wren", SUPPORT_URL,
-			"Wren is a beta under development.", "Every version is free; a licence only supports development.",
-			"Froment Software", FROMENT_URL, "data:image/png;base64,", "Version " + APP_VERSION, "Enter a licence key", "WREN1",
+			"Wren is a beta under development.", "Every version is free; a license only supports development.",
+			"Froment Software", FROMENT_URL, "data:image/png;base64,", "Version " + APP_VERSION, "Enter a license key", "WREN1",
 			"gui_toolkit", "Slug", "Wasmtime", "QuickJS-ng", "Odin", "about:licenses",
 		}) {
 			testing.expectf(t, strings.contains(html, want), "about:wren (%s) lacks %q", theme, want)
 		}
 		testing.expect(t, !strings.contains(html, "Registered to"), "an unregistered Wren does not claim a registration")
 		testing.expect(t, !strings.contains(html, "UNREGISTERED"), "no shouting")
-		testing.expect(t, !strings.contains(html, "Remove the licence"), "nothing to remove")
+		testing.expect(t, !strings.contains(html, "Remove the license"), "nothing to remove")
 		pal := ui.palette_of(strings.trim_suffix(theme, " light"), strings.has_suffix(theme, " light"))
 		testing.expectf(t, strings.contains(html, pal.dark ? "color-scheme: dark" : "color-scheme: light"), "%s's color scheme", theme)
 		testing.expect(t, !strings.contains(html, "$"), "every theme token was replaced")
-		testing.expect(t, !strings.contains(html, "<script") && !strings.contains(html, `id="lic"`), "no card, no script without a licence")
+		testing.expect(t, !strings.contains(html, "<script") && !strings.contains(html, `id="lic"`), "no card, no script without a license")
 		// the maker's signature is part of the header, under the tagline; the logo keeps its proportions in a narrow row
 		sig := strings.index(html, `class="sig"`)
 		testing.expect(t, sig > strings.index(html, "<h1>") && sig < strings.index(html, "beta under development"), "by Froment Software ends the header")
@@ -140,7 +140,7 @@ the_card_can_be_previewed_without_a_licence :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, !strings.contains(html, "Registered to"), "nothing is registered")
 	d.card_sample = false
-	testing.expect(t, !strings.contains(wren_page_html(d), `id="lic"`), "no card without the preview or a licence")
+	testing.expect(t, !strings.contains(wren_page_html(d), `id="lic"`), "no card without the preview or a license")
 	testing.expect(t, is_builtin_href("about:wren?card=sample") && !is_builtin_href("about:blank") && !is_builtin_href("https://example.org/about:wren"), "the preview is a built-in page; about:blank is not")
 }
 
@@ -150,18 +150,18 @@ about_page_with_a_license :: proc(t: ^testing.T) {
 	lic := license.License{product = "wren", edition = "patron", name = "Zoé <b>Martin</b> & Co", email = "z@example.org", date = "2026-10-22", order = "WREN-0042"}
 	state := License_State{lic = lic, registered = true, stored = true}
 	html := wren_page_html(test_page("graphite", state))
-	for want in ([]string{"Registered to Zoé &lt;b&gt;Martin&lt;/b&gt; &amp; Co", "Patron licence", "2026-10-22", "WREN-0042", "z@example.org", "Thank you", "Remove the licence", "Replace the licence"}) {
+	for want in ([]string{"Registered to Zoé &lt;b&gt;Martin&lt;/b&gt; &amp; Co", "Patron license", "2026-10-22", "WREN-0042", "z@example.org", "Thank you", "Remove the license", "Replace the license"}) {
 		testing.expectf(t, strings.contains(html, want), "about:wren with a license lacks %q", want)
 	}
 	testing.expect(t, !strings.contains(html, "Unregistered"), "a registered Wren is not unregistered")
 	testing.expect(t, !strings.contains(html, "<b>Martin</b>"), "the name is escaped")
 	for want in ([]string{`id="lic"`, "CERTIFIED", `class="seal"`, "<script>", "requestAnimationFrame", "prefers-reduced-motion", "-wren-shader: card-foil", "@property --sweep", `class="tickwrap"`, "text-shadow", "@media (max-width: 520px)"}) {
-		testing.expectf(t, strings.contains(html, want), "the licence card lacks %q", want)
+		testing.expectf(t, strings.contains(html, want), "the license card lacks %q", want)
 	}
 	testing.expect(t, strings.contains(html, "Zoé &lt;b&gt;Martin&lt;/b&gt; &amp; Co</div>"), "the card shows the escaped name")
 	// the copy button: an icon inside, the three labels in one grid cell (so its width is the longest one's), and a script that only
 	// changes the state, never the text
-	for want in ([]string{`id="copylic"`, `class="i-copy"`, `class="i-ok"`, `class="l-idle">Copy the licence details<`, `class="l-done" aria-live="polite">Copied<`, `class="l-fail">Copy failed<`, `currentColor`, `width="1em"`,
+	for want in ([]string{`id="copylic"`, `class="i-copy"`, `class="i-ok"`, `class="l-idle">Copy the license details<`, `class="l-done" aria-live="polite">Copied<`, `class="l-fail">Copy failed<`, `currentColor`, `width="1em"`,
 		"button.copy .lbs > span { grid-area: 1 / 1;", "button.copy .ics svg { grid-area: 1 / 1;", `setAttribute("data-state"`}) {
 		testing.expectf(t, strings.contains(html, want), "the copy button lacks %q", want)
 	}
@@ -193,7 +193,7 @@ about_page_notices_and_rejected_store :: proc(t: ^testing.T) {
 	state := License_State{stored = true, err = .Bad_Signature}
 	html := wren_page_html(test_page("daylight", state, {"Nope <i>", true}))
 	testing.expect(t, strings.contains(html, "Unregistered"))
-	testing.expect(t, strings.contains(html, "The stored licence was not accepted"))
+	testing.expect(t, strings.contains(html, "The stored license was not accepted"))
 	testing.expect(t, strings.contains(html, `class="notice bad">Nope &lt;i&gt;`))
 	html = wren_page_html(test_page("daylight", {}, {"Fine", false}))
 	testing.expect(t, strings.contains(html, `class="notice ok">Fine`))
@@ -317,31 +317,31 @@ the_licence_a_build_is_handed_out_with_is_put_in_once :: proc(t: ^testing.T) {
 	// the profile holds none: it is given the build's, and the marker says so
 	license_seed(app, given)
 	st := license_state(app)
-	testing.expect(t, st.registered && st.lic.name == "Pre-registered", "a pre-registered build shows its licence")
-	testing.expect(t, os.exists(marker), "the licence was put in once")
+	testing.expect(t, st.registered && st.lic.name == "Pre-registered", "a pre-registered build shows its license")
+	testing.expect(t, os.exists(marker), "the license was put in once")
 
 	// the user removes it: it stays removed (the next start is a new call of license_seed)
 	license_remove(app)
 	license_seed(app, given)
-	testing.expect(t, !license_state(app).stored, "a removed licence is not put back")
+	testing.expect(t, !license_state(app).stored, "a removed license is not put back")
 
 	// the user registers another one: it is the profile's, and the build's does not replace it
 	mine := dev_license("Mine")
 	testing.expect_value(t, license_install(app, mine), license.Error.None)
 	license_seed(app, given)
-	testing.expect(t, license_state(app).lic.name == "Mine", "the licence of the user is kept")
+	testing.expect(t, license_state(app).lic.name == "Mine", "the license of the user is kept")
 
 	// a profile that holds a licence of its own (shared with another Wren) is not touched, and gets no marker
 	_ = os.remove(marker)
 	license_seed(app, given)
-	testing.expect(t, license_state(app).lic.name == "Mine" && !os.exists(marker), "a licence already there is kept as it is")
+	testing.expect(t, license_state(app).lic.name == "Mine" && !os.exists(marker), "a license already there is kept as it is")
 
 	// a text this build does not accept is put nowhere
 	_ = os.remove(path)
 	license_seed(app, dev_license("Elsewhere", license.OTHER_DEV_SEED))
-	testing.expect(t, !os.exists(path) && !os.exists(marker), "a licence this build cannot check is not put in")
+	testing.expect(t, !os.exists(path) && !os.exists(marker), "a license this build cannot check is not put in")
 	license_seed(app, "")
-	testing.expect(t, !os.exists(path), "no licence in the build, nothing put in")
+	testing.expect(t, !os.exists(path), "no license in the build, nothing put in")
 }
 @(test)
 license_is_kept_checked_and_removed :: proc(t: ^testing.T) {
@@ -375,7 +375,7 @@ license_is_kept_checked_and_removed :: proc(t: ^testing.T) {
 	_ = os.write_entire_file(path, transmute([]byte)other)
 	st = license_state(app)
 	testing.expect(t, !st.registered && st.stored && st.err == .Bad_Signature, "a stored key that does not check out is not a registration")
-	_ = os.write_entire_file(path, transmute([]byte)string("not a licence at all"))
+	_ = os.write_entire_file(path, transmute([]byte)string("not a license at all"))
 	st = license_state(app)
 	testing.expect(t, !st.registered && st.stored && st.err == .Bad_Format)
 
@@ -418,7 +418,7 @@ license_file_open_and_form :: proc(t: ^testing.T) {
 
 	// a file dropped on the window: a header of comments, the key wrapped
 	good := dev_license("Dropped")
-	text := strings.concatenate({"# Wren licence\n# order T-1\n", good[:60], "\n", good[60:], "\n"}, context.temp_allocator)
+	text := strings.concatenate({"# Wren license\n# order T-1\n", good[:60], "\n", good[60:], "\n"}, context.temp_allocator)
 	_ = os.write_entire_file(src, transmute([]byte)text)
 	n := license_install_file(app, src)
 	testing.expect(t, !n.bad, n.text)
@@ -426,8 +426,8 @@ license_file_open_and_form :: proc(t: ^testing.T) {
 
 	_ = os.write_entire_file(src, transmute([]byte)string("nothing"))
 	n = license_install_file(app, src)
-	testing.expect(t, n.bad && n.text != "", "a file that is not a licence says so")
-	testing.expect(t, license_state(app).lic.name == "Dropped", "and the licence in use stays")
+	testing.expect(t, n.bad && n.text != "", "a file that is not a license says so")
+	testing.expect(t, license_state(app).lic.name == "Dropped", "and the license in use stays")
 	n = license_install_file(app, "build/tmp/does_not_exist.wrenlicense")
 	testing.expect(t, n.bad)
 

@@ -163,7 +163,7 @@ page_head :: proc(sb: ^strings.Builder, title: string, p: ui.Palette, extra_css 
 // The licence as plain text for the clipboard: never the key itself. A field that is empty is left out.
 licence_details_text :: proc(lic: license.License) -> string {
 	sb := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&sb, "Wren %s licence\nRegistered to: %s", license.edition_title(lic.edition), lic.name)
+	fmt.sbprintf(&sb, "Wren %s license\nRegistered to: %s", license.edition_title(lic.edition), lic.name)
 	if lic.email != "" { fmt.sbprintf(&sb, "\nEmail: %s", lic.email) }
 	if lic.date != "" { fmt.sbprintf(&sb, "\nIssued: %s", lic.date) }
 	if lic.order != "" { fmt.sbprintf(&sb, "\nOrder: %s", lic.order) }
@@ -186,7 +186,7 @@ COPY_BUTTON_STYLE :: `
   button.copy[data-state=done] .i-ok, button.copy[data-state=done] .l-done, button.copy[data-state=fail] .l-fail { visibility: visible; }
 `
 
-// The "Copy the licence details" button and its one handler. The text rides in an attribute (escaped like every field of the page), so
+// The "Copy the license details" button and its one handler. The text rides in an attribute (escaped like every field of the page), so
 // no field is ever part of a script. navigator.clipboard.writeText is the engine's own; when it is refused the text appears in a
 // read-only field, selected, and the button says so.
 @(private = "file")
@@ -194,8 +194,8 @@ copy_details_html :: proc(sb: ^strings.Builder, lic: license.License) {
 	// The three labels share one grid cell and the two icons another, so the button keeps the width of the longest label whatever it says;
 	// the state (data-state on the button) only decides which of them shows.
 	fmt.sbprintf(sb, "<p><button type=\"button\" id=\"copylic\" class=\"copy\" data-state=\"idle\" data-text=\"%s\"><span class=\"ics\" aria-hidden=\"true\">%s%s</span><span class=\"lbs\"><span class=\"l-idle\">%s</span><span class=\"l-done\" aria-live=\"polite\">%s</span><span class=\"l-fail\">%s</span></span></button></p>\n",
-		escape_html(licence_details_text(lic)), COPY_ICON, COPY_DONE_ICON, escape_html(i18n.tr("Copy the licence details")), escape_html(i18n.tr("Copied")), escape_html(i18n.tr("Copy failed")))
-	fmt.sbprintf(sb, "<textarea id=\"copyfb\" readonly rows=\"5\" aria-label=\"%s\" spellcheck=\"false\" style=\"display: none\"></textarea>\n", escape_html(i18n.tr("Licence details to copy by hand")))
+		escape_html(licence_details_text(lic)), COPY_ICON, COPY_DONE_ICON, escape_html(i18n.tr("Copy the license details")), escape_html(i18n.tr("Copied")), escape_html(i18n.tr("Copy failed")))
+	fmt.sbprintf(sb, "<textarea id=\"copyfb\" readonly rows=\"5\" aria-label=\"%s\" spellcheck=\"false\" style=\"display: none\"></textarea>\n", escape_html(i18n.tr("License details to copy by hand")))
 	strings.write_string(sb, `<script>
 (function () {
   var b = document.getElementById("copylic");
@@ -219,12 +219,12 @@ copy_details_html :: proc(sb: ^strings.Builder, lic: license.License) {
 // The licence line, and under it the entry form.
 @(private = "file")
 licence_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
-	strings.write_string(sb, "<h2>Licence</h2>\n")
+	strings.write_string(sb, "<h2>License</h2>\n")
 	s := d.state
 	if s.registered {
 		strings.write_string(sb, "<p class=\"status\"><b>Registered to ")
 		esc(sb, s.lic.name)
-		fmt.sbprintf(sb, "</b> &middot; %s licence</p>\n", escape_html(license.edition_title(s.lic.edition)))
+		fmt.sbprintf(sb, "</b> &middot; %s license</p>\n", escape_html(license.edition_title(s.lic.edition)))
 		license_card_html(sb, s.lic)
 		strings.write_string(sb, "<p>Thank you for supporting the development of Wren.</p>\n")
 		copy_details_html(sb, s.lic)
@@ -233,12 +233,12 @@ licence_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 		esc(sb, d.support_url)
 		strings.write_string(sb, "\">Support Wren</a></p>\n")
 		if d.card_sample {
-			strings.write_string(sb, "<p class=\"weak\">Preview of the licence card with a sample licence: nothing is registered.</p>\n")
+			strings.write_string(sb, "<p class=\"weak\">Preview of the license card with a sample license: nothing is registered.</p>\n")
 			license_card_html(sb, SAMPLE_LICENSE)
 		}
 		if s.err != .None && s.stored {
 			// a licence is stored but does not check out (another key, a damaged file): said once, quietly
-			strings.write_string(sb, "<p class=\"weak\">The stored licence was not accepted: ")
+			strings.write_string(sb, "<p class=\"weak\">The stored license was not accepted: ")
 			esc(sb, license.error_text(s.err))
 			strings.write_string(sb, "</p>\n")
 		}
@@ -250,13 +250,13 @@ licence_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 	}
 	strings.write_string(sb, "<form method=\"get\" action=\"about:wren\"><input type=\"hidden\" name=\"action\" value=\"register\">\n")
 	strings.write_string(sb, "<p class=\"weak\" style=\"margin-bottom: 6px\">")
-	strings.write_string(sb, s.registered ? "Replace the licence: paste another key, or drop a <code>.wrenlicense</code> file on this window." : "Enter a licence key: paste it here, or drop a <code>.wrenlicense</code> file on this window.")
+	strings.write_string(sb, s.registered ? "Replace the license: paste another key, or drop a <code>.wrenlicense</code> file on this window." : "Enter a license key: paste it here, or drop a <code>.wrenlicense</code> file on this window.")
 	strings.write_string(sb, "</p>\n<textarea name=\"key\" spellcheck=\"false\" placeholder=\"WREN1.…\"></textarea>\n")
 	strings.write_string(sb, "<button type=\"submit\" class=\"primary\">Register</button><a class=\"btn\" href=\"about:wren?choose=1\">Choose a file…</a>\n</form>\n")
 	if s.registered {
-		strings.write_string(sb, "<form method=\"get\" action=\"about:wren\"><input type=\"hidden\" name=\"action\" value=\"remove\"><button type=\"submit\">Remove the licence from this computer</button></form>\n")
+		strings.write_string(sb, "<form method=\"get\" action=\"about:wren\"><input type=\"hidden\" name=\"action\" value=\"remove\"><button type=\"submit\">Remove the license from this computer</button></form>\n")
 	}
-	strings.write_string(sb, "<p class=\"weak\" style=\"margin-top: 12px\">A licence is checked on this computer with a signature; Wren never contacts a server for it, and nothing in Wren depends on it.</p>\n")
+	strings.write_string(sb, "<p class=\"weak\" style=\"margin-top: 12px\">A license is checked on this computer with a signature; Wren never contacts a server for it, and nothing in Wren depends on it.</p>\n")
 }
 
 @(private = "file")
@@ -319,7 +319,7 @@ thanks_section :: proc(sb: ^strings.Builder) {
 	strings.write_string(sb, ", ")
 	thanks_link(sb, "https://github.com/linebender/resvg", "resvg")
 	strings.write_string(sb, ", ")
-	fmt.sbprintf(sb, "<a href=\"%s\">%s</a>.", LICENSES_URL, escape_html(i18n.tr("the other components and their licences")))
+	fmt.sbprintf(sb, "<a href=\"%s\">%s</a>.", LICENSES_URL, escape_html(i18n.tr("the other components and their licenses")))
 	strings.write_string(sb, "</td></tr>\n</table>\n")
 }
 
@@ -344,7 +344,7 @@ thanks_link :: proc(sb: ^strings.Builder, url, text: string) {
 // The components, one row each: name (a link), version, license, and a link to the license text when it is embedded.
 @(private = "file")
 third_party_table :: proc(sb: ^strings.Builder, with_text_links: bool) {
-	strings.write_string(sb, "<table>\n<tr><th>Component</th><th>Version</th><th>Licence</th>")
+	strings.write_string(sb, "<table>\n<tr><th>Component</th><th>Version</th><th>License</th>")
 	if with_text_links { strings.write_string(sb, "<th>Text</th>") }
 	strings.write_string(sb, "</tr>\n")
 	for tp in third_party_list() {
@@ -385,26 +385,26 @@ wren_page_html :: proc(d: Wren_Page) -> string {
 		app_logo_url(), APP_NAME, APP_VERSION_SHOWN, IS_DEV_BUILD ? " (development build)" : "", escape_html(APP_TAGLINE))
 	fmt.sbprintf(&sb, "<p class=\"sig\">by<img src=\"%s\" width=\"16\" height=\"16\" alt=\"\"><a href=\"%s\">Froment Software</a></p></div></div>\n",
 		png_url(FROMENT_LOGO_PNG), FROMENT_URL)
-	strings.write_string(&sb, "<p class=\"beta\"><b>Wren is a beta under development.</b> Every version is free; a licence only supports development.</p>\n")
+	strings.write_string(&sb, "<p class=\"beta\"><b>Wren is a beta under development.</b> Every version is free; a license only supports development.</p>\n")
 	licence_section(&sb, d)
 	build_section(&sb, d)
 	updates_section(&sb, d)
 	thanks_section(&sb)
-	strings.write_string(&sb, "<h2>Third-party software</h2>\n<p>Wren's own code is under the PolyForm Strict License 1.0.0 (its source is public). It is built from the components below, whose licences require this notice; the full texts are in <a href=\"about:licenses\">about:licenses</a>.</p>\n<p>Text rendering can use the Slug algorithm and shaders by Eric Lengyel (MIT licence), credited as its licence requires.</p>\n")
+	strings.write_string(&sb, "<h2>Third-party software</h2>\n<p>Wren's own code is under the PolyForm Strict License 1.0.0 (its source is public). It is built from the components below, whose licenses require this notice; the full texts are in <a href=\"about:licenses\">about:licenses</a>.</p>\n<p>Text rendering can use the Slug algorithm and shaders by Eric Lengyel (MIT license), credited as its license requires.</p>\n")
 	third_party_table(&sb, false)
-	strings.write_string(&sb, "<p class=\"weak\" style=\"margin-top: 10px\">The Rust libraries linked into the image decoders are listed with their licences in <a href=\"about:licenses#rust-crates\">about:licenses</a>.</p>\n")
-	fmt.sbprintf(&sb, "<p class=\"foot\">&copy; 2026 Sacha Froment (<a href=\"%s\">Froment Software</a>) &middot; <a href=\"about:licenses\">Licences</a> &middot; <a href=\"about:about\">Built-in pages</a></p>\n", FROMENT_URL)
+	strings.write_string(&sb, "<p class=\"weak\" style=\"margin-top: 10px\">The Rust libraries linked into the image decoders are listed with their licenses in <a href=\"about:licenses#rust-crates\">about:licenses</a>.</p>\n")
+	fmt.sbprintf(&sb, "<p class=\"foot\">&copy; 2026 Sacha Froment (<a href=\"%s\">Froment Software</a>) &middot; <a href=\"about:licenses\">Licenses</a> &middot; <a href=\"about:about\">Built-in pages</a></p>\n", FROMENT_URL)
 	strings.write_string(&sb, "</div>\n</body>\n</html>\n")
 	return strings.to_string(sb)
 }
 
 licenses_page_html :: proc(d: Wren_Page) -> string {
 	sb := strings.builder_make(context.temp_allocator)
-	page_head(&sb, "Licences", d.palette)
-	strings.write_string(&sb, "<h1>Licences</h1>\n<p class=\"weak\">The software Wren is built from, and the full text of each licence. <a href=\"about:wren\">Back to About Wren</a>.</p>\n")
+	page_head(&sb, "Licenses", d.palette)
+	strings.write_string(&sb, "<h1>Licenses</h1>\n<p class=\"weak\">The software Wren is built from, and the full text of each license. <a href=\"about:wren\">Back to About Wren</a>.</p>\n")
 	strings.write_string(&sb, "<h2>Components</h2>\n")
 	third_party_table(&sb, true)
-	strings.write_string(&sb, "<p class=\"weak\" style=\"margin-top: 10px\">Rust libraries of the image decoders (resvg, image-webp, rav1d…): each one's licence is listed in <a href=\"#rust-crates\">the text below</a>. The public suffix list is published under the MPL-2.0 by <a href=\"https://publicsuffix.org\">publicsuffix.org</a>.</p>\n")
+	strings.write_string(&sb, "<p class=\"weak\" style=\"margin-top: 10px\">Rust libraries of the image decoders (resvg, image-webp, rav1d…): each one's license is listed in <a href=\"#rust-crates\">the text below</a>. The public suffix list is published under the MPL-2.0 by <a href=\"https://publicsuffix.org\">publicsuffix.org</a>.</p>\n")
 	strings.write_string(&sb, "<h2>Texts</h2>\n<div class=\"text\">\n")
 	for lt in LICENSE_TEXTS {
 		fmt.sbprintf(&sb, "<h3 id=\"%s\">%s</h3>\n", lt.id, escape_html(lt.title))
@@ -465,7 +465,7 @@ show_wren_page :: proc(app: ^App, t: ^Tab, address: string, acts := false, notic
 		sync_history(app, t)
 	}
 	delete(t.url); t.url = strings.clone(shown)
-	delete(t.title); t.title = strings.clone(strings.has_prefix(shown, LICENSES_URL) ? "Licences" : "About Wren")
+	delete(t.title); t.title = strings.clone(strings.has_prefix(shown, LICENSES_URL) ? "Licenses" : "About Wren")
 	set_status(t, shown)
 	if choose { license_choose_file(app, t) }
 }
@@ -476,12 +476,12 @@ wren_query :: proc(app: ^App, sp: url.Search_Params) -> Wren_Notice {
 	switch action {
 	case "register":
 		key, _ := url.params_get(sp, "key")
-		if strings.trim_space(key) == "" { return {"Paste a licence key first.", true} }
+		if strings.trim_space(key) == "" { return {"Paste a license key first.", true} }
 		if err := license_install(app, key); err != .None { return {license.error_text(err), true} }
-		return {"Licence accepted. Thank you for supporting Wren!", false}
+		return {"License accepted. Thank you for supporting Wren!", false}
 	case "remove":
 		license_remove(app)
-		return {"The licence was removed from this computer.", false}
+		return {"The license was removed from this computer.", false}
 	case "check_update":
 		update_check_now(app)
 		return {"Asking GitHub whether a newer Wren exists. The answer is a notice; open this page again to see it.", false}

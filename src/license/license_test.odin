@@ -157,7 +157,7 @@ text_forms :: proc(t: ^testing.T) {
 	text := dev_text(sample())
 	// wrapped, indented, commented, quoted: all the same licence
 	wrapped := strings.builder_make(context.temp_allocator)
-	strings.write_string(&wrapped, "# Wren licence of Jeanne Dupont\r\n# order WREN-0001\r\n")
+	strings.write_string(&wrapped, "# Wren license of Jeanne Dupont\r\n# order WREN-0001\r\n")
 	for i := 0; i < len(text); i += 60 {
 		strings.write_string(&wrapped, "   ")
 		strings.write_string(&wrapped, text[i:min(i + 60, len(text))])

@@ -64,4 +64,4 @@ window_native_minimize_no_activate :: proc(w: ^platform.Window) {
 
 // Up with the keyboard when another program hands Wren an address: through the instance's handover (the foreground
 // right it was given).
-window_native_raise_handed :: proc(w: ^platform.Window) { instance.raise_window(rawptr(w.hwnd)) }
+window_native_raise_handed :: proc(w: ^platform.Window, token: string) { instance.raise_window(rawptr(w.hwnd)) }

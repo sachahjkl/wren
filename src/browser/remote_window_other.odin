@@ -26,8 +26,8 @@ window_native_handle :: proc(w: ^platform.Window) -> u64 { return 0 }
 window_native_raise_top :: proc(w: ^platform.Window) { platform.raise_window(w) }
 
 // Up with the keyboard when another program hands Wren an address: the system's request (Wayland: xdg-activation, with
-// the last input's serial).
-window_native_raise_handed :: proc(w: ^platform.Window) { platform.raise_window(w) }
+// the token the launcher gave the second start, else the last input's serial).
+window_native_raise_handed :: proc(w: ^platform.Window, token: string) { platform.raise_window_token(w, token) }
 
 window_native_show_no_activate :: proc(w: ^platform.Window) { platform.show_window(w) }
 

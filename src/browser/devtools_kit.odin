@@ -597,7 +597,7 @@ dt_row_top :: proc(r: Dt_Rows, i: int) -> f32 { return r.offs != nil ? r.offs[i]
 dt_row_height :: proc(r: Dt_Rows, i: int) -> f32 { return r.offs != nil ? r.offs[i + 1] - r.offs[i] : r.row_h }
 
 @(deferred_out = dt_list_end)
-dt_list :: proc(id: string, l: ^Dt_List, n: int, row_h: f32, offs: []f32 = nil, w := ui.Size{.Percent, 1, 0}, h := ui.Size{.Percent, 1, 0}, follow := false) -> (rows: Dt_Rows, ok: bool) {
+dt_list :: proc(id: string, l: ^Dt_List, n: int, row_h: f32, offs: []f32 = nil, w := ui.Size{kind = .Percent, value = 1}, h := ui.Size{kind = .Percent, value = 1}, follow := false) -> (rows: Dt_Rows, ok: bool) {
 	ui.next({width = w, height = h, axis = .Y})
 	b := ui.build_box({.Clip, .View_Scroll_Y, .View_Clamp_Y, .Allow_Overflow_Y, .Focusable, .Clickable, .Text_Input}, id)
 	b.cursor = .Arrow

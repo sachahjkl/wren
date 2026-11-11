@@ -429,7 +429,7 @@ console_panel :: proc(app: ^App, t: ^Tab) {
 	c.last_rows = n
 
 	menu_key := ui.key_from_string(0, "###dt_con_menu")
-	list_h := ui.Size{.Percent, 1, 0}
+	list_h := ui.Size{kind = .Percent, value = 1}
 	offs: []f32 = len(c.offs) == n + 1 && n > 0 ? c.offs[:] : nil
 	if n == 0 {
 		hidden := len(t.console) > 0

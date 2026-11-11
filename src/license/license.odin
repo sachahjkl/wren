@@ -55,15 +55,15 @@ Error :: enum u8 {
 error_text :: proc(e: Error) -> string {
 	switch e {
 	case .None:          return ""
-	case .Empty:         return "The licence is empty."
-	case .Too_Long:      return "That is too long to be a licence key."
-	case .Bad_Format:    return "That is not a Wren licence key: it should start with WREN1 and have three parts separated by dots."
-	case .Bad_Encoding:  return "The licence key is damaged: it is not valid base64url text."
-	case .Bad_Payload:   return "The licence key is damaged: its content is not a licence."
-	case .Wrong_Product: return "This licence is for another product."
+	case .Empty:         return "The license is empty."
+	case .Too_Long:      return "That is too long to be a license key."
+	case .Bad_Format:    return "That is not a Wren license key: it should start with WREN1 and have three parts separated by dots."
+	case .Bad_Encoding:  return "The license key is damaged: it is not valid base64url text."
+	case .Bad_Payload:   return "The license key is damaged: its content is not a license."
+	case .Wrong_Product: return "This license is for another product."
 	case .Bad_Signature: return "The signature does not match: the key was altered or was not issued by Froment Software."
-	case .No_Public_Key: return "This build of Wren has no licence key to check it with."
-	case .Bad_Public_Key: return "The public key for licences is not valid."
+	case .No_Public_Key: return "This build of Wren has no license key to check it with."
+	case .Bad_Public_Key: return "The public key for licenses is not valid."
 	}
 	return ""
 }
