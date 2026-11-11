@@ -52,6 +52,7 @@ jobs:
           echo "deb http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-18 main" > /etc/apt/sources.list.d/llvm.list
           apt-get update -qq && apt-get install -y -qq --no-install-recommends clang-18 lld-18 >/dev/null
           for t in clang clang++ ld.lld lld wasm-ld llvm-ar; do ln -sf "/usr/bin/$t-18" "/usr/local/bin/$t"; done
+          ln -sf /usr/bin/clang-18 /usr/local/bin/cc; ln -sf /usr/bin/clang++-18 /usr/local/bin/c++   # (what cargo's build scripts call)
 
       - uses: actions/checkout@v4
         with:
