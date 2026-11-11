@@ -47,7 +47,7 @@ jobs:
       # needs git for the submodules.
       - name: Debian's packages, LLVM 18
         run: |
-          apt-get update -qq && apt-get install -y -qq --no-install-recommends git ca-certificates curl jq xz-utils zstd unzip nasm pkg-config libasound2-dev libopus-dev libfontconfig1-dev xvfb mesa-vulkan-drivers libxkbcommon-x11-0 libxkbcommon0 libwayland-client0 >/dev/null
+          apt-get update -qq && apt-get install -y -qq --no-install-recommends git ca-certificates curl jq xz-utils zstd unzip nasm pkg-config libasound2-dev libopus-dev libfontconfig1-dev xvfb mesa-vulkan-drivers libxkbcommon-x11-0 libxkbcommon0 libwayland-client0 xauth >/dev/null
           curl -fsSL --retry 5 --retry-all-errors https://apt.llvm.org/llvm-snapshot.gpg.key > /etc/apt/trusted.gpg.d/apt.llvm.org.asc
           echo "deb http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-18 main" > /etc/apt/sources.list.d/llvm.list
           apt-get update -qq && apt-get install -y -qq --no-install-recommends clang-18 lld-18 >/dev/null
