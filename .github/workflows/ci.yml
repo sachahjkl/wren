@@ -187,19 +187,30 @@ jobs:
   # Cargo.lock (--locked), Rust by version.
   linux:
     runs-on: ubuntu-24.04
+    container: debian:bookworm
     timeout-minutes: 45
     steps:
+      # Debian 12 (bookworm): its packages from deb.debian.org, not from the runner's Ubuntu mirrors (their DNS failed for hours),
+      # and its glibc 2.36: the oldest the Linux build then needs. Its clang 14 stops on the Wasmtime release ("LLVM ERROR:
+      # Invalid encoding"): clang, lld and wasm-ld 18 from LLVM's own packages for bookworm (apt.llvm.org). First: checkout
+      # needs git for the submodules.
+      - name: Debian's packages, LLVM 18
+        run: |
+          apt-get update -qq && apt-get install -y -qq --no-install-recommends git ca-certificates curl jq xz-utils zstd unzip nasm pkg-config libasound2-dev libopus-dev libfontconfig1-dev xvfb mesa-vulkan-drivers libxkbcommon-x11-0 libxkbcommon0 libwayland-client0 >/dev/null
+          curl -fsSL --retry 5 --retry-all-errors https://apt.llvm.org/llvm-snapshot.gpg.key > /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          echo "deb http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-18 main" > /etc/apt/sources.list.d/llvm.list
+          apt-get update -qq && apt-get install -y -qq --no-install-recommends clang-18 lld-18 >/dev/null
+          for t in clang clang++ ld.lld lld wasm-ld llvm-ar; do ln -sf "/usr/bin/$t-18" "/usr/local/bin/$t"; done
+
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Odin dev-2026-11a, clang, NASM
+      - name: Odin dev-2026-11a
         env:
           ODIN_TAG: dev-2026-11a
           ODIN_SHA256: 65c9f6e97d6f8a30930e151f270ce5aeaa98fe8b2ba49fe067394e2af04f7618
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq clang lld nasm pkg-config libasound2-dev libopus-dev libfontconfig1-dev
           # (tried again on an error of the network or of GitHub, a 504 at times: the digest below says whether what came is the archive)
           curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o "$RUNNER_TEMP/odin.tar.gz" "https://github.com/odin-lang/Odin/releases/download/$ODIN_TAG/odin-linux-amd64-$ODIN_TAG.tar.gz"
           echo "$ODIN_SHA256  $RUNNER_TEMP/odin.tar.gz" | sha256sum -c -
@@ -208,8 +219,11 @@ jobs:
 
       - name: Rust 1.99.1
         run: |
-          rustup toolchain install 1.99.1 --profile minimal
-          rustup default 1.99.1
+          # (rustup itself: the container has none; its homes named, in a container $HOME is not the user's)
+          export RUSTUP_HOME="$HOME/.rustup" CARGO_HOME="$HOME/.cargo"
+          echo "RUSTUP_HOME=$RUSTUP_HOME" >> "$GITHUB_ENV"; echo "CARGO_HOME=$CARGO_HOME" >> "$GITHUB_ENV"
+          curl -fsSL --retry 5 --retry-delay 10 --retry-all-errors https://sh.rustup.rs | sh -s -- -y -q --profile minimal --default-toolchain 1.99.1
+          echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
 
       - name: Cache the Rust library and its compiled crates
         uses: actions/cache@v4
@@ -244,6 +258,5 @@ jobs:
       # (the check build: free and realloc of the whole program poison and keep what is freed, src/base/poison_linux.odin; the pages of this repository, no network)
       - name: Local pages with freed memory poisoned (wrentool sweep)
         run: |
-          sudo apt-get install -y -qq libfontconfig1-dev xvfb mesa-vulkan-drivers libxkbcommon-x11-0 libxkbcommon0 libwayland-client0
           ./build.sh check
           xvfb-run -a build/wrentool sweep -List tools/sweep_local.txt -Exe build/wren_check -OutDir build/sweep_local -CloseMs 60000 -PingMs 60000

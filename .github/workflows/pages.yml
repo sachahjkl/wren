@@ -26,11 +26,14 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    container: debian:bookworm   # (deb.debian.org, not the runner's Ubuntu mirrors)
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Debian's packages
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends git ca-certificates curl clang lld zstd >/dev/null
       - uses: actions/checkout@v7
       - uses: actions/configure-pages@v6
       - run: git submodule update --init ext/gui_toolkit
@@ -40,8 +43,6 @@ jobs:
           ODIN_TAG: dev-2026-11a
           ODIN_SHA256: 65c9f6e97d6f8a30930e151f270ce5aeaa98fe8b2ba49fe067394e2af04f7618
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq clang lld
           curl -fsSL -o "$RUNNER_TEMP/odin.tar.gz" "https://github.com/odin-lang/Odin/releases/download/$ODIN_TAG/odin-linux-amd64-$ODIN_TAG.tar.gz"
           echo "$ODIN_SHA256  $RUNNER_TEMP/odin.tar.gz" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/odin" && tar -xzf "$RUNNER_TEMP/odin.tar.gz" -C "$RUNNER_TEMP/odin"
