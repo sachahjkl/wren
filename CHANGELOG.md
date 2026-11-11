@@ -10,6 +10,12 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.7.8] - 2026-11-11
+
+### Changed
+- gui_toolkit 0.180.3: segmented controls (about:settings' choices) are a slot with a raised key in the machined style, and their labels are centred on their key; a check box whose label wraps has its mark beside the first line; the palette's field is flush with its edges.
+- gui_toolkit 0.176.1: a second window of Wren never waits for the screen (on Wayland its frames could wait for a compositor that did not show it), and the command palette no longer stops on a search that keeps nothing.
+
 ## [0.7.7] - 2026-11-11
 
 ### Changed
@@ -1408,7 +1414,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.7...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.8...HEAD
+[0.7.8]: https://github.com/sachahjkl/wren/compare/v0.7.7...v0.7.8
 [0.7.7]: https://github.com/sachahjkl/wren/compare/v0.7.6...v0.7.7
 [0.7.6]: https://github.com/sachahjkl/wren/compare/v0.7.5...v0.7.6
 [0.7.5]: https://github.com/sachahjkl/wren/compare/v0.7.4...v0.7.5
