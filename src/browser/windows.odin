@@ -140,6 +140,9 @@ window_activate :: proc(app: ^App, w: ^Browser_Window) {
 	if w.pacer.latency == 0 { w.pacer.latency = 1 }   // (what a swap chain is made with)
 	app.active = w
 	ui.use(w.ui)
+	// only the paced window waits for the screen: another window's frames never wait for a compositor that may not send
+	// it a frame callback (Wayland's Fifo, a window it does not show) (gui_toolkit render.set_present_wait)
+	render.set_present_wait(&app.r, w.primary || w.headless_shared)
 	if w.headless_shared {
 		// no Surface: the one offscreen target serves every headless window; size it to this one before its frame
 		render.resize(&app.r, w.win.size)
@@ -153,6 +156,7 @@ window_deactivate :: proc(app: ^App) {
 	w := app.active
 	if w == nil { return }
 	if !w.primary && !w.headless_shared { render.surface_use(&app.r, &w.surf) }
+	render.set_present_wait(&app.r, true)
 	app.active = nil
 }
 
