@@ -10,6 +10,13 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.7.7] - 2026-11-11
+
+### Changed
+- "License" is spelled with an s everywhere Wren shows it (about:wren, about:licenses, the messages about a key).
+- gui_toolkit 0.174.0: a text field has its menu (right click: Undo, Cut, Copy, Paste, Select all), the interface's scroll regions take a middle-click autoscroll, and a second start of Wren brings the first one forward with the token its launcher gave it (Wayland).
+- gui_toolkit 0.162.0: typing to search on about:bookmarks and about:downloads no longer takes a shortcut's letter (Alt+P), and takes an input method's text again right after a shortcut.
+
 ## [0.7.6] - 2026-11-10
 
 ### Fixed
@@ -1401,7 +1408,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.6...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.7...HEAD
+[0.7.7]: https://github.com/sachahjkl/wren/compare/v0.7.6...v0.7.7
 [0.7.6]: https://github.com/sachahjkl/wren/compare/v0.7.5...v0.7.6
 [0.7.5]: https://github.com/sachahjkl/wren/compare/v0.7.4...v0.7.5
 [0.7.4]: https://github.com/sachahjkl/wren/compare/v0.7.3...v0.7.4
