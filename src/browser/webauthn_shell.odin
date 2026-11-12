@@ -41,6 +41,7 @@ webauthn_shell_init :: proc(app: ^App) {
 webauthn_shell_destroy :: proc(app: ^App) {
 	app.pages.webauthn_embedder = {}
 	if q := webauthn.pin_question(); q.number != 0 { webauthn.pin_answer(q.number, "", false) }   // (a ceremony that waits for a PIN stops waiting)
+	if q := webauthn.choose_question(); q.number != 0 { webauthn.choose_answer(q.number, 0, false) }   // (and one that waits for an account)
 	secret_wipe(&app.key_pin.field)
 	page.webauthn_shutdown(app.page_settings.authn.cancel_grace_ms)   // cancels what still waits and joins its threads, before the loop goes
 }
@@ -73,6 +74,10 @@ Key_Pin_Dialog :: struct {
 	body:   ui.Key,          // the box of what it says (dialog_preferred)
 	touch_body: ui.Key,      // the same for the wait for the touch
 	touch_size: ui.Vec2,
+	choose_number: u64,      // the account question it shows (0: none)
+	choose_sel:    int,      // the row Up, Down and Enter act on
+	choose_body:   ui.Key,
+	choose_size:   ui.Vec2,
 }
 
 webauthn_pin_build :: proc(app: ^App) {
@@ -84,7 +89,8 @@ webauthn_pin_build :: proc(app: ^App) {
 		d.number, d.reveal, d.focus = q.number, false, true
 	}
 	if q.number == 0 {
-		webauthn_touch_build(app)
+		// (one question at a time: the account is chosen after the key's touch, the touch waits after the PIN)
+		if !webauthn_choose_build(app) { webauthn_touch_build(app) }
 		return
 	}
 	em := ui.font_size()
@@ -135,6 +141,94 @@ webauthn_pin_build :: proc(app: ^App) {
 		webauthn.pin_answer(d.number, "", false)
 		secret_wipe(&d.field)
 	}
+}
+
+// The account to sign in with, when the key holds several passkeys of the site (webauthn/pin.odin's choose question):
+// one row per account, a click or Enter chooses, Up and Down move, Cancel refuses (the page gets NotAllowedError).
+// false: no such question is open.
+@(private = "file")
+webauthn_choose_build :: proc(app: ^App) -> bool {
+	d := &app.key_pin
+	q := webauthn.choose_question()
+	if q.number != d.choose_number { d.choose_number, d.choose_sel = q.number, 0 }
+	if q.number == 0 { return false }
+	n := len(q.accounts)
+	d.choose_sel = clamp(d.choose_sel, 0, max(n - 1, 0))
+	em := ui.font_size()
+	open := true
+	cancel := false
+	chosen := -1
+	if ui.modal_sized("key_choose", dialog_preferred(d.choose_body, em * 26, em * 18), &d.choose_size, &open, {em * 20, em * 12}) {
+		if ui.key_press(.Down) { d.choose_sel = min(d.choose_sel + 1, n - 1) }
+		if ui.key_press(.Up) { d.choose_sel = max(d.choose_sel - 1, 0) }
+		if ui.key_press(.Return) { chosen = d.choose_sel }
+		ui.next({width = ui.fill(), height = ui.fill()})
+		if ui.scroll_y("###kc_scroll") {
+			ui.next({width = ui.fill(), height = ui.children_sum()})
+			if ui.row(.Start, {}, "###kc_margins") {
+				d.choose_body = ui.parent_box().key
+				ui.spacer(ui.px(em * 1.0))
+				ui.next({width = ui.fill(), height = ui.children_sum()})
+				if ui.column(.Start, {}, "###kc_col") {
+					ui.spacer(ui.px(em * 0.9))
+					dialog_line(i18n.tr("Choose an account"), "kc_title")
+					ui.spacer(ui.px(em * 0.5))
+					dialog_line(fmt.tprintf(i18n.tr("Your security key holds several passkeys of %s. Choose the one to sign in with."), q.rp_id), "kc_hint", weak = true)
+					ui.spacer(ui.px(em * 0.8))
+					for a, i in q.accounts {
+						title, detail := a.display_name, a.name
+						if title == "" { title, detail = a.name, "" }
+						if title == "" { title = i18n.tr("Account without a name") }
+						if webauthn_choose_row(i, title, detail, i == d.choose_sel, em) { chosen = i }
+					}
+					ui.spacer(ui.px(em * 0.4))
+				}
+				ui.spacer(ui.px(em * 1.0))
+			}
+		}
+		ui.spacer(ui.px(em * 0.6))
+		ui.next({width = ui.fill(), height = ui.children_sum()})
+		if ui.row(.Center, {}, "###kc_buttons") {
+			ui.spacer(ui.fill())
+			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "kc_cancel", ui.px(em * 8), intent = .Cancel) { cancel = true }
+			ui.spacer(ui.px(em * 1.0))
+		}
+		ui.spacer(ui.px(em * 0.8))
+	}
+	if chosen >= 0 && chosen < n {
+		webauthn.choose_answer(q.number, chosen, true)
+	} else if cancel || !open {
+		webauthn.choose_answer(q.number, 0, false)
+	}
+	return true
+}
+
+// One account of the choose dialog: its display name, its user name under it in weak text. true: clicked.
+@(private = "file")
+webauthn_choose_row :: proc(i: int, title, detail: string, selected: bool, em: f32) -> bool {
+	rh := detail != "" ? em * 3.2 : em * 2.2
+	ui.push_tags("menu_item")
+	if selected { ui.push_tags("selected") }
+	ui.next({width = ui.fill(), height = ui.px(rh), radius = em * CHROME_BUTTON_RADIUS, axis = .Y})
+	item := ui.build_box({.Clickable, .Draw_Background, .Draw_Hot_Effects}, fmt.tprintf("###kc_row_%d", i))
+	if selected { ui.pop_tags() }
+	sig := ui.signal(item)
+	ui.a11y_set(item, {role = .List_Item, name = title, description = detail, selected = selected})
+	if ui.parent(item) {
+		// (each line its own height, the two centred in the row, as the Vault's fill menu)
+		ui.spacer(ui.fill())
+		ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
+		ui.label(fmt.aprintf("%s###kc_t_%d", title, i, allocator = ui.frame_allocator()))
+		if detail != "" {
+			ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
+			ui.push_tags("weak")
+			ui.label(fmt.aprintf("%s###kc_d_%d", detail, i, allocator = ui.frame_allocator()))
+			ui.pop_tags()
+		}
+		ui.spacer(ui.fill())
+	}
+	ui.pop_tags()
+	return sig.clicked
 }
 
 // While the key waits for the person's touch (after its PIN, or at once): what to do, and a Cancel that stops the

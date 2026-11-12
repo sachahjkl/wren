@@ -22,11 +22,34 @@ pin_job_run :: proc(data: rawptr) {
 }
 
 @(private = "file")
+Choose_Job :: struct {
+	token: Cancel_Token,
+	index: int,
+	ok:    bool,
+}
+
+@(private = "file")
+choose_job_run :: proc(data: rawptr) {
+	j := (^Choose_Job)(data)
+	// (the second display name is longer than the slot keeps: it is cut to 128 bytes at most)
+	long: [200]u8
+	for &b in long { b = 'x' }
+	long[127] = 0xC3; long[128] = 0xA9   // an "é" across the cut: it is dropped whole, never split
+	accounts := [?]Choose_Account{
+		{name = "ada@example.com", display_name = "Ada"},
+		{name = "bob@example.com", display_name = string(long[:])},
+	}
+	j.index, j.ok = choose_ask(&j.token, "example.com", accounts[:])
+}
+
+@(private = "file")
 pin_opened: sync.Sema
+@(private = "file")
+choose_opened: sync.Sema
 
 // The ceremony's thread waits for the interface: the question it reads is the asked one, its answer comes back, an
 // answer to an older question is dropped, and the slot keeps no PIN; then a cancelled ceremony stops waiting; then the
-// wait for the touch. (One test: the slots and the wake are the package's, two tests at once would share them.)
+// wait for the touch; then the account to use, the same way. (One test: the slots and the wake are the package's, two tests at once would share them.)
 @(test)
 pin_question_answer_and_cancel :: proc(t: ^testing.T) {
 	// (the wake is the interface's signal: the test waits on it, bounded, not on a time)
@@ -66,6 +89,38 @@ pin_question_answer_and_cancel :: proc(t: ^testing.T) {
 	testing.expect(t, c, "the Cancel cancels the ceremony")
 	touch_end()
 	testing.expect_value(t, touch_question().number, 0)
+
+	// the account to use: the interface sees the accounts, an older question's answer and an index out of the list
+	// are dropped, the chosen index comes back; then a cancelled ceremony stops waiting
+	// (a wake of its own: the cancelled PIN and the touch above left posts on pin_opened)
+	pin_wake = proc "contextless" () { sync.sema_post(&choose_opened) }
+	cj: Choose_Job
+	th = thread.create_and_start_with_data(&cj, choose_job_run)
+	testing.expect(t, sync.sema_wait_with_timeout(&choose_opened, PIN_TEST_DEADLINE), "the account question opens")
+	cq := choose_question()
+	testing.expect_value(t, cq.rp_id, "example.com")
+	testing.expect_value(t, len(cq.accounts), 2)
+	if len(cq.accounts) == 2 {
+		testing.expect_value(t, cq.accounts[0].name, "ada@example.com")
+		testing.expect_value(t, cq.accounts[0].display_name, "Ada")
+		testing.expect_value(t, len(cq.accounts[1].display_name), 127)   // (the "é" across byte 128 is not split)
+	}
+	choose_answer(cq.number - 1, 0, true)   // (an older question's answer: dropped)
+	choose_answer(cq.number, 5, true)       // (no such account: dropped)
+	testing.expect_value(t, choose_question().number, cq.number)
+	choose_answer(cq.number, 1, true)
+	thread.join(th)
+	thread.destroy(th)
+	testing.expect(t, cj.ok, "an account was chosen")
+	testing.expect_value(t, cj.index, 1)
+	testing.expect_value(t, choose_question().number, 0)
+	testing.expect(t, sync.sema_wait_with_timeout(&choose_opened, PIN_TEST_DEADLINE), "the interface is woken when the account question closes")
+
+	ck: Choose_Job
+	ck.token.cancelled = true
+	choose_job_run(&ck)
+	testing.expect(t, !ck.ok, "no account when the ceremony was cancelled")
+	testing.expect_value(t, choose_question().number, 0)
 }
 
 @(private = "file")

@@ -1,6 +1,7 @@
 package webauthn
 
-// The PIN of a security key, asked of the person while a ceremony runs, and the wait for the key's touch that follows (Linux: libfido2 speaks to the key itself and
+// The PIN of a security key, asked of the person while a ceremony runs, the wait for the key's touch that follows, and
+// the account to use when the key holds several of the site (Linux: libfido2 speaks to the key itself and
 // needs the PIN from the browser; Windows draws its own dialog). One question at a time, in a slot of this package: the
 // ceremony's thread asks (pin_ask) and waits; the interface reads the question (pin_question), shows its dialog and
 // answers (pin_answer) with the question's number, so that an answer to a question already over is dropped. The PIN
@@ -93,6 +94,111 @@ pin_ask :: proc(token: ^Cancel_Token, rp_id: string, retries: int, wrong: bool, 
 			sync.mutex_lock(&pin_slot.mu)
 			pin_slot.question, pin_slot.answered = {}, true
 			sync.mutex_unlock(&pin_slot.mu)
+			return 0, false
+		}
+		time.sleep(50 * time.Millisecond)
+	}
+}
+
+// The account to sign in with, when the key holds several passkeys of the site and the request named none (an empty
+// allowCredentials list): the key gives one assertion per passkey, the person chooses one, as in Chrome. The same
+// pattern as the PIN: the ceremony's thread asks (choose_ask) and waits, the interface reads (choose_question) and
+// answers (choose_answer) with the question's number.
+CHOOSE_MAX      :: 16    // the accounts shown (a key holds a few per site; more do not fit a dialog)
+CHOOSE_NAME_MAX :: 128   // bytes of each name kept (cut on a UTF-8 boundary)
+
+Choose_Account :: struct {
+	name:         string,   // user.name (an email or a login)
+	display_name: string,   // user.displayName
+}
+
+Choose_Question :: struct {
+	number:   u64,                // 0: no question
+	rp_id:    string,             // the slot's own copy, valid while the question is open
+	accounts: []Choose_Account,   // the same (at most CHOOSE_MAX)
+}
+
+@(private = "file")
+Choose_Slot :: struct {
+	ask:      sync.Mutex,   // one ceremony asks at a time
+	mu:       sync.Mutex,
+	question: Choose_Question,
+	rp:       [256]u8,
+	// (the worker frees its assertion once it has the answer: the names live here, not in libfido2's memory)
+	names:    [CHOOSE_MAX][CHOOSE_NAME_MAX]u8,
+	displays: [CHOOSE_MAX][CHOOSE_NAME_MAX]u8,
+	accounts: [CHOOSE_MAX]Choose_Account,
+	answered: bool,
+	chosen:   bool,
+	index:    int,
+	next:     u64,
+}
+
+@(private = "file")
+choose_slot: Choose_Slot
+
+// `s` cut to at most `max` bytes, never in the middle of a UTF-8 sequence (a cut name still draws).
+@(private = "file")
+utf8_cut :: proc(s: string, max: int) -> string {
+	if len(s) <= max { return s }
+	n := max
+	for n > 0 && s[n] & 0xC0 == 0x80 { n -= 1 }
+	return s[:n]
+}
+
+// The open question, or one with number 0. Called by the interface each frame it builds: a lock and a copy.
+choose_question :: proc() -> Choose_Question {
+	sync.mutex_lock(&choose_slot.mu)
+	defer sync.mutex_unlock(&choose_slot.mu)
+	if choose_slot.answered { return {} }
+	return choose_slot.question
+}
+
+// The person's answer to the question `number`: the account at `index` (`chosen`), or a refusal. Dropped when that
+// question is over or the index is not one of its accounts.
+choose_answer :: proc(number: u64, index: int, chosen: bool) {
+	sync.mutex_lock(&choose_slot.mu)
+	defer sync.mutex_unlock(&choose_slot.mu)
+	if number == 0 || choose_slot.question.number != number || choose_slot.answered { return }
+	if chosen && (index < 0 || index >= len(choose_slot.question.accounts)) { return }
+	choose_slot.answered, choose_slot.chosen, choose_slot.index = true, chosen, index
+}
+
+// Asks the person which account to use and waits for the answer, or for the ceremony's cancel. Only the first
+// CHOOSE_MAX accounts are offered. ok is false when the person refused, the ceremony was cancelled, or no interface
+// asks.
+choose_ask :: proc(token: ^Cancel_Token, rp_id: string, accounts: []Choose_Account) -> (index: int, ok: bool) {
+	if pin_wake == nil || len(accounts) == 0 { return 0, false }
+	sync.mutex_lock(&choose_slot.ask)
+	defer sync.mutex_unlock(&choose_slot.ask)
+	sync.mutex_lock(&choose_slot.mu)
+	choose_slot.next += 1
+	rp := copy(choose_slot.rp[:], utf8_cut(rp_id, len(choose_slot.rp)))
+	n := min(len(accounts), CHOOSE_MAX)
+	for a, i in accounts[:n] {
+		nl := copy(choose_slot.names[i][:], utf8_cut(a.name, CHOOSE_NAME_MAX))
+		dl := copy(choose_slot.displays[i][:], utf8_cut(a.display_name, CHOOSE_NAME_MAX))
+		choose_slot.accounts[i] = {name = string(choose_slot.names[i][:nl]), display_name = string(choose_slot.displays[i][:dl])}
+	}
+	choose_slot.question = {number = choose_slot.next, rp_id = string(choose_slot.rp[:rp]), accounts = choose_slot.accounts[:n]}
+	choose_slot.answered, choose_slot.chosen, choose_slot.index = false, false, 0
+	sync.mutex_unlock(&choose_slot.mu)
+	pin_wake()
+	defer pin_wake()   // (the question is over: the dialog goes)
+	// (a look at the answer and at the cancel every 50 ms, as pin_ask)
+	for {
+		sync.mutex_lock(&choose_slot.mu)
+		if choose_slot.answered {
+			index, ok = choose_slot.index, choose_slot.chosen
+			choose_slot.question = {}
+			sync.mutex_unlock(&choose_slot.mu)
+			return
+		}
+		sync.mutex_unlock(&choose_slot.mu)
+		if c, _ := cancelled(token); c {
+			sync.mutex_lock(&choose_slot.mu)
+			choose_slot.question, choose_slot.answered = {}, true
+			sync.mutex_unlock(&choose_slot.mu)
 			return 0, false
 		}
 		time.sleep(50 * time.Millisecond)
