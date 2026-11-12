@@ -48,11 +48,11 @@ catalogue_parse :: proc(text: string, into: ^map[string]Message, allocator := co
 				po, ook := pv.(json.Object)
 				if !ook { continue }
 				if c, cok := po["content"].(json.String); cok {
-					msg.placeholders[base.ascii_lower(pname, allocator)] = strings.clone(c, allocator)
+					msg.placeholders[base.ascii_lower_clone(pname, allocator)] = strings.clone(c, allocator)
 				}
 			}
 		}
-		into^[base.ascii_lower(name, allocator)] = msg
+		into^[base.ascii_lower_clone(name, allocator)] = msg
 	}
 	return true
 }
