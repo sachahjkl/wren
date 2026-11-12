@@ -1,6 +1,6 @@
 package webauthn
 
-// The PIN of a security key, asked of the person while a ceremony runs (Linux: libfido2 speaks to the key itself and
+// The PIN of a security key, asked of the person while a ceremony runs, and the wait for the key's touch that follows (Linux: libfido2 speaks to the key itself and
 // needs the PIN from the browser; Windows draws its own dialog). One question at a time, in a slot of this package: the
 // ceremony's thread asks (pin_ask) and waits; the interface reads the question (pin_question), shows its dialog and
 // answers (pin_answer) with the question's number, so that an answer to a question already over is dropped. The PIN
@@ -97,4 +97,59 @@ pin_ask :: proc(token: ^Cancel_Token, rp_id: string, retries: int, wrong: bool, 
 		}
 		time.sleep(50 * time.Millisecond)
 	}
+}
+
+// The wait for the person's touch on the key (Linux: libfido2 waits in its call; Windows says it in its own dialog).
+// The interface shows it, and its Cancel stops the ceremony.
+Touch_Question :: struct {
+	number: u64,      // 0: no wait
+	rp_id:  string,   // the slot's own copy, valid while the wait is open
+}
+
+@(private = "file")
+Touch_Slot :: struct {
+	mu:       sync.Mutex,
+	question: Touch_Question,
+	rp:       [256]u8,
+	platform: ^Platform,
+	token:    ^Cancel_Token,
+	next:     u64,
+}
+
+@(private = "file")
+touch_slot: Touch_Slot
+
+// The ceremony's thread is about to wait for the touch (before its blocking call to the key).
+touch_begin :: proc(pl: ^Platform, token: ^Cancel_Token, rp_id: string) {
+	sync.mutex_lock(&touch_slot.mu)
+	touch_slot.next += 1
+	n := copy(touch_slot.rp[:], rp_id)
+	touch_slot.question = {number = touch_slot.next, rp_id = string(touch_slot.rp[:n])}
+	touch_slot.platform, touch_slot.token = pl, token
+	sync.mutex_unlock(&touch_slot.mu)
+	if pin_wake != nil { pin_wake() }
+}
+
+// The key answered (or the wait was cancelled): the wait is over.
+touch_end :: proc() {
+	sync.mutex_lock(&touch_slot.mu)
+	touch_slot.question, touch_slot.platform, touch_slot.token = {}, nil, nil
+	sync.mutex_unlock(&touch_slot.mu)
+	if pin_wake != nil { pin_wake() }
+}
+
+// The open wait, or one with number 0.
+touch_question :: proc() -> Touch_Question {
+	sync.mutex_lock(&touch_slot.mu)
+	defer sync.mutex_unlock(&touch_slot.mu)
+	return touch_slot.question
+}
+
+// The person gave up the wait `number`: its ceremony is cancelled (the key stops blinking, the caller gets
+// NotAllowedError). Dropped when that wait is over.
+touch_cancel :: proc(number: u64) {
+	sync.mutex_lock(&touch_slot.mu)
+	defer sync.mutex_unlock(&touch_slot.mu)
+	if number == 0 || touch_slot.question.number != number || touch_slot.token == nil { return }
+	cancel(touch_slot.platform, touch_slot.token, .Abort)
 }

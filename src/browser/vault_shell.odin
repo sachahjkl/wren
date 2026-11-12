@@ -740,7 +740,7 @@ vault_login_build :: proc(app: ^App) {
 				case v.state == .Unlocking:          words = i18n.tr("Unlocking…")
 				case v.state == .Locating:           words = i18n.tr("Starting…")
 				}
-				vault_spinner(app, em * 1.3)
+				busy_spinner(app, em * 1.3)
 				ui.spacer(ui.px(em * 0.5))
 				ui.next({width = ui.fill(), height = ui.text_size()})
 				ui.push_tags("weak")
@@ -887,8 +887,7 @@ url_host :: proc(address: string) -> string {
 }
 
 // The spinner of a dialog that waits (the tab strip's turning arc, its phase from the clock); one wake per turn.
-@(private = "file")
-vault_spinner :: proc(app: ^App, size: f32) {
+busy_spinner :: proc(app: ^App, size: f32) {
 	ui.next({width = ui.px(size), height = ui.px(size)})
 	ui.custom("###vd_spinner", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		size := (^f32)(user)^

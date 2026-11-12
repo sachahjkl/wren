@@ -71,6 +71,8 @@ Key_Pin_Dialog :: struct {
 	focus:  bool,            // the field takes the focus in the next build (a question that opens)
 	size:   ui.Vec2,
 	body:   ui.Key,          // the box of what it says (dialog_preferred)
+	touch_body: ui.Key,      // the same for the wait for the touch
+	touch_size: ui.Vec2,
 }
 
 webauthn_pin_build :: proc(app: ^App) {
@@ -81,7 +83,10 @@ webauthn_pin_build :: proc(app: ^App) {
 		secret_wipe(&d.field)
 		d.number, d.reveal, d.focus = q.number, false, true
 	}
-	if q.number == 0 { return }
+	if q.number == 0 {
+		webauthn_touch_build(app)
+		return
+	}
 	em := ui.font_size()
 	open := true
 	submit, cancel := false, false
@@ -97,7 +102,7 @@ webauthn_pin_build :: proc(app: ^App) {
 					ui.spacer(ui.px(em * 0.9))
 					dialog_line(i18n.tr("Security key PIN"), "kp_title")
 					ui.spacer(ui.px(em * 0.5))
-					dialog_line(fmt.tprintf(i18n.tr("%s asks for your security key. Type its PIN, then touch the key."), q.rp_id), "kp_hint", weak = true)
+					dialog_line(fmt.tprintf(i18n.tr("%s asks for your security key. Type its PIN, then touch the key when it blinks."), q.rp_id), "kp_hint", weak = true)
 					if q.wrong || (q.retries >= 0 && q.retries <= 3) {
 						ui.spacer(ui.px(em * 0.3))
 						words := q.wrong ? fmt.tprintf(i18n.tr("Wrong PIN. %d tries left before the key blocks."), q.retries) : fmt.tprintf(i18n.tr("%d tries left before the key blocks."), q.retries)
@@ -130,4 +135,50 @@ webauthn_pin_build :: proc(app: ^App) {
 		webauthn.pin_answer(d.number, "", false)
 		secret_wipe(&d.field)
 	}
+}
+
+// While the key waits for the person's touch (after its PIN, or at once): what to do, and a Cancel that stops the
+// ceremony.
+@(private = "file")
+webauthn_touch_build :: proc(app: ^App) {
+	d := &app.key_pin
+	q := webauthn.touch_question()
+	if q.number == 0 { return }
+	em := ui.font_size()
+	open := true
+	cancel := false
+	if ui.modal_sized("key_touch", dialog_preferred(d.touch_body, em * 26, em * 10), &d.touch_size, &open, {em * 20, em * 8}) {
+		ui.next({width = ui.fill(), height = ui.fill()})
+		if ui.scroll_y("###kt_scroll") {
+			ui.next({width = ui.fill(), height = ui.children_sum()})
+			if ui.row(.Start, {}, "###kt_margins") {
+				d.touch_body = ui.parent_box().key
+				ui.spacer(ui.px(em * 1.0))
+				ui.next({width = ui.fill(), height = ui.children_sum()})
+				if ui.column(.Start, {}, "###kt_col") {
+					ui.spacer(ui.px(em * 0.9))
+					ui.next({width = ui.fill(), height = ui.children_sum()})
+					if ui.row(.Center, {}, "###kt_head") {
+						busy_spinner(app, em * 1.3)
+						ui.spacer(ui.px(em * 0.5))
+						ui.next({width = ui.fill(), height = ui.text_size()})
+						ui.label(strings.concatenate({i18n.tr("Touch your security key"), "###kt_title"}, ui.frame_allocator()))
+					}
+					ui.spacer(ui.px(em * 0.5))
+					dialog_line(fmt.tprintf(i18n.tr("%s asks for your security key. Touch its button or its gold disc now: it blinks while it waits."), q.rp_id), "kt_hint", weak = true)
+					ui.spacer(ui.px(em * 0.4))
+				}
+				ui.spacer(ui.px(em * 1.0))
+			}
+		}
+		ui.spacer(ui.px(em * 0.6))
+		ui.next({width = ui.fill(), height = ui.children_sum()})
+		if ui.row(.Center, {}, "###kt_buttons") {
+			ui.spacer(ui.fill())
+			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "kt_cancel", ui.px(em * 8)) { cancel = true }
+			ui.spacer(ui.px(em * 1.0))
+		}
+		ui.spacer(ui.px(em * 0.8))
+	}
+	if cancel || !open { webauthn.touch_cancel(q.number) }
 }

@@ -460,7 +460,11 @@ with_pin :: proc(dev: rawptr, token: ^Cancel_Token, rp_id: string, need_pin: boo
 	ask := need_pin
 	wrong := false
 	for {
-		if !ask { return call(dev, obj, nil) }
+		if !ask {
+			touch_begin(&FIDO2_PLATFORM, token, rp_id)
+			defer touch_end()
+			return call(dev, obj, nil)
+		}
 		retries: c.int = -1
 		if fido2.fido_dev_get_retry_count(dev, &retries) != FIDO_OK { retries = -1 }
 		if retries == 0 { return FIDO_ERR_PIN_BLOCKED }
@@ -471,7 +475,9 @@ with_pin :: proc(dev: rawptr, token: ^Cancel_Token, rp_id: string, need_pin: boo
 			if c, _ := cancelled(token); c { return FIDO_ERR_RX }
 			return FIDO_ERR_PIN_REQUIRED
 		}
+		touch_begin(&FIDO2_PLATFORM, token, rp_id)
 		r := call(dev, obj, cstring(raw_data(buf[:])))
+		touch_end()
 		for &b in buf { b = 0 }
 		switch r {
 		case FIDO_ERR_PIN_INVALID: wrong = true   // (asked again, with the tries left)

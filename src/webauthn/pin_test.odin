@@ -25,8 +25,8 @@ pin_job_run :: proc(data: rawptr) {
 pin_opened: sync.Sema
 
 // The ceremony's thread waits for the interface: the question it reads is the asked one, its answer comes back, an
-// answer to an older question is dropped, and the slot keeps no PIN; then a cancelled ceremony stops waiting. (One
-// test: the question's slot is the package's, two tests at once would share it.)
+// answer to an older question is dropped, and the slot keeps no PIN; then a cancelled ceremony stops waiting; then the
+// wait for the touch. (One test: the slots and the wake are the package's, two tests at once would share them.)
 @(test)
 pin_question_answer_and_cancel :: proc(t: ^testing.T) {
 	// (the wake is the interface's signal: the test waits on it, bounded, not on a time)
@@ -52,6 +52,20 @@ pin_question_answer_and_cancel :: proc(t: ^testing.T) {
 	pin_job_run(&k)
 	testing.expect(t, !k.ok, "no PIN when the ceremony was cancelled")
 	testing.expect_value(t, pin_question().number, 0)
+
+	// the wait for the touch: the interface sees it, its Cancel cancels that ceremony, a Cancel of an older wait does not
+	token: Cancel_Token
+	touch_begin(nil, &token, "example.com")
+	w := touch_question()
+	testing.expect_value(t, w.rp_id, "example.com")
+	touch_cancel(w.number - 1)
+	c, _ := cancelled(&token)
+	testing.expect(t, !c, "an older wait's Cancel does nothing")
+	touch_cancel(w.number)
+	c, _ = cancelled(&token)
+	testing.expect(t, c, "the Cancel cancels the ceremony")
+	touch_end()
+	testing.expect_value(t, touch_question().number, 0)
 }
 
 @(private = "file")
