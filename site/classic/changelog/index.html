@@ -47,11 +47,27 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-7-8">
+      <article class="release latest" id="v0-7-9">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-11-12">November 12, 2026</time></p>
+          <div class="release-title"><h3>0.7.9</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>Safer against hostile pages and servers</strong>: a compressed response, a script that fills the DOM or arms timers in a loop, a nameless cookie posing as <code>__Host-</code>, and long selectors no longer exhaust memory or stall the browser.</li>
+            <li><strong>Faster pages</strong>: nested flex containers, large <code>innerHTML</code>, deep event paths, <code>Map</code> and <code>Set</code> caches, substrings and 2D canvases without the GPU are many times faster.</li>
+            <li><strong>The interface does less at rest</strong>: the history, the session and the other profile files are written in the background, and a background tab draws only its own window.</li>
+            <li><strong>A centred address bar</strong> (<code>browser.address_bar.sizing_mode</code>), and a right click on the free space of the title bar opens the toolbar's menu.</li>
+            <li><strong>Bookmarks move sooner</strong> when you drag them along the bar.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.7.9.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.7.9">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-7-8">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-11-11">November 11, 2026</time></p>
-          <div class="release-title"><h3>0.7.8</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.7.8</h3></div>
           <ul class="release-list">
             <li><strong>A second window never waits for the screen</strong> on Wayland.</li>
             <li><strong>Segmented controls</strong> in the machined style are a slot with a raised key.</li>

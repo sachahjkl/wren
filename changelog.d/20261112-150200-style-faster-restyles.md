@@ -1,3 +1,0 @@
-type: Changed
-
-**Faster style passes on old table layouts and on pages full of CSS variables.** Cells and rows with the same presentational attributes (`align`, `bgcolor`, `width`...) compile them once and share their style; a CSS variable read by every element is parsed once per pass; a restyle after a small DOM change no longer rereads the classes of the whole document. The memory these caches and the restyle's indexes keep is bounded by new preferences (`style.presentational_hints.cache_entries`, `style.custom_properties.parsed_cache_bytes`, `style.invalidation.key_sets_max_bytes`, `style.matched.max_bytes`).

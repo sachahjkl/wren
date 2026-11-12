@@ -10,6 +10,77 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.7.9] - 2026-11-12
+
+### Added
+- **Layout work limits in about:config**: `layout.text.balance_max_lines` and `layout.text.balance_search_steps` bound the work of `text-wrap: balance`, and `layout.list.marker_baseline_max_boxes` bounds the search for the line a list marker sits on.
+- **A menu on the free space of the title bar**: a right click where the window drags opens the toolbar's menu, in every layout of the tabs. The menu shows or hides the bookmarks bar, moves the tabs to the top or to a sidebar, puts them in the title bar, sets the address bar at full width, and opens the window menu of the system. With the tabs in a sidebar, the title bar now always keeps browser.window.min_drag_em of free space to drag the window: in a narrow window the toolbar hides its buttons first.
+- **A question before what cannot be undone.** Removing a bookmark folder that holds bookmarks, deleting a downloaded file from the disk, and deleting the browsing history now ask first, with what goes (the items, the file, how many visits). Enter cancels.
+
+### Changed
+- **gui_toolkit 0.201.0**: the right click on the free space of the title bar reaches the browser (its toolbar menu), items of different widths reorder at half their neighbour, and the toolkit's list of the session's windows.
+- **Faster strings**: long substrings share their text instead of copying it, built strings keep their buffer, and string comparison and conversion read 16 bytes at a step (WebAssembly SIMD).
+- **Canvases with transparency cost less per frame**: on Direct3D a 2D canvas drawn on the CPU is uploaded as it is (premultiplied), without a conversion per pixel; elsewhere the conversion uses a table of reciprocals instead of three divisions per pixel.
+- **Searching about:history is faster**: each visit's address and title are lower-cased once, at the first search, and not again at each key press; the day headings ask for the time zone once per day, not once per visit.
+- **Saving the profile no longer pauses the window**: the session, the pinned tabs, the closed tabs, the cookies, the HSTS hosts, the downloads list and the palette's usage are written by background threads. The session is made again only after a tab changed, and the check that a downloaded file is still there no longer runs on the interface thread.
+- **The browsing history writes only what changed**: each visit and each new title is appended to `history.txt` in the background, instead of the whole history being written again after every visit (up to 10 MB at the 100 000-visit default). The whole file is written again only after a deletion, so that deleted visits leave the disk, or when the file has grown to twice what the history holds. The file is version 2: a history of version 1 is read and written again in the new format at the first save.
+- **Less work at rest**: a page's timers and tasks draw only the window that shows its tab, not every window; the Network log of a tab keeps headers only once the Network panel has shown that tab, and draws no frame for a piece of a response; a page that changes its document draws no frame for its title unless the title or icon changed; the status bar no longer counts the cookie jar at every frame.
+- **Faster style passes on old table layouts and on pages full of CSS variables.** Cells and rows with the same presentational attributes (`align`, `bgcolor`, `width`...) compile them once and share their style; a CSS variable read by every element is parsed once per pass; a restyle after a small DOM change no longer rereads the classes of the whole document. The memory these caches and the restyle's indexes keep is bounded by new preferences (`style.presentational_hints.cache_entries`, `style.custom_properties.parsed_cache_bytes`, `style.invalidation.key_sets_max_bytes`, `style.matched.max_bytes`).
+- **Why `insertRule()` refused a rule is now listed with the sheet's errors.** The developer tools show the reason (an invalid selector, more than one rule) beside the sheet's own parse errors, and a sheet now counts the errors past the ones it keeps (`style.max_parse_errors_kept`).
+- **Faster pages with many floats**: lines and blocks beside floats look only at the floats that can still reach them, not at every float of the formatting context. A gallery of hundreds of floated images lays out much faster.
+- **Text measured once per layout**: a paragraph laid out again in the same layout (a flex item, a box sized by its content, `text-wrap: balance`) reuses the widths of its words instead of measuring them again, and a form control measures its labels once. Text that breaks anywhere (`overflow-wrap`, `word-break`, `text-overflow: ellipsis`) can be measured in one call to the shell.
+- **Faster pages built of nested flex containers**: a flex item measured at its auto height and then laid out at its final height keeps both results, so each level of nesting is laid out a few times instead of twice as often as the level around it. Pages built of deep stacks of flex columns and rows lay out and resize much faster.
+- **Web fonts are decoded off the page's thread**: a WOFF2 font that was not decoded before is unpacked on a background thread, so scripts and painting do not wait for it. A font decoded before is still used at once.
+- **Removing a Web Storage key takes constant time.** After a removal, the last key takes the place of the removed one in the `key(n)` order, as the Web Storage standard allows.
+- **The window stays responsive while many answers arrive at once**: the built-in network stack hands its answers to the browser in slices of `network.drain.max_events` events (64) or `network.drain.max_ms` (4 ms), with input and painting between them.
+- **A page cannot queue requests or WebSocket data without end**: past `network.queue.max_waiting_per_page` (2000) requests of one page, or `network.queue.max_waiting` (10000) in total, waiting for a connection, a new request fails at once. A WebSocket with more than `network.websocket.max_buffered_bytes` (64 MiB) waiting to be sent is closed with code 1009.
+- **The HSTS store is bounded**: at most `network.hsts.max_entries` hosts (10000) are remembered as https only, and the one that expires first goes when it is full. A host is remembered at most `network.hsts.max_age_s` (one year) after it last said so.
+- **Centred address bar**: the address bar is at most 48 em wide, in the middle of the window, and narrower in a narrow window. With the integrated title bar, the free space on either side of it drags the window. Set browser.address_bar.sizing_mode to full_width (or "Address bar at full width" in the toolbar's menu) to get the full-width bar back.
+- **Bookmarks move sooner when you drag them along the bar**: a dragged bookmark takes its neighbour's place as soon as its edge is halfway into that neighbour. Before, you had to drag it past most of the neighbour. It does not swap back and forth when the pointer stops near that point.
+- **Faster AVIF decoding**: 8-bit AVIF images convert their colors with integers. The colors are the same as before within one level of a channel.
+- **ConvolverNode with long impulse responses** (`webaudio.max_convolver_seconds`): the work per sample grows with the logarithm of the impulse response, not with its length, so long reverbs no longer overload the audio thread. Only the first 20 seconds of an impulse response are used (the preference changes it).
+- **Faster gzip and deflate decoding**: compressed pages, scripts and style sheets are inflated by zlib-rs, which uses the processor's vector instructions, instead of miniz_oxide.
+- **Faster putImageData**: the pixels of an ImageData are written to a 2D canvas several at once. The result is the same as before.
+- **Faster canvas shadows and blur filters**: the blur of a 2D canvas reads and writes its pixels row by row. The result is the same as before.
+- **Faster 2D canvas fills and drawImage**: a canvas drawn on the CPU paints rows of pixels at once, and an image drawn at its own size, or scaled or turned with smoothing, is sampled a row at a time. The pixels are the same as before (a smoothed, scaled image within one level of a channel).
+- **Faster URL resolution**: the document's base URL (its `<base>`) is kept parsed until the document changes, instead of being searched and parsed for each image, stylesheet and link.
+- **Faster text offsets**: `length`, `substringData`, `insertData`, `deleteData`, `replaceData` and `splitText` of text nodes find UTF-16 offsets 16 bytes at a time and scan the text once.
+- **Faster loading of UTF-8 pages**: a valid UTF-8 document is checked 32 bytes at a time and copied once, instead of being decoded through code points. Strings passed by scripts, HTML serialization and percent-encoding skip plain runs a block at a time.
+- **Large strings are made once**: `innerHTML`, `outerHTML`, `textContent` and the other strings larger than the script's buffer are computed once, not twice.
+- **gui_toolkit 0.198.0.** Scroll bars in the interface's colours with a grip, a menu's search edited as a field, faster captures and PNG writing, square rows in lists and menus, and a Wayland window at rest that no longer redraws at every refresh. The theme "Console" is now named "Kernel": a profile that chose it goes back to the default theme.
+- **gui_toolkit 0.191.1**: a selected row of a list, a table or a menu fills its whole width with square corners; the Console theme is named Kernel. The card shader is checked against the toolkit's new sources.
+
+### Removed
+- **The preference wasm.features.simd is gone**: WebAssembly SIMD is always on, because the JavaScript engine now uses it.
+
+### Fixed
+- **`JSON.stringify` with a non-Latin-1 key of an undefined value**: the output no longer loses its text before that key.
+- **Long built-in loops stop at the slow-script limit**: `fill`, `indexOf`, `includes`, `join`, `reverse`, `sort`, `repeat`, `padStart` and the same methods of typed arrays over huge lengths now stop when a script runs too long.
+- **Large strings and arrays past the memory limit throw**: `repeat`, `padStart`, `join`, `toReversed` and array growth past the page's script memory limit throw a `RangeError` that the script can catch, instead of stopping the page's scripts.
+- **Map and Set stay fast in delete-then-set loops**: a map that deletes and adds entries in turn no longer rebuilds its index at each insert.
+- **Property keys are freed**: a page that makes many keys at run time (`obj[id]`, `id in obj`, `JSON.parse` of varied data) no longer keeps every key string for the life of the page; the keys nothing uses are freed at the next collection.
+- **Downloads end cleanly in every case**: a download stopped when the browser closes is marked cancelled with its end time and saved to the list, its temporary file is removed exactly once, and a download being moved to its place can no longer be cancelled halfway. The Save dialog and the folder picker run on a thread of their own, so a dialog left open does not hold back other downloads' writes or the profile's saves. Without a chosen place, the free file name is found off the interface thread.
+- **A profile file that cannot be written is reported**: when the history, the bookmarks, the session, the closed tabs, the downloads list, the cookies or another profile file cannot be saved, a notice says so once, the log names the file, and Wren tries again later and later (2 seconds up to 5 minutes) instead of every 2 seconds or not at all.
+- **Each window shows its own title**: with several windows open, the title of a window (taskbar, Alt+Tab) follows its own current tab, and a title change of a page is always seen.
+- **Site icons that failed to load come back**: a tab icon whose download failed is tried again by the next navigation that names it, instead of staying missing until Wren restarts.
+- **A file dialog no longer holds the browser's background work**: the Save, Open and folder dialogs (Save as, file inputs, colour inputs, the File System Access pickers, the content blocker's import and export) each run on a thread of their own. File reads and other dialogs no longer wait until you answer, and closing Wren with a dialog open no longer waits for it.
+- **Long selectors on deep pages no longer stall the style pass.** A selector such as `.a .b .c .d` on an element deep in a page that has no `.a` was tried against every combination of ancestors; it now stops as soon as no ancestor can match, so its cost grows with the depth instead of a power of it. `:has()` no longer looks above its own element. A new preference, `style.selector_match.max_steps`, bounds what one selector may cost on one element.
+- **Stretched flex and grid items laid out again when needed**: an item whose content depends on its height (columns, an image or inline-block with a percentage height inside a link or a span, a box in another writing mode) is laid out again at its stretched height, instead of keeping the layout of its content height.
+- **`width: min-content` and `max-content` on floats**: a float with one of these widths is now as wide as its content says, as an inline-block already was, instead of shrinking to fit.
+- **A filter list that moved is downloaded again**: the list updater follows up to `blocker.update.max_redirects` (5) redirects, to https addresses only. Before, a redirect left the list out of date with the error "the server answered 301".
+- **Live lists (childNodes, children, getElementsByClassName) stay valid across unrelated changes.** A change elsewhere in the document no longer makes the next read walk the whole list again.
+- **MutationObserver stays fast when many nodes are removed.** Removing many children of an observed node, or exceeding `javascript.dom.max_mutation_records`, made each later mutation slower.
+- **Events dispatch quickly in very deep documents.** Building the event path took time proportional to the square of the target's depth.
+- **Large innerHTML and fragment insertions are fast again.** Inserting a fragment of many nodes took time proportional to the square of their number.
+
+### Security
+- **Long URLs no longer escape the content blocker**: the filters are matched against the whole URL. Before, only its first 8 KiB, its first 96 words and its first 2048 positions were looked at, so a filter that matched further on never blocked.
+- **Mixed content is blocked in blob:, about:blank and about:srcdoc documents of an https page**: the check now looks at the document's origin, not at its URL. Before, such a document could load scripts, styles and WebSockets over plain http.
+- **A nameless cookie can no longer pose as a `__Host-` or `__Secure-` cookie**: `Set-Cookie: =__Host-sid=evil` (or `__Host-sid` alone) is refused. Such a cookie reached the server as `__Host-sid`, although none of the prefix's rules had been checked.
+- **Scripts can no longer exhaust memory through the DOM or timers.** A document holds at most `javascript.dom.max_nodes` nodes and `javascript.dom.max_bytes` bytes of text and attributes, and one event target holds at most `javascript.dom.max_listeners_per_target` listeners. Past these limits, the operation fails with QuotaExceededError. A page has at most `timers.max_timers` pending setTimeout and setInterval timers.
+- **One limit for the size of response headers**: a response head larger than 256 KiB fails the request, the same over HTTP/1.1, HTTP/2, HTTP/3 and WebSocket handshakes. Before, HTTP/3 accepted headers of any size, and HTTP/2 refused heads larger than 16 KiB (some sites with many cookies failed to load).
+- **A compressed response can no longer exhaust memory**: gzip, deflate and Brotli bodies are decoded 64 KiB at a time, and each step goes to the page before the next is decoded. A response that expands to far more than its size stops at the body limit, with at most one step in memory. Brotli streams that ask for a window larger than the standard's 16 MiB are refused.
+
 ## [0.7.8] - 2026-11-11
 
 ### Changed
@@ -1414,7 +1485,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.8...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.7.9...HEAD
+[0.7.9]: https://github.com/sachahjkl/wren/compare/v0.7.8...v0.7.9
 [0.7.8]: https://github.com/sachahjkl/wren/compare/v0.7.7...v0.7.8
 [0.7.7]: https://github.com/sachahjkl/wren/compare/v0.7.6...v0.7.7
 [0.7.6]: https://github.com/sachahjkl/wren/compare/v0.7.5...v0.7.6
