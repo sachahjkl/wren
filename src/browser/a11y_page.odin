@@ -112,7 +112,7 @@ page_a11y_frame :: proc(app: ^App) {
 		return
 	}
 	if t.page == nil || t.kind != .Web || t.page.formctl == nil { return }
-	if wnd.errand == .Caret || wnd.errand == .Status_Bar { return }   // (nothing a reader is told about changed)
+	if wnd.errands != {} && wnd.errands <= {.Caret, .Status_Bar} { return }   // (nothing a reader is told about changed)
 	set := a11y.settings_from_prefs(&app.prefs)
 	if pa.tab_id != t.id {
 		// another page under the graft: its trees are new to the adapter

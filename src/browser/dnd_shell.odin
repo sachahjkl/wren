@@ -24,6 +24,7 @@ import "wb:config"
 import "wb:dom"
 import "wb:fetch"
 import "wb:forms"
+import "wb:host"
 import "toolkit:instance"
 import lay "wb:layout"
 import "wb:page"
@@ -61,7 +62,7 @@ Page_Drag :: struct {
 	sync_over:   bool,            // the system's drag (hand_off) is back over the page
 	// the pointer left the window while the picture is still being read back
 	handoff_pending: bool,
-	handoff_frames:  int,
+	handoff_since:   i64,         // when it began to wait (the loop's clock)
 }
 
 // Drags of the system over a window.
@@ -72,7 +73,24 @@ Dnd_Shell :: struct {
 	ole:         bool,            // the window is an OLE drop target
 }
 
-@(private = "file") HANDOFF_WAIT_FRAMES :: 4
+// How long the system's drag waits for the picture (loop ms). A bound in frames meant nothing: a test makes them as fast
+// as it asks, and the software rasterizer of a machine with no GPU had not copied the picture after four. The picture's
+// own deadline (dnd_image.odin READBACK_DEADLINE_MS) is shorter: past it the drag has a plain picture, and this bound
+// only ends a wait for a layout that never comes (a window that draws no frame).
+@(private = "file") HANDOFF_WAIT_MS :: 1500
+
+// The system's drag has waited long enough for the picture.
+@(private = "file")
+handoff_late :: proc(app: ^App, g: ^Pointer_Gesture) -> bool {
+	return g.drag.handoff_pending && host.now_ns(&app.loop) - g.drag.handoff_since >= HANDOFF_WAIT_MS * NS_PER_MS
+}
+
+// A remote drag holds its steps while the system's drag waits for the picture (remote_methods.odin drag_step): a scripted
+// pointer that went on would be back over the page before the hand-off.
+dnd_handoff_pending :: proc(app: ^App) -> bool {
+	g := gesture_of(app)
+	return g.owner == .Page_Drag && g.drag.handoff_pending
+}
 
 
 dnd_page_events :: proc(app: ^App) -> bool { return config.bool_of(&app.prefs, "browser.dnd.src_page_events") }
@@ -429,11 +447,11 @@ dnd_drag_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	case .Mouse_Move:
 		size := [2]f32{f32(wnd.win.size.x), f32(wnd.win.size.y)}
 		if ev.pos.x < 0 || ev.pos.y < 0 || ev.pos.x >= size.x || ev.pos.y >= size.y {
-			// the picture is read back from a frame or two after the drag started: the system's drag waits for it (a
-			// few frames at most: dnd_events)
-			if dnd_image_waiting() && g.drag.handoff_frames < HANDOFF_WAIT_FRAMES {
-				g.drag.handoff_pending = true
-				request_frames(app, 2)
+			// the picture is read back from a frame or two after the drag started: the system's drag waits for it
+			// (HANDOFF_WAIT_MS at most: dnd_events). Nothing asks for frames meanwhile: the read-back's timer asks for
+			// one when the picture is made, a layout still awaited asks for its own.
+			if dnd_image_waiting() && !handoff_late(app, g) {
+				if !g.drag.handoff_pending { g.drag.handoff_pending, g.drag.handoff_since = true, host.now_ns(&app.loop) }
 				return true
 			}
 			g.drag.handoff_pending = false
@@ -492,9 +510,7 @@ dnd_events :: proc(app: ^App, events: []platform.Event) {
 	touch_frame(app)   // touch_shell.odin: a finger held still (the long press), every frame while one is down
 	gesture_follow(app)
 	if g := gesture_of(app); g.owner == .Page_Drag && g.drag.handoff_pending {
-		g.drag.handoff_frames += 1
-		if !dnd_image_waiting() || g.drag.handoff_frames >= HANDOFF_WAIT_FRAMES { g.drag.handoff_pending = false; hand_off(app, g.tab) }
-		else { request_frames(app, 2) }
+		if !dnd_image_waiting() || handoff_late(app, g) { g.drag.handoff_pending = false; hand_off(app, g.tab) }
 	}
 	for ev in events {
 		#partial switch ev.kind {

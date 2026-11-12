@@ -153,4 +153,70 @@ hud_numbers_from_history :: proc(t: ^testing.T) {
 	hud_refresh(app, 9000)
 	testing.expect_value(t, app.hud.nums.frames, 0)
 	testing.expect_value(t, app.hud.nums.fps, 0)
+	// measured again later, still at rest (the process's memory left out: it moves while the test runs): what the status bar shows is
+	// the same, and the settle wake draws no frame
+	later := hud_measure(app, 12000)
+	testing.expect_value(t, later.frames, 0)
+	testing.expect_value(t, later.at_ms, 12000)
+	rested := app.hud.nums
+	later.mem_valid, rested.mem_valid = false, false
+	testing.expect_value(t, hud_shown(later, false, 16.7, 33.4), hud_shown(rested, false, 16.7, 33.4))
+}
+
+// What the status bar and the title show of the numbers: what the settle wake compares before it asks for a frame.
+@(test)
+hud_shown_numbers :: proc(t: ^testing.T) {
+	test_app(t)
+	rest := Hud_Numbers{at_ms = 1000, working_set = 312_400_000, private_bytes = 200_000_000, mem_valid = true}
+	// another time, a few bytes more of memory, numbers no counter shows: the same
+	other := rest
+	other.at_ms, other.working_set, other.missed, other.lat_max = 5000, 312_400_100, 3, 12
+	testing.expect_value(t, hud_shown(other, false, 16.7, 33.4), hud_shown(rest, false, 16.7, 33.4))
+	// frames in the window: not the same
+	busy := rest
+	busy.frames, busy.fps, busy.cpu_mean = 10, 10, 4.2
+	testing.expect(t, hud_shown(busy, false, 16.7, 33.4) != hud_shown(rest, false, 16.7, 33.4))
+	// the same text of the CPU time, over the warning threshold: its tone changed
+	warm := busy
+	warm.cpu_mean = 4.24
+	testing.expect_value(t, hud_shown(warm, false, 16.7, 33.4), hud_shown(busy, false, 16.7, 33.4))
+	testing.expect(t, hud_shown(warm, false, 4.21, 33.4) != hud_shown(busy, false, 4.21, 33.4))
+	// another megabyte shown
+	grown := rest
+	grown.working_set = 313_600_000
+	testing.expect(t, hud_shown(grown, false, 16.7, 33.4) != hud_shown(rest, false, 16.7, 33.4))
+	// the GPU time
+	gpu := busy
+	gpu.gpu_n, gpu.gpu_mean = 10, 0.8
+	testing.expect(t, hud_shown(gpu, false, 16.7, 33.4) != hud_shown(busy, false, 16.7, 33.4))
+}
+
+// Errands that ask for a window's frames one after the other stay errands; one that comes after frames like any other does not make
+// them errands.
+@(test)
+frame_errands_join :: proc(t: ^testing.T) {
+	test_app(t)
+	testing.expect_value(t, errands_after_request(0, {}, .Caret), Frame_Errands{.Caret})
+	// (a stale set of a window with no frame asked is not kept)
+	testing.expect_value(t, errands_after_request(0, {.Reader}, .Caret), Frame_Errands{.Caret})
+	// the status bar's second frame waits when the caret's toggle comes
+	testing.expect_value(t, errands_after_request(1, {.Status_Bar}, .Caret), Frame_Errands{.Caret, .Status_Bar})
+	testing.expect_value(t, errands_after_request(1, {.Caret}, .Caret), Frame_Errands{.Caret})
+	// frames like any other wait
+	testing.expect_value(t, errands_after_request(2, {}, .Caret), Frame_Errands{})
+}
+
+// The window's request: an errand joins the one that waits; any other request makes the frames ones like any other.
+@(test)
+window_errand_requests :: proc(t: ^testing.T) {
+	app := test_app(t)
+	w: Browser_Window
+	window_request_errand(app, &w, .Status_Bar, 2)
+	window_request_errand(app, &w, .Caret)
+	testing.expect_value(t, w.frames_requested, 2)
+	testing.expect_value(t, w.errands, Frame_Errands{.Caret, .Status_Bar})
+	window_request(app, &w, 1)
+	testing.expect_value(t, w.errands, Frame_Errands{})
+	window_request_errand(app, &w, .Caret)
+	testing.expect_value(t, w.errands, Frame_Errands{})
 }

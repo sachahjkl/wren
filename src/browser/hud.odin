@@ -439,8 +439,8 @@ hud_sample :: proc(app: ^App, now: f64) {
 }
 
 // After the last frame of a burst: one wake when the rate window has passed, so the numbers fall to rest. A one-shot
-// timer of the event loop, not of the window: its fire wakes the loop for exactly one frame (a task of the loop asks
-// for more), which the numbers are refreshed for before it is built and which is no sample.
+// timer of the event loop, not of the window: its fire refreshes the numbers and, when what they show changed, wakes the
+// loop for exactly one frame (a task of the loop asks for more), which is no sample.
 @(private = "file")
 hud_arm_settle :: proc(app: ^App) {
 	if app.hud.settle != base.NIL_HANDLE { return }
@@ -459,17 +459,43 @@ hud_settle_timer :: proc(data: rawptr) {
 		app.hud.settle = host.set_timer(&app.loop, app.hud.cfg.window_ms - idle + HUD_SETTLE_EXTRA_MS, 0, hud_settle_timer, app)
 		return
 	}
-	app.hud.settle_skip = true   // the frame this wakes is no sample
-	window_request_errand(app, active_window(app), .Status_Bar)   // (a wake without anything to do draws no frame)
-	if app.phase_clock.on { hud_refresh(app, now) }
+	if !app.phase_clock.on { return }   // (nothing shows the numbers)
+	h := &app.hud
+	n := hud_measure(app, now)
+	// a frame only when what the status bar, its open panel or the title shows of them changes (the memory moved a few bytes, the
+	// numbers were at rest already): no frame, and the status bar stays what each window last drew
+	warn, bad := hud_warn(app), hud_bad(app)
+	same := !h.panel_open && hud_shown(n, h.cfg.comma, warn, bad) == hud_shown(h.nums, h.cfg.comma, warn, bad)
+	h.nums = n
+	if same { return }
+	h.changes += 1
+	h.settle_skip = true   // the frame this wakes is no sample
+	window_request_errand(app, active_window(app), .Status_Bar)
 }
 
-// The numbers of the last `window_ms`.
+// What the status bar (its counters and their tips) and the window title show of `n`: two numbers with the same text show the same.
+hud_shown :: proc(n: Hud_Numbers, comma: bool, warn, bad: f32) -> string {
+	cpu, gpu, tone, mem := "--", "--", "weak", ""
+	if n.frames > 0 { cpu = fmt_ms(n.cpu_mean, comma) }
+	if n.gpu_n > 0 { gpu = fmt_ms(n.gpu_mean, comma) }
+	if bad > 0 && n.cpu_mean > bad { tone = "bad" } else if warn > 0 && n.cpu_mean > warn { tone = "warn" }
+	if n.mem_valid {
+		mem = fmt.tprintf("%s %s %d", fmt_bytes(n.working_set, comma), fmt_bytes(n.private_bytes, comma), n.working_set / BYTES_PER_MB_DECIMAL)
+	}
+	return fmt.tprintf("%.0f fps, CPU %s %s, GPU %s, %s", n.fps, cpu, tone, gpu, mem)
+}
+
+// The numbers of the last `window_ms`, shown from now on.
 hud_refresh :: proc(app: ^App, now: f64) {
+	app.hud.nums = hud_measure(app, now)
+	app.hud.changes += 1
+}
+
+// The numbers of the last `window_ms` at `now`.
+hud_measure :: proc(app: ^App, now: f64) -> (numbers: Hud_Numbers) {
 	h := &app.hud
-	n := &h.nums
-	n^ = {at_ms = now}
-	h.changes += 1
+	numbers = {at_ms = now}
+	n := &numbers
 	since := now - h.cfg.window_ms
 	budget := hud_budget(app)
 	n.budget = budget
@@ -530,6 +556,7 @@ hud_refresh :: proc(app: ^App, now: f64) {
 	if n.frames == ui.history_capacity(&h.history) { span = max(now - oldest, 1) }
 	n.fps = f32(f64(n.frames) * 1000 / span)
 	n.working_set, n.private_bytes, n.mem_valid = process_memory()
+	return
 }
 
 // The `q` quantile (0..1) of `v` (sorted in place): the smallest value at least that share of them do not exceed.

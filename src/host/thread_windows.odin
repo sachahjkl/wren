@@ -7,6 +7,22 @@ Native_Thread :: struct {
 	id:     u32,
 }
 
+foreign import kernel32_thread "system:Kernel32.lib"
+
+@(default_calling_convention = "system", private = "file")
+foreign kernel32_thread {
+	SetThreadStackGuarantee :: proc(size: ^u32) -> win.BOOL ---
+}
+
+// Stack kept for the handlers of a stack overflow on each thread this package starts (SetThreadStackGuarantee: the
+// guarantee is the calling thread's, and only the main thread asked for one, crashtrace's install). Without it the system
+// dispatches the overflow on the one page left: the exception's record and context (larger where the processor has
+// AVX-512 state to save), the dispatcher's own frame and the handler that hands the report to crashtrace's writer did not
+// always fit, and the process ended with no report and no event (overflow_thread of src/tools/crashmodes, on a CI
+// runner). Rust's runtime asks the same of each thread it starts, for the same reason.
+@(private = "file")
+OVERFLOW_HANDLER_STACK_BYTES :: 64 * 1024
+
 @(private)
 STACK_SIZE_PARAM_IS_A_RESERVATION :: 0x00010000
 @(private)
@@ -33,6 +49,8 @@ thread_raise_interface :: proc() { win.SetThreadPriority(win.GetCurrentThread(),
 @(private)
 thread_entry :: proc "system" (arg: rawptr) -> win.DWORD {
 	t := (^Thread)(arg)
+	guarantee: u32 = OVERFLOW_HANDLER_STACK_BYTES
+	SetThreadStackGuarantee(&guarantee)   // (a stack smaller than this refuses it: the thread runs anyway)
 	context = t.ctx
 	thread_run(t)
 	return 0

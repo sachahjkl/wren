@@ -9,7 +9,8 @@ package browser
 // Another element is painted alone into an offscreen target of the toolkit (draw.offscreen_begin, the frame after the
 // drag started: what dragstart's listeners changed is in it), whatever its place: off the screen (top: -1000px, the
 // usual trick of a custom drag picture), under other elements or scrolled away; then read back
-// (render.readback_poll). A drag of selected text of the document gets a picture of the selection: its text with the
+// (render.readback_poll, from a timer of the loop: a frame asked for at every turn only to look would race the
+// software rasterizer of a machine with no GPU for the processors). A drag of selected text of the document gets a picture of the selection: its text with the
 // selection's highlight over each line, faded as the ghost.
 
 import "core:math"
@@ -18,6 +19,7 @@ import "toolkit:platform"
 import "toolkit:render"
 import "wb:base"
 import "wb:dom"
+import "wb:host"
 import lay "wb:layout"
 import "wb:page"
 import "wb:config"
@@ -32,6 +34,12 @@ DND_IMAGE_PREFS := [?]config.Def{
 // Frames the drag's picture waits for a layout of the page as it is: a page that changes at every frame gets none.
 @(private = "file") DRAG_PICTURE_WAIT_FRAMES :: 8
 
+// How often the read-back of a painted picture is looked at (loop ms), and how long it may take before the drag uses a
+// plain picture of the same size instead: the system's software rasterizer can be far behind a frame, a lost device never
+// answers, and the system's drag waits for the picture (dnd_shell.odin hand_off).
+@(private = "file") READBACK_POLL_MS :: 4
+@(private = "file") READBACK_DEADLINE_MS :: 1000
+
 // Where the picture of a drag is: no drag, a painted element waiting for a layout as new as the page, then for its pixels, then made.
 Picture_State :: enum u8 { None, Wait_Layout, Readback, Ready }
 
@@ -40,6 +48,7 @@ Dnd_Image :: struct {
 	state:   Picture_State,
 	waited:  int,             // frames the picture waited for the layout to catch up with the page
 	readback: render.Readback_Id,
+	asked_ns: i64,            // when the read-back was recorded (the loop's clock): its deadline counts from there
 	mode:    Picture_Of,
 	el:      base.Handle,     // Element: what is painted
 	bounds:  draw.Rect,       // what is painted (page area px, the viewport's: scrolled)
@@ -97,7 +106,7 @@ dnd_image_begin :: proc(app: ^App, t: ^Tab, p: ^page.Page, pointer: [2]f32) {
 		if abs(k - 1) > 0.01 { px, w, h = scale_rgba(rgba, size.x, size.y, k) }
 		defer if abs(k - 1) > 0.01 { delete(px) }
 		hot := given ? [2]f32{f32(off.x) * scale, f32(off.y) * scale} : grab_point(app, t, el, pointer)
-		set_picture(app, platform.Drag_Image{px, {w, h}, {int(math.round(hot.x)), int(math.round(hot.y))}}, fade, limit)
+		set_picture(app, active_window(app), platform.Drag_Image{px, {w, h}, {int(math.round(hot.x)), int(math.round(hot.y))}}, fade, limit)
 		return
 	}
 	// another element: painted alone, wherever it is (an element that is not rendered at all, display: none, has no
@@ -221,26 +230,88 @@ grab_point :: proc(app: ^App, t: ^Tab, el: base.Handle, pointer: [2]f32) -> [2]f
 	return {}
 }
 
+// The picture of window `w`'s drag (the active one, or the one whose read-back a timer took).
 @(private = "file")
-set_picture :: proc(app: ^App, img: platform.Drag_Image, fade: f32, limit: int) {
+set_picture :: proc(app: ^App, w: ^Browser_Window, img: platform.Drag_Image, fade: f32, limit: int) {
+	d := &w.own.dimg
 	fit := platform.drag_image_fit(img, {limit, limit})
-	if !platform.drag_image_valid(fit) { window_own(app).dimg.state = .None; return }
+	if !platform.drag_image_valid(fit) { d.state = .None; window_request(app, w, 2); return }   // (a hand-off waiting for it looks again)
 	platform.drag_image_fade(fit, fade)
-	delete(window_own(app).dimg.img.rgba)
-	window_own(app).dimg.img = fit
+	delete(d.img.rgba)
+	d.img = fit
 	// what the remote control reports (wren ctl stats: dragPicture): its size, hot spot, the pixel at its middle
 	mid := (fit.size.y / 2 * fit.size.x + fit.size.x / 2) * 4
 	app.dnd_last_picture = {fit.size, fit.offset, {fit.rgba[mid], fit.rgba[mid + 1], fit.rgba[mid + 2], fit.rgba[mid + 3]}}
-	if window_own(app).dimg.tex_ok { render.destroy_texture(&app.r, window_own(app).dimg.tex); window_own(app).dimg.tex_ok = false }
-	window_own(app).dimg.tex = render.create_texture_rgba(&app.r, fit.size.x, fit.size.y, false)
-	if window_own(app).dimg.tex != 0 {
-		render.update_texture_rgba(&app.r, window_own(app).dimg.tex, 0, 0, fit.size.x, fit.size.y, fit.rgba)
-		window_own(app).dimg.tex_ok = true
+	if d.tex_ok { render.destroy_texture(&app.r, d.tex); d.tex_ok = false }
+	d.tex = render.create_texture_rgba(&app.r, fit.size.x, fit.size.y, false)
+	if d.tex != 0 {
+		render.update_texture_rgba(&app.r, d.tex, 0, 0, fit.size.x, fit.size.y, fit.rgba)
+		d.tex_ok = true
 	}
-	request_frames(app, 2)
+	window_request(app, w, 2)
 }
 
-// Every frame (drawing): the picture is painted offscreen once, then its pixels read when the GPU has them.
+// What the drag shows when the painted picture never came back (past READBACK_DEADLINE_MS, a failed read-back): a plain
+// translucent box of the painted size and the same hot spot, so that the drag still shows what it carries and where it
+// was taken. Made at most browser.dnd.image_max_px a side: a box needs no detail.
+@(private = "file")
+set_plain_picture :: proc(app: ^App, w: ^Browser_Window) {
+	d := &w.own.dimg
+	limit := int(config.int_of(&app.prefs, "browser.dnd.image_max_px"))
+	size := [2]f32{d.bounds.max.x - d.bounds.min.x, d.bounds.max.y - d.bounds.min.y}
+	if size.x < 1 || size.y < 1 { d.state = .None; window_request(app, w, 2); return }
+	k := min(f32(1), f32(limit) / max(size.x, size.y))
+	pw, ph := max(int(size.x * k), 1), max(int(size.y * k), 1)
+	px := make([]u8, pw * ph * 4, context.temp_allocator)
+	for i in 0 ..< pw * ph { px[i * 4], px[i * 4 + 1], px[i * 4 + 2], px[i * 4 + 3] = PLAIN_GREY, PLAIN_GREY, PLAIN_GREY, PLAIN_ALPHA }
+	hot := d.hot * k
+	set_picture(app, w, platform.Drag_Image{px, {pw, ph}, {int(math.round(hot.x)), int(math.round(hot.y))}}, 1, limit)
+}
+
+// The plain picture's grey and opacity (straight RGBA bytes): neutral on a light or a dark page.
+@(private = "file") PLAIN_GREY :: 160
+@(private = "file") PLAIN_ALPHA :: 160
+
+// The loop's timer of a read-back (READBACK_POLL_MS): its pixels when the GPU has them, the plain picture past the
+// deadline. `data` is the window's id and the read-back's: a tick of a read-back that was forgotten (a drag that ended,
+// another that began) finds another id and stops.
+@(private = "file")
+readback_tick :: proc(data: rawptr) {
+	app := the_app
+	if app == nil { return }
+	packed := u64(uintptr(data))
+	w := window_by_id(app, int(packed >> 32))
+	if w == nil { return }
+	d := &w.own.dimg
+	if d.state != .Readback || u64(d.readback) != packed & 0xFFFF_FFFF { return }
+	pixels, size, st := render.readback_poll(&app.r, d.readback, context.temp_allocator)
+	switch st {
+	case .None, .Pending:
+		if host.now_ns(&app.loop) - d.asked_ns >= READBACK_DEADLINE_MS * NS_PER_MS {
+			render.readback_release(&app.r, d.readback)
+			d.state, d.readback = .Ready, 0
+			set_plain_picture(app, w)
+			return
+		}
+		readback_arm(app, w)
+	case .Failed:
+		d.state, d.readback = .Ready, 0
+		set_plain_picture(app, w)
+	case .Ready:
+		d.state, d.readback = .Ready, 0
+		set_picture(app, w, platform.Drag_Image{pixels, size, {int(math.round(d.hot.x)), int(math.round(d.hot.y))}}, d.fade, int(config.int_of(&app.prefs, "browser.dnd.image_max_px")))
+	}
+}
+
+// The next look at window `w`'s read-back. A one-shot timer each time: nothing to clear when the drag ends, the tick
+// that finds another read-back stops by itself.
+@(private = "file")
+readback_arm :: proc(app: ^App, w: ^Browser_Window) {
+	packed := u64(u32(w.id)) << 32 | u64(w.own.dimg.readback)
+	host.set_timer(&app.loop, READBACK_POLL_MS, 0, readback_tick, rawptr(uintptr(packed)))
+}
+
+// Every frame (drawing): the picture is painted offscreen once; its pixels are read from a timer (readback_tick).
 @(private = "file")
 dnd_image_poll :: proc(app: ^App, dc: ^draw.Context) {
 	img := &window_own(app).dimg
@@ -255,15 +326,9 @@ dnd_image_poll :: proc(app: ^App, dc: ^draw.Context) {
 		img.waited = 0
 		img.readback = paint_picture(app, dc)
 		img.state = img.readback != 0 ? .Readback : .Ready   // (no readback on this renderer: the system's own picture)
-	case .Readback:
-		request_frames(app, 2)
-		pixels, size, st := render.readback_poll(&app.r, img.readback, context.temp_allocator)
-		switch st {
-		case .None, .Pending:
-		case .Failed: img.state, img.readback = .Ready, 0
-		case .Ready:
-			img.state, img.readback = .Ready, 0
-			set_picture(app, platform.Drag_Image{pixels, size, {int(math.round(img.hot.x)), int(math.round(img.hot.y))}}, img.fade, int(config.int_of(&app.prefs, "browser.dnd.image_max_px")))
+		if img.readback != 0 {
+			img.asked_ns = host.now_ns(&app.loop)
+			readback_arm(app, active_window(app))
 		}
 	}
 }

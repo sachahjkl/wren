@@ -1099,8 +1099,15 @@ remote_drag_steps :: proc(app: ^App) -> ([]platform.Drag_Step, bool) {
 }
 
 // Press (stage 0), one move per frame (stage 1, idx: the steps made), release at the last position (stage 2), settle.
-drag_step :: proc(app: ^App, op: ^Remote_Op) {
+// While the system's drag waits for the page's picture (dnd_shell.odin), the moves hold: the pointer that left the
+// window stays out until the hand-off, as it does when the picture comes within a frame, and no frame is asked for only
+// to wait (the picture's timer asks for one).
+drag_step :: proc(app: ^App, op: ^Remote_Op, timed_out: bool) {
 	r := &app.remote
+	if op.stage == 1 && dnd_handoff_pending(app) {
+		if timed_out { op_finish(op, fail(remote.ERR_TIMEOUT, "timed out while the system's drag waited for the page's picture")) }
+		return
+	}
 	request_frames(app, 2)
 	if r.frame_no < op.until { return }
 	switch op.stage {

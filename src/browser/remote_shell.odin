@@ -663,7 +663,7 @@ op_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 	case .Capture: capture_step(app, op, t, timed_out)
 	case .Replay:  replay_step(app, op, now)
 	case .Click:   click_step(app, op, t, timed_out)
-	case .Drag:    drag_step(app, op)
+	case .Drag:    drag_step(app, op, timed_out)
 	}
 }
 

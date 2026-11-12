@@ -38,6 +38,36 @@ nice_of :: proc(p: Thread_Priority) -> i32 {
 	return 0
 }
 
+// The alternate signal stack of each thread this package starts: a signal handler needs a stack, a thread whose own has
+// overflowed has none, and the kernel then kills the process at once (no crash report: crashtrace's handler asks for the
+// alternate stack, which only the main thread had). Mapped at the thread's start, pages given by the kernel only when a
+// handler runs on them; unmapped at its end. As large as crashtrace's own for the main thread: the report's handler
+// unwinds through libgcc there. A Wasmtime of the thread keeps a stack of this size rather than make its own.
+@(private = "file")
+SIGNAL_STACK_BYTES :: 256 * 1024
+
+// This thread's alternate signal stack (nil: none could be made, the thread runs anyway).
+@(private = "file")
+signal_stack_begin :: proc "contextless" () -> rawptr {
+	mem, err := linux.mmap(0, SIGNAL_STACK_BYTES, {.READ, .WRITE}, {.PRIVATE, .ANONYMOUS})
+	if err != .NONE { return nil }
+	ss := posix.stack_t{ss_sp = mem, ss_size = SIGNAL_STACK_BYTES}
+	if posix.sigaltstack(&ss, nil) != .OK { linux.munmap(mem, SIGNAL_STACK_BYTES); return nil }
+	return mem
+}
+
+// The thread ends: its alternate stack goes, unless another took its place (what installed that one restores ours later,
+// which must then still be there).
+@(private = "file")
+signal_stack_end :: proc "contextless" (mem: rawptr) {
+	if mem == nil { return }
+	now: posix.stack_t
+	if posix.sigaltstack(nil, &now) != .OK || now.ss_sp != mem { return }
+	off := posix.stack_t{ss_flags = {.DISABLE}}
+	if posix.sigaltstack(&off, nil) != .OK { return }
+	linux.munmap(mem, SIGNAL_STACK_BYTES)
+}
+
 @(private)
 native_thread_start :: proc(t: ^Thread, stack_bytes: int) -> bool {
 	attr: posix.pthread_attr_t
@@ -50,6 +80,8 @@ native_thread_start :: proc(t: ^Thread, stack_bytes: int) -> bool {
 @(private)
 thread_entry :: proc "c" (arg: rawptr) -> rawptr {
 	t := (^Thread)(arg)
+	signal_stack := signal_stack_begin()
+	defer signal_stack_end(signal_stack)
 	context = t.ctx
 	tid := i32(linux.gettid())
 	intrinsics.atomic_store(&t.native.tid, tid)

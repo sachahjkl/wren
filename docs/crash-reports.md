@@ -8,6 +8,7 @@ Application Error event of that process (a fail-fast), a restart of the machine,
 
 What is written and when, for a report to survive what caused it:
 
+- A stack overflow is handled on the thread that overflowed, so each thread keeps room for the handler. The main thread asks for it in `crashtrace`. Each thread of `host.thread_start` asks for it at its start (`src/host/thread_<os>.odin`): a stack guarantee of 64 KiB on Windows, an alternate signal stack on Linux. Without it, Windows dispatched the overflow on one page and the process could end with no report; Linux killed it at once. A thread of `core:thread` or of a library has no such room.
 - Every faulting thread waits for the report. A second fault (the threads of a pass reading the same freed block) used to end the process under the writer.
 - The filter runs only if the system's search for a handler walks the stack to the thread's start. On a stack it cannot follow (a return address written over, a jump through a bad pointer) it gives
   up and ends the process with no handler called. The vectored handler walks the stack the same way first, for every `0xC...` code, and reports when the walk stops short.

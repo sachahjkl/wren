@@ -1575,8 +1575,8 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	loop_rates_frame(&app.rates, why, .Task in why ? app.loop.last_ran : wnd.asked_by, loop_ms(app, time.tick_now()))
 	// a frame on an errand, or for a timed wake of the toolkit (a caret of the interface, a tooltip), is no activity: the browser stays at rest
 	// (the memory given back, the status bar's numbers at 0)
-	if why != {.Asked} { wnd.errand = .None }
-	if wnd.errand == .None && why != {.Interface_Wake} { memory_trim_active(app) } else { app.hud.settle_skip = true }   // memory_trim.odin; hud.odin: no sample
+	if why != {.Asked} { wnd.errands = {} }
+	if wnd.errands == {} && why != {.Interface_Wake} { memory_trim_active(app) } else { app.hud.settle_skip = true }   // memory_trim.odin; hud.odin: no sample
 	forms_view(app).caret_painted = {}
 	prof_begin(.Input)
 	events = ext_popup_events(app, events)   // ext_popup.odin: an extension's open popup takes its keys and the pointer over it
@@ -1661,7 +1661,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	// nothing asked for more since (window_request cleared it), the caret is where it was, and the status bar is what this window last drew: only the caret's pixels are drawn
 	// again. (A frame's GPU time lands frames later, and another window's frames make samples too. Such a frame is whole, and no sample: it brings no more of them.)
 	own := &wnd.own
-	if caret := forms_view(app).caret_painted; wnd.errand == .Caret && caret.exact && own.status_drawn == app.hud.changes {
+	if caret := forms_view(app).caret_painted; wnd.errands == {.Caret} && caret.exact && own.status_drawn == app.hud.changes {
 		draw.damage_begin(&app.dc)
 		draw.damage(&app.dc, caret.at)
 	}

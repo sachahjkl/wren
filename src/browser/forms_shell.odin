@@ -31,6 +31,9 @@ import "wb:style"
 // While a validation message shows, the window is redrawn this often.
 FORMS_REPORT_POLL_MS :: 250
 
+// The damage span of a focused field's caret (draw.damage_span_begin): apart from the interface's boxes, whose ids are hashes of their keys.
+CARET_DAMAGE_SPAN :: u64(0x6361_7265_745f_7370)
+
 Painted :: struct {
 	content: draw.Rect,     // physical pixels, in the space it was drawn in (screen space unless a CSS transform applies)
 	xform:   draw.Affine,   // that space -> screen (draw.current_transform when painted)
@@ -885,7 +888,11 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 		caret := draw.Rect{{x, y + ft.line_h * 0.1}, {x + cw, y + ft.line_h * 0.9}}
 		// (whether it shows or not: what its toggle changes on screen. In a layer or a 3D plane the picture goes through more than a transform: no region.)
 		fv.caret_painted = {at = draw.affine_bounds(draw.current_transform(dc), caret), exact = draw.layer_depth(dc) == 0 && !ctl_plane.ok}
-		if fv.blink_on { draw.rect(dc, caret, fg) }
+		// (a part of its own for the toolkit's automatic damage, drawn in both phases: in the page's part, a toggle damaged all of
+		// the page; drawing nothing when hidden would cut the page's part another way, which damages it too)
+		draw.damage_span_begin(dc, CARET_DAMAGE_SPAN)
+		draw.rect(dc, caret, fv.blink_on ? fg : fg * draw.Color{1, 1, 1, 0})
+		draw.damage_span_end(dc)
 	}
 	// text dragged over the field: where it would be dropped (dnd_shell.odin), steady, focused or not
 	if at, ok := dnd_field_caret(node); ok {

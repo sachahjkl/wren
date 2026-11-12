@@ -576,7 +576,7 @@ A machine is implicit when its state is a set of booleans, a count, or the posit
 | The process share | One atomic word | Yes (`src/browser/process_share.odin:10-17`) | None. This is the model to copy. |
 | A navigation | `Nav_Phase` (5 values) plus `Doc_Load.stopped`, `failed`, `pushed`, `blank`, `view_source`, `action` (`main.odin:64-88`), `Paint_Hold`, `Tab.lazy`, `Tab.art_empty`, `Tab.fragment_done`, `Tab_Nav.left`, `bf_entry`, `no_store` | Half: the phase is explicit, the 12 flags are not. A second copy is in `headless.Doc` (`loading`, `shown`, `parsed`, `failed`, `restoring`). | Finding 1. One `Navigation` with one transition procedure, as `nav_to`, and a table test of each transition. |
 | A pass of the loop over the windows | `App.active`, `front`, `bare`, `pass_first`, `tasks_running`, `task_own`, `pass_order`, `chrome_frames.nested`; `Browser_Window.closing`, `closing_force`, `minimized`, `presented` | No | A `Pass` struct that lives for one pass and is passed down. `active` is a field of it. |
-| Pending frames | `frames_requested` (a count), `errand`, `asked_by` | No | Finding 5. |
+| Pending frames | `frames_requested` (a count), `errands`, `asked_by` | No | Finding 5. |
 | A preference change | `shell_defer({kind = .Prefs})`, then `apply_prefs`, then 30 watches, `prefs_apply_counts` | No | Finding 4. |
 | A profile file | `Profile_File`: idle, writing, waiting, retry with delay, flush at exit | Yes for 3 kinds of file | Finding 3: all files. |
 | The restore of a session | `App.rest_text`, `rest_from`, `rest_focus`, `Tab.lazy`, `session_last` | No | A `Restore` struct with a phase: none, windows pending, done. |

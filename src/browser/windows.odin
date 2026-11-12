@@ -44,7 +44,7 @@ Window_Ctx :: struct {
 	page_rect:        draw.Rect,      // where the page was painted last frame (physical pixels)
 	frames_requested: int,            // frames asked for (request_frames, window_request): the loop counts one off per frame
 	asked_by:   runtime.Source_Code_Location,   // the last who asked for frames (loop_rates.odin)
-	errand:     Frame_Errand,         // what the frames asked for are for, when that is all they are for
+	errands:    Frame_Errands,        // what the frames asked for are for, when that is all they are for
 	presented:        bool,           // a frame went to the swap chain: from then on each frame waits for it to take the next
 }
 
@@ -207,22 +207,38 @@ window_current_tab :: proc(app: ^App, w: ^Browser_Window) -> ^Tab {
 window_request :: proc(app: ^App, w: ^Browser_Window, n: int, loc := #caller_location) {
 	w.frames_requested = max(w.frames_requested, n)
 	w.asked_by = loc   // (the last to ask: what the frame's reason names, loop_rates.odin)
-	w.errand = .None
+	w.errands = {}
 }
 
-// What a frame is for, when it is for one small thing and the browser is otherwise at rest: it is no sample of the status bar, no
+// What a frame is for, when it is for small things and the browser is otherwise at rest: it is no sample of the status bar, no
 // activity for memory_trim, and a caret's draws its own pixels alone (frame()). Any other request makes it a frame like any other.
 Frame_Errand :: enum u8 {
-	None,
 	Caret,        // a caret's toggle
 	Status_Bar,   // the status bar's numbers falling to rest, and its layout following them
 	Reader,       // the page's accessibility trees, what their rate held back
 }
 
+// The errands of the frames a window was asked for. Empty while frames are asked: they are frames like any other.
+Frame_Errands :: bit_set[Frame_Errand; u8]
+
 window_request_errand :: proc(app: ^App, w: ^Browser_Window, errand: Frame_Errand, n := 1, loc := #caller_location) {
-	alone := w.frames_requested == 0
+	errands := errands_after_request(w.frames_requested, w.errands, errand)
 	window_request(app, w, n, loc)
-	if alone { w.errand = errand }
+	w.errands = errands
+}
+
+// The errands of a window once `errand` asks for its frames. An errand that comes while another one waits joins it: two errands
+// stay an errand (a caret's toggle while the status bar's second frame waits was a whole frame, a sample of the status bar, which
+// armed its settle wake again: one more frame of the status bar, and so on while the caret blinks). One that comes while frames
+// like any other wait does not make them errands.
+errands_after_request :: proc(frames_requested: int, errands: Frame_Errands, errand: Frame_Errand) -> (after: Frame_Errands) {
+	if frames_requested == 0 {
+		after += {errand}
+	} else if errands != {} {
+		after = errands
+		after += {errand}
+	}
+	return
 }
 
 // Asks for frames of the active window (the frame being made, or the front one between frames). A callback of the loop that
@@ -625,7 +641,7 @@ windows_pass :: proc(app: ^App) -> bool {
 		window_activate(app, w)
 		devtools_window_tick(app)   // devtools_window.odin: this window's developer tools' window
 		if w.frames_requested > 0 { w.frames_requested -= 1 }
-		if w.frames_requested == 0 { w.errand = .None }
+		if w.frames_requested == 0 { w.errands = {} }
 	}
 	app.pass_first = false
 	if app.quitting { return false }

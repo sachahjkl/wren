@@ -7,9 +7,9 @@ package crashmodes
 import "base:builtin"
 import "base:intrinsics"
 import "core:os"
-import "core:thread"
 import "wb:base"
 import "wb:crashtrace"
+import "wb:host"
 
 Record :: struct { value: ^int }
 
@@ -38,8 +38,9 @@ die :: proc(mode: string) {
 	case "overflow":
 		_ = recurse(0)
 	case "overflow_thread":
-		t := thread.create_and_start(proc() { _ = recurse(0) })
-		thread.join(t)
+		// a thread as the browser starts them (host.thread_start): the room it gives each thread for the report of an
+		// overflow (a stack guarantee on Windows, an alternate signal stack on Linux) is what this mode tests
+		host.thread_join(host.thread_start(proc(_: rawptr) { _ = recurse(0) }, nil, name = "crashmodes-overflow"))
 	// (a build with -define:WREN_POISON_MEMORY=true: test_all's crashmodes_poison)
 	case "freed_read":
 		// a record holding a pointer, freed: what a stale ^Computed of a paint reads

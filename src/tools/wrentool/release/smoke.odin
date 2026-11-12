@@ -133,9 +133,9 @@ run_smoke :: proc(args: []string) -> int {
 // The crash reports of Linux
 
 CRASH_EXE :: "build/linux/crashmodes"
-Crash_Wants :: enum { Report, Unclean, Either }
+Crash_Wants :: enum { Report, Unclean }
 Crash_Case :: struct { mode: string, wants: Crash_Wants }
-CRASH_CASES := []Crash_Case{{"access", .Report}, {"bounds", .Report}, {"assert", .Report}, {"overflow", .Report}, {"heap", .Report}, {"failfast", .Report}, {"overflow_thread", .Either}, {"exit", .Unclean}}
+CRASH_CASES := []Crash_Case{{"access", .Report}, {"bounds", .Report}, {"assert", .Report}, {"overflow", .Report}, {"heap", .Report}, {"failfast", .Report}, {"overflow_thread", .Report}, {"exit", .Unclean}}
 
 // src/tools/crashmodes dies in each way a Wren has died, and each death must leave its report (the stack, the build) or, for a death no handler sees, an "unclean exit" report at the next start. What src/tools/e2e/crash_reports.odin checks on Windows.
 run_crash_e2e :: proc(args: []string) -> int {
@@ -166,7 +166,6 @@ run_crash_e2e :: proc(args: []string) -> int {
 		switch c.wants {
 		case .Report: good = report != "" && (strings.has_prefix(text, "*** crash:") || strings.contains(text, "\n*** crash:")) && strings.contains(text, "end of the stack") && strings.contains(text, "crashmodes") && strings.contains(text, "\n  build crashmodes")
 		case .Unclean: good = unclean != "" && report == ""
-		case .Either: good = report != "" || unclean != ""
 		}
 		if good {
 			fmt.printfln("ok    %s (exit %d, %d frames%s)", c.mode, code, strings.count(text, "\n  #"), unclean != "" ? ", unclean exit" : "")
