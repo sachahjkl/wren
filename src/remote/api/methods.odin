@@ -784,7 +784,7 @@ Loop_Stats :: struct {
 	barren:  int,      // wakes after which no window drew
 	frames:  int,      // frames made, of every window
 	causes:  [Frame_Cause]int,
-	reasons: []Loop_Reason,   // the last frames, oldest first
+	reasons: []Loop_Reason,   // the last frames and the last wakes that drew nothing, oldest first
 }
 
 // The numbers of a window: every one Wren.stats says. A number anyone needs goes here, filled in src/browser/control.odin.

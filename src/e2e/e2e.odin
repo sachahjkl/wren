@@ -519,8 +519,10 @@ page_glimpse :: proc(s: ^Session, t: ^browser.Tab) -> string {
 	defer browser.control_outcome_free(&o)
 	c := browser.control_call(&o)
 	rep := browser.control_eval(s.app, &c, t, `location.href + " | " + (document.body ? document.body.textContent.replace(/\s+/g, " ").slice(0, 400) : "(no body)")`, false, PAGE_GLIMPSE_MS)
-	if !rep.deferred || !browser.control_run(s.app, &o) || o.code != 0 { return "(no answer)" }
-	return strings.clone(o.text, s.test.temp_allocator)
+	// (what the browser knows of the tab without a script: its address and its kind, for a tab whose script gives nothing)
+	tab := t != nil ? fmt.tprintf("the tab at %q (%v)", t.url, t.kind) : "no tab"
+	if !rep.deferred || !browser.control_run(s.app, &o) || o.code != 0 { return fmt.aprintf("%s; its script gave no answer", tab, allocator = s.test.temp_allocator) }
+	return fmt.aprintf("%s; %s", tab, o.text, allocator = s.test.temp_allocator)
 }
 
 // One turn of the browser's loop, with a frame asked for: what a poll goes round on.

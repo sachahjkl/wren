@@ -12,7 +12,7 @@ import "wb:remote/api"
 Frame_Cause :: api.Frame_Cause
 Frame_Causes :: bit_set[Frame_Cause; u8]
 
-// How many frames and wakes are kept with their reason.
+// How many frames, and how many wakes that drew nothing, are kept with their reason.
 LOOP_REASONS_KEPT :: 32
 
 Loop_Reason :: struct {
@@ -27,14 +27,24 @@ Loop_Rates :: struct {
 	barren:  int,                   // wakes after which no window drew
 	frames:  int,                   // frames made, of every window
 	causes:  [Frame_Cause]int,      // the frames, each under the first of its causes
-	reasons: [LOOP_REASONS_KEPT]Loop_Reason,   // a ring
-	noted:   int,                   // how many went into it
+	// two rings: the frames, and the wakes that drew nothing (one ring of both lost a frame among the wakes of a loop woken
+	// every few milliseconds: what a frame at rest was for could not be read)
+	drawn:   [LOOP_REASONS_KEPT]Loop_Reason,
+	drawn_n: int,                   // how many went into it
+	idle:    [LOOP_REASONS_KEPT]Loop_Reason,
+	idle_n:  int,
 }
 
 @(private = "file")
 loop_rates_note :: proc(r: ^Loop_Rates, causes: Frame_Causes, by: runtime.Source_Code_Location, now_ms: f64) {
-	r.reasons[r.noted % LOOP_REASONS_KEPT] = {at_ms = now_ms, causes = causes, by = by}
-	r.noted += 1
+	e := Loop_Reason{at_ms = now_ms, causes = causes, by = by}
+	if causes != {} {
+		r.drawn[r.drawn_n % LOOP_REASONS_KEPT] = e
+		r.drawn_n += 1
+	} else {
+		r.idle[r.idle_n % LOOP_REASONS_KEPT] = e
+		r.idle_n += 1
+	}
 }
 
 // The frame that is about to be made.
@@ -50,15 +60,19 @@ loop_rates_barren :: proc(r: ^Loop_Rates, by: runtime.Source_Code_Location, now_
 	loop_rates_note(r, {}, by, now_ms)
 }
 
-// What a client reads: the kept reasons in order, "who" as a place in the sources.
+// What a client reads: the last frames and the last wakes that drew nothing, merged in time; "who" as a place in the sources.
 loop_rates_stats :: proc(r: ^Loop_Rates, allocator := context.temp_allocator) -> api.Loop_Stats {
 	st := api.Loop_Stats{turns = r.turns, sleeps = r.sleeps, barren = r.barren, frames = r.frames, causes = r.causes}
-	kept := min(r.noted, LOOP_REASONS_KEPT)
-	st.reasons = make([]api.Loop_Reason, kept, allocator)
-	for i in 0 ..< kept {
-		e := r.reasons[(r.noted - kept + i) % LOOP_REASONS_KEPT]
+	nd, ni := min(r.drawn_n, LOOP_REASONS_KEPT), min(r.idle_n, LOOP_REASONS_KEPT)
+	st.reasons = make([]api.Loop_Reason, nd + ni, allocator)
+	d, i := 0, 0
+	for k in 0 ..< nd + ni {
+		e: Loop_Reason
+		dd := r.drawn[(r.drawn_n - nd + d) % LOOP_REASONS_KEPT]
+		ii := r.idle[(r.idle_n - ni + i) % LOOP_REASONS_KEPT]
+		if i >= ni || (d < nd && dd.at_ms <= ii.at_ms) { e = dd; d += 1 } else { e = ii; i += 1 }
 		who := e.by.file_path != "" ? fmt.aprintf("%s:%d", e.by.file_path, e.by.line, allocator = allocator) : ""
-		st.reasons[i] = {at_ms = e.at_ms, causes = loop_causes_text(e.causes, allocator), by = who}
+		st.reasons[k] = {at_ms = e.at_ms, causes = loop_causes_text(e.causes, allocator), by = who}
 	}
 	return st
 }
