@@ -18,6 +18,7 @@ import "core:math"
 import "core:mem"
 import "core:strings"
 import "toolkit:draw"
+import "toolkit:font"
 import "toolkit:platform"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
@@ -70,7 +71,7 @@ Vault_Shell :: struct {
 	ask_forms:      u64,             // its forms model: another document since the question is not filled
 	ask_insecure:   bool,            // plain http
 	ask_origin:     string,          // owned: the document's host, which the question names
-	open_panel:     bool,            // the chip, the shortcut or a command asks for the panel: it opens at the next build
+	open_panel:     bool,            // the shortcut or a command asks for the panel: it opens at the next build
 	fill_keys:      [1]Shortcut,     // the command vault.fill's shortcut (vault.fill.shortcut)
 	// the dropdown under a login field (vault_fill.odin)
 	role:           forms.Login_Role,   // the focused field's, for role_forms / role_field / role_version
@@ -161,10 +162,14 @@ vault_shell_activity :: proc(app: ^App, events: []platform.Event) {
 // The toolbar button and its panel
 
 Vault_Icon :: struct {
-	color:  draw.Color,
-	accent: draw.Color,
-	open:   bool,   // the shackle open: unlocked
-	dot:    bool,   // no account yet, or the helper failed: a dot asks for a look
+	app:       ^App,
+	color:     draw.Color,
+	accent:    draw.Color,
+	open:      bool,   // the shackle open: unlocked
+	dot:       bool,   // the helper failed, or a login form waits for the unlock: a dot asks for a look
+	count:     int,    // the logins of the page, on a badge (unlocked; 0: none)
+	ink:       draw.Color,   // the window's background: the badge's outline
+	badge_ink: draw.Color,
 }
 
 @(private = "file")
@@ -188,7 +193,22 @@ vault_icon_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	// the keyhole
 	kh := max(1.0, s * 0.08)
 	draw.rect(dc, {{c.x - kh, c.y + s * 0.14}, {c.x + kh, c.y + s * 0.32}}, ui.color("background"), kh)
-	if d.dot {
+	if d.count > 0 {
+		// the page's logins, on a badge (the blocker's shield badge, blocker_ui.odin)
+		text := d.count > 99 ? "99+" : fmt.tprintf("%d", d.count)
+		size := ui.font_size() * 0.57
+		tw := font.text_width(&d.app.fonts, d.app.ui_font, size, text)
+		bhh := math.round(size * 1.22)
+		bw := math.round(max(tw + size * 0.55, bhh))
+		edge := max(1, math.round(ui.scale()))
+		// (at the bottom right, over the body's corner: the open shackle stands clear above it)
+		bx := math.round(c.x + s * 0.18)
+		by := min(math.round(c.y + s * 0.62 - bhh * 0.5), r.max.y - edge - bhh)
+		br := draw.Rect{{bx, by}, {bx + bw, by + bhh}}
+		draw.rect(dc, {{br.min.x - edge, br.min.y - edge}, {br.max.x + edge, br.max.y + edge}}, d.ink, bhh * 0.5 + edge)
+		draw.rect(dc, br, d.accent, bhh * 0.5)
+		draw.text(dc, d.app.ui_font, size, {math.round(br.min.x + (bw - tw) * 0.5), math.round(br.min.y + bhh * 0.5 + size * 0.36)}, d.badge_ink, text)
+	} else if d.dot {
 		dr := s * 0.2
 		p := draw.Vec2{c.x + s * 0.62, c.y - s * 0.62}
 		draw.rect(dc, {{p.x - dr, p.y - dr}, {p.x + dr, p.y + dr}}, d.accent, dr)
@@ -212,7 +232,17 @@ vault_button :: proc(app: ^App, t: ^Tab) {
 	if v.state == .Disabled { return }
 	em := ui.font_size()
 	icon := ui.frame_new(Vault_Icon)
-	icon^ = {color = ui.color("text"), accent = ui.color("accent"), open = v.state == .Unlocked, dot = v.state == .Failed || v.state == .Helper_Missing}
+	count := vault_page_count(app, t)
+	// (locked on a login form: the dot says the fill waits for the unlock, as the address bar's chip said)
+	waits := v.state == .Locked && app.vault.role != .None
+	icon^ = {app = app, color = ui.color("text"), accent = ui.color("accent"), open = v.state == .Unlocked, count = count,
+		dot = v.state == .Failed || v.state == .Helper_Missing || waits}
+	icon.accent.a = 1
+	icon.ink = ui.color("background")
+	icon.ink.a = 1
+	light := ui.color("text")
+	light.a = 1
+	icon.badge_ink = ui.readable(ui.contrast(icon.accent, icon.ink) >= ui.contrast(icon.accent, light) ? icon.ink : light, icon.accent, 4.5)
 	ui.next({width = ui.px(em * 2.3), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
 	ui.push_tags("icon_button")
 	b := ui.custom("###vault_icon", vault_icon_draw, icon, {.Clickable, .Focusable, .Draw_Background, .Draw_Hot_Effects})
@@ -230,7 +260,7 @@ vault_button :: proc(app: ^App, t: ^Tab) {
 		case:                            ui.ctx_menu_open_rect(key, panel_at, b.key)
 		}
 	}
-	// (the chip, the fill shortcut or a command asked for the panel)
+	// (the fill shortcut or a command asked for the panel)
 	if app.vault.open_panel {
 		app.vault.open_panel = false
 		switch {
@@ -240,10 +270,28 @@ vault_button :: proc(app: ^App, t: ^Tab) {
 		}
 	}
 	open := ui.ctx_menu_is_open(key)
-	if !open && vault_usable(app) { tip(sig, vault_state_words(v)) }
+	if !open && vault_usable(app) {
+		words := vault_state_words(v)
+		switch {
+		case count == 1: words = strings.concatenate({words, "\n", i18n.tr("1 login for this page")}, ui.frame_allocator())
+		case count > 1:  words = strings.concatenate({words, "\n", fmt.tprintf(i18n.tr("%d logins for this page"), count)}, ui.frame_allocator())
+		case waits:      words = strings.concatenate({words, "\n", i18n.tr("Unlock the Vault to fill this form")}, ui.frame_allocator())
+		}
+		tip(sig, words)
+	}
 	ui.a11y_set(b, {name = i18n.tr("Vault"), popup = .Menu, expanded = open})
 	app.vault.panel_was = open   // (the page's rows stay while the Vault is unlocked: the chip and the shortcut use them)
 	if ui.ctx_menu(key, em * VAULT_PANEL_W_EM) { vault_panel_body(app, t) }
+}
+
+// The logins the Vault has for the tab's page (unlocked, its rows ready for that address); 0 otherwise.
+@(private = "file")
+vault_page_count :: proc(app: ^App, t: ^Tab) -> int {
+	v := &app.vault.v
+	if v.state != .Unlocked || t == nil || t.kind != .Web || !vault_usable(app) { return 0 }
+	rows, state, key := vault.vault_rows(v, .Page)
+	if state != .Ready || key != t.url { return 0 }
+	return len(rows)
 }
 
 @(private = "file")

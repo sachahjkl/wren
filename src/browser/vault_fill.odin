@@ -570,43 +570,6 @@ dropdown_row :: proc(i: int, title, detail: string, selected: bool, w, rh: f32) 
 }
 
 ////////////////////////////////
-// The address bar's chip
-
-// The Vault's state for the tab's page, in the address bar: its number of logins (a click opens the panel), or the lock
-// when a login field has the focus (a click opens the unlock dialog). Nothing while remote control drives the browser.
-vault_chip :: proc(app: ^App, t: ^Tab) {
-	s := &app.vault
-	v := &s.v
-	if v.state == .Disabled || t == nil || t.kind != .Web || !vault_usable(app) { return }
-	label, tip_text: string
-	unlock := false
-	#partial switch v.state {
-	case .Unlocked:
-		rows, state, key := vault.vault_rows(v, .Page)
-		if state != .Ready || key != t.url || len(rows) == 0 { return }
-		label = len(rows) == 1 ? i18n.tr("1 login") : fmt.tprintf(i18n.tr("%d logins"), len(rows))
-		tip_text = i18n.tr("The Vault's logins for this page: click to list them")
-	case .Locked:
-		if s.role == .None { return }
-		label, unlock = i18n.tr("Vault locked"), true
-		tip_text = i18n.tr("Unlock the Vault to fill this form")
-	case:
-		return
-	}
-	em := ui.font_size()
-	ui.spacer(ui.px(em * 0.3))
-	ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 1.8)), radius = em * CHROME_BUTTON_RADIUS})
-	if ui.tags("ghost_button") {
-		b := ui.button(fmt.aprintf("%s###vault_chip", label, allocator = ui.frame_allocator()))
-		tip(b, tip_text)
-		if b.clicked {
-			if unlock { vault_dialog_open(app) } else { s.open_panel = true }
-			request_frames(app, 2)
-		}
-	}
-}
-
-////////////////////////////////
 // The palette's Vault search ("$")
 
 // The palette's source: the logins that hold the words typed after "$". The helper searches (off the interface thread);
