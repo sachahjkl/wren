@@ -429,7 +429,16 @@ All in `src/vault/settings.odin`, registered in `src/browser/settings.odin`.
 | `vault.fill.dropdown` | Bool, `true` | Show the dropdown on a focused login field. |
 | `vault.fill.shortcut` | String, `Ctrl+Shift+L` | The key of the command `vault.fill`. Empty or invalid: no key. |
 | `vault.fill.insecure` | String, `ask` | `ask` or `never`, for `http` pages. |
-| `vault.save.prompt` | Bool, `true` | Ask to save or update after a submit. |
+| `vault.save.offer` | Bool, `true` | Offer to save or update a login after a login form is sent (4.10). |
+| `vault.totp.autofill` | Bool, `true` | Fill the code into the site's code field that comes within 2 minutes of a login's fill (4.10). |
+| `vault.totp.copy_on_fill` | Bool, `false` | Copy the code of a login when the Vault fills it. |
+| `vault.generator.kind` | String, `password` | `password` or `passphrase`: what the generator makes first. |
+| `vault.generator.length` | Int, 20, 5 to 128 | The length of a generated password. |
+| `vault.generator.uppercase`, `.lowercase`, `.numbers`, `.special` | Bool, `true` | The classes of a generated password. |
+| `vault.generator.min_numbers`, `.min_special` | Int, 1, 0 to 9 | The fewest digits and special characters. |
+| `vault.generator.words` | Int, 5, 3 to 20 | The words of a generated passphrase. |
+| `vault.generator.separator` | String, `-` | What goes between its words. |
+| `vault.generator.capitalize`, `.include_number` | Bool, `false` | Capital first letters; a digit after a word. |
 | `vault.clipboard.clear_seconds` | Int, 30, 0 to 600 | 0: never clear. |
 | `vault.passkeys.enabled` | Bool, `true` | Offer the vault as an authenticator (phase 5). |
 | `vault.request.timeout_ms` | Int, 15000, 1000 to 120000 | Deadline of one helper request. |
@@ -456,10 +465,8 @@ New, in `src/forms/credentials.odin`, as pure functions over the DOM and the for
 The fill writes through the forms model as a user edit: it sets `user_edited`, and dispatches `input` and `change` as
 typing does. Frameworks then see the value.
 
-The save prompt (phase 4) hooks the submission path in `src/forms/submit.odin` through the `Host`. It also covers a
-login made by script: a user-edited password field, then a navigation or the removal of the field within
-`vault.save.window_ms`. The captured value stays in the page's process memory for the prompt's lifetime, then is zeroed.
-No save prompt in a private window.
+The save offer (phase 4) hooks the submission path in `src/forms/submit.odin` through the `Host` (`submitting`); 4.10
+says how. The card and address fields are in `src/forms/autofill.odin` (4.10).
 
 ### 4.7 Shell surfaces
 
@@ -478,8 +485,8 @@ cover or style them.
 - **Address bar chip**: shown when the active tab has matches. A click opens the panel.
 - **Palette source**: a `Palette_Source` with its own prefix. It asks the helper for rows when the palette opens in
   that mode, and releases them on close. Commands: lock, unlock, sync, open the panel, generate a password.
-- **Save and update prompt**: a bar under the toolbar, per tab. It never steals focus. Actions: save, update, never for
-  this site, dismiss.
+- **Save and update offer**: under the toolbar's Vault button (4.10). It never steals focus. Actions: save, update,
+  never for this site, not now.
 - **Settings section**: account (email, server, log out), lock, fill, save, clipboard, the license and source link of
   the helper, the "not made by Bitwarden Inc." line. If generic parts emerge (secure text field, anchored list), they
   go into `gui_toolkit`.
@@ -512,6 +519,48 @@ If the user also installs the Bitwarden extension:
 - Wren detects the extension by its identifier and shows one line in the Vault settings: use one of the two.
   It disables nothing by itself.
 - Wren does not provide the native-messaging host of the Bitwarden desktop application.
+
+### 4.10 Saving, the generator, the code after a login, cards and identities
+
+Protocol 5 (`save`, `generate`, the kinds of items, the fields of cards and identities: [vault-protocol.md](vault-protocol.md)).
+
+- **Save offer** (`vault.save.offer`). `forms.Host.submitting` runs inside a submission, after its validation and before
+  its `submit` event (whose listeners may empty the fields), and for `form.submit()` too. The page hands it to the shell
+  (`page.Forms_Embedder.submitting`), which reads the form's user name and password (`forms.sent_login`: a filled
+  new-password field first) and gives them to `vault_offer_capture`. The Vault compares them with the document's rows
+  (they are ready: the page's rows are asked when it shows). No login with this user name (case does not matter): Save.
+  One: its password is asked of the helper (a `fill` whose answer goes to no hook), then Update if it differs, nothing
+  if it is the same. The offer's state machine: `None`, `Checking`, `Save` or `Update`, `Saving`, `None`.
+- The offer hangs under the toolbar's Vault button: the host, the user name, Save or Update, Not now, Never for this
+  site. It is not modal and takes no focus. Save creates a login named after the host with the page's address; Update
+  changes the password (and adds the address when no URI of the login matches it). The rows are asked again after the
+  answer. "Never for this site" keeps the host in `<profile>/vault/never_save` (one host a line, written by a blocking
+  job, one write at a time); no offer is made there again.
+- The captured password is a secret: it is zeroed when it crossed to the helper, at a dismissal, at another capture
+  and at a lock. A login form sent by a script without a form submission (a `fetch` of a click handler) is not seen.
+- **Generator** (`vault.generator.*`). Under a password field that takes a new password (autocomplete `new-password`,
+  or two password fields in its form) or of a site with no login yet, the dropdown ends with "Generate a password":
+  the helper generates it, and it fills every new password field of the form (the password and its confirmation).
+  The shell keeps the value for that form until it is sent, for the save offer. The panel's "Generator…" opens a
+  dialog: password or passphrase, its length or its words, its classes; the value is made again at each change, with
+  Regenerate and Copy (the clipboard is cleared after `vault.clipboard.clear_seconds`).
+- **The code after a login** (`vault.totp.autofill`). After a fill of a login that has a code, when its form had no
+  code field, the shell waits 2 minutes for a one-time-code field (`forms.one_time_code_field`) in the focused document
+  of the same site (the same registrable domain), and fills the code there once. The document is looked at again only
+  when its tree or its attributes change. Never in a frame of another origin or on a plain http page.
+  `vault.totp.copy_on_fill` copies the code right after the login's fill.
+- **Panel search**: the field at the top of the unlocked panel. Empty: the page's logins. Typed: the whole vault
+  (`search`), every kind, each row with the icon of its kind and its acts: a login fills (when it is one of the page's)
+  and copies its user name, password and code; a card copies its number and security code; an identity its email.
+- **Cards and identities** (`src/forms/autofill.odin`). `autofill_role` gives a field's role from its autocomplete
+  (`cc-name`, `cc-number`, `cc-exp`, `cc-exp-month`, `cc-exp-year`, `cc-csc`, `cc-type`; `name`, `given-name`,
+  `additional-name`, `family-name`, `honorific-prefix`, `email`, `tel`, `organization`, `street-address`,
+  `address-line1` to `3`, `address-level1` and `2`, `postal-code`, `country`, `country-name`), else from the words of
+  its name and id (`cardnumber`, `cvv`, `expmonth`, `firstname`, `zip`, `city`...). A login's role wins over it. The
+  dropdown under such a field lists the vault's cards or identities (an empty `search` kept in its own set, `Items`,
+  while such a field has the focus); a pick fills every field of that kind in the form: an expiry date as `MM/YY` or
+  `MM/YYYY` by the field's placeholder and maxlength, a select by its option's value or text. Social security,
+  passport and licence numbers are never asked.
 
 ## 5. Phases
 
@@ -581,7 +630,7 @@ No automated test contacts bitwarden.com. Tests wait for a state with a bound, n
 
 ### Later
 
-2FA with WebAuthn, Duo and YubiKey; SSO; cards and identities; biometrics unlock; regular expression URIs; site icons.
+2FA with WebAuthn, Duo and YubiKey; SSO; biometrics unlock; regular expression URIs; site icons.
 
 ## 6. Risks and open questions
 
@@ -710,8 +759,8 @@ this section is the truth.
   on its input).
 - Phase 3 (`src/browser/vault_fill.odin`):
   - The target of a fill is the document that holds the focused field: the focused frame's, else the tab's. The Vault
-    keeps three sets of rows (`Row_Slot`): the tab's document (`Page`), the focused frame's document (`Frame`), the
-    palette's search (`Search`). **This changes 3.1**: the rows of the tab's document stay in Wren's memory while the
+    keeps four sets of rows (`Row_Slot`): the tab's document (`Page`), the focused frame's document (`Frame`), the
+    search of the palette or the panel (`Search`), every item while a card or address field has the focus (`Items`). **This changes 3.1**: the rows of the tab's document stay in Wren's memory while the
     Vault is unlocked, not only while a surface shows them: the chip, the fill shortcut and the dropdown need them
     without a round trip to the helper. They are zeroed at a lock, at another address, and when remote control
     starts. Search rows go when the palette closes. No password and no code is ever in a row.
@@ -750,6 +799,8 @@ this section is the truth.
     the dropdown in a frame whose fields the shell paints in another document's pass (`Forms_View.painted` holds one
     document at a time: the dropdown then does not show, the shortcut and the panel still fill); the e2e scenarios of
     phase 3.
+- Phase 4 and cards (`src/browser/vault_save.odin`, `src/forms/autofill.odin`, protocol 5): see 4.10. Not yet: the save
+  of a login sent by a script without a form, folders in the offer, a conflict when the item changed on the server.
 - Not yet: lock on system sleep and session lock (`vault.lock.on_sleep`: the toolkit reports no such event yet); the
   fill on the page thread when `browser.shell.page_thread` is on (the fill runs on the loop thread, as the chrome's
   focus moves do); the e2e tests against Vaultwarden; `about:licenses` listing the helper; the flake's check of the

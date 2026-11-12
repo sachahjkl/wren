@@ -172,6 +172,9 @@ Host :: struct {
 	// A form-associated custom element's callback is due (custom.odin): its form owner changed (`form`), it became
 	// disabled or enabled, its form was reset. Optional.
 	face_callback:   proc(user: rawptr, h: base.Handle, cb: Face_Callback, form: base.Handle),
+	// A form is being sent (it passed its validation; before its submit event, whose listeners may clear it): what it
+	// holds now is what the user sent (the Vault's save offer reads its login). Called synchronously. Optional.
+	submitting:      proc(user: rawptr, form: base.Handle),
 }
 
 Report :: struct {

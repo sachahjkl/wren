@@ -188,6 +188,7 @@ forms_shell_frame :: proc(app: ^App) {
 		if tab.page == nil || tab.page.formctl == nil || tab.page.formctl.embedder.navigate != nil { continue }
 		page.set_forms_embedder(tab.page, page.Forms_Embedder{
 			user = app, navigate = shell_navigate_submission, pick_files = shell_pick_files, pick_color = shell_pick_color,
+			submitting = vault_form_sent,   // vault_save.odin
 			changed = proc(user: rawptr, p: ^page.Page) { request_frames((^App)(user)) },
 		})
 	}

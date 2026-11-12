@@ -65,7 +65,8 @@ answers_decode_into_owned_values :: proc(t: ^testing.T) {
 	testing.expect_value(t, a.id, 3)
 	testing.expect(t, a.ok)
 	testing.expect_value(t, len(a.rows), 1)   // (a row without an id is dropped)
-	testing.expect_value(t, a.rows[0].kind, Match_Kind.Host)
+	testing.expect_value(t, a.rows[0].match, Match_Kind.Host)
+	testing.expect_value(t, a.rows[0].kind, Item_Kind.Login)   // (no kind: a login)
 	testing.expect(t, a.rows[0].has_totp)
 	testing.expect_value(t, a.rows[0].username, "me")
 }
@@ -75,8 +76,8 @@ fill_and_error_answers_decode :: proc(t: ^testing.T) {
 	a, ok := answer_decode(transmute([]u8)string(`{"id":9,"ok":true,"username":"u","password":"s3cret"}`))
 	defer answer_free(a)
 	testing.expect(t, ok)
-	testing.expect(t, a.has_username && a.has_password)
-	testing.expect_value(t, a.password, "s3cret")
+	testing.expect(t, Fill_Fields{.Username, .Password} <= a.has)
+	testing.expect_value(t, a.values[.Password], "s3cret")
 	e, ok2 := answer_decode(transmute([]u8)string(`{"id":2,"ok":false,"error":"bad_password","message":"The master password is wrong."}`))
 	defer answer_free(e)
 	testing.expect(t, ok2)
@@ -144,8 +145,8 @@ codes_searches_and_equivalent_domains_decode :: proc(t: ^testing.T) {
 	a, ok := answer_decode(transmute([]u8)string(`{"id":3,"ok":true,"totp":"123456","period":30,"remaining":7}`))
 	defer answer_free(a)
 	testing.expect(t, ok)
-	testing.expect(t, a.has_totp)
-	testing.expect_value(t, a.totp, "123456")
+	testing.expect(t, .Totp in a.has)
+	testing.expect_value(t, a.values[.Totp], "123456")
 	testing.expect_value(t, a.remaining, 7)
 	src := `{"id":4,"ok":true,"equivalent":["google.com",""],"rows":[` +
 		`{"id":"a","name":"A","username":"u","uri":"https://a.example","match":"starts_with"},` +
@@ -156,7 +157,7 @@ codes_searches_and_equivalent_domains_decode :: proc(t: ^testing.T) {
 	testing.expect(t, ok2)
 	testing.expect_value(t, len(r.equivalent), 1)   // (an empty domain is left out)
 	testing.expect_value(t, len(r.rows), 2)   // (an unknown rule is no rule Wren can check)
-	testing.expect_value(t, r.rows[0].kind, Match_Kind.Starts_With)
+	testing.expect_value(t, r.rows[0].match, Match_Kind.Starts_With)
 	testing.expect_value(t, r.rows[1].id, "c")   // (a search row has no match type)
 }
 
@@ -199,4 +200,53 @@ search_and_totp_requests_are_written :: proc(t: ^testing.T) {
 	defer frame_free(kf)
 	testing.expect(t, k_ok)
 	testing.expect_value(t, body_of(kf), `{"id":6,"op":"totp","item":"x"}`)
+}
+
+// Protocol 5: the kinds of the rows, a card's and an identity's fill, the answers of save and generate.
+@(test)
+kinds_and_card_fields_decode :: proc(t: ^testing.T) {
+	src := `{"id":2,"ok":true,"rows":[` +
+		`{"id":"c","kind":"card","name":"Visa","username":"Visa *1111","uri":"","has_totp":false},` +
+		`{"id":"i","kind":"identity","name":"Me","username":"Ada Lovelace","uri":""},` +
+		`{"id":"n","kind":"secure_note","name":"Note","username":"","uri":""}]}`
+	a, ok := answer_decode(transmute([]u8)src)
+	defer answer_free(a)
+	testing.expect(t, ok)
+	testing.expect_value(t, len(a.rows), 2)   // (a kind this version does not know is dropped)
+	testing.expect_value(t, a.rows[0].kind, Item_Kind.Card)
+	testing.expect_value(t, a.rows[1].kind, Item_Kind.Identity)
+	f, ok2 := answer_decode(transmute([]u8)string(`{"id":3,"ok":true,"number":"4111","exp_month":"7","exp_year":"2031","code":"123","full_name":"Ada Lovelace"}`))
+	defer answer_free(f)
+	testing.expect(t, ok2)
+	testing.expect_value(t, f.has, Fill_Fields{.Number, .Exp_Month, .Exp_Year, .Code, .Full_Name})
+	testing.expect_value(t, f.values[.Exp_Year], "2031")
+	g, ok3 := answer_decode(transmute([]u8)string(`{"id":4,"ok":true,"value":"x-y-z"}`))
+	defer answer_free(g)
+	testing.expect(t, ok3)
+	testing.expect_value(t, g.value, "x-y-z")
+	sv, ok4 := answer_decode(transmute([]u8)string(`{"id":5,"ok":true,"item":"abc"}`))
+	defer answer_free(sv)
+	testing.expect(t, ok4)
+	testing.expect_value(t, sv.item, "abc")
+}
+
+@(test)
+save_and_generate_requests_are_written :: proc(t: ^testing.T) {
+	r: Request
+	request_begin(&r, 7, .Save, 64)
+	request_string(&r, "item", "")
+	request_string(&r, "name", "example.com")
+	request_string(&r, "password", "pw")
+	frame, ok := request_end(&r)
+	defer frame_free(frame)
+	testing.expect(t, ok)
+	testing.expect_value(t, body_of(frame), `{"id":7,"op":"save","item":"","name":"example.com","password":"pw"}`)
+	g: Request
+	request_begin(&g, 8, .Generate, 32)
+	request_string(&g, "kind", "passphrase")
+	request_int(&g, "words", 5)
+	gf, g_ok := request_end(&g)
+	defer frame_free(gf)
+	testing.expect(t, g_ok)
+	testing.expect_value(t, body_of(gf), `{"id":8,"op":"generate","kind":"passphrase","words":5}`)
 }

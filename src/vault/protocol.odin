@@ -10,20 +10,21 @@ import "core:mem"
 import "core:strconv"
 import "wb:base"
 
-PROTOCOL_VERSION :: 4
+PROTOCOL_VERSION :: 5
 MAX_FRAME :: 1 << 20   // the helper's bound too: a larger frame is a broken peer
 FRAME_HEAD :: 4
 
 Op :: enum u8 {
 	Hello, Login, Login_Api_Key, Unlock, Lock, Logout, Sync, Pin_Set, Pin_Clear, Logins_For, Search, Fill, Totp, Keepalive,
-	Password_Hint, Device_Request, Device_Poll, Passkey_Options, Login_Passkey,
+	Password_Hint, Device_Request, Device_Poll, Passkey_Options, Login_Passkey, Save, Generate,
 }
 
 OP_NAMES := [Op]string{
 	.Hello = "hello", .Login = "login", .Login_Api_Key = "login_api_key", .Unlock = "unlock", .Lock = "lock", .Logout = "logout",
 	.Sync = "sync", .Pin_Set = "pin_set", .Pin_Clear = "pin_clear", .Logins_For = "logins_for", .Search = "search", .Fill = "fill",
 	.Totp = "totp", .Keepalive = "keepalive", .Password_Hint = "password_hint", .Device_Request = "device_request",
-	.Device_Poll = "device_poll", .Passkey_Options = "passkey_options", .Login_Passkey = "login_passkey",
+	.Device_Poll = "device_poll", .Passkey_Options = "passkey_options", .Login_Passkey = "login_passkey", .Save = "save",
+	.Generate = "generate",
 }
 
 // The second steps of a login that the Vault supports (the helper's provider names).
@@ -145,12 +146,41 @@ Match_Kind :: enum u8 { Domain, Host, Equivalent, Starts_With, Exact }
 
 MATCH_NAMES := [Match_Kind]string{.Domain = "domain", .Host = "host", .Equivalent = "equivalent", .Starts_With = "starts_with", .Exact = "exact"}
 
-// One login of `logins_for` or `search`: what a surface shows. No password, no code.
+// What an item of the vault is (a row's `kind`). Secure notes and SSH keys are never listed.
+Item_Kind :: enum u8 { Login, Card, Identity }
+
+ITEM_KIND_NAMES := [Item_Kind]string{.Login = "login", .Card = "card", .Identity = "identity"}
+
+// One item of `logins_for` or `search`: what a surface shows. No password, no code. A card's `username` is its brand
+// and last 4 digits, an identity's its full name or email; their `uri` is "".
 Row :: struct {
 	id, name, username, uri: string,   // owned
-	kind:     Match_Kind,
+	kind:     Item_Kind,
+	match:    Match_Kind,
 	has_totp: bool,
 }
+
+// The values a `fill` can ask for: a login's, a card's, an identity's (FILL_FIELD_NAMES: the protocol's names).
+Fill_Field :: enum u8 {
+	Username, Password, Totp,
+	Cardholder, Number, Exp_Month, Exp_Year, Code, Brand,
+	Title, First_Name, Middle_Name, Last_Name, Full_Name, Address1, Address2, Address3, City, State, Postal_Code,
+	Country, Company, Email, Phone, Ssn, Passport, License,
+}
+Fill_Fields :: bit_set[Fill_Field; u32]
+
+FILL_FIELD_NAMES := [Fill_Field]string{
+	.Username = "username", .Password = "password", .Totp = "totp",
+	.Cardholder = "cardholder", .Number = "number", .Exp_Month = "exp_month", .Exp_Year = "exp_year", .Code = "code", .Brand = "brand",
+	.Title = "title", .First_Name = "first_name", .Middle_Name = "middle_name", .Last_Name = "last_name", .Full_Name = "full_name",
+	.Address1 = "address1", .Address2 = "address2", .Address3 = "address3", .City = "city", .State = "state",
+	.Postal_Code = "postal_code", .Country = "country", .Company = "company", .Email = "email", .Phone = "phone",
+	.Ssn = "ssn", .Passport = "passport", .License = "license",
+}
+
+CARD_FIELDS :: Fill_Fields{.Cardholder, .Number, .Exp_Month, .Exp_Year, .Code, .Brand}
+IDENTITY_FIELDS :: Fill_Fields{.Title, .First_Name, .Middle_Name, .Last_Name, .Full_Name, .Address1, .Address2, .Address3,
+	.City, .State, .Postal_Code, .Country, .Company, .Email, .Phone, .Ssn, .Passport, .License}
 
 // One answer of the helper, owned (process allocator). answer_free zeroes every string. Id 0: an event (`event`).
 Answer :: struct {
@@ -178,11 +208,15 @@ Answer :: struct {
 	// logins_for, search
 	rows:           [dynamic]Row,
 	equivalent:     [dynamic]string,   // logins_for: the domains the account makes equivalent to the page's
-	// fill (and totp: `totp`)
-	username, password, totp: string,
-	has_username, has_password, has_totp: bool,
+	// fill (and totp: `totp`): one value per asked field that the item has
+	values:         [Fill_Field]string,
+	has:            Fill_Fields,
 	// totp
 	period, remaining: int,
+	// save: `item`
+	item:           string,
+	// generate: a secret
+	value:          string,
 }
 
 // Decodes the JSON of one answer. ok = false when it is not an answer of this protocol.
@@ -227,9 +261,14 @@ answer_decode :: proc(body: []u8) -> (a: ^Answer, ok: bool) {
 	if n, is_int := o["tries_left"].(json.Integer); is_int { a.tries_left = int(n) }
 	if n, is_int := o["items"].(json.Integer); is_int { a.items = int(n) }
 	if n, is_int := o["last_sync"].(json.Integer); is_int { a.last_sync = i64(n) }
-	if s, is_str := o["username"].(json.String); is_str { a.username, a.has_username = clone(s), true }
-	if s, is_str := o["password"].(json.String); is_str { a.password, a.has_password = clone(s), true }
-	if s, is_str := o["totp"].(json.String); is_str { a.totp, a.has_totp = clone(s), true }
+	for f in Fill_Field {
+		if s, is_str := o[FILL_FIELD_NAMES[f]].(json.String); is_str {
+			a.values[f] = clone(s)
+			a.has += {f}
+		}
+	}
+	a.item = owned_string(o, "item")
+	a.value = owned_string(o, "value")
 	if n, is_int := o["period"].(json.Integer); is_int { a.period = int(n) }
 	if n, is_int := o["remaining"].(json.Integer); is_int { a.remaining = int(n) }
 	if list, is_array := o["equivalent"].(json.Array); is_array {
@@ -247,7 +286,13 @@ answer_decode :: proc(body: []u8) -> (a: ^Answer, ok: bool) {
 			known := true
 			if m, is_str := ro["match"].(json.String); is_str {
 				known = false
-				for k in Match_Kind { if MATCH_NAMES[k] == m { row.kind, known = k, true } }
+				for k in Match_Kind { if MATCH_NAMES[k] == m { row.match, known = k, true } }
+			}
+			// (no kind: a login, as every row of version 4 was; a kind this version does not know is no item it can show)
+			if k, is_str := ro["kind"].(json.String); is_str {
+				kind_known := false
+				for ik in Item_Kind { if ITEM_KIND_NAMES[ik] == k { row.kind, kind_known = ik, true } }
+				known = known && kind_known
 			}
 			if t, is_bool := ro["has_totp"].(json.Boolean); is_bool { row.has_totp = bool(t) }
 			// (a rule this version does not know is no rule Wren can check: the row goes)
@@ -310,9 +355,9 @@ answer_free :: proc(a: ^Answer) {
 	string_wipe(&a.event)
 	string_wipe(&a.fingerprint)
 	string_wipe(&a.options)
-	string_wipe(&a.username)
-	string_wipe(&a.password)
-	string_wipe(&a.totp)
+	for &value in a.values { string_wipe(&value) }
+	string_wipe(&a.item)
+	string_wipe(&a.value)
 	rows_free(&a.rows)
 	strings_free(&a.equivalent)
 	free(a, base.process_allocator())

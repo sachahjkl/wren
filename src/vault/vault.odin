@@ -8,9 +8,11 @@
 //
 // Secrets: a password, a PIN or a code goes from the caller into one frame, which is zeroed once written. A fill's or a
 // copy's values live in one Answer for the time of the `fill` or `copy` hook, then are zeroed. Rows (names, user names)
-// live in three sets (Row_Slot): the active tab's document and the focused frame's document while the Vault is unlocked
-// (the address bar's chip, the fill shortcut and the field's dropdown need them at once), the palette's search while the
-// palette is open. A lock, a release or another document zeroes them. Nothing here logs.
+// live in four sets (Row_Slot): the active tab's document and the focused frame's document while the Vault is unlocked
+// (the address bar's chip, the fill shortcut and the field's dropdown need them at once), the search of the palette or
+// the panel while one is open, the cards and identities while a card or address field has the focus. A lock, a release
+// or another document zeroes them. The password of a save offer and a generated value are kept until they are used or
+// dropped, then zeroed; a lock zeroes them too. Nothing here logs.
 //
 // Time: two timers run while the Vault is unlocked. The idle timer locks it `vault.lock.idle_minutes` after the last user
 // activity (vault_activity); the sync timer asks for a sync every `vault.sync.interval_minutes`. The helper has its own
@@ -44,8 +46,9 @@ State :: enum u8 {
 Rows_State :: enum u8 { None, Asked, Checking, Ready, Failed }
 
 // The sets of rows the Vault keeps: the logins of the active tab's document, of the focused frame's document (a form in
-// a frame: its own origin decides), and the palette's search.
-Row_Slot :: enum u8 { Page, Frame, Search }
+// a frame: its own origin decides), the search of the palette or the panel, and every item (an empty query: the cards and
+// identities that the dropdown of a card or address field lists).
+Row_Slot :: enum u8 { Page, Frame, Search, Items }
 
 Row_Set :: struct {
 	rows:  [dynamic]Row,   // Page, Frame: checked by Wren (match.odin); Search: as the helper sent them
@@ -54,12 +57,10 @@ Row_Set :: struct {
 	gen:   u64,            // each ask: a check of an older ask is dropped
 }
 
-// What a fill asks of the helper.
-Fill_Field :: enum u8 { Username, Password, Totp }
-Fill_Fields :: bit_set[Fill_Field; u8]
+// What a copy puts on the clipboard: a login's, a card's (its number, its security code), an identity's email.
+Copy_What :: enum u8 { Username, Password, Totp, Number, Code, Email }
 
-// What a copy puts on the clipboard.
-Copy_What :: enum u8 { Username, Password, Totp }
+COPY_FIELDS := [Copy_What]Fill_Field{.Username = .Username, .Password = .Password, .Totp = .Totp, .Number = .Number, .Code = .Code, .Email = .Email}
 
 // The second state machine, per fill: Requested -> Answered -> Applied | Dropped (docs/bitwarden.md 4.3).
 Fill_State :: enum u8 { None, Requested, Answered, Applied, Dropped }
@@ -77,9 +78,24 @@ Fill_Ticket :: struct {
 
 // The values handed to the shell's `fill` hook: valid for the time of the call only, then zeroed.
 Fill_Values :: struct {
-	ticket:   Fill_Ticket,
-	username, password, totp: string,
-	has_username, has_password, has_totp: bool,
+	ticket: Fill_Ticket,
+	values: [Fill_Field]string,
+	has:    Fill_Fields,
+}
+
+// The offer to save a login after a form was sent (docs/bitwarden.md 4.10): None -> Checking (the password of the
+// login with the same user name is asked, to compare) -> Save | Update -> Saving -> None. Same password: None at once.
+// A lock, another capture or a dismissal ends it; its password is zeroed then.
+Offer_State :: enum u8 { None, Checking, Save, Update, Saving }
+
+Offer :: struct {
+	state:    Offer_State,
+	id:       u64,      // each capture: the check of an older one is dropped
+	host:     string,   // owned: the site's host (the new login's name)
+	url:      string,   // owned: the document's address (the login's uri)
+	username: string,   // owned
+	password: string,   // owned, a secret
+	item:     string,   // owned: Update, the login to change ("" for Save)
 }
 
 Hooks :: struct {
@@ -98,6 +114,8 @@ Pending :: struct {
 	ticket:  Fill_Ticket,   // .Fill (its url owned)
 	key:     string,        // .Logins_For: the document; .Search: the query (owned)
 	slot:    Row_Slot,      // .Logins_For, .Search
+	gen:     u64,           // .Logins_For, .Search: the set's gen when asked (another gen: the set was asked again or let go)
+	offer:   u64,           // .Fill, .Save: for the save offer of this id (0: not)
 	copy:    bool,          // .Fill, .Totp: for the clipboard (copy_what), not for a page
 	copy_what: Copy_What,
 	resend:  bool,          // .Login: a code asked again; a failure keeps the login waiting (`back`)
@@ -163,13 +181,28 @@ Vault :: struct {
 	keepalive_ns:   i64,                   // the loop's clock at the last keepalive
 	idle_timer:     base.Handle,
 	sync_timer:     base.Handle,
-	account_busy:   bool,                  // a job writes or removes the account file
-	account_queued: bool,                  // and another waits for it:
-	account_next:   string,                // owned: its text
-	account_next_remove: bool,
+	account_file:   File_Queue,            // the account file's writes
+	never_file:     File_Queue,            // the never-save list's writes
+	never:          [dynamic]string,       // owned: the hosts where no save is offered (vault.save.offer; "Never for this site")
+	offer:          Offer,
+	next_offer:     u64,
+	generated:      string,                // owned, a secret: the last generated value, until the shell takes it
+	generated_id:   u64,                   // the request it answers
+}
+
+// One file of the profile that jobs write or remove, one job at a time: the pool's workers run in any order, and a
+// removal must not be undone by an older write. A job asked meanwhile waits (only the last one: it says what the file
+// must be).
+@(private)
+File_Queue :: struct {
+	busy:        bool,
+	queued:      bool,
+	next:        string,   // owned: the waiting job's text
+	next_remove: bool,
 }
 
 ACCOUNT_FILE :: "account"   // <profile>/vault/account: the email, the server and the PIN mark of the remembered account (Wren's)
+NEVER_FILE :: "never_save"  // <profile>/vault/never_save: one host a line, where no save is offered
 HELPER_NAME :: "wren-vault.exe" when ODIN_OS == .Windows else "wren-vault"
 KEEPALIVE_EVERY_NS :: i64(60) * 1_000_000_000   // activity sends at most one keepalive a minute
 PIN_MIN :: 4
@@ -186,6 +219,7 @@ vault_init :: proc(v: ^Vault, loop: ^host.Loop, pool: ^host.Blocking_Pool, prefs
 	v.client_version = strings.clone(client_version, base.process_allocator())
 	v.closed = make([dynamic]^Transport)
 	v.pending = make([dynamic]Pending)
+	v.never = make([dynamic]string, base.process_allocator())
 	v.state = .Disabled
 	if v.settings.enabled { enable(v) }
 }
@@ -208,11 +242,15 @@ vault_destroy :: proc(v: ^Vault) {
 	string_wipe(&v.message)
 	string_wipe(&v.email)
 	string_wipe(&v.login_email)
-	string_wipe(&v.account_next)
 	string_wipe(&v.error)
 	string_wipe(&v.remembered)
 	string_wipe(&v.fingerprint)
 	string_wipe(&v.passkey_options)
+	string_wipe(&v.account_file.next)
+	string_wipe(&v.never_file.next)
+	strings_free(&v.never)
+	offer_reset(v)
+	string_wipe(&v.generated)
 	delete(v.helper, base.process_allocator())
 	delete(v.profile_dir, base.process_allocator())
 	delete(v.client_version, base.process_allocator())
@@ -593,7 +631,7 @@ vault_activity :: proc(v: ^Vault) {
 // The shell calls this each frame: an address already asked, answered or refused is not asked again. The rows come
 // later (state Ready).
 vault_ask_rows :: proc(v: ^Vault, address: string, slot := Row_Slot.Page) {
-	if v.state != .Unlocked || slot == .Search { return }
+	if v.state != .Unlocked || slot == .Search || slot == .Items { return }
 	set := &v.sets[slot]
 	if address == "" {
 		// (no document: the set is let go once, not reset each frame)
@@ -617,20 +655,20 @@ vault_ask_rows :: proc(v: ^Vault, address: string, slot := Row_Slot.Page) {
 	p := send(v, &r, .Logins_For)
 	if p != nil {
 		p.key = strings.clone(address, base.process_allocator())
-		p.slot = slot
+		p.slot, p.gen = slot, set.gen
 	}
 	set.state = .Asked
 	changed(v)
 }
 
-// The logins whose name, user name or address hold every word of `query` (the palette's Vault prefix). The helper
-// searches (Wren does no work in proportion to the vault); an answer for an older query is dropped. The rows come later
-// (Search state Ready); they hold no password.
-vault_search :: proc(v: ^Vault, query: string) {
-	if v.state != .Unlocked { return }
-	set := &v.sets[.Search]
+// The items whose name, user name or address hold every word of `query` (the palette's Vault prefix, the panel's search;
+// slot Items: "", every item). The helper searches (Wren does no work in proportion to the vault); an answer for an
+// older query is dropped. The rows come later (state Ready); they hold no password.
+vault_search :: proc(v: ^Vault, query: string, slot := Row_Slot.Search) {
+	if v.state != .Unlocked || (slot != .Search && slot != .Items) { return }
+	set := &v.sets[slot]
 	if set.state != .None && query == set.key { return }
-	set_reset(v, .Search)
+	set_reset(v, slot)
 	set.key = strings.clone(query, base.process_allocator())
 	r: Request
 	request_begin(&r, next_id(v), .Search, len(query) + 16)
@@ -639,7 +677,7 @@ vault_search :: proc(v: ^Vault, query: string) {
 	p := send(v, &r, .Search)
 	if p != nil {
 		p.key = strings.clone(query, base.process_allocator())
-		p.slot = .Search
+		p.slot, p.gen = slot, set.gen
 	}
 	set.state = .Asked
 	changed(v)
@@ -665,19 +703,23 @@ vault_release_rows :: proc(v: ^Vault, slot := Row_Slot.Page) { set_reset(v, slot
 vault_fill :: proc(v: ^Vault, item: string, ticket: Fill_Ticket, fields := Fill_Fields{.Username, .Password}) -> bool {
 	if v.state != .Unlocked || v.t == nil || fields == {} { return false }
 	r: Request
-	request_begin(&r, next_id(v), .Fill, len(item) + 48)
+	request_begin(&r, next_id(v), .Fill, len(item) + 16 * len(Fill_Field))
 	request_string(&r, "item", item)
-	names := make([dynamic]string, 0, 3, context.temp_allocator)
-	if .Username in fields { append(&names, "username") }
-	if .Password in fields { append(&names, "password") }
-	if .Totp in fields { append(&names, "totp") }
-	request_list(&r, "fields", names[:])
+	request_fields(&r, fields)
 	p := send(v, &r, .Fill)
 	if p == nil { return false }
 	p.ticket = ticket
 	p.ticket.url = strings.clone(ticket.url, base.process_allocator())
 	v.fill_state = .Requested
 	return true
+}
+
+// The `fields` list of a fill, in the protocol's names.
+@(private)
+request_fields :: proc(r: ^Request, fields: Fill_Fields) {
+	names := make([dynamic]string, 0, len(Fill_Field), context.temp_allocator)
+	for f in Fill_Field { if f in fields { append(&names, FILL_FIELD_NAMES[f]) } }
+	request_list(r, "fields", names[:])
 }
 
 // A copy of one value of the row `item` (a click or a palette choice of the user). The value goes to the `copy` hook
@@ -687,10 +729,10 @@ vault_copy :: proc(v: ^Vault, item: string, what: Copy_What) -> bool {
 	r: Request
 	p: ^Pending
 	switch what {
-	case .Username, .Password:
+	case .Username, .Password, .Number, .Code, .Email:
 		request_begin(&r, next_id(v), .Fill, len(item) + 32)
 		request_string(&r, "item", item)
-		request_list(&r, "fields", {what == .Username ? "username" : "password"})
+		request_list(&r, "fields", {FILL_FIELD_NAMES[COPY_FIELDS[what]]})
 		p = send(v, &r, .Fill)
 	case .Totp:
 		request_begin(&r, next_id(v), .Totp, len(item) + 8)
@@ -707,6 +749,157 @@ vault_has_account :: proc(v: ^Vault) -> bool { return v.email != "" }
 
 // Whether a PIN can be set: the helper keeps its envelope in the profile, so not without one.
 vault_can_pin :: proc(v: ^Vault) -> bool { return v.profile_dir != "" }
+
+// Creates a login (`item` "") or updates the login `item` (its non-empty user name and password; the helper adds `uri`
+// to its addresses when none matches it). The helper encrypts and sends it, then the rows are asked again. The answer is
+// a message. False: nothing was sent.
+vault_save :: proc(v: ^Vault, item, name, uri, username, password: string) -> bool {
+	if v.state != .Unlocked || v.t == nil || (password == "" && item == "") { return false }
+	r: Request
+	request_begin(&r, next_id(v), .Save, len(item) + len(name) + len(uri) + len(username) + len(password) + 32)
+	request_string(&r, "item", item)
+	request_string(&r, "name", name)
+	request_string(&r, "uri", uri)
+	request_string(&r, "username", username)
+	request_string(&r, "password", password)
+	p := send(v, &r, .Save)
+	if p == nil { return false }
+	p.key = strings.clone(item, base.process_allocator())   // ("": a creation; the message says which)
+	string_wipe(&v.message)
+	changed(v)
+	return true
+}
+
+// Asks the helper for a password or a passphrase. The value comes later: vault_generated_take, with the id returned here
+// (0: nothing was sent).
+vault_generate :: proc(v: ^Vault, o: Generate_Options) -> u64 {
+	if v.state != .Unlocked || v.t == nil { return 0 }
+	r: Request
+	request_begin(&r, next_id(v), .Generate, len(o.separator) + 256)
+	if o.passphrase {
+		request_string(&r, "kind", "passphrase")
+		request_int(&r, "words", clamp(o.words, GENERATE_WORDS_MIN, GENERATE_WORDS_MAX))
+		request_string(&r, "separator", o.separator)
+		request_bool(&r, "capitalize", o.capitalize)
+		request_bool(&r, "include_number", o.include_number)
+	} else {
+		request_string(&r, "kind", "password")
+		request_int(&r, "length", clamp(o.length, GENERATE_LENGTH_MIN, GENERATE_LENGTH_MAX))
+		request_bool(&r, "uppercase", o.uppercase)
+		request_bool(&r, "lowercase", o.lowercase)
+		request_bool(&r, "numbers", o.numbers)
+		request_bool(&r, "special", o.special)
+		request_int(&r, "min_numbers", o.min_numbers)
+		request_int(&r, "min_special", o.min_special)
+	}
+	id := v.next_id
+	if send(v, &r, .Generate) == nil { return 0 }
+	return id
+}
+
+// The generated value, once (the caller owns it and zeroes it: string_wipe). ok false: none came since the last take.
+vault_generated_take :: proc(v: ^Vault) -> (value: string, id: u64, ok: bool) {
+	if v.generated == "" { return "", 0, false }
+	value, id = v.generated, v.generated_id
+	v.generated, v.generated_id = "", 0
+	return value, id, true
+}
+
+////////////////////////////////
+// The save offer
+
+// A login form was sent on the document at `url` (its rows in `slot`) with these values. When the Vault is unlocked,
+// vault.save.offer is on, the host is not in the never list and the document's rows are ready: no login with this user
+// name: Save; one with another password: Update (its password is asked first, to compare); the same: nothing. The
+// values are copied (the password zeroed when the offer ends). False: no offer.
+vault_offer_capture :: proc(v: ^Vault, url, username, password: string, slot: Row_Slot) -> bool {
+	if v.state != .Unlocked || !v.settings.save_offer || password == "" || slot == .Search || slot == .Items { return false }
+	site, ok := site_of(url)
+	if !ok || vault_never_has(v, site.host) { return false }
+	set := &v.sets[slot]
+	if set.state != .Ready || set.key != url { return false }   // (the rows to compare with are not known)
+	user := strings.trim_space(username)
+	match: ^Row
+	for &r in set.rows {
+		if r.kind == .Login && base.ascii_equal_fold(strings.trim_space(r.username), user) { match = &r; break }
+	}
+	offer_reset(v)
+	v.next_offer += 1
+	o := &v.offer
+	o.id = v.next_offer
+	o.host = strings.clone(site.host, base.process_allocator())
+	o.url = strings.clone(url, base.process_allocator())
+	o.username = strings.clone(user, base.process_allocator())
+	o.password = strings.clone(password, base.process_allocator())
+	if match == nil {
+		o.state = .Save
+		changed(v)
+		return true
+	}
+	o.item = strings.clone(match.id, base.process_allocator())
+	r: Request
+	request_begin(&r, next_id(v), .Fill, len(match.id) + 32)
+	request_string(&r, "item", match.id)
+	request_fields(&r, {.Password})
+	p := send(v, &r, .Fill)
+	if p == nil { offer_reset(v); return false }
+	p.offer = o.id
+	o.state = .Checking
+	changed(v)
+	return true
+}
+
+// Save or Update: the offer is accepted, the login goes to the helper.
+vault_offer_accept :: proc(v: ^Vault) -> bool {
+	o := &v.offer
+	if o.state != .Save && o.state != .Update { return false }
+	if !vault_save(v, o.item, o.host, o.url, o.username, o.password) { return false }
+	v.pending[len(v.pending) - 1].offer = o.id
+	string_wipe(&o.password)   // (it crossed: nothing keeps it now)
+	o.state = .Saving
+	changed(v)
+	return true
+}
+
+// "Not now" (`never` false) or "Never for this site": the offer ends; its host goes to the never list.
+vault_offer_dismiss :: proc(v: ^Vault, never := false) {
+	if v.offer.state == .None { return }
+	if never && v.offer.host != "" && !vault_never_has(v, v.offer.host) {
+		append(&v.never, strings.clone(base.ascii_lower(v.offer.host, context.temp_allocator), base.process_allocator()))
+		write_never(v)
+	}
+	offer_reset(v)
+	changed(v)
+}
+
+// Whether `host` is in the never list (case does not matter).
+vault_never_has :: proc(v: ^Vault, host: string) -> bool {
+	for h in v.never { if base.ascii_equal_fold(h, host) { return true } }
+	return false
+}
+
+@(private)
+offer_reset :: proc(v: ^Vault) {
+	o := &v.offer
+	string_wipe(&o.host)
+	string_wipe(&o.url)
+	string_wipe(&o.username)
+	string_wipe(&o.password)
+	string_wipe(&o.item)
+	o.state = .None
+}
+
+// Every set of rows that is kept is asked again (a sync or a save changed the items).
+@(private)
+rows_refresh :: proc(v: ^Vault) {
+	for slot in Row_Slot {
+		key := strings.clone(v.sets[slot].key, context.temp_allocator)
+		if key == "" && slot != .Search && slot != .Items { continue }
+		if v.sets[slot].state == .None { continue }
+		set_reset(v, slot)
+		if slot == .Search || slot == .Items { vault_search(v, key, slot) } else { vault_ask_rows(v, key, slot) }
+	}
+}
 
 ////////////////////////////////
 // The helper
@@ -809,7 +1002,7 @@ pending_free :: proc(v: ^Vault, p: ^Pending, clear_timer: bool) {
 @(private)
 drop_pending :: proc(v: ^Vault) {
 	for &p in v.pending {
-		if p.op == .Fill && !p.copy { v.fill_state = .Dropped }
+		if p.op == .Fill && !p.copy && p.offer == 0 { v.fill_state = .Dropped }
 		pending_free(v, &p, true)
 	}
 	clear(&v.pending)
@@ -834,7 +1027,7 @@ request_timed_out :: proc(data: rawptr) {
 	p, ok := take_pending(v, to.id)
 	if !ok { return }
 	// (an ask that was replaced or released: the set is another's)
-	current := p.key != "" && p.key == v.sets[p.slot].key
+	current := (p.op == .Logins_For || p.op == .Search) && p.gen == v.sets[p.slot].gen
 	key := strings.clone(p.key, context.temp_allocator)
 	pending_free(v, &p, false)   // (frees `to`, wipes p.key)
 	switch p.op {
@@ -846,12 +1039,19 @@ request_timed_out :: proc(data: rawptr) {
 		v.sets[p.slot].state = .Failed
 		set_message(v, i18n.tr("The Vault did not answer in time."))
 	case .Fill, .Totp:
-		if p.copy {
+		if p.offer != 0 {
+			if p.offer == v.offer.id { offer_reset(v) }
+		} else if p.copy {
 			set_message(v, i18n.tr("The copy took too long and was dropped."))
 		} else {
 			v.fill_state = .Dropped
 			set_message(v, i18n.tr("The fill took too long and was dropped."))
 		}
+	case .Save:
+		if p.offer != 0 && p.offer == v.offer.id { offer_reset(v) }
+		set_message(v, i18n.tr("The Vault did not answer in time: the login may not be saved. Sync, then look."))
+	case .Generate:
+		set_message(v, i18n.tr("The password generator did not answer in time."))
 	case .Hello, .Login, .Login_Api_Key, .Unlock, .Lock, .Logout, .Sync, .Pin_Set, .Pin_Clear, .Keepalive,
 	     .Password_Hint, .Device_Request, .Device_Poll, .Passkey_Options, .Login_Passkey:
 		// (the helper answers in order: one that does not answer holds every later request)
@@ -918,6 +1118,8 @@ refusal_words :: proc(code, message: string) -> string {
 		return i18n.tr("The passkey's answer does not open the vault. Use the passkey registered for this account, or the master password.")
 	case "no_passkey":
 		return i18n.tr("No passkey of this account unlocks the vault. Unlock with the master password.")
+	case "save_failed":
+		return message != "" ? strings.concatenate({i18n.tr("The login was not saved: "), message}, context.temp_allocator) : i18n.tr("The login was not saved: the server refused it or cannot be reached.")
 	}
 	return message
 }
@@ -1127,14 +1329,7 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 			v.passkey = a.passkey
 			write_account(v)
 		}
-		// (the rows kept may be older than the sync)
-		for slot in Row_Slot {
-			key := strings.clone(v.sets[slot].key, context.temp_allocator)
-			if key == "" && slot != .Search { continue }
-			if v.sets[slot].state == .None { continue }
-			set_reset(v, slot)
-			if slot == .Search { vault_search(v, key) } else { vault_ask_rows(v, key, slot) }
-		}
+		rows_refresh(v)   // (the rows kept may be older than the sync)
 	case .Pin_Set:
 		if !a.ok { set_message(v, a.message != "" ? a.message : i18n.tr("The PIN could not be set.")); return }
 		v.pin = true
@@ -1148,7 +1343,7 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 	case .Logins_For, .Search:
 		set := &v.sets[p.slot]
 		// (another document or query was asked meanwhile, or the rows were released)
-		if set.state != .Asked || p.key != set.key { return }
+		if set.state != .Asked || p.gen != set.gen { return }
 		if !a.ok {
 			set.state = .Failed
 			set_message(v, a.message)
@@ -1156,7 +1351,8 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 			return
 		}
 		if p.op == .Search {
-			// (no page to check them against: a search row fills only when it is also a row of the document)
+			// (no page to check them against: a search row fills only when it is also a row of the document; a card or
+			// an identity has no site)
 			rows_free(&set.rows)
 			set.rows, a.rows = a.rows, nil
 			set.state = .Ready
@@ -1166,15 +1362,34 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 		check_rows(v, p.slot, a)
 	case .Totp:
 		if !a.ok { set_message(v, a.message); return }
-		if p.copy && a.has_totp && v.hooks.copy != nil { v.hooks.copy(v.hooks.user, .Totp, a.totp, a.remaining) }
+		if p.copy && .Totp in a.has && v.hooks.copy != nil { v.hooks.copy(v.hooks.user, .Totp, a.values[.Totp], a.remaining) }
 		changed(v)
 	case .Fill:
+		if p.offer != 0 {
+			o := &v.offer
+			if o.id != p.offer || o.state != .Checking { return }   // (another capture, or dismissed)
+			if !a.ok { offer_reset(v); changed(v); return }
+			if a.values[.Password] == o.password {
+				offer_reset(v)   // (the login is as it was sent: nothing to offer)
+			} else {
+				o.state = .Update
+			}
+			changed(v)
+			return
+		}
 		if p.copy {
 			if !a.ok { set_message(v, a.message); return }
-			value, has := a.username, a.has_username
-			if p.copy_what == .Password { value, has = a.password, a.has_password }
-			if !has || value == "" {
-				set_message(v, p.copy_what == .Password ? i18n.tr("This login has no password.") : i18n.tr("This login has no user name."))
+			field := COPY_FIELDS[p.copy_what]
+			value := a.values[field]
+			if field not_in a.has || value == "" {
+				missing := i18n.tr("This login has no user name.")
+				#partial switch p.copy_what {
+				case .Password: missing = i18n.tr("This login has no password.")
+				case .Number:   missing = i18n.tr("This card has no number.")
+				case .Code:     missing = i18n.tr("This card has no security code.")
+				case .Email:    missing = i18n.tr("This identity has no email.")
+				}
+				set_message(v, missing)
 				return
 			}
 			if v.hooks.copy != nil { v.hooks.copy(v.hooks.user, p.copy_what, value, 0) }
@@ -1183,8 +1398,7 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 			return
 		}
 		v.fill_state = .Answered
-		values := Fill_Values{ticket = p.ticket, username = a.username, password = a.password, totp = a.totp,
-			has_username = a.has_username, has_password = a.has_password, has_totp = a.has_totp}
+		values := Fill_Values{ticket = p.ticket, values = a.values, has = a.has}   // (the strings stay the answer's: zeroed with it)
 		applied := a.ok && v.hooks.fill != nil && v.hooks.fill(v.hooks.user, &values)
 		v.fill_state = applied ? .Applied : .Dropped
 		switch {
@@ -1192,6 +1406,23 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 		case !applied: set_message(v, i18n.tr("Nothing was filled: the page changed, or it has no login field."))
 		case: string_wipe(&v.message)
 		}
+		changed(v)
+	case .Save:
+		if p.offer != 0 && p.offer == v.offer.id { offer_reset(v) }
+		if !a.ok {
+			set_message(v, refusal_words(a.error == "" ? "save_failed" : a.error, a.message))
+			return
+		}
+		set_message(v, p.key == "" ? i18n.tr("The login is saved in the Vault.") : i18n.tr("The login is updated in the Vault."))
+		rows_refresh(v)   // (the helper's copy has it now: the rows are asked again)
+	case .Generate:
+		if !a.ok || a.value == "" {
+			set_message(v, refusal_words(a.error, a.message != "" ? a.message : i18n.tr("No password was generated.")))
+			return
+		}
+		string_wipe(&v.generated)
+		v.generated, a.value = a.value, ""
+		v.generated_id = p.id
 		changed(v)
 	case .Lock, .Logout, .Keepalive:
 	}
@@ -1225,10 +1456,13 @@ changed :: proc(v: ^Vault) {
 	if v.hooks.changed != nil { v.hooks.changed(v.hooks.user) }
 }
 
-// Every set of rows goes (a lock, a logout, a failure).
+// Every set of rows goes (a lock, a logout, a failure), and the secrets kept for the shell with them.
 @(private)
 rows_reset :: proc(v: ^Vault) {
 	for slot in Row_Slot { set_reset(v, slot) }
+	offer_reset(v)
+	string_wipe(&v.generated)
+	v.generated_id = 0
 }
 
 @(private)
@@ -1306,7 +1540,7 @@ check_work :: proc(data: rawptr) {
 	site, ok := site_of(j.url)
 	kept := make([dynamic]Row, 0, len(j.rows), base.process_allocator())
 	for &r in j.rows {
-		if ok && row_matches(site, r.uri, r.kind, j.equivalent[:]) { append(&kept, r) } else { row_free(&r) }
+		if ok && row_matches(site, r.uri, r.match, j.equivalent[:]) { append(&kept, r) } else { row_free(&r) }
 	}
 	delete(j.rows)
 	j.rows = kept
@@ -1355,6 +1589,7 @@ Setup_Job :: struct {
 	pin:            bool,     // from the account file
 	passkey:        bool,     // from the account file: a passkey of the account can unlock it
 	remembered:     string,   // owned: from the account file: the last email that logged in
+	never:          [dynamic]string,   // owned: from the never-save list
 }
 
 // Off the loop: where the helper is, and which account the profile remembers for this server.
@@ -1374,7 +1609,34 @@ setup_work :: proc(data: rawptr) {
 			// (the remembered email is the profile's, whatever the server: a logout keeps it)
 			if f.remembered != "" { j.remembered = strings.clone(f.remembered) }
 		}
+		if bytes, err := os.read_entire_file(join_path({j.profile_dir, "vault", NEVER_FILE}), context.temp_allocator); err == nil {
+			j.never = never_parse(string(bytes))
+		}
 	}
+}
+
+// The never-save list's text: one host a line, in lower case; empty lines and repeats are left out. Owned (process
+// allocator).
+never_parse :: proc(text: string) -> (hosts: [dynamic]string) {
+	hosts = make([dynamic]string, base.process_allocator())
+	rest := text
+	for line in strings.split_lines_iterator(&rest) {
+		h := base.ascii_lower(strings.trim_space(line), context.temp_allocator)
+		if h == "" { continue }
+		seen := false
+		for x in hosts { if x == h { seen = true; break } }
+		if !seen { append(&hosts, strings.clone(h, base.process_allocator())) }
+	}
+	return
+}
+
+never_text :: proc(hosts: []string, allocator := context.temp_allocator) -> string {
+	b := strings.builder_make(allocator)
+	for h in hosts {
+		strings.write_string(&b, h)
+		strings.write_byte(&b, '\n')
+	}
+	return strings.to_string(b)
 }
 
 // What the account file says (Wren's; no secret): the remembered account (its email, its server's identity address, the
@@ -1427,6 +1689,10 @@ setup_done :: proc(data: rawptr) {
 		string_wipe(&v.remembered)
 		v.remembered, j.remembered = j.remembered, ""
 	}
+	if j.never != nil {
+		strings_free(&v.never)
+		v.never, j.never = j.never, nil
+	}
 	if v.helper == "" { set_state(v, .Helper_Missing); return }
 	set_state(v, v.email != "" ? .Locked : .Logged_Out)
 }
@@ -1447,6 +1713,7 @@ setup_free :: proc(j: ^Setup_Job) {
 	delete(j.helper)
 	string_wipe(&j.email)
 	string_wipe(&j.remembered)
+	strings_free(&j.never)
 	free(j)
 }
 
@@ -1469,11 +1736,13 @@ locate_helper :: proc(setting: string, allocator := context.allocator) -> string
 }
 
 @(private)
-Account_Job :: struct {
+File_Job :: struct {
 	v:      ^Vault,
-	dir:    string,   // owned
+	queue:  ^File_Queue,
+	dir:    string,   // owned: <profile>/vault
+	name:   string,   // the file's name in it (a constant)
 	text:   string,   // owned: what the file holds ("" with `remove`)
-	remove: bool,     // logout: the file goes
+	remove: bool,     // the file goes
 	ok:     bool,
 }
 
@@ -1481,33 +1750,39 @@ Account_Job :: struct {
 @(private)
 write_account :: proc(v: ^Vault) {
 	if v.profile_dir == "" { return }
-	if v.email == "" && v.remembered == "" { account_job(v, "", true); return }   // (nothing to remember: the file goes)
+	if v.email == "" && v.remembered == "" { file_job(v, &v.account_file, ACCOUNT_FILE, "", true); return }   // (nothing to remember: the file goes)
 	identity, _ := server_urls(v.settings)
 	if v.email == "" { identity = "" }   // (no account: the email to offer only, of no server)
 	f := Account_File{email = v.email, identity = identity, pin = v.pin, passkey = v.passkey, remembered = v.remembered}
-	account_job(v, account_text(f, base.process_allocator()), false)
+	file_job(v, &v.account_file, ACCOUNT_FILE, account_text(f, base.process_allocator()), false)
 }
 
-// One job on the file at a time: the pool's workers run in any order, and a removal must not be undone by an older
-// write. A job asked meanwhile waits (only the last one: it says what the file must be). Takes `text` (owned).
+// The never-save list, for the next start.
 @(private)
-account_job :: proc(v: ^Vault, text: string, remove: bool) {
-	if v.account_busy {
-		string_wipe(&v.account_next)
-		v.account_next, v.account_queued, v.account_next_remove = text, true, remove
+write_never :: proc(v: ^Vault) {
+	if v.profile_dir == "" { return }
+	file_job(v, &v.never_file, NEVER_FILE, never_text(v.never[:], base.process_allocator()), false)
+}
+
+// One job on a file at a time (File_Queue). Takes `text` (owned).
+@(private)
+file_job :: proc(v: ^Vault, q: ^File_Queue, name, text: string, remove: bool) {
+	if q.busy {
+		string_wipe(&q.next)
+		q.next, q.queued, q.next_remove = text, true, remove
 		return
 	}
-	j := new(Account_Job, base.process_allocator())
-	j^ = {v = v, dir = join_path({v.profile_dir, "vault"}, base.process_allocator()), text = text, remove = remove}
+	j := new(File_Job, base.process_allocator())
+	j^ = {v = v, queue = q, dir = join_path({v.profile_dir, "vault"}, base.process_allocator()), name = name, text = text, remove = remove}
 	v.jobs += 1
-	v.account_busy = true
-	host.run_blocking(v.pool, account_work, account_done, j, account_discard)
+	q.busy = true
+	host.run_blocking(v.pool, file_work, file_done, j, file_discard)
 }
 
 @(private)
-account_work :: proc(data: rawptr) {
-	job := (^Account_Job)(data)
-	path := join_path({job.dir, ACCOUNT_FILE})
+file_work :: proc(data: rawptr) {
+	job := (^File_Job)(data)
+	path := join_path({job.dir, job.name})
 	if job.remove {
 		job.ok = host.file_drop(job.v.writer, path)
 		return
@@ -1517,30 +1792,30 @@ account_work :: proc(data: rawptr) {
 }
 
 @(private)
-account_done :: proc(data: rawptr) {
-	job := (^Account_Job)(data)
-	v := job.v
+file_done :: proc(data: rawptr) {
+	job := (^File_Job)(data)
+	v, q, name := job.v, job.queue, job.name
 	v.jobs -= 1
-	v.account_busy = false
-	account_free(job)
-	if v.account_queued {
-		text := v.account_next
-		v.account_next, v.account_queued = "", false
-		account_job(v, text, v.account_next_remove)
+	q.busy = false
+	file_free(job)
+	if q.queued {
+		text := q.next
+		q.next, q.queued = "", false
+		file_job(v, q, name, text, q.next_remove)
 	}
 }
 
 // The pool ended before the job ran: nothing more is started.
 @(private)
-account_discard :: proc(data: rawptr) {
-	job := (^Account_Job)(data)
+file_discard :: proc(data: rawptr) {
+	job := (^File_Job)(data)
 	job.v.jobs -= 1
-	job.v.account_busy = false
-	account_free(job)
+	job.queue.busy = false
+	file_free(job)
 }
 
 @(private)
-account_free :: proc(j: ^Account_Job) {
+file_free :: proc(j: ^File_Job) {
 	delete(j.dir, base.process_allocator())
 	string_wipe(&j.text)
 	free(j, base.process_allocator())

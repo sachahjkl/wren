@@ -35,7 +35,29 @@ Settings :: struct {
 	clear_seconds: int,     // a copied password or code leaves the clipboard after this time; 0: never
 	shortcut:     string,   // owned: the fill shortcut ("Ctrl+Shift+L"; "": none)
 	remember_email: bool,   // the login dialog starts with the last email that logged in
+	save_offer:   bool,     // after a login form is sent, offer to save or update its login
+	totp_autofill: bool,    // a one-time-code field that comes after a fill of a login with a code gets the code
+	totp_copy:    bool,     // a fill of a login with a code copies the code
+	generator:    Generate_Options,   // the generator's defaults (its separator owned)
 }
+
+// What the generator makes (the helper's `generate`): a password of `length` characters of the classes that are on, or
+// a passphrase of `words` words.
+Generate_Options :: struct {
+	passphrase:  bool,
+	length:      int,
+	uppercase, lowercase, numbers, special: bool,
+	min_numbers, min_special: int,
+	words:       int,
+	separator:   string,
+	capitalize, include_number: bool,
+}
+
+GENERATE_LENGTH_MIN :: 5
+GENERATE_LENGTH_MAX :: 128
+GENERATE_WORDS_MIN :: 3
+GENERATE_WORDS_MAX :: 20
+TOTP_AUTOFILL_NS :: i64(120) * 1_000_000_000   // a code's field must come this soon after the fill of its login
 
 US_WEB_VAULT_URL :: "https://vault.bitwarden.com"
 EU_WEB_VAULT_URL :: "https://vault.bitwarden.eu"
@@ -67,6 +89,31 @@ PREFS := [?]config.Def{
 	{name = "vault.login.remember_email", kind = .Bool, default = {b = true},
 		description = "The Vault's login starts with the email of the last login in this profile. It stays after a log out. Off: the email is forgotten, and each login starts empty.",
 		tags = {"email", "remember"}},
+	{name = "vault.save.offer", kind = .Bool, default = {b = true},
+		description = "After you send a login form, offer to save its login in the Vault, or to update the password of the login that has its user name. The offer never fills or saves anything by itself.",
+		tags = {"save", "password", "update"}},
+	{name = "vault.totp.autofill", kind = .Bool, default = {b = true},
+		description = "After the Vault filled a login that has a one-time code, fill the code into the code field that the same site shows within 2 minutes."},
+	{name = "vault.totp.copy_on_fill", kind = .Bool, default = {b = false},
+		description = "When the Vault fills a login that has a one-time code, copy the code to the clipboard (cleared after vault.clipboard.clear_seconds)."},
+	{name = "vault.generator.kind", kind = .String, default = {s = "password"}, choices = {"password", "passphrase"},
+		description = "What the password generator makes first: a password of random characters, or a passphrase of random words."},
+	{name = "vault.generator.length", kind = .Int, default = {i = 20}, bounded = true, min = GENERATE_LENGTH_MIN, max = GENERATE_LENGTH_MAX,
+		description = "The length of a generated password, in characters."},
+	{name = "vault.generator.uppercase", kind = .Bool, default = {b = true}, description = "A generated password has capital letters (A-Z)."},
+	{name = "vault.generator.lowercase", kind = .Bool, default = {b = true}, description = "A generated password has small letters (a-z)."},
+	{name = "vault.generator.numbers", kind = .Bool, default = {b = true}, description = "A generated password has digits (0-9)."},
+	{name = "vault.generator.special", kind = .Bool, default = {b = true}, description = "A generated password has special characters (!@#$%^&*)."},
+	{name = "vault.generator.min_numbers", kind = .Int, default = {i = 1}, bounded = true, min = 0, max = 9,
+		description = "The fewest digits in a generated password that has digits."},
+	{name = "vault.generator.min_special", kind = .Int, default = {i = 1}, bounded = true, min = 0, max = 9,
+		description = "The fewest special characters in a generated password that has them."},
+	{name = "vault.generator.words", kind = .Int, default = {i = 5}, bounded = true, min = GENERATE_WORDS_MIN, max = GENERATE_WORDS_MAX,
+		description = "The number of words of a generated passphrase."},
+	{name = "vault.generator.separator", kind = .String, default = {s = "-"},
+		description = "What goes between the words of a generated passphrase."},
+	{name = "vault.generator.capitalize", kind = .Bool, default = {b = false}, description = "Each word of a generated passphrase starts with a capital letter."},
+	{name = "vault.generator.include_number", kind = .Bool, default = {b = false}, description = "A generated passphrase has a digit after one of its words."},
 	{name = "vault.test.remote", kind = .Bool, default = {b = false},
 		description = "For automated tests only, with a throwaway profile: remote control can use the Vault's panel. Off: the Vault refuses to work while the browser is remote-controlled."},
 }
@@ -92,6 +139,22 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.clear_seconds = int(config.int_of(p, "vault.clipboard.clear_seconds"))
 	s.shortcut = strings.clone(strings.trim_space(config.string_of(p, "vault.fill.shortcut")))
 	s.remember_email = config.bool_of(p, "vault.login.remember_email")
+	s.save_offer = config.bool_of(p, "vault.save.offer")
+	s.totp_autofill = config.bool_of(p, "vault.totp.autofill")
+	s.totp_copy = config.bool_of(p, "vault.totp.copy_on_fill")
+	g := &s.generator
+	g.passphrase = config.string_of(p, "vault.generator.kind") == "passphrase"
+	g.length = int(config.int_of(p, "vault.generator.length"))
+	g.uppercase = config.bool_of(p, "vault.generator.uppercase")
+	g.lowercase = config.bool_of(p, "vault.generator.lowercase")
+	g.numbers = config.bool_of(p, "vault.generator.numbers")
+	g.special = config.bool_of(p, "vault.generator.special")
+	g.min_numbers = int(config.int_of(p, "vault.generator.min_numbers"))
+	g.min_special = int(config.int_of(p, "vault.generator.min_special"))
+	g.words = int(config.int_of(p, "vault.generator.words"))
+	g.separator = strings.clone(config.string_of(p, "vault.generator.separator"))
+	g.capitalize = config.bool_of(p, "vault.generator.capitalize")
+	g.include_number = config.bool_of(p, "vault.generator.include_number")
 	return s
 }
 
@@ -116,6 +179,7 @@ settings_destroy :: proc(s: ^Settings) {
 	delete(s.server_url)
 	delete(s.helper_path)
 	delete(s.shortcut)
+	delete(s.generator.separator)
 	s^ = {}
 }
 

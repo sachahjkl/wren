@@ -772,6 +772,7 @@ hud_captures :: proc(app: ^App, pos: draw.Vec2) -> bool {
 	if devtools_captures(pos) { return true }   // the floating developer tools (devtools.odin)
 	if palette_captures(app, pos) { return true }   // and the command palette while it is open (palette.odin)
 	if vault_dropdown_captures(app, pos) { return true }   // and the Vault's list under a login field (vault_fill.odin)
+	if vault_offer_captures(app, pos) { return true }   // and the Vault's save offer (vault_save.odin)
 	if setup_captures(app) { return true }   // and the Setup dialog (setup.odin)
 	if urlbar_captures(app, pos) { return true }   // and the address bar's suggestions (urlbar.odin)
 	if ui.menu_at(pos) { return true }   // and the open menus: their wheel scrolls them, never the page or a frame under them

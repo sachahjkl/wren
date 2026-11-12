@@ -1,8 +1,9 @@
 package browser
 
 // The Vault's fill everywhere (docs/bitwarden.md, phase 3): the fill shortcut (the command vault.fill, rebound by
-// vault.fill.shortcut), the list under a focused login field (the dropdown), the address bar's chip, the palette's Vault
-// search ("$"), the copies to the clipboard with their clearing, the TOTP code, and the rules of frames.
+// vault.fill.shortcut), the list under a focused login, card or address field (the dropdown, with the generator's entry
+// under a new password field), the address bar's chip, the palette's Vault search ("$"), the copies to the clipboard
+// with their clearing, the TOTP code, the fill of cards and identities, and the rules of frames.
 //
 // The document a fill goes to is the one that holds the focused field: the focused frame's, else the tab's (the
 // target). Its own origin decides (rule 2): its rows are the Vault's Frame set, the tab's are its Page set. A frame of
@@ -96,7 +97,10 @@ vault_fill_frame :: proc(app: ^App) {
 			release_if_kept(v, .Page)
 			release_if_kept(v, .Frame)
 		}
-		if !palette_open(app) { release_if_kept(v, .Search) }
+		// (the Search set is the palette's or the panel's: it goes when neither shows it)
+		if !palette_open(app) && !s.searching { release_if_kept(v, .Search) }
+		// (the cards and identities while a card or address field has the focus)
+		if ok && s.fill_kind != .None && s.role_forms == x.f.id && s.role_field == x.field { vault.vault_search(v, "", .Items) } else { release_if_kept(v, .Items) }
 	}
 	// (locked too: the dropdown's one row and the chip offer the unlock on a login field)
 	vault_dropdown_update(app, ok ? &x : nil)
@@ -142,8 +146,23 @@ vault_fill_item :: proc(app: ^App, x: Vault_Target, item: string, fields: vault.
 }
 
 vault_fill_send :: proc(app: ^App, x: Vault_Target, item: string, fields: vault.Fill_Fields) {
+	s := &app.vault
 	ticket := vault.Fill_Ticket{tab = x.tab.id, page = x.page, nav = x.nav, url = x.url, forms_id = x.f.id, field = x.field}
-	if !vault.vault_fill(&app.vault.v, item, ticket, fields) { ui.toast(.Warn, "%s", i18n.tr("The Vault cannot fill now.")) }
+	if !vault.vault_fill(&s.v, item, ticket, fields) { ui.toast(.Warn, "%s", i18n.tr("The Vault cannot fill now.")); return }
+	// (what the code's fill after this one needs: vault_save.odin, vault_fill_applied)
+	r := vault.vault_row_find(&s.v, item, x.slot)
+	delete(s.fill_item)
+	delete(s.fill_site)
+	s.fill_item = strings.clone(item)
+	s.fill_site = strings.clone(vault_site_key(x.url))
+	s.fill_totp = r != nil && r.kind == .Login && r.has_totp && .Password in fields && .Totp not_in fields
+}
+
+// The site of an address, for "the same site": its registrable domain, else its host ("" when it is no web page).
+vault_site_key :: proc(address: string) -> string {
+	site, ok := vault.site_of(address)
+	if !ok { return "" }
+	return site.domain != "" ? site.domain : site.host
 }
 
 // What a row fills into the target's group: on a one-time-code field, the code only; else the user name and the
@@ -184,14 +203,64 @@ vault_apply :: proc(user: rawptr, values: ^vault.Fill_Values) -> bool {
 	f := page.page_forms(p)
 	anchor := values.ticket.field
 	if n := dom.get(p.doc, anchor); anchor == base.NIL_HANDLE || n == nil || n.kind != .Element { anchor = f.focus }
+	request_frames(app, 2)
+	if values.has & (vault.CARD_FIELDS | vault.IDENTITY_FIELDS) != {} { return vault_apply_item(f, p, anchor, values) }
 	lf := forms.login_fields(f, anchor, vault_field_shown, p)
 	filled := false
-	if values.has_username && lf.username != base.NIL_HANDLE { filled = forms.fill_field(f, lf.username, values.username) || filled }
-	if values.has_password && lf.password != base.NIL_HANDLE && forms.input_type(f, lf.password) == .Password {
-		filled = forms.fill_field(f, lf.password, values.password) || filled
+	if .Username in values.has && lf.username != base.NIL_HANDLE { filled = forms.fill_field(f, lf.username, values.values[.Username]) || filled }
+	if .Password in values.has && lf.password != base.NIL_HANDLE && forms.input_type(f, lf.password) == .Password {
+		filled = forms.fill_field(f, lf.password, values.values[.Password]) || filled
 	}
-	if values.has_totp && lf.one_time_code != base.NIL_HANDLE { filled = forms.fill_field(f, lf.one_time_code, values.totp) || filled }
-	request_frames(app, 2)
+	if .Totp in values.has && lf.one_time_code != base.NIL_HANDLE { filled = forms.fill_field(f, lf.one_time_code, values.values[.Totp]) || filled }
+	if filled && .Password in values.has { vault_fill_applied(app) }   // vault_save.odin: the code's turn may come
+	return filled
+}
+
+// The fields a card or an identity fills: what the dropdown asks of the helper (never its identity numbers).
+VAULT_CARD_ASK :: vault.Fill_Fields{.Cardholder, .Number, .Exp_Month, .Exp_Year, .Code, .Brand}
+VAULT_IDENTITY_ASK :: vault.Fill_Fields{.Title, .First_Name, .Middle_Name, .Last_Name, .Full_Name, .Address1, .Address2, .Address3,
+	.City, .State, .Postal_Code, .Country, .Company, .Email, .Phone}
+
+// A card's or an identity's values into the card or address fields of the anchor's group: each field gets the value of
+// its role, an expiry date as the field wants it (vault_apply's part for those items).
+@(private = "file")
+vault_apply_item :: proc(f: ^forms.Forms, p: ^page.Page, anchor: base.Handle, values: ^vault.Fill_Values) -> bool {
+	filled := false
+	for g in forms.autofill_fields(f, anchor, vault_field_shown, p) {
+		v := values.values
+		text: string
+		switch g.role {
+		case .None:
+		case .Cardholder:     text = v[.Cardholder]
+		case .Card_Number:    text = v[.Number]
+		case .Card_Exp:
+			if v[.Exp_Month] != "" && v[.Exp_Year] != "" { text = forms.expiry_text(f, g.field, v[.Exp_Month], v[.Exp_Year]) }
+		case .Card_Exp_Month: if v[.Exp_Month] != "" { text = forms.expiry_month_text(f, g.field, v[.Exp_Month]) }
+		case .Card_Exp_Year:  if v[.Exp_Year] != "" { text = forms.expiry_year_text(f, g.field, v[.Exp_Year]) }
+		case .Card_Code:      text = v[.Code]
+		case .Card_Type:      text = v[.Brand]
+		case .Full_Name:      text = v[.Full_Name]
+		case .Given_Name:     text = v[.First_Name]
+		case .Additional_Name: text = v[.Middle_Name]
+		case .Family_Name:    text = v[.Last_Name]
+		case .Honorific:      text = v[.Title]
+		case .Email:          text = v[.Email]
+		case .Phone:          text = v[.Phone]
+		case .Organization:   text = v[.Company]
+		case .Street:
+			parts := make([dynamic]string, 0, 3, context.temp_allocator)
+			for a in ([]string{v[.Address1], v[.Address2], v[.Address3]}) { if a != "" { append(&parts, a) } }
+			text = strings.join(parts[:], ", ", context.temp_allocator)
+		case .Address1:       text = v[.Address1]
+		case .Address2:       text = v[.Address2]
+		case .Address3:       text = v[.Address3]
+		case .City:           text = v[.City]
+		case .State:          text = v[.State]
+		case .Postal_Code:    text = v[.Postal_Code]
+		case .Country:        text = v[.Country]
+		}
+		if text != "" && forms.autofill_write(f, g.field, text) { filled = true }
+	}
 	return filled
 }
 
@@ -223,8 +292,11 @@ vault_copied :: proc(user: rawptr, what: vault.Copy_What, value: string, seconds
 	case .Username: words = i18n.tr("User name copied.")
 	case .Password: words = i18n.tr("Password copied.")
 	case .Totp:     words = fmt.tprintf(i18n.tr("Code copied (valid %d s more)."), seconds_left)
+	case .Number:   words = i18n.tr("Card number copied.")
+	case .Code:     words = i18n.tr("Security code copied.")
+	case .Email:    words = i18n.tr("Email copied.")
 	}
-	if secs > 0 && what != .Username {
+	if secs > 0 && what != .Username && what != .Email {
 		ui.toast(.Info, "%s %s", words, fmt.tprintf(i18n.tr("The clipboard is cleared in %d s."), secs))
 	} else {
 		ui.toast(.Info, "%s", words)
@@ -378,6 +450,7 @@ vault_dropdown_update :: proc(app: ^App, x: ^Vault_Target) {
 	s := &app.vault
 	if x == nil || x.field == base.NIL_HANDLE || x.page.doc == nil {
 		s.role, s.role_forms, s.role_field = .None, 0, base.NIL_HANDLE
+		s.fill_kind, s.fill_signup = .None, false
 		s.dd_shown = false
 		return
 	}
@@ -386,30 +459,51 @@ vault_dropdown_update :: proc(app: ^App, x: ^Vault_Target) {
 		if s.role_field != x.field || s.role_forms != x.f.id { s.dd_sel = -1 }
 		s.role_forms, s.role_field, s.role_version = x.f.id, x.field, version
 		s.role = forms.login_role(x.f, x.field, vault_field_shown, x.page)
+		// (a field of no login: a card's or an address's, whose items the dropdown lists)
+		s.fill_kind = s.role == .None ? forms.autofill_kind(forms.autofill_role(x.f, x.field)) : .None
+		s.fill_signup = s.role == .Password && forms.is_new_password(x.f, x.field)
 	}
 }
 
-// The rows the dropdown lists for the target: on a one-time-code field, the logins with a code. nil when it is hidden.
+// The rows the dropdown lists for the target: on a one-time-code field, the logins with a code; on a card or address
+// field, the vault's cards or identities. `generate`: a last entry that generates a password (a new password field, or
+// any password field of a site with no login yet). shown false when it is hidden.
 @(private = "file")
-dropdown_rows :: proc(app: ^App, x: Vault_Target) -> (rows: []vault.Row, locked: bool, shown: bool) {
+dropdown_rows :: proc(app: ^App, x: Vault_Target) -> (rows: []vault.Row, locked, generate, shown: bool) {
 	s := &app.vault
 	v := &s.v
-	if !v.settings.dropdown || !vault_usable(app) || s.role == .None || x.rule == .Never { return nil, false, false }
-	if s.role_forms != x.f.id || s.role_field != x.field { return nil, false, false }
-	if s.dd_dismissed_forms == x.f.id && s.dd_dismissed_field == x.field { return nil, false, false }
+	if !v.settings.dropdown || !vault_usable(app) || (s.role == .None && s.fill_kind == .None) || x.rule == .Never { return }
+	if s.role_forms != x.f.id || s.role_field != x.field { return }
+	if s.dd_dismissed_forms == x.f.id && s.dd_dismissed_field == x.field { return }
 	#partial switch v.state {
 	case .Locked:
-		return nil, true, s.role != .One_Time_Code
+		return nil, true, false, s.role != .One_Time_Code
 	case .Unlocked:
 	case:
-		return nil, false, false
+		return
+	}
+	if s.fill_kind != .None {
+		want := s.fill_kind == .Card ? vault.Item_Kind.Card : vault.Item_Kind.Identity
+		items, state, _ := vault.vault_rows(v, .Items)
+		if state != .Ready { return }
+		kept := make([dynamic]vault.Row, 0, len(items), context.temp_allocator)
+		for r in items { if r.kind == want { append(&kept, r) } }
+		return kept[:], false, false, len(kept) > 0
 	}
 	all, state, _ := vault.vault_rows(v, x.slot)
-	if state != .Ready || len(all) == 0 { return nil, false, false }
-	if s.role != .One_Time_Code { return all, false, true }
+	if state != .Ready { return }
+	generate = s.role == .Password && (s.fill_signup || len(all) == 0)
+	if s.role != .One_Time_Code { return all, false, generate, len(all) > 0 || generate }
 	kept := make([dynamic]vault.Row, 0, len(all), context.temp_allocator)
 	for r in all { if r.has_totp { append(&kept, r) } }
-	return kept[:], false, len(kept) > 0
+	return kept[:], false, false, len(kept) > 0
+}
+
+// The entries of a shown dropdown: its rows, the unlock's one row, and the generator's entry after the rows.
+@(private = "file")
+dropdown_count :: proc(rows: []vault.Row, locked, generate: bool) -> int {
+	if locked { return 1 }
+	return min(len(rows), VAULT_DROPDOWN_ROWS) + (generate ? 1 : 0)
 }
 
 // The keys of a shown dropdown, before the page's keydown (forms_shell.odin route_key): Down and Up move (Up past the
@@ -430,9 +524,9 @@ vault_dropdown_key :: proc(app: ^App, f: ^forms.Forms, ev: platform.Event) -> bo
 		}
 		return false
 	}
-	rows, locked, shown := dropdown_rows(app, x)
+	rows, locked, generate, shown := dropdown_rows(app, x)
 	if !shown { return false }
-	n := locked ? 1 : len(rows)
+	n := dropdown_count(rows, locked, generate)
 	#partial switch ev.key {
 	case .Down:
 		s.dd_sel = min(s.dd_sel + 1, n - 1)
@@ -443,7 +537,7 @@ vault_dropdown_key :: proc(app: ^App, f: ^forms.Forms, ev: platform.Event) -> bo
 		s.dd_sel = -1
 	case .Return:
 		if s.dd_sel < 0 || s.dd_sel >= n { return false }   // (no row chosen: Enter is the page's)
-		dropdown_choose(app, x, rows, locked, s.dd_sel)
+		dropdown_choose(app, x, rows, locked, generate, s.dd_sel)
 	case:
 		return false
 	}
@@ -452,14 +546,20 @@ vault_dropdown_key :: proc(app: ^App, f: ^forms.Forms, ev: platform.Event) -> bo
 }
 
 @(private = "file")
-dropdown_choose :: proc(app: ^App, x: Vault_Target, rows: []vault.Row, locked: bool, i: int) {
+dropdown_choose :: proc(app: ^App, x: Vault_Target, rows: []vault.Row, locked, generate: bool, i: int) {
 	s := &app.vault
 	s.dd_sel = -1
 	s.dd_dismissed_forms, s.dd_dismissed_field = x.f.id, x.field   // (filled: the list leaves the field)
 	if locked { vault_dialog_open(app); return }
-	if i < 0 || i >= len(rows) { return }
+	shown := min(len(rows), VAULT_DROPDOWN_ROWS)
+	if generate && i == shown { vault_generate_for_field(app, x); return }   // vault_save.odin
+	if i < 0 || i >= shown { return }
 	r := rows[i]
-	vault_fill_item(app, x, r.id, vault_fields_for(app, x, &r))
+	switch r.kind {
+	case .Card:     vault_fill_item(app, x, r.id, VAULT_CARD_ASK)
+	case .Identity: vault_fill_item(app, x, r.id, VAULT_IDENTITY_ASK)
+	case .Login:    vault_fill_item(app, x, r.id, vault_fields_for(app, x, &r))
+	}
 }
 
 // Whether a press at `pos` is the dropdown's (the page under it gets none: status_bar.odin hud_captures).
@@ -476,7 +576,7 @@ vault_dropdown_build :: proc(app: ^App) {
 	s.dd_shown = false
 	x, ok := vault_target(app)
 	if !ok { return }
-	rows, locked, shown := dropdown_rows(app, x)
+	rows, locked, generate, shown := dropdown_rows(app, x)
 	if !shown { return }
 	field, painted := forms_control_screen_rect(app, x.f, x.field)
 	if !painted { return }
@@ -484,7 +584,7 @@ vault_dropdown_build :: proc(app: ^App) {
 	if !draw.rect_contains(area, {field.min.x, field.max.y}) && !draw.rect_contains(area, field.min) { return }   // (scrolled out)
 	em := ui.font_size()
 	rh := ui.dense(em * 3.3)   // (two lines: the name and the user name)
-	n := locked ? 1 : min(len(rows), VAULT_DROPDOWN_ROWS)
+	n := dropdown_count(rows, locked, generate)
 	note := ""
 	switch {
 	case x.rule == .Confirm: note = fmt.tprintf(i18n.tr("In a frame of %s: each fill asks first."), url_host(x.url))
@@ -501,7 +601,7 @@ vault_dropdown_build :: proc(app: ^App) {
 		panel := ui.build_box({.Clickable, .Draw_Background, .Draw_Border, .Draw_Shadow, .Clip}, "###vault_dropdown")
 		panel.cursor = .Arrow
 		_ = ui.signal(panel)
-		ui.a11y_set(panel, {role = .List, name = i18n.tr("Vault logins")})
+		ui.a11y_set(panel, {role = .List, name = s.fill_kind == .None ? i18n.tr("Vault logins") : i18n.tr("Vault items")})
 		if ui.parent(panel) {
 			ui.spacer(ui.px(em * 0.3))
 			if note != "" {
@@ -516,9 +616,12 @@ vault_dropdown_build :: proc(app: ^App) {
 			}
 			for i in 0 ..< n {
 				title, detail: string
-				if locked {
+				switch {
+				case locked:
 					title, detail = i18n.tr("Unlock the Vault"), i18n.tr("to fill this form")
-				} else {
+				case i >= len(rows) || i >= VAULT_DROPDOWN_ROWS:
+					title, detail = i18n.tr("Generate a password"), i18n.tr("fill a new strong password")
+				case:
 					title = rows[i].name != "" ? rows[i].name : rows[i].uri
 					detail = s.role == .One_Time_Code ? i18n.tr("Fill the code") : rows[i].username
 				}
@@ -527,7 +630,7 @@ vault_dropdown_build :: proc(app: ^App) {
 			ui.spacer(ui.px(em * 0.3))
 		}
 	}
-	if chosen >= 0 { dropdown_choose(app, x, rows, locked, chosen) }
+	if chosen >= 0 { dropdown_choose(app, x, rows, locked, generate, chosen) }
 }
 
 @(private = "file")
@@ -598,6 +701,16 @@ vault_palette_items :: proc(user: rawptr, app: ^App, out: ^[dynamic]Palette_Item
 	x, has_target := vault_target(app)
 	for r in rows {
 		name := r.name != "" ? r.name : r.uri
+		switch r.kind {
+		case .Card:
+			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the card number: %s"), name), detail = r.username, key = fmt.tprintf("number:%s", r.id)})
+			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the security code: %s"), name), detail = r.username, key = fmt.tprintf("code:%s", r.id)})
+			continue
+		case .Identity:
+			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the email: %s"), name), detail = r.username, key = fmt.tprintf("email:%s", r.id)})
+			continue
+		case .Login:
+		}
 		if has_target && x.rule != .Never && vault.vault_row_find(v, r.id, x.slot) != nil {
 			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Fill: %s"), name), detail = r.username, key = fmt.tprintf("fill:%s", r.id)})
 		}
@@ -620,7 +733,7 @@ vault_palette_key :: proc(key: string) -> (act, item: string, ok: bool) {
 	if i <= 0 || i == len(key) - 1 { return "", "", false }
 	act, item = key[:i], key[i + 1:]
 	switch act {
-	case "fill", "user", "pass", "totp", "open": return act, item, true
+	case "fill", "user", "pass", "totp", "open", "number", "code", "email": return act, item, true
 	}
 	return "", "", false
 }
@@ -641,6 +754,9 @@ vault_palette_activate :: proc(user: rawptr, app: ^App, key: string, new_tab: bo
 	case "user": vault.vault_copy(v, item, .Username)
 	case "pass": vault.vault_copy(v, item, .Password)
 	case "totp": vault.vault_copy(v, item, .Totp)
+	case "number": vault.vault_copy(v, item, .Number)
+	case "code": vault.vault_copy(v, item, .Code)
+	case "email": vault.vault_copy(v, item, .Email)
 	case "open":
 		r := vault.vault_row_find(v, item, .Search)
 		if r == nil { return }

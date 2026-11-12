@@ -1,10 +1,12 @@
 package browser
 
 // The Vault's shell (docs/bitwarden.md 4.7): the toolbar button with the lock state, the panel with the logins of the
-// tab's page, their Fill button and their copies (user name, password, code), the login dialog (the server, the email and master password or the API key, then
+// tab's page, their Fill button and their copies (user name, password, code), its search of the whole vault (logins,
+// cards, identities), the login dialog (the server, the email and master password or the API key, then
 // the second step: an authenticator or email code, or the new-device code), the unlock dialog (master password or PIN),
 // the PIN dialog, the question before a fill on a plain http page or into a frame of another origin. The fill itself,
-// the dropdown, the chip, the shortcut and the palette's search are in vault_fill.odin. The state is the App's one
+// the dropdown, the chip, the shortcut and the palette's search are in vault_fill.odin; the save offer, the generator
+// and the code's fill after a login's in vault_save.odin. The state is the App's one
 // vault.Vault (src/vault): every surface reads it, none keeps a copy. All of it is toolkit widgets drawn by the chrome: a
 // page can neither read nor cover them.
 //
@@ -83,10 +85,41 @@ Vault_Shell :: struct {
 	dd_sel:         int,             // -1: no row chosen (the keys are the field's)
 	dd_dismissed_forms: u64,         // Escape hid it on this field
 	dd_dismissed_field: base.Handle,
+	fill_kind:      forms.Autofill_Kind, // the focused field's when it is no login's: a card's or an address's (the dropdown lists those items)
+	fill_signup:    bool,            // the focused password field is a new one (autocomplete new-password, or two in its form): the dropdown offers the generator
 	// the clipboard: what the Vault put there (its hash and length only), cleared at clip_timer
 	clip_hash:      u64,
 	clip_len:       int,
 	clip_timer:     base.Handle,
+	// the panel's search (empty: the page's logins)
+	query:          ui.Text_Field,
+	searching:      bool,            // the panel is open with a query: the Search set is the panel's
+	button_rect:    draw.Rect,       // the toolbar button, as last laid out: the save offer hangs under it
+	// the save offer, the generator, the code after a login (vault_save.odin)
+	offer_shown:    bool,
+	offer_rect:     draw.Rect,
+	gen_dialog:     bool,
+	gen_size:       ui.Vec2,
+	gen_body:       ui.Key,
+	gen_options:    vault.Generate_Options,   // the dialog's (its separator owned)
+	gen_asked:      vault.Generate_Options,   // what the shown value was made with (separator not owned)
+	gen_value:      string,          // owned, a secret: the dialog's value
+	gen_request:    u64,             // the generate on its way (0: none)
+	gen_for_fill:   bool,            // its value goes into the password fields of gen_tab / gen_forms
+	gen_tab:        u64,
+	gen_forms:      u64,
+	gen_field:      base.Handle,
+	gen_filled:     string,          // owned, a secret: what the generator filled into gen_filled_forms, for the save offer
+	gen_filled_forms: u64,
+	fill_item:      string,          // owned: the item of the last fill sent
+	fill_totp:      bool,            // it is a login with a code that the fill did not ask for
+	fill_site:      string,          // owned: its document's site (registrable domain, else host)
+	totp_item:      string,          // owned: a code to fill into the site's code field before totp_until ("": none)
+	totp_site:      string,          // owned
+	totp_until:     i64,
+	totp_forms:     u64,             // the document last looked at for a code field, and its version
+	totp_version:   u64,
+	totp_copy_due:  bool,            // copy the code of fill_item at the next frame (vault.totp.copy_on_fill)
 }
 
 ////////////////////////////////
@@ -126,6 +159,8 @@ vault_shell_destroy :: proc(app: ^App) {
 	}
 	delete(s.ask_item)
 	delete(s.ask_origin)
+	ui.field_destroy(&s.query)
+	vault_save_destroy(app)   // vault_save.odin
 	s^ = {}
 }
 
@@ -246,6 +281,7 @@ vault_button :: proc(app: ^App, t: ^Tab) {
 	b := ui.custom("###vault_icon", vault_icon_draw, icon, {.Clickable, .Focusable, .Draw_Background, .Draw_Hot_Effects})
 	ui.pop_tags()
 	sig := ui.signal(b)
+	app.vault.button_rect = b.rect
 	key := ui.key_from_string(b.parent.key, "###vault_panel")
 	panel_at := toolbar_panel_rect(b.rect, em * VAULT_PANEL_W_EM)
 	// (logged out or locked, what there is to do is the login or the unlock: the dialog opens at once, no panel to read
@@ -278,6 +314,8 @@ vault_button :: proc(app: ^App, t: ^Tab) {
 		tip(sig, words)
 	}
 	ui.a11y_set(b, {name = i18n.tr("Vault"), popup = .Menu, expanded = open})
+	if !open && app.vault.panel_was { ui.field_clear(&app.vault.query) }   // (a search is for one opening of the panel)
+	app.vault.searching = open && ui.field_string(&app.vault.query) != ""
 	app.vault.panel_was = open   // (the page's rows stay while the Vault is unlocked: the chip and the shortcut use them)
 	if ui.ctx_menu(key, em * VAULT_PANEL_W_EM) { vault_panel_body(app, t) }
 }
@@ -360,7 +398,14 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 					}
 				}
 			case .Unlocked:
-				vault_rows(app, t)
+				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+				_ = ui.line_edit("###vp_search", &app.vault.query, i18n.tr("Search the Vault"), clearable = true)
+				ui.spacer(ui.px(em * 0.5))
+				if q := strings.trim_space(ui.field_string(&app.vault.query)); q != "" {
+					vault_search_rows(app, q)
+				} else {
+					vault_rows(app, t)
+				}
 				ui.spacer(ui.px(em * 0.5))
 				ui.hline(ui.fill())
 				ui.spacer(ui.px(em * 0.6))
@@ -373,6 +418,11 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 						ui.ctx_menu_close()
 						vault.vault_lock(v)
 					}
+				}
+				ui.spacer(ui.px(em * 0.4))
+				if icon_action_button(app, lucide.DICES, i18n.tr("Generator…"), "vp_generator", ui.fill()) {
+					ui.ctx_menu_close()
+					vault_generator_open(app)   // vault_save.odin
 				}
 				ui.spacer(ui.px(em * 0.4))
 				ui.next({width = ui.fill(), height = ui.children_sum()})
@@ -403,7 +453,6 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 @(private = "file")
 vault_rows :: proc(app: ^App, t: ^Tab) {
 	v := &app.vault.v
-	em := ui.font_size()
 	address := t != nil && t.kind == .Web ? t.url : ""
 	vault.vault_ask_rows(v, address)   // (nothing when these rows are already asked or kept)
 	rows, rows_state, _ := vault.vault_rows(v, .Page)
@@ -420,50 +469,121 @@ vault_rows :: proc(app: ^App, t: ^Tab) {
 		panel_line(i18n.tr("No login for this page."), "vp_rows_none", weak = true)
 		return
 	}
-	// (a list longer than the panel's room scrolls: its height is what the rows need, up to VAULT_PANEL_LIST_EM)
+	vault_row_list(app, rows, "vp")
+}
+
+// The items of the panel's search (the whole vault, every kind): asked once per query, shown from what the Vault keeps.
+@(private = "file")
+vault_search_rows :: proc(app: ^App, query: string) {
+	v := &app.vault.v
+	vault.vault_search(v, query)
+	rows, state, key := vault.vault_rows(v, .Search)
+	switch {
+	case key != query || state == .None || state == .Asked:
+		panel_line(i18n.tr("Searching…"), "vp_search_wait", weak = true)
+	case state == .Failed:
+		panel_line(i18n.tr("The Vault cannot search now."), "vp_search_failed", weak = true)
+	case len(rows) == 0:
+		panel_line(i18n.tr("Nothing in the Vault holds these words."), "vp_search_none", weak = true)
+	case:
+		vault_row_list(app, rows, "vs")
+	}
+}
+
+// The icon of an item's kind: a globe for a login, a card, an identity card.
+vault_kind_glyph :: proc(k: vault.Item_Kind) -> string {
+	switch k {
+	case .Login:    return lucide.GLOBE
+	case .Card:     return lucide.CREDIT_CARD
+	case .Identity: return lucide.ID_CARD
+	}
+	return lucide.GLOBE
+}
+
+@(private = "file")
+Glyph_Draw :: struct { app: ^App, glyph: string, color: draw.Color }
+
+// A Lucide glyph that is no button (what an item is).
+vault_glyph :: proc(app: ^App, glyph, id: string, side: f32) {
+	ui.next({width = ui.px(side), height = ui.px(side)})
+	d := ui.frame_new(Glyph_Draw)
+	d^ = {app = app, glyph = glyph, color = ui.color("text")}
+	d.color.a *= 0.7
+	ui.custom(strings.concatenate({"###", id}, ui.frame_allocator()), proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+		d := (^Glyph_Draw)(user)
+		size := (b.rect.max.y - b.rect.min.y) * 0.62
+		w := font.text_width(&d.app.fonts, d.app.lucide, size, d.glyph)
+		c := draw.rect_center(b.rect)
+		draw.text(dc, d.app.lucide, size, {math.round(c.x - w * 0.5), math.round(c.y + size * 0.36)}, d.color, d.glyph)
+	}, d)
+}
+
+// A list of items, each with its kind's icon, its name and detail, and the acts that fit its kind: a login fills (when
+// it is also one of the page's logins: rule 10) and copies its user name, password and code; a card copies its number
+// and security code; an identity its email. A list longer than the panel's room scrolls.
+@(private = "file")
+vault_row_list :: proc(app: ^App, rows: []vault.Row, prefix: string) {
+	v := &app.vault.v
+	em := ui.font_size()
 	rh := ui.dense(em * 3.2)
 	list_h := min(f32(len(rows)) * rh, em * VAULT_PANEL_LIST_EM)
 	// (the bar is drawn over the rows: when they scroll, their buttons stay clear of it)
 	gutter := f32(len(rows)) * rh > list_h ? ui.scrollbar_gutter() : 0
 	ui.next({width = ui.fill(), height = ui.px(list_h)})
-	if ui.scroll_y("###vp_rows") {
-		for r, i in rows {
+	if ui.scroll_y(strings.concatenate({"###", prefix, "_rows"}, ui.frame_allocator())) {
+		rows_loop: for r, i in rows {
 			ui.next({width = ui.fill(), height = ui.px(rh)})
-			if ui.row(.Center, {}, fmt_id("###vp_row", i)) {
+			if ui.row(.Center, {}, strings.concatenate({"###", pid(prefix, "row", i)}, ui.frame_allocator())) {
+				vault_glyph(app, vault_kind_glyph(r.kind), pid(prefix, "kind", i), em * 1.6)
+				ui.spacer(ui.px(em * 0.3))
 				ui.next({width = ui.fill(), height = ui.children_sum()})
-				if ui.column(.Start, {}, fmt_id("###vp_row_text", i)) {
+				if ui.column(.Start, {}, strings.concatenate({"###", pid(prefix, "text", i)}, ui.frame_allocator())) {
 					ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
-					ui.label(fmt.aprintf("%s###vp_name_%d", r.name != "" ? r.name : r.uri, i, allocator = ui.frame_allocator()))
+					ui.label(fmt.aprintf("%s###%s", r.name != "" ? r.name : r.uri, pid(prefix, "name", i), allocator = ui.frame_allocator()))
 					if r.username != "" {
 						ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
 						ui.push_tags("weak")
-						ui.label(fmt.aprintf("%s###vp_user_%d", r.username, i, allocator = ui.frame_allocator()))
+						ui.label(fmt.aprintf("%s###%s", r.username, pid(prefix, "user", i), allocator = ui.frame_allocator()))
 						ui.pop_tags()
 					}
 				}
 				ui.spacer(ui.px(em * 0.4))
 				// the copies: a click of the user, the value goes to the clipboard when it comes (vault_copied)
 				id := strings.clone(r.id, context.temp_allocator)   // (the rows may change with a copy's answer)
-				if r.has_totp {
-					if icon_square_button(app, lucide.HASH, i18n.tr("Copy the code"), fmt_id("vp_copy_totp", i)) { vault.vault_copy(v, id, .Totp) }
+				switch r.kind {
+				case .Login:
+					if r.has_totp {
+						if icon_square_button(app, lucide.HASH, i18n.tr("Copy the code"), pid(prefix, "copy_totp", i)) { vault.vault_copy(v, id, .Totp) }
+						ui.spacer(ui.px(em * 0.3))
+					}
+					if r.username != "" {
+						if icon_square_button(app, lucide.USER, i18n.tr("Copy the user name"), pid(prefix, "copy_user", i)) { vault.vault_copy(v, id, .Username) }
+						ui.spacer(ui.px(em * 0.3))
+					}
+					if icon_square_button(app, lucide.COPY, i18n.tr("Copy the password"), pid(prefix, "copy_pass", i)) { vault.vault_copy(v, id, .Password) }
+					if vault.vault_row_find(v, id, .Page) != nil {
+						ui.spacer(ui.px(em * 0.3))
+						if icon_square_button(app, lucide.TEXT_CURSOR_INPUT, i18n.tr("Fill this page"), pid(prefix, "fill", i), intent = .Primary) {
+							ui.ctx_menu_close()
+							vault_fill_clicked(app, id)
+							break rows_loop   // (the rows may change with the fill)
+						}
+					}
+				case .Card:
+					if icon_square_button(app, lucide.LOCK_KEYHOLE, i18n.tr("Copy the security code"), pid(prefix, "copy_code", i)) { vault.vault_copy(v, id, .Code) }
 					ui.spacer(ui.px(em * 0.3))
-				}
-				if r.username != "" {
-					if icon_square_button(app, lucide.USER, i18n.tr("Copy the user name"), fmt_id("vp_copy_user", i)) { vault.vault_copy(v, id, .Username) }
-					ui.spacer(ui.px(em * 0.3))
-				}
-				if icon_square_button(app, lucide.COPY, i18n.tr("Copy the password"), fmt_id("vp_copy_pass", i)) { vault.vault_copy(v, id, .Password) }
-				ui.spacer(ui.px(em * 0.3))
-				if icon_square_button(app, lucide.TEXT_CURSOR_INPUT, i18n.tr("Fill this page"), fmt_id("vp_fill", i), intent = .Primary) {
-					ui.ctx_menu_close()
-					vault_fill_clicked(app, r.id)
-					break   // (the rows may change with the fill)
+					if icon_square_button(app, lucide.COPY, i18n.tr("Copy the number"), pid(prefix, "copy_number", i)) { vault.vault_copy(v, id, .Number) }
+				case .Identity:
+					if icon_square_button(app, lucide.MAIL, i18n.tr("Copy the email"), pid(prefix, "copy_email", i)) { vault.vault_copy(v, id, .Email) }
 				}
 				ui.spacer(ui.px(em * 0.2 + gutter))
 			}
 		}
 	}
 }
+
+@(private = "file")
+pid :: proc(prefix, what: string, i: int) -> string { return fmt.aprintf("%s_%s_%d", prefix, what, i, allocator = ui.frame_allocator()) }
 
 @(private = "file")
 fmt_id :: proc(prefix: string, i: int) -> string { return fmt.aprintf("%s_%d", prefix, i, allocator = ui.frame_allocator()) }
@@ -591,11 +711,13 @@ vault_dialogs_build :: proc(app: ^App) {
 		if s.pin_dialog { vault_pin_close(app) }
 		if s.ask_open { s.ask_open = false; delete(s.ask_item); s.ask_item = "" }
 		vault_fill_frame(app)   // vault_fill.odin: releases the rows
+		vault_save_frame(app, false)   // vault_save.odin: the offer and the generator go
 		s.dd_shown = false
 		return
 	}
 	vault_fill_frame(app)   // vault_fill.odin: the rows of the focused documents, the dropdown's field
 	vault_dropdown_build(app)   // vault_fill.odin: the list under a focused login field
+	vault_save_frame(app, true)   // vault_save.odin: the save offer, the generator, the code after a login
 	vault_insecure_build(app)
 	vault_pin_build(app)
 	vault_login_build(app)

@@ -29,6 +29,9 @@ Forms_Embedder :: struct {
 	pick_files: proc(user: rawptr, p: ^Page, input: base.Handle),
 	pick_color: proc(user: rawptr, p: ^Page, input: base.Handle),
 	changed:    proc(user: rawptr, p: ^Page),                          // something to repaint
+	// A form is being sent (forms.Host.submitting): called at once, inside the submission, so that the shell reads what
+	// it sends before a listener clears it. The shell only copies values there.
+	submitting: proc(user: rawptr, p: ^Page, form: base.Handle),
 }
 
 // A form submission planned as a navigation (HTML "plan to navigate"): each target has its own, a newer submission to
@@ -98,6 +101,11 @@ forms_attach :: proc(p: ^Page) {
 		queue_close = proc(user: rawptr, dialog: base.Handle) { dialog_queue_close((^Page)(user), dialog) },
 		inert = proc(user: rawptr, h: base.Handle) -> bool { return node_inert((^Page)(user), h) },
 		follow_link = proc(user: rawptr, link: base.Handle) { navigation_follow_script_link((^Page)(user), link) },
+		submitting = proc(user: rawptr, form: base.Handle) {
+			p := (^Page)(user)
+			if p.closed || p.formctl == nil { return }
+			if e := p.formctl.embedder; e.submitting != nil { e.submitting(e.user, p, form) }
+		},
 	})
 	p.style_state.controls = style.Control_Provider{query = forms_style_query, settle = forms_style_settle, user = p}
 }
