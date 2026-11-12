@@ -91,8 +91,15 @@ census_cell :: proc(p: ^Heap_Profile, c: ^Cell, dead: bool) {
 		add(p, .bigint, int(c.size), 0, 0)
 	case .shape:
 		sh := cast(^Shape)c
-		extra := cap(sh.props) * size_of(Shape_Prop) + cap(sh.transitions) * size_of(Transition) + len(sh.hash) * size_of(u32)
-		slack := (cap(sh.props) - len(sh.props)) * size_of(Shape_Prop) + (cap(sh.transitions) - len(sh.transitions)) * size_of(Transition)
+		extra := cap(sh.transitions) * size_of(Transition)
+		slack := (cap(sh.transitions) - len(sh.transitions)) * size_of(Transition)
+		if b := sh.block; b != nil {
+			// (a block of keys is shared by the shapes of a chain: each counts its part)
+			extra += props_block_size(int(b.cap), int(b.hash_len)) / int(max(b.refs, 1))
+		} else {
+			extra += cap(sh.props) * size_of(Shape_Prop) + len(sh.hash) * size_of(u32)
+			slack += (cap(sh.props) - len(sh.props)) * size_of(Shape_Prop)
+		}
 		add(p, sh.is_dict ? .shape_dict : .shape, int(c.size), extra, slack)
 	case .object:
 		o := cast(^Object)c

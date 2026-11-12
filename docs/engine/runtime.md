@@ -69,11 +69,15 @@ in the 64‑bit NaN‑boxed word QuickJS uses on wasm32, because Wren's glue is 
   counts its references as QuickJS does (`JS_NewAtom*`, `JS_DupAtom`, `JS_FreeAtom`).
 - **Shapes** (`shape.odin`/`object.odin`): hidden classes with transitions and an open‑addressed hash;
   an object stores a flat `[]Prop_Slot`; deleting a property or growing past 48 properties switches the
-  object to a private dictionary shape.
+  object to a private dictionary shape. A chain of shared shapes keeps its keys and its hash in one `Props_Block`: a
+  transition from the last shape of the chain writes into the block, so n keys added one by one store about 2n entries,
+  not n²/2.
 - **Objects**: a GC cell with a shape, inline slots, and an `Object_Data` tagged union for the internal
   slots of exotic kinds (Array, Function, Native, Bound, wrappers, ArrayBuffer/TypedArray/DataView,
   Map/Set, Proxy, Date, RegExp, Promise, Generator, Module namespace, Host…). Arrays keep a dense
-  `[]Value` fast path.
+  `[]Value` fast path (`fast_array`). A delete inside an Array, or a write at most 1024 past its end, keeps
+  the storage and marks the hole with the `uninitialized` tag: the array leaves the fast path for the generic property
+  code, which reads a hole as a missing property. A write further out makes a dictionary, as before.
 - **The layout on wasm32**, what ships (`#assert`ed in `object.odin`): a `Cell` header is 8 bytes (`size`; the kind in a
   nibble with `pinned`, `in_ext` and two bits of the kind's own in a byte; `mark` a byte; the host's count of references
   in 16 bits, which sticks at its top and makes the cell a root for good); an `Object` 40 (a native function's `magic`

@@ -78,7 +78,8 @@ frames_destroy :: proc(l: ^Layout) {
 // The box whose content a box is laid out in: its containing block in the sense of frames.
 @(private)
 frame_parent :: #force_inline proc(l: ^Layout, b: ^Box) -> i32 {
-	p := .Abs in b.flags ? b.cb : b.parent
+	// (an absolutely positioned box is always one of l.boxes: the box models predicted on the layout threads are not)
+	p := .Abs in b.flags ? l.cold[box_at(l, b)].cb : b.parent
 	if p == NONE { return NONE }
 	pb := &l.boxes[p]
 	if pb.kind == .Inline && pb.ifc_root != NONE { return pb.ifc_root }
@@ -159,7 +160,8 @@ frames_to_logical :: proc(c: ^Ctx) -> (vertical: bool) {
 	for &s in l.frame_saved {
 		b := &l.boxes[s.box]
 		if .Dead in b.flags { continue }
-		b.pos, b.size, b.margin, b.border, b.padding, b.marker_pos = s.pos, s.size, s.margin, s.border, s.padding, s.marker_pos
+		b.pos, b.size, b.margin, b.border, b.padding = s.pos, s.size, s.margin, s.border, s.padding
+		l.cold[s.box].marker_pos = s.marker_pos
 	}
 	for &s in l.frame_ifcs {
 		b := &l.boxes[s.box]
@@ -463,7 +465,7 @@ frame_box_to_physical :: proc(c: ^Ctx, x: i32) {
 		own := b.wm
 		if !is_vert(f) && !is_vert(own) { return }
 		if is_vert(f) || .List_Item in b.flags {
-			append(&l.frame_saved, Frame_Saved{x, b.pos, b.size, b.margin, b.border, b.padding, b.marker_pos})
+			append(&l.frame_saved, Frame_Saved{x, b.pos, b.size, b.margin, b.border, b.padding, l.cold[x].marker_pos})
 		}
 		if is_vert(f) {
 			log_pos, log_size := b.pos, b.size
@@ -482,7 +484,7 @@ frame_box_to_physical :: proc(c: ^Ctx, x: i32) {
 		}
 		if !is_vert(own) { return }
 		// the marker's (start, baseline): the baseline as x, the start as y
-		if .List_Item in b.flags && b.marker_w != 0 { b.marker_pos = logical_to_physical_point(b.marker_pos, b.size.x, b.size.y, own) }
+		if k := &l.cold[x]; .List_Item in b.flags && k.marker_w != 0 { k.marker_pos = logical_to_physical_point(k.marker_pos, b.size.x, b.size.y, own) }
 		if .Ifc in b.flags && b.lines[1] > b.lines[0] {
 			rec := Frame_Saved_Ifc{box = x}
 			rec.lines[0] = i32(len(l.frame_lines))

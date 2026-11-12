@@ -37,6 +37,7 @@ nav_refused :: proc(t: ^Tab, from: ^page.Page, target, why: string) {
 nav_own_page :: proc(target: string) -> (own: proc(href: string) -> bool) {
 	switch {
 	case is_sites_address(target): return is_sites_address
+	case is_extensions_address(target): return is_extensions_address   // ext_page.odin
 	case is_cache_address(target): return is_cache_address
 	case is_wren_address(target), is_license_file_address(target): return is_builtin_href
 	case is_home_address(target): return is_home_address   // about:home?art=on / off: the start page's own links

@@ -42,7 +42,7 @@ table_grid :: proc(c: ^Ctx, bi: i32) -> Table_Grid {
 	foots := make([dynamic]i32, context.temp_allocator)
 	for ch := b.first; ch != NONE; ch = c.l.boxes[ch].next {
 		k := &c.l.boxes[ch]
-		if .Abs in k.flags { k.static_ref = bi; k.static_pos = {content_x(b), content_y(b)}; continue }
+		if .Abs in k.flags { c.l.cold[ch].static_ref = bi; c.l.cold[ch].static_pos = {content_x(b), content_y(b)}; continue }
 		#partial switch k.kind {
 		case .Caption: append(&g.captions, ch)
 		case .Row_Group:
@@ -67,8 +67,8 @@ table_grid :: proc(c: ^Ctx, bi: i32) -> Table_Grid {
 		for ri in first_row ..< end {
 			col: i32 = 0
 			for cell := c.l.boxes[g.rows[ri]].first; cell != NONE; cell = c.l.boxes[cell].next {
-				k := &c.l.boxes[cell]
-				if k.kind != .Cell { continue }
+				if c.l.boxes[cell].kind != .Cell { continue }
+				k := &c.l.cold[cell]
 				for int(col) < len(busy) && busy[col] > ri { col += 1 }
 				rs := k.rowspan
 				if rs == 0 || ri + rs > end { rs = end - ri }
@@ -106,8 +106,8 @@ resolve_cell :: proc(c: ^Ctx, cell: i32, base: f32, collapse: bool) {
 	k := &c.l.boxes[cell]
 	resolve_box_model(c, k, base)
 	if collapse {
-		if k.col > 0 { k.border[3] = 0 }
-		if k.row > 0 { k.border[0] = 0 }
+		if c.l.cold[cell].col > 0 { k.border[3] = 0 }
+		if c.l.cold[cell].row > 0 { k.border[0] = 0 }
 	}
 	for i in 0 ..< 4 { k.margin[i] = 0 }
 }
@@ -466,7 +466,7 @@ shift_contents :: proc(c: ^Ctx, cell: i32, dy: f32) {
 		if xb.pos_ref == cell { xb.pos.y += dy }
 		if xb.kind == .Inline { for ch := xb.first; ch != NONE; ch = c.l.boxes[ch].next { append(&stack, ch) } }
 	}
-	for a := k.abs_first; a != NONE; a = c.l.boxes[a].abs_next {
+	for a := k.abs_first; a != NONE; a = c.l.cold[a].abs_next {
 		if c.l.boxes[a].pos_ref == cell { c.l.boxes[a].pos.y += dy }
 	}
 	for li in k.lines[0] ..< k.lines[1] {
@@ -479,7 +479,7 @@ shift_contents :: proc(c: ^Ctx, cell: i32, dy: f32) {
 	}
 	if k.baseline >= 0 { k.baseline += dy }
 	if k.last_baseline >= 0 { k.last_baseline += dy }
-	if k.marker_w != 0 { k.marker_pos.y += dy }   // set by each layout of a list item only: do not accumulate otherwise
+	if kc := &c.l.cold[cell]; kc.marker_w != 0 { kc.marker_pos.y += dy }   // set by each layout of a list item only: do not accumulate otherwise
 }
 
 // Lays out a table at border-box width `w`; returns the border-box height of the table grid. Captions go above it

@@ -3,6 +3,7 @@ package page
 import "core:sync"
 import "wb:base"
 import "wb:canvas2d"
+import "wb:extensions"
 import "wb:host"
 
 // What one App's pages share (docs/architecture.md, Where state lives): the embedder's hooks, the image cache, the script compile
@@ -37,6 +38,8 @@ Pages :: struct {
 	cache_store:    Cache_Store,       // cache_store.odin: the Cache API's index of every origin
 	fs_store:       Fs_Store,          // fs_store.odin: file system roots, writables, locks
 	sw_registry:    Sw_Registry,       // service_worker.odin: the service worker registrations
+	extensions:     extensions.Registry,   // the installed extensions (src/extensions; loop thread; the loader reads it through fetch.Loader.extensions)
+	ext_router:     Ext_Router,        // ext_router.odin: the extension contexts, their calls, events, messages and ports (loop thread)
 	notification_waits: map[u64]^Notification_Wait,   // notification.odin: the notifications shown, by their id
 	sa_decisions:   map[string]bool,   // storage_access.odin: owned keys "frame site TAB tab site": granted (true) or refused (false)
 	buckets_state:  Buckets_State,     // storage_buckets.odin

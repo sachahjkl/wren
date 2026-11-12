@@ -175,11 +175,11 @@ try_options_resolve :: proc(cx: ^Cx, env: ^Var_Env, e: ^Engine, doc: ^dom.Docume
 					if !found { continue }
 				}
 			}
-			switch css_wide_keyword(vals) {
-			case "inherit": cx_copy_prop(&sub, cx.parent != nil ? cx.parent : cx.initial, prop)
-			case "initial", "unset": cx_copy_prop(&sub, cx.initial, prop)
-			case "revert", "revert-layer":
-			case: apply_prop(&sub, prop, vals)
+			switch wide_keyword(vals) {
+			case .Inherit: cx_copy_prop(&sub, cx.parent != nil ? cx.parent : cx.initial, prop)
+			case .Initial, .Unset: cx_copy_prop(&sub, cx.initial, prop)
+			case .Revert, .Revert_Layer:
+			case .None: apply_prop(&sub, prop, vals)
 			}
 		}
 		s := new(Try_Style, cx.alloc)

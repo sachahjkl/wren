@@ -50,7 +50,7 @@ emit_box :: proc(p: ^Paint_Ctx, bi: i32) {
 	if .Root in b.flags { return }
 	if b.kind == .Inline { return }
 	if .Hidden in b.flags {
-		if .Scroll in b.flags && has_bars(b) { append(p.scrollers, bi) }
+		if .Scroll in b.flags && has_bars(c.l, bi) { append(p.scrollers, bi) }
 		return
 	}
 	cs := b.cs
@@ -72,30 +72,34 @@ emit_box :: proc(p: ^Paint_Ctx, bi: i32) {
 	}
 	if .Multicol in b.fx { emit_column_rules(c, bi) }
 	if cs.outline_width > 0 { append(p.outlines, bi) }
-	if has_bars(b) { append(p.scrollers, bi) }
+	if has_bars(c.l, bi) { append(p.scrollers, bi) }
 }
 
 // A box that scrolls, or has a gutter for its classic bars (overflow: scroll draws its bar with nothing to scroll).
 @(private)
-has_bars :: #force_inline proc(b: ^Box) -> bool { return b.scroll_space != NONE || b.gutter[1] + b.gutter[2] > 0 }
+has_bars :: #force_inline proc(l: ^Layout, bi: i32) -> bool {
+	b := &l.boxes[bi]
+	return b.gutter[1] + b.gutter[2] > 0 || l.fin[bi].scroll_space != NONE
+}
 
 @(private)
 emit_marker :: proc(p: ^Paint_Ctx, bi: i32) {
 	c := p.c
 	b := &c.l.boxes[bi]
-	if b.marker_w <= 0 || .Hidden in b.flags || b.fi < 0 { return }
+	k := &c.l.cold[bi]
+	if k.marker_w <= 0 || .Hidden in b.flags || b.fi < 0 { return }
 	fi := &c.l.fonts[b.fi]
-	base := b.abs + b.marker_pos
-	it := item_for_box(c, .Marker, bi, Rect{{base.x, base.y - fi.ascent}, {base.x + b.marker_w, base.y + fi.descent}})
-	it.text = b.marker
+	base := b.abs + k.marker_pos
+	it := item_for_box(c, .Marker, bi, Rect{{base.x, base.y - fi.ascent}, {base.x + k.marker_w, base.y + fi.descent}})
+	it.text = k.marker
 	it.baseline = base.y
 	if is_vert(b.wm) {
 		// (marker_pos: the baseline as x, the start as y)
-		it.rect = Rect{{base.x - fi.descent, base.y}, {base.x + fi.ascent, base.y + b.marker_w}}
+		it.rect = Rect{{base.x - fi.descent, base.y}, {base.x + fi.ascent, base.y + k.marker_w}}
 		it.baseline = base.x
 		it.flags += {.Vertical}
 	}
-	it.space, it.clip = b.content_space, b.content_clip
+	it.space, it.clip = c.l.fin[bi].content_space, c.l.fin[bi].content_clip
 	push_item(c, it)
 }
 
@@ -105,13 +109,14 @@ emit_lines :: proc(p: ^Paint_Ctx, ri: i32, owner: i32) {
 	c := p.c
 	r := &c.l.boxes[ri]
 	if .Ifc not_in r.flags { return }
+	rf := &c.l.fin[ri]
 	for li in r.lines[0] ..< r.lines[1] {
 		ln := c.l.lines[li]
 		for fi in ln.frags[0] ..< ln.frags[1] {
 			f := c.l.frags[fi]
 			switch f.kind {
 			case .Text, .Ellipsis:
-				layer := f.box != NONE ? c.l.boxes[f.box].layer : NONE
+				layer := f.box != NONE ? c.l.fin[f.box].layer : NONE
 				if layer != owner { continue }
 				src := f.box != NONE ? f.box : ri
 				sb := &c.l.boxes[src]
@@ -122,7 +127,7 @@ emit_lines :: proc(p: ^Paint_Ctx, ri: i32, owner: i32) {
 					it.baseline = base.x + f.baseline
 					it.flags += {.Vertical}
 				}
-				if f.box == NONE { it.space, it.clip = r.content_space, r.content_clip }
+				if f.box == NONE { it.space, it.clip = rf.content_space, rf.content_clip }
 				if f.kind == .Text {
 					item := &c.l.inline_items[f.item]
 					if item.cs.visibility != .Visible { continue }
@@ -136,7 +141,7 @@ emit_lines :: proc(p: ^Paint_Ctx, ri: i32, owner: i32) {
 				push_item(c, it)
 			case .Box:
 				ib := &c.l.boxes[f.box]
-				if ib.layer != owner { continue }
+				if c.l.fin[f.box].layer != owner { continue }
 				if .Hidden in ib.flags { continue }
 				base := ib.abs
 				it := item_for_box(c, .Inline_Box, f.box, Rect{base + {f.x, f.y}, base + {f.x + f.w, f.y + f.h}})
@@ -148,7 +153,7 @@ emit_lines :: proc(p: ^Paint_Ctx, ri: i32, owner: i32) {
 			case .Atomic:
 				k := &c.l.boxes[f.box]
 				enclosing := NONE
-				if q := k.parent; q != NONE && c.l.boxes[q].kind == .Inline { enclosing = c.l.boxes[q].layer }
+				if q := k.parent; q != NONE && c.l.boxes[q].kind == .Inline { enclosing = c.l.fin[q].layer }
 				if enclosing != owner { continue }
 				if .Positioned in k.flags || .Stacking in k.flags { continue }
 				paint_pseudo(p, f.box)
@@ -306,8 +311,8 @@ emit_scrollbars :: proc(c: ^Ctx, bi: i32) {
 	w := bar_thickness(c.set, b.cs, c.scale)
 	if w <= 0 { return }
 	bar_x, bar_y: bool
-	if b.scroll_space != NONE {
-		sp := &c.l.spaces[b.scroll_space]
+	if ss := c.l.fin[bi].scroll_space; ss != NONE {
+		sp := &c.l.spaces[ss]
 		bar_x, bar_y = sp.max_scroll.x > 0 || sp.min_scroll.x < 0, sp.max_scroll.y > 0 || sp.min_scroll.y < 0
 	}
 	port := padding_rect(b)
@@ -354,6 +359,7 @@ dl_walks_destroy :: proc(w: ^Dl_Walks) {
 @(private)
 build_display_list :: proc(c: ^Ctx) {
 	clear(&c.l.items)
+	c.l.items_ver += 1   // (the item index is made again when a refresh needs it)
 	c.l.inc.dl_gen += 1
 	c.l.dl_shares = 0
 	// (columns: a clip inside a flow is made again for each column an item shows in, flow_clip: then on this thread only)

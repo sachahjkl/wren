@@ -177,6 +177,8 @@ wr_EventSourceState :: enum i32 {
 	Closed = 2,
 }
 
+// module ext: types
+
 // module fetch: types
 // The body of a response being read in chunks.
 wr_ReadableStream :: distinct u64
@@ -2398,6 +2400,37 @@ foreign _wr_wj_eventsource {
 	@(link_name = "MessageEvent_origin") wr_MessageEvent_origin :: proc(event: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	// MessageEvent.lastEventId ("" for messages that do not come from an EventSource).
 	@(link_name = "MessageEvent_lastEventId") wr_MessageEvent_lastEventId :: proc(event: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+}
+
+// module ext
+foreign import _wr_wj_ext "ext"
+@(default_calling_convention = "contextless")
+foreign _wr_wj_ext {
+	// The realm's context as a JSON object ("" : not an extension context): id, kind (background, popup, tab), base URL,
+	// UI language, platform, and the API methods and events this context may use (its permissions decide them).
+	@(link_name = "Ext_info") wr_Ext_info :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	// runtime.getManifest(): the manifest as JSON text, comments removed and __MSG_*__ replaced.
+	@(link_name = "Ext_manifest") wr_Ext_manifest :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	// i18n.getMessage(name, substitutions): `subs` is a JSON list of strings. "" when no catalogue has the message.
+	@(link_name = "Ext_message") wr_Ext_message :: proc(name: [^]u8, name_len: u32, subs: [^]u8, subs_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	// An API call (`method` as "storage.local.get", `args` a JSON list): a promise of the answer as text: a JSON value,
+	// "" for undefined, or "!" followed by the error's message (runtime.lastError).
+	@(link_name = "Ext_call") wr_Ext_call :: proc(method: [^]u8, method_len: u32, args: [^]u8, args_len: u32) -> u64 ---
+	// The realm added a listener of `event` ("runtime.onMessage"), or removed its last one (`on` false): an event
+	// nobody listens to is not sent, and a stopped background does not start for it.
+	@(link_name = "Ext_listen") wr_Ext_listen :: proc(event: [^]u8, event_len: u32, on: i32) ---
+	// The next event for this realm as a JSON object ("" : none waits): {t: "event", e, a, r}, {t: "connect", p, n, s},
+	// {t: "port", p, m}, {t: "disconnect", p}. The host calls the realm's wj_ext_event when one arrives.
+	@(link_name = "Ext_take") wr_Ext_take :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	// The answer of this realm to message `reply` (runtime.onMessage): `has` false when its listeners gave none.
+	@(link_name = "Ext_respond") wr_Ext_respond :: proc(reply: u64, value: [^]u8, value_len: u32, has: i32) ---
+	// runtime.connect: a port this realm opens, id `port` (its own choice), named `name`, to the other contexts of its
+	// extension that listen to runtime.onConnect.
+	@(link_name = "Ext_connect") wr_Ext_connect :: proc(port: u64, name: [^]u8, name_len: u32) ---
+	// Port.postMessage: `message` (JSON text) to the other end(s) of `port`.
+	@(link_name = "Ext_portPost") wr_Ext_portPost :: proc(port: u64, message: [^]u8, message_len: u32) ---
+	// Port.disconnect: the other end(s) get onDisconnect.
+	@(link_name = "Ext_portClose") wr_Ext_portClose :: proc(port: u64) ---
 }
 
 // module fetch

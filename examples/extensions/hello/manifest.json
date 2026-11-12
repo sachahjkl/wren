@@ -1,0 +1,21 @@
+// The test fixture of browser extensions (docs/extensions.md, phase 1): a background service worker, a popup, storage,
+// alarms, messages and ports. Chrome reads manifests with comments; so does Wren.
+{
+  "manifest_version": 3,
+  "name": "__MSG_extName__",
+  "short_name": "Hello",
+  "version": "1.0.0",
+  "description": "__MSG_extDesc__",
+  "default_locale": "en",
+  "icons": { "16": "images/icon16.png", "32": "images/icon32.png" },
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_title": "Hello extension",
+    "default_popup": "popup.html",
+    "default_icon": { "16": "images/icon16.png", "32": "images/icon32.png" }
+  },
+  "permissions": ["storage", "alarms"],
+  "host_permissions": ["https://example.com/*"],
+  /* the page of the tests and the popup share it */
+  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'self'" }
+}

@@ -9,12 +9,14 @@ import "wb:a11y"
 import "wb:config"
 import "wb:blocker"
 import "wb:cookies"
+import "wb:extensions"
 import "wb:fetch"
 import "wb:html"
 import "wb:httpcache"
 import "wb:net"
 import "wb:page"
 import "wb:remote"
+import "wb:vault"
 import "wb:wasm"
 
 // Preferences of the shell itself (about:config: `browser.*`). Every other package declares its own next to its code;
@@ -96,6 +98,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	cookies.register_prefs(p)
 	page.register_prefs(p)
 	a11y.register_prefs(p)   // a11y_page.odin
+	vault.register_prefs(p)   // vault_shell.odin: the Vault (src/vault/settings.odin)
 	register_layout_prefs(p)
 	register_effects_prefs(p)
 	register_render_prefs(p)
@@ -137,6 +140,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_devtools_prefs(p)   // devtools.odin
 	register_instance_prefs(p)   // instance_shell.odin
 	blocker.register_prefs(p)   // blocker/settings.odin
+	extensions.register_prefs(p)   // src/extensions/settings.odin (ext_shell.odin)
 	remote.register_prefs(p)   // src/remote
 	_ = wasm.PREFS
 	_ = html.PREFS

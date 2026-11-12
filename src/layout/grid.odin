@@ -873,9 +873,10 @@ layout_grid :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 		k := &c.l.boxes[ch]
 		if .Abs not_in k.flags { continue }
 		// as the sole grid item of an area that is the whole grid (§9.1): justify-self, align-self
-		k.static_ref = bi
-		k.static_pos = {cx, cy}
-		k.static_align = {align_fraction(grid_self(c, cs, k, 0), is_rtl(cs)), align_fraction(grid_self(c, cs, k, 1), false)}
+		kc := &c.l.cold[ch]
+		kc.static_ref = bi
+		kc.static_pos = {cx, cy}
+		kc.static_align = {align_fraction(grid_self(c, cs, k, 0), is_rtl(cs)), align_fraction(grid_self(c, cs, k, 1), false)}
 	}
 	g.ax[0].gap = gap_px(c, cs.column_gap, cw)
 	g.ax[1].gap = gap_px(c, cs.row_gap, ch_def)
@@ -1270,7 +1271,7 @@ grid_abs :: proc(c: ^Ctx, cbi: i32) {
 	_, pad := abs_containing_rect(c, cbi)
 	cx, cy := content_x(cb), content_y(cb)
 	origin := Vec2{cx, cy}
-	for a := cb.abs_first; a != NONE; a = c.l.boxes[a].abs_next {
+	for a := cb.abs_first; a != NONE; a = c.l.cold[a].abs_next {
 		ab := &c.l.boxes[a]
 		anchored := style.anchored_style(ab.cs)
 		if .Fixed in ab.flags {

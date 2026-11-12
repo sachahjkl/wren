@@ -150,8 +150,8 @@ hot_find :: #force_inline proc "contextless" (o: ^Object, a: Atom) -> (v: Value,
 			}
 			return {}, nil, nil, .slow
 		}
-		// (a fast array holds its elements elsewhere: an array's methods are looked up as an object's are)
-		if (p.fast_array && atom_is_int(a)) || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return {}, nil, nil, .slow}
+		// (a fast or holey array holds its elements elsewhere: an array's methods are looked up as an object's are)
+		if (object_has_elements(p) && atom_is_int(a)) || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return {}, nil, nil, .slow}
 		p = sh.proto
 		if p == nil {return UNDEFINED, nil, nil, .value}
 	}
@@ -173,7 +173,7 @@ hot_find_slow :: proc "contextless" (p_in: ^Object, a: Atom) -> (v: Value, gette
 			}
 			return
 		}
-		if (p.fast_array && atom_is_int(a)) || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return}
+		if (object_has_elements(p) && atom_is_int(a)) || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return}
 		p = p.shape.proto
 		if p == nil {return UNDEFINED, nil, true}
 	}

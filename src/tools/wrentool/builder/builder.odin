@@ -112,7 +112,7 @@ options_from_env :: proc(variant: Variant) -> Options {
 run :: proc(args: []string) -> int {
 	what := len(args) > 0 ? args[0] : VARIANTS[.Dev].name
 	switch what {
-	case "lexbor", "native", "tracy": return deps.run_build(args)
+	case "lexbor", "native", "tracy", "vault": return deps.run_build(args)
 	case "jscode": return tooling.build_js_code({}) ? 0 : 1
 	case "deps":   return all_dependencies(options_from_env(.Dev)) ? 0 : 1
 	case "help", "-h", "--help", "/?": usage(); return 0
@@ -131,6 +131,7 @@ usage :: proc() {
 	fmt.println("usage: wrentool build [variant]   (or build.bat [variant])\n")
 	for spec in VARIANTS { fmt.printfln("  %-9s %s", spec.name, spec.about) }
 	fmt.println("  lexbor | native | tracy [-Force] [-Profile quick|release]: one dependency")
+	fmt.println("  vault [-Profile quick|release]: the Vault's helper wren-vault, from ../wren-vault (WREN_VAULT_SOURCE) -> build/vault")
 	fmt.println("  deps      everything a build or the tests need here, the JavaScript engine's image included")
 	fmt.println("  help      this text\n")
 	fmt.println("environment:")

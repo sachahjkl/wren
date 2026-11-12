@@ -307,6 +307,9 @@ page/dnd_entries.odin fs_entry_vt const  # a host object's table of procedures
 page/dnd_entries.odin fs_reader_vt const  # a host object's table of procedures
 page/eventsource.odin EVENTSOURCE_PREFS const  # a table
 page/eventsource.odin eventsource_vt const  # a host object's table of procedures
+page/ext_api.odin EXT_EVENTS const  # a table
+page/ext_api.odin EXT_METHODS const  # a table
+page/ext_realm.odin EXT_KIND_NAMES const  # a table
 page/formdata.odin formdata_vt const  # a host object's table of procedures
 page/frames.odin navigable_count thread  # ... how many
 page/frames.odin navigables thread  # the navigables of the thread's pages (an App's: its pages run on the thread of its loop)
@@ -434,6 +437,9 @@ style/font_features.odin LIGATURE_NAMES const  # a table
 style/font_features.odin NUMERIC_NAMES const  # a table
 style/fontface.odin FONT_STRETCH_KW const  # a table
 style/hints.odin hint_complex const  # a shared, read-only selector record
+style/keywords.odin KEYWORD_ENUMS const  # a table
+style/keywords.odin keyword_once const  # a table built once
+style/keywords.odin keyword_table const  # ... the table
 style/layout_change.odin change_once const  # a table built once
 style/layout_change.odin extra_fields const  # ... the table
 style/layout_change.odin layout_only_set const  # ... the table

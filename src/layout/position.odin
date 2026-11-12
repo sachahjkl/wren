@@ -27,7 +27,7 @@ offset_between :: proc(c: ^Ctx, from, to: i32) -> (Vec2, bool) {
 layout_abs_list :: proc(c: ^Ctx, cbi: i32) {
 	cb := &c.l.boxes[cbi]
 	ref, cbr := abs_containing_rect(c, cbi)
-	for a := cb.abs_first; a != NONE; a = c.l.boxes[a].abs_next {
+	for a := cb.abs_first; a != NONE; a = c.l.cold[a].abs_next {
 		// a box that uses anchors waits for them: laid out after the rest of the document (anchor.odin)
 		if style.anchored_style(c.l.boxes[a].cs) { c.l.anchor_uses = true; continue }
 		cbr2 := cbr
@@ -73,11 +73,12 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 	k := &c.l.boxes[ai]
 	cs := k.cs
 	sp := cbr.min
-	if k.static_ref != NONE {
+	kc := c.l.cold[ai]   // (a copy: the static position, read before anything below can grow the arrays)
+	if kc.static_ref != NONE {
 		if c.l.frames_on {
 			// across multi-column containers and frames, the point itself goes up
-			if p, ok := frame_point_between(c, k.static_ref, ref, k.static_pos); ok { sp = p }
-		} else if off, ok := offset_between(c, k.static_ref, ref); ok { sp = off + k.static_pos }
+			if p, ok := frame_point_between(c, kc.static_ref, ref, kc.static_pos); ok { sp = p }
+		} else if off, ok := offset_between(c, kc.static_ref, ref); ok { sp = off + kc.static_pos }
 	}
 	il, il_ok := definite(c, cs.inset[.Left], cbw)
 	ir, ir_ok := definite(c, cs.inset[.Right], cbw)
@@ -87,10 +88,10 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 	// a flex or grid container aligns the static position in its content box (flex_items, layout_grid)
 	aligned: bool
 	align, room: Vec2
-	if k.static_ref != NONE {
-		sr := &c.l.boxes[k.static_ref]
+	if kc.static_ref != NONE {
+		sr := &c.l.boxes[kc.static_ref]
 		aligned = sr.kind == .Flex || sr.kind == .Grid
-		if aligned { align, room = k.static_align, sr.size - {pb_w(sr), pb_h(sr)} }
+		if aligned { align, room = kc.static_align, sr.size - {pb_w(sr), pb_h(sr)} }
 	}
 	mL := k.auto_l ? 0 : k.margin[3]
 	mR := k.auto_r ? 0 : k.margin[1]

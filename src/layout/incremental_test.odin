@@ -365,6 +365,48 @@ inc_viewport :: proc(t: ^testing.T) {
 	}
 }
 
+// Paint-only changes of style attributes (a colour, a background) are refresh passes: they re-point only the boxes and
+// texts of the elements in the style journal, with the anonymous boxes inside them (which copy their inherited colour).
+// The result equals a full pass.
+@(test)
+inc_refresh_journaled :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>body{margin:0;font-size:10px;line-height:12px}</style><body>`)
+	for i in 0 ..< 40 { fmt.sbprintf(&sb, `<div id=d%d>text %d <span id=s%d>span</span><p>block %d</p>tail</div>`, i, i, i, i) }
+	strings.write_string(&sb, `</body>`)
+	f := ix_load(strings.to_string(sb))
+	defer ix_unload(f)
+	ix_frame(f)
+	styles := [?]string{"color:red", "background:#ff0", "color:blue;background:#0f0", ""}
+	for step in 0 ..< 16 {
+		target := fmt.tprintf(step % 3 == 0 ? "s%d" : "d%d", (step * 7) % 40)
+		dom.set_attribute(f.doc, id(f, target), "style", styles[step % len(styles)])
+		ix_frame(f)
+		if !ix_check(t, f, .Refresh) { fmt.println("step", step, target); break }
+	}
+}
+
+// Quirks mode: a percentage height under blocks of auto height resolves against the window, or against the nearest
+// ancestor with a length height (quirks_percent_base). The blocks in between keep that height in their cache key: a
+// window made taller, or that ancestor given another height, lays their content out again, as a full pass does.
+@(test)
+inc_quirks_percent_heights :: proc(t: ^testing.T) {
+	f := ix_load(`<body style="margin:0;font-size:10px"><div id=a><div><div id=p style="height:50%">half</div></div></div><div id=e style="height:100px"><div><div id=q style="height:40%">part</div></div></div><p>after</p></body>`)
+	defer ix_unload(f)
+	testing.expect(t, f.st.quirks, "no doctype: quirks mode")
+	height_of :: proc(f: ^Ix, s: string) -> f32 { return f.l.boxes[box_index(&f.l, id(f, s))].size.y }
+	for h in ([]f32{500, 300, 650}) {
+		f.vp.y = h
+		ix_frame(f)
+		ix_check(t, f)
+		testing.expectf(t, height_of(f, "p") == h / 2, "half of a window %v tall: %v", h, height_of(f, "p"))
+	}
+	dom.set_attribute(f.doc, id(f, "e"), "style", "height:200px")
+	ix_frame(f)
+	ix_check(t, f)
+	testing.expectf(t, height_of(f, "q") == 80, "40 %% of the ancestor's 200 px: %v", height_of(f, "q"))
+}
+
 @(test)
 inc_styles :: proc(t: ^testing.T) {
 	f := ix_load(page())
@@ -532,20 +574,44 @@ inc_disabled_and_garbage :: proc(t: ^testing.T) {
 	testing.expect(t, f.l.inc.verify_failures == 0, f.l.inc.verify_report)
 }
 
+// The seed of the random tests whose rates of incremental passes and partial restyles are checked.
+@(private = "file")
+INC_RANDOM_SEED :: 20261019
+// More seeds: each finds other sequences of changes (seed 39 found a line laid out beside a float it no longer reached).
+// In several tests, so that they run side by side.
+@(private = "file")
+INC_RANDOM_SEEDS_PER_TEST :: 20
+
 // Random mutations on a generated document: after each one the incremental layout equals a full one.
 @(test)
-inc_random :: proc(t: ^testing.T) { inc_random_run(t, false) }
+inc_random :: proc(t: ^testing.T) { inc_random_run(t, false, INC_RANDOM_SEED, true) }
+
+@(test)
+inc_random_seeds_1 :: proc(t: ^testing.T) { inc_random_seeds(t, 1) }
+@(test)
+inc_random_seeds_2 :: proc(t: ^testing.T) { inc_random_seeds(t, 1 + INC_RANDOM_SEEDS_PER_TEST) }
+@(test)
+inc_random_seeds_3 :: proc(t: ^testing.T) { inc_random_seeds(t, 1 + 2 * INC_RANDOM_SEEDS_PER_TEST) }
+
+@(private = "file")
+inc_random_seeds :: proc(t: ^testing.T, first: u64) {
+	for seed in first ..< first + INC_RANDOM_SEEDS_PER_TEST {
+		if !inc_random_run(t, false, seed, false) { return }
+	}
+}
 
 // The same with the layout threads on every pass (no minimum: every incremental pass lays paragraphs out ahead).
 @(test)
 inc_random_threads :: proc(t: ^testing.T) {
 	defer shutdown_threads()
-	inc_random_run(t, true)
+	inc_random_run(t, true, INC_RANDOM_SEED, true)
 }
 
+// `strict`: the rates of incremental passes and partial restyles are checked too (they hold for INC_RANDOM_SEED; other
+// seeds only check that every pass equals a full one). false: some pass differed.
 @(private = "file")
-inc_random_run :: proc(t: ^testing.T, threads: bool) {
-	r := rand.create(20261019)
+inc_random_run :: proc(t: ^testing.T, threads: bool, seed: u64, strict: bool) -> bool {
+	r := rand.create(seed)
 	gen := rand.default_random_generator(&r)
 	context.random_generator = gen
 	sb := strings.builder_make(context.temp_allocator)
@@ -659,15 +725,18 @@ td{border:1px solid} .ib{display:inline-block;width:50px} .hid{display:none}</st
 		ix_frame(f)
 		if f.l.last_pass == .Incremental { incremental += 1; ahead += f.l.pre_counts[1] }
 		if !ix_check(t, f, .None) {
-			fmt.println("iteration", iter, what)
+			fmt.println("seed", seed, "iteration", iter, what)
 			failures += 1
 			if failures > 3 { break }
 		}
 		free_all(context.temp_allocator)
 	}
-	testing.expectf(t, incremental > 250, "%d of 500 passes incremental", incremental)
-	testing.expectf(t, f.partial_styles > 150, "%d partial restyles", f.partial_styles)
-	if threads { testing.expectf(t, ahead > 0, "no paragraph laid out ahead was taken by an incremental pass") }
+	if strict {
+		testing.expectf(t, incremental > 250, "%d of 500 passes incremental", incremental)
+		testing.expectf(t, f.partial_styles > 150, "%d partial restyles", f.partial_styles)
+		if threads { testing.expectf(t, ahead > 0, "no paragraph laid out ahead was taken by an incremental pass") }
+	}
+	return failures == 0
 }
 
 // Style and layout both incremental: classes toggled on elements of a page whose rules reach descendants and
@@ -840,6 +909,19 @@ inc_nested_flex_lays_out_each_level_a_few_times :: proc(t: ^testing.T) {
 		testing.expectf(t, f.l.inc.last_laid < 12 * DEPTH, "a new width: %d layouts", f.l.inc.last_laid)
 	}
 	f.vp.x = 500
+	ix_frame(f)
+	ix_check(t, f)
+}
+
+// A float inside an inline box with overflow: hidden (seed 39 of inc_random): overflow does not apply to an inline box,
+// so the float takes part in the formatting context around it and narrows the line of the block after it. A change in
+// that block lays it out again beside the float, as a full pass does.
+@(test)
+inc_float_in_inline_with_overflow :: proc(t: ^testing.T) {
+	f := ix_load(`<style>body{margin:0;font-size:10px}</style><body><span style="overflow:hidden"><p style="float:right;width:40px;height:30px;margin:0"></p></span><div>block<b id=b>text</b></div></body>`, 213, 590)
+	defer ix_unload(f)
+	ix_check(t, f, .None)
+	dom.set_attribute(f.doc, id(f, "b"), "style", "height:30px")
 	ix_frame(f)
 	ix_check(t, f)
 }

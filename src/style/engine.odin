@@ -30,12 +30,33 @@ Pre_Decl :: struct {
 	important: bool,
 	has_var:   bool,
 	logical:   bool,          // written with a flow-relative name: `prop` is its horizontal left-to-right mapping (writing_modes.odin)
+	wide:      Wide_Keyword,  // the value is a CSS-wide keyword (without var(): with one, the substituted value says)
+	spec:      Specified,     // the value compiled for `prop` (specified.odin); kind None: applied from `value`
+}
+
+// A CSS-wide keyword (CSS Cascade 5 §7.3).
+Wide_Keyword :: enum u8 { None, Initial, Inherit, Unset, Revert, Revert_Layer }
+
+// The CSS-wide keyword `vs` is, if any (ASCII case-insensitive).
+@(private)
+wide_keyword :: proc(vs: []css.Value) -> Wide_Keyword {
+	id, ok := ident_raw(vs)
+	if !ok { return .None }
+	switch {
+	case base.ascii_equal_fold(id, "initial"): return .Initial
+	case base.ascii_equal_fold(id, "inherit"): return .Inherit
+	case base.ascii_equal_fold(id, "unset"): return .Unset
+	case base.ascii_equal_fold(id, "revert"): return .Revert
+	case base.ascii_equal_fold(id, "revert-layer"): return .Revert_Layer
+	}
+	return .None
 }
 
 Custom_Decl :: struct {
 	name:      string,
 	value:     []css.Value,
 	important: bool,
+	wide:      Wide_Keyword,   // the value is a CSS-wide keyword
 }
 
 Rule :: struct {
@@ -654,15 +675,6 @@ contains_var :: proc(vs: []css.Value) -> bool {
 	return false
 }
 
-@(private)
-css_wide_keyword :: proc(vs: []css.Value) -> string {
-	id := css.ident_of(vs)
-	switch id {
-	case "initial", "inherit", "unset", "revert", "revert-layer": return id
-	}
-	return ""
-}
-
 // Turns parsed declarations into longhand declarations. A declaration whose value is not valid for its property is dropped
 // here, as the CSS parsing rules say, so that an earlier valid declaration (a fallback) stays in force.
 // What compiling declarations finds out about the engine's rules. A style pass running on several threads collects it
@@ -712,14 +724,17 @@ compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Al
 	res := make([dynamic]Pre_Decl, sa)
 	cus := make([dynamic]Custom_Decl, sa)
 	probe := probe_context(e, sa)
-	valid :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
-		if css_wide_keyword(vs) != "" { return true }
-		return apply_prop(cx, p, vs)
+	// valid for `p` (a CSS-wide keyword always is), and its value compiled once for every element it applies to
+	compiled :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> (wide: Wide_Keyword, spec: Specified, ok: bool) {
+		wide = wide_keyword(vs)
+		if wide != .None { return wide, {}, true }
+		if !apply_prop(cx, p, vs) { return .None, {}, false }
+		return .None, specify(cx, p, vs), true
 	}
 	for d in decls {
 		if !(st.viewport_units || e.viewport_units) || !(st.container_units || e.container_units) { note_relative_units(d.value, st) }
 		if strings.has_prefix(d.name, "--") {
-			append(&cus, Custom_Decl{name = d.name, value = d.value, important = d.important})
+			append(&cus, Custom_Decl{name = d.name, value = d.value, important = d.important, wide = wide_keyword(d.value)})
 			continue
 		}
 		p, sh, known := lookup_property(d.name)
@@ -727,12 +742,17 @@ compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Al
 		logical := is_logical_name(d.name)
 		hv := contains_var(d.value)
 		if sh == .None {
-			if !hv && !valid(&probe, p, d.value) { continue }
-			append(&res, Pre_Decl{prop = p, value = d.value, important = d.important, has_var = hv, logical = logical})
+			if hv {
+				append(&res, Pre_Decl{prop = p, value = d.value, important = d.important, has_var = true, logical = logical})
+				continue
+			}
+			wide, spec, ok := compiled(&probe, p, d.value)
+			if !ok { continue }
+			append(&res, Pre_Decl{prop = p, value = d.value, important = d.important, logical = logical, wide = wide, spec = spec})
 			continue
 		}
-		if kw := css_wide_keyword(d.value); kw != "" {
-			for lp in short_longhands(sh) { append(&res, Pre_Decl{prop = lp, value = d.value, important = d.important, logical = logical}) }
+		if wide := wide_keyword(d.value); wide != .None {
+			for lp in short_longhands(sh) { append(&res, Pre_Decl{prop = lp, value = d.value, important = d.important, logical = logical, wide = wide}) }
 			continue
 		}
 		if hv {
@@ -741,10 +761,14 @@ compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Al
 		}
 		longs, ok := expand_shorthand(sh, d.value, a)
 		if !ok { continue }
+		first := len(res)
 		all_valid := true
-		for l in longs { if !valid(&probe, l.prop, l.vals) { all_valid = false; break } }
-		if !all_valid { continue }
-		for l in longs { append(&res, Pre_Decl{prop = l.prop, value = l.vals, important = d.important, logical = logical}) }
+		for l in longs {
+			wide, spec, good := compiled(&probe, l.prop, l.vals)
+			if !good { all_valid = false; break }
+			append(&res, Pre_Decl{prop = l.prop, value = l.vals, important = d.important, logical = logical, wide = wide, spec = spec})
+		}
+		if !all_valid { resize(&res, first) }
 	}
 	if len(res) > 0 { out = make([]Pre_Decl, len(res), a); copy(out, res[:]) }
 	if len(cus) > 0 { customs = make([]Custom_Decl, len(cus), a); copy(customs, cus[:]) }
@@ -1244,7 +1268,7 @@ supports_block :: proc(e: ^Engine, children: []css.Value) -> bool {
 	p, sh, known := lookup_property(base.ascii_lower(name))
 	if !known || len(value) == 0 { return false }
 	if contains_var(value) { return true }
-	if css_wide_keyword(value) != "" { return true }
+	if wide_keyword(value) != .None { return true }
 	arena: base.Arena
 	_ = base.arena_init_growing(&arena)
 	defer base.arena_destroy(&arena)
@@ -1254,7 +1278,7 @@ supports_block :: proc(e: ^Engine, children: []css.Value) -> bool {
 		longs, ok := expand_shorthand(sh, value, a)
 		if !ok { return false }
 		for l in longs {
-			if css_wide_keyword(l.vals) == "" && !apply_prop(&cx, l.prop, l.vals) { return false }
+			if wide_keyword(l.vals) == .None && !apply_prop(&cx, l.prop, l.vals) { return false }
 		}
 		return true
 	}

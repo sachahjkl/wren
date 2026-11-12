@@ -380,7 +380,7 @@ lists :: proc(t: ^testing.T) {
 	defer fixture_unload(f)
 	marker :: proc(f: ^Fixture, id: string) -> string {
 		bi := box_index(&f.l, node(f, id))
-		return bi == NONE ? "?" : f.l.boxes[bi].marker
+		return bi == NONE ? "?" : f.l.cold[bi].marker
 	}
 	testing.expect_value(t, marker(f, "l1"), "3.")
 	testing.expect_value(t, marker(f, "l2"), "10.")
@@ -390,8 +390,8 @@ lists :: proc(t: ^testing.T) {
 	testing.expect_value(t, marker(f, "ro"), "IV.")
 	testing.expect_value(t, marker(f, "al"), "aa.")
 	ub := box_index(&f.l, node(f, "u1"))
-	testing.expect(t, ub != NONE && f.l.boxes[ub].marker == "" && f.l.boxes[ub].marker_w > 0, "disc bullet is a shape")
-	testing.expect(t, ub != NONE && f.l.boxes[ub].marker_pos.x < 0, "outside marker left of the content")
+	testing.expect(t, ub != NONE && f.l.cold[ub].marker == "" && f.l.cold[ub].marker_w > 0, "disc bullet is a shape")
+	testing.expect(t, ub != NONE && f.l.cold[ub].marker_pos.x < 0, "outside marker left of the content")
 	testing.expect(t, item_index(f, "u1", .Marker) >= 0, "marker painted")
 	ins := ifc_lines(f, "ins")
 	testing.expect(t, len(ins) == 1 && first_text(f, ins[0]).text == "\u2022 ", "inside marker is inline content")
@@ -587,7 +587,7 @@ table_columns_are_bounded :: proc(t: ^testing.T) {
 	f := fixture_load(strings.to_string(sb))
 	defer fixture_unload(f)
 	widest := i32(0)
-	for &b in f.l.boxes { if b.kind == .Cell { widest = max(widest, b.col + 1) } }
+	for &b, i in f.l.boxes { if b.kind == .Cell { widest = max(widest, f.l.cold[i].col + 1) } }
 	testing.expectf(t, int(widest) <= f.set.table_max_columns, "a cell in column %d", widest)
 }
 // Thousands of overlapping page-high boxes: the spatial index stays linear in the items (each was listed in every band

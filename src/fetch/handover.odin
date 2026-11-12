@@ -34,3 +34,13 @@ task_hand_over :: proc(l: ^Loader, h: base.Handle, scope: ^base.Scope, on_event:
 	if t.net_req != base.NIL_HANDLE { net.set_max_body(l.net, t.net_req, max_body) }
 	return true
 }
+
+// Pauses or resumes the events of a task's body (net.pause): a consumer that cannot take bytes for a while (a download
+// whose chunk write is out) stops the transport at its high-water mark instead of buffering, or writing on the loop thread.
+// A resume delivers what waited from a later turn of the loop. A task served without the network (the HTTP cache, a data:
+// or file: URL) has its body in memory already, in one piece: nothing to pause.
+task_pause :: proc(l: ^Loader, h: base.Handle, paused: bool) {
+	t := base.pool_get(&l.tasks, h)
+	if t == nil || t.net_req == base.NIL_HANDLE { return }
+	net.pause(l.net, t.net_req, paused)
+}

@@ -177,6 +177,7 @@ bf_estimate :: proc(app: ^App, e: ^Bf_Entry) -> int {
 	p := e.page
 	n := page.memory_held(p)
 	n += len(e.layout.items) * size_of(e.layout.items[0]) + len(e.layout.boxes) * size_of(e.layout.boxes[0])
+	n += len(e.layout.cold) * size_of(e.layout.cold[0]) + len(e.layout.fin) * size_of(e.layout.fin[0])   // (a box's rare and finishing data)
 	if p.js != nil || len(p.instances) > 0 { n += app.hcfg.bf_overhead }
 	return n
 }

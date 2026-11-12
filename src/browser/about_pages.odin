@@ -23,6 +23,7 @@ ABOUT_PAGES := [?]About_Page{
 	{SETTINGS_URL, "Settings", "The settings a person changes, page by page: appearance, tabs, start page, search, privacy, downloads, media, system."},
 	{"about:config", "Configuration", "Every setting of the browser (more than a thousand), searchable and editable; nothing is hard-wired."},
 	{CACHE_URL, "HTTP cache", "What the browser keeps of the responses it fetched (RFC 9111): statistics, the entries by site and URL, a filter, and a button that clears it."},
+	{EXTENSIONS_URL, "Extensions", "The browser extensions installed (Manifest V3, Chrome builds): load an unpacked one from its folder, enable, disable, reload, remove, and choose the sites each may access."},
 	{SITES_URL, "Site data", "What the browser keeps for each site (local and session storage, IndexedDB, cookies, cached responses) with its size, and buttons that remove one type or everything, for one site or all of them."},
 	{WREN_URL, "About Wren", "Version and build, who made it, the beta notice, the license and the form to enter a key, the third-party software."},
 	{LICENSES_URL, "Licenses", "The licenses of the software Wren is built from, in full."},

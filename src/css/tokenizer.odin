@@ -8,8 +8,8 @@ package css
 
 import "core:strconv"
 import "core:strings"
-import "wb:base"
 import "core:unicode/utf8"
+import "wb:base"
 
 Token_Kind :: enum u8 {
 	EOF,
@@ -27,8 +27,8 @@ Token :: struct {
 	is_id:   bool,      // Hash: the text is a valid identifier (an id selector)
 	has_sign: bool,     // Number: written with an explicit + or -
 	unit:    Dim_Unit,  // Dimension: its unit, classified once here (fits in the padding: the token stays 40 bytes)
-	pos:     u32,       // code point offset of the token in its (preprocessed) source: lets a grammar that needs the raw
-	                    // representation (unicode-range) read it back
+	pos:     u32,       // byte offset of the token in its (preprocessed) source: lets a grammar that needs the raw
+	                    // representation (unicode-range) read it back, and a rule its line (line_of)
 }
 
 // The unit of a <dimension-token> among the length units, ASCII case-insensitive. Classified once when the token is read:
@@ -88,10 +88,11 @@ dim_unit_of :: proc(text: string) -> Dim_Unit {
 
 @(private)
 Lexer :: struct {
-	src:   []rune,
+	src:   string,             // the preprocessed source (valid UTF-8, no CR, FF or NUL): `pos` is a byte offset in it
 	pos:   int,
-	arena: Arena_Alloc,      // token texts (they live as long as the stylesheet)
-	buf:   [dynamic]u8,      // the text being read (scratch, reused): a text is copied once, at its final size
+	arena: Arena_Alloc,        // token texts (they live as long as the stylesheet)
+	buf:   [dynamic]u8,        // a text with escapes being read (scratch, reused): copied once, at its final size
+	keep:  bool,               // `src` lives as long as `arena`: a text without escapes is a substring of it, not a copy
 }
 
 // The token text read into l.buf, copied into the texts' arena.
@@ -100,6 +101,14 @@ buf_text :: proc(l: ^Lexer) -> string {
 	s := strings.clone(string(l.buf[:]), l.arena)
 	clear(&l.buf)
 	return s
+}
+
+// The source from `start` to `end` as a token text: the source itself when it lives as long as the texts, else a copy.
+@(private)
+src_text :: proc(l: ^Lexer, start, end: int) -> string {
+	s := l.src[start:end]
+	if l.keep || len(s) == 0 { return s }
+	return strings.clone(s, l.arena)
 }
 
 @(private)
@@ -115,29 +124,42 @@ delim_chars: [128]u8
 @(private, init)
 init_delim_chars :: proc "contextless" () { for i in 0 ..< 128 { delim_chars[i] = u8(i) } }
 
-// Decodes and preprocesses the input: CR, CRLF and FF become LF, NUL becomes U+FFFD, invalid UTF-8 becomes U+FFFD.
+// The input as the tokenizer reads it (CSS Syntax §3.3): CR, CRLF and FF become LF, NUL and ill-formed UTF-8 become
+// U+FFFD. Most sheets have none of these: then the input itself is returned (clean), found by two block scans.
 @(private)
-preprocess :: proc(input: string, allocator: Arena_Alloc) -> []rune {
-	out := make([dynamic]rune, 0, len(input), allocator)
+preprocess :: proc(input: string, allocator: Arena_Alloc) -> (out: string, clean: bool) {
+	if control_index(input) == len(input) && base.utf8_valid(input) { return input, true }
+	b := make([dynamic]u8, 0, len(input) + 16, allocator)
 	i := 0
 	for i < len(input) {
 		c := input[i]
-		if c >= ' ' && c < 0x80 { append(&out, rune(c)); i += 1; continue }
-		r, w := utf8.decode_rune_in_string(input[i:])
-		i += w
-		switch r {
-		case '\r':
+		switch {
+		case c == '\r':
+			i += 1
 			if i < len(input) && input[i] == '\n' { i += 1 }
-			append(&out, '\n')
-		case '\f': append(&out, '\n')
-		case 0:    append(&out, '\uFFFD')
-		case:      append(&out, r)
+			append(&b, '\n')
+		case c == '\f':
+			append(&b, '\n')
+			i += 1
+		case c == 0:
+			append(&b, "\uFFFD")
+			i += 1
+		case c < 0x80:
+			append(&b, c)
+			i += 1
+		case:
+			// (the decoder is strict, as base.utf8_valid: a sequence it takes is copied as it is)
+			r, w := utf8.decode_rune_in_string(input[i:])
+			if r == utf8.RUNE_ERROR && w == 1 { append(&b, "\uFFFD") } else { append(&b, input[i:i + w]) }
+			i += w
 		}
 	}
-	return out[:]
+	return string(b[:]), false
 }
 
-@(private) peek :: #force_inline proc(l: ^Lexer, n := 0) -> rune { return l.pos + n < len(l.src) ? l.src[l.pos + n] : -1 }
+// The byte `n` bytes ahead, as a rune (-1 past the end). A byte >= 0x80 is part of a non-ASCII character: every class
+// below takes it as such (a name code point, not a digit, not whitespace), so its first byte classifies it.
+@(private) peek :: #force_inline proc(l: ^Lexer, n := 0) -> rune { i := l.pos + n; return i < len(l.src) ? rune(l.src[i]) : -1 }
 @(private) is_digit :: #force_inline proc(r: rune) -> bool { return r >= '0' && r <= '9' }
 @(private) is_hex :: #force_inline proc(r: rune) -> bool { return is_digit(r) || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F') }
 @(private) is_ws :: #force_inline proc(r: rune) -> bool { return r == ' ' || r == '\t' || r == '\n' }
@@ -168,9 +190,17 @@ would_start_number :: proc(a, b, c: rune) -> bool {
 	return false
 }
 
+// The code point an escape stands for; the reading position is past its backslash.
 @(private)
 consume_escape :: proc(l: ^Lexer) -> rune {
 	r := peek(l)
+	if r == -1 { return '\uFFFD' }
+	if r >= 0x80 {
+		// a non-ASCII character escaped is itself: all its bytes
+		cp, w := utf8.decode_rune_in_string(l.src[l.pos:])
+		l.pos += w
+		return cp
+	}
 	l.pos += 1
 	if is_hex(r) {
 		v := rune(base.hex_value(r))
@@ -180,27 +210,21 @@ consume_escape :: proc(l: ^Lexer) -> rune {
 		if v == 0 || v > 0x10FFFF || (v >= 0xD800 && v <= 0xDFFF) { return '\uFFFD' }
 		return v
 	}
-	if r == -1 { return '\uFFFD' }
 	return r
 }
 
 @(private)
 consume_name :: proc(l: ^Lexer) -> string {
-	// most names are ASCII without escapes: their bytes straight from the code points, copied once
+	// most names have no escape: their bytes, found by a block scan, are the text
 	start := l.pos
-	for l.pos < len(l.src) && l.src[l.pos] < 0x80 && is_name_char(l.src[l.pos]) { l.pos += 1 }
-	after := peek(l)
-	if after < 0x80 && !valid_escape(after, peek(l, 1)) {
-		text := make([]u8, l.pos - start, l.arena)
-		for c, i in l.src[start:l.pos] { text[i] = u8(c) }
-		return string(text)
-	}
+	l.pos = name_end(l.src, l.pos)
+	if !valid_escape(peek(l), peek(l, 1)) { return src_text(l, start, l.pos) }
 	clear(&l.buf)
-	for c in l.src[start:l.pos] { append(&l.buf, u8(c)) }
+	append(&l.buf, l.src[start:l.pos])
 	for {
 		r := peek(l)
 		switch {
-		case is_name_char(r): buf_rune(l, r); l.pos += 1
+		case is_name_char(r): append(&l.buf, u8(r)); l.pos += 1
 		case valid_escape(r, peek(l, 1)): l.pos += 1; buf_rune(l, consume_escape(l))
 		case: return buf_text(l)
 		}
@@ -227,17 +251,7 @@ consume_number :: proc(l: ^Lexer) -> (v: f64, is_int: bool, signed: bool) {
 			for is_digit(peek(l)) { l.pos += 1 }
 		}
 	}
-	// the characters of a number are ASCII: copied to a buffer of the stack, not built rune by rune
-	buf: [64]u8
-	s: string
-	if l.pos - start <= len(buf) {
-		for r, i in l.src[start:l.pos] { buf[i] = u8(r) }
-		s = string(buf[:l.pos - start])
-	} else {
-		sb := strings.builder_make(context.temp_allocator)
-		for r in l.src[start:l.pos] { strings.write_rune(&sb, r) }
-		s = strings.to_string(sb)
-	}
+	s := l.src[start:l.pos]
 	if strings.has_prefix(s, "+") { s = s[1:] }
 	v, _ = strconv.parse_f64(s)
 	// beyond what any length, count or index can mean: an overflow (1e999 parses as an infinity) or a huge integer
@@ -249,20 +263,37 @@ consume_number :: proc(l: ^Lexer) -> (v: f64, is_int: bool, signed: bool) {
 
 @(private)
 consume_string :: proc(l: ^Lexer, ending: rune) -> Token {
+	// most strings have no escape: up to the quote, a line feed or the end, found by a block scan, is the text
+	start := l.pos
+	end := string_end(l.src, l.pos, u8(ending))
+	switch {
+	case end >= len(l.src):
+		l.pos = end
+		return Token{kind = .String, text = src_text(l, start, end)}   // parse error: EOF ends the string
+	case rune(l.src[end]) == ending:
+		l.pos = end + 1
+		return Token{kind = .String, text = src_text(l, start, end)}
+	case l.src[end] == '\n':
+		l.pos = end
+		return Token{kind = .Bad_String, text = src_text(l, start, end)}   // newline is left for the next token
+	}
+	// a backslash: the text goes through the buffer from here
 	clear(&l.buf)
+	append(&l.buf, l.src[start:end])
+	l.pos = end
 	for {
 		r := peek(l)
 		switch {
 		case r == ending: l.pos += 1; return Token{kind = .String, text = buf_text(l)}
-		case r == -1:     return Token{kind = .String, text = buf_text(l)}   // parse error: EOF ends the string
-		case r == '\n':   return Token{kind = .Bad_String, text = buf_text(l)}   // newline is left for the next token
+		case r == -1:     return Token{kind = .String, text = buf_text(l)}
+		case r == '\n':   return Token{kind = .Bad_String, text = buf_text(l)}
 		case r == '\\':
 			n := peek(l, 1)
 			if n == -1 { l.pos += 1; continue }
 			if n == '\n' { l.pos += 2; continue }   // an escaped newline continues the string
 			l.pos += 1
 			buf_rune(l, consume_escape(l))
-		case: buf_rune(l, r); l.pos += 1
+		case: append(&l.buf, u8(r)); l.pos += 1
 		}
 	}
 }
@@ -281,7 +312,7 @@ consume_bad_url_remnants :: proc(l: ^Lexer) {
 
 @(private)
 consume_url :: proc(l: ^Lexer) -> Token {
-	for is_ws(peek(l)) { l.pos += 1 }
+	l.pos = ws_end(l.src, l.pos)
 	clear(&l.buf)
 	for {
 		r := peek(l)
@@ -289,7 +320,7 @@ consume_url :: proc(l: ^Lexer) -> Token {
 		case r == ')': l.pos += 1; return Token{kind = .Url, text = buf_text(l)}
 		case r == -1:  return Token{kind = .Url, text = buf_text(l)}
 		case is_ws(r):
-			for is_ws(peek(l)) { l.pos += 1 }
+			l.pos = ws_end(l.src, l.pos)
 			if peek(l) == ')' || peek(l) == -1 { if peek(l) == ')' { l.pos += 1 }; return Token{kind = .Url, text = buf_text(l)} }
 			consume_bad_url_remnants(l)
 			return Token{kind = .Bad_Url}
@@ -298,7 +329,7 @@ consume_url :: proc(l: ^Lexer) -> Token {
 			return Token{kind = .Bad_Url}
 		case r == '\\':
 			if valid_escape(r, peek(l, 1)) { l.pos += 1; buf_rune(l, consume_escape(l)) } else { consume_bad_url_remnants(l); return Token{kind = .Bad_Url} }
-		case: buf_rune(l, r); l.pos += 1
+		case: append(&l.buf, u8(r)); l.pos += 1
 		}
 	}
 }
@@ -334,9 +365,7 @@ consume_numeric :: proc(l: ^Lexer) -> Token {
 @(private)
 skip_comments :: proc(l: ^Lexer) {
 	for peek(l) == '/' && peek(l, 1) == '*' {
-		l.pos += 2
-		for l.pos < len(l.src) && !(peek(l) == '*' && peek(l, 1) == '/') { l.pos += 1 }
-		l.pos = min(l.pos + 2, len(l.src))
+		l.pos = min(comment_end(l.src, l.pos + 2) + 2, len(l.src))
 	}
 }
 
@@ -346,7 +375,7 @@ next_token :: proc(l: ^Lexer) -> Token {
 	switch {
 	case r == -1: return Token{kind = .EOF}
 	case is_ws(r):
-		for is_ws(peek(l)) { l.pos += 1 }
+		l.pos = ws_end(l.src, l.pos)
 		return Token{kind = .Whitespace}
 	case r == '"' || r == '\'': l.pos += 1; return consume_string(l, r)
 	case r == '#':
@@ -389,14 +418,11 @@ next_token :: proc(l: ^Lexer) -> Token {
 		l.pos += 1
 		return Token{kind = .Delim, text = "\\"}
 	case is_digit(r): return consume_numeric(l)
-	case is_name_start(r): return consume_ident_like(l)
+	case is_name_start(r): return consume_ident_like(l)   // (every non-ASCII character: none reaches the delimiters below)
 	}
+	// a single-character delimiter of ASCII, from the table
 	l.pos += 1
-	// a single-character delimiter: ASCII from the table, anything else copied
-	if r >= 0 && r < 128 { return Token{kind = .Delim, text = string(delim_chars[int(r):int(r) + 1])} }
-	clear(&l.buf)
-	buf_rune(l, r)
-	return Token{kind = .Delim, text = buf_text(l)}
+	return Token{kind = .Delim, text = string(delim_chars[int(r):int(r) + 1])}
 }
 
 // All tokens of `input` (without the trailing EOF).
@@ -405,10 +431,13 @@ tokenize :: proc(input: string, arena: Arena_Alloc) -> []Token {
 	return toks
 }
 
-// Tokens, and the preprocessed code points their `pos` fields index. The token texts go to `arena`; the token array,
-// the code points and the reading buffer to `scratch` (a stylesheet drops them once it is parsed).
-tokenize_with_source :: proc(input: string, arena: Arena_Alloc, scratch: Arena_Alloc) -> ([]Token, []rune) {
-	l := Lexer{src = preprocess(input, scratch), arena = arena, buf = make([dynamic]u8, 0, 64, scratch)}
+// Tokens, and the preprocessed source their `pos` fields are byte offsets in. The token texts go to `arena`; the token
+// array, the preprocessed copy (when the input needs one) and the reading buffer to `scratch` (a stylesheet drops them
+// once it is parsed). `input_kept`: `input` lives as long as `arena` (a stylesheet's own copy of its text), so a text
+// without escapes is a substring of it, not a copy.
+tokenize_with_source :: proc(input: string, arena: Arena_Alloc, scratch: Arena_Alloc, input_kept := false) -> ([]Token, string) {
+	src, clean := preprocess(input, scratch)
+	l := Lexer{src = src, arena = arena, buf = make([dynamic]u8, 0, 64, scratch), keep = input_kept && clean}
 	// about one token per four bytes of CSS: one allocation in the common case
 	out := make([dynamic]Token, 0, len(input) / 4 + 16, scratch)
 	for {

@@ -321,11 +321,23 @@ is_quirks_body :: proc(c: ^Ctx, bi: i32) -> bool {
 // Quirks mode: the height a percentage height resolves against when its containing block's height is auto: the first
 // ancestor block with a length height (its content box), the body or the root (the window less their margins, borders
 // and padding); -1: none (a table cell or a flex / grid container in between).
+//
+// The blocks the search goes through lay out content that reads that height, which their own cache key does not hold
+// (an auto height reads no containing block height): each is marked (Box.cache_quirks), and from then on its key holds
+// the height its content resolves against (cache_key). Without that, a window made taller, or an ancestor given another
+// height, left such a block's cached content at the old height.
 @(private)
 quirks_percent_base :: proc(c: ^Ctx, bi: i32) -> f32 {
-	for a := c.l.boxes[bi].parent; a != NONE; a = c.l.boxes[a].parent {
+	return quirks_base_from(c, c.l.boxes[bi].parent, true)
+}
+
+// quirks_percent_base for a child of box `from`. `mark`: mark the boxes the search goes through.
+@(private)
+quirks_base_from :: proc(c: ^Ctx, from: i32, mark: bool) -> f32 {
+	for a := from; a != NONE; a = c.l.boxes[a].parent {
 		ab := &c.l.boxes[a]
 		if .Root in ab.flags { return c.vp.y }
+		if mark { ab.cache_quirks = true }
 		if ab.node == c.root_el { return max(c.vp.y - ab.margin[0] - ab.margin[2] - pb_h(ab), 0) }
 		if is_quirks_body(c, a) {
 			root := &c.l.boxes[ab.parent]
@@ -352,7 +364,7 @@ quirks_percent_base :: proc(c: ^Ctx, bi: i32) -> f32 {
 // the window's height, which no other part of the key holds (a viewport change marks only the initial containing block
 // dirty, incremental.odin). Their key has the window's height instead of a containing block height they do not read.
 @(private)
-cache_key :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32) -> (key: [3]f32, cb_h: f32) {
+cache_key :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32) -> (key: Cache_Key, cb_h: f32) {
 	b := &c.l.boxes[bi]
 	cb_h = cb_h_in
 	quirks := c.st != nil && c.st.quirks
@@ -361,7 +373,7 @@ cache_key :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32) -> (key: [3]f32, 
 	if cb_h < 0 && quirks && b.cs != nil && b.cs.height.kind == .Percent && b.kind != .Cell {
 		if qb := quirks_percent_base(c, bi); qb >= 0 { cb_h = qb }
 	}
-	key = {w, cb_h, forced_h}
+	key = {w, cb_h, forced_h, 0}
 	reads := reads_cb_height(c, bi)
 	root_el := b.node != base.NIL_HANDLE && b.node == c.root_el && .Pseudo not_in b.flags
 	if quirks && (root_el || is_quirks_body(c, bi)) {
@@ -369,7 +381,15 @@ cache_key :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32) -> (key: [3]f32, 
 	} else if !reads {
 		key[1] = -1
 	}
+	if quirks && c.l.boxes[bi].cache_quirks { key[3] = quirks_key(c, bi) }
 	return
+}
+
+// The last part of the cache key of a box marked cache_quirks: the height a percentage height inside resolves against
+// (quirks_base_from: -1 or more), plus 2, so that it never equals the 0 of a key made before the box was marked.
+@(private)
+quirks_key :: #force_inline proc(c: ^Ctx, bi: i32) -> f32 {
+	return quirks_base_from(c, bi, false) + 2
 }
 
 // The layout of box `bi` reads the height of its containing block: some percentage in its own height, min-height or
@@ -558,13 +578,15 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 	if .Control in b.flags && b.kind == .Block {
 		if free := h - pb_h(b) - content_h; free > 0.01 { shift_contents(c, bi, free * 0.5) }
 	}
-	if .List_Item in b.flags && b.marker_w != 0 { place_marker(c, bi) }
+	if .List_Item in b.flags && c.l.cold[bi].marker_w != 0 { place_marker(c, bi) }
 	if b.abs_first != NONE { if b.kind == .Grid { grid_abs(c, bi) } else { layout_abs_list(c, bi) } }
 	if .Ifc in b.flags && !pre_no_inline_abs(c, bi) { layout_inline_abs(c, bi) }
 	b = &c.l.boxes[bi]
 	res.h = h
 	if outer_open != nil { strut_merge(outer_open, contrib) }
 	if independent || flow_ok {
+		// (a percentage height inside, met by this layout, marked the box: its entry holds the height that read)
+		if key[3] == 0 && b.cache_quirks && c.st != nil && c.st.quirks { key[3] = quirks_key(c, bi) }
 		b.cache_ok = true
 		b.cache_flow = !independent
 		b.cache_open = outer_open != nil
@@ -613,9 +635,10 @@ flow_children :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse
 		strut := open ? fc.open : &local
 		if ch == skip { continue }
 		if .Abs in k.flags {
-			k.static_ref = bi
+			kc := &c.l.cold[ch]
+			kc.static_ref = bi
 			// (right to left: where the end edge of the box goes, layout_abs)
-			k.static_pos = {is_rtl(b.cs) ? cx + cw : cx, cy + y + (open ? 0 : strut_value(local))}
+			kc.static_pos = {is_rtl(b.cs) ? cx + cw : cx, cy + y + (open ? 0 : strut_value(local))}
 			continue
 		}
 		if k.kind == .Inline { continue }
@@ -808,10 +831,10 @@ place_marker :: proc(c: ^Ctx, bi: i32) {
 	b := &c.l.boxes[bi]
 	fi := &c.l.fonts[b.fi]
 	mw: f32
-	if b.marker == "" {
+	if text := c.l.cold[bi].marker; text == "" {
 		mw = fi.size * 0.35
 	} else {
-		mw = measure(c, b.fi, b.marker)
+		mw = measure(c, b.fi, text)
 	}
 	b = &c.l.boxes[bi]
 	// (a marker written as a string has no space of its own: list-style-type: "X")
@@ -821,10 +844,11 @@ place_marker :: proc(c: ^Ctx, bi: i32) {
 		ht, _ := half_leading(c, fi)
 		base = content_y(b) + ht + fi.ascent
 	}
-	b.marker_w = mw
+	k := &c.l.cold[bi]
+	k.marker_w = mw
 	if is_rtl(b.cs) {
-		b.marker_pos = {b.size.x - b.border[1] - b.gutter[1] - b.padding[1] + gap, base}
+		k.marker_pos = {b.size.x - b.border[1] - b.gutter[1] - b.padding[1] + gap, base}
 	} else {
-		b.marker_pos = {content_x(b) - gap - mw, base}
+		k.marker_pos = {content_x(b) - gap - mw, base}
 	}
 }

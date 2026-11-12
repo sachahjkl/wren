@@ -77,11 +77,13 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 	for k in 0 ..< min(len(oa), len(ob)) {
 		if m.bad { break }
 		x, y := &a.boxes[oa[k]], &b.boxes[ob[k]]
+		xc, yc := &a.cold[oa[k]], &b.cold[ob[k]]
+		xf, yf := &a.fin[oa[k]], &b.fin[ob[k]]
 		at := fmt.tprintf("box #%d (node %v, %v)", k, x.node, x.kind)
 		switch {
 		case x.node != y.node || x.kind != y.kind: fail(&m, "%s: node / kind %v %v / %v %v", at, x.node, x.kind, y.node, y.kind)
 		case x.flags - IGNORED != y.flags - IGNORED: fail(&m, "%s: flags %v / %v", at, x.flags - IGNORED, y.flags - IGNORED)
-		case !beq(&m, x.parent, y.parent) || !beq(&m, x.pos_ref, y.pos_ref) || !beq(&m, x.cb, y.cb) || !beq(&m, x.static_ref, y.static_ref) || !beq(&m, x.ifc_root, y.ifc_root):
+		case !beq(&m, x.parent, y.parent) || !beq(&m, x.pos_ref, y.pos_ref) || !beq(&m, xc.cb, yc.cb) || !beq(&m, xc.static_ref, yc.static_ref) || !beq(&m, x.ifc_root, y.ifc_root):
 			fail(&m, "%s: references", at)
 		case !veq(x.pos, y.pos) || !veq(x.size, y.size): fail(&m, "%s: pos %v size %v / pos %v size %v", at, x.pos, x.size, y.pos, y.size)
 		case !veq(x.abs, y.abs) || !veq(x.rel, y.rel): fail(&m, "%s: abs %v / %v", at, x.abs, y.abs)
@@ -89,13 +91,13 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 			fail(&m, "%s: margin %v / %v, padding %v / %v", at, x.margin, y.margin, x.padding, y.padding)
 		case !feq(x.baseline, y.baseline) || !feq(x.last_baseline, y.last_baseline) || !feq(x.pre_h, y.pre_h):
 			fail(&m, "%s: baselines %v %v / %v %v", at, x.baseline, x.last_baseline, y.baseline, y.last_baseline)
-		case x.marker != y.marker || !veq(x.marker_pos, y.marker_pos) || !feq(x.marker_w, y.marker_w): fail(&m, "%s: marker", at)
-		case .Abs in x.flags && (!veq(x.static_pos, y.static_pos) || !veq(x.static_align, y.static_align)): fail(&m, "%s: static position %v %v / %v %v", at, x.static_pos, x.static_align, y.static_pos, y.static_align)
-		case x.space != y.space || x.clip != y.clip || x.content_space != y.content_space || x.content_clip != y.content_clip ||
-		     x.group != y.group || x.scroll_space != y.scroll_space || !beq(&m, x.layer, y.layer) || !beq(&m, x.clip_owner, y.clip_owner):
+		case xc.marker != yc.marker || !veq(xc.marker_pos, yc.marker_pos) || !feq(xc.marker_w, yc.marker_w): fail(&m, "%s: marker", at)
+		case .Abs in x.flags && (!veq(xc.static_pos, yc.static_pos) || !veq(xc.static_align, yc.static_align)): fail(&m, "%s: static position %v %v / %v %v", at, xc.static_pos, xc.static_align, yc.static_pos, yc.static_align)
+		case x.space != y.space || x.clip != y.clip || xf.content_space != yf.content_space || xf.content_clip != yf.content_clip ||
+		     x.group != y.group || xf.scroll_space != yf.scroll_space || !beq(&m, xf.layer, yf.layer) || !beq(&m, xf.clip_owner, yf.clip_owner):
 			fail(&m, "%s: spaces / clips / group", at)
-		case .Scroll in x.flags && !req(x.overflow, y.overflow): fail(&m, "%s: overflow %v / %v", at, x.overflow, y.overflow)
-		case x.col != y.col || x.row != y.row || x.colspan != y.colspan || x.rowspan != y.rowspan: fail(&m, "%s: table slot", at)
+		case .Scroll in x.flags && !req(xf.overflow, yf.overflow): fail(&m, "%s: overflow %v / %v", at, xf.overflow, yf.overflow)
+		case xc.col != yc.col || xc.row != yc.row || xc.colspan != yc.colspan || xc.rowspan != yc.rowspan: fail(&m, "%s: table slot", at)
 		case !font_eq(&m, x.fi, y.fi): fail(&m, "%s: font", at)
 		// an element's box points at its element's record; anonymous boxes and foreign objects at equal copies
 		case (x.node == base.NIL_HANDLE || x.flags & {.Root, .Foreign} != {}) ?!style.computed_equal(x.cs, y.cs) : x.cs != y.cs: fail(&m, "%s: style record", at)

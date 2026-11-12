@@ -577,5 +577,5 @@ anchored_in_a_spanner :: proc(t: ^testing.T) {
 	is(t, f, "contained", 10, 20, 40, 20)
 	testing.expect_value(t, rect(f, "none").max.x - rect(f, "none").min.x, 0)   // the anchor is not for what is contained by #between
 	bi := box_index(&f.l, dom.find_by_id(f.doc, "contained"))
-	testing.expect_value(t, f.l.boxes[bi].cb, box_index(&f.l, dom.find_by_id(f.doc, "mc")))
+	testing.expect_value(t, f.l.cold[bi].cb, box_index(&f.l, dom.find_by_id(f.doc, "mc")))
 }

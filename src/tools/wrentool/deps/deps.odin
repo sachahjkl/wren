@@ -83,7 +83,7 @@ run_fetch :: proc(args: []string) -> int {
 }
 
 run_build :: proc(args: []string) -> int {
-	if len(args) == 0 { fmt.eprintln("wrentool build lexbor|native|tracy"); return 2 }
+	if len(args) == 0 { fmt.eprintln("wrentool build lexbor|native|tracy|vault"); return 2 }
 	o, ok := options_of(args[1:])
 	if !ok { return 2 }
 	done: bool
@@ -91,6 +91,7 @@ run_build :: proc(args: []string) -> int {
 	case "lexbor": done = build_lexbor(o)
 	case "native": done = build_native(o)
 	case "tracy":  done = build_tracy(o)
+	case "vault":  done = build_vault(o)   // vault.odin: the Vault's helper, from its own repository
 	case: fmt.eprintfln("nothing to build called %s", args[0]); return 2
 	}
 	return done ? 0 : 1

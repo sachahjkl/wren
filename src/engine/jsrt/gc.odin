@@ -338,7 +338,7 @@ MEM_BLOCK_MAX :: 1 << 31
 // (i64: a size a script chose overflows the int of wasm32)
 mem_may_grow :: #force_inline proc(rt: ^Runtime, bytes: i64) -> bool {
 	if bytes < MEM_CHECK_BYTES {return true}
-	return bytes <= MEM_BLOCK_MAX && !mem_over_limit(rt, bytes)
+	return bytes < MEM_BLOCK_MAX && !mem_over_limit(rt, bytes)   // (below 2^31: an int of wasm32 holds the size)
 }
 
 // The error of an allocation refused because of the heap limit: catchable, the heap is still under it.

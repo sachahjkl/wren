@@ -89,23 +89,65 @@ note_refresh_inputs :: proc(l: ^Layout, same_boxes := false) {
 refresh :: proc(l: ^Layout, input: Input) -> bool {
 	t0 := time.tick_now()
 	st := input.styled
-	replaced := false
+	// (anon_style of the initial values: of this pass's)
+	if len(l.boxes) > 0 && .Root in l.boxes[0].flags && l.boxes[0].cs != nil { l.boxes[0].cs.inherited_group = st.initial.inherited_group }
+	// (what a journaled attempt that gave up re-pointed already counts as replaced: `replaced` goes on from it)
+	touched := make([dynamic]i32, 0, 16, context.temp_allocator)
+	ok, replaced := refresh_journaled(l, st, &touched)
+	if !ok {
+		if !refresh_all_boxes(l, st, &replaced) { return false }
+		// every text belongs to an element with a box, and no box got a new record: the inline items are up to date
+		if (replaced || l.loose_styles) && !refresh_all_items(l, st) { return false }
+	}
+	if !replaced && !l.loose_styles { return refresh_rest(l, input, t0) }
+	l.restyled += 1
+	// each display item from its box or inline item, not from the record it had: alike elements shared that record, and
+	// only some of them have another one now (a hover on one link of a nav). From the journal: only the items of the
+	// boxes it touched, not every item of the page at each frame
+	if ok { remap_box_items(l, touched[:]) } else { remap_display_items(l) }
+	return refresh_rest(l, input, t0)
+}
+
+// The new records of anonymous boxes made by one refresh, by the parent record they copy from (anon_style's key).
+@(private = "file")
+Fresh_Anon :: map[Anon_Key]^style.Computed
+
+// An anonymous box takes again what it copies from its parent's style: the inherited paint-only values. anon_style
+// shares one record among the anonymous boxes of parents with the same record: written in place while the parent keeps
+// its record (an overlay rewritten in place: every sharer's parent has it), a new one when `parent_moved` (the parent
+// points at another record now, the other sharers' parents may not). true: the box got a new record.
+@(private = "file")
+refresh_anon :: proc(l: ^Layout, x: i32, anon: []style.Prop, parent_moved: bool, fresh: ^Fresh_Anon) -> bool {
+	b := &l.boxes[x]
+	if b.parent == NONE || b.cs == nil { return false }
+	pc := l.boxes[b.parent].cs
+	if parent_moved {
+		key := Anon_Key{pc, b.cs.display}
+		if s, ok := fresh[key]; ok { b.cs = s; return true }
+		s := new(style.Computed, base.arena_allocator(&l.arena))
+		s^ = b.cs^   // (layout values equal under the new parent's record: a refresh needs style.layout_equal)
+		b.cs = s
+		fresh[key] = s
+	}
+	// its inherited group is the parent's (anon_style): the one of a restyled parent, the old one being in an arena that may be gone
+	b.cs.inherited_group = pc.inherited_group
+	b.cs.custom = pc.custom   // (its custom properties too: paint-only values may be all that changed, with them; and that table goes with the old record)
+	for p in anon { style.copy_prop(b.cs, pc, p) }
+	anon_current_color(b.cs)
+	return parent_moved
+}
+
+// Every box re-pointed at its element's record. `replaced`: some box got another record. false: some element lost its style.
+@(private = "file")
+refresh_all_boxes :: proc(l: ^Layout, st: ^style.Styled, replaced: ^bool) -> bool {
 	anon := anon_paint_props()
+	fresh := make(Fresh_Anon, 16, context.temp_allocator)
+	moved := make([]bool, len(l.boxes), context.temp_allocator)   // the box points at another record than before
 	// boxes in index order: a parent comes before its children (anonymous boxes copy from their parent)
 	for &b, i in l.boxes {
-		if .Dead in b.flags { continue }
-		if .Root in b.flags {
-			if b.cs != nil { b.cs.inherited_group = st.initial.inherited_group }   // (anon_style of the initial values: of this pass's)
-			continue
-		}
+		if .Dead in b.flags || .Root in b.flags { continue }
 		if b.node == base.NIL_HANDLE {
-			if b.parent == NONE || b.cs == nil { continue }
-			pc := l.boxes[b.parent].cs
-			// its inherited group is the parent's (anon_style): the one of a restyled parent, the old one being in an arena that may be gone
-			b.cs.inherited_group = pc.inherited_group
-			b.cs.custom = pc.custom   // (its custom properties too: paint-only values may be all that changed, with them; and that table goes with the old record)
-			for p in anon { style.copy_prop(b.cs, pc, p) }
-			anon_current_color(b.cs)
+			if b.parent != NONE { moved[i] = refresh_anon(l, i32(i), anon, moved[b.parent], &fresh) }
 			continue
 		}
 		el := style.style_of(st, b.node)
@@ -113,14 +155,19 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 		nc := el
 		if .Pseudo in b.flags { nc = pseudo_style(el, b.pseudo) }
 		if nc == nil { return false }
-		if .Foreign in b.flags { foreign_restyle(l, i32(i), nc); continue }   // (its own record, made again in place)
+		// (its own record, made again in place: the same pointer, which no other box's anonymous children share)
+		if .Foreign in b.flags { foreign_restyle(l, i32(i), nc); continue }
 		if nc == b.cs { continue }   // an animation overlay is rewritten in place: same record, new values
 		b.cs = nc
-		replaced = true
+		moved[i] = true
+		replaced^ = true
 	}
-	// nothing was replaced and every text belongs to an element with a box: inline and display items are up to date
-	if !replaced && !l.loose_styles { return refresh_rest(l, input, t0) }
-	l.restyled += 1
+	return true
+}
+
+// Every inline item re-pointed at its element's record. false: some element lost its style.
+@(private = "file")
+refresh_all_items :: proc(l: ^Layout, st: ^style.Styled) -> bool {
 	for &it in l.inline_items {
 		if it.cs == nil { continue }
 		if it.node == base.NIL_HANDLE { continue }   // the initial style: the same record for the whole pass
@@ -137,10 +184,101 @@ refresh :: proc(l: ^Layout, input: Input) -> bool {
 		if nc == nil { return false }
 		it.cs = nc
 	}
-	// each display item from its box or inline item, not from the record it had: alike elements shared that record, and
-	// only some of them have another one now (a hover on one link of a nav)
-	remap_display_items(l)
-	return refresh_rest(l, input, t0)
+	return true
+}
+
+// refresh_all_boxes and refresh_all_items for the elements of the style journal only: the styles are of the same pass
+// as the layout, changed since only as its journal says (a hover, an animation tick: a few elements, not the document).
+// Their boxes, generated boxes, the anonymous boxes inside those and their inline items are re-pointed; `touched` gets
+// the boxes whose display items have a record to re-point (Display_Item.box). ok = false: the
+// journal does not tell enough (another style pass, forgotten entries, text whose element has no box, foreign objects,
+// whose style also follows the SVG around them): the caller re-points everything, which gives the same result.
+@(private = "file")
+refresh_journaled :: proc(l: ^Layout, st: ^style.Styled, touched: ^[dynamic]i32) -> (ok, replaced: bool) {
+	if l.styled_pass != st.pass_id || l.loose_styles || len(l.foreign_objects) > 0 { return false, false }
+	changes: []style.Journal_Entry
+	if st.serial != l.serial {
+		have: bool
+		changes, have = style.journal_since(st, l.serial)
+		if !have { return false, false }
+	}
+	if len(changes) == 0 { return true, false }
+	anon := anon_paint_props()
+	done := make(map[base.Handle]bool, len(changes), context.temp_allocator)
+	ifcs := make([dynamic]i32, 0, 8, context.temp_allocator)
+	stack := make([dynamic]i32, 0, 8, context.temp_allocator)
+	fresh := make(Fresh_Anon, 8, context.temp_allocator)
+	// the anonymous boxes inside `x`, parents first: their inherited values again; their contexts hold its text. `moved`:
+	// `x` points at another record than before, and so does each of them then (refresh_anon), whose items get re-pointed
+	anon_below :: proc(l: ^Layout, x: i32, moved: bool, anon: []style.Prop, fresh: ^Fresh_Anon, stack, ifcs, touched: ^[dynamic]i32) {
+		clear(stack)
+		append(stack, x)
+		for len(stack) > 0 {
+			p := pop(stack)
+			for ch := l.boxes[p].first; ch != NONE; ch = l.boxes[ch].next {
+				k := &l.boxes[ch]
+				if .Dead in k.flags || .Anonymous not_in k.flags { continue }
+				if refresh_anon(l, ch, anon, moved, fresh) { append(touched, ch) }
+				if .Ifc in k.flags { append(ifcs, ch) }
+				append(stack, ch)
+			}
+		}
+	}
+	for &e in changes {
+		h := e.node
+		if h in done { continue }
+		done[h] = true
+		bi := live_box(l, h)
+		// no box: nothing points at its record (every text belongs to an element with a box: loose_styles)
+		if bi == NONE { continue }
+		el := style.style_of(st, h)
+		if el == nil || el.backdrop != nil { return false, replaced }   // (a ::backdrop box is beside its own, not inside)
+		clear(&ifcs)
+		b := &l.boxes[bi]
+		moved := b.cs != el
+		if moved { b.cs = el; replaced = true; append(touched, bi) }
+		if b.ifc_root != NONE { append(&ifcs, b.ifc_root) }
+		if .Ifc in b.flags { append(&ifcs, bi) }
+		anon_below(l, bi, moved, anon, &fresh, &stack, &ifcs, touched)
+		// its generated boxes: children of its box, or of the anonymous blocks wrapping its inline content
+		pseudos := make([dynamic]i32, 0, 8, context.temp_allocator)
+		append(&pseudos, bi)
+		for len(pseudos) > 0 {
+			x := pop(&pseudos)
+			for ch := l.boxes[x].first; ch != NONE; ch = l.boxes[ch].next {
+				k := &l.boxes[ch]
+				if .Dead in k.flags { continue }
+				if .Anonymous in k.flags { append(&pseudos, ch); continue }
+				if .Pseudo not_in k.flags || k.node != h { continue }
+				nc := pseudo_style(el, k.pseudo)
+				if nc == nil { return false, replaced }
+				pmoved := k.cs != nc
+				if pmoved { k.cs = nc; replaced = true; append(touched, ch) }
+				if .Ifc in k.flags { append(&ifcs, ch) }
+				anon_below(l, ch, pmoved, anon, &fresh, &stack, &ifcs, touched)
+			}
+		}
+		for r in ifcs {
+			rb := &l.boxes[r]
+			for i in rb.items[0] ..< rb.items[1] {
+				it := &l.inline_items[i]
+				if it.cs == nil || it.node != h { continue }
+				nc := el
+				#partial switch it.src {
+				case .Before: nc = el.before
+				case .After: nc = el.after
+				}
+				if nc == nil { return false, replaced }
+				if it.cs != nc {
+					it.cs = nc
+					replaced = true
+					// (its text's items have the box of its enclosing inline box, else of its context: emit_lines)
+					append(touched, it.box != NONE ? it.box : it.ifc)
+				}
+			}
+		}
+	}
+	return true, replaced
 }
 
 @(private = "file")
@@ -196,15 +334,16 @@ refresh_overflow :: proc(l: ^Layout, vp: Vec2) -> bool {
 	order := preorder(l)
 	doc := compute_overflow(l, order, fixed_boxes(l, order), vp)
 	l.inc.doc_extent = doc
-	for &b in l.boxes {
+	for &b, bi in l.boxes {
 		if .Scroll not_in b.flags || .Propagated in b.flags || b.kind == .Inline || .Dead in b.flags { continue }
 		port := padding_rect(&b)
-		mn, ms := scroll_limits(&b, port)
+		bf := &l.fin[bi]
+		mn, ms := scroll_limits(&b, bf.overflow, port)
 		scrolls := ms.x > BAR_MIN_OVERFLOW || ms.y > BAR_MIN_OVERFLOW || mn.x < -BAR_MIN_OVERFLOW || mn.y < -BAR_MIN_OVERFLOW
-		if scrolls != (b.scroll_space != NONE) { return false }
+		if scrolls != (bf.scroll_space != NONE) { return false }
 		if !scrolls { continue }
-		l.spaces[b.scroll_space].max_scroll = ms
-		l.spaces[b.scroll_space].min_scroll = mn
+		l.spaces[bf.scroll_space].max_scroll = ms
+		l.spaces[bf.scroll_space].min_scroll = mn
 		if off, ok := l.scroll[b.node]; ok { l.scroll[b.node] = {clamp(off.x, mn.x, ms.x), clamp(off.y, mn.y, ms.y)} }
 	}
 	note_doc_extent_y(l, doc, vp)

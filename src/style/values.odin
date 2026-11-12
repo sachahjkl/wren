@@ -3,7 +3,6 @@ package style
 import "base:runtime"
 import "core:math"
 import "core:mem"
-import "core:reflect"
 import "core:strings"
 import "wb:base"
 import "wb:css"
@@ -51,12 +50,13 @@ ident_raw :: proc(input: []css.Value) -> (string, bool) {
 }
 
 // Enum parsing by name: `Space_Between` is written `space-between`. Every enum parsed this way has contiguous values from 0.
+// (The names are found in the keyword table: keywords.odin.)
 parse_enum :: proc(input: []css.Value, $E: typeid) -> (E, bool) {
 	id, ok := ident_raw(input)
 	if !ok { return {}, false }
-	names := reflect.enum_field_names(E)
-	for n, i in names { if names_equal(id, n) { return E(i), true } }
-	return {}, false
+	i, found := keyword_index(id, E)
+	if !found { return {}, false }
+	return E(i), true
 }
 
 @(private)

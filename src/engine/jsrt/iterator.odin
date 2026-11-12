@@ -268,7 +268,7 @@ iterator_close :: proc(ctx: ^Context, it: Value, is_exc: bool) -> int {
 // computed by a class).
 plain_keys_object :: #force_inline proc(o: ^Object) -> bool {
 	shape_ensure(o.shape)
-	if o.fast_array || is_typed_array_class(o.class) {return false}
+	if object_has_elements(o) || is_typed_array_class(o.class) {return false}
 	#partial switch o.class {
 	case .proxy, .string, .module_ns, .host, .arguments, .mapped_arguments:
 		return false

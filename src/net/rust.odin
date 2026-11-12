@@ -276,9 +276,9 @@ rust_drain :: proc(data: rawptr) {
 			ev.remote_len = u8(n)
 		case WN_DATA:
 			ev.kind = .Data
-			if r.link == nil {
+			if !events_wait(r) {
 				// delivered now, within this poll: the library's own bytes, no copy (an Event's bytes are valid only
-				// during its callback). A throttled request keeps its events for later: those are copied.
+				// during its callback). A throttled or paused request keeps its events for later: those are copied.
 				ev.data = we.data[:we.data_len]
 				handle_event(c, &ev)
 				ev.data = nil   // not ours to free

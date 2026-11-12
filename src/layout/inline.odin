@@ -744,7 +744,7 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 	if !lb.content {
 		// a phantom line (CSS 2.1 §9.4.2): no height, nothing drawn; still where floats and positioned boxes go
 		for &p in lb.pending_abs {
-			k := &c.l.boxes[p.box]
+			k := &c.l.cold[p.box]
 			k.static_ref = lb.bi
 			// (right to left: from the end of the line: the box's end edge goes there, layout_abs)
 			k.static_pos = {is_rtl(lb.cs) ? lb.cx + lb.right - p.x : lb.cx + lb.left + p.x, lb.cy + lb.y}
@@ -930,7 +930,7 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 	append(&lb.out, ..lb.frags[:])
 	append(&lb.lines, Line{y = line_top, h = line_h, baseline = base_y, frags = {first_frag, i32(len(lb.out))}, left = lb.left, width = avail})
 	for &p in lb.pending_abs {
-		k := &c.l.boxes[p.box]
+		k := &c.l.cold[p.box]
 		k.static_ref = lb.bi
 		k.static_pos = {rtl ? ox + used - p.x : ox + p.x, line_top}
 	}

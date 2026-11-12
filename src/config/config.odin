@@ -65,7 +65,8 @@ unwatch :: tc.unwatch
 
 // Layers: command line, profile file, policy file
 apply_args :: tc.apply_args
-save_user :: tc.save_user
+serialize_user :: tc.serialize_user
+write_user_file :: tc.write_user_file
 load_file :: tc.load_file
 
 // Snapshots (snapshot.odin)

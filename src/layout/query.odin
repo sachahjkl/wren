@@ -388,7 +388,7 @@ scroll_wheel :: proc(l: ^Layout, p: Vec2, delta: Vec2, viewport: Vec2, doc_scrol
 		if l.anchor_scroll { l.anchor_stale = true }
 		return true
 	}
-	if b := &l.boxes[h.box]; b.scroll_space != NONE && try(l, b.scroll_space, delta) { return true }
+	if ss := l.fin[h.box].scroll_space; ss != NONE && try(l, ss, delta) { return true }
 	for s := l.items[h.item].space; s != NONE; s = l.spaces[s].parent {
 		if l.spaces[s].kind == .Scroll && try(l, s, delta) { return true }
 	}
@@ -409,15 +409,15 @@ clip_bounds :: proc(l: ^Layout, v: ^View, ci: i32) -> (Rect, bool) {
 // Scroll offset of a scroll container (device px), for scrollTop / scrollLeft.
 scroll_of :: proc(l: ^Layout, node: base.Handle) -> (Vec2, bool) {
 	bi := box_index(l, node)
-	if bi == NONE || l.boxes[bi].scroll_space == NONE { return {}, false }
-	return scroll_offset_of(l, &l.spaces[l.boxes[bi].scroll_space]), true
+	if bi == NONE || l.fin[bi].scroll_space == NONE { return {}, false }
+	return scroll_offset_of(l, &l.spaces[l.fin[bi].scroll_space]), true
 }
 
 // Sets the scroll offset of a scroll container (clamped). Returns the offset applied.
 set_scroll :: proc(l: ^Layout, node: base.Handle, off: Vec2) -> (Vec2, bool) {
 	bi := box_index(l, node)
-	if bi == NONE || l.boxes[bi].scroll_space == NONE { return {}, false }
-	sp := &l.spaces[l.boxes[bi].scroll_space]
+	if bi == NONE || l.fin[bi].scroll_space == NONE { return {}, false }
+	sp := &l.spaces[l.fin[bi].scroll_space]
 	v := Vec2{clamp(off.x, sp.min_scroll.x, sp.max_scroll.x), clamp(off.y, sp.min_scroll.y, sp.max_scroll.y)}
 	if l.anchor_scroll && l.scroll[node] != v { l.anchor_stale = true }
 	l.scroll[node] = v
@@ -460,22 +460,22 @@ reveal_in_scroll_containers :: proc(l: ^Layout, node: base.Handle) -> bool {
 // The scrollport of a scroll container (device px).
 scroll_port :: proc(l: ^Layout, node: base.Handle) -> (Rect, bool) {
 	bi := box_index(l, node)
-	if bi == NONE || l.boxes[bi].scroll_space == NONE { return {}, false }
-	return l.spaces[l.boxes[bi].scroll_space].port, true
+	if bi == NONE || l.fin[bi].scroll_space == NONE { return {}, false }
+	return l.spaces[l.fin[bi].scroll_space].port, true
 }
 
 // Largest scroll offset of a scroll container.
 scroll_max :: proc(l: ^Layout, node: base.Handle) -> (Vec2, bool) {
 	bi := box_index(l, node)
-	if bi == NONE || l.boxes[bi].scroll_space == NONE { return {}, false }
-	return l.spaces[l.boxes[bi].scroll_space].max_scroll, true
+	if bi == NONE || l.fin[bi].scroll_space == NONE { return {}, false }
+	return l.spaces[l.fin[bi].scroll_space].max_scroll, true
 }
 
 // Smallest scroll offset of a scroll container: 0, or negative where its scroll origin is at the high end of the axis.
 scroll_min :: proc(l: ^Layout, node: base.Handle) -> Vec2 {
 	bi := box_index(l, node)
-	if bi == NONE || l.boxes[bi].scroll_space == NONE { return {} }
-	return l.spaces[l.boxes[bi].scroll_space].min_scroll
+	if bi == NONE || l.fin[bi].scroll_space == NONE { return {} }
+	return l.spaces[l.fin[bi].scroll_space].min_scroll
 }
 
 box_index :: proc(l: ^Layout, node: base.Handle) -> i32 {
@@ -691,9 +691,9 @@ doc_scroll_corner :: proc(l: ^Layout, viewport: Vec2) -> (corner: Rect, ok: bool
 
 // Thumb of a scroll bar item for this view (viewport coordinates); empty when the box has nothing to scroll that way.
 scrollbar_thumb :: proc(l: ^Layout, v: ^View, it: ^Display_Item) -> Rect {
-	b := &l.boxes[it.box]
-	if b.scroll_space == NONE { return {} }
-	sp := &l.spaces[b.scroll_space]
+	ss := l.fin[it.box].scroll_space
+	if ss == NONE { return {} }
+	sp := &l.spaces[ss]
 	vertical := .Vertical in it.flags
 	ax := vertical ? 1 : 0
 	range := sp.max_scroll[ax] - sp.min_scroll[ax]

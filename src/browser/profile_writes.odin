@@ -18,6 +18,7 @@ import "core:path/filepath"
 import "core:strings"
 import "toolkit:ui"
 import "wb:base"
+import "wb:config"
 import "wb:cookies"
 import "wb:fetch"
 import "wb:host"
@@ -202,7 +203,8 @@ Profile_Writes :: struct {
 	pinned_last:    string,         // owned: what pinned.txt holds, or will ("": no file)
 	pinned_known:   bool,           // pinned_last is known (else the next save writes it once)
 	stores_busy:    bool,           // the write of the cookies and the HSTS hosts is out
-	prefs:          Write_Health,   // prefs.txt (written by the toolkit's config.save_user, on the loop thread)
+	prefs:          Profile_File,   // prefs.txt
+	prefs_written:  u64,            // the prefs' user_version the last text of prefs.txt was made at
 	cookies:        Write_Health,
 	hsts:           Write_Health,
 }
@@ -210,6 +212,7 @@ Profile_Writes :: struct {
 // At exit, after the last profile_save: every file of the profile still waiting is written (profile_save with `force`).
 profile_files_flush :: proc(app: ^App) {
 	w := &app.recovery.writes
+	profile_file_flush(&w.prefs)
 	profile_file_flush(&w.session)
 	profile_file_flush(&w.pinned)
 	profile_file_flush(&app.closed.file)
@@ -218,10 +221,23 @@ profile_files_flush :: proc(app: ^App) {
 }
 
 profile_writes_destroy :: proc(w: ^Profile_Writes) {
+	profile_file_destroy(&w.prefs)
 	profile_file_destroy(&w.session)
 	profile_file_destroy(&w.pinned)
 	delete(w.pinned_last)
 	w^ = {}
+}
+
+// The preferences, when the user's layer changed since the last text (profile_save): the text is made here, on the loop
+// thread that owns the registry, and the blocking pool writes it like any other profile file, so a slow disk never holds
+// the interface. A change made while it is written moves user_version again: the next save has it. A failed write is
+// tried again by the Profile_File, and at exit (profile_files_flush) what waits is written before the end.
+profile_prefs_save :: proc(app: ^App, path: string) {
+	w := &app.recovery.writes
+	profile_file_init(&w.prefs, app, path, flush = true)
+	if app.prefs.user_version == w.prefs_written { return }
+	w.prefs_written = app.prefs.user_version
+	profile_file_write(&w.prefs, config.serialize_user(&app.prefs, context.temp_allocator))
 }
 
 @(private = "file")

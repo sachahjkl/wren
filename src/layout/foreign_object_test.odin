@@ -31,7 +31,7 @@ foreign_object_g_logo :: proc(t: ^testing.T) {
 	sv, fo, gr := bx(f, "svg"), bx(f, "fo"), bx(f, "grad")
 	if !testing.expect(t, sv != NONE && fo != NONE && gr != NONE, "the foreignObject and its content have boxes") { return }
 	b := &f.l.boxes[fo]
-	testing.expect(t, b.parent == sv && b.cb == sv && b.flags >= {.Abs, .Transformed, .Foreign}, "an absolutely positioned child of the <svg>")
+	testing.expect(t, b.parent == sv && f.l.cold[fo].cb == sv && b.flags >= {.Abs, .Transformed, .Foreign}, "an absolutely positioned child of the <svg>")
 	testing.expect(t, near(b.size, {28, 28}) && near(f.l.boxes[gr].size, {28, 28}), "its size in user units, its content laid out in it")
 	k: f32 = 26.0 / 24
 	m := box_matrix(&f.l, b)

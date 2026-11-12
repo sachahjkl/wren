@@ -1,0 +1,9 @@
+{
+  "extName": { "message": "Hello extension" },
+  "extDesc": { "message": "The test fixture of Wren's extensions." },
+  "greeting": {
+    "message": "Hello $who$!",
+    "placeholders": { "who": { "content": "$1", "example": "World" } }
+  },
+  "popupText": { "message": "The popup of the Hello extension" }
+}

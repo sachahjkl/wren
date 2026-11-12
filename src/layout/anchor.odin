@@ -109,7 +109,7 @@ containing_or_parent :: #force_inline proc(l: ^Layout, x: i32) -> i32 {
 	if .Root in b.flags { return NONE }
 	// (the containing block of a spanner is its multi-column container, whatever is between them: CSS Multicol 1 §6)
 	if .Spanner in b.fx { return flow_container(l, x) }
-	return containing_parent(b)
+	return containing_parent(l, x)
 }
 
 @(private = "file")
@@ -250,7 +250,7 @@ scroll_apart :: proc(l: ^Layout, a, q: i32) -> bool {
 // The direction of the containing block of box `q`: the viewport has the principal one (CSS Writing Modes 4 §8).
 @(private = "file")
 cb_is_rtl :: proc(c: ^Ctx, q: i32) -> bool {
-	cb := &c.l.boxes[c.l.boxes[q].cb]
+	cb := &c.l.boxes[c.l.cold[q].cb]
 	if .Root in cb.flags { return principal_rtl(c) }
 	return cb.cs != nil && is_rtl(cb.cs)
 }
@@ -280,7 +280,7 @@ anchor_position :: proc(ac: ^A, q: i32, p: ^Prep, n: ^css.Calc, use: Len_Use) ->
 	lo, hi := r.min[axis] - refabs[axis], r.max[axis] - refabs[axis]
 	start_side := use.side == .Left || use.side == .Top
 	// (where this axis starts follows the writing modes of the containing block and of the box)
-	rtl := style.axis_start_hi(l.boxes[l.boxes[q].cb].wm, cb_is_rtl(ac.c, q), use.axis_x)
+	rtl := style.axis_start_hi(l.boxes[l.cold[q].cb].wm, cb_is_rtl(ac.c, q), use.axis_x)
 	self_rtl := style.axis_start_hi(l.boxes[q].wm, is_rtl(p.cs), use.axis_x)
 	at: f32
 	#partial switch n.anchor.side {
@@ -313,7 +313,7 @@ anchor_dimension :: proc(ac: ^A, q: i32, p: ^Prep, n: ^css.Calc, use: Len_Use) -
 	if target == NONE { return 0, false }
 	r := anchor_rect(l, target, q)
 	x := use.axis_x
-	cbv, selfv := is_vert(l.boxes[l.boxes[q].cb].wm), is_vert(l.boxes[q].wm)
+	cbv, selfv := is_vert(l.boxes[l.cold[q].cb].wm), is_vert(l.boxes[q].wm)
 	#partial switch n.anchor.side {
 	case .Width: x = true
 	case .Height: x = false
@@ -397,7 +397,7 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 		list := make([dynamic]style.Try_Tactic, 0, 6, context.temp_allocator)
 		for t in tactics {
 			buf: [3]style.Try_Tactic
-			n := style.try_tactics_physical(t, l.boxes[l.boxes[q].cb].wm, &buf)
+			n := style.try_tactics_physical(t, l.boxes[l.cold[q].cb].wm, &buf)
 			for k in 0 ..< n { append(&list, buf[k]) }
 		}
 		// (self-alignment values are named by flow or side already: they move by the tactics as written)
@@ -412,7 +412,7 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 	p.anchor = default_anchor(ac, q, v)
 	cb_rtl := cb_is_rtl(ac.c, q)
 	self_rtl := is_rtl(v)
-	cb_wm := l.boxes[l.boxes[q].cb].wm
+	cb_wm := l.boxes[l.cold[q].cb].wm
 	// the axes justify-self and align-self mean, and where they start
 	x_self, y_self := v.justify_self, v.align_self
 	if is_vert(cb_wm) { x_self, y_self = v.align_self, v.justify_self }
@@ -673,9 +673,9 @@ lay_anchored :: proc(ac: ^A, q: i32) {
 	ref: i32
 	cb: Rect
 	if .Fixed in b.flags {
-		ref, cb = b.cb, Rect{{0, 0}, c.vp}
+		ref, cb = l.cold[q].cb, Rect{{0, 0}, c.vp}
 	} else {
-		ref, cb = abs_containing_rect(c, b.cb)
+		ref, cb = abs_containing_rect(c, l.cold[q].cb)
 		if area, ok := l.anchor_grid_areas[q]; ok { cb = area }
 	}
 	key := anchored_key(b)
@@ -693,7 +693,7 @@ lay_anchored :: proc(ac: ^A, q: i32) {
 	if base.position_try_order != .Normal && len(opts) > 1 {
 		Order :: struct { i: int, size: f32 }
 		list := make([]Order, len(opts), context.temp_allocator)
-		cbv := is_vert(l.boxes[l.boxes[q].cb].wm)
+		cbv := is_vert(l.boxes[l.cold[q].cb].wm)
 		x := base.position_try_order == .Most_Width || (base.position_try_order == .Most_Inline_Size && !cbv) || (base.position_try_order == .Most_Block_Size && cbv)
 		for &p, i in preps {
 			list[i] = Order{i, x ? p.inner.max.x - p.inner.min.x : p.inner.max.y - p.inner.min.y}

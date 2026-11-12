@@ -205,6 +205,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		}
 	}
 	js_load_realm_started(p, r)   // rejections, modules, eval policy (js_load_realm.odin)
+	ext_realm_started(p, r)   // an extension context gets chrome.* (ext_realm.odin)
 	js_prelude(p)   // (WREN_JS_PRELUDE: js_profile.odin)
 	if the_pages.dev_console_max > 0 && p.worker == nil { dev_console_arm(p, the_pages.dev_console_max) }   // the developer tools are open: console messages carry their objects (devtools_api.odin)
 	if js_on_realm_started != nil && p.worker == nil { js_on_realm_started(p) }

@@ -716,7 +716,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 							}
 							break
 						}
-						if p.fast_array || p.class == .proxy || p.class == .module_ns || p.class == .string || is_typed_array_class(p.class) {break}
+						if object_has_elements(p) || p.class == .proxy || p.class == .module_ns || p.class == .string || is_typed_array_class(p.class) {break}
 						if p.class == .host && host_exotic_of(rt, p) != nil {break}
 						p = p.shape.proto
 						if p == nil {v = UNDEFINED; fast = true; break}
@@ -1790,7 +1790,7 @@ script_setter :: #force_no_inline proc(v: Value, a: Atom) -> ^Object {
 	for p != nil {
 		i := shape_find(p.shape, a)
 		if i >= 0 {return p.shape.props[i].kind == .accessor ? p.slots[i].getset.setter : nil}
-		if p.fast_array || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return nil}
+		if object_has_elements(p) || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return nil}
 		p = p.shape.proto
 	}
 	return nil

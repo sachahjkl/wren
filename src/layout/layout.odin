@@ -101,7 +101,7 @@ run_full :: proc(l: ^Layout, input: Input) {
 		base.arena_free_all(&l.arena)
 	}
 	if l.scroll == nil { l.scroll = make(map[base.Handle]Vec2) }
-	clear(&l.boxes); clear(&l.inline_items); clear(&l.lines); clear(&l.frags); clear(&l.fonts); clear(&l.items)
+	clear(&l.boxes); clear(&l.cold); clear(&l.fin); clear(&l.inline_items); clear(&l.lines); clear(&l.frags); clear(&l.fonts); clear(&l.items)
 	clear(&l.font_lookup)
 	clear(&l.node_box)
 	clear(&l.foreign_objects)
@@ -163,6 +163,8 @@ ms :: proc(a, b: time.Tick) -> f32 { return f32(time.duration_milliseconds(time.
 reserve_tree :: proc(l: ^Layout, d: ^dom.Document) {
 	n := d.nodes.count
 	reserve(&l.boxes, n * 3 / 4 + 64)
+	reserve(&l.cold, n * 3 / 4 + 64)
+	reserve(&l.fin, n * 3 / 4 + 64)
 	reserve(&l.inc.info, n * 3 / 4 + 64)
 	reserve(&l.inline_items, n + 64)
 	// handle index -> box: every slot the document handed out, none yet
@@ -189,14 +191,17 @@ LAYOUT_KEEP_BYTES :: 1 << 20
 @(private = "file")
 release_large :: proc(l: ^Layout) {
 	drop :: proc(a: ^[dynamic]$T) { if cap(a) * size_of(T) > LAYOUT_KEEP_BYTES { delete(a^); a^ = nil } }
-	drop(&l.boxes); drop(&l.inline_items); drop(&l.lines); drop(&l.frags); drop(&l.items); drop(&l.band_items); drop(&l.node_box)
+	drop(&l.boxes); drop(&l.cold); drop(&l.fin); drop(&l.inline_items); drop(&l.lines); drop(&l.frags); drop(&l.items); drop(&l.band_items); drop(&l.node_box)
+	drop(&l.item_index.start); drop(&l.item_index.list)
 	drop(&l.inc.info); drop(&l.inc.segs); drop(&l.inc.spare_lines); drop(&l.inc.spare_frags)
 }
 
 // Forgets the result (and, unless kept, the scroll offsets): a new document is coming.
 reset :: proc(l: ^Layout, keep_scroll := false) {
-	clear(&l.boxes); clear(&l.inline_items); clear(&l.lines); clear(&l.frags); clear(&l.fonts); clear(&l.items); clear(&l.font_lookup)
+	clear(&l.boxes); clear(&l.cold); clear(&l.fin); clear(&l.inline_items); clear(&l.lines); clear(&l.frags); clear(&l.fonts); clear(&l.items); clear(&l.font_lookup)
 	clear(&l.spaces); clear(&l.clips); clear(&l.groups); clear(&l.band_start); clear(&l.band_items); clear(&l.node_box)
+	l.items_ver += 1
+	clear(&l.item_index.start); clear(&l.item_index.list)
 	if !keep_scroll { clear(&l.scroll); l.doc_scroll_x = 0 }
 	clear(&l.bars)
 	clear(&l.deco_items)
@@ -221,13 +226,14 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 
 destroy :: proc(l: ^Layout) {
 	read_pass(l, nil)
-	delete(l.boxes); delete(l.inline_items); delete(l.lines); delete(l.frags); delete(l.fonts); delete(l.items); delete(l.font_lookup)
+	delete(l.boxes); delete(l.cold); delete(l.fin); delete(l.inline_items); delete(l.lines); delete(l.frags); delete(l.fonts); delete(l.items); delete(l.font_lookup)
 	delete(l.spaces); delete(l.clips); delete(l.groups); delete(l.band_start); delete(l.band_items); delete(l.node_box)
 	delete(l.scroll)
 	delete(l.bars)
 	delete(l.bar_dirty)
 	delete(l.scratch)
 	delete(l.deco_items)
+	delete(l.item_index.start); delete(l.item_index.list)
 	delete(l.anchored)
 	delete(l.anchor_grid_areas)
 	delete(l.anchor_last)

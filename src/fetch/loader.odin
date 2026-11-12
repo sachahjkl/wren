@@ -7,6 +7,7 @@ import "core:strings"
 import "wb:base"
 import "wb:cookies"
 import "wb:csp"
+import "wb:extensions"
 import "wb:host"
 import "wb:http"
 import "wb:net"
@@ -32,6 +33,7 @@ Loader :: struct {
 	hold:     bool,                 // the interceptor is not ready: http(s) requests wait in `held` (hold_requests)
 	held:     [dynamic]base.Handle, // the tasks waiting for hold to end, in the order they were made
 	sync:     ^Sync_Stack,          // what a document's synchronous requests run on, once one was made (sync.odin)
+	extensions: ^extensions.Registry,   // the App's extensions (page.Pages.extensions): chrome-extension:// URLs (extension_scheme.odin); nil: none
 }
 
 // While `on`, requests to the network are parked before the interceptor sees them; when it ends they start, in order. The content
@@ -341,6 +343,7 @@ run_hop :: proc(t: ^Task) {
 	case "data":          data_hop(t)
 	case "blob":          blob_hop(t)
 	case "file":          file_hop(t)
+	case extensions.SCHEME_CHROME: extension_hop(t)   // extension_scheme.odin
 	case "about":
 		// (a document's URL, not a resource: Fetch has no answer for it outside a navigation)
 		if t.target.href == "about:blank" && t.mode == .Navigate { synthetic(t, 200, "text/html;charset=utf-8", nil, false); return }
@@ -412,6 +415,8 @@ http_hop :: proc(t: ^Task) {
 	case .Cors:
 		t.cors_flag = !same
 		t.taint = same ? .Basic : .Cors
+		// an extension's page or background to a host the user granted it: no preflight, readable (extension_scheme.odin)
+		if !same && t.loader.extensions != nil && extension_cors_granted(t) { t.cors_flag = false; t.taint = .Basic }
 	}
 	if t.mode == .No_Cors { restrict_no_cors_headers(t) }
 	// (COEP: credentialless: what such a request brings is public, which is why it needs no Cross-Origin-Resource-Policy)

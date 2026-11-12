@@ -51,6 +51,33 @@ Shape :: struct {
 	// (what a lookup reads is above, in as few cache lines as it can be: a get_field that misses waits on each of them)
 	transitions: [dynamic]Transition,
 	transition_hash: []u32, // index+1 into transitions, kept past TRANSITIONS_LINEAR_MAX (the shape every `{}` starts from has a transition per first key)
+	block:       ^Props_Block, // a shared shape's: `props` and `hash` are its start, which this shape does not own (nil: a root or a dictionary shape owns them)
+}
+
+// The keys of a chain of shared shapes, each made by a transition of the one before: a shape's props are the first
+// len(props) entries, and a transition of the shape at the tip writes its key after them. So an object that takes n keys
+// one by one makes n shapes that copy no list (1 + 2 + ... + n entries before). The table of entry index+1 after the
+// entries is shared the same way: a shape skips the indices past its own keys (shape_lookup). A block is made again,
+// with a copy of the start, for a second transition of a shape that is no longer the tip, or when it is full.
+Props_Block :: struct {
+	refs:     u32, // the shapes that hold it: the last one to go frees it (shape_finalize)
+	used:     u32, // the entries written: the keys of the tip
+	cap:      u32,
+	hash_len: u32, // the size of the table after the entries; 0 while cap <= SHAPE_LINEAR_MAX (a shape that small is scanned)
+}
+
+props_block_size :: #force_inline proc "contextless" (room, hash_len: int) -> int {
+	return size_of(Props_Block) + room * size_of(Shape_Prop) + hash_len * size_of(u32)
+}
+
+props_block_entries :: #force_inline proc "contextless" (b: ^Props_Block) -> [^]Shape_Prop {
+	return cast([^]Shape_Prop)(uintptr(b) + size_of(Props_Block))
+}
+
+props_block_hash :: #force_inline proc "contextless" (b: ^Props_Block) -> []u32 {
+	if b.hash_len == 0 {return nil}
+	p := cast([^]u32)(uintptr(b) + size_of(Props_Block) + uintptr(b.cap) * size_of(Shape_Prop))
+	return p[:b.hash_len]
 }
 
 // An object whose members are defined when first needed (a Web IDL prototype: most pages touch a few of the hundreds
@@ -100,7 +127,7 @@ Object :: struct {
 	using bits:     bit_field u8 {
 		extensible:     bool | 1,
 		is_constructor: bool | 1,
-		fast_array:     bool | 1, // Array/Arguments: integer keys live in data.(Array_Data)
+		fast_array:     bool | 1, // Array/Arguments: integer keys live in data.(Array_Data), dense (a holey Array's are there too, with holes, and it is not fast: property.odin)
 		is_htmldda:     bool | 1,
 		is_class_ctor:  bool | 1,
 		watch_index:    bool | 1, // Array.prototype / Object.prototype: an index key or a new [[Prototype]] disables array fast paths
@@ -381,9 +408,16 @@ shape_new :: proc(rt: ^Runtime, proto: ^Object) -> ^Shape {
 
 shape_finalize :: proc(rt: ^Runtime, sh: ^Shape) {
 	if sh.lazy != nil {mem_free(rt, sh.lazy, size_of(Lazy_Members))}
-	delete(sh.props)
+	if b := sh.block; b != nil {
+		// (props and hash are the block's: the shapes of the chain that live still read it)
+		b.refs -= 1
+		if b.refs == 0 {mem_free(rt, b, props_block_size(int(b.cap), int(b.hash_len)))}
+		sh.block = nil
+	} else {
+		delete(sh.props)
+		if sh.hash != nil {delete(sh.hash, rt_allocator(rt))}
+	}
 	delete(sh.transitions)
-	if sh.hash != nil {delete(sh.hash, rt_allocator(rt))}
 	if sh.transition_hash != nil {delete(sh.transition_hash, rt_allocator(rt))}
 }
 
@@ -467,17 +501,19 @@ shape_lookup :: #force_inline proc "contextless" (sh: ^Shape, a: Atom) -> int {
 	for {
 		v := sh.hash[h]
 		if v == 0 {return -1}
-		if sh.props[v - 1].atom == a {return int(v - 1)}
+		// (a table shared by a chain of shapes holds the keys of the shapes after this one: their index is past ours)
+		if v <= u32(len(sh.props)) && sh.props[v - 1].atom == a {return int(v - 1)}
 		h = (h + 1) & mask
 	}
 }
 
+// A dictionary shape with a copy of the keys of `src`, a list and a table of its own (it changes in place).
 @(private = "file")
-shape_clone :: proc(rt: ^Runtime, src: ^Shape, dict: bool) -> ^Shape {
+shape_clone_dict :: proc(rt: ^Runtime, src: ^Shape) -> ^Shape {
 	sh := shape_new(rt, src.proto)
 	reserve(&sh.props, len(src.props) + 1)
 	append(&sh.props, ..src.props[:])
-	sh.is_dict = dict
+	sh.is_dict = true
 	shape_build_hash(rt, sh)
 	return sh
 }
@@ -485,7 +521,63 @@ shape_clone :: proc(rt: ^Runtime, src: ^Shape, dict: bool) -> ^Shape {
 // Give `o` a private, mutable shape.
 object_make_dict :: proc(rt: ^Runtime, o: ^Object) {
 	if o.shape.is_dict {return}
-	o.shape = shape_clone(rt, o.shape, true)
+	o.shape = shape_clone_dict(rt, o.shape)
+}
+
+@(private = "file")
+props_block_new :: proc(rt: ^Runtime, room: int) -> ^Props_Block {
+	hash_len := 0
+	if room > SHAPE_LINEAR_MAX {
+		hash_len = 16
+		for hash_len < room * 2 {hash_len *= 2}
+	}
+	b := cast(^Props_Block)mem_alloc(rt, props_block_size(room, hash_len)) // (zeroed: an empty table)
+	b.cap = u32(room)
+	b.hash_len = u32(hash_len)
+	return b
+}
+
+// Write `p` after the used entries of `b` (the caller checked the room).
+@(private = "file")
+props_block_push :: proc "contextless" (b: ^Props_Block, p: Shape_Prop) {
+	i := b.used
+	props_block_entries(b)[i] = p
+	b.used = i + 1
+	if hash := props_block_hash(b); hash != nil {
+		mask := u32(len(hash) - 1)
+		h := atom_mix(p.atom) & mask
+		for hash[h] != 0 {h = (h + 1) & mask}
+		hash[h] = i + 1
+	}
+}
+
+// The shared shape after `sh` with the key `p` appended: its keys in the block of `sh` when `sh` is its tip and it has
+// room, else in a new block with a copy of the keys of `sh`.
+@(private = "file")
+shape_extend :: proc(rt: ^Runtime, sh: ^Shape, p: Shape_Prop) -> ^Shape {
+	n := len(sh.props)
+	b := sh.block
+	if b == nil || b.used != u32(n) || b.cap == u32(n) {
+		// A tip that is full (or a root) will likely grow again: room for twice its keys. A second branch of a shape takes
+		// exactly what it needs, as the closures and the objects that share a start and then differ do.
+		tip := b == nil || b.used == u32(n)
+		room := tip ? min(max(2 * (n + 1), 4), SHAPE_SHARED_MAX) : n + 1
+		b = props_block_new(rt, room)
+		for q in sh.props {props_block_push(b, q)}
+	}
+	props_block_push(b, p)
+	b.refs += 1
+	next := shape_new(rt, sh.proto)
+	next.block = b
+	// The list is the start of the block: nothing appends to a shared shape's list (a change makes a dictionary shape
+	// first), and an allocator that panics says so if something did.
+	raw := cast(^runtime.Raw_Dynamic_Array)&next.props
+	raw.data = props_block_entries(b)
+	raw.len = n + 1
+	raw.cap = n + 1
+	raw.allocator = runtime.Allocator{procedure = runtime.panic_allocator_proc}
+	if n + 1 > SHAPE_LINEAR_MAX {next.hash = props_block_hash(b)}
+	return next
 }
 
 // --- slots ---
@@ -550,13 +642,21 @@ add_property :: proc(rt: ^Runtime, o: ^Object, a: Atom, flags: Prop_Flags, kind:
 // add_property: out of line, a closure took 5 % longer to make (its four properties; docs/performance.md, round 22).
 shape_transition :: #force_inline proc(rt: ^Runtime, sh: ^Shape, a: Atom, flags: Prop_Flags, kind: Prop_Kind) -> ^Shape {
 	if to := shape_next(sh, a, flags, kind); to != nil {return to}
-	next := shape_clone(rt, sh, len(sh.props) >= SHAPE_SHARED_MAX)
-	append(&next.props, Shape_Prop{a, flags, kind})
-	shape_build_hash(rt, next)
-	if !next.is_dict {
-		append(&sh.transitions, Transition{atom = a, flags = flags, kind = kind, to = next})
-		shape_hash_transitions(rt, sh)
+	return shape_transition_new(rt, sh, a, flags, kind)
+}
+
+// The shape of a transition that `sh` does not have yet, made (out of line: shape_transition is inlined for its lookup,
+// in other files too).
+shape_transition_new :: proc(rt: ^Runtime, sh: ^Shape, a: Atom, flags: Prop_Flags, kind: Prop_Kind) -> ^Shape {
+	if len(sh.props) >= SHAPE_SHARED_MAX {
+		next := shape_clone_dict(rt, sh)
+		append(&next.props, Shape_Prop{a, flags, kind})
+		shape_build_hash(rt, next)
+		return next
 	}
+	next := shape_extend(rt, sh, Shape_Prop{a, flags, kind})
+	append(&sh.transitions, Transition{atom = a, flags = flags, kind = kind, to = next})
+	shape_hash_transitions(rt, sh)
 	return next
 }
 

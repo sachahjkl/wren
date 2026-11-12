@@ -87,6 +87,7 @@ function not exposed to workers is not instantiated.
 | [`encoding`](encoding.md) | `wren:encoding` | 8 | Window, Worker | TextEncoder and TextDecoder (Encoding Standard). Decoders keep their state between calls, so every WHATWG label |
 | [`events`](events.md) | `wren:core` | 44 | Window, Worker | Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a |
 | [`eventsource`](eventsource.md) | `wren:eventsource` | 7 | Window | Server-sent events (HTML EventSource) and the MessageEvent members that are not plain payload. Messages arrive as |
+| [`ext`](ext.md) | `wren:ext` | 10 | Window, Worker | The transport of browser extensions (docs/extensions.md, section 3.9; src/page/ext_realm.odin, ext_router.odin; |
 | [`fetch`](fetch.md) | `wren:fetch` | 11 | Window | The promise side of the Fetch API, on the same records as the callback API of module net (a Response is a Fetch: |
 | [`fontface`](fontface.md) | `wren:fontface` | 4 | Window | What `document.fonts.add(new FontFace(...))` puts in force: a rule of its own for the document's fonts (src/page/fonts.odin), in |
 | [`forms`](forms.md) | `wren:forms` | 186 | Window | Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and |
@@ -133,4 +134,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | `wren:websocket` | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | `wren:workers` | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1628 imports in 1529 functions.
+1638 imports in 1539 functions.

@@ -40,6 +40,7 @@ import "core:time"
 import "wb:base"
 import "wb:fetch"
 import "wb:csp"
+import "wb:extensions"
 import "wb:host"
 import "wb:http"
 import "wb:url"
@@ -50,8 +51,8 @@ SW_VIA_CACHE_MAX_AGE_S :: 86400
 Sw_State :: enum u8 { Parsed, Installing, Installed, Activating, Activated, Redundant }
 SW_STATE_NAMES := [Sw_State]string{.Parsed = "parsed", .Installing = "installing", .Installed = "installed", .Activating = "activating", .Activated = "activated", .Redundant = "redundant"}
 
-Sw_Event_Kind :: enum i64 { None, Install, Activate, Fetch, Message, Answer, Registration, Preload }
-Sw_Reply_Kind :: enum i64 { None, Install_Done, Activate_Done, Respond, Fall_Back, Fail, Skip_Waiting, Claim, Post_Client, Script_Ran, Request, Preload }
+Sw_Event_Kind :: enum i64 { None, Install, Activate, Fetch, Message, Answer, Registration, Preload, Ext }   // Ext: an extension background's event or answer (ext_realm.odin)
+Sw_Reply_Kind :: enum i64 { None, Install_Done, Activate_Done, Respond, Fall_Back, Fail, Skip_Waiting, Claim, Post_Client, Script_Ran, Request, Preload, Ext }   // Ext: an extension background's call (ext_realm.odin)
 Sw_Request_Op :: enum i64 { None, Match_All, Get, Open_Window, Navigate, Focus, Update, Unregister }
 // Fall_Back's code: the worker answered with an opaque response (web_sw.odin's REPLY_OPAQUE), the text says of which address.
 SW_REPLY_OPAQUE :: i64(1)
@@ -82,6 +83,8 @@ Sw_Version :: struct {
 	claim_pending: bool,           // clients.claim() came before the version was active
 	pending:      int,             // events waiting for its answer (install, activate, fetches, requests)
 	idle:         base.Handle,     // stops the worker when nothing happened for service_workers.idle_ms
+	ext:          ^extensions.Image,   // an extension's background (retained; ext_background.odin): its realm gets the extension APIs
+	ext_limits:   Ext_Limits,
 }
 
 Sw_Registration :: struct {
@@ -109,6 +112,7 @@ Sw_Registration :: struct {
 	preload:     bool,            // navigation preload enabled
 	preload_header: string,
 	dir:         string,          // the profile directory it is kept in
+	extension:   bool,            // an extension's background (ext_background.odin): not in `regs`, no install, no fetch event; its replies go to ext_bg_reply
 }
 
 @(private)
@@ -258,6 +262,7 @@ sw_version_free :: proc(v: ^Sw_Version) {
 	delete(v.csp)
 	delete(v.script)
 	delete(v.image)
+	extensions.image_release(v.ext)
 	free(v)
 }
 
@@ -706,9 +711,10 @@ sw_page_reply :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 	v := h.sw
 	if v == nil || v.worker != h { return }
 	r := v.reg
+	if r.extension { ext_bg_reply(h, v, m); return }   // an extension's background: its own life (ext_background.odin)
 	sw_touch(v)
 	switch Sw_Reply_Kind(m.code) {
-	case .None:
+	case .None, .Ext:
 	case .Script_Ran:
 		v.running = true
 		if v == r.installing { sw_resolve_registering(r) }
@@ -1513,22 +1519,27 @@ Sw_Global :: struct {
 	script:  string,
 	info:    string,   // the registration's state the browser sent last (ServiceWorkerRegistration_info)
 	events:  [dynamic]^Worker_Msg,
+	ext:     ^extensions.Image,   // an extension's background: its image (retained), read on this thread (ext_realm.odin)
+	ext_limits: Ext_Limits,
 }
 
 sw_global_init :: proc(g: ^Sw_Global, v: ^Sw_Version) {
 	g.reg, g.version, g.scope, g.script = v.reg.id, v.id, strings.clone(v.reg.scope), strings.clone(v.script)
 	g.info = strings.clone(sw_reg_info(v.reg))
+	g.ext, g.ext_limits = extensions.image_retain(v.ext), v.ext_limits
 }
 
 sw_global_free :: proc(g: ^Sw_Global) {
 	for m in g.events { msg_free(m) }
 	delete(g.events); delete(g.scope); delete(g.script); delete(g.info)
+	extensions.image_release(g.ext)
 	g^ = {}
 }
 
 // An event arrived for the worker: kept until the engine takes it (wj_sw_event, runtime/web_sw.c).
 sw_worker_event :: proc(p: ^Page, m: ^Worker_Msg) {
 	g := p.worker
+	if Sw_Event_Kind(m.code) == .Ext { ext_worker_event(p, m); return }   // an extension's event or answer (ext_realm.odin; frees m)
 	if Sw_Event_Kind(m.code) == .Registration { delete(g.sw.info); g.sw.info = m.text; m.text = "" }
 	append(&g.sw.events, m)
 	if r := js_realm(p); r != nil { js_call(p, r.inst, "wj_sw_event", nil) }

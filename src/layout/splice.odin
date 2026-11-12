@@ -38,8 +38,9 @@ Snap :: struct {
 }
 
 @(private)
-snap_of :: proc(bi: i32, b: ^Box) -> Snap {
-	return Snap{box = bi, pos = b.pos, size = b.size, marker = b.marker_pos, baselines = {b.baseline, b.last_baseline}}
+snap_of :: proc(l: ^Layout, bi: i32) -> Snap {
+	b := &l.boxes[bi]
+	return Snap{box = bi, pos = b.pos, size = b.size, marker = l.cold[bi].marker_pos, baselines = {b.baseline, b.last_baseline}}
 }
 
 // Is the content of inline formatting context `p` only text and plain inline boxes? Styles are read from `st` (the
@@ -104,21 +105,15 @@ snap_children :: proc(c: ^Ctx, bi: i32) {
 	pass.snapped[bi] = true
 	l := c.l
 	b := &l.boxes[bi]
-	append(&pass.snap, snap_of(bi, b))
+	append(&pass.snap, snap_of(l, bi))
 	for ch := b.first; ch != NONE; ch = l.boxes[ch].next {
 		k := &l.boxes[ch]
-		append(&pass.snap, snap_of(ch, k))
+		append(&pass.snap, snap_of(l, ch))
 		if k.kind == .Row_Group || k.kind == .Inline {
-			for g := k.first; g != NONE; g = l.boxes[g].next {
-				x := &l.boxes[g]
-				append(&pass.snap, snap_of(g, x))
-			}
+			for g := k.first; g != NONE; g = l.boxes[g].next { append(&pass.snap, snap_of(l, g)) }
 		}
 	}
-	for a := b.abs_first; a != NONE; a = l.boxes[a].abs_next {
-		k := &l.boxes[a]
-		append(&pass.snap, snap_of(a, k))
-	}
+	for a := b.abs_first; a != NONE; a = l.cold[a].abs_next { append(&pass.snap, snap_of(l, a)) }
 }
 
 // Coordinates, clips, spaces and groups of the inline boxes of context `p` (all plain: see inline_only).
@@ -131,14 +126,16 @@ finish_inline :: proc(l: ^Layout, p: i32) {
 		x := pop(&stack)
 		b := &l.boxes[x]
 		par := &l.boxes[b.parent]
+		pf := &l.fin[b.parent]
+		bf := &l.fin[x]
 		b.rel = {}
 		b.abs = l.boxes[b.pos_ref].abs
-		b.clip_owner = (.Clips in par.flags && .Propagated not_in par.flags && par.kind != .Inline) ? b.parent : par.clip_owner
-		b.space, b.clip = par.content_space, par.content_clip
-		b.content_space, b.content_clip = b.space, b.clip
+		bf.clip_owner = (.Clips in par.flags && .Propagated not_in par.flags && par.kind != .Inline) ? b.parent : pf.clip_owner
+		b.space, b.clip = pf.content_space, pf.content_clip
+		bf.content_space, bf.content_clip = b.space, b.clip
 		b.group = par.group
-		b.scroll_space = NONE
-		b.layer = NONE
+		bf.scroll_space = NONE
+		bf.layer = NONE
 		for ch := b.first; ch != NONE; ch = l.boxes[ch].next { append(&stack, ch) }
 	}
 }
@@ -148,8 +145,7 @@ finish_inline :: proc(l: ^Layout, p: i32) {
 @(private)
 overflow_of :: proc(l: ^Layout, owner: i32) -> (all, base: Rect) {
 	if owner == NONE { return l.inc.doc_extent, Rect{{0, 0}, l.icb} }
-	o := &l.boxes[owner]
-	return o.overflow, padding_rect(o)
+	return l.fin[owner].overflow, padding_rect(&l.boxes[owner])
 }
 
 // Content of `p` going from `before` to `after` leaves the overflow it counts in unchanged.
@@ -157,9 +153,9 @@ overflow_of :: proc(l: ^Layout, owner: i32) -> (all, base: Rect) {
 overflow_kept :: proc(l: ^Layout, p: i32, before: Rect, had: bool, after: Rect, has: bool) -> bool {
 	b := &l.boxes[p]
 	if .Clips in b.flags && .Propagated not_in b.flags { return true }   // its own clip holds it: its box is what counts
-	owner := b.clip_owner
+	owner := l.fin[p].clip_owner
 	// a transform between the context and the owner bounds the content by its transformed corners: not followed here
-	for x := p; x != NONE && x != owner; x = containing_parent(&l.boxes[x]) {
+	for x := p; x != NONE && x != owner; x = containing_parent(l, x) {
 		if .Transformed in l.boxes[x].flags { return false }
 		if .Fixed in l.boxes[x].flags && owner == NONE { return true }   // in a fixed box: not part of the document
 	}
@@ -180,13 +176,43 @@ overflow_kept :: proc(l: ^Layout, p: i32, before: Rect, had: bool, after: Rect, 
 // of no inline item) has its inline formatting context's style (emit_lines).
 @(private)
 remap_display_items :: proc(l: ^Layout) {
-	for &it in l.items {
-		if it.item >= 0 {
-			it.cs = l.inline_items[it.item].cs
-		} else if it.box >= 0 {
-			b := &l.boxes[it.box]
-			it.cs = it.kind == .Text && .Ifc not_in b.flags && b.ifc_root != NONE ? l.boxes[b.ifc_root].cs : b.cs
+	for &it in l.items { remap_item(l, &it) }
+}
+
+@(private = "file")
+remap_item :: #force_inline proc(l: ^Layout, it: ^Display_Item) {
+	if it.item >= 0 {
+		it.cs = l.inline_items[it.item].cs
+	} else if it.box >= 0 {
+		b := &l.boxes[it.box]
+		it.cs = it.kind == .Text && .Ifc not_in b.flags && b.ifc_root != NONE ? l.boxes[b.ifc_root].cs : b.cs
+	}
+}
+
+// remap_display_items for the items of boxes `boxes` only (Display_Item.box; the text of an inline item has the box
+// of its enclosing inline box, else of its formatting context: emit_lines). The index of the items by box is made once
+// after the display list changes, not at each refresh.
+@(private)
+remap_box_items :: proc(l: ^Layout, boxes: []i32) {
+	ix := &l.item_index
+	nb := len(l.boxes)
+	if ix.ver != l.items_ver || len(ix.start) != nb + 1 {
+		resize(&ix.start, nb + 1)
+		for &s in ix.start { s = 0 }
+		for &it in l.items { if it.box >= 0 && int(it.box) < nb { ix.start[it.box + 1] += 1 } }
+		for b in 0 ..< nb { ix.start[b + 1] += ix.start[b] }
+		resize(&ix.list, int(ix.start[nb]))
+		fill := make([]i32, nb, context.temp_allocator)
+		for &it, i in l.items {
+			if it.box < 0 || int(it.box) >= nb { continue }
+			ix.list[ix.start[it.box] + fill[it.box]] = i32(i)
+			fill[it.box] += 1
 		}
+		ix.ver = l.items_ver
+	}
+	for b in boxes {
+		if b < 0 || int(b) >= nb { continue }
+		for k in ix.start[b] ..< ix.start[b + 1] { remap_item(l, &l.items[ix.list[k]]) }
 	}
 }
 
@@ -284,7 +310,7 @@ try_splice :: proc(c: ^Ctx, roots: []i32, cand: map[i32]Splice_Root, input: Inpu
 		if b.pos != s.pos || b.size != s.size { return false }
 		// (an inline-block that stays where it is, with another baseline: what is on its line with it moves)
 		if .Atomic in b.flags && s.baselines != {b.baseline, b.last_baseline} { return false }
-		if b.marker_pos != s.marker && !inside[s.box] { return false }
+		if l.cold[s.box].marker_pos != s.marker && !inside[s.box] { return false }
 	}
 	// coordinates of the new inline boxes, then the overflow test
 	for r in roots { finish_inline(l, r) }
@@ -295,6 +321,7 @@ try_splice :: proc(c: ^Ctx, roots: []i32, cand: map[i32]Splice_Root, input: Inpu
 	}
 	for r in roots { if !range_stands_alone(l, r) { return false } }
 	// from here on the display list changes
+	l.items_ver += 1
 	bands_kept := true
 	outlines := make([dynamic]i32, 0, 0, context.temp_allocator)
 	scrollers := make([dynamic]i32, 0, 0, context.temp_allocator)

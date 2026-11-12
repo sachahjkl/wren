@@ -32,6 +32,7 @@ SETTINGS_PAGES := [?]Settings_Page_Def{
 	{"privacy", "Privacy", lucide.SHIELD, {
 		"blocker.enabled", "browser.notifications.enabled", "cookies.enabled", "privacy.third_party_cookies", "privacy.do_not_track", "history.global.enabled",
 		"history.global.retention_days", "browser.profile.persist"}},
+	{"vault", "Vault", lucide.LOCK, {"vault.enabled", "vault.fill.insecure", "vault.server.url", "vault.helper.path"}},
 	{"downloads", "Downloads", lucide.DOWNLOAD, {"browser.download.ask", "browser.download.directory"}},
 	{"media", "Media", lucide.PLAY, {"media.autoplay.policy"}},
 	{"system", "System", lucide.MONITOR, {"browser.update.check_daily", "browser.session.crash_recovery"}},

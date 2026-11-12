@@ -61,5 +61,4 @@ address, path and name, one line each), up to `browser.download.list_max` of the
 | `browser.download.list_max` | 200 | Finished downloads the list keeps, across restarts. |
 | `browser.download.max_bytes` | 0 | Largest download accepted; 0 is no limit. |
 | `browser.download.flush_bytes` | 1 MB | Bytes gathered before a chunk goes to the disk. |
-| `browser.download.max_buffered_bytes` | 64 MB | Most bytes kept in memory while the disk is busy. |
 | `browser.download.temp_suffix` | `.wrenpart` | Suffix of the temporary file. |

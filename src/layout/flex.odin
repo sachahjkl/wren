@@ -130,9 +130,10 @@ flex_items :: proc(c: ^Ctx, bi: i32) -> [dynamic]i32 {
 			// the static position is where it would be as the sole flex item (§4.1): justify-content, align-self
 			main := align_fraction(cs.justify_content, main_rev)
 			cross := align_fraction(self_align(cs, k.cs), cross_rev)
-			k.static_ref = bi
-			k.static_pos = {content_x(b), content_y(b)}
-			k.static_align = row ? {main, cross} : {cross, main}
+			kc := &c.l.cold[ch]
+			kc.static_ref = bi
+			kc.static_pos = {content_x(b), content_y(b)}
+			kc.static_align = row ? {main, cross} : {cross, main}
 			continue
 		}
 		append(&list, ch)

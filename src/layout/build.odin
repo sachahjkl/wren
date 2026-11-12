@@ -92,11 +92,12 @@ new_box :: proc(c: ^Ctx, kind: Box_Kind, cs: ^style.Computed, node: base.Handle,
 	idx := i32(len(c.l.boxes))
 	append(&c.l.boxes, Box{
 		node = node, cs = cs, kind = kind, parent = parent, first = NONE, last = NONE, next = NONE, pos_ref = parent,
-		cb = NONE, abs_first = NONE, abs_last = NONE, abs_next = NONE, static_ref = NONE, ifc_root = NONE,
-		cur_anon = NONE, fi = -1, mc = NONE, baseline = -1, last_baseline = -1, clip_owner = NONE, space = 0, clip = NONE,
-		content_space = 0, content_clip = NONE, group = NONE, scroll_space = NONE, depth = depth,
-		colspan = 1, rowspan = 1, layer = NONE,
+		abs_first = NONE, ifc_root = NONE, fi = -1, mc = NONE, baseline = -1, last_baseline = -1, space = 0, clip = NONE,
+		group = NONE, depth = depth,
 	})
+	// (the side records grow with `boxes`: every box has one of each)
+	append(&c.l.cold, Box_Cold{cb = NONE, abs_last = NONE, abs_next = NONE, static_ref = NONE, cur_anon = NONE, colspan = 1, rowspan = 1})
+	append(&c.l.fin, Box_Finish{clip_owner = NONE, content_space = 0, content_clip = NONE, scroll_space = NONE, layer = NONE})
 	append(&c.l.inc.info, Box_Info{cb = NONE, fcb = NONE, deco_box = NONE})
 	// tree order holds while each new box's parent is the previous box or one of its ancestors (each box is passed at
 	// most once on the way up)
@@ -148,6 +149,10 @@ box_flags_from_style :: proc(c: ^Ctx, bi: i32, cb, fcb: i32, sum: ^Style_Sum = n
 	sm := sum
 	if sm == nil { s = style_sum_of(b.cs); sm = &s }
 	b.flags += sm.flags
+	// overflow does not apply to an inline box (CSS Overflow 3 §3): it makes no formatting context, and the floats inside
+	// it take part in its container's (mark_box_flow_flags stops at a Bfc box: the blocks after them then kept a layout
+	// that ignored them)
+	if b.kind == .Inline && .Float not_in b.flags && .Abs not_in b.flags { b.flags -= {.Bfc} }
 	if .Frames in sm.bits {
 		c.l.frames_on = true
 		b.wm = b.cs.writing_mode
@@ -167,11 +172,11 @@ box_flags_from_style :: proc(c: ^Ctx, bi: i32, cb, fcb: i32, sum: ^Style_Sum = n
 	}
 	if .Abs in b.flags {
 		cbi := sm.position == .Fixed ? fcb : cb
-		b.cb = cbi
+		c.l.cold[bi].cb = cbi
 		b.pos_ref = cbi
-		cbb := &c.l.boxes[cbi]
-		if cbb.abs_last == NONE { cbb.abs_first = bi } else { c.l.boxes[cbb.abs_last].abs_next = bi }
-		cbb.abs_last = bi
+		last := c.l.cold[cbi].abs_last
+		if last == NONE { c.l.boxes[cbi].abs_first = bi } else { c.l.cold[last].abs_next = bi }
+		c.l.cold[cbi].abs_last = bi
 	}
 }
 
@@ -454,11 +459,11 @@ text_owner_cs :: proc(c: ^Ctx, h: base.Handle) -> (^style.Computed, base.Handle)
 @(private)
 anon_block :: proc(c: ^Ctx, f: Frame) -> i32 {
 	p := &c.l.boxes[f.parent]
-	if p.cur_anon != NONE && c.l.boxes[p.cur_anon].kind == .Block { return p.cur_anon }
+	if cur := c.l.cold[f.parent].cur_anon; cur != NONE && c.l.boxes[cur].kind == .Block { return cur }
 	cs := anon_style(c, p.cs, .Block)
 	a := new_box(c, .Block, cs, base.NIL_HANDLE, f.parent, c.l.boxes[f.parent].depth + 1)
 	c.l.boxes[a].flags += {.Anonymous, .Ifc}
-	c.l.boxes[f.parent].cur_anon = a
+	c.l.cold[f.parent].cur_anon = a
 	return a
 }
 
@@ -476,7 +481,7 @@ anon_table_chain :: proc(c: ^Ctx, f: Frame, want: style.Display) -> Frame {
 	switch f.mode {
 	case .Block, .Inline, .Flex, .None:
 		p := &c.l.boxes[f.parent]
-		t := p.cur_anon
+		t := c.l.cold[f.parent].cur_anon
 		if t == NONE || c.l.boxes[t].kind != .Table {
 			inline := f.mode == .Inline
 			cs := anon_style(c, p.cs, inline ? .Inline_Table : .Table)   // (border-spacing inherited with the rest)
@@ -488,7 +493,7 @@ anon_table_chain :: proc(c: ^Ctx, f: Frame, want: style.Display) -> Frame {
 				c.l.boxes[t].pos_ref = f.ifc
 				add_item(c, Inline_Item{kind = .Atomic, box = t, ifc = f.ifc})
 			}
-			c.l.boxes[f.parent].cur_anon = t
+			c.l.cold[f.parent].cur_anon = t
 		}
 		g.parent, g.mode = t, .Table
 		g.depth = c.l.boxes[t].depth
@@ -498,33 +503,33 @@ anon_table_chain :: proc(c: ^Ctx, f: Frame, want: style.Display) -> Frame {
 		case .Table_Row_Group, .Table_Header_Group, .Table_Footer_Group, .Table_Caption: return g
 		}
 		p := &c.l.boxes[f.parent]
-		rg := p.cur_anon
+		rg := c.l.cold[f.parent].cur_anon
 		if rg == NONE || c.l.boxes[rg].kind != .Row_Group {
 			rg = new_box(c, .Row_Group, anon_style(c, p.cs, .Table_Row_Group), base.NIL_HANDLE, f.parent, p.depth + 1)
 			c.l.boxes[rg].flags += {.Anonymous}
-			c.l.boxes[f.parent].cur_anon = rg
+			c.l.cold[f.parent].cur_anon = rg
 		}
 		g.parent, g.mode, g.depth = rg, .Row_Group, c.l.boxes[rg].depth
 		return anon_table_chain(c, g, want)
 	case .Row_Group:
 		if want == .Table_Row { return g }
 		p := &c.l.boxes[f.parent]
-		r := p.cur_anon
+		r := c.l.cold[f.parent].cur_anon
 		if r == NONE || c.l.boxes[r].kind != .Row {
 			r = new_box(c, .Row, anon_style(c, p.cs, .Table_Row), base.NIL_HANDLE, f.parent, p.depth + 1)
 			c.l.boxes[r].flags += {.Anonymous}
-			c.l.boxes[f.parent].cur_anon = r
+			c.l.cold[f.parent].cur_anon = r
 		}
 		g.parent, g.mode, g.depth = r, .Row, c.l.boxes[r].depth
 		return anon_table_chain(c, g, want)
 	case .Row:
 		if want == .Table_Cell { return g }
 		p := &c.l.boxes[f.parent]
-		cell := p.cur_anon
+		cell := c.l.cold[f.parent].cur_anon
 		if cell == NONE || c.l.boxes[cell].kind != .Cell {
 			cell = new_box(c, .Cell, anon_style(c, p.cs, .Table_Cell), base.NIL_HANDLE, f.parent, p.depth + 1)
 			c.l.boxes[cell].flags += {.Anonymous, .Bfc}
-			c.l.boxes[f.parent].cur_anon = cell
+			c.l.cold[f.parent].cur_anon = cell
 		}
 		g.parent, g.mode, g.depth = cell, .Block, c.l.boxes[cell].depth
 		return g
@@ -535,7 +540,7 @@ anon_table_chain :: proc(c: ^Ctx, f: Frame, want: style.Display) -> Frame {
 // A table-internal box ends the current run of anonymous table boxes when something else comes.
 @(private)
 end_anon_run :: proc(c: ^Ctx, parent: i32) {
-	c.l.boxes[parent].cur_anon = NONE
+	c.l.cold[parent].cur_anon = NONE
 }
 
 @(private)
@@ -643,8 +648,7 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 			g = inline_frame(f, anon_block(c, f))
 		} else {
 			// floats and absolutely positioned boxes join an open inline run, else they are block-level children
-			p := &c.l.boxes[f.parent]
-			if p.cur_anon != NONE && c.l.boxes[p.cur_anon].kind == .Block { g = inline_frame(f, p.cur_anon) }
+			if cur := c.l.cold[f.parent].cur_anon; cur != NONE && c.l.boxes[cur].kind == .Block { g = inline_frame(f, cur) }
 		}
 	case .Inline:
 		if lv == .Table_Internal && !out_of_flow && !floating { g = anon_table_chain(c, f, display) }
@@ -712,8 +716,8 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 	if kind == .Cell || kind == .Caption || kind == .Flex || kind == .Grid || kind == .Table { b.flags += {.Bfc} }
 	if kind == .Replaced { b.flags += {.Bfc} }
 	if kind == .Cell {
-		if v, ok := dom.get_attribute(c.d, h, "colspan"); ok { b.colspan = i32(clamp(parse_int(v, 1), 1, 1000)) }
-		if v, ok := dom.get_attribute(c.d, h, "rowspan"); ok { b.rowspan = i32(clamp(parse_int(v, 1), 0, 65534)) }
+		if v, ok := dom.get_attribute(c.d, h, "colspan"); ok { c.l.cold[bi].colspan = i32(clamp(parse_int(v, 1), 1, 1000)) }
+		if v, ok := dom.get_attribute(c.d, h, "rowspan"); ok { c.l.cold[bi].rowspan = i32(clamp(parse_int(v, 1), 0, 65534)) }
 	}
 	if display == .List_Item && !pseudo { b.flags += {.List_Item} }
 	if !pseudo { fieldset_flags(c, bi, n, g.parent) }
@@ -791,17 +795,17 @@ visit_text :: proc(c: ^Ctx, f: Frame, n: ^dom.Node) {
 	case .None: return
 	case .Inline:
 	case .Block:
-		p := &c.l.boxes[f.parent]
-		if collapsible_ws_only(n.text, cs.white_space) && (p.cur_anon == NONE || c.l.boxes[p.cur_anon].kind != .Block) { return }
+		cur := c.l.cold[f.parent].cur_anon
+		if collapsible_ws_only(n.text, cs.white_space) && (cur == NONE || c.l.boxes[cur].kind != .Block) { return }
 		g = inline_frame(f, anon_block(c, f))
 	case .Flex:
 		if collapsible_ws_only(n.text, cs.white_space) { return }
 		p := &c.l.boxes[f.parent]
-		a := p.cur_anon
+		a := c.l.cold[f.parent].cur_anon
 		if a == NONE || c.l.boxes[a].kind != .Block {
 			a = new_box(c, .Block, anon_style(c, p.cs, .Block), base.NIL_HANDLE, f.parent, p.depth + 1)
 			c.l.boxes[a].flags += {.Anonymous, .Ifc, .Bfc}
-			c.l.boxes[f.parent].cur_anon = a
+			c.l.cold[f.parent].cur_anon = a
 		}
 		g = inline_frame(f, a)
 	case .Table, .Row_Group, .Row:
@@ -875,9 +879,9 @@ make_marker :: proc(c: ^Ctx, bi: i32, h: base.Handle, cf: Frame) {
 		add_item(c, Inline_Item{kind = .Text, box = NONE, ifc = cf.ifc, fi = b.fi, text = s, cs = cs, node = h})
 		return
 	}
-	b = &c.l.boxes[bi]
-	b.marker = text
-	b.marker_w = -1   // has a marker (text empty: a bullet shape)
+	k := &c.l.cold[bi]
+	k.marker = text
+	k.marker_w = -1   // has a marker (text empty: a bullet shape)
 }
 
 @(private)

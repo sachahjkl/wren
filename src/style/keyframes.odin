@@ -176,7 +176,7 @@ compute_keyframe :: proc(e: ^Engine, block: ^Keyframe_Block, base, parent, initi
 				if good { for l in longs { if l.prop == d.prop { vals = l.vals; found = true; break } } }
 				if !found { continue }
 			}
-			if css_wide_keyword(vals) != "" || !apply_prop(&cx, d.prop, vals) { continue }
+			if wide_keyword(vals) != .None || !apply_prop(&cx, d.prop, vals) { continue }
 			ps_add(&extra, d.prop)
 		}
 	}
@@ -199,11 +199,11 @@ compute_keyframe :: proc(e: ^Engine, block: ^Keyframe_Block, base, parent, initi
 			if ok { for l in longs { if l.prop == d.prop { vals = l.vals; found = true; break } } }
 			if !found { continue }
 		}
-		switch css_wide_keyword(vals) {
-		case "inherit": cx_copy_prop(&cx, parent != nil ? parent : initial, d.prop)
-		case "initial": cx_copy_prop(&cx, initial, d.prop)
-		case "unset", "revert", "revert-layer": apply_unset(&cx, d.prop)
-		case: if !apply_prop(&cx, d.prop, vals) { continue }
+		switch wide_keyword(vals) {
+		case .Inherit: cx_copy_prop(&cx, parent != nil ? parent : initial, d.prop)
+		case .Initial: cx_copy_prop(&cx, initial, d.prop)
+		case .Unset, .Revert, .Revert_Layer: apply_unset(&cx, d.prop)
+		case .None: if !apply_prop(&cx, d.prop, vals) { continue }
 		}
 		if d.prop == .Font_Size {
 			cx.lc.font_size = f64(c.font_size)

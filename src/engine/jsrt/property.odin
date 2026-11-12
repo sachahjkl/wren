@@ -72,13 +72,11 @@ get_own_property :: proc(ctx: ^Context, o: ^Object, a: Atom, d: ^Prop_Desc) -> i
 			}
 		}
 	}
-	if o.fast_array {
-		if idx, isi := atom_array_index(a); isi {
-			ad := &o.data.(Array_Data)
-			if idx < ad.count {
-				if d != nil {d^ = data_desc(ad.values[idx], CWE)}
-				return 1
-			}
+	if idx, isi := atom_array_index(a); isi {
+		// (the elements of a fast or holey Array, or of an arguments object; a hole is no property)
+		if v, ok := array_own_element(o, idx); ok {
+			if d != nil {d^ = data_desc(v, CWE)}
+			return 1
 		}
 	}
 	i := shape_find(o.shape, a)
@@ -139,7 +137,7 @@ define_own_property :: proc(ctx: ^Context, o: ^Object, a: Atom, d: Prop_Desc, th
 			len := array_length_u32(o)
 			lw := .writable in o.shape.props[0].flags
 			if idx >= len && !lw {return fail_define(ctx, a, throw_flag)}
-			if o.fast_array && atom_is_int(a) {
+			if (o.fast_array || array_holey(o)) && atom_is_int(a) {
 				r, handled := fast_array_define(ctx, o, idx, &desc)
 				if handled {
 					if r == 1 && idx >= len {o.slots[0].value = mk_u32(idx + 1)}
@@ -195,8 +193,14 @@ desc_compatible :: proc(ctx: ^Context, cur: ^Prop_Desc, d: ^Prop_Desc) -> bool {
 	return true
 }
 
-// Fast-array element definition. handled=false means "convert to a slow array and use the
-// ordinary algorithm".
+// A new element more than this far past the end of an Array's elements makes it a dictionary: below, the indices
+// between become holes. A bound on the gap, not on the room: each write adds at most this many holes, so writes at
+// 2, 6, 14 ... 2^32 - 2 cannot double the storage to gigabytes. (`a[1000] = x` on an empty array is 16 KB of holes;
+// `a[1e6] = x` is one property.)
+ARRAY_HOLES_SLACK :: 1024
+
+// Element definition on an array whose elements are in its Array_Data (fast or holey). handled=false means "convert
+// to a dictionary array and use the ordinary algorithm".
 @(private = "file")
 fast_array_define :: proc(ctx: ^Context, o: ^Object, idx: u32, d: ^Prop_Desc) -> (int, bool) {
 	ad := &o.data.(Array_Data)
@@ -204,7 +208,7 @@ fast_array_define :: proc(ctx: ^Context, o: ^Object, idx: u32, d: ^Prop_Desc) ->
 		convert_to_slow_array(ctx, o)
 		return 0, false
 	}
-	if idx < ad.count {
+	if idx < ad.count && ad.values[idx].tag != .uninitialized {
 		// the element is a CWE data property; the result stays CWE unless the descriptor clears a flag
 		if (.writable in d.has && .writable not_in d.flags) || (.enumerable in d.has && .enumerable not_in d.flags) || (.configurable in d.has && .configurable not_in d.flags) {
 			convert_to_slow_array(ctx, o)
@@ -213,22 +217,45 @@ fast_array_define :: proc(ctx: ^Context, o: ^Object, idx: u32, d: ^Prop_Desc) ->
 		if .value in d.has {ad.values[idx] = d.value}
 		return 1, true
 	}
-	if idx == ad.count && o.extensible && .writable in d.flags && .enumerable in d.flags && .configurable in d.flags &&
-	   d.has >= {.writable, .enumerable, .configurable} {
+	// A new property (past the elements, or in a hole): only a CWE data property of an extensible array stays an element.
+	if !o.extensible || !(.writable in d.flags && .enumerable in d.flags && .configurable in d.flags && d.has >= {.writable, .enumerable, .configurable}) {
+		convert_to_slow_array(ctx, o)
+		return 0, false
+	}
+	v := .value in d.has ? d.value : UNDEFINED
+	if idx < ad.count {
+		ad.values[idx] = v // (a hole filled: the array stays holey, no count of its holes says when the last one goes)
+		return 1, true
+	}
+	if idx == ad.count {
 		if !array_reserve(ctx.rt, o, ad.count + 1) {
 			throw_out_of_memory(ctx)
 			return -1, true
 		}
-		ad.values[ad.count] = .value in d.has ? d.value : UNDEFINED
+		ad.values[ad.count] = v
 		ad.count += 1
+		return 1, true
+	}
+	// Past the end: the indices between become holes, unless the array would be mostly holes. (Only an Array: an arguments
+	// object is never holey.)
+	if o.class == .array && u64(idx) < u64(ad.count) + ARRAY_HOLES_SLACK {
+		if !array_reserve(ctx.rt, o, idx + 1) {
+			throw_out_of_memory(ctx)
+			return -1, true
+		}
+		for i in ad.count ..< idx {ad.values[i] = HOLE}
+		ad.values[idx] = v
+		ad.count = idx + 1
+		o.fast_array = false
 		return 1, true
 	}
 	convert_to_slow_array(ctx, o)
 	return 0, false
 }
 
+// A fast or holey array becomes a dictionary array: its elements become properties of its shape.
 convert_to_slow_array :: proc(ctx: ^Context, o: ^Object) {
-	if !o.fast_array {return}
+	if !o.fast_array && !array_holey(o) {return}
 	rt := ctx.rt
 	ad := o.data.(Array_Data)
 	o.fast_array = false
@@ -236,11 +263,52 @@ convert_to_slow_array :: proc(ctx: ^Context, o: ^Object) {
 	// index keys must come before the string keys added so far; enumeration sorts index keys, so
 	// appending is enough.
 	for i in 0 ..< ad.count {
+		if ad.values[i].tag == .uninitialized {continue} // a hole is no property
 		s := add_property(rt, o, atom_from_u32(i), CWE)
 		s.value = ad.values[i]
 	}
 	array_values_free(rt, o, ad)
 	o.data = Array_Data{}
+}
+
+// --- holey arrays ---
+//
+// A holey Array keeps its elements in its Array_Data as a fast one does, but some of them are holes (HOLE): no own
+// property there, a read goes on to the prototypes. It is not fast_array, so every fast path (the interpreter's, the
+// JIT's, the builtins'), which takes [0, count) as dense, leaves it to the object protocol, which reads the holes here.
+// As on a fast array, an index key up to ATOM_MAX_INT is never in its shape, and there is none at or past `count`; its
+// last element is never a hole (array_trim_holes), and one left without elements is fast again.
+HOLE :: UNINITIALIZED
+
+array_holey :: #force_inline proc "contextless" (o: ^Object) -> bool {
+	if o.fast_array || o.class != .array {return false}
+	ad, ok := o.data.(Array_Data)
+	return ok && ad.count > 0
+}
+
+// Can `o` have own elements outside its shape (a fast or holey Array, an arguments object)? A walk of the prototypes
+// that trusts their shapes stops at it for an index key. (Any Array: one byte to test, and a dictionary Array on a
+// prototype chain is rare.)
+object_has_elements :: #force_inline proc "contextless" (o: ^Object) -> bool {
+	return o.fast_array || o.class == .array
+}
+
+// The own element idx of an object that keeps its elements in an Array_Data (a fast or holey Array, an arguments
+// object): ok = false for a hole, past them, or for any other object (a dictionary array's Array_Data is empty).
+array_own_element :: #force_inline proc "contextless" (o: ^Object, idx: u32) -> (v: Value, ok: bool) {
+	ad, is_array := &o.data.(Array_Data)
+	if !is_array || idx >= ad.count {return}
+	v = ad.values[idx]
+	return v, v.tag != .uninitialized
+}
+
+// After the last elements of a fast or holey array went: the holes before them go too, and an array left without
+// elements is fast again (none of its index keys is in its shape). The caller knows `o` is fast or holey.
+@(private = "file")
+array_trim_holes :: proc "contextless" (o: ^Object, ad: ^Array_Data) {
+	if o.fast_array {return}
+	for ad.count > 0 && ad.values[ad.count - 1].tag == .uninitialized {ad.count -= 1}
+	if ad.count == 0 {o.fast_array = true}
 }
 
 ordinary_define :: proc(ctx: ^Context, o: ^Object, a: Atom, d: ^Prop_Desc, throw_flag: bool) -> int {
@@ -376,9 +444,12 @@ array_define_length :: proc(ctx: ^Context, o: ^Object, d: ^Prop_Desc, throw_flag
 // Delete elements in [new_len, old_len) from the top; stops at a non-configurable element.
 @(private = "file")
 array_truncate :: proc(ctx: ^Context, o: ^Object, old_len, new_len: u32) -> (u32, bool) {
-	if o.fast_array {
+	if o.fast_array || array_holey(o) {
 		ad := &o.data.(Array_Data)
-		if ad.count > new_len {ad.count = new_len}
+		if ad.count > new_len {
+			ad.count = new_len
+			array_trim_holes(o, ad)
+		}
 		if old_len <= ATOM_MAX_INT {return new_len, true}
 		// indices above ATOM_MAX_INT live in the shape even on a fast array
 	}
@@ -583,6 +654,14 @@ get_property :: proc(ctx: ^Context, obj: Value, a: Atom, receiver: Value) -> Val
 						return mk_str(str_from_code_unit(rt, str_char_at(rt, s, int(idx))))
 					}
 				}
+			case .array:
+				// a holey Array's elements (a hole goes on to the prototype)
+				if idx, isi := atom_array_index(a); isi {
+					if v, ok := array_own_element(o, idx); ok {
+						root(rt, v)
+						return v
+					}
+				}
 			case .module_ns:
 				d: Prop_Desc
 				r := module_ns_get_own(ctx, o, a, &d)
@@ -770,6 +849,18 @@ set_property :: proc(ctx: ^Context, obj: Value, a: Atom, val: Value, receiver: V
 			#partial switch p.class {
 			case .proxy:
 				return proxy_set(ctx, p, a, val, receiver, throw_flag)
+			case .array:
+				// a holey Array's element is a writable data property, as a fast one's; a hole is none
+				if idx, isi := atom_array_index(a); isi {
+					if _, ok := array_own_element(p, idx); ok {
+						if p == recv_obj {
+							ad := &p.data.(Array_Data)
+							ad.values[idx] = val
+							return 1
+						}
+						break chain
+					}
+				}
 			case .string:
 				if pd, ok := p.data.(^Prim_Data); ok && is_string(pd.v) {
 					if idx, isi := atom_array_index(a); isi && idx < as_str(pd.v).len {return fail_set(ctx, a, throw_flag)}
@@ -938,16 +1029,21 @@ delete_property :: proc(ctx: ^Context, o: ^Object, a: Atom) -> int {
 			}
 		}
 	}
-	if o.fast_array {
-		if idx, isi := atom_array_index(a); isi {
-			ad := &o.data.(Array_Data)
-			if idx >= ad.count {return 1}
-			if idx == ad.count - 1 {
-				ad.count -= 1
-				return 1
-			}
-			convert_to_slow_array(ctx, o)
+	if idx, isi := atom_array_index(a); isi && (o.fast_array || array_holey(o)) {
+		ad := &o.data.(Array_Data)
+		if idx >= ad.count {return 1}
+		if idx == ad.count - 1 {
+			ad.count -= 1
+			array_trim_holes(o, ad)
+			return 1
 		}
+		if o.class == .array {
+			// (an element is configurable: it becomes a hole, the others stay where they are)
+			ad.values[idx] = HOLE
+			o.fast_array = false
+			return 1
+		}
+		convert_to_slow_array(ctx, o)
 	}
 	i := shape_find(o.shape, a)
 	if i < 0 {return 1}
@@ -1004,6 +1100,11 @@ own_property_keys_collect :: proc(ctx: ^Context, o: ^Object, out: ^[dynamic]Atom
 		n: u32 = 0
 		if o.fast_array {
 			n = o.data.(Array_Data).count
+		} else if array_holey(o) {
+			ad := o.data.(Array_Data)
+			for i in 0 ..< ad.count {
+				if ad.values[i].tag != .uninitialized {append(out, atom_from_u32(i))}
+			}
 		} else if o.class == .string {
 			if pd, ok := o.data.(^Prim_Data); ok && is_string(pd.v) {n = as_str(pd.v).len}
 		} else if is_typed_array_class(o.class) {
@@ -1243,12 +1344,8 @@ set_integrity_level :: proc(ctx: ^Context, o: ^Object, frozen: bool) -> int {
 	if r <= 0 {return r}
 	keys := make([dynamic]Atom, 0, 16, tmp(ctx.rt))
 	if !own_property_keys(ctx, o, &keys) {return -1}
-	if o.fast_array && !frozen {
-		// sealing keeps elements writable: convert so attributes can differ from CWE
-		convert_to_slow_array(ctx, o)
-	} else if o.fast_array {
-		convert_to_slow_array(ctx, o)
-	}
+	// The elements are CWE (fast or holey): sealing or freezing makes them differ, so they become a dictionary's.
+	if o.fast_array || array_holey(o) {convert_to_slow_array(ctx, o)}
 	for k in keys {
 		if !frozen {
 			d := Prop_Desc{has = {.configurable}}

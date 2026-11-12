@@ -62,9 +62,10 @@ transform_stacking_and_containing_block :: proc(t: ^testing.T) {
 	testing.expect(t, tb != nil && ab != nil && xb != nil && yb != nil)
 	testing.expect(t, .Transformed in tb.flags && .Stacking in tb.flags, "a transform makes a stacking context")
 	ti := box_index(&f.l, el(f, "t"))
-	testing.expect(t, ab.cb == ti, "the transformed box contains its absolutely positioned descendants")
-	testing.expect(t, xb.cb == ti && .Fixed not_in xb.flags, "... and its fixed ones, which no longer stick to the viewport")
-	testing.expect(t, .Fixed in yb.flags && yb.cb == 0, "a fixed box outside stays fixed")
+	cold :: proc(f: ^Fixture, id: string) -> ^Box_Cold { return &f.l.cold[box_index(&f.l, el(f, id))] }
+	testing.expect(t, cold(f, "a").cb == ti, "the transformed box contains its absolutely positioned descendants")
+	testing.expect(t, cold(f, "x").cb == ti && .Fixed not_in xb.flags, "... and its fixed ones, which no longer stick to the viewport")
+	testing.expect(t, .Fixed in yb.flags && cold(f, "y").cb == 0, "a fixed box outside stays fixed")
 	ra, _ := box_of(&f.l, el(f, "a"), f.vp, 0)
 	testing.expectf(t, close(ra.border.min, {5, 55}), "absolute box laid out in the transformed box: %v", ra.border.min)
 	testing.expectf(t, ra.transformed && close(ra.bounds.min, {15, 55}), "and drawn with its transform: %v", ra.bounds.min)
@@ -129,7 +130,7 @@ transform_overflow_and_rounded_clip :: proc(t: ^testing.T) {
 	testing.expect(t, hit(f, 50, 150) == el(f, "fill"), "inside the rounded clip")
 	testing.expect(t, hit(f, 3, 103) != el(f, "fill"), "the corner is clipped away")
 	cb := bx(f, "rc")
-	testing.expect(t, cb != nil && f.l.clips[cb.content_clip].radii[0] == 50, "clip radii")
+	testing.expect(t, cb != nil && f.l.clips[f.l.fin[box_index(&f.l, el(f, "rc"))].content_clip].radii[0] == 50, "clip radii")
 }
 
 @(test)

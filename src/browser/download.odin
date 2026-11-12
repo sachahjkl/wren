@@ -7,8 +7,9 @@ package browser
 //   * the tab keeps the page it showed (the navigation does not happen: no history entry, the held page comes back);
 //     a tab opened only for it closes;
 //   * the body streams to a temporary file next to the destination ("name.ext.wrenpart"), written on the blocking
-//     threads one chunk at a time: memory holds at most browser.download.max_buffered_bytes (past it, the interface
-//     thread writes too, so a disk slower than the network slows the download instead of filling memory);
+//     threads one chunk at a time; while a chunk is being written the request is paused (fetch.task_pause), so what
+//     arrives meanwhile stays in the network stack, at most network.queue.high_water_bytes: a disk slower than the
+//     network slows the download down instead of filling memory, and the interface thread never writes;
 //   * meanwhile the Save dialog of Windows asks where (browser.download.ask; off: the downloads folder, a free name);
 //     cancelled, or the network fails: the temporary file is deleted; done: it is moved to its place;
 //   * The toolbar's button and about:downloads (Ctrl+J) list them (progress, cancel, open, show in folder, delete): downloads_ui.odin;
@@ -51,8 +52,6 @@ DOWNLOAD_PREFS := [?]config.Def{
 		description = "Largest download accepted; 0 = no limit."},
 	{name = "browser.download.flush_bytes", kind = .Int, default = {i = 1 << 20}, bounded = true, min = 4 << 10, max = 256 << 20, bytes = true, unit = "bytes",
 		description = "Bytes gathered before a chunk is written to disk (on a background thread)."},
-	{name = "browser.download.max_buffered_bytes", kind = .Int, default = {i = 64 << 20}, bounded = true, min = 64 << 10, max = 4 << 30, bytes = true, unit = "bytes",
-		description = "Most bytes of a download kept in memory while the disk is busy; past it they are written at once, which slows the download down to the disk's pace."},
 	{name = "browser.download.list_max", kind = .Int, default = {i = 200}, bounded = true, min = 1, max = 5000,
 		description = "Finished downloads about:downloads keeps listing, across restarts (the oldest go first)."},
 	{name = "browser.download.button", kind = .String, default = {s = "auto"}, choices = {"auto", "always", "never"},
@@ -346,7 +345,7 @@ Download :: struct {
 Downloads :: struct {
 	list:  [dynamic]^Download,
 	ids:   u64,
-	cfg:   struct { ask: bool, dir: string, max_bytes, flush, max_buffered, list_max: int, suffix: string, button: string },
+	cfg:   struct { ask: bool, dir: string, max_bytes, flush, list_max: int, suffix: string, button: string },
 	// the applications that open the file of the download whose menu is open (downloads_ui.odin "Open with"): read once
 	// when its menu shows them, not at every frame
 	handlers_for: u64,
@@ -423,7 +422,6 @@ download_cfg :: proc(app: ^App) {
 	app.dls.cfg.dir = strings.clone(config.string_of(p, "browser.download.directory"))
 	app.dls.cfg.max_bytes = int(config.int_of(p, "browser.download.max_bytes"))
 	app.dls.cfg.flush = int(config.int_of(p, "browser.download.flush_bytes"))
-	app.dls.cfg.max_buffered = int(config.int_of(p, "browser.download.max_buffered_bytes"))
 	app.dls.cfg.list_max = int(config.int_of(p, "browser.download.list_max"))
 	suffix := config.string_of(p, "browser.download.temp_suffix")
 	app.dls.cfg.suffix = strings.clone(suffix != "" ? suffix : ".wrenpart")
@@ -538,9 +536,8 @@ Write_Job :: struct {
 	err:    os.Error,
 }
 
-// Writes `buf` at `offset` (positional: several writes of one file may be out at once, at different offsets). os.write_at
-// is pwrite on POSIX and WriteFile with an OVERLAPPED on Windows, so writes at different offsets do not move a shared
-// cursor.
+// Writes `buf` at `offset` (positional: the offset is the download's, not a cursor of the file that a worker thread would
+// share). os.write_at is pwrite on POSIX and WriteFile with an OVERLAPPED on Windows.
 @(private = "file")
 write_at :: proc(h: ^os.File, buf: []byte, offset: i64) -> (ok: bool, err: os.Error) {
 	done := 0
@@ -613,14 +610,10 @@ download_advance :: proc(d: ^Download) {
 				write_done(job)
 				return   // (write_done advanced it)
 			}
-		} else if .Write in d.out && len(d.pending) > app.dls.cfg.max_buffered {
-			// the disk is slower than the network: this thread writes too, so memory stays bounded (the network waits
-			// meanwhile; fetch has no way to pause one request's reading)
-			ok, err := write_at(d.handle, d.pending[:], d.queued)
-			if !ok { download_to(d, .Failed, fmt.tprintf("cannot write %s (%v)", d.temp, err)); return }
-			d.queued += i64(len(d.pending))
-			clear(&d.pending)
 		}
+		// the request waits while a chunk is written: what the network brings meanwhile stays in it, one window at most
+		// (net.pause), so `pending` holds what came between two writes and the disk sets the pace
+		if d.task != base.NIL_HANDLE { fetch.task_pause(&app.loader, d.task, .Write in d.out) }
 		if d.state == .Flushing && .Write not_in d.out && len(d.pending) == 0 {
 			// (no place yet and no dialog: the move job picks a free name in the folder)
 			download_to(d, d.path == "" && .Dialog in d.out ? .Awaiting_Path : .Moving)

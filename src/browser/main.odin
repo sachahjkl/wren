@@ -272,6 +272,7 @@ App :: struct {
 	ask_state:     Ask_State,                // fs_shell.odin: a page's file system permission prompt
 	notes:         Notification_Shell,       // notification_shell.odin: the pages' system notifications
 	qr_url:        string,                   // qr_shell.odin: the address whose QR code is shown ("": none), owned
+	vault:         Vault_Shell,              // vault_shell.odin: the Vault (src/vault) and its surfaces
 	drag_probe:    Drag_Probe,               // drag_probe.odin
 	lm:            Load_Measure,             // blocker_measure.odin: WREN_BLOCKER_MEASURE
 	lm_report_path: string,
@@ -284,6 +285,7 @@ App :: struct {
 	pt:            Page_Thread,              // page_thread.odin
 	remote:        Remote,                   // remote_shell.odin: the remote control channel
 	bl:            Bl_Shell,                 // blocker_shell.odin: the content blocker
+	ext:           Ext_Shell,                // ext_shell.odin: browser extensions (their registry is app.pages.extensions)
 	dash:          Dash,                     // blocker_dashboard.odin
 	pick:          Picker,                   // blocker_picker.odin: the element picker
 	ub:            Urlbar,                   // urlbar.odin: the history index and its build
@@ -414,6 +416,7 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 	if len(app.tab_ids) == 0 { delete(app.tab_ids); app.tab_ids = nil }   // (made again by the next tab: nothing left over at the end)
 	bfcache_drop_tab(app, t)
 	tab_nav_destroy(app, t)
+	ext_tab_closed(app, t)   // ext_shell.odin: what the extensions kept for the tab (a popup's mark, per-tab action state)
 	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone (a held page too)
 	page.navigable_top_free(t.top)   // (the windows holding it see it closed)
 	hold_step(app, t, .Tab_Gone)
@@ -505,7 +508,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if restore { timing_begin(t, false) }
 	defer if restore { restore_begin(app, t, entry) }
 	license_file := is_license_file_address(target) && verdict.acts   // license_shell.odin
-	if is_builtin_address(target) || license_file || is_cache_address(target) || is_sites_address(target) { hold_step(app, t, .Over); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
+	if is_builtin_address(target) || license_file || is_cache_address(target) || is_sites_address(target) || is_extensions_address(target) { hold_step(app, t, .Over); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
 	if target == "about:config" { show_config(app, t); return }
 	if target == SETTINGS_URL { show_settings(app, t); return }
 	if is_history_address(target) { show_history(app, t, target); return }
@@ -520,6 +523,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if license_file { license_open_file(app, t, target); return }
 	if is_cache_address(target) { show_cache_page(app, t, target, verdict.acts); return }   // http_cache_ui.odin
 	if is_sites_address(target) { show_sites_page(app, t, target, verdict.acts); return }   // site_data_ui.odin
+	if is_extensions_address(target) { show_extensions_page(app, t, target, verdict.acts); return }   // ext_page.odin
 	load := new(Doc_Load)
 	load.tab = t
 	load.started_ns = host.now_ns(&app.loop)
@@ -1130,6 +1134,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	fs_shell_build(app)   // fs_shell.odin: a page's file permission prompt (nothing while none waits)
 	notification_shell_build(app)   // notification_shell.odin: a page's notification permission prompt
 	qr_build(app)   // qr_shell.odin: the QR code of the page's address
+	vault_dialogs_build(app)   // vault_shell.odin: the Vault's login / unlock dialog, the question before a fill
 	bookmarks_dialog_build(app)   // bookmarks_ui.odin: the dialog that names a bookmark
 	bookmarks_bar_menus(app)   // bookmarks_bar.odin: the bar's menus
 	confirm_build(app)   // confirm_shell.odin: a question before an act not taken back
@@ -1324,8 +1329,7 @@ profile_load :: proc(app: ^App) {
 // (at exit) everything is written before it returns.
 profile_save :: proc(app: ^App, force := false) {
 	c, h, pf := profile_paths(app)
-	// (the preferences change only when the user changes one; the toolkit's config makes the text and writes it in one call)
-	if app.prefs.dirty || force { profile_write_report(&app.recovery.writes.prefs, pf, config.save_user(&app.prefs, pf), tell = !force && profile_can_tell(app)) }
+	profile_prefs_save(app, pf)   // profile_writes.odin (when the user's layer changed)
 	session_save(app, force)   // session.odin (when it changed)
 	profile_stores_save(app, c, h, force)   // the cookies and the HSTS hosts
 	if force { profile_files_flush(app) }
@@ -1807,6 +1811,7 @@ app_start :: proc(args: []string) -> ^App {
 	profile_load(app)
 	config.watch(&app.prefs, "", on_pref_change, app)
 	arm_autosave(app)
+	vault_shell_init(app)   // vault_shell.odin: the Vault (off unless vault.enabled; its helper starts only at a login or an unlock)
 
 	// the first tab: the address given on the command line, else the homepage
 	prof_mark(.Shell)
@@ -1892,6 +1897,7 @@ app_start :: proc(args: []string) -> ^App {
 	sw_shell_init(app)   // sw_shell.odin: clients.openWindow, WindowClient.focus
 	fs_shell_init(app)   // fs_shell.odin: file pickers and file permission prompts
 	notification_shell_init(app)   // notification_shell.odin: system notifications of pages
+	ext_shell_start(app)   // ext_shell.odin: browser extensions (their list and packages load off the loop thread)
 	storage_access_shell_init(app)
 	clipboard_js_init(app)   // clipboard_win.odin: navigator.clipboard
 	drop_files_init(app)   // local_paths.odin
@@ -1950,8 +1956,11 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	sw_shell_destroy(app)
 	fs_shell_destroy(app)
 	notification_shell_destroy(app)
+	ext_shell_stop(app)   // ext_shell.odin: backgrounds stopped, storage written (before the pages and the service workers go)
 	delete(app.qr_url); app.qr_url = ""
 	storage_access_shell_destroy(app)
+	host.shutdown_step("vault_shell_destroy")
+	vault_shell_destroy(app)   // vault_shell.odin: a helper still at work is stopped (it holds keys: it never outlives the browser)
 	host.shutdown_step("session capture")
 	for t in tabs_all(app) { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
 	host.shutdown_step("profile_save")

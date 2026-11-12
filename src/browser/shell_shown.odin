@@ -260,7 +260,7 @@ shell_chain_by :: proc(app: ^App, t: ^Tab, node: base.Handle, d: draw.Vec2) {
 		if !shell_layout_paintable(app, t) { return }
 		l := &t.layout
 		if bi := lay.box_index(l, node); bi != lay.NONE {
-			for sp := l.boxes[bi].scroll_space; sp != lay.NONE && rest != {}; sp = l.spaces[sp].parent {
+			for sp := l.fin[bi].scroll_space; sp != lay.NONE && rest != {}; sp = l.spaces[sp].parent {
 				if l.spaces[sp].kind != .Scroll { continue }
 				box := l.boxes[l.spaces[sp].box].node
 				from := shell_box_shown(app, t, box)

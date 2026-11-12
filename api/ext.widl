@@ -1,0 +1,33 @@
+/// The transport of browser extensions (docs/extensions.md, section 3.9; src/page/ext_realm.odin, ext_router.odin;
+/// native/js/odin/ext_runtime.odin and ext_api.js build chrome.* on it). The host derives the extension and the kind of
+/// context from the realm that calls (a guest sends no identity): in a realm that is not an extension context every
+/// function answers nothing ("" , a rejected call, no effect). Payloads are JSON text, as Chrome's messages are, and
+/// are bounded by extensions.message.max_bytes.
+[Exposed=(Window,Worker)]
+module ext {
+  /// The realm's context as a JSON object ("" : not an extension context): id, kind (background, popup, tab), base URL,
+  /// UI language, platform, and the API methods and events this context may use (its permissions decide them).
+  string Ext_info();
+  /// runtime.getManifest(): the manifest as JSON text, comments removed and __MSG_*__ replaced.
+  string Ext_manifest();
+  /// i18n.getMessage(name, substitutions): `subs` is a JSON list of strings. "" when no catalogue has the message.
+  string Ext_message(string name, string subs);
+  /// An API call (`method` as "storage.local.get", `args` a JSON list): a promise of the answer as text: a JSON value,
+  /// "" for undefined, or "!" followed by the error's message (runtime.lastError).
+  Promise Ext_call(string method, string args);
+  /// The realm added a listener of `event` ("runtime.onMessage"), or removed its last one (`on` false): an event
+  /// nobody listens to is not sent, and a stopped background does not start for it.
+  void Ext_listen(string event, bool on);
+  /// The next event for this realm as a JSON object ("" : none waits): {t: "event", e, a, r}, {t: "connect", p, n, s},
+  /// {t: "port", p, m}, {t: "disconnect", p}. The host calls the realm's wj_ext_event when one arrives.
+  string Ext_take();
+  /// The answer of this realm to message `reply` (runtime.onMessage): `has` false when its listeners gave none.
+  void Ext_respond(u64 reply, string value, bool has);
+  /// runtime.connect: a port this realm opens, id `port` (its own choice), named `name`, to the other contexts of its
+  /// extension that listen to runtime.onConnect.
+  void Ext_connect(u64 port, string name);
+  /// Port.postMessage: `message` (JSON text) to the other end(s) of `port`.
+  void Ext_portPost(u64 port, string message);
+  /// Port.disconnect: the other end(s) get onDisconnect.
+  void Ext_portClose(u64 port);
+}

@@ -397,7 +397,7 @@ scroller_axes_under :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> (node: base.Han
 	// one the session starts from, the axes are those of all of them
 	chain := make([dynamic]base.Handle, 0, 4, context.temp_allocator)
 	if h.item != lay.NONE {
-		if b := &l.boxes[h.box]; b.scroll_space != lay.NONE { append(&chain, b.node) }
+		if l.fin[h.box].scroll_space != lay.NONE { append(&chain, l.boxes[h.box].node) }
 		for s := l.items[h.item].space; s != lay.NONE; s = l.spaces[s].parent {
 			if l.spaces[s].kind == .Scroll { append(&chain, l.boxes[l.spaces[s].box].node) }
 		}
@@ -433,7 +433,7 @@ scroll_chain_by :: proc(app: ^App, t: ^Tab, node: base.Handle, d: draw.Vec2) {
 	rest := d
 	l := &t.layout
 	if bi := lay.box_index(l, node); node != base.NIL_HANDLE && bi != lay.NONE {
-		for s := l.boxes[bi].scroll_space; s != lay.NONE && rest != {}; s = l.spaces[s].parent {
+		for s := l.fin[bi].scroll_space; s != lay.NONE && rest != {}; s = l.spaces[s].parent {
 			if l.spaces[s].kind == .Scroll { rest = take(app, t, l.boxes[l.spaces[s].box].node, rest) }
 		}
 	}
@@ -454,7 +454,7 @@ wheel_scroller :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2) -> base.Handle {
 		nx, ny := clamp(pend.x + d.x, lo.x, limit.x), clamp(pend.y + d.y, lo.y, limit.y)
 		return abs(nx - pend.x) >= 0.01 || abs(ny - pend.y) >= 0.01
 	}
-	if b := &l.boxes[h.box]; b.scroll_space != lay.NONE && can(app, t, b.node, d) { return b.node }
+	if b := &l.boxes[h.box]; l.fin[h.box].scroll_space != lay.NONE && can(app, t, b.node, d) { return b.node }
 	for s := l.items[h.item].space; s != lay.NONE; s = l.spaces[s].parent {
 		if l.spaces[s].kind != .Scroll { continue }
 		node := l.boxes[l.spaces[s].box].node
@@ -535,8 +535,9 @@ scrollbar_at :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> (hit: Bar_Hit, ok: boo
 		if !inside(grow(track, slop), p) { continue }
 		if it.clip != lay.NONE && !lay.clip_contains(l, &v, it.clip, p) { continue }
 		b := &l.boxes[it.box]
-		if b.scroll_space == lay.NONE { continue }
-		sp := &l.spaces[b.scroll_space]
+		ss := l.fin[it.box].scroll_space
+		if ss == lay.NONE { continue }
+		sp := &l.spaces[ss]
 		vertical := .Vertical in it.flags
 		ax := vertical ? 1 : 0
 		sport := sp.port.max - sp.port.min

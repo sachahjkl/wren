@@ -427,16 +427,16 @@ var_lookup :: proc(env: ^Var_Env, name: string, depth: int) -> (string, bool) {
 		reg := registered(env.engine, name)
 		text: string
 		ok: bool
-		switch css_wide_keyword(cand.decl.value) {
-		case "initial":
+		switch cand.decl.wide {
+		case .Initial:
 			// the guaranteed-invalid value, or the registered initial value
 			if reg != nil && reg.has_initial { text, ok = reg.initial, true }
-		case "inherit":
+		case .Inherit:
 			if env.parent != nil { text, ok = custom_get(env.parent, name) }
 			if !ok && reg != nil && reg.has_initial { text, ok = reg.initial, true }
-		case "unset", "revert", "revert-layer":
+		case .Unset, .Revert, .Revert_Layer:
 			text, ok = custom_inherited(env, name)
-		case:
+		case .None:
 			vals: []css.Value
 			vals, ok = substitute(env, cand.decl.value, depth + 1)
 			if ok {
@@ -809,7 +809,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 			text: string
 			ok: bool
 			// `initial` of an unregistered property: the guaranteed-invalid value, nothing to resolve
-			if !(cand.valid && e.registered == nil && css_wide_keyword(cand.decl.value) == "initial") {
+			if !(cand.valid && e.registered == nil && cand.decl.wide == .Initial) {
 				text, ok = var_lookup(&env, name, 0)
 			}
 			res[i] = {name, text, ok}
@@ -857,6 +857,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 				}
 			}
 			vals := cand.decl.value
+			wide := cand.decl.wide
 			if cand.decl.has_var {
 				sub, ok := substitute(&env, vals, 0)
 				if !ok { apply_unset(&cx, pr); break }
@@ -869,24 +870,34 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 				if ok { for l in longs { if l.prop == cand.decl.prop { vals = l.vals; found = true; break } } }
 				if !found { apply_unset(&cx, pr); break }
 			}
-			switch kw := css_wide_keyword(vals); kw {
-			case "inherit":
+			// (a value with var() is known once substituted)
+			if cand.decl.has_var { wide = wide_keyword(vals) }
+			switch wide {
+			case .Inherit:
 				cx_copy_prop(&cx, parent != nil ? parent : s.initial, pr)
 				ps_add(&cx.explicit, pr)
 				if parent != nil { ps_add(&c.inherits, pr) }
-			case "initial":
+			case .Initial:
 				cx_copy_prop(&cx, s.initial, pr)
 				ps_remove(&c.inherits, pr)
 				if p.highlight != nil { ps_add(&p.highlight.declared, pr) }
-			case "unset": apply_unset(&cx, pr)
-			case "revert", "revert-layer":
-				if prev, found := revert_candidate(entries, inline_rule, pr, cand.key, kw == "revert", parent, p.own_depth); found {
+			case .Unset: apply_unset(&cx, pr)
+			case .Revert, .Revert_Layer:
+				if prev, found := revert_candidate(entries, inline_rule, pr, cand.key, wide == .Revert, parent, p.own_depth); found {
 					cand = prev
 					continue
 				}
 				apply_unset(&cx, pr)
-			case:
-				if apply_prop(&cx, pr, vals) {
+			case .None:
+				// a value compiled for this property is applied as compiled (a flow-relative one that went to another
+				// property, from its tokens)
+				applied := true
+				if !cand.decl.has_var && cand.decl.spec.kind != .None && cand.decl.prop == pr {
+					apply_specified(&cx, pr, cand.decl.spec)
+				} else {
+					applied = apply_prop(&cx, pr, vals)
+				}
+				if applied {
 					ps_remove(&c.inherits, pr)
 					if p.highlight != nil {
 						ps_add(&p.highlight.declared, pr)

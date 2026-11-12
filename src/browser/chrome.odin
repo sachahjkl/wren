@@ -186,8 +186,10 @@ address_row :: proc(app: ^App, t: ^Tab) {
 		address_chips(app, t)
 		ui.spacer(ui.px(em * 0.4))
 		if downloads_button_visible(app) { downloads_button(app, t); ui.spacer(ui.px(em * 0.2)) }   // downloads_ui.odin
+		if app.vault.v.state != .Disabled { vault_button(app, t); ui.spacer(ui.px(em * 0.2)) }   // vault_shell.odin: the Vault's lock and panel
 		blocker_button(app, t)   // blocker_ui.odin: the content blocker's icon and panel
 		ui.spacer(ui.px(em * 0.2))
+		ext_toolbar_buttons(app, t)   // ext_toolbar.odin: the extensions' buttons (each with its spacer)
 		main_menu_button(app, t)
 		ui.spacer(ui.px(em * 0.5))
 	}

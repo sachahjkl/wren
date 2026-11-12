@@ -1152,7 +1152,7 @@ jit_lookup :: proc(sh: ^Shape, a: Atom, accessors := false) -> (l: Jit_Lookup, o
 			l.idx = i
 			return l, true
 		}
-		if p.fast_array || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return}
+		if object_has_elements(p) || p.class == .proxy || p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {return}
 		p = ps.proto
 	}
 	return
@@ -1794,7 +1794,8 @@ j_elem_addr :: proc(c: ^Jc, ord: int, idx: int, kind: Jit_Arr_Kind) {
 @(private = "file")
 j_elem_ty :: proc(c: ^Jc, site: ^Jit_Site, arr: Value) -> Jit_Ty {
 	if site.typed {return site.ty}
-	if arr.tag == .object {
+	if arr.tag == .object && as_obj(arr).fast_array {
+		// (a holey array's holes are no elements: the code reads a fast array's only)
 		if ad, ok := &as_obj(arr).data.(Array_Data); ok {
 			for i in 0 ..< min(int(ad.count), JIT_ELEM_PEEK) {jit_site_see(site, ad.values[i])}
 		}
@@ -2215,7 +2216,7 @@ j_prop_add :: proc(c: ^Jc, obj: u32, sh: ^Shape, class: Class_ID, a: Atom, pc: i
 	np := 0
 	for p := sh.proto; p != nil; p = p.shape.proto {
 		ps := p.shape
-		if np >= JIT_MAX_CHAIN || ps.lazy != nil || shape_lookup(ps, a) >= 0 || p.fast_array || p.class == .proxy ||
+		if np >= JIT_MAX_CHAIN || ps.lazy != nil || shape_lookup(ps, a) >= 0 || object_has_elements(p) || p.class == .proxy ||
 		   p.class == .module_ns || p.class == .string || p.host_exotic || is_typed_array_class(p.class) {
 			return false
 		}

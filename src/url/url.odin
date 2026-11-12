@@ -277,10 +277,13 @@ origin_of :: proc(u: URL, allocator := context.allocator) -> Origin {
 	switch u.scheme {
 	case "http", "https", "ws", "wss", "ftp":
 		return Origin{scheme = strings.clone(u.scheme, allocator), host = strings.clone(u.host, allocator), port = effective_port(u)}
+	case "chrome-extension", "moz-extension":
+		// an extension's own documents (docs/extensions.md, section 3.4): a tuple origin, its host the extension's id, no port
+		if u.host != "" { return Origin{scheme = strings.clone(u.scheme, allocator), host = strings.clone(u.host, allocator), port = -1} }
 	case "blob":
 		// blob:https://example.com/uuid has the origin of the URL it wraps
 		inner, ok := parse(u.path, nil, context.temp_allocator)
-		if ok && (inner.scheme == "http" || inner.scheme == "https") { return origin_of(inner, allocator) }
+		if ok && (inner.scheme == "http" || inner.scheme == "https" || inner.scheme == "chrome-extension" || inner.scheme == "moz-extension") { return origin_of(inner, allocator) }
 	}
 	return new_opaque_origin()
 }
@@ -316,7 +319,7 @@ origin_parse :: proc(s: string, allocator := context.allocator) -> (Origin, bool
 // Secure Contexts: is content served from this URL trustworthy enough for powerful features?
 is_potentially_trustworthy :: proc(u: URL) -> bool {
 	switch u.scheme {
-	case "https", "wss", "file": return true
+	case "https", "wss", "file", "chrome-extension", "moz-extension": return true
 	case "about": return u.href == "about:blank" || u.href == "about:srcdoc"
 	case "blob", "data":
 		inner, ok := parse(u.path, nil, context.temp_allocator)

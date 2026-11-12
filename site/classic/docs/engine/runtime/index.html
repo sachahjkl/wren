@@ -121,11 +121,15 @@ iterator or string that caches it refers to it, and outside a native call; its s
 counts its references as QuickJS does (<code>JS_NewAtom*</code>, <code>JS_DupAtom</code>, <code>JS_FreeAtom</code>).</li>
 <li><strong>Shapes</strong> (<code>shape.odin</code>/<code>object.odin</code>): hidden classes with transitions and an open‑addressed hash;
 an object stores a flat <code>[]Prop_Slot</code>; deleting a property or growing past 48 properties switches the
-object to a private dictionary shape.</li>
+object to a private dictionary shape. A chain of shared shapes keeps its keys and its hash in one <code>Props_Block</code>: a
+transition from the last shape of the chain writes into the block, so n keys added one by one store about 2n entries,
+not n²/2.</li>
 <li><strong>Objects</strong>: a GC cell with a shape, inline slots, and an <code>Object_Data</code> tagged union for the internal
 slots of exotic kinds (Array, Function, Native, Bound, wrappers, ArrayBuffer/TypedArray/DataView,
 Map/Set, Proxy, Date, RegExp, Promise, Generator, Module namespace, Host…). Arrays keep a dense
-<code>[]Value</code> fast path.</li>
+<code>[]Value</code> fast path (<code>fast_array</code>). A delete inside an Array, or a write at most 1024 past its end, keeps
+the storage and marks the hole with the <code>uninitialized</code> tag: the array leaves the fast path for the generic property
+code, which reads a hole as a missing property. A write further out makes a dictionary, as before.</li>
 <li><strong>The layout on wasm32</strong>, what ships (<code>#assert</code>ed in <code>object.odin</code>): a <code>Cell</code> header is 8 bytes (<code>size</code>; the kind in a
 nibble with <code>pinned</code>, <code>in_ext</code> and two bits of the kind's own in a byte; <code>mark</code> a byte; the host's count of references
 in 16 bits, which sticks at its top and makes the cell a root for good); an <code>Object</code> 40 (a native function's <code>magic</code>
@@ -427,6 +431,7 @@ on wasm32, what ships, 104: <code>Object</code> 40 + 4 inline slots of 16; a str
 <li><a href="../../../docs/api/entries/">Module entries</a></li>
 <li><a href="../../../docs/api/events/">Module events</a></li>
 <li><a href="../../../docs/api/eventsource/">Module eventsource</a></li>
+<li><a href="../../../docs/api/ext/">Module ext</a></li>
 <li><a href="../../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../../docs/api/fontface/">Module fontface</a></li>
 <li><a href="../../../docs/api/forms/">Module forms</a></li>
@@ -545,6 +550,7 @@ on wasm32, what ships, 104: <code>Object</code> 40 + 4 inline slots of 16; a str
 <p class="doc-sec-title">More</p>
 <ul class="doc-links">
 <li><a href="../../../docs/README/">Writing documentation</a></li>
+<li><a href="../../../docs/bitwarden/">Vault: a native client for Bitwarden accounts</a></li>
 <li><a href="../../../docs/closed-tabs/">Closed tabs and sessions</a></li>
 <li><a href="../../../docs/engine/bigint/">bigint: arbitrary-precision integers for the JavaScript engine</a></li>
 <li><a href="../../../docs/engine/datetime/">datetime (package jsdate): the JavaScript engine's Date</a></li>
@@ -555,12 +561,14 @@ on wasm32, what ships, 104: <code>Object</code> 40 + 4 inline slots of 16; a str
 <li><a href="../../../docs/engine/regexp/">engine/regexp</a></li>
 <li><a href="../../../docs/engine/runtime/" aria-current="page" class="active">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
+<li><a href="../../../docs/extensions/">Browser extensions</a></li>
 <li><a href="../../../docs/js/bindgen/">bindgen: Odin output and Odin input</a></li>
 <li><a href="../../../docs/js/odin-abi/">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../../docs/js/web-crypto/">crypto.subtle</a></li>
 <li><a href="../../../docs/js/webassembly-api/">The WebAssembly JavaScript API</a></li>
 <li><a href="../../../docs/updates/">Updates</a></li>
+<li><a href="../../../docs/vault-protocol/">The Vault helper protocol</a></li>
 </ul>
 </div>
 </nav>

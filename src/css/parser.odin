@@ -41,7 +41,7 @@ Rule :: struct {
 	selectors:    Selector_List,
 	declarations: []Declaration,
 	nested:       []^Rule,
-	pos:          u32,          // Style: where the selector starts in the sheet's source (code points: see line_of)
+	pos:          u32,          // Style: where the selector starts in the sheet's preprocessed source (bytes: see line_of)
 	selector_text: string,      // Style: the selector list, serialized (CSSOM selectorText)
 	// Media / Supports / Container / Layer_Block: the rules inside
 	rules:        []^Rule,
@@ -69,7 +69,7 @@ Stylesheet :: struct {
 	arena:  base.Arena,
 	alloc:  Arena_Alloc,
 	source: string,            // the text it was parsed from (its owner compares it to know whether to parse again)
-	newlines: []u32,           // the code point offsets of its line feeds (line_of: the code points themselves are not kept)
+	newlines: []u32,           // the byte offsets of its line feeds in the preprocessed source (line_of)
 	rules:  []^Rule,
 	errors: [dynamic]string,   // parse problems, for the console
 	errors_dropped: int,       // ... and how many more there were than Parse_Options.max_errors_kept
@@ -107,7 +107,7 @@ Parser :: struct {
 	dropped: ^int,           // errors past opt.max_errors_kept (nil: not counted)
 	first_error: ^string,    // where the first problem met goes, kept or not (temp allocator): what a single rule's parse reports (nil: unwanted)
 	block_depth: int,        // the rule-list blocks (@media { }...) the parser is in: their rules read straight from the tokens
-	runes: []rune,
+	src:   string,           // the preprocessed source the tokens' `pos` are byte offsets in (raw_value)
 	ns:      ^Namespaces,   // the sheet's namespaces, which selectors read (nil: no prefix is declared)
 	ns_open: bool,          // an @namespace rule may come here: the sheet's start, before any rule but @import
 	// what parsing needs only while it runs (the token array, values that are read and dropped) goes to `scratch`;
@@ -149,23 +149,20 @@ parse_stylesheet :: proc(source: string, opt: Parse_Options) -> ^Stylesheet {
 	s.alloc = base.arena_allocator(&s.arena)
 	s.source = strings.clone(source, s.alloc)
 	s.errors = make([dynamic]string)
-	// the code points, the tokens and what is read only to be read again live while the sheet is parsed: a sheet keeps
-	// its rules, selectors, declarations and their values, not its tokens (they were most of its memory)
+	// the tokens and what is read only to be read again live while the sheet is parsed: a sheet keeps its rules,
+	// selectors, declarations and their values, not its tokens (they were most of its memory). The token texts without
+	// escapes are substrings of the sheet's own copy of its source.
 	scratch: base.Arena
 	_ = base.arena_init_growing(&scratch)
 	defer base.arena_destroy(&scratch)
 	sa := base.arena_allocator(&scratch)
-	toks, runes := tokenize_with_source(s.source, s.alloc, sa)
-	{
-		nls := make([dynamic]u32, 0, 64, s.alloc)
-		for r, i in runes { if r == '\n' { append(&nls, u32(i)) } }
-		s.newlines = nls[:]
-	}
+	toks, src := tokenize_with_source(s.source, s.alloc, sa, input_kept = true)
+	s.newlines = newline_offsets(src, s.alloc)
 	s.namespaces.prefixes = make([dynamic]Ns_Prefix, s.alloc)
 	rule_scratch: base.Arena
 	_ = base.arena_init_growing(&rule_scratch)
 	defer base.arena_destroy(&rule_scratch)
-	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors, dropped = &s.errors_dropped, runes = runes, scratch = sa, ns = &s.namespaces, ns_open = true, rule_arena = &rule_scratch}
+	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors, dropped = &s.errors_dropped, src = src, scratch = sa, ns = &s.namespaces, ns_open = true, rule_arena = &rule_scratch}
 	s.rules = parse_rule_list(&p, true)
 	return s
 }
@@ -179,11 +176,11 @@ parse_rule_into :: proc(s: ^Stylesheet, text: string, opt: Parse_Options) -> (ru
 	_ = base.arena_init_growing(&scratch)
 	defer base.arena_destroy(&scratch)
 	sa := base.arena_allocator(&scratch)
-	toks, runes := tokenize_with_source(text, s.alloc, sa)
+	toks, src := tokenize_with_source(text, s.alloc, sa)
 	errors := make([dynamic]string, sa)
 	// its selectors read the sheet's namespaces; an @namespace rule inserted declares nothing (a copy takes it)
 	ns := s.namespaces
-	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &errors, first_error = &first_error, runes = runes, scratch = sa, ns = &ns, ns_open = true}
+	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &errors, first_error = &first_error, src = src, scratch = sa, ns = &ns, ns_open = true}
 	rules := parse_rule_list(&p, true)
 	if len(rules) == 1 { return rules[0], first_error }
 	if first_error == "" { first_error = len(rules) == 0 ? "no rule" : "more than one rule" }
@@ -199,9 +196,9 @@ parse_nested_rule_into :: proc(s: ^Stylesheet, text: string, opt: Parse_Options,
 	_ = base.arena_init_growing(&scratch)
 	defer base.arena_destroy(&scratch)
 	sa := base.arena_allocator(&scratch)
-	toks, runes := tokenize_with_source(text, s.alloc, sa)
+	toks, src := tokenize_with_source(text, s.alloc, sa)
 	errors := make([dynamic]string, sa)
-	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &errors, first_error = &first_error, runes = runes, scratch = sa, ns = &s.namespaces}
+	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &errors, first_error = &first_error, src = src, scratch = sa, ns = &s.namespaces}
 	decls, nested := parse_block_contents(&p, parse_values(&p, .EOF, 0), parent)
 	switch {
 	case len(nested) == 1 && len(decls) == 0: return nested[0], first_error
@@ -430,14 +427,14 @@ finish_style_rule :: proc(p: ^Parser, prelude, body: []Value, parent: ^Rule) -> 
 	return r
 }
 
-// The code point offset of the first token of a list of component values.
+// The byte offset of the first token of a list of component values.
 @(private)
 first_pos :: proc(vs: []Value) -> u32 {
 	if len(vs) == 0 { return 0 }
 	return vs[0].tok.pos
 }
 
-// The line (from 1) of a code point offset in the sheet's source.
+// The line (from 1) of a byte offset in the sheet's preprocessed source.
 line_of :: proc(s: ^Stylesheet, pos: u32) -> int {
 	// the line feeds before pos: a binary search of their offsets
 	lo, hi := 0, len(s.newlines)
@@ -788,29 +785,28 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 // brackets), trailing whitespace removed.
 @(private)
 raw_value :: proc(p: ^Parser, vs: []Value) -> string {
-	if len(vs) == 0 || len(p.runes) == 0 { return "" }
+	if len(vs) == 0 || len(p.src) == 0 { return "" }
 	start := int(vs[0].tok.pos)
-	if start >= len(p.runes) { return "" }
+	if start >= len(p.src) { return "" }
 	end := start
 	depth := 0
-	quote: rune = 0
-	scan: for end < len(p.runes) {
-		r := p.runes[end]
+	quote: u8 = 0
+	// (byte by byte: the bytes of a non-ASCII character are all >= 0x80, none of those looked for)
+	scan: for end < len(p.src) {
+		c := p.src[end]
 		switch {
 		case quote != 0:
-			if r == '\\' { end += 1 } else if r == quote { quote = 0 }
-		case r == '"' || r == '\'': quote = r
-		case r == '(' || r == '[': depth += 1
-		case r == ')' || r == ']': depth = max(depth - 1, 0)
-		case (r == ';' || r == '}') && depth == 0: break scan
+			if c == '\\' { end += 1 } else if c == quote { quote = 0 }
+		case c == '"' || c == '\'': quote = c
+		case c == '(' || c == '[': depth += 1
+		case c == ')' || c == ']': depth = max(depth - 1, 0)
+		case (c == ';' || c == '}') && depth == 0: break scan
 		}
 		end += 1
 	}
-	end = min(end, len(p.runes))
-	for end > start && (p.runes[end - 1] == ' ' || p.runes[end - 1] == '\t' || p.runes[end - 1] == '\n') { end -= 1 }
-	sb := strings.builder_make(p.a)
-	for r in p.runes[start:end] { strings.write_rune(&sb, r) }
-	return strings.to_string(sb)
+	end = min(end, len(p.src))
+	for end > start && (p.src[end - 1] == ' ' || p.src[end - 1] == '\t' || p.src[end - 1] == '\n') { end -= 1 }
+	return strings.clone(p.src[start:end], p.a)
 }
 
 // The URL of an @namespace rule: a string, url(...) as a token, or url("...").

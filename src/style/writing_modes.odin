@@ -250,18 +250,18 @@ element_flow_map :: proc(p: ^Pass, parent: ^Computed) -> ^[Prop]Prop {
 	w := parent != nil ? parent.writing_mode : Writing_Mode.Horizontal_Tb
 	rtl := parent != nil && parent.direction == .Rtl
 	if cand := &p.ws[.Writing_Mode]; cand.valid && !cand.decl.has_var {
-		switch css_wide_keyword(cand.decl.value) {
-		case "initial": w = .Horizontal_Tb
-		case "inherit", "unset", "revert", "revert-layer":
-		case:
+		switch cand.decl.wide {
+		case .Initial: w = .Horizontal_Tb
+		case .Inherit, .Unset, .Revert, .Revert_Layer:
+		case .None:
 			if v, ok := parse_writing_mode(cand.decl.value); ok { w = v }
 		}
 	}
 	if cand := &p.ws[.Direction]; cand.valid && !cand.decl.has_var {
-		switch css_wide_keyword(cand.decl.value) {
-		case "initial": rtl = false
-		case "inherit", "unset", "revert", "revert-layer":
-		case:
+		switch cand.decl.wide {
+		case .Initial: rtl = false
+		case .Inherit, .Unset, .Revert, .Revert_Layer:
+		case .None:
 			if v, ok := parse_enum(cand.decl.value, Direction); ok { rtl = v == .Rtl }
 		}
 	}

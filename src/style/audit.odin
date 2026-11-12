@@ -31,7 +31,7 @@ audit_sheet :: proc(e: ^Engine, sheet: ^css.Stylesheet, out: ^[dynamic]Audit_Ent
 		for r in rules {
 			for d in r.declarations {
 				if r.kind != .Style || !strings.has_prefix(d.name, "--") { continue }
-				if css_wide_keyword(d.value) != "" { delete_key(m, d.name); continue }   // guaranteed-invalid, mostly
+				if wide_keyword(d.value) != .None { delete_key(m, d.name); continue }   // guaranteed-invalid, mostly
 				m[d.name] = css.serialize_values(d.value, a)
 			}
 			collect(r.nested, m, a)
@@ -89,14 +89,14 @@ audit_declarations :: proc(e: ^Engine, cx: ^Cx, decls: []css.Declaration, out: ^
 			if !good { continue }   // depends on a property this sheet never sets: unknown here
 			value = sub
 		}
-		if css_wide_keyword(value) != "" { continue }
+		if wide_keyword(value) != .None { continue }
 		ok := true
 		if sh == .None {
 			ok = apply_prop(cx, p, value)
 		} else if longs, good := expand_shorthand(sh, value, cx.alloc); !good {
 			ok = false
 		} else {
-			for l in longs { if css_wide_keyword(l.vals) == "" && !apply_prop(cx, l.prop, l.vals) { ok = false; break } }
+			for l in longs { if wide_keyword(l.vals) == .None && !apply_prop(cx, l.prop, l.vals) { ok = false; break } }
 		}
 		if !ok {
 			text := css.serialize_values(d.value, context.temp_allocator)

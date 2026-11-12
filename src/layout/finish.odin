@@ -26,9 +26,9 @@ preorder :: proc(l: ^Layout) -> []i32 {
 
 // The box a box is contained in for clipping and scrolling: its containing block for absolutely positioned boxes.
 @(private)
-containing_parent :: proc(b: ^Box) -> i32 {
-	if .Abs in b.flags { return b.cb }
-	return b.parent
+containing_parent :: proc(l: ^Layout, x: i32) -> i32 {
+	if .Abs in l.boxes[x].flags { return l.cold[x].cb }
+	return l.boxes[x].parent
 }
 
 // Boxes inside a position: fixed box (they move with the viewport and do not extend the document).
@@ -38,7 +38,7 @@ fixed_boxes :: proc(l: ^Layout, order: []i32) -> []bool {
 	for x in order {
 		b := &l.boxes[x]
 		if .Root in b.flags { continue }
-		in_fixed[x] = .Fixed in b.flags || in_fixed[containing_parent(b)]
+		in_fixed[x] = .Fixed in b.flags || in_fixed[containing_parent(l, x)]
 	}
 	return in_fixed
 }
@@ -85,7 +85,7 @@ compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -
 		// kind != .Inline, and no box is ever its clip owner): its overflow is never read. Forcing it empty here (not
 		// padding_rect) matches what the incremental paths produce (they never recompute it), so a spliced layout and
 		// a full one agree on it (verify.odin). A box reused across a display change keeps no stale value either.
-		if .Scroll in b.flags { b.overflow = b.kind == .Inline ? Rect{} : padding_rect(b) }
+		if .Scroll in b.flags { l.fin[x].overflow = b.kind == .Inline ? Rect{} : padding_rect(b) }
 	}
 	doc := Rect{{0, 0}, vp}
 	add :: proc(l: ^Layout, owner: i32, r: Rect, fixed: bool, doc: ^Rect) {
@@ -94,19 +94,19 @@ compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -
 			if !fixed { doc^ = rect_union(doc^, r) }
 			return
 		}
-		o := &l.boxes[owner]
-		if .Scroll in o.flags { o.overflow = rect_union(o.overflow, r) }
+		if .Scroll in l.boxes[owner].flags { o := &l.fin[owner]; o.overflow = rect_union(o.overflow, r) }
 	}
 	near := NONE   // (the fragment of a flow the last box or line lay in: flow_bounds)
 	for x in order {
 		b := &l.boxes[x]
 		if .Root in b.flags { continue }
-		cp := containing_parent(b)
+		cp := containing_parent(l, x)
+		clip_owner := l.fin[x].clip_owner
 		// inside the flow of a multi-column container: seen where its columns show, from outside of it
 		mc := NONE
-		if .In_Flow in b.fx && (b.clip_owner == NONE || .In_Flow not_in l.boxes[b.clip_owner].fx) { mc = flow_container(l, x) }
+		if .In_Flow in b.fx && (clip_owner == NONE || .In_Flow not_in l.boxes[clip_owner].fx) { mc = flow_container(l, x) }
 		m, hm := IDENTITY, false
-		if b.clip_owner != cp && has[cp] { m, hm = inner[cp], true }
+		if clip_owner != cp && has[cp] { m, hm = inner[cp], true }
 		if .Transformed in b.flags {
 			t := box_matrix(l, b)
 			m = hm ? mat_mul(m, t) : t
@@ -115,15 +115,15 @@ compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -
 		inner[x], has[x] = m, hm
 		box_r := border_rect(b)
 		// the end margins of the in-flow children of a scroll container are scrollable too (CSS Overflow 3 §2.2)
-		if b.clip_owner == b.parent && b.clip_owner != NONE && .Scroll in l.boxes[b.clip_owner].flags && b.flags & {.Abs, .Float} == {} && b.kind != .Inline && b.cs != nil {
-			owner := &l.boxes[b.clip_owner]
+		if clip_owner == b.parent && clip_owner != NONE && .Scroll in l.boxes[clip_owner].flags && b.flags & {.Abs, .Float} == {} && b.kind != .Inline && b.cs != nil {
+			owner := &l.boxes[clip_owner]
 			box_r = with_end_margins(l, b, box_r, padding_rect(owner), owner.cs)
 		}
 		if mc != NONE { box_r = flow_bounds(l, mc, box_r, &near) }
-		add(l, b.clip_owner, hm ? mat_bounds(m, box_r) : box_r, in_fixed[x], &doc)
+		add(l, clip_owner, hm ? mat_bounds(m, box_r) : box_r, in_fixed[x], &doc)
 		if .Ifc in b.flags && b.lines[1] > b.lines[0] {
 			clips := .Clips in b.flags && .Propagated not_in b.flags
-			owner := clips ? x : b.clip_owner
+			owner := clips ? x : clip_owner
 			lm, lhm := m, hm && !clips
 			for li in b.lines[0] ..< b.lines[1] {
 				ln := &l.lines[li]
@@ -165,17 +165,17 @@ doc_scroll_origin_bottom :: proc(c: ^Ctx) -> bool {
 
 // How far a scroll container scrolls either way. Offsets run from its scroll origin (CSS Overflow 3 §2.2): where the axis starts at
 // the high end (lines right to left, right-to-left text in horizontal lines, vertical text upwards), they go negative, and
-// overflow on the other side of the origin cannot be reached.
+// overflow on the other side of the origin cannot be reached. `overflow`: the box's scrollable overflow (Box_Finish).
 @(private)
-scroll_limits :: proc(b: ^Box, port: Rect) -> (lo, hi: Vec2) {
-	hi = {max(b.overflow.max.x - port.max.x, 0), max(b.overflow.max.y - port.max.y, 0)}
+scroll_limits :: proc(b: ^Box, overflow, port: Rect) -> (lo, hi: Vec2) {
+	hi = {max(overflow.max.x - port.max.x, 0), max(overflow.max.y - port.max.y, 0)}
 	rtl := is_rtl(b.cs)
 	wm := b.cs.writing_mode
 	if style.axis_start_hi(wm, rtl, true) {
-		lo.x, hi.x = min(b.overflow.min.x - port.min.x, 0), 0
+		lo.x, hi.x = min(overflow.min.x - port.min.x, 0), 0
 	}
 	if style.axis_start_hi(wm, rtl, false) {
-		lo.y, hi.y = min(b.overflow.min.y - port.min.y, 0), 0
+		lo.y, hi.y = min(overflow.min.y - port.min.y, 0), 0
 	}
 	if b.cs.overflow_x != .Scroll && b.cs.overflow_x != .Auto { lo.x, hi.x = 0, 0 }
 	if b.cs.overflow_y != .Scroll && b.cs.overflow_y != .Auto { lo.y, hi.y = 0, 0 }
@@ -245,7 +245,7 @@ positioned_insets :: proc(l: ^Layout, bi: i32, scale: f32) -> (insets: [4]f32, a
 	cs := b.cs
 	if cs == nil || b.kind == .Inline || cs.position == .Static { return }
 	abs := .Abs in b.flags
-	owner := abs ? b.cb : b.parent
+	owner := abs ? l.cold[bi].cb : b.parent
 	if !abs && owner != NONE && l.boxes[owner].kind == .Inline { owner = l.boxes[owner].ifc_root }
 	if owner == NONE || l.boxes[owner].kind == .Inline { return }
 	if .Sticky in b.flags {
@@ -320,10 +320,10 @@ finish :: proc(c: ^Ctx) {
 	// clip owners, scrollable overflow, document extent
 	for x in order {
 		b := &l.boxes[x]
-		if .Root in b.flags { b.clip_owner = NONE; continue }
-		cp := containing_parent(b)
+		if .Root in b.flags { l.fin[x].clip_owner = NONE; continue }
+		cp := containing_parent(l, x)
 		pb := &l.boxes[cp]
-		b.clip_owner = (.Clips in pb.flags && .Propagated not_in pb.flags && pb.kind != .Inline) ? cp : pb.clip_owner
+		l.fin[x].clip_owner = (.Clips in pb.flags && .Propagated not_in pb.flags && pb.kind != .Inline) ? cp : l.fin[cp].clip_owner
 	}
 	in_fixed := fixed_boxes(l, order)
 	doc := compute_overflow(l, order, in_fixed, c.vp)
@@ -342,15 +342,15 @@ finish :: proc(c: ^Ctx) {
 	for x in order {
 		b := &l.boxes[x]
 		if .Root in b.flags {
-			b.space, b.clip, b.content_space, b.content_clip, b.group = DOCUMENT_SPACE, NONE, DOCUMENT_SPACE, NONE, NONE
+			b.space, b.clip, b.group = DOCUMENT_SPACE, NONE, NONE
+			l.fin[x].content_space, l.fin[x].content_clip = DOCUMENT_SPACE, NONE
 			continue
 		}
-		cp := containing_parent(b)
-		pb := &l.boxes[cp]
+		cp := containing_parent(l, x)
 		if .Fixed in b.flags {
 			b.space, b.clip = FIXED_SPACE, NONE
 		} else {
-			b.space, b.clip = pb.content_space, pb.content_clip
+			b.space, b.clip = l.fin[cp].content_space, l.fin[cp].content_clip
 			if l.frames_on { flow_fix_box(l, x) }
 		}
 		if anchored != nil { anchored_space(l, x, anchored) }
@@ -394,26 +394,27 @@ finish :: proc(c: ^Ctx) {
 			b.space = si
 			if .Plane in b.flags && b.group != NONE && .Plane in l.groups[b.group].effects { plane_group(l, b.group, si) }
 		}
-		b.content_space, b.content_clip = b.space, b.clip
+		bf := &l.fin[x]
+		bf.content_space, bf.content_clip = b.space, b.clip
 		if .Clips in b.flags && .Propagated not_in b.flags && b.kind != .Inline {
 			append(&l.clips, Clip{parent = b.clip, space = b.space, box = x, rect = padding_rect(b), radii = clip_radii(l, b)})
-			b.content_clip = i32(len(l.clips) - 1)
+			bf.content_clip = i32(len(l.clips) - 1)
 		}
-		b.scroll_space = NONE
+		bf.scroll_space = NONE
 		if .Scroll in b.flags && .Propagated not_in b.flags && b.kind != .Inline {
 			port := padding_rect(b)
-			mn, ms := scroll_limits(b, port)
+			mn, ms := scroll_limits(b, bf.overflow, port)
 			if ms.x > BAR_MIN_OVERFLOW || ms.y > BAR_MIN_OVERFLOW || mn.x < -BAR_MIN_OVERFLOW || mn.y < -BAR_MIN_OVERFLOW {
-				append(&l.spaces, Space{kind = .Scroll, parent = b.space, box = x, frame = NONE, clip = b.content_clip, xform = l.spaces[b.space].xform, plane = l.spaces[b.space].plane, persp_from = NONE, ctx = NONE, dest = NONE, port = port, max_scroll = ms, min_scroll = mn})
-				b.content_space = i32(len(l.spaces) - 1)
-				b.scroll_space = b.content_space
+				append(&l.spaces, Space{kind = .Scroll, parent = b.space, box = x, frame = NONE, clip = bf.content_clip, xform = l.spaces[b.space].xform, plane = l.spaces[b.space].plane, persp_from = NONE, ctx = NONE, dest = NONE, port = port, max_scroll = ms, min_scroll = mn})
+				bf.content_space = i32(len(l.spaces) - 1)
+				bf.scroll_space = bf.content_space
 				if off, ok := l.scroll[b.node]; ok { l.scroll[b.node] = {clamp(off.x, mn.x, ms.x), clamp(off.y, mn.y, ms.y)} }
 			}
 		}
 		if .Multicol in b.fx { flow_spaces(l, x); b = &l.boxes[x] }
 		// fragments of positioned inline boxes are painted with them, not with their line
 		if b.kind == .Inline {
-			if .Positioned in b.flags || .Stacking in b.flags { b.layer = x } else if tp.kind == .Inline { b.layer = tp.layer } else { b.layer = NONE }
+			if .Positioned in b.flags || .Stacking in b.flags { bf.layer = x } else if tp.kind == .Inline { bf.layer = l.fin[b.parent].layer } else { bf.layer = NONE }
 		}
 	}
 	groups_reach(l)
@@ -423,7 +424,7 @@ finish :: proc(c: ^Ctx) {
 		i := int(base.handle_index(node))
 		keep := false
 		if i < len(l.node_box) {
-			if bi := l.node_box[i]; bi != NONE && l.boxes[bi].node == node && l.boxes[bi].scroll_space != NONE { keep = true }
+			if bi := l.node_box[i]; bi != NONE && l.boxes[bi].node == node && l.fin[bi].scroll_space != NONE { keep = true }
 		}
 		if !keep { append(&gone, node) }
 	}

@@ -212,6 +212,13 @@ pseudo_style :: proc(el: ^style.Computed, k: Pseudo_Kind) -> ^style.Computed {
 // Pseudo_Kind.
 pseudo_key :: proc(b: ^Box) -> u8 { return .Pseudo in b.flags ? u8(b.pseudo) + 1 : 0 }
 
+// The key of a box's layout cache (block.odin, cache_key): border-box width, containing block height, imposed height,
+// and in quirks mode the height its content's percentage heights resolve against (quirks_base_from).
+Cache_Key :: [4]f32
+
+// What every pass reads of a box: the tree, the style, the geometry, the layout cache, and the space, clip and group its
+// items are drawn in. What only some boxes or some steps need lives beside it, at the same index: Box_Cold
+// (Layout.cold) and Box_Finish (Layout.fin). Passes over every box then touch fewer cache lines.
 Box :: struct {
 	node:      base.Handle,        // element (or the document for the root); NIL for anonymous boxes
 	cs:        ^style.Computed,
@@ -222,17 +229,13 @@ Box :: struct {
 	flags:     Box_Flags,
 	parent, first, last, next: i32,
 	pos_ref:   i32,                 // `pos` is relative to this box's border-box origin
-	cb:        i32,                 // absolutely positioned: the containing block
-	abs_first, abs_last, abs_next: i32,   // boxes whose containing block this is, in tree order
-	static_ref: i32,                // absolutely positioned: the block container its static position is relative to
-	static_pos: Vec2,
-	static_align: Vec2,             // ... of a flex or grid container: where in its content box (0 start, 0.5 centre, 1 end)
+	abs_first: i32,                 // the first box whose containing block this is (the list: Box_Cold.abs_next)
 	ifc_root:  i32,                 // inline-level boxes: the root of their inline formatting context
 	items, lines: [2]i32,           // Ifc: [start, end) into Layout.inline_items / Layout.lines
-	cur_anon:  i32,                 // building: the anonymous box that collects the current run of children
 	fi:        i32,                 // font of the box's own text (index into Layout.fonts)
 	deco_up:   i32,                 // a decorating box: the next one out (NONE: none; decorations.odin)
 	mc:        i32,                 // a multi-column container: its record in Layout.mc_records (NONE: none yet)
+	depth:     i32,
 	// box model, device px: top, right, bottom, left
 	margin, border, padding: [4]f32,
 	gutter:    [4]f32,              // the room of classic scroll bars, between the border and the padding (scrollbars.odin)
@@ -249,32 +252,50 @@ Box :: struct {
 	cache_flow: bool,               // ... laid out in its parent's block formatting context (else on its own)
 	cache_open: bool,               // ... its top margin still collapsing with what is above it (Flow_Ctx.open: not below clearance)
 	cache_through: bool,
-	cache_in:  [3]f32,
-	cache_h:   f32,
-	cache_end, cache_contrib: Strut,   // flow: trailing strut; margins it added to the strut it was given
+	// quirks mode: a percentage height inside resolves against an ancestor's height or the window through this box
+	// (quirks_base_from): its cache key holds that height. Set by the layout of that box inside, kept until a full pass.
+	cache_quirks: bool,
 	// a second entry, of a layout on its own (block.odin: layout_contents, measure_height, impose_height): the height
 	// the same content had at other inputs (a flex item measured at its auto height, then laid out at its final one)
 	alt_ok:    bool,
 	alt_same:  bool,                // ... its content is laid out as for the first entry: any layout may take it
-	alt_in:    [3]f32,
-	alt_h:     f32,
 	inc:       Inc_Flags,           // invalidation between passes (incremental.odin)
+	cache_in:  Cache_Key,
+	cache_h:   f32,
+	cache_end, cache_contrib: Strut,   // flow: trailing strut; margins it added to the strut it was given
+	alt_in:    Cache_Key,
+	alt_h:     f32,
+	// finishing: what its own items are drawn in (the display list reads them for every item)
+	space, clip, group: i32,
+	tmp:       f32,                 // scratch of the current step (baseline shift of an inline box on the line being built;
+	                                // a table cell's content height, from its layout_contents to its table's alignment)
+	tmp_al:    i32,                 // scratch: top/bottom-aligned group of an inline box on the line being built
+}
+
+// What few boxes have, or only building and positioning read: absolutely positioned boxes, table cells, list items.
+Box_Cold :: struct {
+	cb:        i32,                 // absolutely positioned: the containing block
+	abs_last, abs_next: i32,        // boxes whose containing block this is, in tree order (from Box.abs_first)
+	static_ref: i32,                // absolutely positioned: the block container its static position is relative to
+	static_pos: Vec2,
+	static_align: Vec2,             // ... of a flex or grid container: where in its content box (0 start, 0.5 centre, 1 end)
+	cur_anon:  i32,                 // building: the anonymous box that collects the current run of children
 	// tables
 	col, row, colspan, rowspan: i32,
 	// list items
 	marker:    string,              // outside marker text (bullets are drawn as shapes: empty text)
 	marker_pos: Vec2,               // marker's left / baseline, relative to the border box
 	marker_w:  f32,
-	// finishing
-	clip_owner, space, clip, content_space, content_clip: i32,
-	group:     i32,
-	overflow:  Rect,                // scrollable overflow (layout coordinates) of a scroll container
-	scroll_space: i32,              // the scroll space this box owns, or NONE
-	depth:     i32,
-	layer:     i32,                 // inline boxes: nearest positioned inline ancestor-or-self (paints its fragments), or NONE
-	tmp:       f32,                 // scratch of the current step (baseline shift of an inline box on the line being built;
-	                                // a table cell's content height, from its layout_contents to its table's alignment)
-	tmp_al:    i32,                 // scratch: top/bottom-aligned group of an inline box on the line being built
+}
+
+// What finishing finds for a box that only finishing, scrolling and the content of the box read.
+Box_Finish :: struct {
+	clip_owner:    i32,
+	content_space: i32,             // the space and clip of what the box contains
+	content_clip:  i32,
+	scroll_space:  i32,             // the scroll space this box owns, or NONE
+	layer:         i32,             // inline boxes: nearest positioned inline ancestor-or-self (paints its fragments), or NONE
+	overflow:      Rect,            // scrollable overflow (layout coordinates) of a scroll container
 }
 
 Inline_Kind :: enum u8 { Text, Open, Close, Atomic, Float, Abs, Break, Block }
@@ -465,12 +486,16 @@ Layout :: struct {
 	restyled:   u64,            // bumps when a refresh re-points items to new style records (the compositor checks them)
 	// results
 	boxes:        [dynamic]Box,
+	cold:         [dynamic]Box_Cold,       // beside `boxes`, same index
+	fin:          [dynamic]Box_Finish,     // beside `boxes`, same index
 	inline_items: [dynamic]Inline_Item,
 	lines:        [dynamic]Line,
 	frags:        [dynamic]Frag,
 	fonts:        [dynamic]Font_Info,
 	font_lookup:  map[Font_Key]i32,   // fonts by content (families hashed) across the partial passes since the last full one
 	items:        [dynamic]Display_Item,   // paint order
+	items_ver:    u64,                     // bumped whenever `items` is made or spliced (Item_Index.ver)
+	item_index:   Item_Index,              // the items of each box, made when a refresh first needs it after a change
 	spaces:       [dynamic]Space,
 	clips:        [dynamic]Clip,
 	groups:       [dynamic]Group,
@@ -538,6 +563,16 @@ Dl_Walks :: struct {
 	zero:           [dynamic]i32,
 	walk, floats:   [dynamic]i32,
 	walk_ok:        bool,               // walk / floats were made (paint_content_shared)
+}
+
+// The display items of each box (Display_Item.box), by box: those of box b are list[start[b]:start[b + 1]]. Made from
+// the items once after they change (a layout, a splice), so that a refresh re-points the items of the few boxes whose
+// style changed instead of reading every item at each frame (splice.odin, remap_box_items).
+@(private)
+Item_Index :: struct {
+	ver:   u64,                // Layout.items_ver it was made for (0: never)
+	start: [dynamic]i32,
+	list:  [dynamic]i32,
 }
 
 DOCUMENT_SPACE :: i32(0)

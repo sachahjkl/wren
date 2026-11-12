@@ -61,25 +61,27 @@ kill_contents :: proc(c: ^Ctx, bi: i32) {
 			i := int(base.handle_index(b.node))
 			if i < len(l.node_box) && l.node_box[i] == x { l.node_box[i] = NONE }
 		}
-		if .Abs in b.flags && b.cb != NONE { abs_cbs[b.cb] = true }
+		if cb := l.cold[x].cb; .Abs in b.flags && cb != NONE { abs_cbs[cb] = true }
 		kill_items(c, x)
 	}
 	kill_items(c, bi)
 	b := &l.boxes[bi]
-	b.first, b.last, b.cur_anon = NONE, NONE, NONE
-	b.abs_first, b.abs_last = NONE, NONE
+	k := &l.cold[bi]
+	b.first, b.last, k.cur_anon = NONE, NONE, NONE
+	b.abs_first, k.abs_last = NONE, NONE
 	b.flags -= {.Ifc, .Flattened, .Bfc_Floats, .Neg_Margins}
-	b.marker, b.marker_w = "", 0
+	k.marker, k.marker_w = "", 0
 	// containing blocks outside the subtree drop their dead absolutely positioned boxes (order kept)
 	for cb in abs_cbs {
 		cbb := &l.boxes[cb]
+		cbk := &l.cold[cb]
 		if .Dead in cbb.flags || cb == bi { continue }
 		prev := NONE
 		for a := cbb.abs_first; a != NONE; {
-			next := l.boxes[a].abs_next
+			next := l.cold[a].abs_next
 			if .Dead in l.boxes[a].flags {
-				if prev == NONE { cbb.abs_first = next } else { l.boxes[prev].abs_next = next }
-				if cbb.abs_last == a { cbb.abs_last = prev }
+				if prev == NONE { cbb.abs_first = next } else { l.cold[prev].abs_next = next }
+				if cbk.abs_last == a { cbk.abs_last = prev }
 			} else {
 				prev = a
 			}

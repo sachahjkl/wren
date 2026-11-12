@@ -122,7 +122,7 @@ bars_settle :: proc(l: ^Layout, may_remove: bool) -> bool {
 		// (a box of no width or height without its bars shows none, as in Blink: they would only make it grow)
 		empty := b.size.x - b.gutter[1] - b.gutter[3] <= 0 || b.size.y - b.gutter[0] - b.gutter[2] <= 0
 		if !empty && bar_thickness(&l.settings, b.cs, l.scale) > 0 {
-			mn, ms := scroll_limits(&b, padding_rect(&b))
+			mn, ms := scroll_limits(&b, l.fin[bi].overflow, padding_rect(&b))
 			if b.cs.overflow_x == .Auto && (ms.x > BAR_MIN_OVERFLOW || mn.x < -BAR_MIN_OVERFLOW) { need += {.X} }
 			if b.cs.overflow_y == .Auto && (ms.y > BAR_MIN_OVERFLOW || mn.y < -BAR_MIN_OVERFLOW) { need += {.Y} }
 		}

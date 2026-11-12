@@ -12,6 +12,8 @@
 //     the callbacks use, is freed by the last callback WinHTTP sends for that handle (HANDLE_CLOSING).
 //   * Back-pressure: reading pauses when too many bytes are queued for a request and resumes when the main thread
 //     consumed enough. A slow consumer cannot make the process balloon. A hard cap (`max_body`) bounds a response.
+//     A consumer that cannot take bytes for a while (a download whose disk is busy) pauses its request (`pause`): the
+//     events wait unconsumed, so the transport stops at the high-water mark, and nothing more than that is held.
 //   * TLS, proxy, HTTP/2, decompression and certificate validation are the operating system's. Cookies and
 //     redirects policy stay with the browser (cookies are disabled in WinHTTP).
 //   * The WinHTTP calls live in client_winhttp_windows.odin / websocket_winhttp_windows.odin; elsewhere
@@ -147,8 +149,9 @@ Request :: struct {
 	priority: Priority,
 	host_key: string,    // "host:port", counted in Client.active while Active; "" = never counted
 	link:     ^Throttle_Link,
-	delayed:  Fifo(Delayed),      // events held back by the link, in order
+	delayed:  Fifo(Delayed),      // events held back by the link or by `consumer_paused`, in order
 	timer:    base.Handle,       // the timer that starts the request or delivers the next delayed event
+	consumer_paused: bool,       // pause: the events wait in `delayed`, not consumed, so the transport stops reading
 	timer_owner: ^Owner,
 	recorded_head: string,          // record.odin
 	recorded_body: [dynamic]byte,
@@ -421,7 +424,7 @@ throttle_timer :: proc(c: ^Client, h: base.Handle, r: ^Request, delay: f64) {
 	r.timer = host.set_timer(c.loop, max(delay, 0), 0, throttle_fire, r.timer_owner)
 }
 
-// The request's timer: it starts the request, or delivers the events whose time has come.
+// The request's timer: it starts the request, or delivers the events whose time has come (none while it is paused).
 @(private)
 throttle_fire :: proc(data: rawptr) {
 	o := (^Owner)(data)
@@ -437,7 +440,8 @@ throttle_fire :: proc(data: rawptr) {
 		return
 	}
 	now := now_ms(c)
-	for fifo_len(&r.delayed) > 0 && fifo_front(&r.delayed).due <= now + 0.5 {
+	// (a callback may pause the request again: the rest waits for the next resume)
+	for !r.consumer_paused && fifo_len(&r.delayed) > 0 && fifo_front(&r.delayed).due <= now + 0.5 {
 		d := fifo_pop(&r.delayed)
 		ev := d.ev
 		process_event(c, &ev)
@@ -445,8 +449,24 @@ throttle_fire :: proc(data: rawptr) {
 		r = base.pool_get(&c.requests, h)   // (the event may have ended the request)
 		if r == nil { return }
 	}
-	if fifo_len(&r.delayed) > 0 { throttle_timer(c, h, r, fifo_front(&r.delayed).due - now) }
+	if !r.consumer_paused && fifo_len(&r.delayed) > 0 { throttle_timer(c, h, r, fifo_front(&r.delayed).due - now) }
 }
+
+// Pauses or resumes the delivery of a request's events (loop thread). While paused, what arrives waits in the request, not
+// consumed: the transport (WinHTTP's callbacks, the built-in stack) stops reading at network.queue.high_water_bytes, so at most
+// that much (and one read) waits. A Done or a Failed waits behind the data before it. A resume delivers what waited from a
+// timer, not from inside this call: the caller is often the consumer's own callback. Nothing for a request that is gone.
+pause :: proc(c: ^Client, h: base.Handle, paused: bool) {
+	r := base.pool_get(&c.requests, h)
+	if r == nil || r.consumer_paused == paused { return }
+	r.consumer_paused = paused
+	if !paused && fifo_len(&r.delayed) > 0 { throttle_timer(c, h, r, fifo_front(&r.delayed).due - now_ms(c)) }
+}
+
+// Whether an event of `r` that arrives now waits in `delayed` rather than going to its consumer at once (handle_event): a
+// throttled or paused request, or one whose earlier events still wait (an event never passes an earlier one).
+@(private)
+events_wait :: proc(r: ^Request) -> bool { return r.link != nil || r.consumer_paused || fifo_len(&r.delayed) > 0 }
 
 // Silent: the request's callbacks will not run again. False if it already finished or was cancelled.
 cancel :: proc(c: ^Client, h: base.Handle) -> bool {
@@ -639,23 +659,27 @@ handle_event :: proc(c: ^Client, ev: ^Event) {
 		// cancelled or finished already: the bytes still count against nothing (the job is gone or going)
 		return
 	}
+	if !events_wait(r) {
+		process_event(c, ev)
+		return
+	}
+	// a later event never passes an earlier one; through the link a piece also leaves when the bytes before it are through
+	now := now_ms(c)
+	due := now
 	if r.link != nil {
-		// through the link: a piece leaves when the bytes before it are through, and a later event never passes an earlier one
-		now := now_ms(c)
-		due := now
 		#partial switch ev.kind {
 		case .Data: due = link_schedule(r.link, now, len(ev.data), false)
 		}
-		if fifo_len(&r.delayed) > 0 { due = max(due, fifo_back(&r.delayed).due) }
-		if due > now + 0.5 || fifo_len(&r.delayed) > 0 {
-			req := ev.req
-			fifo_push(&r.delayed, Delayed{ev = ev^, due = due})
-			ev^ = {}   // the delayed list owns what it holds
-			throttle_timer(c, req, r, fifo_front(&r.delayed).due - now)
-			return
-		}
 	}
-	process_event(c, ev)
+	if fifo_len(&r.delayed) > 0 { due = max(due, fifo_back(&r.delayed).due) }
+	if due <= now + 0.5 && fifo_len(&r.delayed) == 0 && !r.consumer_paused {
+		process_event(c, ev)
+		return
+	}
+	req := ev.req
+	fifo_push(&r.delayed, Delayed{ev = ev^, due = due})
+	ev^ = {}   // the delayed list owns what it holds
+	if !r.consumer_paused { throttle_timer(c, req, r, fifo_front(&r.delayed).due - now) }
 }
 
 @(private)

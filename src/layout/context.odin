@@ -220,8 +220,12 @@ clamp_h :: proc(c: ^Ctx, b: ^Box, h: f32, cb_h: f32) -> f32 {
 }
 
 @(private)
-b_index :: proc(c: ^Ctx, b: ^Box) -> i32 {
-	return i32((uintptr(b) - uintptr(raw_data(c.l.boxes))) / size_of(Box))
+b_index :: proc(c: ^Ctx, b: ^Box) -> i32 { return box_at(c.l, b) }
+
+// The index of box `b`, a pointer into l.boxes (not a copy of a box).
+@(private)
+box_at :: #force_inline proc(l: ^Layout, b: ^Box) -> i32 {
+	return i32((uintptr(b) - uintptr(raw_data(l.boxes))) / size_of(Box))
 }
 
 ////////////////////////////////

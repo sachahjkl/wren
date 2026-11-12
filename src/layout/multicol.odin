@@ -488,7 +488,7 @@ mark_flow :: proc(c: ^Ctx, container, x: i32, block_path: bool) {
 	for ch := l.boxes[x].first; ch != NONE; ch = l.boxes[ch].next {
 		k := &l.boxes[ch]
 		if .Dead in k.flags { continue }
-		if .Abs in k.flags && (k.cb == container || !box_inside(l, k.cb, container)) {
+		if cb := l.cold[ch].cb; .Abs in k.flags && (cb == container || !box_inside(l, cb, container)) {
 			k.fx -= {.In_Flow}
 			continue
 		}
@@ -520,9 +520,9 @@ apply_shifts :: proc(c: ^Ctx, bi: i32, top, new_top: f32, shifts: []Shift) {
 	l := c.l
 	b := &l.boxes[bi]
 	if !stack_ok(c) { return }
-	if .List_Item in b.flags && b.marker_w != 0 {
-		s := top + b.marker_pos.y
-		b.marker_pos.y = s + shift_at(shifts, s) - new_top
+	if k := &l.cold[bi]; .List_Item in b.flags && k.marker_w != 0 {
+		s := top + k.marker_pos.y
+		k.marker_pos.y = s + shift_at(shifts, s) - new_top
 	}
 	if .Ifc in b.flags && b.lines[1] > b.lines[0] {
 		for li in b.lines[0] ..< b.lines[1] {
@@ -937,17 +937,17 @@ flow_bounds_add :: proc(l: ^Layout, container: i32, r: Rect, u: ^Rect, n: ^int, 
 	if !shown { if outer != NONE { flow_bounds_add(l, outer, r, u, n) } else { unite(u, n, r) } }
 }
 
-// Finishing: the spaces of a container's columns. `b.content_space` becomes the flow's.
+// Finishing: the spaces of a container's columns. Its content space (Box_Finish) becomes the flow's.
 @(private)
 flow_spaces :: proc(l: ^Layout, x: i32) {
-	b := &l.boxes[x]
+	bf := &l.fin[x]
 	rec := mc_record(l, x)
 	if rec == nil { return }
-	rec.outer_space, rec.outer_clip = b.content_space, b.content_clip
-	ps := l.spaces[b.content_space]
-	parent := b.content_space
+	rec.outer_space, rec.outer_clip = bf.content_space, bf.content_clip
+	ps := l.spaces[bf.content_space]
+	parent := bf.content_space
 	xform, plane := ps.xform, ps.plane
-	outer := b.content_clip
+	outer := bf.content_clip
 	base := i32(len(l.spaces))
 	append(&l.spaces, Space{kind = .Flow, parent = parent, box = x, frame = NONE, clip = outer, xform = xform, plane = plane, persp_from = NONE, ctx = NONE, dest = NONE, flow = rec.phys})
 	for fi in rec.phys[0] ..< rec.phys[1] {
@@ -969,7 +969,7 @@ flow_spaces :: proc(l: ^Layout, x: i32) {
 		fr.clip = i32(len(l.clips) - 1)
 		append(&l.spaces, Space{kind = .Column, parent = col_parent, box = x, frame = NONE, clip = fr.clip, xform = xform, plane = plane, persp_from = NONE, ctx = NONE, dest = NONE, shift = fr.shift, flow = {fi - rec.phys[0], 0}})
 	}
-	b.content_space = base
+	l.fin[x].content_space = base
 }
 
 // A box in a flow that makes a space of its own (a transform, a scroll port): its space hangs from the fragment where it starts, not
@@ -977,8 +977,8 @@ flow_spaces :: proc(l: ^Layout, x: i32) {
 @(private)
 flow_fix_box :: proc(l: ^Layout, x: i32) {
 	b := &l.boxes[x]
-	if .Abs in b.flags && b.cb != NONE && .Multicol in l.boxes[b.cb].fx {
-		if rec := mc_record(l, b.cb); rec != nil { b.space, b.clip = rec.outer_space, rec.outer_clip }
+	if cb := l.cold[x].cb; .Abs in b.flags && cb != NONE && .Multicol in l.boxes[cb].fx {
+		if rec := mc_record(l, cb); rec != nil { b.space, b.clip = rec.outer_space, rec.outer_clip }
 		return
 	}
 	if l.spaces[b.space].kind != .Flow { return }

@@ -310,6 +310,36 @@ capi_main :: proc() -> int {
 	// Map and Set: a loop of delete then set keeps the order and the values (the index is not rebuilt at each insert)
 	check(text(ctx, eval(ctx, "(function () { var m = new Map(); for (var i = 0; i < 1000; i++) m.set(i, i); for (var i = 0; i < 100000; i++) { m.delete(i); m.set(i + 1000, i); } return m.size + ',' + m.get(100999) + ',' + m.keys().next().value })()")) == "1000,99999,100000", "Map: delete then set")
 	check(text(ctx, eval(ctx, "(function () { var s = new Set(); for (var i = 0; i < 100; i++) s.add(i); var it = s.values(); it.next(); for (var i = 0; i < 5000; i++) { s.delete(i); s.add(i + 100); } return s.size + ',' + it.next().value })()")) == "100,5000", "Set: delete then add under an iterator")
+	// holey arrays: a write past the elements or a delete inside them keeps the elements (holes in between); a hole is
+	// no own property, a read goes on to the prototypes; a write far past them makes a dictionary
+	// (a prototype of their own: an index key on Array.prototype would turn the array fast paths off for the rest of the run)
+	check(text(ctx, eval(ctx, "(function () { var p = Object.create(Array.prototype); var a = []; a[3] = 'd'; a[0] = 'a'; var r = [a.length, 1 in a, a.hasOwnProperty(3), Object.keys(a).join(':'), JSON.stringify(a)]; Object.setPrototypeOf(a, p); p[1] = 'p'; r.push(a[1]); var s = ''; for (var k in a) s += k; r.push(s); delete p[1]; r.push(String(a[1])); delete a[0]; r.push(Object.keys(a).join(':')); a.length = 2; r.push(a.length, Object.keys(a).length); return r.join(',') })()")) == "4,false,true,0:3,[\"a\",null,null,\"d\"],p,031,undefined,3,2,0", "holey array: keys, in, JSON, prototype, for-in, delete, length")
+	check(text(ctx, eval(ctx, "(function () { var log = ''; var p = Object.create(Array.prototype); Object.defineProperty(p, 1, {set: function (v) { log += 'set' + v }}); var a = [1, 2, 3]; delete a[1]; Object.setPrototypeOf(a, p); a[1] = 5; return log + ',' + a.hasOwnProperty(1) + ',' + a.length })()")) == "set5,false,3", "holey array: a write into a hole meets a setter of the prototype")
+	check(text(ctx, eval(ctx, "(function () { 'use strict'; var a = [1, 2, 3]; delete a[1]; Object.preventExtensions(a); try { a[1] = 2; return 'no throw' } catch (e) { return (e instanceof TypeError) + ',' + (1 in a) + ',' + a[2] } })()")) == "true,false,3", "holey array: no new element in a hole of a non-extensible array")
+	check(text(ctx, eval(ctx, "(function () { var a = [1, 2, 3]; delete a[1]; Object.freeze(a); a[0] = 9; return Object.isFrozen(a) + ',' + Object.keys(a) + ',' + a[0] })()")) == "true,0,2,1", "holey array: freeze")
+	check(text(ctx, eval(ctx, "(function () { var a = [1, 2, 3]; delete a[1]; var b = [3, 2, 1]; delete b[1]; b.sort(); return [[...a].length, 1 in [...a], 1 in a.map(x => x * 2), a.indexOf(undefined), a.includes(undefined), Object.keys(b).join(':'), b.length, Math.max.apply(null, a), a.join('-')].join(',') })()")) == "3,true,false,-1,true,0:1,3,NaN,1--3", "holey array: spread, map, indexOf, includes, sort, apply, join")
+	check(text(ctx, eval(ctx, "(function () { var a = []; for (var i = 99; i >= 0; i--) a[i] = i; var s = 0; for (i = 0; i < 100; i++) s += a[i]; return s + ',' + a.length + ',' + Object.keys(a).length + ',' + Object.getOwnPropertyNames(a).length })()")) == "4950,100,100,101", "holey array: filled from its end")
+	hv := eval(ctx, "globalThis.holes = []; for (var i = 9; i >= 0; i--) holes[i] = i; holes")
+	ho := js.as_obj(capi.dec(hv))
+	check(!ho.fast_array && len(ho.shape.props) == 1 && ho.data.(js.Array_Data).count == 10, "an array filled from its end keeps its elements (holey, not a dictionary)")
+	capi.JS_FreeValue(ctx, hv)
+	check(is_int(eval(ctx, "holes.length = 0; holes.push(7); holes[0]"), 7) && ho.fast_array, "a holey array emptied is fast again")
+	sv := eval(ctx, "globalThis.sparse = []; sparse[100000] = 1; sparse")
+	so := js.as_obj(capi.dec(sv))
+	check(!so.fast_array && so.data.(js.Array_Data).count == 0 && len(so.shape.props) == 2, "a write far past the elements makes a dictionary")
+	capi.JS_FreeValue(ctx, sv)
+	check(text(ctx, eval(ctx, "sparse.length + ',' + sparse[100000] + ',' + Object.keys(sparse)")) == "100001,1,100000", "the dictionary array reads the same")
+	// shapes: the shapes of a chain of transitions share one block of keys and its table; a shape that is the start of a
+	// block does not see the keys after it; a second branch copies its start; blocks go with their last shape
+	cv := eval(ctx, "globalThis.chain = {}; for (var i = 0; i < 40; i++) chain['k' + i] = i; chain")
+	csh := js.as_obj(capi.dec(cv)).shape
+	check(!csh.is_dict && len(csh.props) == 40 && csh.block != nil && csh.block.refs >= 10 && raw_data(csh.props) == js.props_block_entries(csh.block), "the shapes of a chain share their keys")
+	capi.JS_FreeValue(ctx, cv)
+	check(text(ctx, eval(ctx, "(function () { var c = {}; for (var i = 0; i < 20; i++) c['p' + i] = i; var e = {}; for (var i = 0; i < 12; i++) e['p' + i] = i; var r = [('p12' in e), ('p19' in e), e.p11, e.p0, Object.keys(e).length]; e.q = 'q'; r.push('p12' in e, e.q, ('q' in c), c.p19, Object.keys(c).length, Object.keys(e).join('').length); return r.join(',') })()")) == "false,false,11,0,12,false,q,false,19,20,27", "a shape that starts a shared block, then a branch of it")
+	check(text(ctx, eval(ctx, "(function () { var a = {x: 1}; a.y = 2; a.z = 3; var b = {x: 1}; b.y = 2; b.w = 4; return Object.keys(a) + '|' + Object.keys(b) + '|' + ('z' in b) + ('w' in a) })()")) == "x,y,z|x,y,w|falsefalse", "two branches of one shape")
+	eval(ctx, "(function () { for (var j = 0; j < 300; j++) { var o = {}; for (var i = 0; i < 30; i++) o['g' + (j % 7) + '_' + i] = i; } })(); 0")
+	capi.JS_RunGC(rt)
+	check(text(ctx, eval(ctx, "(function () { var s = 0, o; for (var j = 0; j < 7; j++) { o = {}; for (var i = 0; i < 30; i++) o['g' + j + '_' + i] = i; for (var i = 0; i < 30; i++) s += o['g' + j + '_' + i]; } var d = {}; for (var i = 0; i < 60; i++) d['m' + i] = i; delete d.m3; var t = {a: 1, b: 2, c: 3}; delete t.b; return s + ',' + Object.keys(d).length + ',' + d.m59 + ',' + Object.keys(t) + ',' + chain.k39 + ',' + ('k40' in chain) })()")) == "3045,59,59,a,c,39,false", "shapes after a collection freed blocks; dictionaries")
 	// strings: a long slice shares its string's units and reads the same; equality and order by width
 	check(text(ctx, eval(ctx, "(function () { var b = 'x'.repeat(100) + 'abc' + 'y'.repeat(100); var p = b.slice(50, 160); return p.length + ',' + p.indexOf('abc') + ',' + (p === 'x'.repeat(50) + 'abc' + 'y'.repeat(57)) })()")) == "110,50,true", "a long slice")
 	check(text(ctx, eval(ctx, "String(['b\\u0100', 'a\\u0100', 'a', 'ab'.repeat(20) + 'c', 'ab'.repeat(20) + 'b'].sort())")) == strings.concatenate({"a,ab", strings.repeat("ab", 19, context.temp_allocator), "b,ab", strings.repeat("ab", 19, context.temp_allocator), "c,aĀ,bĀ"}, context.temp_allocator), "compare of strings by width")
