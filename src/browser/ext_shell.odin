@@ -29,6 +29,10 @@ Ext_Shell :: struct {
 	loading:  int,                          // loads in flight
 	popups:   map[u64]string,               // tabs that show an extension's popup: tab id -> extension id (owned)
 	toolbar:  Ext_Toolbar,                  // ext_toolbar.odin: the buttons' icons
+	offscreen: map[string]^Tab,             // ext_window_api.odin: each extension's offscreen document, a tab of no window (owned keys)
+	popouts:  map[int]string,               // ext_window_api.odin: the popout windows: window id -> extension id (owned)
+	last_input_ns: i64,                     // ext_window_api.odin: the last input in a window (the loop's clock): idle.*
+	seen:     Ext_Seen,                     // ext_window_api.odin: what ext_watch reported last
 }
 
 ext_reg :: proc(app: ^App) -> ^extensions.Registry { return &app.pages.extensions }
@@ -43,7 +47,12 @@ ext_shell_start :: proc(app: ^App) {
 	app.loader.extensions = reg
 	page.ext_router_init(&app.loop, page.Ext_Embedder{
 		user = app, page_kind = ext_page_kind, tabs = ext_tabs, windows = ext_windows, focused_window = ext_focused_window, changed = ext_changed,
+		// ext_window_api.odin
+		tab_create = ext_tab_create, tab_update = ext_tab_update, tab_remove = ext_tab_remove,
+		window_create = ext_window_create, window_update = ext_window_update, window_remove = ext_window_remove,
+		offscreen_open = ext_offscreen_open, offscreen_close = ext_offscreen_close, idle_seconds = ext_idle_seconds, reload = ext_reload_from_runtime,
 	}, &app.loader, &app.page_settings, &app.storage)
+	app.ext.last_input_ns = host.now_ns(&app.loop)
 	app.ext.watch = config.watch(&app.prefs, "extensions.", ext_prefs_changed, app)
 	if !reg.settings.enabled || dir == "" { return }
 	// the list, read off the loop thread; each listed package is then loaded (ext_load)
@@ -61,7 +70,7 @@ ext_shell_start :: proc(app: ^App) {
 		if !app.ext.started { return }
 		for le in extensions.registry_list_parse(j.text) {
 			e := extensions.registry_add_listed(ext_reg(app), le)
-			ext_load(app, e.path, .Startup)
+			ext_load(app, e.path, .Startup, ext_packed_id(e))
 		}
 	}, job, proc(data: rawptr) {
 		j := (^Job)(data)
@@ -73,6 +82,7 @@ ext_shell_stop :: proc(app: ^App) {
 	if !app.ext.started { return }
 	app.ext.started = false
 	config.unwatch(&app.prefs, app.ext.watch)
+	ext_windows_destroy(app)   // ext_window_api.odin: the offscreen documents' tabs (in no window: nothing else frees them)
 	page.ext_router_destroy()
 	app.loader.extensions = nil
 	extensions.registry_destroy(ext_reg(app))
@@ -127,28 +137,38 @@ Ext_Load_Job :: struct {
 	app:      ^App,
 	kind:     Ext_Load_Kind,
 	path:     string,
+	id:       string,     // a packed extension's id (its unpacked folder does not give it)
 	settings: extensions.Settings,
 	dir:      string,
 	result:   extensions.Load_Result,
 }
 
-ext_load :: proc(app: ^App, path: string, kind: Ext_Load_Kind) {
+// The id to load a listed extension with: a packed one keeps the id its archive gave it ("" : from its folder or key).
+ext_packed_id :: proc(e: ^extensions.Extension) -> string { return e.source != .Directory ? e.id : "" }
+
+// Loads a package off the loop thread: a folder, or (an install of a path that ends in .zip or .crx) an archive, which
+// is unpacked into the profile first (extensions.archive_install).
+ext_load :: proc(app: ^App, path: string, kind: Ext_Load_Kind, id := "") {
 	reg := ext_reg(app)
 	j := new(Ext_Load_Job)
-	j^ = {app = app, kind = kind, path = strings.clone(path), settings = reg.settings, dir = strings.clone(reg.dir)}
+	j^ = {app = app, kind = kind, path = strings.clone(path), id = strings.clone(id), settings = reg.settings, dir = strings.clone(reg.dir)}
 	j.settings.restricted_hosts = ""   // (a string of the preferences: not read on the pool's thread)
 	app.ext.loading += 1
 	host.run_blocking(&app.blocking, proc(data: rawptr) {
 		j := (^Ext_Load_Job)(data)
 		context.allocator = base.process_allocator()
-		j.result = extensions.image_load(j.path, j.settings, "en-US", j.dir)
+		if j.kind == .Install && extensions.archive_path(j.path) {
+			j.result = extensions.archive_install(j.path, j.settings, "en-US", j.dir)
+		} else {
+			j.result = extensions.image_load(j.path, j.settings, "en-US", j.dir, j.id)
+		}
 		if j.dir != "" && j.result.image != nil {
 			_ = os.make_directory_all(strings.concatenate({extensions.extension_profile_dir(j.dir, j.result.image.id), "/storage"}, context.temp_allocator))
 		}
 	}, ext_load_done, j, proc(data: rawptr) {
 		j := (^Ext_Load_Job)(data)
 		extensions.load_result_destroy(&j.result)
-		delete(j.path); delete(j.dir); free(j)
+		delete(j.path); delete(j.id); delete(j.dir); free(j)
 	})
 }
 
@@ -156,7 +176,7 @@ ext_load :: proc(app: ^App, path: string, kind: Ext_Load_Kind) {
 ext_load_done :: proc(data: rawptr) {
 	j := (^Ext_Load_Job)(data)
 	app := j.app
-	defer { extensions.load_result_destroy(&j.result); delete(j.path); delete(j.dir); free(j) }
+	defer { extensions.load_result_destroy(&j.result); delete(j.path); delete(j.id); delete(j.dir); free(j) }
 	app.ext.loading = max(app.ext.loading - 1, 0)
 	if !app.ext.started { return }
 	defer { ext_page_refresh(app); request_frames(app, 2) }   // (every outcome shows: about:extensions again)
@@ -261,6 +281,7 @@ ext_cancel :: proc(app: ^App, id: string) {
 	for p, i in app.ext.pending {
 		if p.image == nil || p.image.id != id { continue }
 		ordered_remove(&app.ext.pending, i)
+		if p.source != .Directory { ext_remove_folder(app, p.path) }   // (what the archive was unpacked into)
 		extensions.load_result_destroy(p)
 		free(p)
 		ext_notice(app, "The installation was cancelled.")
@@ -289,7 +310,23 @@ ext_reload :: proc(app: ^App, id: string) {
 	e := extensions.registry_find(ext_reg(app), id)
 	if e == nil || e.loading { return }
 	e.loading = true
-	ext_load(app, e.path, .Reload)
+	ext_load(app, e.path, .Reload, ext_packed_id(e))
+}
+
+// Removes a folder the browser made (a packed extension's unpacked files) off the loop thread.
+@(private = "file")
+ext_remove_folder :: proc(app: ^App, path: string) {
+	if path == "" { return }
+	host.run_blocking(&app.blocking, proc(data: rawptr) {
+		p := (^string)(data)
+		_ = os.remove_all(p^)
+	}, proc(data: rawptr) {
+		p := (^string)(data)
+		delete(p^); free(p)
+	}, new_clone(strings.clone(path)), proc(data: rawptr) {
+		p := (^string)(data)
+		delete(p^); free(p)
+	})
 }
 
 ext_remove :: proc(app: ^App, id: string) {
@@ -300,10 +337,12 @@ ext_remove :: proc(app: ^App, id: string) {
 	id_copy := strings.clone(id, context.temp_allocator)
 	page.ext_extension_stop(id_copy)
 	ext_close_pages(app, id_copy)
-	// its storage goes with it (the folders stay empty: no disk call here)
+	// its storage and its listeners go with it (the folders stay empty: no disk call here); a packed one's unpacked files too
 	if reg.dir != "" && reg.write != nil {
 		for kind in ([2]extensions.Area_Kind{.Local, .Sync}) { reg.write(reg.write_user, extensions.area_file(reg.dir, id_copy, kind), "", true) }
+		reg.write(reg.write_user, extensions.state_file(reg.dir, id_copy), "", true)
 	}
+	if e.source != .Directory { ext_remove_folder(app, e.path) }
 	extensions.registry_remove(reg, id_copy)
 	extensions.registry_save_list(reg)
 	page.ext_alarms_schedule()
@@ -342,6 +381,7 @@ ext_open_popup :: proc(app: ^App, e: ^extensions.Extension, popup: string) {
 @(private = "file")
 ext_page_kind :: proc(user: rawptr, p: ^page.Page) -> page.Ext_Kind {
 	app := (^App)(user)
+	if ext_offscreen_page(app, p) { return .Offscreen }   // ext_window_api.odin
 	if t := tab_of_page(app, p); t != nil && t.id in app.ext.popups { return .Popup }
 	return .Tab
 }
@@ -353,7 +393,7 @@ ext_tabs :: proc(user: rawptr, out: ^[dynamic]page.Ext_Tab_Info) {
 		for t, i in w.tabs {
 			append(out, page.Ext_Tab_Info{
 				id = i64(t.id), window = i64(w.id), index = i64(i), url = t.url, title = t.title,
-				active = i == w.current, pinned = t.pinned, loading = t.load != nil, page = t.page != nil ? page.page_id(t.page) : 0,
+				active = i == w.current, pinned = t.pinned, loading = ext_tab_loading(t), page = t.page != nil ? page.page_id(t.page) : 0,
 			})
 		}
 	}
@@ -362,11 +402,7 @@ ext_tabs :: proc(user: rawptr, out: ^[dynamic]page.Ext_Tab_Info) {
 @(private = "file")
 ext_windows :: proc(user: rawptr, out: ^[dynamic]page.Ext_Window_Info) {
 	app := (^App)(user)
-	front := window_front(app)
-	for w in app.windows {
-		state := w.minimized ? "minimized" : "normal"
-		append(out, page.Ext_Window_Info{id = i64(w.id), focused = w == front, width = w.win.size.x, height = w.win.size.y, state = state})
-	}
+	for w in app.windows { append(out, ext_window_info(app, w)) }   // ext_window_api.odin
 }
 
 @(private = "file")
@@ -386,4 +422,7 @@ ext_tab_closed :: proc(app: ^App, t: ^Tab) {
 	if !app.ext.started { return }
 	if id, ok := app.ext.popups[t.id]; ok { delete(id); delete_key(&app.ext.popups, t.id) }
 	page.ext_action_tab_closed(t.id)
+	// tabs.onRemoved (its window is not known here any more: the strip let it go first); an offscreen document's tab is
+	// no tab of the extensions' view
+	if !app.quitting && !ext_is_offscreen_tab(app, t) { page.ext_tab_event_removed(i64(t.id), -1, false) }
 }

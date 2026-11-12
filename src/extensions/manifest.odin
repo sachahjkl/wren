@@ -78,7 +78,7 @@ Problem :: struct {
 }
 
 // The permissions Wren implements: a namespace exists for each (with its context rules). Others are warned of.
-IMPLEMENTED_PERMISSIONS := [?]string{"storage", "unlimitedStorage", "tabs", "alarms", "activeTab"}
+IMPLEMENTED_PERMISSIONS := [?]string{"storage", "unlimitedStorage", "tabs", "alarms", "activeTab", "idle", "offscreen", "clipboardRead", "clipboardWrite"}
 
 // The keys Wren reads or knowingly ignores (a key of neither list is warned of).
 @(private = "file")

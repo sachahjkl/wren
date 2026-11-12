@@ -64,18 +64,48 @@ Ext_Tab_Info :: struct {
 Ext_Window_Info :: struct {
 	id:                  i64,
 	focused:             bool,
+	popup:               bool,      // a popout window an extension made (windows.create type "popup")
 	left, top, width, height: int,
 	state:               string,    // "normal", "maximized", "minimized", "fullscreen"
 }
 
-// What the router needs of the shell (src/browser/ext_shell.odin). nil procedures: no tab, no window.
+// What tabs.create and windows.create ask of the shell (strings: the caller's, valid during the call).
+Ext_Tab_Spec :: struct {
+	url:    string,     // absolute, checked by ext_open_url_ok
+	window: i64,        // -1: the current one
+	index:  i64,        // -1: at the end
+	active: bool,
+}
+
+Ext_Window_Spec :: struct {
+	urls:    []string,  // absolute, checked; none: the homepage
+	popup:   bool,      // type "popup": one tab, no tab strip, no toolbar
+	width, height: int, // logical px (0: the shell's choice)
+	left, top: int,
+	has_position: bool,
+	focused: bool,
+}
+
+// What the router needs of the shell (src/browser/ext_shell.odin, ext_window_api.odin). nil procedures: no tab, no window.
+// The procedures that change tabs and windows are called from a task of the loop of their own, never inside a call of
+// a page (ext_task_post).
 Ext_Embedder :: struct {
 	user:           rawptr,
-	page_kind:      proc(user: rawptr, p: ^Page) -> Ext_Kind,                 // a popup's page, else a tab's
+	page_kind:      proc(user: rawptr, p: ^Page) -> Ext_Kind,                 // a popup's page, an offscreen document, else a tab's
 	tabs:           proc(user: rawptr, out: ^[dynamic]Ext_Tab_Info),
 	windows:        proc(user: rawptr, out: ^[dynamic]Ext_Window_Info),
 	focused_window: proc(user: rawptr) -> i64,
 	changed:        proc(user: rawptr, ext: string),                          // the action's state changed: the toolbar draws again
+	tab_create:     proc(user: rawptr, ext: string, spec: Ext_Tab_Spec) -> i64,              // the new tab's id (-1: none)
+	tab_update:     proc(user: rawptr, tab: i64, url: string, activate: bool) -> bool,       // url "" : unchanged
+	tab_remove:     proc(user: rawptr, tab: i64) -> bool,
+	window_create:  proc(user: rawptr, ext: string, spec: Ext_Window_Spec) -> i64,           // the new window's id (-1: none)
+	window_update:  proc(user: rawptr, window: i64, focus: bool, left, top: int, move: bool) -> bool,
+	window_remove:  proc(user: rawptr, window: i64) -> bool,
+	offscreen_open: proc(user: rawptr, ext, url: string) -> bool,            // a page that shows nothing (ext_offscreen.odin)
+	offscreen_close: proc(user: rawptr, ext: string),
+	idle_seconds:   proc(user: rawptr) -> f64,                                // since the last input in the browser's windows
+	reload:         proc(user: rawptr, ext: string),                          // runtime.reload: the package is read again
 }
 
 Ext_Router :: struct {
@@ -88,6 +118,8 @@ Ext_Router :: struct {
 	next:        u64,
 	alarm_timer: base.Handle,                 // ext_api.odin: the soonest alarm of every extension
 	save_timer:  base.Handle,                 // ext_api.odin: the storage areas that changed are written when it fires
+	idle_timer:  base.Handle,                 // ext_idle.odin: the next time an idle state can change
+	offscreen:   map[string]^Ext_Offscreen,   // ext_offscreen.odin: the offscreen document of each extension (one at most)
 }
 
 ext_router :: proc() -> ^Ext_Router { return &the_pages.ext_router }
@@ -223,7 +255,7 @@ ext_deliver :: proc(c: ^Ext_Context, text: string) -> bool {
 // Emits `event` with its arguments (a JSON list) to every context of the extension that listens to it.
 ext_emit :: proc(ext: string, event: string, args_json: string) {
 	r := ext_router()
-	text := fmt.tprintf(`{"t":"event","e":%s,"a":%s}`, extensions.json_quote(event), args_json)
+	text := fmt.tprintf(`{{"t":"event","e":%s,"a":%s}}`, extensions.json_quote(event), args_json)
 	targets := make([dynamic]^Ext_Context, 0, 4, context.temp_allocator)
 	for _, c in r.contexts { if c.ext == ext && ext_listens(c, event) { append(&targets, c) } }
 	for c in targets { ext_deliver(c, text) }
@@ -260,6 +292,7 @@ ext_listen :: proc(context_id: u64, event: string, on: bool) {
 		k, _ := delete_key(&c.listening, event)
 		delete(k)
 	}
+	if event == EXT_IDLE_EVENT { ext_idle_schedule() }   // ext_idle.odin: the state is watched only while someone listens
 }
 
 // runtime.sendMessage from `from` (its message is the first of `args`, a JSON list).
@@ -274,7 +307,7 @@ ext_send_message :: proc(from: ^Ext_Context, message: string, to: Ext_Target) {
 	rep := new(Ext_Reply)
 	rep.id = ext_next_id()
 	rep.to = to
-	text := fmt.tprintf(`{"t":"event","e":"runtime.onMessage","a":[%s,%s],"r":%d}`, message, ext_sender_json(from), rep.id)
+	text := fmt.tprintf(`{{"t":"event","e":"runtime.onMessage","a":[%s,%s],"r":%d}}`, message, ext_sender_json(from), rep.id)
 	for c in targets { if ext_deliver(c, text) { append(&rep.targets, c.id) } }
 	if len(rep.targets) == 0 {
 		delete(rep.targets)
@@ -307,7 +340,7 @@ ext_respond :: proc(context_id: u64, reply: u64, value: string, has: bool) {
 }
 
 @(private)
-ext_port_disconnect_json :: proc(port: u64) -> string { return fmt.tprintf(`{"t":"disconnect","p":%d}`, port) }
+ext_port_disconnect_json :: proc(port: u64) -> string { return fmt.tprintf(`{{"t":"disconnect","p":%d}}`, port) }
 
 // runtime.connect: a port from `context_id` to the contexts of its extension that listen to runtime.onConnect.
 ext_connect :: proc(context_id: u64, port: u64, name: string) {
@@ -324,7 +357,7 @@ ext_connect :: proc(context_id: u64, port: u64, name: string) {
 	pt := new(Ext_Port)
 	pt.id, pt.ext, pt.opener = port, strings.clone(from.ext), from.id
 	r.ports[port] = pt
-	text := fmt.tprintf(`{"t":"connect","p":%d,"n":%s,"s":%s}`, port, extensions.json_quote(name), ext_sender_json(from))
+	text := fmt.tprintf(`{{"t":"connect","p":%d,"n":%s,"s":%s}}`, port, extensions.json_quote(name), ext_sender_json(from))
 	targets := make([dynamic]^Ext_Context, 0, 4, context.temp_allocator)
 	for _, c in r.contexts {
 		if c.ext != from.ext || c.id == from.id || c.kind == .Content { continue }
@@ -338,7 +371,7 @@ ext_port_post :: proc(context_id: u64, port: u64, message: string) {
 	r := ext_router()
 	pt, ok := r.ports[port]
 	if !ok { return }
-	text := fmt.tprintf(`{"t":"port","p":%d,"m":%s}`, port, message)
+	text := fmt.tprintf(`{{"t":"port","p":%d,"m":%s}}`, port, message)
 	if pt.opener == context_id {
 		for o in pt.others { if c := ext_context_by_id(o); c != nil { ext_deliver(c, text) } }
 	} else {
@@ -401,6 +434,8 @@ ext_router_destroy :: proc() {
 	delete(r.contexts)
 	if r.alarm_timer != base.NIL_HANDLE && r.loop != nil { host.clear_timer(r.loop, r.alarm_timer) }
 	if r.save_timer != base.NIL_HANDLE && r.loop != nil { host.clear_timer(r.loop, r.save_timer) }
+	if r.idle_timer != base.NIL_HANDLE && r.loop != nil { host.clear_timer(r.loop, r.idle_timer) }
+	ext_offscreen_destroy_all()   // ext_offscreen.odin (the shell closes the pages themselves with its tabs)
 	ext_storage_save_all()   // (what changed since the last write: the shell's writer flushes it at exit)
 	r^ = {}
 }

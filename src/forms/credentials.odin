@@ -102,11 +102,19 @@ login_fields :: proc(f: ^Forms, anchor: base.Handle, visible: proc(user: rawptr,
 	return
 }
 
-// Writes `value` into a field as a user edit (a fill the user asked for). False when the field cannot take it.
+// Writes `value` into a field as a user edit (a fill the user asked for). False when the field cannot take it. The
+// field is marked: history restoration and the back/forward cache never keep a value that the Vault filled
+// (docs/bitwarden.md 3.3).
 fill_field :: proc(f: ^Forms, h: base.Handle, value: string) -> bool {
 	if kind(f, h) != .Input || !is_text_field(f, h) || !is_mutable(f, h) { return false }
 	if set_value(f, h, value, by_user = true) != .None { return false }
-	if c := control_peek(f, h); c != nil { c.changed_since_focus = false }   // (change is fired now: not again on blur)
+	f.vault_filled = true
+	if c := control_peek(f, h); c != nil {
+		c.changed_since_focus = false   // (change is fired now: not again on blur)
+		c.vault_filled = true
+		// (the fill is one edit: no undo step can bring back what the field held, or hold the value after a reset)
+		undo_clear(&c.undo); undo_clear(&c.redo)
+	}
 	fire(f, h, "input", bubbles = true, text = "insertReplacementText")
 	if element(f, h) == nil { return true }   // (a listener removed it)
 	fire(f, h, "change", bubbles = true)

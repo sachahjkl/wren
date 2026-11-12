@@ -25,6 +25,7 @@ Settings :: struct {
 	alarms_min_period_ms:   int,
 	alarms_max:             int,
 	toolbar_max_buttons:    int,
+	offscreen_max_ms:       int,      // the lifetime of an offscreen document whose only reason is CLIPBOARD
 	restricted_hosts:       string,   // space-separated hosts no extension acts on
 }
 
@@ -69,6 +70,8 @@ PREFS := [?]config.Def{
 		description = "Most alarms of one extension (Chrome's value). One more fails with an error."},
 	{name = "browser.extensions.toolbar.max_buttons", kind = .Int, default = {i = 8}, bounded = true, min = 0, max = 100,
 		description = "Most extension buttons in the toolbar. The others go into the extensions menu."},
+	{name = "extensions.offscreen.max_lifetime_ms", kind = .Int, default = {i = 30_000}, bounded = true, min = 1000, max = 3_600_000, unit = "ms",
+		description = "An extension's offscreen document made only to use the clipboard closes after this long. Other offscreen documents stay until the extension closes them."},
 	{name = "extensions.restricted_hosts", kind = .String, default = {s = ""},
 		description = "Hosts no extension acts on (no content script, no tab data), separated by spaces."},
 }
@@ -98,6 +101,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		alarms_min_period_ms = int(config.int_of(p, "extensions.alarms.min_period_ms")),
 		alarms_max = int(config.int_of(p, "extensions.alarms.max_per_extension")),
 		toolbar_max_buttons = int(config.int_of(p, "browser.extensions.toolbar.max_buttons")),
+		offscreen_max_ms = int(config.int_of(p, "extensions.offscreen.max_lifetime_ms")),
 		restricted_hosts = config.string_of(p, "extensions.restricted_hosts"),
 	}
 }

@@ -29,7 +29,7 @@ COMMANDS := []Command{
 	{name = "deps", about = "what a build needs, each up to date: [-Profile quick|release] [-Force]", run = deps.run_all},
 	{name = "fetch", about = "wasmtime | wgpu | openh264 | emoji | tracy (the viewer) [-Force] [-Unicode] [-Dest dir]", run = deps.run_fetch},
 	{name = "build", about = "[dev|debug|profile|check|release|bench]: the browser (build help) | jscode (the engine's machine code, from build/js/wren_js.wasm) | lexbor | native | tracy | vault [-Force] [-Profile quick|release] [-Features a,b]", run = builder.run},
-	{name = "vault", about = "test | probe -Server url -Email e [-Totp code] [-Helper path]: the Vault's helper (docs/bitwarden.md; the password: WREN_VAULT_PASSWORD)", run = vaulttool.run},
+	{name = "vault", about = "test | probe -Server url -Email e [-Code code] [-Helper path]: the Vault's helper (docs/bitwarden.md; the password: WREN_VAULT_PASSWORD)", run = vaulttool.run},
 	{name = "symbols", about = "-Publish exe [-Store] | -Fingerprint exe", run = deps.run_symbols},
 	{name = "crash-symbolize", about = "<report> [-Symbols folder or .map] [-Exe exe]: names the frames of a crash report", run = deps.run_crash_symbolize},
 	{name = "symbolize", about = "-Exe exe <offset>...: the function and line at an offset of a module", run = deps.run_symbolize},

@@ -1,13 +1,14 @@
 package page
 
-// The extension APIs of phase 1 (docs/extensions.md, section 2.2 "Start"): one table of methods and one of events, each
-// with the permission it needs and whether a content script may use it. ext_info_json lists what a context may use
-// (its chrome.* is built from that list: an API outside it is `undefined`); ext_dispatch checks the same rule before it
-// runs anything (ext_call_allowed: the one gate). Arguments arrive as a JSON list, answers leave as JSON text ("" :
-// undefined, "!" : an error's message).
+// The extension APIs of phases 1 and 2 (docs/extensions.md, section 2.2 "Start", "Log in and unlock"): one table of
+// methods and one of events, each with the permission it needs and whether a content script may use it. ext_info_json
+// lists what a context may use (its chrome.* is built from that list: an API outside it is `undefined`); ext_dispatch
+// checks the same rule before it runs anything (ext_allowed: the one gate). Arguments arrive as a JSON list, answers
+// leave as JSON text ("" : undefined, "!" : an error's message). Phase 2's are in ext_tabs.odin (tabs and windows that
+// change, runtime.getContexts / reload / openOptionsPage, their events), ext_offscreen.odin and ext_idle.odin.
 //
-// Not here yet (later phases): content scripts, scripting, webRequest, contextMenus, commands, notifications, idle,
-// offscreen, tabs.create / update / remove, windows.create, permissions.request (answers false).
+// Not here yet (later phases): content scripts, scripting, webRequest, contextMenus, commands, notifications,
+// permissions.request (answers false).
 
 import "core:encoding/json"
 import "core:fmt"
@@ -50,6 +51,9 @@ EXT_METHODS := [?]Ext_Method{
 	{name = "runtime.sendMessage", content = true, impl = ext_runtime_send_message},
 	{name = "runtime.getPlatformInfo", impl = ext_runtime_platform},
 	{name = "runtime.setUninstallURL", impl = ext_nothing},
+	{name = "runtime.getContexts", impl = ext_runtime_contexts},
+	{name = "runtime.reload", impl = ext_runtime_reload},
+	{name = "runtime.openOptionsPage", impl = ext_runtime_options},
 	{name = "storage.local.get", permission = "storage", content = true, impl = ext_storage_get},
 	{name = "storage.local.set", permission = "storage", content = true, impl = ext_storage_set},
 	{name = "storage.local.remove", permission = "storage", content = true, impl = ext_storage_remove},
@@ -74,10 +78,21 @@ EXT_METHODS := [?]Ext_Method{
 	{name = "tabs.query", impl = ext_tabs_query},
 	{name = "tabs.get", impl = ext_tabs_get},
 	{name = "tabs.getCurrent", impl = ext_tabs_current},
+	{name = "tabs.create", impl = ext_tabs_create},
+	{name = "tabs.update", impl = ext_tabs_update},
+	{name = "tabs.remove", impl = ext_tabs_remove},
 	{name = "windows.getCurrent", impl = ext_windows_current},
 	{name = "windows.getLastFocused", impl = ext_windows_current},
 	{name = "windows.getAll", impl = ext_windows_all},
 	{name = "windows.get", impl = ext_windows_get},
+	{name = "windows.create", impl = ext_windows_create},
+	{name = "windows.update", impl = ext_windows_update},
+	{name = "windows.remove", impl = ext_windows_remove},
+	{name = "idle.queryState", permission = "idle", impl = ext_idle_query},
+	{name = "idle.setDetectionInterval", permission = "idle", impl = ext_idle_interval},
+	{name = "offscreen.createDocument", permission = "offscreen", impl = ext_offscreen_create},
+	{name = "offscreen.hasDocument", permission = "offscreen", impl = ext_offscreen_has},
+	{name = "offscreen.closeDocument", permission = "offscreen", impl = ext_offscreen_close_call},
 	{name = "action.setTitle", action = true, impl = ext_action_set},
 	{name = "action.getTitle", action = true, impl = ext_action_get},
 	{name = "action.setPopup", action = true, impl = ext_action_set},
@@ -124,13 +139,16 @@ EXT_EVENTS := [?]Ext_Event{
 	{name = "tabs.onHighlighted"},
 	{name = "windows.onFocusChanged"}, {name = "windows.onRemoved"}, {name = "windows.onCreated"}, {name = "windows.onBoundsChanged"},
 	{name = "permissions.onAdded"}, {name = "permissions.onRemoved"},
+	{name = "idle.onStateChanged", permission = "idle"},
 }
 
 // The gate (rule 2 of section 3.11), for a method or an event: the permission is in the manifest (every required
-// permission is granted at install), the manifest has what it acts on, the kind of context may use it.
+// permission is granted at install), the manifest has what it acts on, the kind of context may use it. An offscreen
+// document has runtime only, as in Chrome.
 @(private)
-ext_allowed :: proc(im: ^extensions.Image, kind: Ext_Kind, permission: string, content, action: bool) -> bool {
+ext_allowed :: proc(im: ^extensions.Image, kind: Ext_Kind, name, permission: string, content, action: bool) -> bool {
 	if kind == .Content && !content { return false }
+	if kind == .Offscreen && !strings.has_prefix(name, "runtime.") { return false }
 	if action && !im.manifest.has_action { return false }
 	if permission != "" && !extensions.manifest_has_permission(&im.manifest, permission) { return false }
 	return true
@@ -145,11 +163,11 @@ ext_method_find :: proc(name: string) -> ^Ext_Method {
 ext_info_json :: proc(im: ^extensions.Image, kind: Ext_Kind) -> string {
 	b := strings.builder_make(context.temp_allocator)
 	lang := im.language
-	fmt.sbprintf(&b, `{"id":%s,"kind":%s,"base":%s,"flavour":%s,"lang":%s,"methods":[`, extensions.json_quote(im.id), extensions.json_quote(EXT_KIND_NAMES[kind]),
+	fmt.sbprintf(&b, `{{"id":%s,"kind":%s,"base":%s,"flavour":%s,"lang":%s,"methods":[`, extensions.json_quote(im.id), extensions.json_quote(EXT_KIND_NAMES[kind]),
 		extensions.json_quote(im.base_url), extensions.json_quote(extensions.FLAVOUR_NAMES[im.manifest.flavour]), extensions.json_quote(lang))
 	first := true
 	for m in EXT_METHODS {
-		if !ext_allowed(im, kind, m.permission, m.content, m.action) { continue }
+		if !ext_allowed(im, kind, m.name, m.permission, m.content, m.action) { continue }
 		if !first { strings.write_byte(&b, ',') }
 		first = false
 		strings.write_string(&b, extensions.json_quote(m.name))
@@ -157,7 +175,7 @@ ext_info_json :: proc(im: ^extensions.Image, kind: Ext_Kind) -> string {
 	strings.write_string(&b, `],"events":[`)
 	first = true
 	for ev in EXT_EVENTS {
-		if !ext_allowed(im, kind, ev.permission, ev.content, ev.action) { continue }
+		if !ext_allowed(im, kind, ev.name, ev.permission, ev.content, ev.action) { continue }
 		if !first { strings.write_byte(&b, ',') }
 		first = false
 		strings.write_string(&b, extensions.json_quote(ev.name))
@@ -178,7 +196,7 @@ ext_dispatch :: proc(c: ^Ext_Context, method, args: string, to: Ext_Target) {
 		ext_answer(to, fmt.tprintf("!%s is not supported", method))
 		return
 	}
-	if !ext_allowed(e.image, c.kind, m.permission, m.content, m.action) {
+	if !ext_allowed(e.image, c.kind, m.name, m.permission, m.content, m.action) {
 		ext_answer(to, fmt.tprintf("!%s is not allowed in this context (permission %q)", method, m.permission))
 		return
 	}
@@ -255,7 +273,7 @@ ext_runtime_platform :: proc(x: ^Ext_Call) {
 	when ODIN_OS == .Darwin { os_name = "mac" }
 	arch := "x86-64"
 	when ODIN_ARCH == .arm64 { arch = "arm64" }
-	ext_ok(x, fmt.tprintf(`{"os":"%s","arch":"%s","nacl_arch":"%s"}`, os_name, arch, arch))
+	ext_ok(x, fmt.tprintf(`{{"os":"%s","arch":"%s","nacl_arch":"%s"}}`, os_name, arch, arch))
 }
 
 ////////////////////////////////
@@ -456,17 +474,22 @@ ext_current_window :: proc(x: ^Ext_Call) -> i64 {
 
 // Whether the extension may see a tab's URL and title: the tabs permission, a host grant for its URL, or its own page.
 @(private)
-ext_may_see :: proc(x: ^Ext_Call, href: string) -> bool {
-	if extensions.manifest_has_permission(&x.e.image.manifest, "tabs") { return true }
-	if strings.has_prefix(href, x.e.image.base_url) { return true }
-	return extensions.extension_host_allowed(x.reg, x.e, href)
+ext_may_see :: proc(x: ^Ext_Call, href: string) -> bool { return ext_may_see_of(x.reg, x.e, href) }
+
+// (the same for an event, which has no call: ext_tabs.odin)
+ext_may_see_of :: proc(reg: ^extensions.Registry, e: ^extensions.Extension, href: string) -> bool {
+	if extensions.manifest_has_permission(&e.image.manifest, "tabs") { return true }
+	if strings.has_prefix(href, e.image.base_url) { return true }
+	return extensions.extension_host_allowed(reg, e, href)
 }
 
 @(private)
-ext_tab_json :: proc(b: ^strings.Builder, x: ^Ext_Call, t: Ext_Tab_Info) {
-	fmt.sbprintf(b, `{"id":%d,"index":%d,"windowId":%d,"active":%s,"highlighted":%s,"selected":%s,"pinned":%s,"incognito":false,"discarded":false,"autoDiscardable":true,"frozen":false,"groupId":-1,"audible":false,"mutedInfo":{"muted":false},"status":"%s"`,
+ext_tab_json :: proc(b: ^strings.Builder, x: ^Ext_Call, t: Ext_Tab_Info) { ext_tab_json_of(b, x.reg, x.e, t) }
+
+ext_tab_json_of :: proc(b: ^strings.Builder, reg: ^extensions.Registry, e: ^extensions.Extension, t: Ext_Tab_Info) {
+	fmt.sbprintf(b, `{{"id":%d,"index":%d,"windowId":%d,"active":%s,"highlighted":%s,"selected":%s,"pinned":%s,"incognito":false,"discarded":false,"autoDiscardable":true,"frozen":false,"groupId":-1,"audible":false,"mutedInfo":{{"muted":false}},"status":"%s"`,
 		t.id, t.index, t.window, jbool_text(t.active), jbool_text(t.active), jbool_text(t.active), jbool_text(t.pinned), t.loading ? "loading" : "complete")
-	if ext_may_see(x, t.url) {
+	if ext_may_see_of(reg, e, t.url) {
 		fmt.sbprintf(b, `,"url":%s,"title":%s`, extensions.json_quote(t.url), extensions.json_quote(t.title))
 	}
 	strings.write_byte(b, '}')
@@ -536,9 +559,11 @@ ext_tabs_current :: proc(x: ^Ext_Call) {
 }
 
 @(private)
-ext_window_json :: proc(b: ^strings.Builder, x: ^Ext_Call, w: Ext_Window_Info, populate: bool) {
-	fmt.sbprintf(b, `{"id":%d,"focused":%s,"top":%d,"left":%d,"width":%d,"height":%d,"incognito":false,"type":"normal","state":%s,"alwaysOnTop":false`,
-		w.id, jbool_text(w.focused), w.top, w.left, w.width, w.height, extensions.json_quote(w.state != "" ? w.state : "normal"))
+ext_window_json :: proc(b: ^strings.Builder, x: ^Ext_Call, w: Ext_Window_Info, populate: bool) { ext_window_json_of(b, x.reg, x.e, w, populate) }
+
+ext_window_json_of :: proc(b: ^strings.Builder, reg: ^extensions.Registry, e: ^extensions.Extension, w: Ext_Window_Info, populate: bool) {
+	fmt.sbprintf(b, `{{"id":%d,"focused":%s,"top":%d,"left":%d,"width":%d,"height":%d,"incognito":false,"type":"%s","state":%s,"alwaysOnTop":false`,
+		w.id, jbool_text(w.focused), w.top, w.left, w.width, w.height, w.popup ? "popup" : "normal", extensions.json_quote(w.state != "" ? w.state : "normal"))
 	if populate {
 		strings.write_string(b, `,"tabs":[`)
 		first := true
@@ -546,7 +571,7 @@ ext_window_json :: proc(b: ^strings.Builder, x: ^Ext_Call, w: Ext_Window_Info, p
 			if t.window != w.id { continue }
 			if !first { strings.write_byte(b, ',') }
 			first = false
-			ext_tab_json(b, x, t)
+			ext_tab_json_of(b, reg, e, t)
 		}
 		strings.write_byte(b, ']')
 	}
@@ -782,7 +807,7 @@ ext_now_ms :: proc() -> f64 { return f64(time.time_to_unix_nano(time.now())) / 1
 
 @(private)
 ext_alarm_json :: proc(b: ^strings.Builder, al: extensions.Alarm) {
-	fmt.sbprintf(b, `{"name":%s,"scheduledTime":%.0f`, extensions.json_quote(al.name), al.when_ms)
+	fmt.sbprintf(b, `{{"name":%s,"scheduledTime":%.0f`, extensions.json_quote(al.name), al.when_ms)
 	if al.period_ms > 0 { fmt.sbprintf(b, `,"periodInMinutes":%v`, al.period_ms / 60000) }
 	strings.write_byte(b, '}')
 }
@@ -955,7 +980,7 @@ ext_permissions :: proc(x: ^Ext_Call) {
 ext_management_self :: proc(x: ^Ext_Call) {
 	m := &x.e.image.manifest
 	b := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&b, `{"id":%s,"name":%s,"shortName":%s,"description":%s,"version":%s,"versionName":%s,"mayDisable":true,"enabled":%s,"installType":"development","type":"extension","offlineEnabled":false,"homepageUrl":%s,"optionsUrl":%s,"permissions":[`,
+	fmt.sbprintf(&b, `{{"id":%s,"name":%s,"shortName":%s,"description":%s,"version":%s,"versionName":%s,"mayDisable":true,"enabled":%s,"installType":"development","type":"extension","offlineEnabled":false,"homepageUrl":%s,"optionsUrl":%s,"permissions":[`,
 		extensions.json_quote(x.e.id), extensions.json_quote(m.name), extensions.json_quote(m.short_name != "" ? m.short_name : m.name), extensions.json_quote(m.description),
 		extensions.json_quote(m.version), extensions.json_quote(m.version_name != "" ? m.version_name : m.version), jbool_text(x.e.enabled), extensions.json_quote(m.homepage_url),
 		extensions.json_quote(m.options_page != "" ? extensions.image_url(x.e.image, m.options_page) : ""))

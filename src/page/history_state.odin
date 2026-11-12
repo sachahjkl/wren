@@ -6,7 +6,8 @@ package page
 //   * scroll positions: the document's, and every scroll container's that was moved, by element (CSS pixels);
 //   * the page zoom;
 //   * form controls the user changed (dirty value, checkedness, selectedness), by element. Never password or file
-//     inputs, hidden ones, nor controls (or forms) with autocomplete=off, as other browsers.
+//     inputs, hidden ones, nor controls (or forms) with autocomplete=off, as other browsers; never a field that the
+//     Vault filled.
 // Elements are named by a path that survives a new parse of the same document: its id when it is unique, else the
 // indexes of the element children from the document down to it. A restored control must still be the same kind of
 // control (tag, type, name); anything else is skipped.
@@ -142,6 +143,7 @@ persisted_capture_controls :: proc(p: ^Page, ps: ^Persisted_State) -> int {
 	for h, c in f.controls {
 		n := dom.get(d, h)
 		if n == nil || n.kind != .Element || !dom.is_connected(d, h) { continue }
+		if c.vault_filled { continue }   // (a value of the Vault is never kept: docs/bitwarden.md 3.3)
 		what: Persisted_What
 		value := ""
 		on := false

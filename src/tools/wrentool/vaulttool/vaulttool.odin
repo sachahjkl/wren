@@ -1,8 +1,10 @@
 // Package vaulttool: `wrentool vault`, the Vault's helper from the command line (docs/bitwarden.md, phase 0).
 //   wrentool vault test                                   cargo test of wren-vault
-//   wrentool vault probe -Server http://127.0.0.1:8000 -Email a@b.c [-Totp 123456] [-Helper path]
+//   wrentool vault probe -Server http://127.0.0.1:8000 -Email a@b.c [-Code 123456] [-Helper path]
 // probe starts build/vault/wren-vault, logs in (the master password comes from WREN_VAULT_PASSWORD, never from a flag:
 // a flag stays in the shell's history), syncs, prints the item count, and locks. It prints no value of the vault.
+// -Code is the second step's code: the authenticator's (or the email's, for an account with email only). Without it,
+// probe asks for the code on its input when the account needs one (a new-device code is mailed at that moment).
 // The protocol is written here with core:encoding/json: this tool links none of the browser's packages.
 package vaulttool
 
@@ -30,7 +32,7 @@ run :: proc(args: []string) -> int {
 
 usage :: proc() {
 	fmt.eprintln("wrentool vault test")
-	fmt.eprintfln("wrentool vault probe -Server <base URL> -Email <email> [-Totp <code>] [-Helper <path>]   (the password: %s)", PASSWORD_ENV)
+	fmt.eprintfln("wrentool vault probe -Server <base URL> -Email <email> [-Code <code>] [-Helper <path>]   (the password: %s)", PASSWORD_ENV)
 }
 
 @(private = "file")
@@ -40,7 +42,7 @@ Hello :: struct {
 @(private = "file")
 Login :: struct { id: u64, op, email, password: string }
 @(private = "file")
-Login_Code :: struct { id: u64, op, email, totp: string }
+Login_Code :: struct { id: u64, op, email, code, provider: string }
 @(private = "file")
 Plain :: struct { id: u64, op: string }
 
@@ -48,7 +50,7 @@ Plain :: struct { id: u64, op: string }
 Pipe_Ends :: struct { w, r: ^os.File }
 
 probe :: proc(args: []string) -> int {
-	f, ok := tooling.parse_flags(args, "-Server= -Email= -Totp= -Helper=")
+	f, ok := tooling.parse_flags(args, "-Server= -Email= -Code= -Helper=")
 	if !ok { return 2 }
 	server := strings.trim_right(tooling.flag(f, "-Server"), "/")
 	email := tooling.flag(f, "-Email")
@@ -71,17 +73,32 @@ probe :: proc(args: []string) -> int {
 		_, _ = os.process_wait(process)
 	}
 
-	a, a_ok := ask(&p, Hello{id = 1, op = "hello", protocol = 1, state_dir = "", identity_url = fmt.tprintf("%s/identity", server),
+	a, a_ok := ask(&p, Hello{id = 1, op = "hello", protocol = 2, state_dir = "", identity_url = fmt.tprintf("%s/identity", server),
 		api_url = fmt.tprintf("%s/api", server), persist = false, device_name = "wrentool", client_version = "probe"})
 	if !answered(a, a_ok, "hello") { return 1 }
 	fmt.printfln("hello: helper %s, protocol %v", text(a, "helper_version"), a["protocol"])
 
 	a, a_ok = ask(&p, Login{id = 2, op = "login", email = email, password = password})
 	if !answered(a, a_ok, "login") { return 1 }
-	if text(a, "result") == "need_two_factor" {
-		code := tooling.flag(f, "-Totp")
-		if code == "" { fmt.eprintln("login: the account asks for its authenticator code (-Totp)"); return 1 }
-		a, a_ok = ask(&p, Login_Code{id = 3, op = "login", email = email, totp = code})
+	if result := text(a, "result"); result == "need_two_factor" || result == "need_device_code" {
+		provider := "device"
+		if result == "need_two_factor" {
+			// (an account with the email code only: the server mailed it; else the authenticator's)
+			provider = "authenticator"
+			if list, is_list := a["providers"].(json.Array); is_list && len(list) == 1 {
+				if only, _ := list[0].(json.String); only == "email" { provider = "email" }
+			}
+		}
+		code := tooling.flag(f, "-Code")
+		if code == "" {
+			// (a new-device code is valid for this login only: it is asked now, not in a second run)
+			fmt.printf("login: the account asks for a code (%s): ", provider)
+			line: [64]u8
+			n, _ := os.read(os.stdin, line[:])
+			code = strings.trim_space(string(line[:max(n, 0)]))
+		}
+		if code == "" { fmt.eprintln("login: no code"); return 1 }
+		a, a_ok = ask(&p, Login_Code{id = 3, op = "login", email = email, code = code, provider = provider})
 		if !answered(a, a_ok, "login (code)") { return 1 }
 	}
 	fmt.println("login: unlocked")

@@ -8,11 +8,23 @@ package e2e_scenarios
 // popup while the background is stopped, queued in order, answered in order once it started. Reload and remove leave
 // no extension and no background.
 
+//
+// Phase 2 (extensions_vault_packed_offscreen_tabs, extensions_vault_restart): the fixture examples/extensions/vault,
+// packed here into a .zip and a .crx and installed from them; an offscreen document that writes the clipboard for the
+// background, one at a time; the popup's own clipboard with no click; tabs.create, its events and tabs.remove; the
+// popout window and its end; runtime.getContexts; the idle state and its event; then a restart: the extension comes
+// back from the profile with its id, and its background, whose listeners were kept, does not run until an event it
+// listens to comes.
+
+import "core:encoding/endian"
 import "core:fmt"
+import "core:hash"
+import "core:os"
 import "core:strings"
 import "core:testing"
 import "wb:e2e"
 import "wb:extensions"
+import "wb:host"
 import "wb:page"
 import "wb:url"
 
@@ -75,7 +87,7 @@ extensions_load_popup_background :: proc(t: ^testing.T) {
 	e2e.expect_eval(s, `new Promise((ok) => { chrome.storage.onChanged.addListener((c, area) => ok(area + " " + c.k.newValue)); chrome.storage.local.set({k: "v"}); })`, "local v", "storage.onChanged in the page that wrote")
 
 	// what its permissions leave out is absent
-	e2e.expect_eval(s, `[typeof chrome.tabs.create, typeof chrome.contextMenus, typeof chrome.scripting, typeof chrome.alarms.create, typeof chrome.storage.local.get].join(" ")`, "undefined undefined undefined function function", "an API outside the phase or the permissions is undefined")
+	e2e.expect_eval(s, `[typeof chrome.idle, typeof chrome.contextMenus, typeof chrome.scripting, typeof chrome.offscreen, typeof chrome.alarms.create, typeof chrome.storage.local.get].join(" ")`, "undefined undefined undefined undefined function function", "an API outside the phase or the permissions is undefined")
 	e2e.expect_eval(s, `chrome.permissions.contains({origins: ["https://example.com/a*"]}).then(String)`, "true", "permissions.contains: a granted host")
 	e2e.expect_eval(s, `chrome.permissions.contains({permissions: ["tabs"]}).then(String)`, "false", "permissions.contains: a permission it did not ask for")
 	e2e.expect_eval(s, `chrome.management.getSelf().then((m) => m.name + " " + m.installType)`, "Hello extension development", "management.getSelf")
@@ -115,4 +127,240 @@ extensions_load_popup_background :: proc(t: ^testing.T) {
 	}
 	e2e.navigate(s, popup)
 	e2e.expect_eval(s, `typeof chrome`, "undefined", "a page of a removed extension does not load (and has no chrome.*)")
+}
+
+////////////////////////////////
+// Phase 2
+
+@(private = "file")
+VAULT_FILES := [?]string{"manifest.json", "background.js", "offscreen.html", "offscreen.js", "popup.html", "popup.js", "page.html"}
+
+@(private = "file")
+put16 :: proc(b: ^[dynamic]byte, v: u16) {
+	x: [2]byte
+	endian.put_u16(x[:], .Little, v)
+	append(b, ..x[:])
+}
+
+@(private = "file")
+put32 :: proc(b: ^[dynamic]byte, v: u32) {
+	x: [4]byte
+	endian.put_u32(x[:], .Little, v)
+	append(b, ..x[:])
+}
+
+// The fixture's files as a zip (stored entries), or as a CRX3 whose header names `crx_key` as its public key.
+@(private = "file")
+pack_vault :: proc(crx_key := "") -> []byte {
+	dir := fmt.tprintf("%s/examples/extensions/vault", e2e.repo_root())
+	out := make([dynamic]byte, 0, 16 * 1024, context.temp_allocator)
+	central := make([dynamic]byte, 0, 1024, context.temp_allocator)
+	for name in VAULT_FILES {
+		data := transmute([]byte)e2e.read_text(fmt.tprintf("%s/%s", dir, name))
+		crc := hash.crc32(data)
+		local := u32(len(out))
+		put32(&out, 0x04034b50); put16(&out, 20); put16(&out, 0); put16(&out, 0); put16(&out, 0); put16(&out, 0)
+		put32(&out, crc); put32(&out, u32(len(data))); put32(&out, u32(len(data))); put16(&out, u16(len(name))); put16(&out, 0)
+		append(&out, ..transmute([]byte)name)
+		append(&out, ..data)
+		put32(&central, 0x02014b50); put16(&central, 20); put16(&central, 20); put16(&central, 0); put16(&central, 0)
+		put16(&central, 0); put16(&central, 0); put32(&central, crc); put32(&central, u32(len(data))); put32(&central, u32(len(data)))
+		put16(&central, u16(len(name))); put16(&central, 0); put16(&central, 0); put16(&central, 0); put16(&central, 0)
+		put32(&central, 0); put32(&central, local)
+		append(&central, ..transmute([]byte)name)
+	}
+	cd_at := u32(len(out))
+	append(&out, ..central[:])
+	put32(&out, 0x06054b50); put16(&out, 0); put16(&out, 0); put16(&out, u16(len(VAULT_FILES))); put16(&out, u16(len(VAULT_FILES)))
+	put32(&out, u32(len(central))); put32(&out, cd_at); put16(&out, 0)
+	if crx_key == "" { return out[:] }
+	// CrxFileHeader { 2: AsymmetricKeyProof { 1: public_key } } (protobuf; lengths below 128: one byte each)
+	proof := make([dynamic]byte, 0, 64, context.temp_allocator)
+	append(&proof, 0x0A, byte(len(crx_key)))
+	append(&proof, ..transmute([]byte)crx_key)
+	header := make([dynamic]byte, 0, 64, context.temp_allocator)
+	append(&header, 0x12, byte(len(proof)))
+	append(&header, ..proof[:])
+	crx := make([dynamic]byte, 0, len(out) + 64, context.temp_allocator)
+	append(&crx, ..transmute([]byte)string("Cr24"))
+	put32(&crx, 3)
+	put32(&crx, u32(len(header)))
+	append(&crx, ..header[:])
+	append(&crx, ..out[:])
+	return crx[:]
+}
+
+// Installs a package file from about:extensions (its path typed in) and accepts the prompt: its id.
+@(private = "file")
+install_file :: proc(s: ^e2e.Session, path: string) -> string {
+	e2e.navigate(s, fmt.tprintf("about:extensions?path=%s", url.percent_encoded(path, url.UNRESERVED + "/:")))
+	e2e.wait_js(s, `document.body.textContent.includes("Add Vault fixture?")`)
+	id := strings.clone(ext_id_on_page(s), context.temp_allocator)
+	e2e.navigate(s, fmt.tprintf("about:extensions?accept=%s", id))
+	e2e.wait_js(s, `document.body.textContent.includes("Vault fixture is installed.")`)
+	return id
+}
+
+// The script that waits until the background's log has `text` (the log: background.js `events`).
+@(private = "file")
+seen_js :: proc(text: string) -> string {
+	return fmt.tprintf(`new Promise((ok) => {{ const go = () => chrome.runtime.sendMessage({{type: "events"}}).then((list) => list.includes(%q) ? ok("seen") : setTimeout(go, 20)); go(); }})`, text)
+}
+
+@(private = "file")
+VAULT_PREFS := [?]string{"extensions.background.idle_ms=3600000"}   // (the background's log is in its memory: it must not stop between the steps)
+
+@(test)
+extensions_vault_packed_offscreen_tabs :: proc(t: ^testing.T) {
+	s := e2e.start(t, {size = EXT_SIZE, prefs = VAULT_PREFS[:]})
+	files := e2e.temp_folder(t, "packages")
+
+	// a .crx: its key gives the id; it installs, runs, and goes
+	crx_path := fmt.tprintf("%s/vault.crx", files)
+	_ = os.write_entire_file(crx_path, pack_vault("a DER public key of the test"))
+	crx_id := install_file(s, crx_path)
+	testing.expect_value(t, crx_id, extensions.id_from_bytes(transmute([]byte)string("a DER public key of the test"), context.temp_allocator))
+	{
+		context = s.ctx
+		e := extensions.registry_find(&s.app.pages.extensions, crx_id)
+		testing.expect(t, e != nil && e.source == .Crx && e.image != nil && e.image.ok && strings.has_suffix(e.path, "/package"), "installed from the .crx, unpacked into the profile")
+	}
+	e2e.navigate(s, fmt.tprintf("chrome-extension://%s/popup.html", crx_id))
+	e2e.expect_eval(s, `chrome.runtime.id`, crx_id, "the .crx extension's page runs")
+	e2e.navigate(s, fmt.tprintf("about:extensions?remove=%s", crx_id))
+	e2e.wait_js(s, `document.body.textContent.includes("Vault fixture was removed.")`)
+
+	// a .zip
+	zip_path := fmt.tprintf("%s/vault.zip", files)
+	_ = os.write_entire_file(zip_path, pack_vault())
+	id := install_file(s, zip_path)
+	{
+		context = s.ctx
+		e := extensions.registry_find(&s.app.pages.extensions, id)
+		testing.expect(t, e != nil && e.source == .Zip && e.image != nil && e.image.ok, "installed from the .zip")
+	}
+	popup := fmt.tprintf("chrome-extension://%s/popup.html", id)
+	e2e.navigate(s, popup)
+	e2e.wait_js(s, `document.getElementById("where").textContent === "in the popup"`)
+
+	// the clipboard: an extension page with clipboardWrite and clipboardRead needs no click
+	e2e.expect_eval(s, `navigator.clipboard.writeText("from the popup").then(() => navigator.clipboard.readText())`, "from the popup", "the popup writes and reads the clipboard with no gesture")
+
+	// an offscreen document: made, it gets the background's message, writes the clipboard, is a context, then closes
+	e2e.expect_eval(s, `chrome.runtime.sendMessage({type: "copy", text: "s3cret"}).then((r) => [r.answer && r.answer.written, r.answer && r.answer.apis, r.kinds, r.after, r.error].join("|"))`,
+		"true|undefined undefined function|BACKGROUND,OFFSCREEN_DOCUMENT,TAB|false|", "offscreen.createDocument, a message to it, the clipboard from it, runtime.getContexts, closeDocument")
+	e2e.expect_eval(s, `navigator.clipboard.readText()`, "s3cret", "what the offscreen document wrote is on the clipboard")
+	e2e.expect_eval(s, `chrome.runtime.sendMessage({type: "offscreen-twice"})`, "Only a single offscreen document may be created.", "one offscreen document at a time")
+	e2e.expect_eval(s, `chrome.runtime.sendMessage({type: "offscreen-bad-url"}).then((m) => String(m.includes("not a file of the extension")))`, "true", "an offscreen document is a file of the extension")
+	{
+		context = s.ctx
+		testing.expect(t, len(s.app.ext.offscreen) == 0, "no offscreen tab is left")
+	}
+
+	// tabs.create opens a tab that loads; its events reach the background; tabs.remove closes it
+	tab_text := e2e.eval(s, `chrome.tabs.create({url: "page.html", active: false}).then((t) => String(t.id))`, await = true)
+	e2e.expect_eval(s, fmt.tprintf(`new Promise((ok) => {{ const go = () => chrome.tabs.get(%s).then((t) => t.status === "complete" ? ok(t.title + " " + t.url.endsWith("/page.html")) : setTimeout(go, 20)); go(); }})`, tab_text),
+		"Vault fixture page true", "the tab tabs.create opened loads the extension's page")
+	e2e.expect_eval(s, seen_js(fmt.tprintf("tabs.onCreated:%s", tab_text)), "seen", "tabs.onCreated")
+	e2e.expect_eval(s, seen_js(fmt.tprintf("tabs.onUpdated:%s:complete", tab_text)), "seen", "tabs.onUpdated, complete")
+	e2e.expect_eval(s, fmt.tprintf(`chrome.tabs.remove(%s).then(() => "removed")`, tab_text), "removed", "tabs.remove")
+	e2e.expect_eval(s, seen_js(fmt.tprintf("tabs.onRemoved:%s", tab_text)), "seen", "tabs.onRemoved")
+	e2e.expect_eval(s, `chrome.tabs.create({url: "file:///etc/passwd"}).then(() => "opened", (e) => "refused")`, "refused", "a file of the disk is not opened")
+
+	// the popout window: one tab, no tab strip, no toolbar; windows.remove ends it
+	win_text := e2e.eval(s, `chrome.windows.create({url: "popup.html?popout", type: "popup", width: 400, height: 520}).then((w) => w.type + " " + w.tabs.length + " " + w.id)`, await = true)
+	parts := strings.split(win_text, " ", context.temp_allocator)
+	if !testing.expectf(t, len(parts) == 3 && parts[0] == "popup" && parts[1] == "1", "windows.create popup: %q", win_text) { return }
+	{
+		context = s.ctx
+		popout_found := false
+		for w in s.app.windows { if fmt.tprintf("%d", w.id) == parts[2] { popout_found = browser_is_popout(s, w.id) } }
+		testing.expect(t, popout_found, "the window is a popout window (no tab strip, no toolbar)")
+	}
+	e2e.expect_eval(s, seen_js(fmt.tprintf("windows.onCreated:%s", parts[2])), "seen", "windows.onCreated")
+	e2e.expect_eval(s, fmt.tprintf(`chrome.windows.getAll().then((all) => String(all.some((w) => w.id === %s && w.type === "popup")))`, parts[2]), "true", "windows.getAll lists it as a popup")
+	e2e.expect_eval(s, fmt.tprintf(`chrome.windows.remove(%s).then(() => "removed")`, parts[2]), "removed", "windows.remove")
+	e2e.expect_eval(s, seen_js(fmt.tprintf("windows.onRemoved:%s", parts[2])), "seen", "windows.onRemoved")
+
+	// idle: the time since the last input (set here: a test has none); the event when it changes
+	{
+		context = s.ctx
+		s.app.ext.last_input_ns = host.now_ns(&s.app.loop)
+		page.ext_idle_schedule()
+	}
+	e2e.expect_eval(s, `chrome.idle.queryState(15)`, "active", "idle.queryState: active after an input")
+	{
+		context = s.ctx
+		s.app.ext.last_input_ns = host.now_ns(&s.app.loop) - 120_000_000_000
+		page.ext_idle_schedule()
+	}
+	e2e.expect_eval(s, `chrome.idle.queryState(60)`, "idle", "idle.queryState: idle two minutes after the last input")
+	e2e.expect_eval(s, seen_js("idle.onStateChanged:idle"), "seen", "idle.onStateChanged: idle")
+	{
+		context = s.ctx
+		s.app.ext.last_input_ns = host.now_ns(&s.app.loop)
+		page.ext_idle_schedule()
+	}
+	e2e.expect_eval(s, seen_js("idle.onStateChanged:active"), "seen", "idle.onStateChanged: active again")
+}
+
+// (a window's popout mark, read the way build_ui reads it)
+@(private = "file")
+browser_is_popout :: proc(s: ^e2e.Session, id: int) -> bool {
+	_, ok := s.app.ext.popouts[id]
+	return ok
+}
+
+// The extension comes back from the profile after a restart, with the id its archive gave it; its background's
+// listeners were kept, so the browser's start does not run it, an event it does not listen to does not start it, and a
+// message (it listens to runtime.onMessage) does.
+@(test)
+extensions_vault_restart :: proc(t: ^testing.T) {
+	profile := e2e.temp_profile(t)
+	s := e2e.start(t, {size = EXT_SIZE, profile = profile, prefs = VAULT_PREFS[:]})
+	files := e2e.temp_folder(t, "packages")
+	zip_path := fmt.tprintf("%s/vault.zip", files)
+	_ = os.write_entire_file(zip_path, pack_vault())
+	id := install_file(s, zip_path)
+	popup := fmt.tprintf("chrome-extension://%s/popup.html", id)
+	e2e.navigate(s, popup)
+	e2e.expect_eval(s, `chrome.storage.local.set({kept: "yes"}).then(() => chrome.runtime.sendMessage({type: "events"})).then((l) => String(Array.isArray(l)))`, "true", "the background ran")
+	state := fmt.tprintf("%s/extensions/%s/state.txt", profile, id)
+	{
+		Wait :: struct { path: string }
+		w := Wait{state}
+		e2e.wait_until(s, &w, proc(s: ^e2e.Session, w: ^Wait) -> bool {
+			return strings.contains(e2e.read_text(w.path), "idle.onStateChanged")
+		}, "state.txt to keep the background's listeners")
+	}
+	testing.expect(t, !strings.contains(e2e.read_text(state), "runtime.onStartup"), "it does not listen to runtime.onStartup")
+
+	s = e2e.restart(s, {size = EXT_SIZE, profile = profile, prefs = VAULT_PREFS[:]})
+	{
+		Wait :: struct { id: string }
+		w := Wait{id}
+		e2e.wait_until(s, &w, proc(s: ^e2e.Session, w: ^Wait) -> bool {
+			context = s.ctx
+			e := extensions.registry_find(&s.app.pages.extensions, w.id)
+			return e != nil && !e.loading && e.image != nil && e.image.ok
+		}, "the extension to load from the profile")
+	}
+	{
+		context = s.ctx
+		e := extensions.registry_find(&s.app.pages.extensions, id)
+		testing.expect(t, e != nil && e.source == .Zip && e.listeners_known, "the same id, from the unpacked package, with its listeners known")
+		exists, running, starts := page.ext_bg_state(id)
+		testing.expectf(t, exists && !running && starts == 0, "the browser's start does not run it (running %v, started %d times)", running, starts)
+		page.ext_emit(id, "tabs.onHighlighted", "[]")   // (it does not listen to it)
+		_, running, starts = page.ext_bg_state(id)
+		testing.expectf(t, !running && starts == 0, "an event it does not listen to does not start it (started %d times)", starts)
+	}
+	e2e.navigate(s, popup)
+	e2e.expect_eval(s, `chrome.storage.local.get("kept").then((r) => r.kept)`, "yes", "its storage came back")
+	e2e.expect_eval(s, `chrome.runtime.sendMessage({type: "events"}).then((l) => String(Array.isArray(l)))`, "true", "a message starts it")
+	{
+		context = s.ctx
+		_, running, starts := page.ext_bg_state(id)
+		testing.expectf(t, running && starts == 1, "it started once, for the message (started %d times)", starts)
+	}
 }

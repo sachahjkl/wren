@@ -85,6 +85,7 @@ bfcache_refusal :: proc(app: ^App, t: ^Tab) -> string {
 	if t.nav_state.no_store { return "Cache-Control: no-store" }
 	if !p.render.painted { return "never shown" }
 	if p.formctl != nil && p.formctl.picker != base.NIL_HANDLE { return "a picker is open" }
+	if p.formctl != nil && p.formctl.model != nil && p.formctl.model.vault_filled { return "a field filled by the Vault" }   // (docs/bitwarden.md 3.3)
 	if b := page.bfcache_blockers(p); b != {} { return fmt.tprintf("%v", b) }
 	return ""
 }

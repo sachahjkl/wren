@@ -43,6 +43,10 @@
 <ul>
 <li><a href="#frames">Frames</a></li>
 <li><a href="#requests-and-answers">Requests and answers</a></li>
+<li class="lvl3"><a href="#login-steps">Login steps</a></li>
+<li class="lvl3"><a href="#idle-deadline">Idle deadline</a></li>
+<li class="lvl3"><a href="#errors">Errors</a></li>
+<li><a href="#the-helpers-identity-at-the-server">The helper's identity at the server</a></li>
 <li><a href="#matching">Matching</a></li>
 <li><a href="#wrens-side">Wren's side</a></li>
 </ul>
@@ -54,13 +58,17 @@ program under GPL-3.0-only, in its own repository; its <code>README.md</code> ha
 README must stay equal: a change of the protocol changes both, and <code>PROTOCOL_VERSION</code> in <code>src/vault/protocol.odin</code> and
 in the helper.</p>
 <p>The protocol is generic: accounts, logins and plain values. No type of the Bitwarden SDK crosses the pipe.</p>
+<p>Version 2 (helper 0.2.0). Changes from version 1: the server choice is Wren's (the helper gets URLs as before); <code>login</code>
+carries <code>code</code> and <code>provider</code> instead of <code>totp</code>, and answers <code>need_device_code</code>; new requests <code>login_api_key</code>,
+<code>logout</code>, <code>pin_set</code>, <code>pin_clear</code>; <code>unlock</code> takes <code>pin</code>; <code>hello</code> takes <code>idle_seconds</code> and answers <code>login</code> and <code>pin</code>; the
+event <code>locked</code>.</p>
 <h2 id="frames"><a class="anchor" href="#frames" aria-hidden="true">#</a>Frames</h2>
 <ul>
 <li>Each message is one frame: a 4-byte unsigned length, little-endian, then that many bytes of UTF-8 JSON (one object).</li>
 <li>The length is from 1 to 1 048 576 (1 MiB). A frame outside these bounds ends the connection.</li>
 <li>The helper answers each request, in the order of the requests. <code>keepalive</code> has no answer.</li>
 <li>The helper writes nothing else on its standard output, and no value of the vault on its standard error.</li>
-<li>The helper exits when its standard input closes, and after it answers <code>lock</code>.</li>
+<li>The helper exits when its standard input closes, after it answers <code>lock</code> or <code>logout</code>, and at its idle deadline.</li>
 </ul>
 <h2 id="requests-and-answers"><a class="anchor" href="#requests-and-answers" aria-hidden="true">#</a>Requests and answers</h2>
 <p>A request is <code>{"id": &lt;integer from 1&gt;, "op": "&lt;name&gt;", ...fields}</code>. The answer repeats the id:</p>
@@ -68,25 +76,53 @@ in the helper.</p>
 <li>success: <code>{"id": n, "ok": true, ...fields}</code></li>
 <li>failure: <code>{"id": n, "ok": false, "error": "&lt;code&gt;", "message": "&lt;sentence&gt;"}</code></li>
 </ul>
+<p>An event answers no request: <code>{"id": 0, "ok": true, "event": "&lt;name&gt;"}</code>.</p>
 <div class="table-box"><table>
 <thead><tr><th>op</th><th>Request fields</th><th>Answer fields</th></tr></thead>
 <tbody>
-<tr><td><code>hello</code></td><td><code>protocol</code> (1), <code>state_dir</code>, <code>identity_url</code>, <code>api_url</code>, <code>persist</code>, <code>device_name</code>, <code>client_version</code></td><td><code>protocol</code>, <code>helper_version</code>, <code>account</code> (<code>none</code> or <code>locked</code>), <code>email</code></td></tr>
-<tr><td><code>login</code></td><td><code>email</code>, <code>password</code>; or <code>email</code> and <code>totp</code> for the second step</td><td><code>result</code>: <code>ok</code>, or <code>need_two_factor</code> with <code>providers</code></td></tr>
-<tr><td><code>unlock</code></td><td><code>password</code></td><td>none</td></tr>
+<tr><td><code>hello</code></td><td><code>protocol</code> (2), <code>state_dir</code>, <code>identity_url</code>, <code>api_url</code>, <code>persist</code>, <code>device_name</code>, <code>client_version</code>, <code>idle_seconds</code></td><td><code>protocol</code>, <code>helper_version</code>, <code>account</code> (<code>none</code> or <code>locked</code>), <code>email</code>, <code>login</code> (<code>password</code> or <code>api_key</code>), <code>pin</code> (bool)</td></tr>
+<tr><td><code>login</code></td><td>first step: <code>email</code>, <code>password</code>; second step: <code>email</code>, <code>code</code>, <code>provider</code>; a new code: <code>email</code>, <code>provider</code>, <code>resend</code> (true)</td><td><code>result</code>: <code>ok</code>; or <code>need_two_factor</code> with <code>providers</code> and <code>email_sent</code>; or <code>need_device_code</code></td></tr>
+<tr><td><code>login_api_key</code></td><td><code>client_id</code>, <code>client_secret</code>, <code>password</code> (the master password)</td><td><code>result</code> (<code>ok</code>), <code>email</code></td></tr>
+<tr><td><code>unlock</code></td><td><code>password</code> or <code>pin</code></td><td>none; <code>bad_pin</code> errors carry <code>tries_left</code></td></tr>
 <tr><td><code>lock</code></td><td>none</td><td>none; the helper then exits</td></tr>
+<tr><td><code>logout</code></td><td>none</td><td>none; the helper forgets the account (state, tokens, PIN), then exits</td></tr>
 <tr><td><code>sync</code></td><td>none</td><td><code>items</code>, <code>last_sync</code> (Unix seconds)</td></tr>
+<tr><td><code>pin_set</code></td><td><code>pin</code> (4 characters or more)</td><td>none</td></tr>
+<tr><td><code>pin_clear</code></td><td>none</td><td>none</td></tr>
 <tr><td><code>logins_for</code></td><td><code>url</code>, <code>host</code>, <code>domain</code> (registrable domain by Wren's Public Suffix List, <code>""</code> if none)</td><td><code>rows</code>: <code>{id, name, username, uri, match, has_totp}</code></td></tr>
 <tr><td><code>fill</code></td><td><code>item</code>, <code>fields</code> (<code>username</code>, <code>password</code>)</td><td><code>username</code>, <code>password</code></td></tr>
-<tr><td><code>keepalive</code></td><td>none</td><td>no answer</td></tr>
+<tr><td><code>keepalive</code></td><td>none</td><td>no answer; the idle deadline starts again</td></tr>
 </tbody>
 </table></div>
-<p>A login with a second factor is two requests. The first <code>login</code> answers <code>need_two_factor</code>; the helper keeps the email
-and the password of that login. The second <code>login</code> carries the same email and <code>totp</code> only: Wren sends the master
-password once. A failed second step forgets the kept password.</p>
-<p>Error codes: <code>bad_request</code>, <code>bad_protocol</code>, <code>no_hello</code>, <code>bad_server</code>, <code>bad_credentials</code>, <code>unsupported_two_factor</code>,
-<code>unsupported_account</code>, <code>network</code>, <code>login_failed</code>, <code>no_account</code>, <code>bad_password</code>, <code>locked</code>, <code>sync_failed</code>, <code>no_item</code>,
-<code>decrypt</code>, <code>state_write</code>, <code>state_format</code>. The helper's README says what each means.</p>
+<h3 id="login-steps"><a class="anchor" href="#login-steps" aria-hidden="true">#</a>Login steps</h3>
+<ul>
+<li><code>provider</code> is <code>authenticator</code> (an authenticator app's code; the default), <code>email</code> (a code by email) or <code>device</code> (the
+code of the server's new-device mail). <code>providers</code> lists the second steps of the account that the helper supports
+(<code>authenticator</code>, <code>email</code>); an account with none of them gets <code>unsupported_two_factor</code>.</li>
+<li>A login with a second step is two requests or more. The first <code>login</code> (email and password) answers <code>need_two_factor</code>
+or <code>need_device_code</code>; the helper keeps the email, the password and the device identifier of that login. The
+second <code>login</code> carries the same email, the code and its provider: Wren sends the master password once. A failed
+second step forgets the kept password.</li>
+<li><code>resend</code> asks for a code again. With <code>provider</code> <code>email</code>, the helper asks the server to mail the two-step code and
+answers <code>need_two_factor</code> with <code>email_sent</code> true. With <code>device</code>, it sends the first step again and the server mails a
+new code. <code>email_sent</code> is also true when the email code is the account's only second step: the server mailed it.</li>
+</ul>
+<h3 id="idle-deadline"><a class="anchor" href="#idle-deadline" aria-hidden="true">#</a>Idle deadline</h3>
+<p><code>hello</code>'s <code>idle_seconds</code> (0: none) is the helper's own lock. When no request (<code>keepalive</code> included) comes for that
+long, the helper writes the event <code>locked</code> and exits. Wren sends it its own idle time and a margin
+(<code>vault.lock.idle_minutes</code> × 60 + 120); Wren locks first, on its own timer, and sends a <code>keepalive</code> at most once a
+minute while the user is active.</p>
+<h3 id="errors"><a class="anchor" href="#errors" aria-hidden="true">#</a>Errors</h3>
+<p><code>bad_request</code>, <code>bad_protocol</code>, <code>no_hello</code>, <code>bad_server</code>, <code>bad_credentials</code>, <code>unsupported_two_factor</code>,
+<code>unsupported_account</code>, <code>network</code>, <code>login_failed</code>, <code>no_account</code>, <code>bad_password</code>, <code>bad_pin</code>, <code>pin_reset</code>, <code>no_pin</code>,
+<code>no_state</code>, <code>locked</code>, <code>sync_failed</code>, <code>no_item</code>, <code>decrypt</code>, <code>state_write</code>, <code>state_format</code>. The helper's README says what
+each means.</p>
+<h2 id="the-helpers-identity-at-the-server"><a class="anchor" href="#the-helpers-identity-at-the-server" aria-hidden="true">#</a>The helper's identity at the server</h2>
+<p>The helper sends its own token request (the SDK's sends the device type <code>ChromeBrowser</code> and one device identifier for
+every SDK user, and cannot carry the new-device code): client id <code>web</code>, device type 14 (<code>UnknownBrowser</code>), device name
+<code>Wren</code>, and a random device identifier made at the first login and kept in the state. The SDK's HTTP client gets the
+same device type (the <code>Device-Type</code> header). A renewal with an API key goes through the SDK and still names its fixed
+device; no new-device check applies to API keys.</p>
 <h2 id="matching"><a class="anchor" href="#matching" aria-hidden="true">#</a>Matching</h2>
 <p>The helper selects the logins whose saved URI matches the page: <code>Domain</code> (the URI's host is the page's registrable
 domain or a subdomain of it; a page without a registrable domain uses <code>Host</code>) and <code>Host</code> (same host and port). The
@@ -100,9 +136,9 @@ before the panel shows it. A row that fails the check is zeroed and dropped.</p>
 <tbody>
 <tr><td><code>protocol.odin</code></td><td>The requests, written into one buffer reserved large enough at once; the answers, decoded into owned values. Every string that can hold a value is zeroed before it is freed.</td></tr>
 <tr><td><code>transport.odin</code>, <code>process.odin</code></td><td>The helper as a child process: a reader thread starts it, reads and decodes frames and posts each answer to the loop; a writer thread writes the queued frames in order and zeroes each. The loop thread never blocks on the helper.</td></tr>
-<tr><td><code>vault.odin</code></td><td>The one state of the Vault, the requests and their deadlines (<code>vault.request.timeout_ms</code>), the fill's ticket, the blocking jobs (locating the helper, the account file, the check of the rows, the join of an ended helper).</td></tr>
+<tr><td><code>vault.odin</code></td><td>The one state of the Vault, the requests and their deadlines (<code>vault.request.timeout_ms</code>), the fill's ticket, the idle and sync timers, the blocking jobs (locating the helper, the account file, the check of the rows, the join of an ended helper).</td></tr>
 <tr><td><code>match.odin</code></td><td>Wren's match check.</td></tr>
-<tr><td><code>settings.odin</code></td><td>The <code>vault.*</code> preferences.</td></tr>
+<tr><td><code>settings.odin</code></td><td>The <code>vault.*</code> preferences and the server addresses (US, EU, self-hosted).</td></tr>
 </tbody>
 </table></div>
 <nav class="doc-seq" aria-label="Previous and next page">
@@ -321,6 +357,7 @@ before the panel shows it. A row that fails the check is zeroed and dropped.</p>
 <li><a href="../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../docs/js/web-crypto/">crypto.subtle</a></li>
 <li><a href="../../docs/js/webassembly-api/">The WebAssembly JavaScript API</a></li>
+<li><a href="../../docs/test-review/">Review of the test system</a></li>
 <li><a href="../../docs/updates/">Updates</a></li>
 <li><a href="../../docs/vault-protocol/" aria-current="page" class="active">The Vault helper protocol</a></li>
 </ul>

@@ -1,7 +1,7 @@
 # Vault: a native client for Bitwarden accounts
 
-Status: phases 0 and 1 are written (see [Implementation state](#implementation-state)). The rest is the plan. The
-protocol between Wren and the helper is in [vault-protocol.md](vault-protocol.md).
+Status: phases 0 and 1 are written, phase 2 for the most part (see [Implementation state](#implementation-state)). The
+rest is the plan. The protocol between Wren and the helper is in [vault-protocol.md](vault-protocol.md).
 
 The feature gives Wren a built-in password manager client for Bitwarden® accounts. It is optional and off by default.
 It needs no WebExtension. The interface name of the feature is **Vault**. "Bitwarden" appears only as the name of the
@@ -627,7 +627,8 @@ No automated test contacts bitwarden.com. Tests wait for a state with a bound, n
 
 ## Implementation state
 
-Phases 0 and 1, as written on 2026-11-12. Where the code differs from the plan above, this section is the truth.
+Phases 0 and 1, and phase 2 for the most part, as written on 2026-11-12. Where the code differs from the plan above,
+this section is the truth.
 
 ### The helper (`wren-vault`, a separate repository)
 
@@ -635,37 +636,73 @@ Phases 0 and 1, as written on 2026-11-12. Where the code differs from the plan a
   the crates it calls (`bitwarden-core` with `internal`, `bitwarden-auth`, `bitwarden-vault`, `bitwarden-sync`,
   `bitwarden-crypto-sync-handler`, `bitwarden-api-api`, `bitwarden-crypto`), not on `bitwarden-pm`: fewer crates to
   build, and the same calls. All SDK calls are in `src/sdk.rs`.
-- Login: `Client::auth().login_password`, with the TOTP code as `TwoFactorRequest` on the second step. The SDK still
-  sends device type `ChromeBrowser` and client id `web` (2.4); no patch yet.
+- Login: the helper sends its own token request (`src/identity.rs`), not the SDK's `login_password`, which sends device
+  type `ChromeBrowser`, one device identifier for every SDK user, and no new-device code (2.4). No SDK patch is needed.
+  The SDK still does the prelogin, the master password hash (`MasterPasswordAuthenticationData::derive`), the sync, the
+  keys (`initialize_user_crypto` with the sync's unlock data), the PIN and the items. The request names client id
+  `web`, device type 14 (`UnknownBrowser`, also the SDK client's `Device-Type`), the device name `Wren` and the
+  account's own random device identifier. A renewal with an API key goes through the SDK and names its fixed device.
+- Second steps: the authenticator code (provider 0) and the email code (provider 1; the helper asks the server to mail
+  it with the SDK's `send_two_factor_email`, and the server mails it by itself when it is the account's only second
+  step); the new-device code as `newDeviceOtp`, sent from the same device identifier as the first step. Duo, WebAuthn
+  and YubiKey: `unsupported_two_factor`, and the personal API key logs in (`client_credentials`).
 - Sync: the SDK's `SyncClient` with a sync handler of the helper that keeps the encrypted items, the master password
-  unlock data, the account keys and the organization keys.
-- Unlock after a restart: `crypto().initialize_user_crypto` with `MasterPasswordUnlock` and the kept unlock data; the
-  tokens and the login method go back into the client's state, and the SDK's token handler renews the access token.
-- State: `state.json` (mode 0600, directory 0700), not the SDK's SQLite database: the SDK's own persistence is moving
-  between revisions, and one file of encrypted values is easier to audit. The helper's README lists its fields.
+  unlock data, the account keys, the organization keys and the account's email (an API key login learns it there).
+- Unlock after a restart: `initialize_user_crypto` with `MasterPasswordUnlock` and the kept unlock data, or with
+  `PinEnvelope` and the kept PIN envelope. The refresh token (or the API key) and the login method go back into the
+  client's state with an expired empty access token; the SDK's token handler renews it at the first request.
+- PIN: `crypto().enroll_pin`; the envelope and a try counter are in `state.json`; the fifth wrong PIN in a row deletes
+  the envelope. Not with `browser.profile.persist` off (the helper refuses: `no_state`).
+- Tokens (3.4): not `ClientManagedTokens`. The SDK's own token handler keeps the tokens in the client's memory; the
+  helper writes the refresh token and an API key's client secret to the system store after each login and sync when
+  they changed (`src/tokens.rs`): keyring-core with `dbus-secret-service-keyring-store` (libdbus, synchronous, on
+  tokio's blocking threads) on Linux and `windows-native-keyring-store` on Windows; else `tokens.json` (mode 0600).
+  The access token is never stored. Only a short text goes to the store: the Credential Manager takes at most 2560
+  bytes, less than an access token.
+- State: `state.json` version 2 (mode 0600, directory 0700), not the SDK's SQLite database: the SDK's own persistence
+  is moving between revisions, and one file of encrypted values is easier to audit. The helper's README lists its
+  fields. A version 1 state is not read: the account logs in again.
 - Requests run one after the other, in the order they come (not a task each): the answers keep the order of the
-  requests, and a `hello` sent with a `login` is always handled first.
-- Not yet: the idle self-lock and `keepalive` (phase 2), `search`, `totp`, `logout`, the device type patch, the
-  successful-login fixtures of the wiremock tests (they need a test account), the measures of 2.5, the list of what
-  the SDK writes (3.4: the SDK writes nothing; the helper writes `state.json`).
+  requests, and a `hello` sent with a `login` is always handled first. The loop waits on the next frame and on the idle
+  deadline at once (`FrameReader` is cancel safe); at the deadline it writes the event `locked` and exits.
+- Not yet: `search`, `totp`, the successful-login fixtures of the wiremock tests (they need a test account), the
+  measures of 2.5, the list of what the SDK writes (3.4: the SDK writes nothing; the helper writes `state.json` and
+  `tokens.json` or the system store's entry).
 
 ### Wren
 
 - `src/vault`: the state machine (`Disabled`, `Locating`, `Helper_Missing`, `Logged_Out`, `Logging_In`,
-  `Need_Two_Factor`, `Locked`, `Unlocking`, `Unlocked`, `Failed`), the fill's own machine (`Requested`, `Answered`,
-  `Applied`, `Dropped`), the codec, the transport, the match check, the settings. Tests run it against a fake helper.
+  `Need_Two_Factor`, `Need_Device_Code`, `Locked`, `Unlocking`, `Unlocked`, `Failed`), the fill's own machine
+  (`Requested`, `Answered`, `Applied`, `Dropped`), the codec, the transport, the match check, the settings. Tests run
+  it against a fake helper, the timers on a virtual clock.
+- Servers: `vault.server.region` (`us`, `eu`, `self`) and `vault.server.url`. The account file
+  (`<profile>/vault/account`) holds the email, the server's identity address and the PIN mark; an account of another
+  server is not remembered. A private CA: the system store (decision 6), said in the preference and in the dialog.
+- Timers of an unlocked Vault, on the loop: the idle lock (`vault.lock.idle_minutes`; input of the browser window
+  postpones it, `main.odin` calls `vault_shell_activity` with each frame's events) and the sync
+  (`vault.sync.interval_minutes`). Activity sends a `keepalive` at most once a minute; the helper's own deadline is the
+  Vault's and 120 s. A change of `vault.lock.idle_minutes` while unlocked moves Wren's timer at once and the helper's
+  deadline at the next unlock.
 - Threads: writes go through a writer thread per helper, not the blocking pool: one thread keeps the order, and the
-  pool's workers do not wait on a pipe. The blocking pool locates the helper, reads and writes the account file,
-  checks the rows and joins an ended helper's threads.
+  pool's workers do not wait on a pipe. The blocking pool locates the helper, reads and writes the account file (one
+  job at a time: a logout's removal is never undone by an older write), checks the rows and joins an ended helper's
+  threads.
 - Shell (`src/browser/vault_shell.odin`): the toolbar button (in the toolbar row; not yet in the sidebar's title bar),
-  its panel, the login / unlock dialog, the question before a fill on plain http, the fill of the top document.
-- Forms (`src/forms/credentials.odin`): `autocomplete_tokens`, `login_fields`, `fill_field`.
+  its panel (rows, Sync, Lock, Set a PIN / Remove the PIN, Log out), the login dialog (server, email and password or
+  API key, then the authenticator or email code, or the new-device code), the unlock dialog (master password or PIN),
+  the PIN dialog, the question before a fill on plain http, the fill of the top document.
+- Remote control: while it is on (unless `vault.test.remote`), the panel is an empty box, the tooltip is not shown, and
+  the dialogs close and zero their fields: a capture of the window shows nothing of the Vault.
+- Forms (`src/forms/credentials.odin`): `autocomplete_tokens`, `login_fields`, `fill_field`. A filled field is marked
+  (`Control.vault_filled`, until a reset or a script's value): history restoration (`page/history_state.odin`) skips
+  it, and a document with a filled field is not kept in the back/forward cache (`Forms.vault_filled`). Session files
+  hold no form values at all. The fill clears the field's undo steps.
 - The helper is found, not downloaded: `vault.helper.path`, else `wren-vault` beside the browser, else in its `vault`
   folder (`build/vault/` beside `build/wren`). The download on enable (4.1), with the SHA-256 built into Wren (3.7),
   needs release assets of the helper: a later step.
-- Automation: `wrentool build vault`, `wrentool vault test`, `wrentool vault probe`.
-- Not yet: captures that draw the Vault surfaces as an empty box (the panel refuses to work while a remote client is
-  connected, unless `vault.test.remote`); keeping filled values out of session restore and form restoration; the
+- Automation: `wrentool build vault`, `wrentool vault test`, `wrentool vault probe` (it asks for a second step's code
+  on its input).
+- Not yet: lock on system sleep and session lock (`vault.lock.on_sleep`: the toolkit reports no such event yet); the
   fill on the page thread when `browser.shell.page_thread` is on (the fill runs on the loop thread, as the chrome's
   focus moves do); the e2e tests against Vaultwarden; `about:licenses` listing the helper; the flake's check of the
   helper.

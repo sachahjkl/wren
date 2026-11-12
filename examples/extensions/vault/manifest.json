@@ -1,0 +1,16 @@
+// The test fixture of phase 2 (docs/extensions.md, "Log in and unlock"): what Bitwarden's login and vault need beyond
+// phase 1. An offscreen document that writes the clipboard, tabs and windows that it opens and closes, the popout
+// window, the idle state, runtime.getContexts. It is installed from a .zip and a .crx in the tests (src/tools/e2e/extensions.odin
+// packs this folder).
+{
+  "manifest_version": 3,
+  "name": "Vault fixture",
+  "short_name": "Vault",
+  "version": "2.0.0",
+  "description": "The phase 2 fixture of Wren's browser extensions.",
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Vault fixture", "default_popup": "popup.html" },
+  "options_page": "page.html",
+  "permissions": ["storage", "tabs", "idle", "offscreen", "clipboardRead", "clipboardWrite"],
+  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'self'" }
+}

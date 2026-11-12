@@ -333,7 +333,10 @@ set_value :: proc(f: ^Forms, h: base.Handle, v: string, by_user := false) -> Err
 			c.dirty_value = true
 			c.user_edited = by_user
 			c.has_edit = false
-			if !by_user { undo_clear(&c.undo); undo_clear(&c.redo) }
+			if !by_user {
+				undo_clear(&c.undo); undo_clear(&c.redo)
+				c.vault_filled = false   // (a script's value replaced the filled one)
+			}
 			if old != nv {
 				end := len(nv)
 				c.sel_start, c.sel_end, c.sel_dir = end, end, .None

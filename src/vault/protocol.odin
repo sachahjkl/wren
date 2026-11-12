@@ -10,15 +10,25 @@ import "core:mem"
 import "core:strconv"
 import "wb:base"
 
-PROTOCOL_VERSION :: 1
+PROTOCOL_VERSION :: 2
 MAX_FRAME :: 1 << 20   // the helper's bound too: a larger frame is a broken peer
 FRAME_HEAD :: 4
 
-Op :: enum u8 { Hello, Login, Unlock, Lock, Sync, Logins_For, Fill }
+Op :: enum u8 { Hello, Login, Login_Api_Key, Unlock, Lock, Logout, Sync, Pin_Set, Pin_Clear, Logins_For, Fill, Keepalive }
 
 OP_NAMES := [Op]string{
-	.Hello = "hello", .Login = "login", .Unlock = "unlock", .Lock = "lock", .Sync = "sync", .Logins_For = "logins_for", .Fill = "fill",
+	.Hello = "hello", .Login = "login", .Login_Api_Key = "login_api_key", .Unlock = "unlock", .Lock = "lock", .Logout = "logout",
+	.Sync = "sync", .Pin_Set = "pin_set", .Pin_Clear = "pin_clear", .Logins_For = "logins_for", .Fill = "fill", .Keepalive = "keepalive",
 }
+
+// The second steps of a login that the Vault supports (the helper's provider names).
+Factor :: enum u8 { Authenticator, Email }
+Factors :: bit_set[Factor; u8]
+
+FACTOR_NAMES := [Factor]string{.Authenticator = "authenticator", .Email = "email"}
+
+// What a `login` answered when it succeeded.
+Login_Result :: enum u8 { None, Ok, Need_Two_Factor, Need_Device_Code }
 
 ////////////////////////////////
 // Requests
@@ -134,15 +144,21 @@ Row :: struct {
 	has_totp: bool,
 }
 
-// One answer of the helper, owned (process allocator). answer_free zeroes every string.
+// One answer of the helper, owned (process allocator). answer_free zeroes every string. Id 0: an event (`event`).
 Answer :: struct {
 	id:             u64,
 	ok:             bool,
 	error, message: string,
+	event:          string,   // id 0: "locked" (the helper locked itself at its idle deadline and exits)
 	// hello
 	account, email, helper_version: string,
-	// login
-	need_two_factor: bool,
+	pin:            bool,     // a PIN can unlock the remembered account
+	// login, login_api_key (and `email`)
+	result:         Login_Result,
+	factors:        Factors,  // Need_Two_Factor: the second steps that the account offers and the Vault supports
+	email_sent:     bool,     // Need_Two_Factor: a code was mailed already
+	// unlock with a PIN: bad_pin
+	tries_left:     int,
 	// sync
 	items:          int,
 	last_sync:      i64,
@@ -171,7 +187,24 @@ answer_decode :: proc(body: []u8) -> (a: ^Answer, ok: bool) {
 	a.account = owned_string(o, "account")
 	a.email = owned_string(o, "email")
 	a.helper_version = owned_string(o, "helper_version")
-	if r, is_str := o["result"].(json.String); is_str { a.need_two_factor = r == "need_two_factor" }
+	a.event = owned_string(o, "event")
+	if r, is_str := o["result"].(json.String); is_str {
+		switch r {
+		case "ok":               a.result = .Ok
+		case "need_two_factor":  a.result = .Need_Two_Factor
+		case "need_device_code": a.result = .Need_Device_Code
+		}
+	}
+	if list, is_array := o["providers"].(json.Array); is_array {
+		for p in list {
+			name, is_str := p.(json.String)
+			if !is_str { continue }
+			for f in Factor { if FACTOR_NAMES[f] == name { a.factors += {f} } }
+		}
+	}
+	if b, is_bool := o["email_sent"].(json.Boolean); is_bool { a.email_sent = bool(b) }
+	if b, is_bool := o["pin"].(json.Boolean); is_bool { a.pin = bool(b) }
+	if n, is_int := o["tries_left"].(json.Integer); is_int { a.tries_left = int(n) }
 	if n, is_int := o["items"].(json.Integer); is_int { a.items = int(n) }
 	if n, is_int := o["last_sync"].(json.Integer); is_int { a.last_sync = i64(n) }
 	if s, is_str := o["username"].(json.String); is_str { a.username, a.has_username = clone(s), true }
@@ -234,6 +267,7 @@ answer_free :: proc(a: ^Answer) {
 	string_wipe(&a.account)
 	string_wipe(&a.email)
 	string_wipe(&a.helper_version)
+	string_wipe(&a.event)
 	string_wipe(&a.username)
 	string_wipe(&a.password)
 	rows_free(&a.rows)

@@ -13,6 +13,7 @@ package extensions
 import "base:runtime"
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:sync"
 import "wb:base"
@@ -64,15 +65,17 @@ image_url :: proc(im: ^Image, rel: string) -> string {
 Load_Result :: struct {
 	image:      ^Image,    // nil when the folder could not be read at all
 	path:       string,    // the absolute folder
+	source:     Source_Kind,   // a packed install (archive_install) says which kind it came from
 	error:      string,    // why it does not run ("" : it runs)
 	local_text: string,    // the stored areas, as area_serialize wrote them
 	sync_text:  string,
+	state_text: string,    // state.txt (state_serialize): the events its background listens to
 }
 
 load_result_destroy :: proc(r: ^Load_Result) {
 	a := base.process_allocator()
 	image_release(r.image)
-	delete(r.path, a); delete(r.error, a); delete(r.local_text, a); delete(r.sync_text, a)
+	delete(r.path, a); delete(r.error, a); delete(r.local_text, a); delete(r.sync_text, a); delete(r.state_text, a)
 	r^ = {}
 }
 
@@ -86,8 +89,9 @@ area_file :: proc(profile_dir, id: string, kind: Area_Kind) -> string {
 }
 
 // Loads an unpacked extension from `path` (a blocking call: run it off the interface thread). `ui_language` chooses the
-// catalogue ("en-US"); `profile_dir` is where its storage is kept ("" : none).
-image_load :: proc(path: string, s: Settings, ui_language: string, profile_dir: string) -> (r: Load_Result) {
+// catalogue ("en-US"); `profile_dir` is where its storage is kept ("" : none). `forced_id`: the id a packed extension
+// got at install (archive_id); "" : the manifest's key, else the folder's path.
+image_load :: proc(path: string, s: Settings, ui_language: string, profile_dir: string, forced_id := "") -> (r: Load_Result) {
 	pa := base.process_allocator()
 	abs, aerr := os.get_absolute_path(path, context.temp_allocator)
 	if aerr != nil { abs = path }
@@ -119,7 +123,9 @@ image_load :: proc(path: string, s: Settings, ui_language: string, profile_dir: 
 	probe_problems := make([dynamic]Problem, 0, 4, context.temp_allocator)
 	probe, _ := manifest_parse(text, nil, &settings, &probe_problems, context.temp_allocator)
 	id := ""
-	if probe.key != "" {
+	if forced_id != "" && id_valid(forced_id) {
+		id = strings.clone(forced_id, a)
+	} else if probe.key != "" {
 		if kid, kok := id_from_key(probe.key, a); kok { id = kid } else { append(&im.problems, Problem{false, strings.clone("key is not base64: the id comes from the folder", a)}) }
 	}
 	if id == "" { id = id_from_path(abs, a) }
@@ -143,6 +149,7 @@ image_load :: proc(path: string, s: Settings, ui_language: string, profile_dir: 
 	if profile_dir != "" {
 		if data, err := os.read_entire_file(area_file(profile_dir, id, .Local), pa); err == nil { r.local_text = string(data) }
 		if data, err := os.read_entire_file(area_file(profile_dir, id, .Sync), pa); err == nil { r.sync_text = string(data) }
+		if data, err := os.read_entire_file(state_file(profile_dir, id), pa); err == nil { r.state_text = string(data) }
 	}
 	return
 }
@@ -212,6 +219,12 @@ Extension :: struct {
 	alarms:    [dynamic]Alarm,
 	installed: string,              // "install", "update" or "" : runtime.onInstalled waits for its background
 	unknown_calls: map[string]bool, // API methods it called that Wren does not have (owned names): about:extensions lists them
+	// the events its background listened to when its script last ran (state.txt): at the browser's start the background
+	// is known without running it, and an event it does not listen to does not start it
+	listeners:       [dynamic]string,   // owned
+	listeners_known: bool,
+	idle_interval:   int,               // idle.setDetectionInterval, in seconds (0: IDLE_DEFAULT_INTERVAL)
+	idle_state:      Idle_State,        // what idle.onStateChanged said last
 }
 
 Registry :: struct {
@@ -251,7 +264,23 @@ extension_free :: proc(e: ^Extension) {
 	delete(e.alarms)
 	for k in e.unknown_calls { delete(k) }
 	delete(e.unknown_calls)
+	listeners_clear(e)
+	delete(e.listeners)
 	free(e)
+}
+
+listeners_clear :: proc(e: ^Extension) {
+	for l in e.listeners { delete(l) }
+	clear(&e.listeners)
+	e.listeners_known = false
+}
+
+// The background's listeners, as its script left them (the router keeps them while it is stopped). The caller saves
+// state.txt when the text changed (registry_save_state).
+listeners_set :: proc(e: ^Extension, names: []string) {
+	listeners_clear(e)
+	for n in names { append(&e.listeners, strings.clone(n)) }
+	e.listeners_known = true
 }
 
 action_tab_destroy :: proc(t: ^Action_Tab) {
@@ -297,6 +326,7 @@ registry_adopt :: proc(reg: ^Registry, r: ^Load_Result, grant_hosts: bool) -> ^E
 		e = new(Extension)
 		e.id = strings.clone(im.id)
 		e.path = strings.clone(r.path)
+		e.source = r.source
 		e.enabled = true
 		append(&reg.list, e)
 	}
@@ -319,6 +349,13 @@ registry_adopt :: proc(reg: ^Registry, r: ^Load_Result, grant_hosts: bool) -> ^E
 		if first {
 			area_load(&e.local, r.local_text)
 			area_load(&e.sync, r.sync_text)
+		}
+		// the stored listeners are those of the script that ran last: a browser start keeps them, an install or a
+		// reload (a new script) learns them again from its first run
+		if first && !fresh && r.state_text != "" {
+			listeners_set(e, state_parse(r.state_text))
+		} else {
+			listeners_clear(e)
 		}
 		e.local.max_bytes = unlimited ? 0 : reg.settings.storage_local_max
 		e.sync.max_bytes, e.sync.max_item, e.sync.max_items = reg.settings.storage_sync_max, reg.settings.storage_sync_item_max, reg.settings.storage_sync_max_items
@@ -454,6 +491,61 @@ registry_add_listed :: proc(reg: ^Registry, le: List_Entry) -> ^Extension {
 registry_save_list :: proc(reg: ^Registry) {
 	if reg.dir == "" || reg.write == nil { return }
 	reg.write(reg.write_user, fmt.tprintf("%s/%s", reg.dir, LIST_FILE), registry_list_text(reg), false)
+}
+
+////////////////////////////////
+// state.txt: the events the background listens to
+
+STATE_FILE :: "state.txt"
+
+state_file :: proc(profile_dir, id: string) -> string {
+	return fmt.tprintf("%s/extensions/%s/%s", profile_dir, id, STATE_FILE)
+}
+
+// "1", tab, "listeners", tab, the event names separated by spaces (sorted: the same set gives the same text). A line
+// of another version or kind is skipped (temp allocator).
+state_serialize :: proc(listeners: []string) -> string {
+	names := slice.clone(listeners, context.temp_allocator)
+	slice.sort(names)
+	return fmt.tprintf("1\tlisteners\t%s\n", strings.join(names, " ", context.temp_allocator))
+}
+
+state_parse :: proc(text: string) -> []string {
+	rest := text
+	for line in strings.split_lines_iterator(&rest) {
+		f := strings.split(line, "\t", context.temp_allocator)
+		if len(f) < 3 || f[0] != "1" || f[1] != "listeners" { continue }
+		out := make([dynamic]string, 0, 8, context.temp_allocator)
+		for name in strings.fields(f[2], context.temp_allocator) {
+			// (an event name is a dotted identifier: anything else in the file is not ours)
+			if len(name) <= 128 && strings.contains_rune(name, '.') { append(&out, name) }
+		}
+		return out[:]
+	}
+	return nil
+}
+
+// Asks the shell's writer to save state.txt (the extension's listeners changed).
+registry_save_state :: proc(reg: ^Registry, e: ^Extension) {
+	if reg.dir == "" || reg.write == nil { return }
+	reg.write(reg.write_user, state_file(reg.dir, e.id), state_serialize(e.listeners[:]), false)
+}
+
+////////////////////////////////
+// idle (the data model of idle.queryState and idle.onStateChanged; the shell gives the time since the last input)
+
+Idle_State :: enum u8 { Active, Idle, Locked }
+IDLE_STATE_NAMES := [Idle_State]string{.Active = "active", .Idle = "idle", .Locked = "locked"}
+
+IDLE_DEFAULT_INTERVAL :: 60   // seconds (Chrome's)
+IDLE_MIN_INTERVAL :: 15       // seconds: a shorter interval is raised to this (Chrome's)
+
+// The state for `idle_seconds` since the last input and a detection interval (seconds). `locked`: the system says the
+// screen is locked (Wren does not know it on every system: false there).
+idle_state_of :: proc(idle_seconds: f64, interval: int, locked: bool) -> Idle_State {
+	if locked { return .Locked }
+	n := interval > 0 ? max(interval, IDLE_MIN_INTERVAL) : IDLE_DEFAULT_INTERVAL
+	return idle_seconds >= f64(n) ? .Idle : .Active
 }
 
 // Asks the shell's writer to save the areas that changed (local, sync).

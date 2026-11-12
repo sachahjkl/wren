@@ -85,6 +85,52 @@ fill_and_error_answers_decode :: proc(t: ^testing.T) {
 }
 
 @(test)
+login_steps_pins_and_events_decode :: proc(t: ^testing.T) {
+	a, ok := answer_decode(transmute([]u8)string(`{"id":4,"ok":true,"result":"need_two_factor","providers":["email","duo","authenticator"],"email_sent":true}`))
+	defer answer_free(a)
+	testing.expect(t, ok)
+	testing.expect_value(t, a.result, Login_Result.Need_Two_Factor)
+	testing.expect_value(t, a.factors, Factors{.Authenticator, .Email})   // (an unknown provider is left out)
+	testing.expect(t, a.email_sent)
+	d, ok2 := answer_decode(transmute([]u8)string(`{"id":5,"ok":true,"result":"need_device_code"}`))
+	defer answer_free(d)
+	testing.expect(t, ok2)
+	testing.expect_value(t, d.result, Login_Result.Need_Device_Code)
+	p, ok3 := answer_decode(transmute([]u8)string(`{"id":6,"ok":false,"error":"bad_pin","message":"The PIN is wrong. 3 tries left.","tries_left":3}`))
+	defer answer_free(p)
+	testing.expect(t, ok3)
+	testing.expect_value(t, p.tries_left, 3)
+	h, ok4 := answer_decode(transmute([]u8)string(`{"id":1,"ok":true,"account":"locked","email":"a@b.c","pin":true,"login":"api_key"}`))
+	defer answer_free(h)
+	testing.expect(t, ok4)
+	testing.expect(t, h.pin)
+	e, ok5 := answer_decode(transmute([]u8)string(`{"id":0,"ok":true,"event":"locked"}`))
+	defer answer_free(e)
+	testing.expect(t, ok5)
+	testing.expect_value(t, e.id, 0)
+	testing.expect_value(t, e.event, "locked")
+}
+
+@(test)
+the_new_requests_are_written :: proc(t: ^testing.T) {
+	r: Request
+	request_begin(&r, 3, .Login, 64)
+	request_string(&r, "email", "a@b.c")
+	request_string(&r, "provider", "email")
+	request_bool(&r, "resend", true)
+	frame, ok := request_end(&r)
+	defer frame_free(frame)
+	testing.expect(t, ok)
+	testing.expect_value(t, body_of(frame), `{"id":3,"op":"login","email":"a@b.c","provider":"email","resend":true}`)
+	k: Request
+	request_begin(&k, 4, .Keepalive, 0)
+	kf, k_ok := request_end(&k)
+	defer frame_free(kf)
+	testing.expect(t, k_ok)
+	testing.expect_value(t, body_of(kf), `{"id":4,"op":"keepalive"}`)
+}
+
+@(test)
 what_is_not_an_answer_is_refused :: proc(t: ^testing.T) {
 	for src in ([]string{`not json`, `[1,2]`, `{"ok":true}`, `{"id":-1,"ok":true}`, `{"id":1}`}) {
 		a, ok := answer_decode(transmute([]u8)src)

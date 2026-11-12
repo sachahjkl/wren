@@ -1,6 +1,7 @@
 # Browser extensions
 
-This page is the plan for WebExtensions in Wren. Phase 1 is written (section 4, "Status of phase 1"). The first target
+This page is the plan for WebExtensions in Wren. Phases 1 and 2 are written (section 4, "Status of phase 1" and
+"Status of phase 2"). The first target
 is Bitwarden's browser extension (`bitwarden/clients`, `apps/browser`), Manifest V3, Chrome build first, Firefox build
 second.
 
@@ -532,8 +533,8 @@ Different from the plan, and why:
   `extension_may_load` is written).
 
 Not written yet: the web test `web_extensions.odin` (the e2e test covers its checks), the chrome-world test of the
-toolbar, the generated conformance cases per API method, `state.txt` (the background's listeners are kept in memory
-only), the overflow menu of the toolbar, icons from `ImageData`.
+toolbar, the generated conformance cases per API method, the overflow menu of the toolbar, icons from `ImageData`.
+(`state.txt` came with phase 2.)
 
 ### Phase 2: log in and unlock
 
@@ -551,6 +552,62 @@ Tests: web tests for `idle` on the virtual clock, `offscreen` (create, one at a 
 events in order. e2e: the fixture's popup writes the clipboard; a tab opened by `tabs.create` shows; an install from a
 zip and from a crx; the session restores the extension. A test server route plays a small login API for a fixture that
 does fetch, PBKDF2 and AES-GCM in its background, then stores the result.
+
+#### Status of phase 2
+
+Written:
+
+- `src/extensions/archive.odin`: the `.zip` and CRX3 reader (central directory, stored and deflate entries, CRC-32,
+  the CRX3 protobuf header for the public key) and the unpack into `<profile>/extensions/<id>/package/`. Every entry is
+  checked before anything is written; each entry inflates into a buffer of its declared size. The id: the CRX3 key,
+  else the manifest's `key`, else the archive's path; `image_load` takes it (`forced_id`) at each later start.
+  `about:extensions` has "Install from file…" and takes a package path in its field.
+- `state.txt` (`registry.odin`: `state_serialize`, `state_parse`, `Extension.listeners`): the events the background
+  listens to, saved after its script ran and when they change. At the browser's start a background with known
+  listeners does not run; an event starts it only when it listens to it. An install or a reload learns them again.
+- `src/page/ext_offscreen.odin`: `offscreen.createDocument` (answers at the document's load event, fails after 30 s
+  without one), `hasDocument`, `closeDocument`; one per extension; a `CLIPBOARD`-only document closes after
+  `extensions.offscreen.max_lifetime_ms`. The context kind `Offscreen` has `runtime` only. The shell hosts the
+  document in a tab of no window (`src/browser/ext_window_api.odin`).
+- `src/page/ext_tabs.odin`: `tabs.create`, `update`, `remove`; `windows.create` (`type: "popup"`: the popout window,
+  with no tab strip and no toolbar), `update` (focus, position), `remove`; `runtime.getContexts`, `reload`,
+  `openOptionsPage`. A call is checked at once, then the shell acts in a task of the loop of its own. The events
+  `tabs.onCreated`, `onUpdated` (`loading` at the request, `complete` at the document's load event), `onActivated`,
+  `onRemoved`, `windows.onCreated`, `onRemoved`, `onFocusChanged`, built per extension (URL and title only when it may
+  see them).
+- `src/page/ext_idle.odin`: `idle.queryState`, `setDetectionInterval`, `onStateChanged`, from the time since the last
+  input in Wren's windows (`ext_watch` reads each frame's events). One timer for every extension, set only while a
+  context listens.
+- The clipboard: a page of an extension with `clipboardWrite` or `clipboardRead` (popup, tab, offscreen document) uses
+  `navigator.clipboard` with no focus and no gesture (`js_clipboard.odin`).
+- The JSON of the router's messages and events: the format strings double their braces (`fmt` reads `{` as an argument).
+- Tests: `src/extensions/archive_test.odin` (zips, hostile entries, limits, CRX3, the install, `state.txt`, idle); e2e
+  `extensions_vault_packed_offscreen_tabs` and `extensions_vault_restart` with the fixture `examples/extensions/vault`.
+
+Different from the plan, and why:
+
+- **The popup is still a tab.** The toolkit has the container: `ui.ctx_menu_open_rect` and `ui.ctx_menu` give a panel
+  under a rectangle that closes on a press outside and on Escape, and a `ui.custom` box in it can draw anything. What
+  is missing is in Wren: a *page view* that is neither a tab of a window nor a frame of a document. It needs, in
+  `src/browser`: (1) a stand-in tab loaded by `navigate`, as the offscreen documents' tab is; (2) its styles and layout
+  for a given size and its paint into a given rectangle (the body of `frame_prepare` and `frames_paint_content`,
+  without a parent document; `page_prepare` keeps one `Page_Prep` per window and cannot hold a second page); (3) the
+  pointer and keyboard routed to it while the panel is open (`frame_pointer_event` and `frames_route_keys`, keyed by a
+  view instead of a frame); (4) the document's content size after each layout, clamped to 25 x 25 .. 800 x 600 CSS px,
+  for the panel's size in the next frame. The natural form is to split `Frame_View` into a generic view used by frames
+  and by the popup. It is a change of the frames' paint and input paths, to be built and checked with the UI; it is
+  not in this phase.
+- **The bindgen dialect is not written.** The methods and events stay in one Odin table (`EXT_METHODS`, `EXT_EVENTS`)
+  with their permission, their contexts and an implementation that decodes its JSON arguments. Phase 2 adds 16 methods
+  and 1 event. The dialect (`[Permission=]`, `[Contexts=]`, `event`, generated decoders) changes `src/tools/bindgen`
+  and every generated output; it is a phase of its own, best made before phase 3's `scripting` and `webNavigation`,
+  whose arguments are the first with unions.
+- **Idle is the browser's, not the system's.** The toolkit has no time since the last input of the whole system (Win32
+  `GetLastInputInfo`, Wayland `ext-idle-notify`, X11 screen saver): it is a toolkit addition to make.
+- A popout window is saved in the session as a normal window.
+- No web tests on the virtual clock yet (idle, offscreen, event order): the e2e tests cover the same paths; the idle
+  test sets the time of the last input instead of waiting.
+- The login API route of the test server and its PBKDF2 / AES-GCM fixture are not written.
 
 ### Phase 3: autofill
 

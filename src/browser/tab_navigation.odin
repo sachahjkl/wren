@@ -35,6 +35,7 @@ nav_to :: proc(app: ^App, t: ^Tab, to: Nav_Phase) {
 	n := &t.nav_state
 	n.phase = to
 	if to == .Requested { n.started, n.arrived = host.now_ns(&app.loop), 0 }
+	ext_tab_nav(app, t, to)   // ext_window_api.odin: tabs.onUpdated (loading, complete)
 }
 
 // No answer has made a document: nothing has replaced what the tab showed.

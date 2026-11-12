@@ -988,6 +988,7 @@ the_end :: proc(p: ^Page) -> bool {
 		if frame_navigable_of(p) == nil { js_census_at_load(p) }   // (WREN_JS_MEMPROF: js_profile.odin)
 		s.timing.load_end_ms = now_ms(p)
 		if p.closed { return true }
+		ext_page_loaded(p)   // an extension's offscreen document: offscreen.createDocument answers now (ext_offscreen.odin)
 		frames_document_complete(p)   // a nested document: its container's load event (frames.odin)
 		fire_window_event(p, dom.Event{type = "pageshow"})
 		return true

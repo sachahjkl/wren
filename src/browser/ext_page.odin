@@ -6,7 +6,8 @@ package browser
 // shown (never per frame), whose links act only when the person or the page itself follows them (nav_trust.odin).
 //
 //   about:extensions?load=pick                  the folder dialog, then the package is read off the loop thread
-//   about:extensions?path=<folder>              the same with a folder typed in
+//   about:extensions?load=file                  the file dialog for a .zip or .crx package, unpacked off the loop thread
+//   about:extensions?path=<folder or file>      the same with a path typed in (a .zip or .crx file is unpacked)
 //   about:extensions?accept=<id> / cancel=<id>  the install prompt's answer
 //   about:extensions?enable= / disable= / reload= / remove=<id>
 //   about:extensions?grant=<id>&host=<pattern> / revoke=<id>&host=<pattern>
@@ -103,12 +104,13 @@ ext_page_html :: proc(app: ^App) -> string {
 	reg := ext_reg(app)
 	sb := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&sb, "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Extensions</title>\n<style>%s</style>\n</head>\n<body>\n<div class=\"main\">\n<h1>Extensions</h1>\n", EXT_PAGE_STYLE)
-	strings.write_string(&sb, "<p class=\"intro\">Browser extensions (Manifest V3, Chrome builds). Load an unpacked extension from its folder: the one that holds its <code>manifest.json</code>.</p>\n")
+	strings.write_string(&sb, "<p class=\"intro\">Browser extensions (Manifest V3, Chrome builds). Load an unpacked extension from its folder (the one that holds its <code>manifest.json</code>), or install a <code>.zip</code> or <code>.crx</code> package.</p>\n")
 	if !reg.settings.enabled { strings.write_string(&sb, "<p class=\"notice\">Extensions are off (<code>extensions.enabled</code> in about:config).</p>\n") }
 	if app.ext.notice != "" { fmt.sbprintf(&sb, "<p class=\"notice\">%s</p>\n", escape_html(app.ext.notice)) }
 	if app.ext.loading > 0 { strings.write_string(&sb, "<p class=\"notice\">Loading…</p>\n") }
-	fmt.sbprintf(&sb, "<form action=\"%s\" method=\"get\"><input type=\"text\" name=\"path\" placeholder=\"Folder of an unpacked extension\"><button type=\"submit\">Load</button>", EXTENSIONS_URL)
+	fmt.sbprintf(&sb, "<form action=\"%s\" method=\"get\"><input type=\"text\" name=\"path\" placeholder=\"Folder of an unpacked extension, or a .zip or .crx file\"><button type=\"submit\">Load</button>", EXTENSIONS_URL)
 	ext_link(&sb, "load=pick", "Load unpacked…", "")
+	ext_link(&sb, "load=file", "Install from file…", "")
 	strings.write_string(&sb, "</form>\n")
 
 	// the install prompts: what the extension may do, in plain words
@@ -141,7 +143,7 @@ ext_page_html :: proc(app: ^App) -> string {
 		version := im != nil ? im.manifest.version : ""
 		fmt.sbprintf(&sb, "<div class=\"card%s\"><h3>%s<span class=\"v\">%s</span></h3>", e.enabled ? "" : " off", escape_html(name), escape_html(version))
 		if im != nil && im.manifest.description != "" { fmt.sbprintf(&sb, "<p class=\"meta\">%s</p>", escape_html(im.manifest.description)) }
-		fmt.sbprintf(&sb, "<p class=\"meta\">ID <code>%s</code> · %s · <code>%s</code></p>", e.id, im != nil ? extensions.FLAVOUR_NAMES[im.manifest.flavour] : "chrome", escape_html(e.path))
+		fmt.sbprintf(&sb, "<p class=\"meta\">ID <code>%s</code> · %s · %s · <code>%s</code></p>", e.id, im != nil ? extensions.FLAVOUR_NAMES[im.manifest.flavour] : "chrome", extensions.SOURCE_NAMES[e.source], escape_html(e.path))
 		state := !e.enabled ? "Disabled" : (e.loading ? "Loading" : "Enabled")
 		bg_text := ""
 		if exists, running, starts := page.ext_bg_state(e.id); exists {
@@ -186,6 +188,7 @@ show_extensions_page :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
 	if query != "" && acts && app.ext.started {
 		switch {
 		case ext_param(query, "load") == "pick":   ext_pick_folder(app)
+		case ext_param(query, "load") == "file":   ext_pick_folder(app, archive = true)
 		case ext_param(query, "path") != "":       ext_notice(app, ""); ext_load(app, strings.trim_space(ext_param(query, "path")), .Install)
 		case ext_param(query, "accept") != "":     ext_accept(app, ext_param(query, "accept"))
 		case ext_param(query, "cancel") != "":     ext_cancel(app, ext_param(query, "cancel"))
@@ -225,19 +228,31 @@ ext_page_refresh :: proc(app: ^App) {
 	for id in ids { if t := tab_find(app, id); t != nil { navigate(app, t, EXTENSIONS_URL, record = false, origin = .User) } }
 }
 
-// "Load unpacked": the system's folder dialog on a thread of its own; the folder chosen is loaded off the loop thread.
+// "Load unpacked" (`archive`: "Install from file"): the system's folder (file) dialog on a thread of its own; what is
+// chosen is loaded off the loop thread.
 @(private = "file")
-Ext_Pick_Job :: struct { app: ^App, owner: ^platform.Window, chosen: string }
+Ext_Pick_Job :: struct { app: ^App, owner: ^platform.Window, chosen: string, archive: bool }
 
-ext_pick_folder :: proc(app: ^App) {
+@(private = "file")
+EXT_PACKAGE_PATTERNS := [?]string{"*.zip", "*.crx"}
+
+ext_pick_folder :: proc(app: ^App, archive := false) {
 	if app.ext.picking { return }
 	job := new(Ext_Pick_Job)
 	job.app = app
 	job.owner = active_window(app).win
+	job.archive = archive
 	started := host.run_dialog(&app.dialogs, proc(data: rawptr) {
 		j := (^Ext_Pick_Job)(data)
-		dlg := platform.File_Dialog{owner = j.owner, title = "Folder of an unpacked extension", remember_id = "extension_dir"}
-		res := platform.pick_folder_dialog(dlg, context.allocator)
+		res: platform.Dialog_Result
+		if j.archive {
+			filters := [1]platform.File_Filter{{name = "Extension packages (.zip, .crx)", patterns = EXT_PACKAGE_PATTERNS[:]}}
+			dlg := platform.File_Dialog{owner = j.owner, title = "Extension package", filters = filters[:], all_files = true, remember_id = "extension_file"}
+			res = platform.open_file_dialog(dlg, context.allocator)
+		} else {
+			dlg := platform.File_Dialog{owner = j.owner, title = "Folder of an unpacked extension", remember_id = "extension_dir"}
+			res = platform.pick_folder_dialog(dlg, context.allocator)
+		}
 		defer platform.dialog_result_destroy(&res, context.allocator)
 		if res.status == .Chosen && len(res.paths) > 0 { j.chosen = strings.clone(res.paths[0]) }
 	}, proc(data: rawptr) {

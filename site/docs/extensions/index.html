@@ -242,6 +242,7 @@
 <li><a href="../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../docs/js/web-crypto/">crypto.subtle</a></li>
 <li><a href="../../docs/js/webassembly-api/">The WebAssembly JavaScript API</a></li>
+<li><a href="../../docs/test-review/">Review of the test system</a></li>
 <li><a href="../../docs/updates/">Updates</a></li>
 <li><a href="../../docs/vault-protocol/">The Vault helper protocol</a></li>
 </ul>
@@ -256,7 +257,8 @@
 <li aria-current="page">Browser extensions</li>
 </ol></nav>
 <h1 id="browser-extensions"><a class="anchor" href="#browser-extensions" aria-hidden="true">#</a>Browser extensions</h1>
-<p>This page is the plan for WebExtensions in Wren. Phase 1 is written (section 4, "Status of phase 1"). The first target
+<p>This page is the plan for WebExtensions in Wren. Phases 1 and 2 are written (section 4, "Status of phase 1" and
+"Status of phase 2"). The first target
 is Bitwarden's browser extension (<code>bitwarden/clients</code>, <code>apps/browser</code>), Manifest V3, Chrome build first, Firefox build
 second.</p>
 <p>Terms used on this page, one per concept:</p>
@@ -750,8 +752,8 @@ surface in a popup (question 7).</li>
 <code>extension_may_load</code> is written).</li>
 </ul>
 <p>Not written yet: the web test <code>web_extensions.odin</code> (the e2e test covers its checks), the chrome-world test of the
-toolbar, the generated conformance cases per API method, <code>state.txt</code> (the background's listeners are kept in memory
-only), the overflow menu of the toolbar, icons from <code>ImageData</code>.</p>
+toolbar, the generated conformance cases per API method, the overflow menu of the toolbar, icons from <code>ImageData</code>.
+(<code>state.txt</code> came with phase 2.)</p>
 <h3 id="phase-2-log-in-and-unlock"><a class="anchor" href="#phase-2-log-in-and-unlock" aria-hidden="true">#</a>Phase 2: log in and unlock</h3>
 <p>Scope: what the login and the vault need beyond phase 1. <code>idle</code> (the toolkit's last input time). <code>offscreen</code>
 (<code>ext_offscreen.odin</code>). <code>tabs.create</code>, <code>update</code>, <code>remove</code>, and the tab events. <code>windows.create</code> (popout), <code>update</code>,
@@ -765,6 +767,61 @@ restart Wren and unlock again, open the popout window.</p>
 events in order. e2e: the fixture's popup writes the clipboard; a tab opened by <code>tabs.create</code> shows; an install from a
 zip and from a crx; the session restores the extension. A test server route plays a small login API for a fixture that
 does fetch, PBKDF2 and AES-GCM in its background, then stores the result.</p>
+<h4 id="status-of-phase-2"><a class="anchor" href="#status-of-phase-2" aria-hidden="true">#</a>Status of phase 2</h4>
+<p>Written:</p>
+<ul>
+<li><code>src/extensions/archive.odin</code>: the <code>.zip</code> and CRX3 reader (central directory, stored and deflate entries, CRC-32,
+the CRX3 protobuf header for the public key) and the unpack into <code>&lt;profile&gt;/extensions/&lt;id&gt;/package/</code>. Every entry is
+checked before anything is written; each entry inflates into a buffer of its declared size. The id: the CRX3 key,
+else the manifest's <code>key</code>, else the archive's path; <code>image_load</code> takes it (<code>forced_id</code>) at each later start.
+<code>about:extensions</code> has "Install from file…" and takes a package path in its field.</li>
+<li><code>state.txt</code> (<code>registry.odin</code>: <code>state_serialize</code>, <code>state_parse</code>, <code>Extension.listeners</code>): the events the background
+listens to, saved after its script ran and when they change. At the browser's start a background with known
+listeners does not run; an event starts it only when it listens to it. An install or a reload learns them again.</li>
+<li><code>src/page/ext_offscreen.odin</code>: <code>offscreen.createDocument</code> (answers at the document's load event, fails after 30 s
+without one), <code>hasDocument</code>, <code>closeDocument</code>; one per extension; a <code>CLIPBOARD</code>-only document closes after
+<code>extensions.offscreen.max_lifetime_ms</code>. The context kind <code>Offscreen</code> has <code>runtime</code> only. The shell hosts the
+document in a tab of no window (<code>src/browser/ext_window_api.odin</code>).</li>
+<li><code>src/page/ext_tabs.odin</code>: <code>tabs.create</code>, <code>update</code>, <code>remove</code>; <code>windows.create</code> (<code>type: "popup"</code>: the popout window,
+with no tab strip and no toolbar), <code>update</code> (focus, position), <code>remove</code>; <code>runtime.getContexts</code>, <code>reload</code>,
+<code>openOptionsPage</code>. A call is checked at once, then the shell acts in a task of the loop of its own. The events
+<code>tabs.onCreated</code>, <code>onUpdated</code> (<code>loading</code> at the request, <code>complete</code> at the document's load event), <code>onActivated</code>,
+<code>onRemoved</code>, <code>windows.onCreated</code>, <code>onRemoved</code>, <code>onFocusChanged</code>, built per extension (URL and title only when it may
+see them).</li>
+<li><code>src/page/ext_idle.odin</code>: <code>idle.queryState</code>, <code>setDetectionInterval</code>, <code>onStateChanged</code>, from the time since the last
+input in Wren's windows (<code>ext_watch</code> reads each frame's events). One timer for every extension, set only while a
+context listens.</li>
+<li>The clipboard: a page of an extension with <code>clipboardWrite</code> or <code>clipboardRead</code> (popup, tab, offscreen document) uses
+<code>navigator.clipboard</code> with no focus and no gesture (<code>js_clipboard.odin</code>).</li>
+<li>The JSON of the router's messages and events: the format strings double their braces (<code>fmt</code> reads <code>{</code> as an argument).</li>
+<li>Tests: <code>src/extensions/archive_test.odin</code> (zips, hostile entries, limits, CRX3, the install, <code>state.txt</code>, idle); e2e
+<code>extensions_vault_packed_offscreen_tabs</code> and <code>extensions_vault_restart</code> with the fixture <code>examples/extensions/vault</code>.</li>
+</ul>
+<p>Different from the plan, and why:</p>
+<ul>
+<li><strong>The popup is still a tab.</strong> The toolkit has the container: <code>ui.ctx_menu_open_rect</code> and <code>ui.ctx_menu</code> give a panel
+under a rectangle that closes on a press outside and on Escape, and a <code>ui.custom</code> box in it can draw anything. What
+is missing is in Wren: a <em>page view</em> that is neither a tab of a window nor a frame of a document. It needs, in
+<code>src/browser</code>: (1) a stand-in tab loaded by <code>navigate</code>, as the offscreen documents' tab is; (2) its styles and layout
+for a given size and its paint into a given rectangle (the body of <code>frame_prepare</code> and <code>frames_paint_content</code>,
+without a parent document; <code>page_prepare</code> keeps one <code>Page_Prep</code> per window and cannot hold a second page); (3) the
+pointer and keyboard routed to it while the panel is open (<code>frame_pointer_event</code> and <code>frames_route_keys</code>, keyed by a
+view instead of a frame); (4) the document's content size after each layout, clamped to 25 x 25 .. 800 x 600 CSS px,
+for the panel's size in the next frame. The natural form is to split <code>Frame_View</code> into a generic view used by frames
+and by the popup. It is a change of the frames' paint and input paths, to be built and checked with the UI; it is
+not in this phase.</li>
+<li><strong>The bindgen dialect is not written.</strong> The methods and events stay in one Odin table (<code>EXT_METHODS</code>, <code>EXT_EVENTS</code>)
+with their permission, their contexts and an implementation that decodes its JSON arguments. Phase 2 adds 16 methods
+and 1 event. The dialect (<code>[Permission=]</code>, <code>[Contexts=]</code>, <code>event</code>, generated decoders) changes <code>src/tools/bindgen</code>
+and every generated output; it is a phase of its own, best made before phase 3's <code>scripting</code> and <code>webNavigation</code>,
+whose arguments are the first with unions.</li>
+<li><strong>Idle is the browser's, not the system's.</strong> The toolkit has no time since the last input of the whole system (Win32
+<code>GetLastInputInfo</code>, Wayland <code>ext-idle-notify</code>, X11 screen saver): it is a toolkit addition to make.</li>
+<li>A popout window is saved in the session as a normal window.</li>
+<li>No web tests on the virtual clock yet (idle, offscreen, event order): the e2e tests cover the same paths; the idle
+test sets the time of the last input instead of waiting.</li>
+<li>The login API route of the test server and its PBKDF2 / AES-GCM fixture are not written.</li>
+</ul>
 <h3 id="phase-3-autofill"><a class="anchor" href="#phase-3-autofill" aria-hidden="true">#</a>Phase 3: autofill</h3>
 <p>Scope: <code>src/page/ext_worlds.odin</code> and the split of section 3.6 in <code>js_realm.odin</code>, <code>js_events_host.odin</code>,
 <code>js_observers.odin</code>, <code>js_custom_elements.odin</code>, <code>js_dom_events.odin</code>, <code>timers</code>, <code>message.odin</code>.

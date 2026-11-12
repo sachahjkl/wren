@@ -79,6 +79,7 @@ browser/dnd_image.odin DND_IMAGE_PREFS const  # a table
 browser/dnd_shell.odin DND_PREFS const  # a table
 browser/download.odin DOWNLOAD_PREFS const  # a table
 browser/effects_cache.odin FX_CACHE_PREFS const  # a table
+browser/ext_page.odin EXT_PACKAGE_PATTERNS const  # a table
 browser/favicon.odin TAB_PREFS const  # a table
 browser/first_paint.odin FIRST_PAINT_PREFS const  # a table
 browser/font_settings.odin FONT_PREFS const  # a table
@@ -309,7 +310,9 @@ page/eventsource.odin EVENTSOURCE_PREFS const  # a table
 page/eventsource.odin eventsource_vt const  # a host object's table of procedures
 page/ext_api.odin EXT_EVENTS const  # a table
 page/ext_api.odin EXT_METHODS const  # a table
+page/ext_offscreen.odin EXT_OFFSCREEN_REASONS const  # a table
 page/ext_realm.odin EXT_KIND_NAMES const  # a table
+page/ext_tabs.odin EXT_CONTEXT_TYPES const  # a table
 page/formdata.odin formdata_vt const  # a host object's table of procedures
 page/frames.odin navigable_count thread  # ... how many
 page/frames.odin navigables thread  # the navigables of the thread's pages (an App's: its pages run on the thread of its loop)

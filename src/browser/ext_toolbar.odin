@@ -190,7 +190,7 @@ ext_button :: proc(app: ^App, t: ^Tab, e: ^extensions.Extension) {
 			ext_open_popup(app, e, popup)
 		} else {
 			// action.onClicked with the tab (its URL only when the extension may see it: page side decides on calls; here the id)
-			page.ext_emit(e.id, "action.onClicked", fmt.tprintf(`[{"id":%d}]`, tab_id))
+			page.ext_emit(e.id, "action.onClicked", fmt.tprintf(`[{{"id":%d}}]`, tab_id))
 		}
 	}
 }

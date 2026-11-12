@@ -277,7 +277,8 @@
           xvfb-run
         ])
         ++ preCommit.enabledPackages;
-      buildInputs = runtimeLibs ++ [pkgs.mesa];
+      # (dbus: wrentool build vault links the helper's Secret Service store to libdbus)
+      buildInputs = runtimeLibs ++ [pkgs.mesa pkgs.dbus];
       LIBRARY_PATH = lib.makeLibraryPath runtimeLibs;
       LD_LIBRARY_PATH = lib.makeLibraryPath (runtimeLibs ++ [pkgs.mesa]);
       # wrentool seals wgpu-native into Odin's vendor/: a writable copy, the store's is read-only

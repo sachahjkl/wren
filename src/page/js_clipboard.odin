@@ -14,6 +14,7 @@ package page
 
 import "core:strings"
 import "wb:base"
+import "wb:extensions"
 
 // The system clipboard, as the shell offers it. nil procs: the process's own variable (headless tools, tests).
 Clipboard_Embedder :: struct {
@@ -39,9 +40,15 @@ clipboard_verdict :: proc(write, enabled, windowed, focused, gesture: bool) -> C
 @(private = "file")
 clipboard_check :: proc(p: ^Page, write: bool) -> Clipboard_Verdict {
 	s := &p.settings.js_web
+	enabled := write ? s.clipboard_write : s.clipboard_read
+	// a page of an extension (popup, tab, offscreen document) that has clipboardWrite / clipboardRead needs no focus
+	// and no gesture, as in Chrome: the person granted it at install (an offscreen document is never focused)
+	if x := p.ext; x != nil && x.kind != .Content && x.kind != .Background && enabled {
+		if extensions.manifest_has_permission(&x.image.manifest, write ? "clipboardWrite" : "clipboardRead") { return .Allowed }
+	}
 	windowed, focused := the_pages.webauthn_embedder.window != nil, true
 	if windowed { _, focused = the_pages.webauthn_embedder.window(p) }
-	return clipboard_verdict(write, write ? s.clipboard_write : s.clipboard_read, windowed, focused, webauthn_has_activation(p))
+	return clipboard_verdict(write, enabled, windowed, focused, webauthn_has_activation(p))
 }
 
 @(private = "file")

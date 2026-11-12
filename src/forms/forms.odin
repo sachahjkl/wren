@@ -55,6 +55,7 @@ Control :: struct {
 	value:           string,
 	dirty_value:     bool,
 	user_edited:     bool,        // the value was last changed by the user (tooLong / tooShort only apply then)
+	vault_filled:    bool,        // the Vault filled it (credentials.odin): no restoration keeps its value; a reset or a script's value ends it
 	type_seen:       Input_Type,  // to apply the "type attribute changed" steps
 	type_known:      bool,
 	// what the user is typing in a field whose value is a parsed form (number, date...). Differs from `value` when it
@@ -197,6 +198,7 @@ Forms :: struct {
 	seq:          u64,
 	patterns:     map[string]^Regex,   // compiled `pattern` attributes (nil: invalid), keyed by source
 	faces:        [dynamic]base.Handle,   // the form-associated custom elements (custom.odin), in no order
+	vault_filled: bool,          // the Vault filled a control of this document once: the back/forward cache does not keep it
 }
 
 Radio_Key :: struct { owner: base.Handle, name: string }

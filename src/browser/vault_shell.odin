@@ -1,18 +1,22 @@
 package browser
 
 // The Vault's shell (docs/bitwarden.md 4.7): the toolbar button with the lock state, the panel with the logins of the
-// tab's page and their Fill button, the login and unlock dialog (with its second-factor step), the question before a
-// fill on a plain http page, and the fill itself. The state is the App's one vault.Vault (src/vault): every surface reads
-// it, none keeps a copy. All of it is toolkit widgets drawn by the chrome: a page can neither read nor cover them.
+// tab's page and their Fill button, the login dialog (the server, the email and master password or the API key, then
+// the second step: an authenticator or email code, or the new-device code), the unlock dialog (master password or PIN),
+// the PIN dialog, the question before a fill on a plain http page, and the fill itself. The state is the App's one
+// vault.Vault (src/vault): every surface reads it, none keeps a copy. All of it is toolkit widgets drawn by the chrome: a
+// page can neither read nor cover them.
 //
 // What is never done: a fill without a click of the user on Fill; a fill or a list while a remote client drives the
-// browser (unless vault.test.remote); a fill into a page other than the one the click was for (the ticket); a password
-// into a field that is not type=password. The secret fields are zeroed after each send and when the dialog closes.
+// browser (unless vault.test.remote): the panel is then an empty box, the dialogs close, so a capture shows nothing of
+// the Vault; a fill into a page other than the one the click was for (the ticket); a password into a field that is not
+// type=password. The secret fields are zeroed after each send and when their dialog closes.
 
 import "core:fmt"
 import "core:mem"
 import "core:strings"
 import "toolkit:draw"
+import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
@@ -27,18 +31,26 @@ VAULT_PANEL_W_EM :: f32(26)
 VAULT_SECRET_RESERVE :: 512   // bytes reserved in a secret field before any typing: a buffer that grows would leave copies
 
 Vault_Shell :: struct {
-	v:          vault.Vault,
-	started:    bool,
-	watch:      int,   // the `vault.` preference watch
-	panel_was:  bool,  // the panel was open last frame (its rows are released when it closes)
-	dialog:     bool,  // the login / unlock dialog is open
-	focus:      bool,  // the dialog's first field takes the keyboard next frame
-	email:      ui.Text_Field,
-	password:   ui.Text_Field,
-	code:       ui.Text_Field,
-	ask_open:   bool,           // the question before a fill on a plain http page
-	ask_item:   string,         // owned: the row it is for
-	ask_tab:    u64,
+	v:              vault.Vault,
+	started:        bool,
+	watch:          int,    // the `vault.` preference watch
+	panel_was:      bool,   // the panel was open last frame (its rows are released when it closes)
+	dialog:         bool,   // the login / unlock dialog is open
+	focus:          bool,   // the dialog's first field takes the keyboard next frame
+	api_key:        bool,   // the login dialog asks for the API key rather than the email
+	use_password:   bool,   // the unlock dialog asks for the master password though a PIN is set
+	pending_submit: bool,   // the login waits for the Vault to take the server address just typed
+	email:          ui.Text_Field,
+	password:       ui.Text_Field,   // secret: the master password, or the PIN of an unlock
+	code:           ui.Text_Field,   // secret: a second step's code
+	client_id:      ui.Text_Field,
+	client_secret:  ui.Text_Field,   // secret
+	server:         ui.Text_Field,   // the address of a self-hosted server
+	pin_dialog:     bool,            // the dialog that sets a PIN is open
+	pin:            ui.Text_Field,   // secret
+	ask_open:       bool,            // the question before a fill on a plain http page
+	ask_item:       string,          // owned: the row it is for
+	ask_tab:        u64,
 }
 
 ////////////////////////////////
@@ -65,14 +77,18 @@ vault_shell_destroy :: proc(app: ^App) {
 	if !s.started { return }
 	config.unwatch(&app.prefs, s.watch)
 	vault.vault_destroy(&s.v)
-	secret_wipe(&s.email)
-	secret_wipe(&s.password)
-	secret_wipe(&s.code)
-	ui.field_destroy(&s.email)
-	ui.field_destroy(&s.password)
-	ui.field_destroy(&s.code)
+	fields := vault_fields(s)
+	for f in fields {
+		secret_wipe(f)
+		ui.field_destroy(f)
+	}
 	delete(s.ask_item)
 	s^ = {}
+}
+
+@(private = "file")
+vault_fields :: proc(s: ^Vault_Shell) -> [7]^ui.Text_Field {
+	return {&s.email, &s.password, &s.code, &s.client_id, &s.client_secret, &s.server, &s.pin}
 }
 
 // Zeroes a text field's bytes and its undo history, then empties it (its capacity stays: VAULT_SECRET_RESERVE).
@@ -87,6 +103,19 @@ secret_wipe :: proc(f: ^ui.Text_Field) {
 // Whether the Vault may show rows or fill now: never while a remote client drives the browser (docs/bitwarden.md 3.3).
 @(private = "file")
 vault_usable :: proc(app: ^App) -> bool { return !app.remote.active || app.vault.v.settings.test_remote }
+
+// The frame's input (main.odin, frame): a key or the pointer used in the browser postpones the Vault's idle lock.
+// Cheap: nothing runs while no helper does, and the first input event ends the look.
+vault_shell_activity :: proc(app: ^App, events: []platform.Event) {
+	if app.vault.v.t == nil { return }
+	for e in events {
+		#partial switch e.kind {
+		case .Key_Press, .Text, .Mouse_Move, .Mouse_Press, .Scroll, .Pointer_Down, .Pointer_Move:
+			vault.vault_activity(&app.vault.v)
+			return
+		}
+	}
+}
 
 ////////////////////////////////
 // The toolbar button and its panel
@@ -146,7 +175,7 @@ vault_button :: proc(app: ^App, t: ^Tab) {
 		if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else { ui.ctx_menu_open_rect(key, b.rect, b.key) }
 	}
 	open := ui.ctx_menu_is_open(key)
-	if !open { tip(sig, vault_state_words(v)) }
+	if !open && vault_usable(app) { tip(sig, vault_state_words(v)) }
 	ui.a11y_set(b, {name = i18n.tr("Vault"), popup = .Menu, expanded = open})
 	if open != app.vault.panel_was {
 		app.vault.panel_was = open
@@ -162,9 +191,10 @@ vault_state_words :: proc(v: ^vault.Vault) -> string {
 	case .Helper_Missing:       return i18n.tr("Vault: its helper program is missing")
 	case .Logged_Out:           return i18n.tr("Vault: log in to your account")
 	case .Logging_In, .Unlocking: return i18n.tr("Vault: working…")
-	case .Need_Two_Factor:      return i18n.tr("Vault: the code of your authenticator app is needed")
+	case .Need_Two_Factor:      return i18n.tr("Vault: the code of the second step is needed")
+	case .Need_Device_Code:     return i18n.tr("Vault: the code mailed for this new device is needed")
 	case .Locked:               return i18n.tr("Vault: locked")
-	case .Unlocked:             return i18n.tr("Vault: unlocked")
+	case .Unlocked:             return v.syncing ? i18n.tr("Vault: unlocked, syncing…") : i18n.tr("Vault: unlocked")
 	case .Failed:               return i18n.tr("Vault: stopped")
 	}
 	return ""
@@ -184,6 +214,11 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 	v := &app.vault.v
 	em := ui.font_size()
 	w := em * VAULT_PANEL_W_EM
+	if !vault_usable(app) {
+		// (remote-controlled: an empty box, so that no capture shows the state, the account or a row)
+		ui.spacer(ui.px(em * 4))
+		return
+	}
 	ui.spacer(ui.px(em * 0.5))
 	ui.next({width = ui.px(w), height = ui.children_sum()})
 	if ui.row(.Start, {}, "###vp_margin") {
@@ -194,25 +229,53 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 			if v.message != "" { panel_line(v.message, "vp_message", weak = true) }
 			if v.email != "" { panel_line(v.email, "vp_email", weak = true) }
 			ui.spacer(ui.px(em * 0.5))
-			if !vault_usable(app) {
-				panel_line(i18n.tr("The Vault is off while the browser is remote-controlled."), "vp_remote", weak = true)
-			} else {
-				switch v.state {
-				case .Disabled, .Locating, .Logging_In, .Unlocking:
-				case .Helper_Missing:
-					panel_line(i18n.tr("Install wren-vault beside Wren, or set vault.helper.path."), "vp_missing", weak = true)
-				case .Logged_Out, .Locked, .Failed, .Need_Two_Factor:
-					label := v.state == .Locked || (v.state == .Failed && vault.vault_has_account(v)) ? i18n.tr("Unlock…") : i18n.tr("Log in…")
+			switch v.state {
+			case .Disabled, .Locating, .Logging_In, .Unlocking:
+			case .Helper_Missing:
+				panel_line(i18n.tr("Install wren-vault beside Wren, or set vault.helper.path."), "vp_missing", weak = true)
+			case .Logged_Out, .Locked, .Failed, .Need_Two_Factor, .Need_Device_Code:
+				label := v.state == .Locked || (v.state == .Failed && vault.vault_has_account(v)) ? i18n.tr("Unlock…") : i18n.tr("Log in…")
+				ui.next({width = ui.fill(), height = ui.children_sum()})
+				if ui.row(.Center, {}, "###vp_locked_actions") {
 					if action_button(label, "vp_open_dialog", em * 9) {
 						ui.ctx_menu_close()
 						vault_dialog_open(app)
 					}
-				case .Unlocked:
-					vault_rows(app, t)
-					ui.spacer(ui.px(em * 0.4))
+					if vault.vault_has_account(v) && v.state != .Need_Two_Factor && v.state != .Need_Device_Code {
+						ui.spacer(ui.px(em * 0.5))
+						if action_button(i18n.tr("Log out"), "vp_logout", em * 7) {
+							ui.ctx_menu_close()
+							vault.vault_logout(v)
+						}
+					}
+				}
+			case .Unlocked:
+				vault_rows(app, t)
+				ui.spacer(ui.px(em * 0.4))
+				ui.next({width = ui.fill(), height = ui.children_sum()})
+				if ui.row(.Center, {}, "###vp_actions") {
+					if action_button(v.syncing ? i18n.tr("Syncing…") : i18n.tr("Sync"), "vp_sync", em * 7) { vault.vault_sync(v) }
+					ui.spacer(ui.px(em * 0.5))
 					if action_button(i18n.tr("Lock"), "vp_lock", em * 7) {
 						ui.ctx_menu_close()
 						vault.vault_lock(v)
+					}
+				}
+				ui.spacer(ui.px(em * 0.3))
+				ui.next({width = ui.fill(), height = ui.children_sum()})
+				if ui.row(.Center, {}, "###vp_account") {
+					if vault.vault_can_pin(v) {
+						if v.pin {
+							if action_button(i18n.tr("Remove the PIN"), "vp_pin_clear", em * 9) { vault.vault_pin_clear(v) }
+						} else if action_button(i18n.tr("Set a PIN…"), "vp_pin_set", em * 9) {
+							ui.ctx_menu_close()
+							vault_pin_open(app)
+						}
+						ui.spacer(ui.px(em * 0.5))
+					}
+					if action_button(i18n.tr("Log out"), "vp_logout_open", em * 7) {
+						ui.ctx_menu_close()
+						vault.vault_logout(v)
 					}
 				}
 			}
@@ -346,11 +409,13 @@ vault_field_shown :: proc(user: rawptr, h: base.Handle) -> bool {
 vault_dialog_open :: proc(app: ^App) {
 	s := &app.vault
 	if !vault_usable(app) { return }
-	for f in ([]^ui.Text_Field{&s.email, &s.password, &s.code}) {
+	fields := vault_fields(s)
+	for f in fields {
 		if cap(f.buf) < VAULT_SECRET_RESERVE { secret_wipe(f); reserve(&f.buf, VAULT_SECRET_RESERVE) }
 	}
 	if s.v.email != "" && ui.field_string(&s.email) == "" { ui.field_set(&s.email, s.v.email) }
-	s.dialog, s.focus = true, true
+	if ui.field_string(&s.server) == "" && s.v.settings.server_url != "" { ui.field_set(&s.server, s.v.settings.server_url) }
+	s.dialog, s.focus, s.use_password, s.pending_submit = true, true, false, false
 	request_frames(app, 2)
 }
 
@@ -359,82 +424,175 @@ vault_dialog_close :: proc(app: ^App) {
 	s := &app.vault
 	secret_wipe(&s.password)
 	secret_wipe(&s.code)
-	s.dialog = false
+	secret_wipe(&s.client_secret)
+	s.dialog, s.pending_submit = false, false
 	request_frames(app, 2)
 }
 
+@(private = "file")
+vault_pin_open :: proc(app: ^App) {
+	s := &app.vault
+	if !vault_usable(app) { return }
+	if cap(s.pin.buf) < VAULT_SECRET_RESERVE { secret_wipe(&s.pin); reserve(&s.pin.buf, VAULT_SECRET_RESERVE) }
+	s.pin_dialog, s.focus = true, true
+	request_frames(app, 2)
+}
+
+@(private = "file")
+vault_pin_close :: proc(app: ^App) {
+	secret_wipe(&app.vault.pin)
+	app.vault.pin_dialog = false
+	request_frames(app, 2)
+}
+
+// One label of the dialogs, the width of the dialog.
+@(private = "file")
+dialog_line :: proc(text, id: string, weak := false) {
+	if weak { ui.push_tags("weak") }
+	ui.next({width = ui.fill(), height = ui.text_size()})
+	ui.label(strings.concatenate({text, "###", id}, ui.frame_allocator()))
+	if weak { ui.pop_tags() }
+}
+
+// One text field of the dialogs; Enter submits, Escape cancels.
+@(private = "file")
+dialog_field :: proc(id: string, f: ^ui.Text_Field, placeholder: string, secret: bool, submit, cancel: ^bool) -> ^ui.Box {
+	em := ui.font_size()
+	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+	r := ui.line_edit(id, f, placeholder, secret = secret, menu = !secret)
+	if r.committed { submit^ = true }
+	if r.cancelled { cancel^ = true }
+	return r.box
+}
+
 vault_dialogs_build :: proc(app: ^App) {
+	s := &app.vault
+	if !vault_usable(app) {
+		// (remote control came: nothing of the Vault stays on screen, nothing typed stays in memory)
+		if s.dialog { vault_dialog_close(app) }
+		if s.pin_dialog { vault_pin_close(app) }
+		if s.ask_open { s.ask_open = false; delete(s.ask_item); s.ask_item = "" }
+		return
+	}
 	vault_insecure_build(app)
+	vault_pin_build(app)
+	vault_login_build(app)
+}
+
+@(private = "file")
+vault_login_build :: proc(app: ^App) {
 	s := &app.vault
 	if !s.dialog { return }
 	v := &s.v
 	#partial switch v.state {
-	case .Unlocked:
-		vault_dialog_close(app)   // (done: the panel lists the logins)
-		return
-	case .Disabled, .Locating, .Helper_Missing:
-		vault_dialog_close(app)
+	case .Unlocked, .Disabled, .Helper_Missing:
+		vault_dialog_close(app)   // (done, or nothing to log in to: the panel says why)
 		return
 	}
 	em := ui.font_size()
 	open := true
 	submit, cancel := false, false
-	busy := v.state == .Logging_In || v.state == .Unlocking
+	busy := v.state == .Logging_In || v.state == .Unlocking || v.state == .Locating
 	two_factor := v.state == .Need_Two_Factor
-	unlock := !two_factor && vault.vault_has_account(v) && (v.state == .Locked || v.state == .Unlocking || v.state == .Failed)
-	title := two_factor ? i18n.tr("Second step") : (unlock ? i18n.tr("Unlock the Vault") : i18n.tr("Log in to the Vault"))
-	if ui.modal("vault_dialog", em * 26, &open) {
+	device := v.state == .Need_Device_Code
+	unlock := !two_factor && !device && vault.vault_has_account(v) && (v.state == .Locked || v.state == .Unlocking || v.state == .Failed)
+	use_pin := unlock && v.pin && !s.use_password
+	login := !two_factor && !device && !unlock
+	title := i18n.tr("Log in to the Vault")
+	switch {
+	case two_factor: title = i18n.tr("Second step")
+	case device:     title = i18n.tr("A new device")
+	case unlock:     title = i18n.tr("Unlock the Vault")
+	}
+	// (the address of a self-hosted server was typed: the login goes once the Vault took it)
+	if s.pending_submit && !busy {
+		s.pending_submit = false
+		submit = true
+	}
+	if ui.modal("vault_dialog", em * 28, &open) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Start, {}, "###vd_margins") {
 			ui.spacer(ui.px(em * 1.0))
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.column(.Start, {}, "###vd_col") {
 				ui.spacer(ui.px(em * 0.8))
-				ui.next({width = ui.fill(), height = ui.text_size()})
-				ui.label(strings.concatenate({title, "###vd_title"}, ui.frame_allocator()))
+				dialog_line(title, "vd_title")
 				ui.spacer(ui.px(em * 0.3))
-				ui.push_tags("weak")
-				ui.next({width = ui.fill(), height = ui.text_size()})
-				identity, _ := vault.server_urls(v.settings)
-				ui.label(strings.concatenate({i18n.tr("Bitwarden® account on "), url_host(identity), "###vd_server"}, ui.frame_allocator()))
-				ui.pop_tags()
-				ui.spacer(ui.px(em * 0.6))
 				first: ^ui.Box
-				switch {
-				case two_factor:
-					ui.next({width = ui.fill(), height = ui.text_size()})
-					ui.label(strings.concatenate({i18n.tr("Type the code of your authenticator app."), "###vd_code_hint"}, ui.frame_allocator()))
-					ui.spacer(ui.px(em * 0.3))
+				if login {
+					// the server: Bitwarden's in the United States or in the European Union, or one's own
 					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-					r := ui.line_edit("###vd_code", &s.code, i18n.tr("Code"), secret = true, menu = false)
-					first = r.box
-					if r.committed { submit = true }
-					if r.cancelled { cancel = true }
-				case:
-					if unlock {
-						ui.next({width = ui.fill(), height = ui.text_size()})
-						ui.label(strings.concatenate({v.email, "###vd_email_shown"}, ui.frame_allocator()))
-					} else {
-						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-						r := ui.line_edit("###vd_email", &s.email, i18n.tr("Email"))
-						first = r.box
-						if r.committed { submit = true }
-						if r.cancelled { cancel = true }
+					region := int(v.settings.region)
+					labels := []string{i18n.tr("United States"), i18n.tr("Europe"), i18n.tr("Self-hosted")}
+					if ui.segmented("###vd_region", labels, &region) {
+						_ = config.set_from_string(&app.prefs, "vault.server.region", vault.REGION_NAMES[vault.Region(region)], .User)
+					}
+					if v.settings.region == .Self {
+						ui.spacer(ui.px(em * 0.3))
+						dialog_field("###vd_server", &s.server, i18n.tr("https://vault.example.org"), false, &submit, &cancel)
+						dialog_line(i18n.tr("A server with a certificate of a private authority needs that authority in the system's certificate store."), "vd_server_ca", weak = true)
 					}
 					ui.spacer(ui.px(em * 0.4))
-					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-					r := ui.line_edit("###vd_password", &s.password, i18n.tr("Master password"), secret = true, menu = false)
-					if unlock { first = r.box }
-					if r.committed { submit = true }
-					if r.cancelled { cancel = true }
+				} else {
+					identity, _ := vault.server_urls(v.settings)
+					dialog_line(strings.concatenate({i18n.tr("Bitwarden® account on "), url_host(identity)}, ui.frame_allocator()), "vd_server", weak = true)
+					ui.spacer(ui.px(em * 0.6))
+				}
+				switch {
+				case two_factor:
+					hint := v.factor == .Email ? (v.email_sent ? i18n.tr("Type the code that was mailed to you.") : i18n.tr("Ask for a code by email, then type it.")) : i18n.tr("Type the code of your authenticator app.")
+					dialog_line(hint, "vd_code_hint")
+					ui.spacer(ui.px(em * 0.3))
+					first = dialog_field("###vd_code", &s.code, i18n.tr("Code"), true, &submit, &cancel)
+					ui.spacer(ui.px(em * 0.3))
+					ui.next({width = ui.fill(), height = ui.children_sum()})
+					if ui.row(.Center, {}, "###vd_factor_actions") {
+						if .Email in v.factors && !busy {
+							words := v.factor == .Email && v.email_sent ? i18n.tr("Send the code again") : i18n.tr("Send a code by email")
+							if action_button(words, "vd_send_email", em * 12) { vault.vault_send_code(v) }
+							ui.spacer(ui.px(em * 0.5))
+						}
+						if .Authenticator in v.factors && v.factor != .Authenticator && !busy {
+							if action_button(i18n.tr("Use the authenticator app"), "vd_use_app", em * 12) { vault.vault_choose_factor(v, .Authenticator) }
+						}
+					}
+				case device:
+					dialog_line(i18n.tr("Your account does not know this device yet. Type the code that the server mailed to you."), "vd_device_hint")
+					ui.spacer(ui.px(em * 0.3))
+					first = dialog_field("###vd_device_code", &s.code, i18n.tr("Code"), true, &submit, &cancel)
+					ui.spacer(ui.px(em * 0.3))
+					if !busy && action_button(i18n.tr("Send a new code"), "vd_send_device", em * 12) { vault.vault_send_code(v) }
+				case unlock:
+					dialog_line(v.email, "vd_email_shown")
+					ui.spacer(ui.px(em * 0.4))
+					first = dialog_field("###vd_password", &s.password, use_pin ? i18n.tr("PIN") : i18n.tr("Master password"), true, &submit, &cancel)
+					if v.pin {
+						ui.spacer(ui.px(em * 0.3))
+						if action_button(use_pin ? i18n.tr("Use the master password") : i18n.tr("Use the PIN"), "vd_pin_toggle", em * 12) {
+							secret_wipe(&s.password)
+							s.use_password = !s.use_password
+							s.focus = true
+						}
+					}
+				case s.api_key:
+					first = dialog_field("###vd_client_id", &s.client_id, i18n.tr("API key client_id (user.…)"), false, &submit, &cancel)
+					ui.spacer(ui.px(em * 0.4))
+					dialog_field("###vd_client_secret", &s.client_secret, i18n.tr("API key client_secret"), true, &submit, &cancel)
+					ui.spacer(ui.px(em * 0.4))
+					dialog_field("###vd_password", &s.password, i18n.tr("Master password"), true, &submit, &cancel)
+					ui.spacer(ui.px(em * 0.3))
+					if action_button(i18n.tr("Use the email and password"), "vd_mode", em * 14) { s.api_key = false; s.focus = true }
+				case:
+					first = dialog_field("###vd_email", &s.email, i18n.tr("Email"), false, &submit, &cancel)
+					ui.spacer(ui.px(em * 0.4))
+					dialog_field("###vd_password", &s.password, i18n.tr("Master password"), true, &submit, &cancel)
+					ui.spacer(ui.px(em * 0.3))
+					if action_button(i18n.tr("Use an API key instead"), "vd_mode", em * 14) { s.api_key = true; s.focus = true }
 				}
 				if s.focus && first != nil { s.focus = false; ui.set_focus(first.key) }
 				if v.message != "" {
 					ui.spacer(ui.px(em * 0.4))
-					ui.push_tags("weak")
-					ui.next({width = ui.fill(), height = ui.text_size()})
-					ui.label(strings.concatenate({v.message, "###vd_message"}, ui.frame_allocator()))
-					ui.pop_tags()
+					dialog_line(v.message, "vd_message", weak = true)
 				}
 				ui.spacer(ui.px(em * 0.8))
 				ui.next({width = ui.fill(), height = ui.children_sum()})
@@ -449,7 +607,7 @@ vault_dialogs_build :: proc(app: ^App) {
 					}
 					if action_button(i18n.tr("Cancel"), "vd_cancel", em * 7) { cancel = true }
 					ui.spacer(ui.px(em * 0.5))
-					if !busy && action_button(two_factor ? i18n.tr("Continue") : (unlock ? i18n.tr("Unlock") : i18n.tr("Log in")), "vd_submit", em * 7) { submit = true }
+					if !busy && action_button(login ? i18n.tr("Log in") : (unlock ? i18n.tr("Unlock") : i18n.tr("Continue")), "vd_submit", em * 7) { submit = true }
 				}
 				ui.spacer(ui.px(em * 0.8))
 			}
@@ -457,23 +615,82 @@ vault_dialogs_build :: proc(app: ^App) {
 		}
 	}
 	if submit && !busy {
-		switch {
-		case two_factor:
-			vault.vault_login(v, "", "", ui.field_string(&s.code))
-		case unlock:
-			vault.vault_unlock(v, ui.field_string(&s.password))
-		case:
-			vault.vault_login(v, ui.field_string(&s.email), ui.field_string(&s.password))
-		}
-		// (the frame has its copy, zeroed once written: the fields go now)
-		secret_wipe(&s.password)
-		secret_wipe(&s.code)
-		s.focus = true
+		vault_login_submit(app, login, unlock, use_pin)
 	}
 	if cancel || !open {
-		if busy || two_factor { vault.vault_lock(v) }   // (a login on its way is dropped: its helper stops)
+		if busy || two_factor || device { vault.vault_lock(v) }   // (a login on its way is dropped: its helper stops)
 		vault_dialog_close(app)
 	}
+}
+
+// What the dialog's Log in, Unlock or Continue does. The secret fields go once their frame has its copy.
+@(private = "file")
+vault_login_submit :: proc(app: ^App, login, unlock, use_pin: bool) {
+	s := &app.vault
+	v := &s.v
+	switch {
+	case login && v.settings.region == .Self && strings.trim_space(ui.field_string(&s.server)) != v.settings.server_url:
+		// (a new address: the Vault starts again for that server, then the login goes; the secrets wait in their fields)
+		_ = config.set_from_string(&app.prefs, "vault.server.url", strings.trim_space(ui.field_string(&s.server)), .User)
+		s.pending_submit = true
+		return
+	case unlock:
+		vault.vault_unlock(v, ui.field_string(&s.password), pin = use_pin)
+	case login && s.api_key:
+		vault.vault_login_api_key(v, ui.field_string(&s.client_id), ui.field_string(&s.client_secret), ui.field_string(&s.password))
+	case login:
+		vault.vault_login(v, ui.field_string(&s.email), ui.field_string(&s.password))
+	case:
+		vault.vault_login(v, "", "", ui.field_string(&s.code))
+	}
+	secret_wipe(&s.password)
+	secret_wipe(&s.code)
+	secret_wipe(&s.client_secret)
+	s.focus = true
+}
+
+// The dialog that sets a PIN (from the panel, unlocked).
+@(private = "file")
+vault_pin_build :: proc(app: ^App) {
+	s := &app.vault
+	if !s.pin_dialog { return }
+	if s.v.state != .Unlocked { vault_pin_close(app); return }
+	em := ui.font_size()
+	open := true
+	submit, cancel := false, false
+	if ui.modal("vault_pin", em * 26, &open) {
+		ui.next({width = ui.fill(), height = ui.children_sum()})
+		if ui.row(.Start, {}, "###vpin_margins") {
+			ui.spacer(ui.px(em * 1.0))
+			ui.next({width = ui.fill(), height = ui.children_sum()})
+			if ui.column(.Start, {}, "###vpin_col") {
+				ui.spacer(ui.px(em * 0.8))
+				dialog_line(i18n.tr("Set a PIN"), "vpin_title")
+				ui.spacer(ui.px(em * 0.3))
+				dialog_line(i18n.tr("The PIN unlocks the Vault in this profile. After 5 wrong PINs, only the master password unlocks it."), "vpin_hint", weak = true)
+				ui.spacer(ui.px(em * 0.4))
+				box := dialog_field("###vpin_field", &s.pin, i18n.tr("PIN (4 characters or more)"), true, &submit, &cancel)
+				if s.focus && box != nil { s.focus = false; ui.set_focus(box.key) }
+				ui.spacer(ui.px(em * 0.8))
+				ui.next({width = ui.fill(), height = ui.children_sum()})
+				if ui.row(.Center, {}, "###vpin_buttons") {
+					ui.spacer(ui.fill())
+					if action_button(i18n.tr("Cancel"), "vpin_cancel", em * 7) { cancel = true }
+					ui.spacer(ui.px(em * 0.5))
+					if action_button(i18n.tr("Set"), "vpin_set", em * 7) { submit = true }
+				}
+				ui.spacer(ui.px(em * 0.8))
+			}
+			ui.spacer(ui.px(em * 1.0))
+		}
+	}
+	if submit {
+		sent := vault.vault_pin_set(&s.v, ui.field_string(&s.pin))
+		secret_wipe(&s.pin)
+		if sent { vault_pin_close(app) } else { ui.toast(.Warn, i18n.tr("A PIN has 4 characters or more.")) }
+		return
+	}
+	if cancel || !open { vault_pin_close(app) }
 }
 
 // The question before a fill on a plain http page (docs/bitwarden.md 3.5, rule 5).

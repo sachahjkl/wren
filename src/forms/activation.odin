@@ -543,6 +543,7 @@ reset_control :: proc(f: ^Forms, h: base.Handle) {
 		c.dirty_value = false
 		c.dirty_checked = false
 		c.user_edited = false
+		c.vault_filled = false
 		c.has_edit = false
 		c.user_validity = false
 		replace_owned(&c.value, "")

@@ -160,15 +160,18 @@
   runtime.PlatformOs = { MAC: "mac", WIN: "win", ANDROID: "android", CROS: "cros", LINUX: "linux", OPENBSD: "openbsd", FUCHSIA: "fuchsia" };
   runtime.ContextType = { TAB: "TAB", POPUP: "POPUP", BACKGROUND: "BACKGROUND", OFFSCREEN_DOCUMENT: "OFFSCREEN_DOCUMENT", SIDE_PANEL: "SIDE_PANEL", DEVELOPER_TOOLS: "DEVELOPER_TOOLS" };
 
-  const i18n = path(["i18n"]);
-  i18n.getMessage = (name, subs) => {
-    const list = subs === undefined || subs === null ? [] : (Array.isArray(subs) ? subs : [subs]);
-    return native.message(String(name), JSON.stringify(list.slice(0, 9).map(String)));
-  };
-  i18n.getUILanguage = () => info.lang;
-  i18n.getAcceptLanguages = (cb) => { const v = [info.lang]; if (typeof cb === "function") { cb(v); return undefined; } return Promise.resolve(v); };
+  // (an offscreen document has runtime only, as in Chrome)
+  if (info.kind !== "offscreen") {
+    const i18n = path(["i18n"]);
+    i18n.getMessage = (name, subs) => {
+      const list = subs === undefined || subs === null ? [] : (Array.isArray(subs) ? subs : [subs]);
+      return native.message(String(name), JSON.stringify(list.slice(0, 9).map(String)));
+    };
+    i18n.getUILanguage = () => info.lang;
+    i18n.getAcceptLanguages = (cb) => { const v = [info.lang]; if (typeof cb === "function") { cb(v); return undefined; } return Promise.resolve(v); };
+  }
 
-  if (info.kind !== "content") {
+  if (info.kind !== "content" && info.kind !== "offscreen") {
     const extension = path(["extension"]);
     extension.inIncognitoContext = false;
     extension.getViews = () => [];
@@ -182,8 +185,23 @@
     if (s.session) { s.session.QUOTA_BYTES = 10485760; }
     if (s.sync) { Object.assign(s.sync, { QUOTA_BYTES: 102400, QUOTA_BYTES_PER_ITEM: 8192, MAX_ITEMS: 512, MAX_WRITE_OPERATIONS_PER_HOUR: 1800, MAX_WRITE_OPERATIONS_PER_MINUTE: 120 }); }
   }
-  if (chrome.tabs) { chrome.tabs.TAB_ID_NONE = -1; chrome.tabs.TAB_INDEX_NONE = -1; }
-  if (chrome.windows) { chrome.windows.WINDOW_ID_NONE = -1; chrome.windows.WINDOW_ID_CURRENT = -2; }
+  if (chrome.tabs) {
+    chrome.tabs.TAB_ID_NONE = -1; chrome.tabs.TAB_INDEX_NONE = -1;
+    chrome.tabs.TabStatus = { UNLOADED: "unloaded", LOADING: "loading", COMPLETE: "complete" };
+  }
+  if (chrome.windows) {
+    chrome.windows.WINDOW_ID_NONE = -1; chrome.windows.WINDOW_ID_CURRENT = -2;
+    chrome.windows.WindowType = { NORMAL: "normal", POPUP: "popup", PANEL: "panel", APP: "app", DEVTOOLS: "devtools" };
+    chrome.windows.CreateType = { NORMAL: "normal", POPUP: "popup", PANEL: "panel" };
+    chrome.windows.WindowState = { NORMAL: "normal", MINIMIZED: "minimized", MAXIMIZED: "maximized", FULLSCREEN: "fullscreen", LOCKED_FULLSCREEN: "locked-fullscreen" };
+  }
+  if (chrome.idle) { chrome.idle.IdleState = { ACTIVE: "active", IDLE: "idle", LOCKED: "locked" }; }
+  if (chrome.offscreen) {
+    const reasons = ["TESTING", "AUDIO_PLAYBACK", "IFRAME_SCRIPTING", "DOM_SCRAPING", "BLOBS", "DOM_PARSER", "USER_MEDIA", "DISPLAY_MEDIA",
+      "WEB_RTC", "CLIPBOARD", "LOCAL_STORAGE", "WORKERS", "BATTERY_STATUS", "MATCH_MEDIA", "GEOLOCATION"];
+    chrome.offscreen.Reason = {};
+    for (const r of reasons) chrome.offscreen.Reason[r] = r;
+  }
   if (chrome.action && chrome.action.setIcon) {
     // ImageData has no JSON form: the icon stays the manifest's until paths are given (drawn icons come later)
     const setIcon = chrome.action.setIcon;

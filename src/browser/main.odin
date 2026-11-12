@@ -364,6 +364,7 @@ tab_new :: proc(app: ^App) -> ^Tab {
 	tab_history_limits(app, t)
 	blocker_tab_new(app, t)   // blocker_shell.odin
 	recovery_touch(app)   // crash_recovery.odin
+	ext_tab_created(app, t)   // ext_window_api.odin: tabs.onCreated, from a task (the tab has its address then)
 	return t
 }
 
@@ -1088,6 +1089,7 @@ page_column :: proc(app: ^App, t: ^Tab, elem_fs: bool, width: f32) {
 
 build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restored tab loads when it is first shown
 	chrome_shortcuts(app)
+	ext_watch(app)   // ext_window_api.odin: the extensions' view of the windows, tabs and input changes
 	t := current_tab(app)
 	if ui.style({width = ui.fill(), height = ui.fill()}) {
 		ui.next({axis = .Y})
@@ -1098,7 +1100,8 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 			// the tabs in a sidebar (tab_sidebar.odin): the toolbar is the title bar (integrated; else its own row under
 			// the system's), and the sidebar and the page share what is below it
 			side := tabs_in_sidebar(app)
-			if !platform.is_fullscreen(active_window(app).win) {
+			// (an extension's popout window: its page only, no tab strip and no toolbar: ext_window_api.odin)
+			if !platform.is_fullscreen(active_window(app).win) && !ext_is_popout(app, active_window(app)) {
 				if side && platform.is_integrated_title(active_window(app).win) {
 					sidebar_titlebar(app, t)
 				} else {
@@ -1487,6 +1490,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	events = shell_frame_begin(app, events)   // shell_frames.odin: input held back by chrome frames first; the page phase
 	pacer_begin_frame(app, events)
 	if len(events) > 0 { request_frames(app, 4) }
+	vault_shell_activity(app, events)   // vault_shell.odin: a key or the pointer postpones the Vault's idle lock
 	prof_end(.Events)
 
 	// network completions, timers and posted tasks run here, on the UI thread, unless the frame ran them as it waited for its slot

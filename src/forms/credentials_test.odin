@@ -110,6 +110,28 @@ a_fill_is_a_user_edit_with_its_events :: proc(t: ^testing.T) {
 	testing.expect_value(t, strings.join(x.events[:], " ", context.temp_allocator), "input@u change@u input@p change@p")
 }
 
+// What the Vault filled is marked, so that history restoration and the back/forward cache leave it out; a script's value
+// or a reset ends the mark of the field (the document keeps its own: it held a filled value once).
+@(test)
+a_filled_field_is_marked_until_a_script_or_a_reset_replaces_it :: proc(t: ^testing.T) {
+	x := cx_make(`<form id=f><input id=u><input id=p type=password><input id=other></form>`)
+	defer cx_destroy(x)
+	testing.expect(t, !x.f.vault_filled)
+	testing.expect(t, fill_field(x.f, by_id(x, "u"), "me"))
+	testing.expect(t, fill_field(x.f, by_id(x, "p"), "s3cret"))
+	testing.expect(t, x.f.vault_filled)
+	testing.expect(t, control_of(x.f, by_id(x, "u")).vault_filled)
+	testing.expect(t, control_of(x.f, by_id(x, "p")).vault_filled)
+	testing.expect_value(t, len(control_of(x.f, by_id(x, "p")).undo), 0)
+	testing.expect(t, set_value(x.f, by_id(x, "other"), "typed", by_user = true) == .None)
+	testing.expect(t, !control_of(x.f, by_id(x, "other")).vault_filled)
+	testing.expect(t, set_value(x.f, by_id(x, "u"), "from a script") == .None)
+	testing.expect(t, !control_of(x.f, by_id(x, "u")).vault_filled)
+	reset(x.f, by_id(x, "f"))
+	testing.expect(t, !control_of(x.f, by_id(x, "p")).vault_filled)
+	testing.expect(t, x.f.vault_filled)
+}
+
 @(test)
 a_fill_does_not_write_into_what_is_not_a_text_field :: proc(t: ^testing.T) {
 	x := cx_make(`<form><input id=c type=checkbox><input id=r readonly><select id=s></select></form>`)

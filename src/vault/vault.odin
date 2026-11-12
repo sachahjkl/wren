@@ -6,12 +6,15 @@
 // Threads: every procedure here runs on the loop thread and returns at once. Starting the helper, the pipes, the files and
 // the check of the rows run on the transport's threads and on the blocking pool; their results are posted to the loop.
 //
-// Secrets: a password or a code goes from the caller into one frame, which is zeroed once written. A fill's values live
-// in one Answer for the time of the `fill` hook, then are zeroed. Rows (names, user names) live while a surface shows
+// Secrets: a password, a PIN or a code goes from the caller into one frame, which is zeroed once written. A fill's values
+// live in one Answer for the time of the `fill` hook, then are zeroed. Rows (names, user names) live while a surface shows
 // them (vault_release_rows). Nothing here logs.
+//
+// Time: two timers run while the Vault is unlocked. The idle timer locks it `vault.lock.idle_minutes` after the last user
+// activity (vault_activity); the sync timer asks for a sync every `vault.sync.interval_minutes`. The helper has its own
+// idle deadline, later than the Vault's, renewed by the keepalives that activity sends (at most one a minute).
 package vault
 
-import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:strings"
@@ -26,7 +29,8 @@ State :: enum u8 {
 	Helper_Missing,    // the helper program is not there
 	Logged_Out,        // no account: the next step is a login
 	Logging_In,        // a login waits for its answer
-	Need_Two_Factor,   // the account asks for its authenticator code
+	Need_Two_Factor,   // the account asks for the code of a second step (`factors`, `factor`)
+	Need_Device_Code,  // the account must confirm this new device with the code that the server mailed
 	Locked,            // an account is remembered; no helper holds its keys
 	Unlocking,         // an unlock waits for its answer
 	Unlocked,          // the helper holds the keys: rows and fills work
@@ -82,6 +86,7 @@ Vault :: struct {
 	state:          State,
 	message:        string,   // owned: what the dialog or the panel says about the last request (never a secret)
 	email:          string,   // owned: the remembered account
+	pin:            bool,     // a PIN can unlock the remembered account
 	helper:         string,   // owned: the helper's path ("" until located)
 	profile_dir:    string,   // owned: "" = nothing is written (browser.profile.persist off)
 	client_version: string,   // owned
@@ -96,11 +101,26 @@ Vault :: struct {
 	fill_state:     Fill_State,
 	setup_gen:      u64,                   // each enable: a locate job of an older one is dropped
 	jobs:           int,                   // blocking jobs on their way (vault_destroy waits for them)
-	login_email:    string,                // owned: the email of a login that waits for its second factor
+	login_email:    string,                // owned: the email of a login that waits for its second step
+	factors:        Factors,               // Need_Two_Factor: the second steps that the account offers
+	factor:         Factor,                // Need_Two_Factor: the one whose code the dialog asks
+	email_sent:     bool,                  // Need_Two_Factor: a code was mailed
+	syncing:        bool,                  // a sync waits for its answer
+	last_sync:      i64,                   // Unix seconds of the last sync of this run (0: none)
+	active_ns:      i64,                   // the loop's clock at the last user activity
+	keepalive_ns:   i64,                   // the loop's clock at the last keepalive
+	idle_timer:     base.Handle,
+	sync_timer:     base.Handle,
+	account_busy:   bool,                  // a job writes or removes the account file
+	account_queued: bool,                  // and another waits for it:
+	account_next:   string,                // owned: its text
+	account_next_remove: bool,
 }
 
-ACCOUNT_FILE :: "account"   // <profile>/vault/account: the email and the server of the remembered account (Wren's)
+ACCOUNT_FILE :: "account"   // <profile>/vault/account: the email, the server and the PIN mark of the remembered account (Wren's)
 HELPER_NAME :: "wren-vault.exe" when ODIN_OS == .Windows else "wren-vault"
+KEEPALIVE_EVERY_NS :: i64(60) * 1_000_000_000   // activity sends at most one keepalive a minute
+PIN_MIN :: 4
 
 ////////////////////////////////
 // Life
@@ -119,6 +139,7 @@ vault_init :: proc(v: ^Vault, loop: ^host.Loop, pool: ^host.Blocking_Pool, prefs
 
 // Loop thread. Kills a helper that still works, waits for the jobs, zeroes what is kept.
 vault_destroy :: proc(v: ^Vault) {
+	timers_stop(v)
 	drop_pending(v)
 	if v.t != nil { v.t.destroy(v.t); v.t = nil }
 	for t in v.closed { t.destroy(t) }
@@ -132,6 +153,7 @@ vault_destroy :: proc(v: ^Vault) {
 	string_wipe(&v.message)
 	string_wipe(&v.email)
 	string_wipe(&v.login_email)
+	string_wipe(&v.account_next)
 	delete(v.helper, base.process_allocator())
 	delete(v.profile_dir, base.process_allocator())
 	delete(v.client_version, base.process_allocator())
@@ -149,10 +171,12 @@ vault_prefs_changed :: proc(v: ^Vault, prefs: ^config.Prefs) {
 		disable(v)
 	case v.settings.enabled && !old.enabled:
 		enable(v)
-	case v.settings.enabled && (old.server_url != v.settings.server_url || old.helper_path != v.settings.helper_path):
+	case v.settings.enabled && (!same_server(old, v.settings) || old.helper_path != v.settings.helper_path):
 		// another server or another helper: what runs now is for the old one
 		disable(v)
 		enable(v)
+	case v.state == .Unlocked && (old.idle_minutes != v.settings.idle_minutes || old.sync_minutes != v.settings.sync_minutes):
+		timers_start(v)
 	}
 }
 
@@ -160,8 +184,10 @@ vault_prefs_changed :: proc(v: ^Vault, prefs: ^config.Prefs) {
 enable :: proc(v: ^Vault) {
 	set_state(v, .Locating)
 	v.setup_gen += 1
+	identity, _ := server_urls(v.settings)
 	j := new(Setup_Job, base.process_allocator())
-	j^ = {v = v, gen = v.setup_gen, profile_dir = strings.clone(v.profile_dir, base.process_allocator()), helper_setting = strings.clone(v.settings.helper_path, base.process_allocator())}
+	j^ = {v = v, gen = v.setup_gen, profile_dir = strings.clone(v.profile_dir, base.process_allocator()),
+		helper_setting = strings.clone(v.settings.helper_path, base.process_allocator()), identity = strings.clone(identity, base.process_allocator())}
 	v.jobs += 1
 	host.run_blocking(v.pool, setup_work, setup_done, j, setup_discard)
 }
@@ -172,33 +198,37 @@ disable :: proc(v: ^Vault) {
 	v.setup_gen += 1
 	rows_reset(v)
 	string_wipe(&v.message)
+	string_wipe(&v.login_email)
 	set_state(v, .Disabled)
 }
 
 ////////////////////////////////
 // What the shell asks (loop thread)
 
-// A login: the email, the master password, and a code when the account asks for one (Need_Two_Factor: then the
-// password is "" and the helper uses the one it keeps for this login).
+// A login: the email and the master password; then, when the account asks for a second step (Need_Two_Factor or
+// Need_Device_Code), its code only: the password is "" and the helper uses the one it keeps for this login.
 vault_login :: proc(v: ^Vault, email, password: string, code := "") -> bool {
 	switch v.state {
 	case .Logged_Out, .Locked, .Failed:
-		if password == "" { return false }
+		address := strings.trim_space(email)
+		if password == "" || address == "" { return false }
 		if !ensure_helper(v) { return false }
 		string_wipe(&v.login_email)
-		v.login_email = strings.clone(strings.trim_space(email), base.process_allocator())
+		v.login_email = strings.clone(address, base.process_allocator())
 		r: Request
-		request_begin(&r, next_id(v), .Login, len(email) + len(password))
-		request_string(&r, "email", strings.trim_space(email))
+		request_begin(&r, next_id(v), .Login, len(address) + len(password))
+		request_string(&r, "email", address)
 		request_string(&r, "password", password)
 		send(v, &r, .Login)
-	case .Need_Two_Factor:
+	case .Need_Two_Factor, .Need_Device_Code:
 		c := strings.trim_space(code)
 		if c == "" || v.t == nil { return false }
+		provider := v.state == .Need_Device_Code ? "device" : FACTOR_NAMES[v.factor]
 		r: Request
-		request_begin(&r, next_id(v), .Login, len(v.login_email) + len(c))
+		request_begin(&r, next_id(v), .Login, len(v.login_email) + len(c) + 32)
 		request_string(&r, "email", v.login_email)
-		request_string(&r, "totp", c)
+		request_string(&r, "code", c)
+		request_string(&r, "provider", provider)
 		send(v, &r, .Login)
 	case .Disabled, .Locating, .Helper_Missing, .Logging_In, .Unlocking, .Unlocked:
 		return false
@@ -208,13 +238,70 @@ vault_login :: proc(v: ^Vault, email, password: string, code := "") -> bool {
 	return true
 }
 
-// An unlock of the remembered account.
-vault_unlock :: proc(v: ^Vault, password: string) -> bool {
-	if (v.state != .Locked && v.state != .Failed) || v.email == "" || password == "" { return false }
+// A login with the account's personal API key (client id `user.<uuid>` and its secret), then the master password for
+// the keys. For accounts whose second step the Vault does not support (Duo, a security key).
+vault_login_api_key :: proc(v: ^Vault, client_id, client_secret, password: string) -> bool {
+	#partial switch v.state {
+	case .Logged_Out, .Locked, .Failed:
+	case: return false
+	}
+	id := strings.trim_space(client_id)
+	secret := strings.trim_space(client_secret)
+	if id == "" || secret == "" || password == "" { return false }
+	if !ensure_helper(v) { return false }
+	string_wipe(&v.login_email)
+	r: Request
+	request_begin(&r, next_id(v), .Login_Api_Key, len(id) + len(secret) + len(password))
+	request_string(&r, "client_id", id)
+	request_string(&r, "client_secret", secret)
+	request_string(&r, "password", password)
+	send(v, &r, .Login_Api_Key)
+	string_wipe(&v.message)
+	set_state(v, .Logging_In)
+	return true
+}
+
+// Need_Two_Factor: the dialog asks for the code of `f` (one the account offers). No request.
+vault_choose_factor :: proc(v: ^Vault, f: Factor) {
+	if v.state != .Need_Two_Factor || f not_in v.factors || v.factor == f { return }
+	v.factor = f
+	string_wipe(&v.message)
+	changed(v)
+}
+
+// Asks for the code again: Need_Two_Factor, a mail with the email code (and the dialog asks for it); Need_Device_Code, a
+// new mail with the new-device code.
+vault_send_code :: proc(v: ^Vault) -> bool {
+	if v.t == nil { return false }
+	provider: string
+	#partial switch v.state {
+	case .Need_Two_Factor:
+		if .Email not_in v.factors { return false }
+		provider = "email"
+	case .Need_Device_Code:
+		provider = "device"
+	case:
+		return false
+	}
+	r: Request
+	request_begin(&r, next_id(v), .Login, len(v.login_email) + 32)
+	request_string(&r, "email", v.login_email)
+	request_string(&r, "provider", provider)
+	request_bool(&r, "resend", true)
+	send(v, &r, .Login)
+	string_wipe(&v.message)
+	set_state(v, .Logging_In)
+	return true
+}
+
+// An unlock of the remembered account, with its master password, or with its PIN (`pin`: when one is set).
+vault_unlock :: proc(v: ^Vault, secret: string, pin := false) -> bool {
+	if (v.state != .Locked && v.state != .Failed) || v.email == "" || secret == "" { return false }
+	if pin && !v.pin { return false }
 	if !ensure_helper(v) { return false }
 	r: Request
-	request_begin(&r, next_id(v), .Unlock, len(password))
-	request_string(&r, "password", password)
+	request_begin(&r, next_id(v), .Unlock, len(secret))
+	request_string(&r, pin ? "pin" : "password", secret)
 	send(v, &r, .Unlock)
 	string_wipe(&v.message)
 	set_state(v, .Unlocking)
@@ -229,10 +316,74 @@ vault_lock :: proc(v: ^Vault) {
 		request_begin(&r, next_id(v), .Lock, 0)
 		if frame, ok := request_end(&r); ok { v.t.send(v.t, frame) }
 	}
-	close_helper(v)
+	lock_down(v)
+}
+
+// Logout: the helper forgets the account here (its state, its tokens in the system store, the PIN) and exits; the account
+// file goes. A helper is started for that when none runs.
+vault_logout :: proc(v: ^Vault) -> bool {
+	#partial switch v.state {
+	case .Disabled, .Locating, .Helper_Missing: return false
+	}
+	if v.email == "" && v.t == nil { return false }
+	if ensure_helper(v) {
+		r: Request
+		request_begin(&r, next_id(v), .Logout, 0)
+		if frame, ok := request_end(&r); ok { v.t.send(v.t, frame) }
+	}
+	close_helper(v)   // (it reads what is queued, the logout included, then its input ends)
 	rows_reset(v)
 	string_wipe(&v.login_email)
-	set_state(v, v.email != "" ? .Locked : .Logged_Out)
+	string_wipe(&v.email)
+	string_wipe(&v.message)
+	v.pin = false
+	remove_account(v)
+	if v.state != .Helper_Missing { set_state(v, .Logged_Out) }
+	return true
+}
+
+// A sync now (the panel's button; the sync timer). False: locked, or one is on its way.
+vault_sync :: proc(v: ^Vault) -> bool {
+	if v.state != .Unlocked || v.t == nil || v.syncing { return false }
+	r: Request
+	request_begin(&r, next_id(v), .Sync, 0)
+	if send(v, &r, .Sync) == nil { return false }
+	v.syncing = true
+	changed(v)
+	return true
+}
+
+// Sets the PIN that unlocks this account in this profile (at least PIN_MIN characters). Only with a kept profile: the
+// helper keeps the PIN's envelope in its state.
+vault_pin_set :: proc(v: ^Vault, pin: string) -> bool {
+	if v.state != .Unlocked || v.t == nil || !vault_can_pin(v) || len(pin) < PIN_MIN { return false }
+	r: Request
+	request_begin(&r, next_id(v), .Pin_Set, len(pin))
+	request_string(&r, "pin", pin)
+	if send(v, &r, .Pin_Set) == nil { return false }
+	string_wipe(&v.message)
+	return true
+}
+
+// Removes the PIN: only the master password unlocks from now on.
+vault_pin_clear :: proc(v: ^Vault) -> bool {
+	if v.state != .Unlocked || v.t == nil || !v.pin { return false }
+	r: Request
+	request_begin(&r, next_id(v), .Pin_Clear, 0)
+	return send(v, &r, .Pin_Clear) != nil
+}
+
+// The user pressed a key or a button in the browser: the idle deadline starts again. Cheap: the shell calls it for the
+// frames that have input. A keepalive goes to the helper at most once a minute.
+vault_activity :: proc(v: ^Vault) {
+	if v.t == nil { return }
+	now := host.now_ns(v.loop)
+	v.active_ns = now
+	if now - v.keepalive_ns < KEEPALIVE_EVERY_NS { return }
+	v.keepalive_ns = now
+	r: Request
+	request_begin(&r, next_id(v), .Keepalive, 0)
+	if frame, ok := request_end(&r); ok { v.t.send(v.t, frame) }
 }
 
 // The logins of the document at `address` (the shell asks when the panel opens or the tab's address changes). The rows
@@ -282,6 +433,9 @@ vault_fill :: proc(v: ^Vault, item: string, ticket: Fill_Ticket) -> bool {
 // Whether the vault's account is remembered (the panel offers Unlock rather than Log in).
 vault_has_account :: proc(v: ^Vault) -> bool { return v.email != "" }
 
+// Whether a PIN can be set: the helper keeps its envelope in the profile, so not without one.
+vault_can_pin :: proc(v: ^Vault) -> bool { return v.profile_dir != "" }
+
 ////////////////////////////////
 // The helper
 
@@ -292,11 +446,16 @@ ensure_helper :: proc(v: ^Vault) -> bool {
 		set_state(v, .Helper_Missing)
 		return false
 	}
-	v.t = v.spawn(v, v.helper)
 	identity, api := server_urls(v.settings)
+	if identity == "" {
+		set_message(v, i18n.tr("Type the address of your server first (vault.server.url)."))
+		return false
+	}
+	v.t = v.spawn(v, v.helper)
 	state_dir := v.profile_dir != "" ? join_path({v.profile_dir, "vault"}) : ""
+	idle_s := v.settings.idle_minutes > 0 ? v.settings.idle_minutes * 60 + HELPER_IDLE_MARGIN_S : 0
 	r: Request
-	request_begin(&r, next_id(v), .Hello, len(state_dir) + len(identity) + len(api) + len(v.client_version) + 16)
+	request_begin(&r, next_id(v), .Hello, len(state_dir) + len(identity) + len(api) + len(v.client_version) + 32)
 	request_int(&r, "protocol", PROTOCOL_VERSION)
 	request_string(&r, "state_dir", state_dir)
 	request_string(&r, "identity_url", identity)
@@ -304,6 +463,7 @@ ensure_helper :: proc(v: ^Vault) -> bool {
 	request_bool(&r, "persist", v.profile_dir != "")
 	request_string(&r, "device_name", "Wren")
 	request_string(&r, "client_version", v.client_version)
+	request_int(&r, "idle_seconds", idle_s)
 	send(v, &r, .Hello)
 	return true
 }
@@ -311,11 +471,29 @@ ensure_helper :: proc(v: ^Vault) -> bool {
 // Closes the helper (it exits once it read what is queued) and forgets what it was asked.
 @(private)
 close_helper :: proc(v: ^Vault) {
+	timers_stop(v)
 	drop_pending(v)
 	if v.t == nil { return }
 	v.t.close(v.t)
 	append(&v.closed, v.t)
 	v.t = nil
+}
+
+// The keys are gone (a lock, the helper's own idle lock): the Vault is Locked, or Logged_Out without an account.
+@(private)
+lock_down :: proc(v: ^Vault) {
+	close_helper(v)
+	rows_reset(v)
+	string_wipe(&v.login_email)
+	set_state(v, v.email != "" ? .Locked : .Logged_Out)
+}
+
+@(private)
+became_unlocked :: proc(v: ^Vault) {
+	v.active_ns = host.now_ns(v.loop)
+	v.keepalive_ns = v.active_ns
+	set_state(v, .Unlocked)
+	timers_start(v)
 }
 
 @(private)
@@ -356,6 +534,7 @@ drop_pending :: proc(v: ^Vault) {
 		pending_free(v, &p, true)
 	}
 	clear(&v.pending)
+	v.syncing = false
 }
 
 @(private)
@@ -384,7 +563,8 @@ request_timed_out :: proc(data: rawptr) {
 	case .Fill:
 		v.fill_state = .Dropped
 		set_message(v, i18n.tr("The fill took too long and was dropped."))
-	case .Hello, .Login, .Unlock, .Lock, .Sync:
+	case .Hello, .Login, .Login_Api_Key, .Unlock, .Lock, .Logout, .Sync, .Pin_Set, .Pin_Clear, .Keepalive:
+		// (the helper answers in order: one that does not answer holds every later request)
 		fail(v, i18n.tr("The Vault helper did not answer in time. It was stopped."))
 	}
 	changed(v)
@@ -399,6 +579,44 @@ fail :: proc(v: ^Vault, why: string) {
 	set_message(v, why)
 	set_state(v, .Failed)
 }
+
+////////////////////////////////
+// The timers of an unlocked Vault
+
+@(private)
+timers_start :: proc(v: ^Vault) {
+	timers_stop(v)
+	if v.settings.idle_minutes > 0 {
+		v.idle_timer = host.set_timer(v.loop, f64(v.settings.idle_minutes) * 60_000, 0, idle_due, v)
+	}
+	every := f64(max(v.settings.sync_minutes, 1)) * 60_000
+	v.sync_timer = host.set_timer(v.loop, every, every, sync_due, v)
+}
+
+@(private)
+timers_stop :: proc(v: ^Vault) {
+	if v.idle_timer != base.NIL_HANDLE { host.clear_timer(v.loop, v.idle_timer) }
+	if v.sync_timer != base.NIL_HANDLE { host.clear_timer(v.loop, v.sync_timer) }
+	v.idle_timer, v.sync_timer = base.NIL_HANDLE, base.NIL_HANDLE
+}
+
+// The idle deadline came: the Vault locks if nothing happened since; else the timer waits for the rest.
+@(private)
+idle_due :: proc(data: rawptr) {
+	v := (^Vault)(data)
+	v.idle_timer = base.NIL_HANDLE
+	if v.state != .Unlocked { return }
+	left := v.active_ns + i64(v.settings.idle_minutes) * 60 * 1_000_000_000 - host.now_ns(v.loop)
+	if left > 0 {
+		v.idle_timer = host.set_timer(v.loop, f64(left) / 1e6, 0, idle_due, v)
+		return
+	}
+	vault_lock(v)
+	set_message(v, i18n.tr("The Vault locked itself after a time without activity."))
+}
+
+@(private)
+sync_due :: proc(data: rawptr) { _ = vault_sync((^Vault)(data)) }
 
 ////////////////////////////////
 // What the helper says
@@ -420,17 +638,28 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 	}
 	defer answer_free(a)
 	if t != v.t { return }   // a helper that was closed: dropped
+	if a.id == 0 {
+		// an event: the helper locked itself at its own idle deadline (its exit follows)
+		if a.event == "locked" {
+			lock_down(v)
+			set_message(v, i18n.tr("The Vault locked itself after a time without activity."))
+		}
+		return
+	}
 	p, found := take_pending(v, a.id)
 	if !found { return }   // late (its deadline passed) or unknown: dropped
 	defer pending_free(v, &p, true)
 	switch p.op {
 	case .Hello:
 		if !a.ok { fail(v, a.message != "" ? a.message : i18n.tr("The Vault helper refused to start.")); return }
-		if a.account == "locked" && a.email != "" && a.email != v.email {
-			string_wipe(&v.email)
-			v.email = strings.clone(a.email, base.process_allocator())
+		if a.account == "locked" && a.email != "" {
+			if a.email != v.email {
+				string_wipe(&v.email)
+				v.email = strings.clone(a.email, base.process_allocator())
+			}
+			v.pin = a.pin
 		}
-	case .Login:
+	case .Login, .Login_Api_Key:
 		if !a.ok {
 			close_helper(v)
 			string_wipe(&v.login_email)
@@ -438,33 +667,65 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 			set_state(v, v.email != "" ? .Locked : .Logged_Out)
 			return
 		}
-		if a.need_two_factor {
+		#partial switch a.result {
+		case .Need_Two_Factor:
+			v.factors = a.factors
+			v.email_sent = a.email_sent
+			// (the email's code when it was mailed, or when the account has no authenticator app)
+			v.factor = (a.email_sent || .Authenticator not_in a.factors) ? Factor.Email : Factor.Authenticator
 			set_state(v, .Need_Two_Factor)
+			return
+		case .Need_Device_Code:
+			set_state(v, .Need_Device_Code)
 			return
 		}
 		string_wipe(&v.email)
-		v.email, v.login_email = v.login_email, ""
+		if p.op == .Login_Api_Key {
+			v.email = a.email != "" ? strings.clone(a.email, base.process_allocator()) : ""
+			string_wipe(&v.login_email)
+		} else {
+			v.email, v.login_email = v.login_email, ""
+		}
+		v.pin = false   // (a new login starts without a PIN)
 		write_account(v)
-		set_state(v, .Unlocked)
+		became_unlocked(v)
 	case .Unlock:
 		if !a.ok {
 			close_helper(v)
+			if a.error == "pin_reset" || a.error == "no_pin" {
+				v.pin = false
+				write_account(v)
+			}
 			set_message(v, a.message != "" ? a.message : i18n.tr("The vault cannot be unlocked."))
+			if a.error == "no_account" {
+				string_wipe(&v.email)
+				v.pin = false
+			}
 			set_state(v, a.error == "no_account" ? .Logged_Out : .Locked)
-			if a.error == "no_account" { string_wipe(&v.email) }
 			return
 		}
-		set_state(v, .Unlocked)
-		r: Request   // (once after an unlock: docs/bitwarden.md phase 1)
-		request_begin(&r, next_id(v), .Sync, 0)
-		send(v, &r, .Sync)
+		became_unlocked(v)
+		vault_sync(v)   // (the items may have changed since the last run)
 	case .Sync:
+		v.syncing = false
+		changed(v)
 		if !a.ok { set_message(v, a.message != "" ? a.message : i18n.tr("The vault could not be synced.")); return }
+		v.last_sync = a.last_sync
 		if v.rows_url != "" {   // (the rows shown may be older than the sync)
 			address := strings.clone(v.rows_url, context.temp_allocator)
 			rows_reset(v)
 			vault_ask_rows(v, address)
 		}
+	case .Pin_Set:
+		if !a.ok { set_message(v, a.message != "" ? a.message : i18n.tr("The PIN could not be set.")); return }
+		v.pin = true
+		write_account(v)
+		set_message(v, i18n.tr("The PIN is set: it unlocks the Vault in this profile."))
+	case .Pin_Clear:
+		if !a.ok { set_message(v, a.message); return }
+		v.pin = false
+		write_account(v)
+		set_message(v, i18n.tr("The PIN is removed."))
 	case .Logins_For:
 		if p.url == "" || p.url != v.rows_url { return }   // (another document was asked meanwhile, or the rows were released)
 		if !a.ok {
@@ -485,7 +746,7 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 		case: string_wipe(&v.message)
 		}
 		changed(v)
-	case .Lock:
+	case .Lock, .Logout, .Keepalive:
 	}
 }
 
@@ -620,11 +881,13 @@ Setup_Job :: struct {
 	gen:            u64,
 	profile_dir:    string,   // owned
 	helper_setting: string,   // owned
+	identity:       string,   // owned: the server's identity address (an account of another server is not this one's)
 	helper:         string,   // owned: found
 	email:          string,   // owned: from the account file
+	pin:            bool,     // from the account file
 }
 
-// Off the loop: where the helper is, and which account the profile remembers.
+// Off the loop: where the helper is, and which account the profile remembers for this server.
 @(private)
 setup_work :: proc(data: rawptr) {
 	j := (^Setup_Job)(data)
@@ -633,10 +896,26 @@ setup_work :: proc(data: rawptr) {
 	if j.profile_dir != "" {
 		path := join_path({j.profile_dir, "vault", ACCOUNT_FILE})
 		if bytes, err := os.read_entire_file(path, context.temp_allocator); err == nil {
-			email, _, _ := strings.partition(string(bytes), "\n")
-			j.email = strings.clone(strings.trim_space(email))
+			email, server, pin := account_parse(string(bytes))
+			if email != "" && server == j.identity {
+				j.email = strings.clone(email)
+				j.pin = pin
+			}
 		}
 	}
+}
+
+// The account file: the email, the server's identity address, then "pin" when a PIN is set; one per line.
+account_text :: proc(email, identity: string, pin: bool, allocator := context.temp_allocator) -> string {
+	return strings.concatenate({email, "\n", identity, "\n", pin ? "pin" : "", "\n"}, allocator)
+}
+
+account_parse :: proc(text: string) -> (email, identity: string, pin: bool) {
+	rest := text
+	e, _, r1 := strings.partition(rest, "\n")
+	s, _, r2 := strings.partition(r1, "\n")
+	p, _, _ := strings.partition(r2, "\n")
+	return strings.trim_space(e), strings.trim_space(s), strings.trim_space(p) == "pin"
 }
 
 @(private)
@@ -650,6 +929,7 @@ setup_done :: proc(data: rawptr) {
 	v.helper, j.helper = j.helper, ""
 	string_wipe(&v.email)
 	v.email, j.email = j.email, ""
+	v.pin = v.email != "" && j.pin
 	if v.helper == "" { set_state(v, .Helper_Missing); return }
 	set_state(v, v.email != "" ? .Locked : .Logged_Out)
 }
@@ -666,6 +946,7 @@ setup_free :: proc(j: ^Setup_Job) {
 	context.allocator = base.process_allocator()
 	delete(j.profile_dir)
 	delete(j.helper_setting)
+	delete(j.identity)
 	delete(j.helper)
 	string_wipe(&j.email)
 	free(j)
@@ -691,40 +972,81 @@ locate_helper :: proc(setting: string, allocator := context.allocator) -> string
 
 @(private)
 Account_Job :: struct {
-	v:     ^Vault,
-	dir:   string,   // owned
-	email: string,   // owned
-	ok:    bool,
+	v:      ^Vault,
+	dir:    string,   // owned
+	text:   string,   // owned: what the file holds ("" with `remove`)
+	remove: bool,     // logout: the file goes
+	ok:     bool,
 }
 
 // The remembered account, for the next start (the locked icon is drawn without starting the helper).
 @(private)
 write_account :: proc(v: ^Vault) {
+	if v.profile_dir == "" || v.email == "" { return }
+	identity, _ := server_urls(v.settings)
+	account_job(v, account_text(v.email, identity, v.pin, base.process_allocator()), false)
+}
+
+@(private)
+remove_account :: proc(v: ^Vault) {
 	if v.profile_dir == "" { return }
+	account_job(v, "", true)
+}
+
+// One job on the file at a time: the pool's workers run in any order, and a removal must not be undone by an older
+// write. A job asked meanwhile waits (only the last one: it says what the file must be). Takes `text` (owned).
+@(private)
+account_job :: proc(v: ^Vault, text: string, remove: bool) {
+	if v.account_busy {
+		string_wipe(&v.account_next)
+		v.account_next, v.account_queued, v.account_next_remove = text, true, remove
+		return
+	}
 	j := new(Account_Job, base.process_allocator())
-	j^ = {v = v, dir = join_path({v.profile_dir, "vault"}, base.process_allocator()), email = strings.clone(v.email, base.process_allocator())}
+	j^ = {v = v, dir = join_path({v.profile_dir, "vault"}, base.process_allocator()), text = text, remove = remove}
 	v.jobs += 1
-	host.run_blocking(v.pool, account_work, account_done, j, account_done)
+	v.account_busy = true
+	host.run_blocking(v.pool, account_work, account_done, j, account_discard)
 }
 
 @(private)
 account_work :: proc(data: rawptr) {
 	job := (^Account_Job)(data)
+	path := join_path({job.dir, ACCOUNT_FILE})
+	if job.remove {
+		job.ok = os.remove(path) == nil
+		return
+	}
 	_ = os.make_directory_all(job.dir, {.Read_User, .Write_User, .Execute_User})
-	job.ok = os.write_entire_file(join_path({job.dir, ACCOUNT_FILE}), fmt.tprintf("%s\n", job.email), {.Read_User, .Write_User}) == nil
+	job.ok = os.write_entire_file(path, job.text, {.Read_User, .Write_User}) == nil
 }
 
-// (also its discard: the pool ended before it ran)
 @(private)
 account_done :: proc(data: rawptr) {
 	job := (^Account_Job)(data)
+	v := job.v
+	v.jobs -= 1
+	v.account_busy = false
+	account_free(job)
+	if v.account_queued {
+		text := v.account_next
+		v.account_next, v.account_queued = "", false
+		account_job(v, text, v.account_next_remove)
+	}
+}
+
+// The pool ended before the job ran: nothing more is started.
+@(private)
+account_discard :: proc(data: rawptr) {
+	job := (^Account_Job)(data)
 	job.v.jobs -= 1
+	job.v.account_busy = false
 	account_free(job)
 }
 
 @(private)
 account_free :: proc(j: ^Account_Job) {
 	delete(j.dir, base.process_allocator())
-	string_wipe(&j.email)
+	string_wipe(&j.text)
 	free(j, base.process_allocator())
 }

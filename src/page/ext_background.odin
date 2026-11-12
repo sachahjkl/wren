@@ -30,6 +30,7 @@ Ext_Background :: struct {
 	idle:     base.Handle,
 	port_at:  time.Tick,           // when a port of its extension carried a message last
 	starts:   int,                 // how many times it started (about:extensions: one start a minute is a bug to look at)
+	saved:    bool,                // state.txt has its listeners (ext_bg_save_listeners)
 }
 
 ext_bg_by_version :: proc(version: u64) -> ^Ext_Background {
@@ -82,15 +83,41 @@ ext_extension_start :: proc(e: ^extensions.Extension, startup: bool) {
 	b := new(Ext_Background)
 	b.ext = strings.clone(e.id)
 	b.reg, b.version = r, v
-	b.ctx_id = ext_context_new(e.id, .Background, 0, r.script).id
+	c := ext_context_new(e.id, .Background, 0, r.script)
+	b.ctx_id = c.id
 	ext_router().backgrounds[b.ext] = b
-	if startup { ext_emit(e.id, "runtime.onStartup", "[]") }   // (queued: its script has not run yet)
-	ext_bg_start(b)
+	// the listeners its script added when it last ran (state.txt): at the browser's start the background is known
+	// without running; an event starts it only when it listens to it (runtime.onStartup among them)
+	known := startup && e.listeners_known
+	if known {
+		for l in e.listeners { if l not_in c.listening { c.listening[strings.clone(l)] = true } }
+		b.ever_ran = true
+		b.saved = true
+	}
+	if startup { ext_emit(e.id, "runtime.onStartup", "[]") }   // (queued until its script ran, when it starts)
+	if !known { ext_bg_start(b) }
+	if known && c.listening[EXT_IDLE_EVENT] { ext_idle_schedule() }
+}
+
+// The events its background listens to are kept in state.txt, when they changed since the last write.
+@(private = "file")
+ext_bg_save_listeners :: proc(b: ^Ext_Background) {
+	c := ext_context_by_id(b.ctx_id)
+	reg := ext_registry()
+	e := extensions.registry_find(reg, b.ext)
+	if c == nil || e == nil { return }
+	names := make([dynamic]string, 0, len(c.listening), context.temp_allocator)
+	for k in c.listening { append(&names, k) }
+	if b.saved && e.listeners_known && extensions.state_serialize(names[:]) == extensions.state_serialize(e.listeners[:]) { return }
+	b.saved = true
+	extensions.listeners_set(e, names[:])
+	extensions.registry_save_state(reg, e)
 }
 
 // The extension stops (disabled, removed, reloaded): its background goes, with its context, ports and answers.
 ext_extension_stop :: proc(id: string) {
 	r := ext_router()
+	ext_offscreen_close(id)   // ext_offscreen.odin: its offscreen document goes with it
 	b, ok := r.backgrounds[id]
 	if !ok { return }
 	delete_key(&r.backgrounds, id)
@@ -213,11 +240,13 @@ ext_bg_reply :: proc(h: ^Worker_Host, v: ^Sw_Version, m: ^Worker_Msg) {
 		info := sw_event(.Registration)
 		info.text = strings.clone(sw_reg_info(v.reg))
 		link_send(h.link, true, info)
+		// its listeners are known: they are kept for the browser's next start
+		ext_bg_save_listeners(b)
 		// runtime.onInstalled once, now that its listeners are known
 		if e := extensions.registry_find(ext_registry(), b.ext); e != nil && e.installed != "" {
 			reason := e.installed
 			e.installed = ""
-			ext_emit(b.ext, "runtime.onInstalled", fmt.tprintf(`[{"reason":%s}]`, extensions.json_quote(reason)))
+			ext_emit(b.ext, "runtime.onInstalled", fmt.tprintf(`[{{"reason":%s}}]`, extensions.json_quote(reason)))
 		}
 	case .Ext:
 		c := ext_context_by_id(b.ctx_id)
@@ -226,7 +255,9 @@ ext_bg_reply :: proc(h: ^Worker_Host, v: ^Sw_Version, m: ^Worker_Msg) {
 		case EXT_OP_CALL:
 			b.calls += 1
 			ext_dispatch(c, m.text, m.text2, Ext_Target{ctx_id = b.ctx_id, version = v.id, call = m.id})
-		case EXT_OP_LISTEN:  ext_listen(b.ctx_id, m.text, m.text2 == "1")
+		case EXT_OP_LISTEN:
+			ext_listen(b.ctx_id, m.text, m.text2 == "1")
+			if v.running { ext_bg_save_listeners(b) }   // (during its first run: saved once, when it ran)
 		case EXT_OP_RESPOND: ext_respond(b.ctx_id, m.id, m.text, m.text2 == "1")
 		case EXT_OP_CONNECT: ext_connect(b.ctx_id, m.id, m.text)
 		case EXT_OP_POST:    ext_port_post(b.ctx_id, m.id, m.text)
