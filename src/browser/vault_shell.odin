@@ -377,6 +377,8 @@ vault_rows :: proc(app: ^App, t: ^Tab) {
 	// (a list longer than the panel's room scrolls: its height is what the rows need, up to VAULT_PANEL_LIST_EM)
 	rh := ui.dense(em * 3.2)
 	list_h := min(f32(len(rows)) * rh, em * VAULT_PANEL_LIST_EM)
+	// (the bar is drawn over the rows: when they scroll, their buttons stay clear of it)
+	gutter := f32(len(rows)) * rh > list_h ? ui.scrollbar_gutter() : 0
 	ui.next({width = ui.fill(), height = ui.px(list_h)})
 	if ui.scroll_y("###vp_rows") {
 		for r, i in rows {
@@ -411,7 +413,7 @@ vault_rows :: proc(app: ^App, t: ^Tab) {
 					vault_fill_clicked(app, r.id)
 					break   // (the rows may change with the fill)
 				}
-				ui.spacer(ui.px(em * 0.2))
+				ui.spacer(ui.px(em * 0.2 + gutter))
 			}
 		}
 	}
