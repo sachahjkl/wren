@@ -160,6 +160,28 @@ codes_searches_and_equivalent_domains_decode :: proc(t: ^testing.T) {
 	testing.expect_value(t, r.rows[1].id, "c")   // (a search row has no match type)
 }
 
+// Protocol 4: a device's approval that is still pending, the fingerprint phrase, the passkey's options, and the hello's
+// passkey mark.
+@(test)
+device_and_passkey_answers_decode :: proc(t: ^testing.T) {
+	p, ok := answer_decode(transmute([]u8)string(`{"id":2,"ok":true,"result":"pending"}`))
+	defer answer_free(p)
+	testing.expect(t, ok)
+	testing.expect_value(t, p.result, Login_Result.Pending)
+	f, ok2 := answer_decode(transmute([]u8)string(`{"id":3,"ok":true,"fingerprint":"alpha-bravo-charlie-delta-echo"}`))
+	defer answer_free(f)
+	testing.expect(t, ok2)
+	testing.expect_value(t, f.fingerprint, "alpha-bravo-charlie-delta-echo")
+	o, ok3 := answer_decode(transmute([]u8)string(`{"id":4,"ok":true,"options":"{\"challenge\":\"Y2g\"}"}`))
+	defer answer_free(o)
+	testing.expect(t, ok3)
+	testing.expect_value(t, o.options, `{"challenge":"Y2g"}`)
+	h, ok4 := answer_decode(transmute([]u8)string(`{"id":1,"ok":true,"account":"locked","email":"a@b.c","pin":false,"passkey":true}`))
+	defer answer_free(h)
+	testing.expect(t, ok4)
+	testing.expect(t, h.passkey)
+}
+
 @(test)
 search_and_totp_requests_are_written :: proc(t: ^testing.T) {
 	r: Request

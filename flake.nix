@@ -46,6 +46,7 @@
       libxcb
       libxcb-cursor
       libglvnd
+      libfido2
     ];
 
     # The compiler this tree is written for (odin.version; the release and SHA-256 of .github/actions/setup/action.yml).

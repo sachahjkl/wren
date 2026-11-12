@@ -487,7 +487,7 @@ vault_dropdown_build :: proc(app: ^App) {
 	area := active_window(app).page_rect
 	if !draw.rect_contains(area, {field.min.x, field.max.y}) && !draw.rect_contains(area, field.min) { return }   // (scrolled out)
 	em := ui.font_size()
-	rh := ui.dense(em * 2.3)
+	rh := ui.dense(em * 3.3)   // (two lines: the name and the user name)
 	n := locked ? 1 : min(len(rows), VAULT_DROPDOWN_ROWS)
 	note := ""
 	switch {
@@ -551,14 +551,17 @@ dropdown_row :: proc(i: int, title, detail: string, selected: bool, w, rh: f32) 
 		ui.a11y_set(item, {role = .List_Item, name = title, description = detail, selected = selected})
 		clicked = sig.clicked
 		if ui.parent(item) {
-			ui.next({width = ui.fill(), height = ui.text_size()})
+			// (each line its own height, the two centred in the row: a label's text_size is a row's, two did not fit)
+			ui.spacer(ui.fill())
+			ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
 			ui.label(fmt.aprintf("%s###vdd_t_%d", title, i, allocator = ui.frame_allocator()))
 			if detail != "" {
-				ui.next({width = ui.fill(), height = ui.text_size()})
+				ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
 				ui.push_tags("weak")
 				ui.label(fmt.aprintf("%s###vdd_d_%d", detail, i, allocator = ui.frame_allocator()))
 				ui.pop_tags()
 			}
+			ui.spacer(ui.fill())
 		}
 		ui.pop_tags()
 		ui.spacer(ui.px(em * 0.3))

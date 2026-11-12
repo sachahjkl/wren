@@ -10,16 +10,20 @@ import "core:mem"
 import "core:strconv"
 import "wb:base"
 
-PROTOCOL_VERSION :: 3
+PROTOCOL_VERSION :: 4
 MAX_FRAME :: 1 << 20   // the helper's bound too: a larger frame is a broken peer
 FRAME_HEAD :: 4
 
-Op :: enum u8 { Hello, Login, Login_Api_Key, Unlock, Lock, Logout, Sync, Pin_Set, Pin_Clear, Logins_For, Search, Fill, Totp, Keepalive }
+Op :: enum u8 {
+	Hello, Login, Login_Api_Key, Unlock, Lock, Logout, Sync, Pin_Set, Pin_Clear, Logins_For, Search, Fill, Totp, Keepalive,
+	Password_Hint, Device_Request, Device_Poll, Passkey_Options, Login_Passkey,
+}
 
 OP_NAMES := [Op]string{
 	.Hello = "hello", .Login = "login", .Login_Api_Key = "login_api_key", .Unlock = "unlock", .Lock = "lock", .Logout = "logout",
 	.Sync = "sync", .Pin_Set = "pin_set", .Pin_Clear = "pin_clear", .Logins_For = "logins_for", .Search = "search", .Fill = "fill",
-	.Totp = "totp", .Keepalive = "keepalive",
+	.Totp = "totp", .Keepalive = "keepalive", .Password_Hint = "password_hint", .Device_Request = "device_request",
+	.Device_Poll = "device_poll", .Passkey_Options = "passkey_options", .Login_Passkey = "login_passkey",
 }
 
 // The second steps of a login that the Vault supports (the helper's provider names).
@@ -28,8 +32,8 @@ Factors :: bit_set[Factor; u8]
 
 FACTOR_NAMES := [Factor]string{.Authenticator = "authenticator", .Email = "email"}
 
-// What a `login` answered when it succeeded.
-Login_Result :: enum u8 { None, Ok, Need_Two_Factor, Need_Device_Code }
+// What a `login` (or a `device_poll`) answered when it succeeded. Pending: the other device has not answered yet.
+Login_Result :: enum u8 { None, Ok, Need_Two_Factor, Need_Device_Code, Pending }
 
 ////////////////////////////////
 // Requests
@@ -157,8 +161,13 @@ Answer :: struct {
 	// hello
 	account, email, helper_version: string,
 	pin:            bool,     // a PIN can unlock the remembered account
-	// login, login_api_key (and `email`)
+	passkey:        bool,     // a passkey of the remembered account can unlock it
+	// login, login_api_key, device_poll, login_passkey (and `email`)
 	result:         Login_Result,
+	// device_request: the phrase that the other device shows too
+	fingerprint:    string,
+	// passkey_options: the ceremony's options (WebAuthn's PublicKeyCredentialRequestOptionsJSON)
+	options:        string,
 	factors:        Factors,  // Need_Two_Factor: the second steps that the account offers and the Vault supports
 	email_sent:     bool,     // Need_Two_Factor: a code was mailed already
 	// unlock with a PIN: bad_pin
@@ -200,8 +209,12 @@ answer_decode :: proc(body: []u8) -> (a: ^Answer, ok: bool) {
 		case "ok":               a.result = .Ok
 		case "need_two_factor":  a.result = .Need_Two_Factor
 		case "need_device_code": a.result = .Need_Device_Code
+		case "pending":          a.result = .Pending
 		}
 	}
+	a.fingerprint = owned_string(o, "fingerprint")
+	a.options = owned_string(o, "options")
+	if b, is_bool := o["passkey"].(json.Boolean); is_bool { a.passkey = bool(b) }
 	if list, is_array := o["providers"].(json.Array); is_array {
 		for p in list {
 			name, is_str := p.(json.String)
@@ -295,6 +308,8 @@ answer_free :: proc(a: ^Answer) {
 	string_wipe(&a.email)
 	string_wipe(&a.helper_version)
 	string_wipe(&a.event)
+	string_wipe(&a.fingerprint)
+	string_wipe(&a.options)
 	string_wipe(&a.username)
 	string_wipe(&a.password)
 	string_wipe(&a.totp)

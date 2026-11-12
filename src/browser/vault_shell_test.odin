@@ -1,6 +1,7 @@
 package browser
 
 import "core:testing"
+import "toolkit:ui"
 import "wb:config"
 import "wb:host"
 import "wb:vault"
@@ -66,4 +67,32 @@ a_new_app_has_the_vault_off :: proc(t: ^testing.T) {
 	app := test_app(t)
 	testing.expect_value(t, app.vault.v.state, vault.State.Disabled)
 	testing.expect(t, !app.vault.started)
+}
+
+// Logged out or locked, the icon opens the dialog (the panel would only say "Log in"); unlocked, the panel.
+@(test)
+vault_icon_opens_the_dialog_when_that_is_the_next_step :: proc(t: ^testing.T) {
+	for st in ([]vault.State{.Logged_Out, .Logging_In, .Need_Two_Factor, .Locked, .Unlocking}) {
+		testing.expectf(t, vault_icon_opens_dialog(st), "%v opens the dialog", st)
+	}
+	for st in ([]vault.State{.Unlocked, .Helper_Missing, .Failed, .Disabled}) {
+		testing.expectf(t, !vault_icon_opens_dialog(st), "%v opens the panel", st)
+	}
+}
+
+// A remembered email: the keyboard starts in the password.
+@(test)
+vault_dialog_starts_where_the_next_thing_is_typed :: proc(t: ^testing.T) {
+	email, password: ui.Box
+	testing.expect(t, vault_first_field(false, &email, &password) == &email)
+	testing.expect(t, vault_first_field(true, &email, &password) == &password)
+}
+
+// A toolbar panel ends on its button's right edge (the toolbar's margin stays between it and the window's edge).
+@(test)
+toolbar_panels_end_under_their_button :: proc(t: ^testing.T) {
+	r := toolbar_panel_rect({{900, 40}, {930, 70}}, 300)
+	testing.expect_value(t, r.min.x, f32(630))
+	testing.expect_value(t, r.max.x, f32(930))
+	testing.expect_value(t, r.max.y, f32(70))
 }

@@ -34,7 +34,11 @@ Settings :: struct {
 	dropdown:     bool,     // the list of logins under a focused login field
 	clear_seconds: int,     // a copied password or code leaves the clipboard after this time; 0: never
 	shortcut:     string,   // owned: the fill shortcut ("Ctrl+Shift+L"; "": none)
+	remember_email: bool,   // the login dialog starts with the last email that logged in
 }
+
+US_WEB_VAULT_URL :: "https://vault.bitwarden.com"
+EU_WEB_VAULT_URL :: "https://vault.bitwarden.eu"
 
 PREFS := [?]config.Def{
 	{name = "vault.enabled", kind = .Bool, default = {b = false},
@@ -60,6 +64,9 @@ PREFS := [?]config.Def{
 		description = "The key that fills the page's login from the Vault: the only login of the page at once, or the list of its logins. Modifiers Ctrl, Alt, Shift, then a letter, a digit or F1 to F12 (\"Ctrl+Shift+L\"). Empty: no key."},
 	{name = "vault.clipboard.clear_seconds", kind = .Int, default = {i = 30}, bounded = true, min = 0, max = 600, unit = "s",
 		description = "A user name, password or one-time code that the Vault copied leaves the clipboard after this time, if the clipboard still holds it. 0: it stays."},
+	{name = "vault.login.remember_email", kind = .Bool, default = {b = true},
+		description = "The Vault's login starts with the email of the last login in this profile. It stays after a log out. Off: the email is forgotten, and each login starts empty.",
+		tags = {"email", "remember"}},
 	{name = "vault.test.remote", kind = .Bool, default = {b = false},
 		description = "For automated tests only, with a throwaway profile: remote control can use the Vault's panel. Off: the Vault refuses to work while the browser is remote-controlled."},
 }
@@ -84,7 +91,19 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.dropdown = config.bool_of(p, "vault.fill.dropdown")
 	s.clear_seconds = int(config.int_of(p, "vault.clipboard.clear_seconds"))
 	s.shortcut = strings.clone(strings.trim_space(config.string_of(p, "vault.fill.shortcut")))
+	s.remember_email = config.bool_of(p, "vault.login.remember_email")
 	return s
+}
+
+// The web vault of the configured server: where a person solves a captcha, and the origin of a passkey ceremony (its
+// relying party is that origin's host or a suffix of it). "" for region Self without an address.
+web_vault_url :: proc(s: Settings, allocator := context.temp_allocator) -> string {
+	switch s.region {
+	case .US: return US_WEB_VAULT_URL
+	case .EU: return EU_WEB_VAULT_URL
+	case .Self:
+	}
+	return strings.clone(strings.trim_right(s.server_url, "/"), allocator)
 }
 
 settings_default :: proc() -> Settings {

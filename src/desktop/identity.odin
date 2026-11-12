@@ -21,11 +21,11 @@ ENV_PREFIX      :: "WREN_DESKTOP_"
 DEV_LINK_PREFIX :: "wren-dev-"
 
 // What the program needs from the system on NixOS, by nixpkgs attribute: what it links (glibc, libgcc_s, fontconfig, opus,
-// ALSA) and what it opens with dlopen (Wayland, X11, Vulkan, EGL). The same list as `runtimeLibs` in flake.nix, which the
+// ALSA) and what it opens with dlopen (Wayland, X11, Vulkan, EGL, libfido2 for security keys). The same list as `runtimeLibs` in flake.nix, which the
 // test nixos_libraries_follow_the_flake keeps in step.
 NIXOS_LIBRARIES := [?]string{
 	"glibc", "stdenv.cc.cc", "alsa-lib", "fontconfig", "freetype", "libopus", "libxkbcommon", "vulkan-loader",
-	"wayland", "libxcb", "libxcb-cursor", "libglvnd",
+	"wayland", "libxcb", "libxcb-cursor", "libglvnd", "libfido2",
 }
 
 // The URL schemes each channel registers: its prefix before each of LINK_SCHEMES (links.odin).

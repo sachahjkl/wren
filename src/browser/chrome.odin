@@ -793,3 +793,61 @@ stop_loading :: proc(app: ^App, t: ^Tab) {
 	if nav_pending(t) && !shell_defer({kind = .Stop, tab = t.id}) { nav_cancel(app, t, load, .Stopped) }   // nothing arrived: the tab goes back to what it showed
 	request_frames(app, 2)
 }
+
+// Where a toolbar button's panel opens (ui.ctx_menu_open_rect): under the button, its right edge on the button's right
+// edge, so a panel of a button at the end of the toolbar keeps the toolbar's margin from the window's edge instead of
+// being pushed against it.
+toolbar_panel_rect :: proc(button: ui.Rect, width: f32) -> ui.Rect {
+	return {{button.max.x - width, button.min.y}, button.max}
+}
+
+// A button with a Lucide glyph before its text: ui.button_icon's look (its padding of 0.95 em on each side, the glyph,
+// the text), with Wren's Lucide face for the glyph (button_icon draws the program's own icon font) and a width given
+// (ui.fill() shares a row between buttons; the content stays centred, never against an edge).
+icon_action_button :: proc(app: ^App, glyph, text, id: string, width: ui.Size) -> bool {
+	em := ui.font_size()
+	clicked := false
+	if ui.tags("button") {
+		ui.next({width = width, height = ui.px(ui.dense(em * 2.2)), radius = em * 0.45, axis = .X})
+		b := ui.build_box({.Clickable, .Focusable, .Draw_Background, .Draw_Border, .Draw_Hot_Effects}, strings.concatenate({"###", id}, ui.frame_allocator()))
+		b.squish = ui.press_squish(b)
+		clicked = ui.signal(b).clicked
+		ui.a11y_set(b, {role = .Button, name = text})
+		if ui.parent(b) {
+			ui.spacer(ui.px(em * 0.95))
+			ui.spacer(ui.fill())
+			ui.next({width = ui.px(em * 1.5), height = ui.pct(1), font = app.lucide, font_size = em * 1.05, text_pad = 0, text_align = .Center})
+			ui.build_box({.Draw_Text, .No_Text_Trunc}, strings.concatenate({glyph, "###", id, "_g"}, ui.frame_allocator()))
+			ui.spacer(ui.px(em * 0.3))
+			ui.next({width = ui.text_size(), height = ui.pct(1)})
+			ui.build_box({.Draw_Text}, strings.concatenate({text, "###", id, "_t"}, ui.frame_allocator()))
+			ui.spacer(ui.fill())
+			ui.spacer(ui.px(em * 0.95))
+		}
+	}
+	return clicked
+}
+
+// A square button showing one Lucide glyph; `tip` is its name for a screen reader and its tooltip (a row's actions:
+// four of them side by side, where texts do not fit).
+icon_square_button :: proc(app: ^App, glyph, tip, id: string, accent := false) -> bool {
+	em := ui.font_size()
+	side := ui.dense(em * 2.1)
+	clicked := false
+	if ui.tags(accent ? "accent_button" : "button") {
+		ui.next({width = ui.px(side), height = ui.px(side), radius = em * 0.45, axis = .X})
+		b := ui.build_box({.Clickable, .Focusable, .Draw_Background, .Draw_Border, .Draw_Hot_Effects}, strings.concatenate({"###", id}, ui.frame_allocator()))
+		b.squish = ui.press_squish(b)
+		sig := ui.signal(b)
+		clicked = sig.clicked
+		ui.a11y_set(b, {role = .Button, name = tip})
+		if ui.parent(b) {
+			ui.next({width = ui.fill(), height = ui.pct(1), font = app.lucide, font_size = em * 1.05, text_pad = 0, text_align = .Center})
+			ui.build_box({.Draw_Text, .No_Text_Trunc}, strings.concatenate({glyph, "###", id, "_g"}, ui.frame_allocator()))
+		}
+		if sig.hovering {
+			if ui.tooltip() { ui.tooltip_text(tip) }
+		}
+	}
+	return clicked
+}

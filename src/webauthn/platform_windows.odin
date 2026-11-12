@@ -198,6 +198,9 @@ api_load :: proc() {
 	}
 }
 
+// Why system_platform is nil here, for the page's error and the Vault's message.
+NO_PLATFORM_REASON :: "this computer has no Web Authentication platform (Windows 10 1903 or later is needed)"
+
 // The operating system's platform: nil when webauthn.dll is missing (Windows before 10 1903) or incomplete.
 system_platform :: proc() -> ^Platform {
 	sync.once_do(&api_once, api_load)

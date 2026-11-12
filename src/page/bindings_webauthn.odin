@@ -343,7 +343,7 @@ webauthn_start :: proc(c: ^Call, kind: webauthn.Ceremony_Kind, options: string, 
 	}
 	pl := webauthn.platform_for(&p.settings.authn)
 	if pl == nil {
-		reject_later(p, pr, WEB_ERR_NOT_SUPPORTED, "NotSupportedError: this computer has no Web Authentication platform (Windows 10 1903 or later)")
+		reject_later(p, pr, WEB_ERR_NOT_SUPPORTED, "NotSupportedError: " + webauthn.NO_PLATFORM_REASON)
 		webauthn.ceremony_destroy(cer)
 		return pr
 	}

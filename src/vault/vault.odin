@@ -33,6 +33,8 @@ State :: enum u8 {
 	Logging_In,        // a login waits for its answer
 	Need_Two_Factor,   // the account asks for the code of a second step (`factors`, `factor`)
 	Need_Device_Code,  // the account must confirm this new device with the code that the server mailed
+	Waiting_Device,    // a login waits for another device of the account to approve it (`fingerprint`; polled on a timer)
+	Passkey,           // a passkey ceremony waits for the person (the shell runs it with `passkey_options`)
 	Locked,            // an account is remembered; no helper holds its keys
 	Unlocking,         // an unlock waits for its answer
 	Unlocked,          // the helper holds the keys: rows and fills work
@@ -98,7 +100,22 @@ Pending :: struct {
 	slot:    Row_Slot,      // .Logins_For, .Search
 	copy:    bool,          // .Fill, .Totp: for the clipboard (copy_what), not for a page
 	copy_what: Copy_What,
+	resend:  bool,          // .Login: a code asked again; a failure keeps the login waiting (`back`)
+	back:    State,         // .Login with resend: the step it came from
 }
+
+// What a passkey ceremony is for.
+Passkey_Purpose :: enum u8 { Login, Unlock }
+
+// The answer of a passkey ceremony, each value in base64url (`prf`: the PRF extension's output, a secret). The shell
+// fills it from the authenticator's answer; the Vault zeroes nothing of it (the caller does).
+Passkey_Assertion :: struct {
+	credential_id, authenticator_data, client_data_json, signature, user_handle: string,
+	prf: string,
+}
+
+DEVICE_POLL_MS :: 4000                                   // between two looks at a device's approval
+DEVICE_WAIT_NS :: i64(15 * 60 + 30) * 1_000_000_000      // the server keeps the request 15 minutes; then it is expired
 
 @(private)
 Timeout :: struct { v: ^Vault, id: u64 }
@@ -129,6 +146,17 @@ Vault :: struct {
 	factors:        Factors,               // Need_Two_Factor: the second steps that the account offers
 	factor:         Factor,                // Need_Two_Factor: the one whose code the dialog asks
 	email_sent:     bool,                  // Need_Two_Factor: a code was mailed
+	error:          string,                // owned: the code of the last refusal ("captcha_required"...; "" none): the dialog acts on some
+	remembered:     string,                // owned: the last email that logged in (vault.login.remember_email), kept after a logout
+	passkey:        bool,                  // a passkey of the remembered account can unlock it
+	hint_busy:      bool,                  // a master password hint was asked and not answered yet
+	fingerprint:    string,                // owned: Waiting_Device: the phrase that the other device shows too
+	device_since:   i64,                   // Waiting_Device: the loop's clock when the request was made
+	device_timer:   base.Handle,           // Waiting_Device: the next look at the approval
+	device_back:    State,                 // Waiting_Device: where a cancel or a refusal goes back to
+	passkey_purpose: Passkey_Purpose,      // Passkey: what the ceremony is for
+	passkey_options: string,               // owned: Passkey: the ceremony's options, until the shell takes them
+	passkey_taken:  bool,                  // Passkey: the shell took them (its ceremony runs)
 	syncing:        bool,                  // a sync waits for its answer
 	last_sync:      i64,                   // Unix seconds of the last sync of this run (0: none)
 	active_ns:      i64,                   // the loop's clock at the last user activity
@@ -181,6 +209,10 @@ vault_destroy :: proc(v: ^Vault) {
 	string_wipe(&v.email)
 	string_wipe(&v.login_email)
 	string_wipe(&v.account_next)
+	string_wipe(&v.error)
+	string_wipe(&v.remembered)
+	string_wipe(&v.fingerprint)
+	string_wipe(&v.passkey_options)
 	delete(v.helper, base.process_allocator())
 	delete(v.profile_dir, base.process_allocator())
 	delete(v.client_version, base.process_allocator())
@@ -204,6 +236,12 @@ vault_prefs_changed :: proc(v: ^Vault, prefs: ^config.Prefs) {
 		enable(v)
 	case v.state == .Unlocked && (old.idle_minutes != v.settings.idle_minutes || old.sync_minutes != v.settings.sync_minutes):
 		timers_start(v)
+	}
+	if old.remember_email && !v.settings.remember_email && v.remembered != "" {
+		// (the person does not want it kept: it goes from memory and from the file now)
+		string_wipe(&v.remembered)
+		write_account(v)
+		changed(v)
 	}
 }
 
@@ -234,7 +272,8 @@ disable :: proc(v: ^Vault) {
 
 // A login: the email and the master password; then, when the account asks for a second step (Need_Two_Factor or
 // Need_Device_Code), its code only: the password is "" and the helper uses the one it keeps for this login.
-vault_login :: proc(v: ^Vault, email, password: string, code := "") -> bool {
+// `remember` (a two-step code): the server remembers this device, and the next login of the account here needs no code.
+vault_login :: proc(v: ^Vault, email, password: string, code := "", remember := false) -> bool {
 	switch v.state {
 	case .Logged_Out, .Locked, .Failed:
 		address := strings.trim_space(email)
@@ -250,19 +289,153 @@ vault_login :: proc(v: ^Vault, email, password: string, code := "") -> bool {
 	case .Need_Two_Factor, .Need_Device_Code:
 		c := strings.trim_space(code)
 		if c == "" || v.t == nil { return false }
-		provider := v.state == .Need_Device_Code ? "device" : FACTOR_NAMES[v.factor]
+		device := v.state == .Need_Device_Code
+		provider := device ? "device" : FACTOR_NAMES[v.factor]
 		r: Request
-		request_begin(&r, next_id(v), .Login, len(v.login_email) + len(c) + 32)
+		request_begin(&r, next_id(v), .Login, len(v.login_email) + len(c) + 48)
 		request_string(&r, "email", v.login_email)
 		request_string(&r, "code", c)
 		request_string(&r, "provider", provider)
+		if remember && !device { request_bool(&r, "remember", true) }
 		send(v, &r, .Login)
-	case .Disabled, .Locating, .Helper_Missing, .Logging_In, .Unlocking, .Unlocked:
+	case .Disabled, .Locating, .Helper_Missing, .Logging_In, .Unlocking, .Unlocked, .Waiting_Device, .Passkey:
 		return false
 	}
-	string_wipe(&v.message)
+	clear_problem(v)
 	set_state(v, .Logging_In)
 	return true
+}
+
+// The message and the code of the last refusal go (a new request starts).
+@(private)
+clear_problem :: proc(v: ^Vault) {
+	string_wipe(&v.message)
+	string_wipe(&v.error)
+}
+
+// Logged_Out, Locked or Failed: a login of another kind may start (a device's approval, a passkey, a hint).
+@(private)
+can_start_login :: proc(v: ^Vault) -> bool {
+	#partial switch v.state {
+	case .Logged_Out, .Locked, .Failed: return true
+	}
+	return false
+}
+
+// Asks the server to mail the master password hint of the account `email`. The answer is a message; the state stays.
+vault_password_hint :: proc(v: ^Vault, email: string) -> bool {
+	address := strings.trim_space(email)
+	if !can_start_login(v) || address == "" || v.hint_busy { return false }
+	if !ensure_helper(v) { return false }
+	r: Request
+	request_begin(&r, next_id(v), .Password_Hint, len(address))
+	request_string(&r, "email", address)
+	if send(v, &r, .Password_Hint) == nil { return false }
+	v.hint_busy = true
+	clear_problem(v)
+	changed(v)
+	return true
+}
+
+// A login that another device of the account approves (Bitwarden's "log in with device"). The helper makes the request
+// and answers its fingerprint phrase (Waiting_Device); the Vault then asks for the approval every DEVICE_POLL_MS, for
+// DEVICE_WAIT_NS at most.
+vault_login_device :: proc(v: ^Vault, email: string) -> bool {
+	address := strings.trim_space(email)
+	if !can_start_login(v) || address == "" { return false }
+	if !ensure_helper(v) { return false }
+	string_wipe(&v.login_email)
+	v.login_email = strings.clone(address, base.process_allocator())
+	r: Request
+	request_begin(&r, next_id(v), .Device_Request, len(address))
+	request_string(&r, "email", address)
+	if send(v, &r, .Device_Request) == nil { return false }
+	v.device_back = v.email != "" ? .Locked : .Logged_Out
+	clear_problem(v)
+	set_state(v, .Logging_In)
+	return true
+}
+
+// A login (Logged_Out, Locked, Failed) or an unlock (Locked, Failed, with `passkey`) with a passkey. The helper gives the
+// ceremony's options (state Passkey); the shell takes them (vault_passkey_take), runs the ceremony and hands its answer
+// to vault_passkey_done, or says why it failed (vault_passkey_failed). `rp_id`: the web vault's domain, the relying party
+// of an unlock when no passkey login named one.
+vault_passkey_begin :: proc(v: ^Vault, purpose: Passkey_Purpose, rp_id: string) -> bool {
+	if !can_start_login(v) { return false }
+	if purpose == .Unlock && (v.email == "" || !v.passkey) { return false }
+	if !ensure_helper(v) { return false }
+	r: Request
+	request_begin(&r, next_id(v), .Passkey_Options, len(rp_id) + 16)
+	request_string(&r, "purpose", purpose == .Login ? "login" : "unlock")
+	request_string(&r, "rp_id", rp_id)
+	if send(v, &r, .Passkey_Options) == nil { return false }
+	v.passkey_purpose = purpose
+	v.passkey_taken = false
+	string_wipe(&v.passkey_options)
+	clear_problem(v)
+	set_state(v, purpose == .Login ? .Logging_In : .Unlocking)
+	return true
+}
+
+// Passkey: the ceremony's options, once (the caller owns and frees the text). ok false: not now, or taken already.
+vault_passkey_take :: proc(v: ^Vault) -> (options: string, purpose: Passkey_Purpose, ok: bool) {
+	if v.state != .Passkey || v.passkey_taken || v.passkey_options == "" { return "", .Login, false }
+	options, v.passkey_options = v.passkey_options, ""
+	v.passkey_taken = true
+	return options, v.passkey_purpose, true
+}
+
+// The ceremony's answer: a login sends it to the helper (the server checks the assertion), an unlock sends the PRF
+// output only (the helper opens the account's keys with it). The secrets go into one frame, zeroed once written.
+vault_passkey_done :: proc(v: ^Vault, a: Passkey_Assertion) -> bool {
+	if v.state != .Passkey || v.t == nil || a.prf == "" { return false }
+	r: Request
+	switch v.passkey_purpose {
+	case .Login:
+		request_begin(&r, next_id(v), .Login_Passkey, len(a.credential_id) + len(a.authenticator_data) + len(a.client_data_json) + len(a.signature) + len(a.user_handle) + len(a.prf) + 128)
+		request_string(&r, "credential_id", a.credential_id)
+		request_string(&r, "authenticator_data", a.authenticator_data)
+		request_string(&r, "client_data_json", a.client_data_json)
+		request_string(&r, "signature", a.signature)
+		request_string(&r, "user_handle", a.user_handle)
+		request_string(&r, "prf", a.prf)
+		if send(v, &r, .Login_Passkey) == nil { return false }
+		set_state(v, .Logging_In)
+	case .Unlock:
+		request_begin(&r, next_id(v), .Unlock, len(a.prf) + len(a.credential_id) + 32)
+		request_string(&r, "prf", a.prf)
+		request_string(&r, "credential_id", a.credential_id)
+		if send(v, &r, .Unlock) == nil { return false }
+		set_state(v, .Unlocking)
+	}
+	return true
+}
+
+// The ceremony did not give an answer (cancelled, timed out, no authenticator): the helper stops (lock is its exit) and
+// the Vault goes back to where the login or the unlock started, saying why.
+vault_passkey_failed :: proc(v: ^Vault, why: string) {
+	if v.state != .Passkey { return }
+	back_out(v, why)
+}
+
+// A login with a device, a passkey's ceremony, or a login's second step is given up: its helper stops (nothing it holds
+// is needed), the Vault is Locked or Logged_Out again and says `why` ("": nothing).
+vault_cancel :: proc(v: ^Vault, why := "") {
+	#partial switch v.state {
+	case .Waiting_Device, .Passkey, .Need_Two_Factor, .Need_Device_Code, .Logging_In, .Unlocking:
+		back_out(v, why)
+	}
+}
+
+@(private)
+back_out :: proc(v: ^Vault, why: string) {
+	if v.t != nil {
+		r: Request
+		request_begin(&r, next_id(v), .Lock, 0)
+		if frame, ok := request_end(&r); ok { v.t.send(v.t, frame) }
+	}
+	lock_down(v)
+	if why != "" { set_message(v, why) }
 }
 
 // A login with the account's personal API key (client id `user.<uuid>` and its secret), then the master password for
@@ -283,7 +456,7 @@ vault_login_api_key :: proc(v: ^Vault, client_id, client_secret, password: strin
 	request_string(&r, "client_secret", secret)
 	request_string(&r, "password", password)
 	send(v, &r, .Login_Api_Key)
-	string_wipe(&v.message)
+	clear_problem(v)
 	set_state(v, .Logging_In)
 	return true
 }
@@ -315,8 +488,11 @@ vault_send_code :: proc(v: ^Vault) -> bool {
 	request_string(&r, "email", v.login_email)
 	request_string(&r, "provider", provider)
 	request_bool(&r, "resend", true)
-	send(v, &r, .Login)
-	string_wipe(&v.message)
+	p := send(v, &r, .Login)
+	if p == nil { return false }
+	// (a resend that fails comes back to this step: the login still waits for its code)
+	p.resend, p.back = true, v.state
+	clear_problem(v)
 	set_state(v, .Logging_In)
 	return true
 }
@@ -330,12 +506,12 @@ vault_unlock :: proc(v: ^Vault, secret: string, pin := false) -> bool {
 	request_begin(&r, next_id(v), .Unlock, len(secret))
 	request_string(&r, pin ? "pin" : "password", secret)
 	send(v, &r, .Unlock)
-	string_wipe(&v.message)
+	clear_problem(v)
 	set_state(v, .Unlocking)
 	return true
 }
 
-// Lock: the helper exits (docs/bitwarden.md 3.2). Also what a cancelled login does.
+// Lock: the helper exits (docs/bitwarden.md 3.2). Also what a cancelled login does (vault_cancel says why).
 vault_lock :: proc(v: ^Vault) {
 	if v.state == .Disabled || v.state == .Locating || v.state == .Helper_Missing { return }
 	if v.t != nil {
@@ -362,9 +538,9 @@ vault_logout :: proc(v: ^Vault) -> bool {
 	rows_reset(v)
 	string_wipe(&v.login_email)
 	string_wipe(&v.email)
-	string_wipe(&v.message)
-	v.pin = false
-	remove_account(v)
+	clear_problem(v)
+	v.pin, v.passkey = false, false
+	write_account(v)   // (the account goes; the remembered email stays, when vault.login.remember_email says so)
 	if v.state != .Helper_Missing { set_state(v, .Logged_Out) }
 	return true
 }
@@ -569,6 +745,13 @@ ensure_helper :: proc(v: ^Vault) -> bool {
 close_helper :: proc(v: ^Vault) {
 	timers_stop(v)
 	drop_pending(v)
+	// (a login with a device or a passkey lives in this helper: it ends with it)
+	if v.device_timer != base.NIL_HANDLE { host.clear_timer(v.loop, v.device_timer) }
+	v.device_timer = base.NIL_HANDLE
+	string_wipe(&v.fingerprint)
+	string_wipe(&v.passkey_options)
+	v.passkey_taken = false
+	v.hint_busy = false
 	if v.t == nil { return }
 	v.t.close(v.t)
 	append(&v.closed, v.t)
@@ -669,11 +852,74 @@ request_timed_out :: proc(data: rawptr) {
 			v.fill_state = .Dropped
 			set_message(v, i18n.tr("The fill took too long and was dropped."))
 		}
-	case .Hello, .Login, .Login_Api_Key, .Unlock, .Lock, .Logout, .Sync, .Pin_Set, .Pin_Clear, .Keepalive:
+	case .Hello, .Login, .Login_Api_Key, .Unlock, .Lock, .Logout, .Sync, .Pin_Set, .Pin_Clear, .Keepalive,
+	     .Password_Hint, .Device_Request, .Device_Poll, .Passkey_Options, .Login_Passkey:
 		// (the helper answers in order: one that does not answer holds every later request)
 		fail(v, i18n.tr("The Vault helper did not answer in time. It was stopped."))
 	}
 	changed(v)
+}
+
+// The next look at a device's approval, DEVICE_POLL_MS from now.
+@(private)
+device_poll_later :: proc(v: ^Vault) {
+	if v.device_timer != base.NIL_HANDLE { host.clear_timer(v.loop, v.device_timer) }
+	v.device_timer = host.set_timer(v.loop, DEVICE_POLL_MS, 0, device_poll_due, v)
+}
+
+@(private)
+device_poll_due :: proc(data: rawptr) {
+	v := (^Vault)(data)
+	v.device_timer = base.NIL_HANDLE
+	if v.state != .Waiting_Device || v.t == nil { return }
+	if host.now_ns(v.loop) - v.device_since > DEVICE_WAIT_NS {
+		set_error(v, "expired")
+		back_out(v, refusal_words("expired", ""))
+		return
+	}
+	r: Request
+	request_begin(&r, next_id(v), .Device_Poll, 0)
+	if send(v, &r, .Device_Poll) == nil { back_out(v, i18n.tr("The Vault helper stopped.")) }
+}
+
+@(private)
+set_error :: proc(v: ^Vault, code: string) {
+	string_wipe(&v.error)
+	if code != "" { v.error = strings.clone(code, base.process_allocator()) }
+}
+
+// What the Vault says for a refusal of the helper (its error `code`): Wren's own sentence, translated, for the codes the
+// login steps meet; the helper's `message` for the others, and with the server's own words (a wrong password).
+refusal_words :: proc(code, message: string) -> string {
+	switch code {
+	case "bad_credentials":
+		return message != "" ? message : i18n.tr("The email or the master password is wrong.")
+	case "account_locked":
+		return message != "" ? message : i18n.tr("The server says that this account is locked.")
+	case "bad_password":
+		return i18n.tr("The master password is wrong.")
+	case "network":
+		return i18n.tr("The server cannot be reached. Check its address and the network connection.")
+	case "captcha_required":
+		return i18n.tr("The server asks to solve a captcha first. Log in once on the web vault, then try again here.")
+	case "bad_auth_email":
+		return i18n.tr("The server refused the account's email. Check the email, then log in again.")
+	case "unsupported_two_factor":
+		return i18n.tr("This account's second step is not supported here (Duo, a security key, YubiKey). Log in with a device, a passkey or the account's API key.")
+	case "unsupported_account":
+		return i18n.tr("This account does not unlock with a master password (single sign-on, Key Connector): the Vault cannot open it.")
+	case "denied":
+		return i18n.tr("The other device refused the login.")
+	case "expired":
+		return i18n.tr("The login with a device expired without an approval. Ask again.")
+	case "passkey_no_unlock":
+		return i18n.tr("This passkey logs in but does not open the vault. Turn on its use for encryption in the web vault, or log in with the master password.")
+	case "passkey_failed":
+		return i18n.tr("The passkey's answer does not open the vault. Use the passkey registered for this account, or the master password.")
+	case "no_passkey":
+		return i18n.tr("No passkey of this account unlocks the vault. Unlock with the master password.")
+	}
+	return message
 }
 
 // The helper is stopped and the Vault says why. The next login or unlock starts a new one.
@@ -764,13 +1010,39 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 				v.email = strings.clone(a.email, base.process_allocator())
 			}
 			v.pin = a.pin
+			if v.passkey != a.passkey {
+				v.passkey = a.passkey
+				write_account(v)
+			}
 		}
-	case .Login, .Login_Api_Key:
+	case .Login, .Login_Api_Key, .Login_Passkey, .Device_Request, .Device_Poll:
 		if !a.ok {
+			set_error(v, a.error)
+			words := refusal_words(a.error, a.message != "" ? a.message : i18n.tr("The login failed."))
+			if p.resend {
+				// (the code was not sent again; the login still waits for one)
+				set_message(v, words)
+				set_state(v, p.back)
+				return
+			}
+			if p.op == .Device_Poll && a.error == "network" && v.state == .Waiting_Device {
+				// (the helper keeps the request: the network may come back before it expires)
+				set_message(v, words)
+				device_poll_later(v)
+				return
+			}
 			close_helper(v)
 			string_wipe(&v.login_email)
-			set_message(v, a.message != "" ? a.message : i18n.tr("The login failed."))
+			set_message(v, words)
 			set_state(v, v.email != "" ? .Locked : .Logged_Out)
+			return
+		}
+		if p.op == .Device_Request {
+			string_wipe(&v.fingerprint)
+			v.fingerprint, a.fingerprint = a.fingerprint, ""
+			v.device_since = host.now_ns(v.loop)
+			set_state(v, .Waiting_Device)
+			device_poll_later(v)
 			return
 		}
 		#partial switch a.result {
@@ -784,25 +1056,58 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 		case .Need_Device_Code:
 			set_state(v, .Need_Device_Code)
 			return
+		case .Pending:
+			if v.state == .Waiting_Device { device_poll_later(v) }
+			return
 		}
 		string_wipe(&v.email)
-		if p.op == .Login_Api_Key {
-			v.email = a.email != "" ? strings.clone(a.email, base.process_allocator()) : ""
+		string_wipe(&v.fingerprint)
+		// (the helper names the account when the login did not: an API key, a passkey, another device's approval)
+		if a.email != "" {
+			v.email = strings.clone(a.email, base.process_allocator())
 			string_wipe(&v.login_email)
 		} else {
 			v.email, v.login_email = v.login_email, ""
 		}
+		if v.settings.remember_email && v.email != "" {
+			string_wipe(&v.remembered)
+			v.remembered = strings.clone(v.email, base.process_allocator())
+		}
 		v.pin = false   // (a new login starts without a PIN)
+		v.passkey = a.passkey   // (the login's sync says whether a passkey of the account unlocks it)
 		write_account(v)
 		became_unlocked(v)
+	case .Password_Hint:
+		v.hint_busy = false
+		if !a.ok {
+			set_error(v, a.error)
+			set_message(v, refusal_words(a.error, a.message))
+			return
+		}
+		set_message(v, i18n.tr("If an account has this email, the server mailed its master password hint to it."))
+	case .Passkey_Options:
+		if !a.ok || a.options == "" {
+			set_error(v, a.error)
+			back_out(v, refusal_words(a.error, a.message != "" ? a.message : i18n.tr("The server does not offer a login with a passkey.")))
+			return
+		}
+		string_wipe(&v.passkey_options)
+		v.passkey_options, a.options = a.options, ""
+		v.passkey_taken = false
+		set_state(v, .Passkey)
 	case .Unlock:
 		if !a.ok {
 			close_helper(v)
+			set_error(v, a.error)
 			if a.error == "pin_reset" || a.error == "no_pin" {
 				v.pin = false
 				write_account(v)
 			}
-			set_message(v, a.message != "" ? a.message : i18n.tr("The vault cannot be unlocked."))
+			if a.error == "no_passkey" && v.passkey {
+				v.passkey = false
+				write_account(v)
+			}
+			set_message(v, refusal_words(a.error, a.message != "" ? a.message : i18n.tr("The vault cannot be unlocked.")))
 			if a.error == "no_account" {
 				string_wipe(&v.email)
 				v.pin = false
@@ -817,6 +1122,11 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 		changed(v)
 		if !a.ok { set_message(v, a.message != "" ? a.message : i18n.tr("The vault could not be synced.")); return }
 		v.last_sync = a.last_sync
+		if a.passkey != v.passkey {
+			// (a passkey for the vault's encryption was added or removed in the web vault)
+			v.passkey = a.passkey
+			write_account(v)
+		}
 		// (the rows kept may be older than the sync)
 		for slot in Row_Slot {
 			key := strings.clone(v.sets[slot].key, context.temp_allocator)
@@ -887,12 +1197,21 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 	}
 }
 
+// Whether a request of `op` is on its way (the shell shows its wait).
+vault_waits_for :: proc(v: ^Vault, op: Op) -> bool {
+	for p in v.pending { if p.op == op { return true } }
+	return false
+}
+
 @(private)
 set_state :: proc(v: ^Vault, s: State) {
 	if v.state == s { return }
 	v.state = s
 	changed(v)
 }
+
+// A message of the shell for the dialog (what the person must do before a button can work).
+vault_say :: proc(v: ^Vault, text: string) { set_message(v, text) }
 
 @(private)
 set_message :: proc(v: ^Vault, text: string) {
@@ -1034,6 +1353,8 @@ Setup_Job :: struct {
 	helper:         string,   // owned: found
 	email:          string,   // owned: from the account file
 	pin:            bool,     // from the account file
+	passkey:        bool,     // from the account file: a passkey of the account can unlock it
+	remembered:     string,   // owned: from the account file: the last email that logged in
 }
 
 // Off the loop: where the helper is, and which account the profile remembers for this server.
@@ -1045,26 +1366,48 @@ setup_work :: proc(data: rawptr) {
 	if j.profile_dir != "" {
 		path := join_path({j.profile_dir, "vault", ACCOUNT_FILE})
 		if bytes, err := os.read_entire_file(path, context.temp_allocator); err == nil {
-			email, server, pin := account_parse(string(bytes))
-			if email != "" && server == j.identity {
-				j.email = strings.clone(email)
-				j.pin = pin
+			f := account_parse(string(bytes))
+			if f.email != "" && f.identity == j.identity {
+				j.email = strings.clone(f.email)
+				j.pin, j.passkey = f.pin, f.passkey
 			}
+			// (the remembered email is the profile's, whatever the server: a logout keeps it)
+			if f.remembered != "" { j.remembered = strings.clone(f.remembered) }
 		}
 	}
 }
 
-// The account file: the email, the server's identity address, then "pin" when a PIN is set; one per line.
-account_text :: proc(email, identity: string, pin: bool, allocator := context.temp_allocator) -> string {
-	return strings.concatenate({email, "\n", identity, "\n", pin ? "pin" : "", "\n"}, allocator)
+// What the account file says (Wren's; no secret): the remembered account (its email, its server's identity address, the
+// ways it unlocks besides its master password), and the last email that logged in (vault.login.remember_email), which a
+// logout keeps.
+Account_File :: struct {
+	email, identity: string,
+	pin, passkey:    bool,
+	remembered:      string,
 }
 
-account_parse :: proc(text: string) -> (email, identity: string, pin: bool) {
-	rest := text
-	e, _, r1 := strings.partition(rest, "\n")
+// One value per line: the email, the server, the marks ("pin", "passkey", separated by spaces), the remembered email.
+// A file of an earlier version has fewer lines: what is missing is empty.
+account_text :: proc(f: Account_File, allocator := context.temp_allocator) -> string {
+	marks := f.pin && f.passkey ? "pin passkey" : (f.pin ? "pin" : (f.passkey ? "passkey" : ""))
+	return strings.concatenate({f.email, "\n", f.identity, "\n", marks, "\n", f.remembered, "\n"}, allocator)
+}
+
+// The values are slices of `text`.
+account_parse :: proc(text: string) -> (f: Account_File) {
+	e, _, r1 := strings.partition(text, "\n")
 	s, _, r2 := strings.partition(r1, "\n")
-	p, _, _ := strings.partition(r2, "\n")
-	return strings.trim_space(e), strings.trim_space(s), strings.trim_space(p) == "pin"
+	m, _, r3 := strings.partition(r2, "\n")
+	r, _, _ := strings.partition(r3, "\n")
+	f.email, f.identity, f.remembered = strings.trim_space(e), strings.trim_space(s), strings.trim_space(r)
+	marks := strings.trim_space(m)
+	for word in strings.split_iterator(&marks, " ") {
+		switch word {
+		case "pin":     f.pin = true
+		case "passkey": f.passkey = true
+		}
+	}
+	return
 }
 
 @(private)
@@ -1079,6 +1422,11 @@ setup_done :: proc(data: rawptr) {
 	string_wipe(&v.email)
 	v.email, j.email = j.email, ""
 	v.pin = v.email != "" && j.pin
+	v.passkey = v.email != "" && j.passkey
+	if j.remembered != "" && v.settings.remember_email {
+		string_wipe(&v.remembered)
+		v.remembered, j.remembered = j.remembered, ""
+	}
 	if v.helper == "" { set_state(v, .Helper_Missing); return }
 	set_state(v, v.email != "" ? .Locked : .Logged_Out)
 }
@@ -1098,6 +1446,7 @@ setup_free :: proc(j: ^Setup_Job) {
 	delete(j.identity)
 	delete(j.helper)
 	string_wipe(&j.email)
+	string_wipe(&j.remembered)
 	free(j)
 }
 
@@ -1131,15 +1480,12 @@ Account_Job :: struct {
 // The remembered account, for the next start (the locked icon is drawn without starting the helper).
 @(private)
 write_account :: proc(v: ^Vault) {
-	if v.profile_dir == "" || v.email == "" { return }
-	identity, _ := server_urls(v.settings)
-	account_job(v, account_text(v.email, identity, v.pin, base.process_allocator()), false)
-}
-
-@(private)
-remove_account :: proc(v: ^Vault) {
 	if v.profile_dir == "" { return }
-	account_job(v, "", true)
+	if v.email == "" && v.remembered == "" { account_job(v, "", true); return }   // (nothing to remember: the file goes)
+	identity, _ := server_urls(v.settings)
+	if v.email == "" { identity = "" }   // (no account: the email to offer only, of no server)
+	f := Account_File{email = v.email, identity = identity, pin = v.pin, passkey = v.passkey, remembered = v.remembered}
+	account_job(v, account_text(f, base.process_allocator()), false)
 }
 
 // One job on the file at a time: the pool's workers run in any order, and a removal must not be undone by an older

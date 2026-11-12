@@ -8,6 +8,11 @@ in the helper.
 
 The protocol is generic: accounts, logins and plain values. No type of the Bitwarden SDK crosses the pipe.
 
+Version 4 (helper 0.4.0). Changes from version 3: new requests `password_hint`, `device_request`, `device_poll`,
+`passkey_options` and `login_passkey`; `login` takes `remember`; `unlock` takes `prf` and `credential_id`; `hello`
+answers `passkey`; the errors `denied`, `expired`, `no_passkey` and `account_locked`. Every token request carries the
+headers `Auth-Email` (a password login) and `Bitwarden-Client-Version`, without which the server refuses it.
+
 Version 3 (helper 0.3.0). Changes from version 2: new requests `search` and `totp`; `fill` takes the field `totp`;
 `logins_for` applies the rules `StartsWith` and `Exact` and the account's equivalent domains, its rows carry the match
 types `equivalent`, `starts_with` and `exact`, and its answer carries `equivalent`; the error `no_totp`.
@@ -36,10 +41,10 @@ An event answers no request: `{"id": 0, "ok": true, "event": "<name>"}`.
 
 | op | Request fields | Answer fields |
 |---|---|---|
-| `hello` | `protocol` (3), `state_dir`, `identity_url`, `api_url`, `persist`, `device_name`, `client_version`, `idle_seconds` | `protocol`, `helper_version`, `account` (`none` or `locked`), `email`, `login` (`password` or `api_key`), `pin` (bool) |
-| `login` | first step: `email`, `password`; second step: `email`, `code`, `provider`; a new code: `email`, `provider`, `resend` (true) | `result`: `ok`; or `need_two_factor` with `providers` and `email_sent`; or `need_device_code` |
+| `hello` | `protocol` (4), `state_dir`, `identity_url`, `api_url`, `persist`, `device_name`, `client_version`, `idle_seconds` | `protocol`, `helper_version`, `account` (`none` or `locked`), `email`, `login` (`password` or `api_key`), `pin` (bool), `passkey` (bool: a passkey of the account unlocks) |
+| `login` | first step: `email`, `password`; second step: `email`, `code`, `provider`; a new code: `email`, `provider`, `resend` (true); `remember` (true): the server lets this device skip the second step next time | `result`: `ok`; or `need_two_factor` with `providers` and `email_sent`; or `need_device_code` |
 | `login_api_key` | `client_id`, `client_secret`, `password` (the master password) | `result` (`ok`), `email` |
-| `unlock` | `password` or `pin` | none; `bad_pin` errors carry `tries_left` |
+| `unlock` | `password`, `pin`, or `prf` and `credential_id` (a passkey) | none; `bad_pin` errors carry `tries_left` |
 | `lock` | none | none; the helper then exits |
 | `logout` | none | none; the helper forgets the account (state, tokens, PIN), then exits |
 | `sync` | none | `items`, `last_sync` (Unix seconds) |
@@ -49,6 +54,11 @@ An event answers no request: `{"id": 0, "ok": true, "event": "<name>"}`.
 | `search` | `query`, `limit` (0: 50; at most 50) | `rows`: `{id, name, username, uri, has_totp}` (no `match`; `uri`: the item's first `http(s)` address) |
 | `fill` | `item`, `fields` (`username`, `password`, `totp`) | `username`, `password`, `totp` (the asked ones the item has) |
 | `totp` | `item` | `totp`, `period`, `remaining` (seconds) |
+| `password_hint` | `email` | none; the server mails the hint to the account's address |
+| `device_request` | `email` | `fingerprint` (the phrase the other device shows) |
+| `device_poll` | none | `result`: `"pending"`, or `"ok"` (unlocked) with `email` |
+| `passkey_options` | `purpose` (`"login"` or `"unlock"`), `rp_id` (the web vault's domain) | `options` (the WebAuthn request's options, JSON text) |
+| `login_passkey` | `credential_id`, `authenticator_data`, `client_data_json`, `signature`, `user_handle` (each base64url), `prf` (the PRF output, base64url) | `result` (`"ok"`), `email` |
 | `keepalive` | none | no answer; the idle deadline starts again |
 
 ### Login steps
@@ -75,7 +85,7 @@ minute while the user is active.
 
 `bad_request`, `bad_protocol`, `no_hello`, `bad_server`, `bad_credentials`, `unsupported_two_factor`,
 `unsupported_account`, `network`, `login_failed`, `no_account`, `bad_password`, `bad_pin`, `pin_reset`, `no_pin`,
-`no_state`, `locked`, `sync_failed`, `no_item`, `no_totp`, `decrypt`, `state_write`, `state_format`. The helper's README says what
+`no_state`, `denied`, `expired`, `no_passkey`, `account_locked`, `locked`, `sync_failed`, `no_item`, `no_totp`, `decrypt`, `state_write`, `state_format`. The helper's README says what
 each means.
 
 ## The helper's identity at the server

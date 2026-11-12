@@ -190,6 +190,9 @@ FIDO2_PLATFORM := Platform{
 	prepare_cancel = fido2_prepare_cancel,
 }
 
+// Why system_platform is nil here, for the page's error and the Vault's message.
+NO_PLATFORM_REASON :: "libfido2 was not found: install it (Debian, Ubuntu: libfido2-1; Fedora, Arch: libfido2) to use security keys"
+
 system_platform :: proc() -> ^Platform {
 	if !fido2_available() { return nil }
 	return &FIDO2_PLATFORM

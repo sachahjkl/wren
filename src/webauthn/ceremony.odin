@@ -79,7 +79,7 @@ prepare_get :: proc(c: ^Ceremony, options_json: string, caller: Caller, s: ^Sett
 // c.status.
 run :: proc(c: ^Ceremony, pl: ^Platform) {
 	a := ceremony_allocator(c)
-	if pl == nil { c.status = fail(.Not_Allowed, "NotAllowedError: this computer has no Web Authentication platform (Windows 10 1903 or later is needed)"); return }
+	if pl == nil { c.status = fail(.Not_Allowed, "NotAllowedError: " + NO_PLATFORM_REASON); return }
 	if pl.prepare_cancel != nil { pl.prepare_cancel(pl, &c.cancel) }
 	if cut, reason := cancelled(&c.cancel); cut {
 		c.status = reason == .Abort ? fail(.Abort, "AbortError: the operation was aborted") : fail(.Not_Allowed, "NotAllowedError: the operation either timed out or was not allowed")

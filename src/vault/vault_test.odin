@@ -416,15 +416,16 @@ server_addresses_follow_the_region :: proc(t: ^testing.T) {
 
 @(test)
 the_account_file_names_its_server :: proc(t: ^testing.T) {
-	text := account_text("me@example.com", EU_IDENTITY_URL, true)
-	email, server, pin := account_parse(text)
-	testing.expect_value(t, email, "me@example.com")
-	testing.expect_value(t, server, EU_IDENTITY_URL)
-	testing.expect(t, pin)
+	text := account_text({email = "me@example.com", identity = EU_IDENTITY_URL, pin = true, passkey = true, remembered = "me@example.com"})
+	f := account_parse(text)
+	testing.expect_value(t, f.email, "me@example.com")
+	testing.expect_value(t, f.identity, EU_IDENTITY_URL)
+	testing.expect(t, f.pin && f.passkey)
+	testing.expect_value(t, f.remembered, "me@example.com")
 	// a file of the first version (the email only) names no server: it is no account of any server
-	email, server, pin = account_parse("me@example.com\n")
-	testing.expect_value(t, server, "")
-	testing.expect(t, !pin)
+	f = account_parse("me@example.com\n")
+	testing.expect_value(t, f.identity, "")
+	testing.expect(t, !f.pin && !f.passkey)
 }
 
 @(test)
@@ -433,7 +434,7 @@ an_account_of_another_server_is_not_remembered :: proc(t: ^testing.T) {
 	defer fx_destroy(x)
 	dir := join_path({x.profile, "vault"})
 	_ = os.make_directory_all(dir)
-	_ = os.write_entire_file(join_path({dir, ACCOUNT_FILE}), account_text("me@example.com", US_IDENTITY_URL, false))
+	_ = os.write_entire_file(join_path({dir, ACCOUNT_FILE}), transmute([]byte)account_text({email = "me@example.com", identity = US_IDENTITY_URL}))
 	set_pref(x, "vault.server.region", "eu")
 	set_pref(x, "vault.enabled", "true")
 	testing.expect_value(t, x.v.state, State.Logged_Out)
@@ -784,8 +785,7 @@ a_pin_unlocks_and_too_many_wrong_ones_remove_it :: proc(t: ^testing.T) {
 	file := join_path({x.profile, "vault", ACCOUNT_FILE})
 	bytes, err := os.read_entire_file(file, context.temp_allocator)
 	testing.expect(t, err == nil)
-	_, _, pin := account_parse(string(bytes))
-	testing.expect(t, pin)
+	testing.expect(t, account_parse(string(bytes)).pin)
 
 	answer(x, "unlock",
 		`"ok":false,"error":"bad_pin","message":"The PIN is wrong. 4 tries left.","tries_left":4`,
@@ -799,8 +799,7 @@ a_pin_unlocks_and_too_many_wrong_ones_remove_it :: proc(t: ^testing.T) {
 	testing.expect(t, !x.v.pin)
 	testing.expect(t, !vault_unlock(&x.v, "1234", pin = true))   // (no PIN any more: the master password only)
 	bytes, err = os.read_entire_file(file, context.temp_allocator)
-	_, _, pin = account_parse(string(bytes))
-	testing.expect(t, !pin)
+	testing.expect(t, !account_parse(string(bytes)).pin)
 	testing.expect_value(t, x.script.secrets[len(x.script.secrets) - 1], "unlock:pin")
 }
 
@@ -824,7 +823,12 @@ logout_forgets_the_account :: proc(t: ^testing.T) {
 	testing.expect_value(t, x.v.state, State.Logged_Out)
 	testing.expect_value(t, x.v.email, "")
 	testing.expect_value(t, last_op(x), "logout")
-	testing.expect(t, !os.exists(file))
+	// the account goes; the last email that logged in stays for the next login dialog (vault.login.remember_email)
+	bytes, err := os.read_entire_file(file, context.temp_allocator)
+	testing.expect(t, err == nil)
+	f := account_parse(string(bytes))
+	testing.expect(t, f.email == "" && f.identity == "" && !f.pin && !f.passkey)
+	testing.expect_value(t, x.v.remembered, f.remembered)
 }
 
 @(test)
