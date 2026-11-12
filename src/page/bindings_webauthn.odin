@@ -94,7 +94,6 @@ Webauthn_Op :: struct {
 
 // UI thread only (each App's: its pages run on the thread of its loop).
 @(private="file", thread_local) webauthn_docs: map[u64]^Webauthn_Doc
-@(private="file", thread_local) webauthn_next_ticket: u64
 
 @(private="file")
 webauthn_doc :: proc(p: ^Page, create := false) -> ^Webauthn_Doc {
@@ -400,8 +399,8 @@ webauthn_start :: proc(c: ^Call, kind: webauthn.Ceremony_Kind, options: string, 
 		webauthn_cancel_op(page_by_id(op.page_id), op, .Not_Allowed)
 	}, op, p.scope)
 	if offer {
-		webauthn_next_ticket += 1
-		op.ticket, op.asking = webauthn_next_ticket, true
+		the_pages.webauthn_next_ticket += 1
+		op.ticket, op.asking = the_pages.webauthn_next_ticket, true
 		hash := webauthn.sha256(cer.get.client_data_json)
 		allow := make([]string, len(cer.request.allow), context.temp_allocator)
 		for x, i in cer.request.allow { allow[i] = webauthn.base64url_encode(x.id, context.temp_allocator) }

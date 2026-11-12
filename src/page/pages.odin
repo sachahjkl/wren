@@ -51,6 +51,7 @@ Pages :: struct {
 	shared_next:    u64,
 	shared_scope:   ^base.Scope,              // ... the host pages' parent
 	webauthn_ops:   [dynamic]^Webauthn_Op,    // bindings_webauthn.odin: every op whose thread may still run (webauthn_shutdown joins them)
+	webauthn_next_ticket: u64,                // bindings_webauthn.odin: the number of the last get a provider was asked about (its answer names it)
 	tl_pending:     map[u64]Pending_Resource, // timeline.odin: the resources the timelines wait for
 
 	// statistics (the profile report, tests)

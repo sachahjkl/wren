@@ -72,6 +72,7 @@
 <li class="lvl3"><a href="#48-passkeys-phase-5">4.8 Passkeys (phase 5)</a></li>
 <li class="lvl3"><a href="#49-webextensions">4.9 WebExtensions</a></li>
 <li class="lvl3"><a href="#410-saving-the-generator-the-code-after-a-login-cards-and-identities">4.10 Saving, the generator, the code after a login, cards and identities</a></li>
+<li class="lvl3"><a href="#411-passkeys-of-sites-sign-in">4.11 Passkeys of sites (sign in)</a></li>
 <li><a href="#5-phases">5. Phases</a></li>
 <li class="lvl3"><a href="#test-strategy-decided">Test strategy (decided)</a></li>
 <li class="lvl3"><a href="#phase-0-foundation">Phase 0: foundation</a></li>
@@ -493,7 +494,7 @@ URLs only). Wren does not start the helper to draw the locked icon.</p>
 <tr><td><code>vault.generator.separator</code></td><td>String, <code>-</code></td><td>What goes between its words.</td></tr>
 <tr><td><code>vault.generator.capitalize</code>, <code>.include_number</code></td><td>Bool, <code>false</code></td><td>Capital first letters; a digit after a word.</td></tr>
 <tr><td><code>vault.clipboard.clear_seconds</code></td><td>Int, 30, 0 to 600</td><td>0: never clear.</td></tr>
-<tr><td><code>vault.passkeys.enabled</code></td><td>Bool, <code>true</code></td><td>Offer the vault as an authenticator (phase 5).</td></tr>
+<tr><td><code>vault.passkeys.offer</code></td><td>Bool, <code>true</code></td><td>A page's passkey request offers the unlocked vault's passkeys of the site (4.11).</td></tr>
 <tr><td><code>vault.request.timeout_ms</code></td><td>Int, 15000, 1000 to 120000</td><td>Deadline of one helper request.</td></tr>
 <tr><td><code>vault.helper.path</code></td><td>String, empty</td><td>Override of the helper path.</td></tr>
 <tr><td><code>vault.test.remote</code></td><td>Bool, <code>false</code></td><td>For automated tests only: remote control can drive the Vault surfaces.</td></tr>
@@ -624,6 +625,38 @@ column, which asks the next page as it nears the end); a pick fills every field 
 date as <code>MM/YY</code> or
 <code>MM/YYYY</code> by the field's placeholder and maxlength, a select by its option's value or text. Social security,
 passport and licence numbers are never asked.</li>
+</ul>
+<h3 id="411-passkeys-of-sites-sign-in"><a class="anchor" href="#411-passkeys-of-sites-sign-in" aria-hidden="true">#</a>4.11 Passkeys of sites (sign in)</h3>
+<p>Protocol 5 (<code>passkeys_for</code>, <code>passkey_assert</code>: <a href="../../docs/vault-protocol/">vault-protocol.md</a>). A page's
+<code>navigator.credentials.get</code> can use a passkey of the vault (the <code>fido2Credentials</code> of a login item). Creation
+(<code>navigator.credentials.create</code>) stays with the platform's authenticator.</p>
+<ul>
+<li><strong>When.</strong> The Vault is unlocked and <code>vault.passkeys.offer</code> is on. The page's own conditions come first, as for the
+platform (a secure context, a recent click or key press, the focused tab, one ceremony at a time, the options
+checked, the RP ID resolved). Locked or off: the request goes to the platform as without a Vault, and nothing is
+asked.</li>
+<li><strong>Hook.</strong> <code>page/bindings_webauthn.odin</code> asks the embedder's <code>provider</code> before it starts the platform's thread. It
+hands the effective RP ID, the allow list (base64url) and the SHA-256 of the <code>clientDataJSON</code> that Wren made. The
+request is then Asking (no thread, no platform call); the page's signal, its lifetime timer, the address bar's chip
+and a closed tab still end it (NotAllowedError or the signal's reason, in a task of its own). The shell ends it once:
+<code>webauthn_provider_resolve</code> (an assertion), <code>webauthn_provider_platform</code> (the platform's ceremony, as without a
+provider), or <code>webauthn_provider_refuse</code> (NotAllowedError, as a dismissed system dialog).</li>
+<li><strong>Choice</strong> (<code>src/browser/passkey_choice.odin</code>). The shell asks <code>passkeys_for</code> (the request's deadline is
+<code>vault.request.timeout_ms</code>; nothing blocks the page or the interface). No row, a failure, a lock or no answer in
+time: the platform takes the request. Rows: a modal question, the look of the security key's account choice, one
+row per passkey (a key icon, the item's name, the passkey's user name), then "Use a security key or this device",
+and Cancel. Up, Down and Enter choose. One question at a time: a second page's request meanwhile goes to the
+platform.</li>
+<li><strong>Signature.</strong> A passkey of the vault: <code>passkey_assert</code>. The helper signs with the SDK's authenticator
+(<code>bitwarden-fido</code>'s <code>Fido2Authenticator</code>, its credential store over the decrypted items, its user interface that
+picks the chosen passkey without asking): authenticator data with the RP ID's hash, the flags UP and UV (the unlocked
+vault verified the user) and the sign count; the signature over the authenticator data and the client data's hash.
+A passkey with a sign counter gets its new count saved on the server, as <code>save</code> does.</li>
+<li><strong>Answer.</strong> Wren checks the helper's answer (it decodes; the authenticator data starts with the hash of the RP ID;
+the credential is in the allow list when the page gave one), then builds the page's <code>PublicKeyCredential</code> by the
+same end as a platform credential (<code>webauthn_settle</code>, <code>credential_json</code>): <code>authenticatorAttachment</code> is <code>platform</code>,
+as browser extensions that provide passkeys report it; no client extension output. A refusal of the helper is
+NotAllowedError.</li>
 </ul>
 <h2 id="5-phases"><a class="anchor" href="#5-phases" aria-hidden="true">#</a>5. Phases</h2>
 <p>Each phase ends with something the user can try. Each phase adds to a product that works.</p>

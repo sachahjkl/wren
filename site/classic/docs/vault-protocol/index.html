@@ -48,6 +48,7 @@
 <li class="lvl3"><a href="#fill-fields">Fill fields</a></li>
 <li class="lvl3"><a href="#search">Search</a></li>
 <li class="lvl3"><a href="#save">Save</a></li>
+<li class="lvl3"><a href="#passkeys-of-sites">Passkeys of sites</a></li>
 <li class="lvl3"><a href="#idle-deadline">Idle deadline</a></li>
 <li class="lvl3"><a href="#errors">Errors</a></li>
 <li><a href="#the-helpers-identity-at-the-server">The helper's identity at the server</a></li>
@@ -67,7 +68,9 @@ crosses the pipe.</p>
 password or a passphrase, by the SDK's generator; the vault need not be unlocked); rows of <code>search</code> carry <code>kind</code>
 (<code>login</code>, <code>card</code> or <code>identity</code>; secure notes and SSH keys are not listed), rows of <code>logins_for</code> carry <code>kind</code> <code>login</code>;
 <code>fill</code> takes the fields of cards and identities; the error <code>save_failed</code>; <code>search</code> is paged: it takes <code>offset</code>,
-<code>limit</code> (0: 100, at most 500) and <code>kinds</code>, answers <code>total</code>, and an empty query lists every item of the asked kinds.</p>
+<code>limit</code> (0: 100, at most 500) and <code>kinds</code>, answers <code>total</code>, and an empty query lists every item of the asked kinds;
+new requests <code>passkeys_for</code> and <code>passkey_assert</code> (the vault's passkeys answer a page's <code>navigator.credentials.get</code>) and
+the error <code>assert_failed</code>.</p>
 <p>Version 4 (helper 0.4.0). Changes from version 3: new requests <code>password_hint</code>, <code>device_request</code>, <code>device_poll</code>,
 <code>passkey_options</code> and <code>login_passkey</code>; <code>login</code> takes <code>remember</code>; <code>unlock</code> takes <code>prf</code> and <code>credential_id</code>; <code>hello</code>
 answers <code>passkey</code>; the errors <code>denied</code>, <code>expired</code>, <code>no_passkey</code> and <code>account_locked</code>. Every token request carries the
@@ -117,6 +120,8 @@ event <code>locked</code>.</p>
 <tr><td><code>device_poll</code></td><td>none</td><td><code>result</code>: <code>"pending"</code>, or <code>"ok"</code> (unlocked) with <code>email</code></td></tr>
 <tr><td><code>passkey_options</code></td><td><code>purpose</code> (<code>"login"</code> or <code>"unlock"</code>), <code>rp_id</code> (the web vault's domain)</td><td><code>options</code> (the WebAuthn request's options, JSON text)</td></tr>
 <tr><td><code>login_passkey</code></td><td><code>credential_id</code>, <code>authenticator_data</code>, <code>client_data_json</code>, <code>signature</code>, <code>user_handle</code> (each base64url), <code>prf</code> (the PRF output, base64url)</td><td><code>result</code> (<code>"ok"</code>), <code>email</code></td></tr>
+<tr><td><code>passkeys_for</code></td><td><code>rp_id</code>, <code>allow</code> (credential ids, base64url; empty or absent: any passkey of <code>rp_id</code>)</td><td><code>rows</code>: <code>{item, name, username, credential_id, user_handle}</code> (see "Passkeys of sites")</td></tr>
+<tr><td><code>passkey_assert</code></td><td><code>item</code>, <code>credential_id</code>, <code>rp_id</code>, <code>client_data_hash</code> (base64url of the SHA-256 of the clientDataJSON)</td><td><code>authenticator_data</code>, <code>signature</code>, <code>user_handle</code>, <code>credential_id</code> (each base64url)</td></tr>
 <tr><td><code>keepalive</code></td><td>none</td><td>no answer; the idle deadline starts again</td></tr>
 </tbody>
 </table></div>
@@ -169,6 +174,22 @@ as the SDK does it. The <code>uri</code> is added to the item's URIs when none m
 <li>Errors: <code>locked</code>, <code>no_item</code> (an update of an id that is not a login), <code>save_failed</code> (the server refused it or cannot
 be reached; the message says why).</li>
 </ul>
+<h3 id="passkeys-of-sites"><a class="anchor" href="#passkeys-of-sites" aria-hidden="true">#</a>Passkeys of sites</h3>
+<ul>
+<li><code>passkeys_for</code> lists the vault's passkeys (the passkeys of login items) whose relying party is <code>rp_id</code> (ASCII case
+aside). With a non-empty <code>allow</code> (the credential ids of the page's <code>allowCredentials</code>, base64url), it lists only the
+passkeys in it. A passkey without a user handle is not listed. <code>username</code> is the passkey's user name, else its
+display name, else the login's username, else the item's name. <code>credential_id</code> and <code>user_handle</code> are base64url. The
+rows are sorted by item name.</li>
+<li><code>passkey_assert</code> signs with the SDK's authenticator (<code>bitwarden-fido</code>). The authenticator data holds the SHA-256 of
+<code>rp_id</code>, the flags UP and UV (an unlocked vault is a verified user) and the sign count. The signature (ES256, DER) is
+over the authenticator data and <code>client_data_hash</code>. Wren makes the clientDataJSON and its hash: the helper sees
+only the hash.</li>
+<li>A passkey with a sign counter (not 0) gets its new count saved in its item, as <code>save</code> does (<code>PUT
+{api}/ciphers/{id}</code>). A failed save does not fail the assertion.</li>
+<li>Errors: <code>locked</code>; <code>bad_request</code> (an empty <code>rp_id</code>, a <code>client_data_hash</code> that is not 32 bytes); <code>no_item</code> (the item
+or the passkey is not in the vault, or not of <code>rp_id</code>); <code>assert_failed</code> (the authenticator refused to sign).</li>
+</ul>
 <h3 id="idle-deadline"><a class="anchor" href="#idle-deadline" aria-hidden="true">#</a>Idle deadline</h3>
 <p><code>hello</code>'s <code>idle_seconds</code> (0: none) is the helper's own lock. When no request (<code>keepalive</code> included) comes for that
 long, the helper writes the event <code>locked</code> and exits. Wren sends it its own idle time and a margin
@@ -178,7 +199,7 @@ minute while the user is active.</p>
 <p><code>bad_request</code>, <code>bad_protocol</code>, <code>no_hello</code>, <code>bad_server</code>, <code>bad_credentials</code>, <code>unsupported_two_factor</code>,
 <code>unsupported_account</code>, <code>network</code>, <code>login_failed</code>, <code>no_account</code>, <code>bad_password</code>, <code>bad_pin</code>, <code>pin_reset</code>, <code>no_pin</code>,
 <code>no_state</code>, <code>denied</code>, <code>expired</code>, <code>no_passkey</code>, <code>account_locked</code>, <code>locked</code>, <code>sync_failed</code>, <code>no_item</code>, <code>no_totp</code>,
-<code>save_failed</code>, <code>decrypt</code>, <code>state_write</code>, <code>state_format</code>. The helper's README says what
+<code>save_failed</code>, <code>assert_failed</code>, <code>decrypt</code>, <code>state_write</code>, <code>state_format</code>. The helper's README says what
 each means.</p>
 <h2 id="the-helpers-identity-at-the-server"><a class="anchor" href="#the-helpers-identity-at-the-server" aria-hidden="true">#</a>The helper's identity at the server</h2>
 <p>The helper sends its own token request (the SDK's sends the device type <code>ChromeBrowser</code> and one device identifier for
@@ -207,7 +228,7 @@ only into the card or address fields where the user picked them (docs/bitwarden.
 <tbody>
 <tr><td><code>protocol.odin</code></td><td>The requests, written into one buffer reserved large enough at once; the answers, decoded into owned values. Every string that can hold a value is zeroed before it is freed.</td></tr>
 <tr><td><code>transport.odin</code>, <code>process.odin</code></td><td>The helper as a child process: a reader thread starts it, reads and decodes frames and posts each answer to the loop; a writer thread writes the queued frames in order and zeroes each. The loop thread never blocks on the helper.</td></tr>
-<tr><td><code>vault.odin</code></td><td>The one state of the Vault, the requests and their deadlines (<code>vault.request.timeout_ms</code>), the four sets of rows (the tab's document, the focused frame's document, the search, the cards or identities of a card or address field; the last two page by page), the fill's ticket, the copies, the save offer and its never-save list, the generated value, the idle and sync timers, the blocking jobs (locating the helper, the account and never-save files, the check of the rows, the join of an ended helper).</td></tr>
+<tr><td><code>vault.odin</code></td><td>The one state of the Vault, the requests and their deadlines (<code>vault.request.timeout_ms</code>), the four sets of rows (the tab's document, the focused frame's document, the search, the cards or identities of a card or address field; the last two page by page), the fill's ticket, the copies, the save offer and its never-save list, the generated value, a page's passkey requests (each answered once to its caller's callback: the rows or the signature, a refusal, <code>timeout</code> or <code>locked</code>), the idle and sync timers, the blocking jobs (locating the helper, the account and never-save files, the check of the rows, the join of an ended helper).</td></tr>
 <tr><td><code>match.odin</code></td><td>Wren's match check.</td></tr>
 <tr><td><code>settings.odin</code></td><td>The <code>vault.*</code> preferences and the server addresses (US, EU, self-hosted).</td></tr>
 </tbody>
