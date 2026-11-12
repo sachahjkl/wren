@@ -16,6 +16,7 @@ import "core:math"
 import "core:slice"
 import "core:strings"
 import "toolkit:draw"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
@@ -545,8 +546,8 @@ styles_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		}
 	}
 	if ui.ctx_menu(menu_key, dt_px(220)) {
-		if ui.menu_item("Copy declaration###dt_sm_decl").clicked { clip_set(s.menu_text) }
-		if ui.menu_item("Copy all declarations###dt_sm_all").clicked { clip_set(styles_all_text(s, s.edit_b)) }
+		if ui.menu_item("Copy declaration###dt_sm_decl", icon = lucide.COPY).clicked { clip_set(s.menu_text) }
+		if ui.menu_item("Copy all declarations###dt_sm_all", icon = lucide.COPY).clicked { clip_set(styles_all_text(s, s.edit_b)) }
 	}
 	styles_pick_popover(app, t, s)
 }
@@ -760,7 +761,7 @@ styles_view_of :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, view: Dev_Side) {
 @(private = "file")
 hov_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	ui.menu_heading("Force element state")
-	if t.page == nil || e.selected == base.NIL_HANDLE { ui.menu_item("Select an element###dt_hov_none", enabled = false); return }
+	if t.page == nil || e.selected == base.NIL_HANDLE { ui.menu_item("Select an element###dt_hov_none", enabled = false, icon = lucide.TEXT_CURSOR_INPUT); return }
 	f := page.dev_forced(t.page)
 	if f.el != e.selected { f = {} }   // forced states belong to one element at a time
 	toggle :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, f: page.Forced_State, which: int) {
@@ -783,7 +784,7 @@ hov_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	if ui.menu_item(":focus-within###dt_hov_fw", checked = f.focus_within, keep_open = true).clicked { toggle(app, t, e, f, 3) }
 	if ui.menu_item(":visited###dt_hov_v", checked = f.visited, keep_open = true).clicked { toggle(app, t, e, f, 4) }
 	ui.menu_separator()
-	if ui.menu_item("Clear###dt_hov_clear", enabled = page.dev_forced(t.page).el != base.NIL_HANDLE).clicked {
+	if ui.menu_item("Clear###dt_hov_clear", enabled = page.dev_forced(t.page).el != base.NIL_HANDLE, icon = lucide.TRASH_2).clicked {
 		page.dev_force_state(t.page, base.NIL_HANDLE, false, false, false, false, false)
 		e.version += 1
 		e.side.rev += 1
@@ -796,7 +797,7 @@ hov_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 class_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	s := &e.side
 	ui.menu_heading("Classes of the element")
-	if t.page == nil || e.selected == base.NIL_HANDLE { ui.menu_item("Select an element###dt_cm_none", enabled = false); return }
+	if t.page == nil || e.selected == base.NIL_HANDLE { ui.menu_item("Select an element###dt_cm_none", enabled = false, icon = lucide.TEXT_CURSOR_INPUT); return }
 	cur, _ := dom.get_attribute(t.page.doc, e.selected, "class")
 	active := strings.fields(cur, context.temp_allocator)
 	for c in active {
@@ -817,7 +818,7 @@ class_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			break
 		}
 	}
-	if len(active) == 0 && len(s.off_classes) == 0 { ui.menu_item("This element has no class###dt_cm_empty", enabled = false) }
+	if len(active) == 0 && len(s.off_classes) == 0 { ui.menu_item("This element has no class###dt_cm_empty", enabled = false, icon = lucide.INFO) }
 }
 
 ////////////////////////////////

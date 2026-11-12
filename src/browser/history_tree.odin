@@ -26,6 +26,7 @@ import "core:unicode/utf8"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:config"
 import "wb:page"
@@ -1094,18 +1095,18 @@ tree_menu_items :: proc(app: ^App, t: ^Tab) {
 		e := page.session_find(&t.session, app.tview.menu_entry)
 		if e == nil { ui.ctx_menu_close(); return }
 		address := strings.clone(e.url, context.temp_allocator)
-		if ui.menu_item("Go to this page", enabled = e != page.session_current(&t.session)).clicked {
+		if ui.menu_item("Go to this page", enabled = e != page.session_current(&t.session), icon = lucide.EXTERNAL_LINK).clicked {
 			ui.ctx_menu_close()
 			tab_reveal(app, t)
 			go_entry(app, t, e)
 			return
 		}
-		if ui.menu_item("Open in a new tab", "Middle click").clicked { ui.ctx_menu_close(); open_in_new_tab(app, address, origin = .Replay); return }
-		if ui.menu_item("Copy address", icon = GLYPH_COPY).clicked { clip_set(address); ui.ctx_menu_close() }
+		if ui.menu_item("Open in a new tab", "Middle click", icon = lucide.EXTERNAL_LINK).clicked { ui.ctx_menu_close(); open_in_new_tab(app, address, origin = .Replay); return }
+		if ui.menu_item("Copy address", icon = lucide.COPY).clicked { clip_set(address); ui.ctx_menu_close() }
 		ui.menu_separator()
 		holds_current := false
 		for a := page.session_current(&t.session); a != nil; a = a.parent { if a == e { holds_current = true } }
-		if ui.menu_item("Forget this branch", enabled = !holds_current).clicked {
+		if ui.menu_item("Forget this branch", enabled = !holds_current, icon = lucide.TRASH_2).clicked {
 			ids := page.session_forget(&t.session, e)
 			for id in ids { bfcache_forget(app, t, id) }
 			sync_history(app, t)
@@ -1114,9 +1115,9 @@ tree_menu_items :: proc(app: ^App, t: ^Tab) {
 		return
 	}
 	extent := tree_extent(l, m.rows, m.cols)
-	if ui.menu_item("Fit the whole tree", "F").clicked { tree_fit(extent, size, em, anims, now); ui.ctx_menu_close() }
-	if ui.menu_item("Center the current page", "C").clicked { tree_center_current(m, l, anims, now); ui.ctx_menu_close() }
-	if ui.menu_item("Actual size", "Ctrl+0").clicked { tree_zoom_by(1 / tree_target().zoom, app.tview.view_rect.min + size * 0.5, em, anims, now); ui.ctx_menu_close() }
+	if ui.menu_item("Fit the whole tree", "F", icon = lucide.LAYOUT_GRID).clicked { tree_fit(extent, size, em, anims, now); ui.ctx_menu_close() }
+	if ui.menu_item("Center the current page", "C", icon = lucide.HOME).clicked { tree_center_current(m, l, anims, now); ui.ctx_menu_close() }
+	if ui.menu_item("Actual size", "Ctrl+0", icon = lucide.SEARCH).clicked { tree_zoom_by(1 / tree_target().zoom, app.tview.view_rect.min + size * 0.5, em, anims, now); ui.ctx_menu_close() }
 	ui.menu_separator()
 	if ui.menu_item("Horizontal layout", "L", checked = app.tcfg.layout == .Horizontal).clicked { tree_set_layout(app, .Horizontal); ui.ctx_menu_close() }
 	if ui.menu_item("Vertical layout", "L", checked = app.tcfg.layout == .Vertical).clicked { tree_set_layout(app, .Vertical); ui.ctx_menu_close() }

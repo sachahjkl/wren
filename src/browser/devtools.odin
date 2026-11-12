@@ -24,6 +24,7 @@ import "core:fmt"
 import "core:math"
 import "toolkit:draw"
 import "toolkit:platform"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
@@ -471,20 +472,20 @@ devtools_events :: proc(app: ^App, events: []platform.Event, in_window := false)
 }
 
 devtools_settings_menu :: proc(app: ^App, t: ^Tab) {
-	if ui.menu_submenu("Text size###dt_m_size") {
+	if ui.menu_submenu("Text size###dt_m_size", icon = lucide.TYPE) {
 		for pt in ([?]f32{10, 11, 12, 13, 14, 16, 18}) {
 			if ui.menu_item(fmt.tprintf("%g px###dt_m_pt%g", pt, pt), checked = dev().font_pt == pt).clicked { dev_set_pref(app, "browser.devtools.font_size", fmt.tprintf("%g", pt)) }
 		}
 		ui.menu_separator()
-		if ui.menu_item("Larger###dt_m_big", "Ctrl +").clicked { devtools_zoom(app, 1) }
-		if ui.menu_item("Smaller###dt_m_small", "Ctrl \u2212").clicked { devtools_zoom(app, -1) }
-		if ui.menu_item("Reset###dt_m_reset", "Ctrl 0").clicked { devtools_zoom(app, 0) }
+		if ui.menu_item("Larger###dt_m_big", "Ctrl +", icon = lucide.ZOOM_IN).clicked { devtools_zoom(app, 1) }
+		if ui.menu_item("Smaller###dt_m_small", "Ctrl \u2212", icon = lucide.ZOOM_OUT).clicked { devtools_zoom(app, -1) }
+		if ui.menu_item("Reset###dt_m_reset", "Ctrl 0", icon = lucide.ROTATE_CCW).clicked { devtools_zoom(app, 0) }
 	}
-	if ui.menu_submenu("Density###dt_m_density") {
+	if ui.menu_submenu("Density###dt_m_density", icon = lucide.ROWS_2) {
 		if ui.menu_item("Compact###dt_m_dc", checked = dev().density == .Compact).clicked { dev_set_pref(app, "browser.devtools.density", "compact") }
 		if ui.menu_item("Comfortable###dt_m_dm", checked = dev().density == .Comfortable).clicked { dev_set_pref(app, "browser.devtools.density", "comfortable") }
 	}
-	if ui.menu_submenu("Theme###dt_m_theme") {
+	if ui.menu_submenu("Theme###dt_m_theme", icon = lucide.PALETTE) {
 		ui.menu_heading("The panel follows the browser's theme")
 		for th, i in ui.THEMES {
 			if ui.menu_item(fmt.tprintf("%s###dt_m_th%d", th.name, i), checked = base.ascii_equal_fold(app.cfg.ui_theme, th.name)).clicked { dev_set_pref(app, "browser.ui.theme", base.ascii_lower_clone(th.name, context.temp_allocator)) }
@@ -496,15 +497,15 @@ devtools_settings_menu :: proc(app: ^App, t: ^Tab) {
 	case .Network: network_settings_items(app, t)
 	}
 	ui.menu_separator()
-	if ui.menu_item("Select an element in the page###dt_m_pick", cmd_key(app, "view.devtools_pick")).clicked { devtools_pick(app) }
-	if ui.menu_item("Open the command palette###dt_m_palette", "Ctrl+Shift+P").clicked { palette_toggle(app) }
+	if ui.menu_item("Select an element in the page###dt_m_pick", cmd_key(app, "view.devtools_pick"), icon = lucide.TEXT_CURSOR_INPUT).clicked { devtools_pick(app) }
+	if ui.menu_item("Open the command palette###dt_m_palette", "Ctrl+Shift+P", icon = lucide.COMMAND).clicked { palette_toggle(app) }
 	// the drawer: the Console in a stack of its own under the others (Escape shows and hides it)
 	if devtools_drawer_split(dev()) == ui.DOCK_NONE {
-		if ui.menu_item("Show the Console under the other panels###dt_m_con_drawer", "Esc").clicked { devtools_drawer_toggle(app) }
+		if ui.menu_item("Show the Console under the other panels###dt_m_con_drawer", "Esc", icon = lucide.EYE).clicked { devtools_drawer_toggle(app) }
 	}
-	if ui.menu_item("Reset the layout of the panels###dt_m_layout").clicked { devtools_reset_layout(app) }
-	if ui.menu_item("Open about:config for the developer tools###dt_m_cfg").clicked { open_in_new_tab(app, "about:config?q=browser.devtools", origin = .User) }
-	if ui.menu_item("Close the developer tools###dt_m_close", "F12").clicked { devtools_toggle(app) }
+	if ui.menu_item("Reset the layout of the panels###dt_m_layout", icon = lucide.ROTATE_CCW).clicked { devtools_reset_layout(app) }
+	if ui.menu_item("Open about:config for the developer tools###dt_m_cfg", icon = lucide.SETTINGS).clicked { open_in_new_tab(app, "about:config?q=browser.devtools", origin = .User) }
+	if ui.menu_item("Close the developer tools###dt_m_close", "F12", icon = lucide.X).clicked { devtools_toggle(app) }
 }
 
 // Sizes, columns and panes as they came.

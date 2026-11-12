@@ -10,6 +10,7 @@ import "core:fmt"
 import "core:strconv"
 import "core:strings"
 import "toolkit:draw"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
 import "wb:net"
@@ -226,9 +227,9 @@ net_speed_menu :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		}
 	}
 	ui.menu_separator()
-	if ui.menu_item("Add a custom profile\u2026###dt_th_add").clicked { net_prof_edit_begin(&v.prof, NET_BUILTIN[1], true) }
-	if ui.menu_item(cur.builtin ? "Edit the profile\u2026###dt_th_edit" : fmt.tprintf("Edit %s\u2026###dt_th_edit", cur.name), enabled = !cur.builtin).clicked { net_prof_edit_begin(&v.prof, cur, false) }
-	if ui.menu_item(cur.builtin ? "Delete the profile###dt_th_del" : fmt.tprintf("Delete %s###dt_th_del", cur.name), enabled = !cur.builtin).clicked { net_profile_delete(app, t, cur.id) }
+	if ui.menu_item("Add a custom profile\u2026###dt_th_add", icon = lucide.PLUS).clicked { net_prof_edit_begin(&v.prof, NET_BUILTIN[1], true) }
+	if ui.menu_item(cur.builtin ? "Edit the profile\u2026###dt_th_edit" : fmt.tprintf("Edit %s\u2026###dt_th_edit", cur.name), enabled = !cur.builtin, icon = lucide.PENCIL).clicked { net_prof_edit_begin(&v.prof, cur, false) }
+	if ui.menu_item(cur.builtin ? "Delete the profile###dt_th_del" : fmt.tprintf("Delete %s###dt_th_del", cur.name), enabled = !cur.builtin, icon = lucide.TRASH_2).clicked { net_profile_delete(app, t, cur.id) }
 }
 
 @(private = "file")

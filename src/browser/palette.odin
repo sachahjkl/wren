@@ -1144,7 +1144,11 @@ palette_row :: proc(app: ^App, t: ^Tab, i: int, w, rh, pad: f32, cols: [2]f32, m
 				case checked:
 					if ui.tags("weak") { ui.icon(ui.ICON_CHECK, isz) }
 				case glyph != "":
-					if ui.tags("weak") { ui.icon(glyph, isz) }
+					// (a command's icon is Lucide's, as in its menus: command_icons.odin)
+					if ui.tags("weak") {
+						ui.next({width = ui.px(isz), height = ui.pct(1), font = app.lucide, text_align = .Center})
+						ui.build_box({.Draw_Text, .No_Text_Trunc}, strings.concatenate({glyph, "###pal_glyph"}, ui.frame_allocator()))
+					}
 				case:
 					ui.spacer(ui.px(isz))
 				}

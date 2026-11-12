@@ -29,7 +29,7 @@ Command :: struct {
 	name:     string,           // stable identity: "tab.new"
 	title:    string,
 	category: string,           // the palette's grouping: "Tabs", "Navigation", "View"...
-	glyph:    string,           // icon-font glyph ("" = none)
+	glyph:    string,           // its Lucide icon (command_icons.odin; "" = none)
 	keywords: string,           // other words the palette finds it by (not shown)
 	keys:     []Shortcut,
 	url:      string,           // the command opens this page: Ctrl+Enter in the palette opens it in a new tab
@@ -169,6 +169,15 @@ tab_host :: proc(t: ^Tab) -> string {
 	return base.ascii_lower(t.page.env.location.host)
 }
 
+// Registers a command: its name is new, its icon comes from command_icons.odin.
+command_add :: proc(r: ^Command_Registry, c: Command) {
+	assert(c.name not_in r.index, "commands: duplicate name")
+	r.index[c.name] = len(r.list)
+	c := c
+	c.glyph = command_icon(c.name)
+	append(&r.list, c)
+}
+
 commands_build :: proc(r: ^Command_Registry) {
 	if r.built { return }
 	r.built = true
@@ -181,27 +190,24 @@ commands_build :: proc(r: ^Command_Registry) {
 		copy(out, list)
 		return out
 	}
-	add :: proc(r: ^Command_Registry, c: Command) {
-		assert(c.name not_in r.index, "commands: duplicate name")
-		r.index[c.name] = len(r.list)
-		append(&r.list, c)
-	}
+	add :: command_add
 	ctrl, cs, alt, shift := platform.Modifiers{.Ctrl}, platform.Modifiers{.Ctrl, .Shift}, platform.Modifiers{.Alt}, platform.Modifiers{.Shift}
 
 	// --- tabs
-	add(r, {name = "tab.new", title = "New tab", category = "Tabs", glyph = GLYPH_ADD, keys = keys(&r.arena, {key = .T, mods = ctrl}),
+	add(r, {name = "tab.new", title = "New tab", category = "Tabs", keys = keys(&r.arena, {key = .T, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_open_new(app) }})
 	add(r, {name = "tab.reopen_closed", title = "Reopen closed tab", category = "Tabs", keywords = "undo close restore", keys = keys(&r.arena, {key = .T, mods = cs}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(closed_items(app)) > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { reopen_closed_tab(app) }})
-	add(r, {name = "tab.close", title = "Close tab", category = "Tabs", glyph = GLYPH_CLOSE, keys = keys(&r.arena, {key = .W, mods = ctrl}, {key = .F4, mods = ctrl}),
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) {
-			w := active_window(app)
-			if w.current >= 0 && w.current < len(w.tabs) { tab_close_by_user(app, w.tabs[w.current]) }
-		}})
+	add(r, {name = "tab.close", title = "Close tab", category = "Tabs", keys = keys(&r.arena, {key = .W, mods = ctrl}, {key = .F4, mods = ctrl}),
+		// (the tab it is given: the current one from its shortcut, the one right-clicked from the tab's menu)
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_close_by_user(app, t) }})
 	add(r, {name = "tab.close_others", title = "Close other tabs", category = "Tabs",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(active_window(app).tabs) > 1 },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { close_other_tabs(app, active_window(app).current) }})
+		run = proc(app: ^App, t: ^Tab, c: ^Command) {
+			w := active_window(app)
+			for x, i in w.tabs { if x == t { close_other_tabs(app, i); return } }
+		}})
 	add(r, {name = "tab.duplicate", title = "Duplicate tab", category = "Tabs", keywords = "copy clone",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.url != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_in_new_tab(app, t.url, origin = .Replay) }})
@@ -270,19 +276,19 @@ commands_build :: proc(r: ^Command_Registry) {
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { recovery_restore_backup(app) }})
 
 	// --- navigation
-	add(r, {name = "nav.back", title = "Back", category = "Navigation", glyph = GLYPH_BACK, keywords = "history previous page", keys = keys(&r.arena, {key = .Left, mods = alt}),
+	add(r, {name = "nav.back", title = "Back", category = "Navigation", keywords = "history previous page", keys = keys(&r.arena, {key = .Left, mods = alt}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.hist > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { go_history(app, t, -1) }})
-	add(r, {name = "nav.forward", title = "Forward", category = "Navigation", glyph = GLYPH_FORWARD, keywords = "history next page", keys = keys(&r.arena, {key = .Right, mods = alt}),
+	add(r, {name = "nav.forward", title = "Forward", category = "Navigation", keywords = "history next page", keys = keys(&r.arena, {key = .Right, mods = alt}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.hist + 1 < len(t.history) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { go_history(app, t, +1) }})
-	add(r, {name = "nav.reload", title = "Reload", category = "Navigation", glyph = GLYPH_RELOAD, keywords = "refresh", keys = keys(&r.arena, {key = .F5}, {key = .R, mods = ctrl}),
+	add(r, {name = "nav.reload", title = "Reload", category = "Navigation", keywords = "refresh", keys = keys(&r.arena, {key = .F5}, {key = .R, mods = ctrl}),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			if t.page != nil && page.navigation_user_reload(t.page) { return }   // the page's navigate listener took it
 			reload(app, t)
 		}})
 	// the document and everything it loads from the network (cache mode reload); F5 only revalidates the document
-	add(r, {name = "nav.reload_bypass_cache", title = "Reload without the cache", category = "Navigation", glyph = GLYPH_RELOAD, keywords = "hard refresh force",
+	add(r, {name = "nav.reload_bypass_cache", title = "Reload without the cache", category = "Navigation", keywords = "hard refresh force",
 		keys = keys(&r.arena, {key = .F5, mods = ctrl}, {key = .R, mods = cs}),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			if t.page != nil && page.navigation_user_reload(t.page) { return }
@@ -291,7 +297,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "nav.stop", title = "Stop loading", category = "Navigation", keywords = "cancel abort",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.load != nil && t.load.task != base.NIL_HANDLE },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { stop_loading(app, t) }})
-	add(r, {name = "nav.home", title = "Home", category = "Navigation", glyph = GLYPH_HOME, keywords = "start page homepage", keys = keys(&r.arena, {key = .Home, mods = alt}),
+	add(r, {name = "nav.home", title = "Home", category = "Navigation", keywords = "start page homepage", keys = keys(&r.arena, {key = .Home, mods = alt}),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, app.cfg.homepage, origin = .User) }})
 	add(r, {name = "nav.focus_address", title = "Focus the address bar", category = "Navigation", keywords = "location url edit", keys = keys(&r.arena, {key = .L, mods = ctrl}, {key = .D, mods = alt}),
 		chrome_only = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Address_Focus) }})
@@ -330,13 +336,13 @@ commands_build :: proc(r: ^Command_Registry) {
 	// printing is not available (print.odin): the shortcut says so
 	add(r, {name = "page.print", title = "Print…", category = "Page", keys = keys(&r.arena, {key = .P, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { print_request(app) }})
-	add(r, {name = "page.copy_address", title = "Copy the page's address", category = "Page", glyph = GLYPH_COPY, keywords = "url link clipboard",
+	add(r, {name = "page.copy_address", title = "Copy the page's address", category = "Page", keywords = "url link clipboard",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.url != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { clip_set(t.url); ui.toast(.Info, "Address copied") }})
 	add(r, {name = "page.qr_code", title = "QR code of the page's address", category = "Page", keywords = "share phone scan camera url link mobile",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.kind == .Web && t.url != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { qr_open(app, t.url) }})
-	add(r, {name = "page.info", title = "Page information", category = "Page", glyph = GLYPH_INFO, keywords = "security certificate cookies connection",
+	add(r, {name = "page.info", title = "Page information", category = "Page", keywords = "security certificate cookies connection",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Page_Info) }})
 	add(r, {name = "page.javascript_site", title = "JavaScript on this site", category = "Page", keywords = "script js enable disable block allow",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return tab_host(t) != "" },
@@ -503,7 +509,7 @@ commands_build :: proc(r: ^Command_Registry) {
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_downloads(app) }})
 	add(r, {name = "browser.history_tree", title = "Tab history tree", category = "Browser", keywords = "branches back forward graph session",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { open_history(app, t, true) }})
-	add(r, {name = "browser.settings", title = "Settings", category = "Browser", glyph = GLYPH_GEAR, keywords = "about:settings preferences options", url = SETTINGS_URL,
+	add(r, {name = "browser.settings", title = "Settings", category = "Browser", keywords = "about:settings preferences options", url = SETTINGS_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, SETTINGS_URL, origin = .User) }})
 	add(r, {name = "browser.setup", title = "Setup\u2026", category = "Browser", keywords = "install uninstall installer shortcut start menu path update repair standalone portable manage this installation",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_available() },
@@ -561,9 +567,9 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "browser.javascript", title = "JavaScript", category = "Browser", keywords = "script js enable disable everywhere global",
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return config.bool_of(&app.prefs, "javascript.enabled") },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "javascript.enabled", !config.bool_of(&app.prefs, "javascript.enabled")) }})
-	add(r, {name = "browser.downloads_folder", title = "Open the downloads folder", category = "Browser", glyph = GLYPH_FILE, keywords = "explorer files",
+	add(r, {name = "browser.downloads_folder", title = "Open the downloads folder", category = "Browser", keywords = "explorer files",
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { shell_open_folder(download_dir(app)) }})
-	add(r, {name = "browser.profile_folder", title = "Open the profile folder", category = "Browser", glyph = GLYPH_FILE, keywords = "explorer files cookies prefs data",
+	add(r, {name = "browser.profile_folder", title = "Open the profile folder", category = "Browser", keywords = "explorer files cookies prefs data",
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { shell_open_folder(app.profile_dir) }})
 	vault_commands_add(r)   // vault_fill.odin: fill, lock, unlock, sync, the panel, the search
 }

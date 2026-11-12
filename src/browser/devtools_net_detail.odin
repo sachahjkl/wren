@@ -12,6 +12,7 @@ import "core:fmt"
 import "core:math"
 import "core:strings"
 import "toolkit:draw"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
 
@@ -335,9 +336,9 @@ items_list :: proc(app: ^App, d: ^Net_Detail, l: ^Dt_List, id: string, items: []
 		}
 	}
 	if ui.ctx_menu(menu_key, dt_px(220)) {
-		if ui.menu_item("Copy value###dt_nd_cv").clicked { clip_set(d.menu_text) }
-		if ui.menu_item("Copy name###dt_nd_cn").clicked { clip_set(d.menu_name) }
-		if ui.menu_item("Copy name and value###dt_nd_cnv").clicked { clip_set(fmt.tprintf("%s: %s", d.menu_name, d.menu_text)) }
+		if ui.menu_item("Copy value###dt_nd_cv", icon = lucide.COPY).clicked { clip_set(d.menu_text) }
+		if ui.menu_item("Copy name###dt_nd_cn", icon = lucide.COPY).clicked { clip_set(d.menu_name) }
+		if ui.menu_item("Copy name and value###dt_nd_cnv", icon = lucide.COPY).clicked { clip_set(fmt.tprintf("%s: %s", d.menu_name, d.menu_text)) }
 	}
 }
 
@@ -755,8 +756,8 @@ detail_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 			}
 		}
 		if ui.ctx_menu(menu_key, dt_px(200)) {
-			if ui.menu_item("Copy value###dt_nd_jcv").clicked { clip_set(d.menu_text) }
-			if ui.menu_item("Copy the whole JSON###dt_nd_jall").clicked { clip_set(string(e.body[:])) }
+			if ui.menu_item("Copy value###dt_nd_jcv", icon = lucide.COPY).clicked { clip_set(d.menu_text) }
+			if ui.menu_item("Copy the whole JSON###dt_nd_jall", icon = lucide.COPY).clicked { clip_set(string(e.body[:])) }
 		}
 	case e.type == .Img:
 		preview_image(app, d, e)
@@ -978,16 +979,16 @@ detail_messages :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	if ui.ctx_menu(menu_key, dt_px(220)) {
 		if d.msg_menu >= 0 && d.msg_menu < len(e.msgs) {
 			m := &e.msgs[d.msg_menu]
-			if ui.menu_item("Copy message###dt_nm_cm").clicked { clip_set(msg_copy_text(m)) }
-			if ui.menu_item("Copy as hex###dt_nm_hex", enabled = m.binary).clicked { clip_set(m.text) }
+			if ui.menu_item("Copy message###dt_nm_cm", icon = lucide.COPY).clicked { clip_set(msg_copy_text(m)) }
+			if ui.menu_item("Copy as hex###dt_nm_hex", enabled = m.binary, icon = lucide.COPY).clicked { clip_set(m.text) }
 		}
-		if ui.menu_item("Copy all messages shown###dt_nm_ca").clicked {
+		if ui.menu_item("Copy all messages shown###dt_nm_ca", icon = lucide.COPY).clicked {
 			b := strings.builder_make(context.temp_allocator)
 			for i in d.msg_rows { strings.write_string(&b, msg_copy_text(&e.msgs[i])); strings.write_byte(&b, '\n') }
 			clip_set(strings.to_string(b))
 		}
 		ui.menu_separator()
-		if ui.menu_item("Clear the messages###dt_nm_cl").clicked {
+		if ui.menu_item("Clear the messages###dt_nm_cl", icon = lucide.TRASH_2).clicked {
 			for m in e.msgs { delete(m.text); delete(m.name); delete(m.id) }
 			clear(&e.msgs)
 			e.msgs_bytes, d.msg_sel = 0, -1

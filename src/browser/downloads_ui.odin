@@ -15,6 +15,7 @@ import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
 import "toolkit:render"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import desktop "toolkit:desktop"
 import "wb:base"
@@ -442,7 +443,7 @@ dl_menu_row :: proc(app: ^App) -> ^Download {
 @(private = "file")
 dl_menu_items :: proc(app: ^App, d: ^Download) {
 	present := download_file_present(d)
-	if ui.menu_item("Open", enabled = present).clicked { download_open_file(d); return }
+	if ui.menu_item("Open", enabled = present, icon = lucide.EXTERNAL_LINK).clicked { download_open_file(d); return }
 	if present {
 		// the applications the system knows for the file's type, the default first (gui_toolkit desktop.open_with)
 		if app.dls.handlers_for != d.id {
@@ -451,10 +452,10 @@ dl_menu_items :: proc(app: ^App, d: ^Download) {
 			app.dls.handlers_for = d.id
 		}
 		if len(app.dls.handlers) > 0 {
-			if ui.menu_submenu(fmt.tprintf("Open with###dlw_%d", d.id)) {
+			if ui.menu_submenu(fmt.tprintf("Open with###dlw_%d", d.id), icon = lucide.EXTERNAL_LINK) {
 				for h, i in app.dls.handlers {
 					label := h.default ? fmt.tprintf("%s (default)###dlh_%d", h.name, i) : fmt.tprintf("%s###dlh_%d", h.name, i)
-					if ui.menu_item(label).clicked {
+					if ui.menu_item(label, icon = lucide.EXTERNAL_LINK).clicked {
 						if !desktop.open_with(d.path, h.id) { ui.toast(.Bad, "%s could not open %s", h.name, filepath.base(d.path)) }
 						ui.ctx_menu_close()
 						return
@@ -463,12 +464,12 @@ dl_menu_items :: proc(app: ^App, d: ^Download) {
 			}
 		}
 	}
-	if ui.menu_item("Show in folder", enabled = d.path != "").clicked { download_reveal(d); return }
-	if ui.menu_item("Copy download link", icon = GLYPH_COPY).clicked { clip_set(d.url); return }
-	if ui.menu_item("Download again", enabled = d.url != "").clicked { download_retry(app, d); return }
+	if ui.menu_item("Show in folder", enabled = d.path != "", icon = lucide.FOLDER_OPEN).clicked { download_reveal(d); return }
+	if ui.menu_item("Copy download link", icon = lucide.COPY).clicked { clip_set(d.url); return }
+	if ui.menu_item("Download again", enabled = d.url != "", icon = lucide.DOWNLOAD).clicked { download_retry(app, d); return }
 	ui.menu_separator()
-	if ui.menu_item("Delete the file\u2026", enabled = present).clicked { download_delete_asked(app, d); return }   // confirm_shell.odin
-	if ui.menu_item("Remove from the list").clicked { download_remove(app, d); return }
+	if ui.menu_item("Delete the file\u2026", enabled = present, icon = lucide.TRASH_2).clicked { download_delete_asked(app, d); return }   // confirm_shell.odin
+	if ui.menu_item("Remove from the list", icon = lucide.TRASH_2).clicked { download_remove(app, d); return }
 }
 
 ////////////////////////////////

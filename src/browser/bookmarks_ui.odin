@@ -375,7 +375,7 @@ bookmark_menu_items :: proc(app: ^App, t: ^Tab, i: int) {
 	if b.folder {
 		n := 0
 		for x in app.bms.items { if x.parent == b.id && !x.folder { n += 1 } }
-		if ui.menu_item(fmt.tprintf("%s###bmm_all", i18n.tr("Open all in new tabs")), enabled = n > 0).clicked {
+		if ui.menu_item(fmt.tprintf("%s###bmm_all", i18n.tr("Open all in new tabs")), enabled = n > 0, icon = lucide.FOLDER).clicked {
 			urls := make([dynamic]string, 0, n, context.temp_allocator)
 			for x in app.bms.items { if x.parent == b.id && !x.folder { append(&urls, strings.clone(x.url, context.temp_allocator)) } }
 			for u in urls { tab_open(app, u, origin = .User) }
@@ -383,23 +383,23 @@ bookmark_menu_items :: proc(app: ^App, t: ^Tab, i: int) {
 		}
 		if ui.menu_item(i18n.tr("Rename…"), icon = lucide.PENCIL).clicked { bookmark_edit_open(app, b.id); return }
 	} else {
-		if ui.menu_item(i18n.tr("Open")).clicked { bookmark_open(app, t, b.url, false); return }
-		if ui.menu_item(i18n.tr("Open in new tab")).clicked { bookmark_open(app, t, b.url, true); return }
-		if ui.menu_item(i18n.tr("Copy address"), icon = GLYPH_COPY).clicked { clip_set(b.url); return }
-		if ui.menu_item(i18n.tr("Edit…")).clicked { bookmark_edit_open(app, b.id); return }
+		if ui.menu_item(i18n.tr("Open"), icon = lucide.EXTERNAL_LINK).clicked { bookmark_open(app, t, b.url, false); return }
+		if ui.menu_item(i18n.tr("Open in new tab"), icon = lucide.EXTERNAL_LINK).clicked { bookmark_open(app, t, b.url, true); return }
+		if ui.menu_item(i18n.tr("Copy address"), icon = lucide.COPY).clicked { clip_set(b.url); return }
+		if ui.menu_item(i18n.tr("Edit…"), icon = lucide.PENCIL).clicked { bookmark_edit_open(app, b.id); return }
 	}
 	ui.menu_separator()
-	if ui.menu_item(i18n.tr("Move up")).clicked { if bookmark_shift(&app.bms.items, b.id, -1) { bookmarks_changed(app) }; return }
-	if ui.menu_item(i18n.tr("Move down")).clicked { if bookmark_shift(&app.bms.items, b.id, 1) { bookmarks_changed(app) }; return }
-	if ui.menu_submenu(fmt.tprintf("%s###bmm_move", i18n.tr("Move to"))) {
-		if ui.menu_item(fmt.tprintf("%s###bmm_top", i18n.tr("Top level")), enabled = b.parent != 0).clicked {
+	if ui.menu_item(i18n.tr("Move up"), icon = lucide.ARROW_UP).clicked { if bookmark_shift(&app.bms.items, b.id, -1) { bookmarks_changed(app) }; return }
+	if ui.menu_item(i18n.tr("Move down"), icon = lucide.ARROW_DOWN).clicked { if bookmark_shift(&app.bms.items, b.id, 1) { bookmarks_changed(app) }; return }
+	if ui.menu_submenu(fmt.tprintf("%s###bmm_move", i18n.tr("Move to")), icon = lucide.FOLDER) {
+		if ui.menu_item(fmt.tprintf("%s###bmm_top", i18n.tr("Top level")), enabled = b.parent != 0, icon = lucide.FOLDER).clicked {
 			if bookmark_move_into(&app.bms.items, b.id, 0) { bookmarks_changed(app) }
 			ui.ctx_menu_close()
 			return
 		}
 		for f in app.bms.items {
 			if !f.folder || f.id == b.parent || bookmark_within(app.bms.items[:], f.id, b.id) { continue }
-			if ui.menu_item(fmt.tprintf("%s###bmm_to_%d", safe_label(f.title, 60), f.id)).clicked {
+			if ui.menu_item(fmt.tprintf("%s###bmm_to_%d", safe_label(f.title, 60), f.id), icon = lucide.FOLDER).clicked {
 				if bookmark_move_into(&app.bms.items, b.id, f.id) { bookmarks_changed(app) }
 				ui.ctx_menu_close()
 				return
@@ -407,7 +407,7 @@ bookmark_menu_items :: proc(app: ^App, t: ^Tab, i: int) {
 		}
 	}
 	ui.menu_separator()
-	if ui.menu_item(b.folder ? i18n.tr("Remove the folder and its bookmarks\u2026") : i18n.tr("Remove")).clicked {
+	if ui.menu_item(b.folder ? i18n.tr("Remove the folder and its bookmarks\u2026") : i18n.tr("Remove"), icon = lucide.TRASH_2).clicked {
 		bookmark_remove_asked(app, b.id)   // confirm_shell.odin: a folder that holds something is asked about
 	}
 }

@@ -19,6 +19,7 @@ import "core:strings"
 import "core:time"
 import "toolkit:draw"
 import "toolkit:platform"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
 import "wb:js"
@@ -199,7 +200,7 @@ nav_history_items :: proc(app: ^App, t: ^Tab, dir: int) {
 		e := page.session_peek(sh, d)
 		if e == nil { break }
 		shown += 1
-		sig := ui.menu_item(fmt.tprintf("%s###hm_%d", safe_label(entry_label(e)), e.id), icon = " ")
+		sig := ui.menu_item(fmt.tprintf("%s###hm_%d", safe_label(entry_label(e)), e.id), icon = lucide.GLOBE)
 		if e.icon != "" && sig.box != nil {
 			ui.push_parent(sig.box)
 			addr := ui.frame_new(string)
@@ -211,8 +212,8 @@ nav_history_items :: proc(app: ^App, t: ^Tab, dir: int) {
 		if sig.clicked { ui.ctx_menu_close(); go_entry(app, t, e); return }   // (an entry of the tab: go_history counts its frames' steps too)
 	}
 	ui.menu_separator()
-	if ui.menu_item("Tab history tree", "").clicked { ui.ctx_menu_close(); open_history(app, t, true); return }
-	if ui.menu_item("Show full history", "Ctrl+H").clicked { ui.ctx_menu_close(); open_history(app, t, false); return }
+	if ui.menu_item("Tab history tree", "", icon = lucide.GIT_FORK).clicked { ui.ctx_menu_close(); open_history(app, t, true); return }
+	if ui.menu_item("Show full history", "Ctrl+H", icon = lucide.HISTORY).clicked { ui.ctx_menu_close(); open_history(app, t, false); return }
 }
 
 ////////////////////////////////
@@ -370,11 +371,11 @@ browsing_toolbar :: proc(app: ^App, t: ^Tab) {
 	if ui.ctx_menu(key) {
 		now := now_unix_ms()
 		// (confirm_shell.odin: asked first, with how many visits go)
-		if ui.menu_item("The last hour\u2026").clicked { history_delete_asked(app, now - 3_600_000, max(i64), "the last hour") }
-		if ui.menu_item("Today\u2026").clicked { history_delete_asked(app, local_midnight(now), max(i64), "today") }
-		if ui.menu_item("The last 7 days\u2026").clicked { history_delete_asked(app, local_midnight(now) - 6 * 86_400_000, max(i64), "the last 7 days") }
+		if ui.menu_item("The last hour\u2026", icon = lucide.CALENDAR_CLOCK).clicked { history_delete_asked(app, now - 3_600_000, max(i64), "the last hour") }
+		if ui.menu_item("Today\u2026", icon = lucide.CALENDAR_CLOCK).clicked { history_delete_asked(app, local_midnight(now), max(i64), "today") }
+		if ui.menu_item("The last 7 days\u2026", icon = lucide.CALENDAR_CLOCK).clicked { history_delete_asked(app, local_midnight(now) - 6 * 86_400_000, max(i64), "the last 7 days") }
 		ui.menu_separator()
-		if ui.menu_item("Everything\u2026").clicked { history_delete_asked(app, min(i64), max(i64), "every day") }
+		if ui.menu_item("Everything\u2026", icon = lucide.CALENDAR_CLOCK).clicked { history_delete_asked(app, min(i64), max(i64), "every day") }
 	}
 	ui.spacer(ui.px(em * 0.4))
 	if ui.tags("weak") {
@@ -479,11 +480,11 @@ row_menu_items :: proc(app: ^App, t: ^Tab) {
 	for v, i in app.ghist.visits { if v.id == app.hview.menu_visit { at = i; break } }
 	if at < 0 { ui.ctx_menu_close(); return }
 	address := strings.clone(app.ghist.visits[at].url, context.temp_allocator)
-	if ui.menu_item("Open").clicked { ui.ctx_menu_close(); visit_open(app, t, address, false); return }
-	if ui.menu_item("Open in a new tab").clicked { ui.ctx_menu_close(); visit_open(app, t, address, true); return }
-	if ui.menu_item("Copy address", icon = GLYPH_COPY).clicked { clip_set(address); ui.ctx_menu_close() }
+	if ui.menu_item("Open", icon = lucide.EXTERNAL_LINK).clicked { ui.ctx_menu_close(); visit_open(app, t, address, false); return }
+	if ui.menu_item("Open in a new tab", icon = lucide.EXTERNAL_LINK).clicked { ui.ctx_menu_close(); visit_open(app, t, address, true); return }
+	if ui.menu_item("Copy address", icon = lucide.COPY).clicked { clip_set(address); ui.ctx_menu_close() }
 	ui.menu_separator()
-	if ui.menu_item("Delete from history").clicked { ids := []u64{app.hview.menu_visit}; global_history_remove(app, ids); ui.ctx_menu_close() }
+	if ui.menu_item("Delete from history", icon = lucide.TRASH_2).clicked { ids := []u64{app.hview.menu_visit}; global_history_remove(app, ids); ui.ctx_menu_close() }
 	host_of :: proc(a: string) -> string {
 		s := a
 		if i := strings.index(s, "://"); i >= 0 { s = s[i + 3:] } else { return "" }
@@ -491,7 +492,7 @@ row_menu_items :: proc(app: ^App, t: ^Tab) {
 		return s
 	}
 	if h := host_of(address); h != "" {
-		if ui.menu_item(fmt.tprintf("Delete every visit of %s###h_del_host", safe_label(h))).clicked {
+		if ui.menu_item(fmt.tprintf("Delete every visit of %s###h_del_host", safe_label(h)), icon = lucide.TRASH_2).clicked {
 			ids := make([dynamic]u64, context.temp_allocator)
 			for v in app.ghist.visits { if host_of(v.url) == h { append(&ids, v.id) } }
 			global_history_remove(app, ids[:])

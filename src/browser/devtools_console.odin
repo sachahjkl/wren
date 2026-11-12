@@ -16,6 +16,7 @@ import "core:fmt"
 import "core:math"
 import "core:strings"
 import "toolkit:draw"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:page"
 
@@ -576,37 +577,37 @@ console_row_menu :: proc(app: ^App, t: ^Tab, c: ^Dev_Console, key: ui.Key) {
 console_row_menu_items :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 	sel := con_selected_count(c)
 	n := len(c.rows)
-	if ui.menu_item(sel > 1 ? fmt.tprintf("Copy %d messages###dt_con_copy", sel) : "Copy message###dt_con_copy", "Ctrl+C", icon = GLYPH_COPY, enabled = sel > 0).clicked {
+	if ui.menu_item(sel > 1 ? fmt.tprintf("Copy %d messages###dt_con_copy", sel) : "Copy message###dt_con_copy", "Ctrl+C", icon = lucide.COPY, enabled = sel > 0).clicked {
 		clip_set(con_text(t, c, true, app.con_prefs.timestamps))
 	}
-	if ui.menu_item("Copy stack trace###dt_con_copy_stack", enabled = c.menu_src.line > 0 || row_has_stack(t, c)).clicked { clip_set(row_stack_text(t, c)) }
+	if ui.menu_item("Copy stack trace###dt_con_copy_stack", enabled = c.menu_src.line > 0 || row_has_stack(t, c), icon = lucide.COPY).clicked { clip_set(row_stack_text(t, c)) }
 	ref, rpage := row_object(t, c)
-	if ui.menu_item("Copy object###dt_con_copy_obj", enabled = ref > 0 && rpage != nil).clicked { page.dev_console_copy(rpage, ref); request_frames(app, 3) }
-	if ui.menu_item("Copy all messages shown###dt_con_copy_all", enabled = n > 0).clicked { clip_set(con_text(t, c, false, app.con_prefs.timestamps)) }
+	if ui.menu_item("Copy object###dt_con_copy_obj", enabled = ref > 0 && rpage != nil, icon = lucide.COPY).clicked { page.dev_console_copy(rpage, ref); request_frames(app, 3) }
+	if ui.menu_item("Copy all messages shown###dt_con_copy_all", enabled = n > 0, icon = lucide.COPY).clicked { clip_set(con_text(t, c, false, app.con_prefs.timestamps)) }
 	ui.menu_separator()
-	if ui.menu_item("Store as global variable###dt_con_store", enabled = ref > 0 && rpage != nil).clicked {
+	if ui.menu_item("Store as global variable###dt_con_store", enabled = ref > 0 && rpage != nil, icon = lucide.TERMINAL).clicked {
 		t.conlog.evaluating = true
 		page.dev_console_store(rpage, ref)
 		t.conlog.evaluating = false
 		request_frames(app, 3)
 	}
-	if ui.menu_item("Select all###dt_con_all", "Ctrl+A", enabled = n > 0).clicked { c.has_sel, c.sel_a, c.sel_b = true, c.rows[0].abs, c.rows[n - 1].abs }
+	if ui.menu_item("Select all###dt_con_all", "Ctrl+A", enabled = n > 0, icon = lucide.LIST_CHECKS).clicked { c.has_sel, c.sel_a, c.sel_b = true, c.rows[0].abs, c.rows[n - 1].abs }
 	ui.menu_separator()
 	row_text := row_message(t, c)
-	if ui.menu_item("Filter on this text###dt_con_filter_text", enabled = row_text != "").clicked {
+	if ui.menu_item("Filter on this text###dt_con_filter_text", enabled = row_text != "", icon = lucide.FILTER).clicked {
 		ui.field_set(&c.filter.field, row_text)
 		c.list.sel = 0
 	}
-	if ui.menu_item(fmt.tprintf("Hide messages like this###dt_con_hide_like"), enabled = row_text != "").clicked {
+	if ui.menu_item(fmt.tprintf("Hide messages like this###dt_con_hide_like"), enabled = row_text != "", icon = lucide.EYE_OFF).clicked {
 		cur := dt_filter_text(&c.filter)
 		next := strings.concatenate({cur, cur == "" ? "" : " ", "-", first_word(row_text)}, context.temp_allocator)
 		ui.field_set(&c.filter.field, next)
 	}
-	if ui.menu_item(c.menu_src.line > 0 ? fmt.tprintf("Open %s:%d in a new tab###dt_con_src", c.menu_src.file, c.menu_src.line) : "Open the source###dt_con_src", enabled = c.menu_src.line > 0).clicked {
+	if ui.menu_item(c.menu_src.line > 0 ? fmt.tprintf("Open %s:%d in a new tab###dt_con_src", c.menu_src.file, c.menu_src.line) : "Open the source###dt_con_src", enabled = c.menu_src.line > 0, icon = lucide.EXTERNAL_LINK).clicked {
 		console_open_source(app, t, c.menu_src)
 	}
 	ui.menu_separator()
-	if ui.menu_item("Clear console###dt_con_clear_menu", icon = "").clicked { console_clear(app, t) }
+	if ui.menu_item("Clear console###dt_con_clear_menu", icon = lucide.TRASH_2).clicked { console_clear(app, t) }
 }
 
 // The object a row's message was about: the id its description carries (the realm keeps the arguments under it) and the page
@@ -724,7 +725,7 @@ console_toolbar :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 					delete(c.ctx); c.ctx = strings.clone(f.href); con_ctx_changed(app, c)
 				}
 			}
-			if len(frames) == 0 { ui.menu_item("This page has no nested documents###dt_ctx_note", enabled = false) }
+			if len(frames) == 0 { ui.menu_item("This page has no nested documents###dt_ctx_note", enabled = false, icon = lucide.INFO) }
 		}
 		dt_gap(3)
 		// the filter
@@ -750,8 +751,8 @@ console_toolbar :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 				}
 			}
 			ui.menu_separator()
-			if ui.menu_item("Default levels###dt_lvm_def", enabled = app.con_prefs.levels != 0b1110).clicked { set_levels(app, 0b1110) }
-			if ui.menu_item("All levels###dt_lvm_all", enabled = app.con_prefs.levels != 0b1111).clicked { set_levels(app, 0b1111) }
+			if ui.menu_item("Default levels###dt_lvm_def", enabled = app.con_prefs.levels != 0b1110, icon = lucide.FILTER).clicked { set_levels(app, 0b1110) }
+			if ui.menu_item("All levels###dt_lvm_all", enabled = app.con_prefs.levels != 0b1111, icon = lucide.FILTER).clicked { set_levels(app, 0b1111) }
 		}
 		dt_vsep("###dt_cb1")
 		pk := dt_btn("###dt_con_pause", c.paused ? .Play : .Pause, tooltip = c.paused ? "Resume: show the messages that came" : "Pause: stop adding messages to the list", on = c.paused)

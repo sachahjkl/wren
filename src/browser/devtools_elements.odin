@@ -21,6 +21,7 @@ import "core:fmt"
 import "core:math"
 import "core:strings"
 import "toolkit:draw"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
@@ -856,8 +857,8 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	r := e.rows[e.menu_row]
 	h := r.h
 	is_el := r.kind == .Open || r.kind == .Inline
-	if ui.menu_item("Add attribute###dt_em_add", "", enabled = is_el).clicked { begin_add_attr(e, h) }
-	if ui.menu_item(e.menu_has_span ? "Edit attribute###dt_em_attr" : "Edit text###dt_em_text", "", enabled = is_el || r.kind == .Text || r.kind == .Comment).clicked {
+	if ui.menu_item("Add attribute###dt_em_add", "", enabled = is_el, icon = lucide.PLUS).clicked { begin_add_attr(e, h) }
+	if ui.menu_item(e.menu_has_span ? "Edit attribute###dt_em_attr" : "Edit text###dt_em_text", "", enabled = is_el || r.kind == .Text || r.kind == .Comment, icon = lucide.PENCIL).clicked {
 		if e.menu_has_span {
 			sp := e.menu_span
 			delete(e.edit_attr)
@@ -867,23 +868,23 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			e.focus_edit = true
 		} else if r.kind == .Text || r.kind == .Comment { begin_edit_at(app, t, e, &r, 0, 0) }
 	}
-	if ui.menu_item("Edit as HTML###dt_em_html", "F2", enabled = is_el).clicked { begin_html_edit(app, t, e, h) }
+	if ui.menu_item("Edit as HTML###dt_em_html", "F2", enabled = is_el, icon = lucide.PENCIL).clicked { begin_html_edit(app, t, e, h) }
 	ui.menu_separator()
-	if ui.menu_item("Duplicate element###dt_em_dup", "Ctrl+D", enabled = is_el).clicked { duplicate_node(app, t, e, h) }
-	if ui.menu_item("Delete element###dt_em_del", "Del", enabled = r.kind != .Close && r.kind != .Doctype).clicked { delete_node(app, t, e, h) }
-	if ui.menu_item("Hide element###dt_em_hide", "H", enabled = is_el).clicked { toggle_hidden(app, t, e, h) }
+	if ui.menu_item("Duplicate element###dt_em_dup", "Ctrl+D", enabled = is_el, icon = lucide.COPY).clicked { duplicate_node(app, t, e, h) }
+	if ui.menu_item("Delete element###dt_em_del", "Del", enabled = r.kind != .Close && r.kind != .Doctype, icon = lucide.TRASH_2).clicked { delete_node(app, t, e, h) }
+	if ui.menu_item("Hide element###dt_em_hide", "H", enabled = is_el, icon = lucide.EYE_OFF).clicked { toggle_hidden(app, t, e, h) }
 	ui.menu_separator()
-	if ui.menu_submenu("Copy###dt_em_copy") {
-		if ui.menu_item("Copy outerHTML###dt_em_c_outer", "Ctrl+C").clicked { clip_set(page.dev_outer_html(t.page, h)) }
-		if ui.menu_item("Copy innerHTML###dt_em_c_inner", enabled = is_el).clicked { clip_set(page.dev_inner_html(t.page, h)) }
-		if ui.menu_item("Copy element###dt_em_c_el").clicked { clip_set(page.dev_outer_html(t.page, h)) }
+	if ui.menu_submenu("Copy###dt_em_copy", icon = lucide.COPY) {
+		if ui.menu_item("Copy outerHTML###dt_em_c_outer", "Ctrl+C", icon = lucide.COPY).clicked { clip_set(page.dev_outer_html(t.page, h)) }
+		if ui.menu_item("Copy innerHTML###dt_em_c_inner", enabled = is_el, icon = lucide.COPY).clicked { clip_set(page.dev_inner_html(t.page, h)) }
+		if ui.menu_item("Copy element###dt_em_c_el", icon = lucide.COPY).clicked { clip_set(page.dev_outer_html(t.page, h)) }
 		ui.menu_separator()
-		if ui.menu_item("Copy selector###dt_em_c_sel", enabled = is_el).clicked { clip_set(css_selector_of(t.page, h)) }
-		if ui.menu_item("Copy JS path###dt_em_c_js", enabled = is_el).clicked { clip_set(fmt.tprintf("document.querySelector('%s')", css_selector_of(t.page, h))) }
-		if ui.menu_item("Copy XPath###dt_em_c_xp", enabled = is_el).clicked { clip_set(xpath_of(t.page, h, false)) }
-		if ui.menu_item("Copy full XPath###dt_em_c_fxp", enabled = is_el).clicked { clip_set(xpath_of(t.page, h, true)) }
+		if ui.menu_item("Copy selector###dt_em_c_sel", enabled = is_el, icon = lucide.COPY).clicked { clip_set(css_selector_of(t.page, h)) }
+		if ui.menu_item("Copy JS path###dt_em_c_js", enabled = is_el, icon = lucide.COPY).clicked { clip_set(fmt.tprintf("document.querySelector('%s')", css_selector_of(t.page, h))) }
+		if ui.menu_item("Copy XPath###dt_em_c_xp", enabled = is_el, icon = lucide.COPY).clicked { clip_set(xpath_of(t.page, h, false)) }
+		if ui.menu_item("Copy full XPath###dt_em_c_fxp", enabled = is_el, icon = lucide.COPY).clicked { clip_set(xpath_of(t.page, h, true)) }
 	}
-	if ui.menu_submenu("Force state###dt_em_state") {
+	if ui.menu_submenu("Force state###dt_em_state", icon = lucide.TEXT_CURSOR_INPUT) {
 		f := page.dev_forced(t.page)
 		if f.el != h { f = {} }
 		toggle :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, h: base.Handle, f: page.Forced_State, which: int) {
@@ -905,17 +906,17 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		if ui.menu_item(":focus-within###dt_em_s_fw", checked = f.focus_within, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 3) }
 		if ui.menu_item(":visited###dt_em_s_v", checked = f.visited, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 4) }
 		ui.menu_separator()
-		if ui.menu_item("Clear forced states###dt_em_s_clear", enabled = page.dev_forced(t.page).el != base.NIL_HANDLE).clicked {
+		if ui.menu_item("Clear forced states###dt_em_s_clear", enabled = page.dev_forced(t.page).el != base.NIL_HANDLE, icon = lucide.TRASH_2).clicked {
 			page.dev_force_state(t.page, base.NIL_HANDLE, false, false, false, false, false)
 			e.version += 1
 			request_frames(app, 3)
 		}
 	}
 	ui.menu_separator()
-	if ui.menu_item("Expand all underneath###dt_em_exp", enabled = r.expandable).clicked { budget := DEV_ELEMENTS_TOGGLE_BUDGET; toggle_all(e, t.page.doc, h, true, &budget) }
-	if ui.menu_item("Collapse all underneath###dt_em_col", enabled = r.expandable).clicked { budget := DEV_ELEMENTS_TOGGLE_BUDGET; toggle_all(e, t.page.doc, h, false, &budget) }
-	if ui.menu_item("Scroll into view###dt_em_scroll", enabled = is_el).clicked { scroll_into_view(app, t, h) }
-	if ui.menu_item("Store as global variable###dt_em_store", enabled = r.kind != .Close && r.kind != .Doctype).clicked {
+	if ui.menu_item("Expand all underneath###dt_em_exp", enabled = r.expandable, icon = lucide.CHEVRON_DOWN).clicked { budget := DEV_ELEMENTS_TOGGLE_BUDGET; toggle_all(e, t.page.doc, h, true, &budget) }
+	if ui.menu_item("Collapse all underneath###dt_em_col", enabled = r.expandable, icon = lucide.CHEVRON_UP).clicked { budget := DEV_ELEMENTS_TOGGLE_BUDGET; toggle_all(e, t.page.doc, h, false, &budget) }
+	if ui.menu_item("Scroll into view###dt_em_scroll", enabled = is_el, icon = lucide.EYE).clicked { scroll_into_view(app, t, h) }
+	if ui.menu_item("Store as global variable###dt_em_store", enabled = r.kind != .Close && r.kind != .Doctype, icon = lucide.TERMINAL).clicked {
 		t.conlog.evaluating = true
 		if page.dev_store_node(t.page, h) { ui.toast(.Info, "Stored as a global variable: see the Console") } else { ui.toast(.Warn, "This node is not in the document's own tree (a shadow tree or a detached node)") }
 		t.conlog.evaluating = false
@@ -925,7 +926,7 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		name := r.label[sp.name_a:sp.name_b]
 		if name == "href" || name == "src" || name == "srcset" || name == "action" {
 			ui.menu_separator()
-			if ui.menu_item("Open in a new tab###dt_em_open").clicked { open_in_new_tab(app, strings.clone(val, context.temp_allocator), inspected_page(app)) }
+			if ui.menu_item("Open in a new tab###dt_em_open", icon = lucide.EXTERNAL_LINK).clicked { open_in_new_tab(app, strings.clone(val, context.temp_allocator), inspected_page(app)) }
 		}
 	}
 }

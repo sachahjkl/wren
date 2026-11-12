@@ -14,6 +14,7 @@ import "core:path/filepath"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:platform"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
 import "wb:dom"
@@ -236,89 +237,89 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		has_sel := a != b
 		pw := forms.kind(f, h) == .Input && forms.input_type(f, h) == .Password
 		sep(&groups)
-		if ui.menu_item("Undo", "Ctrl+Z", enabled = mutable && forms.can_undo(f, h)).clicked { forms.edit(f, h, .History_Undo) }
-		if ui.menu_item("Redo", "Ctrl+Y", enabled = mutable && forms.can_redo(f, h)).clicked { forms.edit(f, h, .History_Redo) }
+		if ui.menu_item("Undo", "Ctrl+Z", icon = lucide.UNDO_2, enabled = mutable && forms.can_undo(f, h)).clicked { forms.edit(f, h, .History_Undo) }
+		if ui.menu_item("Redo", "Ctrl+Y", icon = lucide.REDO_2, enabled = mutable && forms.can_redo(f, h)).clicked { forms.edit(f, h, .History_Redo) }
 		ui.menu_separator()
-		if ui.menu_item("Cut", "Ctrl+X", enabled = mutable && has_sel && !pw).clicked {
+		if ui.menu_item("Cut", "Ctrl+X", icon = lucide.SCISSORS, enabled = mutable && has_sel && !pw).clicked {
 			if page.dispatch_event(p, h, dom.Event{type = "cut", bubbles = true, cancelable = true}) { if s := forms.cut(f, h); s != "" { clip_set(s) } }
 		}
-		if ui.menu_item("Copy", "Ctrl+C", enabled = has_sel && !pw).clicked {
+		if ui.menu_item("Copy", "Ctrl+C", icon = lucide.COPY, enabled = has_sel && !pw).clicked {
 			if page.dispatch_event(p, h, dom.Event{type = "copy", bubbles = true, cancelable = true}) { if s := forms.copy_text(f, h); s != "" { clip_set(s) } }
 		}
 		clip := clip_get()
-		if ui.menu_item("Paste", "Ctrl+V", enabled = mutable && clip != "").clicked {
+		if ui.menu_item("Paste", "Ctrl+V", icon = lucide.CLIPBOARD_PASTE, enabled = mutable && clip != "").clicked {
 			text := strings.clone(clip, context.temp_allocator)
 			if page.dispatch_event(p, h, dom.Event{type = "paste", bubbles = true, cancelable = true, data = text}) { forms.paste(f, h, text) }
 		}
-		if ui.menu_item("Delete", "Del", enabled = mutable && has_sel).clicked { forms.edit(f, h, .Delete_Backward) }
+		if ui.menu_item("Delete", "Del", icon = lucide.TRASH_2, enabled = mutable && has_sel).clicked { forms.edit(f, h, .Delete_Backward) }
 		ui.menu_separator()
-		if ui.menu_item("Select all", "Ctrl+A", enabled = forms.edit_text(f, h) != "").clicked { forms.select_all(f, h) }
+		if ui.menu_item("Select all", "Ctrl+A", icon = lucide.LIST_CHECKS, enabled = forms.edit_text(f, h) != "").clicked { forms.select_all(f, h) }
 		request_frames(app, 2)
 	}
 	if r.link != "" {
 		sep(&groups)
-		if ui.menu_item("Open link").clicked { navigate(app, t, strings.clone(r.link, context.temp_allocator), p, user_activation = true) ; return }
-		if ui.menu_item("Open link in new tab").clicked { open_in_new_tab(app, r.link, p) }
+		if ui.menu_item("Open link", icon = lucide.LINK).clicked { navigate(app, t, strings.clone(r.link, context.temp_allocator), p, user_activation = true) ; return }
+		if ui.menu_item("Open link in new tab", icon = lucide.EXTERNAL_LINK).clicked { open_in_new_tab(app, r.link, p) }
 		ui.menu_separator()
-		if ui.menu_item("Copy link address").clicked { clip_set(r.link) }
-		if ui.menu_item("Copy link text", enabled = r.link_text != "").clicked { clip_set(r.link_text) }
+		if ui.menu_item("Copy link address", icon = lucide.COPY).clicked { clip_set(r.link) }
+		if ui.menu_item("Copy link text", icon = lucide.TEXT_QUOTE, enabled = r.link_text != "").clicked { clip_set(r.link_text) }
 	}
 	if r.image != "" {
 		sep(&groups)
-		if ui.menu_item("Open image in new tab").clicked { open_in_new_tab(app, r.image, p) }
-		if ui.menu_item("Save image as…").clicked { save_as(app, r.image, suggested_name(r.image, "image")) }
+		if ui.menu_item("Open image in new tab", icon = lucide.EXTERNAL_LINK).clicked { open_in_new_tab(app, r.image, p) }
+		if ui.menu_item("Save image as…", icon = lucide.SAVE).clicked { save_as(app, r.image, suggested_name(r.image, "image")) }
 		view := page.image_view(p, r.image_node)
-		if ui.menu_item("Copy image", enabled = view.state == .Ready && view.id != 0).clicked { copy_image(app, view) }
-		if ui.menu_item("Copy image address").clicked { clip_set(r.image) }
+		if ui.menu_item("Copy image", icon = lucide.FILE_IMAGE, enabled = view.state == .Ready && view.id != 0).clicked { copy_image(app, view) }
+		if ui.menu_item("Copy image address", icon = lucide.COPY).clicked { clip_set(r.image) }
 		if r.image_node == p.image_document.img && page.image_document_active(p) {   // an image opened by itself (image_document_shell.odin)
 			ui.menu_separator()
-			if ui.menu_item("Rotate right", "R").clicked { page.image_document_rotate(p, 1) }
-			if ui.menu_item("Rotate left", "Shift+R").clicked { page.image_document_rotate(p, -1) }
+			if ui.menu_item("Rotate right", "R", icon = lucide.REFRESH_CW).clicked { page.image_document_rotate(p, 1) }
+			if ui.menu_item("Rotate left", "Shift+R", icon = lucide.ROTATE_CCW).clicked { page.image_document_rotate(p, -1) }
 		}
 	}
 	if r.selection != "" && r.editable == base.NIL_HANDLE {
 		sep(&groups)
-		if ui.menu_item("Copy", "Ctrl+C").clicked { copy_selection(app, t) }
+		if ui.menu_item("Copy", "Ctrl+C", icon = lucide.COPY).clicked { copy_selection(app, t) }
 		words := strings.trim_space(r.selection)
-		if ui.menu_item(fmt.tprintf("Search %s for “%s”###ctx_search", search_engine_name(app), short(words, 28))).clicked {
+		if ui.menu_item(fmt.tprintf("Search %s for “%s”###ctx_search", search_engine_name(app), short(words, 28)), icon = lucide.SEARCH).clicked {
 			open_in_new_tab(app, search_url(app, words), origin = .User)
 		}
 		if len(app.sengines.list) > 1 {
-			if ui.menu_submenu(fmt.tprintf("%s###ctx_search_with", i18n.tr("Search with"))) {
+			if ui.menu_submenu(fmt.tprintf("%s###ctx_search_with", i18n.tr("Search with")), icon = lucide.SEARCH) {
 				def := search_default_index(app)
 				for e, i in app.sengines.list {
 					if i == def { continue }
-					if ui.menu_item(fmt.tprintf("%s###ctx_sw_%d", e.name, i)).clicked { open_in_new_tab(app, search_url(app, words, i), origin = .User) }
+					if ui.menu_item(fmt.tprintf("%s###ctx_sw_%d", e.name, i), icon = lucide.GLOBE).clicked { open_in_new_tab(app, search_url(app, words, i), origin = .User) }
 				}
 			}
 		}
 	}
 	if groups == 0 {
-		can_back := t.hist > 0
-		can_forward := t.hist + 1 < len(t.history)
-		if ui.menu_item("Back", "Alt+Left", icon = GLYPH_BACK, enabled = can_back).clicked { go_history(app, t, -1); return }
-		if ui.menu_item("Forward", "Alt+Right", icon = GLYPH_FORWARD, enabled = can_forward).clicked { go_history(app, t, +1); return }
-		if ui.menu_item("Reload", "Ctrl+R", icon = GLYPH_RELOAD).clicked { reload(app, t); return }
+		// (the page's own acts are commands: their words, icons, shortcuts and conditions are the palette's)
+		if menu_command(app, t, "nav.back") { return }
+		if menu_command(app, t, "nav.forward") { return }
+		if menu_command(app, t, "nav.reload") { return }
 		ui.menu_separator()
-		if ui.menu_item("Save as…", "Ctrl+S", enabled = savable(t)).clicked { save_page(app, t) }
-		if ui.menu_item("QR code of the address").clicked { qr_open(app, t.url) }
+		menu_command(app, t, "page.save", force_disabled = !savable(t))
+		menu_command(app, t, "page.qr_code")
 		ui.menu_separator()
-		if ui.menu_item("Select all", "Ctrl+A").clicked { page.selection_select_all(p) }
-		if ui.menu_item("Find…", "Ctrl+F").clicked { find_open(app) }
+		if ui.menu_item("Select all", "Ctrl+A", icon = lucide.LIST_CHECKS).clicked { page.selection_select_all(p) }
+		menu_command(app, t, "page.find")
 		ui.menu_separator()
-		if ui.menu_item("View page source", "Ctrl+U", enabled = !strings.has_prefix(t.url, "view-source:")).clicked { view_source(app, t) }
-		if ui.menu_item("Page information", icon = GLYPH_INFO).clicked { window_ask(app, .Page_Info) }
+		menu_command(app, t, "page.view_source", force_disabled = strings.has_prefix(t.url, "view-source:"))
+		menu_command(app, t, "page.info")
 	}
 	if _, filtered := blocker_page_host(t); filtered && app.bl.started && app.bl.b.cfg.enabled {
 		sep(&groups)
-		if ui.menu_item(i18n.tr("Block element…"), "Ctrl+Shift+K", icon = GLYPH_CLOSE).clicked { blocker_picker_target(app, t, r.target); return }
+		// (the element right-clicked: the picker's command, aimed; its icon is the command's)
+		if ui.menu_item(i18n.tr("Block element…"), "Ctrl+Shift+K", icon = command_icon("blocker.picker")).clicked { blocker_picker_target(app, t, r.target); return }
 		res := r.image != "" ? r.image : r.link
-		if ui.menu_item(i18n.tr("Block this resource"), enabled = res != "").clicked { blocker_block_resource(app, res) }
-		if ui.menu_item(i18n.tr("Content blocker panel…")).clicked { window_ask(app, .Blocker_Panel) }
+		if ui.menu_item(i18n.tr("Block this resource"), icon = lucide.SHIELD, enabled = res != "").clicked { blocker_block_resource(app, res) }
+		menu_command(app, t, "blocker.panel")
 	}
 	if r.target != base.NIL_HANDLE || groups == 0 {
 		ui.menu_separator()
-		if ui.menu_item("Inspect", "Ctrl+Shift+I").clicked { devtools_inspect(app, t, r.target != base.NIL_HANDLE ? r.target : p.body); return }
+		if ui.menu_item("Inspect", "Ctrl+Shift+I", icon = command_icon("view.devtools_elements")).clicked { devtools_inspect(app, t, r.target != base.NIL_HANDLE ? r.target : p.body); return }
 	}
 }
 
@@ -327,31 +328,32 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 	wnd := active_window(app)
 	if r.tab < 0 || r.tab >= len(wnd.tabs) { ui.ctx_menu_close(); return }
 	t := wnd.tabs[r.tab]
-	if ui.menu_item("New tab", "Ctrl+T", icon = GLYPH_ADD).clicked { tab_open_new(app); return }
+	// (the tab's acts are commands, given the tab right-clicked)
+	if menu_command(app, t, "tab.new") { return }
 	ui.menu_separator()
-	if ui.menu_item("Reload", "Ctrl+R", icon = GLYPH_RELOAD, enabled = t.kind == .Web || t.kind == .Config || t.kind == .Settings).clicked { reload(app, t) }
-	if ui.menu_item("Duplicate").clicked { open_in_new_tab(app, t.url, origin = .Replay) }
+	menu_command(app, t, "nav.reload")
+	menu_command(app, t, "tab.duplicate")
 	ui.menu_separator()
 	tab_menu_group_items(app, t)   // tab_groups.odin: pin, groups
 	if !ui.ctx_menu_is_open(ui.key_from_string(0, CTX_MENU_ID)) { return }
 	ui.menu_separator()
-	if ui.menu_item("Close tab", "Ctrl+W", icon = GLYPH_CLOSE).clicked { tab_close_by_user(app, t); return }
-	if ui.menu_item("Close other tabs", enabled = len(wnd.tabs) > 1).clicked { close_other_tabs(app, r.tab); return }
-	if ui.menu_item(closed_reopen_title(app), "Ctrl+Shift+T", enabled = len(closed_items(app)) > 0).clicked { reopen_closed_tab(app) }
+	if menu_command(app, t, "tab.close") { return }
+	if menu_command(app, t, "tab.close_others") { return }
+	menu_command(app, t, "tab.reopen_closed", title = closed_reopen_title(app), force_disabled = len(closed_items(app)) == 0)
 	ui.menu_separator()
 	menu_command(app, t, "tab.move_to_new_window")
 	if len(app.windows) > 1 {
 		target: ^Browser_Window
-		if ui.menu_submenu(fmt.tprintf("%s###move_to_window_sub", i18n.tr("Move to window"))) {
+		if ui.menu_submenu(fmt.tprintf("%s###move_to_window_sub", i18n.tr("Move to window")), icon = lucide.APP_WINDOW) {
 			for w in app.windows {
 				if w == app.active { continue }
-				if ui.menu_item(fmt.tprintf("%s###mv_%d", window_label(app, w), w.id)).clicked { target = w }
+				if ui.menu_item(fmt.tprintf("%s###mv_%d", window_label(app, w), w.id), icon = lucide.APP_WINDOW).clicked { target = w }
 			}
 		}
 		if target != nil { tab_move(app, t, target); ui.ctx_menu_close(); return }
 	}
 	ui.menu_separator()
-	if ui.menu_submenu(fmt.tprintf("%s###tabbar_sub", i18n.tr("Tab bar"))) {   // tab_sidebar.odin
+	if ui.menu_submenu(fmt.tprintf("%s###tabbar_sub", i18n.tr("Tab bar")), icon = lucide.COLUMNS_2) {   // tab_sidebar.odin
 		cur := current_tab(app)
 		menu_command(app, cur, "view.tabs_position.top")
 		menu_command(app, cur, "view.tabs_position.left")
@@ -366,19 +368,19 @@ address_menu_items :: proc(app: ^App) {
 	f := &active_window(app).address
 	sel := ui.field_has_selection(f)
 	clip := clip_get()
-	if ui.menu_item("Undo", "Ctrl+Z", enabled = ui.field_can_undo(f)).clicked { ui.field_undo(f) }
-	if ui.menu_item("Redo", "Ctrl+Y", enabled = ui.field_can_redo(f)).clicked { ui.field_redo(f) }
+	if ui.menu_item("Undo", "Ctrl+Z", icon = lucide.UNDO_2, enabled = ui.field_can_undo(f)).clicked { ui.field_undo(f) }
+	if ui.menu_item("Redo", "Ctrl+Y", icon = lucide.REDO_2, enabled = ui.field_can_redo(f)).clicked { ui.field_redo(f) }
 	ui.menu_separator()
-	if ui.menu_item("Cut", "Ctrl+X", enabled = sel).clicked { ui.field_cut(f) }
-	if ui.menu_item("Copy", "Ctrl+C", enabled = sel).clicked { ui.field_copy(f) }
-	if ui.menu_item("Paste", "Ctrl+V", enabled = clip != "").clicked { ui.field_paste(address_key(app)) }
-	if ui.menu_item("Paste and go", enabled = strings.trim_space(clip) != "").clicked {
+	if ui.menu_item("Cut", "Ctrl+X", icon = lucide.SCISSORS, enabled = sel).clicked { ui.field_cut(f) }
+	if ui.menu_item("Copy", "Ctrl+C", icon = lucide.COPY, enabled = sel).clicked { ui.field_copy(f) }
+	if ui.menu_item("Paste", "Ctrl+V", icon = lucide.CLIPBOARD_PASTE, enabled = clip != "").clicked { ui.field_paste(address_key(app)) }
+	if ui.menu_item("Paste and go", icon = lucide.ARROW_RIGHT, enabled = strings.trim_space(clip) != "").clicked {
 		target := strings.clone(strings.trim_space(clip), context.temp_allocator)
 		if t := current_tab(app); t != nil { navigate(app, t, address_or_search(app, target), origin = .User) }
 	}
-	if ui.menu_item("Delete", "Del", enabled = sel).clicked { ui.field_delete(f) }
+	if ui.menu_item("Delete", "Del", icon = lucide.TRASH_2, enabled = sel).clicked { ui.field_delete(f) }
 	ui.menu_separator()
-	if ui.menu_item("Select all", "Ctrl+A", enabled = len(f.buf) > 0).clicked { ui.field_select_all(f) }
+	if ui.menu_item("Select all", "Ctrl+A", icon = lucide.LIST_CHECKS, enabled = len(f.buf) > 0).clicked { ui.field_select_all(f) }
 }
 
 // What the address bar does with words that are not an address: a search.

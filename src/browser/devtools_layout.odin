@@ -17,6 +17,7 @@ import "core:fmt"
 import "core:math"
 import "core:strings"
 import "toolkit:draw"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:config"
 
@@ -307,9 +308,9 @@ dev_strip_end :: proc(user: rawptr, dk: ^ui.Dock, leaf: i32) {
 		}
 		ui.menu_separator()
 		if devtools_detached() {
-			if ui.menu_item("Dock back into the browser window###dt_dock_win", cmd_key(app, "view.devtools_detach")).clicked { devtools_attach(app) }
+			if ui.menu_item("Dock back into the browser window###dt_dock_win", cmd_key(app, "view.devtools_detach"), icon = lucide.PANEL_BOTTOM).clicked { devtools_attach(app) }
 		} else {
-			if ui.menu_item("Open in a separate window###dt_dock_win", cmd_key(app, "view.devtools_detach")).clicked { devtools_detach(app) }
+			if ui.menu_item("Open in a separate window###dt_dock_win", cmd_key(app, "view.devtools_detach"), icon = lucide.APP_WINDOW).clicked { devtools_detach(app) }
 		}
 	}
 	dt_gap(2)

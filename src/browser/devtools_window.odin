@@ -79,6 +79,7 @@ devtools_window_make :: proc(app: ^App) {
 	platform.set_dark_title(w, chrome_palette(app).dark)
 	ui.init(&dw.ui, &app.fonts, &app.theme)
 	dw.ui.icon_font = app.icons
+	dw.ui.menu_icon_font = app.lucide
 	autoscroll_toolkit_setup(app, &dw.ui)   // page_autoscroll.odin: middle-click autoscroll for the detached tools' regions
 	ui.use(active_window(app).ui)
 	d.win = dw

@@ -14,6 +14,7 @@ import "core:fmt"
 import "core:math"
 import "core:strings"
 import "toolkit:draw"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:page"
 import "wb:base"
@@ -511,7 +512,7 @@ network_settings_items :: proc(app: ^App, t: ^Tab) {
 	if ui.menu_item("Show the waterfall###dt_ns_wf", checked = app.net_prefs.waterfall, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.network.waterfall") }
 	if ui.menu_item("Hide data: URLs###dt_ns_data", checked = v.hide_data, keep_open = true).clicked { v.hide_data = !v.hide_data }
 	if ui.menu_item("Keep audio and video bodies###dt_ns_media", checked = app.net_prefs.keep_media, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.network.keep_media") }
-	if ui.menu_submenu("Columns###dt_ns_cols") { columns_menu(app, v) }
+	if ui.menu_submenu("Columns###dt_ns_cols", icon = lucide.COLUMNS_2) { columns_menu(app, v) }
 }
 
 @(private = "file")
@@ -529,7 +530,7 @@ columns_menu :: proc(app: ^App, v: ^Dev_Network) {
 		}
 	}
 	ui.menu_separator()
-	if ui.menu_item("Reset columns###dt_col_reset").clicked { network_reset_layout(app); v.cols_ok = false }
+	if ui.menu_item("Reset columns###dt_col_reset", icon = lucide.ROTATE_CCW).clicked { network_reset_layout(app); v.cols_ok = false }
 }
 
 @(private = "file")
@@ -822,42 +823,42 @@ net_row_menu :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, key: ui.Key) {
 net_row_menu_items :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 	e := net_entry_of(&t.net, v.menu_id)
 	if e == nil { ui.ctx_menu_close(); return }
-	if ui.menu_item("Open in a new tab###dt_nm_open").clicked { open_in_new_tab(app, strings.clone(e.url, context.temp_allocator), inspected_page(app)) }
-	if ui.menu_item("Copy link address###dt_nm_url", icon = GLYPH_COPY).clicked { clip_set(e.url) }
-	if ui.menu_submenu("Copy###dt_nm_copy") {
-		if ui.menu_item("Copy URL###dt_nm_c_url").clicked { clip_set(e.url) }
+	if ui.menu_item("Open in a new tab###dt_nm_open", icon = lucide.EXTERNAL_LINK).clicked { open_in_new_tab(app, strings.clone(e.url, context.temp_allocator), inspected_page(app)) }
+	if ui.menu_item("Copy link address###dt_nm_url", icon = lucide.COPY).clicked { clip_set(e.url) }
+	if ui.menu_submenu("Copy###dt_nm_copy", icon = lucide.COPY) {
+		if ui.menu_item("Copy URL###dt_nm_c_url", icon = lucide.COPY).clicked { clip_set(e.url) }
 		ui.menu_separator()
-		if ui.menu_item("Copy as cURL (bash)###dt_nm_c_curl").clicked { clip_set(net_curl(e)) }
-		if ui.menu_item("Copy as cURL (cmd)###dt_nm_c_curlw").clicked { clip_set(net_curl(e, true)) }
-		if ui.menu_item("Copy as PowerShell###dt_nm_c_ps").clicked { clip_set(net_powershell(e)) }
-		if ui.menu_item("Copy as fetch###dt_nm_c_fetch").clicked { clip_set(net_fetch_code(e)) }
+		if ui.menu_item("Copy as cURL (bash)###dt_nm_c_curl", icon = lucide.COPY).clicked { clip_set(net_curl(e)) }
+		if ui.menu_item("Copy as cURL (cmd)###dt_nm_c_curlw", icon = lucide.COPY).clicked { clip_set(net_curl(e, true)) }
+		if ui.menu_item("Copy as PowerShell###dt_nm_c_ps", icon = lucide.COPY).clicked { clip_set(net_powershell(e)) }
+		if ui.menu_item("Copy as fetch###dt_nm_c_fetch", icon = lucide.COPY).clicked { clip_set(net_fetch_code(e)) }
 		ui.menu_separator()
-		if ui.menu_item("Copy request headers###dt_nm_c_rq", enabled = e.req_headers != "").clicked { clip_set(e.req_headers) }
-		if ui.menu_item("Copy response headers###dt_nm_c_rs", enabled = e.res_headers != "").clicked { clip_set(e.res_headers) }
-		if ui.menu_item("Copy response###dt_nm_c_body", enabled = len(e.body) > 0).clicked { clip_set(string(e.body[:])) }
+		if ui.menu_item("Copy request headers###dt_nm_c_rq", enabled = e.req_headers != "", icon = lucide.COPY).clicked { clip_set(e.req_headers) }
+		if ui.menu_item("Copy response headers###dt_nm_c_rs", enabled = e.res_headers != "", icon = lucide.COPY).clicked { clip_set(e.res_headers) }
+		if ui.menu_item("Copy response###dt_nm_c_body", enabled = len(e.body) > 0, icon = lucide.COPY).clicked { clip_set(string(e.body[:])) }
 		ui.menu_separator()
-		if ui.menu_item("Copy all as cURL###dt_nm_c_all", enabled = len(v.rows) > 0).clicked {
+		if ui.menu_item("Copy all as cURL###dt_nm_c_all", enabled = len(v.rows) > 0, icon = lucide.COPY).clicked {
 			b := strings.builder_make(context.temp_allocator)
 			for ri in v.rows { strings.write_string(&b, net_curl(&t.net.entries[ri])); strings.write_string(&b, "\n\n") }
 			clip_set(strings.to_string(b))
 		}
-		if ui.menu_item("Copy all as HAR###dt_nm_c_har", enabled = len(t.net.entries) > 0).clicked { clip_set(net_har(t)) }
+		if ui.menu_item("Copy all as HAR###dt_nm_c_har", enabled = len(t.net.entries) > 0, icon = lucide.COPY).clicked { clip_set(net_har(t)) }
 	}
 	ui.menu_separator()
 	host_ := net_host_of(e.url)
-	if ui.menu_item("Block request URL###dt_nm_block", enabled = !strings.has_prefix(e.url, "data:")).clicked { net_block(app, v, e.url) }
-	if ui.menu_item(fmt.tprintf("Block request domain  (%s)###dt_nm_blockd", host_), enabled = host_ != "").clicked { net_block(app, v, strings.concatenate({"*://", host_, "/*"}, context.temp_allocator)) }
+	if ui.menu_item("Block request URL###dt_nm_block", enabled = !strings.has_prefix(e.url, "data:"), icon = lucide.SHIELD).clicked { net_block(app, v, e.url) }
+	if ui.menu_item(fmt.tprintf("Block request domain  (%s)###dt_nm_blockd", host_), enabled = host_ != "", icon = lucide.SHIELD).clicked { net_block(app, v, strings.concatenate({"*://", host_, "/*"}, context.temp_allocator)) }
 	if len(v.blocked) > 0 {
-		if ui.menu_item(fmt.tprintf("Unblock all  (%d patterns)###dt_nm_unblock", len(v.blocked))).clicked { for b in v.blocked { delete(b) }; clear(&v.blocked) }
+		if ui.menu_item(fmt.tprintf("Unblock all  (%d patterns)###dt_nm_unblock", len(v.blocked)), icon = lucide.SHIELD).clicked { for b in v.blocked { delete(b) }; clear(&v.blocked) }
 	}
 	ui.menu_separator()
 	replayable := e.type == .XHR && !e.is_ws && !e.is_sse && t.page != nil
-	if ui.menu_item("Replay XHR###dt_nm_replay", enabled = replayable).clicked {
+	if ui.menu_item("Replay XHR###dt_nm_replay", enabled = replayable, icon = lucide.REFRESH_CW).clicked {
 		if page.dev_run_script(t.page, net_fetch_code(e)) { ui.toast(.Info, "Replaying %s %s", e.method, net_name_of(e.url)) } else { ui.toast(.Warn, "The page cannot run the request (JavaScript is off for it)") }
 	}
-	if ui.menu_item("Save response as\u2026###dt_nm_savebody", enabled = len(e.body) > 0).clicked { save_data_as(app, suggested_name(e.url, "response"), e.body[:]) }
-	if ui.menu_item("Save all as HAR\u2026###dt_nm_savehar", enabled = len(t.net.entries) > 0).clicked { net_export_har(app, t) }	ui.menu_separator()
-	if ui.menu_item("Clear the log###dt_nm_clear").clicked { net_clear(&t.net); v.has_sel = false }
+	if ui.menu_item("Save response as\u2026###dt_nm_savebody", enabled = len(e.body) > 0, icon = lucide.SAVE).clicked { save_data_as(app, suggested_name(e.url, "response"), e.body[:]) }
+	if ui.menu_item("Save all as HAR\u2026###dt_nm_savehar", enabled = len(t.net.entries) > 0, icon = lucide.SAVE).clicked { net_export_har(app, t) }	ui.menu_separator()
+	if ui.menu_item("Clear the log###dt_nm_clear", icon = lucide.TRASH_2).clicked { net_clear(&t.net); v.has_sel = false }
 }
 
 @(private = "file")

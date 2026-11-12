@@ -9,6 +9,7 @@ import "core:strings"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
@@ -693,7 +694,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		menu_command(app, t, "view.bookmarks_bar")
 		menu_command(app, t, "browser.history_tree")
 		ui.menu_separator()
-		if ui.menu_submenu(fmt.tprintf("Zoom (%d %%)###zoom_sub", zoom_percent(t)), enabled = web) {
+		if ui.menu_submenu(fmt.tprintf("Zoom (%d %%)###zoom_sub", zoom_percent(t)), icon = lucide.ZOOM_IN, enabled = web) {
 			menu_command(app, t, "page.zoom_in")
 			menu_command(app, t, "page.zoom_out")
 			menu_command(app, t, "page.zoom_reset")
@@ -705,11 +706,11 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		menu_command(app, t, "page.print", force_disabled = true)   // not available (print.odin)
 		menu_command(app, t, "browser.downloads")
 		ui.menu_separator()
-		if ui.menu_submenu("View###view_sub") {
+		if ui.menu_submenu("View###view_sub", icon = lucide.EYE) {
 			menu_command(app, t, "view.status_bar")
 			menu_command(app, t, "view.smooth_scrolling")
 			menu_command(app, t, "view.frame_statistics")
-			if ui.menu_submenu("Frame rate###frame_cap_sub") {
+			if ui.menu_submenu("Frame rate###frame_cap_sub", icon = lucide.GAUGE) {
 				menu_command(app, t, "view.frame_cap.auto")
 				menu_command(app, t, "view.frame_cap.60")
 				menu_command(app, t, "view.frame_cap.120")

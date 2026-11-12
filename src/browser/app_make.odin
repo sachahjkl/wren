@@ -137,6 +137,7 @@ app_ui_init :: proc(app: ^App) {
 	w := active_window(app)
 	ui.init(w.ui, &app.fonts, &app.theme)
 	w.ui.icon_font = app.icons
+	w.ui.menu_icon_font = app.lucide   // (the menus' icons are Lucide's: command_icons.odin)
 	app.made += {.Ui}
 }
 

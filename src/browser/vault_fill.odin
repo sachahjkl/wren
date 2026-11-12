@@ -331,11 +331,7 @@ vault_enabled_cmd :: proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.
 
 // The Vault's commands (commands.odin calls this from commands_build).
 vault_commands_add :: proc(r: ^Command_Registry) {
-	add :: proc(r: ^Command_Registry, c: Command) {
-		assert(c.name not_in r.index, "commands: duplicate name")
-		r.index[c.name] = len(r.list)
-		append(&r.list, c)
-	}
+	add :: command_add
 	keys := make([]Shortcut, 1, base.arena_allocator(&r.arena))
 	keys[0] = VAULT_FILL_DEFAULT
 	add(r, {name = "vault.fill", title = "Fill the login from the Vault", category = "Vault", keywords = "password autofill bitwarden login",

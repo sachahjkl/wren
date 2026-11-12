@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:time"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:adblock"
 import "wb:base"
@@ -758,22 +759,22 @@ journal_menu_items :: proc(app: ^App, t: ^Tab) {
 	e := blocker.journal_get(&b.journal, app.dash.log_menu)
 	if e == nil { return }
 	host := adblock.url_host(e.url)
-	if ui.menu_item(i18n.tr("Copy the URL")).clicked { clip_set(e.url) }
-	if ui.menu_item(i18n.tr("Copy the rule"), enabled = e.rule != "").clicked { clip_set(e.rule) }
+	if ui.menu_item(i18n.tr("Copy the URL"), icon = lucide.COPY).clicked { clip_set(e.url) }
+	if ui.menu_item(i18n.tr("Copy the rule"), enabled = e.rule != "", icon = lucide.COPY).clicked { clip_set(e.rule) }
 	ui.menu_separator()
-	if ui.menu_item(fmt.tprintf(i18n.tr("Create an exception for %s"), host), enabled = host != "").clicked {
+	if ui.menu_item(fmt.tprintf(i18n.tr("Create an exception for %s"), host), enabled = host != "", icon = lucide.SHIELD).clicked {
 		line := fmt.tprintf("@@||%s^%s", host, e.type == .Document ? "$document" : "")
 		dash_add_filter(app, line)
 	}
-	if ui.menu_item(i18n.tr("Create an exception for this URL only"), enabled = e.url != "").clicked { dash_add_filter(app, fmt.tprintf("@@%s", e.url)) }
-	if ui.menu_item(fmt.tprintf(i18n.tr("Block %s on every site"), host), enabled = host != "").clicked { dash_add_filter(app, fmt.tprintf("||%s^", host)) }
-	if ui.menu_item(fmt.tprintf(i18n.tr("Allow %s (dynamic rule, every site)"), host), enabled = host != "").clicked {
+	if ui.menu_item(i18n.tr("Create an exception for this URL only"), enabled = e.url != "", icon = lucide.SHIELD).clicked { dash_add_filter(app, fmt.tprintf("@@%s", e.url)) }
+	if ui.menu_item(fmt.tprintf(i18n.tr("Block %s on every site"), host), enabled = host != "", icon = lucide.SHIELD).clicked { dash_add_filter(app, fmt.tprintf("||%s^", host)) }
+	if ui.menu_item(fmt.tprintf(i18n.tr("Allow %s (dynamic rule, every site)"), host), enabled = host != "", icon = lucide.SHIELD).clicked {
 		blocker.dyn_set(&b.dyn, "*", host, .All, .Allow)
 		blocker_rules_saved()
 		ui.toast(.Good, i18n.tr("Rule added: * %s * allow"), host)
 	}
 	ui.menu_separator()
-	if ui.menu_item(i18n.tr("Open the document"), enabled = e.doc != "").clicked { tab_open(app, strings.clone(e.doc, context.temp_allocator), origin = .Replay) }
+	if ui.menu_item(i18n.tr("Open the document"), enabled = e.doc != "", icon = lucide.EXTERNAL_LINK).clicked { tab_open(app, strings.clone(e.doc, context.temp_allocator), origin = .Replay) }
 }
 
 dash_add_filter :: proc(app: ^App, line: string) {

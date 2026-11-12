@@ -228,24 +228,24 @@ folder_menu_items :: proc(app: ^App, t: ^Tab, folder: u64, skip: int = 0) -> (do
 		n += 1
 		title := safe_label(b.title != "" ? b.title : default_tab_title(b.url), 60)
 		if b.folder {
-			if ui.menu_submenu(fmt.tprintf("%s###bmf_%d", title, b.id)) {
+			if ui.menu_submenu(fmt.tprintf("%s###bmf_%d", title, b.id), icon = lucide.FOLDER) {
 				if folder_menu_items(app, t, b.id) { return true }
 			}
-		} else if it := ui.menu_item(fmt.tprintf("%s###bmf_%d", title, b.id)); it.clicked {
+		} else if it := ui.menu_item(fmt.tprintf("%s###bmf_%d", title, b.id), icon = lucide.FOLDER); it.clicked {
 			bookmark_open(app, t, strings.clone(app.bms.items[i].url, context.temp_allocator), .Ctrl in it.mods)
 			ui.ctx_menu_close()
 			return true
 		}
 	}
 	if n == 0 {
-		_ = ui.menu_item(fmt.tprintf("%s###bmf_empty_%d", i18n.tr("(empty)"), folder), enabled = false)
+		_ = ui.menu_item(fmt.tprintf("%s###bmf_empty_%d", i18n.tr("(empty)"), folder), enabled = false, icon = lucide.FOLDER)
 		return false
 	}
 	links := 0
 	for b in app.bms.items { if b.parent == folder && !b.folder { links += 1 } }
 	if links > 1 && skip == 0 {
 		ui.menu_separator()
-		if ui.menu_item(fmt.tprintf("%s###bmf_all_%d", i18n.tr("Open all in new tabs"), folder)).clicked {
+		if ui.menu_item(fmt.tprintf("%s###bmf_all_%d", i18n.tr("Open all in new tabs"), folder), icon = lucide.FOLDER).clicked {
 			urls := make([dynamic]string, context.temp_allocator)
 			for b in app.bms.items { if b.parent == folder && !b.folder { append(&urls, strings.clone(b.url, context.temp_allocator)) } }
 			for u in urls { tab_open(app, u, origin = .User) }
@@ -282,11 +282,11 @@ bookmarks_bar_menus :: proc(app: ^App) {
 				bookmarks_bar_toggle(app)
 				ui.ctx_menu_close()
 			}
-			if ui.menu_item(i18n.tr("New folder in the bar…")).clicked {
+			if ui.menu_item(i18n.tr("New folder in the bar…"), icon = lucide.PLUS).clicked {
 				bookmark_folder_new(app, bookmarks_toolbar(app))
 				ui.ctx_menu_close()
 			}
-			if ui.menu_item(i18n.tr("Bookmarks"), "Ctrl+Shift+O").clicked {
+			if ui.menu_item(i18n.tr("Bookmarks"), "Ctrl+Shift+O", icon = lucide.BOOKMARK).clicked {
 				open_bookmarks(app)
 				ui.ctx_menu_close()
 			}

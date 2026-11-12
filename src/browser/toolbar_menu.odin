@@ -10,6 +10,7 @@ package browser
 // is the last item here (platform.show_system_menu, after the frame: window_chrome_after_frame).
 
 import "toolkit:platform"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:i18n"
 
@@ -34,6 +35,6 @@ toolbar_menu_items :: proc(app: ^App, t: ^Tab) {
 	if platform.is_integrated_title(w) && !platform.is_fullscreen(w) && platform.system_menu_available(w) {
 		ui.menu_separator()
 		// (the system's menu of the window: restore, move, size, minimize, maximize, close; Wayland: the compositor's)
-		if ui.menu_item(i18n.tr("Window menu")).clicked { window_menu_ask(app, ui.mouse_pos()) }
+		if ui.menu_item(i18n.tr("Window menu"), icon = lucide.MENU).clicked { window_menu_ask(app, ui.mouse_pos()) }
 	}
 }

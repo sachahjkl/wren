@@ -11,6 +11,7 @@ import "core:fmt"
 import "core:math"
 import "core:strings"
 import "toolkit:draw"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:cookies"
 import "wb:page"
@@ -246,12 +247,12 @@ app_table :: proc(app: ^App, t: ^Tab, a: ^Dev_Application) {
 		if ui.key_press(.C, {.Ctrl}) && a.has_sel { for r in rows { if row_id(r) == a.sel { clip_set(r.value) } } }
 	}
 	if ui.ctx_menu(menu_key, dt_px(220)) {
-		if ui.menu_item("Copy value###dt_ap_cv").clicked { clip_set(a.menu_value) }
-		if ui.menu_item("Copy name###dt_ap_cn").clicked { clip_set(a.menu_name) }
-		if ui.menu_item("Edit value###dt_ap_ev").clicked { for r in rows { if row_id(r) == a.menu_key { begin_edit(a, r, 1) } } }
+		if ui.menu_item("Copy value###dt_ap_cv", icon = lucide.COPY).clicked { clip_set(a.menu_value) }
+		if ui.menu_item("Copy name###dt_ap_cn", icon = lucide.COPY).clicked { clip_set(a.menu_name) }
+		if ui.menu_item("Edit value###dt_ap_ev", icon = lucide.PENCIL).clicked { for r in rows { if row_id(r) == a.menu_key { begin_edit(a, r, 1) } } }
 		ui.menu_separator()
-		if ui.menu_item("Delete###dt_ap_del", "Del").clicked { delete_by_key(app, t, a, a.menu_key, a.menu_name, a.menu_dom, a.menu_path) }
-		if ui.menu_item("Clear all###dt_ap_clr").clicked { clear_area(app, t, a) }
+		if ui.menu_item("Delete###dt_ap_del", "Del", icon = lucide.TRASH_2).clicked { delete_by_key(app, t, a, a.menu_key, a.menu_name, a.menu_dom, a.menu_path) }
+		if ui.menu_item("Clear all###dt_ap_clr", icon = lucide.TRASH_2).clicked { clear_area(app, t, a) }
 	}
 }
 
