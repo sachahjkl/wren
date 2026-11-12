@@ -1276,8 +1276,6 @@ _t_abort_AbortController_create :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := AbortController_create(&c)
@@ -1294,8 +1292,6 @@ _t_abort_AbortController_signal :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1319,8 +1315,6 @@ _t_abort_AbortController_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -1351,8 +1345,6 @@ _t_abort_AbortSignal_aborted :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1376,8 +1368,6 @@ _t_abort_AbortSignal_reasonCode :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1408,8 +1398,6 @@ _t_abort_AbortSignal_reason :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -1438,8 +1426,6 @@ _t_abort_AbortSignal_throwIfAborted :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1463,8 +1449,6 @@ _t_abort_AbortSignal_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -1490,8 +1474,6 @@ _t_abort_AbortSignal_timeout :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -1515,8 +1497,6 @@ _t_abort_AbortSignal_any :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -1543,8 +1523,6 @@ _t_animations_Animation_create :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -1563,8 +1541,6 @@ _t_animations_Animation_setEffect :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -1618,8 +1594,6 @@ _t_animations_Animation_clearEffect :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1641,8 +1615,6 @@ _t_animations_Animation_setTimeline :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1665,8 +1637,6 @@ _t_animations_Animation_play :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1692,8 +1662,6 @@ _t_animations_Animation_pause :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1719,8 +1687,6 @@ _t_animations_Animation_finish :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1746,8 +1712,6 @@ _t_animations_Animation_cancel :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1769,8 +1733,6 @@ _t_animations_Animation_reverse :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1796,8 +1758,6 @@ _t_animations_Animation_persist :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1819,8 +1779,6 @@ _t_animations_Animation_commitStyles :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1846,8 +1804,6 @@ _t_animations_Animation_updatePlaybackRate :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1870,8 +1826,6 @@ _t_animations_Animation_playbackRate :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1895,8 +1849,6 @@ _t_animations_Animation_set_playbackRate :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1919,8 +1871,6 @@ _t_animations_Animation_currentTime :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1944,8 +1894,6 @@ _t_animations_Animation_set_currentTime :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1972,8 +1920,6 @@ _t_animations_Animation_startTime :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -1997,8 +1943,6 @@ _t_animations_Animation_set_startTime :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2021,8 +1965,6 @@ _t_animations_Animation_playState :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2046,8 +1988,6 @@ _t_animations_Animation_replaceState :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2071,8 +2011,6 @@ _t_animations_Animation_pending :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2103,8 +2041,6 @@ _t_animations_Animation_takeOps :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -2133,8 +2069,6 @@ _t_animations_Animation_dropOps :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2157,8 +2091,6 @@ _t_animations_AnimationPlaybackEvent_time :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2183,8 +2115,6 @@ _t_animations_Animation_computedTiming :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2217,8 +2147,6 @@ _t_animations_Animation_relevant :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -2248,8 +2176,6 @@ _t_animations_Animation_cssBind :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 80)
@@ -2292,8 +2218,6 @@ _t_animations_Animation_cssName :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -2322,8 +2246,6 @@ _t_animations_DocumentTimeline_currentTime :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := DocumentTimeline_currentTime(&c)
@@ -2340,8 +2262,6 @@ _t_animations_ProgressTimeline_create :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n4 := wasm.addr(&f, a[5])
@@ -2382,8 +2302,6 @@ _t_animations_ProgressTimeline_currentTime :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2407,8 +2325,6 @@ _t_animations_ProgressTimeline_source :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2432,8 +2348,6 @@ _t_animations_ProgressTimeline_offset :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2458,8 +2372,6 @@ _t_animations_Animation_setProgressTimeline :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2488,8 +2400,6 @@ _t_animations_Animation_isProgress :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2513,8 +2423,6 @@ _t_animations_Animation_setRange :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -2555,8 +2463,6 @@ _t_animations_Animation_range :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -2586,8 +2492,6 @@ _t_animations_Animation_validEasing :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -2612,8 +2516,6 @@ _t_async_queueMicrotask :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -2630,8 +2532,6 @@ _t_async_Promise_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Promise_create(&c)
@@ -2648,8 +2548,6 @@ _t_async_Promise_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -2683,8 +2581,6 @@ _t_async_Promise_reject :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -2718,8 +2614,6 @@ _t_async_Promise_then :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2743,8 +2637,6 @@ _t_async_Promise_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2768,8 +2660,6 @@ _t_async_Promise_value :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2800,8 +2690,6 @@ _t_async_Promise_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -2830,8 +2718,6 @@ _t_async_Promise_all :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -2852,8 +2738,6 @@ _t_async_Object_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2886,8 +2770,6 @@ _t_async_Object_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -2916,8 +2798,6 @@ _t_async_Buffer_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -2944,8 +2824,6 @@ _t_async_Buffer_alloc :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -2969,8 +2847,6 @@ _t_async_Buffer_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -2994,8 +2870,6 @@ _t_async_Buffer_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -3024,8 +2898,6 @@ _t_async_Buffer_write :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -3054,8 +2926,6 @@ _t_async_Buffer_slice :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 8)
@@ -3086,8 +2956,6 @@ _t_bloburl_BlobURL_register :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -3122,8 +2990,6 @@ _t_bloburl_BlobURL_revoke :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -3146,8 +3012,6 @@ _t_caches_CacheStorage_check :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_err := CacheStorage_check(&c)
@@ -3167,8 +3031,6 @@ _t_caches_CacheStorage_openName :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -3195,8 +3057,6 @@ _t_caches_CacheStorage_hasName :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -3226,8 +3086,6 @@ _t_caches_CacheStorage_deleteName :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -3263,8 +3121,6 @@ _t_caches_CacheStorage_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -3314,8 +3170,6 @@ _t_caches_Cache_matchIds :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -3382,8 +3236,6 @@ _t_caches_Cache_entryRequestHeaders :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -3428,8 +3280,6 @@ _t_caches_Cache_entryHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -3474,8 +3324,6 @@ _t_caches_Cache_entryBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -3509,8 +3357,6 @@ _t_caches_Cache_putEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -3577,8 +3423,6 @@ _t_caches_Cache_deleteEntries :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -3632,8 +3476,6 @@ _t_canvas_HTMLCanvasElement_width :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -3657,8 +3499,6 @@ _t_canvas_HTMLCanvasElement_set_width :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -3681,8 +3521,6 @@ _t_canvas_HTMLCanvasElement_height :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -3706,8 +3544,6 @@ _t_canvas_HTMLCanvasElement_set_height :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -3730,8 +3566,6 @@ _t_canvas_HTMLCanvasElement_context2d :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 8)
@@ -3762,8 +3596,6 @@ _t_canvas_Canvas_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -3796,8 +3628,6 @@ _t_canvas_CanvasRenderingContext2D_canvas :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -3821,8 +3651,6 @@ _t_canvas_OffscreenCanvasRenderingContext2D_canvas :: proc "c" (env: rawptr, cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -3846,8 +3674,6 @@ _t_canvas_CanvasSettings_alpha :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -3871,8 +3697,6 @@ _t_canvas_CanvasSettings_willReadFrequently :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -3896,8 +3720,6 @@ _t_canvas_CanvasState_save :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -3919,8 +3741,6 @@ _t_canvas_CanvasState_restore :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -3942,8 +3762,6 @@ _t_canvas_CanvasState_reset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -3965,8 +3783,6 @@ _t_canvas_CanvasState_isContextLost :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -3990,8 +3806,6 @@ _t_canvas_CanvasTransform_scale :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4015,8 +3829,6 @@ _t_canvas_CanvasTransform_rotate :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4039,8 +3851,6 @@ _t_canvas_CanvasTransform_translate :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4064,8 +3874,6 @@ _t_canvas_CanvasTransform_transform :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4093,8 +3901,6 @@ _t_canvas_CanvasTransform_setTransform :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4122,8 +3928,6 @@ _t_canvas_CanvasTransform_resetTransform :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4145,8 +3949,6 @@ _t_canvas_CanvasTransform_matrixElement :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4171,8 +3973,6 @@ _t_canvas_CanvasCompositing_globalAlpha :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4196,8 +3996,6 @@ _t_canvas_CanvasCompositing_set_globalAlpha :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4227,8 +4025,6 @@ _t_canvas_CanvasCompositing_globalCompositeOperation :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -4257,8 +4053,6 @@ _t_canvas_CanvasCompositing_set_globalCompositeOperation :: proc "c" (env: rawpt
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -4288,8 +4082,6 @@ _t_canvas_CanvasImageSmoothing_imageSmoothingEnabled :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4313,8 +4105,6 @@ _t_canvas_CanvasImageSmoothing_set_imageSmoothingEnabled :: proc "c" (env: rawpt
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4344,8 +4134,6 @@ _t_canvas_CanvasImageSmoothing_imageSmoothingQuality :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -4374,8 +4162,6 @@ _t_canvas_CanvasImageSmoothing_set_imageSmoothingQuality :: proc "c" (env: rawpt
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -4405,8 +4191,6 @@ _t_canvas_CanvasStyle_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4439,8 +4223,6 @@ _t_canvas_CanvasStyle_color :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -4470,8 +4252,6 @@ _t_canvas_CanvasStyle_object :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4496,8 +4276,6 @@ _t_canvas_CanvasStyle_setColor :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -4530,8 +4308,6 @@ _t_canvas_CanvasStyle_setObject :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4556,8 +4332,6 @@ _t_canvas_CanvasFillStrokeStyles_createLinearGradient :: proc "c" (env: rawptr, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4585,8 +4359,6 @@ _t_canvas_CanvasFillStrokeStyles_createRadialGradient :: proc "c" (env: rawptr, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[7]), 8)
@@ -4621,8 +4393,6 @@ _t_canvas_CanvasFillStrokeStyles_createConicGradient :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4649,8 +4419,6 @@ _t_canvas_Canvas_createPattern :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -4688,8 +4456,6 @@ _t_canvas_CanvasGradient_addColorStop :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -4723,8 +4489,6 @@ _t_canvas_CanvasPattern_setTransformMatrix :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4752,8 +4516,6 @@ _t_canvas_CanvasShadowStyles_shadowOffsetX :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4777,8 +4539,6 @@ _t_canvas_CanvasShadowStyles_set_shadowOffsetX :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4801,8 +4561,6 @@ _t_canvas_CanvasShadowStyles_shadowOffsetY :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4826,8 +4584,6 @@ _t_canvas_CanvasShadowStyles_set_shadowOffsetY :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4850,8 +4606,6 @@ _t_canvas_CanvasShadowStyles_shadowBlur :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4875,8 +4629,6 @@ _t_canvas_CanvasShadowStyles_set_shadowBlur :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -4906,8 +4658,6 @@ _t_canvas_CanvasShadowStyles_shadowColor :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -4936,8 +4686,6 @@ _t_canvas_CanvasShadowStyles_set_shadowColor :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -4974,8 +4722,6 @@ _t_canvas_CanvasFilters_filter :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -5004,8 +4750,6 @@ _t_canvas_CanvasFilters_set_filter :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -5035,8 +4779,6 @@ _t_canvas_CanvasRect_clearRect :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5062,8 +4804,6 @@ _t_canvas_CanvasRect_fillRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5089,8 +4829,6 @@ _t_canvas_CanvasRect_strokeRect :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5116,8 +4854,6 @@ _t_canvas_CanvasDrawPath_beginPath :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5139,8 +4875,6 @@ _t_canvas_CanvasDrawPath_fill :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -5172,8 +4906,6 @@ _t_canvas_CanvasDrawPath_stroke :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5197,8 +4929,6 @@ _t_canvas_CanvasDrawPath_clip :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -5230,8 +4960,6 @@ _t_canvas_CanvasDrawPath_isPointInPath :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n4 := wasm.addr(&f, a[5])
@@ -5267,8 +4995,6 @@ _t_canvas_CanvasDrawPath_isPointInStroke :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5296,8 +5022,6 @@ _t_canvas_CanvasText_fillText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -5331,8 +5055,6 @@ _t_canvas_CanvasText_strokeText :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -5366,8 +5088,6 @@ _t_canvas_CanvasText_measureText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -5399,8 +5119,6 @@ _t_canvas_TextMetrics_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5424,8 +5142,6 @@ _t_canvas_TextMetrics_actualBoundingBoxLeft :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5449,8 +5165,6 @@ _t_canvas_TextMetrics_actualBoundingBoxRight :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5474,8 +5188,6 @@ _t_canvas_TextMetrics_fontBoundingBoxAscent :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5499,8 +5211,6 @@ _t_canvas_TextMetrics_fontBoundingBoxDescent :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5524,8 +5234,6 @@ _t_canvas_TextMetrics_actualBoundingBoxAscent :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5549,8 +5257,6 @@ _t_canvas_TextMetrics_actualBoundingBoxDescent :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5574,8 +5280,6 @@ _t_canvas_TextMetrics_emHeightAscent :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5599,8 +5303,6 @@ _t_canvas_TextMetrics_emHeightDescent :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5624,8 +5326,6 @@ _t_canvas_TextMetrics_hangingBaseline :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5649,8 +5349,6 @@ _t_canvas_TextMetrics_alphabeticBaseline :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5674,8 +5372,6 @@ _t_canvas_TextMetrics_ideographicBaseline :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5699,8 +5395,6 @@ _t_canvas_CanvasDrawImage_drawImage :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5737,8 +5431,6 @@ _t_canvas_CanvasImageData_maxBytes :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := CanvasImageData_maxBytes(&c)
@@ -5755,8 +5447,6 @@ _t_canvas_CanvasImageData_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n5 := wasm.addr(&f, a[6])
@@ -5790,8 +5480,6 @@ _t_canvas_CanvasImageData_put :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -5825,8 +5513,6 @@ _t_canvas_CanvasPathDrawingStyles_lineWidth :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5850,8 +5536,6 @@ _t_canvas_CanvasPathDrawingStyles_set_lineWidth :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -5881,8 +5565,6 @@ _t_canvas_CanvasPathDrawingStyles_lineCap :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -5911,8 +5593,6 @@ _t_canvas_CanvasPathDrawingStyles_set_lineCap :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -5949,8 +5629,6 @@ _t_canvas_CanvasPathDrawingStyles_lineJoin :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -5979,8 +5657,6 @@ _t_canvas_CanvasPathDrawingStyles_set_lineJoin :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -6010,8 +5686,6 @@ _t_canvas_CanvasPathDrawingStyles_miterLimit :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -6035,8 +5709,6 @@ _t_canvas_CanvasPathDrawingStyles_set_miterLimit :: proc "c" (env: rawptr, calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -6059,8 +5731,6 @@ _t_canvas_CanvasPathDrawingStyles_lineDashOffset :: proc "c" (env: rawptr, calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -6084,8 +5754,6 @@ _t_canvas_CanvasPathDrawingStyles_set_lineDashOffset :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -6108,8 +5776,6 @@ _t_canvas_CanvasPathDrawingStyles_setLineDash :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -6135,8 +5801,6 @@ _t_canvas_CanvasPathDrawingStyles_lineDashCount :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -6160,8 +5824,6 @@ _t_canvas_CanvasPathDrawingStyles_lineDashAt :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -6193,8 +5855,6 @@ _t_canvas_CanvasTextDrawingStyles_lang :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6223,8 +5883,6 @@ _t_canvas_CanvasTextDrawingStyles_set_lang :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -6261,8 +5919,6 @@ _t_canvas_CanvasTextDrawingStyles_font :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6291,8 +5947,6 @@ _t_canvas_CanvasTextDrawingStyles_set_font :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -6329,8 +5983,6 @@ _t_canvas_CanvasTextDrawingStyles_textAlign :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6359,8 +6011,6 @@ _t_canvas_CanvasTextDrawingStyles_set_textAlign :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -6397,8 +6047,6 @@ _t_canvas_CanvasTextDrawingStyles_textBaseline :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6427,8 +6075,6 @@ _t_canvas_CanvasTextDrawingStyles_set_textBaseline :: proc "c" (env: rawptr, cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -6465,8 +6111,6 @@ _t_canvas_CanvasTextDrawingStyles_direction :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6495,8 +6139,6 @@ _t_canvas_CanvasTextDrawingStyles_set_direction :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -6533,8 +6175,6 @@ _t_canvas_CanvasTextDrawingStyles_letterSpacing :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6563,8 +6203,6 @@ _t_canvas_CanvasTextDrawingStyles_set_letterSpacing :: proc "c" (env: rawptr, ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -6601,8 +6239,6 @@ _t_canvas_CanvasTextDrawingStyles_wordSpacing :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6631,8 +6267,6 @@ _t_canvas_CanvasTextDrawingStyles_set_wordSpacing :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -6669,8 +6303,6 @@ _t_canvas_CanvasTextDrawingStyles_fontKerning :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6699,8 +6331,6 @@ _t_canvas_CanvasTextDrawingStyles_set_fontKerning :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -6737,8 +6367,6 @@ _t_canvas_CanvasTextDrawingStyles_fontStretch :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6767,8 +6395,6 @@ _t_canvas_CanvasTextDrawingStyles_set_fontStretch :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -6805,8 +6431,6 @@ _t_canvas_CanvasTextDrawingStyles_fontVariantCaps :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6835,8 +6459,6 @@ _t_canvas_CanvasTextDrawingStyles_set_fontVariantCaps :: proc "c" (env: rawptr, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -6873,8 +6495,6 @@ _t_canvas_CanvasTextDrawingStyles_textRendering :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -6903,8 +6523,6 @@ _t_canvas_CanvasTextDrawingStyles_set_textRendering :: proc "c" (env: rawptr, ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -6934,8 +6552,6 @@ _t_canvas_CanvasPath_closePath :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -6957,8 +6573,6 @@ _t_canvas_CanvasPath_moveTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -6982,8 +6596,6 @@ _t_canvas_CanvasPath_lineTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7007,8 +6619,6 @@ _t_canvas_CanvasPath_quadraticCurveTo :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7034,8 +6644,6 @@ _t_canvas_CanvasPath_bezierCurveTo :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7063,8 +6671,6 @@ _t_canvas_CanvasPath_arcTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7095,8 +6701,6 @@ _t_canvas_CanvasPath_rect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7122,8 +6726,6 @@ _t_canvas_CanvasPath_roundRect :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n5 := wasm.addr(&f, a[6])
@@ -7157,8 +6759,6 @@ _t_canvas_CanvasPath_arc :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7190,8 +6790,6 @@ _t_canvas_CanvasPath_ellipse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7225,8 +6823,6 @@ _t_canvas_Path2D_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -7253,8 +6849,6 @@ _t_canvas_Path2D_addPath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7289,8 +6883,6 @@ _t_canvas_HTMLCanvasElement_transferControl :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -7319,8 +6911,6 @@ _t_canvas_OffscreenCanvas_takeForTransfer :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -7349,8 +6939,6 @@ _t_canvas_OffscreenCanvas_adoptTransfer :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -7375,8 +6963,6 @@ _t_canvas_OffscreenCanvas_create :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -7403,8 +6989,6 @@ _t_canvas_OffscreenCanvas_width :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7428,8 +7012,6 @@ _t_canvas_OffscreenCanvas_height :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7453,8 +7035,6 @@ _t_canvas_OffscreenCanvas_set_width :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7482,8 +7062,6 @@ _t_canvas_OffscreenCanvas_set_height :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7511,8 +7089,6 @@ _t_canvas_OffscreenCanvas_context2d :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 8)
@@ -7543,8 +7119,6 @@ _t_canvas_OffscreenCanvas_transferToImageBitmap :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -7573,8 +7147,6 @@ _t_canvas_ImageBitmap_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7598,8 +7170,6 @@ _t_canvas_ImageBitmap_height :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7623,8 +7193,6 @@ _t_canvas_ImageBitmap_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7646,8 +7214,6 @@ _t_canvas_Canvas_createBitmap :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[12]), 8)
@@ -7683,8 +7249,6 @@ _t_canvas_Canvas_bitmapFromPixels :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -7719,8 +7283,6 @@ _t_canvas_HTMLCanvasElement_bitmapRenderer :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -7750,8 +7312,6 @@ _t_canvas_OffscreenCanvas_bitmapRenderer :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -7781,8 +7341,6 @@ _t_canvas_ImageBitmapRenderingContext_canvas :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7806,8 +7364,6 @@ _t_canvas_ImageBitmapRenderingContext_transferFromImageBitmap :: proc "c" (env: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -7836,8 +7392,6 @@ _t_compression_Compression_create :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -7877,8 +7431,6 @@ _t_compression_Compression_push :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -7920,8 +7472,6 @@ _t_compression_Compression_finish :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -7959,8 +7509,6 @@ _t_compression_Compression_output :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -7989,8 +7537,6 @@ _t_console_console_log :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8009,8 +7555,6 @@ _t_console_console_warn :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8029,8 +7573,6 @@ _t_console_console_error :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8049,8 +7591,6 @@ _t_credentials_CredentialsContainer_create :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8088,8 +7628,6 @@ _t_credentials_CredentialsContainer_get :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8127,8 +7665,6 @@ _t_credentials_CredentialsContainer_preventSilentAccess :: proc "c" (env: rawptr
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := CredentialsContainer_preventSilentAccess(&c)
@@ -8145,8 +7681,6 @@ _t_credentials_PublicKeyCredential_enabled :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := PublicKeyCredential_enabled(&c)
@@ -8163,8 +7697,6 @@ _t_credentials_PublicKeyCredential_isUserVerifyingPlatformAuthenticatorAvailable
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := PublicKeyCredential_isUserVerifyingPlatformAuthenticatorAvailable(&c)
@@ -8181,8 +7713,6 @@ _t_credentials_PublicKeyCredential_isConditionalMediationAvailable :: proc "c" (
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := PublicKeyCredential_isConditionalMediationAvailable(&c)
@@ -8199,8 +7729,6 @@ _t_credentials_PublicKeyCredential_getClientCapabilities :: proc "c" (env: rawpt
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := PublicKeyCredential_getClientCapabilities(&c)
@@ -8217,8 +7745,6 @@ _t_credentials_PublicKeyCredential_checkRpId :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8245,8 +7771,6 @@ _t_credentials_PublicKeyCredential_isAssertion :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -8277,8 +7801,6 @@ _t_credentials_PublicKeyCredential_id :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8307,8 +7829,6 @@ _t_credentials_PublicKeyCredential_bytes :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -8349,8 +7869,6 @@ _t_credentials_PublicKeyCredential_authenticatorAttachment :: proc "c" (env: raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8388,8 +7906,6 @@ _t_credentials_PublicKeyCredential_transports :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8418,8 +7934,6 @@ _t_credentials_PublicKeyCredential_publicKeyAlgorithm :: proc "c" (env: rawptr, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -8450,8 +7964,6 @@ _t_credentials_PublicKeyCredential_clientExtensionResults :: proc "c" (env: rawp
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8487,8 +7999,6 @@ _t_credentials_PublicKeyCredential_toJSON :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8517,8 +8027,6 @@ _t_crypto_Crypto_getRandomValues :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8548,8 +8056,6 @@ _t_crypto_Crypto_randomUUID :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -8574,8 +8080,6 @@ _t_crypto_SubtleCrypto_digest :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8604,8 +8108,6 @@ _t_crypto_SubtleCrypto_digestBuffer :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8637,8 +8139,6 @@ _t_crypto_CryptoKey_importRaw :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8673,8 +8173,6 @@ _t_crypto_CryptoKey_importDer :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8705,8 +8203,6 @@ _t_crypto_CryptoKey_importRsa :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8756,8 +8252,6 @@ _t_crypto_CryptoKey_generate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8784,8 +8278,6 @@ _t_crypto_CryptoKey_publicOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -8820,8 +8312,6 @@ _t_crypto_CryptoKey_export :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -8859,8 +8349,6 @@ _t_crypto_CryptoKey_modulusBits :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -8891,8 +8379,6 @@ _t_crypto_CryptoKey_serialize :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -8921,8 +8407,6 @@ _t_crypto_CryptoKey_deserialize :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8943,8 +8427,6 @@ _t_crypto_SubtleCrypto_aes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -8990,8 +8472,6 @@ _t_crypto_SubtleCrypto_aesKw :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -9020,8 +8500,6 @@ _t_crypto_SubtleCrypto_rsaOaep :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -9062,8 +8540,6 @@ _t_crypto_SubtleCrypto_sign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -9108,8 +8584,6 @@ _t_crypto_SubtleCrypto_verify :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -9158,8 +8632,6 @@ _t_crypto_SubtleCrypto_agree :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -9190,8 +8662,6 @@ _t_crypto_SubtleCrypto_derive :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -9239,8 +8709,6 @@ _t_document_Document_URL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -9271,8 +8739,6 @@ _t_document_Window_origin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -9294,8 +8760,6 @@ _t_document_Window_isSecureContext :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_isSecureContext(&c)
@@ -9318,8 +8782,6 @@ _t_document_Document_cookie_get :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -9344,8 +8806,6 @@ _t_document_Document_cookie_set :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -9375,8 +8835,6 @@ _t_dom_Document_documentElement :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_documentElement(&c)
@@ -9393,8 +8851,6 @@ _t_dom_Document_head :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_head(&c)
@@ -9411,8 +8867,6 @@ _t_dom_Document_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_body(&c)
@@ -9429,8 +8883,6 @@ _t_dom_Document_createElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -9460,8 +8912,6 @@ _t_dom_Document_createTextNode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -9491,8 +8941,6 @@ _t_dom_Document_getElementById :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -9517,8 +8965,6 @@ _t_dom_Node_appendChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -9550,8 +8996,6 @@ _t_dom_Node_insertBefore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -9589,8 +9033,6 @@ _t_dom_Node_removeChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -9622,8 +9064,6 @@ _t_dom_Node_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -9649,8 +9089,6 @@ _t_dom_Node_parentNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -9674,8 +9112,6 @@ _t_dom_Node_firstChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -9699,8 +9135,6 @@ _t_dom_Node_lastChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -9724,8 +9158,6 @@ _t_dom_Node_previousSibling :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -9749,8 +9181,6 @@ _t_dom_Node_nextSibling :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -9774,8 +9204,6 @@ _t_dom_Node_nodeType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -9799,8 +9227,6 @@ _t_dom_Node_setTextContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -9840,8 +9266,6 @@ _t_dom_Node_getTextContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -9877,8 +9301,6 @@ _t_dom_Element_tagName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -9907,8 +9329,6 @@ _t_dom_Element_setAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -9959,8 +9379,6 @@ _t_dom_Element_getAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -9998,8 +9416,6 @@ _t_dom_Element_removeAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -10032,8 +9448,6 @@ _t_encoding_TextEncoder_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -10060,8 +9474,6 @@ _t_encoding_TextEncoder_encodeInto :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -10088,8 +9500,6 @@ _t_encoding_TextDecoder_create :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -10131,8 +9541,6 @@ _t_encoding_TextDecoder_encoding :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -10161,8 +9569,6 @@ _t_encoding_TextDecoder_flags :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10198,8 +9604,6 @@ _t_encoding_TextDecoder_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -10244,8 +9648,6 @@ _t_encoding_TextDecoder_decodeBuffer :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
@@ -10290,8 +9692,6 @@ _t_encoding_TextDecoder_output :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -10320,8 +9720,6 @@ _t_events_EventTarget_addEventListener :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -10360,8 +9758,6 @@ _t_events_EventTarget_removeEventListener :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10384,8 +9780,6 @@ _t_events_EventTarget_dispatchEvent :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -10422,8 +9816,6 @@ _t_events_Event_preventDefault :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10445,8 +9837,6 @@ _t_events_Event_stopPropagation :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10468,8 +9858,6 @@ _t_events_Event_stopImmediatePropagation :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10491,8 +9879,6 @@ _t_events_Event_target :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10516,8 +9902,6 @@ _t_events_Event_currentTarget :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10548,8 +9932,6 @@ _t_events_Event_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -10578,8 +9960,6 @@ _t_events_Event_defaultPrevented :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10610,8 +9990,6 @@ _t_events_Event_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -10647,8 +10025,6 @@ _t_events_Event_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -10677,8 +10053,6 @@ _t_events_Event_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10702,8 +10076,6 @@ _t_events_Event_object :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10727,8 +10099,6 @@ _t_events_MouseEvent_clientX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10752,8 +10122,6 @@ _t_events_MouseEvent_clientY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10777,8 +10145,6 @@ _t_events_MouseEvent_button :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10802,8 +10168,6 @@ _t_events_KeyboardEvent_keyCode :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10827,8 +10191,6 @@ _t_eventsource_EventSource_create :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -10859,8 +10221,6 @@ _t_eventsource_EventSource_readyState :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10891,8 +10251,6 @@ _t_eventsource_EventSource_url :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -10921,8 +10279,6 @@ _t_eventsource_EventSource_withCredentials :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10946,8 +10302,6 @@ _t_eventsource_EventSource_close :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -10976,8 +10330,6 @@ _t_eventsource_MessageEvent_origin :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -11013,8 +10365,6 @@ _t_eventsource_MessageEvent_lastEventId :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -11043,8 +10393,6 @@ _t_fetch_Fetch_promise :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -11134,8 +10482,6 @@ _t_fetch_Fetch_startWithSignal :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -11220,8 +10566,6 @@ _t_fetch_Fetch_sync :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -11293,8 +10637,6 @@ _t_fetch_Response_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11318,8 +10660,6 @@ _t_fetch_Response_arrayBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11343,8 +10683,6 @@ _t_fetch_Response_bytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11368,8 +10706,6 @@ _t_fetch_Response_bodyUsed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11393,8 +10729,6 @@ _t_fetch_Response_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -11423,8 +10757,6 @@ _t_fetch_Stream_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11448,8 +10780,6 @@ _t_fetch_Stream_cancel :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11471,8 +10801,6 @@ _t_fontface_FontFace_addRule :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -11497,8 +10825,6 @@ _t_fontface_FontFace_removeRule :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -11514,8 +10840,6 @@ _t_fontface_FontFaceSet_loading :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := FontFaceSet_loading(&c)
@@ -11532,8 +10856,6 @@ _t_fontface_FontFaceSet_ready :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := FontFaceSet_ready(&c)
@@ -11557,8 +10879,6 @@ _t_forms_forms_value :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -11587,8 +10907,6 @@ _t_forms_forms_setValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -11628,8 +10946,6 @@ _t_forms_forms_defaultValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -11658,8 +10974,6 @@ _t_forms_forms_setDefaultValue :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -11692,8 +11006,6 @@ _t_forms_forms_checked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11717,8 +11029,6 @@ _t_forms_forms_setChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11745,8 +11055,6 @@ _t_forms_forms_defaultChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11770,8 +11078,6 @@ _t_forms_forms_setDefaultChecked :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11794,8 +11100,6 @@ _t_forms_forms_indeterminate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11819,8 +11123,6 @@ _t_forms_forms_setIndeterminate :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11850,8 +11152,6 @@ _t_forms_forms_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -11887,8 +11187,6 @@ _t_forms_forms_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -11917,8 +11215,6 @@ _t_forms_forms_form :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11942,8 +11238,6 @@ _t_forms_forms_disabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11967,8 +11261,6 @@ _t_forms_forms_setDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -11991,8 +11283,6 @@ _t_forms_forms_readOnly :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12016,8 +11306,6 @@ _t_forms_forms_setReadOnly :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12040,8 +11328,6 @@ _t_forms_forms_required :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12065,8 +11351,6 @@ _t_forms_forms_setRequired :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12089,8 +11373,6 @@ _t_forms_forms_willValidate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12114,8 +11396,6 @@ _t_forms_forms_validity :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12146,8 +11426,6 @@ _t_forms_forms_validationMessage :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -12176,8 +11454,6 @@ _t_forms_forms_setCustomValidity :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -12207,8 +11483,6 @@ _t_forms_forms_checkValidity :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12232,8 +11506,6 @@ _t_forms_forms_reportValidity :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12257,8 +11529,6 @@ _t_forms_forms_select :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12284,8 +11554,6 @@ _t_forms_forms_selectionStart :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12309,8 +11577,6 @@ _t_forms_forms_selectionEnd :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12341,8 +11607,6 @@ _t_forms_forms_selectionDirection :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -12373,8 +11637,6 @@ _t_forms_forms_setSelectionRange :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12407,8 +11669,6 @@ _t_forms_forms_setRangeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -12448,8 +11708,6 @@ _t_forms_forms_maxLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12473,8 +11731,6 @@ _t_forms_forms_minLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12498,8 +11754,6 @@ _t_forms_forms_stepUp :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12526,8 +11780,6 @@ _t_forms_forms_stepDown :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12554,8 +11806,6 @@ _t_forms_forms_valueAsNumber :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12579,8 +11829,6 @@ _t_forms_forms_setValueAsNumber :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12607,8 +11855,6 @@ _t_forms_forms_valueAsDate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12632,8 +11878,6 @@ _t_forms_forms_setValueAsDate :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12660,8 +11904,6 @@ _t_forms_forms_files_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12693,8 +11935,6 @@ _t_forms_forms_fileName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -12726,8 +11966,6 @@ _t_forms_forms_fileSize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12760,8 +11998,6 @@ _t_forms_forms_fileType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -12793,8 +12029,6 @@ _t_forms_HTMLSelectElement_selectedIndex :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12818,8 +12052,6 @@ _t_forms_HTMLSelectElement_setSelectedIndex :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12846,8 +12078,6 @@ _t_forms_HTMLSelectElement_length :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12871,8 +12101,6 @@ _t_forms_HTMLSelectElement_item :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12897,8 +12125,6 @@ _t_forms_HTMLSelectElement_selectedOptions_length :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12922,8 +12148,6 @@ _t_forms_HTMLSelectElement_selectedOptions_item :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12948,8 +12172,6 @@ _t_forms_HTMLOptionElement_selected :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -12973,8 +12195,6 @@ _t_forms_HTMLOptionElement_setSelected :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -13001,8 +12221,6 @@ _t_forms_HTMLOptionElement_defaultSelected :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -13026,8 +12244,6 @@ _t_forms_HTMLOptionElement_setDefaultSelected :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -13054,8 +12270,6 @@ _t_forms_HTMLOptionElement_index :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -13086,8 +12300,6 @@ _t_forms_HTMLOptionElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -13123,8 +12335,6 @@ _t_forms_HTMLOptionElement_label :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -13153,8 +12363,6 @@ _t_forms_HTMLFormElement_submit :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -13180,8 +12388,6 @@ _t_forms_HTMLFormElement_requestSubmit :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -13213,8 +12419,6 @@ _t_forms_HTMLFormElement_reset :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -13240,8 +12444,6 @@ _t_forms_HTMLFormElement_length :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -13265,8 +12467,6 @@ _t_forms_HTMLFormElement_elements :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -13291,8 +12491,6 @@ _t_forms_HTMLFormElement_namedItem :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -13324,8 +12522,6 @@ _t_forms_HTMLLabelElement_control :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -13349,8 +12545,6 @@ _t_forms_HTMLElement_focus :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -13374,8 +12568,6 @@ _t_forms_HTMLElement_blur :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -13397,8 +12589,6 @@ _t_forms_HTMLElement_click :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -13422,8 +12612,6 @@ _t_forms_Document_activeElement :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_activeElement(&c)
@@ -13447,8 +12635,6 @@ _t_forms_HTMLDialogElement_returnValue :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -13477,8 +12663,6 @@ _t_forms_HTMLDialogElement_set_returnValue :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -13508,8 +12692,6 @@ _t_forms_FormData_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -13544,8 +12726,6 @@ _t_forms_FormData_append :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -13579,8 +12759,6 @@ _t_forms_FormData_appendBlob :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -13627,8 +12805,6 @@ _t_forms_FormData_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -13662,8 +12838,6 @@ _t_forms_FormData_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -13693,8 +12867,6 @@ _t_forms_FormData_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -13726,8 +12898,6 @@ _t_forms_FormData_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -13770,8 +12940,6 @@ _t_forms_FormData_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -13821,8 +12989,6 @@ _t_forms_FormData_getAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -13861,8 +13027,6 @@ _t_forms_FormData_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -13894,8 +13058,6 @@ _t_forms_FormData_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -13935,8 +13097,6 @@ _t_forms_FormData_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -13968,8 +13128,6 @@ _t_forms_FormData_isFileAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 1)
@@ -13999,8 +13157,6 @@ _t_forms_FormData_fileSizeAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14033,8 +13189,6 @@ _t_forms_FormData_fileTypeAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -14066,8 +13220,6 @@ _t_fetch_Fetch_startFormData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -14150,8 +13302,6 @@ _t_frames_Frame_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Frame_self(&c)
@@ -14168,8 +13318,6 @@ _t_frames_Frame_ofElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14188,8 +13336,6 @@ _t_frames_Frame_parent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14208,8 +13354,6 @@ _t_frames_Frame_top :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14228,8 +13372,6 @@ _t_frames_Frame_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14248,8 +13390,6 @@ _t_frames_Frame_child :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14269,8 +13409,6 @@ _t_frames_Frame_named :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -14304,8 +13442,6 @@ _t_frames_Frame_childNames :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -14329,8 +13465,6 @@ _t_frames_Frame_closed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14349,8 +13483,6 @@ _t_frames_Frame_sameOrigin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14369,8 +13501,6 @@ _t_frames_Frame_documentOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14389,8 +13519,6 @@ _t_frames_Frame_elementOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14409,8 +13537,6 @@ _t_frames_Frame_ofDocument :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14429,8 +13555,6 @@ _t_frames_Frame_target :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14449,8 +13573,6 @@ _t_frames_Frame_windowTarget :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14469,8 +13591,6 @@ _t_frames_Frame_realmSelf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Frame_realmSelf(&c)
@@ -14487,8 +13607,6 @@ _t_frames_Frame_realmOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14507,8 +13625,6 @@ _t_frames_Frame_bridge :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -14537,8 +13653,6 @@ _t_frames_Frame_bridgeReply :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -14568,8 +13682,6 @@ _t_frames_Frame_adoptNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -14598,8 +13710,6 @@ _t_frames_Frame_postMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -14629,8 +13739,6 @@ _t_frames_Frame_navigate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -14657,8 +13765,6 @@ _t_frames_Frame_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -14699,8 +13805,6 @@ _t_frames_Frame_opener :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14719,8 +13823,6 @@ _t_frames_Frame_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -14737,8 +13839,6 @@ _t_frames_Frame_disown :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	Frame_disown(&c)
@@ -14753,8 +13853,6 @@ _t_frames_Frame_postMessagePorts :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -14794,8 +13892,6 @@ _t_frames_Window_get_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -14817,8 +13913,6 @@ _t_frames_Window_set_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -14848,8 +13942,6 @@ _t_dom_HTMLIFrameElement_srcdoc :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -14878,8 +13970,6 @@ _t_dom_HTMLIFrameElement_set_srcdoc :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -14912,8 +14002,6 @@ _t_fs_Fs_opfsRoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -14957,8 +14045,6 @@ _t_fs_Fs_getEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -15001,8 +14087,6 @@ _t_fs_Fs_removeEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -15050,8 +14134,6 @@ _t_fs_Fs_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -15101,8 +14183,6 @@ _t_fs_Fs_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -15145,8 +14225,6 @@ _t_fs_Fs_same :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -15183,8 +14261,6 @@ _t_fs_Fs_getFile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -15216,8 +14292,6 @@ _t_fs_Fs_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -15251,8 +14325,6 @@ _t_fs_Fs_write :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -15282,8 +14354,6 @@ _t_fs_Fs_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -15313,8 +14383,6 @@ _t_fs_Fs_seek :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -15337,8 +14405,6 @@ _t_fs_Fs_truncate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -15361,8 +14427,6 @@ _t_fs_Fs_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -15387,8 +14451,6 @@ _t_fs_Fs_flush :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -15410,8 +14472,6 @@ _t_fs_Fs_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -15434,8 +14494,6 @@ _t_fs_Fs_permission :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -15455,8 +14513,6 @@ _t_fs_Fs_requestPermission :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -15482,8 +14538,6 @@ _t_fs_Fs_showPicker :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -15554,8 +14608,6 @@ _t_fs_Fs_describe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -15579,8 +14631,6 @@ _t_fs_Fs_restore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -15610,8 +14660,6 @@ _t_fullscreen_Element_requestFullscreen :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -15641,8 +14689,6 @@ _t_fullscreen_Document_exitFullscreen :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_exitFullscreen(&c)
@@ -15659,8 +14705,6 @@ _t_fullscreen_Document_fullscreenElement :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_fullscreenElement(&c)
@@ -15677,8 +14721,6 @@ _t_fullscreen_ShadowRoot_fullscreenElement :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -15702,8 +14744,6 @@ _t_fullscreen_Document_fullscreenEnabled :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_fullscreenEnabled(&c)
@@ -15720,8 +14760,6 @@ _t_fullscreen_Document_fullscreen :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_fullscreen(&c)
@@ -15738,8 +14776,6 @@ _t_highlight_Highlights_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	Highlights_clear(&c)
@@ -15754,8 +14790,6 @@ _t_highlight_Highlights_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -15779,8 +14813,6 @@ _t_highlight_Highlights_addRange :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -15811,8 +14843,6 @@ _t_history_Window_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_self(&c)
@@ -15829,8 +14859,6 @@ _t_history_Document_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_self(&c)
@@ -15854,8 +14882,6 @@ _t_history_Location_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -15883,8 +14909,6 @@ _t_history_Location_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -15916,8 +14940,6 @@ _t_history_Location_assign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -15944,8 +14966,6 @@ _t_history_Location_replace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -15972,8 +14992,6 @@ _t_history_Location_reload :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	Location_reload(&c)
@@ -15988,8 +15006,6 @@ _t_history_History_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := History_length(&c)
@@ -16012,8 +15028,6 @@ _t_history_History_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -16038,8 +15052,6 @@ _t_history_History_pushState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent0 := wasm.is_absent(&f, a[1])
@@ -16081,8 +15093,6 @@ _t_history_History_replaceState :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent0 := wasm.is_absent(&f, a[1])
@@ -16124,8 +15134,6 @@ _t_history_History_go :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -16141,8 +15149,6 @@ _t_history_History_scrollRestoration :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := History_scrollRestoration(&c)
@@ -16159,8 +15165,6 @@ _t_history_History_set_scrollRestoration :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_e0 := i32(a[0].i32)
@@ -16192,8 +15196,6 @@ _t_idb_Idb_call :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -16223,8 +15225,6 @@ _t_images_HTMLImageElement_naturalWidth :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -16248,8 +15248,6 @@ _t_images_HTMLImageElement_naturalHeight :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -16273,8 +15271,6 @@ _t_images_HTMLImageElement_complete :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -16305,8 +15301,6 @@ _t_images_HTMLImageElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -16335,8 +15329,6 @@ _t_images_HTMLImageElement_decode :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -16360,8 +15352,6 @@ _t_images_Image_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -16385,8 +15375,6 @@ _t_js_Engine_console :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -16411,8 +15399,6 @@ _t_js_Engine_reportException :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -16441,8 +15427,6 @@ _t_js_Engine_storeBytecode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -16461,8 +15445,6 @@ _t_js_Engine_timezoneOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].f64
@@ -16486,8 +15468,6 @@ _t_js_Engine_timeZone :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -16515,8 +15495,6 @@ _t_js_Engine_locale :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -16538,8 +15516,6 @@ _t_js_Engine_jitCompile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -16560,8 +15536,6 @@ _t_js_Engine_jitPoll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -16579,8 +15553,6 @@ _t_js_Engine_stackMove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -16598,8 +15570,6 @@ _t_js_Engine_nativeStackLow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Engine_nativeStackLow(&c)
@@ -16616,8 +15586,6 @@ _t_js_Engine_span :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -16634,8 +15602,6 @@ _t_js_Node_wrap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -16659,8 +15625,6 @@ _t_js_Document_createElementWrapped :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -16691,8 +15655,6 @@ _t_js_Document_createTextWrapped :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -16723,8 +15685,6 @@ _t_js_Node_unpin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -16741,8 +15701,6 @@ _t_js_Node_treeRoots :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -16765,8 +15723,6 @@ _t_dom_LinkStyle_sheetOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -16790,8 +15746,6 @@ _t_dom_DocumentOrShadowRoot_sheetCount :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -16815,8 +15769,6 @@ _t_dom_DocumentOrShadowRoot_sheetAt :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -16841,8 +15793,6 @@ _t_dom_CSSStyleSheet_isSheet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -16861,8 +15811,6 @@ _t_dom_CSSStyleSheet_ownerNodeOf :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -16888,8 +15836,6 @@ _t_dom_CSSStyleSheet_hrefOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -16920,8 +15866,6 @@ _t_dom_CSSStyleSheet_titleOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -16945,8 +15889,6 @@ _t_dom_CSSStyleSheet_rulesVersion :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -16965,8 +15907,6 @@ _t_dom_CSSStyleSheet_ruleId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -16986,8 +15926,6 @@ _t_dom_CustomElements_define :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -17011,8 +15949,6 @@ _t_dom_CustomElements_pending :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := CustomElements_pending(&c)
@@ -17035,8 +15971,6 @@ _t_dom_CustomElements_take :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -17058,8 +15992,6 @@ _t_dom_CustomElements_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -17078,8 +16010,6 @@ _t_dom_CustomElements_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -17109,8 +16039,6 @@ _t_dom_Element_setCustomState :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -17133,8 +16061,6 @@ _t_dom_Element_isFormAssociated :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -17158,8 +16084,6 @@ _t_dom_Element_setFormValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -17192,8 +16116,6 @@ _t_dom_Element_setFormValidity :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -17224,8 +16146,6 @@ _t_dnd_DataTransfer_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := DataTransfer_create(&c)
@@ -17249,8 +16169,6 @@ _t_dnd_DataTransfer_get_dropEffect :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -17279,8 +16197,6 @@ _t_dnd_DataTransfer_set_dropEffect :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -17317,8 +16233,6 @@ _t_dnd_DataTransfer_get_effectAllowed :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -17347,8 +16261,6 @@ _t_dnd_DataTransfer_set_effectAllowed :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -17389,8 +16301,6 @@ _t_dnd_DataTransfer_getData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -17427,8 +16337,6 @@ _t_dnd_DataTransfer_setData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -17466,8 +16374,6 @@ _t_dnd_DataTransfer_clearData :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent1 := wasm.is_absent(&f, a[2])
@@ -17501,8 +16407,6 @@ _t_dnd_DataTransfer_setDragImage :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -17540,8 +16444,6 @@ _t_dnd_DataTransfer_typeList :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -17570,8 +16472,6 @@ _t_dnd_DataTransfer_itemCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -17595,8 +16495,6 @@ _t_dnd_DataTransfer_itemKind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 4)
@@ -17634,8 +16532,6 @@ _t_dnd_DataTransfer_itemType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -17675,8 +16571,6 @@ _t_dnd_DataTransfer_itemString :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -17708,8 +16602,6 @@ _t_dnd_DataTransfer_itemFile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -17739,8 +16631,6 @@ _t_dnd_DataTransfer_addString :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -17780,8 +16670,6 @@ _t_dnd_DataTransfer_addFile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -17813,8 +16701,6 @@ _t_dnd_DataTransfer_addBytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -17859,8 +16745,6 @@ _t_dnd_DataTransfer_removeItem :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -17887,8 +16771,6 @@ _t_dnd_DataTransfer_clearItems :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -17914,8 +16796,6 @@ _t_dnd_DataTransfer_fileCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -17939,8 +16819,6 @@ _t_dnd_DataTransfer_file :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -17970,8 +16848,6 @@ _t_dnd_DataTransfer_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -18002,8 +16878,6 @@ _t_dnd_LocalFile_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -18039,8 +16913,6 @@ _t_dnd_LocalFile_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -18069,8 +16941,6 @@ _t_dnd_LocalFile_info :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 16)
@@ -18096,8 +16966,6 @@ _t_dnd_LocalFile_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -18139,8 +17007,6 @@ _t_dnd_DataTransfer_itemFsHandle :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -18172,8 +17038,6 @@ _t_dnd_DragEvent_dataTransfer :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -18197,8 +17061,6 @@ _t_dnd_InputFiles_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -18222,8 +17084,6 @@ _t_dnd_InputFiles_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -18253,8 +17113,6 @@ _t_dnd_InputFiles_assign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -18292,8 +17150,6 @@ _t_dom_Document_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -18315,8 +17171,6 @@ _t_dom_Document_currentScript :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_currentScript(&c)
@@ -18333,8 +17187,6 @@ _t_dom_Window_document :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_document(&c)
@@ -18361,8 +17213,6 @@ _t_dom_Document_resolveURL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -18401,8 +17251,6 @@ _t_dom_Element_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -18431,8 +17279,6 @@ _t_dom_Element_set_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -18472,8 +17318,6 @@ _t_dom_Element_className :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -18502,8 +17346,6 @@ _t_dom_Element_set_className :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -18536,8 +17378,6 @@ _t_dom_Collection_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -18574,8 +17414,6 @@ _t_dom_Collection_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -18594,8 +17432,6 @@ _t_dom_Collection_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -18615,8 +17451,6 @@ _t_dom_Collection_namedItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -18650,8 +17484,6 @@ _t_dom_Collection_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -18686,8 +17518,6 @@ _t_dom_ParentNode_querySelectorAllPacked :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -18725,8 +17555,6 @@ _t_dom_HTMLFormElement_namedControl :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -18758,8 +17586,6 @@ _t_dom_ParentNode_querySelector :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -18795,8 +17621,6 @@ _t_dom_TokenList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -18840,8 +17664,6 @@ _t_dom_TokenList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -18880,8 +17702,6 @@ _t_dom_TokenList_contains :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -18921,8 +17741,6 @@ _t_dom_TokenList_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -18962,8 +17780,6 @@ _t_dom_TokenList_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -19003,8 +17819,6 @@ _t_dom_TokenList_toggle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -19048,8 +17862,6 @@ _t_dom_TokenList_replace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -19099,8 +17911,6 @@ _t_dom_TokenList_supports :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -19154,8 +17964,6 @@ _t_dom_Dataset_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -19193,8 +18001,6 @@ _t_dom_Dataset_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -19234,8 +18040,6 @@ _t_dom_Dataset_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -19274,8 +18078,6 @@ _t_dom_Dataset_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -19311,8 +18113,6 @@ _t_dom_Element_namespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -19350,8 +18150,6 @@ _t_dom_Element_prefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -19389,8 +18187,6 @@ _t_dom_Element_localName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -19426,8 +18222,6 @@ _t_dom_Element_qualifiedTagName :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -19463,8 +18257,6 @@ _t_dom_Element_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -19493,8 +18285,6 @@ _t_dom_Element_set_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -19527,8 +18317,6 @@ _t_dom_Element_hasAttributes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -19559,8 +18347,6 @@ _t_dom_Element_attributeNames :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -19589,8 +18375,6 @@ _t_dom_Element_attributeCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -19622,8 +18406,6 @@ _t_dom_Element_attributeNameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -19663,8 +18445,6 @@ _t_dom_Element_attributeNamespaceAt :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -19696,8 +18476,6 @@ _t_dom_Element_attributeIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -19729,8 +18507,6 @@ _t_dom_Element_attributeIndexNS :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent1 := wasm.is_absent(&f, a[2])
@@ -19774,8 +18550,6 @@ _t_dom_Element_setAttributeOfAttr :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent1 := wasm.is_absent(&f, a[2])
@@ -19841,8 +18615,6 @@ _t_dom_Element_getAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
@@ -19891,8 +18663,6 @@ _t_dom_Element_setAttributeChecked :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -19932,8 +18702,6 @@ _t_dom_Element_setAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent1 := wasm.is_absent(&f, a[2])
@@ -19984,8 +18752,6 @@ _t_dom_Element_removeAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent1 := wasm.is_absent(&f, a[2])
@@ -20027,8 +18793,6 @@ _t_dom_Element_toggleAttributeChecked :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -20065,8 +18829,6 @@ _t_dom_Element_hasAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -20098,8 +18860,6 @@ _t_dom_Element_hasAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent1 := wasm.is_absent(&f, a[2])
@@ -20143,8 +18903,6 @@ _t_dom_Element_closest :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -20180,8 +18938,6 @@ _t_dom_Element_matches :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -20217,8 +18973,6 @@ _t_dom_Element_webkitMatchesSelector :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -20254,8 +19008,6 @@ _t_dom_Element_insertAdjacentElement :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -20297,8 +19049,6 @@ _t_dom_Element_insertAdjacentText :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -20338,8 +19088,6 @@ _t_dom_Element_insertAdjacentHTML :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -20386,8 +19134,6 @@ _t_dom_Element_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -20416,8 +19162,6 @@ _t_dom_Element_set_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -20457,8 +19201,6 @@ _t_dom_Element_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -20487,8 +19229,6 @@ _t_dom_Element_set_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -20521,8 +19261,6 @@ _t_dom_Element_shadowRoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -20546,8 +19284,6 @@ _t_dom_HTMLElement_hiddenState :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -20578,8 +19314,6 @@ _t_dom_HTMLElement_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -20608,8 +19342,6 @@ _t_dom_HTMLElement_set_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -20642,8 +19374,6 @@ _t_dom_HTMLElement_translate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -20667,8 +19397,6 @@ _t_dom_HTMLElement_set_translate :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -20695,8 +19423,6 @@ _t_dom_HTMLElement_draggable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -20720,8 +19446,6 @@ _t_dom_HTMLElement_set_draggable :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -20748,8 +19472,6 @@ _t_dom_HTMLElement_spellcheck :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -20773,8 +19495,6 @@ _t_dom_HTMLElement_set_spellcheck :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -20808,8 +19528,6 @@ _t_dom_HTMLElement_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -20838,8 +19556,6 @@ _t_dom_HTMLElement_set_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -20879,8 +19595,6 @@ _t_dom_HTMLElement_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -20909,8 +19623,6 @@ _t_dom_HTMLElement_set_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -20950,8 +19662,6 @@ _t_dom_HTMLElement_accessKeyLabel :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -20980,8 +19690,6 @@ _t_dom_HTMLOrSVGOrMathMLElement_tabIndex :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -21005,8 +19713,6 @@ _t_dom_HTMLOrSVGOrMathMLElement_set_tabIndex :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -21040,8 +19746,6 @@ _t_dom_HTMLOrSVGOrMathMLElement_nonce :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -21070,8 +19774,6 @@ _t_dom_HTMLOrSVGOrMathMLElement_set_nonce :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -21111,8 +19813,6 @@ _t_dom_ElementContentEditable_contentEditable :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -21141,8 +19841,6 @@ _t_dom_ElementContentEditable_set_contentEditable :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -21175,8 +19873,6 @@ _t_dom_ElementContentEditable_isContentEditable :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -21207,8 +19903,6 @@ _t_dom_HTMLHyperlinkElementUtils_href :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -21237,8 +19931,6 @@ _t_dom_HTMLHyperlinkElementUtils_set_href :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -21278,8 +19970,6 @@ _t_dom_HyperlinkElementUtils_origin :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -21315,8 +20005,6 @@ _t_dom_HyperlinkElementUtils_protocol :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -21345,8 +20033,6 @@ _t_dom_HyperlinkElementUtils_set_protocol :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -21386,8 +20072,6 @@ _t_dom_HyperlinkElementUtils_username :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -21416,8 +20100,6 @@ _t_dom_HyperlinkElementUtils_set_username :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -21457,8 +20139,6 @@ _t_dom_HyperlinkElementUtils_password :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -21487,8 +20167,6 @@ _t_dom_HyperlinkElementUtils_set_password :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -21528,8 +20206,6 @@ _t_dom_HyperlinkElementUtils_host :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -21558,8 +20234,6 @@ _t_dom_HyperlinkElementUtils_set_host :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -21599,8 +20273,6 @@ _t_dom_HyperlinkElementUtils_hostname :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -21629,8 +20301,6 @@ _t_dom_HyperlinkElementUtils_set_hostname :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -21670,8 +20340,6 @@ _t_dom_HyperlinkElementUtils_port :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -21700,8 +20368,6 @@ _t_dom_HyperlinkElementUtils_set_port :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -21741,8 +20407,6 @@ _t_dom_HyperlinkElementUtils_pathname :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -21771,8 +20435,6 @@ _t_dom_HyperlinkElementUtils_set_pathname :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -21812,8 +20474,6 @@ _t_dom_HyperlinkElementUtils_search :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -21842,8 +20502,6 @@ _t_dom_HyperlinkElementUtils_set_search :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -21883,8 +20541,6 @@ _t_dom_HyperlinkElementUtils_hash :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -21913,8 +20569,6 @@ _t_dom_HyperlinkElementUtils_set_hash :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -21954,8 +20608,6 @@ _t_dom_HTMLAnchorElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -21984,8 +20636,6 @@ _t_dom_HTMLAnchorElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -22018,8 +20668,6 @@ _t_dom_HTMLTemplateElement_content :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22043,8 +20691,6 @@ _t_events_TouchEvent_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22074,8 +20720,6 @@ _t_events_TouchEvent_touch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 96)
@@ -22121,8 +20765,6 @@ _t_events_PointerCapture_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22149,8 +20791,6 @@ _t_events_PointerCapture_release :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22177,8 +20817,6 @@ _t_events_PointerCapture_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22203,8 +20841,6 @@ _t_events_Event_uiData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 200)
@@ -22265,8 +20901,6 @@ _t_events_UiEvent_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -22302,8 +20936,6 @@ _t_events_UiEvent_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -22332,8 +20964,6 @@ _t_dom_HTMLInputElement_set_type :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -22366,8 +20996,6 @@ _t_dom_HTMLInputElement_set_maxLength :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22394,8 +21022,6 @@ _t_dom_HTMLInputElement_set_minLength :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22422,8 +21048,6 @@ _t_dom_HTMLTextAreaElement_set_maxLength :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22450,8 +21074,6 @@ _t_dom_HTMLTextAreaElement_set_minLength :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22478,8 +21100,6 @@ _t_dom_HTMLOptionElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -22512,8 +21132,6 @@ _t_dom_HTMLTableElement_caption :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22537,8 +21155,6 @@ _t_dom_HTMLTableElement_set_caption :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22570,8 +21186,6 @@ _t_dom_HTMLTableElement_createCaption :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22595,8 +21209,6 @@ _t_dom_HTMLTableElement_deleteCaption :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22618,8 +21230,6 @@ _t_dom_HTMLTableElement_tHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22643,8 +21253,6 @@ _t_dom_HTMLTableElement_set_tHead :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22676,8 +21284,6 @@ _t_dom_HTMLTableElement_createTHead :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22701,8 +21307,6 @@ _t_dom_HTMLTableElement_deleteTHead :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22724,8 +21328,6 @@ _t_dom_HTMLTableElement_tFoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22749,8 +21351,6 @@ _t_dom_HTMLTableElement_set_tFoot :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22782,8 +21382,6 @@ _t_dom_HTMLTableElement_createTFoot :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22807,8 +21405,6 @@ _t_dom_HTMLTableElement_deleteTFoot :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22830,8 +21426,6 @@ _t_dom_HTMLTableElement_createTBody :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22855,8 +21449,6 @@ _t_dom_HTMLTableElement_insertRow :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -22886,8 +21478,6 @@ _t_dom_HTMLTableElement_deleteRow :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22914,8 +21504,6 @@ _t_dom_HTMLTableSectionElement_insertRow :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -22945,8 +21533,6 @@ _t_dom_HTMLTableSectionElement_deleteRow :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -22973,8 +21559,6 @@ _t_dom_HTMLTableRowElement_insertCell :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -23004,8 +21588,6 @@ _t_dom_HTMLTableRowElement_deleteCell :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23032,8 +21614,6 @@ _t_dom_HTMLTableRowElement_rowIndex :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23057,8 +21637,6 @@ _t_dom_HTMLTableRowElement_sectionRowIndex :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23082,8 +21660,6 @@ _t_dom_HTMLTableCellElement_cellIndex :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23114,8 +21690,6 @@ _t_dom_HTMLTitleElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -23144,8 +21718,6 @@ _t_dom_HTMLTitleElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -23185,8 +21757,6 @@ _t_dom_HTMLScriptElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -23215,8 +21785,6 @@ _t_dom_HTMLScriptElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -23249,8 +21817,6 @@ _t_dom_HTMLInputElement_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23281,8 +21847,6 @@ _t_dom_HTMLDialogElement_closedBy :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -23311,8 +21875,6 @@ _t_dom_HTMLDialogElement_set_closedBy :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -23342,8 +21904,6 @@ _t_dom_HTMLDialogElement_show :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23369,8 +21929,6 @@ _t_dom_HTMLDialogElement_showModal :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23396,8 +21954,6 @@ _t_dom_HTMLDialogElement_close :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent1 := wasm.is_absent(&f, a[2])
@@ -23431,8 +21987,6 @@ _t_dom_HTMLDialogElement_requestClose :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent1 := wasm.is_absent(&f, a[2])
@@ -23466,8 +22020,6 @@ _t_dom_Element_boundingRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 32)
@@ -23502,8 +22054,6 @@ _t_dom_Element_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -23532,8 +22082,6 @@ _t_dom_Element_clientTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23557,8 +22105,6 @@ _t_dom_Element_clientLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23582,8 +22128,6 @@ _t_dom_Element_clientWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23607,8 +22151,6 @@ _t_dom_Element_clientHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23632,8 +22174,6 @@ _t_dom_Element_scrollTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23657,8 +22197,6 @@ _t_dom_Element_set_scrollTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23681,8 +22219,6 @@ _t_dom_Element_scrollLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23706,8 +22242,6 @@ _t_dom_Element_set_scrollLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23730,8 +22264,6 @@ _t_dom_Element_scrollWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23755,8 +22287,6 @@ _t_dom_Element_scrollHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23780,8 +22310,6 @@ _t_dom_Element_scrollToXY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23806,8 +22334,6 @@ _t_dom_Element_scrollIntoViewAt :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23831,8 +22357,6 @@ _t_dom_HTMLElement_offsetParent :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23856,8 +22380,6 @@ _t_dom_HTMLElement_offsetTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23881,8 +22403,6 @@ _t_dom_HTMLElement_offsetLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23906,8 +22426,6 @@ _t_dom_HTMLElement_offsetWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23931,8 +22449,6 @@ _t_dom_HTMLElement_offsetHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -23956,8 +22472,6 @@ _t_dom_Document_elementFromPoint :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].f64
@@ -23976,8 +22490,6 @@ _t_dom_Window_innerWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_innerWidth(&c)
@@ -23994,8 +22506,6 @@ _t_dom_Window_innerHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_innerHeight(&c)
@@ -24012,8 +22522,6 @@ _t_dom_Window_outerWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_outerWidth(&c)
@@ -24030,8 +22538,6 @@ _t_dom_Window_outerHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_outerHeight(&c)
@@ -24048,8 +22554,6 @@ _t_dom_Window_scrollX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_scrollX(&c)
@@ -24066,8 +22570,6 @@ _t_dom_Window_scrollY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_scrollY(&c)
@@ -24084,8 +22586,6 @@ _t_dom_Window_pageXOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_pageXOffset(&c)
@@ -24102,8 +22602,6 @@ _t_dom_Window_pageYOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_pageYOffset(&c)
@@ -24120,8 +22618,6 @@ _t_dom_Window_devicePixelRatio :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_devicePixelRatio(&c)
@@ -24138,8 +22634,6 @@ _t_dom_Window_screenX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_screenX(&c)
@@ -24156,8 +22650,6 @@ _t_dom_Window_screenY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_screenY(&c)
@@ -24174,8 +22666,6 @@ _t_dom_Window_screenLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_screenLeft(&c)
@@ -24192,8 +22682,6 @@ _t_dom_Window_screenTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Window_screenTop(&c)
@@ -24210,8 +22698,6 @@ _t_dom_Window_scrollToXY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].f64
@@ -24230,8 +22716,6 @@ _t_dom_Range_boundingRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 32)
@@ -24278,8 +22762,6 @@ _t_dom_Range_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
@@ -24317,8 +22799,6 @@ _t_dom_MutationObserver_create :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -24337,8 +22817,6 @@ _t_dom_MutationObserver_observe :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n3 := wasm.addr(&f, a[4])
@@ -24374,8 +22852,6 @@ _t_dom_MutationObserver_disconnect :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -24399,8 +22875,6 @@ _t_dom_MutationObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -24424,8 +22898,6 @@ _t_dom_MutationObserver_release :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -24442,8 +22914,6 @@ _t_dom_MutationObserver_live :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -24462,8 +22932,6 @@ _t_dom_Range_comparePoints :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -24506,8 +22974,6 @@ _t_dom_Range_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
@@ -24545,8 +23011,6 @@ _t_dom_Range_contents :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[5]), 8)
@@ -24584,8 +23048,6 @@ _t_dom_Range_createContextualFragment :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -24621,8 +23083,6 @@ _t_dom_Selection_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 32)
@@ -24644,8 +23104,6 @@ _t_dom_Selection_setRange :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -24679,8 +23137,6 @@ _t_dom_Selection_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	Selection_clear(&c)
@@ -24701,8 +23157,6 @@ _t_dom_Selection_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -24735,8 +23189,6 @@ _t_dom_InlineStyle_getProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -24784,8 +23236,6 @@ _t_dom_InlineStyle_priority :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -24822,8 +23272,6 @@ _t_dom_InlineStyle_setProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -24881,8 +23329,6 @@ _t_dom_InlineStyle_removeProperty :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -24927,8 +23373,6 @@ _t_dom_InlineStyle_cssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -24957,8 +23401,6 @@ _t_dom_InlineStyle_setCssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -24991,8 +23433,6 @@ _t_dom_InlineStyle_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -25024,8 +23464,6 @@ _t_dom_InlineStyle_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -25070,8 +23508,6 @@ _t_dom_ComputedStyle_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -25116,8 +23552,6 @@ _t_dom_ComputedStyle_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := ComputedStyle_count(&c)
@@ -25141,8 +23575,6 @@ _t_dom_ComputedStyle_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -25165,8 +23597,6 @@ _t_dom_CSS_supportsDeclaration :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -25199,8 +23629,6 @@ _t_dom_CSS_supportsCondition :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -25232,8 +23660,6 @@ _t_dom_Node_nodeName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -25269,8 +23695,6 @@ _t_dom_Node_baseURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -25299,8 +23723,6 @@ _t_dom_Node_isConnected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -25324,8 +23746,6 @@ _t_dom_Node_ownerDocument :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -25349,8 +23769,6 @@ _t_dom_Node_parentElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -25374,8 +23792,6 @@ _t_dom_Node_hasChildNodes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -25406,8 +23822,6 @@ _t_dom_Node_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -25438,8 +23852,6 @@ _t_dom_Node_set_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -25479,8 +23891,6 @@ _t_dom_Node_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -25511,8 +23921,6 @@ _t_dom_Node_set_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -25545,8 +23953,6 @@ _t_dom_Node_normalize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -25568,8 +23974,6 @@ _t_dom_Node_cloneNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -25599,8 +24003,6 @@ _t_dom_Document_importNodeCopy :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -25630,8 +24032,6 @@ _t_dom_Node_isEqualNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -25662,8 +24062,6 @@ _t_dom_Node_isSameNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -25694,8 +24092,6 @@ _t_dom_Node_compareDocumentPosition :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -25726,8 +24122,6 @@ _t_dom_Node_contains :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -25769,8 +24163,6 @@ _t_dom_Node_lookupPrefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
@@ -25823,8 +24215,6 @@ _t_dom_Node_lookupNamespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
@@ -25866,8 +24256,6 @@ _t_dom_Node_isDefaultNamespace :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent1 := wasm.is_absent(&f, a[2])
@@ -25903,8 +24291,6 @@ _t_dom_Node_rootNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -25928,8 +24314,6 @@ _t_dom_Node_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -25953,8 +24337,6 @@ _t_dom_Node_preInsert :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -25992,8 +24374,6 @@ _t_dom_Node_moveBefore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -26031,8 +24411,6 @@ _t_dom_Node_replaceChildChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -26070,8 +24448,6 @@ _t_dom_Node_preRemove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -26103,8 +24479,6 @@ _t_dom_Node_insertItems :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -26135,8 +24509,6 @@ _t_dom_Node_pinAll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -26155,8 +24527,6 @@ _t_dom_Node_unpinAll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -26175,8 +24545,6 @@ _t_dom_ParentNode_firstElementChild :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -26200,8 +24568,6 @@ _t_dom_ParentNode_lastElementChild :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -26225,8 +24591,6 @@ _t_dom_ParentNode_childElementCount :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -26250,8 +24614,6 @@ _t_dom_ChildNode_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -26273,8 +24635,6 @@ _t_dom_NonDocumentTypeChildNode_previousElementSibling :: proc "c" (env: rawptr,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -26298,8 +24658,6 @@ _t_dom_NonDocumentTypeChildNode_nextElementSibling :: proc "c" (env: rawptr, cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -26323,8 +24681,6 @@ _t_dom_NonElementParentNode_getElementById :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -26363,8 +24719,6 @@ _t_dom_CharacterData_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -26393,8 +24747,6 @@ _t_dom_CharacterData_set_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -26424,8 +24776,6 @@ _t_dom_CharacterData_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -26458,8 +24808,6 @@ _t_dom_CharacterData_substringData :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
@@ -26492,8 +24840,6 @@ _t_dom_CharacterData_appendData :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -26523,8 +24869,6 @@ _t_dom_CharacterData_insertData :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -26558,8 +24902,6 @@ _t_dom_CharacterData_deleteData :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -26587,8 +24929,6 @@ _t_dom_CharacterData_replaceData :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n3 := wasm.addr(&f, a[4])
@@ -26623,8 +24963,6 @@ _t_dom_Text_splitText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -26661,8 +24999,6 @@ _t_dom_Text_wholeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -26698,8 +25034,6 @@ _t_dom_DocumentType_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -26735,8 +25069,6 @@ _t_dom_DocumentType_publicId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -26772,8 +25104,6 @@ _t_dom_DocumentType_systemId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -26802,8 +25132,6 @@ _t_dom_Document_createElementChecked :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -26833,8 +25161,6 @@ _t_dom_Document_createElementInert :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -26864,8 +25190,6 @@ _t_dom_Document_createElementNSChecked :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent0 := wasm.is_absent(&f, a[1])
@@ -26906,8 +25230,6 @@ _t_dom_Document_validateAttributeNS :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent0 := wasm.is_absent(&f, a[1])
@@ -26945,8 +25267,6 @@ _t_dom_Document_createDocumentFragment :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 8)
@@ -26969,8 +25289,6 @@ _t_dom_Document_createComment :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -27000,8 +25318,6 @@ _t_dom_Document_createCDATASection :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -27037,8 +25353,6 @@ _t_dom_Document_createProcessingInstruction :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -27075,8 +25389,6 @@ _t_dom_Document_adoptNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -27118,8 +25430,6 @@ _t_dom_Document_documentURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -27154,8 +25464,6 @@ _t_dom_Document_compatMode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -27183,8 +25491,6 @@ _t_dom_Document_characterSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -27212,8 +25518,6 @@ _t_dom_Document_charset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -27241,8 +25545,6 @@ _t_dom_Document_inputEncoding :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -27270,8 +25572,6 @@ _t_dom_Document_contentType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -27293,8 +25593,6 @@ _t_dom_Document_doctype :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_doctype(&c)
@@ -27317,8 +25615,6 @@ _t_dom_Document_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -27340,8 +25636,6 @@ _t_dom_Document_set_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -27370,8 +25664,6 @@ _t_dom_Document_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -27393,8 +25685,6 @@ _t_dom_Document_set_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -27417,8 +25707,6 @@ _t_dom_Document_hasFocus :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_hasFocus(&c)
@@ -27441,8 +25729,6 @@ _t_dom_Document_referrer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -27470,8 +25756,6 @@ _t_dom_Document_lastModified :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -27499,8 +25783,6 @@ _t_dom_Document_domain :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -27522,8 +25804,6 @@ _t_dom_Document_set_domain :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -27550,8 +25830,6 @@ _t_dom_Document_scrollingElement :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_scrollingElement(&c)
@@ -27568,8 +25846,6 @@ _t_dom_Document_set_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -27595,8 +25871,6 @@ _t_dom_DOMImplementation_createHTMLDocument :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent0 := wasm.is_absent(&f, a[1])
@@ -27630,8 +25904,6 @@ _t_dom_DOMParser_parseHTMLNode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -27661,8 +25933,6 @@ _t_dom_DOMParser_parseXMLNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -27699,8 +25969,6 @@ _t_dom_Document_parseResponse :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -27744,8 +26012,6 @@ _t_dom_ProcessingInstruction_target :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -27781,8 +26047,6 @@ _t_dom_Document_xmlContentType :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -27813,8 +26077,6 @@ _t_dom_Document_createXMLElement :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent1 := wasm.is_absent(&f, a[2])
@@ -27862,8 +26124,6 @@ _t_dom_DOMImplementation_createDocument :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent0 := wasm.is_absent(&f, a[1])
@@ -27910,8 +26170,6 @@ _t_dom_DOMImplementation_createDocumentType :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -27955,8 +26213,6 @@ _t_dom_Document_partOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -27981,8 +26237,6 @@ _t_entries_DataTransfer_itemEntry :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -28012,8 +26266,6 @@ _t_entries_FsEntry_info :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 1)
@@ -28045,8 +26297,6 @@ _t_entries_FsEntry_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -28082,8 +26332,6 @@ _t_entries_FsEntry_fullPath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -28119,8 +26367,6 @@ _t_entries_FsEntry_filesystemName :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -28149,8 +26395,6 @@ _t_entries_FsEntry_parent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28174,8 +26418,6 @@ _t_entries_FsEntry_root :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28199,8 +26441,6 @@ _t_entries_FsEntry_file :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28224,8 +26464,6 @@ _t_entries_FsEntry_lookup :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -28258,8 +26496,6 @@ _t_entries_FsEntry_createReader :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28283,8 +26519,6 @@ _t_entries_FsReader_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28308,8 +26542,6 @@ _t_entries_FsReader_entry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28334,8 +26566,6 @@ _t_events_EventTarget_dispatchEngineEvent :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -28374,8 +26604,6 @@ _t_events_Event_engineId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28399,8 +26627,6 @@ _t_events_Event_interface :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28424,8 +26650,6 @@ _t_events_Event_isLive :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28444,8 +26668,6 @@ _t_events_Event_bubbles :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28469,8 +26691,6 @@ _t_events_Event_cancelable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28494,8 +26714,6 @@ _t_events_Event_composed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28519,8 +26737,6 @@ _t_events_Event_eventPhase :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28544,8 +26760,6 @@ _t_events_Event_timeStamp :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28569,8 +26783,6 @@ _t_events_Event_isTrusted :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28594,8 +26806,6 @@ _t_events_Event_propagationStopped :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28619,8 +26829,6 @@ _t_events_EventTarget_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := EventTarget_create(&c)
@@ -28637,8 +26845,6 @@ _t_scripts_Document_writeMarkup :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -28662,8 +26868,6 @@ _t_scripts_Document_openStream :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_err := Document_openStream(&c)
@@ -28683,8 +26887,6 @@ _t_scripts_Document_closeStream :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_err := Document_closeStream(&c)
@@ -28704,8 +26906,6 @@ _t_scripts_HTMLScriptElement_forceAsync :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28724,8 +26924,6 @@ _t_scripts_HTMLScriptElement_setForceAsync :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -28743,8 +26941,6 @@ _t_scripts_Script_allowInline :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -28773,8 +26969,6 @@ _t_scripts_Script_allowEval :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -28795,8 +26989,6 @@ _t_scripts_Script_javascriptResult :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -28821,8 +27013,6 @@ _t_scripts_Script_baseName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -28858,8 +27048,6 @@ _t_scripts_Module_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -28902,8 +27090,6 @@ _t_scripts_Module_source :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -28932,8 +27118,6 @@ _t_scripts_Module_request :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -28966,8 +27150,6 @@ _t_scripts_Module_import :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -29001,8 +27183,6 @@ _t_scripts_Engine_queueRejectionCheck :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	Engine_queueRejectionCheck(&c)
@@ -29017,8 +27197,6 @@ _t_scripts_Worker_createScript :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -29054,8 +27232,6 @@ _t_scripts_Worker_postSerialized :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -29081,8 +27257,6 @@ _t_scripts_DedicatedWorkerGlobalScope_postSerialized :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -29116,8 +27290,6 @@ _t_scripts_WorkerGlobalScope_importScript :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -29146,8 +27318,6 @@ _t_scripts_WorkerGlobalScope_isModule :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := WorkerGlobalScope_isModule(&c)
@@ -29164,8 +27334,6 @@ _t_scripts_SharedWorker_connect :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -29202,8 +27370,6 @@ _t_scripts_Worker_createScriptBytes :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -29249,8 +27415,6 @@ _t_scripts_Worker_pendingError :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -29272,8 +27436,6 @@ _t_scripts_SharedWorker_connectBytes :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -29314,8 +27476,6 @@ _t_scripts_SharedWorker_portEnd :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -29334,8 +27494,6 @@ _t_scripts_SharedWorkerGlobalScope_takeConnection :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := SharedWorkerGlobalScope_takeConnection(&c)
@@ -29352,8 +27510,6 @@ _t_dom_ResizeObserver_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -29372,8 +27528,6 @@ _t_dom_ResizeObserver_observe :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -29402,8 +27556,6 @@ _t_dom_ResizeObserver_unobserve :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -29427,8 +27579,6 @@ _t_dom_ResizeObserver_disconnect :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -29445,8 +27595,6 @@ _t_dom_ResizeObserver_observed :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -29472,8 +27620,6 @@ _t_dom_ResizeObserver_takeEntries :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -29497,8 +27643,6 @@ _t_dom_IntersectionObserver_create :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n3 := wasm.addr(&f, a[4])
@@ -29550,8 +27694,6 @@ _t_dom_IntersectionObserver_rootMargin :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -29582,8 +27724,6 @@ _t_dom_IntersectionObserver_scrollMargin :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -29607,8 +27747,6 @@ _t_dom_IntersectionObserver_observe :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -29636,8 +27774,6 @@ _t_dom_IntersectionObserver_unobserve :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -29661,8 +27797,6 @@ _t_dom_IntersectionObserver_disconnect :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -29679,8 +27813,6 @@ _t_dom_IntersectionObserver_observed :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -29706,8 +27838,6 @@ _t_dom_IntersectionObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -29731,8 +27861,6 @@ _t_dom_IntersectionObserver_release :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -29749,8 +27877,6 @@ _t_dom_Window_print :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	Window_print(&c)
@@ -29765,8 +27891,6 @@ _t_dom_Element_attachShadowInit :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 8)
@@ -29800,8 +27924,6 @@ _t_dom_CustomElements_disable :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -29833,8 +27955,6 @@ _t_dom_ShadowRoot_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -29863,8 +27983,6 @@ _t_dom_ShadowRoot_delegatesFocus :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -29888,8 +28006,6 @@ _t_dom_ShadowRoot_clonable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -29913,8 +28029,6 @@ _t_dom_ShadowRoot_serializable :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -29945,8 +28059,6 @@ _t_dom_ShadowRoot_slotAssignment :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -29975,8 +28087,6 @@ _t_dom_ShadowRoot_host :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -30007,8 +28117,6 @@ _t_dom_ShadowRoot_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -30037,8 +28145,6 @@ _t_dom_ShadowRoot_set_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -30071,8 +28177,6 @@ _t_dom_ShadowRoot_activeElement :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -30108,8 +28212,6 @@ _t_dom_Node_getHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2, 8)
@@ -30143,8 +28245,6 @@ _t_dom_Node_setHTMLUnsafe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -30177,8 +28277,6 @@ _t_dom_Document_parseHTMLUnsafeNode :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -30208,8 +28306,6 @@ _t_dom_Node_rootNodeComposed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -30234,8 +28330,6 @@ _t_dom_Slottable_assignedSlot :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -30268,8 +28362,6 @@ _t_dom_HTMLSlotElement_assignedPacked :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
@@ -30300,8 +28392,6 @@ _t_dom_HTMLSlotElement_assignNodes :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -30341,8 +28431,6 @@ _t_dom_Document_shadowIncludingByName :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -30381,8 +28469,6 @@ _t_dom_DocumentOrShadowRoot_elementsFromPointPacked :: proc "c" (env: rawptr, ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
@@ -30413,8 +28499,6 @@ _t_dom_Shadow_fireSlotChanges :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	Shadow_fireSlotChanges(&c)
@@ -30429,8 +28513,6 @@ _t_dom_Node_isLive :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -30456,8 +28538,6 @@ _t_dom_Node_shadowIncludingElements :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -30493,8 +28573,6 @@ _t_events_Event_composedPathPacked :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -30523,8 +28601,6 @@ _t_events_EventTarget_lastTarget :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := EventTarget_lastTarget(&c)
@@ -30541,8 +28617,6 @@ _t_events_EventTarget_lastRelated :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := EventTarget_lastRelated(&c)
@@ -30559,8 +28633,6 @@ _t_events_Event_setNextRelated :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -30577,8 +28649,6 @@ _t_events_Event_relatedNow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -30602,8 +28672,6 @@ _t_events_Event_inShadowTreeNow :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -30622,8 +28690,6 @@ _t_dom_Element_attachInternals :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -30652,8 +28718,6 @@ _t_dom_ElementInternals_shadowRootOf :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -30672,8 +28736,6 @@ _t_dom_ElementInternals_element :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -30692,8 +28754,6 @@ _t_dom_CustomStates_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -30718,8 +28778,6 @@ _t_dom_CustomStates_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -30746,8 +28804,6 @@ _t_dom_CustomStates_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -30774,8 +28830,6 @@ _t_dom_CustomStates_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -30799,8 +28853,6 @@ _t_dom_CustomStates_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -30824,8 +28876,6 @@ _t_dom_CSSStyleSheet_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -30859,8 +28909,6 @@ _t_dom_CSSStyleSheet_replaceText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -30889,8 +28937,6 @@ _t_dom_CSSStyleSheet_ruleCount :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -30917,8 +28963,6 @@ _t_dom_CSSStyleSheet_ruleText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -30958,8 +29002,6 @@ _t_dom_CSSStyleSheet_setRuleSelector :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
@@ -31000,8 +29042,6 @@ _t_dom_CSSStyleSheet_ruleTextOf :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -31026,8 +29066,6 @@ _t_dom_CSSStyleSheet_setRuleStyle :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -31053,8 +29091,6 @@ _t_dom_CSSStyleSheet_childCount :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -31074,8 +29110,6 @@ _t_dom_CSSStyleSheet_childId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -31096,8 +29130,6 @@ _t_dom_CSSStyleSheet_insertChildAt :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -31131,8 +29163,6 @@ _t_dom_CSSStyleSheet_deleteChildAt :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -31156,8 +29186,6 @@ _t_dom_CSSStyleSheet_insertRuleAt :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -31190,8 +29218,6 @@ _t_dom_CSSStyleSheet_deleteRuleAt :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -31214,8 +29240,6 @@ _t_dom_CSSStyleSheet_isDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -31234,8 +29258,6 @@ _t_dom_CSSStyleSheet_setDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -31260,8 +29282,6 @@ _t_dom_CSSStyleSheet_mediaText :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -31285,8 +29305,6 @@ _t_dom_CSSStyleSheet_setMediaText :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -31311,8 +29329,6 @@ _t_dom_CSSStyleSheet_isConstructed :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -31331,8 +29347,6 @@ _t_dom_DocumentOrShadowRoot_adopt :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -31362,8 +29376,6 @@ _t_storageaccess_Document_hasStorageAccess :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_hasStorageAccess(&c)
@@ -31380,8 +29392,6 @@ _t_storageaccess_Document_requestStorageAccess :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_requestStorageAccess(&c)
@@ -31405,8 +29415,6 @@ _t_navigator_Navigator_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -31434,8 +29442,6 @@ _t_navigator_Navigator_hardwareConcurrency :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Navigator_hardwareConcurrency(&c)
@@ -31452,8 +29458,6 @@ _t_navigator_Navigator_onLine :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Navigator_onLine(&c)
@@ -31470,8 +29474,6 @@ _t_navigator_Navigator_maxTouchPoints :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Navigator_maxTouchPoints(&c)
@@ -31488,8 +29490,6 @@ _t_navigator_Navigator_cookieEnabled :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Navigator_cookieEnabled(&c)
@@ -31506,8 +29506,6 @@ _t_navigator_UserActivation_isActive :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := UserActivation_isActive(&c)
@@ -31524,8 +29522,6 @@ _t_navigator_UserActivation_hasBeenActive :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := UserActivation_hasBeenActive(&c)
@@ -31542,8 +29538,6 @@ _t_navigator_Beacon_send :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -31581,8 +29575,6 @@ _t_navigator_Clipboard_writeText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -31607,8 +29599,6 @@ _t_navigator_Clipboard_readText :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Clipboard_readText(&c)
@@ -31625,8 +29615,6 @@ _t_media_MediaQueryList_create :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -31658,8 +29646,6 @@ _t_media_MediaQueryList_media :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -31688,8 +29674,6 @@ _t_media_MediaQueryList_matches :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -31713,8 +29697,6 @@ _t_media_Screen_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_e0 := i32(a[0].i32)
@@ -31737,8 +29719,6 @@ _t_forms_FormData_fileAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -31768,8 +29748,6 @@ _t_forms_FormData_setBlob :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -31816,8 +29794,6 @@ _t_forms_FormData_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -31860,8 +29836,6 @@ _t_dom_XMLSerializer_serialize :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -31892,8 +29866,6 @@ _t_locks_LockManager_request :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -31930,8 +29902,6 @@ _t_locks_LockManager_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -31948,8 +29918,6 @@ _t_locks_LockManager_queryCount :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32 != 0
@@ -31975,8 +29943,6 @@ _t_locks_LockManager_queryName :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -32011,8 +29977,6 @@ _t_locks_LockManager_queryMode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -32047,8 +30011,6 @@ _t_locks_LockManager_queryClient :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -32082,8 +30044,6 @@ _t_htmlmedia_HTMLMediaElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -32112,8 +30072,6 @@ _t_htmlmedia_HTMLMediaElement_networkState :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32137,8 +30095,6 @@ _t_htmlmedia_HTMLMediaElement_readyState :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32162,8 +30118,6 @@ _t_htmlmedia_HTMLMediaElement_seeking :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32187,8 +30141,6 @@ _t_htmlmedia_HTMLMediaElement_currentTime :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32212,8 +30164,6 @@ _t_htmlmedia_HTMLMediaElement_set_currentTime :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32236,8 +30186,6 @@ _t_htmlmedia_HTMLMediaElement_duration :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32261,8 +30209,6 @@ _t_htmlmedia_HTMLMediaElement_paused :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32286,8 +30232,6 @@ _t_htmlmedia_HTMLMediaElement_ended :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32311,8 +30255,6 @@ _t_htmlmedia_HTMLMediaElement_defaultPlaybackRate :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32336,8 +30278,6 @@ _t_htmlmedia_HTMLMediaElement_set_defaultPlaybackRate :: proc "c" (env: rawptr, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32360,8 +30300,6 @@ _t_htmlmedia_HTMLMediaElement_playbackRate :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32385,8 +30323,6 @@ _t_htmlmedia_HTMLMediaElement_set_playbackRate :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32409,8 +30345,6 @@ _t_htmlmedia_HTMLMediaElement_preservesPitch :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32434,8 +30368,6 @@ _t_htmlmedia_HTMLMediaElement_set_preservesPitch :: proc "c" (env: rawptr, calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32458,8 +30390,6 @@ _t_htmlmedia_HTMLMediaElement_volume :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32483,8 +30413,6 @@ _t_htmlmedia_HTMLMediaElement_set_volume :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32511,8 +30439,6 @@ _t_htmlmedia_HTMLMediaElement_muted :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32536,8 +30462,6 @@ _t_htmlmedia_HTMLMediaElement_set_muted :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32568,8 +30492,6 @@ _t_htmlmedia_HTMLMediaElement_ranges :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -32599,8 +30521,6 @@ _t_htmlmedia_HTMLMediaElement_setSourceHandle :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32628,8 +30548,6 @@ _t_htmlmedia_HTMLMediaElement_errorCode :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32660,8 +30578,6 @@ _t_htmlmedia_HTMLMediaElement_errorMessage :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -32690,8 +30606,6 @@ _t_htmlmedia_HTMLMediaElement_play :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32715,8 +30629,6 @@ _t_htmlmedia_HTMLMediaElement_pause :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32738,8 +30650,6 @@ _t_htmlmedia_HTMLMediaElement_load :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32772,8 +30682,6 @@ _t_htmlmedia_HTMLMediaElement_canPlayType :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -32810,8 +30718,6 @@ _t_htmlmedia_HTMLVideoElement_videoWidth :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32835,8 +30741,6 @@ _t_htmlmedia_HTMLVideoElement_videoHeight :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32867,8 +30771,6 @@ _t_htmlmedia_HTMLVideoElement_playbackQuality :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -32897,8 +30799,6 @@ _t_htmlmedia_HTMLVideoElement_requestVideoFrameCallback :: proc "c" (env: rawptr
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32924,8 +30824,6 @@ _t_htmlmedia_HTMLVideoElement_cancelVideoFrameCallback :: proc "c" (env: rawptr,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -32957,8 +30855,6 @@ _t_htmlmedia_HTMLVideoElement_videoFrameMetadata :: proc "c" (env: rawptr, calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -32989,8 +30885,6 @@ _t_htmlmedia_HTMLMediaElement_audioTracks :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33014,8 +30908,6 @@ _t_htmlmedia_HTMLMediaElement_videoTracks :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33039,8 +30931,6 @@ _t_htmlmedia_HTMLMediaElement_textTracks :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33064,8 +30954,6 @@ _t_htmlmedia_HTMLMediaElement_addTextTrack :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -33115,8 +31003,6 @@ _t_mse_MediaSource_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 8)
@@ -33139,8 +31025,6 @@ _t_mse_ManagedMediaSource_create :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 8)
@@ -33163,8 +31047,6 @@ _t_mse_ManagedMediaSource_streaming :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33188,8 +31070,6 @@ _t_mse_MediaSource_registerObjectURL :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -33222,8 +31102,6 @@ _t_mse_MediaSource_handle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -33252,8 +31130,6 @@ _t_mse_MediaSourceHandle_take :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -33282,8 +31158,6 @@ _t_mse_MediaSourceHandle_adopt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -33308,8 +31182,6 @@ _t_mse_MediaSource_revokeObjectURL :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -33332,8 +31204,6 @@ _t_mse_MediaSource_isTypeSupported :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -33358,8 +31228,6 @@ _t_mse_MediaSource_sourceBuffers :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33383,8 +31251,6 @@ _t_mse_MediaSource_activeSourceBuffers :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33415,8 +31281,6 @@ _t_mse_MediaSource_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -33445,8 +31309,6 @@ _t_mse_MediaSource_duration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33470,8 +31332,6 @@ _t_mse_MediaSource_set_duration :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33498,8 +31358,6 @@ _t_mse_MediaSource_addSourceBuffer :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -33535,8 +31393,6 @@ _t_mse_MediaSource_removeSourceBuffer :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33568,8 +31424,6 @@ _t_mse_MediaSource_endOfStream :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -33602,8 +31456,6 @@ _t_mse_MediaSource_setLiveSeekableRange :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33631,8 +31483,6 @@ _t_mse_MediaSource_clearLiveSeekableRange :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33658,8 +31508,6 @@ _t_mse_SourceBufferList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33683,8 +31531,6 @@ _t_mse_SourceBufferList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -33721,8 +31567,6 @@ _t_mse_SourceBuffer_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -33751,8 +31595,6 @@ _t_mse_SourceBuffer_set_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -33785,8 +31627,6 @@ _t_mse_SourceBuffer_updating :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33817,8 +31657,6 @@ _t_mse_SourceBuffer_ranges :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -33849,8 +31687,6 @@ _t_mse_SourceBuffer_timestampOffset :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33874,8 +31710,6 @@ _t_mse_SourceBuffer_set_timestampOffset :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33902,8 +31736,6 @@ _t_mse_SourceBuffer_appendWindowStart :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33927,8 +31759,6 @@ _t_mse_SourceBuffer_set_appendWindowStart :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33955,8 +31785,6 @@ _t_mse_SourceBuffer_appendWindowEnd :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -33980,8 +31808,6 @@ _t_mse_SourceBuffer_set_appendWindowEnd :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -34008,8 +31834,6 @@ _t_mse_SourceBuffer_appendBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -34039,8 +31863,6 @@ _t_mse_SourceBuffer_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -34066,8 +31888,6 @@ _t_mse_SourceBuffer_changeType :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -34100,8 +31920,6 @@ _t_mse_SourceBuffer_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -34129,8 +31947,6 @@ _t_mediatracks_AudioTrackList_length :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -34154,8 +31970,6 @@ _t_mediatracks_AudioTrackList_item :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -34185,8 +31999,6 @@ _t_mediatracks_AudioTrackList_getTrackById :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -34218,8 +32030,6 @@ _t_mediatracks_VideoTrackList_length :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -34243,8 +32053,6 @@ _t_mediatracks_VideoTrackList_item :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -34274,8 +32082,6 @@ _t_mediatracks_VideoTrackList_getTrackById :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -34307,8 +32113,6 @@ _t_mediatracks_VideoTrackList_selectedIndex :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -34332,8 +32136,6 @@ _t_mediatracks_TextTrackList_length :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -34357,8 +32159,6 @@ _t_mediatracks_TextTrackList_item :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -34388,8 +32188,6 @@ _t_mediatracks_TextTrackList_getTrackById :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -34428,8 +32226,6 @@ _t_mediatracks_AudioTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -34465,8 +32261,6 @@ _t_mediatracks_AudioTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -34502,8 +32296,6 @@ _t_mediatracks_AudioTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -34539,8 +32331,6 @@ _t_mediatracks_AudioTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -34569,8 +32359,6 @@ _t_mediatracks_AudioTrack_enabled :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -34594,8 +32382,6 @@ _t_mediatracks_AudioTrack_set_enabled :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -34625,8 +32411,6 @@ _t_mediatracks_VideoTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -34662,8 +32446,6 @@ _t_mediatracks_VideoTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -34699,8 +32481,6 @@ _t_mediatracks_VideoTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -34736,8 +32516,6 @@ _t_mediatracks_VideoTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -34766,8 +32544,6 @@ _t_mediatracks_VideoTrack_selected :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -34791,8 +32567,6 @@ _t_mediatracks_VideoTrack_set_selected :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -34822,8 +32596,6 @@ _t_mediatracks_TextTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -34859,8 +32631,6 @@ _t_mediatracks_TextTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -34896,8 +32666,6 @@ _t_mediatracks_TextTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -34933,8 +32701,6 @@ _t_mediatracks_TextTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -34970,8 +32736,6 @@ _t_mediatracks_TextTrack_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -35000,8 +32764,6 @@ _t_mediatracks_TextTrack_set_mode :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -35031,8 +32793,6 @@ _t_mediatracks_TextTrack_cues :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -35056,8 +32816,6 @@ _t_mediatracks_TextTrack_activeCues :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -35081,8 +32839,6 @@ _t_mediatracks_TextTrack_addCue :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -35114,8 +32870,6 @@ _t_mediatracks_TextTrack_removeCue :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -35154,8 +32908,6 @@ _t_mediatracks_TextTrackCue_id :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -35184,8 +32936,6 @@ _t_mediatracks_TextTrackCue_set_id :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -35215,8 +32965,6 @@ _t_mediatracks_TextTrackCue_startTime :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -35240,8 +32988,6 @@ _t_mediatracks_TextTrackCue_set_startTime :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -35264,8 +33010,6 @@ _t_mediatracks_TextTrackCue_endTime :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -35289,8 +33033,6 @@ _t_mediatracks_TextTrackCue_set_endTime :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -35313,8 +33055,6 @@ _t_mediatracks_TextTrackCue_pauseOnExit :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -35338,8 +33078,6 @@ _t_mediatracks_TextTrackCue_set_pauseOnExit :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -35362,8 +33100,6 @@ _t_mediatracks_TextTrackCue_track :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -35387,8 +33123,6 @@ _t_mediatracks_VTTCue_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -35427,8 +33161,6 @@ _t_mediatracks_VTTCue_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -35457,8 +33189,6 @@ _t_mediatracks_VTTCue_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -35488,8 +33218,6 @@ _t_mediatracks_TextTrackCueList_length :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -35513,8 +33241,6 @@ _t_mediatracks_TextTrackCueList_item :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -35544,8 +33270,6 @@ _t_mediatracks_TextTrackCueList_getCueById :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -35577,8 +33301,6 @@ _t_mediatracks_HTMLTrackElement_track :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -35602,8 +33324,6 @@ _t_mediatracks_HTMLTrackElement_readyState :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -35633,8 +33353,6 @@ _t_navigation_Navigation_entries :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -35656,8 +33374,6 @@ _t_navigation_Navigation_serial :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Navigation_serial(&c)
@@ -35682,8 +33398,6 @@ _t_navigation_Navigation_getState :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -35710,8 +33424,6 @@ _t_navigation_Navigation_updateCurrentEntry :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -35738,8 +33450,6 @@ _t_navigation_Navigation_navigate :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -35778,8 +33488,6 @@ _t_navigation_Navigation_reload :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_absent0 := wasm.is_absent(&f, a[1])
@@ -35810,8 +33518,6 @@ _t_navigation_Navigation_traverseTo :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i64
@@ -35838,8 +33544,6 @@ _t_navigation_Navigation_pending :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -35870,8 +33574,6 @@ _t_navigation_Navigation_pendingState :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -35896,8 +33598,6 @@ _t_navigation_Navigation_pendingSource :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 24)
@@ -35923,8 +33623,6 @@ _t_navigation_Navigation_activation :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -35946,8 +33644,6 @@ _t_navigation_Navigation_scroll :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -35963,8 +33659,6 @@ _t_net_Fetch_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -36039,8 +33733,6 @@ _t_net_Fetch_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -36064,8 +33756,6 @@ _t_net_Fetch_status :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -36096,8 +33786,6 @@ _t_net_Fetch_statusText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -36126,8 +33814,6 @@ _t_net_Fetch_hasBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -36151,8 +33837,6 @@ _t_net_Fetch_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -36176,8 +33860,6 @@ _t_net_Fetch_redirected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -36208,8 +33890,6 @@ _t_net_Fetch_headers :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -36245,8 +33925,6 @@ _t_net_Fetch_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -36282,8 +33960,6 @@ _t_net_Fetch_error :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -36312,8 +33988,6 @@ _t_net_Fetch_errorKind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -36337,8 +34011,6 @@ _t_net_Fetch_bodyLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -36362,8 +34034,6 @@ _t_net_Fetch_readBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -36393,8 +34063,6 @@ _t_net_Fetch_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -36426,8 +34094,6 @@ _t_notification_Notification_permission :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -36449,8 +34115,6 @@ _t_notification_Notification_ask :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Notification_ask(&c)
@@ -36467,8 +34131,6 @@ _t_notification_Notification_show :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -36510,8 +34172,6 @@ _t_notification_Notification_next :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -36530,8 +34190,6 @@ _t_notification_Notification_close :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -36548,8 +34206,6 @@ _t_performance_Performance_now :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Performance_now(&c)
@@ -36566,8 +34222,6 @@ _t_performance_Performance_timeOrigin :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Performance_timeOrigin(&c)
@@ -36584,8 +34238,6 @@ _t_performance_Performance_mark :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -36613,8 +34265,6 @@ _t_performance_Performance_measure :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -36655,8 +34305,6 @@ _t_performance_Performance_measureTimes :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -36685,8 +34333,6 @@ _t_performance_Performance_entryCount :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -36717,8 +34363,6 @@ _t_performance_Performance_entryStartTime :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -36750,8 +34394,6 @@ _t_performance_Performance_entryDuration :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -36795,8 +34437,6 @@ _t_performance_Performance_entryName :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -36834,8 +34474,6 @@ _t_performance_Performance_entryType :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -36871,8 +34509,6 @@ _t_performance_Performance_clearMarks :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -36895,8 +34531,6 @@ _t_performance_Performance_clearMeasures :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -36927,8 +34561,6 @@ _t_performance_Performance_timeline :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -36958,8 +34590,6 @@ _t_performance_Performance_timelineNextSeq :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_e0 := i32(a[0].i32)
@@ -36982,8 +34612,6 @@ _t_performance_Performance_timelineNode :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_e0 := i32(a[0].i32)
@@ -37009,8 +34637,6 @@ _t_performance_Performance_timelineInterest :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -37026,8 +34652,6 @@ _t_performance_Performance_onTimeline :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -37044,8 +34668,6 @@ _t_performance_Performance_setResourceTimingBufferSize :: proc "c" (env: rawptr,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -37061,8 +34683,6 @@ _t_performance_Performance_clearResourceTimings :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	Performance_clearResourceTimings(&c)
@@ -37077,8 +34697,6 @@ _t_performance_Performance_timingOf :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -37096,8 +34714,6 @@ _t_popover_Popover_show :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -37129,8 +34745,6 @@ _t_popover_Popover_hide :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -37156,8 +34770,6 @@ _t_popover_Popover_toggle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 1)
@@ -37193,8 +34805,6 @@ _t_popover_Popover_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -37218,8 +34828,6 @@ _t_popover_Popover_targetOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -37243,8 +34851,6 @@ _t_ports_Port_entangle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Port_entangle(&c)
@@ -37261,8 +34867,6 @@ _t_ports_Port_bind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -37284,8 +34888,6 @@ _t_ports_Port_ship :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -37302,8 +34904,6 @@ _t_ports_Port_post :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -37333,8 +34933,6 @@ _t_ports_Port_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -37351,8 +34949,6 @@ _t_ports_Worker_postSerializedPorts :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -37382,8 +34978,6 @@ _t_ports_DedicatedWorkerGlobalScope_postSerializedPorts :: proc "c" (env: rawptr
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -37411,8 +35005,6 @@ _t_ports_Broadcast_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -37437,8 +35029,6 @@ _t_ports_Broadcast_post :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -37471,8 +35061,6 @@ _t_ports_MessageEvent_portEnds :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -37501,8 +35089,6 @@ _t_scheduler_Scheduler_post :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -37528,8 +35114,6 @@ _t_scheduler_Scheduler_cancel :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -37551,8 +35135,6 @@ _t_scheduler_Scheduler_setPriority :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -37579,8 +35161,6 @@ _t_scheduler_Scheduler_isInputPending :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32 != 0
@@ -37598,8 +35178,6 @@ _t_serviceworker_ServiceWorker_register :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -37648,8 +35226,6 @@ _t_serviceworker_ServiceWorker_ready :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := ServiceWorker_ready(&c)
@@ -37666,8 +35242,6 @@ _t_serviceworker_ServiceWorker_getRegistration :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -37698,8 +35272,6 @@ _t_serviceworker_ServiceWorker_registrationIds :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -37721,8 +35293,6 @@ _t_serviceworker_ServiceWorker_controller :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := ServiceWorker_controller(&c)
@@ -37746,8 +35316,6 @@ _t_serviceworker_ServiceWorkerRegistration_info :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -37778,8 +35346,6 @@ _t_serviceworker_ServiceWorker_info :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -37803,8 +35369,6 @@ _t_serviceworker_ServiceWorkerRegistration_unregisterId :: proc "c" (env: rawptr
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -37823,8 +35387,6 @@ _t_serviceworker_ServiceWorkerRegistration_updateId :: proc "c" (env: rawptr, ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -37861,8 +35423,6 @@ _t_serviceworker_ServiceWorkerRegistration_preload :: proc "c" (env: rawptr, cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
@@ -37897,8 +35457,6 @@ _t_serviceworker_ServiceWorker_postToWorker :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -37930,8 +35488,6 @@ _t_serviceworker_ServiceWorker_takeMessage :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -37956,8 +35512,6 @@ _t_serviceworker_ServiceWorkerGlobalScope_registration :: proc "c" (env: rawptr,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := ServiceWorkerGlobalScope_registration(&c)
@@ -37974,8 +35528,6 @@ _t_serviceworker_ServiceWorkerGlobalScope_version :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := ServiceWorkerGlobalScope_version(&c)
@@ -37998,8 +35550,6 @@ _t_serviceworker_ServiceWorkerGlobalScope_scope :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -38027,8 +35577,6 @@ _t_serviceworker_ServiceWorkerGlobalScope_scriptURL :: proc "c" (env: rawptr, ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -38050,8 +35598,6 @@ _t_serviceworker_SwEvent_next :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 40)
@@ -38081,8 +35627,6 @@ _t_serviceworker_SwEvent_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -38111,8 +35655,6 @@ _t_serviceworker_SwEvent_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -38134,8 +35676,6 @@ _t_serviceworker_SwEvent_done :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	SwEvent_done(&c)
@@ -38150,8 +35690,6 @@ _t_serviceworker_ServiceWorkerGlobalScope_reply :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n3 := wasm.addr(&f, a[4])
@@ -38190,8 +35728,6 @@ _t_storage_Storage_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 4)
@@ -38227,8 +35763,6 @@ _t_storage_Storage_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -38270,8 +35804,6 @@ _t_storage_Storage_getItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -38308,8 +35840,6 @@ _t_storage_Storage_setItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -38342,8 +35872,6 @@ _t_storage_Storage_removeItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -38375,8 +35903,6 @@ _t_storage_Storage_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_e0 := i32(a[0].i32)
@@ -38409,8 +35935,6 @@ _t_storage_StorageEvent_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -38446,8 +35970,6 @@ _t_storage_StorageEvent_storageArea :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 4)
@@ -38476,8 +35998,6 @@ _t_testhost_TestHost_testBegin :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -38496,8 +36016,6 @@ _t_testhost_TestHost_testEnd :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -38516,8 +36034,6 @@ _t_testhost_TestHost_check :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -38537,8 +36053,6 @@ _t_testhost_TestHost_measure :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -38558,8 +36072,6 @@ _t_testhost_TestHost_note :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -38578,8 +36090,6 @@ _t_testhost_TestHost_signal :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -38598,8 +36108,6 @@ _t_testhost_TestHost_skip :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -38624,8 +36132,6 @@ _t_testhost_TestHost_done :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	TestHost_done(&c)
@@ -38640,8 +36146,6 @@ _t_timers_Timers_setTimeout :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -38661,8 +36165,6 @@ _t_timers_Timers_setInterval :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -38682,8 +36184,6 @@ _t_timers_Timers_setTimeout64 :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -38703,8 +36203,6 @@ _t_timers_Timers_setInterval64 :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -38724,8 +36222,6 @@ _t_timers_Timers_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -38751,8 +36247,6 @@ _t_timers_Timers_now :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Timers_now(&c)
@@ -38769,8 +36263,6 @@ _t_timers_requestAnimationFrame :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -38789,8 +36281,6 @@ _t_timers_cancelAnimationFrame :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -38812,8 +36302,6 @@ _t_timers_requestIdleCallback :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -38833,8 +36321,6 @@ _t_timers_cancelIdleCallback :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -38856,8 +36342,6 @@ _t_timers_Document_visibilityState :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Document_visibilityState(&c)
@@ -38874,8 +36358,6 @@ _t_url_URL_parse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -38916,8 +36398,6 @@ _t_url_URL_canParse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -38962,8 +36442,6 @@ _t_url_URL_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -38998,8 +36476,6 @@ _t_url_URL_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -39037,8 +36513,6 @@ _t_url_URL_searchParams :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -39062,8 +36536,6 @@ _t_url_URLSearchParams_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -39093,8 +36565,6 @@ _t_url_URLSearchParams_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -39118,8 +36588,6 @@ _t_url_URLSearchParams_append :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -39149,8 +36617,6 @@ _t_url_URLSearchParams_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -39203,8 +36669,6 @@ _t_url_URLSearchParams_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -39242,8 +36706,6 @@ _t_url_URLSearchParams_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -39287,8 +36749,6 @@ _t_url_URLSearchParams_getNth :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -39327,8 +36787,6 @@ _t_url_URLSearchParams_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -39372,8 +36830,6 @@ _t_url_URLSearchParams_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -39403,8 +36859,6 @@ _t_url_URLSearchParams_sort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -39433,8 +36887,6 @@ _t_url_URLSearchParams_toString :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -39471,8 +36923,6 @@ _t_url_URLSearchParams_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -39512,8 +36962,6 @@ _t_url_URLSearchParams_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -39545,8 +36993,6 @@ _t_url_URLPattern_createString :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -39585,8 +37031,6 @@ _t_url_URLPattern_createInit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -39690,8 +37134,6 @@ _t_url_URLPattern_component :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -39726,8 +37168,6 @@ _t_url_URLPattern_hasRegExpGroups :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -39751,8 +37191,6 @@ _t_url_URLPattern_execString :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -39793,8 +37231,6 @@ _t_url_URLPattern_execInit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -39899,8 +37335,6 @@ _t_url_URLPattern_resultInputCount :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -39932,8 +37366,6 @@ _t_url_URLPattern_resultInput :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -39973,8 +37405,6 @@ _t_url_URLPattern_componentInput :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -40009,8 +37439,6 @@ _t_url_URLPattern_groupCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -40049,8 +37477,6 @@ _t_url_URLPattern_groupName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
@@ -40096,8 +37522,6 @@ _t_url_URLPattern_groupValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
@@ -40134,8 +37558,6 @@ _t_web_Exception_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := Exception_code(&c)
@@ -40158,8 +37580,6 @@ _t_web_Exception_message :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -40181,8 +37601,6 @@ _t_webassembly_WebAssembly_enabled :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := WebAssembly_enabled(&c)
@@ -40199,8 +37617,6 @@ _t_webassembly_WebAssembly_validate :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -40221,8 +37637,6 @@ _t_webassembly_WebAssembly_compile :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -40249,8 +37663,6 @@ _t_webassembly_WebAssembly_compileAsync :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -40278,8 +37690,6 @@ _t_webassembly_WebAssembly_Module_imports :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -40315,8 +37725,6 @@ _t_webassembly_WebAssembly_Module_exports :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -40345,8 +37753,6 @@ _t_webassembly_WebAssembly_Module_customSectionCount :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -40390,8 +37796,6 @@ _t_webassembly_WebAssembly_Module_customSection :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
@@ -40436,8 +37840,6 @@ _t_webassembly_WebAssembly_Module_linkInfo :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -40472,8 +37874,6 @@ _t_webassembly_WebAssembly_lastError :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -40495,8 +37895,6 @@ _t_webassembly_WebAssembly_Memory_create :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i64
@@ -40515,8 +37913,6 @@ _t_webassembly_WebAssembly_Memory_pages :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -40534,8 +37930,6 @@ _t_webassembly_WebAssembly_Memory_grow :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -40554,8 +37948,6 @@ _t_webassembly_WebAssembly_Memory_read :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -40578,8 +37970,6 @@ _t_webassembly_WebAssembly_Memory_write :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -40602,8 +37992,6 @@ _t_webassembly_WebAssembly_Memory_createShared :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i64
@@ -40623,8 +38011,6 @@ _t_webassembly_WebAssembly_Memory_release :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -40640,8 +38026,6 @@ _t_webassembly_WebAssembly_Memory_byteLength :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -40659,8 +38043,6 @@ _t_webassembly_WebAssembly_Memory_growBytes :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -40679,8 +38061,6 @@ _t_webassembly_WebAssembly_Memory_atomic :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -40703,8 +38083,6 @@ _t_webassembly_WebAssembly_Memory_wait :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -40726,8 +38104,6 @@ _t_webassembly_WebAssembly_Memory_notify :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -40747,8 +38123,6 @@ _t_webassembly_WebAssembly_Memory_share :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -40766,8 +38140,6 @@ _t_webassembly_WebAssembly_Memory_adopt :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i64
@@ -40785,8 +38157,6 @@ _t_webassembly_WebAssembly_Module_share :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -40810,8 +38180,6 @@ _t_webassembly_WebAssembly_Module_adopt :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -40835,8 +38203,6 @@ _t_webassembly_WebAssembly_crossOriginIsolated :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := WebAssembly_crossOriginIsolated(&c)
@@ -40853,8 +38219,6 @@ _t_webassembly_WebAssembly_canBlock :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := WebAssembly_canBlock(&c)
@@ -40871,8 +38235,6 @@ _t_webassembly_WebAssembly_Table_create :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -40907,8 +38269,6 @@ _t_webassembly_WebAssembly_Table_element :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -40931,8 +38291,6 @@ _t_webassembly_WebAssembly_Table_length :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -40950,8 +38308,6 @@ _t_webassembly_WebAssembly_Table_get :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -40974,8 +38330,6 @@ _t_webassembly_WebAssembly_Table_set :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -40995,8 +38349,6 @@ _t_webassembly_WebAssembly_Table_grow :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -41016,8 +38368,6 @@ _t_webassembly_WebAssembly_Global_create :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -41051,8 +38401,6 @@ _t_webassembly_WebAssembly_Global_type :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -41075,8 +38423,6 @@ _t_webassembly_WebAssembly_Global_get :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -41094,8 +38440,6 @@ _t_webassembly_WebAssembly_Global_set :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -41114,8 +38458,6 @@ _t_webassembly_WebAssembly_Func_import :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -41148,8 +38490,6 @@ _t_webassembly_WebAssembly_Func_sig :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -41172,8 +38512,6 @@ _t_webassembly_WebAssembly_Func_call :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -41201,8 +38539,6 @@ _t_webassembly_WebAssembly_Func_results :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -41230,8 +38566,6 @@ _t_webassembly_WebAssembly_import_args :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -41253,8 +38587,6 @@ _t_webassembly_WebAssembly_import_results :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -41273,8 +38605,6 @@ _t_webassembly_WebAssembly_import_failed :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -41297,8 +38627,6 @@ _t_webassembly_WebAssembly_Tag_create :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -41330,8 +38658,6 @@ _t_webassembly_WebAssembly_Tag_sig :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -41354,8 +38680,6 @@ _t_webassembly_WebAssembly_exception_tag :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := WebAssembly_exception_tag(&c)
@@ -41372,8 +38696,6 @@ _t_webassembly_WebAssembly_import_throw :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -41393,8 +38715,6 @@ _t_webassembly_WebAssembly_extern_released :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := WebAssembly_extern_released(&c)
@@ -41411,8 +38731,6 @@ _t_webassembly_WebAssembly_Instance_create :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -41448,8 +38766,6 @@ _t_webassembly_WebAssembly_Instance_exports :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
@@ -41479,8 +38795,6 @@ _t_webaudio_WebAudio_enabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := WebAudio_enabled(&c)
@@ -41497,8 +38811,6 @@ _t_webaudio_WebAudio_fullyActive :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := WebAudio_fullyActive(&c)
@@ -41515,8 +38827,6 @@ _t_webaudio_WebAudio_defaultRate :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := WebAudio_defaultRate(&c)
@@ -41533,8 +38843,6 @@ _t_webaudio_WebAudio_maxBufferBytes :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := WebAudio_maxBufferBytes(&c)
@@ -41551,8 +38859,6 @@ _t_webaudio_WebAudio_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].f64
@@ -41575,8 +38881,6 @@ _t_webaudio_WebAudio_resume :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41593,8 +38897,6 @@ _t_webaudio_WebAudio_suspend :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41613,8 +38915,6 @@ _t_webaudio_WebAudio_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41631,8 +38931,6 @@ _t_webaudio_WebAudio_time :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41651,8 +38949,6 @@ _t_webaudio_WebAudio_queued :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41671,8 +38967,6 @@ _t_webaudio_WebAudio_render :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41692,8 +38986,6 @@ _t_webaudio_WebAudio_takeResult :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41712,8 +39004,6 @@ _t_webaudio_WebAudio_offlineSuspend :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41733,8 +39023,6 @@ _t_webaudio_WebAudio_offlineResume :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41751,8 +39039,6 @@ _t_webaudio_WebAudio_nodeCreate :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41774,8 +39060,6 @@ _t_webaudio_WebAudio_nodeRelease :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41793,8 +39077,6 @@ _t_webaudio_WebAudio_connect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41818,8 +39100,6 @@ _t_webaudio_WebAudio_disconnect :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41843,8 +39123,6 @@ _t_webaudio_WebAudio_nodeSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41864,8 +39142,6 @@ _t_webaudio_WebAudio_nodeGet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41886,8 +39162,6 @@ _t_webaudio_WebAudio_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41908,8 +39182,6 @@ _t_webaudio_WebAudio_stop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41928,8 +39200,6 @@ _t_webaudio_WebAudio_setBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41949,8 +39219,6 @@ _t_webaudio_WebAudio_setConvolver :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -41971,8 +39239,6 @@ _t_webaudio_WebAudio_setCurve :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -41994,8 +39260,6 @@ _t_webaudio_WebAudio_setWave :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -42022,8 +39286,6 @@ _t_webaudio_WebAudio_captureElement :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42050,8 +39312,6 @@ _t_webaudio_WebAudio_paramGet :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42072,8 +39332,6 @@ _t_webaudio_WebAudio_paramSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42095,8 +39353,6 @@ _t_webaudio_WebAudio_paramRate :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42116,8 +39372,6 @@ _t_webaudio_WebAudio_paramEvent :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n7 := wasm.addr(&f, a[8])
@@ -42146,8 +39400,6 @@ _t_webaudio_WebAudio_paramCancel :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42168,8 +39420,6 @@ _t_webaudio_WebAudio_biquadResponse :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -42199,8 +39449,6 @@ _t_webaudio_WebAudio_setIir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -42226,8 +39474,6 @@ _t_webaudio_WebAudio_iirResponse :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -42257,8 +39503,6 @@ _t_webaudio_WebAudio_analyserRead :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n3 := wasm.addr(&f, a[4])
@@ -42283,8 +39527,6 @@ _t_webaudio_WebAudio_scriptPull :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -42306,8 +39548,6 @@ _t_webaudio_WebAudio_scriptPush :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -42329,8 +39569,6 @@ _t_webaudio_WebAudio_pcmCreate :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := u32(a[0].i32)
@@ -42350,8 +39588,6 @@ _t_webaudio_WebAudio_pcmWrite :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n3 := wasm.addr(&f, a[4])
@@ -42374,8 +39610,6 @@ _t_webaudio_WebAudio_pcmRead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n3 := wasm.addr(&f, a[4])
@@ -42398,8 +39632,6 @@ _t_webaudio_WebAudio_pcmInfo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42419,8 +39651,6 @@ _t_webaudio_WebAudio_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -42442,8 +39672,6 @@ _t_webaudio_WebAudio_workletStart :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42462,8 +39690,6 @@ _t_webaudio_WebAudio_workletStop :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42480,8 +39706,6 @@ _t_webaudio_WebAudio_workletNode :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n5 := wasm.addr(&f, a[6])
@@ -42508,8 +39732,6 @@ _t_webaudio_WebAudio_workletParam :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42532,8 +39754,6 @@ _t_webaudio_AudioWorkletRealm_sampleRate :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := AudioWorkletRealm_sampleRate(&c)
@@ -42550,8 +39770,6 @@ _t_webaudio_AudioWorkletRealm_frame :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := AudioWorkletRealm_frame(&c)
@@ -42568,8 +39786,6 @@ _t_webaudio_AudioWorkletRealm_layout :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -42590,8 +39806,6 @@ _t_webaudio_AudioWorkletRealm_read :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -42611,8 +39825,6 @@ _t_webaudio_AudioWorkletRealm_write :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -42632,8 +39844,6 @@ _t_webaudio_AudioWorkletRealm_finish :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -42649,8 +39859,6 @@ _t_webaudio_AudioWorkletRealm_dropped :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := AudioWorkletRealm_dropped(&c)
@@ -42667,8 +39875,6 @@ _t_webcodecs_VideoFrame_fromImage :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[5]), 8)
@@ -42697,8 +39903,6 @@ _t_webcodecs_VideoFrame_fromBuffer :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -42757,8 +39961,6 @@ _t_webcodecs_VideoFrame_format :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42782,8 +39984,6 @@ _t_webcodecs_VideoFrame_codedWidth :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42807,8 +40007,6 @@ _t_webcodecs_VideoFrame_codedHeight :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42832,8 +40030,6 @@ _t_webcodecs_VideoFrame_displayWidth :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42857,8 +40053,6 @@ _t_webcodecs_VideoFrame_displayHeight :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42882,8 +40076,6 @@ _t_webcodecs_VideoFrame_timestamp :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42907,8 +40099,6 @@ _t_webcodecs_VideoFrame_duration :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42932,8 +40122,6 @@ _t_webcodecs_VideoFrame_visibleRect :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42958,8 +40146,6 @@ _t_webcodecs_VideoFrame_colorSpace :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -42984,8 +40170,6 @@ _t_webcodecs_VideoFrame_isClosed :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43009,8 +40193,6 @@ _t_webcodecs_VideoFrame_allocationSize :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n7 := wasm.addr(&f, a[8])
@@ -43054,8 +40236,6 @@ _t_webcodecs_VideoFrame_copyTo :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -43103,8 +40283,6 @@ _t_webcodecs_VideoFrame_copyLayout :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43130,8 +40308,6 @@ _t_webcodecs_VideoFrame_clone :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -43160,8 +40336,6 @@ _t_webcodecs_VideoFrame_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43183,8 +40357,6 @@ _t_webcodecs_VideoFrame_transfer :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -43214,8 +40386,6 @@ _t_webcodecs_VideoFrame_takeForTransfer :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43239,8 +40409,6 @@ _t_webcodecs_VideoFrame_adoptTransfer :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43259,8 +40427,6 @@ _t_webcodecs_audio_decoder_AudioDecoder_create :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
@@ -43287,8 +40453,6 @@ _t_webcodecs_audio_decoder_AudioDecoder_isConfigSupported :: proc "c" (env: rawp
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -43313,8 +40477,6 @@ _t_webcodecs_audio_decoder_AudioDecoder_configure :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -43353,8 +40515,6 @@ _t_webcodecs_audio_decoder_AudioDecoder_decode :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n5 := wasm.addr(&f, a[6])
@@ -43388,8 +40548,6 @@ _t_webcodecs_audio_decoder_AudioDecoder_flush :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43415,8 +40573,6 @@ _t_webcodecs_audio_decoder_AudioDecoder_reset :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43438,8 +40594,6 @@ _t_webcodecs_audio_decoder_AudioDecoder_close :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43461,8 +40615,6 @@ _t_webcodecs_audio_decoder_AudioDecoder_decodeQueueSize :: proc "c" (env: rawptr
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43486,8 +40638,6 @@ _t_webcodecs_audio_decoder_AudioDecoder_state :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43511,8 +40661,6 @@ _t_webcodecs_codec_EncodedVideoChunk_create :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n4 := wasm.addr(&f, a[5])
@@ -43543,8 +40691,6 @@ _t_webcodecs_codec_EncodedAudioChunk_create :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n4 := wasm.addr(&f, a[5])
@@ -43575,8 +40721,6 @@ _t_webcodecs_codec_EncodedVideoChunk_type :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43600,8 +40744,6 @@ _t_webcodecs_codec_EncodedVideoChunk_timestamp :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43625,8 +40767,6 @@ _t_webcodecs_codec_EncodedVideoChunk_duration :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43650,8 +40790,6 @@ _t_webcodecs_codec_EncodedVideoChunk_byteLength :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43675,8 +40813,6 @@ _t_webcodecs_codec_EncodedVideoChunk_copyTo :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -43709,8 +40845,6 @@ _t_webcodecs_codec_EncodedAudioChunk_type :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43734,8 +40868,6 @@ _t_webcodecs_codec_EncodedAudioChunk_timestamp :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43759,8 +40891,6 @@ _t_webcodecs_codec_EncodedAudioChunk_duration :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43784,8 +40914,6 @@ _t_webcodecs_codec_EncodedAudioChunk_byteLength :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43809,8 +40937,6 @@ _t_webcodecs_codec_EncodedAudioChunk_copyTo :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -43843,8 +40969,6 @@ _t_webcodecs_codec_AudioData_create :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n5 := wasm.addr(&f, a[6])
@@ -43880,8 +41004,6 @@ _t_webcodecs_codec_AudioData_format :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43905,8 +41027,6 @@ _t_webcodecs_codec_AudioData_sampleRate :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43930,8 +41050,6 @@ _t_webcodecs_codec_AudioData_numberOfFrames :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43955,8 +41073,6 @@ _t_webcodecs_codec_AudioData_numberOfChannels :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -43980,8 +41096,6 @@ _t_webcodecs_codec_AudioData_timestamp :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44005,8 +41119,6 @@ _t_webcodecs_codec_AudioData_duration :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44030,8 +41142,6 @@ _t_webcodecs_codec_AudioData_allocationSize :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 4)
@@ -44065,8 +41175,6 @@ _t_webcodecs_codec_AudioData_copyTo :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -44104,8 +41212,6 @@ _t_webcodecs_codec_AudioData_clone :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
@@ -44134,8 +41240,6 @@ _t_webcodecs_codec_AudioData_close :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44157,8 +41261,6 @@ _t_webcodecs_encoders_VideoEncoder_create :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
@@ -44185,8 +41287,6 @@ _t_webcodecs_encoders_AudioEncoder_create :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
@@ -44213,8 +41313,6 @@ _t_webcodecs_encoders_VideoEncoder_isConfigSupported :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -44239,8 +41337,6 @@ _t_webcodecs_encoders_AudioEncoder_isConfigSupported :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -44265,8 +41361,6 @@ _t_webcodecs_encoders_VideoEncoder_configure :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -44299,8 +41393,6 @@ _t_webcodecs_encoders_AudioEncoder_configure :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -44333,8 +41425,6 @@ _t_webcodecs_encoders_VideoEncoder_encode :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44360,8 +41450,6 @@ _t_webcodecs_encoders_AudioEncoder_encode :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44387,8 +41475,6 @@ _t_webcodecs_encoders_VideoEncoder_flush :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44414,8 +41500,6 @@ _t_webcodecs_encoders_AudioEncoder_flush :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44441,8 +41525,6 @@ _t_webcodecs_encoders_VideoEncoder_reset :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44464,8 +41546,6 @@ _t_webcodecs_encoders_AudioEncoder_reset :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44487,8 +41567,6 @@ _t_webcodecs_encoders_VideoEncoder_close :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44510,8 +41588,6 @@ _t_webcodecs_encoders_AudioEncoder_close :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44533,8 +41609,6 @@ _t_webcodecs_encoders_VideoEncoder_encodeQueueSize :: proc "c" (env: rawptr, cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44558,8 +41632,6 @@ _t_webcodecs_encoders_AudioEncoder_encodeQueueSize :: proc "c" (env: rawptr, cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44583,8 +41655,6 @@ _t_webcodecs_encoders_VideoEncoder_state :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44608,8 +41678,6 @@ _t_webcodecs_encoders_AudioEncoder_state :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44633,8 +41701,6 @@ _t_webcodecs_image_ImageDecoder_create :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -44669,8 +41735,6 @@ _t_webcodecs_image_ImageDecoder_isTypeSupported :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -44702,8 +41766,6 @@ _t_webcodecs_image_ImageDecoder_type :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -44732,8 +41794,6 @@ _t_webcodecs_image_ImageDecoder_complete :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44757,8 +41817,6 @@ _t_webcodecs_image_ImageDecoder_frameCount :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44782,8 +41840,6 @@ _t_webcodecs_image_ImageDecoder_decode :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -44813,8 +41869,6 @@ _t_webcodecs_image_ImageDecoder_reset :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44836,8 +41890,6 @@ _t_webcodecs_image_ImageDecoder_close :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44859,8 +41911,6 @@ _t_webcodecs_image_ImageDecoder_tracks :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44884,8 +41934,6 @@ _t_webcodecs_image_ImageTrackList_length :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44909,8 +41957,6 @@ _t_webcodecs_image_ImageTrackList_item :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
@@ -44940,8 +41986,6 @@ _t_webcodecs_image_ImageTrackList_selectedIndex :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44965,8 +42009,6 @@ _t_webcodecs_image_ImageTrack_animated :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -44990,8 +42032,6 @@ _t_webcodecs_image_ImageTrack_frameCount :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45015,8 +42055,6 @@ _t_webcodecs_image_ImageTrack_repetitionCount :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45040,8 +42078,6 @@ _t_webcodecs_image_ImageTrack_selected :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45065,8 +42101,6 @@ _t_webcodecs_video_decoder_VideoDecoder_create :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
@@ -45093,8 +42127,6 @@ _t_webcodecs_video_decoder_VideoDecoder_isConfigSupported :: proc "c" (env: rawp
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -45119,8 +42151,6 @@ _t_webcodecs_video_decoder_VideoDecoder_configure :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -45159,8 +42189,6 @@ _t_webcodecs_video_decoder_VideoDecoder_decode :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n5 := wasm.addr(&f, a[6])
@@ -45194,8 +42222,6 @@ _t_webcodecs_video_decoder_VideoDecoder_flush :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45221,8 +42247,6 @@ _t_webcodecs_video_decoder_VideoDecoder_reset :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45244,8 +42268,6 @@ _t_webcodecs_video_decoder_VideoDecoder_close :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45267,8 +42289,6 @@ _t_webcodecs_video_decoder_VideoDecoder_decodeQueueSize :: proc "c" (env: rawptr
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45292,8 +42312,6 @@ _t_webcodecs_video_decoder_VideoDecoder_state :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45317,8 +42335,6 @@ _t_webgl_WebGL_enabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_p0 := a[0].i32
@@ -45336,8 +42352,6 @@ _t_webgl_WebGL_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n4 := wasm.addr(&f, a[5])
@@ -45368,8 +42382,6 @@ _t_webgl_WebGL_createOffscreen :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n4 := wasm.addr(&f, a[5])
@@ -45406,8 +42418,6 @@ _t_webgl_WebGL_createError :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -45429,8 +42439,6 @@ _t_webgl_WebGL_submit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -45456,8 +42464,6 @@ _t_webgl_WebGL_query :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -45484,8 +42490,6 @@ _t_webgl_WebGL_queryText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -45516,8 +42520,6 @@ _t_webgl_WebGL_upload :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -45548,8 +42550,6 @@ _t_webgl_WebGL_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45568,8 +42568,6 @@ _t_webgl_WebGL_height :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45588,8 +42586,6 @@ _t_webgl_WebGL_snapshot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45606,8 +42602,6 @@ _t_webgl_WebGL_commit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45624,8 +42618,6 @@ _t_webgl_WebGL_isLost :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45644,8 +42636,6 @@ _t_webgl_WebGL_lose :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45662,8 +42652,6 @@ _t_webgl_WebGL_restore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45682,8 +42670,6 @@ _t_websocket_WebSocket_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -45720,8 +42706,6 @@ _t_websocket_WebSocket_readyState :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45752,8 +42736,6 @@ _t_websocket_WebSocket_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -45789,8 +42771,6 @@ _t_websocket_WebSocket_protocol :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -45826,8 +42806,6 @@ _t_websocket_WebSocket_extensions :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
@@ -45856,8 +42834,6 @@ _t_websocket_WebSocket_bufferedAmount :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45881,8 +42857,6 @@ _t_websocket_WebSocket_binaryType :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45906,8 +42880,6 @@ _t_websocket_WebSocket_setBinaryType :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45934,8 +42906,6 @@ _t_websocket_WebSocket_send :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -45965,8 +42935,6 @@ _t_websocket_WebSocket_sendBuffer :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -45998,8 +42966,6 @@ _t_websocket_WebSocket_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n2 := wasm.addr(&f, a[3])
@@ -46033,8 +42999,6 @@ _t_websocket_CloseEvent_wasClean :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -46058,8 +43022,6 @@ _t_workers_Worker_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -46096,8 +43058,6 @@ _t_workers_Worker_postMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n1 := wasm.addr(&f, a[2])
@@ -46134,8 +43094,6 @@ _t_workers_Worker_terminate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))
@@ -46161,8 +43119,6 @@ _t_workers_DedicatedWorkerGlobalScope_self :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_r := DedicatedWorkerGlobalScope_self(&c)
@@ -46179,8 +43135,6 @@ _t_workers_DedicatedWorkerGlobalScope_postMessage :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
@@ -46211,8 +43165,6 @@ _t_workers_DedicatedWorkerGlobalScope_close :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_err := DedicatedWorkerGlobalScope_close(&c)
@@ -46238,8 +43190,6 @@ _t_workers_DedicatedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -46264,8 +43214,6 @@ _t_workers_SharedWorkerGlobalScope_close :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_err := SharedWorkerGlobalScope_close(&c)
@@ -46291,8 +43239,6 @@ _t_workers_SharedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -46323,8 +43269,6 @@ _t_workers_WorkerGlobalScope_location :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
@@ -46349,8 +43293,6 @@ _t_workers_MessageEvent_transfer :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	defer if c.routed { api_unroute(&c) }
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	api_route(&c, u64(a[0].i64))

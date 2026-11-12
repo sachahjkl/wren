@@ -23,8 +23,6 @@ _t_bench_nop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: u
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	nop(&c)
 	api_end(&c)
@@ -38,8 +36,6 @@ _t_bench_touch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
@@ -59,8 +55,6 @@ _t_bench_touch_string :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_tm := wasm.temp_mark()
-	defer wasm.temp_release(_tm)
 	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)

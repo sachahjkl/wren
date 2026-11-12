@@ -479,10 +479,6 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl, id: u32) {
 	wl(o, "\tf := wasm.frame(env, caller)")
 	wl(o, "\tcontext = wasm.default_context()")
 	wl(o, "\tc := %s(f.inst)", cfg.begin)
-	// what the call allocates in the temporary allocator is given back when it returns: its result is in the guest's
-	// memory then (wasm.temp_mark; released after the unrouting below, which runs first)
-	wl(o, "\t_tm := wasm.temp_mark()")
-	wl(o, "\tdefer wasm.temp_release(_tm)")
 	if cfg.unroute != "" { wl(o, "\tdefer if c.routed {{ %s(&c) }}", cfg.unroute) }
 	// a result kept for a retry answers only the very next call (wasm.Oversized)
 	if !d.abi.out_string { wl(o, "\tif f.inst.oversized.fn != 0 {{ wasm.oversized_drop(f.inst) }}") }

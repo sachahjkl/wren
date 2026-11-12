@@ -457,7 +457,8 @@ wrenTest.check(depth > 0, "recursion through the browser (dispatchEvent from a l
 }
 
 // Filling the heap to its limit must not be a race with the limits of time (the call stopped before the heap is full): they are far.
-// Running out of memory cannot be caught (src/engine/jsrt/gc.odin): the next script runs.
+// A large allocation past the limit is refused with a RangeError the script can catch (mem_may_grow, src/engine/jsrt/gc.odin);
+// running out of memory elsewhere cannot be caught. Either way the next script runs.
 @(test)
 js_hostile_out_of_memory :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
@@ -474,7 +475,7 @@ keep.length = 0;
 try { "x".repeat(1 << 30); } catch (e) { wrenTest.check(e.name === "RangeError" || e.name === "InternalError", "a 1 GiB string is refused") }
 </script></body>`)
 	pr.expect_uncaught = true
-	check(pr, console_says(pr, "Uncaught InternalError: out of memory") && !noted(pr, "caught"), "allocating past javascript.max_heap_bytes stops the script: no catch sees it (the engine's rule), the console says so")
+	check(pr, noted(pr, "caught") || console_says(pr, "Uncaught InternalError: out of memory"), "allocating past javascript.max_heap_bytes stops the script: a RangeError, or out of memory that no catch sees")
 	usable(pr, "out of memory")
 	close_page(pr, min_checks = 4)
 }
@@ -510,6 +511,7 @@ let n = 0;
 function t() { n++; setTimeout(t, 0); setTimeout(t, 0); }
 t();
 </script></body>`)
+	pr.expect_uncaught = true   // (past timers.max_timers, setTimeout throws QuotaExceededError: the flood ends there)
 	// load ran its turns under the flood (each one ends: the loop's time slice, host tests); a task the shell posts meanwhile (input,
 	// painting) runs at the very next turn
 	posted := false
@@ -563,8 +565,8 @@ try { flood(); } catch (e) {}
 	close_page(pr, min_checks = 3)
 }
 
-// A native in a loop of its own: nothing of the engine's counts it, the flag of the slow script goes unseen. Only the poll of
-// that loop reaches it (src/wasm/poll.odin): the hard stop ends it, the page's scripts with it, and the page goes on.
+// A native in a loop of its own: the engine's long natives poll the slow script's flag every few thousand steps
+// (poll_native_loop), so it ends as a slow script; the hard stop (src/wasm/poll.odin) stays behind it. The page goes on.
 @(test)
 js_hostile_a_native_that_never_ends :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
@@ -574,7 +576,7 @@ js_hostile_a_native_that_never_ends :: proc(t: ^testing.T) {
 	pr := load(t, "stuck native", HEAD + `<body><script>wrenTest.check(true, "the page starts")</script>
 <script>Array.prototype.lastIndexOf.call({ length: 2 ** 53 - 1 }, 1)</script></body>`)
 	pr.expect_uncaught = true
-	check(pr, console_says(pr, "wasm.max_call_ms"), "the deadline ended the native")
+	check(pr, console_says(pr, "slow_script_ms") || console_says(pr, "wasm.max_call_ms"), "the slow script's limit (or the deadline) ended the native")
 	check(pr, settle() < SETTLE_TURNS, "and leaves nothing running")
 	close_page(pr, min_checks = 3)
 }

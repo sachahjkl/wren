@@ -15,7 +15,6 @@ package wasm
 // (addresses and lengths as i64, `wide_params`) is defined, shadowing it, for each module whose memory 0 is 64-bit
 // (module_cache.odin, `ensure_pre`), with the callback's `env` = WIDE so the same code reads i64 addresses.
 
-@(require) import "base:runtime"   // (the poisoned build uses only base's arena)
 import "core:fmt"
 import "core:hash"
 import "core:strings"
@@ -292,52 +291,6 @@ set_exception :: proc(inst: ^Instance, code: i32, message: string) {
 
 ////////////////////////////////
 // The temporary memory of a host function
-
-// Implementations return their results in the temporary allocator (a serialization, a list of handles), which the loop
-// frees once per pass: a script task that makes a million calls would hold the memory of all of them. So each trampoline
-// takes a mark when it starts and goes back to it when it returns, once its result is in the guest's memory. Calls nest
-// (host -> guest -> host): each gives back only what was allocated after its own mark, newest first.
-when base.POISON_MEMORY {
-	Temp_Mark :: base.Poison_Arena_Temp
-} else {
-	Temp_Mark :: runtime.Arena_Temp
-}
-
-// A mark of the calling thread's temporary allocator: process_context's (the trampolines run in it). Another allocator
-// gets an empty mark, which temp_release ignores.
-temp_mark :: #force_inline proc() -> Temp_Mark {
-	when base.POISON_MEMORY {
-		if context.temp_allocator.procedure != base.poison_arena_proc { return {} }
-		return base.poison_arena_temp_begin((^base.Poison_Arena)(context.temp_allocator.data))
-	} else {
-		return runtime.default_temp_allocator_temp_begin()
-	}
-}
-
-// Frees what the temporary allocator gave since `m`. When a free_all ran meanwhile (a loop nested in the call), the
-// memory the mark names may be gone: nothing is given back then, the next pass of the loop frees it.
-temp_release :: proc(m: Temp_Mark) {
-	when base.POISON_MEMORY {
-		a := m.arena
-		if a == nil { return }
-		if m.chunk >= len(a.chunks) || (m.chunk >= 0 && a.chunks[m.chunk].used < m.used) { return }
-		base.poison_arena_temp_end(m)
-	} else {
-		a := m.arena
-		if a == nil { return }
-		if m.block != nil {
-			found := false
-			for b := a.curr_block; b != nil; b = b.prev {
-				if b == m.block { found = true; break }
-			}
-			if !found || m.block.used < m.used {
-				runtime.arena_temp_ignore(m)
-				return
-			}
-		}
-		runtime.arena_temp_end(m)
-	}
-}
 
 ////////////////////////////////
 // A result larger than the guest's buffer

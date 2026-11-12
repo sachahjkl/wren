@@ -506,7 +506,6 @@ Sel_Paint :: struct {
 	has_drop:  bool,
 	drop_color: draw.Color,
 	highlights: ^page.Page_Highlights,   // CSS.highlights (nil: nothing registered)
-	painted:   bool,                     // a highlight (selection, find, CSS highlight, drop caret) was painted since the compositor cleared it (record_chunk)
 }
 
 
@@ -530,35 +529,6 @@ selection_paint_key :: proc() -> u64 {
 	}
 	if the_app.spaint.has_drop { mix(&h, mem.ptr_to_bytes(&the_app.spaint.drop)) }
 	return h
-}
-
-// The part of selection_paint_key that can change the highlights of any item: the CSS highlights, the rules of the page's
-// highlight pseudo-elements. When only the rest changes (the selection's ends, find's matches, the colors, the drop caret),
-// the compositor records again only the chunks that painted a highlight and those selection_item_touched names.
-selection_paint_global_key :: proc() -> u64 {
-	h: u64 = 0xcbf29ce484222325
-	mix :: proc(h: ^u64, b: []byte) { for c in b { h^ = (h^ ~ u64(c)) * 0x100000001b3 } }
-	has := the_app.spaint.highlights != nil
-	mix(&h, mem.ptr_to_bytes(&has))
-	if hl := the_app.spaint.highlights; hl != nil { mix(&h, mem.ptr_to_bytes(&hl.serial)) }
-	if st := the_app.spaint.styled; st != nil { mix(&h, mem.ptr_to_bytes(&st.serial)) }
-	return h
-}
-
-// Whether item `idx` of `l` is under the selection, a match of find or the drop caret as they are now: its chunk paints a
-// highlight once recorded again.
-selection_item_touched :: proc(l: ^Layout, idx: int) -> bool {
-	sp := &the_app.spaint
-	if sp.doc == nil || (!sp.on && sp.find == nil && !sp.has_drop) { return false }
-	it := &l.items[idx]
-	node := it.node
-	if it.kind == .Text {
-		if n, _, _, ok := lay.item_source(l, sp.doc, idx); ok { node = n }
-	}
-	if node == base.NIL_HANDLE { return false }
-	if sp.has_drop && node == sp.drop.node { return true }
-	if sp.find != nil && node in sp.find.spans { return true }
-	return sp.on && lay.node_in_range(sp.doc, node, sp.start, sp.end)
 }
 
 // Hex color "#rgb", "#rrggbb", "#rrggbbaa" (sRGB) as a draw color; ok = false for anything else.
@@ -679,7 +649,6 @@ selection_paint_under :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_It
 				w := max(math.round((r.max.y - r.min.y) / 16), 1)
 				draw.rect(dc, {{x, r.min.y}, {x + w, r.max.y}}, the_app.spaint.drop_color)
 			}
-			the_app.spaint.painted = true
 		}
 	}
 }
@@ -692,7 +661,6 @@ selection_paint_over :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Ite
 	wash := o.background.a > 0 ? o.background : o.color
 	wash.a *= 0.5
 	draw.rect(dc, r, wash)
-	the_app.spaint.painted = true
 }
 
 // A highlight over a part of a text item, from the lowest up: bytes [a, b), and `rect` that its background fills.
@@ -766,7 +734,6 @@ selection_overlays :: proc(tp: ^Text_Paint) -> []Text_Overlay {
 			if out[k].has_color && out[k].a < o.b && o.a < out[k].b { o.color = out[k].color; break }
 		}
 	}
-	if len(out) > 0 { sp.painted = true }
 	return out[:]
 }
 

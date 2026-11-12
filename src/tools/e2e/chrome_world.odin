@@ -117,6 +117,7 @@ chrome_start :: proc(t: ^testing.T, o := Chrome_Options{}, loc := #caller_locati
 		x.url = fmt.aprintf("https://%s.test/", strings.to_lower(title, context.temp_allocator))
 		x.kind = .Web
 		append(&w.wnd.tabs, x)
+		app.tab_ids[x.id] = x   // (as tab_new does: the shell finds its tabs by id there)
 	}
 	testing.cleanup(t, proc(p: rawptr) { chrome_end((^Chrome_World)(p)) }, w)
 	w.s = session.attach(t, {win = win, state = w.wnd.ui, renderer = o.pixels ? &app.r : nil, frame = chrome_frame, user = w}, loc)
@@ -128,7 +129,7 @@ chrome_start :: proc(t: ^testing.T, o := Chrome_Options{}, loc := #caller_locati
 @(private = "file")
 chrome_end :: proc(w: ^Chrome_World) {
 	app := w.app
-	for x in w.wnd.tabs { delete(x.title); delete(x.url); free(x) }
+	for x in w.wnd.tabs { delete_key(&app.tab_ids, x.id); delete(x.title); delete(x.url); free(x) }
 	clear(&w.wnd.tabs)
 	browser.devtools_destroy(app)
 	browser.hud_destroy(app)
