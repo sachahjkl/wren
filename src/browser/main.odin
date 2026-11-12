@@ -194,6 +194,7 @@ App :: struct {
 	hidden:     bool,                     // windows that are made and never shown (--hidden)
 	frames_at_once: bool,                 // a program in this process drives the browser: a headless window's frames wait for nothing (control.odin)
 	quitting:   bool,                     // the browser ends (a remote Browser.close): every window goes, none is closed on its own first
+	end_signal: i32,                      // a signal asked the browser to end (end_signal_<os>.odin; set from the handler, read atomically)
 
 	// What the shell's subsystems keep for the App, the file that owns each named beside it (docs/architecture.md, Where state lives: what
 	// is one App's is not a global, so that several Apps can live in one process)
@@ -1780,6 +1781,7 @@ app_start :: proc(args: []string) -> ^App {
 	_ = os.make_directory_all(app.profile_dir)
 	net.user_agent_product = "Wren/" + APP_VERSION
 	crashtrace.set_report_dir(strings.concatenate({app.profile_dir, "/crashes"}, context.temp_allocator), fmt.tprintf("%s %s (%s %s)", APP_NAME, APP_VERSION, app_commit(), APP_COMMIT_DATE))
+	end_signal_install(app)   // (after the crash handler: these signals end the browser cleanly, its session saved)
 	_, _, prefs_file := profile_paths(app)
 	config.load_file(&app.prefs, prefs_file, .User)
 	if policy_file == "" { policy_file = default_policy_file(process.executable_path(context.temp_allocator)) }   // beside the program, not in the working directory (policy_file.odin)
@@ -1961,6 +1963,7 @@ app_start :: proc(args: []string) -> ^App {
 // One turn of the browser's loop: the frames of the windows that have a cause (it sleeps until one has, or a task or timer is due).
 // false: it has been told to end (app_stop next).
 app_turn :: proc(app: ^App) -> bool {
+	end_signal_check(app)   // end_signal_<os>.odin: SIGTERM, SIGINT, SIGHUP close the browser as its last window would
 	if !windows_pass(app) { return false }   // windows.odin: a frame for each window that has a cause (devtools_window_tick for the front one)
 	memcheck_drive(app)   // memcheck.odin: the check build's script, if any
 	memory_trim_tick(app)   // memory_trim.odin

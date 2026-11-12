@@ -108,6 +108,10 @@ Offer :: struct {
 	password: string,   // owned, a secret
 	item:     string,   // owned: Update, the login to change ("" for Save)
 	timer:    base.Handle,   // Waiting: its deadline
+	// Checking: the site's logins whose password is compared, one after the other (owned ids): the one of the same user
+	// name, or every login of the site when the form sent no user name (a page with a password field alone)
+	candidates: [dynamic]string,
+	next:       int,
 }
 
 Hooks :: struct {
@@ -890,19 +894,31 @@ offer_rows :: proc(v: ^Vault) -> (slot: Row_Slot, ok: bool) {
 offer_compare :: proc(v: ^Vault, rows: []Row) -> bool {
 	o := &v.offer
 	if o.timer != base.NIL_HANDLE { host.clear_timer(v.loop, o.timer); o.timer = base.NIL_HANDLE }
-	match: ^Row
 	for &r in rows {
-		if r.kind == .Login && base.ascii_equal_fold(strings.trim_space(r.username), o.username) { match = &r; break }
+		if r.kind != .Login { continue }
+		if o.username == "" || base.ascii_equal_fold(strings.trim_space(r.username), o.username) {
+			if o.candidates.allocator.procedure == nil { o.candidates = make([dynamic]string, base.process_allocator()) }
+			append(&o.candidates, strings.clone(r.id, base.process_allocator()))
+			if o.username != "" { break }
+		}
 	}
-	if match == nil {
+	if len(o.candidates) == 0 {
 		o.state = .Save
 		changed(v)
 		return true
 	}
-	o.item = strings.clone(match.id, base.process_allocator())
+	o.next = 0
+	return offer_check_next(v)
+}
+
+// Asks the password of the next candidate login (the answer: vault_answer's .Fill with an offer).
+@(private)
+offer_check_next :: proc(v: ^Vault) -> bool {
+	o := &v.offer
+	id := o.candidates[o.next]
 	r: Request
-	request_begin(&r, next_id(v), .Fill, len(match.id) + 32)
-	request_string(&r, "item", match.id)
+	request_begin(&r, next_id(v), .Fill, len(id) + 32)
+	request_string(&r, "item", id)
 	request_fields(&r, {.Password})
 	p := send(v, &r, .Fill)
 	if p == nil { offer_reset(v); changed(v); return false }
@@ -966,6 +982,9 @@ offer_reset :: proc(v: ^Vault) {
 	string_wipe(&o.username)
 	string_wipe(&o.password)
 	string_wipe(&o.item)
+	for &c in o.candidates { delete(c, base.process_allocator()) }
+	delete(o.candidates)
+	o.candidates, o.next = {}, 0
 	o.state = .None
 }
 
@@ -1470,9 +1489,19 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 			if o.id != p.offer || o.state != .Checking { return }   // (another capture, or dismissed)
 			if !a.ok { offer_reset(v); changed(v); return }
 			if a.values[.Password] == o.password {
-				offer_reset(v)   // (the login is as it was sent: nothing to offer)
-			} else {
+				offer_reset(v)   // (a login is as it was sent: nothing to offer)
+				changed(v)
+				return
+			}
+			o.next += 1
+			if o.next < len(o.candidates) { offer_check_next(v); return }
+			// (none holds this password: the one login it can be is updated; among several, a new one is saved)
+			if len(o.candidates) == 1 {
+				string_wipe(&o.item)
+				o.item = strings.clone(o.candidates[0], base.process_allocator())
 				o.state = .Update
+			} else {
+				o.state = .Save
 			}
 			changed(v)
 			return

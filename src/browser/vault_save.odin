@@ -33,6 +33,7 @@ VAULT_OFFER_W_EM :: f32(22)
 vault_save_destroy :: proc(app: ^App) {
 	s := &app.vault
 	vault.string_wipe(&s.gen_value)
+	secret_wipe(&s.gen_text)
 	vault.string_wipe(&s.gen_filled)
 	delete(s.gen_options.separator)
 	delete(s.fill_item)
@@ -195,6 +196,7 @@ vault_generated_frame :: proc(app: ^App) {
 	if !s.gen_for_fill {
 		if s.gen_dialog {
 			vault.string_wipe(&s.gen_value)
+			secret_wipe(&s.gen_text)
 			s.gen_value, value = value, ""
 		}
 		return
@@ -240,6 +242,7 @@ vault_generator_close :: proc(app: ^App) {
 	s := &app.vault
 	s.gen_dialog = false
 	vault.string_wipe(&s.gen_value)
+	secret_wipe(&s.gen_text)
 	if !s.gen_for_fill { s.gen_request = 0 }
 	request_frames(app, 2)
 }
@@ -293,25 +296,28 @@ vault_generator_build :: proc(app: ^App) {
 					if o.passphrase {
 						count_row(i18n.tr("Words"), "vg_words", &o.words, vault.GENERATE_WORDS_MIN, vault.GENERATE_WORDS_MAX)
 						ui.spacer(ui.px(em * 0.3))
-						ui.next({width = ui.fill(), height = ui.text_size()})
+						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 						ui.checkbox("###vg_capitalize", i18n.tr("Capital first letters"), &o.capitalize)
-						ui.next({width = ui.fill(), height = ui.text_size()})
+						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 						ui.checkbox("###vg_number", i18n.tr("A digit"), &o.include_number)
 					} else {
 						count_row(i18n.tr("Length"), "vg_length", &o.length, vault.GENERATE_LENGTH_MIN, vault.GENERATE_LENGTH_MAX)
 						ui.spacer(ui.px(em * 0.3))
-						ui.next({width = ui.fill(), height = ui.text_size()})
+						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 						ui.checkbox("###vg_upper", i18n.tr("Capital letters (A-Z)"), &o.uppercase)
-						ui.next({width = ui.fill(), height = ui.text_size()})
+						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 						ui.checkbox("###vg_lower", i18n.tr("Small letters (a-z)"), &o.lowercase)
-						ui.next({width = ui.fill(), height = ui.text_size()})
+						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 						ui.checkbox("###vg_numbers", i18n.tr("Digits (0-9)"), &o.numbers)
-						ui.next({width = ui.fill(), height = ui.text_size()})
+						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 						ui.checkbox("###vg_special", i18n.tr("Special characters (!@#$%^&*)"), &o.special)
 					}
 					ui.spacer(ui.px(em * 0.7))
-					// (the person asked to see it: the dialog is an empty box to captures and remote control)
-					dialog_line(s.gen_value != "" ? s.gen_value : i18n.tr("Generating…"), "vg_value")
+					// (the person asked to see it: the dialog is an empty box to captures and remote control; in a field read only,
+					// to select a part of it or copy it with the keys)
+					if ui.field_string(&s.gen_text) != s.gen_value { ui.field_set(&s.gen_text, s.gen_value) }
+					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+					_ = ui.line_edit("###vg_value", &s.gen_text, i18n.tr("Generating…"), read_only = true)
 					ui.spacer(ui.px(em * 0.5))
 					ui.next({width = ui.fill(), height = ui.children_sum()})
 					if ui.row(.Center, {}, "###vg_value_acts") {

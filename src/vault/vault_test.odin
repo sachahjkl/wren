@@ -930,6 +930,17 @@ a_sent_login_is_offered_for_a_save_or_an_update :: proc(t: ^testing.T) {
 	settle(x)
 	testing.expect_value(t, x.v.offer.state, Offer_State.None)
 	testing.expect_value(t, x.v.offer.password, "")
+
+	// a form of a password alone (no user name): the site's logins are compared; the same password, nothing; another one,
+	// an Update of the one login it can be (it offered a Save each time: no login has the user name "")
+	answer(x, "fill", `"ok":true,"password":"same"`, `"ok":true,"password":"old"`)
+	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/admin", "", "same"))
+	settle(x)
+	testing.expect_value(t, x.v.offer.state, Offer_State.None)
+	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/admin", "", "new"))
+	settle(x)
+	testing.expect_value(t, x.v.offer.state, Offer_State.Update)
+	testing.expect_value(t, x.v.offer.item, "1")
 }
 
 @(test)

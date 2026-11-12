@@ -105,6 +105,7 @@ Vault_Shell :: struct {
 	gen_options:    vault.Generate_Options,   // the dialog's (its separator owned)
 	gen_asked:      vault.Generate_Options,   // what the shown value was made with (separator not owned)
 	gen_value:      string,          // owned, a secret: the dialog's value
+	gen_text:       ui.Text_Field,   // the value in a read-only field (selected, copied); wiped with gen_value
 	gen_request:    u64,             // the generate on its way (0: none)
 	gen_for_fill:   bool,            // its value goes into the password fields of gen_tab / gen_forms
 	gen_tab:        u64,
@@ -161,6 +162,7 @@ vault_shell_destroy :: proc(app: ^App) {
 	delete(s.ask_item)
 	delete(s.ask_origin)
 	ui.field_destroy(&s.query)
+	ui.field_destroy(&s.gen_text)
 	vault_save_destroy(app)   // vault_save.odin
 	s^ = {}
 }
