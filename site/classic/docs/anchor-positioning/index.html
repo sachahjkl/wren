@@ -49,9 +49,9 @@
 
 <p>A box placed against another box, its anchor, anywhere in the document: what tooltips, menus and popovers need, without
 script. <code>CSS.supports('anchor-name: --a')</code> is true, so pages do not load a polyfill for it.</p>
-<div class="code"><div class="file">CSS</div><pre><code>.button  { anchor-name: --menu; }
-.menu    { position: absolute; position-anchor: --menu; position-area: bottom span-right;
-           position-try-fallbacks: flip-block; width: anchor-size(width); }</code></pre></div>
+<div class="code"><div class="file">CSS</div><pre><code><span class="t">.button</span>  { <span class="f">anchor-name</span>: --menu; }
+<span class="t">.menu</span>    { <span class="f">position</span>: absolute; <span class="f">position-anchor</span>: --menu; <span class="f">position-area</span>: bottom span-right;
+           <span class="f">position-try-fallbacks</span>: flip-block; <span class="f">width</span>: <span class="f">anchor-size</span>(width); }</code></pre></div>
 <p>The demo is <code>examples/site/anchor.html</code>, in the demos page.</p>
 <h2 id="what-there-is"><a class="anchor" href="#what-there-is" aria-hidden="true">#</a>What there is</h2>
 <div class="table-box"><table>

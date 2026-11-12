@@ -147,7 +147,7 @@ remote_fast_exit: bool  // Browser.close {fast}: the process ends at once, witho
 
 // `wren ctl ...` (src/remote/client): the profile folder a Wren without --profile uses decides the pipe's name there.
 ctl_main :: proc(args: []string) -> int {
-	cfg_dir := platform.config_dir(context.temp_allocator)
+	cfg_dir := platform.user_dir(.Config, "", context.temp_allocator)
 	profile := cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/", APP_NAME}, context.temp_allocator)
 	if dir := portable_profile_dir(); dir != "" { profile = dir }
 	return client.run(args, profile, process.executable_path())

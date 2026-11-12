@@ -10,6 +10,7 @@ import "core:testing"
 import "core:thread"
 import "core:time"
 import win "core:sys/windows"
+import "wb:base"
 import "wb:dom"
 import "wb:html"
 import "wb:style"
@@ -25,7 +26,7 @@ bench_load :: proc(t: ^testing.T) {
 	if os.get_env("WREN_LOADBENCH", context.temp_allocator) == "" { return }
 	defer shutdown_threads()
 	// the browser's allocators, not the test runner's
-	context.allocator = runtime.heap_allocator()
+	context.allocator = base.process_allocator()
 	temp: runtime.Arena
 	defer runtime.arena_destroy(&temp)
 	context.temp_allocator = runtime.arena_allocator(&temp)

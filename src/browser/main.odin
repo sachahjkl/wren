@@ -1764,7 +1764,7 @@ app_start :: proc(args: []string) -> ^App {
 	cdp_port, cdp_have_port, cdp_address, a9 := cdp_extract_args(a8[:])   // --remote-debugging-port[=N] / --remote-debugging-address (cdp.odin)
 	app_prefs_begin(app)
 	rest, arg_errors := config.apply_args(&app.prefs, a9[:], context.temp_allocator)   // (read before the first frame)
-	cfg_dir := platform.config_dir(context.temp_allocator)
+	cfg_dir := platform.user_dir(.Config, "", context.temp_allocator)
 	portable_dir := profile_override == "" ? portable_profile_dir() : ""   // a copy with wren.portable beside it keeps its profile beside it (setup.odin)
 	app.portable = portable_dir != ""
 	app.profile_dir = strings.clone(profile_override != "" ? profile_override : (app.portable ? portable_dir : (cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/", APP_NAME}, context.temp_allocator))))

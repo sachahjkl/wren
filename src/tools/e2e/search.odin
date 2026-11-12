@@ -19,9 +19,19 @@ search_former_custom_address :: proc(t: ^testing.T) {
 	e2e.write_text(fmt.tprintf("%s/prefs.txt", profile), fmt.tprintf("wbprefs 1\nbrowser.search.engine\tcustom\nbrowser.search.custom_url\t%s?custom=%%s\n", page))
 	s := e2e.start(t, {profile = profile})
 	testing.expect_value(t, e2e.address_bar(s, "hello world"), fmt.tprintf("%s?custom=hello+world", page))
-	text := e2e.read_text(fmt.tprintf("%s/%s", profile, ENGINES_FILE))
+	text := engines_file_with(s, profile, fmt.tprintf("custom\tCustom\t\t%s?custom=%%s", page))
 	testing.expectf(t, strings.has_prefix(text, "wren-search-engines 1") && strings.contains(text, fmt.tprintf("custom\tCustom\t\t%s?custom=%%s", page)), "the list is written with the former address as an engine, got %q", text)
 	testing.expect(t, strings.contains(e2e.pref_get(s, "browser.search.engine"), "custom"), "browser.search.engine still names it")
+}
+
+// The profile's list once it holds `line` (the profile's writer writes it off the interface thread, a moment after the
+// change), or what it holds when the deadline passed.
+@(private = "file")
+engines_file_with :: proc(s: ^e2e.Session, profile, line: string) -> string {
+	Want :: struct { path, line: string }
+	want := Want{fmt.tprintf("%s/%s", profile, ENGINES_FILE), line}
+	e2e.wait_until(s, want, proc(s: ^e2e.Session, w: Want) -> bool { return strings.contains(e2e.read_text(w.path), w.line) }, "the list written to the profile")
+	return e2e.read_text(want.path)
 }
 
 // A browser whose profile has two engines: "one" (keyword @one), "two" (keyword t), and "two" for the default.
@@ -76,7 +86,7 @@ search_engine_added_in_about_config :: proc(t: ^testing.T) {
 	e2e.shot(s, "03 about config adding.png")
 	e2e.key(s, "Enter")
 	e2e.shot(s, "04 about config added.png")
-	text := e2e.read_text(fmt.tprintf("%s/%s", profile, ENGINES_FILE))
+	text := engines_file_with(s, profile, fmt.tprintf("three\tThree\t@3\t%s?three=%%s", page))
 	testing.expectf(t, strings.contains(text, fmt.tprintf("three\tThree\t@3\t%s?three=%%s", page)), "the engine added in about:config is written to the profile, got %q", text)
 	testing.expect_value(t, e2e.address_bar(s, "@3 ok"), fmt.tprintf("%s?three=ok", page))
 }

@@ -271,7 +271,8 @@ Recovery :: struct {
 	backup:       string,           // the file the tabs of a twice-crashed session are in (owned)
 	last:         string,           // what recovery.txt holds (owned)
 	dirty:        bool,
-	inflight:     bool,             // a write is out
+	inflight:     bool,             // a write of the snapshot is out
+	marking:      bool,             // the write of the stable marker is out
 	snap_timer:   base.Handle,
 	stable_timer: base.Handle,
 	// the other files of the session and the profile's stores, written by profile_save (profile_writes.odin): kept with
@@ -351,11 +352,58 @@ recovery_stable :: proc(data: rawptr) {
 	app.recovery.stable_timer = base.NIL_HANDLE
 	host.quiet_note(&app.loop)   // (the disk, not the screen)
 	if !app.recovery.active || app.recovery.closing || !app.recovery.self.restoring { return }
+	if app.recovery.marking { return }
 	stable := app.recovery.self
 	stable.restoring = false
-	// (the writer tries again after a failure; at exit it writes it before recovery_end removes it)
-	host.profile_write(&app.writer, profile_file(app.recovery.dir, MARKER_FILE), marker_text(stable))
-	app.recovery.self = stable
+	// (not the writer's Profile_File: this run counts as stable only once the marker on the disk says so, and a refused
+	// write, a reader holding the file, is tried again soon rather than after the writer's growing delays)
+	job := new(Marker_Job)
+	job^ = {app = app, writer = &app.writer, path = strings.clone(profile_file(app.recovery.dir, MARKER_FILE)), text = marker_text(stable, context.allocator), marker = stable}
+	app.recovery.marking = true
+	if profile_pool_ready(app) {
+		host.run_blocking(&app.blocking, marker_work, marker_done, job, marker_discard)
+	} else {   // (no pool: a unit test, or a program without one)
+		marker_work(job)
+		marker_done(job)
+	}
+}
+
+@(private = "file")
+Marker_Job :: struct {
+	app:        ^App,
+	writer:     ^host.File_Writer,
+	path, text: string,   // owned
+	marker:     Run_Marker,
+	ok:         bool,
+}
+
+@(private = "file")
+marker_work :: proc(data: rawptr) {
+	j := (^Marker_Job)(data)
+	j.ok = host.file_put(j.writer, j.path, transmute([]byte)j.text)
+}
+
+@(private = "file")
+marker_discard :: proc(data: rawptr) {
+	j := (^Marker_Job)(data)
+	j.app.recovery.marking = false
+	delete(j.path)
+	delete(j.text)
+	free(j)
+}
+
+@(private = "file")
+marker_done :: proc(data: rawptr) {
+	j := (^Marker_Job)(data)
+	app, ok, marker := j.app, j.ok, j.marker
+	marker_discard(j)
+	host.quiet_note(&app.loop)   // (the disk, not the screen)
+	if ok {
+		app.recovery.self = marker
+		return
+	}
+	if !app.recovery.active || app.recovery.closing || app.recovery.stable_timer != base.NIL_HANDLE { return }
+	app.recovery.stable_timer = host.set_timer(&app.loop, RECOVERY_WRITE_RETRY_MS, 0, recovery_stable, app)
 }
 
 // Something that the snapshot holds changed (a tab opened, closed or moved, an entry added, a document loaded): the snapshot
@@ -369,6 +417,7 @@ recovery_touch :: proc(app: ^App) {
 }
 
 Snapshot_Job :: struct {
+	writer:     ^host.File_Writer,   // (the_app is the loop thread's: a worker of the blocking pool sees nil)
 	path, data: string,
 	ok:         bool,
 }
@@ -389,6 +438,7 @@ recovery_fire :: proc(data: rawptr) {
 	job := new(Snapshot_Job)
 	job.path = strings.clone(strings.concatenate({app.recovery.dir, "/", SNAPSHOT_FILE}, context.temp_allocator))
 	job.data = strings.clone(text)
+	job.writer = &app.writer
 	app.recovery.inflight = true
 	host.run_blocking(&app.blocking, snapshot_work, snapshot_done, job)
 }
@@ -396,7 +446,7 @@ recovery_fire :: proc(data: rawptr) {
 @(private = "file")
 snapshot_work :: proc(data: rawptr) {
 	j := (^Snapshot_Job)(data)
-	j.ok = host.file_put(&the_app.writer, j.path, transmute([]byte)j.data)
+	j.ok = host.file_put(j.writer, j.path, transmute([]byte)j.data)
 }
 
 snapshot_done :: proc(data: rawptr) {
@@ -425,7 +475,7 @@ recovery_end :: proc(app: ^App) {
 	app.recovery.closing = true
 	if app.recovery.snap_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.recovery.snap_timer); app.recovery.snap_timer = base.NIL_HANDLE }
 	if app.recovery.stable_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.recovery.stable_timer); app.recovery.stable_timer = base.NIL_HANDLE }
-	for _ in 0 ..< 50 { if !app.recovery.inflight { break }; host.blocking_settle(&app.blocking) }
+	for _ in 0 ..< 50 { if !app.recovery.inflight && !app.recovery.marking { break }; host.blocking_settle(&app.blocking) }
 	// (after profile_files_flush: the writer is closing, these are the exit's own writes on this thread)
 	_ = host.file_drop(&app.writer, strings.concatenate({app.recovery.dir, "/", MARKER_FILE}, context.temp_allocator))
 	_ = host.file_drop(&app.writer, strings.concatenate({app.recovery.dir, "/", SNAPSHOT_FILE}, context.temp_allocator))

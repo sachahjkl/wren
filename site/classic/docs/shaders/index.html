@@ -54,7 +54,7 @@
 an application shader API (gui_toolkit 0.25.0, its <a href="https://github.com/sachahjkl/wren/blob/master/ext/gui_toolkit/docs/shaders.md">docs/shaders.md</a>: <code>render.create_app_shader</code>,
 <code>draw.app_shader</code>, <code>render.create_texture_data</code>); this page is what Wren builds on it.</p>
 <h2 id="the-property"><a class="anchor" href="#the-property" aria-hidden="true">#</a>The property</h2>
-<div class="code"><div class="file">CSS</div><pre><code>.base { -wren-shader: card-foil var(--sweep) var(--bx) var(--by) var(--live) 1; }</code></pre></div>
+<div class="code"><div class="file">CSS</div><pre><code><span class="t">.base</span> { <span class="f">-wren-shader</span>: card-foil <span class="f">var</span>(--sweep) <span class="f">var</span>(--bx) <span class="f">var</span>(--by) <span class="f">var</span>(--live) <span class="t">1</span>; }</code></pre></div>
 <p><code>-wren-shader: none | &lt;name&gt; &lt;argument&gt;*</code>. An argument is a <code>&lt;number&gt;</code>, a <code>&lt;percentage&gt;</code> (its value divided by 100) or a <code>calc()</code> of
 numbers, at most 28. Not inherited, paint only (a change of the arguments never asks for a layout). The shader fills the box's background
 painting area (the clip of its bottom background layer, rounded by <code>border-radius</code>) <strong>over its CSS background and before its border and its

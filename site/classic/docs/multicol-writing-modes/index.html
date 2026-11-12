@@ -50,12 +50,12 @@
 
 <p>Columns (CSS Multicol 1, CSS Fragmentation 3) and vertical text (CSS Writing Modes 4). Demos: <code>examples/site/multicol.html</code> and
 <code>examples/site/vertical.html</code>, in the demos page.</p>
-<div class="code"><div class="file">CSS</div><pre><code>article { columns: 3 16em; column-gap: 2em; column-rule: 1px solid #ccc; }
-article h2 { column-span: all; }
-article figure { break-inside: avoid; }
+<div class="code"><div class="file">CSS</div><pre><code><span class="k">article</span> { <span class="f">columns</span>: <span class="t">3</span> <span class="t">16em</span>; <span class="f">column-gap</span>: <span class="t">2em</span>; <span class="f">column-rule</span>: <span class="t">1px</span> solid <span class="t">#ccc</span>; }
+<span class="k">article</span> <span class="k">h2</span> { <span class="f">column-span</span>: all; }
+<span class="k">article</span> <span class="k">figure</span> { <span class="f">break-inside</span>: avoid; }
 
-.ja { writing-mode: vertical-rl; }
-.ja .year { text-combine-upright: all; }</code></pre></div>
+<span class="t">.ja</span> { <span class="f">writing-mode</span>: vertical-rl; }
+<span class="t">.ja</span> <span class="t">.year</span> { <span class="f">text-combine-upright</span>: all; }</code></pre></div>
 <h2 id="what-there-is"><a class="anchor" href="#what-there-is" aria-hidden="true">#</a>What there is</h2>
 <div class="table-box"><table>
 <thead><tr><th></th><th></th></tr></thead>

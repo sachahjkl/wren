@@ -58,6 +58,10 @@ program under GPL-3.0-only, in its own repository; its <code>README.md</code> ha
 README must stay equal: a change of the protocol changes both, and <code>PROTOCOL_VERSION</code> in <code>src/vault/protocol.odin</code> and
 in the helper.</p>
 <p>The protocol is generic: accounts, logins and plain values. No type of the Bitwarden SDK crosses the pipe.</p>
+<p>Version 4 (helper 0.4.0). Changes from version 3: new requests <code>password_hint</code>, <code>device_request</code>, <code>device_poll</code>,
+<code>passkey_options</code> and <code>login_passkey</code>; <code>login</code> takes <code>remember</code>; <code>unlock</code> takes <code>prf</code> and <code>credential_id</code>; <code>hello</code>
+answers <code>passkey</code>; the errors <code>denied</code>, <code>expired</code>, <code>no_passkey</code> and <code>account_locked</code>. Every token request carries the
+headers <code>Auth-Email</code> (a password login) and <code>Bitwarden-Client-Version</code>, without which the server refuses it.</p>
 <p>Version 3 (helper 0.3.0). Changes from version 2: new requests <code>search</code> and <code>totp</code>; <code>fill</code> takes the field <code>totp</code>;
 <code>logins_for</code> applies the rules <code>StartsWith</code> and <code>Exact</code> and the account's equivalent domains, its rows carry the match
 types <code>equivalent</code>, <code>starts_with</code> and <code>exact</code>, and its answer carries <code>equivalent</code>; the error <code>no_totp</code>.</p>
@@ -83,10 +87,10 @@ event <code>locked</code>.</p>
 <div class="table-box"><table>
 <thead><tr><th>op</th><th>Request fields</th><th>Answer fields</th></tr></thead>
 <tbody>
-<tr><td><code>hello</code></td><td><code>protocol</code> (3), <code>state_dir</code>, <code>identity_url</code>, <code>api_url</code>, <code>persist</code>, <code>device_name</code>, <code>client_version</code>, <code>idle_seconds</code></td><td><code>protocol</code>, <code>helper_version</code>, <code>account</code> (<code>none</code> or <code>locked</code>), <code>email</code>, <code>login</code> (<code>password</code> or <code>api_key</code>), <code>pin</code> (bool)</td></tr>
-<tr><td><code>login</code></td><td>first step: <code>email</code>, <code>password</code>; second step: <code>email</code>, <code>code</code>, <code>provider</code>; a new code: <code>email</code>, <code>provider</code>, <code>resend</code> (true)</td><td><code>result</code>: <code>ok</code>; or <code>need_two_factor</code> with <code>providers</code> and <code>email_sent</code>; or <code>need_device_code</code></td></tr>
+<tr><td><code>hello</code></td><td><code>protocol</code> (4), <code>state_dir</code>, <code>identity_url</code>, <code>api_url</code>, <code>persist</code>, <code>device_name</code>, <code>client_version</code>, <code>idle_seconds</code></td><td><code>protocol</code>, <code>helper_version</code>, <code>account</code> (<code>none</code> or <code>locked</code>), <code>email</code>, <code>login</code> (<code>password</code> or <code>api_key</code>), <code>pin</code> (bool), <code>passkey</code> (bool: a passkey of the account unlocks)</td></tr>
+<tr><td><code>login</code></td><td>first step: <code>email</code>, <code>password</code>; second step: <code>email</code>, <code>code</code>, <code>provider</code>; a new code: <code>email</code>, <code>provider</code>, <code>resend</code> (true); <code>remember</code> (true): the server lets this device skip the second step next time</td><td><code>result</code>: <code>ok</code>; or <code>need_two_factor</code> with <code>providers</code> and <code>email_sent</code>; or <code>need_device_code</code></td></tr>
 <tr><td><code>login_api_key</code></td><td><code>client_id</code>, <code>client_secret</code>, <code>password</code> (the master password)</td><td><code>result</code> (<code>ok</code>), <code>email</code></td></tr>
-<tr><td><code>unlock</code></td><td><code>password</code> or <code>pin</code></td><td>none; <code>bad_pin</code> errors carry <code>tries_left</code></td></tr>
+<tr><td><code>unlock</code></td><td><code>password</code>, <code>pin</code>, or <code>prf</code> and <code>credential_id</code> (a passkey)</td><td>none; <code>bad_pin</code> errors carry <code>tries_left</code></td></tr>
 <tr><td><code>lock</code></td><td>none</td><td>none; the helper then exits</td></tr>
 <tr><td><code>logout</code></td><td>none</td><td>none; the helper forgets the account (state, tokens, PIN), then exits</td></tr>
 <tr><td><code>sync</code></td><td>none</td><td><code>items</code>, <code>last_sync</code> (Unix seconds)</td></tr>
@@ -96,6 +100,11 @@ event <code>locked</code>.</p>
 <tr><td><code>search</code></td><td><code>query</code>, <code>limit</code> (0: 50; at most 50)</td><td><code>rows</code>: <code>{id, name, username, uri, has_totp}</code> (no <code>match</code>; <code>uri</code>: the item's first <code>http(s)</code> address)</td></tr>
 <tr><td><code>fill</code></td><td><code>item</code>, <code>fields</code> (<code>username</code>, <code>password</code>, <code>totp</code>)</td><td><code>username</code>, <code>password</code>, <code>totp</code> (the asked ones the item has)</td></tr>
 <tr><td><code>totp</code></td><td><code>item</code></td><td><code>totp</code>, <code>period</code>, <code>remaining</code> (seconds)</td></tr>
+<tr><td><code>password_hint</code></td><td><code>email</code></td><td>none; the server mails the hint to the account's address</td></tr>
+<tr><td><code>device_request</code></td><td><code>email</code></td><td><code>fingerprint</code> (the phrase the other device shows)</td></tr>
+<tr><td><code>device_poll</code></td><td>none</td><td><code>result</code>: <code>"pending"</code>, or <code>"ok"</code> (unlocked) with <code>email</code></td></tr>
+<tr><td><code>passkey_options</code></td><td><code>purpose</code> (<code>"login"</code> or <code>"unlock"</code>), <code>rp_id</code> (the web vault's domain)</td><td><code>options</code> (the WebAuthn request's options, JSON text)</td></tr>
+<tr><td><code>login_passkey</code></td><td><code>credential_id</code>, <code>authenticator_data</code>, <code>client_data_json</code>, <code>signature</code>, <code>user_handle</code> (each base64url), <code>prf</code> (the PRF output, base64url)</td><td><code>result</code> (<code>"ok"</code>), <code>email</code></td></tr>
 <tr><td><code>keepalive</code></td><td>none</td><td>no answer; the idle deadline starts again</td></tr>
 </tbody>
 </table></div>
@@ -120,7 +129,7 @@ minute while the user is active.</p>
 <h3 id="errors"><a class="anchor" href="#errors" aria-hidden="true">#</a>Errors</h3>
 <p><code>bad_request</code>, <code>bad_protocol</code>, <code>no_hello</code>, <code>bad_server</code>, <code>bad_credentials</code>, <code>unsupported_two_factor</code>,
 <code>unsupported_account</code>, <code>network</code>, <code>login_failed</code>, <code>no_account</code>, <code>bad_password</code>, <code>bad_pin</code>, <code>pin_reset</code>, <code>no_pin</code>,
-<code>no_state</code>, <code>locked</code>, <code>sync_failed</code>, <code>no_item</code>, <code>no_totp</code>, <code>decrypt</code>, <code>state_write</code>, <code>state_format</code>. The helper's README says what
+<code>no_state</code>, <code>denied</code>, <code>expired</code>, <code>no_passkey</code>, <code>account_locked</code>, <code>locked</code>, <code>sync_failed</code>, <code>no_item</code>, <code>no_totp</code>, <code>decrypt</code>, <code>state_write</code>, <code>state_format</code>. The helper's README says what
 each means.</p>
 <h2 id="the-helpers-identity-at-the-server"><a class="anchor" href="#the-helpers-identity-at-the-server" aria-hidden="true">#</a>The helper's identity at the server</h2>
 <p>The helper sends its own token request (the SDK's sends the device type <code>ChromeBrowser</code> and one device identifier for
