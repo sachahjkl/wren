@@ -24,7 +24,7 @@ blocker_start :: proc(app: ^App) {
 	if app.bl.started { return }
 	app.bl.started = true
 	app.bl.b.on_event = blocker_event
-	blocker.start(&app.bl.b, &app.loop, &app.client, &app.loader, &app.prefs, app.cfg.persist_profile ? app.profile_dir : "")
+	blocker.start(&app.bl.b, &app.loop, &app.client, &app.loader, &app.prefs, app.cfg.persist_profile ? app.profile_dir : "", &app.writer)
 }
 
 blocker_stop :: proc(app: ^App) {

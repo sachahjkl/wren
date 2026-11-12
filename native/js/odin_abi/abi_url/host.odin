@@ -14,6 +14,7 @@ import "../abi_host"
 import "../api_decl"
 import "wb:base"
 import "wb:url"
+import "wb:urlpattern"
 import "wb:wasm"
 
 // The host context of one call. In `package page` this is the ^Call; here it is a pointer to the domain state, which
@@ -36,7 +37,7 @@ Params_Object :: struct {
 }
 
 Pattern_Object :: struct {
-	pat: url.Url_Pattern,
+	pat: urlpattern.Url_Pattern,
 }
 
 // One global instance for the prototype. (In the browser there is one host object graph per page; here one process-
@@ -49,7 +50,7 @@ host_destroy :: proc() {
 	it = 0
 	for _, o in base.pool_next(&host.params, &it) { url.params_destroy(&o.sp) }
 	it = 0
-	for _, o in base.pool_next(&host.patterns, &it) { url.pattern_destroy(&o.pat) }
+	for _, o in base.pool_next(&host.patterns, &it) { urlpattern.pattern_destroy(&o.pat) }
 	base.pool_destroy(&host.urls)
 	base.pool_destroy(&host.params)
 	base.pool_destroy(&host.patterns)

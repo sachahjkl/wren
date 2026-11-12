@@ -135,6 +135,8 @@ Page :: struct {
 	highlights:   ^Page_Highlights,     // CSS.highlights (highlights.odin); nil until a script registers one
 	js:           ^Js_Realm,            // the JavaScript realm, created on first use (js_realm.odin)
 	ext:          ^Ext_Realm,           // the realm is an extension context: its extension and its events (ext_realm.odin); nil: a web page's
+	worlds:       [dynamic]^World,      // the isolated worlds of extensions' content scripts, one engine instance each (ext_worlds.odin)
+	ext_doc:      ^Ext_Doc,             // what extensions injected in this document and when (ext_inject.odin); nil: nothing yet
 	wasm_store:   ^wasm.User_Store,     // what the page's JavaScript made with the WebAssembly API, on first use (webassembly.odin)
 	font_face_sheets: [dynamic]^style.Sheet,   // of FontFace objects added to document.fonts (fontface.odin)
 	blob_urls: ^[dynamic]string,   // what this realm's URL.createObjectURL made (bloburl.odin)

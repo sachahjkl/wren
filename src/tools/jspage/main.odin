@@ -16,7 +16,7 @@
 // summed by the source line that made them: ALLOC<TAB>kib<TAB>count<TAB>file:line, the largest 30.
 package jspage
 
-import "wb:tools/crashtrace"   // a crash prints its symbolized stack
+import "wb:crashtrace"   // a crash prints its symbolized stack
 
 import "core:fmt"
 import "core:mem"
@@ -32,7 +32,7 @@ import "wb:js"
 import lay "wb:layout"
 import "wb:page"
 import "wb:tools/headless"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:tools/tooling"
 import "wb:url"
 import "wb:wasm"

@@ -4,7 +4,7 @@
 //                                                      instantiated: page modules such as build\e2e.wasm)
 package wasmbench
 
-import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+import _ "wb:crashtrace"   // a crash prints its symbolized stack
 
 import "core:fmt"
 import "core:os"

@@ -1,7 +1,7 @@
 # Browser extensions
 
-This page is the plan for WebExtensions in Wren. Phases 1 and 2 are written (section 4, "Status of phase 1" and
-"Status of phase 2"). The first target
+This page is the plan for WebExtensions in Wren. Phases 1 and 2 are written, phase 3 for its most part (section 4,
+"Status of phase 1", "Status of phase 2" and "Status of phase 3"). The first target
 is Bitwarden's browser extension (`bitwarden/clients`, `apps/browser`), Manifest V3, Chrome build first, Firefox build
 second.
 
@@ -532,8 +532,8 @@ Different from the plan, and why:
   (`[Permission]`, `[Contexts]`, `event`) and `api/ext_<namespace>.widl` are not written: arguments are decoded by each
   implementation from JSON. This keeps one description; the generated decoders come with the dialect.
 - The popup opened in a tab of its own in phase 1; it is a panel under its button since (`ext_popup.odin`, see phase 2).
-- `extensions.worlds.*`, content scripts and `web_accessible_resources` frames are phase 3 (rule 3 of
-  `extension_may_load` is written).
+- `extensions.worlds.*`, content scripts and `web_accessible_resources` frames came with phase 3 (rule 3 of
+  `extension_may_load` was written in phase 1).
 
 Not written yet: the web test `web_extensions.odin` (the e2e test covers its checks), the chrome-world test of the
 toolbar, the generated conformance cases per API method, the overflow menu of the toolbar, icons from `ImageData`.
@@ -663,6 +663,71 @@ Tests:
 - e2e: a fixture fills a form of `examples/site` after a click in its popup; a web-accessible frame shows in the page;
   a page cannot load a file that is not web-accessible.
 - Measure (`-Perf`): section 5, the cost of a second world per frame.
+
+#### Status of phase 3
+
+Written:
+
+- `src/extensions/content_scripts.odin`: the index of content scripts by host (built once per image, and once per change
+  of the registered scripts), the full test of an entry (`matches`, `exclude_matches`, `include_globs`,
+  `exclude_globs`, `all_frames`, `match_about_blank`, `match_origin_as_fallback`), and the registered scripts in one
+  arena. The image reads the files of the manifest's content scripts with the package (`Image.script_sources`): a
+  `document_start` script has no time to wait for a file. The permissions `scripting` and `webNavigation`. The
+  preferences `extensions.worlds.max_per_document`, `extensions.scripting.max_registered` and
+  `extensions.content_scripts.idle_ms`.
+- `src/page/ext_worlds.odin`: an isolated world is one more engine instance on the page (`Page.worlds`), started with
+  `START_ISOLATED` (`customElements` is `null`). What is split by world: the checkpoint drains each world's jobs
+  (`js_checkpoint`); a trap or a slow script stops the world and not the page (`world_trapped`, `js_call`); the
+  bytecode cache and the pins answer a world's engine (`from_engine`); a `MutationObserver` queues its records in its
+  world; a `MessagePort` delivers to the world that bound it (`Port_End.world`); a message posted to the window is
+  fired once per world with its own copy of the data, and each of these events reaches the listeners of its realm only.
+  The extension record of a world is found by the calling instance (`ext_of`), never by what the guest says.
+- `src/page/ext_inject.odin`: the three points of a document (Start at the adoption of the parsed tree, End when the
+  parser finished with `readyState` interactive, Idle at the load event or `extensions.content_scripts.idle_ms` after
+  End), the scripts of the manifest and of `registerContentScripts` that match, their CSS as injected sheets of the
+  author origin (the style engine keeps them when the document's sheets are cleared; no element owns them, so
+  `document.styleSheets` does not list them). The `documentId` of each document.
+- `api/ext_scripting.widl` (`executeScript` with `files` or `func` and `args`, both worlds, `frameIds`,
+  `documentIds`, `allFrames`; `insertCSS`, `removeCSS`; `registerContentScripts`, `getRegisteredContentScripts`,
+  `unregisterContentScripts`, `updateContentScripts`), `api/ext_webnavigation.widl` (`getFrame`, `getAllFrames`,
+  `onCommitted`, `onDOMContentLoaded`, `onCompleted`), `tabs.sendMessage` and `tabs.connect` (`Ext_connectTab` in
+  `api/ext.widl`). `src/page/ext_scripting.odin` (one record per call: its files read on the blocking pool, then run
+  from a task of its own, then the answers of the worlds), `src/page/ext_webnavigation.odin`.
+- The router: a content script's context knows its tab, its frame and its document; its `MessageSender` has `tab`,
+  `frameId`, `documentId` and the document's origin. `tabs.sendMessage` and `tabs.connect` reach the worlds of the
+  extension in that tab, in documents it still has a host grant for.
+- Tests: `src/extensions/content_scripts_test.odin`, `src/page/ext_scripting_test.odin`; the e2e test
+  `extensions_content_scripts_autofill` with the fixture `examples/extensions/autofill` and the pages
+  `examples/site/extensions/`: a content script reads and fills a login form in its world; the page sees none of its
+  globals; `document_start` runs before the page's first script; the frame of another origin gets the `all_frames`
+  script only, a frame `exclude_matches` names gets none; the CSS applies and is not in `document.styleSheets`; window
+  messages reach both worlds; `tabs.sendMessage`, `tabs.connect`, `executeScript` (isolated, a promise, every frame,
+  MAIN), `insertCSS`, `registerContentScripts`, `webNavigation`; a web-accessible file loads in the page and another
+  file of the extension does not.
+
+Different from the plan, and why:
+
+- **A world has the frames imports.** Without them `window.postMessage` and the named access of the global do not
+  work, and content scripts use both. So `window.frames`, `parent` and `contentWindow` in a world give the other
+  documents' page realms, not the same extension's world there. A content script must not hand its objects to them.
+- **A window message is one event per realm**: the page's realm first, then each world in the order they were made,
+  not interleaved by the order of registration. In a world its `source` is `null` and it carries no ports (they stay
+  with the page's realm).
+- **`executeScript` answers `null` for files and for the MAIN world**: a function's value comes back from an isolated
+  world through a hook only that world's scripts see; the page's realm has no way back the page could not forge.
+- **Scripts run at once.** `injectImmediately` is accepted; a document that exists gets the script now.
+- **Registered scripts last until the browser exits or the extension reloads** (`persistAcrossSessions` is accepted,
+  `state.txt` does not keep them yet).
+- **An extension that stops** (disabled, reloaded, removed) stops its worlds in the documents already open; they do
+  not start again there, and the CSS it added stays until the document goes.
+- **`use_dynamic_url` stays phase 6**: the key is read, the URL host is the id.
+
+Not written yet: `ext_dom.widl` (`dom.openOrClosedShadowRoot`), `tabs.captureVisibleTab`, sandbox pages, the switch
+per host pattern in `about:extensions`, the other `webNavigation` events (`onBeforeNavigate`, `onErrorOccurred`,
+`onCreatedNavigationTarget`, `onReferenceFragmentUpdated`, `onHistoryStateUpdated`, `onTabReplaced`: declared, never
+sent), `slotchange` in a world (fired through the page's realm only), IndexedDB, `Worker`, `WebAssembly`, Web Audio,
+`MediaSource` and `navigator.serviceWorker` in a world (their callbacks go to the page's realm), the web tests `web_worlds.odin` and
+`web_content_scripts.odin` (the e2e test covers their main paths), the measure of a second world per frame.
 
 ### Phase 4: context menus and the save-login bar
 

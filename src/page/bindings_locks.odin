@@ -10,6 +10,7 @@ package page
 // Native-first: the whole queueing and granting policy is here (no JavaScript). Only running the author callback and
 // chaining its returned promise is in the engine, because the callback is a JavaScript value.
 
+import "core:strconv"
 import "core:strings"
 import "core:sync"
 import "wb:base"
@@ -91,7 +92,7 @@ lock_key :: proc(p: ^Page, name: string) -> string {
 @(private)
 lock_client_tag :: proc(p: ^Page) -> string {
 	buf: [32]u8
-	return strings.concatenate({"client-", url.uint_to_string(page_id(p), buf[:])}, base.process_allocator())
+	return strings.concatenate({"client-", strconv.write_uint(buf[:], page_id(p), 10)}, base.process_allocator())
 }
 
 // Whether a request for (key, mode) can be granted now: no held lock on the same key conflicts. Shared locks coexist;

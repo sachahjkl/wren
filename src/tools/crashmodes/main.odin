@@ -9,7 +9,7 @@ import "base:intrinsics"
 import "core:os"
 import "core:thread"
 import "wb:base"
-import "wb:tools/crashtrace"
+import "wb:crashtrace"
 
 Record :: struct { value: ^int }
 

@@ -226,11 +226,15 @@ HTMLIFrameElement_set_srcdoc :: proc(c: ^Call, element: Api_Element, value: stri
 // Delivers a message posted by another document (frames_post_message) to this document's realm: the engine
 // deserializes it and fires a trusted "message" MessageEvent at the window, whose source is the sender's WindowProxy.
 js_frames_deliver :: proc(p: ^Page, data: []byte, origin: string, source: u64, ports: []u64 = nil) {
+	// after the page's realm, the isolated worlds of content scripts get their own copy, without the ports (ext_worlds.odin)
+	defer if len(p.worlds) > 0 && !p.closed { worlds_deliver_message(p, data, origin) }
 	r := p.js
 	if r == nil || r.failed || r.inst == nil || r.inst.dead {   // no script ever ran: nobody listens
 		for x in ports { port_close_end(x) }
 		return
 	}
+	only := world_message_begin(p, r.inst)
+	defer world_message_end(p, only)
 	d := js.guest_copy(r.inst, data, false)
 	if d == 0 && len(data) > 0 { return }
 	defer js.guest_free(r.inst, d)

@@ -264,13 +264,11 @@ on_input :: proc(_: rawptr) {
 ////////////////////////////////
 // The profile's files
 
-// <profile>/remote.json: what a client reads to find this instance.
-write_info :: proc(profile_dir, name, version: string) -> bool {
-	text := strings.concatenate({
+// The text of <profile>/remote.json (info_path): what a client reads to find this instance. The profile's writer writes
+// it (host.File_Writer).
+info_text :: proc(profile_dir, name, version: string) -> string {
+	return strings.concatenate({
 		`{"name":`, base.json_quote(name), `,"pipe":`, base.json_quote(pipe_path(name)), `,"pid":`, fmt.tprint(os.get_pid()),
 		`,"protocol":`, fmt.tprint(PROTOCOL_VERSION), `,"version":`, base.json_quote(version), `,"profile":`, base.json_quote(full_path(profile_dir)), "}\n",
 	}, context.temp_allocator)
-	return os.write_entire_file(info_path(profile_dir), transmute([]byte)text) == nil
 }
-
-remove_info :: proc(profile_dir: string) { _ = os.remove(info_path(profile_dir)) }

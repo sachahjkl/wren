@@ -1,11 +1,8 @@
 package jsgen
 
-// Dictionaries (Web IDL 3.2.20 "dictionary types"): one C struct and one converter per dictionary that a member of an
-// exposed interface takes (directly, or nested), for the hand-written members:
-//
-//   typedef struct wjd_MouseEventInit { wjd_EventModifierInit base; int32_t screenX; ...; wj_val relatedTarget; } ...;
-//   bool wjd_MouseEventInit_from(JSContext *ctx, JSValueConst v, wjd_MouseEventInit *out);   false: exception pending
-//   void wjd_MouseEventInit_free(JSContext *ctx, wjd_MouseEventInit *d);
+// Dictionaries (Web IDL 3.2.20 "dictionary types"): one struct and one converter per dictionary that a member of an
+// exposed interface takes (directly, or nested), for the hand-written members. This file classifies the fields and
+// collects the dictionaries; emit_dicts_odin (glue_odin.odin) writes wjd_<Name>, wjd_<Name>_from and wjd_<Name>_free.
 //
 // The conversion follows Web IDL: undefined and null give the defaults, anything else must be an object; inherited
 // members first, then each dictionary's own in lexicographic order; a member read once (one [[Get]]), converted by its
@@ -14,9 +11,6 @@ package jsgen
 // does not convert (interfaces, unions, sequences, records, callbacks, any, object) are kept as the JS value (counted:
 // the _free function releases it).
 
-import "core:fmt"
-import "core:slice"
-import "core:strings"
 import "wb:tools/bindgen/webidl"
 
 @(private)
@@ -43,7 +37,7 @@ dict_field_kind :: proc(g: ^Gen, t: ^webidl.Type) -> (k: Dict_Field_Kind, name: 
 	if r.nullable { return .Value, "", 0, false }
 	if _, ok := g.m.enums[r.name]; ok { return .Enum, r.name, 0, false }
 	if _, ok := g.m.dictionaries[r.name]; ok {
-		// a dictionary that contains itself (RouterCondition's `not`) cannot be a C struct field: kept as a value
+		// a dictionary that contains itself (RouterCondition's `not`) cannot be a struct field: kept as a value
 		if dict_reaches(g, r.name, r.name, 0) { return .Value, "", 0, false }
 		return .Dict, r.name, 0, false
 	}
@@ -109,141 +103,4 @@ dict_has_required :: proc(g: ^Gen, name: string) -> bool {
 		n = d.parent
 	}
 	return false
-}
-
-emit_dicts :: proc(g: ^Gen, h, c: ^strings.Builder) {
-	names := collect_dicts(g)
-	wl(h, "/* Dictionaries (src/tools/bindgen/jsgen/dicts.odin): wjd_<Name>_from converts, wjd_<Name>_free releases. */")
-	for name in names {
-		d := g.m.dictionaries[name]
-		wl(h, "typedef struct wjd_%s {{", name)
-		if d.parent != "" && g.m.dictionaries[d.parent] != nil { wl(h, "    struct wjd_%s base;", d.parent) }
-		for mb in d.members {
-			k, n, _, _ := dict_field_kind(g, mb.type)
-			f := c_ident(mb.name)
-			switch k {
-			case .Bool: wl(h, "    bool %s;", f)
-			case .I32: wl(h, "    int32_t %s;", f)
-			case .U32: wl(h, "    uint32_t %s;", f)
-			case .I64: wl(h, "    int64_t %s;", f)
-			case .U64: wl(h, "    uint64_t %s;", f)
-			case .F64: wl(h, "    double %s;", f)
-			case .Str, .Enum: wl(h, "    wj_str %s;", f)
-			case .Dict: wl(h, "    struct wjd_%s %s;", n, f)
-			case .Value: wl(h, "    JSValue %s;   /* %s */", f, webidl.type_text(mb.type))
-			}
-			if mb.default.kind == .None { wl(h, "    bool has_%s;", f) }
-		}
-		if len(d.members) == 0 && d.parent == "" { wl(h, "    int unused;") }
-		wl(h, "}} wjd_%s;", name)
-		wl(h, "bool wjd_%s_from(JSContext *ctx, JSValueConst v, wjd_%s *out);", name, name)
-		wl(h, "void wjd_%s_free(JSContext *ctx, wjd_%s *d);", name, name)
-	}
-	wl(h, "")
-
-	// enum value tables
-	enums := make([dynamic]string, context.temp_allocator)
-	for name in names {
-		for mb in g.m.dictionaries[name].members {
-			k, n, _, _ := dict_field_kind(g, mb.type)
-			if k == .Enum && !slice.contains(enums[:], n) { append(&enums, n) }
-		}
-	}
-	slice.sort(enums[:])
-	for e in enums {
-		def := g.m.enums[e]
-		w(c, "static const char *const wje_%s[] = {{ ", e)
-		for v in def.values { w(c, "%q, ", v) }
-		wl(c, "NULL };")
-	}
-	wl(c, "")
-
-	for name in names {
-		d := g.m.dictionaries[name]
-		// _free
-		wl(c, "void wjd_%s_free(JSContext *ctx, wjd_%s *d)", name, name)
-		wl(c, "{")
-		wl(c, "    WJ_UNUSED(ctx); WJ_UNUSED(d);")
-		if d.parent != "" && g.m.dictionaries[d.parent] != nil { wl(c, "    wjd_%s_free(ctx, &d->base);", d.parent) }
-		for mb in d.members {
-			k, n, _, _ := dict_field_kind(g, mb.type)
-			f := c_ident(mb.name)
-			#partial switch k {
-			case .Str, .Enum: wl(c, "    wj_str_free(ctx, &d->%s);", f)
-			case .Dict: wl(c, "    wjd_%s_free(ctx, &d->%s);", n, f)
-			case .Value: wl(c, "    JS_FreeValue(ctx, d->%s); d->%s = JS_UNDEFINED;", f, f)
-			}
-		}
-		wl(c, "}")
-		wl(c, "")
-		// _from: what a failure leaves converted is freed (_free is idempotent: a failed member dictionary freed itself)
-		fail := fmt.tprintf("{{ wjd_%s_free(ctx, out); return false; }}", name)
-		wl(c, "bool wjd_%s_from(JSContext *ctx, JSValueConst v, wjd_%s *out)", name, name)
-		wl(c, "{")
-		wl(c, "    memset(out, 0, sizeof *out);")
-		for mb in d.members {
-			k, _, _, _ := dict_field_kind(g, mb.type)
-			if k == .Value { wl(c, "    out->%s = JS_UNDEFINED;", c_ident(mb.name)) }
-		}
-		if d.parent != "" && g.m.dictionaries[d.parent] != nil {
-			wl(c, "    if (!wjd_%s_from(ctx, v, &out->base)) %s", d.parent, fail)
-		}
-		wl(c, "    bool is_object = JS_IsObject(v);")
-		wl(c, "    if (!is_object && !JS_IsUndefined(v) && !JS_IsNull(v)) {{ JS_ThrowTypeError(ctx, \"The provided value is not of type '%s'.\"); %s }}", name, fail)
-		for mb in d.members {
-			k, n, bits, restricted := dict_field_kind(g, mb.type)
-			f := c_ident(mb.name)
-			wl(c, "    {")
-			wl(c, "        JSValue x = is_object ? JS_GetPropertyStr(ctx, v, %q) : JS_UNDEFINED;", mb.name)
-			wl(c, "        if (JS_IsException(x)) %s", fail)
-			if mb.required {
-				wl(c, "        if (JS_IsUndefined(x)) {{ JS_ThrowTypeError(ctx, \"Failed to read the '%s' property from '%s': Required member is undefined.\"); %s }}", mb.name, name, fail)
-			}
-			// default when undefined
-			def := mb.default
-			wl(c, "        if (JS_IsUndefined(x)) {")
-			switch k {
-			case .Bool: if def.kind == .True { wl(c, "            out->%s = true;", f) }
-			case .I32, .U32, .I64, .U64, .F64:
-				if def.kind == .Number {
-					v := def.text
-					if v == "Infinity" { v = "INFINITY" } else if v == "-Infinity" { v = "-INFINITY" } else if v == "NaN" { v = "NAN" }
-					wl(c, "            out->%s = %s;", f, v)
-				}
-			case .Str, .Enum:
-				if def.kind == .String { wl(c, "            out->%s.ptr = %q; out->%s.len = %d;", f, def.text, f, len(def.text)) }
-			case .Dict:
-				// an absent member is not present: its defaults are filled in only when it could be converted from
-				// undefined (a dictionary with a required member cannot: the member stays absent, has_ false)
-				if !dict_has_required(g, n) { wl(c, "            if (!wjd_%s_from(ctx, JS_UNDEFINED, &out->%s)) %s", n, f, fail) }
-			case .Value:
-				if def.kind == .Null { wl(c, "            out->%s = JS_NULL;", f) }
-			}
-			wl(c, "        } else {")
-			if def.kind == .None { wl(c, "            out->has_%s = true;", f) }
-			range := webidl.attr_has(webidl.resolve(g.m, mb.type).attrs, "EnforceRange") ? "WJ_ENFORCE_RANGE" : webidl.attr_has(webidl.resolve(g.m, mb.type).attrs, "Clamp") ? "WJ_CLAMP" : "0"
-			ok := fmt.tprintf("            if (!ok) {{ JS_FreeValue(ctx, x); wjd_%s_free(ctx, out); return false; }}", name)
-			switch k {
-			case .Bool: wl(c, "            out->%s = JS_ToBool(ctx, x);", f); ok = ""
-			case .I32: wl(c, "            bool ok = wj_to_int32(ctx, x, &out->%s, %d, %s);", f, bits, range)
-			case .U32: wl(c, "            bool ok = wj_to_uint32(ctx, x, &out->%s, %d, %s);", f, bits, range)
-			case .I64: wl(c, "            bool ok = wj_to_int64(ctx, x, &out->%s, %s);", f, range)
-			case .U64: wl(c, "            bool ok = wj_to_uint64(ctx, x, &out->%s, %s);", f, range)
-			case .F64: wl(c, "            bool ok = wj_to_double(ctx, x, &out->%s, %v);", f, restricted)
-			case .Str: wl(c, "            bool ok = wj_to_str(ctx, x, &out->%s, 0, \"\");", f)
-			case .Enum:
-				wl(c, "            bool ok = wj_to_str(ctx, x, &out->%s, 0, \"\") && wj_check_enum(ctx, &out->%s, wje_%s, %q);", f, f, n, n)
-			case .Dict: wl(c, "            bool ok = wjd_%s_from(ctx, x, &out->%s);", n, f)
-			case .Value: wl(c, "            out->%s = JS_DupValue(ctx, x);", f); ok = ""
-			}
-			if ok != "" { wl(c, "%s", ok) }
-			wl(c, "        }")
-			wl(c, "        JS_FreeValue(ctx, x);")
-			wl(c, "    }")
-		}
-		wl(c, "    return true;")
-		wl(c, "}")
-		wl(c, "")
-	}
-	_ = fmt.tprintf
 }

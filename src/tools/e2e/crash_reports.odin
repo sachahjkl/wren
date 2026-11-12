@@ -1,7 +1,7 @@
 #+build windows
 package e2e_scenarios
 
-// What leaves a crash report (src/tools/crashtrace) and what does not need to: the test tool src/tools/crashmodes dies in each of the ways a Wren has
+// What leaves a crash report (src/crashtrace) and what does not need to: the test tool src/tools/crashmodes dies in each of the ways a Wren has
 // died and the report folder is looked at. An access violation, an Odin assertion, a stack overflow (main thread and another one: the handler writes
 // the report from a thread of its own, with stack guaranteed), a corrupted heap (the system ends the process without calling the filter: the vectored
 // handler does) leave "crash <date>.txt" and a minidump; a fail-fast (nothing runs in the process) leaves a session file that the next start turns into

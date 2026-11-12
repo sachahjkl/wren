@@ -119,6 +119,7 @@ ext_bg_save_listeners :: proc(b: ^Ext_Background) {
 ext_extension_stop :: proc(id: string) {
 	r := ext_router()
 	ext_offscreen_close(id)   // ext_offscreen.odin: its offscreen document goes with it
+	worlds_stop_extension(id)   // ext_worlds.odin: its content scripts stop in every document
 	b, ok := r.backgrounds[id]
 	if !ok { return }
 	delete_key(&r.backgrounds, id)
@@ -267,6 +268,9 @@ ext_bg_reply :: proc(h: ^Worker_Host, v: ^Sw_Version, m: ^Worker_Msg) {
 			if v.running { ext_bg_save_listeners(b) }   // (during its first run: saved once, when it ran)
 		case EXT_OP_RESPOND: ext_respond(b.ctx_id, m.id, m.text, m.text2 == "1")
 		case EXT_OP_CONNECT: ext_connect(b.ctx_id, m.id, m.text)
+		case EXT_OP_CONNECT_TAB:
+			tab, frame := ext_parse_tab_frame(m.text2)   // ext_realm.odin
+			ext_connect_tab(b.ctx_id, m.id, m.text, tab, frame)
 		case EXT_OP_POST:    ext_port_post(b.ctx_id, m.id, m.text)
 		case EXT_OP_CLOSE:   ext_port_close(b.ctx_id, m.id)
 		}

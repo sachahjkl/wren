@@ -216,7 +216,10 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 js_call :: proc(user: rawptr, inst: ^wasm.Instance, name: cstring, argv: []u32) -> wasm.Call_Result {
 	p := (^Page)(user)
 	res := call_export(p, inst, name, argv)
-	if res == .Trapped { js_realm_lost(p, inst.last_error) }
+	if res == .Trapped {
+		// (an isolated world's engine stops alone: the page's scripts go on)
+		if w := world_of_inst(p, inst); w != nil { world_lost(p, w, inst.last_error) } else { js_realm_lost(p, inst.last_error) }
+	}
 	return res
 }
 
@@ -272,6 +275,12 @@ js_hooks :: proc(p: ^Page, spec: []byte) -> bool {
 js_run :: proc(p: ^Page, source: []byte, url: string, line: i32 = 1, module := false, print_result := false, muted := false, trusted := false) -> js.Eval_Status {
 	r := js_realm(p)
 	if r == nil { return .Trapped }
+	return js_run_in(p, r, source, url, line, module, print_result, muted, trusted)
+}
+
+// js_run in a given realm of the page: its own, or an isolated world's (ext_worlds.odin).
+js_run_in :: proc(p: ^Page, r: ^Js_Realm, source: []byte, url: string, line: i32 = 1, module := false, print_result := false, muted := false, trusted := false) -> js.Eval_Status {
+	if r == nil || r.failed || r.inst == nil || r.inst.dead { return .Trapped }
 	if trusted { p.trusted_runs += 1 }
 	defer if trusted { p.trusted_runs -= 1 }
 	at := base.span_now()
@@ -304,9 +313,19 @@ js_run :: proc(p: ^Page, source: []byte, url: string, line: i32 = 1, module := f
 	return js.eval_script(r.inst, source, url, line, flags, js_call, p)
 }
 
-// The engine's part of a microtask checkpoint: its jobs (promise reactions, queueMicrotask). True when some ran.
+// The engine's part of a microtask checkpoint: its jobs (promise reactions, queueMicrotask), the page's realm first,
+// then each isolated world's. True when some ran.
 js_checkpoint :: proc(p: ^Page) -> bool {
-	r := p.js
+	ran := js_checkpoint_realm(p, p.js)
+	for i := 0; i < len(p.worlds); i += 1 {   // (a job may close a world: the list is read again each turn)
+		if js_checkpoint_realm(p, &p.worlds[i].realm) { ran = true }
+		if p.closed { break }
+	}
+	return ran
+}
+
+@(private)
+js_checkpoint_realm :: proc(p: ^Page, r: ^Js_Realm) -> bool {
 	if r == nil || r.failed || r.inst == nil || r.inst.dead { return false }
 	p.objects.depth += 1
 	ran := js.run_jobs(r.inst, proc(user: rawptr, inst: ^wasm.Instance, name: cstring, argv: []u32) -> wasm.Call_Result {

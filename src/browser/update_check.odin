@@ -22,6 +22,7 @@ import "wb:base"
 import "wb:config"
 import desktop "toolkit:desktop"
 import "wb:fetch"
+import "wb:host"
 import update "toolkit:update"
 
 UPDATE_FILE :: "update.txt"
@@ -98,7 +99,7 @@ parse_i64 :: proc(s: string) -> (n: i64) {
 update_save :: proc(app: ^App) {
 	if !app.cfg.persist_profile { return }
 	text := fmt.tprintf("wren update check\nchecked=%d\nlatest=%s\nurl=%s\nnotified=%s\n", app.upd.checked, app.upd.latest, app.upd.url, app.upd.notified)
-	_ = os.write_entire_file(update_path(app), text)
+	host.profile_write(&app.writer, update_path(app), text)
 }
 
 // At start: the daily request, when it is due.

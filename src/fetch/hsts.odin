@@ -148,15 +148,15 @@ hsts_purge :: proc(h: ^Hsts, now: i64) {
 
 HSTS_MAGIC :: "wbhsts 1"
 
-hsts_save :: proc(h: ^Hsts, path: string, now: i64) -> bool {
+// The text of the profile's HSTS file, the hosts expired at `now` dropped first. The profile's writer writes it
+// (host.File_Writer).
+hsts_serialize :: proc(h: ^Hsts, now: i64, allocator := context.allocator) -> string {
 	hsts_purge(h, now)
-	sb := strings.builder_make(context.temp_allocator)
+	sb := strings.builder_make(allocator)
 	strings.write_string(&sb, HSTS_MAGIC)
 	strings.write_byte(&sb, '\n')
 	for k, e in h.hosts { fmt.sbprintf(&sb, "%s\t%d\t%d\n", k, e.expires_ms, e.include_subdomains ? 1 : 0) }
-	if !base.file_write_atomic(path, transmute([]byte)strings.to_string(sb)) { return false }
-	h.dirty = false
-	return true
+	return strings.to_string(sb)
 }
 
 hsts_load :: proc(h: ^Hsts, path: string, now: i64) -> (loaded: int, ok: bool) {

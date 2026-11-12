@@ -11,7 +11,7 @@ import "wb:tools/tooling"
 
 // The symbols of a build: the linker's map (wrentool build links with /MAP), named by the build's fingerprint, and what reads them.
 // A release has no PDB (-debug would change the program), so a crash report of a release names no function of Wren in the process. The map names every function (Odin writes "pkg::proc" and, for a
-// private one, "pkg::[file.odin]::proc") with its address; the report gives the build's fingerprint and the module's base (src/tools/crashtrace), and this turns the frames' addresses into functions.
+// private one, "pkg::[file.odin]::proc") with its address; the report gives the build's fingerprint and the module's base (src/crashtrace), and this turns the frames' addresses into functions.
 // The fingerprint is the PE header's link time stamp and image size, "%08X%X" (as a symbol server keys an executable): every link makes a new one, signing does not change it.
 //   wrentool symbols -Publish build\wren.exe [-Store]     after each link: wren.map becomes wren-<fingerprint>.map; -Store (release builds) also copies it to build\symbols, which keeps the latest
 //   wrentool symbols -Fingerprint <exe>

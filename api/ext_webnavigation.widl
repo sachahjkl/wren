@@ -1,0 +1,44 @@
+/// The navigations of the documents of tabs and of their frames (src/page/ext_webnavigation.odin). Frame ids are
+/// Chrome's: 0 for the tab's top document, -1 for no parent. A document's URL is given only to an extension that may see
+/// it (the tabs permission or a host grant); the events of other documents are not sent to it.
+[Permission=webNavigation]
+namespace webNavigation {
+  enum TransitionType { link, typed, auto_bookmark, auto_subframe, manual_subframe, generated, start_page, form_submit, reload, keyword, keyword_generated }
+
+  struct GetFrameDetails {
+    i64 tabId;
+    optional i64 frameId;
+    optional string documentId;
+    optional i64 processId;
+  }
+  struct GetAllFramesDetails {
+    i64 tabId;
+  }
+  struct FrameDetails {
+    bool errorOccurred;
+    string url;
+    i64 frameId;
+    i64 parentFrameId;
+    i64 processId;
+    string documentId;
+    optional string parentDocumentId;
+    string documentLifecycle;
+    string frameType;
+  }
+
+  /// One frame of a tab; null when the tab has none of that id.
+  FrameDetails getFrame(GetFrameDetails details);
+  /// Every frame of a tab, the top document first.
+  FrameDetails[] getAllFrames(GetAllFramesDetails details);
+
+  /// details: tabId, frameId, parentFrameId, url, timeStamp, processId, and documentId when the document exists.
+  event onBeforeNavigate(object details);
+  event onCommitted(object details);
+  event onDOMContentLoaded(object details);
+  event onCompleted(object details);
+  event onErrorOccurred(object details);
+  event onCreatedNavigationTarget(object details);
+  event onReferenceFragmentUpdated(object details);
+  event onHistoryStateUpdated(object details);
+  event onTabReplaced(object details);
+}

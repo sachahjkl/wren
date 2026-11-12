@@ -8,7 +8,7 @@ import "core:testing"
 import "wb:base"
 import "wb:host"
 import "wb:page"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:url"
 
 ADDRESS :: "http://127.0.0.1:8765/jsload/test.html"

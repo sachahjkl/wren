@@ -6,6 +6,7 @@ import "core:strconv"
 import "core:strings"
 import "wb:adblock"
 import "wb:base"
+import "wb:host"
 
 // The blocker's configuration: which lists, the user's filters, the per-site switches, the dynamic rules and the totals.
 // One text file in the profile (blocker/blocker.conf); the dashboard exports and imports the very same text, so a whole
@@ -137,7 +138,7 @@ conf_save :: proc(b: ^Blocker) {
 	if p == "" { return }
 	text := conf_text(b, true)
 	defer delete(text)
-	write_file_atomic(p, transmute([]byte)text)
+	host.profile_write(b.writer, p, text)
 }
 
 @(private)
@@ -324,7 +325,7 @@ list_remove :: proc(b: ^Blocker, id: string) {
 	c := &b.conf
 	for &l, i in c.lists {
 		if l.id == id && l.custom {
-			if b.persist { _ = os.remove(list_path(b, l.id)) }
+			if b.persist { host.profile_remove(b.writer, list_path(b, l.id)) }
 			list_entry_free(&l)
 			ordered_remove(&c.lists, i)
 			break

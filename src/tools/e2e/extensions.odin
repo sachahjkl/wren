@@ -17,6 +17,10 @@ package e2e_scenarios
 // popout window and its end; runtime.getContexts; the idle state and its event; then a restart: the extension comes
 // back from the profile with its id, and its background, whose listeners were kept, does not run until an event it
 // listens to comes.
+//
+// Phase 3 (extensions_content_scripts_autofill): the fixture examples/extensions/autofill fills the login form of
+// examples/site/extensions/login.html from content scripts in an isolated world, in a page with a frame of another
+// origin; then scripting, tabs.sendMessage, tabs.connect and webNavigation from the extension's page.
 
 import "core:encoding/endian"
 import "core:fmt"
@@ -386,6 +390,122 @@ extensions_vault_packed_offscreen_tabs :: proc(t: ^testing.T) {
 		page.ext_idle_schedule()
 	}
 	e2e.expect_eval(s, seen_js("idle.onStateChanged:active"), "seen", "idle.onStateChanged: active again")
+}
+
+////////////////////////////////
+// Phase 3: content scripts
+
+// The script that waits until the autofill fixture's background log has `text` (examples/extensions/autofill).
+@(private = "file")
+autofill_seen_js :: proc(text: string) -> string {
+	return fmt.tprintf(`new Promise((ok) => {{ const go = () => chrome.runtime.sendMessage({{type: "log"}}).then((l) => l.includes(%q) ? ok("seen") : setTimeout(go, 20)); go(); }})`, text)
+}
+
+// The id of the window's current tab.
+@(private = "file")
+current_tab :: proc(s: ^e2e.Session) -> int {
+	for t in e2e.targets(s).tabs { if t.active { return t.id } }
+	return -1
+}
+
+// The autofill fixture against examples/site/extensions/login.html (served on 127.0.0.1, with a frame of localhost and
+// a frame of its own origin that no pattern matches): content scripts read and fill the login form in an isolated
+// world; the page sees none of their globals and has no chrome.*; document_start runs before the page's first script;
+// the cross-origin frame gets the all_frames script only; the CSS applies and is not in document.styleSheets; window
+// messages reach both worlds; then, from the extension's page: tabs.sendMessage, tabs.connect, scripting.executeScript
+// in both worlds and in every frame, insertCSS, registerContentScripts, webNavigation; a web-accessible file loads in
+// the page, another file of the extension does not.
+@(test)
+extensions_content_scripts_autofill :: proc(t: ^testing.T) {
+	server := e2e.test_server(t)
+	s := e2e.start(t, {size = EXT_SIZE, prefs = {"extensions.background.idle_ms=3600000"}})   // (its log is in its memory)
+	dir := fmt.tprintf("%s/examples/extensions/autofill", e2e.repo_root())
+	e2e.navigate(s, fmt.tprintf("about:extensions?path=%s", url.percent_encoded(dir, url.UNRESERVED + "/:")))
+	e2e.wait_js(s, `document.body.textContent.includes("Add Autofill fixture?")`)
+	id := strings.clone(ext_id_on_page(s), context.temp_allocator)
+	if !testing.expectf(t, extensions.id_valid(id), "the install prompt names the extension's id (got %q)", id) { return }
+	e2e.navigate(s, fmt.tprintf("about:extensions?accept=%s", id))
+	e2e.wait_js(s, `document.body.textContent.includes("Autofill fixture is installed.")`)
+
+	// the page: its form filled by the document_idle script, in the extension's isolated world
+	login := e2e.url(server, "/site/extensions/login.html")
+	e2e.navigate(s, login)
+	e2e.wait_js(s, `document.getElementById("user").value === "alice"`)
+	login_tab := current_tab(s)
+	e2e.expect_eval(s, `document.getElementById("pass").value`, "s3cret", "the content script read the form and filled the password")
+	e2e.expect_eval(s, `document.documentElement.dataset.extStart`, "before", "document_start runs before the page's first script")
+	e2e.expect_eval(s, `[typeof contentScriptMarker, typeof window.extWorldSecret, typeof chrome, window.pageMarker].join(" ")`, "undefined undefined undefined page",
+		"the page sees none of the content script's globals, and has no chrome.*")
+	e2e.expect_eval(s, `getComputedStyle(document.getElementById("user")).outlineColor`, "rgb(1, 2, 3)", "the content script's CSS applies")
+	e2e.expect_eval(s, `String(document.styleSheets.length)`, "1", "and the page does not see it in document.styleSheets")
+	e2e.wait_js(s, `document.documentElement.dataset.pageGot === "hello page"`)   // (the world's postMessage reached the page's listener)
+	e2e.eval(s, `(window.postMessage({ping: "from page"}, "*"), "posted")`)
+	e2e.wait_js(s, `document.documentElement.dataset.extGot === "from page"`)   // (the page's message reached the world's listener)
+	// a frame of the page's origin that exclude_matches leaves out: nothing ran in it
+	e2e.wait_js(s, `(() => { const d = document.getElementById("nomatch").contentDocument; return !!d && d.readyState === "complete"; })()`)
+	e2e.expect_eval(s, `String(document.getElementById("nomatch").contentDocument.documentElement.dataset.extStart)`, "undefined", "exclude_matches: no script in that frame")
+	// web_accessible_resources: one file the page may load, the others not (the same error as an absent extension)
+	e2e.expect_eval(s, fmt.tprintf(`fetch("chrome-extension://%s/menu.html").then((r) => r.text()).then((t) => String(t.includes("web-accessible menu")), () => "refused")`, id),
+		"true", "a web-accessible file loads in the page")
+	e2e.expect_eval(s, fmt.tprintf(`fetch("chrome-extension://%s/background.js").then(() => "loaded", () => "refused")`, id), "refused", "another file of the extension does not")
+
+	// the extension's side, from its page in a tab of its own
+	page_tab := e2e.new_tab(s, fmt.tprintf("chrome-extension://%s/page.html", id))
+	e2e.activate_tab(s, page_tab)
+	s.tab = page_tab
+	e2e.wait_load(s)
+	e2e.wait_js(s, `document.getElementById("state").textContent === "ready"`)
+	tab := e2e.eval(s, `chrome.tabs.query({url: "http://127.0.0.1/*"}).then((t) => String(t.length === 1 ? t[0].id : -1))`, await = true)
+	if !testing.expect(t, tab != "-1" && tab != "", "tabs.query finds the login page's tab") { return }
+	e2e.expect_eval(s, autofill_seen_js("started:127.0.0.1:top"), "seen", "document_start in the top document; the sender's frameId is 0")
+	e2e.expect_eval(s, autofill_seen_js("started:localhost:frame:child"), "seen", "the cross-origin frame got the all_frames script (its pattern matches)")
+	e2e.expect_eval(s, autofill_seen_js("world:127.0.0.1:top:true,string,undefined"), "seen", "the world: customElements is null, runtime is there, tabs is not")
+	e2e.expect_eval(s, autofill_seen_js("filled:127.0.0.1:top:true"), "seen", "document_idle filled the form and told the background")
+	e2e.expect_eval(s, autofill_seen_js("webNavigation.onCompleted:top"), "seen", "webNavigation.onCompleted")
+	e2e.expect_eval(s, `chrome.runtime.sendMessage({type: "log"}).then((l) => String(l.some((x) => x.startsWith("filled:localhost"))))`, "false",
+		"the frame did not get the script that is not all_frames")
+
+	e2e.expect_eval(s, fmt.tprintf(`chrome.tabs.sendMessage(%s, {{type: "fill", user: "bob", pass: "pw2"}}, {{frameId: 0}}).then((r) => r.filled + " " + r.from)`, tab), "true true",
+		"tabs.sendMessage reaches the content script, which answers")
+	e2e.expect_eval(s, fmt.tprintf(`new Promise((ok) => {{ const p = chrome.tabs.connect(%s, {{frameId: 0}}); p.onMessage.addListener((m) => ok(m.seen + " " + m.host)); p.postMessage("knock"); }})`, tab),
+		"knock 127.0.0.1", "tabs.connect: a port to the content script and back")
+	e2e.expect_eval(s, fmt.tprintf(`chrome.scripting.executeScript({{target: {{tabId: %s}}, func: (s) => typeof contentScriptMarker + s, args: ["!"]}}).then((r) => r.length + " " + r[0].frameId + " " + r[0].result)`, tab),
+		"1 0 string!", "executeScript: a function in the isolated world, beside the content scripts, with its arguments")
+	e2e.expect_eval(s, fmt.tprintf(`chrome.scripting.executeScript({{target: {{tabId: %s}}, func: () => new Promise((ok) => setTimeout(() => ok(document.title), 10))}}).then((r) => r[0].result)`, tab),
+		"Login fixture", "executeScript: a promise's value")
+	e2e.expect_eval(s, fmt.tprintf(`chrome.scripting.executeScript({{target: {{tabId: %s, allFrames: true}}, func: () => location.hostname}}).then((r) => r.map((x) => x.result).sort().join(","))`, tab),
+		"127.0.0.1,127.0.0.1,localhost", "executeScript in every frame")
+	e2e.expect_eval(s, fmt.tprintf(`chrome.scripting.executeScript({{target: {{tabId: %s}}, world: "MAIN", func: (v) => {{ window.fromMain = v; }}, args: ["main"]}}).then((r) => String(r[0].result))`, tab),
+		"null", "executeScript in the page's world")
+	e2e.expect_eval(s, fmt.tprintf(`chrome.scripting.insertCSS({{target: {{tabId: %s}}, css: "#login {{ color: rgb(4, 5, 6); }}"}}).then(() => "inserted")`, tab), "inserted", "insertCSS")
+	e2e.expect_eval(s, fmt.tprintf(`chrome.webNavigation.getAllFrames({{tabId: %s}}).then((f) => f.length + " " + f[0].frameId + " " + f[0].parentFrameId + " " + (f[1].parentFrameId === 0))`, tab),
+		"3 0 -1 true", "webNavigation.getAllFrames: the top document and its two frames")
+	e2e.expect_eval(s, `chrome.scripting.registerContentScripts([{id: "late", matches: ["http://127.0.0.1/*"], js: ["content/late.js"], runAt: "document_end"}]).then(() => chrome.scripting.getRegisteredContentScripts()).then((l) => l.map((x) => x.id + " " + x.runAt).join())`,
+		"late document_end", "registerContentScripts")
+	e2e.expect_eval(s, `chrome.scripting.registerContentScripts([{id: "late", matches: ["http://127.0.0.1/*"], js: ["content/late.js"]}]).then(() => "registered", (e) => e.message)`,
+		"Duplicate script ID 'late'", "a registered id is unique")
+
+	// back on the page: what the extension did there
+	e2e.activate_tab(s, login_tab)
+	s.tab = login_tab
+	e2e.expect_eval(s, `document.getElementById("user").value + " " + document.getElementById("pass").value`, "bob pw2", "the form as tabs.sendMessage filled it")
+	e2e.expect_eval(s, `String(window.fromMain)`, "main", "the MAIN world function ran in the page's realm")
+	e2e.expect_eval(s, `getComputedStyle(document.getElementById("login")).color`, "rgb(4, 5, 6)", "the inserted CSS applies")
+	e2e.reload(s)
+	e2e.wait_js(s, `document.documentElement.dataset.extLate === "interactive"`)   // (the registered script ran at document_end)
+	e2e.wait_js(s, `document.getElementById("user").value === "alice"`)
+
+	// the worlds go with their documents
+	e2e.navigate(s, "about:blank")
+	{
+		Wait :: struct { id: string }
+		w := Wait{id}
+		e2e.wait_until(s, &w, proc(s: ^e2e.Session, w: ^Wait) -> bool {
+			context = s.ctx
+			for _, c in s.app.pages.ext_router.contexts { if c.ext == w.id && c.kind == .Content { return false } }
+			return true
+		}, "the content scripts' contexts to go with their documents")
+	}
 }
 
 // (a window's popout mark, read the way build_ui reads it)

@@ -459,8 +459,10 @@ sheet_changed :: proc(e: ^Engine, s: ^Sheet) {
 
 // A sheet the embedder adds with user priority (the content blocker's display: none !important rules): it applies to the
 // whole document, wins over author rules, and is kept across engine_configure. Remove it with engine_remove_sheet.
-engine_add_injected_sheet :: proc(e: ^Engine, text: string) -> ^Sheet {
-	s := add_sheet(e, text, .User, base.NIL_HANDLE, "", false, "")
+// `author`: the author origin instead (an extension's content script CSS, as Chrome adds it); it stays when the
+// document's own sheets are cleared, and no element owns it, so scripts do not see it in document.styleSheets.
+engine_add_injected_sheet :: proc(e: ^Engine, text: string, author := false) -> ^Sheet {
+	s := add_sheet(e, text, author ? .Author : .User, base.NIL_HANDLE, "", false, "")
 	if s != nil { s.injected = true }
 	return s
 }
@@ -508,7 +510,7 @@ engine_clear_hidden :: proc(e: ^Engine) {
 // Removes every sheet that came from the document (used when the page changes or its <style> elements do).
 engine_clear_document_sheets :: proc(e: ^Engine) {
 	for i := len(e.sheets) - 1; i >= 0; i -= 1 {
-		if e.sheets[i].origin == .Author { sheet_free(e.sheets[i]); ordered_remove(&e.sheets, i) }
+		if e.sheets[i].origin == .Author && !e.sheets[i].injected { sheet_free(e.sheets[i]); ordered_remove(&e.sheets, i) }
 	}
 	rules_stale(e)
 	e.shadow.dirty = true

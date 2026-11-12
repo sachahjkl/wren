@@ -24,6 +24,7 @@ import "core:strconv"
 import "core:strings"
 import "wb:base"
 import "wb:config"
+import "wb:host"
 import "wb:i18n"
 
 CLOSED_HEADER :: "wren-closed 1"
@@ -54,7 +55,7 @@ Closed_Tabs :: struct {
 	loaded:        bool,
 	dirty:         bool,   // closed.txt is behind the list
 	session_waits: bool,   // this start did not reopen session.txt: it is the session of the run before
-	file:          Profile_File,   // closed.txt (profile_writes.odin)
+	file:          host.Profile_File,   // closed.txt (profile_writes.odin)
 }
 
 closed_path :: proc(app: ^App) -> string { return strings.concatenate({app.profile_dir, "/closed.txt"}, context.temp_allocator) }
@@ -183,8 +184,8 @@ closed_items :: proc(app: ^App) -> []Closed_Item {
 closed_save :: proc(app: ^App) {
 	c := &app.closed
 	if !c.dirty { return }
-	profile_file_init(&c.file, app, closed_path(app))
-	profile_file_write(&c.file, closed_serialize(c.items[:], int(config.int_of(&app.prefs, "browser.session.max_url_bytes"))))
+	host.profile_file_init(&c.file, &app.writer, closed_path(app))
+	host.profile_file_write(&c.file, closed_serialize(c.items[:], int(config.int_of(&app.prefs, "browser.session.max_url_bytes"))))
 	c.dirty = false
 }
 
@@ -318,6 +319,6 @@ closed_tabs_destroy :: proc(app: ^App) {
 	c := &app.closed
 	for item in c.items { closed_item_destroy(item) }
 	delete(c.items)
-	profile_file_destroy(&c.file)   // (written by profile_files_flush, before the loop ended)
+	host.profile_file_destroy(&c.file)   // (written by profile_files_flush, before the loop ended)
 	c^ = {}
 }

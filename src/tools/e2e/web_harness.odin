@@ -13,7 +13,7 @@
 // end a run that fails.
 package e2e_scenarios
 
-import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+import _ "wb:crashtrace"   // a crash prints its symbolized stack
 
 import "core:fmt"
 import "core:os"
@@ -29,7 +29,7 @@ import js_code "wb:js/image/code"
 import lay "wb:layout"
 import "wb:net"
 import "wb:page"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:tools/testhost"
 import "wb:url"
 import "wb:wasm"

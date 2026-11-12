@@ -106,6 +106,7 @@ Timeout :: struct { v: ^Vault, id: u64 }
 Vault :: struct {
 	loop:           ^host.Loop,
 	pool:           ^host.Blocking_Pool,
+	writer:         ^host.File_Writer,   // the profile's (nil in tests): the account file's writes
 	hooks:          Hooks,
 	spawn:          Spawn_Proc,
 	settings:       Settings,
@@ -150,8 +151,8 @@ SEARCH_LIMIT :: 50   // rows of one search: what a palette lists (the helper's b
 // Life
 
 // Loop thread. `profile_dir` "": nothing is written and no account is remembered between runs.
-vault_init :: proc(v: ^Vault, loop: ^host.Loop, pool: ^host.Blocking_Pool, prefs: ^config.Prefs, profile_dir, client_version: string, hooks: Hooks, spawn: Spawn_Proc = process_spawn) {
-	v.loop, v.pool, v.hooks, v.spawn = loop, pool, hooks, spawn
+vault_init :: proc(v: ^Vault, loop: ^host.Loop, pool: ^host.Blocking_Pool, prefs: ^config.Prefs, profile_dir, client_version: string, hooks: Hooks, spawn: Spawn_Proc = process_spawn, writer: ^host.File_Writer = nil) {
+	v.loop, v.pool, v.hooks, v.spawn, v.writer = loop, pool, hooks, spawn, writer
 	v.settings = settings_from_prefs(prefs)
 	v.profile_dir = strings.clone(profile_dir, base.process_allocator())
 	v.client_version = strings.clone(client_version, base.process_allocator())
@@ -1162,11 +1163,11 @@ account_work :: proc(data: rawptr) {
 	job := (^Account_Job)(data)
 	path := join_path({job.dir, ACCOUNT_FILE})
 	if job.remove {
-		job.ok = os.remove(path) == nil
+		job.ok = host.file_drop(job.v.writer, path)
 		return
 	}
 	_ = os.make_directory_all(job.dir, {.Read_User, .Write_User, .Execute_User})
-	job.ok = os.write_entire_file(path, job.text, {.Read_User, .Write_User}) == nil
+	job.ok = host.file_put(job.v.writer, path, transmute([]byte)job.text, private = true)
 }
 
 @(private)

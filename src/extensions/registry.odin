@@ -39,6 +39,16 @@ Image :: struct {
 	page_csp:  string,                    // the policy of its pages and of its background
 	background_source: []byte,            // the background service worker's script, read with the package (never on the loop thread)
 	language:  string,                    // the UI language it was loaded for ("en-US"): i18n.getUILanguage
+	// the files of manifest.content_scripts (js and css), read with the package: a document_start script runs before
+	// the page's first script, with no time to read a file
+	script_sources: map[string][]byte,
+	script_index:   Script_Index,         // manifest.content_scripts by host (content_scripts.odin)
+}
+
+// The text of a file of the manifest's content scripts (nil: not one of them).
+image_script_source :: proc(im: ^Image, rel: string) -> []byte {
+	src, _ := im.script_sources[rel]
+	return src
 }
 
 image_retain :: proc(im: ^Image) -> ^Image {
@@ -146,6 +156,25 @@ image_load :: proc(path: string, s: Settings, ui_language: string, profile_dir: 
 		src, sok := package_read(abs, &im.files, m.background_worker, int(settings.package_max_bytes), a)
 		if sok { im.background_source = src } else { im.ok = false; r.error = strings.clone("background.service_worker cannot be read", pa) }
 	}
+	im.script_sources = make(map[string][]byte, 8, a)
+	if im.ok {
+		read_all: for cs in m.content_scripts {
+			lists := [2][]string{cs.js, cs.css}
+			for list in lists {
+				for rel in list {
+					if rel == "" || rel in im.script_sources { continue }
+					src, sok := package_read(abs, &im.files, rel, int(settings.package_max_bytes), a)
+					if !sok {
+						im.ok = false
+						r.error = fmt.aprintf("the content script %q cannot be read", rel, allocator = pa)
+						break read_all
+					}
+					im.script_sources[rel] = src
+				}
+			}
+		}
+		script_index_build(&im.script_index, m.content_scripts, a)
+	}
 	if profile_dir != "" {
 		if data, err := os.read_entire_file(area_file(profile_dir, id, .Local), pa); err == nil { r.local_text = string(data) }
 		if data, err := os.read_entire_file(area_file(profile_dir, id, .Sync), pa); err == nil { r.sync_text = string(data) }
@@ -225,6 +254,36 @@ Extension :: struct {
 	listeners_known: bool,
 	idle_interval:   int,               // idle.setDetectionInterval, in seconds (0: IDLE_DEFAULT_INTERVAL)
 	idle_state:      Idle_State,        // what idle.onStateChanged said last
+	registered:      Registered_Scripts,   // scripting.registerContentScripts (content_scripts.odin)
+	// the files of registered scripts and of scripting.executeScript, read off the loop thread when they were named
+	// (owned: path and text). The manifest's content scripts are in the image (Image.script_sources).
+	sources:         map[string][]byte,
+}
+
+// The text of a package file a content script needs: the image's, else the cache of the record (nil: not read yet).
+extension_source :: proc(e: ^Extension, rel: string) -> []byte {
+	if e.image != nil { if src := image_script_source(e.image, rel); src != nil { return src } }
+	src, _ := e.sources[rel]
+	return src
+}
+
+// Keeps a file text read for the extension (`text` is moved in: allocated with base.process_allocator(), as files read
+// on a blocking thread are).
+extension_source_put :: proc(e: ^Extension, rel: string, text: []byte) {
+	pa := base.process_allocator()
+	if old, has := e.sources[rel]; has {
+		delete(old, pa)
+		e.sources[rel] = text
+		return
+	}
+	e.sources[strings.clone(rel, pa)] = text
+}
+
+@(private)
+extension_sources_clear :: proc(e: ^Extension) {
+	pa := base.process_allocator()
+	for k, v in e.sources { delete(k, pa); delete(v, pa) }
+	clear(&e.sources)
 }
 
 Registry :: struct {
@@ -266,6 +325,9 @@ extension_free :: proc(e: ^Extension) {
 	delete(e.unknown_calls)
 	listeners_clear(e)
 	delete(e.listeners)
+	registered_destroy(&e.registered)
+	extension_sources_clear(e)
+	delete(e.sources)
 	free(e)
 }
 
@@ -368,6 +430,9 @@ registry_adopt :: proc(reg: ^Registry, r: ^Load_Result, grant_hosts: bool) -> ^E
 		e.action.badge_color = {0xD9, 0x30, 0x25, 0xFF}
 		e.action.enabled = true
 		area_destroy(&e.session)
+		// a new package: the texts read from the old one, and the scripts registered against it, go
+		extension_sources_clear(e)
+		registered_destroy(&e.registered)
 		// runtime.onInstalled: an install, or a reload (Chrome: an update of the same id); none at the browser's start
 		e.installed = fresh ? "install" : (first ? "" : "update")
 	}

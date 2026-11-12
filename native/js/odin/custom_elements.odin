@@ -668,6 +668,7 @@ wj_install_custom_elements :: proc "c" (ctx: ^wj.Context) {
 
 @(export, link_name = "wjr_Window_get_customElements")
 wjr_Window_get_customElements :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	if wj.wj_start_isolated { return wj.NULL }
 	if !registry_made {
 		r := wj.wj_new_object(ctx, i_registry(), nil, nil)
 		if wj.is_exception(r) { return r }

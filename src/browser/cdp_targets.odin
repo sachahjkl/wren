@@ -6,10 +6,10 @@ package browser
 // and the target a message is about is carried in its params, so the path's id is informational).
 
 import "core:fmt"
-import "core:os"
 import "core:strconv"
 import "core:strings"
 import "wb:base"
+import "wb:host"
 import "wb:remote"
 
 ////////////////////////////////
@@ -161,13 +161,11 @@ cdp_emit :: proc(cl: ^Cdp_Client, method, params: string) {
 cdp_write_active_port :: proc(app: ^App) {
 	path := strings.concatenate({app.profile_dir, "/DevToolsActivePort"}, context.temp_allocator)
 	body := fmt.tprintf("%d\n/devtools/browser\n", the_cdp.port)
-	// (written once when the endpoint opens: a tool that cannot find it is told why in the log and a toast)
-	health: Write_Health
-	profile_write_report(&health, path, base.file_write_atomic(path, transmute([]byte)body), tell = profile_can_tell(app))
+	host.profile_write(&app.writer, path, body)   // (a failure is told in the log and a toast, and tried again)
 }
 
 @(private)
 cdp_remove_active_port :: proc(app: ^App) {
 	path := strings.concatenate({app.profile_dir, "/DevToolsActivePort"}, context.temp_allocator)
-	_ = os.remove(path)
+	host.profile_remove(&app.writer, path)
 }

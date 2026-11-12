@@ -505,6 +505,7 @@ parser_finish :: proc(p: ^Page) {
 	if the_pages.embedder.parsed != nil { the_pages.embedder.parsed(the_pages.embedder.user, p) }
 	styles_parsed(p)
 	doc_phase_set(p, .Deferred)
+	if !p.closed { ext_doc_parsed(p) }   // extensions' document_end scripts, readyState interactive (ext_inject.odin)
 }
 
 // Whether the reveal is under way (styles.odin keeps the stylesheets of the not yet revealed part meanwhile).

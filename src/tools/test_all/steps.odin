@@ -102,7 +102,7 @@ MEM_CHECK :: "-define:ODIN_TEST_FAIL_ON_BAD_MEMORY=true"
 // for every test of a program, only testing.set_fail_timeout in each test, and that ends the test's thread where it stands: the step's
 // limit is the bound.)
 NAMES_RUNNING :: "-define:ODIN_TEST_LOG_STATE_CHANGES=true"
-// The end-to-end tools track every allocation of the process and fail when anything is left once they have shut down (src/tools/testenv/memory.odin); never in the builds of the browser.
+// The end-to-end tools track every allocation of the process and fail when anything is left once they have shut down (src/testenv/memory.odin); never in the builds of the browser.
 TRACK :: "-define:WREN_TRACK_MEMORY=true"
 // Freed memory poisoned and kept out of the heap (src/base/poison.odin): the end-to-end tools and the unit tests of what keeps records across passes; a read of it ends the step.
 POISON :: "-define:WREN_POISON_MEMORY=true"
@@ -275,7 +275,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "build the browser (wrentool build; nothing to do when newer than its sources)", actions = slice_of(Task{"wrentool build", task_browser, "dev"}), marks = {.No_Result, .Browser_Build}, needs = COMMON_NEEDS, makes = {.Browser}, limit = build_limit(cfg)})
 	if long_run { append(&t, Step{name = "build the check build of the browser (wrentool build check; nothing to do when newer than its sources)", actions = slice_of(Task{"wrentool build check", task_browser, "check"}), marks = {.No_Result, .Browser_Build}, needs = COMMON_NEEDS, makes = {.Check_Browser}, limit = build_limit(cfg), group = .Check_Build}) }
 
-	PACKAGES := []string{"base", "host", "dom", "html", "url", "http", "cookies", "csp", "extensions", "httpcache", "fetch", "css", "style", "webfont", "xml", "images", "media", "webaudio", "canvas2d", "idb", "layout", "forms", "vault", "js", "page", "webauthn", "license", "update", "desktop", "adblock", "blocker", "a11y", "browser"}
+	PACKAGES := []string{"base", "host", "dom", "html", "url", "urlpattern", "http", "cookies", "csp", "extensions", "httpcache", "fetch", "css", "style", "webfont", "xml", "images", "media", "webaudio", "canvas2d", "idb", "layout", "forms", "vault", "js", "page", "webauthn", "license", "update", "desktop", "adblock", "blocker", "a11y", "browser"}
 	for pkg in PACKAGES {
 		flags := []string{TOOLKIT, WB}
 		// (images: its tests share the process-wide decoder pool and one of them sets its idle time: one test at a time)
@@ -552,5 +552,7 @@ lint_steps :: proc(steps: ^[dynamic]Step) {
 	append(t, Step{name = "the web platform's case is ASCII (src\\tools\\test_all\\lint_unicode_case.odin: no strings.to_lower, to_upper, equal_fold or unicode.to_lower, to_upper in src or native that tools\\unicode_case_allowed.txt does not list with why: the Kelvin sign is no 'k' to a tag name)", actions = slice_of(Task{"the Unicode case calls", task_lint_unicode_case, ""}), marks = {.Light}, inputs = .Sources})
 	append(t, Step{name = "the address field has one writer (src\\tools\\test_all\\lint_address.odin: no ui.field_set on it but in address_sync, src\\browser\\windows.odin)", actions = slice_of(Task{"the address field", task_lint_address, ""}), marks = {.Light}, inputs = .Sources})
 	append(t, Step{name = "an App and a Tab have one constructor (src\\tools\\test_all\\lint_app_make.odin: no new(App) outside src\\browser\\app_make.odin, no new(Tab) outside src\\browser\\main.odin)", actions = slice_of(Task{"the App's constructor", task_lint_app_make, ""}), marks = {.Light}, inputs = .Sources})
+	append(t, Step{name = "the profile's files have one writer (src\\tools\\test_all\\lint_file_writes.odin: no direct file write in src outside src\\host\\profile_file.odin that tools\\file_writes_allowed.txt does not list with why)", actions = slice_of(Task{"the direct file writes", task_lint_file_writes, ""}), marks = {.Light}, inputs = .Sources})
 	append(t, Step{name = "the globals of the browser's packages against their list (src\\tools\\test_all\\lint_globals.odin: one App's state goes into App, a window's or a tab's into theirs; docs\\architecture.md, Where state lives)", actions = slice_of(Task{"the globals", task_lint_globals, ""}), marks = {.Light}, inputs = .Sources})
+	append(t, Step{name = "the product's layers (src\\tools\\test_all\\lint_layers.odin: no import of wb:tools/* outside src\\tools, core:sys/windows only in *_windows.odin)", actions = slice_of(Task{"the layers", task_lint_layers, ""}), marks = {.Light}, inputs = .Sources})
 }

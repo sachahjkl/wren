@@ -28,6 +28,9 @@ Settings :: struct {
 	toolbar_max_buttons:    int,
 	offscreen_max_ms:       int,      // the lifetime of an offscreen document whose only reason is CLIPBOARD
 	restricted_hosts:       string,   // space-separated hosts no extension acts on
+	worlds_max:             int,      // isolated worlds in one document (one engine instance each)
+	scripting_max_registered: int,    // scripting.registerContentScripts entries of one extension
+	idle_after_parsed_ms:   int,      // document_idle comes at the load event, or this long after the parse
 }
 
 PREFS := [?]config.Def{
@@ -77,6 +80,12 @@ PREFS := [?]config.Def{
 		description = "An extension's offscreen document made only to use the clipboard closes after this long. Other offscreen documents stay until the extension closes them."},
 	{name = "extensions.restricted_hosts", kind = .String, default = {s = ""},
 		description = "Hosts no extension acts on (no content script, no tab data), separated by spaces."},
+	{name = "extensions.worlds.max_per_document", kind = .Int, default = {i = 16}, bounded = true, min = 1, max = 256,
+		description = "Most extensions whose content scripts run in one document. Each one runs in a JavaScript engine of its own beside the page's (an isolated world); the extensions past this number get no content script there."},
+	{name = "extensions.scripting.max_registered", kind = .Int, default = {i = 1000}, bounded = true, min = 1, max = 100_000,
+		description = "Most content scripts one extension registers with scripting.registerContentScripts. Each one is matched against every document."},
+	{name = "extensions.content_scripts.idle_ms", kind = .Int, default = {i = 200}, bounded = true, min = 0, max = 60_000, unit = "ms",
+		description = "Content scripts that run at document_idle run at the document's load event, or this long after the document was parsed if that comes first (Chrome's value)."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
@@ -107,6 +116,9 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		toolbar_max_buttons = int(config.int_of(p, "browser.extensions.toolbar.max_buttons")),
 		offscreen_max_ms = int(config.int_of(p, "extensions.offscreen.max_lifetime_ms")),
 		restricted_hosts = config.string_of(p, "extensions.restricted_hosts"),
+		worlds_max = int(config.int_of(p, "extensions.worlds.max_per_document")),
+		scripting_max_registered = int(config.int_of(p, "extensions.scripting.max_registered")),
+		idle_after_parsed_ms = int(config.int_of(p, "extensions.content_scripts.idle_ms")),
 	}
 }
 

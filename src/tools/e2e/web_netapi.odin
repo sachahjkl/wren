@@ -18,7 +18,7 @@ import "wb:fetch"
 import "wb:host"
 import "wb:net"
 import "wb:page"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:tools/tooling"
 
 GUEST :: "build/netapitest.wasm"

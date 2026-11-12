@@ -23,7 +23,7 @@ import "wb:fetch"
 import "wb:host"
 import "wb:images"
 import "wb:page"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:wasm"
 
 GUEST :: "build/imagestest.wasm"

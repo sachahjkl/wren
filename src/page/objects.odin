@@ -186,6 +186,8 @@ run_object_listeners :: proc(p: ^Page, h: u64, eh: base.Handle, snapshot: []dom.
 			p := r.p
 			// (the Window's listeners run in a propagation path: the target they see is the Window)
 			if e := base.pool_get(&p.dp.events, r.eh); e != nil { e.current_target = base.Handle(r.h) }
+			// a message posted to the window is fired once per world, each with its own copy of the data (ext_worlds.odin)
+			if p.ext_doc != nil && p.ext_doc.message_owner != 0 && !world_listener_takes(p, r.h, r.eh, l.owner) { return true }
 			inst := instance_by_index(p, l.owner)
 			if inst == nil { return true }
 			argv := [3]u32{l.user, u32(u64(r.eh)), u32(u64(r.eh) >> 32)}
@@ -246,7 +248,7 @@ call_export :: proc(p: ^Page, inst: ^wasm.Instance, name: cstring, argv: []u32 =
 // A guest call trapped (exception or instruction budget): the console of a page, the `error` event of a worker.
 @(private)
 guest_failed :: proc(p: ^Page, inst: ^wasm.Instance) {
-	if p.js != nil && p.js.inst == inst { js_trapped(p, inst) }
+	if p.js != nil && p.js.inst == inst { js_trapped(p, inst) } else if len(p.worlds) > 0 { world_trapped(p, inst) }
 	if p.worker != nil { worker_report_error(p, inst.last_error); return }
 	log(p, .Error, inst.last_error)
 }
@@ -273,7 +275,7 @@ microtask_checkpoint :: proc(p: ^Page) {
 	q := &p.objects
 	// what was not run (cut at the limit, a halted realm) stays queued, at the front again
 	defer if q.micro_head > 0 && !p.closed { remove_range(&q.microtasks, 0, q.micro_head); q.micro_head = 0 }
-	for len(q.microtasks) > q.micro_head || (p.js != nil && js_checkpoint(p) && len(q.microtasks) > q.micro_head) || shadow_signal_slots(p) {
+	for len(q.microtasks) > q.micro_head || ((p.js != nil || len(p.worlds) > 0) && js_checkpoint(p) && len(q.microtasks) > q.micro_head) || shadow_signal_slots(p) {
 		if realm_halted(p) { return }   // a terminated worker runs nothing more
 		if len(q.microtasks) == q.micro_head {
 			// slotchange fired: counted as a microtask (a listener that keeps changing slots cannot loop forever)

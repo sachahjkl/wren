@@ -69,6 +69,7 @@ Job_Outcome :: enum u8 {
 Job :: struct {
 	kind:       Job_Kind,
 	loop:       ^host.Loop,
+	writer:     ^host.File_Writer,   // the profile's: the lists and the cache (this job's thread is never the interface's)
 	dir:        string,
 	persist:    bool,
 	cache:      bool,
@@ -96,7 +97,6 @@ Job_Gate :: struct {
 ////////////////////////////////
 // Files
 
-write_file_atomic :: proc(path: string, data: []byte) -> bool { return base.file_write_atomic(path, data) }
 
 read_text :: proc(path: string, allocator := context.allocator) -> (text: []byte, ok: bool) {
 	data, err := os.read_entire_file(path, allocator)
@@ -285,20 +285,20 @@ key_stamps :: proc(j: ^Job) -> string {
 @(private)
 key_write :: proc(j: ^Job, gen, made_of: string) {
 	content := strings.concatenate({gen, "\n", made_of, "\n", key_stamps(j)}, context.temp_allocator)
-	write_file_atomic(strings.concatenate({j.dir, "/cache/", CACHE_KEY_FILE}, context.temp_allocator), transmute([]byte)content)
+	_ = host.file_put(j.writer, strings.concatenate({j.dir, "/cache/", CACHE_KEY_FILE}, context.temp_allocator), transmute([]byte)content)
 }
 
 // Deletes the generations that are not `gen`. (An older one still mapped by documents that hold its engine goes when they let it go:
 // the mapping shares delete.)
 @(private)
-cache_cleanup :: proc(dir, gen: string) {
+cache_cleanup :: proc(writer: ^host.File_Writer, dir, gen: string) {
 	cache := strings.concatenate({dir, "/cache"}, context.temp_allocator)
 	infos, err := os.read_all_directory_by_path(cache, context.temp_allocator)
 	if err != nil { return }
 	keep := strings.concatenate({CACHE_PREFIX, gen, "."}, context.temp_allocator)
 	for fi in infos {
 		if !strings.has_prefix(fi.name, CACHE_PREFIX) || strings.has_prefix(fi.name, keep) { continue }
-		_ = os.remove(fi.fullpath)
+		_ = host.file_drop(writer, fi.fullpath)
 	}
 }
 
@@ -321,7 +321,7 @@ start_job :: proc(b: ^Blocker, downloads: []Download, kind: Job_Kind) {
 	assign_list_ids(b)
 	j := new(Job, base.process_allocator())
 	j.kind = kind
-	j.loop = b.loop
+	j.loop, j.writer = b.loop, b.writer
 	j.persist = b.persist
 	j.cache = b.cfg.engine_cache
 	j.gate = b.job_gate
@@ -391,7 +391,7 @@ job_load_cache :: proc(j: ^Job) -> bool {
 	if err != .None { base.file_unmap(&m); return false }
 	j.engine, j.mapping, j.outcome = e, m, .Loaded
 	j.src_path = strings.concatenate({j.dir, "/cache/", CACHE_PREFIX, gen, ".src"}, base.process_allocator())
-	cache_cleanup(j.dir, gen)   // (what a compile cut short left)
+	cache_cleanup(j.writer, j.dir, gen)   // (what a compile cut short left)
 	return true
 }
 
@@ -412,7 +412,7 @@ job_compile :: proc(j: ^Job) {
 			} else {
 				l.accepted = true
 				text = string(l.new_body)
-				if j.persist { write_file_atomic(l.path, l.new_body) }
+				if j.persist { _ = host.file_put(j.writer, l.path, l.new_body) }
 			}
 		}
 		enabled := l.lid != 0
@@ -434,10 +434,10 @@ job_compile :: proc(j: ^Job) {
 		// the lists' text in the order the index knows it (the builder's own order)
 		all := strings.builder_make(context.temp_allocator)
 		for s in adblock.builder_sources(&builder) { strings.write_string(&all, s.text) }
-		if write_file_atomic(src_path, transmute([]byte)strings.to_string(all)) && write_file_atomic(strings.concatenate({cache, "/", CACHE_PREFIX, gen, ".bin"}, context.temp_allocator), blob) {
+		if host.file_put(j.writer, src_path, transmute([]byte)strings.to_string(all)) && host.file_put(j.writer, strings.concatenate({cache, "/", CACHE_PREFIX, gen, ".bin"}, context.temp_allocator), blob) {
 			j.src_path = strings.clone(src_path, base.process_allocator())
 			key_write(j, gen, strings.to_string(made_of))
-			cache_cleanup(j.dir, gen)
+			cache_cleanup(j.writer, j.dir, gen)
 		}
 	}
 	adblock.builder_destroy(&builder)

@@ -312,27 +312,7 @@ window_simulate_dpi :: proc(app: ^App, w: ^Browser_Window, dpi: int) {
 }
 
 // The window's state and rectangle as asked (the parts that are not asked for stay): `Browser.setWindowBounds`, and the reset and
-// the checkpoints of remote_state.odin.
-// The state a headless window says it is in. (Each system's window keeps it in a field of its own.)
-@(private = "file")
-window_emulated_state :: proc(w: ^platform.Window, state: string) {
-	when ODIN_OS == .Windows {
-		switch state {
-		case "normal":     w.off_state = .Normal
-		case "minimized":  w.off_state = .Minimized
-		case "maximized":  w.off_state = .Maximized
-		case "fullscreen": w.off_state = .Fullscreen
-		}
-	} else {
-		switch state {
-		case "normal":     w.show = .Normal
-		case "minimized":  w.show = .Minimized
-		case "maximized":  w.show = .Maximized
-		case "fullscreen": w.show = .Fullscreen
-		}
-	}
-}
-
+// the checkpoints of remote_state.odin. (A headless window's state: window_emulated_state, remote_window_*.odin.)
 window_apply :: proc(app: ^App, state: string, has_state: bool, w, h, left, top: int, has_w, has_h, has_l, has_t: bool) {
 	wnd := active_window(app)
 	if platform.is_offscreen(wnd.win) {

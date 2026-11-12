@@ -188,7 +188,8 @@ remote_start :: proc(app: ^App, requested: bool, arg_name: string) {
 	r.active, r.started = true, true
 	r.name = strings.clone(name)
 	r.timer = base.NIL_HANDLE
-	if !remote.write_info(app.profile_dir, name, APP_VERSION) { r.error = strings.clone(i18n.tr("Remote control: cannot write remote.json in the profile")) }
+	// (a failed write is told by the writer, and tried again)
+	host.profile_write(&app.writer, remote.info_path(app.profile_dir), remote.info_text(app.profile_dir, name, APP_VERSION))
 	remote_take_baseline(app)
 }
 
@@ -206,7 +207,7 @@ remote_stop :: proc(app: ^App) {
 	r := &app.remote
 	if r.started {
 		remote.stop()
-		remote.remove_info(app.profile_dir)
+		host.profile_remove(&app.writer, remote.info_path(app.profile_dir))
 	}
 	if r.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, r.timer) }
 	for op in r.ops { op_free(op) }

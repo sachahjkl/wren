@@ -9,6 +9,7 @@ import "../abi"
 import "../api_decl"
 import "wb:base"
 import "wb:url"
+import "wb:urlpattern"
 
 @(private) H :: base.Handle
 @(private) url_h :: #force_inline proc(h: api_decl.URL) -> H { return H(h) }
@@ -194,13 +195,13 @@ URLSearchParams_valueAt :: proc(ctx: ^Host, params: api_decl.URLSearchParams, in
 // URLPattern
 
 @(private)
-pattern_component :: proc(c: api_decl.URLPatternComponent) -> url.Pattern_Component {
-	return url.Pattern_Component(c)
+pattern_component :: proc(c: api_decl.URLPatternComponent) -> urlpattern.Pattern_Component {
+	return urlpattern.Pattern_Component(c)
 }
 
 // A dictionary argument arrives decoded (abi_host.bind walks URLPatternInit's fields): only the behaviour is here.
 URLPattern_create :: proc(ctx: ^Host, d: api_decl.URLPatternInit) -> (api_decl.URLPattern, abi.Api_Error) {
-	init: url.Pattern_Init
+	init: urlpattern.Pattern_Init
 	if d.has_protocol { init.protocol = d.protocol }
 	if d.has_username { init.username = d.username }
 	if d.has_password { init.password = d.password }
@@ -210,7 +211,7 @@ URLPattern_create :: proc(ctx: ^Host, d: api_decl.URLPatternInit) -> (api_decl.U
 	if d.has_search { init.search = d.search }
 	if d.has_hash { init.hash = d.hash }
 	if d.has_base { init.base_url = d.base }
-	pat, ok := url.pattern_create(init, d.ignore_case)
+	pat, ok := urlpattern.pattern_create(init, d.ignore_case)
 	if !ok { return 0, .Type }
 	h, _ := base.pool_insert(&host.patterns, Pattern_Object{pat = pat})
 	return api_decl.URLPattern(h), .None
@@ -219,18 +220,18 @@ URLPattern_create :: proc(ctx: ^Host, d: api_decl.URLPatternInit) -> (api_decl.U
 URLPattern_component :: proc(ctx: ^Host, pattern: api_decl.URLPattern, component: api_decl.URLPatternComponent) -> string {
 	o := pattern_obj(pattern)
 	if o == nil { return "" }
-	return url.pattern_component_string(&o.pat, pattern_component(component))
+	return urlpattern.pattern_component_string(&o.pat, pattern_component(component))
 }
 
 URLPattern_hasRegExpGroups :: proc(ctx: ^Host, pattern: api_decl.URLPattern) -> bool {
 	o := pattern_obj(pattern)
 	if o == nil { return false }
-	return url.pattern_has_regexp_groups(&o.pat)
+	return urlpattern.pattern_has_regexp_groups(&o.pat)
 }
 
 URLPattern_test :: proc(ctx: ^Host, pattern: api_decl.URLPattern, input: string, base_url: Maybe(string)) -> bool {
 	o := pattern_obj(pattern)
 	if o == nil { return false }
-	_, matched := url.pattern_match_url(&o.pat, input, base_url)
+	_, matched := urlpattern.pattern_match_url(&o.pat, input, base_url)
 	return matched
 }

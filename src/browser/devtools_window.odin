@@ -11,9 +11,6 @@ package browser
 import "core:fmt"
 import "core:slice"
 import "core:strings"
-import win "core:sys/windows"
-
-_ :: win.HWND   // (Linux uses nothing of it: the import stays, as -vet counts)
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
@@ -66,24 +63,9 @@ devtools_window_make :: proc(app: ^App) {
 	// is shown: a size of 0 means it was never saved, and the system places it at its default size next to the browser window
 	placed := devtools_window_restore_placement(app, w)
 	if windows_shown(app) {   // (a headless browser shows no window: the panel's is drawn all the same, for wren ctl)
-		platform.show_window(w)
-		when ODIN_OS == .Windows {
-			// above the browser window it came from; a saved placement keeps its own position (SWP_NOMOVE), an unsaved one is left where
-			// the system opened it near the browser window. (The raise-to-top is a Win32 detail; the toolkit places the window elsewhere.)
-			flags := win.SWP_NOSIZE | (placed ? win.UINT(0) : win.SWP_NOMOVE)
-			win.SetWindowPos(w.hwnd, win.HWND_TOP, 0, 0, 0, 0, flags)
-		} else {
-			_ = placed
-		}
+		native_raise(w, placed)   // shell_native_*.odin: above the browser window it came from
 	}
-	if w.size.x <= 0 || w.size.y <= 0 {
-		// (the size comes with the first size event, still to be handled)
-		when ODIN_OS == .Windows {
-			cr: win.RECT
-			win.GetClientRect(w.hwnd, &cr)
-			w.size = {max(int(cr.right - cr.left), 1), max(int(cr.bottom - cr.top), 1)}
-		}
-	}
+	if w.size.x <= 0 || w.size.y <= 0 { native_size_now(w) }   // (the size comes with the first size event, still to be handled)
 	// made where it lives, not returned by value (see render.surface_create: a Surface in a local is a compile-time trap)
 	dw := new(Dev_Window)
 	ok := app.headless || render.surface_init(&app.r, &dw.surf, platform.native_surface_handles(w), w.size, transparent = fixed, fixed_size = fixed_surface_size(app, w))   // (window_chrome.odin)

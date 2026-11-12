@@ -1,7 +1,7 @@
 // web_urlpattern.odin: URLPattern (URL Pattern Standard) on the browser's pattern object (module url). Ported from
 // native/js/runtime/web_urlpattern.c; wjr_* symbols and behaviour identical.
 //
-// The pattern parsing and matching are pure and native (src/url/pattern*.odin); this file is the thin glue that reads a
+// The pattern parsing and matching are pure and native (src/urlpattern/pattern*.odin); this file is the thin glue that reads a
 // URLPatternInput (a USVString or a URLPatternInit dictionary) and assembles the structured URLPatternResult. No logic
 // lives here — it is Web IDL shape only.
 package odin_glue

@@ -14,7 +14,7 @@ import "wb:csp"
 import "wb:fetch"
 import "wb:http"
 import "wb:net"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:url"
 
 // The default block of ports: every address goes through testenv.url.

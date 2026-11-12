@@ -8,8 +8,8 @@ package page
 //   * Sizes are counted in UTF-16 code units of keys and values against storage.local.quota / storage.session.quota.
 //   * localStorage persists in <profile>/storage/, one file per origin. Areas load lazily: a page that connects starts a
 //     background read (storage_prefetch); the first access before it finished reads the file itself. Changes are written
-//     storage.local.write_delay_ms later, from a snapshot, on the blocking pool, atomically (temporary file + rename).
-//     Writes are ordered per file, so an older snapshot finishing late never replaces a newer one.
+//     storage.local.write_delay_ms later, by the profile's writer (host.File_Writer): on the blocking pool, atomically,
+//     one write of a file at a time, so an older snapshot never replaces a newer one.
 //   * A change fires "storage" at the Window of every *other* live page using the same area, from a task of each page.
 
 import "base:runtime"
@@ -44,26 +44,27 @@ Storage_Manager :: struct {
 	dir:         string,                      // "" = localStorage is not persisted
 	loop:        ^host.Loop,
 	blocking:    ^host.Blocking_Pool,
+	writer:      ^host.File_Writer,           // the profile's (nil: written at once, on the calling thread)
 	areas:       map[string]^Storage_Area,
 	write_timer: base.Handle,
-	write_seq:   u64,
-	pending:     int,                         // background writes not finished
 	ready:       bool,
 	idb:         ^Idb_Host,                   // IndexedDB of the profile, made on first use (idb_host.odin)
 	idb_mu:      sync.Mutex,                  // guards the making of idb (a worker's thread may be the first to need it)
 }
 
-// `dir` is the profile directory ("" = memory only). `blocking` may be nil (writes then happen on the loop thread).
-storage_manager_init :: proc(m: ^Storage_Manager, loop: ^host.Loop, blocking: ^host.Blocking_Pool, dir: string) {
-	m.loop, m.blocking = loop, blocking
+// `dir` is the profile directory ("" = memory only). `blocking` may be nil (reads then happen on the loop thread);
+// `writer` nil: the files are written on the calling thread (unit tests, tools).
+storage_manager_init :: proc(m: ^Storage_Manager, loop: ^host.Loop, blocking: ^host.Blocking_Pool, dir: string, writer: ^host.File_Writer = nil) {
+	m.loop, m.blocking, m.writer = loop, blocking, writer
 	m.dir = strings.clone(dir) if dir != "" else ""
 	m.areas = make(map[string]^Storage_Area)
 	m.ready = true
 	if m.dir != "" { _ = os.make_directory_all(storage_dir(m)) }
-	sw_registry_load(m.dir)   // service_worker.odin: the profile's registrations, the loader's hook
+	sw_registry_load(m.dir, writer)   // service_worker.odin: the profile's registrations, the loader's hook
 }
 
-// Writes what is not saved yet (synchronously) and frees everything. Pages using the manager must be closed first.
+// Hands what is not saved yet to the writer (at exit it is closing: written at once) and frees everything. Pages using the
+// manager must be closed first.
 storage_manager_destroy :: proc(m: ^Storage_Manager) {
 	if !m.ready { return }
 	shared_workers_shutdown()   // shared_worker.odin: their host pages use this manager too
@@ -71,9 +72,7 @@ storage_manager_destroy :: proc(m: ^Storage_Manager) {
 	storage_access_reset()   // storage_access.odin: the session's grants
 	mse_tokens_shutdown()    // mse_worker.odin: MediaSourceHandles of messages never received
 	offscreen_tokens_shutdown()   // canvas_offscreen.odin: OffscreenCanvases of messages never received
-	// a background write still queued may never run (the blocking pool drops what it has not started when it stops):
-	// every area it could be writing is written again here, the commit gate keeps the newest
-	storage_flush(m, sync_write = true, all = m.pending > 0)
+	storage_flush(m)
 	idb_host_destroy(m)
 	buckets_destroy()
 	if m.write_timer != base.NIL_HANDLE { host.clear_timer(m.loop, m.write_timer) }
@@ -83,13 +82,13 @@ storage_manager_destroy :: proc(m: ^Storage_Manager) {
 	m^ = {}
 }
 
-// Writes every dirty localStorage area now (on the blocking pool unless `sync_write`; every one with `all`).
-storage_flush :: proc(m: ^Storage_Manager, sync_write := false, all := false) {
+// Hands every dirty localStorage area to the writer now.
+storage_flush :: proc(m: ^Storage_Manager) {
 	if m.dir == "" { return }
 	for _, a in m.areas {
-		if a.kind != .Local || !(a.dirty || (all && a.state == .Loaded)) { continue }
+		if a.kind != .Local || !a.dirty { continue }
 		a.dirty = false
-		area_write(m, a, sync_write)
+		area_write(m, a)
 	}
 }
 
@@ -223,91 +222,14 @@ area_clear :: proc(a: ^Storage_Area) {
 }
 
 ////////////////////////////////
-// Writing: per-file ordering across threads
+// Writing: through the profile's writer (host.Profile_File: one write of a file at a time, the newest text wins)
 
+// The area's file is to hold what the area holds now. Loop thread. The area stays in memory while its write is out: a
+// page reads it there, never the file being written.
 @(private)
-Commit_Gate :: struct {
-	mu:   sync.Mutex,
-	// file -> sequence number of the newest snapshot on disk, while a write of the file is under way (an entry goes with
-	// the last of them: no older snapshot is left to land, and the map never outgrows the writes in flight)
-	last: map[string]Gate_Entry,
-}
-
-@(private)
-Gate_Entry :: struct {
-	seq:     u64,
-	pending: int,   // writes of the file queued or running (gate_enter .. storage_commit)
-}
-
-@(private)
-commit_gate: Commit_Gate
-
-// A write of `path` is queued: its entry stays until the write has run (storage_commit). Any thread.
-@(private)
-gate_enter :: proc(path: string) {
-	sync.mutex_lock(&commit_gate.mu)
-	defer sync.mutex_unlock(&commit_gate.mu)
-	if commit_gate.last == nil { commit_gate.last = make(map[string]Gate_Entry, base.process_allocator()) }
-	if e, ok := &commit_gate.last[path]; ok { e.pending += 1; return }
-	commit_gate.last[strings.clone(path, base.process_allocator())] = Gate_Entry{pending = 1}
-}
-
-// Writes `data` to `path` atomically unless a newer snapshot (higher `seq`) already landed. Any thread; after gate_enter.
-@(private)
-storage_commit :: proc(path: string, data: []byte, seq: u64) -> (ok: bool) {
-	sync.mutex_lock(&commit_gate.mu)
-	defer sync.mutex_unlock(&commit_gate.mu)
-	e, entered := &commit_gate.last[path]
-	assert(entered, "storage_commit without gate_enter")
-	defer {
-		e.pending -= 1
-		if e.pending <= 0 {
-			key, _ := delete_key(&commit_gate.last, path)
-			delete(key, base.process_allocator())
-			if len(commit_gate.last) == 0 { delete(commit_gate.last); commit_gate.last = nil }
-		}
-	}
-	if e.seq >= seq { return true }
-	if !base.file_write_atomic(path, data) { return false }
-	e.seq = seq
-	return true
-}
-@(private)
-Write_Job :: struct {
-	path: string,
-	data: []byte,
-	seq:  u64,
-	m:    ^Storage_Manager,   // nil for a synchronous write
-}
-
-@(private)
-area_write :: proc(m: ^Storage_Manager, a: ^Storage_Area, sync_write: bool) {
-	m.write_seq += 1
-	job := new(Write_Job, base.process_allocator())
-	job.path = strings.clone(area_path(m, a.origin), base.process_allocator())
-	job.data = area_serialize(a, base.process_allocator())
-	job.seq = m.write_seq
-	gate_enter(job.path)
-	work :: proc(data: rawptr) {
-		j := (^Write_Job)(data)
-		context.allocator = base.process_allocator()
-		storage_commit(j.path, j.data, j.seq)
-	}
-	done :: proc(data: rawptr) {
-		j := (^Write_Job)(data)
-		if j.m != nil && j.m.ready { j.m.pending -= 1 }
-		delete(j.path, base.process_allocator())
-		delete(j.data, base.process_allocator())
-		free(j, base.process_allocator())
-	}
-	if sync_write || m.blocking == nil {
-		work(job)
-		done(job)
-		return
-	}
-	job.m = m
-	m.pending += 1
-	host.run_blocking(m.blocking, work, done, job)
+area_write :: proc(m: ^Storage_Manager, a: ^Storage_Area) {
+	if m.dir == "" { return }   // (memory only)
+	host.profile_write(m.writer, area_path(m, a.origin), string(area_serialize(a, context.temp_allocator)))
 }
 
 @(private)
@@ -506,7 +428,8 @@ storage_page_closed :: proc(p: ^Page) {
 	if p.worker != nil || m == nil || !m.ready || p.env.origin.opaque { return }
 	origin := storage_origin_key(p)
 	a, ok := m.areas[origin]
-	if !ok || a.dirty || a.state != .Loaded || m.pending > 0 { return }   // a write in flight: the file may be older than memory
+	if !ok || a.dirty || a.state != .Loaded { return }
+	if m.dir != "" && host.profile_pending(m.writer, area_path(m, origin)) { return }   // a write in flight: the file is older than memory
 	for q in live_page_list() {
 		if q != p && q.web.embedder.storage == m && !q.env.origin.opaque && url.same_origin(q.env.origin, p.env.origin) && storage_origin_key(q) == origin { return }
 	}

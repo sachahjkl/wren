@@ -10,9 +10,6 @@ import "core:os"
 import "core:strings"
 import "core:sync"
 import "core:time"
-import win "core:sys/windows"
-
-_ :: win.HWND   // (Linux uses nothing of it: the import stays, as -vet counts)
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
@@ -38,7 +35,7 @@ import "wb:wasm"
 
 // How much of a text resource a tab shows in its <pre>.
 SHOW_TEXT_MAX_BYTES :: 1 << 20
-import "wb:tools/crashtrace"   // a crash leaves its symbolized stack and a minidump in <profile>\crashes
+import "wb:crashtrace"   // a crash leaves its symbolized stack and a minidump in <profile>\crashes
 
 DEBUG_INPUT :: #config(DEBUG_INPUT, false)
 
@@ -160,6 +157,7 @@ App :: struct {
 	loop:     host.Loop,
 	client:   net.Client,
 	blocking: host.Blocking_Pool,
+	writer:   host.File_Writer,   // every file of the profile, the shell's and the pages' (profile_writes.odin)
 	dialogs:  host.Dialogs,       // the system's modal dialogs, a thread each (a person answers them: no work of the blocking pool)
 	prefs:    config.Prefs,   // every tunable of the browser (about:config)
 	cfg:      Settings,       // the shell's own, derived from prefs
@@ -244,8 +242,7 @@ App :: struct {
 	dl_picking:    bool,                     // download.odin: the folder dialog of the downloads page is open
 	drag_probe_moves: i32,                   // drag_probe.odin: the pointer moves of the frame whose events were just read
 	inject_held:   platform.Mouse_Buttons,   // remote_methods.odin: the buttons a remote client holds
-	cmd_hwnd:      win.HWND,                 // app_commands_windows.odin: the window the system's app commands reach
-	drop_hwnd:     win.HWND,                 // local_paths_windows.odin: the window files are dropped on
+	native:        Native_Hooks,             // shell_native_*.odin: the system's windows the shell hooked (app commands, dropped files)
 	pages:         page.Pages,               // what the App's pages share (page/pages.odin), bound to its loop's thread and its page thread
 	// what the painting reads (preferences read once and on change, the frame's state)
 	compositor_settings: Compositor_Settings,   // compositor.odin
@@ -1378,10 +1375,10 @@ profile_load :: proc(app: ^App) {
 // (at exit) everything is written before it returns.
 profile_save :: proc(app: ^App, force := false) {
 	c, h, pf := profile_paths(app)
+	if force { profile_files_flush(app) }   // (first: what follows is written on this thread, after what waited)
 	profile_prefs_save(app, pf)   // profile_writes.odin (when the user's layer changed)
 	session_save(app, force)   // session.odin (when it changed)
 	profile_stores_save(app, c, h, force)   // the cookies and the HSTS hosts
-	if force { profile_files_flush(app) }
 }
 
 autosave :: proc(data: rawptr) {
@@ -1844,7 +1841,7 @@ app_start :: proc(args: []string) -> ^App {
 	fetch.loader_init(&app.loader, &app.loop, &app.client, &app.blocking, &app.profile)
 	blocker_start(app)   // blocker_shell.odin: the content blocker listens to the loader from here on
 	host.phase("storage")
-	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "")
+	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "", &app.writer)
 	app.page_settings = page.settings_from_prefs(&app.prefs)
 	app.page_settings.internal_address = is_builtin_href
 	host.phase("script runtime")
@@ -1975,11 +1972,8 @@ app_turn :: proc(app: ^App) -> bool {
 // `process_ends`: the process ends right after this.
 app_stop :: proc(app: ^App, process_ends := false) {
 	profile_dir := strings.clone(app.profile_dir, context.temp_allocator)
-	// closed means gone from the screen at once, whatever the teardown below takes. Hiding the window first is a Win32
-	// detail (the compositor removes a destroyed window at once elsewhere); a headless window has no surface anyway.
-	when ODIN_OS == .Windows {
-		for w in app.windows { if w.win.hwnd != nil { win.ShowWindow(w.win.hwnd, win.SW_HIDE) } }
-	}
+	// closed means gone from the screen at once, whatever the teardown below takes (a headless window has no surface anyway)
+	native_hide_all(app)   // shell_native_*.odin
 	windows_shutdown_begin(app)   // windows.odin: the other windows give up their own state
 	host.shutdown_begin(strings.concatenate({app.profile_dir, "/shutdown.log"}, context.temp_allocator), int(config.int_of(&app.prefs, "browser.shell.shutdown_warn_ms")), int(config.int_of(&app.prefs, "browser.shell.shutdown_force_ms")))   // shutdown.odin (host): names what the teardown waits for
 	host.shutdown_step("remote_stop")

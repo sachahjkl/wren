@@ -4,18 +4,16 @@ import "core:fmt"
 import "core:strings"
 import "wb:base"
 
-// The browser's imports for an Odin guest (freestanding_wasm32, memory 0 32-bit): the exact Odin counterpart of
-// wren_api.h (emit_c.odin), for the day the JavaScript engine itself is Odin and links against the host over the same
-// Wasm ABI. Unlike the guest SDK (emit_guest.odin), this is the raw ABI, one foreign declaration per import, so engine
-// code written by hand (agent spk's wj layer) marshals the same way the generated C trampolines do:
+// The browser's imports for the JavaScript engine (Odin, freestanding_wasm32, memory 0 32-bit), which links against the
+// host over the Wasm ABI. Unlike the guest SDK (emit_guest.odin), this is the raw ABI, one foreign declaration per
+// import, so the engine's hand-written code (the wj layer) marshals the same way the generated trampolines do:
 //   * a handle is a distinct u64 (0 = null), a bool an i32, an enum or flags its base type, a callback a #type proc
 //     the Wasm table index stands for (the engine passes the table index as an i32);
 //   * a string or bytes argument is (ptr: [^]u8, len: u32); an absent optional one has len = WR_ABSENT (max(u32));
 //   * a string result is copied to (buf: [^]u8, cap: u32) and the result is its full length (negative: an Error);
 //   * a function that raises returns its status (0 or a negative wr_Error) and writes its result through `_ret`.
-// Structs keep the layout the host reads and writes (natural alignment): #packed is wrong, the host uses C alignment,
-// so each struct is laid out field by field exactly as emit_c.odin's `typedef struct`. Odin's default struct layout of
-// these scalar fields matches C here (no field is larger than 8 bytes, every field naturally aligned), so a plain
+// Structs keep the layout the host reads and writes (natural alignment): #packed is wrong, the host uses C alignment.
+// Odin's default struct layout of these scalar fields matches C here (no field is larger than 8 bytes, every field naturally aligned), so a plain
 // struct is used; the comment records the expectation.
 
 // The import module of a module's functions is the module name (the guest SDK uses the same: foreign import ... "<m>").

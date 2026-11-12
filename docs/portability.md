@@ -15,6 +15,16 @@ by their suffix: `*_windows.odin`, `*_linux.odin`, `*_unix.odin` (`#+build linux
 `*_other.odin` (`#+build !windows` and, on a second line, `#+build !linux` when both are excluded). A test that only
 makes sense on one system is `*_test_windows.odin` (not `*_windows_test.odin`: the suffix must end the name).
 
+Rules that `test_all` checks (`src/tools/test_all/lint_layers.odin`), in `src` and `native/js` but not in `src/tools`:
+
+- Only a `*_windows.odin` file imports `core:sys/windows`. A neutral file that imports it compiles on Linux only until
+  someone calls what it declares. Put the Win32 call behind a procedure of the package, with the same name in an
+  `*_other.odin` file (for example `src/browser/shell_native_windows.odin`, `prof_windows.odin`).
+- A neutral struct holds no Win32 type. Declare the fields in a struct of the `*_windows.odin` file and an empty struct
+  of the same name in the `*_other.odin` file (`browser.Native_Hooks`, the field `App.native`).
+- The product does not import `wb:tools/*`. Crash reports (`src/crashtrace`), the stacks of another process
+  (`src/stacks`) and the test environment (`src/testenv`) are packages of `src` that the tools import.
+
 Shared building blocks, use them rather than a new copy:
 
 | Need | Where |
@@ -30,7 +40,7 @@ Shared building blocks, use them rather than a new copy:
 | A file: path from a URL, its separator, the tree check | `fetch.file_path_from_url`, `fetch.FILE_SEP_STR`, `fetch.path_within` (POSIX paths off Windows) |
 | A Unix socket of this user's only | `remote.socket_dir`, `remote.unix_connect` |
 | Starting, telling again and ending a child process | `remote/client`: `process_start`, `identity_of`, `same_process`, `process_wait`, `process_kill` |
-| Crash reports | `crashtrace` (`crashtrace_linux.odin`: signals, backtrace, build id; `wrentool crash-symbolize`) |
+| Crash reports | `src/crashtrace` (`crashtrace_linux.odin`: signals, backtrace, build id; `wrentool crash-symbolize`) |
 
 The Wasmtime archive for Linux is sealed by `wrentool fetch wasmtime` (one relocatable object, only the C API's symbols
 global): it carries its own copy of Rust's standard library, as `libwren_native.a` does, and GNU ld stops on the symbols
@@ -357,3 +367,19 @@ linked it: a browser that ran no script (the CI's Linux sweep too). `./build.sh 
 - The `web_*` scenarios (`#+build windows`): their harness is Windows's.
 - Measures: live pages from a datacenter on a software adapter say where time goes (spans), not how fast a desktop is; the replay
   recordings are on the Windows machine.
+
+## Layering (2026-11-12): finding 7 of the organisation review
+
+- `src/browser` has no neutral file that imports `core:sys/windows`. The Win32 window details (hide on close, the size
+  before the first size event, the raise of the developer tools' window) are in `shell_native_windows.odin`; the
+  profiler's clock, sampler and symbols are in `prof_windows.odin`; the console launcher, the update platform and the
+  state of a headless window are in `*_windows.odin` files. Each has an `*_other.odin` counterpart.
+- `App` holds no Win32 type: `App.native` is a `Native_Hooks`, declared in `shell_native_windows.odin` and empty in
+  `shell_native_other.odin`.
+- `crashtrace`, `stacks` and `testenv` moved from `src/tools` to `src`: the browser, `remote/api` and the unit tests
+  of `js`, `page` and `wasm` imported them.
+- `URLPattern` moved from `src/url` to `src/urlpattern`. `url` does not import `wb:engine/regexp` and
+  `wb:engine/unicode` now, so `cookies`, `csp` and `webauthn` do not link them.
+- The judge (`src/engine/jsrt/judge`) keeps its Win32 calls in `fuzz_crash_windows.odin` and `capi_arena_windows.odin`.
+  Off Windows, `judge capi` cannot reserve its arena below 4 GiB yet.
+- `src/tools/test_all/lint_layers.odin` keeps these rules (see "How a package is made portable").

@@ -90,23 +90,23 @@ drop_files_platform_init :: proc(app: ^App) {
 	hwnd := active_window(app).win.hwnd
 	if hwnd == nil { return }
 	win.SetWindowSubclass(hwnd, drop_subclass, DROP_SUBCLASS_ID, win.DWORD_PTR(uintptr(app)))   // (the subclass's data: the App the files go to)   // (core:sys/windows declares it without its result)
-	app.drop_hwnd = hwnd
+	app.native.drop_hwnd = hwnd
 	// an elevated browser still takes drops from Explorer (UIPI lets these three messages through). Only an elevated one: a normal
 	// browser keeps the default, which refuses them from processes of a lower integrity (a sandbox would otherwise open any path)
 	if instance.is_elevated() { for m in ([]win.UINT{win.WM_DROPFILES, win.WM_COPYDATA, WM_COPYGLOBALDATA}) { ChangeWindowMessageFilterEx(hwnd, m, MSGFLT_ALLOW, nil) } }
 }
 
 drop_files_platform_destroy :: proc(app: ^App) {
-	if app.drop_hwnd == nil { return }
-	win.DragAcceptFiles(app.drop_hwnd, false)
-	RemoveWindowSubclass(app.drop_hwnd, drop_subclass, DROP_SUBCLASS_ID)
-	app.drop_hwnd = nil
+	if app.native.drop_hwnd == nil { return }
+	win.DragAcceptFiles(app.native.drop_hwnd, false)
+	RemoveWindowSubclass(app.native.drop_hwnd, drop_subclass, DROP_SUBCLASS_ID)
+	app.native.drop_hwnd = nil
 }
 
 // Whether the shell asks the window for WM_DROPFILES: only when the toolkit drop target is off (an elevated browser) and
 // the preference allows it. Called by drop_files_apply (local_paths.odin) on start-up and when the preference changes.
 drop_files_platform_apply :: proc(app: ^App) {
-	if app.drop_hwnd != nil { win.DragAcceptFiles(app.drop_hwnd, win.BOOL(config.bool_of(&app.prefs, "browser.drop.open_files") && !platform.drop_target_enabled(active_window(app).win))) }
+	if app.native.drop_hwnd != nil { win.DragAcceptFiles(app.native.drop_hwnd, win.BOOL(config.bool_of(&app.prefs, "browser.drop.open_files") && !platform.drop_target_enabled(active_window(app).win))) }
 }
 
 @(private = "file")

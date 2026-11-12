@@ -7,7 +7,7 @@
   inputs; `-NoCache` runs everything). CI runs the same suite with `-CI` on `windows-2025` ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
   While you work: `-Changed`, `-Only <pattern>`, `-Failed`. How the tests run and how to go fast: [docs/testing.md](docs/testing.md).
 - Several runs at once on one machine (worktrees) are fine: `test_all` takes no lock. Each test program starts the test
-  server in its own process, on a block of ports of its own, derived from the worktree's path ([docs/testing.md](docs/testing.md#the-test-server)); an Odin program that needs one calls `testserver.start()` (`wb:testserver`, `src/tools/testenv`, guests: `examples/testports`), and steps run `-Jobs` at a time. Write test addresses with the default ports
+  server in its own process, on a block of ports of its own, derived from the worktree's path ([docs/testing.md](docs/testing.md#the-test-server)); an Odin program that needs one calls `testserver.start()` (`wb:testserver`, `src/testenv`, guests: `examples/testports`), and steps run `-Jobs` at a time. Write test addresses with the default ports
   (`testenv.url("http://127.0.0.1:8765/x")`): they move with the block. Anything with a window runs on the desktop of its own
   that `src/tools/test_all` makes, or through `wrentool desktop <program> [arguments]`, so it takes no focus and no input from the person at the
   machine. No tool holds a lock: a measure (`wrentool bench ...`) is made on a machine nothing else loads.

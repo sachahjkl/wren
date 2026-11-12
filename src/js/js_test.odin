@@ -10,7 +10,7 @@ import "core:path/filepath"
 import "core:testing"
 import "core:time"
 import "wb:base"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:wasm"
 
 @(test)

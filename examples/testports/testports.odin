@@ -1,5 +1,5 @@
 // For the guests of the end-to-end tests (import "../testports"): the test server's block of ports moves as a whole
-// (tools/testserver/ports.go, src/tools/testenv): the guests keep writing the default ports (http://127.0.0.1:8765/,
+// (tools/testserver/ports.go, src/testenv): the guests keep writing the default ports (http://127.0.0.1:8765/,
 // https 8766, the second origin 8767) and pass those addresses through url(), which moves them by the distance of this
 // document's port from 8765. A document that is not on the test server's block (file:, another host, no port) moves
 // nothing.

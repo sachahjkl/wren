@@ -128,6 +128,15 @@
       native.connect(id, name);
       return port;
     }),
+    // tabs.connect(tabId, [connectInfo]): a port to the content scripts of the extension in that tab
+    "tabs.connect": value(function (tabId, ci) {
+      const o = (typeof ci === "object" && ci !== null) ? ci : {};
+      const id = newPortId();
+      const name = o.name === undefined ? "" : String(o.name);
+      const port = new Port(id, name, undefined);
+      native.connectTab(id, name, Number(tabId), o.frameId === undefined ? -1 : Number(o.frameId));
+      return port;
+    }),
     "i18n.getMessage": value((name, subs) => {
       const list = subs === undefined || subs === null ? [] : (Array.isArray(subs) ? subs : [subs]);
       return native.message(String(name), JSON.stringify(list.slice(0, 9).map(String)));
@@ -161,7 +170,17 @@
     if (!promiseOnly && typeof a[1] === "function") args.push(a[1]);
     return invoke("action.setIcon", args);
   }
-  const SPECIAL = { "runtime.sendMessage": sendMessage, "action.setIcon": setIcon };
+  // A function has no JSON form: the browser gets its source, and calls it in the target's world with the arguments.
+  function executeScript(promiseOnly, a) {
+    const d = Object.assign({}, a[0]);
+    const f = d.func !== undefined ? d.func : d.function;
+    delete d.function;
+    if (typeof f === "function") d.func = Function.prototype.toString.call(f);
+    const args = [d];
+    if (!promiseOnly && typeof a[1] === "function") args.push(a[1]);
+    return invoke("scripting.executeScript", args);
+  }
+  const SPECIAL = { "runtime.sendMessage": sendMessage, "action.setIcon": setIcon, "scripting.executeScript": executeScript };
 
   // The namespaces: an object per dotted path, a method per listed method, an event per listed event, the constants of
   // each namespace that exists. `promiseOnly`: browser.* of the Firefox flavour (a function argument is data there).
@@ -210,6 +229,20 @@
   Object.defineProperty(global, "chrome", { value: chrome, writable: true, configurable: true, enumerable: false });
   if (info.flavour === "firefox") {
     Object.defineProperty(global, "browser", { value: build(true), writable: true, configurable: true, enumerable: false });
+  }
+  // A content script's world: the browser wraps a scripting.executeScript function so that its value (a promise's, once
+  // settled) comes back through this, as the answer to the call `id` (src/page/ext_scripting.odin). Only this world's
+  // scripts see it: the page's realm is another engine.
+  if (info.kind === "content") {
+    Object.defineProperty(global, Symbol.for("wren.extensions.done"), {
+      value: (id, v, failed) => {
+        let t = "null";
+        if (failed) report(v);
+        else { try { t = v === undefined ? "null" : encode(v); } catch (e) { report(e); } }
+        native.respond(id, t, true);
+      },
+      writable: false, configurable: false, enumerable: false,
+    });
   }
 
   // runtime.onMessage: the first listener that answers (sendResponse, `return true` then sendResponse, or a promise)

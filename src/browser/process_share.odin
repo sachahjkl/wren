@@ -5,7 +5,7 @@ import "wb:host"
 import js_code "wb:js/image/code"
 import "wb:page"
 import "wb:wasm"
-import "wb:tools/crashtrace"
+import "wb:crashtrace"
 
 // What the Apps of a process share (docs/architecture.md, Where state lives): the Wasm engine and its host functions, the bytecode cache,
 // the image decoders, the layout threads, the decoded web fonts (page.process_shutdown), the crash session. The first App to start sets it

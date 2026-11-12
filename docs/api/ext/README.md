@@ -26,10 +26,12 @@ the constants of `chrome.*` and the conformance cases (`src/page/ext_api_generat
 | [offscreen](offscreen.md) | permission `offscreen`; contexts: Background, Popup, Tab | 3 | 0 |
 | [permissions](permissions.md) | no permission; contexts: Background, Popup, Tab | 4 | 2 |
 | [runtime](runtime.md) | no permission; contexts: Background, Popup, Tab, Offscreen | 9 | 7 |
+| [scripting](scripting.md) | permission `scripting`; contexts: Background, Popup, Tab | 7 | 0 |
 | [storage](storage.md) | permission `storage`; contexts: Background, Popup, Tab, Content | 0 | 1 |
 | [storage.local](storage.local.md) | permission `storage`; contexts: Background, Popup, Tab, Content | 6 | 1 |
 | [storage.sync](storage.sync.md) | permission `storage`; contexts: Background, Popup, Tab, Content | 6 | 1 |
 | [storage.session](storage.session.md) | permission `storage`; contexts: Background, Popup, Tab | 7 | 1 |
 | [storage.managed](storage.managed.md) | permission `storage`; contexts: Background, Popup, Tab, Content | 2 | 1 |
-| [tabs](tabs.md) | no permission; contexts: Background, Popup, Tab | 6 | 9 |
+| [tabs](tabs.md) | no permission; contexts: Background, Popup, Tab | 8 | 9 |
+| [webNavigation](webNavigation.md) | permission `webNavigation`; contexts: Background, Popup, Tab | 2 | 9 |
 | [windows](windows.md) | no permission; contexts: Background, Popup, Tab | 7 | 4 |

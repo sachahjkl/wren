@@ -15,7 +15,7 @@ import "wb:fetch"
 import "wb:host"
 import "wb:net"
 import "wb:page"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:wasm"
 
 GUEST :: "build/webapitest.wasm"

@@ -23,6 +23,7 @@ import "core:strings"
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:config"
+import "wb:host"
 import "wb:i18n"
 import "wb:page"
 
@@ -238,5 +239,5 @@ notifications_save :: proc(app: ^App) {
 	strings.write_string(&b, NOTIFICATIONS_HEADER)
 	strings.write_byte(&b, '\n')
 	for origin, granted in app.notes.decided { fmt.sbprintf(&b, "%s\t%s\n", origin, granted ? "granted" : "denied") }
-	_ = os.write_entire_file(path, transmute([]byte)strings.to_string(b))
+	host.profile_write(&app.writer, path, strings.to_string(b))
 }

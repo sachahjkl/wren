@@ -63,7 +63,7 @@ Global_History :: struct {
 	saving:     bool,             // a write is out on the blocking pool
 	unreadable: bool,             // the file is not a history file: never overwritten
 	timer:      base.Handle,      // the next write (after the delay, or after a failure)
-	health:     Write_Health,
+	health:     host.Write_Health,
 }
 
 now_ms :: proc() -> i64 { return time.time_to_unix_nano(time.now()) / 1e6 }
@@ -352,26 +352,13 @@ history_snapshot :: proc(visits: []Visit) -> (snap: []Visit, block: []u8) {
 @(private = "file")
 history_write_work :: proc(data: rawptr) {
 	j := (^Save_Job)(data)
+	w := &j.app.writer
 	if j.compact {
-		j.ok = base.file_write_atomic(j.path, transmute([]byte)history_serialize(j.snapshot), flush = true)
+		j.ok = host.file_put(w, j.path, transmute([]byte)history_serialize(j.snapshot), flush = true)
 		return
 	}
-	j.ok = history_append(j.path, j.text)
-}
-
-// Appends to a file that exists (it has its header: a file gone meanwhile fails, and the retry writes it whole).
-@(private = "file")
-history_append :: proc(path, text: string) -> bool {
-	f, err := os.open(path, {.Write, .Append})
-	if err != nil { return false }
-	defer os.close(f)
-	data := transmute([]byte)text
-	for len(data) > 0 {
-		n, werr := os.write(f, data)
-		if werr != nil || n <= 0 { return false }
-		data = data[n:]
-	}
-	return os.sync(f) == nil
+	// (to a file that exists, with its header: a file gone meanwhile fails, and the retry writes it whole)
+	j.ok = host.file_append(w, j.path, transmute([]byte)j.text)
 }
 
 @(private = "file")
@@ -414,7 +401,7 @@ history_write_done :: proc(data: rawptr) {
 	host.quiet_note(&app.loop)
 	h.saving = false
 	ok := j.ok
-	retry := profile_write_report(&h.health, h.path, ok, tell = profile_can_tell(app))
+	retry := host.file_write_report(&app.writer, &h.health, h.path, ok)
 	if ok {
 		h.file_lines = j.compact ? j.lines : h.file_lines + j.lines
 	} else {
@@ -426,7 +413,7 @@ history_write_done :: proc(data: rawptr) {
 	history_schedule(app)
 }
 
-// At exit: what is not written yet is written now, on this thread.
+// At exit, after profile_files_flush: what is not written yet is written now, on this thread.
 global_history_shutdown :: proc(app: ^App) {
 	h := &app.ghist
 	for _ in 0 ..< 50 {
@@ -436,13 +423,14 @@ global_history_shutdown :: proc(app: ^App) {
 	if h.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, h.timer); h.timer = base.NIL_HANDLE }
 	if h.path != "" && !h.unreadable && !h.saving && (h.compact || h.log_lines > 0) {
 		ok: bool
+		w := &app.writer
 		if h.compact || history_needs_compaction(h.file_lines + h.log_lines, len(h.visits)) {
-			ok = base.file_write_atomic(h.path, transmute([]byte)history_serialize(h.visits[:]), flush = true)
+			ok = host.file_put(w, h.path, transmute([]byte)history_serialize(h.visits[:]), flush = true)
 		} else {
-			ok = history_append(h.path, strings.to_string(h.log))
-			if !ok { ok = base.file_write_atomic(h.path, transmute([]byte)history_serialize(h.visits[:]), flush = true) }
+			ok = host.file_append(w, h.path, transmute([]byte)strings.to_string(h.log))
+			if !ok { ok = host.file_put(w, h.path, transmute([]byte)history_serialize(h.visits[:]), flush = true) }
 		}
-		profile_write_report(&h.health, h.path, ok, tell = false)
+		host.file_write_report(w, &h.health, h.path, ok, tell = false)
 	}
 	visits_destroy(&h.visits)
 	strings.builder_destroy(&h.log)

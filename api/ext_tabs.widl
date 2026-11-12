@@ -75,6 +75,16 @@ namespace tabs {
     i64 windowId;
     bool isWindowClosing;
   }
+  struct MessageSendOptions {
+    /// One frame only (0: the top document).
+    optional i64 frameId;
+    optional string documentId;
+  }
+  struct TabConnectInfo {
+    optional string name;
+    optional i64 frameId;
+    optional string documentId;
+  }
 
   Tab[] query(optional QueryInfo queryInfo);
   Tab get(i64 tabId);
@@ -84,6 +94,12 @@ namespace tabs {
   /// No tabId: the selected tab of the current window.
   Tab update(optional i64 tabId, UpdateProperties updateProperties);
   void remove(TabIds tabIds);
+  /// To the content scripts of the extension in the tab (one frame with frameId) that listen to runtime.onMessage. The
+  /// first answer wins; with none, "Could not establish connection. Receiving end does not exist.".
+  any sendMessage(i64 tabId, any message, optional MessageSendOptions options);
+  /// A port to the content scripts of the extension in the tab (one frame with frameId) that listen to
+  /// runtime.onConnect.
+  [Local] Port connect(i64 tabId, optional TabConnectInfo connectInfo);
 
   event onActivated(ActiveInfo activeInfo);
   /// "loading" at the request, "complete" at the document's load event.

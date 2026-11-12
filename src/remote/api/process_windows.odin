@@ -8,7 +8,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import win "core:sys/windows"
-import "wb:tools/stacks"
+import "wb:stacks"
 
 foreign import kernel32 "system:Kernel32.lib"
 
@@ -65,7 +65,7 @@ wait_process_exit :: proc(pid: int, ms: int) -> (code: int, ended: bool) {
 	return int(c), true
 }
 
-// What process `pid` is doing, thread by thread (the frames named by its PDB; wb:tools/stacks), for a process that hangs. `minidump`: also
+// What process `pid` is doing, thread by thread (the frames named by its PDB; wb:stacks), for a process that hangs. `minidump`: also
 // a dump in that file. ok false: it cannot be read, and `text` says why.
 process_stacks :: proc(pid: int, minidump := "") -> (text: string, ok: bool) { return stacks.process_text(pid, minidump) }
 

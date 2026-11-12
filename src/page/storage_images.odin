@@ -46,11 +46,10 @@ storage_local_images :: proc(m: ^Storage_Manager, allocator := context.allocator
 }
 
 // Every origin's localStorage becomes `images` (what storage_local_images returned). Pages must be closed: the open areas are
-// dropped, and read again from the files when a page asks. Without a profile folder the areas are made from the images.
+// dropped. The new areas are made in memory from the images, and an origin that held something and has no image gets an
+// empty one; with a profile folder each is handed to the writer, and a page reads it from memory, never a file being written.
 storage_restore_local :: proc(m: ^Storage_Manager, images: []Storage_Image) {
 	if m == nil || !m.ready { return }
-	// the origins that hold something now get an empty file first; the images are written after it (the commit gate keeps the
-	// newest write of a file, so a background write that was still queued cannot land over these)
 	keys := make(map[string]bool, allocator = context.temp_allocator)
 	for _, a in m.areas { if a.kind == .Local { keys[strings.clone(a.origin, context.temp_allocator)] = true } }
 	if m.dir != "" {
@@ -65,23 +64,17 @@ storage_restore_local :: proc(m: ^Storage_Manager, images: []Storage_Image) {
 		delete_key(&m.areas, id)
 		area_free(a)
 	}
-	if m.dir != "" {
-		empty := EMPTY_LOCAL_IMAGE
-		for k in keys { commit_local(m, k, transmute([]byte)empty) }
-		for i in images { commit_local(m, i.key, i.data) }
-		return
-	}
 	for i in images {
 		a := area_new(m, i.key, i.key, .Local)
 		area_parse(a, i.data)
 		a.state = .Loaded
+		if m.dir != "" { area_write(m, a) }
 	}
-}
-
-@(private)
-commit_local :: proc(m: ^Storage_Manager, key: string, data: []byte) {
-	path := area_path(m, key)
-	m.write_seq += 1
-	gate_enter(path)
-	storage_commit(path, data, m.write_seq)
+	if m.dir == "" { return }
+	for k in keys {
+		if _, made := m.areas[k]; made { continue }
+		a := area_new(m, k, k, .Local)
+		a.state = .Loaded
+		area_write(m, a)
+	}
 }

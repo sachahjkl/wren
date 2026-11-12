@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Crash reports and the symbols of a build · Wren docs</title>
-<meta name="description" content="Crash reports and the symbols of a build When Wren crashes, src/tools/crashtrace writes &lt;profile&gt;\crashes\crash &lt;date&gt; &lt;time&gt;.txt (the faulting thread's stack) and a mini">
+<meta name="description" content="Crash reports and the symbols of a build When Wren crashes, src/crashtrace writes &lt;profile&gt;\crashes\crash &lt;date&gt; &lt;time&gt;.txt (the faulting thread's stack) and a minidump b">
 <link rel="icon" type="image/png" sizes="32x32" href="../../img/logo-32.png">
 <link rel="stylesheet" href="../../style.css">
 <link rel="stylesheet" href="../../docs/docs.css">
@@ -117,12 +117,14 @@
 <li><a href="../../docs/api/ext/offscreen/">chrome.offscreen</a></li>
 <li><a href="../../docs/api/ext/permissions/">chrome.permissions</a></li>
 <li><a href="../../docs/api/ext/runtime/">chrome.runtime</a></li>
+<li><a href="../../docs/api/ext/scripting/">chrome.scripting</a></li>
 <li><a href="../../docs/api/ext/storage.local/">chrome.storage.local</a></li>
 <li><a href="../../docs/api/ext/storage.managed/">chrome.storage.managed</a></li>
 <li><a href="../../docs/api/ext/storage/">chrome.storage</a></li>
 <li><a href="../../docs/api/ext/storage.session/">chrome.storage.session</a></li>
 <li><a href="../../docs/api/ext/storage.sync/">chrome.storage.sync</a></li>
 <li><a href="../../docs/api/ext/tabs/">chrome.tabs</a></li>
+<li><a href="../../docs/api/ext/webNavigation/">chrome.webNavigation</a></li>
 <li><a href="../../docs/api/ext/windows/">chrome.windows</a></li>
 <li><a href="../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../docs/api/fontface/">Module fontface</a></li>
@@ -254,7 +256,7 @@
 <li><a href="../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../docs/extensions/">Browser extensions</a></li>
-<li><a href="../../docs/js/bindgen/">bindgen: Odin output and Odin input</a></li>
+<li><a href="../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
 <li><a href="../../docs/js/odin-abi/">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../docs/js/web-crypto/">crypto.subtle</a></li>
@@ -275,7 +277,7 @@
 <li aria-current="page">Crash reports and the symbols of a build</li>
 </ol></nav>
 <h1 id="crash-reports-and-the-symbols-of-a-build"><a class="anchor" href="#crash-reports-and-the-symbols-of-a-build" aria-hidden="true">#</a>Crash reports and the symbols of a build</h1>
-<p>When Wren crashes, <code>src/tools/crashtrace</code> writes <code>&lt;profile&gt;\crashes\crash &lt;date&gt; &lt;time&gt;.txt</code> (the faulting thread's
+<p>When Wren crashes, <code>src/crashtrace</code> writes <code>&lt;profile&gt;\crashes\crash &lt;date&gt; &lt;time&gt;.txt</code> (the faulting thread's
 stack) and a minidump beside it (<code>.dmp</code>). A program that ended itself with its session open (<code>ExitProcess</code> or <code>TerminateProcess</code>, whoever called them in the executable) leaves
 <code>exit &lt;date&gt;.txt</code> with the stack that asked for it. A session that ended with no chance to write one is reported at the next start as <code>unclean exit &lt;date&gt;.txt</code>, which says what is left to know: Windows'
 Application Error event of that process (a fail-fast), a restart of the machine, or a kill from outside. A crash that wrote its report leaves none, nor does a close ended by the shutdown watchdog
@@ -336,7 +338,7 @@ with the same flags:</p>
 <p><code>src\tools\e2e\crash_reports.odin</code> (in <code>test_all</code>) makes <code>src/tools/crashmodes</code> die in each way and looks at what is left. The <code>@(test)</code> of <code>src/tools/wrentool/deps/symbols_test.odin</code> builds it as a release is
 built (no PDB, a map), makes it index out of range, and checks that the report has the <code>build</code> line and module offsets,
 that <code>wrentool crash-symbolize</code> names <code>crashmodes.index_out_of_range</code> under <code>main</code>, and that a report without the <code>build</code>
-line is named through its minidump. <code>src/tools/crashtrace</code> has a unit test of the fingerprint (read in memory and from
+line is named through its minidump. <code>src/crashtrace</code> has a unit test of the fingerprint (read in memory and from
 the file).</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/crash-recovery/"><span>Previous</span><strong>Crash recovery</strong></a>

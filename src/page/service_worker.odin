@@ -162,6 +162,7 @@ Sw_Registry :: struct {
 	loader:     ^fetch.Loader,
 	settings:   ^Settings,
 	storage:    ^Storage_Manager,
+	writer:     ^host.File_Writer,    // the profile's: the registrations and the scripts (nil: written at once)
 }
 
 
@@ -180,8 +181,9 @@ sw_now :: proc() -> i64 { return time.time_to_unix(time.now()) }
 // Loads the registrations of the profile (storage_manager_init) and installs the loader's hook.
 //   v2 lines: "2", id, origin, scope, script, updateViaCache, last check, preload, preload header, version, module
 //   v1 lines (before versions were stored): id, origin, scope, script, updateViaCache, state
-sw_registry_load :: proc(dir: string) {
+sw_registry_load :: proc(dir: string, writer: ^host.File_Writer) {
 	fetch.sw_hook = {intercept = sw_intercept, active = &the_pages.sw_registry.active}
+	the_pages.sw_registry.writer = writer
 	if dir == "" { return }
 	data, err := os.read_entire_file(sw_file(dir), context.temp_allocator)
 	if err != nil { return }
@@ -233,7 +235,7 @@ sw_save :: proc(dir: string) {
 		fmt.sbprintf(&b, "2\t%d\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%d\t%s\n", r.id, r.origin, r.scope, v.script, r.via_cache, r.last_check,
 			r.preload ? "1" : "0", base.field_escaped(r.preload_header), v.id, v.module ? "1" : "0")
 	}
-	_ = os.write_entire_file(sw_file(dir), transmute([]byte)strings.to_string(b))
+	host.profile_write(the_pages.sw_registry.writer, sw_file(dir), strings.to_string(b))
 }
 
 // Keeps a version's script in the profile (an active version starts from it after the browser restarts).
@@ -241,8 +243,7 @@ sw_save :: proc(dir: string) {
 sw_store_script :: proc(v: ^Sw_Version) {
 	r := v.reg
 	if r.dir == "" || v.image == nil { return }
-	_ = os.make_directory_all(fmt.tprintf("%s/service_workers", r.dir))
-	_ = os.write_entire_file(sw_script_file(r.dir, v.id), v.image)
+	host.profile_write(the_pages.sw_registry.writer, sw_script_file(r.dir, v.id), string(v.image))   // (the writer makes the folder)
 }
 
 @(private)
@@ -540,7 +541,7 @@ sw_redundant :: proc(v: ^Sw_Version) {
 	if was_active { r.active = nil }
 	sw_set_state(v, .Redundant)
 	sw_version_stop(v)
-	if r.dir != "" { _ = os.remove(sw_script_file(r.dir, v.id)) }
+	if r.dir != "" { host.profile_remove(the_pages.sw_registry.writer, sw_script_file(r.dir, v.id)) }
 	sw_version_free(v)
 	if was_active && r.counted && r.active == nil { r.counted = false; the_pages.sw_registry.active -= 1 }
 	if r.installing == nil && r.waiting == nil && r.active == nil && r.job == base.NIL_HANDLE { sw_remove(r) } else { sw_save(r.dir) }
@@ -573,7 +574,7 @@ sw_remove :: proc(r: ^Sw_Registration) {
 	for v in ([3]^Sw_Version{r.installing, r.waiting, r.active}) {
 		if v == nil { continue }
 		v.state = .Redundant
-		if r.dir != "" { _ = os.remove(sw_script_file(r.dir, v.id)) }
+		if r.dir != "" { host.profile_remove(the_pages.sw_registry.writer, sw_script_file(r.dir, v.id)) }
 	}
 	sw_reject_registering(r, "the registration was removed")
 	for _, pg in live_pages {

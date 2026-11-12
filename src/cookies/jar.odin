@@ -400,9 +400,11 @@ escape :: proc(s: string, allocator := context.temp_allocator) -> string {
 	return strings.to_string(sb)
 }
 
-save :: proc(j: ^Jar, path: string, now: i64 = 0) -> bool {
+// The text of the profile's cookie file: the persistent cookies that have not expired at `now` (0: the clock's). The
+// profile's writer writes it (host.File_Writer): this package touches no disk.
+serialize :: proc(j: ^Jar, now: i64 = 0, allocator := context.allocator) -> string {
 	nowv := now == 0 ? now_ms() : now
-	sb := strings.builder_make(context.temp_allocator)
+	sb := strings.builder_make(allocator)
 	strings.write_string(&sb, MAGIC)
 	strings.write_byte(&sb, '\n')
 	for c in j.cookies {
@@ -414,9 +416,7 @@ save :: proc(j: ^Jar, path: string, now: i64 = 0) -> bool {
 		fmt.sbprintf(&sb, "%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%s\n", escape(c.name), escape(c.value), escape(c.domain), escape(c.path),
 			c.expires_ms, c.created_ms, c.accessed_ms, flags, int(c.same_site), escape(c.partition))
 	}
-	if !base.file_write_atomic(path, transmute([]byte)strings.to_string(sb)) { return false }
-	j.dirty = false
-	return true
+	return strings.to_string(sb)
 }
 
 // Merges the persistent cookies found in `path`. Malformed lines are skipped.

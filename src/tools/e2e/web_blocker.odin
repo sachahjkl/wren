@@ -22,7 +22,7 @@ import "wb:http"
 import "wb:host"
 import "wb:httpcache"
 import "wb:page"
-import "wb:tools/testenv"
+import "wb:testenv"
 
 PROFILE :: "build/blockertest_profile"
 TAB :: 1

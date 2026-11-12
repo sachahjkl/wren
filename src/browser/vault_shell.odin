@@ -87,7 +87,7 @@ vault_shell_init :: proc(app: ^App) {
 		changed = proc(user: rawptr) { request_frames((^App)(user), 2) },
 		fill = vault_apply,   // vault_fill.odin
 		copy = vault_copied,  // vault_fill.odin
-	})
+	}, writer = &app.writer)
 	s.watch = config.watch(&app.prefs, "vault.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
 		vault.vault_prefs_changed(&app.vault.v, p)

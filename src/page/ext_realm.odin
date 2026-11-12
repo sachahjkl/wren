@@ -10,6 +10,7 @@ package page
 // The host decides who calls: the record is made by the browser when the realm starts, never by the guest.
 
 import "core:encoding/json"
+import "core:fmt"
 import "core:strconv"
 import "core:strings"
 import "wb:base"
@@ -33,6 +34,7 @@ EXT_OP_RESPOND :: 3   // id: the reply, text: value, text2: "1" an answer / "0" 
 EXT_OP_CONNECT :: 4   // id: the port, text: name
 EXT_OP_POST    :: 5   // id: the port, text: message
 EXT_OP_CLOSE   :: 6   // id: the port
+EXT_OP_CONNECT_TAB :: 7   // id: the port, text: name, text2: "<tab> <frame>"
 EXT_TO_EVENT   :: 0   // text: the event's JSON
 EXT_TO_ANSWER  :: 1   // id: the call, text: its answer
 
@@ -82,43 +84,46 @@ ext_realm_started :: proc(p: ^Page, r: ^Js_Realm) {
 	}, p)
 	if js_call(p, r.inst, "wj_ext_install", nil) != .Ok { log(p, .Error, "the extension APIs could not be set up in this realm") }
 	// events that came before the realm (the background's first ones wait in its queue; a page's in its record)
-	if len(x.events) > 0 { ext_realm_wake(p) }
+	if len(x.events) > 0 { ext_realm_wake(p, x) }
 }
 
-// Runs the realm's pump soon (not inside the caller's call: an event never runs JavaScript in the middle of a call).
-ext_realm_wake :: proc(p: ^Page) {
-	x := p.ext
+// Runs the pump of record `x` (the page's realm's, or an isolated world's) soon: not inside the caller's call, an event
+// never runs JavaScript in the middle of a call. One task per page runs every record of it that was woken.
+ext_realm_wake :: proc(p: ^Page, x: ^Ext_Realm) {
 	if x == nil || x.woken { return }
 	x.woken = true
 	if p.worker != nil {
 		// the worker's thread: its inbox runs the pump right after this message (ext_worker_event)
-		ext_realm_pump(p)
+		ext_realm_pump(p, x)
 		return
 	}
 	id := page_id(p)
 	host.post(p.loop, proc(data: rawptr) {
-		if q := page_by_id(u64(uintptr(data))); q != nil && !q.closed { ext_realm_pump(q) }
+		q := page_by_id(u64(uintptr(data)))
+		if q == nil || q.closed { return }
+		if q.ext != nil && q.ext.woken { ext_realm_pump(q, q.ext) }
+		for i := 0; i < len(q.worlds) && !q.closed; i += 1 {   // (a pump may stop a world: the list is read again each turn)
+			if x := q.worlds[i].x; x != nil && x.woken { ext_realm_pump(q, x) }
+		}
 	}, rawptr(uintptr(id)))
 }
 
 @(private)
-ext_realm_pump :: proc(p: ^Page) {
-	x := p.ext
-	if x == nil { return }
+ext_realm_pump :: proc(p: ^Page, x: ^Ext_Realm) {
 	x.woken = false
-	r := p.js
+	r := js_realm_by_index(p, x.owner)   // (ext_worlds.odin)
 	if r == nil || r.failed || len(x.events) == 0 { return }
 	js_call(p, r.inst, "wj_ext_event", nil)
-	js_after_task(p, r, "extension event")
+	if !r.failed { js_after_task(p, r, "extension event") }
 }
 
-// Queues an event's JSON for the realm (`text` is copied). False when its queue is full (extensions.events.max_queued).
-ext_realm_push :: proc(p: ^Page, text: string) -> bool {
-	x := p.ext
+// Queues an event's JSON for record `x` of page `p` (`text` is copied). False when its queue is full
+// (extensions.events.max_queued).
+ext_realm_push :: proc(p: ^Page, x: ^Ext_Realm, text: string) -> bool {
 	if x == nil { return false }
 	if x.limits.events_max > 0 && len(x.events) >= x.limits.events_max { return false }
 	append(&x.events, strings.clone(text))
-	ext_realm_wake(p)
+	ext_realm_wake(p, x)
 	return true
 }
 
@@ -140,7 +145,7 @@ ext_worker_event :: proc(p: ^Page, m: ^Worker_Msg) {
 		if x.limits.events_max > 0 && len(x.events) >= x.limits.events_max { return }
 		append(&x.events, m.text)
 		m.text = ""
-		ext_realm_pump(p)
+		ext_realm_pump(p, x)
 	}
 }
 
@@ -155,11 +160,16 @@ ext_worker_send :: proc(p: ^Page, op: i64, id: u64, text := "", text2 := "") {
 ////////////////////////////////
 // Module ext (api/ext.widl)
 
-// The calling realm's record (nil: not an extension context: every function answers nothing).
+// The calling realm's record (nil: not an extension context: every function answers nothing). A page's record is its
+// realm's; an isolated world's is the world's (ext_worlds.odin): found by the instance that calls, never by what the
+// guest says.
 @(private = "file")
 ext_of :: proc(c: ^Call) -> ^Ext_Realm {
 	if c.caller != nil && c.caller != c.page { return nil }   // (a call routed to another document's realm: not its context)
-	return c.page.ext
+	p := c.page
+	if x := p.ext; x != nil && p.js != nil && p.js.inst == c.inst { return x }
+	if len(p.worlds) > 0 { if w := world_of_inst(p, c.inst); w != nil { return w.x } }
+	return nil
 }
 
 Ext_info :: proc(c: ^Call) -> string {
@@ -234,6 +244,23 @@ Ext_connect :: proc(c: ^Call, port: u64, name: string) {
 	if x == nil || port == 0 { return }
 	if c.page.worker != nil { ext_worker_send(c.page, EXT_OP_CONNECT, port, name); return }
 	ext_connect(x.ctx_id, port, name)
+}
+
+Ext_connectTab :: proc(c: ^Call, port: u64, name: string, tab: i64, frame: i64) {
+	x := ext_of(c)
+	if x == nil || port == 0 { return }
+	if c.page.worker != nil { ext_worker_send(c.page, EXT_OP_CONNECT_TAB, port, name, fmt.tprintf("%d %d", tab, frame)); return }
+	ext_connect_tab(x.ctx_id, port, name, tab, frame)
+}
+
+// "<tab> <frame>" of EXT_OP_CONNECT_TAB (junk: -1, -1: no tab).
+ext_parse_tab_frame :: proc(s: string) -> (tab, frame: i64) {
+	parts := strings.fields(s, context.temp_allocator)
+	if len(parts) != 2 { return -1, -1 }
+	t, tok := strconv.parse_i64(parts[0])
+	f, fok := strconv.parse_i64(parts[1])
+	if !tok || !fok { return -1, -1 }
+	return t, f
 }
 
 Ext_portPost :: proc(c: ^Call, port: u64, message: string) {

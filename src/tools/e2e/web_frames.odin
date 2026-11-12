@@ -16,7 +16,7 @@ import "core:time"
 import "wb:base"
 import "wb:page"
 import "wb:style"
-import "wb:tools/testenv"
+import "wb:testenv"
 
 SAME  :: "http://127.0.0.1:8765"   // the parent's origin
 OTHER :: "http://127.0.0.1:8767"   // another origin of the same site

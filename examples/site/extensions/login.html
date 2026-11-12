@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Login fixture</title>
+<style>body { font: 16px sans-serif; } iframe { width: 200px; height: 60px; }</style>
+<script>
+// the page's first script: a content script at document_start runs before it (src/tools/e2e/extensions.odin)
+document.documentElement.setAttribute("data-page-ran", "1");
+window.pageMarker = "page";
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.fromContent) document.documentElement.setAttribute("data-page-got", e.data.fromContent);
+});
+</script>
+</head>
+<body>
+<form id="login" action="#" onsubmit="return false">
+<label>User <input id="user" type="text" name="username" autocomplete="username"></label>
+<label>Password <input id="pass" type="password" name="password" autocomplete="current-password"></label>
+<button type="submit">Log in</button>
+</form>
+<iframe id="cross" title="another origin"></iframe>
+<iframe id="nomatch" title="no match" src="frame.html?nomatch"></iframe>
+<script>
+// the same server on another origin (localhost against 127.0.0.1)
+document.getElementById("cross").src = "http://localhost:" + location.port + "/site/extensions/frame.html";
+</script>
+</body>
+</html>

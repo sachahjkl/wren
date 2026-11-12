@@ -350,7 +350,7 @@ Downloads :: struct {
 	// when its menu shows them, not at every frame
 	handlers_for: u64,
 	handlers:     []desktop.Handler,
-	file:         Profile_File,   // downloads.txt (profile_writes.odin)
+	file:         host.Profile_File,   // downloads.txt (profile_writes.odin)
 	checking:     bool,           // a job looks whether saved files are still there
 	closing:      bool,           // downloads_shutdown runs: the list is no longer written at each end
 }
@@ -1006,8 +1006,8 @@ downloads_save :: proc(app: ^App) {
 		if !download_finished(d) { continue }
 		fmt.sbprintf(&sb, "%d\t%d\t%d\t%d\t%s\t%s\t%s\t%s\n", download_state_code(d.state), d.started_ms, d.done_ms, d.size, line_safe(d.url), line_safe(d.path), line_safe(d.name), line_safe(d.error))
 	}
-	profile_file_init(&app.dls.file, app, path, flush = true)
-	profile_file_write(&app.dls.file, strings.to_string(sb))
+	host.profile_file_init(&app.dls.file, &app.writer, path, flush = true)
+	host.profile_file_write(&app.dls.file, strings.to_string(sb))
 }
 
 downloads_load :: proc(app: ^App) {
@@ -1065,10 +1065,10 @@ downloads_apply :: proc(app: ^App) { download_cfg(app) }
 // is left goes; unfinished downloads lose their temporary file (each one's scope cancels it).
 downloads_shutdown :: proc(app: ^App) {
 	app.dls.closing = true
-	profile_file_flush(&app.dls.file)   // (written on this thread from now on)
+	host.profile_file_flush(&app.dls.file)   // (written on this thread from now on)
 	for d in app.dls.list { download_free(d) }
 	delete(app.dls.list)
-	profile_file_destroy(&app.dls.file)
+	host.profile_file_destroy(&app.dls.file)
 	desktop.handlers_destroy(app.dls.handlers, base.process_allocator())
 	delete(app.dls.cfg.dir); delete(app.dls.cfg.suffix); delete(app.dls.cfg.button)
 	app.dls = {}

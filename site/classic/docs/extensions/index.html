@@ -71,8 +71,8 @@
 </ul>
 </nav>
 
-<p>This page is the plan for WebExtensions in Wren. Phases 1 and 2 are written (section 4, "Status of phase 1" and
-"Status of phase 2"). The first target
+<p>This page is the plan for WebExtensions in Wren. Phases 1 and 2 are written, phase 3 for its most part (section 4,
+"Status of phase 1", "Status of phase 2" and "Status of phase 3"). The first target
 is Bitwarden's browser extension (<code>bitwarden/clients</code>, <code>apps/browser</code>), Manifest V3, Chrome build first, Firefox build
 second.</p>
 <p>Terms used on this page, one per concept:</p>
@@ -565,8 +565,8 @@ replaced after phase 2 by the dialect (see "Status of the dialect").
 (<code>[Permission]</code>, <code>[Contexts]</code>, <code>event</code>) and <code>api/ext_&lt;namespace&gt;.widl</code> are not written: arguments are decoded by each
 implementation from JSON. This keeps one description; the generated decoders come with the dialect.</li>
 <li>The popup opened in a tab of its own in phase 1; it is a panel under its button since (<code>ext_popup.odin</code>, see phase 2).</li>
-<li><code>extensions.worlds.*</code>, content scripts and <code>web_accessible_resources</code> frames are phase 3 (rule 3 of
-<code>extension_may_load</code> is written).</li>
+<li><code>extensions.worlds.*</code>, content scripts and <code>web_accessible_resources</code> frames came with phase 3 (rule 3 of
+<code>extension_may_load</code> was written in phase 1).</li>
 </ul>
 <p>Not written yet: the web test <code>web_extensions.odin</code> (the e2e test covers its checks), the chrome-world test of the
 toolbar, the generated conformance cases per API method, the overflow menu of the toolbar, icons from <code>ImageData</code>.
@@ -687,6 +687,69 @@ no injection without a host grant, in <code>about:</code> pages and in another e
 a page cannot load a file that is not web-accessible.</li>
 <li>Measure (<code>-Perf</code>): section 5, the cost of a second world per frame.</li>
 </ul>
+<h4 id="status-of-phase-3"><a class="anchor" href="#status-of-phase-3" aria-hidden="true">#</a>Status of phase 3</h4>
+<p>Written:</p>
+<ul>
+<li><code>src/extensions/content_scripts.odin</code>: the index of content scripts by host (built once per image, and once per change
+of the registered scripts), the full test of an entry (<code>matches</code>, <code>exclude_matches</code>, <code>include_globs</code>,
+<code>exclude_globs</code>, <code>all_frames</code>, <code>match_about_blank</code>, <code>match_origin_as_fallback</code>), and the registered scripts in one
+arena. The image reads the files of the manifest's content scripts with the package (<code>Image.script_sources</code>): a
+<code>document_start</code> script has no time to wait for a file. The permissions <code>scripting</code> and <code>webNavigation</code>. The
+preferences <code>extensions.worlds.max_per_document</code>, <code>extensions.scripting.max_registered</code> and
+<code>extensions.content_scripts.idle_ms</code>.</li>
+<li><code>src/page/ext_worlds.odin</code>: an isolated world is one more engine instance on the page (<code>Page.worlds</code>), started with
+<code>START_ISOLATED</code> (<code>customElements</code> is <code>null</code>). What is split by world: the checkpoint drains each world's jobs
+(<code>js_checkpoint</code>); a trap or a slow script stops the world and not the page (<code>world_trapped</code>, <code>js_call</code>); the
+bytecode cache and the pins answer a world's engine (<code>from_engine</code>); a <code>MutationObserver</code> queues its records in its
+world; a <code>MessagePort</code> delivers to the world that bound it (<code>Port_End.world</code>); a message posted to the window is
+fired once per world with its own copy of the data, and each of these events reaches the listeners of its realm only.
+The extension record of a world is found by the calling instance (<code>ext_of</code>), never by what the guest says.</li>
+<li><code>src/page/ext_inject.odin</code>: the three points of a document (Start at the adoption of the parsed tree, End when the
+parser finished with <code>readyState</code> interactive, Idle at the load event or <code>extensions.content_scripts.idle_ms</code> after
+End), the scripts of the manifest and of <code>registerContentScripts</code> that match, their CSS as injected sheets of the
+author origin (the style engine keeps them when the document's sheets are cleared; no element owns them, so
+<code>document.styleSheets</code> does not list them). The <code>documentId</code> of each document.</li>
+<li><code>api/ext_scripting.widl</code> (<code>executeScript</code> with <code>files</code> or <code>func</code> and <code>args</code>, both worlds, <code>frameIds</code>,
+<code>documentIds</code>, <code>allFrames</code>; <code>insertCSS</code>, <code>removeCSS</code>; <code>registerContentScripts</code>, <code>getRegisteredContentScripts</code>,
+<code>unregisterContentScripts</code>, <code>updateContentScripts</code>), <code>api/ext_webnavigation.widl</code> (<code>getFrame</code>, <code>getAllFrames</code>,
+<code>onCommitted</code>, <code>onDOMContentLoaded</code>, <code>onCompleted</code>), <code>tabs.sendMessage</code> and <code>tabs.connect</code> (<code>Ext_connectTab</code> in
+<code>api/ext.widl</code>). <code>src/page/ext_scripting.odin</code> (one record per call: its files read on the blocking pool, then run
+from a task of its own, then the answers of the worlds), <code>src/page/ext_webnavigation.odin</code>.</li>
+<li>The router: a content script's context knows its tab, its frame and its document; its <code>MessageSender</code> has <code>tab</code>,
+<code>frameId</code>, <code>documentId</code> and the document's origin. <code>tabs.sendMessage</code> and <code>tabs.connect</code> reach the worlds of the
+extension in that tab, in documents it still has a host grant for.</li>
+<li>Tests: <code>src/extensions/content_scripts_test.odin</code>, <code>src/page/ext_scripting_test.odin</code>; the e2e test
+<code>extensions_content_scripts_autofill</code> with the fixture <code>examples/extensions/autofill</code> and the pages
+<code>examples/site/extensions/</code>: a content script reads and fills a login form in its world; the page sees none of its
+globals; <code>document_start</code> runs before the page's first script; the frame of another origin gets the <code>all_frames</code>
+script only, a frame <code>exclude_matches</code> names gets none; the CSS applies and is not in <code>document.styleSheets</code>; window
+messages reach both worlds; <code>tabs.sendMessage</code>, <code>tabs.connect</code>, <code>executeScript</code> (isolated, a promise, every frame,
+MAIN), <code>insertCSS</code>, <code>registerContentScripts</code>, <code>webNavigation</code>; a web-accessible file loads in the page and another
+file of the extension does not.</li>
+</ul>
+<p>Different from the plan, and why:</p>
+<ul>
+<li><strong>A world has the frames imports.</strong> Without them <code>window.postMessage</code> and the named access of the global do not
+work, and content scripts use both. So <code>window.frames</code>, <code>parent</code> and <code>contentWindow</code> in a world give the other
+documents' page realms, not the same extension's world there. A content script must not hand its objects to them.</li>
+<li><strong>A window message is one event per realm</strong>: the page's realm first, then each world in the order they were made,
+not interleaved by the order of registration. In a world its <code>source</code> is <code>null</code> and it carries no ports (they stay
+with the page's realm).</li>
+<li><strong><code>executeScript</code> answers <code>null</code> for files and for the MAIN world</strong>: a function's value comes back from an isolated
+world through a hook only that world's scripts see; the page's realm has no way back the page could not forge.</li>
+<li><strong>Scripts run at once.</strong> <code>injectImmediately</code> is accepted; a document that exists gets the script now.</li>
+<li><strong>Registered scripts last until the browser exits or the extension reloads</strong> (<code>persistAcrossSessions</code> is accepted,
+<code>state.txt</code> does not keep them yet).</li>
+<li><strong>An extension that stops</strong> (disabled, reloaded, removed) stops its worlds in the documents already open; they do
+not start again there, and the CSS it added stays until the document goes.</li>
+<li><strong><code>use_dynamic_url</code> stays phase 6</strong>: the key is read, the URL host is the id.</li>
+</ul>
+<p>Not written yet: <code>ext_dom.widl</code> (<code>dom.openOrClosedShadowRoot</code>), <code>tabs.captureVisibleTab</code>, sandbox pages, the switch
+per host pattern in <code>about:extensions</code>, the other <code>webNavigation</code> events (<code>onBeforeNavigate</code>, <code>onErrorOccurred</code>,
+<code>onCreatedNavigationTarget</code>, <code>onReferenceFragmentUpdated</code>, <code>onHistoryStateUpdated</code>, <code>onTabReplaced</code>: declared, never
+sent), <code>slotchange</code> in a world (fired through the page's realm only), IndexedDB, <code>Worker</code>, <code>WebAssembly</code>, Web Audio,
+<code>MediaSource</code> and <code>navigator.serviceWorker</code> in a world (their callbacks go to the page's realm), the web tests <code>web_worlds.odin</code> and
+<code>web_content_scripts.odin</code> (the e2e test covers their main paths), the measure of a second world per frame.</p>
 <h3 id="phase-4-context-menus-and-the-save-login-bar"><a class="anchor" href="#phase-4-context-menus-and-the-save-login-bar" aria-hidden="true">#</a>Phase 4: context menus and the save-login bar</h3>
 <p>Scope: <code>api/ext_contextmenus.widl</code>, <code>ext_context_menu.odin</code>, the hook in <code>context_menu.odin</code>, <code>activeTab</code>.
 <code>api/ext_webrequest.widl</code> as an observer (<code>onBeforeRequest</code>, <code>onBeforeRedirect</code>, <code>onHeadersReceived</code>, <code>onCompleted</code>,
@@ -768,7 +831,7 @@ keeps it).</li>
 </ol>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/engine/unicode/"><span>Previous</span><strong>engine/unicode (ucd)</strong></a>
-<a class="doc-next" href="../../docs/js/bindgen/"><span>Next</span><strong>bindgen: Odin output and Odin input</strong></a>
+<a class="doc-next" href="../../docs/js/bindgen/"><span>Next</span><strong>bindgen: the generated copies of the web API</strong></a>
 </nav>
 <p class="doc-edit"><a href="https://github.com/sachahjkl/wren/blob/master/docs/extensions.md" rel="noopener">Edit this page on GitHub</a></p>
 </main>
@@ -858,12 +921,14 @@ keeps it).</li>
 <li><a href="../../docs/api/ext/offscreen/">chrome.offscreen</a></li>
 <li><a href="../../docs/api/ext/permissions/">chrome.permissions</a></li>
 <li><a href="../../docs/api/ext/runtime/">chrome.runtime</a></li>
+<li><a href="../../docs/api/ext/scripting/">chrome.scripting</a></li>
 <li><a href="../../docs/api/ext/storage.local/">chrome.storage.local</a></li>
 <li><a href="../../docs/api/ext/storage.managed/">chrome.storage.managed</a></li>
 <li><a href="../../docs/api/ext/storage/">chrome.storage</a></li>
 <li><a href="../../docs/api/ext/storage.session/">chrome.storage.session</a></li>
 <li><a href="../../docs/api/ext/storage.sync/">chrome.storage.sync</a></li>
 <li><a href="../../docs/api/ext/tabs/">chrome.tabs</a></li>
+<li><a href="../../docs/api/ext/webNavigation/">chrome.webNavigation</a></li>
 <li><a href="../../docs/api/ext/windows/">chrome.windows</a></li>
 <li><a href="../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../docs/api/fontface/">Module fontface</a></li>
@@ -995,7 +1060,7 @@ keeps it).</li>
 <li><a href="../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../docs/extensions/" aria-current="page" class="active">Browser extensions</a></li>
-<li><a href="../../docs/js/bindgen/">bindgen: Odin output and Odin input</a></li>
+<li><a href="../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
 <li><a href="../../docs/js/odin-abi/">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../docs/js/web-crypto/">crypto.subtle</a></li>

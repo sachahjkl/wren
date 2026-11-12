@@ -34,6 +34,7 @@ import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
+import "wb:host"
 
 PALETTE_PREFS := [?]config.Def{
 	{name = "browser.palette.ctrl_k", kind = .Bool, default = {b = true},
@@ -462,8 +463,8 @@ usage_load :: proc(app: ^App) {
 @(private = "file")
 usage_save :: proc(app: ^App) {
 	if !app.cfg.persist_profile { return }
-	profile_file_init(&app.cpal.usage_file, app, usage_path(app))
-	profile_file_write(&app.cpal.usage_file, usage_serialize(&app.cpal.usage))
+	host.profile_file_init(&app.cpal.usage_file, &app.writer, usage_path(app))
+	host.profile_file_write(&app.cpal.usage_file, usage_serialize(&app.cpal.usage))
 }
 
 @(private = "file")
@@ -601,7 +602,7 @@ Palette_State :: struct {
 	cfg_version:   u64,
 	cfg_ready:     bool,
 	usage:         Palette_Usage,
-	usage_file:    Profile_File,    // palette_usage.txt (profile_writes.odin)
+	usage_file:    host.Profile_File,    // palette_usage.txt (profile_writes.odin)
 	sources:       [dynamic]Palette_Source,
 	sources_ready: bool,
 }
@@ -618,7 +619,7 @@ palette_destroy :: proc(app: ^App) {
 	if app.cpal.arena_ready { base.arena_destroy(&app.cpal.arena) }
 	delete(app.cpal.cache_text)
 	usage_destroy(&app.cpal.usage)
-	profile_file_destroy(&app.cpal.usage_file)   // (written by profile_files_flush, before the loop ended)
+	host.profile_file_destroy(&app.cpal.usage_file)   // (written by profile_files_flush, before the loop ended)
 	delete(app.cpal.sources)
 	app.cpal = {}
 	commands_destroy(&app.cmds)

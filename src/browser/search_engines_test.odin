@@ -125,7 +125,7 @@ search_engines_file_round_trip :: proc(t: ^testing.T) {
 	_ = engines_add(&se, "Tab\there", "@t", "https://t.test/?q=%s&a=\\b")
 	path := "build/search_engines_test.txt"
 	defer os.remove(path)
-	testing.expect(t, engines_save_file(&se, path))
+	testing.expect(t, os.write_entire_file(path, transmute([]byte)engines_serialize(&se)) == nil)   // (what the profile's writer does with the text)
 	back: Search_Engines
 	defer engines_destroy(&back)
 	testing.expect(t, engines_load_file(&back, path))

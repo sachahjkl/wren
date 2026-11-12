@@ -8,10 +8,11 @@ package page
 // the one gate). Arguments arrive as a JSON list, decoded into the method's struct before its implementation runs;
 // answers leave as JSON text ("" : undefined, "!" : an error's message). Phase 2's are in ext_tabs.odin (tabs and
 // windows that change, runtime.getContexts / reload / openOptionsPage, their events), ext_offscreen.odin and
-// ext_idle.odin.
+// ext_idle.odin. Phase 3's: ext_scripting.odin, ext_webnavigation.odin, tabs.sendMessage in ext_tabs.odin; the content
+// scripts themselves in ext_inject.odin and ext_worlds.odin.
 //
-// Not here yet (later phases): content scripts, scripting, webRequest, contextMenus, commands, notifications,
-// permissions.request (answers false).
+// Not here yet (later phases): webRequest, contextMenus, commands, notifications, dom.openOrClosedShadowRoot,
+// tabs.captureVisibleTab, permissions.request (answers false).
 
 import "core:encoding/json"
 import "core:fmt"

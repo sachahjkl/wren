@@ -117,12 +117,14 @@
 <li><a href="../../docs/api/ext/offscreen/">chrome.offscreen</a></li>
 <li><a href="../../docs/api/ext/permissions/">chrome.permissions</a></li>
 <li><a href="../../docs/api/ext/runtime/">chrome.runtime</a></li>
+<li><a href="../../docs/api/ext/scripting/">chrome.scripting</a></li>
 <li><a href="../../docs/api/ext/storage.local/">chrome.storage.local</a></li>
 <li><a href="../../docs/api/ext/storage.managed/">chrome.storage.managed</a></li>
 <li><a href="../../docs/api/ext/storage/">chrome.storage</a></li>
 <li><a href="../../docs/api/ext/storage.session/">chrome.storage.session</a></li>
 <li><a href="../../docs/api/ext/storage.sync/">chrome.storage.sync</a></li>
 <li><a href="../../docs/api/ext/tabs/">chrome.tabs</a></li>
+<li><a href="../../docs/api/ext/webNavigation/">chrome.webNavigation</a></li>
 <li><a href="../../docs/api/ext/windows/">chrome.windows</a></li>
 <li><a href="../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../docs/api/fontface/">Module fontface</a></li>
@@ -254,7 +256,7 @@
 <li><a href="../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../docs/extensions/">Browser extensions</a></li>
-<li><a href="../../docs/js/bindgen/">bindgen: Odin output and Odin input</a></li>
+<li><a href="../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
 <li><a href="../../docs/js/odin-abi/">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../docs/js/web-crypto/">crypto.subtle</a></li>
@@ -511,7 +513,7 @@ with a floor of 120 s. <code>build/test_all_times.txt</code> has the durations.<
 <li>Result: after two faults in one process, the process hangs until the step limit (900 s).</li>
 <li>Fix: do not depend on the runner here. In <code>e2e</code>, install the assertion handler of the session
 (<code>s.ctx.assertion_failure_proc</code>) to log the message and call <code>stop_test</code>. For a fault, the crash handler of
-<code>wb:tools/crashtrace</code> ends the process at once: with one process per file, the rest of the file is <code>NOT RUN</code>
+<code>wb:crashtrace</code> ends the process at once: with one process per file, the rest of the file is <code>NOT RUN</code>
 and is said so. This is a bounded and visible result.</li>
 </ul>
 <h3 id="29-smaller-unbounded-waits"><a class="anchor" href="#29-smaller-unbounded-waits" aria-hidden="true">#</a>2.9 Smaller unbounded waits</h3>
@@ -656,7 +658,7 @@ Gain: about 80 s of step time. Decide this with care: the allocators differ betw
 <li>Location: <code>src/tools/test_all/steps_linux.odin:18-19</code> and <code>:39-43</code>. 46 checks.</li>
 <li><code>odin check src/tools/e2e</code> type-checks every package that it imports. Most of the 46 checks repeat that work.</li>
 <li>Cost: small (0 to 2 s each, about 30 s of CPU). Fix: keep the leaf programs (<code>tools/e2e</code>, <code>tools/wpt</code>,
-<code>tools/endurance</code>, <code>tools/test_all</code>, <code>tools/crashtrace</code>) and the packages that no program imports.
+<code>tools/endurance</code>, <code>tools/test_all</code>, <code>crashtrace</code>) and the packages that no program imports.
 Verify first that <code>-vet</code> applies to imported packages of the <code>wb</code> collection.</li>
 </ul>
 <h3 id="48-tests-that-are-benchmarks"><a class="anchor" href="#48-tests-that-are-benchmarks" aria-hidden="true">#</a>4.8 Tests that are benchmarks</h3>

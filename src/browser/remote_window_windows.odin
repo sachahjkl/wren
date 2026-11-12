@@ -65,3 +65,13 @@ window_native_minimize_no_activate :: proc(w: ^platform.Window) {
 // Up with the keyboard when another program hands Wren an address: through the instance's handover (the foreground
 // right it was given).
 window_native_raise_handed :: proc(w: ^platform.Window, token: string) { instance.raise_window(rawptr(w.hwnd)) }
+
+// The state a headless window says it is in (window_apply, remote_methods.odin): the Win32 window keeps it in off_state.
+window_emulated_state :: proc(w: ^platform.Window, state: string) {
+	switch state {
+	case "normal":     w.off_state = .Normal
+	case "minimized":  w.off_state = .Minimized
+	case "maximized":  w.off_state = .Maximized
+	case "fullscreen": w.off_state = .Fullscreen
+	}
+}

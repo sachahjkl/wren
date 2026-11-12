@@ -1,0 +1,7 @@
+/* The content script's sheet: the page does not see it in document.styleSheets. */
+input.wren-ext-filled {
+  outline-color: rgb(1, 2, 3);
+}
+html[data-ext-start] {
+  --wren-ext-css: on;
+}

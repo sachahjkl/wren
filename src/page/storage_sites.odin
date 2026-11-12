@@ -143,9 +143,12 @@ storage_clear_site :: proc(m: ^Storage_Manager, key: string, kinds: Site_Kinds) 
 		if a, ok := m.areas[key]; ok && a.kind == .Local {
 			area_clear(a)
 			a.dirty = false
-			area_write(m, a, false)   // an empty snapshot: ordered with the writes in flight, never overtaken by an older one
+			area_write(m, a)   // an empty snapshot: ordered with the writes in flight, never overtaken by an older one
 		} else if m.dir != "" {
-			_ = os.remove(area_path(m, key))
+			// an empty area in memory, written empty: a page that comes back reads it there, not the file being written
+			e := area_new(m, key, key, .Local)
+			e.state = .Loaded
+			area_write(m, e)
 		}
 	}
 	if .Session in kinds {

@@ -15,7 +15,7 @@ import "wb:fetch"
 import "wb:html"
 import "wb:net"
 import "wb:page"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:wasm"
 
 E2E_WASM :: "build/e2e.wasm"

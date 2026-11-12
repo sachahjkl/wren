@@ -1,0 +1,3 @@
+type: Added
+
+**Extensions run content scripts**: the scripts and style sheets an extension's manifest lists for a site now run in its pages and, with `all_frames`, in their frames, at `document_start`, `document_end` or `document_idle`. Each extension's scripts run in an isolated world: they share the page's document, but the page cannot see their variables, and they cannot see the page's. Extensions can also run scripts and add or remove style sheets in a tab (`chrome.scripting`), register more content scripts, send messages and open ports to their content scripts (`tabs.sendMessage`, `tabs.connect`), and follow the frames of a tab (`chrome.webNavigation`). A password manager's content script can now read and fill a login form.

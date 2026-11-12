@@ -16,7 +16,7 @@ components below; their license texts are in the executable (bout:licenses) and
 | [Tracy](https://github.com/wolfpld/tracy) client | 0.14.1 | BSD-3-Clause | only the builds made with `WREN_TRACY=1` (`build\tracy`, `wrentool build tracy`), never shipped |
 | [QuickJS-ng](https://github.com/quickjs-ng/quickjs) | 0.17.0, patched (`native/js/patches`) | MIT | the JavaScript engine, compiled to WebAssembly (`src\tools\buildjs`) and embedded |
 | [emmalloc](https://github.com/emscripten-core/emscripten), through Odin's `base:runtime` (`wasm_allocator`) | | MIT / NCSA (Emscripten) | the heap of the JavaScript module |
-| [webref](https://github.com/w3c/webref) `@webref/idl` | 3.85.2 (`native/js/webref/VERSION`) | MIT | the Web IDL the JavaScript bindings are generated from (`native/js/gen`) |
+| [webref](https://github.com/w3c/webref) `@webref/idl` | 3.85.2 (`native/js/webref/VERSION`) | MIT | the Web IDL the JavaScript bindings are generated from (`native/js/odin/bindings_gen.odin`) |
 | [Lexbor](https://github.com/lexbor/lexbor) | 3.0.1 | Apache-2.0 | submodule `ext/lexbor`; `lexbor/url/url.c` is compiled with two changes where it differs from the URL Standard (`LEXBOR_PATCHES` in `src/tools/wrentool/deps/lexbor.odin`: a last label of digits past 2^32 then letters, a dot segment ended by `?` or `#`) |
 | [Public Suffix List](https://publicsuffix.org) | `src/url/public_suffix_list.dat` | MPL-2.0 | embedded |
 | [resvg / usvg / tiny-skia](https://github.com/linebender/resvg) | 0.48.1 | Apache-2.0 OR MIT (tiny-skia: BSD-3-Clause) | `native/media` |

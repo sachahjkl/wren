@@ -37,6 +37,7 @@ import "core:strconv"
 import "core:strings"
 import "wb:base"
 import "wb:config"
+import "wb:host"
 import "wb:page"
 import "wb:url"
 
@@ -430,8 +431,8 @@ session_save :: proc(app: ^App, force := false) {
 	if !config.bool_of(&app.prefs, "browser.session.restore") { pinned_save(app) }
 	text := session_text(app)
 	if text == app.session_last { return }
-	profile_file_init(&w.session, app, session_path(app))
-	profile_file_write(&w.session, text)   // (a failed write is made again by the file itself)
+	host.profile_file_init(&w.session, &app.writer, session_path(app))
+	host.profile_file_write(&w.session, text)   // (a failed write is made again by the file itself)
 	delete(app.session_last)
 	app.session_last = strings.clone(text)
 }
@@ -592,8 +593,8 @@ pinned_save :: proc(app: ^App) {
 		text = session_serialize_tabs(pins[:], 0, int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")))
 	}
 	if w.pinned_known && text == w.pinned_last { return }
-	profile_file_init(&w.pinned, app, pinned_path(app))
-	if text == "" { profile_file_remove(&w.pinned) } else { profile_file_write(&w.pinned, text) }
+	host.profile_file_init(&w.pinned, &app.writer, pinned_path(app))
+	if text == "" { host.profile_file_remove(&w.pinned) } else { host.profile_file_write(&w.pinned, text) }
 	delete(w.pinned_last)
 	w.pinned_last, w.pinned_known = strings.clone(text), true
 }

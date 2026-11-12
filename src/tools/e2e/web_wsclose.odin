@@ -12,7 +12,7 @@ import "core:strings"
 import "core:testing"
 import "wb:base"
 import "wb:net"
-import "wb:tools/testenv"
+import "wb:testenv"
 
 RUNS :: 10                      // a race lost one run in two shows in 10 runs with a probability of 1 - 2^-10 (50 runs were 39 s of a slot)
 RUNS_OF_A_LATE_ANSWER :: 5      // each takes the server's delay

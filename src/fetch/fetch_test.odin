@@ -78,7 +78,7 @@ hsts_persistence :: proc(t: ^testing.T) {
 	hsts_note(&h, "gone.org", "max-age=1", 0)
 	path := "build/hsts_test.txt"
 	defer os.remove(path)
-	testing.expect(t, hsts_save(&h, path, 5000))   // gone.org expired by 5000 ms
+	testing.expect(t, os.write_entire_file(path, transmute([]byte)hsts_serialize(&h, 5000, context.temp_allocator)) == nil)   // gone.org expired by 5000 ms
 	h2 := hsts_make()
 	defer hsts_destroy(&h2)
 	n, ok := hsts_load(&h2, path, 5000)

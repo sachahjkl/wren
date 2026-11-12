@@ -141,7 +141,7 @@ The example is `web_url` (commit `bdd9a031`): 327 lines with every host call typ
    disappear. A string result lives in the scratch buffer until the next host call: convert it first.
 6. **Replace `this` checks and interface caches** by `jsb.this(ctx, this_val, Kind)` and `jsb.iface_of(Kind)`.
 7. **Keep the exported names.** Every `wjr_*` the generated binding table references stays `@(export, link_name = ...)`
-   with the same signature; nothing changes in `native/js/gen`.
+   with the same signature; nothing changes in `native/js/odin/bindings_gen.odin`.
 8. **Build and check:** `odin check native/js/odin -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -vet`,
    then `cmd /c build.bat`.
 9. **Test what the domain touches:** the web tests of the domain (`js`, `jsweb` for url: `src/tools/e2e/web_*.odin`), `build\wpt.exe -only

@@ -459,7 +459,8 @@ mo_record :: proc(p: ^Page, mo: ^Mutation_Observer, kind: u8, target: base.Handl
 // in the middle of a mutation, nothing runs. Other modules get a microtask of the page calling `notify`.
 @(private)
 mo_notify_later :: proc(p: ^Page, mo: ^Mutation_Observer) {
-	if r := p.js; r != nil && !r.failed && r.inst != nil && !r.inst.dead && mo.instance == r.inst.index {
+	// (the page's realm, or the isolated world whose script made the observer: ext_worlds.odin)
+	if r := js_realm_by_index(p, mo.instance); r != nil && !r.failed && r.inst != nil && !r.inst.dead {
 		argv := [1]u32{mo.user}
 		p.objects.depth += 1
 		res := wasm.call_raw(r.inst, "wj_mo_queue", argv[:])

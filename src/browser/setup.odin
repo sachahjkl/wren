@@ -83,7 +83,7 @@ setup_prepare :: proc(o: ^desktop.Options, choices: []bool, user: rawptr) {
 		o.register_browser = choices[Setup_Choice.Register_Browser]
 	}
 	o.file_types = wren_desktop.file_types_of(app.stp.file_types)
-	when ODIN_OS == .Windows { o.launcher = CONSOLE_LAUNCHER }
+	o.launcher = console_launcher()   // console_launcher_*.odin
 	desktop.roots_from_env(o, env_lookup)   // (WREN_DESKTOP_* of a test: every place is the test's)
 }
 
@@ -104,7 +104,7 @@ setup_choice :: proc(app: ^App) -> string {
 setup_choice_write :: proc(app: ^App, choice: string) {
 	if !app.cfg.persist_profile { return }
 	text := strings.concatenate({"wren setup: what was answered\nchoice=", choice, "\nversion=", APP_VERSION, "\nchannel=", channel_name(), "\n"}, context.temp_allocator)
-	_ = os.write_entire_file(strings.concatenate({app.profile_dir, "/", SETUP_CHOICE_FILE}, context.temp_allocator), text)
+	host.profile_write(&app.writer, strings.concatenate({app.profile_dir, "/", SETUP_CHOICE_FILE}, context.temp_allocator), text)
 }
 
 ////////////////////////////////

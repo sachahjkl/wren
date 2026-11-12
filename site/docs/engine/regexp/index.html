@@ -117,12 +117,14 @@
 <li><a href="../../../docs/api/ext/offscreen/">chrome.offscreen</a></li>
 <li><a href="../../../docs/api/ext/permissions/">chrome.permissions</a></li>
 <li><a href="../../../docs/api/ext/runtime/">chrome.runtime</a></li>
+<li><a href="../../../docs/api/ext/scripting/">chrome.scripting</a></li>
 <li><a href="../../../docs/api/ext/storage.local/">chrome.storage.local</a></li>
 <li><a href="../../../docs/api/ext/storage.managed/">chrome.storage.managed</a></li>
 <li><a href="../../../docs/api/ext/storage/">chrome.storage</a></li>
 <li><a href="../../../docs/api/ext/storage.session/">chrome.storage.session</a></li>
 <li><a href="../../../docs/api/ext/storage.sync/">chrome.storage.sync</a></li>
 <li><a href="../../../docs/api/ext/tabs/">chrome.tabs</a></li>
+<li><a href="../../../docs/api/ext/webNavigation/">chrome.webNavigation</a></li>
 <li><a href="../../../docs/api/ext/windows/">chrome.windows</a></li>
 <li><a href="../../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../../docs/api/fontface/">Module fontface</a></li>
@@ -254,7 +256,7 @@
 <li><a href="../../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../../docs/extensions/">Browser extensions</a></li>
-<li><a href="../../../docs/js/bindgen/">bindgen: Odin output and Odin input</a></li>
+<li><a href="../../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
 <li><a href="../../../docs/js/odin-abi/">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../../docs/js/web-crypto/">crypto.subtle</a></li>
@@ -279,7 +281,7 @@
 bounded backtracking interpreter. It replaces the C engine and leans on the language — tagged opcodes, interval
 character sets, caller-supplied allocators, an explicit (non-recursive) backtrack stack — so it builds for
 <code>windows_amd64</code>, <code>linux_amd64</code> and <code>freestanding_wasm32</code> with no libc. The browser uses it for URLPattern
-(<code>src/url/pattern_match.odin</code>: a component's regular expression, with the <code>v</code> flag).</p>
+(<code>src/urlpattern/pattern_match.odin</code>: a component's regular expression, with the <code>v</code> flag).</p>
 <div class="code"><div class="file">Odin</div><pre><code><span class="k">import</span> rx <span class="s">"wb:engine/regexp"</span></code></pre></div>
 <h2 id="api"><a class="anchor" href="#api" aria-hidden="true">#</a>API</h2>
 <div class="code"><div class="file">Odin</div><pre><code>re, err := rx.<span class="f">compile</span>(pattern, flags, allocator)   <span class="c">// flags: rx.Flags bit_set</span>

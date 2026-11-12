@@ -9,7 +9,8 @@ package page
 //   * Event: ext_emit delivers to each context of the extension that listens to it; a stopped background starts first,
 //     unless its script ran before and added no listener for that event.
 //   * runtime.sendMessage: to every other page and the background of the extension; the first answer wins; no receiver
-//     is the error "Could not establish connection. Receiving end does not exist.".
+//     is the error "Could not establish connection. Receiving end does not exist.". tabs.sendMessage: the same to the
+//     extension's content scripts (isolated worlds, ext_worlds.odin) in one tab, in documents it has a host grant for.
 //   * Ports: an opener and the contexts that took its connect; order is the link's; the close of an end, of a page or
 //     the stop of the background disconnects the others.
 // Every limit is a preference (src/extensions/settings.odin); past one, the caller gets an error, nothing is dropped.
@@ -20,6 +21,7 @@ import "core:strings"
 import "wb:base"
 import "wb:extensions"
 import "wb:host"
+import "wb:url"
 
 // Where an answer goes: a page realm's promise, or a background's call (its version and call id).
 Ext_Target :: struct {
@@ -37,6 +39,11 @@ Ext_Context :: struct {
 	page:      u64,                 // the page (0: the background)
 	url:       string,              // owned: the document's URL, or the background's script
 	listening: map[string]bool,     // events with a listener (owned keys); the background keeps them while stopped
+	// a content script's (kind Content): its document in its tab
+	origin:    string,              // owned: the document's origin, serialized
+	frame:     i64,                 // its frame id (0: the tab's top document)
+	top_page:  u64,                 // the tab's top document
+	document:  string,              // owned: its documentId
 }
 
 Ext_Port :: struct {
@@ -120,6 +127,7 @@ Ext_Router :: struct {
 	save_timer:  base.Handle,                 // ext_api.odin: the storage areas that changed are written when it fires
 	idle_timer:  base.Handle,                 // ext_idle.odin: the next time an idle state can change
 	offscreen:   map[string]^Ext_Offscreen,   // ext_offscreen.odin: the offscreen document of each extension (one at most)
+	execs:       map[u64]^Ext_Exec,           // ext_scripting.odin: the scripting calls that act on documents, by id
 }
 
 ext_router :: proc() -> ^Ext_Router { return &the_pages.ext_router }
@@ -149,8 +157,44 @@ ext_context_new :: proc(ext: string, kind: Ext_Kind, page: u64, u: string) -> ^E
 ext_context_free :: proc(c: ^Ext_Context) {
 	for k in c.listening { delete(k) }
 	delete(c.listening)
-	delete(c.ext); delete(c.url)
+	delete(c.ext); delete(c.url); delete(c.origin); delete(c.document)
 	free(c)
+}
+
+// The record of an isolated world whose engine starts in `p` for extension `e` (ext_worlds.odin): a context of kind
+// Content, its tab and frame known by the host.
+ext_content_context_open :: proc(p: ^Page, e: ^extensions.Extension, owner: u32) -> ^Ext_Realm {
+	r := ext_router()
+	if r.loop == nil { r.loop = p.loop }
+	c := ext_context_new(e.id, .Content, page_id(p), p.env.location.href)
+	c.origin = url.origin_serialize(p.env.origin)
+	top := ext_top_page(p)
+	c.top_page = page_id(top)
+	c.frame = ext_frame_id(p)
+	c.document = strings.clone(ext_document_id(p))   // ext_inject.odin
+	x := new(Ext_Realm)
+	x.image = extensions.image_retain(e.image)
+	x.kind = .Content
+	x.ctx_id = c.id
+	x.owner = owner
+	x.limits = ext_limits(ext_registry())
+	return x
+}
+
+// The top document of the tab `p` is in (itself for a tab's document).
+ext_top_page :: proc(p: ^Page) -> ^Page {
+	q := p
+	for {
+		n := frame_navigable_of(q)
+		if n == nil || n.parent == nil { return q }
+		q = n.parent
+	}
+}
+
+// The frameId of a document (Chrome's: 0 for the tab's top document, else its navigable's id).
+ext_frame_id :: proc(p: ^Page) -> i64 {
+	n := frame_navigable_of(p)
+	return n == nil ? 0 : i64(n.id)
 }
 
 // The record of an extension page whose realm starts (nil: not an extension's page, or its extension does not run).
@@ -213,6 +257,7 @@ ext_context_detach :: proc(c: ^Ext_Context) {
 		}
 	}
 	for id in done { if rep, ok := r.replies[id]; ok { delete_key(&r.replies, id); delete(rep.targets); free(rep) } }
+	ext_exec_context_gone(c.id)   // ext_scripting.odin: the functions it was running answer null
 }
 
 ////////////////////////////////
@@ -248,8 +293,13 @@ ext_deliver :: proc(c: ^Ext_Context, text: string) -> bool {
 		return b != nil && ext_bg_event(b, text)
 	}
 	p := page_by_id(c.page)
-	if p == nil || p.closed || p.ext == nil { return false }
-	return ext_realm_push(p, text)
+	if p == nil || p.closed { return false }
+	if c.kind == .Content {
+		for w in p.worlds { if x := w.x; x != nil && x.ctx_id == c.id { return ext_realm_push(p, x, text) } }
+		return false
+	}
+	if p.ext == nil { return false }
+	return ext_realm_push(p, p.ext, text)
 }
 
 // Emits `event` with its arguments (a JSON list) to every context of the extension that listens to it.
@@ -261,14 +311,34 @@ ext_emit :: proc(ext: string, event: string, args_json: string) {
 	for c in targets { ext_deliver(c, text) }
 }
 
-// The MessageSender of a context (JSON).
+// The MessageSender of a context (JSON). A content script's names its tab (as the receiver's extension may see it), its
+// frame and its document.
 ext_sender_json :: proc(c: ^Ext_Context) -> string {
 	b := strings.builder_make(context.temp_allocator)
 	strings.write_string(&b, `{"id":`)
 	strings.write_string(&b, extensions.json_quote(c.ext))
 	strings.write_string(&b, `,"url":`)
 	strings.write_string(&b, extensions.json_quote(c.url))
-	fmt.sbprintf(&b, `,"origin":%s`, extensions.json_quote(fmt.tprintf("%s://%s", extensions.SCHEME_CHROME, c.ext)))
+	if c.kind != .Content {
+		strings.write_string(&b, `,"origin":`)
+		strings.write_string(&b, extensions.json_quote(strings.concatenate({extensions.SCHEME_CHROME, "://", c.ext}, context.temp_allocator)))
+		strings.write_byte(&b, '}')
+		return strings.to_string(b)
+	}
+	strings.write_string(&b, `,"origin":`)
+	strings.write_string(&b, extensions.json_quote(c.origin))
+	fmt.sbprintf(&b, `,"frameId":%d`, c.frame)
+	strings.write_string(&b, `,"documentId":`)
+	strings.write_string(&b, extensions.json_quote(c.document))
+	reg := ext_registry()
+	if e := extensions.registry_running(reg, extensions.SCHEME_CHROME, c.ext); e != nil {
+		for t in ext_tabs_list() {
+			if t.page != c.top_page { continue }
+			strings.write_string(&b, `,"tab":`)
+			ext_tab_json_of(&b, reg, e, t)
+			break
+		}
+	}
 	strings.write_byte(&b, '}')
 	return strings.to_string(b)
 }
@@ -303,6 +373,42 @@ ext_send_message :: proc(from: ^Ext_Context, message: string, to: Ext_Target) {
 		if c.ext != from.ext || c.id == from.id || c.kind == .Content { continue }
 		if ext_listens(c, "runtime.onMessage") { append(&targets, c) }
 	}
+	ext_send_to(from, targets[:], message, to)
+}
+
+// Which content scripts of `from`'s extension a message or a port to tab `tab` reaches: the isolated worlds in its
+// documents (one frame when `frame` >= 0, one document when `document` is not ""), each in a document the extension
+// still has a host grant for (rule 4 of section 3.11). False: no such tab.
+ext_tab_targets :: proc(from: ^Ext_Context, tab, frame: i64, document: string, event: string, out: ^[dynamic]^Ext_Context) -> bool {
+	top := u64(0)
+	for t in ext_tabs_list() { if t.id == tab { top = t.page; break } }
+	if top == 0 { return false }
+	reg := ext_registry()
+	e := extensions.registry_running(reg, extensions.SCHEME_CHROME, from.ext)
+	if e == nil { return true }
+	for _, c in ext_router().contexts {
+		if c.ext != from.ext || c.kind != .Content || c.top_page != top { continue }
+		if frame >= 0 && c.frame != frame { continue }
+		if document != "" && c.document != document { continue }
+		// (a document without a URL of its own is granted through its origin, as its scripts were)
+		href := extensions.url_needs_fallback(c.url) ? strings.concatenate({c.origin, "/"}, context.temp_allocator) : c.url
+		if !extensions.extension_host_allowed(reg, e, href) { continue }
+		if ext_listens(c, event) { append(out, c) }
+	}
+	return true
+}
+
+// tabs.sendMessage: to the content scripts of the extension in a tab (ext_tab_targets).
+ext_send_to_tab :: proc(from: ^Ext_Context, tab, frame: i64, document: string, message: string, to: Ext_Target) {
+	targets := make([dynamic]^Ext_Context, 0, 4, context.temp_allocator)
+	if !ext_tab_targets(from, tab, frame, document, "runtime.onMessage", &targets) { ext_answer(to, fmt.tprintf("!No tab with id: %d.", tab)); return }
+	ext_send_to(from, targets[:], message, to)
+}
+
+// Delivers a message to `targets`; the first answer goes to `to`.
+@(private)
+ext_send_to :: proc(from: ^Ext_Context, targets: []^Ext_Context, message: string, to: Ext_Target) {
+	r := ext_router()
 	if len(targets) == 0 { ext_answer(to, "!Could not establish connection. Receiving end does not exist."); return }
 	rep := new(Ext_Reply)
 	rep.id = ext_next_id()
@@ -322,6 +428,7 @@ ext_send_message :: proc(from: ^Ext_Context, message: string, to: Ext_Target) {
 // none, the sender gets undefined.
 ext_respond :: proc(context_id: u64, reply: u64, value: string, has: bool) {
 	r := ext_router()
+	if has && ext_exec_respond(context_id, reply, value) { return }   // (a scripting.executeScript function's value)
 	rep, ok := r.replies[reply]
 	if !ok { return }
 	at := -1
@@ -344,9 +451,29 @@ ext_port_disconnect_json :: proc(port: u64) -> string { return fmt.tprintf(`{{"t
 
 // runtime.connect: a port from `context_id` to the contexts of its extension that listen to runtime.onConnect.
 ext_connect :: proc(context_id: u64, port: u64, name: string) {
-	r := ext_router()
 	from := ext_context_by_id(context_id)
 	if from == nil { return }
+	targets := make([dynamic]^Ext_Context, 0, 4, context.temp_allocator)
+	for _, c in ext_router().contexts {
+		if c.ext != from.ext || c.id == from.id || c.kind == .Content { continue }
+		if ext_listens(c, "runtime.onConnect") { append(&targets, c) }
+	}
+	ext_connect_to(from, port, name, targets[:])
+}
+
+// tabs.connect: a port from `context_id` to the content scripts of its extension in a tab (ext_tab_targets). A tab
+// with none disconnects the port at once, as Chrome does.
+ext_connect_tab :: proc(context_id: u64, port: u64, name: string, tab, frame: i64) {
+	from := ext_context_by_id(context_id)
+	if from == nil { return }
+	targets := make([dynamic]^Ext_Context, 0, 4, context.temp_allocator)
+	ext_tab_targets(from, tab, frame, "", "runtime.onConnect", &targets)
+	ext_connect_to(from, port, name, targets[:])
+}
+
+@(private)
+ext_connect_to :: proc(from: ^Ext_Context, port: u64, name: string, targets: []^Ext_Context) {
+	r := ext_router()
 	count := 0
 	for _, x in r.ports { if x.ext == from.ext { count += 1 } }
 	limit := ext_registry().settings.ports_max
@@ -358,11 +485,6 @@ ext_connect :: proc(context_id: u64, port: u64, name: string) {
 	pt.id, pt.ext, pt.opener = port, strings.clone(from.ext), from.id
 	r.ports[port] = pt
 	text := fmt.tprintf(`{{"t":"connect","p":%d,"n":%s,"s":%s}}`, port, extensions.json_quote(name), ext_sender_json(from))
-	targets := make([dynamic]^Ext_Context, 0, 4, context.temp_allocator)
-	for _, c in r.contexts {
-		if c.ext != from.ext || c.id == from.id || c.kind == .Content { continue }
-		if ext_listens(c, "runtime.onConnect") { append(&targets, c) }
-	}
 	for c in targets { if ext_deliver(c, text) { append(&pt.others, c.id) } }
 	if len(pt.others) == 0 { ext_port_end_gone(port, 0) } else { ext_bg_port_touch(from.ext) }
 }
@@ -436,6 +558,7 @@ ext_router_destroy :: proc() {
 	if r.save_timer != base.NIL_HANDLE && r.loop != nil { host.clear_timer(r.loop, r.save_timer) }
 	if r.idle_timer != base.NIL_HANDLE && r.loop != nil { host.clear_timer(r.loop, r.idle_timer) }
 	ext_offscreen_destroy_all()   // ext_offscreen.odin (the shell closes the pages themselves with its tabs)
+	ext_execs_destroy()           // ext_scripting.odin
 	ext_storage_save_all()   // (what changed since the last write: the shell's writer flushes it at exit)
 	r^ = {}
 }

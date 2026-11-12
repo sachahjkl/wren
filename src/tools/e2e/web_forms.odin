@@ -15,7 +15,7 @@ import "wb:fetch"
 import "wb:forms"
 import "wb:html"
 import "wb:page"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:wasm"
 
 FORMS_HTML :: "examples/site/forms.html"

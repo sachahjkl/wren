@@ -54,6 +54,7 @@
 <li><a href="#risks">Risks</a></li>
 <li><a href="#slice-8-2026-10-31-a-linux-package">Slice 8 (2026-10-31): a Linux package</a></li>
 <li><a href="#slice-9-2026-11-07-the-browser-with-its-scripts-real-pages-and-the-end-to-end-scenarios-on-linux">Slice 9 (2026-11-07): the browser with its scripts, real pages and the end-to-end scenarios on Linux</a></li>
+<li><a href="#layering-2026-11-12-finding-7-of-the-organisation-review">Layering (2026-11-12): finding 7 of the organisation review</a></li>
 </ul>
 </nav>
 
@@ -68,6 +69,16 @@ more errors once the first ones are fixed.</p>
 by their suffix: <code>*_windows.odin</code>, <code>*_linux.odin</code>, <code>*_unix.odin</code> (<code>#+build linux, darwin, freebsd, openbsd, netbsd</code>),
 <code>*_other.odin</code> (<code>#+build !windows</code> and, on a second line, <code>#+build !linux</code> when both are excluded). A test that only
 makes sense on one system is <code>*_test_windows.odin</code> (not <code>*_windows_test.odin</code>: the suffix must end the name).</p>
+<p>Rules that <code>test_all</code> checks (<code>src/tools/test_all/lint_layers.odin</code>), in <code>src</code> and <code>native/js</code> but not in <code>src/tools</code>:</p>
+<ul>
+<li>Only a <code>*_windows.odin</code> file imports <code>core:sys/windows</code>. A neutral file that imports it compiles on Linux only until
+someone calls what it declares. Put the Win32 call behind a procedure of the package, with the same name in an
+<code>*_other.odin</code> file (for example <code>src/browser/shell_native_windows.odin</code>, <code>prof_windows.odin</code>).</li>
+<li>A neutral struct holds no Win32 type. Declare the fields in a struct of the <code>*_windows.odin</code> file and an empty struct
+of the same name in the <code>*_other.odin</code> file (<code>browser.Native_Hooks</code>, the field <code>App.native</code>).</li>
+<li>The product does not import <code>wb:tools/*</code>. Crash reports (<code>src/crashtrace</code>), the stacks of another process
+(<code>src/stacks</code>) and the test environment (<code>src/testenv</code>) are packages of <code>src</code> that the tools import.</li>
+</ul>
 <p>Shared building blocks, use them rather than a new copy:</p>
 <div class="table-box"><table>
 <thead><tr><th>Need</th><th>Where</th></tr></thead>
@@ -83,7 +94,7 @@ makes sense on one system is <code>*_test_windows.odin</code> (not <code>*_windo
 <tr><td>A file: path from a URL, its separator, the tree check</td><td><code>fetch.file_path_from_url</code>, <code>fetch.FILE_SEP_STR</code>, <code>fetch.path_within</code> (POSIX paths off Windows)</td></tr>
 <tr><td>A Unix socket of this user's only</td><td><code>remote.socket_dir</code>, <code>remote.unix_connect</code></td></tr>
 <tr><td>Starting, telling again and ending a child process</td><td><code>remote/client</code>: <code>process_start</code>, <code>identity_of</code>, <code>same_process</code>, <code>process_wait</code>, <code>process_kill</code></td></tr>
-<tr><td>Crash reports</td><td><code>crashtrace</code> (<code>crashtrace_linux.odin</code>: signals, backtrace, build id; <code>wrentool crash-symbolize</code>)</td></tr>
+<tr><td>Crash reports</td><td><code>src/crashtrace</code> (<code>crashtrace_linux.odin</code>: signals, backtrace, build id; <code>wrentool crash-symbolize</code>)</td></tr>
 </tbody>
 </table></div>
 <p>The Wasmtime archive for Linux is sealed by <code>wrentool fetch wasmtime</code> (one relocatable object, only the C API's symbols
@@ -396,6 +407,22 @@ picture; it takes a window of its own that follows the pointer (the toolkit).</l
 <li>Measures: live pages from a datacenter on a software adapter say where time goes (spans), not how fast a desktop is; the replay
 recordings are on the Windows machine.</li>
 </ul>
+<h2 id="layering-2026-11-12-finding-7-of-the-organisation-review"><a class="anchor" href="#layering-2026-11-12-finding-7-of-the-organisation-review" aria-hidden="true">#</a>Layering (2026-11-12): finding 7 of the organisation review</h2>
+<ul>
+<li><code>src/browser</code> has no neutral file that imports <code>core:sys/windows</code>. The Win32 window details (hide on close, the size
+before the first size event, the raise of the developer tools' window) are in <code>shell_native_windows.odin</code>; the
+profiler's clock, sampler and symbols are in <code>prof_windows.odin</code>; the console launcher, the update platform and the
+state of a headless window are in <code>*_windows.odin</code> files. Each has an <code>*_other.odin</code> counterpart.</li>
+<li><code>App</code> holds no Win32 type: <code>App.native</code> is a <code>Native_Hooks</code>, declared in <code>shell_native_windows.odin</code> and empty in
+<code>shell_native_other.odin</code>.</li>
+<li><code>crashtrace</code>, <code>stacks</code> and <code>testenv</code> moved from <code>src/tools</code> to <code>src</code>: the browser, <code>remote/api</code> and the unit tests
+of <code>js</code>, <code>page</code> and <code>wasm</code> imported them.</li>
+<li><code>URLPattern</code> moved from <code>src/url</code> to <code>src/urlpattern</code>. <code>url</code> does not import <code>wb:engine/regexp</code> and
+<code>wb:engine/unicode</code> now, so <code>cookies</code>, <code>csp</code> and <code>webauthn</code> do not link them.</li>
+<li>The judge (<code>src/engine/jsrt/judge</code>) keeps its Win32 calls in <code>fuzz_crash_windows.odin</code> and <code>capi_arena_windows.odin</code>.
+Off Windows, <code>judge capi</code> cannot reserve its arena below 4 GiB yet.</li>
+<li><code>src/tools/test_all/lint_layers.odin</code> keeps these rules (see "How a package is made portable").</li>
+</ul>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/api/workers/"><span>Previous</span><strong>Module workers</strong></a>
 <a class="doc-next" href="../../docs/winget/"><span>Next</span><strong>Publishing Wren on winget</strong></a>
@@ -488,12 +515,14 @@ recordings are on the Windows machine.</li>
 <li><a href="../../docs/api/ext/offscreen/">chrome.offscreen</a></li>
 <li><a href="../../docs/api/ext/permissions/">chrome.permissions</a></li>
 <li><a href="../../docs/api/ext/runtime/">chrome.runtime</a></li>
+<li><a href="../../docs/api/ext/scripting/">chrome.scripting</a></li>
 <li><a href="../../docs/api/ext/storage.local/">chrome.storage.local</a></li>
 <li><a href="../../docs/api/ext/storage.managed/">chrome.storage.managed</a></li>
 <li><a href="../../docs/api/ext/storage/">chrome.storage</a></li>
 <li><a href="../../docs/api/ext/storage.session/">chrome.storage.session</a></li>
 <li><a href="../../docs/api/ext/storage.sync/">chrome.storage.sync</a></li>
 <li><a href="../../docs/api/ext/tabs/">chrome.tabs</a></li>
+<li><a href="../../docs/api/ext/webNavigation/">chrome.webNavigation</a></li>
 <li><a href="../../docs/api/ext/windows/">chrome.windows</a></li>
 <li><a href="../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../docs/api/fontface/">Module fontface</a></li>
@@ -625,7 +654,7 @@ recordings are on the Windows machine.</li>
 <li><a href="../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../docs/extensions/">Browser extensions</a></li>
-<li><a href="../../docs/js/bindgen/">bindgen: Odin output and Odin input</a></li>
+<li><a href="../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
 <li><a href="../../docs/js/odin-abi/">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../docs/js/web-crypto/">crypto.subtle</a></li>

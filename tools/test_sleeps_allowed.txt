@@ -10,7 +10,7 @@ src/host/loop_test.odin 1  # a hammer of posts from many threads: each post sign
 src/host/shutdown_test.odin 1  # base.await: the watchdog's report comes from its own thread, which has no signal for a test (docs/test-review.md 1.9: to wait on a futex)
 src/host/thread_test.odin 3  # -Perf only: how often a hook runs in real time is the measure; base.await on the state threads under test set (1.9)
 src/images/images_test.odin 4  # the decoder pool's threads end on their idle time and have no signal for a test (base.await on their count, 1.9); a yield between tries of a lock another thread holds for a moment
-src/layout/bench_load_test.odin 2  # a benchmark asked for these pauses: what the threads do during them is the measure
+src/layout/bench_load_test_windows.odin 2  # a benchmark asked for these pauses: what the threads do during them is the measure
 src/media/av1_soft_test.odin 1  # looks at a real player between its turns: its threads have no signal for a test
 src/page/worker_test.odin 1  # base.await: the workers' threads end on their own; their count is the state (1.9)
 src/remote/server_test_linux.odin 1  # a client of the real socket: it connects once the server thread has made it

@@ -134,8 +134,9 @@ browser/prof.odin phase_sites const  # the phases as zones of Tracy and ETW: mad
 browser/prof.odin phase_span_start process  # WREN_SPANS: when each phase began, on the profiled thread
 browser/prof.odin prof process  # WREN_PROF's profiler: the first App's thread (prof_init; a profiled process runs one App)
 browser/prof.odin qpc_freq_cached process  # the performance counter's frequency, read once
-browser/prof.odin sampler_tid process  # the profiler's sampling thread (atomic)
 browser/prof.odin startup_marks process  # the process's start-up moments (from main's first line)
+browser/prof_windows.odin sampler_target process  # the UI thread the profiler's sampler stops (prof_sampling_start; a profiled process runs one App)
+browser/prof_windows.odin sampler_tid process  # the profiler's sampling thread (atomic)
 browser/remote_shell.odin remote_exit_code process  # what the process ends with (Browser.close)
 browser/remote_shell.odin remote_fast_exit process  # the process ends at once, without the teardown
 browser/remote_state.odin KEEP_NAMES const  # a table
@@ -186,7 +187,7 @@ js/timezone_windows.odin tz_name_cache process  # the machine's time zone, read 
 js/timezone_windows.odin tz_name_done process  # ... it was read
 js/timezone_windows.odin tz_name_len process  # ... its length
 js/touch.odin hardware_touch_points process  # the machine's touch screen
-layout/bench_load_test.odin smp test
+layout/bench_load_test_windows.odin smp test
 layout/context.odin VERTICAL_FEATURES const  # a table
 layout/parallel.odin par_mu process  # the layout threads' lock
 layout/parallel.odin par_pool process  # the layout threads
@@ -372,7 +373,6 @@ page/pages.odin the_pages thread  # the Pages of the pages this thread runs (pag
 page/service_worker.odin SW_STATE_NAMES const  # a table
 page/settings.odin PREFS const  # a table
 page/shared_worker.odin shared_worker_vt const  # a host object's table of procedures
-page/storage.odin commit_gate process  # the order of the writes of each file, keyed by its path, from any thread (the blocking pools'): locked
 page/sw_settings.odin SW_PREFS const  # a table
 page/timeline.odin TIMELINE_PREFS const  # a table
 page/timeline.odin tl_loader const  # never written: its address names the timelines' observer of a loader

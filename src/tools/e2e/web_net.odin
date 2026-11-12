@@ -14,7 +14,7 @@ import "core:strings"
 import "core:testing"
 import "wb:base"
 import "wb:net"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:tools/testhost"
 
 // The server's origins, from its base port (tools/testserver/ports.go, transport.go).

@@ -46,13 +46,7 @@ Update_Summary :: struct {
 	busy:        bool,
 }
 
-update_install_supported :: proc() -> bool {
-	when ODIN_OS == .Windows { return true } else { return false }
-}
-
-update_platform :: proc() -> string {
-	when ODIN_OS == .Windows { return update.PLATFORM } else { return "" }
-}
+// update_install_supported and update_platform: update_install_windows.odin, update_install_other.odin.
 
 // The key manifests are checked with: the one built in, unless about:config names another (for the tests of this feature).
 update_public_key :: proc(app: ^App) -> string {

@@ -14,7 +14,7 @@ import "wb:dom"
 import "wb:host"
 import "wb:page"
 import "wb:style"
-import "wb:tools/testenv"
+import "wb:testenv"
 
 ADDRESS :: "http://127.0.0.1:8765/site/styletest.html"
 VIEW_WIDTH :: 800

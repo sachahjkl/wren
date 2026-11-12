@@ -117,12 +117,14 @@
 <li><a href="../../../../docs/api/ext/offscreen/">chrome.offscreen</a></li>
 <li><a href="../../../../docs/api/ext/permissions/">chrome.permissions</a></li>
 <li><a href="../../../../docs/api/ext/runtime/">chrome.runtime</a></li>
+<li><a href="../../../../docs/api/ext/scripting/">chrome.scripting</a></li>
 <li><a href="../../../../docs/api/ext/storage.local/">chrome.storage.local</a></li>
 <li><a href="../../../../docs/api/ext/storage.managed/">chrome.storage.managed</a></li>
 <li><a href="../../../../docs/api/ext/storage/">chrome.storage</a></li>
 <li><a href="../../../../docs/api/ext/storage.session/">chrome.storage.session</a></li>
 <li><a href="../../../../docs/api/ext/storage.sync/">chrome.storage.sync</a></li>
 <li><a href="../../../../docs/api/ext/tabs/" aria-current="page" class="active">chrome.tabs</a></li>
+<li><a href="../../../../docs/api/ext/webNavigation/">chrome.webNavigation</a></li>
 <li><a href="../../../../docs/api/ext/windows/">chrome.windows</a></li>
 <li><a href="../../../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../../../docs/api/fontface/">Module fontface</a></li>
@@ -254,7 +256,7 @@
 <li><a href="../../../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../../../docs/extensions/">Browser extensions</a></li>
-<li><a href="../../../../docs/js/bindgen/">bindgen: Odin output and Odin input</a></li>
+<li><a href="../../../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
 <li><a href="../../../../docs/js/odin-abi/">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../../../docs/js/web-crypto/">crypto.subtle</a></li>
@@ -288,6 +290,8 @@
 <tr><td><code>create(CreateProperties createProperties)</code></td><td><a href="../../../../docs/api/ext/tabs/#tab">Tab</a></td><td>host</td><td></td><td></td></tr>
 <tr><td><code>update(optional i64 tabId, UpdateProperties updateProperties)</code></td><td><a href="../../../../docs/api/ext/tabs/#tab">Tab</a></td><td>host</td><td></td><td>No tabId: the selected tab of the current window.</td></tr>
 <tr><td><code>remove(TabIds tabIds)</code></td><td>void</td><td>host</td><td></td><td></td></tr>
+<tr><td><code>sendMessage(i64 tabId, any message, optional MessageSendOptions options)</code></td><td>any</td><td>host</td><td></td><td>To the content scripts of the extension in the tab (one frame with frameId) that listen to runtime.onMessage. The first answer wins; with none, "Could not establish connection. Receiving end does not exist.".</td></tr>
+<tr><td><code>connect(i64 tabId, optional TabConnectInfo connectInfo)</code></td><td><a href="../../../../docs/api/ext/runtime/#port">Port</a></td><td>realm</td><td></td><td>A port to the content scripts of the extension in the tab (one frame with frameId) that listen to runtime.onConnect.</td></tr>
 </tbody>
 </table></div>
 <h2 id="events"><a class="anchor" href="#events" aria-hidden="true">#</a>Events</h2>
@@ -413,9 +417,26 @@
 <tr><td><code>isWindowClosing</code></td><td>bool</td><td></td></tr>
 </tbody>
 </table></div>
+<h3 id="messagesendoptions"><a class="anchor" href="#messagesendoptions" aria-hidden="true">#</a>MessageSendOptions</h3>
+<div class="table-box"><table>
+<thead><tr><th>Property</th><th>Type</th><th></th></tr></thead>
+<tbody>
+<tr><td><code>frameId</code> (optional)</td><td>i64</td><td>One frame only (0: the top document).</td></tr>
+<tr><td><code>documentId</code> (optional)</td><td>string</td><td></td></tr>
+</tbody>
+</table></div>
+<h3 id="tabconnectinfo"><a class="anchor" href="#tabconnectinfo" aria-hidden="true">#</a>TabConnectInfo</h3>
+<div class="table-box"><table>
+<thead><tr><th>Property</th><th>Type</th><th></th></tr></thead>
+<tbody>
+<tr><td><code>name</code> (optional)</td><td>string</td><td></td></tr>
+<tr><td><code>frameId</code> (optional)</td><td>i64</td><td></td></tr>
+<tr><td><code>documentId</code> (optional)</td><td>string</td><td></td></tr>
+</tbody>
+</table></div>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../../docs/api/ext/storage.sync/"><span>Previous</span><strong>chrome.storage.sync</strong></a>
-<a class="doc-next" href="../../../../docs/api/ext/windows/"><span>Next</span><strong>chrome.windows</strong></a>
+<a class="doc-next" href="../../../../docs/api/ext/webNavigation/"><span>Next</span><strong>chrome.webNavigation</strong></a>
 </nav>
 <p class="doc-edit"><a href="https://github.com/sachahjkl/wren/blob/master/docs/api/ext/tabs.md" rel="noopener">Edit this page on GitHub</a></p>
 </article>
@@ -437,6 +458,8 @@
 <li class="lvl3"><a href="#activeinfo">ActiveInfo</a></li>
 <li class="lvl3"><a href="#changeinfo">ChangeInfo</a></li>
 <li class="lvl3"><a href="#removeinfo">RemoveInfo</a></li>
+<li class="lvl3"><a href="#messagesendoptions">MessageSendOptions</a></li>
+<li class="lvl3"><a href="#tabconnectinfo">TabConnectInfo</a></li>
 </ul>
 </nav>
 </main>

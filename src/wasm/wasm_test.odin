@@ -17,7 +17,7 @@ import "core:thread"
 import "core:time"
 import "wb:base"
 import "wb:config"
-import "wb:tools/testenv"
+import "wb:testenv"
 
 // preemption: the call's deadline, the tick of the hook, what the hook takes in its first calls.
 @(private = "file") PREEMPT_CALL_MS :: 150

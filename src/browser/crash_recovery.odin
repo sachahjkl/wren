@@ -28,7 +28,6 @@ import "core:strings"
 import "core:time"
 import "toolkit:ui"
 import "wb:base"
-import "wb:blocker"
 import "wb:config"
 import "wb:fetch"
 import "wb:host"
@@ -146,7 +145,7 @@ recovery_plan :: proc(dir: string, owns_profile: bool, alive: proc(pid: u32, cre
 	plan.kind = start_decide(have, plan.prev, live)
 	switch plan.kind {
 	case .Clean:
-		_ = os.remove(snap_path)   // (a write that was in flight when the last run ended normally)
+		_ = host.file_drop(nil, snap_path)   // (a write that was in flight when the last run ended normally; before the loop: no writer yet)
 	case .Live:
 	case .Crashed, .Crashed_Twice:
 		text, ok := read_bounded(snap_path, SNAPSHOT_MAX_BYTES)
@@ -154,14 +153,14 @@ recovery_plan :: proc(dir: string, owns_profile: bool, alive: proc(pid: u32, cre
 		switch {
 		case plan.tabs == 0:
 			plan.kind = .Crashed   // nothing worth keeping: a blank page twice is not a loop
-			_ = os.remove(snap_path)
+			_ = host.file_drop(nil, snap_path)
 		case plan.kind == .Crashed:
 			plan.text, plan.restoring = strings.clone(text), true
 		case:
 			stamp := limits.stamp != "" ? limits.stamp : local_stamp()
 			name := fmt.tprintf("%s%s.txt", BACKUP_PREFIX, stamp)
 			target := profile_file(dir, name)
-			if os.rename(snap_path, target) == nil || (blocker.write_file_atomic(target, transmute([]byte)text) && os.remove(snap_path) == nil) {
+			if host.file_move(nil, snap_path, target) || (host.file_put(nil, target, transmute([]byte)text) && host.file_drop(nil, snap_path)) {
 				plan.backup = strings.clone(target)
 				backups_prune(dir, limits.keep_backups)
 			} else {
@@ -187,13 +186,14 @@ backups_prune :: proc(dir: string, keep: int) {
 	names := make([dynamic]string, context.temp_allocator)
 	for e in entries { if e.type != .Directory && is_backup_name(e.name) { append(&names, e.fullpath) } }
 	slice.sort(names[:])
-	for i in 0 ..< max(len(names) - max(keep, 1), 0) { _ = os.remove(names[i]) }
+	for i in 0 ..< max(len(names) - max(keep, 1), 0) { _ = host.file_drop(nil, names[i]) }
 }
 
 is_backup_name :: proc(name: string) -> bool { return strings.has_prefix(name, BACKUP_PREFIX) && strings.has_suffix(name, ".txt") }
 
+// At the start, before the loop runs (no writer yet): the marker is on the disk before the window exists.
 recovery_mark :: proc(dir: string, m: Run_Marker) -> bool {
-	return blocker.write_file_atomic(profile_file(dir, MARKER_FILE), transmute([]byte)marker_text(m))
+	return host.file_put(nil, profile_file(dir, MARKER_FILE), transmute([]byte)marker_text(m))
 }
 
 @(private = "file")
@@ -353,10 +353,8 @@ recovery_stable :: proc(data: rawptr) {
 	if !app.recovery.active || app.recovery.closing || !app.recovery.self.restoring { return }
 	stable := app.recovery.self
 	stable.restoring = false
-	if !recovery_mark(app.recovery.dir, stable) {
-		app.recovery.stable_timer = host.set_timer(&app.loop, RECOVERY_WRITE_RETRY_MS, 0, recovery_stable, app)
-		return
-	}
+	// (the writer tries again after a failure; at exit it writes it before recovery_end removes it)
+	host.profile_write(&app.writer, profile_file(app.recovery.dir, MARKER_FILE), marker_text(stable))
 	app.recovery.self = stable
 }
 
@@ -398,7 +396,7 @@ recovery_fire :: proc(data: rawptr) {
 @(private = "file")
 snapshot_work :: proc(data: rawptr) {
 	j := (^Snapshot_Job)(data)
-	j.ok = blocker.write_file_atomic(j.path, transmute([]byte)j.data)
+	j.ok = host.file_put(&the_app.writer, j.path, transmute([]byte)j.data)
 }
 
 snapshot_done :: proc(data: rawptr) {
@@ -428,8 +426,9 @@ recovery_end :: proc(app: ^App) {
 	if app.recovery.snap_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.recovery.snap_timer); app.recovery.snap_timer = base.NIL_HANDLE }
 	if app.recovery.stable_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.recovery.stable_timer); app.recovery.stable_timer = base.NIL_HANDLE }
 	for _ in 0 ..< 50 { if !app.recovery.inflight { break }; host.blocking_settle(&app.blocking) }
-	_ = os.remove(strings.concatenate({app.recovery.dir, "/", MARKER_FILE}, context.temp_allocator))
-	_ = os.remove(strings.concatenate({app.recovery.dir, "/", SNAPSHOT_FILE}, context.temp_allocator))
+	// (after profile_files_flush: the writer is closing, these are the exit's own writes on this thread)
+	_ = host.file_drop(&app.writer, strings.concatenate({app.recovery.dir, "/", MARKER_FILE}, context.temp_allocator))
+	_ = host.file_drop(&app.writer, strings.concatenate({app.recovery.dir, "/", SNAPSHOT_FILE}, context.temp_allocator))
 	app.recovery.active = false
 }
 

@@ -7,10 +7,8 @@ package jsrt_judge
 // under a 20 ms interrupt budget. The image under test is written to build/fuzz/last.bin before it
 // runs, so a crash leaves its reproducer behind. Exit 0 = no crash.
 
-import "base:runtime"
 import "core:fmt"
 import "core:math/rand"
-import "core:sys/windows"
 import "core:os"
 import "core:path/filepath"
 import "core:strconv"
@@ -254,31 +252,9 @@ compile_to_bytes :: proc(source: string, filename: string) -> ([]u8, bool) {
 	return b, true
 }
 
-@(private = "file")
-crash_handler :: proc "system" (info: ^windows.EXCEPTION_POINTERS) -> windows.LONG {
-	context = runtime.default_context() // memcheck: the JavaScript engine's own heap (a guest allocator), not the browser's process memory
-	when js.JSRT_TRACE_LAST_OP {
-		name := "?"
-		if js.trace_last_bc != nil {name = fmt.tprint(js.trace_last_bc.func_name)}
-		nname := "?"
-		if o := js.trace_native_obj; o != nil {
-			i := js.shape_find(o.shape, js.pa(.A_name))
-			if i >= 0 && o.slots[i].value.tag == .string {
-				s := js.as_str(o.slots[i].value)
-				if !s.is_wide && !s.is_rope {nname = string(js.str_u8(s)[:s.len])}
-			}
-		}
-		fmt.eprintf("crash 0x%x after %v in function atom %s (last native %s)\n", info.ExceptionRecord.ExceptionCode, js.trace_last_op, name, nname)
-		for a, i in js.trace_native_args {fmt.eprintf("  arg %d: %v %p\n", i, a.tag, a.u.ptr)}
-	} else {
-		fmt.eprintf("crash 0x%x (build with -define:JSRT_TRACE_LAST_OP=true for the last instruction)\n", info.ExceptionRecord.ExceptionCode)
-	}
-	return 0 // EXCEPTION_CONTINUE_SEARCH
-}
-
 // judge fuzzrun <image>: load and run one bytecode image (a fuzz reproducer).
 fuzz_run_one :: proc(path: string) -> int {
-	windows.AddVectoredExceptionHandler(1, crash_handler)
+	fuzz_crash_report_install()   // fuzz_crash_*.odin
 	img, err := os.read_entire_file(path, context.allocator)
 	if err != nil {return 2}
 	h := Fuzz_Host{deadline = time.tick_add(time.tick_now(), FUZZ_REPLAY_BUDGET)}

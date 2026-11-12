@@ -689,6 +689,245 @@ ext_dec_runtime_extension_context :: proc(v: json.Value, out: ^Ext_Runtime_Exten
 	return true
 }
 
+@(private = "file")
+EXT_VALUES_SCRIPTING_EXECUTION_WORLD := [?]string{"ISOLATED", "MAIN"}
+
+ext_dec_scripting_execution_world :: proc(v: json.Value, out: ^string, err: ^string) -> bool { return ext_dec_enum(v, EXT_VALUES_SCRIPTING_EXECUTION_WORLD[:], out, err) }
+
+@(private = "file")
+EXT_VALUES_SCRIPTING_STYLE_ORIGIN := [?]string{"AUTHOR", "USER"}
+
+ext_dec_scripting_style_origin :: proc(v: json.Value, out: ^string, err: ^string) -> bool { return ext_dec_enum(v, EXT_VALUES_SCRIPTING_STYLE_ORIGIN[:], out, err) }
+
+@(private = "file")
+EXT_VALUES_SCRIPTING_RUN_AT := [?]string{"document_start", "document_end", "document_idle"}
+
+ext_dec_scripting_run_at :: proc(v: json.Value, out: ^string, err: ^string) -> bool { return ext_dec_enum(v, EXT_VALUES_SCRIPTING_RUN_AT[:], out, err) }
+
+Ext_Scripting_Injection_Target :: struct {
+	tab_id: i64,
+	frame_ids: Maybe([]i64),
+	document_ids: Maybe([]string),
+	all_frames: Maybe(bool),
+}
+
+ext_dec_scripting_injection_target :: proc(v: json.Value, out: ^Ext_Scripting_Injection_Target, err: ^string) -> bool {
+	o, ok := v.(json.Object)
+	if !ok { return ext_type_error(err, "object", v) }
+	if f := o["tabId"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "tabId")
+	} else if !ext_dec_int(f, &out.tab_id, err) {
+		return ext_at_property(err, "tabId")
+	}
+	if f := o["frameIds"]; ext_json_kind(f) != .Null {
+		x: []i64
+		if !ext_dec_list(f, &x, ext_dec_int, err) { return ext_at_property(err, "frameIds") }
+		out.frame_ids = x
+	}
+	if f := o["documentIds"]; ext_json_kind(f) != .Null {
+		x: []string
+		if !ext_dec_list(f, &x, ext_dec_string, err) { return ext_at_property(err, "documentIds") }
+		out.document_ids = x
+	}
+	if f := o["allFrames"]; ext_json_kind(f) != .Null {
+		x: bool
+		if !ext_dec_bool(f, &x, err) { return ext_at_property(err, "allFrames") }
+		out.all_frames = x
+	}
+	return true
+}
+
+Ext_Scripting_Script_Injection :: struct {
+	target: Ext_Scripting_Injection_Target,
+	files: Maybe([]string),
+	func: Maybe(string),
+	args: Maybe([]json.Value),
+	world: Maybe(string),
+	inject_immediately: Maybe(bool),
+}
+
+ext_dec_scripting_script_injection :: proc(v: json.Value, out: ^Ext_Scripting_Script_Injection, err: ^string) -> bool {
+	o, ok := v.(json.Object)
+	if !ok { return ext_type_error(err, "object", v) }
+	if f := o["target"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "target")
+	} else if !ext_dec_scripting_injection_target(f, &out.target, err) {
+		return ext_at_property(err, "target")
+	}
+	if f := o["files"]; ext_json_kind(f) != .Null {
+		x: []string
+		if !ext_dec_list(f, &x, ext_dec_string, err) { return ext_at_property(err, "files") }
+		out.files = x
+	}
+	if f := o["func"]; ext_json_kind(f) != .Null {
+		x: string
+		if !ext_dec_string(f, &x, err) { return ext_at_property(err, "func") }
+		out.func = x
+	}
+	if f := o["args"]; ext_json_kind(f) != .Null {
+		x: []json.Value
+		if !ext_dec_list(f, &x, ext_dec_any, err) { return ext_at_property(err, "args") }
+		out.args = x
+	}
+	if f := o["world"]; ext_json_kind(f) != .Null {
+		x: string
+		if !ext_dec_scripting_execution_world(f, &x, err) { return ext_at_property(err, "world") }
+		out.world = x
+	}
+	if f := o["injectImmediately"]; ext_json_kind(f) != .Null {
+		x: bool
+		if !ext_dec_bool(f, &x, err) { return ext_at_property(err, "injectImmediately") }
+		out.inject_immediately = x
+	}
+	return true
+}
+
+Ext_Scripting_Css_Injection :: struct {
+	target: Ext_Scripting_Injection_Target,
+	css: Maybe(string),
+	files: Maybe([]string),
+	origin: Maybe(string),
+}
+
+ext_dec_scripting_css_injection :: proc(v: json.Value, out: ^Ext_Scripting_Css_Injection, err: ^string) -> bool {
+	o, ok := v.(json.Object)
+	if !ok { return ext_type_error(err, "object", v) }
+	if f := o["target"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "target")
+	} else if !ext_dec_scripting_injection_target(f, &out.target, err) {
+		return ext_at_property(err, "target")
+	}
+	if f := o["css"]; ext_json_kind(f) != .Null {
+		x: string
+		if !ext_dec_string(f, &x, err) { return ext_at_property(err, "css") }
+		out.css = x
+	}
+	if f := o["files"]; ext_json_kind(f) != .Null {
+		x: []string
+		if !ext_dec_list(f, &x, ext_dec_string, err) { return ext_at_property(err, "files") }
+		out.files = x
+	}
+	if f := o["origin"]; ext_json_kind(f) != .Null {
+		x: string
+		if !ext_dec_scripting_style_origin(f, &x, err) { return ext_at_property(err, "origin") }
+		out.origin = x
+	}
+	return true
+}
+
+// The result of one document: a function's value (a promise's, once settled), as JSON; null for files and for the
+// MAIN world.
+Ext_Scripting_Injection_Result :: struct {
+	result: json.Value,
+	frame_id: i64,
+	document_id: string,
+}
+
+ext_dec_scripting_injection_result :: proc(v: json.Value, out: ^Ext_Scripting_Injection_Result, err: ^string) -> bool {
+	o, ok := v.(json.Object)
+	if !ok { return ext_type_error(err, "object", v) }
+	if f := o["result"]; ext_json_kind(f) != .Null {
+		x: json.Value
+		if !ext_dec_any(f, &x, err) { return ext_at_property(err, "result") }
+		out.result = x
+	}
+	if f := o["frameId"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "frameId")
+	} else if !ext_dec_int(f, &out.frame_id, err) {
+		return ext_at_property(err, "frameId")
+	}
+	if f := o["documentId"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "documentId")
+	} else if !ext_dec_string(f, &out.document_id, err) {
+		return ext_at_property(err, "documentId")
+	}
+	return true
+}
+
+Ext_Scripting_Registered_Content_Script :: struct {
+	id: string,
+	matches: Maybe([]string),
+	exclude_matches: Maybe([]string),
+	js: Maybe([]string),
+	css: Maybe([]string),
+	all_frames: Maybe(bool),
+	match_origin_as_fallback: Maybe(bool),
+	run_at: Maybe(string),
+	world: Maybe(string),
+	persist_across_sessions: Maybe(bool),
+}
+
+ext_dec_scripting_registered_content_script :: proc(v: json.Value, out: ^Ext_Scripting_Registered_Content_Script, err: ^string) -> bool {
+	o, ok := v.(json.Object)
+	if !ok { return ext_type_error(err, "object", v) }
+	if f := o["id"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "id")
+	} else if !ext_dec_string(f, &out.id, err) {
+		return ext_at_property(err, "id")
+	}
+	if f := o["matches"]; ext_json_kind(f) != .Null {
+		x: []string
+		if !ext_dec_list(f, &x, ext_dec_string, err) { return ext_at_property(err, "matches") }
+		out.matches = x
+	}
+	if f := o["excludeMatches"]; ext_json_kind(f) != .Null {
+		x: []string
+		if !ext_dec_list(f, &x, ext_dec_string, err) { return ext_at_property(err, "excludeMatches") }
+		out.exclude_matches = x
+	}
+	if f := o["js"]; ext_json_kind(f) != .Null {
+		x: []string
+		if !ext_dec_list(f, &x, ext_dec_string, err) { return ext_at_property(err, "js") }
+		out.js = x
+	}
+	if f := o["css"]; ext_json_kind(f) != .Null {
+		x: []string
+		if !ext_dec_list(f, &x, ext_dec_string, err) { return ext_at_property(err, "css") }
+		out.css = x
+	}
+	if f := o["allFrames"]; ext_json_kind(f) != .Null {
+		x: bool
+		if !ext_dec_bool(f, &x, err) { return ext_at_property(err, "allFrames") }
+		out.all_frames = x
+	}
+	if f := o["matchOriginAsFallback"]; ext_json_kind(f) != .Null {
+		x: bool
+		if !ext_dec_bool(f, &x, err) { return ext_at_property(err, "matchOriginAsFallback") }
+		out.match_origin_as_fallback = x
+	}
+	if f := o["runAt"]; ext_json_kind(f) != .Null {
+		x: string
+		if !ext_dec_scripting_run_at(f, &x, err) { return ext_at_property(err, "runAt") }
+		out.run_at = x
+	}
+	if f := o["world"]; ext_json_kind(f) != .Null {
+		x: string
+		if !ext_dec_scripting_execution_world(f, &x, err) { return ext_at_property(err, "world") }
+		out.world = x
+	}
+	if f := o["persistAcrossSessions"]; ext_json_kind(f) != .Null {
+		x: bool
+		if !ext_dec_bool(f, &x, err) { return ext_at_property(err, "persistAcrossSessions") }
+		out.persist_across_sessions = x
+	}
+	return true
+}
+
+Ext_Scripting_Content_Script_Filter :: struct {
+	ids: Maybe([]string),
+}
+
+ext_dec_scripting_content_script_filter :: proc(v: json.Value, out: ^Ext_Scripting_Content_Script_Filter, err: ^string) -> bool {
+	o, ok := v.(json.Object)
+	if !ok { return ext_type_error(err, "object", v) }
+	if f := o["ids"]; ext_json_kind(f) != .Null {
+		x: []string
+		if !ext_dec_list(f, &x, ext_dec_string, err) { return ext_at_property(err, "ids") }
+		out.ids = x
+	}
+	return true
+}
+
 // The keys of get, remove and getBytesInUse: one key, a list of keys, or an object of keys with their defaults.
 Ext_Storage_Keys :: union {string, []string, json.Object}
 
@@ -1141,6 +1380,170 @@ ext_dec_tabs_remove_info :: proc(v: json.Value, out: ^Ext_Tabs_Remove_Info, err:
 		return ext_missing_property(err, "isWindowClosing")
 	} else if !ext_dec_bool(f, &out.is_window_closing, err) {
 		return ext_at_property(err, "isWindowClosing")
+	}
+	return true
+}
+
+Ext_Tabs_Message_Send_Options :: struct {
+	frame_id: Maybe(i64),
+	document_id: Maybe(string),
+}
+
+ext_dec_tabs_message_send_options :: proc(v: json.Value, out: ^Ext_Tabs_Message_Send_Options, err: ^string) -> bool {
+	o, ok := v.(json.Object)
+	if !ok { return ext_type_error(err, "object", v) }
+	if f := o["frameId"]; ext_json_kind(f) != .Null {
+		x: i64
+		if !ext_dec_int(f, &x, err) { return ext_at_property(err, "frameId") }
+		out.frame_id = x
+	}
+	if f := o["documentId"]; ext_json_kind(f) != .Null {
+		x: string
+		if !ext_dec_string(f, &x, err) { return ext_at_property(err, "documentId") }
+		out.document_id = x
+	}
+	return true
+}
+
+Ext_Tabs_Tab_Connect_Info :: struct {
+	name: Maybe(string),
+	frame_id: Maybe(i64),
+	document_id: Maybe(string),
+}
+
+ext_dec_tabs_tab_connect_info :: proc(v: json.Value, out: ^Ext_Tabs_Tab_Connect_Info, err: ^string) -> bool {
+	o, ok := v.(json.Object)
+	if !ok { return ext_type_error(err, "object", v) }
+	if f := o["name"]; ext_json_kind(f) != .Null {
+		x: string
+		if !ext_dec_string(f, &x, err) { return ext_at_property(err, "name") }
+		out.name = x
+	}
+	if f := o["frameId"]; ext_json_kind(f) != .Null {
+		x: i64
+		if !ext_dec_int(f, &x, err) { return ext_at_property(err, "frameId") }
+		out.frame_id = x
+	}
+	if f := o["documentId"]; ext_json_kind(f) != .Null {
+		x: string
+		if !ext_dec_string(f, &x, err) { return ext_at_property(err, "documentId") }
+		out.document_id = x
+	}
+	return true
+}
+
+@(private = "file")
+EXT_VALUES_WEB_NAVIGATION_TRANSITION_TYPE := [?]string{"link", "typed", "auto_bookmark", "auto_subframe", "manual_subframe", "generated", "start_page", "form_submit", "reload", "keyword", "keyword_generated"}
+
+ext_dec_web_navigation_transition_type :: proc(v: json.Value, out: ^string, err: ^string) -> bool { return ext_dec_enum(v, EXT_VALUES_WEB_NAVIGATION_TRANSITION_TYPE[:], out, err) }
+
+Ext_Web_Navigation_Get_Frame_Details :: struct {
+	tab_id: i64,
+	frame_id: Maybe(i64),
+	document_id: Maybe(string),
+	process_id: Maybe(i64),
+}
+
+ext_dec_web_navigation_get_frame_details :: proc(v: json.Value, out: ^Ext_Web_Navigation_Get_Frame_Details, err: ^string) -> bool {
+	o, ok := v.(json.Object)
+	if !ok { return ext_type_error(err, "object", v) }
+	if f := o["tabId"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "tabId")
+	} else if !ext_dec_int(f, &out.tab_id, err) {
+		return ext_at_property(err, "tabId")
+	}
+	if f := o["frameId"]; ext_json_kind(f) != .Null {
+		x: i64
+		if !ext_dec_int(f, &x, err) { return ext_at_property(err, "frameId") }
+		out.frame_id = x
+	}
+	if f := o["documentId"]; ext_json_kind(f) != .Null {
+		x: string
+		if !ext_dec_string(f, &x, err) { return ext_at_property(err, "documentId") }
+		out.document_id = x
+	}
+	if f := o["processId"]; ext_json_kind(f) != .Null {
+		x: i64
+		if !ext_dec_int(f, &x, err) { return ext_at_property(err, "processId") }
+		out.process_id = x
+	}
+	return true
+}
+
+Ext_Web_Navigation_Get_All_Frames_Details :: struct {
+	tab_id: i64,
+}
+
+ext_dec_web_navigation_get_all_frames_details :: proc(v: json.Value, out: ^Ext_Web_Navigation_Get_All_Frames_Details, err: ^string) -> bool {
+	o, ok := v.(json.Object)
+	if !ok { return ext_type_error(err, "object", v) }
+	if f := o["tabId"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "tabId")
+	} else if !ext_dec_int(f, &out.tab_id, err) {
+		return ext_at_property(err, "tabId")
+	}
+	return true
+}
+
+Ext_Web_Navigation_Frame_Details :: struct {
+	error_occurred: bool,
+	url: string,
+	frame_id: i64,
+	parent_frame_id: i64,
+	process_id: i64,
+	document_id: string,
+	parent_document_id: Maybe(string),
+	document_lifecycle: string,
+	frame_type: string,
+}
+
+ext_dec_web_navigation_frame_details :: proc(v: json.Value, out: ^Ext_Web_Navigation_Frame_Details, err: ^string) -> bool {
+	o, ok := v.(json.Object)
+	if !ok { return ext_type_error(err, "object", v) }
+	if f := o["errorOccurred"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "errorOccurred")
+	} else if !ext_dec_bool(f, &out.error_occurred, err) {
+		return ext_at_property(err, "errorOccurred")
+	}
+	if f := o["url"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "url")
+	} else if !ext_dec_string(f, &out.url, err) {
+		return ext_at_property(err, "url")
+	}
+	if f := o["frameId"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "frameId")
+	} else if !ext_dec_int(f, &out.frame_id, err) {
+		return ext_at_property(err, "frameId")
+	}
+	if f := o["parentFrameId"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "parentFrameId")
+	} else if !ext_dec_int(f, &out.parent_frame_id, err) {
+		return ext_at_property(err, "parentFrameId")
+	}
+	if f := o["processId"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "processId")
+	} else if !ext_dec_int(f, &out.process_id, err) {
+		return ext_at_property(err, "processId")
+	}
+	if f := o["documentId"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "documentId")
+	} else if !ext_dec_string(f, &out.document_id, err) {
+		return ext_at_property(err, "documentId")
+	}
+	if f := o["parentDocumentId"]; ext_json_kind(f) != .Null {
+		x: string
+		if !ext_dec_string(f, &x, err) { return ext_at_property(err, "parentDocumentId") }
+		out.parent_document_id = x
+	}
+	if f := o["documentLifecycle"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "documentLifecycle")
+	} else if !ext_dec_string(f, &out.document_lifecycle, err) {
+		return ext_at_property(err, "documentLifecycle")
+	}
+	if f := o["frameType"]; ext_json_kind(f) == .Null {
+		return ext_missing_property(err, "frameType")
+	} else if !ext_dec_string(f, &out.frame_type, err) {
+		return ext_at_property(err, "frameType")
 	}
 	return true
 }
@@ -2246,6 +2649,206 @@ ext_invoke_runtime_open_options_page :: proc(x: ^Ext_Call) {
 
 ext_check_runtime_open_options_page :: proc(args: json.Array) -> string { return len(args) > 0 ? ext_signature_error("runtime.openOptionsPage()") : "" }
 
+Ext_Scripting_Execute_Script_Args :: struct {
+	injection: Ext_Scripting_Script_Injection,
+}
+
+@(private = "file")
+EXT_SPEC_SCRIPTING_EXECUTE_SCRIPT := [?]Ext_Param_Spec{{kinds = {.Object}, optional = false}}
+
+ext_decode_scripting_execute_script :: proc(args: json.Array, a: ^Ext_Scripting_Execute_Script_Args) -> string {
+	slots: [1]json.Value
+	if !ext_match(args, EXT_SPEC_SCRIPTING_EXECUTE_SCRIPT[:], slots[:]) { return ext_signature_error("scripting.executeScript(object injection)") }
+	err: string
+	if !ext_dec_scripting_script_injection(slots[0], &a.injection, &err) { return ext_param_error("scripting.executeScript(object injection)", "injection", err) }
+	return ""
+}
+
+// ext_scripting_execute_script :: proc(x: ^Ext_Call, a: Ext_Scripting_Execute_Script_Args)
+@(private = "file")
+ext_invoke_scripting_execute_script :: proc(x: ^Ext_Call) {
+	a: Ext_Scripting_Execute_Script_Args
+	if e := ext_decode_scripting_execute_script(x.args, &a); e != "" { ext_fail(x, e); return }
+	ext_scripting_execute_script(x, a)
+}
+
+ext_check_scripting_execute_script :: proc(args: json.Array) -> string {
+	a: Ext_Scripting_Execute_Script_Args
+	return ext_decode_scripting_execute_script(args, &a)
+}
+
+Ext_Scripting_Css_Args :: struct {
+	injection: Ext_Scripting_Css_Injection,
+}
+
+@(private = "file")
+EXT_SPEC_SCRIPTING_INSERT_CSS := [?]Ext_Param_Spec{{kinds = {.Object}, optional = false}}
+
+ext_decode_scripting_insert_css :: proc(args: json.Array, a: ^Ext_Scripting_Css_Args) -> string {
+	slots: [1]json.Value
+	if !ext_match(args, EXT_SPEC_SCRIPTING_INSERT_CSS[:], slots[:]) { return ext_signature_error("scripting.insertCSS(object injection)") }
+	err: string
+	if !ext_dec_scripting_css_injection(slots[0], &a.injection, &err) { return ext_param_error("scripting.insertCSS(object injection)", "injection", err) }
+	return ""
+}
+
+// ext_scripting_css :: proc(x: ^Ext_Call, a: Ext_Scripting_Css_Args)
+@(private = "file")
+ext_invoke_scripting_insert_css :: proc(x: ^Ext_Call) {
+	a: Ext_Scripting_Css_Args
+	if e := ext_decode_scripting_insert_css(x.args, &a); e != "" { ext_fail(x, e); return }
+	ext_scripting_css(x, a)
+}
+
+ext_check_scripting_insert_css :: proc(args: json.Array) -> string {
+	a: Ext_Scripting_Css_Args
+	return ext_decode_scripting_insert_css(args, &a)
+}
+
+@(private = "file")
+EXT_SPEC_SCRIPTING_REMOVE_CSS := [?]Ext_Param_Spec{{kinds = {.Object}, optional = false}}
+
+ext_decode_scripting_remove_css :: proc(args: json.Array, a: ^Ext_Scripting_Css_Args) -> string {
+	slots: [1]json.Value
+	if !ext_match(args, EXT_SPEC_SCRIPTING_REMOVE_CSS[:], slots[:]) { return ext_signature_error("scripting.removeCSS(object injection)") }
+	err: string
+	if !ext_dec_scripting_css_injection(slots[0], &a.injection, &err) { return ext_param_error("scripting.removeCSS(object injection)", "injection", err) }
+	return ""
+}
+
+// ext_scripting_css :: proc(x: ^Ext_Call, a: Ext_Scripting_Css_Args)
+@(private = "file")
+ext_invoke_scripting_remove_css :: proc(x: ^Ext_Call) {
+	a: Ext_Scripting_Css_Args
+	if e := ext_decode_scripting_remove_css(x.args, &a); e != "" { ext_fail(x, e); return }
+	ext_scripting_css(x, a)
+}
+
+ext_check_scripting_remove_css :: proc(args: json.Array) -> string {
+	a: Ext_Scripting_Css_Args
+	return ext_decode_scripting_remove_css(args, &a)
+}
+
+Ext_Scripting_Register_Content_Scripts_Args :: struct {
+	scripts: []Ext_Scripting_Registered_Content_Script,
+}
+
+@(private = "file")
+EXT_SPEC_SCRIPTING_REGISTER_CONTENT_SCRIPTS := [?]Ext_Param_Spec{{kinds = {.Array}, optional = false}}
+
+ext_decode_scripting_register_content_scripts :: proc(args: json.Array, a: ^Ext_Scripting_Register_Content_Scripts_Args) -> string {
+	slots: [1]json.Value
+	if !ext_match(args, EXT_SPEC_SCRIPTING_REGISTER_CONTENT_SCRIPTS[:], slots[:]) { return ext_signature_error("scripting.registerContentScripts(array scripts)") }
+	err: string
+	if !ext_dec_list(slots[0], &a.scripts, ext_dec_scripting_registered_content_script, &err) { return ext_param_error("scripting.registerContentScripts(array scripts)", "scripts", err) }
+	return ""
+}
+
+// ext_scripting_register_content_scripts :: proc(x: ^Ext_Call, a: Ext_Scripting_Register_Content_Scripts_Args)
+@(private = "file")
+ext_invoke_scripting_register_content_scripts :: proc(x: ^Ext_Call) {
+	a: Ext_Scripting_Register_Content_Scripts_Args
+	if e := ext_decode_scripting_register_content_scripts(x.args, &a); e != "" { ext_fail(x, e); return }
+	ext_scripting_register_content_scripts(x, a)
+}
+
+ext_check_scripting_register_content_scripts :: proc(args: json.Array) -> string {
+	a: Ext_Scripting_Register_Content_Scripts_Args
+	return ext_decode_scripting_register_content_scripts(args, &a)
+}
+
+Ext_Scripting_Get_Registered_Content_Scripts_Args :: struct {
+	filter: Maybe(Ext_Scripting_Content_Script_Filter),
+}
+
+@(private = "file")
+EXT_SPEC_SCRIPTING_GET_REGISTERED_CONTENT_SCRIPTS := [?]Ext_Param_Spec{{kinds = {.Object}, optional = true}}
+
+ext_decode_scripting_get_registered_content_scripts :: proc(args: json.Array, a: ^Ext_Scripting_Get_Registered_Content_Scripts_Args) -> string {
+	slots: [1]json.Value
+	if !ext_match(args, EXT_SPEC_SCRIPTING_GET_REGISTERED_CONTENT_SCRIPTS[:], slots[:]) { return ext_signature_error("scripting.getRegisteredContentScripts(optional object filter)") }
+	err: string
+	if ext_json_kind(slots[0]) != .Null {
+		x: Ext_Scripting_Content_Script_Filter
+		if !ext_dec_scripting_content_script_filter(slots[0], &x, &err) { return ext_param_error("scripting.getRegisteredContentScripts(optional object filter)", "filter", err) }
+		a.filter = x
+	}
+	return ""
+}
+
+// ext_scripting_get_registered_content_scripts :: proc(x: ^Ext_Call, a: Ext_Scripting_Get_Registered_Content_Scripts_Args)
+@(private = "file")
+ext_invoke_scripting_get_registered_content_scripts :: proc(x: ^Ext_Call) {
+	a: Ext_Scripting_Get_Registered_Content_Scripts_Args
+	if e := ext_decode_scripting_get_registered_content_scripts(x.args, &a); e != "" { ext_fail(x, e); return }
+	ext_scripting_get_registered_content_scripts(x, a)
+}
+
+ext_check_scripting_get_registered_content_scripts :: proc(args: json.Array) -> string {
+	a: Ext_Scripting_Get_Registered_Content_Scripts_Args
+	return ext_decode_scripting_get_registered_content_scripts(args, &a)
+}
+
+Ext_Scripting_Unregister_Content_Scripts_Args :: struct {
+	filter: Maybe(Ext_Scripting_Content_Script_Filter),
+}
+
+@(private = "file")
+EXT_SPEC_SCRIPTING_UNREGISTER_CONTENT_SCRIPTS := [?]Ext_Param_Spec{{kinds = {.Object}, optional = true}}
+
+ext_decode_scripting_unregister_content_scripts :: proc(args: json.Array, a: ^Ext_Scripting_Unregister_Content_Scripts_Args) -> string {
+	slots: [1]json.Value
+	if !ext_match(args, EXT_SPEC_SCRIPTING_UNREGISTER_CONTENT_SCRIPTS[:], slots[:]) { return ext_signature_error("scripting.unregisterContentScripts(optional object filter)") }
+	err: string
+	if ext_json_kind(slots[0]) != .Null {
+		x: Ext_Scripting_Content_Script_Filter
+		if !ext_dec_scripting_content_script_filter(slots[0], &x, &err) { return ext_param_error("scripting.unregisterContentScripts(optional object filter)", "filter", err) }
+		a.filter = x
+	}
+	return ""
+}
+
+// ext_scripting_unregister_content_scripts :: proc(x: ^Ext_Call, a: Ext_Scripting_Unregister_Content_Scripts_Args)
+@(private = "file")
+ext_invoke_scripting_unregister_content_scripts :: proc(x: ^Ext_Call) {
+	a: Ext_Scripting_Unregister_Content_Scripts_Args
+	if e := ext_decode_scripting_unregister_content_scripts(x.args, &a); e != "" { ext_fail(x, e); return }
+	ext_scripting_unregister_content_scripts(x, a)
+}
+
+ext_check_scripting_unregister_content_scripts :: proc(args: json.Array) -> string {
+	a: Ext_Scripting_Unregister_Content_Scripts_Args
+	return ext_decode_scripting_unregister_content_scripts(args, &a)
+}
+
+Ext_Scripting_Update_Content_Scripts_Args :: struct {
+	scripts: []Ext_Scripting_Registered_Content_Script,
+}
+
+@(private = "file")
+EXT_SPEC_SCRIPTING_UPDATE_CONTENT_SCRIPTS := [?]Ext_Param_Spec{{kinds = {.Array}, optional = false}}
+
+ext_decode_scripting_update_content_scripts :: proc(args: json.Array, a: ^Ext_Scripting_Update_Content_Scripts_Args) -> string {
+	slots: [1]json.Value
+	if !ext_match(args, EXT_SPEC_SCRIPTING_UPDATE_CONTENT_SCRIPTS[:], slots[:]) { return ext_signature_error("scripting.updateContentScripts(array scripts)") }
+	err: string
+	if !ext_dec_list(slots[0], &a.scripts, ext_dec_scripting_registered_content_script, &err) { return ext_param_error("scripting.updateContentScripts(array scripts)", "scripts", err) }
+	return ""
+}
+
+// ext_scripting_update_content_scripts :: proc(x: ^Ext_Call, a: Ext_Scripting_Update_Content_Scripts_Args)
+@(private = "file")
+ext_invoke_scripting_update_content_scripts :: proc(x: ^Ext_Call) {
+	a: Ext_Scripting_Update_Content_Scripts_Args
+	if e := ext_decode_scripting_update_content_scripts(x.args, &a); e != "" { ext_fail(x, e); return }
+	ext_scripting_update_content_scripts(x, a)
+}
+
+ext_check_scripting_update_content_scripts :: proc(args: json.Array) -> string {
+	a: Ext_Scripting_Update_Content_Scripts_Args
+	return ext_decode_scripting_update_content_scripts(args, &a)
+}
+
 Ext_Storage_Get_Args :: struct {
 	keys: Ext_Storage_Keys,
 }
@@ -2871,6 +3474,98 @@ ext_check_tabs_remove :: proc(args: json.Array) -> string {
 	return ext_decode_tabs_remove(args, &a)
 }
 
+Ext_Tabs_Send_Message_Args :: struct {
+	tab_id: i64,
+	message: json.Value,
+	options: Maybe(Ext_Tabs_Message_Send_Options),
+}
+
+@(private = "file")
+EXT_SPEC_TABS_SEND_MESSAGE := [?]Ext_Param_Spec{{kinds = {.Number}, optional = false}, {kinds = {.Null, .Bool, .Number, .String, .Array, .Object}, optional = false}, {kinds = {.Object}, optional = true}}
+
+ext_decode_tabs_send_message :: proc(args: json.Array, a: ^Ext_Tabs_Send_Message_Args) -> string {
+	slots: [3]json.Value
+	if !ext_match(args, EXT_SPEC_TABS_SEND_MESSAGE[:], slots[:]) { return ext_signature_error("tabs.sendMessage(integer tabId, any message, optional object options)") }
+	err: string
+	if !ext_dec_int(slots[0], &a.tab_id, &err) { return ext_param_error("tabs.sendMessage(integer tabId, any message, optional object options)", "tabId", err) }
+	if !ext_dec_any(slots[1], &a.message, &err) { return ext_param_error("tabs.sendMessage(integer tabId, any message, optional object options)", "message", err) }
+	if ext_json_kind(slots[2]) != .Null {
+		x: Ext_Tabs_Message_Send_Options
+		if !ext_dec_tabs_message_send_options(slots[2], &x, &err) { return ext_param_error("tabs.sendMessage(integer tabId, any message, optional object options)", "options", err) }
+		a.options = x
+	}
+	return ""
+}
+
+// ext_tabs_send_message :: proc(x: ^Ext_Call, a: Ext_Tabs_Send_Message_Args)
+@(private = "file")
+ext_invoke_tabs_send_message :: proc(x: ^Ext_Call) {
+	a: Ext_Tabs_Send_Message_Args
+	if e := ext_decode_tabs_send_message(x.args, &a); e != "" { ext_fail(x, e); return }
+	ext_tabs_send_message(x, a)
+}
+
+ext_check_tabs_send_message :: proc(args: json.Array) -> string {
+	a: Ext_Tabs_Send_Message_Args
+	return ext_decode_tabs_send_message(args, &a)
+}
+
+Ext_Web_Navigation_Get_Frame_Args :: struct {
+	details: Ext_Web_Navigation_Get_Frame_Details,
+}
+
+@(private = "file")
+EXT_SPEC_WEB_NAVIGATION_GET_FRAME := [?]Ext_Param_Spec{{kinds = {.Object}, optional = false}}
+
+ext_decode_web_navigation_get_frame :: proc(args: json.Array, a: ^Ext_Web_Navigation_Get_Frame_Args) -> string {
+	slots: [1]json.Value
+	if !ext_match(args, EXT_SPEC_WEB_NAVIGATION_GET_FRAME[:], slots[:]) { return ext_signature_error("webNavigation.getFrame(object details)") }
+	err: string
+	if !ext_dec_web_navigation_get_frame_details(slots[0], &a.details, &err) { return ext_param_error("webNavigation.getFrame(object details)", "details", err) }
+	return ""
+}
+
+// ext_web_navigation_get_frame :: proc(x: ^Ext_Call, a: Ext_Web_Navigation_Get_Frame_Args)
+@(private = "file")
+ext_invoke_web_navigation_get_frame :: proc(x: ^Ext_Call) {
+	a: Ext_Web_Navigation_Get_Frame_Args
+	if e := ext_decode_web_navigation_get_frame(x.args, &a); e != "" { ext_fail(x, e); return }
+	ext_web_navigation_get_frame(x, a)
+}
+
+ext_check_web_navigation_get_frame :: proc(args: json.Array) -> string {
+	a: Ext_Web_Navigation_Get_Frame_Args
+	return ext_decode_web_navigation_get_frame(args, &a)
+}
+
+Ext_Web_Navigation_Get_All_Frames_Args :: struct {
+	details: Ext_Web_Navigation_Get_All_Frames_Details,
+}
+
+@(private = "file")
+EXT_SPEC_WEB_NAVIGATION_GET_ALL_FRAMES := [?]Ext_Param_Spec{{kinds = {.Object}, optional = false}}
+
+ext_decode_web_navigation_get_all_frames :: proc(args: json.Array, a: ^Ext_Web_Navigation_Get_All_Frames_Args) -> string {
+	slots: [1]json.Value
+	if !ext_match(args, EXT_SPEC_WEB_NAVIGATION_GET_ALL_FRAMES[:], slots[:]) { return ext_signature_error("webNavigation.getAllFrames(object details)") }
+	err: string
+	if !ext_dec_web_navigation_get_all_frames_details(slots[0], &a.details, &err) { return ext_param_error("webNavigation.getAllFrames(object details)", "details", err) }
+	return ""
+}
+
+// ext_web_navigation_get_all_frames :: proc(x: ^Ext_Call, a: Ext_Web_Navigation_Get_All_Frames_Args)
+@(private = "file")
+ext_invoke_web_navigation_get_all_frames :: proc(x: ^Ext_Call) {
+	a: Ext_Web_Navigation_Get_All_Frames_Args
+	if e := ext_decode_web_navigation_get_all_frames(x.args, &a); e != "" { ext_fail(x, e); return }
+	ext_web_navigation_get_all_frames(x, a)
+}
+
+ext_check_web_navigation_get_all_frames :: proc(args: json.Array) -> string {
+	a: Ext_Web_Navigation_Get_All_Frames_Args
+	return ext_decode_web_navigation_get_all_frames(args, &a)
+}
+
 Ext_Windows_Get_Current_Args :: struct {
 	query_options: Maybe(Ext_Windows_Query_Options),
 }
@@ -3131,6 +3826,13 @@ EXT_METHODS := [?]Ext_Method{
 	{name = "runtime.getContexts", contexts = {.Background, .Popup, .Tab, .Offscreen}, invoke = ext_invoke_runtime_get_contexts, check = ext_check_runtime_get_contexts},
 	{name = "runtime.reload", contexts = {.Background, .Popup, .Tab, .Offscreen}, invoke = ext_invoke_runtime_reload, check = ext_check_runtime_reload},
 	{name = "runtime.openOptionsPage", contexts = {.Background, .Popup, .Tab, .Offscreen}, invoke = ext_invoke_runtime_open_options_page, check = ext_check_runtime_open_options_page},
+	{name = "scripting.executeScript", permission = "scripting", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_scripting_execute_script, check = ext_check_scripting_execute_script},
+	{name = "scripting.insertCSS", permission = "scripting", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_scripting_insert_css, check = ext_check_scripting_insert_css},
+	{name = "scripting.removeCSS", permission = "scripting", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_scripting_remove_css, check = ext_check_scripting_remove_css},
+	{name = "scripting.registerContentScripts", permission = "scripting", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_scripting_register_content_scripts, check = ext_check_scripting_register_content_scripts},
+	{name = "scripting.getRegisteredContentScripts", permission = "scripting", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_scripting_get_registered_content_scripts, check = ext_check_scripting_get_registered_content_scripts},
+	{name = "scripting.unregisterContentScripts", permission = "scripting", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_scripting_unregister_content_scripts, check = ext_check_scripting_unregister_content_scripts},
+	{name = "scripting.updateContentScripts", permission = "scripting", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_scripting_update_content_scripts, check = ext_check_scripting_update_content_scripts},
 	{name = "storage.local.get", permission = "storage", contexts = {.Background, .Popup, .Tab, .Content}, invoke = ext_invoke_storage_local_get, check = ext_check_storage_local_get},
 	{name = "storage.local.set", permission = "storage", contexts = {.Background, .Popup, .Tab, .Content}, invoke = ext_invoke_storage_local_set, check = ext_check_storage_local_set},
 	{name = "storage.local.remove", permission = "storage", contexts = {.Background, .Popup, .Tab, .Content}, invoke = ext_invoke_storage_local_remove, check = ext_check_storage_local_remove},
@@ -3158,6 +3860,9 @@ EXT_METHODS := [?]Ext_Method{
 	{name = "tabs.create", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_tabs_create, check = ext_check_tabs_create},
 	{name = "tabs.update", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_tabs_update, check = ext_check_tabs_update},
 	{name = "tabs.remove", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_tabs_remove, check = ext_check_tabs_remove},
+	{name = "tabs.sendMessage", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_tabs_send_message, check = ext_check_tabs_send_message},
+	{name = "webNavigation.getFrame", permission = "webNavigation", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_web_navigation_get_frame, check = ext_check_web_navigation_get_frame},
+	{name = "webNavigation.getAllFrames", permission = "webNavigation", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_web_navigation_get_all_frames, check = ext_check_web_navigation_get_all_frames},
 	{name = "windows.getCurrent", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_windows_get_current, check = ext_check_windows_get_current},
 	{name = "windows.getLastFocused", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_windows_get_last_focused, check = ext_check_windows_get_last_focused},
 	{name = "windows.getAll", contexts = {.Background, .Popup, .Tab}, invoke = ext_invoke_windows_get_all, check = ext_check_windows_get_all},
@@ -3194,6 +3899,15 @@ EXT_EVENTS := [?]Ext_Member{
 	{name = "tabs.onDetached", contexts = {.Background, .Popup, .Tab}},
 	{name = "tabs.onMoved", contexts = {.Background, .Popup, .Tab}},
 	{name = "tabs.onHighlighted", contexts = {.Background, .Popup, .Tab}},
+	{name = "webNavigation.onBeforeNavigate", permission = "webNavigation", contexts = {.Background, .Popup, .Tab}},
+	{name = "webNavigation.onCommitted", permission = "webNavigation", contexts = {.Background, .Popup, .Tab}},
+	{name = "webNavigation.onDOMContentLoaded", permission = "webNavigation", contexts = {.Background, .Popup, .Tab}},
+	{name = "webNavigation.onCompleted", permission = "webNavigation", contexts = {.Background, .Popup, .Tab}},
+	{name = "webNavigation.onErrorOccurred", permission = "webNavigation", contexts = {.Background, .Popup, .Tab}},
+	{name = "webNavigation.onCreatedNavigationTarget", permission = "webNavigation", contexts = {.Background, .Popup, .Tab}},
+	{name = "webNavigation.onReferenceFragmentUpdated", permission = "webNavigation", contexts = {.Background, .Popup, .Tab}},
+	{name = "webNavigation.onHistoryStateUpdated", permission = "webNavigation", contexts = {.Background, .Popup, .Tab}},
+	{name = "webNavigation.onTabReplaced", permission = "webNavigation", contexts = {.Background, .Popup, .Tab}},
 	{name = "windows.onFocusChanged", contexts = {.Background, .Popup, .Tab}},
 	{name = "windows.onRemoved", contexts = {.Background, .Popup, .Tab}},
 	{name = "windows.onCreated", contexts = {.Background, .Popup, .Tab}},
@@ -3214,16 +3928,19 @@ EXT_LOCALS := [?]Ext_Member{
 	{name = "runtime.getURL", contexts = {.Background, .Popup, .Tab, .Offscreen, .Content}},
 	{name = "runtime.getManifest", contexts = {.Background, .Popup, .Tab, .Offscreen, .Content}},
 	{name = "runtime.connect", contexts = {.Background, .Popup, .Tab, .Offscreen, .Content}},
+	{name = "tabs.connect", contexts = {.Background, .Popup, .Tab}},
 }
 
 EXT_NAMESPACES := [?]Ext_Namespace_Info{
 	{name = "idle", constants = `{"IdleState":{"ACTIVE":"active","IDLE":"idle","LOCKED":"locked"}}`},
 	{name = "offscreen", constants = `{"Reason":{"TESTING":"TESTING","AUDIO_PLAYBACK":"AUDIO_PLAYBACK","IFRAME_SCRIPTING":"IFRAME_SCRIPTING","DOM_SCRAPING":"DOM_SCRAPING","BLOBS":"BLOBS","DOM_PARSER":"DOM_PARSER","USER_MEDIA":"USER_MEDIA","DISPLAY_MEDIA":"DISPLAY_MEDIA","WEB_RTC":"WEB_RTC","CLIPBOARD":"CLIPBOARD","LOCAL_STORAGE":"LOCAL_STORAGE","WORKERS":"WORKERS","BATTERY_STATUS":"BATTERY_STATUS","MATCH_MEDIA":"MATCH_MEDIA","GEOLOCATION":"GEOLOCATION"}}`},
 	{name = "runtime", constants = `{"OnInstalledReason":{"INSTALL":"install","UPDATE":"update","CHROME_UPDATE":"chrome_update","SHARED_MODULE_UPDATE":"shared_module_update"},"PlatformOs":{"MAC":"mac","WIN":"win","ANDROID":"android","CROS":"cros","LINUX":"linux","OPENBSD":"openbsd","FUCHSIA":"fuchsia"},"ContextType":{"TAB":"TAB","POPUP":"POPUP","BACKGROUND":"BACKGROUND","OFFSCREEN_DOCUMENT":"OFFSCREEN_DOCUMENT","SIDE_PANEL":"SIDE_PANEL","DEVELOPER_TOOLS":"DEVELOPER_TOOLS"}}`},
+	{name = "scripting", constants = `{"ExecutionWorld":{"ISOLATED":"ISOLATED","MAIN":"MAIN"},"StyleOrigin":{"AUTHOR":"AUTHOR","USER":"USER"},"RunAt":{"DOCUMENT_START":"document_start","DOCUMENT_END":"document_end","DOCUMENT_IDLE":"document_idle"}}`},
 	{name = "storage", constants = `{"AreaName":{"LOCAL":"local","SYNC":"sync","MANAGED":"managed","SESSION":"session"}}`},
 	{name = "storage.local", constants = `{"QUOTA_BYTES":10485760}`},
 	{name = "storage.sync", constants = `{"QUOTA_BYTES":102400,"QUOTA_BYTES_PER_ITEM":8192,"MAX_ITEMS":512,"MAX_WRITE_OPERATIONS_PER_HOUR":1800,"MAX_WRITE_OPERATIONS_PER_MINUTE":120}`},
 	{name = "storage.session", constants = `{"QUOTA_BYTES":10485760}`},
 	{name = "tabs", constants = `{"TAB_ID_NONE":-1,"TAB_INDEX_NONE":-1,"TabStatus":{"UNLOADED":"unloaded","LOADING":"loading","COMPLETE":"complete"}}`},
+	{name = "webNavigation", constants = `{"TransitionType":{"LINK":"link","TYPED":"typed","AUTO_BOOKMARK":"auto_bookmark","AUTO_SUBFRAME":"auto_subframe","MANUAL_SUBFRAME":"manual_subframe","GENERATED":"generated","START_PAGE":"start_page","FORM_SUBMIT":"form_submit","RELOAD":"reload","KEYWORD":"keyword","KEYWORD_GENERATED":"keyword_generated"}}`},
 	{name = "windows", constants = `{"WINDOW_ID_NONE":-1,"WINDOW_ID_CURRENT":-2,"WindowType":{"NORMAL":"normal","POPUP":"popup","PANEL":"panel","APP":"app","DEVTOOLS":"devtools"},"CreateType":{"NORMAL":"normal","POPUP":"popup","PANEL":"panel"},"WindowState":{"NORMAL":"normal","MINIMIZED":"minimized","MAXIMIZED":"maximized","FULLSCREEN":"fullscreen","LOCKED_FULLSCREEN":"locked-fullscreen"}}`},
 }

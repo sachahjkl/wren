@@ -6,7 +6,7 @@ import "core:testing"
 import "wb:base"
 import "wb:host"
 import "wb:page"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:tools/tooling"
 
 // The windows scripts open: a document such a window leaves stays in its back/forward cache, and going back shows it again

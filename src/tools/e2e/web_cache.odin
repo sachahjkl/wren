@@ -19,7 +19,7 @@ import "wb:cookies"
 import "wb:fetch"
 import "wb:http"
 import "wb:httpcache"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:url"
 
 A :: "http://127.0.0.1:8765"

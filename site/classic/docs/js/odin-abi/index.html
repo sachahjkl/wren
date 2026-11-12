@@ -175,7 +175,7 @@ the operand structs, fill callbacks, <code>WJ_FETCH_STRING</code> loops, <code>(
 disappear. A string result lives in the scratch buffer until the next host call: convert it first.</li>
 <li><strong>Replace <code>this</code> checks and interface caches</strong> by <code>jsb.this(ctx, this_val, Kind)</code> and <code>jsb.iface_of(Kind)</code>.</li>
 <li><strong>Keep the exported names.</strong> Every <code>wjr_*</code> the generated binding table references stays <code>@(export, link_name = ...)</code>
-with the same signature; nothing changes in <code>native/js/gen</code>.</li>
+with the same signature; nothing changes in <code>native/js/odin/bindings_gen.odin</code>.</li>
 <li><strong>Build and check:</strong> <code>odin check native/js/odin -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -vet</code>,
 then <code>cmd /c build.bat</code>.</li>
 <li><strong>Test what the domain touches:</strong> the web tests of the domain (<code>js</code>, <code>jsweb</code> for url: <code>src/tools/e2e/web_*.odin</code>), <code>build\wpt.exe -only
@@ -235,7 +235,7 @@ by hand, dispatching to differently named declarations.</li>
 declaration takes a string).</li>
 </ul>
 <nav class="doc-seq" aria-label="Previous and next page">
-<a class="doc-prev" href="../../../docs/js/bindgen/"><span>Previous</span><strong>bindgen: Odin output and Odin input</strong></a>
+<a class="doc-prev" href="../../../docs/js/bindgen/"><span>Previous</span><strong>bindgen: the generated copies of the web API</strong></a>
 <a class="doc-next" href="../../../docs/js/odin-glue/"><span>Next</span><strong>Writing Wren's JavaScript glue in Odin</strong></a>
 </nav>
 <p class="doc-edit"><a href="https://github.com/sachahjkl/wren/blob/master/docs/js/odin-abi.md" rel="noopener">Edit this page on GitHub</a></p>
@@ -326,12 +326,14 @@ declaration takes a string).</li>
 <li><a href="../../../docs/api/ext/offscreen/">chrome.offscreen</a></li>
 <li><a href="../../../docs/api/ext/permissions/">chrome.permissions</a></li>
 <li><a href="../../../docs/api/ext/runtime/">chrome.runtime</a></li>
+<li><a href="../../../docs/api/ext/scripting/">chrome.scripting</a></li>
 <li><a href="../../../docs/api/ext/storage.local/">chrome.storage.local</a></li>
 <li><a href="../../../docs/api/ext/storage.managed/">chrome.storage.managed</a></li>
 <li><a href="../../../docs/api/ext/storage/">chrome.storage</a></li>
 <li><a href="../../../docs/api/ext/storage.session/">chrome.storage.session</a></li>
 <li><a href="../../../docs/api/ext/storage.sync/">chrome.storage.sync</a></li>
 <li><a href="../../../docs/api/ext/tabs/">chrome.tabs</a></li>
+<li><a href="../../../docs/api/ext/webNavigation/">chrome.webNavigation</a></li>
 <li><a href="../../../docs/api/ext/windows/">chrome.windows</a></li>
 <li><a href="../../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../../docs/api/fontface/">Module fontface</a></li>
@@ -463,7 +465,7 @@ declaration takes a string).</li>
 <li><a href="../../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../../docs/extensions/">Browser extensions</a></li>
-<li><a href="../../../docs/js/bindgen/">bindgen: Odin output and Odin input</a></li>
+<li><a href="../../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
 <li><a href="../../../docs/js/odin-abi/" aria-current="page" class="active">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../../docs/js/web-crypto/">crypto.subtle</a></li>

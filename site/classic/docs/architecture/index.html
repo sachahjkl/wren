@@ -86,6 +86,24 @@ buffers.</li>
 lower-case name, description, type, bounds, unit) and reads them through <code>settings_from_prefs</code>; the shell registers
 every table (<code>src/browser/settings.odin</code>) and <code>src/browser/prefs_test.odin</code> checks that each one is well formed.</li>
 <li><strong>State lives with what owns it.</strong> See below: what is one App's is not a global.</li>
+<li><strong>Layers point one way.</strong> A tool (<code>src/tools</code>) may import the product; the product never imports <code>wb:tools/*</code>.
+What both need is a package of <code>src</code>: crash reports (<code>src/crashtrace</code>), the stacks of another process
+(<code>src/stacks</code>), the test environment (<code>src/testenv</code>). Only a <code>*_windows.odin</code> file imports <code>core:sys/windows</code>,
+and a neutral struct holds no Win32 type (<a href="../../docs/portability/">portability.md</a>). A package links only what its
+users need: <code>URLPattern</code> is <code>src/urlpattern</code>, so the users of <code>src/url</code> (cookies, CSP, WebAuthn) do not link the
+regular expression engine. <code>src/tools/test_all/lint_layers.odin</code> checks the imports.</li>
+<li><strong>The profile's files have one writer.</strong> <code>host.File_Writer</code> (<code>src/host/profile_file.odin</code>, <code>App.writer</code>) writes
+every file of the profile, for the shell and for the pages (<code>Storage_Manager.writer</code>, <code>Blocker.writer</code>). Its owner
+makes the text on its own thread, only when what the file holds changed, and calls <code>host.profile_write</code> or
+<code>host.profile_remove</code> (a <code>host.Profile_File</code> when it keeps one; <code>host.profile_post</code> from another thread). The
+blocking pool writes the file whole and atomically (a temporary file renamed over it), one write of a file at a
+time: only the newest text waits. A failed write is logged and tried again later and later, and the user is told
+once. At exit <code>profile_files_flush</code> writes what waits, and every later text is written at once. A job that does
+more than give a whole text (the cookies' copy, the history's journal, the crash snapshot) calls <code>host.file_put</code>,
+<code>file_append</code>, <code>file_move</code> or <code>file_drop</code> on a worker. In the check build these panic on the interface thread
+while the pool could do the write. <code>src/tools/test_all/lint_file_writes.odin</code> fails on another direct write in
+<code>src</code>: <code>tools/file_writes_allowed.txt</code> lists the ones left (diagnostics, the user's own files, the stores with
+their own format), each with why.</li>
 </ol>
 <h2 id="where-state-lives"><a class="anchor" href="#where-state-lives" aria-hidden="true">#</a>Where state lives</h2>
 <p>The aim is several Apps (<code>browser.App</code>: one browser, its profile, its loop, its windows) in one process, each on a thread
@@ -402,12 +420,14 @@ matrices. The painter (<code>src/browser/render.odin</code>) maps the display li
 <li><a href="../../docs/api/ext/offscreen/">chrome.offscreen</a></li>
 <li><a href="../../docs/api/ext/permissions/">chrome.permissions</a></li>
 <li><a href="../../docs/api/ext/runtime/">chrome.runtime</a></li>
+<li><a href="../../docs/api/ext/scripting/">chrome.scripting</a></li>
 <li><a href="../../docs/api/ext/storage.local/">chrome.storage.local</a></li>
 <li><a href="../../docs/api/ext/storage.managed/">chrome.storage.managed</a></li>
 <li><a href="../../docs/api/ext/storage/">chrome.storage</a></li>
 <li><a href="../../docs/api/ext/storage.session/">chrome.storage.session</a></li>
 <li><a href="../../docs/api/ext/storage.sync/">chrome.storage.sync</a></li>
 <li><a href="../../docs/api/ext/tabs/">chrome.tabs</a></li>
+<li><a href="../../docs/api/ext/webNavigation/">chrome.webNavigation</a></li>
 <li><a href="../../docs/api/ext/windows/">chrome.windows</a></li>
 <li><a href="../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../docs/api/fontface/">Module fontface</a></li>
@@ -539,7 +559,7 @@ matrices. The painter (<code>src/browser/render.odin</code>) maps the display li
 <li><a href="../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../docs/extensions/">Browser extensions</a></li>
-<li><a href="../../docs/js/bindgen/">bindgen: Odin output and Odin input</a></li>
+<li><a href="../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
 <li><a href="../../docs/js/odin-abi/">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../docs/js/web-crypto/">crypto.subtle</a></li>

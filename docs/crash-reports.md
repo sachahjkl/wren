@@ -1,6 +1,6 @@
 # Crash reports and the symbols of a build
 
-When Wren crashes, `src/tools/crashtrace` writes `<profile>\crashes\crash <date> <time>.txt` (the faulting thread's
+When Wren crashes, `src/crashtrace` writes `<profile>\crashes\crash <date> <time>.txt` (the faulting thread's
 stack) and a minidump beside it (`.dmp`). A program that ended itself with its session open (`ExitProcess` or `TerminateProcess`, whoever called them in the executable) leaves
 `exit <date>.txt` with the stack that asked for it. A session that ended with no chance to write one is reported at the next start as `unclean exit <date>.txt`, which says what is left to know: Windows'
 Application Error event of that process (a fail-fast), a restart of the machine, or a kill from outside. A crash that wrote its report leaves none, nor does a close ended by the shutdown watchdog
@@ -78,5 +78,5 @@ with the same flags:
 `src\tools\e2e\crash_reports.odin` (in `test_all`) makes `src/tools/crashmodes` die in each way and looks at what is left. The `@(test)` of `src/tools/wrentool/deps/symbols_test.odin` builds it as a release is
 built (no PDB, a map), makes it index out of range, and checks that the report has the `build` line and module offsets,
 that `wrentool crash-symbolize` names `crashmodes.index_out_of_range` under `main`, and that a report without the `build`
-line is named through its minidump. `src/tools/crashtrace` has a unit test of the fingerprint (read in memory and from
+line is named through its minidump. `src/crashtrace` has a unit test of the fingerprint (read in memory and from
 the file).

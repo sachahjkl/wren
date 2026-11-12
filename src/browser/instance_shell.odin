@@ -30,7 +30,6 @@ import "toolkit:ui"
 import "wb:config"
 import process "toolkit:process"
 import "wb:host"
-import win "core:sys/windows"
 
 // How long a starting instance waits on the one that owns the profile.
 INSTANCE_ACQUIRE_WAIT_MS :: 3000
@@ -233,4 +232,3 @@ instance_open :: proc(d: ^Instance_Open, closing: bool) {
 	request_frames(app, 4)
 }
 
-_ :: win

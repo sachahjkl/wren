@@ -39,7 +39,7 @@ site_data_is_listed_and_cleared_by_type :: proc(t: ^testing.T) {
 	a.state = .Loaded
 	area_put(a, "k", "value")
 	a.dirty = true
-	storage_flush(&m, sync_write = true)
+	storage_flush(&m)
 	s := area_new(&m, "tab-1\x00https://a.example:8443", "https://a.example:8443", .Session)
 	s.state = .Loaded
 	area_put(s, "x", "yy")
@@ -86,7 +86,7 @@ local_storage_is_put_back_from_its_images :: proc(t: ^testing.T) {
 		b := area_new(&m, "https://b.example", "https://b.example", .Local)
 		b.state = .Loaded
 		area_put(b, "x", "y")
-		storage_flush(&m, sync_write = true)
+		storage_flush(&m)
 		images := storage_local_images(&m)
 		testing.expect_value(t, len(images), 2)
 
@@ -98,7 +98,7 @@ local_storage_is_put_back_from_its_images :: proc(t: ^testing.T) {
 		c.state = .Loaded
 		area_put(c, "new", "1")
 		a.dirty, c.dirty = true, true
-		storage_flush(&m, sync_write = true)
+		storage_flush(&m)
 
 		storage_restore_local(&m, images)
 		storage_images_destroy(images)

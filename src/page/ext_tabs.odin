@@ -235,6 +235,15 @@ ext_tabs_remove :: proc(x: ^Ext_Call, a: Ext_Tabs_Remove_Args) {
 	ext_task_start(t)
 }
 
+// tabs.sendMessage: to the extension's content scripts in the tab (ext_router.odin: ext_send_to_tab).
+ext_tabs_send_message :: proc(x: ^Ext_Call, a: Ext_Tabs_Send_Message_Args) {
+	o, _ := a.options.?
+	frame := o.frame_id.? or_else -1
+	document := o.document_id.? or_else ""
+	x.answered = true   // (answered by the receivers, or at once when there is none)
+	ext_send_to_tab(x.c, a.tab_id, frame, document, extensions.json_text(a.message), x.to)
+}
+
 ////////////////////////////////
 // windows
 

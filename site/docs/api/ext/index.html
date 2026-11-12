@@ -117,12 +117,14 @@
 <li><a href="../../../docs/api/ext/offscreen/">chrome.offscreen</a></li>
 <li><a href="../../../docs/api/ext/permissions/">chrome.permissions</a></li>
 <li><a href="../../../docs/api/ext/runtime/">chrome.runtime</a></li>
+<li><a href="../../../docs/api/ext/scripting/">chrome.scripting</a></li>
 <li><a href="../../../docs/api/ext/storage.local/">chrome.storage.local</a></li>
 <li><a href="../../../docs/api/ext/storage.managed/">chrome.storage.managed</a></li>
 <li><a href="../../../docs/api/ext/storage/">chrome.storage</a></li>
 <li><a href="../../../docs/api/ext/storage.session/">chrome.storage.session</a></li>
 <li><a href="../../../docs/api/ext/storage.sync/">chrome.storage.sync</a></li>
 <li><a href="../../../docs/api/ext/tabs/">chrome.tabs</a></li>
+<li><a href="../../../docs/api/ext/webNavigation/">chrome.webNavigation</a></li>
 <li><a href="../../../docs/api/ext/windows/">chrome.windows</a></li>
 <li><a href="../../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../../docs/api/fontface/">Module fontface</a></li>
@@ -254,7 +256,7 @@
 <li><a href="../../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../../docs/extensions/">Browser extensions</a></li>
-<li><a href="../../../docs/js/bindgen/">bindgen: Odin output and Odin input</a></li>
+<li><a href="../../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
 <li><a href="../../../docs/js/odin-abi/">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../../docs/js/web-crypto/">crypto.subtle</a></li>
@@ -331,6 +333,12 @@ nobody listens to is not sent, and a stopped background does not start for it.</
 extension that listen to runtime.onConnect.</p>
 <p>Odin: <code>ext.connect</code>.</p>
 <p>Host: <code>Ext_connect :: proc(c: ^Call, port: u64, name: string)</code></p>
+<h3 id="ext-connecttab"><a class="anchor" href="#ext-connecttab" aria-hidden="true">#</a><code>Ext_connectTab</code></h3>
+<div class="code"><pre><code>void Ext_connectTab(u64 port, string name, i64 tab, i64 frame)</code></pre></div>
+<p>tabs.connect: a port this realm opens, id <code>port</code> (its own choice), named <code>name</code>, to the content scripts of its
+extension in tab <code>tab</code> that listen to runtime.onConnect: in frame <code>frame</code> only, or in every frame when it is -1.</p>
+<p>Odin: <code>ext.connectTab</code>.</p>
+<p>Host: <code>Ext_connectTab :: proc(c: ^Call, port: u64, name: string, tab: i64, frame: i64)</code></p>
 <h3 id="ext-portpost"><a class="anchor" href="#ext-portpost" aria-hidden="true">#</a><code>Ext_portPost</code></h3>
 <div class="code"><pre><code>void Ext_portPost(u64 port, string message)</code></pre></div>
 <p>Port.postMessage: <code>message</code> (JSON text) to the other end(s) of <code>port</code>.</p>
@@ -359,6 +367,7 @@ extension that listen to runtime.onConnect.</p>
 <li class="lvl3"><a href="#ext-take">Ext_take</a></li>
 <li class="lvl3"><a href="#ext-respond">Ext_respond</a></li>
 <li class="lvl3"><a href="#ext-connect">Ext_connect</a></li>
+<li class="lvl3"><a href="#ext-connecttab">Ext_connectTab</a></li>
 <li class="lvl3"><a href="#ext-portpost">Ext_portPost</a></li>
 <li class="lvl3"><a href="#ext-portclose">Ext_portClose</a></li>
 </ul>

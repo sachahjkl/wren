@@ -13,10 +13,10 @@ package page
 // The text track list lives alongside here (media_texttracks.odin) so that a media element's three track lists share
 // one Media_Tracks and one teardown.
 
+import "core:strconv"
 import "core:strings"
 import "wb:base"
 import "wb:media"
-import "wb:url"
 
 Track_Entry :: struct {
 	self:     u64,          // this track's host object handle
@@ -154,10 +154,10 @@ media_tracks_owner :: proc(p: ^Page) -> u32 {
 track_id_string :: proc(t: media.Track, index: int) -> string {
 	if t.id != 0 {
 		buf: [24]u8
-		return strings.clone(url.uint_to_string(u64(t.id), buf[:]))
+		return strings.clone(strconv.write_uint(buf[:], u64(t.id), 10))
 	}
 	buf: [24]u8
-	return strings.clone(url.uint_to_string(u64(index + 1), buf[:]))
+	return strings.clone(strconv.write_uint(buf[:], u64(index + 1), 10))
 }
 
 // Fires an event at a track list from a task of its own.

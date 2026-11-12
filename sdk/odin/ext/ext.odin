@@ -22,6 +22,7 @@ foreign _m_ext {
 	@(link_name = "Ext_take") _Ext_take :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Ext_respond") _Ext_respond :: proc(reply: u64, value: [^]u8, value_len: u32, has: i32) ---
 	@(link_name = "Ext_connect") _Ext_connect :: proc(port: u64, name: [^]u8, name_len: u32) ---
+	@(link_name = "Ext_connectTab") _Ext_connectTab :: proc(port: u64, name: [^]u8, name_len: u32, tab: i64, frame: i64) ---
 	@(link_name = "Ext_portPost") _Ext_portPost :: proc(port: u64, message: [^]u8, message_len: u32) ---
 	@(link_name = "Ext_portClose") _Ext_portClose :: proc(port: u64) ---
 }
@@ -166,6 +167,12 @@ respond :: proc "contextless" (reply: u64, value: string, has: bool) {
 // extension that listen to runtime.onConnect.
 connect :: proc "contextless" (port: u64, name: string) {
 	_Ext_connect(port, raw_data(name), u32(len(name)))
+}
+
+// tabs.connect: a port this realm opens, id `port` (its own choice), named `name`, to the content scripts of its
+// extension in tab `tab` that listen to runtime.onConnect: in frame `frame` only, or in every frame when it is -1.
+connectTab :: proc "contextless" (port: u64, name: string, tab: i64, frame: i64) {
+	_Ext_connectTab(port, raw_data(name), u32(len(name)), tab, frame)
 }
 
 // Port.postMessage: `message` (JSON text) to the other end(s) of `port`.

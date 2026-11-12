@@ -117,12 +117,14 @@
 <li><a href="../../../docs/api/ext/offscreen/">chrome.offscreen</a></li>
 <li><a href="../../../docs/api/ext/permissions/">chrome.permissions</a></li>
 <li><a href="../../../docs/api/ext/runtime/">chrome.runtime</a></li>
+<li><a href="../../../docs/api/ext/scripting/">chrome.scripting</a></li>
 <li><a href="../../../docs/api/ext/storage.local/">chrome.storage.local</a></li>
 <li><a href="../../../docs/api/ext/storage.managed/">chrome.storage.managed</a></li>
 <li><a href="../../../docs/api/ext/storage/">chrome.storage</a></li>
 <li><a href="../../../docs/api/ext/storage.session/">chrome.storage.session</a></li>
 <li><a href="../../../docs/api/ext/storage.sync/">chrome.storage.sync</a></li>
 <li><a href="../../../docs/api/ext/tabs/">chrome.tabs</a></li>
+<li><a href="../../../docs/api/ext/webNavigation/">chrome.webNavigation</a></li>
 <li><a href="../../../docs/api/ext/windows/">chrome.windows</a></li>
 <li><a href="../../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../../docs/api/fontface/">Module fontface</a></li>
@@ -254,7 +256,7 @@
 <li><a href="../../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../../docs/extensions/">Browser extensions</a></li>
-<li><a href="../../../docs/js/bindgen/">bindgen: Odin output and Odin input</a></li>
+<li><a href="../../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
 <li><a href="../../../docs/js/odin-abi/">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../../docs/js/web-crypto/">crypto.subtle</a></li>
@@ -350,7 +352,7 @@ function not exposed to workers is not instantiated.</p>
 <tr><td><a href="../../../docs/api/encoding/"><code>encoding</code></a></td><td><code>wren:encoding</code></td><td style="text-align:right">8</td><td>Window, Worker</td><td>TextEncoder and TextDecoder (Encoding Standard). Decoders keep their state between calls, so every WHATWG label</td></tr>
 <tr><td><a href="../../../docs/api/events/"><code>events</code></a></td><td><code>wren:core</code></td><td style="text-align:right">44</td><td>Window, Worker</td><td>Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a</td></tr>
 <tr><td><a href="../../../docs/api/eventsource/"><code>eventsource</code></a></td><td><code>wren:eventsource</code></td><td style="text-align:right">7</td><td>Window</td><td>Server-sent events (HTML EventSource) and the MessageEvent members that are not plain payload. Messages arrive as</td></tr>
-<tr><td><a href="../../../docs/api/ext/"><code>ext</code></a></td><td><code>wren:ext</code></td><td style="text-align:right">10</td><td>Window, Worker</td><td>The transport of browser extensions (docs/extensions.md, section 3.9; src/page/ext_realm.odin, ext_router.odin;</td></tr>
+<tr><td><a href="../../../docs/api/ext/"><code>ext</code></a></td><td><code>wren:ext</code></td><td style="text-align:right">11</td><td>Window, Worker</td><td>The transport of browser extensions (docs/extensions.md, section 3.9; src/page/ext_realm.odin, ext_router.odin;</td></tr>
 <tr><td><a href="../../../docs/api/fetch/"><code>fetch</code></a></td><td><code>wren:fetch</code></td><td style="text-align:right">11</td><td>Window</td><td>The promise side of the Fetch API, on the same records as the callback API of module net (a Response is a Fetch:</td></tr>
 <tr><td><a href="../../../docs/api/fontface/"><code>fontface</code></a></td><td><code>wren:fontface</code></td><td style="text-align:right">4</td><td>Window</td><td>What <code>document.fonts.add(new FontFace(...))</code> puts in force: a rule of its own for the document's fonts (src/page/fonts.odin), in</td></tr>
 <tr><td><a href="../../../docs/api/forms/"><code>forms</code></a></td><td><code>wren:forms</code></td><td style="text-align:right">186</td><td>Window</td><td>Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and</td></tr>
@@ -398,7 +400,7 @@ function not exposed to workers is not instantiated.</p>
 <tr><td><a href="../../../docs/api/workers/"><code>workers</code></a></td><td><code>wren:workers</code></td><td style="text-align:right">11</td><td>Window, Worker</td><td>Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in</td></tr>
 </tbody>
 </table></div>
-<p>1638 imports in 1539 functions.</p>
+<p>1639 imports in 1540 functions.</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/licence/"><span>Previous</span><strong>Wren User Licenses</strong></a>
 <a class="doc-next" href="../../../docs/js/coverage/"><span>Next</span><strong>JavaScript bindings: coverage</strong></a>

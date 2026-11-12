@@ -2428,6 +2428,9 @@ foreign _wr_wj_ext {
 	// runtime.connect: a port this realm opens, id `port` (its own choice), named `name`, to the other contexts of its
 	// extension that listen to runtime.onConnect.
 	@(link_name = "Ext_connect") wr_Ext_connect :: proc(port: u64, name: [^]u8, name_len: u32) ---
+	// tabs.connect: a port this realm opens, id `port` (its own choice), named `name`, to the content scripts of its
+	// extension in tab `tab` that listen to runtime.onConnect: in frame `frame` only, or in every frame when it is -1.
+	@(link_name = "Ext_connectTab") wr_Ext_connectTab :: proc(port: u64, name: [^]u8, name_len: u32, tab: i64, frame: i64) ---
 	// Port.postMessage: `message` (JSON text) to the other end(s) of `port`.
 	@(link_name = "Ext_portPost") wr_Ext_portPost :: proc(port: u64, message: [^]u8, message_len: u32) ---
 	// Port.disconnect: the other end(s) get onDisconnect.

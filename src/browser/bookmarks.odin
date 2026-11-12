@@ -48,7 +48,7 @@ Bookmarks :: struct {
 	dirty:      bool,         // changed since the text was last handed to `file`
 	unreadable: bool,         // the file is not a bookmarks file: never overwritten
 	timer:      base.Handle,  // the write BOOKMARKS_SAVE_DELAY_MS after the first change
-	file:       Profile_File, // bookmarks.html: one write at a time on the blocking pool, retried later and later (profile_writes.odin)
+	file:       host.Profile_File, // bookmarks.html: one write at a time on the blocking pool, retried later and later (profile_writes.odin)
 }
 
 bookmark_free :: proc(b: ^Bookmark) {
@@ -308,8 +308,8 @@ bookmarks_changed :: proc(app: ^App) {
 bookmarks_save :: proc(app: ^App) {
 	if app.bms.path == "" || !app.bms.dirty || app.bms.unreadable { return }
 	app.bms.dirty = false
-	profile_file_init(&app.bms.file, app, app.bms.path, flush = true)
-	profile_file_write(&app.bms.file, bookmarks_serialize(app.bms.items[:], app.bms.toolbar))
+	host.profile_file_init(&app.bms.file, &app.writer, app.bms.path, flush = true)
+	host.profile_file_write(&app.bms.file, bookmarks_serialize(app.bms.items[:], app.bms.toolbar))
 }
 
 // At exit: what is not written yet is written now, on this thread.
@@ -317,8 +317,8 @@ bookmarks_shutdown :: proc(app: ^App) {
 	if app.bms.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.bms.timer) }
 	app.bms.timer = base.NIL_HANDLE
 	bookmarks_save(app)
-	profile_file_flush(&app.bms.file)
-	profile_file_destroy(&app.bms.file)
+	host.profile_file_flush(&app.bms.file)
+	host.profile_file_destroy(&app.bms.file)
 	bookmarks_list_destroy(&app.bms.items)
 	delete(app.bms.path)
 	app.bms = {}

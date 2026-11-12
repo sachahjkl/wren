@@ -18,7 +18,7 @@ import "wb:base"
 import "wb:fetch"
 import "wb:host"
 import "wb:page"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:wasm"
 
 PAGE_GUEST :: "build/workerstest.wasm"

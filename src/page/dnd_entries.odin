@@ -8,11 +8,11 @@ package page
 // Paths never leave what was dropped: ".." and absolute paths are refused (SecurityError).
 
 import "core:os"
+import "core:strconv"
 import "core:strings"
 import "core:time"
 import "wb:forms"
 import "wb:host"
-import "wb:url"
 
 Fs_Entry :: struct {
 	root:   string,   // the dropped item (absolute path, owned)
@@ -91,7 +91,7 @@ DataTransfer_itemEntry :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (u
 	if dt.data.mode == .Protected || !it.is_file || it.file.path == "" { return 0, .None }
 	// one file system per drop: its name says which store it came from
 	buf: [24]u8
-	name := strings.concatenate({"wren-drop-", url.uint_to_string(dt.handle, buf[:])}, context.temp_allocator)
+	name := strings.concatenate({"wren-drop-", strconv.write_uint(buf[:], dt.handle, 10)}, context.temp_allocator)
 	return fs_entry_new(c.page, c.owner, it.file.path, "", name, it.is_dir), .None
 }
 

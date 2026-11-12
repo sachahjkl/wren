@@ -136,6 +136,7 @@ Blocker :: struct {
 	loader:     ^fetch.Loader,
 	hold_timer: base.Handle,        // the limit of the hold on requests while the first index is compiled (engine_build.odin)
 	loop:       ^host.Loop,
+	writer:     ^host.File_Writer,  // the profile's (nil: written at once, on the calling thread)
 	client:     ^net.Client,
 	prefs:      ^config.Prefs,
 	dir:        string,             // <profile>/blocker
@@ -174,8 +175,8 @@ unix_ms :: proc() -> i64 { return time.time_to_unix_nano(time.now()) / 1_000_000
 
 // Creates the blocker, loads its configuration and the compiled index (or the built-in base list while the real one is
 // compiled), and installs it on the loader. `profile_dir` is the profile folder ("" keeps everything in memory).
-start :: proc(b: ^Blocker, loop: ^host.Loop, client: ^net.Client, loader: ^fetch.Loader, prefs: ^config.Prefs, profile_dir: string) {
-	b.loop, b.client, b.prefs, b.loader = loop, client, prefs, loader
+start :: proc(b: ^Blocker, loop: ^host.Loop, client: ^net.Client, loader: ^fetch.Loader, prefs: ^config.Prefs, profile_dir: string, writer: ^host.File_Writer = nil) {
+	b.loop, b.client, b.prefs, b.loader, b.writer = loop, client, prefs, loader, writer
 	b.cfg = settings_from_prefs(prefs)
 	b.tabs = make(map[u64]^Tab_State)
 	b.tab_scopes = make(map[^base.Scope]^Tab_State)

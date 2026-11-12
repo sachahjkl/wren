@@ -244,7 +244,7 @@ The gain in reliability is larger: each item below depends on the speed of the m
 - Result: after two faults in one process, the process hangs until the step limit (900 s).
 - Fix: do not depend on the runner here. In `e2e`, install the assertion handler of the session
   (`s.ctx.assertion_failure_proc`) to log the message and call `stop_test`. For a fault, the crash handler of
-  `wb:tools/crashtrace` ends the process at once: with one process per file, the rest of the file is `NOT RUN`
+  `wb:crashtrace` ends the process at once: with one process per file, the rest of the file is `NOT RUN`
   and is said so. This is a bounded and visible result.
 
 ### 2.9 Smaller unbounded waits
@@ -389,7 +389,7 @@ The gain in reliability is larger: each item below depends on the speed of the m
 - Location: `src/tools/test_all/steps_linux.odin:18-19` and `:39-43`. 46 checks.
 - `odin check src/tools/e2e` type-checks every package that it imports. Most of the 46 checks repeat that work.
 - Cost: small (0 to 2 s each, about 30 s of CPU). Fix: keep the leaf programs (`tools/e2e`, `tools/wpt`,
-  `tools/endurance`, `tools/test_all`, `tools/crashtrace`) and the packages that no program imports.
+  `tools/endurance`, `tools/test_all`, `crashtrace`) and the packages that no program imports.
   Verify first that `-vet` applies to imported packages of the `wb` collection.
 
 ### 4.8 Tests that are benchmarks

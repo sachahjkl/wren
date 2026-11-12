@@ -4,7 +4,7 @@ Odin port of QuickJS-ng's `libregexp`: a full ECMAScript regular-expression pars
 bounded backtracking interpreter. It replaces the C engine and leans on the language — tagged opcodes, interval
 character sets, caller-supplied allocators, an explicit (non-recursive) backtrack stack — so it builds for
 `windows_amd64`, `linux_amd64` and `freestanding_wasm32` with no libc. The browser uses it for URLPattern
-(`src/url/pattern_match.odin`: a component's regular expression, with the `v` flag).
+(`src/urlpattern/pattern_match.odin`: a component's regular expression, with the `v` flag).
 
 ```odin
 import rx "wb:engine/regexp"

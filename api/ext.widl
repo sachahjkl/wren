@@ -28,6 +28,9 @@ module ext {
   /// runtime.connect: a port this realm opens, id `port` (its own choice), named `name`, to the other contexts of its
   /// extension that listen to runtime.onConnect.
   void Ext_connect(u64 port, string name);
+  /// tabs.connect: a port this realm opens, id `port` (its own choice), named `name`, to the content scripts of its
+  /// extension in tab `tab` that listen to runtime.onConnect: in frame `frame` only, or in every frame when it is -1.
+  void Ext_connectTab(u64 port, string name, i64 tab, i64 frame);
   /// Port.postMessage: `message` (JSON text) to the other end(s) of `port`.
   void Ext_portPost(u64 port, string message);
   /// Port.disconnect: the other end(s) get onDisconnect.

@@ -324,6 +324,7 @@ adopt_document :: proc(p: ^Page, d: ^Parsed_Document) -> html.Parse_Result {
 	if the_pages.embedder.adopted != nil && p.worker == nil { the_pages.embedder.adopted(the_pages.embedder.user, p) }   // (embedder.odin)
 	media_document_adopted(p)   // (media_element.odin: the new tree's <video> / <audio>)
 	render_begin(p)   // its stylesheets start loading now; the first paint waits for them (render_blocking.odin)
+	ext_doc_adopted(p)   // extensions' CSS and document_start scripts, before any script of the page (ext_inject.odin)
 	return d.result
 }
 

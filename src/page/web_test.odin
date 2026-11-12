@@ -7,7 +7,7 @@ import "wb:dom"
 import "wb:forms"
 import "wb:host"
 import "wb:url"
-import "wb:tools/testenv"
+import "wb:testenv"
 
 @(test)
 meta_refresh_content :: proc(t: ^testing.T) {

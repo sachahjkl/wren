@@ -12,7 +12,6 @@ import "core:fmt"
 import "core:mem"
 import "core:mem/tlsf"
 import "core:strings"
-import "core:sys/windows"
 import capi "wb:engine/jscapi"
 import js "wb:engine/jsrt"
 
@@ -240,7 +239,7 @@ capi_main :: proc() -> int {
 	// an arena below 4 GiB
 	arena: []u8
 	for addr in ([]uintptr{0x10000000, 0x20000000, 0x30000000, 0x40000000, 0x50000000}) {
-		p := windows.VirtualAlloc(rawptr(addr), 1 << 28, windows.MEM_RESERVE | windows.MEM_COMMIT, windows.PAGE_READWRITE)
+		p := low_memory_reserve(addr, 1 << 28)   // capi_arena_*.odin
 		if p != nil && uintptr(p) + (1 << 28) <= 0x100000000 {
 			arena = ([^]u8)(p)[:1 << 28]
 			break

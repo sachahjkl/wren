@@ -17,7 +17,7 @@ import "wb:fetch"
 import "wb:tools/headless"
 import "wb:host"
 import "wb:page"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:tools/tooling"
 
 Sample :: struct {

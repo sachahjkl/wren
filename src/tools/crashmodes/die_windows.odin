@@ -4,7 +4,7 @@ import "base:intrinsics"
 import "core:sync"
 import "core:sys/windows"
 import "core:thread"
-import "wb:tools/crashtrace"
+import "wb:crashtrace"
 
 foreign import kernel32 "system:Kernel32.lib"
 @(default_calling_convention = "system")

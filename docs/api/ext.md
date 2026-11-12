@@ -117,6 +117,19 @@ Odin: `ext.connect`.
 
 Host: `Ext_connect :: proc(c: ^Call, port: u64, name: string)`
 
+### `Ext_connectTab`
+
+```
+void Ext_connectTab(u64 port, string name, i64 tab, i64 frame)
+```
+
+tabs.connect: a port this realm opens, id `port` (its own choice), named `name`, to the content scripts of its
+extension in tab `tab` that listen to runtime.onConnect: in frame `frame` only, or in every frame when it is -1.
+
+Odin: `ext.connectTab`.
+
+Host: `Ext_connectTab :: proc(c: ^Call, port: u64, name: string, tab: i64, frame: i64)`
+
 ### `Ext_portPost`
 
 ```

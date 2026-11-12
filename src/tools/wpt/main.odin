@@ -38,7 +38,7 @@
 // -dump-all those of what passes too. -update with -only of one whole folder rewrites only that folder.
 package wpt
 
-import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+import _ "wb:crashtrace"   // a crash prints its symbolized stack
 
 import "core:encoding/json"
 import "core:fmt"
@@ -56,7 +56,7 @@ import "wb:js"
 import "wb:page"
 import "wb:wasm"
 import "wb:tools/headless"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:tools/tooling"
 import "wb:tools/wpt/reftest"
 

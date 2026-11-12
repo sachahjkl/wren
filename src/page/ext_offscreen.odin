@@ -107,6 +107,8 @@ ext_offscreen_timer :: proc(data: rawptr) {
 // never paints, so its load is the moment); an offscreen document answers the createDocument calls waiting for it.
 ext_page_loaded :: proc(p: ^Page) {
 	if len(ext_registry().list) == 0 { return }
+	ext_doc_loaded(p)   // ext_inject.odin: document_idle scripts, webNavigation.onCompleted
+	if p.closed { return }
 	ext_tab_loaded(p)   // ext_tabs.odin
 	r := ext_router()
 	if len(r.offscreen) == 0 { return }

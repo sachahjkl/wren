@@ -1,0 +1,30 @@
+// The test fixture of content scripts (docs/extensions.md, phase 3): isolated worlds, run_at, all_frames, CSS,
+// scripting, tabs.sendMessage, webNavigation and web_accessible_resources, against examples/site/extensions/login.html.
+{
+  "manifest_version": 3,
+  "name": "Autofill fixture",
+  "version": "1.0.0",
+  "description": "Fills the login form of a test page from a content script.",
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Autofill fixture", "default_popup": "page.html" },
+  "permissions": ["storage", "tabs", "scripting", "webNavigation"],
+  "host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
+  "content_scripts": [
+    {
+      "matches": ["http://127.0.0.1/*", "http://localhost/*"],
+      "exclude_matches": ["*://*/*nomatch*"],
+      "js": ["content/start.js"],
+      "css": ["content/autofill.css"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["http://127.0.0.1/*", "http://localhost/*"],
+      "js": ["content/fill.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    { "resources": ["menu.html"], "matches": ["http://127.0.0.1/*"], "use_dynamic_url": true }
+  ]
+}

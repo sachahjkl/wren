@@ -795,6 +795,7 @@ art_dimensions_ok :: proc(w, h: int) -> bool {
 @(private = "file")
 Art_Encode_Job :: struct {
 	alloc:   runtime.Allocator,   // the loop's: what the item owns is freed there
+	writer:  ^host.File_Writer,
 	gen:     u32,
 	dir:     string,
 	quality: f32,
@@ -810,7 +811,7 @@ art_encode :: proc(blob: ^images.Blob, img: ^images.Image, w, h: int) {
 	app := the_app.art.app
 	if !art_ensure_dir() { images.blob_release(blob); images.image_destroy(img); art_candidate_destroy(&app.art.dl); art_continue(); return }
 	j := new(Art_Encode_Job)
-	j^ = {alloc = context.allocator, gen = app.art.gen, dir = app.art.dir, quality = app.art.cfg.jpeg_quality, c = app.art.dl, blob = blob, image = img}
+	j^ = {alloc = context.allocator, writer = &app.writer, gen = app.art.gen, dir = app.art.dir, quality = app.art.cfg.jpeg_quality, c = app.art.dl, blob = blob, image = img}
 	j.item.width, j.item.height = w, h
 	app.art.dl = {}   // ownership moved into the job
 	app.art.phase = .Encoding
@@ -852,8 +853,8 @@ art_encode_work :: proc(data: rawptr) {
 	meta, merr := json.marshal(j.item, {}, context.temp_allocator)   // (the image's name, not its path: the folder may move with the profile)
 	j.item.file = strings.concatenate({j.dir, "/", name})
 	if merr != nil { return }
-	if os.write_entire_file(j.item.file, kept) != nil { return }
-	j.ok = os.write_entire_file(art_meta_path(j.item.file), meta) == nil
+	if !host.file_put(j.writer, j.item.file, kept) { return }
+	j.ok = host.file_put(j.writer, art_meta_path(j.item.file), meta)
 }
 
 @(private = "file")
@@ -883,6 +884,7 @@ art_encode_done :: proc(data: rawptr) {
 @(private = "file")
 Art_Scan_Job :: struct {
 	alloc:     runtime.Allocator,
+	writer:    ^host.File_Writer,
 	gen:       u32,
 	dir:       string,
 	window:    int,
@@ -894,7 +896,7 @@ Art_Scan_Job :: struct {
 art_scan :: proc(app: ^App) {
 	if app.art.scan != .Not_Yet || !art_ensure_dir() { return }
 	j := new(Art_Scan_Job)
-	j^ = {alloc = context.allocator, gen = app.art.gen, dir = app.art.dir, window = app.art.cfg.window, max_bytes = app.art.cfg.max_cache_bytes}
+	j^ = {alloc = context.allocator, writer = &app.writer, gen = app.art.gen, dir = app.art.dir, window = app.art.cfg.window, max_bytes = app.art.cfg.max_cache_bytes}
 	app.art.scan = .Running
 	app.art.jobs += 1
 	host.run_blocking(&app.blocking, art_scan_work, art_scan_done, j)
@@ -922,7 +924,7 @@ art_scan_work :: proc(data: rawptr) {
 			free(it)
 		}
 	}
-	for e in entries { if e.type != .Directory && !art_names_file(j.items[:], e.name) { _ = os.remove(e.fullpath) } }
+	for e in entries { if e.type != .Directory && !art_names_file(j.items[:], e.name) { _ = host.file_drop(j.writer, e.fullpath) } }
 }
 
 // The painting a JSON file describes, nil when it is of another format or its image is not there.
@@ -1013,8 +1015,8 @@ art_purge_over_cap :: proc() {
 @(private = "file")
 art_delete_files :: proc(it: ^Art_Item) {
 	if it.file == "" { return }
-	_ = os.remove(it.file)
-	_ = os.remove(art_meta_path(it.file))
+	host.profile_remove(&the_app.writer, it.file)
+	host.profile_remove(&the_app.writer, art_meta_path(it.file))
 }
 
 // The name without its extension.
@@ -1051,7 +1053,7 @@ art_clear_cache :: proc() {
 	if the_app.art.dir != "" {
 		// remove any stray files the folder still holds (a crash between the image and its metadata)
 		if entries, rerr := os.read_directory_by_path(the_app.art.dir, -1, context.temp_allocator); rerr == nil {
-			for e in entries { if e.type != .Directory { _ = os.remove(e.fullpath) } }
+			for e in entries { if e.type != .Directory { host.profile_remove(&the_app.writer, e.fullpath) } }
 		}
 	}
 	if the_app.art.started { art_pump() }

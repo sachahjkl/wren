@@ -18,7 +18,7 @@ import "core:os"
 import "core:strings"
 import "core:unicode/utf8"
 import "wb:base"
-import "wb:blocker"
+import "wb:host"
 import "wb:config"
 import "wb:url"
 
@@ -295,9 +295,6 @@ engines_load_file :: proc(se: ^Search_Engines, path: string) -> bool {
 	return engines_parse(se, string(data))
 }
 
-engines_save_file :: proc(se: ^Search_Engines, path: string) -> bool {
-	return blocker.write_file_atomic(path, transmute([]byte)engines_serialize(se))
-}
 
 ////////////////////////////////
 // The browser's list
@@ -331,7 +328,7 @@ search_engines_changed :: proc(app: ^App) {
 }
 
 search_engines_save :: proc(app: ^App) {
-	if path := engines_path(app); path != "" { _ = engines_save_file(&app.sengines, path) }
+	if path := engines_path(app); path != "" { host.profile_write(&app.writer, path, engines_serialize(&app.sengines)) }
 }
 
 search_set_default :: proc(app: ^App, i: int) {

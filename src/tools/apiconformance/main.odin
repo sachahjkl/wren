@@ -6,7 +6,7 @@
 //   apiconformance.exe build\apiconformance.wasm
 package apiconformance
 
-import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
+import _ "wb:crashtrace"   // a crash prints its symbolized stack
 
 import "core:fmt"
 import "core:os"
@@ -17,7 +17,7 @@ import "wb:host"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
-import "wb:tools/testenv"
+import "wb:testenv"
 
 console :: proc(user: rawptr, level: page.Log_Level, message: string) {}
 

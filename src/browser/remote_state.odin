@@ -165,7 +165,7 @@ checkpoint_take :: proc(app: ^App, name: string, with_tabs, with_data: bool) -> 
 	if with_data {
 		c.has_data = true
 		c.cookies = cookies.copy_all(&app.profile.jar)
-		page.storage_flush(&app.storage, sync_write = true, all = true)
+		page.storage_flush(&app.storage)   // (the images of the areas in memory come from memory, the others from their files)
 		c.storage = page.storage_local_images(&app.storage)
 	}
 	return c

@@ -32,3 +32,13 @@ window_native_raise_handed :: proc(w: ^platform.Window, token: string) { platfor
 window_native_show_no_activate :: proc(w: ^platform.Window) { platform.show_window(w) }
 
 window_native_minimize_no_activate :: proc(w: ^platform.Window) { platform.minimize(w) }
+
+// The state a headless window says it is in (window_apply, remote_methods.odin): the toolkit's window here keeps it in show.
+window_emulated_state :: proc(w: ^platform.Window, state: string) {
+	switch state {
+	case "normal":     w.show = .Normal
+	case "minimized":  w.show = .Minimized
+	case "maximized":  w.show = .Maximized
+	case "fullscreen": w.show = .Fullscreen
+	}
+}

@@ -1,0 +1,72 @@
+/// Scripts and style sheets the extension puts into documents (src/page/ext_scripting.odin, ext_inject.odin;
+/// docs/extensions.md, section 3.6). A target is a tab and, in it, some frames or documents; each document must be one
+/// the extension has a host grant for, and none of Wren's own pages or another extension's. A script runs in the
+/// extension's isolated world of the document (ISOLATED), or in the page's own realm without any extension API (MAIN).
+[Permission=scripting, Contexts=(Background, Page)]
+namespace scripting {
+  enum ExecutionWorld { ISOLATED, MAIN }
+  enum StyleOrigin { AUTHOR, USER }
+  enum RunAt { document_start, document_end, document_idle }
+
+  struct InjectionTarget {
+    i64 tabId;
+    /// Frame ids (0: the tab's top document). None: the top document, or every frame with allFrames.
+    optional i64[] frameIds;
+    optional string[] documentIds;
+    optional bool allFrames;
+  }
+  struct ScriptInjection {
+    InjectionTarget target;
+    /// Files of the extension, run in order: the result is the last one's.
+    optional string[] files;
+    /// The source of a function (chrome.scripting sends func.toString()); it is called with args.
+    optional string func;
+    optional any[] args;
+    optional ExecutionWorld world;
+    /// Accepted: a script always runs as soon as the document exists.
+    optional bool injectImmediately;
+  }
+  struct CSSInjection {
+    InjectionTarget target;
+    optional string css;
+    optional string[] files;
+    optional StyleOrigin origin;
+  }
+  /// The result of one document: a function's value (a promise's, once settled), as JSON; null for files and for the
+  /// MAIN world.
+  struct InjectionResult {
+    optional any result;
+    i64 frameId;
+    string documentId;
+  }
+  struct RegisteredContentScript {
+    string id;
+    optional string[] matches;
+    optional string[] excludeMatches;
+    optional string[] js;
+    optional string[] css;
+    optional bool allFrames;
+    optional bool matchOriginAsFallback;
+    optional RunAt runAt;
+    optional ExecutionWorld world;
+    /// Accepted; the registered scripts last until the browser exits or the extension reloads.
+    optional bool persistAcrossSessions;
+  }
+  struct ContentScriptFilter {
+    optional string[] ids;
+  }
+
+  /// Runs files or a function in the target's documents. The answer lists each document's result.
+  InjectionResult[] executeScript(ScriptInjection injection);
+  /// Adds a style sheet to the target's documents; scripts of the page do not see it in document.styleSheets.
+  [Host=ext_scripting_css] void insertCSS(CSSInjection injection);
+  /// Removes a sheet insertCSS added with the same text or files.
+  [Host=ext_scripting_css] void removeCSS(CSSInjection injection);
+  /// Content scripts matched against every document from now on, as the manifest's are.
+  void registerContentScripts(RegisteredContentScript[] scripts);
+  RegisteredContentScript[] getRegisteredContentScripts(optional ContentScriptFilter filter);
+  /// No filter: every registered script.
+  void unregisterContentScripts(optional ContentScriptFilter filter);
+  /// Changes registered scripts: what an entry gives replaces the registered script of its id.
+  void updateContentScripts(RegisteredContentScript[] scripts);
+}

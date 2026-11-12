@@ -1,8 +1,7 @@
 package jsgen
 
-// The Odin form of native/js/gen/bindings.c (`-emit:glue`): the same members, the same conversions, written in Odin
-// against the wj layer (native/js/odin/wj) instead of C against wj.h. One file, native/js/odin/bindings_gen.odin,
-// package odin_glue:
+// The JavaScript glue, written in Odin against the wj layer (native/js/odin/wj). One file,
+// native/js/odin/bindings_gen.odin, package odin_glue:
 //
 //   * a trampoline per member the browser implements (arguments converted by the Web IDL rules, the browser's wr_*
 //     import called, the result converted back), and the generic members (event handlers, reflected content attributes,
@@ -12,8 +11,8 @@ package jsgen
 //     wj_preinit): a module built without the Odin runtime start-up does not run the dynamic initialisation of
 //     globals, so the tables are written by a procedure the image is made with, not by initialisers.
 //
-// The classification (which member is hand-written, generic, imported) is the one of the C emitter: the emitters of
-// jsgen.odin call the *_odin variants below when g.lang == .Glue, so both outputs come from one decision.
+// The classification (which member is hand-written, generic, imported) is in jsgen.odin (classify): it calls the
+// *_odin emitters below, so the table and the glue come from one decision.
 
 import "core:fmt"
 import "core:slice"

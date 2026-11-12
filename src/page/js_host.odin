@@ -38,12 +38,14 @@ Engine_reportException :: proc(c: ^Call, message: string, stack: string, source:
 @(private)
 from_engine :: #force_inline proc(c: ^Call) -> bool {
 	r := c.caller.js
-	return r != nil && r.inst != nil && c.inst == r.inst
+	if r != nil && r.inst != nil && c.inst == r.inst { return true }
+	// an isolated world's engine is an engine of the page too (ext_worlds.odin)
+	return len(c.caller.worlds) > 0 && world_of_inst(c.caller, c.inst) != nil
 }
 
 Engine_storeBytecode :: proc(c: ^Call, code: []u8) {
-	r := c.caller.js
-	if !from_engine(c) || !r.has_pending_key { return }
+	r := js_realm_of(c.caller, c.inst)
+	if r == nil || !r.has_pending_key { return }
 	js.store(r.pending_key, code)
 	r.has_pending_key = false
 }

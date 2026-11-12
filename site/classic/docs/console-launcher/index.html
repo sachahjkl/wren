@@ -80,7 +80,7 @@ from Wren, so they are not in the <code>i18n</code> catalogue.</p>
 <h2 id="where-it-comes-from-and-who-writes-it"><a class="anchor" href="#where-it-comes-from-and-who-writes-it" aria-hidden="true">#</a>Where it comes from and who writes it</h2>
 <ul>
 <li><code>wrentool build</code> (<code>build.bat</code>) compiles it to <code>build\wren.com</code> (<code>-subsystem:console</code>, before the browser).</li>
-<li><code>wren.exe</code> embeds it (<code>#load</code>, <code>src/browser/console_launcher.odin</code>): the release stays one file.</li>
+<li><code>wren.exe</code> embeds it (<code>#load</code>, <code>src/browser/console_launcher_windows.odin</code>): the release stays one file.</li>
 <li><strong>Setup writes it</strong> beside the installed <code>wren.exe</code> when "Add Wren to PATH" is ticked and <strong>removes it</strong> when it is
 unticked, when the integration is removed (<code>--desktop-integration=remove</code>) and when Wren is uninstalled or the installation is
 moved (the toolkit's <code>ext/gui_toolkit/src/desktop/launcher.odin</code>, with Wren's mark from <code>src/desktop/identity.odin</code>). It is never written anywhere else, and never without the PATH entry that makes it
@@ -194,12 +194,14 @@ with the launcher.</li>
 <li><a href="../../docs/api/ext/offscreen/">chrome.offscreen</a></li>
 <li><a href="../../docs/api/ext/permissions/">chrome.permissions</a></li>
 <li><a href="../../docs/api/ext/runtime/">chrome.runtime</a></li>
+<li><a href="../../docs/api/ext/scripting/">chrome.scripting</a></li>
 <li><a href="../../docs/api/ext/storage.local/">chrome.storage.local</a></li>
 <li><a href="../../docs/api/ext/storage.managed/">chrome.storage.managed</a></li>
 <li><a href="../../docs/api/ext/storage/">chrome.storage</a></li>
 <li><a href="../../docs/api/ext/storage.session/">chrome.storage.session</a></li>
 <li><a href="../../docs/api/ext/storage.sync/">chrome.storage.sync</a></li>
 <li><a href="../../docs/api/ext/tabs/">chrome.tabs</a></li>
+<li><a href="../../docs/api/ext/webNavigation/">chrome.webNavigation</a></li>
 <li><a href="../../docs/api/ext/windows/">chrome.windows</a></li>
 <li><a href="../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../docs/api/fontface/">Module fontface</a></li>
@@ -331,7 +333,7 @@ with the launcher.</li>
 <li><a href="../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../docs/extensions/">Browser extensions</a></li>
-<li><a href="../../docs/js/bindgen/">bindgen: Odin output and Odin input</a></li>
+<li><a href="../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
 <li><a href="../../docs/js/odin-abi/">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../docs/js/web-crypto/">crypto.subtle</a></li>

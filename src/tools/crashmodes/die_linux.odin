@@ -3,7 +3,7 @@ package crashmodes
 import "base:intrinsics"
 import "core:sys/posix"
 import "core:time"
-import "wb:tools/crashtrace"
+import "wb:crashtrace"
 
 foreign import libc "system:c"
 @(default_calling_convention = "c")

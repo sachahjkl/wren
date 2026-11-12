@@ -10,6 +10,7 @@ package page
 import "core:os"
 import "core:strings"
 import "core:sync"
+import "wb:host"
 
 Bucket_Info :: struct {
 	origin:     string,
@@ -63,10 +64,10 @@ buckets_save :: proc(m: ^Storage_Manager) {
 	for x in s.list { strings.write_string(&b, x.origin); strings.write_byte(&b, '\t'); strings.write_string(&b, x.name); strings.write_byte(&b, '\t')
 		strings.write_string(&b, "1" if x.persisted else "0"); strings.write_byte(&b, '\t'); strings.write_string(&b, x.durability); strings.write_byte(&b, '\t')
 		strings.write_string(&b, int_text(i64(x.expires)) if x.expires >= 0 else "-1"); strings.write_byte(&b, '\n') }
-	_ = os.write_entire_file(buckets_path(m), transmute([]byte)strings.to_string(b))
+	host.profile_post(m.writer, buckets_path(m), strings.to_string(b))   // (any thread: under buckets_mu)
 	p := strings.builder_make(context.temp_allocator)
 	for k, v in s.persisted { if v { strings.write_string(&p, k); strings.write_byte(&p, '\n') } }
-	_ = os.write_entire_file(persisted_path(m), transmute([]byte)strings.to_string(p))
+	host.profile_post(m.writer, persisted_path(m), strings.to_string(p))
 }
 
 @(private)

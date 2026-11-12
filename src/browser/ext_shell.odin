@@ -22,7 +22,7 @@ Ext_Load_Kind :: enum u8 { Startup, Install, Reload }
 Ext_Shell :: struct {
 	started:  bool,
 	watch:    int,                          // the preferences' observer (extensions.*)
-	files:    map[string]^Profile_File,     // the profile's files of the extensions, by path (owned keys)
+	files:    map[string]^host.Profile_File,     // the profile's files of the extensions, by path (owned keys)
 	pending:  [dynamic]^extensions.Load_Result,   // loaded packages waiting for the install prompt's answer
 	notice:   string,                       // owned: what about:extensions says on top (the last result)
 	picking:  bool,                         // the folder dialog is open
@@ -91,8 +91,8 @@ ext_shell_stop :: proc(app: ^App) {
 	for p in app.ext.pending { extensions.load_result_destroy(p); free(p) }
 	delete(app.ext.pending)
 	for k, f in app.ext.files {
-		profile_file_flush(f)
-		profile_file_destroy(f)
+		host.profile_file_flush(f)
+		host.profile_file_destroy(f)
 		free(f)
 		delete(k)
 	}
@@ -116,11 +116,11 @@ ext_write :: proc(user: rawptr, path, text: string, remove: bool) {
 	app := (^App)(user)
 	f := app.ext.files[path]
 	if f == nil {
-		f = new(Profile_File)
-		profile_file_init(f, app, path)
+		f = new(host.Profile_File)
+		host.profile_file_init(f, &app.writer, path)
 		app.ext.files[strings.clone(path)] = f
 	}
-	if remove { profile_file_remove(f) } else { profile_file_write(f, text) }
+	if remove { host.profile_file_remove(f) } else { host.profile_file_write(f, text) }
 }
 
 // A message for the top of about:extensions, shown with the page's next showing (ext_page_refresh after a load).

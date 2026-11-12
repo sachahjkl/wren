@@ -28,6 +28,7 @@ Port_End :: struct {
 	id:     u64,
 	peer:   u64,             // 0: disentangled
 	page:   u64,             // owner: a document's page id (UI thread)
+	world:  u32,             // ... and its realm there: an isolated world's instance index + 1 (0: the page's realm)
 	link:   ^Worker_Link,    // owner: a worker realm
 	queue:  [dynamic]Port_Msg,
 	channel: string,         // owned: a BroadcastChannel's key (broadcast.odin), "" for a MessagePort's end
@@ -138,8 +139,9 @@ port_wake_page :: proc(data: rawptr) {
 	}
 	m := e.queue[0]
 	ordered_remove(&e.queue, 0)
+	world := e.world
 	sync.mutex_unlock(&the_pages.router.mu)
-	js_port_deliver(p, end, m)
+	js_port_deliver(p, end, m, world)
 	delete(m.data)
 	delete(m.ports)
 }
@@ -193,7 +195,7 @@ Port_bind :: proc(c: ^Call, end: u64) -> Api_Error {
 	ports_note_loop(p)
 	e, ok := the_pages.router.ends[end]
 	if !ok || e.page != 0 || e.link != nil { return fail(c, .Invalid_Argument, "no such port end") }
-	if p.worker != nil { e.link = p.worker.link } else { e.page = page_id(p) }
+	if p.worker != nil { e.link = p.worker.link } else { e.page, e.world = page_id(p), world_tag_of(p, c.inst) }
 	for _ in e.queue { port_wake_locked(e) }
 	return .None
 }
@@ -201,7 +203,7 @@ Port_bind :: proc(c: ^Call, end: u64) -> Api_Error {
 Port_ship :: proc(c: ^Call, end: u64) {
 	sync.mutex_lock(&the_pages.router.mu)
 	defer sync.mutex_unlock(&the_pages.router.mu)
-	if e, ok := the_pages.router.ends[end]; ok && port_owned_by(e, c.page) { e.page, e.link = 0, nil }
+	if e, ok := the_pages.router.ends[end]; ok && port_owned_by(e, c.page) { e.page, e.world, e.link = 0, 0, nil }
 }
 
 Port_post :: proc(c: ^Call, end: u64, data: []u8, ports: []u64) -> Api_Error {
@@ -236,8 +238,8 @@ Port_close :: proc(c: ^Call, end: u64) {
 
 // The engine of `p` receives a message for its port bound to `end`: the ports that came with it are bound there.
 @(private)
-js_port_deliver :: proc(p: ^Page, end: u64, m: Port_Msg) {
-	r := p.js
+js_port_deliver :: proc(p: ^Page, end: u64, m: Port_Msg, world: u32 = 0) {
+	r := world != 0 ? js_realm_by_index(p, world - 1) : p.js
 	if r == nil || r.failed || r.inst == nil || r.inst.dead {
 		for x in m.ports { port_close_end(x) }
 		return

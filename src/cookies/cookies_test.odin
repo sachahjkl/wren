@@ -275,6 +275,12 @@ eviction :: proc(t: ^testing.T) {
 	testing.expect(t, count(&j) <= 8, "global limit")
 }
 
+// What the profile's writer does with the text (host.File_Writer): this package writes nothing itself.
+@(private = "file")
+save_for_test :: proc(j: ^Jar, path: string, now: i64) -> bool {
+	return os.write_entire_file(path, transmute([]byte)serialize(j, now, context.temp_allocator)) == nil
+}
+
 @(test)
 persistence_roundtrip :: proc(t: ^testing.T) {
 	j := jar_make()
@@ -284,14 +290,14 @@ persistence_roundtrip :: proc(t: ^testing.T) {
 	store(&j, "tab\tname=va%lue\nx; Max-Age=3600; Path=/p; Secure; HttpOnly; SameSite=Lax", ctx_for("https://example.com/p/"))
 	path := "build/cookies_test.tsv"
 	defer os.remove(path)
-	testing.expect(t, save(&j, path, NOW))
+	testing.expect(t, save_for_test(&j, path, NOW))
 	j2 := jar_make()
 	defer jar_destroy(&j2)
 	n, ok := load(&j2, path, NOW)
 	testing.expect(t, ok)
 	testing.expect_value(t, n, 0)   // the name above contains a control character: it was rejected, never stored
 	store(&j, "persist=v%41; Max-Age=3600; Path=/p; Secure; HttpOnly; SameSite=Lax", ctx_for("https://example.com/p/"))
-	testing.expect(t, save(&j, path, NOW))
+	testing.expect(t, save_for_test(&j, path, NOW))
 	n, ok = load(&j2, path, NOW)
 	testing.expect(t, ok)
 	testing.expect_value(t, n, 1)
@@ -322,7 +328,7 @@ partitions_keep_third_party_cookies_apart :: proc(t: ^testing.T) {
 	// persisted with their partition; a file of the first format loads unpartitioned
 	path := "build/cookies_partition_test.tsv"
 	defer os.remove(path)
-	testing.expect(t, save(&j, path, NOW))
+	testing.expect(t, save_for_test(&j, path, NOW))
 	j2 := jar_make()
 	defer jar_destroy(&j2)
 	n, ok := load(&j2, path, NOW)

@@ -15,7 +15,7 @@
 //
 // The pages and scripts of the repository write the default ports (http://127.0.0.1:8765/...); on another block the
 // text files of /site/ are served with those ports moved (portsRewrite), as the test tools move theirs
-// (src/tools/testenv).
+// (src/testenv).
 package testserver
 
 import (

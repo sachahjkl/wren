@@ -5,6 +5,7 @@ package browser
 // browser_command_of_appcommand) and posts it to the loop; app_command_run acts on the current tab between frames.
 
 import win "core:sys/windows"
+import "toolkit:platform"
 import "wb:host"
 import "wb:base"
 
@@ -26,16 +27,16 @@ app_commands_init :: proc(app: ^App) {
 	hwnd := active_window(app).win.hwnd
 	if hwnd == nil { return }
 	win.SetWindowSubclass(hwnd, cmd_subclass, CMD_SUBCLASS_ID, win.DWORD_PTR(uintptr(app)))   // (the subclass's data: the App its commands go to)
-	app.cmd_hwnd = hwnd
+	app.native.cmd_hwnd = hwnd
 }
 
 // The back / forward buttons of the mouse in another window of the browser (windows.odin).
-app_commands_attach :: proc(app: ^App, hwnd: win.HWND) { if hwnd != nil { win.SetWindowSubclass(hwnd, cmd_subclass, CMD_SUBCLASS_ID, win.DWORD_PTR(uintptr(app))) } }
+app_commands_attach :: proc(app: ^App, w: ^platform.Window) { if w.hwnd != nil { win.SetWindowSubclass(win.HWND(w.hwnd), cmd_subclass, CMD_SUBCLASS_ID, win.DWORD_PTR(uintptr(app))) } }
 
 app_commands_destroy :: proc(app: ^App) {
-	if app.cmd_hwnd == nil { return }
-	RemoveWindowSubclass(app.cmd_hwnd, cmd_subclass, CMD_SUBCLASS_ID)
-	app.cmd_hwnd = nil
+	if app.native.cmd_hwnd == nil { return }
+	RemoveWindowSubclass(app.native.cmd_hwnd, cmd_subclass, CMD_SUBCLASS_ID)
+	app.native.cmd_hwnd = nil
 }
 
 @(private = "file")

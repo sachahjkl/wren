@@ -33,6 +33,9 @@ package wj
 @(export, link_name = "wj_start_frames")               wj_start_frames: bool
 // browser.touch.expose off: the ontouch* handler attributes of the five prototypes below are not defined
 wj_start_no_touch: bool
+// An isolated world of an extension's content scripts (docs/extensions.md, section 3.6): customElements is null there,
+// as in Chrome (custom element reactions run in the page's realm).
+wj_start_isolated: bool
 @(private = "file") touch_handler_names := [?]string{"ontouchstart", "ontouchend", "ontouchmove", "ontouchcancel"}
 @(private = "file") touch_handler_ifaces := [?]string{"Window", "Document", "HTMLElement", "SVGElement", "MathMLElement"}
 // What a lazy prototype leaves out for this realm's scope (the F_NOT_* bit of the scope; 0 before wj_platform_start)

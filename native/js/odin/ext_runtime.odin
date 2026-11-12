@@ -113,6 +113,26 @@ ext_n_connect :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, ar
 	return wj.UNDEFINED
 }
 
+// connectTab(port, name, tab, frame): tabs.connect (frame -1: every frame of the tab).
+@(private = "file")
+ext_n_connect_tab :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	port, ok := ext_id_arg(ctx, argc, argv, 0)
+	if !ok { return wj.EXCEPTION }
+	v: wj.Str
+	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 1), &v, 0, nil) { return wj.EXCEPTION }
+	defer wj.wj_str_free(ctx, &v)
+	tab, frame: f64
+	if wj.JS_ToFloat64(ctx, &tab, wj.arg(argc, argv, 2)) < 0 { return wj.EXCEPTION }
+	if wj.JS_ToFloat64(ctx, &frame, wj.arg(argc, argv, 3)) < 0 { return wj.EXCEPTION }
+	// (not an integer: no tab of that id, and every frame)
+	t := i64(-1)
+	if tab >= 0 && tab < 9007199254740992 && f64(i64(tab)) == tab { t = i64(tab) }
+	f := i64(-1)
+	if frame >= 0 && frame < 9007199254740992 && f64(i64(frame)) == frame { f = i64(frame) }
+	wj.wr_Ext_connectTab(port, v.ptr, u32(v.len), t, f)
+	return wj.UNDEFINED
+}
+
 @(private = "file")
 ext_n_port_post :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	port, ok := ext_id_arg(ctx, argc, argv, 0)
@@ -142,7 +162,7 @@ wj_ext_install :: proc "c" () -> i32 {
 	natives := [?]Prelude_Native{
 		{"info", ext_n_info, 0}, {"manifest", ext_n_manifest, 0}, {"message", ext_n_message, 2}, {"call", ext_n_call, 2},
 		{"listen", ext_n_listen, 2}, {"take", ext_n_take, 0}, {"respond", ext_n_respond, 3}, {"connect", ext_n_connect, 2},
-		{"portPost", ext_n_port_post, 2}, {"portClose", ext_n_port_close, 1},
+		{"connectTab", ext_n_connect_tab, 4}, {"portPost", ext_n_port_post, 2}, {"portClose", ext_n_port_close, 1},
 	}
 	pump := prelude_call(ctx, "ext_api.js", #load("ext_api.js"), natives[:], wj.wj_the_realm.global)
 	if wj.is_exception(pump) { wj.wj_report_pending(ctx); return -1 }

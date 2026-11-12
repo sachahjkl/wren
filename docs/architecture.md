@@ -32,6 +32,24 @@ feature list, see the [README](../README.md).
    lower-case name, description, type, bounds, unit) and reads them through `settings_from_prefs`; the shell registers
    every table (`src/browser/settings.odin`) and `src/browser/prefs_test.odin` checks that each one is well formed.
 9. **State lives with what owns it.** See below: what is one App's is not a global.
+10. **Layers point one way.** A tool (`src/tools`) may import the product; the product never imports `wb:tools/*`.
+    What both need is a package of `src`: crash reports (`src/crashtrace`), the stacks of another process
+    (`src/stacks`), the test environment (`src/testenv`). Only a `*_windows.odin` file imports `core:sys/windows`,
+    and a neutral struct holds no Win32 type ([portability.md](portability.md)). A package links only what its
+    users need: `URLPattern` is `src/urlpattern`, so the users of `src/url` (cookies, CSP, WebAuthn) do not link the
+    regular expression engine. `src/tools/test_all/lint_layers.odin` checks the imports.
+11. **The profile's files have one writer.** `host.File_Writer` (`src/host/profile_file.odin`, `App.writer`) writes
+    every file of the profile, for the shell and for the pages (`Storage_Manager.writer`, `Blocker.writer`). Its owner
+    makes the text on its own thread, only when what the file holds changed, and calls `host.profile_write` or
+    `host.profile_remove` (a `host.Profile_File` when it keeps one; `host.profile_post` from another thread). The
+    blocking pool writes the file whole and atomically (a temporary file renamed over it), one write of a file at a
+    time: only the newest text waits. A failed write is logged and tried again later and later, and the user is told
+    once. At exit `profile_files_flush` writes what waits, and every later text is written at once. A job that does
+    more than give a whole text (the cookies' copy, the history's journal, the crash snapshot) calls `host.file_put`,
+    `file_append`, `file_move` or `file_drop` on a worker. In the check build these panic on the interface thread
+    while the pool could do the write. `src/tools/test_all/lint_file_writes.odin` fails on another direct write in
+    `src`: `tools/file_writes_allowed.txt` lists the ones left (diagnostics, the user's own files, the stores with
+    their own format), each with why.
 
 ## Where state lives
 

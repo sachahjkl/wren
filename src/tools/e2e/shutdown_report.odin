@@ -10,7 +10,7 @@ import "core:sync"
 import "core:testing"
 import "wb:e2e"
 import "wb:host"
-import "wb:tools/crashtrace"
+import "wb:crashtrace"
 
 // Set: this process is the one that hangs, and it writes in this folder.
 @(private = "file") HANG_FOLDER_VAR :: "WREN_TEST_TEARDOWN_HANG_FOLDER"

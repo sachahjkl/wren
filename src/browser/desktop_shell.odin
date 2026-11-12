@@ -72,7 +72,7 @@ desktop_options :: proc(app: ^App) -> desktop.Options {
 	o := desktop.options_make(desktop_identity())
 	wren_desktop.options_apply_prefs(&o, &app.prefs)
 	o.icons = desktop_icons()
-	when ODIN_OS == .Windows { o.launcher = CONSOLE_LAUNCHER }
+	o.launcher = console_launcher()   // console_launcher_*.odin
 	desktop.roots_from_env(&o, env_lookup)
 	return o
 }

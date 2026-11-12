@@ -18,7 +18,7 @@ import "wb:tools/tooling"
 // The browser's build, build/asan/browser_asan.exe (debug, 256 MiB of stack, the check build's tracker and script driver), runs through src/tools/e2e/memcheck.odin with WREN_MEMCHECK_EXE and ASAN_OPTIONS set.
 
 ASAN_DIR :: "build/asan"
-ASAN_PACKAGES := []string{"layout", "page", "browser", "base", "host", "dom", "html", "url", "http", "cookies", "csp", "httpcache", "fetch", "css", "style", "webfont", "images", "forms", "js", "webauthn", "wasm", "xml"}
+ASAN_PACKAGES := []string{"layout", "page", "browser", "base", "host", "dom", "html", "url", "urlpattern", "http", "cookies", "csp", "httpcache", "fetch", "css", "style", "webfont", "images", "forms", "js", "webauthn", "wasm", "xml"}
 // 256 MiB of default stack (the main thread, threads started with the executable's size): ASan's frames are several times larger (redzones), the 32 MiB of the normal builds overflow on the first page.
 ASAN_STACK :: "/STACK:268435456"
 // handle_segv=0: the access violations that are not errors stay with their owners (Wasmtime's guard pages, the stack guard pages of threads ASan does not know: the shell's, the system's, where ASan reported a "stack-overflow").

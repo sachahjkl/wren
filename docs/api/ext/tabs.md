@@ -16,6 +16,8 @@ Gate: no permission; contexts: Background, Popup, Tab. Source: `api/ext_tabs.wid
 | `create(CreateProperties createProperties)` | [Tab](tabs.md#tab) | host |  |  |
 | `update(optional i64 tabId, UpdateProperties updateProperties)` | [Tab](tabs.md#tab) | host |  | No tabId: the selected tab of the current window. |
 | `remove(TabIds tabIds)` | void | host |  |  |
+| `sendMessage(i64 tabId, any message, optional MessageSendOptions options)` | any | host |  | To the content scripts of the extension in the tab (one frame with frameId) that listen to runtime.onMessage. The first answer wins; with none, "Could not establish connection. Receiving end does not exist.". |
+| `connect(i64 tabId, optional TabConnectInfo connectInfo)` | [Port](runtime.md#port) | realm |  | A port to the content scripts of the extension in the tab (one frame with frameId) that listen to runtime.onConnect. |
 
 ## Events
 
@@ -139,4 +141,19 @@ One of: i64 or i64[].
 |---|---|---|
 | `windowId` | i64 |  |
 | `isWindowClosing` | bool |  |
+
+### MessageSendOptions
+
+| Property | Type | |
+|---|---|---|
+| `frameId` (optional) | i64 | One frame only (0: the top document). |
+| `documentId` (optional) | string |  |
+
+### TabConnectInfo
+
+| Property | Type | |
+|---|---|---|
+| `name` (optional) | string |  |
+| `frameId` (optional) | i64 |  |
+| `documentId` (optional) | string |  |
 

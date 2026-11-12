@@ -1942,8 +1942,9 @@ dom_touches_sheets :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, owners: [
 		}
 	}
 	if removal {
-		// (constructed sheets have no owner: they come and go with adoptedStyleSheets)
-		for sh in e.sheets { if sh.origin == .Author && !sh.constructed && !connected(doc, sh.owner) { return true } }
+		// (constructed sheets have no owner: they come and go with adoptedStyleSheets; nor do a FontFace's or an
+		// extension's, which no removal takes away)
+		for sh in e.sheets { if sh.origin == .Author && !sh.constructed && sh.owner != base.NIL_HANDLE && !connected(doc, sh.owner) { return true } }
 		for o in owners { if !connected(doc, o) { return true } }
 	}
 	return false

@@ -14,7 +14,7 @@ import "wb:dom"
 import "wb:host"
 import lay "wb:layout"
 import "wb:page"
-import "wb:tools/testenv"
+import "wb:testenv"
 import "wb:tools/testhost"
 
 BASE :: "http://127.0.0.1:8765/sitecompat/test.html"

@@ -16,7 +16,7 @@ import "wb:dom"
 import "wb:host"
 import "wb:images"
 import "wb:page"
-import "wb:tools/testenv"
+import "wb:testenv"
 
 FIXTURE :: "examples/site/media.html"
 ORIGIN :: "http://127.0.0.1:8765"

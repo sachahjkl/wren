@@ -89,11 +89,16 @@ app_loop_end :: proc(app: ^App) {
 // The blocking pool: file and system calls off the loop's thread, their answers posted to the loop.
 app_pools_init :: proc(app: ^App, workers: int) {
 	host.blocking_init(&app.blocking, &app.loop, workers)
+	profile_writer_init(app)   // profile_writes.odin: the profile's files go to this pool
 	app.made += {.Pools}
 }
 
 app_pools_end :: proc(app: ^App) {
+	// (the browser flushed at exit already, in profile_save: this is for a program that did not; no job of the writer is
+	// left out when the pool ends, and a file written later goes on this thread)
+	host.file_writer_flush(&app.writer)
 	host.blocking_destroy(&app.blocking)
+	host.file_writer_destroy(&app.writer)
 	app.made -= {.Pools}
 }
 
