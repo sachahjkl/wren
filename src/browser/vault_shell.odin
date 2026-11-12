@@ -349,7 +349,7 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 				label := v.state == .Locked || (v.state == .Failed && vault.vault_has_account(v)) ? i18n.tr("Unlock…") : i18n.tr("Log in…")
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.row(.Center, {}, "###vp_locked_actions") {
-					if icon_action_button(app, lucide.LOCK, label, "vp_open_dialog", ui.fill()) {
+					if icon_action_button(app, lucide.LOCK, label, "vp_open_dialog", ui.fill(), accent = true) {
 						ui.ctx_menu_close()
 						vault_dialog_open(app)
 					}
@@ -703,7 +703,7 @@ vault_login_build :: proc(app: ^App) {
 						ui.spacer(ui.px(em * 0.3))
 						first = dialog_field("###vd_device_code", &s.code, i18n.tr("Code"), true, &submit, &cancel, &app.vault.reveal)
 						ui.spacer(ui.px(em * 0.3))
-						if !busy && icon_action_button(app, lucide.SEND_HORIZONTAL, i18n.tr("Send a new code"), "vd_send_device", ui.px(em * 16)) { vault.vault_send_code(v) }
+						if !busy && icon_action_button(app, lucide.SEND_HORIZONTAL, i18n.tr("Send a new code"), "vd_send_device", ui.fill()) { vault.vault_send_code(v) }
 					case unlock:
 						dialog_line(v.email, "vd_email_shown")
 						ui.spacer(ui.px(em * 0.6))
@@ -715,18 +715,24 @@ vault_login_build :: proc(app: ^App) {
 							ui.spacer(ui.px(em * 0.3))
 							dialog_line(i18n.tr("No PIN is set: a new login removes it. Once unlocked, set one from the Vault panel."), "vd_no_pin", weak = true)
 						}
-						if v.passkey && !busy {
-							ui.spacer(ui.px(em * 0.3))
-							if icon_action_button(app, lucide.SHIELD, i18n.tr("Unlock with a passkey"), "vd_unlock_passkey", ui.px(em * 16)) {
-								if why := vault_passkey_unsupported(app); why != "" { vault.vault_say(v, why) } else { vault.vault_passkey_begin(v, .Unlock, url_host(vault.web_vault_url(v.settings))) }
-							}
-						}
-						if v.pin {
-							ui.spacer(ui.px(em * 0.3))
-							if icon_action_button(app, lucide.KEYBOARD, use_pin ? i18n.tr("Use the master password") : i18n.tr("Use the PIN"), "vd_pin_toggle", ui.px(em * 16)) {
-								secret_wipe(&s.password)
-								s.use_password = !s.use_password
-								s.focus = true
+						// the other ways in, side by side, sharing the row (one alone: across it)
+						if (v.passkey && !busy) || v.pin {
+							ui.spacer(ui.px(em * 0.5))
+							ui.next({width = ui.fill(), height = ui.children_sum()})
+							if ui.row(.Center, {}, "###vd_unlock_ways") {
+								if v.passkey && !busy {
+									if icon_action_button(app, lucide.SHIELD, i18n.tr("Unlock with a passkey"), "vd_unlock_passkey", ui.fill()) {
+										if why := vault_passkey_unsupported(app); why != "" { vault.vault_say(v, why) } else { vault.vault_passkey_begin(v, .Unlock, url_host(vault.web_vault_url(v.settings))) }
+									}
+									if v.pin { ui.spacer(ui.px(em * 0.4)) }
+								}
+								if v.pin {
+									if icon_action_button(app, lucide.KEYBOARD, use_pin ? i18n.tr("Use the password") : i18n.tr("Use the PIN"), "vd_pin_toggle", ui.fill()) {
+										secret_wipe(&s.password)
+										s.use_password = !s.use_password
+										s.focus = true
+									}
+								}
 							}
 						}
 					case s.api_key:
@@ -736,7 +742,7 @@ vault_login_build :: proc(app: ^App) {
 						ui.spacer(ui.px(em * 0.4))
 						dialog_field("###vd_password", &s.password, i18n.tr("Master password"), true, &submit, &cancel, &app.vault.reveal)
 						ui.spacer(ui.px(em * 0.3))
-						if icon_action_button(app, lucide.USER, i18n.tr("Use the email and password"), "vd_mode", ui.px(em * 16)) { s.api_key = false; s.focus = true }
+						if icon_action_button(app, lucide.USER, i18n.tr("Use the email and password"), "vd_mode", ui.fill()) { s.api_key = false; s.focus = true }
 					case:
 						email_box := dialog_field("###vd_email", &s.email, i18n.tr("Email"), false, &submit, &cancel)
 						ui.spacer(ui.px(em * 0.4))
@@ -799,7 +805,7 @@ vault_login_build :: proc(app: ^App) {
 			}
 			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "vd_cancel", ui.px(em * 8)) { cancel = true }
 			ui.spacer(ui.px(em * 0.5))
-			if !busy && !waiting && icon_action_button(app, login ? lucide.USER : (unlock ? lucide.LOCK : lucide.CHECK), login ? i18n.tr("Log in") : (unlock ? i18n.tr("Unlock") : i18n.tr("Continue")), "vd_submit", ui.px(em * 8)) { submit = true }
+			if !busy && !waiting && icon_action_button(app, login ? lucide.USER : (unlock ? lucide.LOCK : lucide.CHECK), login ? i18n.tr("Log in") : (unlock ? i18n.tr("Unlock") : i18n.tr("Continue")), "vd_submit", ui.px(em * 8), accent = true) { submit = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))
@@ -882,7 +888,7 @@ vault_pin_build :: proc(app: ^App) {
 			ui.spacer(ui.fill())
 			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "vpin_cancel", ui.px(em * 8)) { cancel = true }
 			ui.spacer(ui.px(em * 0.5))
-			if icon_action_button(app, lucide.CHECK, i18n.tr("Set"), "vpin_set", ui.px(em * 8)) { submit = true }
+			if icon_action_button(app, lucide.CHECK, i18n.tr("Set"), "vpin_set", ui.px(em * 8), accent = true) { submit = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))

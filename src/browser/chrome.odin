@@ -801,31 +801,13 @@ toolbar_panel_rect :: proc(button: ui.Rect, width: f32) -> ui.Rect {
 	return {{button.max.x - width, button.min.y}, button.max}
 }
 
-// A button with a Lucide glyph before its text: ui.button_icon's look (its padding of 0.95 em on each side, the glyph,
-// the text), with Wren's Lucide face for the glyph (button_icon draws the program's own icon font) and a width given
-// (ui.fill() shares a row between buttons; the content stays centred, never against an edge).
-icon_action_button :: proc(app: ^App, glyph, text, id: string, width: ui.Size) -> bool {
-	em := ui.font_size()
-	clicked := false
-	if ui.tags("button") {
-		ui.next({width = width, height = ui.px(ui.dense(em * 2.2)), radius = em * 0.45, axis = .X})
-		b := ui.build_box({.Clickable, .Focusable, .Draw_Background, .Draw_Border, .Draw_Hot_Effects}, strings.concatenate({"###", id}, ui.frame_allocator()))
-		b.squish = ui.press_squish(b)
-		clicked = ui.signal(b).clicked
-		ui.a11y_set(b, {role = .Button, name = text})
-		if ui.parent(b) {
-			ui.spacer(ui.px(em * 0.95))
-			ui.spacer(ui.fill())
-			ui.next({width = ui.px(em * 1.5), height = ui.pct(1), font = app.lucide, font_size = em * 1.05, text_pad = 0, text_align = .Center})
-			ui.build_box({.Draw_Text, .No_Text_Trunc}, strings.concatenate({glyph, "###", id, "_g"}, ui.frame_allocator()))
-			ui.spacer(ui.px(em * 0.3))
-			ui.next({width = ui.text_size(), height = ui.pct(1)})
-			ui.build_box({.Draw_Text}, strings.concatenate({text, "###", id, "_t"}, ui.frame_allocator()))
-			ui.spacer(ui.fill())
-			ui.spacer(ui.px(em * 0.95))
-		}
-	}
-	return clicked
+// ui.button_icon with a Lucide glyph (Wren's other icons are its own font) and an id of its own. `width`: ui.fill()
+// shares the row (one across, or several side by side), px(...) a width of its own. `accent`: the dialog's main act
+// (Log in, Unlock, OK), in the theme's accent.
+icon_action_button :: proc(app: ^App, glyph, text, id: string, width: ui.Size, accent := false) -> bool {
+	if accent { ui.push_tags("accent_button") }
+	defer if accent { ui.pop_tags() }
+	return ui.button_icon(strings.concatenate({"###", id}, ui.frame_allocator()), glyph, text, width = width, icon_font = app.lucide).clicked
 }
 
 // A square button showing one Lucide glyph; `tip` is its name for a screen reader and its tooltip (a row's actions:
