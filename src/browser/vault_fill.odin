@@ -476,10 +476,21 @@ vault_dropdown_place :: proc(field, area: draw.Rect, w, h: f32) -> draw.Rect {
 vault_dropdown_update :: proc(app: ^App, x: ^Vault_Target) {
 	s := &app.vault
 	if x == nil || x.field == base.NIL_HANDLE || x.page.doc == nil {
+		// (the focus left the field: back on it, its list shows again)
+		s.dd_dismissed_forms, s.dd_dismissed_field, s.dd_dismissed_had_text = 0, base.NIL_HANDLE, false
 		s.role, s.role_forms, s.role_field = .None, 0, base.NIL_HANDLE
 		s.fill_kind, s.fill_signup = .None, false
 		s.dd_shown = false
 		return
+	}
+	// (the list hidden on a field, by Escape or a fill, comes back when the focus is on another field, or when the field is
+	// empty again: it was filled then cleared, the person wants a login there again)
+	if s.dd_dismissed_field != base.NIL_HANDLE {
+		empty := forms.edit_text(x.f, x.field) == ""
+		if !empty { s.dd_dismissed_had_text = true }   // (filled: emptied after this, the field asks again; empty before the fill came, not yet)
+		if s.dd_dismissed_forms != x.f.id || s.dd_dismissed_field != x.field || (empty && s.dd_dismissed_had_text) {
+			s.dd_dismissed_forms, s.dd_dismissed_field, s.dd_dismissed_had_text = 0, base.NIL_HANDLE, false
+		}
 	}
 	version := x.page.doc.tree_version ~ (x.page.doc.attr_version << 32)
 	if s.role_forms != x.f.id || s.role_field != x.field || s.role_version != version {
@@ -568,7 +579,7 @@ vault_dropdown_key :: proc(app: ^App, f: ^forms.Forms, ev: platform.Event) -> bo
 		s.dd_sel = max(s.dd_sel - 1, -1)
 		s.dd_reveal = true
 	case .Escape:
-		s.dd_dismissed_forms, s.dd_dismissed_field = f.id, f.focus
+		s.dd_dismissed_forms, s.dd_dismissed_field, s.dd_dismissed_had_text = f.id, f.focus, false
 		s.dd_sel = -1
 	case .Return:
 		if s.dd_sel < 0 || s.dd_sel >= n { return false }   // (no row chosen: Enter is the page's)
@@ -584,7 +595,7 @@ vault_dropdown_key :: proc(app: ^App, f: ^forms.Forms, ev: platform.Event) -> bo
 dropdown_choose :: proc(app: ^App, x: Vault_Target, rows: []vault.Row, locked, generate: bool, i: int) {
 	s := &app.vault
 	s.dd_sel = -1
-	s.dd_dismissed_forms, s.dd_dismissed_field = x.f.id, x.field   // (filled: the list leaves the field)
+	s.dd_dismissed_forms, s.dd_dismissed_field, s.dd_dismissed_had_text = x.f.id, x.field, false   // (filled: the list leaves the field)
 	if locked { vault_dialog_open(app); return }
 	shown := dropdown_listed(app, rows)
 	if generate && i == shown { vault_generate_for_field(app, x); return }   // vault_save.odin

@@ -768,6 +768,9 @@ set_pref_int :: proc(app: ^App, name: string, v: int) {
 
 // The panel takes the clicks and the wheel that land on it (the page under it does not get them).
 hud_captures :: proc(app: ^App, pos: draw.Vec2) -> bool {
+	// (a dialog of the interface is open, the Vault's, a security key's, a question: its scrim covers the window, the page
+	// under it gets no press, no wheel; a click on the dialog went through to the page too)
+	if ui.dialog_open() { return true }
 	if fullscreen_bars_capture(app, pos) { return true }   // and so do the bars of full screen (window_chrome.odin)
 	if devtools_captures(pos) { return true }   // the floating developer tools (devtools.odin)
 	if palette_captures(app, pos) { return true }   // and the command palette while it is open (palette.odin)

@@ -86,6 +86,7 @@ Vault_Shell :: struct {
 	dd_reveal:      bool,            // the keys moved dd_sel: a scrolled dropdown shows it at its next build
 	dd_dismissed_forms: u64,         // Escape hid it on this field
 	dd_dismissed_field: base.Handle,
+	dd_dismissed_had_text: bool,     // the dismissed field held text since (a fill came): emptied, its list shows again
 	fill_kind:      forms.Autofill_Kind, // the focused field's when it is no login's: a card's or an address's (the dropdown lists those items)
 	fill_signup:    bool,            // the focused password field is a new one (autocomplete new-password, or two in its form): the dropdown offers the generator
 	// the clipboard: what the Vault put there (its hash and length only), cleared at clip_timer
