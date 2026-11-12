@@ -39,8 +39,6 @@ Settings :: struct {
 	// read at every frame: kept here, read again on each change (apply_prefs), never looked up by name per frame
 	loaded:              bool,   // made from the preferences (an App of a test has none: its zero value)
 	partial_redraw:      bool,   // browser.ui.partial_redraw
-	scrollbar_autohide:  bool,   // browser.ui.scrollbar_autohide (chrome_zoom.odin)
-	ui_zoom:             f32,    // browser.ui.zoom (chrome_zoom.odin)
 	bookmarks_bar:       bool,   // browser.bookmarks.bar (bookmarks_bar.odin)
 	tabs_tree:           bool,   // browser.tabs.tree (tab_tree.odin, tab_sidebar_list.odin)
 	audio_indicator:     bool,   // browser.tabs.audio_indicator (tab_sound.odin)
@@ -177,8 +175,6 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		blocking_threads = int(config.int_of(p, "browser.threads.blocking")),
 		loaded = true,
 		partial_redraw = config.bool_of(p, "browser.ui.partial_redraw"),
-		scrollbar_autohide = config.bool_of(p, "browser.ui.scrollbar_autohide"),
-		ui_zoom = f32(config.float_of(p, "browser.ui.zoom")),
 		bookmarks_bar = config.bool_of(p, "browser.bookmarks.bar"),
 		tabs_tree = config.bool_of(p, "browser.tabs.tree"),
 		audio_indicator = config.bool_of(p, "browser.tabs.audio_indicator"),
