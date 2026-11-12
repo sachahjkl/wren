@@ -2407,7 +2407,8 @@ foreign import _wr_wj_ext "ext"
 @(default_calling_convention = "contextless")
 foreign _wr_wj_ext {
 	// The realm's context as a JSON object ("" : not an extension context): id, kind (background, popup, tab), base URL,
-	// UI language, platform, and the API methods and events this context may use (its permissions decide them).
+	// UI language, flavour, the API methods, events and local members this context may use (its permissions and its
+	// kind decide them), and the constants of its namespaces.
 	@(link_name = "Ext_info") wr_Ext_info :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	// runtime.getManifest(): the manifest as JSON text, comments removed and __MSG_*__ replaced.
 	@(link_name = "Ext_manifest") wr_Ext_manifest :: proc(_buf: [^]u8, _cap: u32) -> i32 ---

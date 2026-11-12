@@ -29,9 +29,35 @@ autocomplete_tokens :: proc(f: ^Forms, h: base.Handle) -> (out: Autocomplete) {
 	return
 }
 
-// The fields a fill writes into. NIL when there is none (a multi-step login has one of the two).
+// The fields a fill writes into. NIL when there is none (a multi-step login has one of them).
 Login_Fields :: struct {
 	username, password: base.Handle,
+	one_time_code:      base.Handle,   // the code of a second step (a TOTP code)
+}
+
+// Whether `h` asks for a one-time code: autocomplete one-time-code first; else a name, id or inputmode hint (otp, totp,
+// 2fa, mfa; or a numeric field named "code" of at most 8 characters).
+is_one_time_code :: proc(f: ^Forms, h: base.Handle) -> bool {
+	tokens := autocomplete_tokens(f, h)
+	if .One_Time_Code in tokens { return true }
+	if tokens & {.Username, .Email, .Current_Password, .New_Password} != {} { return false }
+	if input_type(f, h) == .Password && max_length(f, h) < 0 { return false }   // (a password field is one unless its length says a code)
+	n := element(f, h)
+	words := make([dynamic]string, 0, 2, context.temp_allocator)
+	for name in ([]string{"name", "id"}) {
+		if v, ok := attr(n, name); ok { append(&words, base.ascii_lower(v, context.temp_allocator)) }
+	}
+	for w in words {
+		for hint in ([]string{"otp", "totp", "2fa", "mfa", "twofactor", "two-factor", "two_factor", "one-time", "onetime"}) {
+			if strings.contains(w, hint) { return true }
+		}
+	}
+	mode, _ := attr(n, "inputmode")
+	mx := max_length(f, h)
+	if base.ascii_lower(mode, context.temp_allocator) == "numeric" && mx >= 4 && mx <= 8 {
+		for w in words { if strings.contains(w, "code") || strings.contains(w, "token") { return true } }
+	}
+	return false
 }
 
 // Whether `h` is a field a fill may write: an input of a type that takes a user name or a password, enabled, editable,
@@ -71,10 +97,15 @@ login_fields :: proc(f: ^Forms, anchor: base.Handle, visible: proc(user: rawptr,
 	group := make([dynamic]base.Handle, context.temp_allocator)
 	for h in fields { if form_owner(f, h) == owner { append(&group, h) } }
 
+	// the one-time code: never also the user name or the password
+	for h in group {
+		if is_one_time_code(f, h) { out.one_time_code = h; break }
+	}
+
 	// the password: current-password first, else the first password field that is not a new one
 	first_new := base.NIL_HANDLE
 	for h in group {
-		if input_type(f, h) != .Password { continue }
+		if input_type(f, h) != .Password || h == out.one_time_code { continue }
 		tokens := autocomplete_tokens(f, h)
 		if .Current_Password in tokens { out.password = h; break }
 		if .New_Password in tokens {
@@ -88,18 +119,34 @@ login_fields :: proc(f: ^Forms, anchor: base.Handle, visible: proc(user: rawptr,
 	// the user name: autocomplete username or email first, else the nearest text field before the password, else the
 	// anchor when it is a text field (the user name step of a multi-step login)
 	for h in group {
-		if input_type(f, h) == .Password { continue }
+		if input_type(f, h) == .Password || h == out.one_time_code { continue }
 		tokens := autocomplete_tokens(f, h)
 		if .Username in tokens || .Email in tokens { out.username = h; break }
 	}
 	if out.username == base.NIL_HANDLE && out.password != base.NIL_HANDLE {
 		for h in group {
 			if h == out.password { break }
-			if input_type(f, h) != .Password && .One_Time_Code not_in autocomplete_tokens(f, h) { out.username = h }
+			if input_type(f, h) != .Password && h != out.one_time_code { out.username = h }
 		}
 	}
-	if out.username == base.NIL_HANDLE && anchored && input_type(f, anchor) != .Password { out.username = anchor }
+	if out.username == base.NIL_HANDLE && anchored && input_type(f, anchor) != .Password && anchor != out.one_time_code { out.username = anchor }
 	return
+}
+
+// What a field is in its login group, for the Vault's dropdown: None when it is not a field of a login.
+Login_Role :: enum u8 { None, Username, Password, One_Time_Code }
+
+login_role :: proc(f: ^Forms, h: base.Handle, visible: proc(user: rawptr, h: base.Handle) -> bool = nil, user: rawptr = nil) -> Login_Role {
+	if h == base.NIL_HANDLE || kind(f, h) != .Input { return .None }
+	lf := login_fields(f, h, visible, user)
+	switch {
+	case h == lf.one_time_code: return .One_Time_Code
+	case h == lf.password:      return input_type(f, h) == .Password ? .Password : .None
+	case h == lf.username:
+		// (a lone text field is a login's only when something says so: a password beside it, or its autocomplete)
+		if lf.password != base.NIL_HANDLE || autocomplete_tokens(f, h) & {.Username, .Email} != {} { return .Username }
+	}
+	return .None
 }
 
 // Writes `value` into a field as a user edit (a fill the user asked for). False when the field cannot take it. The

@@ -1,5 +1,7 @@
 // ext_api.js: chrome.* in an extension context (docs/extensions.md, section 3.9), built from what the browser lists for
-// this context (Ext_info: its methods and events, decided by its permissions and its kind). Evaluated by
+// this context (Ext_info: its methods, events and local members, decided by its permissions and its kind, and the
+// constants of its namespaces; all generated from api/ext_<namespace>.widl into src/page/ext_api_generated.odin). The
+// arguments are matched to their signature and checked by the browser (one decoder per method). Evaluated by
 // ext_runtime.odin (prelude_call) with the natives of module ext and the global; returns the event pump the browser
 // calls (wj_ext_event).
 //   * A method returns a promise. If its last argument is a function, the method calls it with the result and returns
@@ -23,9 +25,9 @@
   const report = (e) => { try { console.error(e); } catch (_) {} };
 
   // A call of `name` with `args` (an array; a function at its end is the callback).
-  function invoke(name, args) {
+  function invoke(name, args, promiseOnly) {
     let cb;
-    if (args.length > 0 && typeof args[args.length - 1] === "function") cb = args.pop();
+    if (!promiseOnly && args.length > 0 && typeof args[args.length - 1] === "function") cb = args.pop();
     while (args.length > 0 && args[args.length - 1] === undefined) args.pop();
     let text;
     try { text = JSON.stringify(args); } catch (e) { return fail(cb, e); }
@@ -105,114 +107,110 @@
   }
   const newPortId = () => Math.floor(Math.random() * 4503599627370496) + 1;
 
-  // The namespaces: an object per dotted path, a method per listed method, an event per listed event.
-  const chrome = {};
-  const path = (dotted) => {
-    let o = chrome;
-    for (const part of dotted) { if (!(part in o)) o[part] = {}; o = o[part]; }
-    return o;
-  };
-  for (const name of info.methods) {
-    const parts = name.split(".");
-    const leaf = parts.pop();
-    path(parts)[leaf] = function () { return invoke(name, Array.prototype.slice.call(arguments)); };
-  }
-  for (const name of info.events) {
-    const parts = name.split(".");
-    const leaf = parts.pop();
-    path(parts)[leaf] = new ExtEvent(name);
-  }
-
-  // runtime: what answers from the extension itself, without the browser's loop
-  const runtime = path(["runtime"]);
-  runtime.id = info.id;
-  runtime.getURL = (p) => info.base + String(p).replace(/^\/+/, "");
-  runtime.getManifest = () => JSON.parse(native.manifest());
-  Object.defineProperty(runtime, "lastError", {
-    get() { lastErrorRead = true; return lastError; }, enumerable: true, configurable: true,
-  });
+  // The members a context answers itself ([Local] in api/ext_<namespace>.widl): installed when the browser lists them
+  // for this context (info.local), as the routed methods are.
   const isId = (s) => typeof s === "string" && /^[a-p]{32}$/.test(s);
-  if (runtime.sendMessage) {
-    // sendMessage([extensionId], message, [options], [callback])
-    runtime.sendMessage = function () {
-      const a = Array.prototype.slice.call(arguments);
-      const cb = typeof a[a.length - 1] === "function" ? a.pop() : undefined;
-      let id = null, msg;
-      if (a.length >= 3 || (a.length === 2 && (a[0] === null || a[0] === undefined || isId(a[0])))) { id = a[0]; msg = a[1]; } else { msg = a[0]; }
-      if (id !== null && id !== undefined && id !== info.id) return fail(cb, new Error("Could not establish connection. Receiving end does not exist."));
-      const args = [msg === undefined ? null : msg];
-      if (cb !== undefined) args.push(cb);
-      return invoke("runtime.sendMessage", args);
-    };
-  }
-  if (runtime.onConnect) {
+  const answer = (v, cb) => { if (typeof cb === "function") { cb(v); return undefined; } return Promise.resolve(v); };
+  const value = (v) => (o, k) => { o[k] = v; };
+  const LOCAL = {
+    "runtime.id": value(info.id),
+    "runtime.lastError": (o, k) => Object.defineProperty(o, k, {
+      get() { lastErrorRead = true; return lastError; }, enumerable: true, configurable: true,
+    }),
+    "runtime.getURL": value((p) => info.base + String(p).replace(/^\/+/, "")),
+    "runtime.getManifest": value(() => JSON.parse(native.manifest())),
     // connect([extensionId], [connectInfo])
-    runtime.connect = function (a, b) {
+    "runtime.connect": value(function (a, b) {
       const ci = (typeof a === "object" && a !== null) ? a : (b || {});
       const id = newPortId();
       const name = ci.name === undefined ? "" : String(ci.name);
       const port = new Port(id, name, undefined);
       native.connect(id, name);
       return port;
-    };
-  }
-  runtime.OnInstalledReason = { INSTALL: "install", UPDATE: "update", CHROME_UPDATE: "chrome_update", SHARED_MODULE_UPDATE: "shared_module_update" };
-  runtime.PlatformOs = { MAC: "mac", WIN: "win", ANDROID: "android", CROS: "cros", LINUX: "linux", OPENBSD: "openbsd", FUCHSIA: "fuchsia" };
-  runtime.ContextType = { TAB: "TAB", POPUP: "POPUP", BACKGROUND: "BACKGROUND", OFFSCREEN_DOCUMENT: "OFFSCREEN_DOCUMENT", SIDE_PANEL: "SIDE_PANEL", DEVELOPER_TOOLS: "DEVELOPER_TOOLS" };
-
-  // (an offscreen document has runtime only, as in Chrome)
-  if (info.kind !== "offscreen") {
-    const i18n = path(["i18n"]);
-    i18n.getMessage = (name, subs) => {
+    }),
+    "i18n.getMessage": value((name, subs) => {
       const list = subs === undefined || subs === null ? [] : (Array.isArray(subs) ? subs : [subs]);
       return native.message(String(name), JSON.stringify(list.slice(0, 9).map(String)));
-    };
-    i18n.getUILanguage = () => info.lang;
-    i18n.getAcceptLanguages = (cb) => { const v = [info.lang]; if (typeof cb === "function") { cb(v); return undefined; } return Promise.resolve(v); };
+    }),
+    "i18n.getUILanguage": value(() => info.lang),
+    "i18n.getAcceptLanguages": value((cb) => answer([info.lang], cb)),
+    "extension.inIncognitoContext": value(false),
+    "extension.getViews": value(() => []),
+    "extension.getBackgroundPage": value(() => null),
+    "extension.isAllowedIncognitoAccess": value((cb) => answer(false, cb)),
+    "extension.isAllowedFileSchemeAccess": value((cb) => answer(false, cb)),
+  };
+
+  // runtime.sendMessage([extensionId], message, [options], [callback]): another extension's id has no receiver (no
+  // message between extensions), so only the message reaches the browser.
+  function sendMessage(promiseOnly, a) {
+    const cb = !promiseOnly && typeof a[a.length - 1] === "function" ? a.pop() : undefined;
+    let id = null, msg;
+    if (a.length >= 3 || (a.length === 2 && (a[0] === null || a[0] === undefined || isId(a[0])))) { id = a[0]; msg = a[1]; } else { msg = a[0]; }
+    if (id !== null && id !== undefined && id !== info.id) return fail(cb, new Error("Could not establish connection. Receiving end does not exist."));
+    const args = [msg === undefined ? null : msg];
+    if (cb !== undefined) args.push(cb);
+    return invoke("runtime.sendMessage", args);
   }
 
-  if (info.kind !== "content" && info.kind !== "offscreen") {
-    const extension = path(["extension"]);
-    extension.inIncognitoContext = false;
-    extension.getViews = () => [];
-    extension.getBackgroundPage = () => null;
-    extension.isAllowedIncognitoAccess = (cb) => { if (typeof cb === "function") { cb(false); return undefined; } return Promise.resolve(false); };
-    extension.isAllowedFileSchemeAccess = (cb) => { if (typeof cb === "function") { cb(false); return undefined; } return Promise.resolve(false); };
+  // ImageData has no JSON form: the icon stays the manifest's until paths are given (drawn icons come later)
+  function setIcon(promiseOnly, a) {
+    const d = Object.assign({}, a[0]);
+    if (d.imageData !== undefined) { d.imageData = true; }
+    const args = [d];
+    if (!promiseOnly && typeof a[1] === "function") args.push(a[1]);
+    return invoke("action.setIcon", args);
   }
-  if (chrome.storage) {
-    const s = chrome.storage;
-    if (s.local) { s.local.QUOTA_BYTES = 10485760; }
-    if (s.session) { s.session.QUOTA_BYTES = 10485760; }
-    if (s.sync) { Object.assign(s.sync, { QUOTA_BYTES: 102400, QUOTA_BYTES_PER_ITEM: 8192, MAX_ITEMS: 512, MAX_WRITE_OPERATIONS_PER_HOUR: 1800, MAX_WRITE_OPERATIONS_PER_MINUTE: 120 }); }
-  }
-  if (chrome.tabs) {
-    chrome.tabs.TAB_ID_NONE = -1; chrome.tabs.TAB_INDEX_NONE = -1;
-    chrome.tabs.TabStatus = { UNLOADED: "unloaded", LOADING: "loading", COMPLETE: "complete" };
-  }
-  if (chrome.windows) {
-    chrome.windows.WINDOW_ID_NONE = -1; chrome.windows.WINDOW_ID_CURRENT = -2;
-    chrome.windows.WindowType = { NORMAL: "normal", POPUP: "popup", PANEL: "panel", APP: "app", DEVTOOLS: "devtools" };
-    chrome.windows.CreateType = { NORMAL: "normal", POPUP: "popup", PANEL: "panel" };
-    chrome.windows.WindowState = { NORMAL: "normal", MINIMIZED: "minimized", MAXIMIZED: "maximized", FULLSCREEN: "fullscreen", LOCKED_FULLSCREEN: "locked-fullscreen" };
-  }
-  if (chrome.idle) { chrome.idle.IdleState = { ACTIVE: "active", IDLE: "idle", LOCKED: "locked" }; }
-  if (chrome.offscreen) {
-    const reasons = ["TESTING", "AUDIO_PLAYBACK", "IFRAME_SCRIPTING", "DOM_SCRAPING", "BLOBS", "DOM_PARSER", "USER_MEDIA", "DISPLAY_MEDIA",
-      "WEB_RTC", "CLIPBOARD", "LOCAL_STORAGE", "WORKERS", "BATTERY_STATUS", "MATCH_MEDIA", "GEOLOCATION"];
-    chrome.offscreen.Reason = {};
-    for (const r of reasons) chrome.offscreen.Reason[r] = r;
-  }
-  if (chrome.action && chrome.action.setIcon) {
-    // ImageData has no JSON form: the icon stays the manifest's until paths are given (drawn icons come later)
-    const setIcon = chrome.action.setIcon;
-    chrome.action.setIcon = function (details, cb) {
-      const d = Object.assign({}, details);
-      if (d.imageData !== undefined) { d.imageData = true; }
-      return cb === undefined ? setIcon(d) : setIcon(d, cb);
-    };
-  }
+  const SPECIAL = { "runtime.sendMessage": sendMessage, "action.setIcon": setIcon };
 
+  // The namespaces: an object per dotted path, a method per listed method, an event per listed event, the constants of
+  // each namespace that exists. `promiseOnly`: browser.* of the Firefox flavour (a function argument is data there).
+  // The events are the same objects in both trees: a listener added through one is seen through the other.
+  const events = new Map();
+  function build(promiseOnly) {
+    const root = {};
+    const path = (dotted) => {
+      let o = root;
+      for (const part of dotted) { if (!(part in o)) o[part] = {}; o = o[part]; }
+      return o;
+    };
+    const find = (dotted) => {
+      let o = root;
+      for (const part of dotted) { if (!(part in o)) return undefined; o = o[part]; }
+      return o;
+    };
+    for (const name of info.methods) {
+      const parts = name.split(".");
+      const leaf = parts.pop();
+      const special = SPECIAL[name];
+      path(parts)[leaf] = special !== undefined
+        ? function () { return special(promiseOnly, Array.prototype.slice.call(arguments)); }
+        : function () { return invoke(name, Array.prototype.slice.call(arguments), promiseOnly); };
+    }
+    for (const name of info.events) {
+      const parts = name.split(".");
+      const leaf = parts.pop();
+      if (!events.has(name)) events.set(name, new ExtEvent(name));
+      path(parts)[leaf] = events.get(name);
+    }
+    for (const name of info.local) {
+      const install = LOCAL[name];
+      if (install === undefined) continue;
+      const parts = name.split(".");
+      const leaf = parts.pop();
+      install(path(parts), leaf);
+    }
+    for (const ns of Object.keys(info.constants)) {
+      const o = find(ns.split("."));
+      if (o !== undefined) Object.assign(o, info.constants[ns]);
+    }
+    return root;
+  }
+  const chrome = build(false);
   Object.defineProperty(global, "chrome", { value: chrome, writable: true, configurable: true, enumerable: false });
+  if (info.flavour === "firefox") {
+    Object.defineProperty(global, "browser", { value: build(true), writable: true, configurable: true, enumerable: false });
+  }
 
   // runtime.onMessage: the first listener that answers (sendResponse, `return true` then sendResponse, or a promise)
   // gives the answer; when none keeps the channel open, the sender learns there is no answer from here.

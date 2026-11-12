@@ -5,6 +5,7 @@ package vault
 // shows the row. Pure functions: the tests call them directly.
 
 import "core:strings"
+import "wb:base"
 import "wb:url"
 
 // The document a fill is for.
@@ -27,8 +28,10 @@ site_of :: proc(address: string, allocator := context.temp_allocator) -> (s: Sit
 	return s, true
 }
 
-// Whether a row that the helper matched with `kind` on saved URI `saved` matches `site` by Wren's rules.
-row_matches :: proc(site: Site, saved: string, kind: Match_Kind) -> bool {
+// Whether a row that the helper matched with `kind` on saved URI `saved` matches `site` by Wren's rules. `equivalent`:
+// the domains that the account makes equivalent to the site's (the helper's answer; Wren has no copy of the account's
+// groups), for an .Equivalent row: the saved host's registrable domain must be one of them.
+row_matches :: proc(site: Site, saved: string, kind: Match_Kind, equivalent: []string = nil) -> bool {
 	t := strings.trim_space(saved)
 	if t == "" { return false }
 	if !strings.contains(t, "://") { t = strings.concatenate({"https://", t}, context.temp_allocator) }
@@ -44,6 +47,17 @@ row_matches :: proc(site: Site, saved: string, kind: Match_Kind) -> bool {
 		return has && d == site.domain
 	case .Host:
 		return same_host
+	case .Equivalent:
+		if site.domain == "" || url.is_ip_host(u) { return false }
+		d, has := url.registrable_domain(u.host)
+		if !has || d == site.domain { return false }   // (the site's own domain is a .Domain row)
+		for e in equivalent { if base.ascii_lower(strings.trim_space(e), context.temp_allocator) == d { return true } }
+		return false
+	case .Starts_With:
+		// (the helper compares the URL standard's serializations too: one string on both sides)
+		return strings.has_prefix(site.url, u.href)
+	case .Exact:
+		return site.url == u.href
 	}
 	return false
 }

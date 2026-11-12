@@ -42,7 +42,8 @@ Fx :: struct {
 	v:       Vault,
 	script:  Script,
 	changes: int,
-	filled:  [dynamic]string,   // "user:pass" of each applied fill
+	filled:  [dynamic]string,   // "user:pass" of each applied fill ("user:pass:code" when a code came)
+	copied:  [dynamic]string,   // "what:value" of each copy (a code's: "totp:value:seconds left")
 	refuse:  bool,              // the fill hook drops the fill (the page changed)
 	profile: string,            // a temporary profile folder ("" none); removed at the end
 }
@@ -78,6 +79,11 @@ fake_send :: proc(t: ^Transport, frame: []u8) {
 	if p, has := o["provider"].(json.String); has { append(&f.script.notes, strings.concatenate({"provider=", p})) }
 	if r, has := o["resend"].(json.Boolean); has && bool(r) { append(&f.script.notes, strings.clone("resend")) }
 	if idle, has := o["idle_seconds"].(json.Integer); has { f.script.hello_idle = i64(idle) }
+	if list, has := o["fields"].(json.Array); has {
+		names := make([dynamic]string, 0, len(list), context.temp_allocator)
+		for n in list { append(&names, string(n.(json.String))) }
+		append(&f.script.notes, strings.concatenate({"fields=", strings.join(names[:], ",", context.temp_allocator)}))
+	}
 	list, found := f.script.answers[op]
 	if !found || len(list) == 0 { return }
 	n := f.script.used[op]
@@ -141,8 +147,21 @@ fx_make :: proc(enabled := true, virtual_clock := false, profile := false) -> ^F
 		fill = proc(user: rawptr, values: ^Fill_Values) -> bool {
 			x := (^Fx)(user)
 			if x.refuse { return false }
-			append(&x.filled, strings.concatenate({values.username, ":", values.password}))
+			if values.has_totp {
+				append(&x.filled, strings.concatenate({values.username, ":", values.password, ":", values.totp}))
+			} else {
+				append(&x.filled, strings.concatenate({values.username, ":", values.password}))
+			}
 			return true
+		},
+		copy = proc(user: rawptr, what: Copy_What, value: string, seconds_left: int) {
+			x := (^Fx)(user)
+			names := [Copy_What]string{.Username = "username", .Password = "password", .Totp = "totp"}
+			if what == .Totp {
+				append(&x.copied, strings.concatenate({names[what], ":", value, ":", fmt.tprint(seconds_left)}))
+			} else {
+				append(&x.copied, strings.concatenate({names[what], ":", value}))
+			}
 		},
 	}
 	vault_init(&x.v, &x.loop, &x.pool, &x.prefs, x.profile, "test", hooks, fake_spawn)
@@ -168,6 +187,8 @@ fx_destroy :: proc(x: ^Fx) {
 	}
 	for s in x.filled { delete(s) }
 	delete(x.filled)
+	for s in x.copied { delete(s) }
+	delete(x.copied)
 	if x.profile != "" {
 		_ = base.remove_tree(x.profile)
 		delete(x.profile)
@@ -462,7 +483,7 @@ a_helper_that_dies_leaves_the_vault_failed :: proc(t: ^testing.T) {
 	settle(x)
 	testing.expect_value(t, x.v.state, State.Failed)
 	testing.expect_value(t, x.v.message, "The Vault helper stopped.")
-	testing.expect_value(t, len(x.v.rows), 0)
+	testing.expect_value(t, len(x.v.sets[.Page].rows), 0)
 }
 
 @(test)
@@ -475,14 +496,15 @@ rows_are_checked_again_with_wrens_list :: proc(t: ^testing.T) {
 		`{"id":"2","name":"Theirs","username":"them","uri":"https://mallory.github.io","match":"domain"},` +
 		`{"id":"3","name":"Http","username":"x","uri":"https://alice.github.io:8443","match":"host"}]`)
 	vault_ask_rows(&x.v, "https://alice.github.io/login")
-	testing.expect_value(t, x.v.rows_state, Rows_State.Asked)
+	testing.expect_value(t, x.v.sets[.Page].state, Rows_State.Asked)
 	settle(x)
-	testing.expect_value(t, x.v.rows_state, Rows_State.Ready)
-	testing.expect_value(t, len(x.v.rows), 1)
-	testing.expect_value(t, x.v.rows[0].id, "1")
+	rows, state, _ := vault_rows(&x.v)
+	testing.expect_value(t, state, Rows_State.Ready)
+	testing.expect_value(t, len(rows), 1)
+	testing.expect_value(t, rows[0].id, "1")
 	vault_release_rows(&x.v)
-	testing.expect_value(t, len(x.v.rows), 0)
-	testing.expect_value(t, x.v.rows_state, Rows_State.None)
+	testing.expect_value(t, len(x.v.sets[.Page].rows), 0)
+	testing.expect_value(t, x.v.sets[.Page].state, Rows_State.None)
 }
 
 @(test)
@@ -494,8 +516,116 @@ rows_of_a_document_left_meanwhile_are_dropped :: proc(t: ^testing.T) {
 	vault_ask_rows(&x.v, "https://a.example/")
 	vault_ask_rows(&x.v, "https://b.example/")   // (before the first answer runs)
 	settle(x)
-	testing.expect_value(t, len(x.v.rows), 1)
-	testing.expect_value(t, x.v.rows[0].id, "2")
+	testing.expect_value(t, len(x.v.sets[.Page].rows), 1)
+	testing.expect_value(t, x.v.sets[.Page].rows[0].id, "2")
+}
+
+// The tab's document and a frame's are two sets: a form in a frame lists the logins of its own origin.
+@(test)
+a_frame_has_its_own_rows :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	answer(x, "logins_for", `"ok":true,"rows":[{"id":"1","name":"Top","username":"a","uri":"https://top.example","match":"domain"}]`,
+		`"ok":true,"rows":[{"id":"2","name":"Pay","username":"b","uri":"https://pay.example","match":"domain"}]`)
+	vault_ask_rows(&x.v, "https://top.example/", .Page)
+	vault_ask_rows(&x.v, "https://pay.example/form", .Frame)
+	settle(x)
+	testing.expect_value(t, x.v.sets[.Page].rows[0].id, "1")
+	testing.expect_value(t, x.v.sets[.Frame].rows[0].id, "2")
+	testing.expect(t, vault_row_find(&x.v, "2", .Page) == nil)   // (the frame's login is not the tab's: rule 10)
+	vault_ask_rows(&x.v, "https://pay.example/form", .Frame)   // (asked already: no request)
+	testing.expect_value(t, count_op(x, "logins_for"), 2)
+	vault_lock(&x.v)
+	settle(x)
+	testing.expect_value(t, len(x.v.sets[.Frame].rows), 0)
+	testing.expect_value(t, x.v.sets[.Page].key, "")
+}
+
+// An "equivalent" row stays only when the answer's own list holds the saved host's registrable domain; a rule this
+// version does not know is dropped when the answer is read.
+@(test)
+equivalent_rows_are_checked_against_the_answers_list :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	answer(x, "logins_for", `"ok":true,"equivalent":["google.com"],"rows":[` +
+		`{"id":"1","name":"Google","username":"me","uri":"https://accounts.google.com","match":"equivalent"},` +
+		`{"id":"2","name":"Evil","username":"me","uri":"https://evil.example","match":"equivalent"},` +
+		`{"id":"3","name":"Regex","username":"me","uri":"https://www.youtube.com","match":"regular_expression"}]`)
+	vault_ask_rows(&x.v, "https://www.youtube.com/")
+	settle(x)
+	rows, state, _ := vault_rows(&x.v)
+	testing.expect_value(t, state, Rows_State.Ready)
+	testing.expect_value(t, len(rows), 1)
+	testing.expect_value(t, rows[0].id, "1")
+}
+
+// The palette's search: the helper's rows for one query; the same query is not asked again, an answer for an older
+// query is dropped, and the rows go when the palette lets them go.
+@(test)
+a_search_keeps_the_rows_of_its_last_query :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	answer(x, "search", `"ok":true,"rows":[{"id":"1","name":"Git","username":"a","uri":"https://git.example","has_totp":true}]`,
+		`"ok":true,"rows":[{"id":"2","name":"GitHub","username":"b","uri":"https://github.com"}]`)
+	vault_search(&x.v, "git")
+	vault_search(&x.v, "github")   // (before the first answer runs)
+	settle(x)
+	rows, state, key := vault_rows(&x.v, .Search)
+	testing.expect_value(t, state, Rows_State.Ready)
+	testing.expect_value(t, key, "github")
+	testing.expect_value(t, len(rows), 1)
+	testing.expect_value(t, rows[0].id, "2")
+	vault_search(&x.v, "github")
+	testing.expect_value(t, count_op(x, "search"), 2)
+	vault_release_rows(&x.v, .Search)
+	testing.expect_value(t, len(x.v.sets[.Search].rows), 0)
+	testing.expect_value(t, x.v.sets[.Search].key, "")
+}
+
+// A copy's value goes to the copy hook only, never to a page; a code comes with the seconds it stays valid.
+@(test)
+copies_go_to_the_clipboard_hook :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	answer(x, "fill", `"ok":true,"password":"s3cret"`, `"ok":true`)
+	answer(x, "totp", `"ok":true,"totp":"123456","period":30,"remaining":12`)
+	testing.expect(t, vault_copy(&x.v, "1", .Password))
+	testing.expect(t, vault_copy(&x.v, "1", .Totp))
+	testing.expect(t, vault_copy(&x.v, "1", .Username))   // (the item has no user name: said, nothing copied)
+	settle(x)
+	testing.expect_value(t, len(x.copied), 2)
+	testing.expect_value(t, x.copied[0], "password:s3cret")
+	testing.expect_value(t, x.copied[1], "totp:123456:12")
+	testing.expect_value(t, len(x.filled), 0)
+	testing.expect_value(t, x.v.fill_state, Fill_State.None)
+	testing.expect_value(t, x.v.message, "This login has no user name.")
+	testing.expect_value(t, x.script.notes[len(x.script.notes) - 1], "fields=username")
+}
+
+// A fill may ask for the code too (a one-time-code field in the group): it comes with the user name and the password.
+@(test)
+a_fill_can_carry_the_code :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	answer(x, "fill", `"ok":true,"username":"me","password":"s3cret","totp":"654321"`)
+	testing.expect(t, vault_fill(&x.v, "1", {tab = 1, url = "https://example.com/"}, {.Username, .Password, .Totp}))
+	settle(x)
+	testing.expect_value(t, x.script.notes[len(x.script.notes) - 1], "fields=username,password,totp")
+	testing.expect_value(t, len(x.filled), 1)
+	testing.expect_value(t, x.filled[0], "me:s3cret:654321")
+	testing.expect(t, !vault_fill(&x.v, "1", {}, {}))   // (nothing asked: nothing sent)
+}
+
+@(test)
+a_locked_vault_neither_searches_nor_copies :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	vault_lock(&x.v)
+	settle(x)
+	vault_search(&x.v, "git")
+	testing.expect(t, !vault_copy(&x.v, "1", .Password))
+	testing.expect_value(t, count_op(x, "search"), 0)
+	testing.expect_value(t, x.v.sets[.Search].state, Rows_State.None)
 }
 
 @(test)

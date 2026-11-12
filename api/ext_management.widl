@@ -1,0 +1,21 @@
+/// The extension's own record.
+namespace management {
+  struct ExtensionInfo {
+    string id;
+    string name;
+    string shortName;
+    string description;
+    string version;
+    string versionName;
+    bool mayDisable;
+    bool enabled;
+    string installType;
+    string type;
+    bool offlineEnabled;
+    string homepageUrl;
+    string optionsUrl;
+    string[] permissions;
+    string[] hostPermissions;
+  }
+  ExtensionInfo getSelf();
+}

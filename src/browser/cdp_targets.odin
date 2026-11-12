@@ -38,7 +38,7 @@ cdp_list_json :: proc(app: ^App) -> string {
 	strings.write_byte(&b, '[')
 	first := true
 	for t in tabs_all(app) {
-		if t.frame != nil { continue }   // only top-level tabs are targets
+		if t.view != nil { continue }   // only top-level tabs are targets
 		if !first { strings.write_byte(&b, ',') }
 		first = false
 		cdp_target_entry(&b, app, t)
@@ -107,7 +107,7 @@ cdp_targets_result :: proc(app: ^App, wren_result: json_obj) -> string {
 	strings.write_string(&b, `{"targetInfos":[`)
 	first := true
 	for t in tabs_all(app) {
-		if t.frame != nil { continue }
+		if t.view != nil { continue }
 		if !first { strings.write_byte(&b, ',') }
 		first = false
 		strings.write_string(&b, cdp_target_info_object(t))

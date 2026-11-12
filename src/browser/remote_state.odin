@@ -156,7 +156,7 @@ checkpoint_take :: proc(app: ^App, name: string, with_tabs, with_data: bool) -> 
 		c.has_tabs = true
 		list := make([dynamic]Checkpoint_Tab)
 		for t, i in wnd.tabs {
-			if t.frame != nil { continue }
+			if t.view != nil { continue }
 			if i == wnd.current { c.current = len(list) }
 			append(&list, Checkpoint_Tab{url = strings.clone(t.url), zoom = t.zoom > 0 ? t.zoom : 1})
 		}
@@ -229,7 +229,7 @@ tabs_reset :: proc(app: ^App, address: string, closed: ^int) -> ^Tab {
 	fresh := tab_open(app, address == "" ? "about:blank" : address, origin = .User)
 	for i := len(wnd.tabs) - 1; i >= 0; i -= 1 {
 		t := wnd.tabs[i]
-		if t == fresh || t.frame != nil { continue }
+		if t == fresh || t.view != nil { continue }
 		tab_close(app, i)
 		closed^ += 1
 	}

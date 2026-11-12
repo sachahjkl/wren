@@ -138,3 +138,43 @@ what_is_not_an_answer_is_refused :: proc(t: ^testing.T) {
 		testing.expect(t, a == nil, src)
 	}
 }
+
+@(test)
+codes_searches_and_equivalent_domains_decode :: proc(t: ^testing.T) {
+	a, ok := answer_decode(transmute([]u8)string(`{"id":3,"ok":true,"totp":"123456","period":30,"remaining":7}`))
+	defer answer_free(a)
+	testing.expect(t, ok)
+	testing.expect(t, a.has_totp)
+	testing.expect_value(t, a.totp, "123456")
+	testing.expect_value(t, a.remaining, 7)
+	src := `{"id":4,"ok":true,"equivalent":["google.com",""],"rows":[` +
+		`{"id":"a","name":"A","username":"u","uri":"https://a.example","match":"starts_with"},` +
+		`{"id":"b","name":"B","username":"u","uri":"https://b.example","match":"something_new"},` +
+		`{"id":"c","name":"C","username":"u","uri":"https://c.example"}]}`
+	r, ok2 := answer_decode(transmute([]u8)src)
+	defer answer_free(r)
+	testing.expect(t, ok2)
+	testing.expect_value(t, len(r.equivalent), 1)   // (an empty domain is left out)
+	testing.expect_value(t, len(r.rows), 2)   // (an unknown rule is no rule Wren can check)
+	testing.expect_value(t, r.rows[0].kind, Match_Kind.Starts_With)
+	testing.expect_value(t, r.rows[1].id, "c")   // (a search row has no match type)
+}
+
+@(test)
+search_and_totp_requests_are_written :: proc(t: ^testing.T) {
+	r: Request
+	request_begin(&r, 5, .Search, 32)
+	request_string(&r, "query", "git hub")
+	request_int(&r, "limit", SEARCH_LIMIT)
+	frame, ok := request_end(&r)
+	defer frame_free(frame)
+	testing.expect(t, ok)
+	testing.expect_value(t, body_of(frame), `{"id":5,"op":"search","query":"git hub","limit":50}`)
+	k: Request
+	request_begin(&k, 6, .Totp, 8)
+	request_string(&k, "item", "x")
+	kf, k_ok := request_end(&k)
+	defer frame_free(kf)
+	testing.expect(t, k_ok)
+	testing.expect_value(t, body_of(kf), `{"id":6,"op":"totp","item":"x"}`)
+}

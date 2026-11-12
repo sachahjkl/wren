@@ -10,15 +10,16 @@ import "core:mem"
 import "core:strconv"
 import "wb:base"
 
-PROTOCOL_VERSION :: 2
+PROTOCOL_VERSION :: 3
 MAX_FRAME :: 1 << 20   // the helper's bound too: a larger frame is a broken peer
 FRAME_HEAD :: 4
 
-Op :: enum u8 { Hello, Login, Login_Api_Key, Unlock, Lock, Logout, Sync, Pin_Set, Pin_Clear, Logins_For, Fill, Keepalive }
+Op :: enum u8 { Hello, Login, Login_Api_Key, Unlock, Lock, Logout, Sync, Pin_Set, Pin_Clear, Logins_For, Search, Fill, Totp, Keepalive }
 
 OP_NAMES := [Op]string{
 	.Hello = "hello", .Login = "login", .Login_Api_Key = "login_api_key", .Unlock = "unlock", .Lock = "lock", .Logout = "logout",
-	.Sync = "sync", .Pin_Set = "pin_set", .Pin_Clear = "pin_clear", .Logins_For = "logins_for", .Fill = "fill", .Keepalive = "keepalive",
+	.Sync = "sync", .Pin_Set = "pin_set", .Pin_Clear = "pin_clear", .Logins_For = "logins_for", .Search = "search", .Fill = "fill",
+	.Totp = "totp", .Keepalive = "keepalive",
 }
 
 // The second steps of a login that the Vault supports (the helper's provider names).
@@ -135,9 +136,12 @@ frame_length :: proc(head: [FRAME_HEAD]u8) -> (n: int, ok: bool) {
 ////////////////////////////////
 // Answers
 
-Match_Kind :: enum u8 { Domain, Host }
+// How the helper says a row matched (its `match`): the rule that Wren checks again (match.odin).
+Match_Kind :: enum u8 { Domain, Host, Equivalent, Starts_With, Exact }
 
-// One login of `logins_for`: what the panel shows. No password.
+MATCH_NAMES := [Match_Kind]string{.Domain = "domain", .Host = "host", .Equivalent = "equivalent", .Starts_With = "starts_with", .Exact = "exact"}
+
+// One login of `logins_for` or `search`: what a surface shows. No password, no code.
 Row :: struct {
 	id, name, username, uri: string,   // owned
 	kind:     Match_Kind,
@@ -162,11 +166,14 @@ Answer :: struct {
 	// sync
 	items:          int,
 	last_sync:      i64,
-	// logins_for
+	// logins_for, search
 	rows:           [dynamic]Row,
-	// fill
-	username, password: string,
-	has_username, has_password: bool,
+	equivalent:     [dynamic]string,   // logins_for: the domains the account makes equivalent to the page's
+	// fill (and totp: `totp`)
+	username, password, totp: string,
+	has_username, has_password, has_totp: bool,
+	// totp
+	period, remaining: int,
 }
 
 // Decodes the JSON of one answer. ok = false when it is not an answer of this protocol.
@@ -209,15 +216,29 @@ answer_decode :: proc(body: []u8) -> (a: ^Answer, ok: bool) {
 	if n, is_int := o["last_sync"].(json.Integer); is_int { a.last_sync = i64(n) }
 	if s, is_str := o["username"].(json.String); is_str { a.username, a.has_username = clone(s), true }
 	if s, is_str := o["password"].(json.String); is_str { a.password, a.has_password = clone(s), true }
+	if s, is_str := o["totp"].(json.String); is_str { a.totp, a.has_totp = clone(s), true }
+	if n, is_int := o["period"].(json.Integer); is_int { a.period = int(n) }
+	if n, is_int := o["remaining"].(json.Integer); is_int { a.remaining = int(n) }
+	if list, is_array := o["equivalent"].(json.Array); is_array {
+		a.equivalent = make([dynamic]string, 0, len(list))
+		for d in list {
+			if ds, is_str := d.(json.String); is_str && ds != "" { append(&a.equivalent, clone(ds)) }
+		}
+	}
 	if rows, is_array := o["rows"].(json.Array); is_array {
 		a.rows = make([dynamic]Row, 0, len(rows))
 		for r in rows {
 			ro, row_ok := r.(json.Object)
 			if !row_ok { continue }
 			row := Row{id = owned_string(ro, "id"), name = owned_string(ro, "name"), username = owned_string(ro, "username"), uri = owned_string(ro, "uri")}
-			if m, is_str := ro["match"].(json.String); is_str && m == "host" { row.kind = .Host }
+			known := true
+			if m, is_str := ro["match"].(json.String); is_str {
+				known = false
+				for k in Match_Kind { if MATCH_NAMES[k] == m { row.kind, known = k, true } }
+			}
 			if t, is_bool := ro["has_totp"].(json.Boolean); is_bool { row.has_totp = bool(t) }
-			if row.id == "" { row_free(&row); continue }
+			// (a rule this version does not know is no rule Wren can check: the row goes)
+			if row.id == "" || !known { row_free(&row); continue }
 			append(&a.rows, row)
 		}
 	}
@@ -260,6 +281,12 @@ rows_free :: proc(rows: ^[dynamic]Row) {
 	rows^ = nil
 }
 
+strings_free :: proc(list: ^[dynamic]string) {
+	for &s in list { string_wipe(&s) }
+	delete(list^)
+	list^ = nil
+}
+
 answer_free :: proc(a: ^Answer) {
 	if a == nil { return }
 	string_wipe(&a.error)
@@ -270,7 +297,9 @@ answer_free :: proc(a: ^Answer) {
 	string_wipe(&a.event)
 	string_wipe(&a.username)
 	string_wipe(&a.password)
+	string_wipe(&a.totp)
 	rows_free(&a.rows)
+	strings_free(&a.equivalent)
 	free(a, base.process_allocator())
 }
 

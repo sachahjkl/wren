@@ -255,7 +255,7 @@ ext_tab_created :: proc(app: ^App, t: ^Tab) {
 // A tab's navigation moved (nav_to): it started (loading), or it stopped with no document (complete). Reported from a
 // task: the tab's address is set after nav_to.
 ext_tab_nav :: proc(app: ^App, t: ^Tab, to: Nav_Phase) {
-	if !app.ext.started || t.frame != nil || len(ext_reg(app).list) == 0 { return }
+	if !app.ext.started || t.view != nil || len(ext_reg(app).list) == 0 { return }
 	loading: bool
 	#partial switch to {
 	case .Requested: loading = true

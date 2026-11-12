@@ -229,11 +229,11 @@ doc_tree_update :: proc(app: ^App, pa: ^Page_A11y, d: ^Doc_Tree, t: ^Tab, viewpo
 		}
 	}
 	title := t.title
-	if t.frame != nil { title = document_title(p.doc) }
+	if t.view != nil { title = document_title(p.doc) }
 	v := a11y.View{
 		src = {doc = p.doc, styled = p.styled, forms = f},
 		layout = &t.layout, viewport = viewport, doc_scroll = t.scroll, doc_scroll_x = lay.doc_scroll_x_snapped(&t.layout), origin = origin,
-		focus = focus, title = title, url = t.frame != nil ? p.env.location.href : t.url,
+		focus = focus, title = title, url = t.view != nil ? p.env.location.href : t.url,
 		max_nodes = set.max_nodes,
 	}
 	if set.frames { v.frame_tree, v.frame_user = frame_tree_of, rawptr(&fc) }   // (read during the update only)
@@ -286,24 +286,23 @@ frames_update :: proc(app: ^App, pa: ^Page_A11y, parent: ^Doc_Tree, t: ^Tab, vie
 		r, ok := lay.box_of(&t.layout, n.element, viewport, 0)
 		if !ok { continue }
 		d := frame_doc_tree(pa, n.page, fv)
-		if doc_tree_update(app, pa, d, &fv.tab, fv.size, r.content.min, chain, set) {
-			frames_update(app, pa, d, &fv.tab, fv.size, chain, set)
+		if doc_tree_update(app, pa, d, fv.tab, fv.size, r.content.min, chain, set) {
+			frames_update(app, pa, d, fv.tab, fv.size, chain, set)
 		}
 	}
 }
 
 @(private = "file")
-frame_doc_tree :: proc(pa: ^Page_A11y, p: ^page.Page, fv: ^Frame_View) -> ^Doc_Tree {
+frame_doc_tree :: proc(pa: ^Page_A11y, p: ^page.Page, fv: ^Page_View) -> ^Doc_Tree {
 	tree := page_tree_id(fv.tab.id)
-	for d in pa.frames { if d.page == p && d.tree == tree { d.tab = &fv.tab; return d } }
+	for d in pa.frames { if d.page == p && d.tree == tree { d.tab = fv.tab; return d } }
 	d := new(Doc_Tree)
-	d.page, d.tab, d.tree = p, &fv.tab, tree
+	d.page, d.tab, d.tree = p, fv.tab, tree
 	append(&pa.frames, d)
 	return d
 }
 
-// The text of a document's <title> (a frame's document names its tree with it).
-@(private = "file")
+// The text of a document's <title> (a frame's document names its tree with it; the extensions' e2e test reads a popup's).
 document_title :: proc(d: ^dom.Document) -> string {
 	for cur := dom.next_in_tree(d, d.root, d.root); cur != base.NIL_HANDLE; cur = dom.next_in_tree(d, cur, d.root) {
 		n := dom.get(d, cur)
@@ -342,7 +341,7 @@ page_a11y_request :: proc(app: ^App, t: ^Tab, p: ^page.Page, r: platform.A11y_Re
 		page.click_element(p, h)
 	case .Focus:
 		if forms.focus(f, h, by_keyboard = true) {
-			keyboard_take(app, t.frame != nil ? .Frame : .Page, p)
+			keyboard_take(app, t.view != nil ? .Frame : .Page, p)
 			scroll_into_view(app, t, h)
 		}
 	case .Blur:
@@ -361,11 +360,11 @@ page_a11y_request :: proc(app: ^App, t: ^Tab, p: ^page.Page, r: platform.A11y_Re
 		// a range or number input: one step (stepUp / stepDown, firing input and change as the arrow keys do)
 		forms.step(f, h, r.action == .Increment ? 1 : -1, by_user = true)
 	case .Scroll_Down, .Scroll_Up:
-		page_h := t.frame != nil ? t.frame.size.y : wnd.page_rect.max.y - wnd.page_rect.min.y
+		page_h := t.view != nil ? t.view.size.y : wnd.page_rect.max.y - wnd.page_rect.min.y
 		amount := (r.data == .Scroll_Unit && r.num == 1) ? page_h * 0.9 : 60
 		t.scroll = max(t.scroll + (r.action == .Scroll_Down ? amount : -amount), t.layout.doc_min_y)
 	case .Scroll_Left, .Scroll_Right:
-		page_w := t.frame != nil ? t.frame.size.x : wnd.page_rect.max.x - wnd.page_rect.min.x
+		page_w := t.view != nil ? t.view.size.x : wnd.page_rect.max.x - wnd.page_rect.min.x
 		amount := (r.data == .Scroll_Unit && r.num == 1) ? page_w * 0.9 : 60
 		doc_scroll_x_set(t, t.layout.doc_scroll_x + (r.action == .Scroll_Right ? amount : -amount), page_w)
 	}

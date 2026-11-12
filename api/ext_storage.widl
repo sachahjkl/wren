@@ -1,0 +1,71 @@
+/// The storage areas of an extension (src/extensions/storage.odin; src/page/ext_api.odin). local and sync are written
+/// to the profile; session lives in memory until the browser exits or the extension reloads; managed is empty (no
+/// policy sets it). Values are JSON.
+[Permission=storage, Contexts=(Background, Page, Content)]
+namespace storage {
+  /// The keys of get, remove and getBytesInUse: one key, a list of keys, or an object of keys with their defaults.
+  typedef (string or string[] or object) Keys;
+  enum AreaName { local, sync, managed, session }
+  struct StorageChange {
+    optional any oldValue;
+    optional any newValue;
+  }
+  struct AccessOptions {
+    string accessLevel;
+  }
+
+  /// changes: an object of StorageChange by key.
+  event onChanged(object changes, AreaName areaName);
+}
+
+[Permission=storage, Contexts=(Background, Page, Content)]
+namespace storage.local {
+  const i64 QUOTA_BYTES = 10485760;
+  /// keys absent or null: every item.
+  [Host=ext_storage_get] object get(optional Keys keys);
+  [Host=ext_storage_set] void set(object items);
+  [Host=ext_storage_remove] void remove(Keys keys);
+  [Host=ext_storage_clear] void clear();
+  [Host=ext_storage_bytes] i64 getBytesInUse(optional Keys keys);
+  [Host=ext_storage_keys] string[] getKeys();
+  event onChanged(object changes);
+}
+
+[Permission=storage, Contexts=(Background, Page, Content)]
+namespace storage.sync {
+  const i64 QUOTA_BYTES = 102400;
+  const i64 QUOTA_BYTES_PER_ITEM = 8192;
+  const i64 MAX_ITEMS = 512;
+  const i64 MAX_WRITE_OPERATIONS_PER_HOUR = 1800;
+  const i64 MAX_WRITE_OPERATIONS_PER_MINUTE = 120;
+  [Host=ext_storage_get] object get(optional Keys keys);
+  [Host=ext_storage_set] void set(object items);
+  [Host=ext_storage_remove] void remove(Keys keys);
+  [Host=ext_storage_clear] void clear();
+  [Host=ext_storage_bytes] i64 getBytesInUse(optional Keys keys);
+  [Host=ext_storage_keys] string[] getKeys();
+  event onChanged(object changes);
+}
+
+/// Not for content scripts, as in Chrome's default access level.
+[Permission=storage, Contexts=(Background, Page)]
+namespace storage.session {
+  const i64 QUOTA_BYTES = 10485760;
+  [Host=ext_storage_get] object get(optional Keys keys);
+  [Host=ext_storage_set] void set(object items);
+  [Host=ext_storage_remove] void remove(Keys keys);
+  [Host=ext_storage_clear] void clear();
+  [Host=ext_storage_bytes] i64 getBytesInUse(optional Keys keys);
+  [Host=ext_storage_keys] string[] getKeys();
+  /// Accepted; content scripts keep no access.
+  void setAccessLevel(AccessOptions accessOptions);
+  event onChanged(object changes);
+}
+
+/// Read-only, and empty.
+[Permission=storage, Contexts=(Background, Page, Content)]
+namespace storage.managed {
+  [Host=ext_storage_get] object get(optional Keys keys);
+  [Host=ext_storage_bytes] i64 getBytesInUse(optional Keys keys);
+  event onChanged(object changes);
+}

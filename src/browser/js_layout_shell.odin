@@ -14,6 +14,8 @@ import "wb:style"
 
 // Called when a document is attached to its tab (attach_page).
 attach_js_layout :: proc(app: ^App, t: ^Tab, p: ^page.Page) {
+	// (a view's tab, the popup's: its document is laid out at the view's size, not the window's page area)
+	if t.view != nil { page_view_attach_js(t.view, p); return }
 	page.set_layout_embedder(p, {user = t, update = js_layout_update, viewport = js_layout_viewport, scroll_to = js_layout_scroll, repaint = js_layout_repaint})
 }
 

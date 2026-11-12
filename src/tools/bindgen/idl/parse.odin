@@ -123,6 +123,10 @@ parse_file :: proc(api: ^Api, file: string, src: string) {
 		attrs := parse_attrs(&p)
 		partial := false
 		if is_word(&p, "partial") { partial = true; advance(&p) }
+		if !partial && is_word(&p, "namespace") {
+			parse_namespace(&p, doc, attrs)   // ext.odin: an extension namespace
+			continue
+		}
 		if !is_word(&p, "module") { p_error(&p, "expected 'module', found '%s'", p.tok.text); return }
 		advance(&p)
 		name, pos, ok := expect_ident(&p, "a module name")

@@ -31,6 +31,9 @@ Settings :: struct {
 	helper_path:  string,   // owned: where the helper is ("" = beside the browser)
 	insecure:     Insecure_Fill,
 	test_remote:  bool,     // remote control may drive the Vault surfaces (automated tests only)
+	dropdown:     bool,     // the list of logins under a focused login field
+	clear_seconds: int,     // a copied password or code leaves the clipboard after this time; 0: never
+	shortcut:     string,   // owned: the fill shortcut ("Ctrl+Shift+L"; "": none)
 }
 
 PREFS := [?]config.Def{
@@ -51,6 +54,12 @@ PREFS := [?]config.Def{
 		description = "Where the helper program wren-vault is. Empty: beside the browser, or in its vault folder. For development and for packagers."},
 	{name = "vault.fill.insecure", kind = .String, default = {s = "ask"}, choices = {"ask", "never"},
 		description = "On a page served over plain http (not this machine), ask before each fill, or never fill."},
+	{name = "vault.fill.dropdown", kind = .Bool, default = {b = true},
+		description = "Under a focused user name, password or one-time-code field, list the Vault's logins for the page. Down moves into the list, Enter fills, Escape closes it."},
+	{name = "vault.fill.shortcut", kind = .String, default = {s = "Ctrl+Shift+L"},
+		description = "The key that fills the page's login from the Vault: the only login of the page at once, or the list of its logins. Modifiers Ctrl, Alt, Shift, then a letter, a digit or F1 to F12 (\"Ctrl+Shift+L\"). Empty: no key."},
+	{name = "vault.clipboard.clear_seconds", kind = .Int, default = {i = 30}, bounded = true, min = 0, max = 600, unit = "s",
+		description = "A user name, password or one-time code that the Vault copied leaves the clipboard after this time, if the clipboard still holds it. 0: it stays."},
 	{name = "vault.test.remote", kind = .Bool, default = {b = false},
 		description = "For automated tests only, with a throwaway profile: remote control can use the Vault's panel. Off: the Vault refuses to work while the browser is remote-controlled."},
 }
@@ -72,6 +81,9 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.helper_path = strings.clone(strings.trim_space(config.string_of(p, "vault.helper.path")))
 	s.insecure = config.string_of(p, "vault.fill.insecure") == "never" ? .Never : .Ask
 	s.test_remote = config.bool_of(p, "vault.test.remote")
+	s.dropdown = config.bool_of(p, "vault.fill.dropdown")
+	s.clear_seconds = int(config.int_of(p, "vault.clipboard.clear_seconds"))
+	s.shortcut = strings.clone(strings.trim_space(config.string_of(p, "vault.fill.shortcut")))
 	return s
 }
 
@@ -84,6 +96,7 @@ settings_default :: proc() -> Settings {
 settings_destroy :: proc(s: ^Settings) {
 	delete(s.server_url)
 	delete(s.helper_path)
+	delete(s.shortcut)
 	s^ = {}
 }
 

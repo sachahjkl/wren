@@ -1,7 +1,7 @@
 # Vault: a native client for Bitwarden accounts
 
-Status: phases 0 and 1 are written, phase 2 for the most part (see [Implementation state](#implementation-state)). The
-rest is the plan. The protocol between Wren and the helper is in [vault-protocol.md](vault-protocol.md).
+Status: phases 0 and 1 are written, phases 2 and 3 for the most part (see [Implementation state](#implementation-state)).
+The rest is the plan. The protocol between Wren and the helper is in [vault-protocol.md](vault-protocol.md).
 
 The feature gives Wren a built-in password manager client for Bitwarden® accounts. It is optional and off by default.
 It needs no WebExtension. The interface name of the feature is **Vault**. "Bitwarden" appears only as the name of the
@@ -427,6 +427,7 @@ All in `src/vault/settings.odin`, registered in `src/browser/settings.odin`.
 | `vault.lock.on_sleep` | Bool, `true` | Lock on system sleep and session lock. |
 | `vault.sync.interval_minutes` | Int, 30, 5 to 1440 | Time between two background syncs while unlocked. |
 | `vault.fill.dropdown` | Bool, `true` | Show the dropdown on a focused login field. |
+| `vault.fill.shortcut` | String, `Ctrl+Shift+L` | The key of the command `vault.fill`. Empty or invalid: no key. |
 | `vault.fill.insecure` | String, `ask` | `ask` or `never`, for `http` pages. |
 | `vault.save.prompt` | Bool, `true` | Ask to save or update after a submit. |
 | `vault.clipboard.clear_seconds` | Int, 30, 0 to 600 | 0: never clear. |
@@ -627,7 +628,7 @@ No automated test contacts bitwarden.com. Tests wait for a state with a bound, n
 
 ## Implementation state
 
-Phases 0 and 1, and phase 2 for the most part, as written on 2026-11-12. Where the code differs from the plan above,
+Phases 0 and 1, and phases 2 and 3 for the most part, as written on 2026-11-12 and 2026-11-13. Where the code differs from the plan above,
 this section is the truth.
 
 ### The helper (`wren-vault`, a separate repository)
@@ -665,7 +666,12 @@ this section is the truth.
 - Requests run one after the other, in the order they come (not a task each): the answers keep the order of the
   requests, and a `hello` sent with a `login` is always handled first. The loop waits on the next frame and on the idle
   deadline at once (`FrameReader` is cancel safe); at the deadline it writes the event `locked` and exits.
-- Not yet: `search`, `totp`, the successful-login fixtures of the wiremock tests (they need a test account), the
+- Protocol 3 (helper 0.3.0, phase 3): `search` (each word of the query in the name, the user name or a URI; sorted by
+  name; at most 50 rows; no password); `totp` and `fill` with `totp` (the SDK's `generate_totp`: otpauth, steam and
+  base32 keys); `logins_for` applies `StartsWith` and `Exact` (the URL standard's serializations) and the equivalent
+  domains. The sync asks for the domains (`excludeDomains=false`) and keeps the groups (the account's own, then the
+  global ones it did not exclude) in `state.json` (`equivalent_domains`).
+- Not yet: the successful-login fixtures of the wiremock tests (they need a test account), the
   measures of 2.5, the list of what the SDK writes (3.4: the SDK writes nothing; the helper writes `state.json` and
   `tokens.json` or the system store's entry).
 
@@ -702,6 +708,48 @@ this section is the truth.
   needs release assets of the helper: a later step.
 - Automation: `wrentool build vault`, `wrentool vault test`, `wrentool vault probe` (it asks for a second step's code
   on its input).
+- Phase 3 (`src/browser/vault_fill.odin`):
+  - The target of a fill is the document that holds the focused field: the focused frame's, else the tab's. The Vault
+    keeps three sets of rows (`Row_Slot`): the tab's document (`Page`), the focused frame's document (`Frame`), the
+    palette's search (`Search`). **This changes 3.1**: the rows of the tab's document stay in Wren's memory while the
+    Vault is unlocked, not only while a surface shows them: the chip, the fill shortcut and the dropdown need them
+    without a round trip to the helper. They are zeroed at a lock, at another address, and when remote control
+    starts. Search rows go when the palette closes. No password and no code is ever in a row.
+  - Fill shortcut: the command `vault.fill` (Ctrl+Shift+L, `vault.fill.shortcut`; `guarded`: the key is the page's while
+    the Vault is off). Locked: the unlock or login dialog. Unlocked: the only row at once; several: the dropdown on a
+    login field, else the panel. Other commands: `vault.search`, `vault.unlock`, `vault.lock`, `vault.sync`,
+    `vault.panel`.
+  - Dropdown: toolkit boxes over the page (`vault_dropdown_build`, after the palette), at the field's painted bounds
+    (`forms_control_screen_rect`: the bounds of the transformed box, so a rotated or scrolled field anchors where it
+    shows); under the field, above it without room. `hud_captures` keeps presses on it from the page. Keys
+    (`vault_dropdown_key`, before the page's keydown, while it shows): Down and Up move (Up past the first row gives the
+    keys back to the field), Enter fills the chosen row (no row chosen: Enter is the page's), Escape hides it on this
+    field until Down. The field's role (`forms.login_role`: user name, password, one-time code) is computed again only
+    when the focus, the document's tree or its attributes change. On a one-time-code field it lists the logins with a
+    code and fills the code. Locked: one row, "Unlock the Vault".
+  - Chip (`vault_chip`, in `address_chips`): the number of the tab's logins (a click opens the panel); locked, on a
+    login field, "Vault locked" (a click opens the unlock dialog).
+  - Palette: the source "Vault", prefix `$`, not in the plain search. `items` asks the helper (`vault_search`, once per
+    query: the helper searches, off the interface thread) and lists, per login, its acts: "Fill" (only when the item is
+    a checked row of the focused document: rule 10), copy the user name, the password or the code, open the site. The
+    palette's own fuzzy match runs on at most 50 logins.
+  - Per-site list: the panel's rows have Copy user name, Copy password and Copy code. A copy is a `fill` (or `totp`)
+    request whose answer goes to the `copy` hook, never to a page. The clipboard is cleared after
+    `vault.clipboard.clear_seconds` if it still holds the value: Wren keeps only its hash and length.
+  - TOTP: a fill writes the code into the group's one-time-code field (`Login_Fields.one_time_code`: autocomplete
+    `one-time-code`, or a name or id with otp, totp, 2fa, mfa..., or a numeric field named code of 4 to 8 characters)
+    when the row has a code.
+  - Frames (rule 7): `frame_fill_rule`. The frame's own origin and address decide its rows. Same origin as the top
+    document: fill. Another origin: the dropdown names it, and each fill asks first (the question names the frame's
+    host; a yes fills only the document it was asked for: same tab, same frame or not, same forms model). Opaque
+    origin: no rows, no fill. `about:blank` and `srcdoc` frames have no web address: no fill, even with an inherited
+    origin. The fill's ticket names the document (`page`, its forms model's id, the field): a frame that went or
+    navigated drops the fill.
+  - Not yet: rule 6 (no fill after a certificate warning: the browser has no such bypass state to read yet); the
+    Windows clipboard history exclusion (3.6: the toolkit's clipboard has no such flag; a `gui_toolkit` change);
+    the dropdown in a frame whose fields the shell paints in another document's pass (`Forms_View.painted` holds one
+    document at a time: the dropdown then does not show, the shortcut and the panel still fill); the e2e scenarios of
+    phase 3.
 - Not yet: lock on system sleep and session lock (`vault.lock.on_sleep`: the toolkit reports no such event yet); the
   fill on the page thread when `browser.shell.page_thread` is on (the fill runs on the loop thread, as the chrome's
   focus moves do); the e2e tests against Vaultwarden; `about:licenses` listing the helper; the flake's check of the

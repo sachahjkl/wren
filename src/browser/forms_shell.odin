@@ -58,6 +58,20 @@ painted_local :: proc(pt: Painted, pos: [2]f32) -> [2]f32 {
 // Where the control shows on screen: the bounds of its (possibly transformed) content rect.
 @(private = "file")
 painted_bounds :: proc(pt: Painted) -> draw.Rect {
+	return forms_painted_bounds(pt)
+}
+
+// Where a control of `f` shows on screen (window px, the bounds of its transformed box), as last painted; false: it was
+// not painted for this document (the Vault's dropdown anchors to it: vault_fill.odin).
+forms_control_screen_rect :: proc(app: ^App, f: ^forms.Forms, h: base.Handle) -> (draw.Rect, bool) {
+	fv := forms_view(app)
+	if f == nil || fv.page_id != f.id { return {}, false }
+	pt, ok := fv.painted[h]
+	if !ok { return {}, false }
+	return forms_painted_bounds(pt), true
+}
+
+forms_painted_bounds :: proc(pt: Painted) -> draw.Rect {
 	if pt.proj_ok {
 		c := pt.content
 		pts := [4]lay.Vec2{c.min, {c.max.x, c.min.y}, c.max, {c.min.x, c.max.y}}
@@ -1137,7 +1151,7 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 	#partial switch ev.kind {
 	case .Mouse_Press:
 		// (a frame's document: frames_route_pointer gave it the keyboard)
-		if t.frame == nil { keyboard_move(app, draw.rect_contains(active_window(app).page_rect, ev.pos) ? .Page : .Chrome) }
+		if t.view == nil { keyboard_move(app, draw.rect_contains(active_window(app).page_rect, ev.pos) ? .Page : .Chrome) }
 		if fv.popup.open {
 			if draw.rect_contains(fv.popup.rect, ev.pos) {
 				popup_pick(app, f, ev.pos, .Ctrl in ev.mods)
@@ -1215,6 +1229,8 @@ route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platfo
 	ctrl, shift, alt := .Ctrl in ev.mods, .Shift in ev.mods, .Alt in ev.mods
 	// the open list owns the keyboard
 	if fv.popup.open { popup_key(app, f, ev); return true }
+	// the Vault's list under a login field takes Down, Up, Enter and Escape while it shows (vault_fill.odin)
+	if vault_dropdown_key(app, f, ev) { return true }
 	code, name := dom_key(ev.key, shift)
 	target := f.focus != base.NIL_HANDLE ? f.focus : p.body
 	if !page.dispatch_event(p, target, dom.Event{type = "keydown", bubbles = true, cancelable = true, key = code, text = name, mods = dom_mods(ev.mods)}) {

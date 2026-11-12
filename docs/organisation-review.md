@@ -371,9 +371,9 @@ Proposal:
 - Write the generators of `cexport_gen.odin`, `atoms_table.odin` and `opcodes.odin` as `wrentool gen` commands, or
   declare the three files as written by hand.
 - Move `src/engine/unicode/gen` to `src/tools/wrentool/gen`.
-- Put the trampolines in a package of their own, `src/page/api`, if the direction of calls allows it. Verify
-  first: the trampolines call `bindings_*.odin` of `page`, so the split needs a table of procedures. If it needs
-  more than a table, keep the file where it is.
+- Keep `api_generated.odin` in `page`. A package of its own is not possible: the generated types hold pointers to
+  the types of `page` (`Api_AbortController.data: ^Abort_Controller`, `src/page/api_generated.odin:22-25`) and the
+  trampolines call the `lookup_*` procedures of `page`. The import would be cyclic.
 - Move `native/js/odin` to `src/engine/glue`. `native/` is then only Rust.
 
 Cost: 2 to 3 days. The move of the glue is 1 day more, mostly paths in the builder.
@@ -496,8 +496,10 @@ change touches the area.
 ## 12. Dialogs and prompts
 
 System dialogs have one mechanism, and it is correct: `host.run_dialog` runs the blocking call on its own thread
-and answers on the loop (`src/host/dialog.odin:41`). All 8 call sites of `src/browser` use it. One exception:
-`src/browser/license_shell.odin:216` calls `platform.open_file_dialog` inside a job that must be verified.
+and answers on the loop (`src/host/dialog.odin:41`). 8 call sites of `src/browser` use it. One exception:
+`license_choose_file` (`src/browser/license_shell.odin:208-221`) calls `platform.open_file_dialog` through
+`host.run_blocking`. The loop is not blocked, but a worker of the blocking pool waits while a person answers. The
+comment of `App.dialogs` forbids this (`src/browser/main.odin:163`). Move it to `host.run_dialog`.
 
 The repetition is above it. Each call site declares its job struct, its `work`, its `done` and its `discard`
 (`blocker_files.odin:34`, `bookmarks_ui.odin:448`, `context_menu.odin:527`, `download.odin:380`, `:719`,

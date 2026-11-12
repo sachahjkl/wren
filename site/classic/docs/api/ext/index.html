@@ -57,7 +57,8 @@
 </nav>
 
 <p>The transport of browser extensions (docs/extensions.md, section 3.9; src/page/ext_realm.odin, ext_router.odin;
-native/js/odin/ext_runtime.odin and ext_api.js build chrome.* on it). The host derives the extension and the kind of
+native/js/odin/ext_runtime.odin and ext_api.js build chrome.* on it; the namespaces are described in
+api/ext_&lt;namespace&gt;.widl). The host derives the extension and the kind of
 context from the realm that calls (a guest sends no identity): in a realm that is not an extension context every
 function answers nothing ("" , a rejected call, no effect). Payloads are JSON text, as Chrome's messages are, and
 are bounded by extensions.message.max_bytes.</p>
@@ -67,7 +68,8 @@ are bounded by extensions.message.max_bytes.</p>
 <h3 id="ext-info"><a class="anchor" href="#ext-info" aria-hidden="true">#</a><code>Ext_info</code></h3>
 <div class="code"><pre><code>string Ext_info()</code></pre></div>
 <p>The realm's context as a JSON object ("" : not an extension context): id, kind (background, popup, tab), base URL,
-UI language, platform, and the API methods and events this context may use (its permissions decide them).</p>
+UI language, flavour, the API methods, events and local members this context may use (its permissions and its
+kind decide them), and the constants of its namespaces.</p>
 <p>Odin: <code>ext.info</code>.</p>
 <p>Host: <code>Ext_info :: proc(c: ^Call) -&gt; string</code></p>
 <h3 id="ext-manifest"><a class="anchor" href="#ext-manifest" aria-hidden="true">#</a><code>Ext_manifest</code></h3>
@@ -121,7 +123,7 @@ extension that listen to runtime.onConnect.</p>
 <p>Host: <code>Ext_portClose :: proc(c: ^Call, port: u64)</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/api/eventsource/"><span>Previous</span><strong>Module eventsource</strong></a>
-<a class="doc-next" href="../../../docs/api/fetch/"><span>Next</span><strong>Module fetch</strong></a>
+<a class="doc-next" href="../../../docs/api/ext/README/"><span>Next</span><strong>Extension APIs of Wren</strong></a>
 </nav>
 <p class="doc-edit"><a href="https://github.com/sachahjkl/wren/blob/master/docs/api/ext.md" rel="noopener">Edit this page on GitHub</a></p>
 </main>
@@ -201,6 +203,23 @@ extension that listen to runtime.onConnect.</p>
 <li><a href="../../../docs/api/events/">Module events</a></li>
 <li><a href="../../../docs/api/eventsource/">Module eventsource</a></li>
 <li><a href="../../../docs/api/ext/" aria-current="page" class="active">Module ext</a></li>
+<li><a href="../../../docs/api/ext/README/">Extension APIs of Wren</a></li>
+<li><a href="../../../docs/api/ext/action/">chrome.action</a></li>
+<li><a href="../../../docs/api/ext/alarms/">chrome.alarms</a></li>
+<li><a href="../../../docs/api/ext/extension/">chrome.extension</a></li>
+<li><a href="../../../docs/api/ext/i18n/">chrome.i18n</a></li>
+<li><a href="../../../docs/api/ext/idle/">chrome.idle</a></li>
+<li><a href="../../../docs/api/ext/management/">chrome.management</a></li>
+<li><a href="../../../docs/api/ext/offscreen/">chrome.offscreen</a></li>
+<li><a href="../../../docs/api/ext/permissions/">chrome.permissions</a></li>
+<li><a href="../../../docs/api/ext/runtime/">chrome.runtime</a></li>
+<li><a href="../../../docs/api/ext/storage.local/">chrome.storage.local</a></li>
+<li><a href="../../../docs/api/ext/storage.managed/">chrome.storage.managed</a></li>
+<li><a href="../../../docs/api/ext/storage/">chrome.storage</a></li>
+<li><a href="../../../docs/api/ext/storage.session/">chrome.storage.session</a></li>
+<li><a href="../../../docs/api/ext/storage.sync/">chrome.storage.sync</a></li>
+<li><a href="../../../docs/api/ext/tabs/">chrome.tabs</a></li>
+<li><a href="../../../docs/api/ext/windows/">chrome.windows</a></li>
 <li><a href="../../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../../docs/api/fontface/">Module fontface</a></li>
 <li><a href="../../../docs/api/forms/">Module forms</a></li>
@@ -336,6 +355,7 @@ extension that listen to runtime.onConnect.</p>
 <li><a href="../../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../../docs/js/web-crypto/">crypto.subtle</a></li>
 <li><a href="../../../docs/js/webassembly-api/">The WebAssembly JavaScript API</a></li>
+<li><a href="../../../docs/organisation-review/">Review of the organisation of the project</a></li>
 <li><a href="../../../docs/test-review/">Review of the test system</a></li>
 <li><a href="../../../docs/updates/">Updates</a></li>
 <li><a href="../../../docs/vault-protocol/">The Vault helper protocol</a></li>

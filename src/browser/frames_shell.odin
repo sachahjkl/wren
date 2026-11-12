@@ -6,9 +6,9 @@ package browser
 // compositor draws replaced items directly every frame, so a frame that changes repaints only itself on top of the
 // parent's retained pictures), and receives the pointer events that land on it.
 //
-// A frame's document gets a stand-in Tab (Frame_View.tab): the shell's per-tab machinery (layout, images, web fonts,
-// container queries, forms and selection input, scroll bars) works on it unchanged, while what belongs to a real tab
-// (history, navigation, the address bar) never sees it: Tab.frame says it is a frame's.
+// A frame's document is a page view (page_view.odin) whose stand-in Tab it owns: the shell's per-tab machinery works on
+// it unchanged, while what belongs to a real tab (history, navigation, the address bar) never sees it: Tab.view says it
+// is a view's.
 //
 //   page_prepare ── frames_prepare (after the parent's layout): every frame's styles and layout at its box's size,
 //                   recursively; lazy frames learn their distance to the viewport
@@ -27,18 +27,6 @@ import lay "wb:layout"
 import "wb:page"
 import "wb:style"
 import "wb:url"
-
-Frame_View :: struct {
-	tab:      Tab,          // the stand-in tab of the frame's document (tab.page is the document)
-	host:     ^Tab,         // the real tab it is shown in (nil: not known yet)
-	rect:     draw.Rect,    // its content box on screen, last painted (window px)
-	size:     draw.Vec2,    // what it was laid out for (physical px)
-	scale:    f32,
-	ready:    bool,         // laid out for `size` (its first paint is not held back)
-	painted:  u64,          // chrome frame number it was painted in (visible)
-	transformed: bool,      // its container is under a transform: input is not routed (the rect is only its bounds)
-	no_scroll: bool,        // its container says scrolling="no": no scroll bar, the document does not scroll
-}
 
 // The ids of the frames' views (atomic: unique in the process, beside the tabs', which stay below FRAME_TAB_IDS_FROM).
 FRAME_TAB_IDS_FROM :: 1 << 40
@@ -63,8 +51,8 @@ frames_shell_destroy :: proc(app: ^App) {
 	app.paint_stack = nil
 }
 
-// The frame view of a frame's document (nil: a tab's document, or not a frame).
-frame_view_of :: proc(p: ^page.Page) -> ^Frame_View {
+// The view of a frame's document (nil: a tab's document, the popup's, or not a frame).
+frame_view_of :: proc(p: ^page.Page) -> ^Page_View {
 	if p == nil { return nil }
 	fv, _ := the_app.frame_views[p]
 	return fv
@@ -72,18 +60,15 @@ frame_view_of :: proc(p: ^page.Page) -> ^Frame_View {
 
 @(private = "file")
 frames_attached :: proc(user: rawptr, child: ^page.Page) {
-	fv := new(Frame_View)
-	fv.tab.id = sync.atomic_add(&frame_tab_ids, 1) + 1
-	fv.tab.kind = .Web
-	fv.tab.zoom = 1
+	fv := new(Page_View)
+	fv.tab = tab_alloc_frame(sync.atomic_add(&frame_tab_ids, 1) + 1)
 	fv.tab.page = child
-	fv.tab.frame = fv
+	fv.tab.view = fv
 	fv.tab.scope = child.scope
 	fv.scale = 1
 	the_app.frame_views[child] = fv
 	base.on_close(child.scope, frame_view_closed, child)
-	page.set_layout_embedder(child, {user = fv, update = frame_js_layout, viewport = frame_js_viewport, scroll_to = frame_js_scroll,
-		repaint = proc(user: rawptr, p: ^page.Page) { request_frames(the_app, 2) }})
+	page_view_attach_js(fv, child)
 	request_frames(the_app, 2)
 }
 
@@ -93,18 +78,23 @@ frame_view_closed :: proc(data: rawptr) {
 	fv, ok := the_app.frame_views[p]
 	if !ok { return }
 	delete_key(&the_app.frame_views, p)
+	page_view_forget(the_app, p)
+	page_fonts_drop(&the_app.page_render.fonts, fv.tab)
+	layout_destroy(&fv.tab.layout)
+	smooth_destroy(&fv.tab.smooth)
+	free(fv.tab)
+	free(fv)
+}
+
+// A view's document is gone: the windows' hover and keyboard let go of it.
+page_view_forget :: proc(app: ^App, p: ^page.Page) {
 	forget :: proc(own: ^Window_Own, p: ^page.Page) {
 		if own.frames.hover == p { own.frames.hover = nil }
 		keyboard_frame_closed(&own.keyboard, p)
 	}
-	if the_app != nil {
-		for w in the_app.windows { forget(&w.own, p) }
-		forget(&the_app.bare.own, p)
-	}
-	page_fonts_drop(&the_app.page_render.fonts, &fv.tab)
-	layout_destroy(&fv.tab.layout)
-	smooth_destroy(&fv.tab.smooth)
-	free(fv)
+	if app == nil { return }
+	for w in app.windows { forget(&w.own, p) }
+	forget(&app.bare.own, p)
 }
 
 ////////////////////////////////
@@ -128,7 +118,7 @@ frames_prepare :: proc(app: ^App, t: ^Tab, viewport: draw.Vec2, scale: f32) {
 		child := n.page
 		fv := frame_view_of(child)
 		if fv == nil { continue }
-		fv.host = t.frame != nil ? t.frame.host : t
+		fv.host = t.view != nil ? t.view.host : t
 		r, ok := frame_box(&t.layout, n.element, viewport, t.scroll)
 		if !ok {
 			page.frames_set_distance(p, n.element, max(f32))
@@ -150,74 +140,8 @@ frames_prepare :: proc(app: ^App, t: ^Tab, viewport: draw.Vec2, scale: f32) {
 			lay.set_doc_scroll_x(&fv.tab.layout, 0)
 		}
 		if size.x <= 0 || size.y <= 0 { fv.ready = false; continue }
-		frame_prepare(app, fv, size, scale)
+		page_view_prepare(app, fv, size, scale)
 	}
-}
-
-// Styles and layout of a frame's document at `size` (physical px), then of its own frames.
-frame_prepare :: proc(app: ^App, fv: ^Frame_View, size: draw.Vec2, scale: f32) {
-	t := &fv.tab
-	p := t.page
-	if p == nil || p.closed { return }
-	fv.size, fv.scale = size, scale
-	ls := &app.page_render.settings
-	page.set_layout_journal(p, ls.incremental ? ls.inc_journal : 0)
-	page.set_frame_time(p, pacer_of(app).frame_ms)
-	defer page.set_frame_time(p, 0, unpin = true)
-	styled := page.styles(p, size.x / scale, size.y / scale, f64(scale))
-	if !p.render.painted {
-		if state, _ := page.first_paint_state(p); state != .Ready { fv.ready = false; return }
-	}
-	saved := images_shell_page_swap(nil)
-	images_shell_page_swap(saved)
-	defer images_shell_page_swap(saved)
-	adopt_web_fonts(t)
-	images_before_layout(t)
-	fonts_gen := u64(t.web_fonts)
-	if layout_stale(&t.layout, p.doc, styled, size, scale, t.image_sizes, fonts_gen) {
-		layout_document(&t.layout, p.doc, styled, &app.measure, &app.page_settings.style, size, scale, app.cfg.layout_band_px, t.image_sizes, fonts_gen)
-	}
-	styled = settle_container_queries(app, t, styled, size, scale, fonts_gen)
-	images_after_layout(t, size, scale)
-	if !p.render.painted { page.first_paint_done(p) }
-	if !p.render.contentful && layout_contentful(&t.layout) { page.first_contentful_done(p) }
-	lo_y, hi_y := lay.doc_scroll_y_range(&t.layout, size.y)
-	t.scroll = clamp(t.scroll, lo_y, hi_y)
-	doc_scroll_x_set(t, t.layout.doc_scroll_x, size.x)
-	fv.ready = true
-	// Performance Timeline entries that depend on the real paint (timeline_lcp.odin): the largest contentful element and
-	// the element-timing entries from the layout just settled, and the layout shifts against the previous frame.
-	vp := page.Viewport{width = f64(size.x) / f64(scale), height = f64(size.y) / f64(scale), scale = f64(scale), scroll_x = f64(doc_scroll_vec(t).x) / f64(scale), scroll_y = f64(t.scroll) / f64(scale)}
-	page.timeline_present(p, &t.layout, vp)
-	page.timeline_layout_shift_check(p, &t.layout, vp)
-	frames_prepare(app, t, size, scale)
-}
-
-// Geometry for the frame document's scripts (page.Layout_Embedder): its own layout, brought up to date.
-@(private = "file")
-frame_js_layout :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
-	fv := (^Frame_View)(user)
-	if fv.tab.page != p || fv.size.x <= 0 || fv.size.y <= 0 { return nil }
-	frame_prepare(the_app, fv, fv.size, fv.scale)
-	request_frames(the_app, 2)
-	return &fv.tab.layout
-}
-
-@(private = "file")
-frame_js_viewport :: proc(user: rawptr, p: ^page.Page) -> page.Viewport {
-	fv := (^Frame_View)(user)
-	s := f64(fv.scale > 0 ? fv.scale : 1)
-	return page.Viewport{width = f64(fv.size.x) / s, height = f64(fv.size.y) / s, scale = s, scroll_x = f64(doc_scroll_vec(&fv.tab).x) / s, scroll_y = f64(fv.tab.scroll) / s}
-}
-
-@(private = "file")
-frame_js_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
-	fv := (^Frame_View)(user)
-	if fv.tab.page != p { return }
-	lo_y, hi_y := lay.doc_scroll_y_range(&fv.tab.layout, fv.size.y)
-	fv.tab.scroll = f32(clamp(y * f64(fv.scale), f64(lo_y), f64(hi_y)))
-	doc_scroll_x_set(&fv.tab, f32(x * f64(fv.scale)), fv.size.x)
-	request_frames(the_app, 2)
 }
 
 ////////////////////////////////
@@ -246,11 +170,9 @@ frames_paint_content :: proc(app: ^App, dc: ^draw.Context, d: ^dom.Document, nod
 	if fv == nil { return false }
 	size := draw.Vec2{math.round(content.max.x - content.min.x), math.round(content.max.y - content.min.y)}
 	if size.x <= 0 || size.y <= 0 { return true }
-	if !fv.ready || fv.size != size || layout_behind(&fv.tab.layout, n.page.doc) { frame_prepare(app, fv, size, page_scale(app)) }
+	if !fv.ready || fv.size != size || layout_behind(&fv.tab.layout, n.page.doc) { page_view_prepare(app, fv, size, paint_scale_of(app, parent)) }
 	if !fv.ready { return true }
-	fv.rect = content
-	fv.painted = app.chrome_frames.frame_no
-	t := &fv.tab
+	t := fv.tab
 	if !t.layout.valid { return true }
 	// a frame's canvas is transparent (Chromium): a background the document gives itself fills it, and so does its
 	// canvas color when its color scheme is not its container's (CSS Color Adjust §2.3: dark text of a light document
@@ -259,17 +181,16 @@ frames_paint_content :: proc(app: ^App, dc: ^draw.Context, d: ^dom.Document, nod
 		mismatch := container != nil && container.used_scheme != st.root_scheme
 		if mismatch || canvas_source_box(&t.layout) != lay.NONE { draw.rect(dc, content, to_draw(st.canvas)) }
 	}
-	append(&app.paint_stack, t.page)
-	saved := images_shell_page_swap(t.page)
-	parent_highlights := app.spaint   // (its own selection and highlights)
-	selection_paint_begin(app, t)
-	draw.push_clip(dc, content)
-	paint(&t.layout, dc, t.page.doc, content.min, size, t.scroll, content, doc_scrollbar = !fv.no_scroll)
-	draw.pop_clip(dc)
-	app.spaint = parent_highlights
-	images_shell_page_swap(saved)
-	pop(&app.paint_stack)
+	page_view_paint(app, dc, fv, content)
 	return true
+}
+
+// The scale document `p` is painted at: its view's (a frame's, the popup's), else the current tab's.
+@(private = "file")
+paint_scale_of :: proc(app: ^App, p: ^page.Page) -> f32 {
+	if pv := frame_view_of(p); pv != nil && pv.scale > 0 { return pv.scale }
+	if pv := ext_popup_view(app); pv != nil && pv.tab.page == p && pv.scale > 0 { return pv.scale }
+	return page_scale(app)
 }
 
 ////////////////////////////////
@@ -279,8 +200,8 @@ frames_paint_content :: proc(app: ^App, dc: ^draw.Context, d: ^dom.Document, nod
 // comes from the frame's geometry in the page (its content box, with the page scroll, zoom, clips and CSS transforms
 // applied), not from the paint state: a frame that was not painted in the last chrome frame (off screen, throttled, or
 // simply not repainted this frame) still takes a click that lands on it. A frame with no box (display:none, laid out
-// away) is already dropped by frame_box; a destroyed frame has no Frame_View.
-frame_under :: proc(app: ^App, t: ^Tab, pos: draw.Vec2, rect: draw.Rect) -> ^Frame_View {
+// away) is already dropped by frame_box; a destroyed frame has no view.
+frame_under :: proc(app: ^App, t: ^Tab, pos: draw.Vec2, rect: draw.Rect) -> ^Page_View {
 	if t == nil || t.page == nil || t.page.frames == nil || !t.layout.valid || !draw.rect_contains(rect, pos) { return nil }
 	h := hit_test(&t.layout, pos - rect.min, draw.rect_size(rect), t.scroll)
 	if h == base.NIL_HANDLE { return nil }
@@ -301,122 +222,17 @@ frame_under :: proc(app: ^App, t: ^Tab, pos: draw.Vec2, rect: draw.Rect) -> ^Fra
 	if !draw.rect_contains(screen, pos) { return nil }
 	// routing uses this box as the frame's page area: keep it current even when the frame was not painted this frame
 	fv.rect = screen
-	if inner := frame_under(app, &fv.tab, pos, screen); inner != nil { return inner }
+	if inner := frame_under(app, fv.tab, pos, screen); inner != nil { return inner }
 	return fv
 }
 
-// A pointer event of the page area over a frame: handled as the page's own input on the frame's stand-in tab, with
-// the page area moved to the frame's content box. True when it was a frame's.
+// A pointer event of the page area over a frame: handled as the page's own input on the frame's view
+// (page_view.odin). True when it was a frame's.
 frames_route_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) -> bool {
-	wnd := active_window(app)
-	#partial switch ev.kind {
-	case .Mouse_Move, .Mouse_Press, .Mouse_Release, .Scroll:
-	case: return false
-	}
-	fi := &window_own(app).frames
-	g := gesture_of(app)
-	fv := frame_under(app, t, ev.pos, wnd.page_rect)
-	// hover leaves a frame the pointer left
-	if ev.kind == .Mouse_Move {
-		now: ^page.Page = fv != nil ? fv.tab.page : nil
-		if fi.hover != nil && fi.hover != now {
-			if hv := frame_view_of(fi.hover); hv != nil {
-				st := fi.hover.style_state
-				st.hover = base.NIL_HANDLE
-				page.set_style_state(fi.hover, st)
-			}
-		}
-		fi.hover = now
-	}
-	// a release goes where the press went (the click is the press target's), a frame or the tab's document
-	ended: Ended_Press
-	if ev.kind == .Mouse_Release {
-		if g.owner != .Frame { return false }
-		fv = frame_view_of(g.frame)
-		ended = gesture_release(app, ev)
-	}
-	if ev.kind == .Mouse_Press {
-		if fv != nil {
-			keyboard_move(app, .Frame, fv.tab.page)
-			if gesture_free(g) {
-				gesture_press(app, t, fv.tab.page, .Frame, ev)
-				g.frame = fv.tab.page
-			}
-		}
-	}
-	// the document a button was pressed in keeps the moves while it is held, wherever the pointer goes (an implicit capture:
-	// a drag started in a frame goes on over the page around it)
-	captured := false
-	if ev.kind == .Mouse_Move && g.owner == .Frame {
-		if pv := frame_view_of(g.frame); pv != nil && pv != fv { fv, captured = pv, true }
-	}
-	if fv == nil { return false }
-	saved := wnd.page_rect
-	wnd.page_rect = fv.rect
-	defer wnd.page_rect = saved
-	used := frame_pointer_event(app, fv, ev, index, ended)
-	if ev.kind == .Mouse_Move && fv.tab.page != nil {
-		hovered := draw.rect_contains(fv.rect, ev.pos) ? hit_test(&fv.tab.layout, ev.pos - fv.rect.min, draw.rect_size(fv.rect), fv.tab.scroll) : base.NIL_HANDLE
-		if captured || draw.rect_contains(fv.rect, ev.pos) { hovered = hit_or_root(&fv.tab, hovered) }   // (the root element when no box is there, or outside it while its button is held)
-		st := fv.tab.page.style_state
-		was := st.hover
-		if st.hover != hovered {
-			st.hover = hovered
-			page.set_style_state(fv.tab.page, st)
-		}
-		// mousemove / pointermove and the boundary events, for the frame's scripts (page_pointer.odin): what a drag in a frame follows
-		page_pointer_events(app, &fv.tab, was, hovered, ev.pos, dom_buttons(ev.buttons), ev.emulated)
-	}
-	return used
-}
-
-// The page's pointer handling, on a frame's document (route_page_input's, without what concerns the tab: history,
-// zoom, the context menu). False for a wheel the frame cannot use: it scrolls the parent (scroll chaining).
-@(private = "file")
-frame_pointer_event :: proc(app: ^App, fv: ^Frame_View, ev: platform.Event, index: int, ended: Ended_Press) -> bool {
-	t := &fv.tab
-	if forms_route_event(app, t, ev, index) { return true }
-	if t.page == nil { return true }
-	rect := active_window(app).page_rect
-	size := draw.rect_size(rect)
-	#partial switch ev.kind {
-	case .Scroll:
-		if .Ctrl in ev.mods { return false }   // zoom is the tab's
-		d := wheel_axes(ev) * wheel_step(app) * page_scale(app)
-		if page_wheel(&t.layout, ev.pos - rect.min, d, size, t.scroll) {
-			request_frames(app, 2)
-			return true
-		}
-		lo_y, hi_y := lay.doc_scroll_y_range(&t.layout, size.y)
-		next := clamp(t.scroll + d.y, lo_y, hi_y)
-		lo, hi := lay.doc_scroll_x_range(&t.layout, size.x)
-		next_x := clamp(t.layout.doc_scroll_x + d.x, lo, hi)
-		if next == t.scroll && next_x == t.layout.doc_scroll_x { return false }
-		t.scroll = next
-		lay.set_doc_scroll_x(&t.layout, next_x)
-		request_frames(app, 2)
-	case .Mouse_Press:
-		local := ev.pos - rect.min + doc_scroll_vec(t)
-		pressed := hit_test(&t.layout, ev.pos - rect.min, size, t.scroll)
-		t.scroll_target = pressed
-		forms_pointer_down(app, t, ev, pressed, local)
-		if t.page == nil { return true }
-		if ev.button == .Left && gesture_of(app).owner == .Frame { page_set_active(t.page, pressed) }
-	case .Mouse_Release:
-		local := ev.pos - rect.min + doc_scroll_vec(t)
-		released := draw.rect_contains(rect, ev.pos) ? hit_test(&t.layout, ev.pos - rect.min, size, t.scroll) : base.NIL_HANDLE
-		target, clicked := forms_pointer_up(app, t, ev, released, local, ended)
-		if !clicked || t.page == nil { return true }
-		not_prevented := forms_click(app, t, target, ev, local)
-		if t.page == nil || !not_prevented || ev.button != .Left { return true }
-		if a, href, ok := frame_anchor(t.page.doc, target); ok { frames_follow_link(app, fv, a, href) }
-	}
-	request_frames(app, 2)
-	return true
+	return page_views_route_pointer(app, t, t, active_window(app).page_rect, nil, ev, index)
 }
 
 // The link (<a href>, <area href>) a click target is in.
-@(private = "file")
 frame_anchor :: proc(d: ^dom.Document, h: base.Handle) -> (el: base.Handle, href: string, ok: bool) {
 	for cur := h; cur != base.NIL_HANDLE; {
 		n := dom.get(d, cur)
@@ -432,22 +248,17 @@ frame_anchor :: proc(d: ^dom.Document, h: base.Handle) -> (el: base.Handle, href
 // Keyboard and text events while a frame has the keyboard (the last press was in it): its document's. True when the
 // event was a key or text event the frame took.
 frames_route_keys :: proc(app: ^App, ev: platform.Event, index: int) -> bool {
-	wnd := active_window(app)
 	#partial switch ev.kind {
 	case .Key_Press, .Key_Release, .Text:
 	case: return false
 	}
 	fv := frames_focused(app)
 	if fv == nil { return false }
-	saved := wnd.page_rect
-	wnd.page_rect = fv.rect
-	defer wnd.page_rect = saved
-	forms_route_event(app, &fv.tab, ev, index)
-	return true
+	return page_view_route_keys(app, fv, ev, index)
 }
 
 // The frame document that has the keyboard (the last press went into it), its stand-in tab; nil: the tab's document.
-frames_focused :: proc(app: ^App) -> ^Frame_View {
+frames_focused :: proc(app: ^App) -> ^Page_View {
 	if keyboard_owner(app) != .Frame { return nil }
 	fv := frame_view_of(keyboard_of(app).frame)
 	if fv == nil || (fv.host != nil && fv.host != current_tab(app)) { return nil }   // (its tab went: keyboard_document comes after the input of this frame)
@@ -456,7 +267,7 @@ frames_focused :: proc(app: ^App) -> ^Frame_View {
 
 // A link followed in a frame's document (its default action): the frame navigates, or the navigable the link's target
 // names (`_top` / `_parent` / a frame name; `_blank` opens a tab).
-frames_follow_link :: proc(app: ^App, fv: ^Frame_View, el: base.Handle, href: string) {
+frames_follow_link :: proc(app: ^App, fv: ^Page_View, el: base.Handle, href: string) {
 	p := fv.tab.page
 	resolved, ok := url.parse(href, &p.env.location, context.temp_allocator)
 	if !ok { return }

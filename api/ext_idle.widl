@@ -1,0 +1,10 @@
+/// The time since the last input in Wren's windows (src/page/ext_idle.odin). "locked" is never reported.
+[Permission=idle]
+namespace idle {
+  enum IdleState { active, idle, locked }
+  /// "idle" when no input came for detectionIntervalInSeconds.
+  IdleState queryState(i64 detectionIntervalInSeconds);
+  /// For onStateChanged: at least 15 seconds, at most 4 hours (a smaller or larger value is clamped).
+  void setDetectionInterval([Min=0] i64 intervalInSeconds);
+  event onStateChanged(IdleState newState);
+}

@@ -3,7 +3,7 @@ package browser
 // The toolbar buttons of extensions (docs/extensions.md, section 3.10): one per enabled extension with an `action`, after
 // the content blocker's shield. A button shows the action's icon for the tab (action.setIcon with a path, else the
 // manifest's), its badge (action.setBadgeText, at most 4 characters, on its background colour) and its title as a
-// tooltip. A click opens the popup (ext_open_popup), or fires action.onClicked when no popup is set.
+// tooltip. A click opens the popup under it (ext_popup.odin), or fires action.onClicked when no popup is set.
 //
 // The icon is fetched like any file of the extension (chrome-extension://, read on the blocking pool), decoded on the
 // image threads and kept as a texture by URL: a frame only draws it. Until it is ready, and when it fails, the button
@@ -185,6 +185,7 @@ ext_button :: proc(app: ^App, t: ^Tab, e: ^extensions.Extension) {
 	ui.pop_tags()
 	sig := ui.signal(b)
 	tip(sig, title != "" ? title : e.image.manifest.name)
+	if ep := app.ext.popup; ep != nil && ep.ext == e.id { ext_popup_build(app, b.rect) }   // ext_popup.odin: its panel, under the button
 	if sig.clicked && e.action.enabled {
 		if popup != "" {
 			ext_open_popup(app, e, popup)

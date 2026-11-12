@@ -1,0 +1,98 @@
+/// The tabs of Wren's windows, as the shell describes them (src/page/ext_api.odin, ext_tabs.odin). A tab's url and
+/// title are given only with the tabs permission, a host grant for its URL, or for the extension's own pages.
+/// create, update and remove act from a task of the loop of their own, then answer.
+namespace tabs {
+  const i64 TAB_ID_NONE = -1;
+  const i64 TAB_INDEX_NONE = -1;
+  enum TabStatus { unloaded, loading, complete }
+  /// One URL or match pattern, or a list of them.
+  typedef (string or string[]) UrlOrUrls;
+  /// One tab id, or a list of them.
+  typedef (i64 or i64[]) TabIds;
+
+  struct MutedInfo {
+    bool muted;
+  }
+  struct Tab {
+    i64 id;
+    i64 index;
+    i64 windowId;
+    bool active;
+    bool highlighted;
+    bool selected;
+    bool pinned;
+    bool incognito;
+    bool discarded;
+    bool autoDiscardable;
+    bool frozen;
+    i64 groupId;
+    bool audible;
+    MutedInfo mutedInfo;
+    TabStatus status;
+    optional string url;
+    optional string title;
+  }
+  struct QueryInfo {
+    optional bool active;
+    optional bool currentWindow;
+    optional bool lastFocusedWindow;
+    /// -2: the current window.
+    optional i64 windowId;
+    optional bool highlighted;
+    optional bool pinned;
+    optional TabStatus status;
+    optional i64 index;
+    /// Match patterns; tabs whose URL the extension may not see never match.
+    optional UrlOrUrls url;
+  }
+  struct CreateProperties {
+    optional i64 windowId;
+    optional i64 index;
+    /// A web page, about:blank or a file of the extension (relative to its root).
+    optional string url;
+    optional bool active;
+    optional bool selected;
+    optional bool pinned;
+    optional i64 openerTabId;
+  }
+  struct UpdateProperties {
+    optional string url;
+    optional bool active;
+    optional bool highlighted;
+    optional bool selected;
+    optional bool pinned;
+    optional bool muted;
+  }
+  struct ActiveInfo {
+    i64 tabId;
+    i64 windowId;
+  }
+  struct ChangeInfo {
+    optional TabStatus status;
+    optional string url;
+  }
+  struct RemoveInfo {
+    i64 windowId;
+    bool isWindowClosing;
+  }
+
+  Tab[] query(optional QueryInfo queryInfo);
+  Tab get(i64 tabId);
+  /// The tab of the calling page; undefined for a popup or the background.
+  Tab getCurrent();
+  Tab create(CreateProperties createProperties);
+  /// No tabId: the selected tab of the current window.
+  Tab update(optional i64 tabId, UpdateProperties updateProperties);
+  void remove(TabIds tabIds);
+
+  event onActivated(ActiveInfo activeInfo);
+  /// "loading" at the request, "complete" at the document's load event.
+  event onUpdated(i64 tabId, ChangeInfo changeInfo, Tab tab);
+  event onRemoved(i64 tabId, RemoveInfo removeInfo);
+  event onCreated(Tab tab);
+  event onReplaced(i64 addedTabId, i64 removedTabId);
+  event onAttached(i64 tabId, object attachInfo);
+  event onDetached(i64 tabId, object detachInfo);
+  event onMoved(i64 tabId, object moveInfo);
+  event onHighlighted(object highlightInfo);
+}

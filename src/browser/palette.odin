@@ -635,6 +635,7 @@ palette_ready :: proc(app: ^App) {
 		app.cpal.sources_ready = true
 		palette_add_source(app, {name = "Visited", prefix = '/', in_default = true, items = tab_history_items, activate = tab_history_activate, version = tab_history_version})
 		palette_add_source(app, bookmarks_palette_source())   // bookmarks_ui.odin
+		palette_add_source(app, vault_palette_source())   // vault_fill.odin: "$" searches the Vault (nothing while it is locked or off)
 	}
 }
 

@@ -7,7 +7,9 @@ package e2e_scenarios
 // manifest, and what its permissions leave out. Then the test that breaks this design if anything is off: calls of the
 // popup while the background is stopped, queued in order, answered in order once it started. Reload and remove leave
 // no extension and no background.
-
+//
+// The popup panel (extensions_popup_panel): the popup shows under its button, sized by its content; a click and a key
+// reach its document; Escape, window.close() and a press outside close it.
 //
 // Phase 2 (extensions_vault_packed_offscreen_tabs, extensions_vault_restart): the fixture examples/extensions/vault,
 // packed here into a .zip and a .crx and installed from them; an offscreen document that writes the clipboard for the
@@ -22,6 +24,7 @@ import "core:hash"
 import "core:os"
 import "core:strings"
 import "core:testing"
+import "wb:browser"
 import "wb:e2e"
 import "wb:extensions"
 import "wb:host"
@@ -127,6 +130,87 @@ extensions_load_popup_background :: proc(t: ^testing.T) {
 	}
 	e2e.navigate(s, popup)
 	e2e.expect_eval(s, `typeof chrome`, "undefined", "a page of a removed extension does not load (and has no chrome.*)")
+}
+
+////////////////////////////////
+// The popup panel
+
+// The popup of the hello fixture opens in a panel under its button (browser.ext_open_popup: what a click on the button
+// does), as a page of no window sized by its content (its body: 280 px wide and 16 px of padding); a click and a key
+// reach its document; Escape closes it; it closes itself with window.close(); a press outside closes it.
+@(test)
+extensions_popup_panel :: proc(t: ^testing.T) {
+	s := e2e.start(t, {size = EXT_SIZE})
+	dir := fmt.tprintf("%s/examples/extensions/hello", e2e.repo_root())
+	e2e.navigate(s, fmt.tprintf("about:extensions?path=%s", url.percent_encoded(dir, url.UNRESERVED + "/:")))
+	e2e.wait_js(s, `document.body.textContent.includes("Add Hello extension?")`)
+	id := strings.clone(ext_id_on_page(s), context.temp_allocator)
+	e2e.navigate(s, fmt.tprintf("about:extensions?accept=%s", id))
+	e2e.wait_js(s, `document.body.textContent.includes("Hello extension is installed.")`)
+	tabs_before := 0
+	{
+		context = s.ctx
+		tabs_before = len(s.app.windows[0].tabs)
+	}
+
+	popup_open(s, id, "popup.html")
+	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool {
+		context = s.ctx
+		ep := s.app.ext.popup
+		return ep != nil && ep.fit.shown && ep.view.ready && ep.view.rect.max.x > ep.view.rect.min.x && popup_title(s) == "Hello popup"
+	}, "the popup's panel to show its page")
+	rect: [2]f64
+	{
+		context = s.ctx
+		ep := s.app.ext.popup
+		testing.expectf(t, ep.fit.css.x == 312, "the panel is as wide as the popup's body (got %v)", ep.fit.css)
+		testing.expectf(t, ep.fit.css.y >= 25 && ep.fit.css.y < 600, "the panel is as tall as its content (got %v)", ep.fit.css)
+		testing.expect_value(t, len(s.app.windows[0].tabs), tabs_before)   // (the popup is no tab of the window)
+		testing.expect(t, ep.view.tab.view == &ep.view, "its tab is a view's")
+		r := ep.view.rect
+		rect = {f64((r.min.x + r.max.x) / 2), f64((r.min.y + r.max.y) / 2)}
+	}
+	e2e.click_at(s, rect, .Window)
+	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { context = s.ctx; return popup_title(s) == "clicked" }, "a click in the panel to reach the popup's document")
+	e2e.key(s, "a")
+	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { context = s.ctx; return popup_title(s) == "key a" }, "a key to reach the popup's document")
+	e2e.key(s, "Escape")
+	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { context = s.ctx; return s.app.ext.popup == nil }, "Escape to close the popup")
+
+	// window.close() from the popup closes it
+	popup_open(s, id, "popup.html?close")
+	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { context = s.ctx; return s.app.ext.popup == nil }, "window.close() to close the popup")
+
+	// a press outside it closes it
+	popup_open(s, id, "popup.html")
+	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool {
+		context = s.ctx
+		ep := s.app.ext.popup
+		return ep != nil && ep.fit.shown && ep.view.rect.max.x > ep.view.rect.min.x
+	}, "the popup's panel to show again")
+	e2e.click_at(s, {10, f64(EXT_SIZE.y - 10)}, .Window)
+	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { context = s.ctx; return s.app.ext.popup == nil }, "a press outside to close the popup")
+	{
+		context = s.ctx
+		testing.expect_value(t, len(s.app.windows[0].tabs), tabs_before)
+	}
+}
+
+// Opens the extension's popup as its button does.
+@(private = "file")
+popup_open :: proc(s: ^e2e.Session, id, path: string) {
+	context = s.ctx
+	e := extensions.registry_find(&s.app.pages.extensions, id)
+	if e == nil { return }
+	browser.ext_open_popup(s.app, e, path)
+}
+
+// The title of the popup's document ("" : no popup, or no document yet).
+@(private = "file")
+popup_title :: proc(s: ^e2e.Session) -> string {
+	ep := s.app.ext.popup
+	if ep == nil || ep.view.tab == nil || ep.view.tab.page == nil || ep.view.tab.page.doc == nil { return "" }
+	return browser.document_title(ep.view.tab.page.doc)
 }
 
 ////////////////////////////////

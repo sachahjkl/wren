@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Vault: a native client for Bitwarden accounts · Wren docs</title>
-<meta name="description" content="Vault: a native client for Bitwarden accounts Status: phases 0 and 1 are written, phase 2 for the most part (see Implementation state).">
+<meta name="description" content="Vault: a native client for Bitwarden accounts Status: phases 0 and 1 are written, phases 2 and 3 for the most part (see Implementation state).">
 <link rel="icon" type="image/png" sizes="32x32" href="../../../img/logo-32.png">
 <link rel="stylesheet" href="../../classic.css">
 </head>
@@ -90,8 +90,8 @@
 </ul>
 </nav>
 
-<p>Status: phases 0 and 1 are written, phase 2 for the most part (see <a href="#implementation-state">Implementation state</a>). The
-rest is the plan. The protocol between Wren and the helper is in <a href="../../docs/vault-protocol/">vault-protocol.md</a>.</p>
+<p>Status: phases 0 and 1 are written, phases 2 and 3 for the most part (see <a href="#implementation-state">Implementation state</a>).
+The rest is the plan. The protocol between Wren and the helper is in <a href="../../docs/vault-protocol/">vault-protocol.md</a>.</p>
 <p>The feature gives Wren a built-in password manager client for Bitwarden® accounts. It is optional and off by default.
 It needs no WebExtension. The interface name of the feature is <strong>Vault</strong>. "Bitwarden" appears only as the name of the
 compatible service (see <a href="#trademark">Trademark</a>).</p>
@@ -479,6 +479,7 @@ URLs only). Wren does not start the helper to draw the locked icon.</p>
 <tr><td><code>vault.lock.on_sleep</code></td><td>Bool, <code>true</code></td><td>Lock on system sleep and session lock.</td></tr>
 <tr><td><code>vault.sync.interval_minutes</code></td><td>Int, 30, 5 to 1440</td><td>Time between two background syncs while unlocked.</td></tr>
 <tr><td><code>vault.fill.dropdown</code></td><td>Bool, <code>true</code></td><td>Show the dropdown on a focused login field.</td></tr>
+<tr><td><code>vault.fill.shortcut</code></td><td>String, <code>Ctrl+Shift+L</code></td><td>The key of the command <code>vault.fill</code>. Empty or invalid: no key.</td></tr>
 <tr><td><code>vault.fill.insecure</code></td><td>String, <code>ask</code></td><td><code>ask</code> or <code>never</code>, for <code>http</code> pages.</td></tr>
 <tr><td><code>vault.save.prompt</code></td><td>Bool, <code>true</code></td><td>Ask to save or update after a submit.</td></tr>
 <tr><td><code>vault.clipboard.clear_seconds</code></td><td>Int, 30, 0 to 600</td><td>0: never clear.</td></tr>
@@ -663,7 +664,7 @@ for the manual checks: who creates and owns it.</li>
 client to read <code>network.tls.extra_ca_file</code>.</li>
 </ol>
 <h2 id="implementation-state"><a class="anchor" href="#implementation-state" aria-hidden="true">#</a>Implementation state</h2>
-<p>Phases 0 and 1, and phase 2 for the most part, as written on 2026-11-12. Where the code differs from the plan above,
+<p>Phases 0 and 1, and phases 2 and 3 for the most part, as written on 2026-11-12 and 2026-11-13. Where the code differs from the plan above,
 this section is the truth.</p>
 <h3 id="the-helper-wren-vault-a-separate-repository"><a class="anchor" href="#the-helper-wren-vault-a-separate-repository" aria-hidden="true">#</a>The helper (<code>wren-vault</code>, a separate repository)</h3>
 <ul>
@@ -700,7 +701,12 @@ fields. A version 1 state is not read: the account logs in again.</li>
 <li>Requests run one after the other, in the order they come (not a task each): the answers keep the order of the
 requests, and a <code>hello</code> sent with a <code>login</code> is always handled first. The loop waits on the next frame and on the idle
 deadline at once (<code>FrameReader</code> is cancel safe); at the deadline it writes the event <code>locked</code> and exits.</li>
-<li>Not yet: <code>search</code>, <code>totp</code>, the successful-login fixtures of the wiremock tests (they need a test account), the
+<li>Protocol 3 (helper 0.3.0, phase 3): <code>search</code> (each word of the query in the name, the user name or a URI; sorted by
+name; at most 50 rows; no password); <code>totp</code> and <code>fill</code> with <code>totp</code> (the SDK's <code>generate_totp</code>: otpauth, steam and
+base32 keys); <code>logins_for</code> applies <code>StartsWith</code> and <code>Exact</code> (the URL standard's serializations) and the equivalent
+domains. The sync asks for the domains (<code>excludeDomains=false</code>) and keeps the groups (the account's own, then the
+global ones it did not exclude) in <code>state.json</code> (<code>equivalent_domains</code>).</li>
+<li>Not yet: the successful-login fixtures of the wiremock tests (they need a test account), the
 measures of 2.5, the list of what the SDK writes (3.4: the SDK writes nothing; the helper writes <code>state.json</code> and
 <code>tokens.json</code> or the system store's entry).</li>
 </ul>
@@ -737,6 +743,50 @@ folder (<code>build/vault/</code> beside <code>build/wren</code>). The download 
 needs release assets of the helper: a later step.</li>
 <li>Automation: <code>wrentool build vault</code>, <code>wrentool vault test</code>, <code>wrentool vault probe</code> (it asks for a second step's code
 on its input).</li>
+<li><p>Phase 3 (<code>src/browser/vault_fill.odin</code>):</p>
+<ul>
+<li>The target of a fill is the document that holds the focused field: the focused frame's, else the tab's. The Vault
+keeps three sets of rows (<code>Row_Slot</code>): the tab's document (<code>Page</code>), the focused frame's document (<code>Frame</code>), the
+palette's search (<code>Search</code>). <strong>This changes 3.1</strong>: the rows of the tab's document stay in Wren's memory while the
+Vault is unlocked, not only while a surface shows them: the chip, the fill shortcut and the dropdown need them
+without a round trip to the helper. They are zeroed at a lock, at another address, and when remote control
+starts. Search rows go when the palette closes. No password and no code is ever in a row.</li>
+<li>Fill shortcut: the command <code>vault.fill</code> (Ctrl+Shift+L, <code>vault.fill.shortcut</code>; <code>guarded</code>: the key is the page's while
+the Vault is off). Locked: the unlock or login dialog. Unlocked: the only row at once; several: the dropdown on a
+login field, else the panel. Other commands: <code>vault.search</code>, <code>vault.unlock</code>, <code>vault.lock</code>, <code>vault.sync</code>,
+<code>vault.panel</code>.</li>
+<li>Dropdown: toolkit boxes over the page (<code>vault_dropdown_build</code>, after the palette), at the field's painted bounds
+(<code>forms_control_screen_rect</code>: the bounds of the transformed box, so a rotated or scrolled field anchors where it
+shows); under the field, above it without room. <code>hud_captures</code> keeps presses on it from the page. Keys
+(<code>vault_dropdown_key</code>, before the page's keydown, while it shows): Down and Up move (Up past the first row gives the
+keys back to the field), Enter fills the chosen row (no row chosen: Enter is the page's), Escape hides it on this
+field until Down. The field's role (<code>forms.login_role</code>: user name, password, one-time code) is computed again only
+when the focus, the document's tree or its attributes change. On a one-time-code field it lists the logins with a
+code and fills the code. Locked: one row, "Unlock the Vault".</li>
+<li>Chip (<code>vault_chip</code>, in <code>address_chips</code>): the number of the tab's logins (a click opens the panel); locked, on a
+login field, "Vault locked" (a click opens the unlock dialog).</li>
+<li>Palette: the source "Vault", prefix <code>$</code>, not in the plain search. <code>items</code> asks the helper (<code>vault_search</code>, once per
+query: the helper searches, off the interface thread) and lists, per login, its acts: "Fill" (only when the item is
+a checked row of the focused document: rule 10), copy the user name, the password or the code, open the site. The
+palette's own fuzzy match runs on at most 50 logins.</li>
+<li>Per-site list: the panel's rows have Copy user name, Copy password and Copy code. A copy is a <code>fill</code> (or <code>totp</code>)
+request whose answer goes to the <code>copy</code> hook, never to a page. The clipboard is cleared after
+<code>vault.clipboard.clear_seconds</code> if it still holds the value: Wren keeps only its hash and length.</li>
+<li>TOTP: a fill writes the code into the group's one-time-code field (<code>Login_Fields.one_time_code</code>: autocomplete
+<code>one-time-code</code>, or a name or id with otp, totp, 2fa, mfa..., or a numeric field named code of 4 to 8 characters)
+when the row has a code.</li>
+<li>Frames (rule 7): <code>frame_fill_rule</code>. The frame's own origin and address decide its rows. Same origin as the top
+document: fill. Another origin: the dropdown names it, and each fill asks first (the question names the frame's
+host; a yes fills only the document it was asked for: same tab, same frame or not, same forms model). Opaque
+origin: no rows, no fill. <code>about:blank</code> and <code>srcdoc</code> frames have no web address: no fill, even with an inherited
+origin. The fill's ticket names the document (<code>page</code>, its forms model's id, the field): a frame that went or
+navigated drops the fill.</li>
+<li>Not yet: rule 6 (no fill after a certificate warning: the browser has no such bypass state to read yet); the
+Windows clipboard history exclusion (3.6: the toolkit's clipboard has no such flag; a <code>gui_toolkit</code> change);
+the dropdown in a frame whose fields the shell paints in another document's pass (<code>Forms_View.painted</code> holds one
+document at a time: the dropdown then does not show, the shortcut and the panel still fill); the e2e scenarios of
+phase 3.</li>
+</ul></li>
 <li>Not yet: lock on system sleep and session lock (<code>vault.lock.on_sleep</code>: the toolkit reports no such event yet); the
 fill on the page thread when <code>browser.shell.page_thread</code> is on (the fill runs on the loop thread, as the chrome's
 focus moves do); the e2e tests against Vaultwarden; <code>about:licenses</code> listing the helper; the flake's check of the
@@ -824,6 +874,23 @@ helper.</li>
 <li><a href="../../docs/api/events/">Module events</a></li>
 <li><a href="../../docs/api/eventsource/">Module eventsource</a></li>
 <li><a href="../../docs/api/ext/">Module ext</a></li>
+<li><a href="../../docs/api/ext/README/">Extension APIs of Wren</a></li>
+<li><a href="../../docs/api/ext/action/">chrome.action</a></li>
+<li><a href="../../docs/api/ext/alarms/">chrome.alarms</a></li>
+<li><a href="../../docs/api/ext/extension/">chrome.extension</a></li>
+<li><a href="../../docs/api/ext/i18n/">chrome.i18n</a></li>
+<li><a href="../../docs/api/ext/idle/">chrome.idle</a></li>
+<li><a href="../../docs/api/ext/management/">chrome.management</a></li>
+<li><a href="../../docs/api/ext/offscreen/">chrome.offscreen</a></li>
+<li><a href="../../docs/api/ext/permissions/">chrome.permissions</a></li>
+<li><a href="../../docs/api/ext/runtime/">chrome.runtime</a></li>
+<li><a href="../../docs/api/ext/storage.local/">chrome.storage.local</a></li>
+<li><a href="../../docs/api/ext/storage.managed/">chrome.storage.managed</a></li>
+<li><a href="../../docs/api/ext/storage/">chrome.storage</a></li>
+<li><a href="../../docs/api/ext/storage.session/">chrome.storage.session</a></li>
+<li><a href="../../docs/api/ext/storage.sync/">chrome.storage.sync</a></li>
+<li><a href="../../docs/api/ext/tabs/">chrome.tabs</a></li>
+<li><a href="../../docs/api/ext/windows/">chrome.windows</a></li>
 <li><a href="../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../docs/api/fontface/">Module fontface</a></li>
 <li><a href="../../docs/api/forms/">Module forms</a></li>
@@ -959,6 +1026,7 @@ helper.</li>
 <li><a href="../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../docs/js/web-crypto/">crypto.subtle</a></li>
 <li><a href="../../docs/js/webassembly-api/">The WebAssembly JavaScript API</a></li>
+<li><a href="../../docs/organisation-review/">Review of the organisation of the project</a></li>
 <li><a href="../../docs/test-review/">Review of the test system</a></li>
 <li><a href="../../docs/updates/">Updates</a></li>
 <li><a href="../../docs/vault-protocol/">The Vault helper protocol</a></li>

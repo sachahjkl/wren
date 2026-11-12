@@ -565,6 +565,7 @@ commands_build :: proc(r: ^Command_Registry) {
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { shell_open_folder(download_dir(app)) }})
 	add(r, {name = "browser.profile_folder", title = "Open the profile folder", category = "Browser", glyph = GLYPH_FILE, keywords = "explorer files cookies prefs data",
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { shell_open_folder(app.profile_dir) }})
+	vault_commands_add(r)   // vault_fill.odin: fill, lock, unlock, sync, the panel, the search
 }
 
 // The system's file manager on `dir` (platform.open_path: ShellExecute on Windows, xdg / the portal on Linux).

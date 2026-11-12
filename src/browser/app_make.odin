@@ -179,6 +179,7 @@ app_free :: proc(app: ^App) {
 		}
 	}
 	if .Interface in app.made { app_interface_end(app) }
+	commands_destroy(&app.cmds)   // (built at first use, whatever the stages: a test that reads a shortcut builds it)
 	if .Ui in app.made { app_ui_end(app) }
 	if .Renderer in app.made { app_renderer_end(app) }
 	if .Window in app.made { app_windows_end(app) }

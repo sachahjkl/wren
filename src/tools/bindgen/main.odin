@@ -4,6 +4,8 @@
 // Run from the repository root. Targets:
 //   * the browser API: api/*.widl -> src/page/api_generated.odin (host), sdk/odin/<package>/<module>.odin (guest SDK),
 //     native/js/gen/wren_api.h (C guests), docs/api/*.md, examples/apiconformance + src/tools/apiconformance/cases_generated.odin (conformance tests)
+//   * the extension namespaces: api/ext_<namespace>.widl -> src/page/ext_api_generated.odin (method table, decoders,
+//     gates, constants), src/page/ext_api_generated_test.odin (conformance cases), docs/api/ext/*.md
 //   * the host-call benchmark: src/tools/wasmbench/bench.widl -> its host and guest bindings
 package bindgen
 
@@ -31,6 +33,10 @@ Target :: struct {
 	c_header:         string,     // the imports for C guests, when -emit:c ("" = none)
 	odin_imports:     string,     // the imports for Odin guests, when -emit:odin ("" = none)
 	odin_imports_pkg: string,
+	ext_host:         string,     // the extension namespaces (api/ext_<namespace>.widl): tables and decoders ("" = none)
+	ext_cases:        string,     // their conformance cases (a _test file of the same package)
+	ext_package:      string,
+	ext_docs_dir:     string,
 }
 
 // Which glue the guest side is generated in. The host trampolines, the guest SDK, the docs and the conformance tests
@@ -69,6 +75,8 @@ TARGETS := [?]Target{
 		conf_table = "src/tools/apiconformance/cases_generated.odin", conf_table_pkg = "apiconformance",
 		c_header = "native/js/gen/wren_api.h",
 		odin_imports = "native/js/odin/wj/wr_imports.odin", odin_imports_pkg = "wj",
+		ext_host = "src/page/ext_api_generated.odin", ext_cases = "src/page/ext_api_generated_test.odin", ext_package = "page",
+		ext_docs_dir = "docs/api/ext",
 	},
 	{
 		sources = {"src/tools/wasmbench/bench.widl"}, host = BENCH_HOST, host_out = "src/tools/wasmbench/bench_generated.odin",
@@ -183,6 +191,16 @@ run :: proc(t: Target) -> ^idl.Api {
 		c := idl.emit_conformance(api, t.conf_guest_pkg, t.conf_table_pkg)
 		emit(t.conf_guest, c.guest)
 		emit(t.conf_table, c.table)
+	}
+	if t.ext_host != "" {
+		emit(t.ext_host, idl.emit_ext_host(api, t.ext_package))
+		emit(t.ext_cases, idl.emit_ext_cases(api, t.ext_package))
+		keep := make(map[string]bool)
+		for f in idl.emit_ext_docs(api) {
+			emit(filepath.join({t.ext_docs_dir, f.name}) or_else "", f.text)
+			keep[f.name] = true
+		}
+		prune(t.ext_docs_dir, ".md", keep)
 	}
 	return api
 }

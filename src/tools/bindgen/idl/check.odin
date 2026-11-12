@@ -16,6 +16,7 @@ load :: proc(files: []File_Source) -> ^Api {
 	for f in files { parse_file(api, f.name, f.text) }
 	for m, i in api.modules { m.order = i }
 	if len(api.diags) == 0 { check(api) }
+	if len(api.diags) == 0 { ext_check(api) }   // ext_check.odin
 	return api
 }
 

@@ -107,7 +107,7 @@ cdp_bidi_tree_result :: proc(app: ^App) -> string {
 	strings.write_string(&b, `{"contexts":[`)
 	first := true
 	for t in tabs_all(app) {
-		if t.frame != nil { continue }
+		if t.view != nil { continue }
 		if !first { strings.write_byte(&b, ',') }
 		first = false
 		fmt.sbprintf(&b, `{{"context":"%d","url":%s,"children":[],"userContext":"default"}}`, t.id, base.json_quote(t.url))

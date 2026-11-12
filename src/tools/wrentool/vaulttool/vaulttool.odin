@@ -73,7 +73,7 @@ probe :: proc(args: []string) -> int {
 		_, _ = os.process_wait(process)
 	}
 
-	a, a_ok := ask(&p, Hello{id = 1, op = "hello", protocol = 2, state_dir = "", identity_url = fmt.tprintf("%s/identity", server),
+	a, a_ok := ask(&p, Hello{id = 1, op = "hello", protocol = 3, state_dir = "", identity_url = fmt.tprintf("%s/identity", server),
 		api_url = fmt.tprintf("%s/api", server), persist = false, device_name = "wrentool", client_version = "probe"})
 	if !answered(a, a_ok, "hello") { return 1 }
 	fmt.printfln("hello: helper %s, protocol %v", text(a, "helper_version"), a["protocol"])

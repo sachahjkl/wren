@@ -128,7 +128,7 @@ Tab :: struct {
 	zoom:     f32,               // page zoom (zoom.odin); 1 = 100 %
 	smooth:   Smooth_Scroll,     // scroll animations and scroll bar drags (smooth_scroll.odin)
 	nav_state: Tab_Nav,          // restoring entries, leaving pages, the back/forward cache (history_restore.odin, bfcache.odin)
-	frame:    ^Frame_View,       // non-nil: the stand-in tab of a frame's document, not a tab (frames_shell.odin)
+	view:     ^Page_View,        // non-nil: the tab of a page view (a frame's document, an extension's popup), not a window's tab (page_view.odin)
 	keyboard_frame: Frame_Document,   // keyboard.odin: the frame document that had the keyboard when another tab took the window
 	pinned:   bool,              // tab_groups.odin: at the start of the window's tabs, its icon alone
 	group:    u64,               // tab_groups.odin: the id of its group in its window (0: none)
@@ -261,7 +261,7 @@ App :: struct {
 	phase_clock:   Phase_Clock,              // prof.odin: the phases of the frame being drawn
 	gpu_steps_state: Gpu_Steps_State,        // gpu_steps.odin
 	outline_cache: map[u64]^canvas2d.Path,   // canvas_shell.odin: the outlines of the canvases' text
-	frame_views:   map[^page.Page]^Frame_View,   // frames_shell.odin: the views of the frames (iframes) of the pages
+	frame_views:   map[^page.Page]^Page_View,    // frames_shell.odin: the views of the frames (iframes) of the pages
 	paint_stack:   [dynamic]^page.Page,      // frames_shell.odin: the documents being painted, innermost last
 	os_anim:       Os_Anim,                  // os_settings.odin
 	font_watch, text_watch: int,             // font_settings.odin: the preference watches
@@ -347,6 +347,13 @@ tab_open_new :: proc(app: ^App) -> ^Tab {
 	t := tab_open(app)
 	address_sync(app, active_window(app), drop_edit = true)   // (the user asked for a new tab: what was typed is not for it)
 	if config.bool_of(&app.prefs, "browser.newtab.focus_address") { window_ask(app, .Address_Focus) }
+	return t
+}
+
+// The tab of a frame or a page view: not in the strip nor in tab_ids, its id from the frames' own range (frames_shell.odin).
+tab_alloc_frame :: proc(id: u64) -> ^Tab {
+	t := new(Tab)
+	t.id, t.kind, t.zoom = id, .Web, 1
 	return t
 }
 
@@ -455,7 +462,7 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 	tab_forget(app, t)   // (first: what its scope's closing ends, a request, looks its tab up and finds none)
 	bfcache_drop_tab(app, t)
 	tab_nav_destroy(app, t)
-	ext_tab_closed(app, t)   // ext_shell.odin: what the extensions kept for the tab (a popup's mark, per-tab action state)
+	ext_tab_closed(app, t)   // ext_shell.odin: what the extensions kept for the tab (per-tab action state)
 	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone (a held page too)
 	page.navigable_top_free(t.top)   // (the windows holding it see it closed)
 	hold_step(app, t, .Tab_Gone)
@@ -741,6 +748,7 @@ page_open_window :: proc(user: rawptr, p: ^page.Page, req: page.Open_Request) ->
 page_close_window :: proc(user: rawptr, p: ^page.Page) {
 	t := (^Tab)(user)
 	if t.page != p { return }
+	if ext_popup_closes(the_app, t) { return }   // ext_popup.odin: an extension's popup closes itself
 	tab_close_tab(the_app, t)
 }
 
@@ -1574,6 +1582,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	if wnd.errand == .None && why != {.Interface_Wake} { memory_trim_active(app) } else { app.hud.settle_skip = true }   // memory_trim.odin; hud.odin: no sample
 	forms_view(app).caret_painted = {}
 	prof_begin(.Input)
+	events = ext_popup_events(app, events)   // ext_popup.odin: an extension's open popup takes its keys and the pointer over it
 	events = image_document_events(app, events)   // image_document_shell.odin: an image opened by itself takes its wheel, drags and keys
 	page_cursor_events(app, events)   // page_cursor.odin: a press on the page keeps its cursor
 	dnd_events(app, events)           // dnd_shell.odin: drags of other applications over the window
@@ -1608,6 +1617,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	}
 	fullscreen_shell_frame(app, app.active)   // a page's full screen ends with its tab being shown (fullscreen_shell.odin)
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
+	ext_popup_frame(app)   // ext_popup.odin: the popup's animation frames, layout and size
 	app.rendering = nil
 	events = shell_page_phase_end(app, events)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
 	platform.frame_gate_stage(gate, .Building)

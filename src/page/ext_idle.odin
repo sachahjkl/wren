@@ -9,7 +9,6 @@ package page
 // a state is "active", the timer is set for the moment it can turn "idle" (the interval less the time already idle);
 // while one is "idle", the timer polls every EXT_IDLE_POLL_MS to see the input that ends it.
 
-import "core:encoding/json"
 import "core:fmt"
 import "core:math"
 import "wb:base"
@@ -31,27 +30,14 @@ ext_idle_interval_of :: proc(e: ^extensions.Extension) -> int {
 	return e.idle_interval > 0 ? max(e.idle_interval, extensions.IDLE_MIN_INTERVAL) : extensions.IDLE_DEFAULT_INTERVAL
 }
 
-ext_idle_query :: proc(x: ^Ext_Call) {
-	n: f64
-	ok: bool
-	#partial switch v in ext_arg(x, 0) {
-	case json.Float:   n, ok = v, true
-	case json.Integer: n, ok = f64(v), true
-	}
-	if !ok { ext_fail(x, "Error in invocation of idle.queryState: detectionIntervalInSeconds must be an integer"); return }
-	st := extensions.idle_state_of(ext_idle_seconds(), int(n), false)
+ext_idle_query_state :: proc(x: ^Ext_Call, a: Ext_Idle_Query_State_Args) {
+	st := extensions.idle_state_of(ext_idle_seconds(), int(a.detection_interval_in_seconds), false)
 	ext_ok(x, extensions.json_quote(extensions.IDLE_STATE_NAMES[st]))
 }
 
-ext_idle_interval :: proc(x: ^Ext_Call) {
-	n: f64
-	ok: bool
-	#partial switch v in ext_arg(x, 0) {
-	case json.Float:   n, ok = v, true
-	case json.Integer: n, ok = f64(v), true
-	}
-	if !ok || n < 0 { ext_fail(x, "Error in invocation of idle.setDetectionInterval: intervalInSeconds must be an integer"); return }
-	x.e.idle_interval = int(min(n, 4 * 3600))
+// (a negative interval is refused by the decoder: [Min=0] in api/ext_idle.widl)
+ext_idle_set_detection_interval :: proc(x: ^Ext_Call, a: Ext_Idle_Set_Detection_Interval_Args) {
+	x.e.idle_interval = int(min(a.interval_in_seconds, 4 * 3600))
 	ext_idle_schedule()
 	ext_ok(x, "")
 }

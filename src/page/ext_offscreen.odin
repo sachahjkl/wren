@@ -12,7 +12,6 @@ package page
 // The record goes first, then the shell closes the page in a task of its own (never inside a call of a page). One timer
 // per record: the load deadline while it loads, its lifetime once ready (a CLIPBOARD-only one).
 
-import "core:encoding/json"
 import "core:fmt"
 import "core:strings"
 import "wb:base"
@@ -22,11 +21,6 @@ import "wb:url"
 
 // A document that does not load in this time is closed and its createDocument fails.
 EXT_OFFSCREEN_LOAD_MS :: 30_000
-
-EXT_OFFSCREEN_REASONS := [?]string{
-	"TESTING", "AUDIO_PLAYBACK", "IFRAME_SCRIPTING", "DOM_SCRAPING", "BLOBS", "DOM_PARSER", "USER_MEDIA", "DISPLAY_MEDIA",
-	"WEB_RTC", "CLIPBOARD", "LOCAL_STORAGE", "WORKERS", "BATTERY_STATUS", "MATCH_MEDIA", "GEOLOCATION",
-}
 
 Ext_Offscreen :: struct {
 	serial:   u64,                    // what its timer names it by (a record that went is not found)
@@ -69,24 +63,13 @@ ext_own_file_url :: proc(e: ^extensions.Extension, u: string) -> (string, bool) 
 	return abs.href, true
 }
 
-ext_offscreen_create :: proc(x: ^Ext_Call) {
-	params, ok := ext_arg(x, 0).(json.Object)
-	if !ok { ext_fail(x, "Error in invocation of offscreen.createDocument: parameters must be an object"); return }
-	u, uok := jstr(params, "url")
-	reasons, rok := params["reasons"].(json.Array)
-	_, jok := jstr(params, "justification")
-	if !uok || !rok || len(reasons) == 0 || !jok {
-		ext_fail(x, "Error in invocation of offscreen.createDocument: url, reasons and justification are required")
-		return
-	}
+// (the reasons are checked by the decoder: enum Reason of api/ext_offscreen.widl)
+ext_offscreen_create_document :: proc(x: ^Ext_Call, a: Ext_Offscreen_Create_Document_Args) {
+	params := a.parameters
+	u := params.url
+	if len(params.reasons) == 0 { ext_fail(x, "Error in invocation of offscreen.createDocument: url, reasons and justification are required"); return }
 	clipboard_only := true
-	for v in reasons {
-		s, sok := v.(json.String)
-		known := false
-		if sok { for k in EXT_OFFSCREEN_REASONS { if k == s { known = true; break } } }
-		if !known { ext_fail(x, fmt.tprintf("Error in invocation of offscreen.createDocument: %s is not a reason", extensions.json_text(v))); return }
-		if s != "CLIPBOARD" { clipboard_only = false }
-	}
+	for reason in params.reasons { if reason != "CLIPBOARD" { clipboard_only = false } }
 	abs, fok := ext_own_file_url(x.e, u)
 	if !fok { ext_fail(x, fmt.tprintf("the offscreen document's URL %q is not a file of the extension", u)); return }
 	r := ext_router()
@@ -142,11 +125,11 @@ ext_page_loaded :: proc(p: ^Page) {
 	}
 }
 
-ext_offscreen_has :: proc(x: ^Ext_Call) {
+ext_offscreen_has_document :: proc(x: ^Ext_Call) {
 	ext_ok(x, jbool_text(x.e.id in ext_router().offscreen))
 }
 
-ext_offscreen_close_call :: proc(x: ^Ext_Call) {
+ext_offscreen_close_document :: proc(x: ^Ext_Call) {
 	if x.e.id not_in ext_router().offscreen { ext_fail(x, "No current offscreen document."); return }
 	ext_offscreen_close(x.e.id)
 	ext_ok(x, "")

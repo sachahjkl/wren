@@ -279,6 +279,7 @@ address_chips :: proc(app: ^App, t: ^Tab) {
 	private_badge(app)   // private_browsing.odin: a private Wren's mark, first (whichever bar holds the chips)
 	bookmark_star_chip(app, t)   // bookmarks_ui.odin: the page is a bookmark or not
 	webauthn_chip(app, t)   // a passkey dialog is open for the page (webauthn_shell.odin)
+	vault_chip(app, t)   // vault_fill.odin: the Vault's logins for the page, or its lock
 }
 
 // The page zoom, when it is not 100 %: a translucent pill over the end of the address field (it pushes nothing, the text

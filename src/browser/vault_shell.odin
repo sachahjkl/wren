@@ -1,9 +1,10 @@
 package browser
 
 // The Vault's shell (docs/bitwarden.md 4.7): the toolbar button with the lock state, the panel with the logins of the
-// tab's page and their Fill button, the login dialog (the server, the email and master password or the API key, then
+// tab's page, their Fill button and their copies (user name, password, code), the login dialog (the server, the email and master password or the API key, then
 // the second step: an authenticator or email code, or the new-device code), the unlock dialog (master password or PIN),
-// the PIN dialog, the question before a fill on a plain http page, and the fill itself. The state is the App's one
+// the PIN dialog, the question before a fill on a plain http page or into a frame of another origin. The fill itself,
+// the dropdown, the chip, the shortcut and the palette's search are in vault_fill.odin. The state is the App's one
 // vault.Vault (src/vault): every surface reads it, none keeps a copy. All of it is toolkit widgets drawn by the chrome: a
 // page can neither read nor cover them.
 //
@@ -22,6 +23,7 @@ import "wb:base"
 import "wb:config"
 import "wb:dom"
 import "wb:forms"
+import "wb:host"
 import "wb:i18n"
 import "wb:page"
 import "wb:style"
@@ -48,9 +50,30 @@ Vault_Shell :: struct {
 	server:         ui.Text_Field,   // the address of a self-hosted server
 	pin_dialog:     bool,            // the dialog that sets a PIN is open
 	pin:            ui.Text_Field,   // secret
-	ask_open:       bool,            // the question before a fill on a plain http page
+	ask_open:       bool,            // the question before a fill on a plain http page or into a frame of another origin
 	ask_item:       string,          // owned: the row it is for
 	ask_tab:        u64,
+	ask_fields:     vault.Fill_Fields,
+	ask_frame:      bool,            // the document is the focused frame's
+	ask_forms:      u64,             // its forms model: another document since the question is not filled
+	ask_insecure:   bool,            // plain http
+	ask_origin:     string,          // owned: the document's host, which the question names
+	open_panel:     bool,            // the chip, the shortcut or a command asks for the panel: it opens at the next build
+	fill_keys:      [1]Shortcut,     // the command vault.fill's shortcut (vault.fill.shortcut)
+	// the dropdown under a login field (vault_fill.odin)
+	role:           forms.Login_Role,   // the focused field's, for role_forms / role_field / role_version
+	role_forms:     u64,
+	role_field:     base.Handle,
+	role_version:   u64,
+	dd_shown:       bool,            // built this frame
+	dd_rect:        draw.Rect,
+	dd_sel:         int,             // -1: no row chosen (the keys are the field's)
+	dd_dismissed_forms: u64,         // Escape hid it on this field
+	dd_dismissed_field: base.Handle,
+	// the clipboard: what the Vault put there (its hash and length only), cleared at clip_timer
+	clip_hash:      u64,
+	clip_len:       int,
+	clip_timer:     base.Handle,
 }
 
 ////////////////////////////////
@@ -62,13 +85,17 @@ vault_shell_init :: proc(app: ^App) {
 	vault.vault_init(&s.v, &app.loop, &app.blocking, &app.prefs, profile, APP_VERSION, {
 		user = app,
 		changed = proc(user: rawptr) { request_frames((^App)(user), 2) },
-		fill = vault_apply,
+		fill = vault_apply,   // vault_fill.odin
+		copy = vault_copied,  // vault_fill.odin
 	})
 	s.watch = config.watch(&app.prefs, "vault.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
 		vault.vault_prefs_changed(&app.vault.v, p)
+		vault_shortcut_apply(app)
 		request_frames(app, 2)
 	}, app)
+	s.dd_sel = -1
+	vault_shortcut_apply(app)
 	s.started = true
 }
 
@@ -76,6 +103,7 @@ vault_shell_destroy :: proc(app: ^App) {
 	s := &app.vault
 	if !s.started { return }
 	config.unwatch(&app.prefs, s.watch)
+	if s.clip_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, s.clip_timer) }
 	vault.vault_destroy(&s.v)
 	fields := vault_fields(s)
 	for f in fields {
@@ -83,6 +111,7 @@ vault_shell_destroy :: proc(app: ^App) {
 		ui.field_destroy(f)
 	}
 	delete(s.ask_item)
+	delete(s.ask_origin)
 	s^ = {}
 }
 
@@ -101,7 +130,6 @@ secret_wipe :: proc(f: ^ui.Text_Field) {
 }
 
 // Whether the Vault may show rows or fill now: never while a remote client drives the browser (docs/bitwarden.md 3.3).
-@(private = "file")
 vault_usable :: proc(app: ^App) -> bool { return !app.remote.active || app.vault.v.settings.test_remote }
 
 // The frame's input (main.odin, frame): a key or the pointer used in the browser postpones the Vault's idle lock.
@@ -174,13 +202,15 @@ vault_button :: proc(app: ^App, t: ^Tab) {
 	if sig.clicked {
 		if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else { ui.ctx_menu_open_rect(key, b.rect, b.key) }
 	}
+	// (the chip, the fill shortcut or a command asked for the panel)
+	if app.vault.open_panel {
+		app.vault.open_panel = false
+		if !ui.ctx_menu_is_open(key) && vault_usable(app) { ui.ctx_menu_open_rect(key, b.rect, b.key) }
+	}
 	open := ui.ctx_menu_is_open(key)
 	if !open && vault_usable(app) { tip(sig, vault_state_words(v)) }
 	ui.a11y_set(b, {name = i18n.tr("Vault"), popup = .Menu, expanded = open})
-	if open != app.vault.panel_was {
-		app.vault.panel_was = open
-		if !open { vault.vault_release_rows(v) }   // (the rows live while the panel shows them)
-	}
+	app.vault.panel_was = open   // (the page's rows stay while the Vault is unlocked: the chip and the shortcut use them)
 	if ui.ctx_menu(key, em * VAULT_PANEL_W_EM) { vault_panel_body(app, t) }
 }
 
@@ -285,14 +315,16 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 	}
 }
 
-// The logins of the tab's page: asked once per address (the Vault keeps them), shown from what it keeps.
+// The logins of the tab's page (the per-site list): asked once per address (the Vault keeps them), shown from what it
+// keeps, each with its Fill button and its copies.
 @(private = "file")
 vault_rows :: proc(app: ^App, t: ^Tab) {
 	v := &app.vault.v
 	em := ui.font_size()
 	address := t != nil && t.kind == .Web ? t.url : ""
 	vault.vault_ask_rows(v, address)   // (nothing when these rows are already asked or kept)
-	switch v.rows_state {
+	rows, rows_state, _ := vault.vault_rows(v, .Page)
+	switch rows_state {
 	case .None, .Asked, .Checking:
 		panel_line(i18n.tr("Looking for logins…"), "vp_rows_wait", weak = true)
 		return
@@ -301,11 +333,11 @@ vault_rows :: proc(app: ^App, t: ^Tab) {
 		return
 	case .Ready:
 	}
-	if len(v.rows) == 0 {
+	if len(rows) == 0 {
 		panel_line(i18n.tr("No login for this page."), "vp_rows_none", weak = true)
 		return
 	}
-	for r, i in v.rows {
+	for r, i in rows {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, fmt_id("###vp_row", i)) {
 			ui.next({width = ui.fill(), height = ui.children_sum()})
@@ -319,8 +351,20 @@ vault_rows :: proc(app: ^App, t: ^Tab) {
 			}
 			if action_button(i18n.tr("Fill"), fmt_id("vp_fill", i), em * 5) {
 				ui.ctx_menu_close()
-				vault_fill_clicked(app, t, r.id)
-				break   // (the rows may be released with the panel)
+				vault_fill_clicked(app, r.id)
+				break   // (the rows may change with the fill)
+			}
+		}
+		// the copies: a click of the user, the value goes to the clipboard when it comes (vault_copied)
+		ui.next({width = ui.fill(), height = ui.children_sum()})
+		if ui.row(.Start, {}, fmt_id("###vp_copies", i)) {
+			id := strings.clone(r.id, context.temp_allocator)   // (the rows may change with a copy's answer)
+			if r.username != "" && action_button(i18n.tr("Copy user name"), fmt_id("vp_copy_user", i), em * 7.4) { vault.vault_copy(v, id, .Username) }
+			ui.spacer(ui.px(em * 0.3))
+			if action_button(i18n.tr("Copy password"), fmt_id("vp_copy_pass", i), em * 7.4) { vault.vault_copy(v, id, .Password) }
+			if r.has_totp {
+				ui.spacer(ui.px(em * 0.3))
+				if action_button(i18n.tr("Copy code"), fmt_id("vp_copy_totp", i), em * 6) { vault.vault_copy(v, id, .Totp) }
 			}
 		}
 		ui.spacer(ui.px(em * 0.3))
@@ -333,59 +377,19 @@ fmt_id :: proc(prefix: string, i: int) -> string { return fmt.aprintf("%s_%d", p
 ////////////////////////////////
 // The fill
 
-// A click on Fill: the page's site is checked, a plain http page asks first (vault.fill.insecure), then the values are
-// asked of the helper. They are applied when they come (vault_apply), if the tab still shows the same document.
+// A click on Fill in the panel: the tab's own document (the panel lists its logins), its focused field's group. The
+// site is checked, a plain http page asks first (vault_fill_item), then the values are asked of the helper; they are
+// applied when they come (vault_apply), if the tab still shows the same document.
 @(private = "file")
-vault_fill_clicked :: proc(app: ^App, t: ^Tab, item: string) {
-	if !vault_usable(app) || t == nil || t.kind != .Web || t.page == nil || t.page.formctl == nil { return }
-	site, ok := vault.site_of(t.url)
-	if !ok { ui.toast(.Warn, i18n.tr("The Vault fills only web pages.")); return }
-	if site.insecure {
-		if app.vault.v.settings.insecure == .Never {
-			ui.toast(.Warn, i18n.tr("Not filled: this page is not secure (vault.fill.insecure)."))
-			return
-		}
-		s := &app.vault
-		delete(s.ask_item)
-		s.ask_item = strings.clone(item)
-		s.ask_tab = t.id
-		s.ask_open = true
-		request_frames(app, 2)
-		return
-	}
-	vault_fill_send(app, t, item)
-}
-
-@(private = "file")
-vault_fill_send :: proc(app: ^App, t: ^Tab, item: string) {
-	ticket := vault.Fill_Ticket{tab = t.id, page = t.page, nav = t.nav, url = t.url}
-	if !vault.vault_fill(&app.vault.v, item, ticket) { ui.toast(.Warn, i18n.tr("The Vault cannot fill now.")) }
-}
-
-// The `fill` hook of the Vault: the values, valid for this call only. False: dropped (the page changed, no field).
-@(private = "file")
-vault_apply :: proc(user: rawptr, values: ^vault.Fill_Values) -> bool {
-	app := (^App)(user)
-	tk := values.ticket
-	t := tab_find(app, tk.tab)
-	if t == nil || t.page == nil || rawptr(t.page) != tk.page || rawptr(t.nav) != tk.nav || t.url != tk.url || t.page.formctl == nil {
-		return false   // (another document now: rule 9)
-	}
-	p := t.page
-	f := page.page_forms(p)
-	lf := forms.login_fields(f, f.focus, vault_field_shown, p)
-	if lf.username == base.NIL_HANDLE && lf.password == base.NIL_HANDLE { return false }   // (the Vault says so: its message)
-	filled := false
-	if values.has_username && lf.username != base.NIL_HANDLE { filled = forms.fill_field(f, lf.username, values.username) || filled }
-	if values.has_password && lf.password != base.NIL_HANDLE && forms.input_type(f, lf.password) == .Password {
-		filled = forms.fill_field(f, lf.password, values.password) || filled
-	}
-	request_frames(app, 2)
-	return filled
+vault_fill_clicked :: proc(app: ^App, item: string) {
+	x, ok := vault_target(app, top_only = true)
+	if !ok { return }
+	r := vault.vault_row_find(&app.vault.v, item, .Page)
+	if r == nil { return }
+	vault_fill_item(app, x, item, vault_fields_for(app, x, r))
 }
 
 // Whether a field is rendered: not under display:none, itself visible (the fill writes only what the user can see).
-@(private = "file")
 vault_field_shown :: proc(user: rawptr, h: base.Handle) -> bool {
 	p := (^page.Page)(user)
 	if p.styled == nil { return true }
@@ -405,7 +409,6 @@ vault_field_shown :: proc(user: rawptr, h: base.Handle) -> bool {
 ////////////////////////////////
 // The dialogs (each frame, from build_ui)
 
-@(private = "file")
 vault_dialog_open :: proc(app: ^App) {
 	s := &app.vault
 	if !vault_usable(app) { return }
@@ -472,8 +475,12 @@ vault_dialogs_build :: proc(app: ^App) {
 		if s.dialog { vault_dialog_close(app) }
 		if s.pin_dialog { vault_pin_close(app) }
 		if s.ask_open { s.ask_open = false; delete(s.ask_item); s.ask_item = "" }
+		vault_fill_frame(app)   // vault_fill.odin: releases the rows
+		s.dd_shown = false
 		return
 	}
+	vault_fill_frame(app)   // vault_fill.odin: the rows of the focused documents, the dropdown's field
+	vault_dropdown_build(app)   // vault_fill.odin: the list under a focused login field
 	vault_insecure_build(app)
 	vault_pin_build(app)
 	vault_login_build(app)
@@ -693,20 +700,29 @@ vault_pin_build :: proc(app: ^App) {
 	if cancel || !open { vault_pin_close(app) }
 }
 
-// The question before a fill on a plain http page (docs/bitwarden.md 3.5, rule 5).
+// The question before a fill on a plain http page (docs/bitwarden.md 3.5, rule 5) or into a frame of another origin
+// than the tab's (rule 7): it names the document's host. A yes fills only the document it was asked for.
 @(private = "file")
 vault_insecure_build :: proc(app: ^App) {
 	s := &app.vault
 	if !s.ask_open { return }
-	t := tab_find(app, s.ask_tab)
-	note := t != nil ? strings.concatenate({i18n.tr("This page is not secure: what you fill can be read on the network. "), url_host(t.url)}, ui.frame_allocator()) : ""
-	answer := ui.confirm("vault_insecure", &s.ask_open, {title = i18n.tr("Fill this page?"), note = note, act = i18n.tr("Fill")})
+	parts := make([dynamic]string, 0, 4, context.temp_allocator)
+	if s.ask_frame { append(&parts, i18n.tr("This form is in a frame of another site than the tab's: "), s.ask_origin, ". ") }
+	if s.ask_insecure { append(&parts, i18n.tr("This page is not secure: what you fill can be read on the network. "), s.ask_origin) }
+	note := strings.concatenate(parts[:], ui.frame_allocator())
+	answer := ui.confirm("vault_insecure", &s.ask_open, {title = s.ask_frame ? i18n.tr("Fill this frame?") : i18n.tr("Fill this page?"), note = note, act = i18n.tr("Fill")})
 	switch answer {
 	case .None:
 		if s.ask_open { return }
 	case .Cancelled:
 	case .Confirmed:
-		if t != nil { vault_fill_send(app, t, s.ask_item) }
+		// (the same document as when asked: the tab, the frame or not, the forms model)
+		x, ok := vault_target(app, top_only = !s.ask_frame)
+		if ok && x.tab.id == s.ask_tab && x.frame == s.ask_frame && x.f.id == s.ask_forms {
+			vault_fill_send(app, x, s.ask_item, s.ask_fields)
+		} else {
+			ui.toast(.Warn, "%s", i18n.tr("Not filled: the page changed."))
+		}
 	}
 	s.ask_open = false
 	delete(s.ask_item)
@@ -714,7 +730,7 @@ vault_insecure_build :: proc(app: ^App) {
 	request_frames(app, 2)
 }
 
-@(private = "file")
+// The host (and port) of an address, for what the Vault names: "example.com:8443".
 url_host :: proc(address: string) -> string {
 	rest := address
 	if i := strings.index(rest, "://"); i >= 0 { rest = rest[i + 3:] }

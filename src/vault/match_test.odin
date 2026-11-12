@@ -67,3 +67,28 @@ what_is_not_a_web_page_is_never_filled :: proc(t: ^testing.T) {
 	testing.expect(t, !row_matches(s, "androidapp://com.example", .Domain))
 	testing.expect(t, !row_matches(s, "", .Domain))
 }
+
+@(test)
+starts_with_and_exact_compare_the_serialized_addresses :: proc(t: ^testing.T) {
+	s := site(t, "https://example.com/login?next=1")
+	testing.expect(t, row_matches(s, "https://example.com/login", .Starts_With))
+	testing.expect(t, row_matches(s, "https://EXAMPLE.com", .Starts_With))   // (serialized: "https://example.com/")
+	testing.expect(t, !row_matches(s, "https://example.com/signup", .Starts_With))
+	testing.expect(t, row_matches(s, "https://example.com/login?next=1", .Exact))
+	testing.expect(t, !row_matches(s, "https://example.com/login", .Exact))
+	h := site(t, "http://example.com/login")
+	testing.expect(t, !row_matches(h, "https://example.com/", .Starts_With))   // (an https item never goes to http)
+}
+
+@(test)
+equivalent_rows_need_the_answers_list :: proc(t: ^testing.T) {
+	s := site(t, "https://www.youtube.com/")
+	eq := []string{"google.com", "Gmail.com"}
+	testing.expect(t, row_matches(s, "https://accounts.google.com", .Equivalent, eq))
+	testing.expect(t, row_matches(s, "https://mail.gmail.com", .Equivalent, eq))
+	testing.expect(t, !row_matches(s, "https://accounts.google.com", .Equivalent))   // (no list: no claim)
+	testing.expect(t, !row_matches(s, "https://evil.example", .Equivalent, eq))
+	testing.expect(t, !row_matches(s, "https://youtube.com", .Equivalent, eq))   // (the site's own domain is a Domain row)
+	ip := site(t, "http://127.0.0.1:8080/")
+	testing.expect(t, !row_matches(ip, "http://127.0.0.1:8080", .Equivalent, eq))
+}

@@ -1,0 +1,23 @@
+/// Alarms of the extension, kept in state.txt (src/page/ext_api.odin). A delay or a period below
+/// extensions.alarms.min_period_ms is raised to it.
+[Permission=alarms]
+namespace alarms {
+  struct Alarm {
+    string name;
+    f64 scheduledTime;
+    optional f64 periodInMinutes;
+  }
+  struct AlarmCreateInfo {
+    /// Milliseconds since the epoch.
+    optional f64 when;
+    optional f64 delayInMinutes;
+    optional f64 periodInMinutes;
+  }
+  /// The same name replaces the alarm before it.
+  void create(optional string name, optional AlarmCreateInfo alarmInfo);
+  Alarm get(optional string name);
+  Alarm[] getAll();
+  bool clear(optional string name);
+  bool clearAll();
+  event onAlarm(Alarm alarm);
+}

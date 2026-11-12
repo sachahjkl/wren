@@ -154,6 +154,8 @@ Api :: struct {
 	callbacks: [dynamic]^Decl,
 	diags:     [dynamic]Diag,
 	error_enum: ^Decl,           // `enum Error`: the codes of `raises`
+	namespaces: [dynamic]^Ext_Namespace,   // extension namespaces (ext.odin), in declaration order (files sorted by name)
+	ext_types:  map[string]^Ext_Item,      // their enums, structs and unions, shared by every namespace
 	arena:     vmem.Arena,       // owns all of the above (load, destroy)
 }
 

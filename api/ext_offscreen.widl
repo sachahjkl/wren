@@ -1,0 +1,17 @@
+/// One page that shows nothing per extension (src/page/ext_offscreen.odin). It has chrome.runtime only.
+[Permission=offscreen]
+namespace offscreen {
+  enum Reason { TESTING, AUDIO_PLAYBACK, IFRAME_SCRIPTING, DOM_SCRAPING, BLOBS, DOM_PARSER, USER_MEDIA, DISPLAY_MEDIA,
+    WEB_RTC, CLIPBOARD, LOCAL_STORAGE, WORKERS, BATTERY_STATUS, MATCH_MEDIA, GEOLOCATION }
+  struct CreateParameters {
+    /// At least one. A document made for CLIPBOARD only closes after extensions.offscreen.max_lifetime_ms.
+    Reason[] reasons;
+    /// A file of the extension.
+    string url;
+    string justification;
+  }
+  /// Answers once the document fired its load event. A second document is an error.
+  void createDocument(CreateParameters parameters);
+  bool hasDocument();
+  void closeDocument();
+}

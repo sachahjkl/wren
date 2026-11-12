@@ -1,0 +1,69 @@
+/// Wren's windows (src/page/ext_api.odin, ext_tabs.odin). type "popup" makes the popout window: one tab, no tab
+/// strip, no toolbar.
+namespace windows {
+  const i64 WINDOW_ID_NONE = -1;
+  const i64 WINDOW_ID_CURRENT = -2;
+  enum WindowType { normal, popup, panel, app, devtools }
+  enum CreateType { normal, popup, panel }
+  enum WindowState { normal, minimized, maximized, fullscreen, "locked-fullscreen" }
+
+  struct Window {
+    i64 id;
+    bool focused;
+    i64 top;
+    i64 left;
+    i64 width;
+    i64 height;
+    bool incognito;
+    WindowType type;
+    WindowState state;
+    bool alwaysOnTop;
+    optional Tab[] tabs;
+  }
+  struct QueryOptions {
+    /// With the window's tabs.
+    optional bool populate;
+    optional WindowType[] windowTypes;
+  }
+  struct CreateData {
+    optional UrlOrUrls url;
+    /// Not supported: moving a tab into the new window.
+    optional i64 tabId;
+    optional i64 left;
+    optional i64 top;
+    optional i64 width;
+    optional i64 height;
+    optional bool focused;
+    /// true is refused: Wren has no incognito profile.
+    optional bool incognito;
+    optional CreateType type;
+    optional WindowState state;
+    optional bool setSelfAsOpener;
+  }
+  struct UpdateInfo {
+    optional i64 left;
+    optional i64 top;
+    optional i64 width;
+    optional i64 height;
+    optional bool focused;
+    optional bool drawAttention;
+    optional WindowState state;
+  }
+
+  /// The window of the calling page, else the focused one.
+  Window getCurrent(optional QueryOptions queryOptions);
+  Window getLastFocused(optional QueryOptions queryOptions);
+  Window[] getAll(optional QueryOptions queryOptions);
+  /// -2: the current window.
+  Window get(i64 windowId, optional QueryOptions queryOptions);
+  Window create(optional CreateData createData);
+  /// focused and the position are applied; the size and the state are not yet.
+  Window update(i64 windowId, optional UpdateInfo updateInfo);
+  void remove(i64 windowId);
+
+  /// -1: no window of Wren has the focus.
+  event onFocusChanged(i64 windowId);
+  event onRemoved(i64 windowId);
+  event onCreated(Window window);
+  event onBoundsChanged(Window window);
+}

@@ -1,7 +1,7 @@
 package browser
 
 // Browser extensions in the shell (docs/extensions.md, section 3.10): start-up and shutdown, the loads of packages, the
-// profile's files, what the router asks of the shell (Ext_Embedder: tabs, windows, which page is a popup), and the
+// profile's files, what the router asks of the shell (Ext_Embedder: tabs, windows, which page is a popup: ext_popup.odin), and the
 // install prompt's answer. src/extensions holds the data, src/page runs the contexts; the toolbar button is
 // ext_toolbar.odin, about:extensions ext_page.odin.
 //
@@ -27,7 +27,8 @@ Ext_Shell :: struct {
 	notice:   string,                       // owned: what about:extensions says on top (the last result)
 	picking:  bool,                         // the folder dialog is open
 	loading:  int,                          // loads in flight
-	popups:   map[u64]string,               // tabs that show an extension's popup: tab id -> extension id (owned)
+	popup:    ^Ext_Popup,                   // ext_popup.odin: the popup that is open (nil: none)
+	popup_serial: u64,                      // ext_popup.odin: the id of the last popup opened
 	toolbar:  Ext_Toolbar,                  // ext_toolbar.odin: the buttons' icons
 	offscreen: map[string]^Tab,             // ext_window_api.odin: each extension's offscreen document, a tab of no window (owned keys)
 	popouts:  map[int]string,               // ext_window_api.odin: the popout windows: window id -> extension id (owned)
@@ -82,6 +83,7 @@ ext_shell_stop :: proc(app: ^App) {
 	if !app.ext.started { return }
 	app.ext.started = false
 	config.unwatch(&app.prefs, app.ext.watch)
+	ext_popup_close(app)   // ext_popup.odin: its tab is in no window (nothing else frees it)
 	ext_windows_destroy(app)   // ext_window_api.odin: the offscreen documents' tabs (in no window: nothing else frees them)
 	page.ext_router_destroy()
 	app.loader.extensions = nil
@@ -95,8 +97,6 @@ ext_shell_stop :: proc(app: ^App) {
 		delete(k)
 	}
 	delete(app.ext.files)
-	for _, id in app.ext.popups { delete(id) }
-	delete(app.ext.popups)
 	delete(app.ext.notice)
 	ext_toolbar_destroy(app)
 	app.ext = {}
@@ -233,16 +233,18 @@ ext_reload_with :: proc(app: ^App, r: ^extensions.Load_Result) {
 @(private = "file")
 ext_origin_of :: proc(id: string) -> string { return strings.concatenate({extensions.SCHEME_CHROME, "://", id, "/"}, context.temp_allocator) }
 
-// The tabs that show a page of the extension load again (after a reload).
+// The tabs that show a page of the extension load again (after a reload); its popup closes.
 @(private = "file")
 ext_reload_pages :: proc(app: ^App, id: string) {
+	ext_popup_close_of(app, id)
 	prefix := ext_origin_of(id)
 	for t in tabs_all(app) { if strings.has_prefix(t.url, prefix) { reload(app, t) } }
 }
 
-// The tabs that show a page of the extension close (it is disabled or removed).
+// The tabs that show a page of the extension close (it is disabled or removed), and its popup.
 @(private = "file")
 ext_close_pages :: proc(app: ^App, id: string) {
+	ext_popup_close_of(app, id)
 	prefix := ext_origin_of(id)
 	ids := make([dynamic]u64, 0, 4, context.temp_allocator)
 	for t in tabs_all(app) { if strings.has_prefix(t.url, prefix) { append(&ids, t.id) } }
@@ -360,29 +362,13 @@ ext_grant :: proc(app: ^App, id, pattern: string, on: bool) {
 }
 
 ////////////////////////////////
-// The popup (phase 1: a tab of its own)
-
-// Opens the extension's popup: its page in a tab (the panel under the button needs the toolkit to host a page surface
-// in a popup: docs/extensions.md, question 7). A popup already open is shown again.
-ext_open_popup :: proc(app: ^App, e: ^extensions.Extension, popup: string) {
-	if e.image == nil { return }
-	for tid, id in app.ext.popups {
-		if id != e.id { continue }
-		if t := tab_find(app, tid); t != nil { tab_reveal(app, t); return }
-	}
-	t := tab_open(app, extensions.image_url(e.image, popup), origin = .User)
-	if t == nil { return }
-	app.ext.popups[t.id] = strings.clone(e.id)
-}
-
-////////////////////////////////
 // The router's view of the shell (page.Ext_Embedder)
 
 @(private = "file")
 ext_page_kind :: proc(user: rawptr, p: ^page.Page) -> page.Ext_Kind {
 	app := (^App)(user)
 	if ext_offscreen_page(app, p) { return .Offscreen }   // ext_window_api.odin
-	if t := tab_of_page(app, p); t != nil && t.id in app.ext.popups { return .Popup }
+	if pv := ext_popup_view(app); pv != nil && pv.tab.page == p { return .Popup }   // ext_popup.odin
 	return .Tab
 }
 
@@ -420,9 +406,8 @@ ext_changed :: proc(user: rawptr, ext: string) {
 // A tab closed: what the extensions kept for it goes.
 ext_tab_closed :: proc(app: ^App, t: ^Tab) {
 	if !app.ext.started { return }
-	if id, ok := app.ext.popups[t.id]; ok { delete(id); delete_key(&app.ext.popups, t.id) }
 	page.ext_action_tab_closed(t.id)
-	// tabs.onRemoved (its window is not known here any more: the strip let it go first); an offscreen document's tab is
-	// no tab of the extensions' view
-	if !app.quitting && !ext_is_offscreen_tab(app, t) { page.ext_tab_event_removed(i64(t.id), -1, false) }
+	// tabs.onRemoved (its window is not known here any more: the strip let it go first); an offscreen document's tab and
+	// the popup's (a view's) are no tabs of the extensions' view
+	if !app.quitting && t.view == nil && !ext_is_offscreen_tab(app, t) { page.ext_tab_event_removed(i64(t.id), -1, false) }
 }

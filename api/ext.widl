@@ -1,12 +1,14 @@
 /// The transport of browser extensions (docs/extensions.md, section 3.9; src/page/ext_realm.odin, ext_router.odin;
-/// native/js/odin/ext_runtime.odin and ext_api.js build chrome.* on it). The host derives the extension and the kind of
+/// native/js/odin/ext_runtime.odin and ext_api.js build chrome.* on it; the namespaces are described in
+/// api/ext_<namespace>.widl). The host derives the extension and the kind of
 /// context from the realm that calls (a guest sends no identity): in a realm that is not an extension context every
 /// function answers nothing ("" , a rejected call, no effect). Payloads are JSON text, as Chrome's messages are, and
 /// are bounded by extensions.message.max_bytes.
 [Exposed=(Window,Worker)]
 module ext {
   /// The realm's context as a JSON object ("" : not an extension context): id, kind (background, popup, tab), base URL,
-  /// UI language, platform, and the API methods and events this context may use (its permissions decide them).
+  /// UI language, flavour, the API methods, events and local members this context may use (its permissions and its
+  /// kind decide them), and the constants of its namespaces.
   string Ext_info();
   /// runtime.getManifest(): the manifest as JSON text, comments removed and __MSG_*__ replaced.
   string Ext_manifest();

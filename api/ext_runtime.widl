@@ -1,0 +1,91 @@
+/// The extension's own facts, its messages and its ports (src/page/ext_api.odin, ext_router.odin, ext_tabs.odin). An
+/// offscreen document has this namespace only; a content script has its messages, its ports and its own facts.
+[Contexts=(Background, Page, Offscreen)]
+namespace runtime {
+  enum OnInstalledReason { install, update, chrome_update, shared_module_update }
+  enum PlatformOs { mac, win, android, cros, linux, openbsd, fuchsia }
+  enum ContextType { TAB, POPUP, BACKGROUND, OFFSCREEN_DOCUMENT, SIDE_PANEL, DEVELOPER_TOOLS }
+
+  struct PlatformInfo {
+    PlatformOs os;
+    string arch;
+    string nacl_arch;
+  }
+  /// Who sent a message or opened a port (the browser fills it: a context cannot forge it).
+  struct MessageSender {
+    optional string id;
+    optional string url;
+    optional string origin;
+    optional i64 frameId;
+    optional string documentId;
+  }
+  struct MessageOptions {
+    optional bool includeTlsChannelId;
+  }
+  struct ConnectInfo {
+    optional string name;
+    optional bool includeTlsChannelId;
+  }
+  /// One end of a port: postMessage, disconnect, onMessage, onDisconnect.
+  struct Port {
+    string name;
+    optional MessageSender sender;
+  }
+  struct InstalledDetails {
+    OnInstalledReason reason;
+    optional string previousVersion;
+    optional string id;
+  }
+  struct ContextFilter {
+    optional ContextType[] contextTypes;
+    optional string[] contextIds;
+    optional i64[] tabIds;
+    optional i64[] windowIds;
+    optional i64[] frameIds;
+    optional string[] documentIds;
+    optional string[] documentUrls;
+    optional string[] documentOrigins;
+    optional bool incognito;
+  }
+  struct ExtensionContext {
+    ContextType contextType;
+    string contextId;
+    i64 tabId;
+    i64 windowId;
+    i64 frameId;
+    optional string documentId;
+    optional string documentUrl;
+    optional string documentOrigin;
+    bool incognito;
+  }
+
+  /// The extension's id.
+  [Local, Contexts=(Background, Page, Offscreen, Content)] attribute string id;
+  /// The error of the call whose callback runs, else undefined. One left unread is logged.
+  [Local, Contexts=(Background, Page, Offscreen, Content)] attribute object lastError;
+  /// The absolute URL of a file of the extension.
+  [Local, Contexts=(Background, Page, Offscreen, Content)] string getURL(string path);
+  /// The manifest, its __MSG_*__ replaced.
+  [Local, Contexts=(Background, Page, Offscreen, Content)] object getManifest();
+  /// A port to the extension's contexts that listen to onConnect (another extension: none).
+  [Local, Contexts=(Background, Page, Offscreen, Content)] Port connect(optional string extensionId, optional ConnectInfo connectInfo);
+  /// To every page and the background of the extension, not the sender and not the content scripts. The first answer
+  /// wins; with no receiver, "Could not establish connection. Receiving end does not exist.".
+  [Contexts=(Background, Page, Offscreen, Content)] any sendMessage(optional string extensionId, any message, optional MessageOptions options);
+  PlatformInfo getPlatformInfo();
+  /// Accepted; no page opens when the extension is removed.
+  void setUninstallURL(optional string url);
+  /// The extension's contexts as the browser knows them (the background only while it runs).
+  ExtensionContext[] getContexts(ContextFilter filter);
+  /// The package is read again; every context of the extension closes.
+  void reload();
+  void openOptionsPage();
+
+  [Contexts=(Background, Page, Offscreen, Content)] event onMessage(any message, MessageSender sender, function sendResponse);
+  [Contexts=(Background, Page, Offscreen, Content)] event onConnect(Port port);
+  event onInstalled(InstalledDetails details);
+  event onStartup();
+  event onSuspend();
+  event onSuspendCanceled();
+  event onUpdateAvailable(object details);
+}

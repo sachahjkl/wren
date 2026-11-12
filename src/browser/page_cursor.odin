@@ -340,7 +340,7 @@ page_window_cursor :: proc(app: ^App, t: ^Tab, pos: [2]f32) -> Window_Cursor {
 	// over a frame, the cursor is its document's (its CSS, its layout): a jQuery UI handle in its iframe says "resize"
 	ct, origin, area := t, wnd.page_rect.min, draw.rect_size(wnd.page_rect)
 	if fv := frame_under(app, t, pos, wnd.page_rect); fv != nil && fv.tab.page != nil && fv.tab.page.styled != nil && fv.tab.layout.valid {
-		ct, origin, area = &fv.tab, fv.rect.min, draw.rect_size(fv.rect)
+		ct, origin, area = fv.tab, fv.rect.min, draw.rect_size(fv.rect)
 	}
 	pc := page_cursor_at(&ct.layout, ct.page.doc, ct.page.styled, pos - origin, area, ct.scroll, app.ccfg.page_css)
 	wc := Window_Cursor{keyword = pc.keyword, scale = scale}

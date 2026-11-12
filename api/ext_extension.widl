@@ -1,0 +1,12 @@
+/// What MV3 keeps of chrome.extension: answers that are the same for every page of Wren.
+[Contexts=(Background, Page)]
+namespace extension {
+  /// Always false: Wren has no incognito profile.
+  [Local] attribute bool inIncognitoContext;
+  /// An empty list: a page cannot reach another's window.
+  [Local] object[] getViews(optional object fetchProperties);
+  /// null: the background is a service worker.
+  [Local] object getBackgroundPage();
+  [Local] bool isAllowedIncognitoAccess();
+  [Local] bool isAllowedFileSchemeAccess();
+}

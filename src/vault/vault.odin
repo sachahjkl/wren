@@ -6,9 +6,11 @@
 // Threads: every procedure here runs on the loop thread and returns at once. Starting the helper, the pipes, the files and
 // the check of the rows run on the transport's threads and on the blocking pool; their results are posted to the loop.
 //
-// Secrets: a password, a PIN or a code goes from the caller into one frame, which is zeroed once written. A fill's values
-// live in one Answer for the time of the `fill` hook, then are zeroed. Rows (names, user names) live while a surface shows
-// them (vault_release_rows). Nothing here logs.
+// Secrets: a password, a PIN or a code goes from the caller into one frame, which is zeroed once written. A fill's or a
+// copy's values live in one Answer for the time of the `fill` or `copy` hook, then are zeroed. Rows (names, user names)
+// live in three sets (Row_Slot): the active tab's document and the focused frame's document while the Vault is unlocked
+// (the address bar's chip, the fill shortcut and the field's dropdown need them at once), the palette's search while the
+// palette is open. A lock, a release or another document zeroes them. Nothing here logs.
 //
 // Time: two timers run while the Vault is unlocked. The idle timer locks it `vault.lock.idle_minutes` after the last user
 // activity (vault_activity); the sync timer asks for a sync every `vault.sync.interval_minutes`. The helper has its own
@@ -39,29 +41,50 @@ State :: enum u8 {
 
 Rows_State :: enum u8 { None, Asked, Checking, Ready, Failed }
 
+// The sets of rows the Vault keeps: the logins of the active tab's document, of the focused frame's document (a form in
+// a frame: its own origin decides), and the palette's search.
+Row_Slot :: enum u8 { Page, Frame, Search }
+
+Row_Set :: struct {
+	rows:  [dynamic]Row,   // Page, Frame: checked by Wren (match.odin); Search: as the helper sent them
+	key:   string,         // owned: the document's address (Page, Frame) or the query (Search)
+	state: Rows_State,
+	gen:   u64,            // each ask: a check of an older ask is dropped
+}
+
+// What a fill asks of the helper.
+Fill_Field :: enum u8 { Username, Password, Totp }
+Fill_Fields :: bit_set[Fill_Field; u8]
+
+// What a copy puts on the clipboard.
+Copy_What :: enum u8 { Username, Password, Totp }
+
 // The second state machine, per fill: Requested -> Answered -> Applied | Dropped (docs/bitwarden.md 4.3).
 Fill_State :: enum u8 { None, Requested, Answered, Applied, Dropped }
 
 // What a fill is for, checked again when its values come: the shell drops the fill when the tab, its page or its
 // navigation changed meanwhile (docs/bitwarden.md 3.5, rule 9).
 Fill_Ticket :: struct {
-	tab:  u64,
-	page: rawptr,
-	nav:  rawptr,
-	url:  string,   // owned by the Vault while the fill waits
+	tab:      u64,
+	page:     rawptr,        // the document's page (a frame's, for a form in a frame)
+	nav:      rawptr,
+	url:      string,        // owned by the Vault while the fill waits
+	forms_id: u64,           // the document's forms model (a page that goes and another at its address is not it)
+	field:    base.Handle,   // the field the user acted on: its group is filled (docs/bitwarden.md 3.5, rule 8)
 }
 
 // The values handed to the shell's `fill` hook: valid for the time of the call only, then zeroed.
 Fill_Values :: struct {
 	ticket:   Fill_Ticket,
-	username, password: string,
-	has_username, has_password: bool,
+	username, password, totp: string,
+	has_username, has_password, has_totp: bool,
 }
 
 Hooks :: struct {
 	user:    rawptr,
-	changed: proc(user: rawptr),                              // the state, the rows or the message changed: draw again
-	fill:    proc(user: rawptr, values: ^Fill_Values) -> bool,   // applies a fill; false: dropped
+	changed: proc(user: rawptr),                                       // the state, the rows or the message changed: draw again
+	fill:    proc(user: rawptr, values: ^Fill_Values) -> bool,            // applies a fill; false: dropped
+	copy:    proc(user: rawptr, what: Copy_What, value: string, seconds_left: int),   // puts a value on the clipboard (valid for the call only); seconds_left: a code's
 }
 
 @(private)
@@ -71,7 +94,10 @@ Pending :: struct {
 	timer:   base.Handle,
 	timeout: ^Timeout,
 	ticket:  Fill_Ticket,   // .Fill (its url owned)
-	url:     string,        // .Logins_For: the document (owned)
+	key:     string,        // .Logins_For: the document; .Search: the query (owned)
+	slot:    Row_Slot,      // .Logins_For, .Search
+	copy:    bool,          // .Fill, .Totp: for the clipboard (copy_what), not for a page
+	copy_what: Copy_What,
 }
 
 @(private)
@@ -94,10 +120,7 @@ Vault :: struct {
 	closed:         [dynamic]^Transport,   // closed, waiting for their Exited
 	next_id:        u64,
 	pending:        [dynamic]Pending,
-	rows:           [dynamic]Row,          // the logins of rows_url, checked by Wren (match.odin)
-	rows_url:       string,                // owned
-	rows_state:     Rows_State,
-	rows_gen:       u64,                   // each ask: a check of an older ask is dropped
+	sets:           [Row_Slot]Row_Set,
 	fill_state:     Fill_State,
 	setup_gen:      u64,                   // each enable: a locate job of an older one is dropped
 	jobs:           int,                   // blocking jobs on their way (vault_destroy waits for them)
@@ -121,6 +144,7 @@ ACCOUNT_FILE :: "account"   // <profile>/vault/account: the email, the server an
 HELPER_NAME :: "wren-vault.exe" when ODIN_OS == .Windows else "wren-vault"
 KEEPALIVE_EVERY_NS :: i64(60) * 1_000_000_000   // activity sends at most one keepalive a minute
 PIN_MIN :: 4
+SEARCH_LIMIT :: 50   // rows of one search: what a palette lists (the helper's bound too)
 
 ////////////////////////////////
 // Life
@@ -148,8 +172,10 @@ vault_destroy :: proc(v: ^Vault) {
 	host.discard_posted(v.loop, transport_posted, transport_discard)
 	for v.jobs > 0 { host.blocking_settle(v.pool) }
 	delete(v.pending)
-	rows_free(&v.rows)
-	string_wipe(&v.rows_url)
+	for &set in v.sets {
+		rows_free(&set.rows)
+		string_wipe(&set.key)
+	}
 	string_wipe(&v.message)
 	string_wipe(&v.email)
 	string_wipe(&v.login_email)
@@ -386,18 +412,23 @@ vault_activity :: proc(v: ^Vault) {
 	if frame, ok := request_end(&r); ok { v.t.send(v.t, frame) }
 }
 
-// The logins of the document at `address` (the shell asks when the panel opens or the tab's address changes). The rows
-// come later (rows_state Ready).
-vault_ask_rows :: proc(v: ^Vault, address: string) {
-	if v.state != .Unlocked { return }
-	// (the shell calls this each frame the panel shows: an address already asked, answered or refused is not asked again)
-	if address == v.rows_url && v.rows_state != .None { return }
-	rows_reset(v)
-	v.rows_url = strings.clone(address, base.process_allocator())
-	v.rows_gen += 1
+// The logins of the document at `address`, in `slot` (Page: the active tab's document; Frame: the focused frame's).
+// The shell calls this each frame: an address already asked, answered or refused is not asked again. The rows come
+// later (state Ready).
+vault_ask_rows :: proc(v: ^Vault, address: string, slot := Row_Slot.Page) {
+	if v.state != .Unlocked || slot == .Search { return }
+	set := &v.sets[slot]
+	if address == "" {
+		// (no document: the set is let go once, not reset each frame)
+		if set.state != .None || set.key != "" { set_reset(v, slot) }
+		return
+	}
+	if address == set.key && set.state != .None { return }
+	set_reset(v, slot)
+	set.key = strings.clone(address, base.process_allocator())
 	site, ok := site_of(address)
 	if !ok {
-		v.rows_state = .Ready   // (nothing is ever filled there: no row)
+		set.state = .Ready   // (nothing is ever filled there: no row)
 		changed(v)
 		return
 	}
@@ -407,26 +438,90 @@ vault_ask_rows :: proc(v: ^Vault, address: string) {
 	request_string(&r, "host", site.host)
 	request_string(&r, "domain", site.domain)
 	p := send(v, &r, .Logins_For)
-	if p != nil { p.url = strings.clone(address, base.process_allocator()) }
-	v.rows_state = .Asked
+	if p != nil {
+		p.key = strings.clone(address, base.process_allocator())
+		p.slot = slot
+	}
+	set.state = .Asked
 	changed(v)
 }
 
+// The logins whose name, user name or address hold every word of `query` (the palette's Vault prefix). The helper
+// searches (Wren does no work in proportion to the vault); an answer for an older query is dropped. The rows come later
+// (Search state Ready); they hold no password.
+vault_search :: proc(v: ^Vault, query: string) {
+	if v.state != .Unlocked { return }
+	set := &v.sets[.Search]
+	if set.state != .None && query == set.key { return }
+	set_reset(v, .Search)
+	set.key = strings.clone(query, base.process_allocator())
+	r: Request
+	request_begin(&r, next_id(v), .Search, len(query) + 16)
+	request_string(&r, "query", query)
+	request_int(&r, "limit", SEARCH_LIMIT)
+	p := send(v, &r, .Search)
+	if p != nil {
+		p.key = strings.clone(query, base.process_allocator())
+		p.slot = .Search
+	}
+	set.state = .Asked
+	changed(v)
+}
+
+// The rows of a set as they are now (valid until the Vault changes them: use them within the frame).
+vault_rows :: proc(v: ^Vault, slot := Row_Slot.Page) -> (rows: []Row, state: Rows_State, key: string) {
+	set := &v.sets[slot]
+	return set.rows[:], set.state, set.key
+}
+
+// The row `id` of a set, nil when it is not there (a fill from the palette needs the item in the document's checked rows:
+// docs/bitwarden.md 3.5, rule 10).
+vault_row_find :: proc(v: ^Vault, id: string, slot: Row_Slot) -> ^Row {
+	for &r in v.sets[slot].rows { if r.id == id { return &r } }
+	return nil
+}
+
 // The rows are not shown any more: they are zeroed (docs/bitwarden.md 3.1).
-vault_release_rows :: proc(v: ^Vault) { rows_reset(v) }
+vault_release_rows :: proc(v: ^Vault, slot := Row_Slot.Page) { set_reset(v, slot) }
 
 // A fill of the row `item` that the user picked, for the document of `ticket`. False: nothing was sent.
-vault_fill :: proc(v: ^Vault, item: string, ticket: Fill_Ticket) -> bool {
-	if v.state != .Unlocked || v.t == nil { return false }
+vault_fill :: proc(v: ^Vault, item: string, ticket: Fill_Ticket, fields := Fill_Fields{.Username, .Password}) -> bool {
+	if v.state != .Unlocked || v.t == nil || fields == {} { return false }
 	r: Request
-	request_begin(&r, next_id(v), .Fill, len(item) + 32)
+	request_begin(&r, next_id(v), .Fill, len(item) + 48)
 	request_string(&r, "item", item)
-	request_list(&r, "fields", {"username", "password"})
+	names := make([dynamic]string, 0, 3, context.temp_allocator)
+	if .Username in fields { append(&names, "username") }
+	if .Password in fields { append(&names, "password") }
+	if .Totp in fields { append(&names, "totp") }
+	request_list(&r, "fields", names[:])
 	p := send(v, &r, .Fill)
 	if p == nil { return false }
 	p.ticket = ticket
 	p.ticket.url = strings.clone(ticket.url, base.process_allocator())
 	v.fill_state = .Requested
+	return true
+}
+
+// A copy of one value of the row `item` (a click or a palette choice of the user). The value goes to the `copy` hook
+// when it comes; the shell clears the clipboard after vault.clipboard.clear_seconds. False: nothing was sent.
+vault_copy :: proc(v: ^Vault, item: string, what: Copy_What) -> bool {
+	if v.state != .Unlocked || v.t == nil || item == "" { return false }
+	r: Request
+	p: ^Pending
+	switch what {
+	case .Username, .Password:
+		request_begin(&r, next_id(v), .Fill, len(item) + 32)
+		request_string(&r, "item", item)
+		request_list(&r, "fields", {what == .Username ? "username" : "password"})
+		p = send(v, &r, .Fill)
+	case .Totp:
+		request_begin(&r, next_id(v), .Totp, len(item) + 8)
+		request_string(&r, "item", item)
+		p = send(v, &r, .Totp)
+	}
+	if p == nil { return false }
+	p.copy, p.copy_what = true, what
 	return true
 }
 
@@ -524,13 +619,13 @@ pending_free :: proc(v: ^Vault, p: ^Pending, clear_timer: bool) {
 	if clear_timer { host.clear_timer(v.loop, p.timer) }
 	free(p.timeout)
 	string_wipe(&p.ticket.url)
-	string_wipe(&p.url)
+	string_wipe(&p.key)
 }
 
 @(private)
 drop_pending :: proc(v: ^Vault) {
 	for &p in v.pending {
-		if p.op == .Fill { v.fill_state = .Dropped }
+		if p.op == .Fill && !p.copy { v.fill_state = .Dropped }
 		pending_free(v, &p, true)
 	}
 	clear(&v.pending)
@@ -554,15 +649,25 @@ request_timed_out :: proc(data: rawptr) {
 	v := to.v
 	p, ok := take_pending(v, to.id)
 	if !ok { return }
-	pending_free(v, &p, false)   // (frees `to`)
+	// (an ask that was replaced or released: the set is another's)
+	current := p.key != "" && p.key == v.sets[p.slot].key
+	key := strings.clone(p.key, context.temp_allocator)
+	pending_free(v, &p, false)   // (frees `to`, wipes p.key)
 	switch p.op {
-	case .Logins_For:
-		rows_reset(v)
-		v.rows_state = .Failed
+	case .Logins_For, .Search:
+		if !current { return }
+		set_reset(v, p.slot)
+		// (the key stays: the shell asks each frame, and a failed ask is not sent again for the same document)
+		v.sets[p.slot].key = strings.clone(key, base.process_allocator())
+		v.sets[p.slot].state = .Failed
 		set_message(v, i18n.tr("The Vault did not answer in time."))
-	case .Fill:
-		v.fill_state = .Dropped
-		set_message(v, i18n.tr("The fill took too long and was dropped."))
+	case .Fill, .Totp:
+		if p.copy {
+			set_message(v, i18n.tr("The copy took too long and was dropped."))
+		} else {
+			v.fill_state = .Dropped
+			set_message(v, i18n.tr("The fill took too long and was dropped."))
+		}
 	case .Hello, .Login, .Login_Api_Key, .Unlock, .Lock, .Logout, .Sync, .Pin_Set, .Pin_Clear, .Keepalive:
 		// (the helper answers in order: one that does not answer holds every later request)
 		fail(v, i18n.tr("The Vault helper did not answer in time. It was stopped."))
@@ -711,10 +816,13 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 		changed(v)
 		if !a.ok { set_message(v, a.message != "" ? a.message : i18n.tr("The vault could not be synced.")); return }
 		v.last_sync = a.last_sync
-		if v.rows_url != "" {   // (the rows shown may be older than the sync)
-			address := strings.clone(v.rows_url, context.temp_allocator)
-			rows_reset(v)
-			vault_ask_rows(v, address)
+		// (the rows kept may be older than the sync)
+		for slot in Row_Slot {
+			key := strings.clone(v.sets[slot].key, context.temp_allocator)
+			if key == "" && slot != .Search { continue }
+			if v.sets[slot].state == .None { continue }
+			set_reset(v, slot)
+			if slot == .Search { vault_search(v, key) } else { vault_ask_rows(v, key, slot) }
 		}
 	case .Pin_Set:
 		if !a.ok { set_message(v, a.message != "" ? a.message : i18n.tr("The PIN could not be set.")); return }
@@ -726,18 +834,46 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 		v.pin = false
 		write_account(v)
 		set_message(v, i18n.tr("The PIN is removed."))
-	case .Logins_For:
-		if p.url == "" || p.url != v.rows_url { return }   // (another document was asked meanwhile, or the rows were released)
+	case .Logins_For, .Search:
+		set := &v.sets[p.slot]
+		// (another document or query was asked meanwhile, or the rows were released)
+		if set.state != .Asked || p.key != set.key { return }
 		if !a.ok {
-			v.rows_state = .Failed
+			set.state = .Failed
 			set_message(v, a.message)
 			changed(v)
 			return
 		}
-		check_rows(v, a)
+		if p.op == .Search {
+			// (no page to check them against: a search row fills only when it is also a row of the document)
+			rows_free(&set.rows)
+			set.rows, a.rows = a.rows, nil
+			set.state = .Ready
+			changed(v)
+			return
+		}
+		check_rows(v, p.slot, a)
+	case .Totp:
+		if !a.ok { set_message(v, a.message); return }
+		if p.copy && a.has_totp && v.hooks.copy != nil { v.hooks.copy(v.hooks.user, .Totp, a.totp, a.remaining) }
+		changed(v)
 	case .Fill:
+		if p.copy {
+			if !a.ok { set_message(v, a.message); return }
+			value, has := a.username, a.has_username
+			if p.copy_what == .Password { value, has = a.password, a.has_password }
+			if !has || value == "" {
+				set_message(v, p.copy_what == .Password ? i18n.tr("This login has no password.") : i18n.tr("This login has no user name."))
+				return
+			}
+			if v.hooks.copy != nil { v.hooks.copy(v.hooks.user, p.copy_what, value, 0) }
+			string_wipe(&v.message)
+			changed(v)
+			return
+		}
 		v.fill_state = .Answered
-		values := Fill_Values{ticket = p.ticket, username = a.username, password = a.password, has_username = a.has_username, has_password = a.has_password}
+		values := Fill_Values{ticket = p.ticket, username = a.username, password = a.password, totp = a.totp,
+			has_username = a.has_username, has_password = a.has_password, has_totp = a.has_totp}
 		applied := a.ok && v.hooks.fill != nil && v.hooks.fill(v.hooks.user, &values)
 		v.fill_state = applied ? .Applied : .Dropped
 		switch {
@@ -769,15 +905,22 @@ changed :: proc(v: ^Vault) {
 	if v.hooks.changed != nil { v.hooks.changed(v.hooks.user) }
 }
 
+// Every set of rows goes (a lock, a logout, a failure).
 @(private)
 rows_reset :: proc(v: ^Vault) {
-	rows_free(&v.rows)
-	string_wipe(&v.rows_url)
-	v.rows_state = .None
-	v.rows_gen += 1
-	// (an ask on its way is forgotten: its answer finds another url)
+	for slot in Row_Slot { set_reset(v, slot) }
+}
+
+@(private)
+set_reset :: proc(v: ^Vault, slot: Row_Slot) {
+	set := &v.sets[slot]
+	rows_free(&set.rows)
+	string_wipe(&set.key)
+	set.state = .None
+	set.gen += 1
+	// (an ask on its way is forgotten: its answer finds another key)
 	for &p in v.pending {
-		if p.op == .Logins_For { string_wipe(&p.url) }
+		if (p.op == .Logins_For || p.op == .Search) && p.slot == slot { string_wipe(&p.key) }
 	}
 }
 
@@ -817,19 +960,22 @@ reap_discard :: proc(data: rawptr) {
 
 @(private)
 Check_Job :: struct {
-	v:    ^Vault,
-	gen:  u64,
-	url:  string,         // owned
-	rows: [dynamic]Row,   // owned: the helper's, then the kept ones
+	v:          ^Vault,
+	slot:       Row_Slot,
+	gen:        u64,
+	url:        string,            // owned
+	rows:       [dynamic]Row,      // owned: the helper's, then the kept ones
+	equivalent: [dynamic]string,   // owned: the answer's equivalent domains
 }
 
 // The rows of an answer, checked with Wren's Public Suffix List on the pool (docs/bitwarden.md 3.5, rule 4).
 @(private)
-check_rows :: proc(v: ^Vault, a: ^Answer) {
+check_rows :: proc(v: ^Vault, slot: Row_Slot, a: ^Answer) {
+	set := &v.sets[slot]
 	j := new(Check_Job, base.process_allocator())
-	j^ = {v = v, gen = v.rows_gen, url = strings.clone(v.rows_url, base.process_allocator()), rows = a.rows}
-	a.rows = nil   // (the job owns them now)
-	v.rows_state = .Checking
+	j^ = {v = v, slot = slot, gen = set.gen, url = strings.clone(set.key, base.process_allocator()), rows = a.rows, equivalent = a.equivalent}
+	a.rows, a.equivalent = nil, nil   // (the job owns them now)
+	set.state = .Checking
 	v.jobs += 1
 	host.run_blocking(v.pool, check_work, check_done, j, check_discard)
 }
@@ -840,7 +986,7 @@ check_work :: proc(data: rawptr) {
 	site, ok := site_of(j.url)
 	kept := make([dynamic]Row, 0, len(j.rows), base.process_allocator())
 	for &r in j.rows {
-		if ok && row_matches(site, r.uri, r.kind) { append(&kept, r) } else { row_free(&r) }
+		if ok && row_matches(site, r.uri, r.kind, j.equivalent[:]) { append(&kept, r) } else { row_free(&r) }
 	}
 	delete(j.rows)
 	j.rows = kept
@@ -851,11 +997,12 @@ check_done :: proc(data: rawptr) {
 	j := (^Check_Job)(data)
 	v := j.v
 	v.jobs -= 1
-	if j.gen == v.rows_gen && v.state == .Unlocked {
-		rows_free(&v.rows)
-		v.rows = j.rows
+	set := &v.sets[j.slot]
+	if j.gen == set.gen && v.state == .Unlocked {
+		rows_free(&set.rows)
+		set.rows = j.rows
 		j.rows = nil
-		v.rows_state = .Ready
+		set.state = .Ready
 		changed(v)
 	}
 	check_free(j)
@@ -871,6 +1018,7 @@ check_discard :: proc(data: rawptr) {
 @(private)
 check_free :: proc(j: ^Check_Job) {
 	rows_free(&j.rows)
+	strings_free(&j.equivalent)
 	string_wipe(&j.url)
 	free(j, base.process_allocator())
 }

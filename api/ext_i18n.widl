@@ -1,0 +1,10 @@
+/// The messages of the extension's _locales, read from the image in the realm (no call reaches the browser's loop).
+[Contexts=(Background, Page, Content)]
+namespace i18n {
+  /// The message of the UI language, else of default_locale; "" when no catalogue has it. Up to 9 substitutions.
+  [Local] string getMessage(string messageName, optional any substitutions);
+  /// The UI language the extension was loaded for ("en-US").
+  [Local] string getUILanguage();
+  /// The UI language only.
+  [Local] string[] getAcceptLanguages();
+}

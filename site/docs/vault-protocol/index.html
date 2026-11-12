@@ -107,6 +107,23 @@
 <li><a href="../../docs/api/events/">Module events</a></li>
 <li><a href="../../docs/api/eventsource/">Module eventsource</a></li>
 <li><a href="../../docs/api/ext/">Module ext</a></li>
+<li><a href="../../docs/api/ext/README/">Extension APIs of Wren</a></li>
+<li><a href="../../docs/api/ext/action/">chrome.action</a></li>
+<li><a href="../../docs/api/ext/alarms/">chrome.alarms</a></li>
+<li><a href="../../docs/api/ext/extension/">chrome.extension</a></li>
+<li><a href="../../docs/api/ext/i18n/">chrome.i18n</a></li>
+<li><a href="../../docs/api/ext/idle/">chrome.idle</a></li>
+<li><a href="../../docs/api/ext/management/">chrome.management</a></li>
+<li><a href="../../docs/api/ext/offscreen/">chrome.offscreen</a></li>
+<li><a href="../../docs/api/ext/permissions/">chrome.permissions</a></li>
+<li><a href="../../docs/api/ext/runtime/">chrome.runtime</a></li>
+<li><a href="../../docs/api/ext/storage.local/">chrome.storage.local</a></li>
+<li><a href="../../docs/api/ext/storage.managed/">chrome.storage.managed</a></li>
+<li><a href="../../docs/api/ext/storage/">chrome.storage</a></li>
+<li><a href="../../docs/api/ext/storage.session/">chrome.storage.session</a></li>
+<li><a href="../../docs/api/ext/storage.sync/">chrome.storage.sync</a></li>
+<li><a href="../../docs/api/ext/tabs/">chrome.tabs</a></li>
+<li><a href="../../docs/api/ext/windows/">chrome.windows</a></li>
 <li><a href="../../docs/api/fetch/">Module fetch</a></li>
 <li><a href="../../docs/api/fontface/">Module fontface</a></li>
 <li><a href="../../docs/api/forms/">Module forms</a></li>
@@ -242,6 +259,7 @@
 <li><a href="../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../docs/js/web-crypto/">crypto.subtle</a></li>
 <li><a href="../../docs/js/webassembly-api/">The WebAssembly JavaScript API</a></li>
+<li><a href="../../docs/organisation-review/">Review of the organisation of the project</a></li>
 <li><a href="../../docs/test-review/">Review of the test system</a></li>
 <li><a href="../../docs/updates/">Updates</a></li>
 <li><a href="../../docs/vault-protocol/" aria-current="page" class="active">The Vault helper protocol</a></li>
@@ -263,7 +281,10 @@ program under GPL-3.0-only, in its own repository; its <code>README.md</code> ha
 README must stay equal: a change of the protocol changes both, and <code>PROTOCOL_VERSION</code> in <code>src/vault/protocol.odin</code> and
 in the helper.</p>
 <p>The protocol is generic: accounts, logins and plain values. No type of the Bitwarden SDK crosses the pipe.</p>
-<p>Version 2 (helper 0.2.0). Changes from version 1: the server choice is Wren's (the helper gets URLs as before); <code>login</code>
+<p>Version 3 (helper 0.3.0). Changes from version 2: new requests <code>search</code> and <code>totp</code>; <code>fill</code> takes the field <code>totp</code>;
+<code>logins_for</code> applies the rules <code>StartsWith</code> and <code>Exact</code> and the account's equivalent domains, its rows carry the match
+types <code>equivalent</code>, <code>starts_with</code> and <code>exact</code>, and its answer carries <code>equivalent</code>; the error <code>no_totp</code>.</p>
+<p>Version 2 (helper 0.2.0) changed from version 1: the server choice is Wren's (the helper gets URLs as before); <code>login</code>
 carries <code>code</code> and <code>provider</code> instead of <code>totp</code>, and answers <code>need_device_code</code>; new requests <code>login_api_key</code>,
 <code>logout</code>, <code>pin_set</code>, <code>pin_clear</code>; <code>unlock</code> takes <code>pin</code>; <code>hello</code> takes <code>idle_seconds</code> and answers <code>login</code> and <code>pin</code>; the
 event <code>locked</code>.</p>
@@ -285,7 +306,7 @@ event <code>locked</code>.</p>
 <div class="table-box"><table>
 <thead><tr><th>op</th><th>Request fields</th><th>Answer fields</th></tr></thead>
 <tbody>
-<tr><td><code>hello</code></td><td><code>protocol</code> (2), <code>state_dir</code>, <code>identity_url</code>, <code>api_url</code>, <code>persist</code>, <code>device_name</code>, <code>client_version</code>, <code>idle_seconds</code></td><td><code>protocol</code>, <code>helper_version</code>, <code>account</code> (<code>none</code> or <code>locked</code>), <code>email</code>, <code>login</code> (<code>password</code> or <code>api_key</code>), <code>pin</code> (bool)</td></tr>
+<tr><td><code>hello</code></td><td><code>protocol</code> (3), <code>state_dir</code>, <code>identity_url</code>, <code>api_url</code>, <code>persist</code>, <code>device_name</code>, <code>client_version</code>, <code>idle_seconds</code></td><td><code>protocol</code>, <code>helper_version</code>, <code>account</code> (<code>none</code> or <code>locked</code>), <code>email</code>, <code>login</code> (<code>password</code> or <code>api_key</code>), <code>pin</code> (bool)</td></tr>
 <tr><td><code>login</code></td><td>first step: <code>email</code>, <code>password</code>; second step: <code>email</code>, <code>code</code>, <code>provider</code>; a new code: <code>email</code>, <code>provider</code>, <code>resend</code> (true)</td><td><code>result</code>: <code>ok</code>; or <code>need_two_factor</code> with <code>providers</code> and <code>email_sent</code>; or <code>need_device_code</code></td></tr>
 <tr><td><code>login_api_key</code></td><td><code>client_id</code>, <code>client_secret</code>, <code>password</code> (the master password)</td><td><code>result</code> (<code>ok</code>), <code>email</code></td></tr>
 <tr><td><code>unlock</code></td><td><code>password</code> or <code>pin</code></td><td>none; <code>bad_pin</code> errors carry <code>tries_left</code></td></tr>
@@ -294,8 +315,10 @@ event <code>locked</code>.</p>
 <tr><td><code>sync</code></td><td>none</td><td><code>items</code>, <code>last_sync</code> (Unix seconds)</td></tr>
 <tr><td><code>pin_set</code></td><td><code>pin</code> (4 characters or more)</td><td>none</td></tr>
 <tr><td><code>pin_clear</code></td><td>none</td><td>none</td></tr>
-<tr><td><code>logins_for</code></td><td><code>url</code>, <code>host</code>, <code>domain</code> (registrable domain by Wren's Public Suffix List, <code>""</code> if none)</td><td><code>rows</code>: <code>{id, name, username, uri, match, has_totp}</code></td></tr>
-<tr><td><code>fill</code></td><td><code>item</code>, <code>fields</code> (<code>username</code>, <code>password</code>)</td><td><code>username</code>, <code>password</code></td></tr>
+<tr><td><code>logins_for</code></td><td><code>url</code>, <code>host</code>, <code>domain</code> (registrable domain by Wren's Public Suffix List, <code>""</code> if none)</td><td><code>rows</code>: <code>{id, name, username, uri, match, has_totp}</code>; <code>equivalent</code>: the domains that the account makes equivalent to <code>domain</code></td></tr>
+<tr><td><code>search</code></td><td><code>query</code>, <code>limit</code> (0: 50; at most 50)</td><td><code>rows</code>: <code>{id, name, username, uri, has_totp}</code> (no <code>match</code>; <code>uri</code>: the item's first <code>http(s)</code> address)</td></tr>
+<tr><td><code>fill</code></td><td><code>item</code>, <code>fields</code> (<code>username</code>, <code>password</code>, <code>totp</code>)</td><td><code>username</code>, <code>password</code>, <code>totp</code> (the asked ones the item has)</td></tr>
+<tr><td><code>totp</code></td><td><code>item</code></td><td><code>totp</code>, <code>period</code>, <code>remaining</code> (seconds)</td></tr>
 <tr><td><code>keepalive</code></td><td>none</td><td>no answer; the idle deadline starts again</td></tr>
 </tbody>
 </table></div>
@@ -320,7 +343,7 @@ minute while the user is active.</p>
 <h3 id="errors"><a class="anchor" href="#errors" aria-hidden="true">#</a>Errors</h3>
 <p><code>bad_request</code>, <code>bad_protocol</code>, <code>no_hello</code>, <code>bad_server</code>, <code>bad_credentials</code>, <code>unsupported_two_factor</code>,
 <code>unsupported_account</code>, <code>network</code>, <code>login_failed</code>, <code>no_account</code>, <code>bad_password</code>, <code>bad_pin</code>, <code>pin_reset</code>, <code>no_pin</code>,
-<code>no_state</code>, <code>locked</code>, <code>sync_failed</code>, <code>no_item</code>, <code>decrypt</code>, <code>state_write</code>, <code>state_format</code>. The helper's README says what
+<code>no_state</code>, <code>locked</code>, <code>sync_failed</code>, <code>no_item</code>, <code>no_totp</code>, <code>decrypt</code>, <code>state_write</code>, <code>state_format</code>. The helper's README says what
 each means.</p>
 <h2 id="the-helpers-identity-at-the-server"><a class="anchor" href="#the-helpers-identity-at-the-server" aria-hidden="true">#</a>The helper's identity at the server</h2>
 <p>The helper sends its own token request (the SDK's sends the device type <code>ChromeBrowser</code> and one device identifier for
@@ -330,10 +353,17 @@ same device type (the <code>Device-Type</code> header). A renewal with an API ke
 device; no new-device check applies to API keys.</p>
 <h2 id="matching"><a class="anchor" href="#matching" aria-hidden="true">#</a>Matching</h2>
 <p>The helper selects the logins whose saved URI matches the page: <code>Domain</code> (the URI's host is the page's registrable
-domain or a subdomain of it; a page without a registrable domain uses <code>Host</code>) and <code>Host</code> (same host and port). The
-other match types match nothing in this version. An item saved for <code>https</code> never matches an <code>http</code> page.</p>
+domain or a subdomain of it: <code>domain</code>; or one of the domains the account makes equivalent to it, or a subdomain of
+one: <code>equivalent</code>; a page without a registrable domain uses <code>Host</code>), <code>Host</code> (same host and port), <code>StartsWith</code> (the
+page's address starts with the URI) and <code>Exact</code> (the page's address is the URI), both addresses as the URL standard
+serializes them. <code>RegularExpression</code> and <code>Never</code> match nothing. An item saved for <code>https</code> never matches an <code>http</code> page.
+The equivalent domains are the account's own groups and the server's global groups it did not exclude, from the last
+sync.</p>
 <p>Wren checks every returned row again with its own Public Suffix List (<code>src/vault/match.odin</code>) on the blocking pool,
-before the panel shows it. A row that fails the check is zeroed and dropped.</p>
+before a surface shows it. An <code>equivalent</code> row stays only if the saved host's registrable domain is in the answer's
+<code>equivalent</code>. A row with a match type Wren does not know is dropped when the answer is read. A row that fails the
+check is zeroed and dropped. <code>search</code> rows are not checked: they fill only when the same item is also a checked row of
+the focused document (docs/bitwarden.md 3.5, rule 10).</p>
 <h2 id="wrens-side"><a class="anchor" href="#wrens-side" aria-hidden="true">#</a>Wren's side</h2>
 <p><code>src/vault</code> (no interface, no dependency on the browser):</p>
 <div class="table-box"><table>
@@ -341,7 +371,7 @@ before the panel shows it. A row that fails the check is zeroed and dropped.</p>
 <tbody>
 <tr><td><code>protocol.odin</code></td><td>The requests, written into one buffer reserved large enough at once; the answers, decoded into owned values. Every string that can hold a value is zeroed before it is freed.</td></tr>
 <tr><td><code>transport.odin</code>, <code>process.odin</code></td><td>The helper as a child process: a reader thread starts it, reads and decodes frames and posts each answer to the loop; a writer thread writes the queued frames in order and zeroes each. The loop thread never blocks on the helper.</td></tr>
-<tr><td><code>vault.odin</code></td><td>The one state of the Vault, the requests and their deadlines (<code>vault.request.timeout_ms</code>), the fill's ticket, the idle and sync timers, the blocking jobs (locating the helper, the account file, the check of the rows, the join of an ended helper).</td></tr>
+<tr><td><code>vault.odin</code></td><td>The one state of the Vault, the requests and their deadlines (<code>vault.request.timeout_ms</code>), the three sets of rows (the tab's document, the focused frame's document, the palette's search), the fill's ticket, the copies, the idle and sync timers, the blocking jobs (locating the helper, the account file, the check of the rows, the join of an ended helper).</td></tr>
 <tr><td><code>match.odin</code></td><td>Wren's match check.</td></tr>
 <tr><td><code>settings.odin</code></td><td>The <code>vault.*</code> preferences and the server addresses (US, EU, self-hosted).</td></tr>
 </tbody>

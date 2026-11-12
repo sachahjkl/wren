@@ -1,0 +1,16 @@
+/// The permissions and host grants of the extension. Optional permissions and their prompt are not written yet:
+/// request and remove answer false.
+namespace permissions {
+  struct Permissions {
+    optional string[] permissions;
+    /// Match patterns.
+    optional string[] origins;
+  }
+  /// Whether every permission is in the manifest and every pattern is covered by a grant.
+  bool contains(optional Permissions permissions);
+  Permissions getAll();
+  bool request(optional Permissions permissions);
+  bool remove(optional Permissions permissions);
+  event onAdded(Permissions permissions);
+  event onRemoved(Permissions permissions);
+}

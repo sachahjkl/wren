@@ -329,7 +329,7 @@ control_tabs :: proc(app: ^App, allocator := context.temp_allocator) -> api.Targ
 	groups := make([dynamic]api.Tab_Group, allocator)
 	for w in app.windows {
 		for t, i in window_tabs(app, w)^ {
-			if t.frame != nil { continue }
+			if t.view != nil { continue }
 			x := api.Tab{
 				id = int(t.id), window = w.id, group = int(t.group), title = s(t.title, allocator), url = s(t.url, allocator),
 				active = i == window_current(app, w)^, loading = !tab_loaded(app, t), pinned = t.pinned,

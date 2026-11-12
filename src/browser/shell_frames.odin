@@ -1021,7 +1021,7 @@ paint_source_add :: proc(s: ^Paint_Source, t: ^Tab) {
 	if p.formctl != nil && p.formctl.model != nil { s.forms += p.formctl.model.serial }
 	if p.frames == nil { return }
 	for n in page.frames_children(p) {
-		if fv := frame_view_of(n.page); fv != nil { paint_source_add(s, &fv.tab) }
+		if fv := frame_view_of(n.page); fv != nil { paint_source_add(s, fv.tab) }
 	}
 }
 

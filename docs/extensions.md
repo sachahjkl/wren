@@ -329,10 +329,13 @@ because its origin equals the extension's. An extension frame inside a web page 
 the same case: the check is the document's origin, not where it is shown.
 
 - **Tab and options page.** A normal tab. `runtime.openOptionsPage` opens `options_ui.page` or `options_page`.
-- **Popup.** A stand-in tab that belongs to no tab strip, as `Frame_View` is for a frame (`frames_shell.odin`). It is
-  shown in a toolkit popup panel under the action button. Its size follows the document's content size, between 25 x 25
-  and 800 x 600 CSS pixels. It closes on a click outside, on Escape, on `window.close()` and when its tab is no longer
-  the selected tab. Closing it closes its page scope. Context kind: `popup`.
+- **Popup** (`ext_popup.odin`). A tab of no window, loaded by `navigate`, shown through a page view (`page_view.odin`,
+  the same view a frame's document has) in a toolkit popover under the action button. Its size follows the document's
+  content, between 25 x 25 and 800 x 600 CSS pixels: each layout measures the root element's and the body's boxes and
+  what overflows, the next frame lays it out at that size; it is fitted again for a few frames after each change of the
+  document, never more. It has the keyboard while it is open, and the pointer over it. It closes on Escape, on a press
+  outside it, on a second click on its button, on `window.close()` and when its window shows another tab. Closing it
+  closes its tab and its page scope. Context kind: `popup`.
 - **Offscreen document** (`offscreen.createDocument`). A page that shows nothing, hosted like the page that hosts a
   service worker. One per extension. APIs: `runtime` only, as in Chrome. It closes with `closeDocument`, or with the
   extension. `extensions.offscreen.max_lifetime_ms` bounds a document whose only reason is `CLIPBOARD`.
@@ -523,12 +526,12 @@ Written:
 
 Different from the plan, and why:
 
-- The API description is one table in `src/page/ext_api.odin` (methods and events, their permission, their contexts).
+- The API description was one table in `src/page/ext_api.odin` (methods and events, their permission, their contexts),
+  replaced after phase 2 by the dialect (see "Status of the dialect").
   `chrome.*` is built from what `Ext_info` lists for the context, by `ext_api.js`. The bindgen dialect
   (`[Permission]`, `[Contexts]`, `event`) and `api/ext_<namespace>.widl` are not written: arguments are decoded by each
   implementation from JSON. This keeps one description; the generated decoders come with the dialect.
-- The popup opens in a tab of its own (`ext_open_popup`). The panel under the button needs the toolkit to host a page
-  surface in a popup (question 7).
+- The popup opened in a tab of its own in phase 1; it is a panel under its button since (`ext_popup.odin`, see phase 2).
 - `extensions.worlds.*`, content scripts and `web_accessible_resources` frames are phase 3 (rule 3 of
   `extension_may_load` is written).
 
@@ -586,28 +589,53 @@ Written:
 
 Different from the plan, and why:
 
-- **The popup is still a tab.** The toolkit has the container: `ui.ctx_menu_open_rect` and `ui.ctx_menu` give a panel
-  under a rectangle that closes on a press outside and on Escape, and a `ui.custom` box in it can draw anything. What
-  is missing is in Wren: a *page view* that is neither a tab of a window nor a frame of a document. It needs, in
-  `src/browser`: (1) a stand-in tab loaded by `navigate`, as the offscreen documents' tab is; (2) its styles and layout
-  for a given size and its paint into a given rectangle (the body of `frame_prepare` and `frames_paint_content`,
-  without a parent document; `page_prepare` keeps one `Page_Prep` per window and cannot hold a second page); (3) the
-  pointer and keyboard routed to it while the panel is open (`frame_pointer_event` and `frames_route_keys`, keyed by a
-  view instead of a frame); (4) the document's content size after each layout, clamped to 25 x 25 .. 800 x 600 CSS px,
-  for the panel's size in the next frame. The natural form is to split `Frame_View` into a generic view used by frames
-  and by the popup. It is a change of the frames' paint and input paths, to be built and checked with the UI; it is
-  not in this phase.
-- **The bindgen dialect is not written.** The methods and events stay in one Odin table (`EXT_METHODS`, `EXT_EVENTS`)
-  with their permission, their contexts and an implementation that decodes its JSON arguments. Phase 2 adds 16 methods
-  and 1 event. The dialect (`[Permission=]`, `[Contexts=]`, `event`, generated decoders) changes `src/tools/bindgen`
-  and every generated output; it is a phase of its own, best made before phase 3's `scripting` and `webNavigation`,
-  whose arguments are the first with unions.
+- **The popup is a panel under its button** (done after phase 2). `Frame_View` became `Page_View` (`page_view.odin`): a
+  document, its tab, its layout at a size, its paint into a rectangle, its pointer and keyboard routed with the page area
+  moved to it, the geometry its scripts read. Frames and the popup use it; a side panel would too. The window's own tab
+  page keeps `page_prepare` and `page_paint` (`page_frame.odin`): its first paint hold, history restore, the page
+  thread and the chrome frames are a window tab's alone. The toolkit's `ui.popover` holds the view (a `ui.custom` box);
+  `ui.ctx_menu` was not used, as a menu takes every key of the window. The popup's input is taken before the page's
+  (`ext_popup_events`), and the window's keyboard is lent to its document for each event, then given back. Not yet: a
+  `<select>` list of the popup is drawn by the window's page paint, not in the panel; Wren's shortcuts (Ctrl+T)
+  do not work while the popup is open.
+- **The bindgen dialect came after phase 2** (see "Status of the dialect" below).
 - **Idle is the browser's, not the system's.** The toolkit has no time since the last input of the whole system (Win32
   `GetLastInputInfo`, Wayland `ext-idle-notify`, X11 screen saver): it is a toolkit addition to make.
 - A popout window is saved in the session as a normal window.
 - No web tests on the virtual clock yet (idle, offscreen, event order): the e2e tests cover the same paths; the idle
   test sets the time of the last input instead of waiting.
 - The login API route of the test server and its PBKDF2 / AES-GCM fixture are not written.
+
+#### Status of the dialect
+
+Written (between phases 2 and 3):
+
+- `src/tools/bindgen/idl/ext.odin`, `ext_check.odin`: `namespace` declarations in `api/*.widl`, next to `module`. A
+  namespace describes JSON shapes: `struct` (optional members), `enum` (strings), `typedef (A or B) Name` (a union of
+  members of different JSON kinds), `const`, methods, `event`, `[Local] attribute`. Attributes: `[Permission=]`,
+  `[Contexts=]` (Background, Popup, Tab, Page, Offscreen, Content), `[Manifest=action]`, `[Host=]` (methods with the
+  same parameters share one implementation), `[Local]` (answered in the realm), `[Min=]` and `[Max=]`.
+- `api/ext_runtime.widl`, `ext_i18n.widl`, `ext_storage.widl`, `ext_tabs.widl`, `ext_windows.widl`, `ext_action.widl`,
+  `ext_alarms.widl`, `ext_permissions.widl`, `ext_management.widl`, `ext_extension.widl`, `ext_idle.widl`,
+  `ext_offscreen.widl`: every namespace of phases 1 and 2. The hand table of `ext_api.odin` is gone.
+- Generated: `src/page/ext_api_generated.odin` (the tables `EXT_METHODS`, `EXT_EVENTS`, `EXT_LOCALS`,
+  `EXT_NAMESPACES`; a decoder per type and per method; the trampolines, so an implementation with a wrong prototype
+  does not compile), `src/page/ext_api_generated_test.odin` (the conformance cases: arguments that decode, missing,
+  of a wrong type, past a bound; the gate with and without the permission, the action, in each kind of context),
+  `docs/api/ext/` (the reference).
+- The arguments are matched to the signature in the host, as Chrome does (`ext_match`, `src/page/ext_decode.odin`):
+  an optional parameter is left out when the argument in its place does not have its kind. `ext_api.js` no longer
+  knows any namespace: it builds `chrome.*` (and `browser.*` with promises only, for the Firefox flavour) from what
+  `Ext_info` lists, with the constants it gives.
+
+Different from the plan, and why:
+
+- The implementations keep the form `proc(x: ^Ext_Call, a: <Args>)` and answer through `ext_ok` / `ext_fail`: several
+  answer later (tasks of the shell, `sendMessage`, `offscreen.createDocument`), so a returned result does not fit. The
+  result types are in the description for the reference; no result encoder is generated.
+- `chrome.*` is built by `ext_api.js` from `Ext_info` and the generated tables, not by a generated `ext_gen.odin`: the
+  host already sends the lists per context, and one generated table serves the gate, the realm and the tests.
+- Unions are named (`typedef`); a parameter cannot write one inline.
 
 ### Phase 3: autofill
 
@@ -726,7 +754,8 @@ Store install and updates, native messaging, `declarativeNetRequest` on `fetch.I
 6. **Private windows and profiles.** Wren has one profile per App. Is "allowed in private windows" needed at all?
    The plan answers `false` to every incognito question.
 7. **`gui_toolkit`.** The popup needs a toolkit popup panel that hosts a custom-drawn surface and follows its content
-   size. If the toolkit lacks it, it is added there under a new tag, not in Wren. Confirm.
+   size. If the toolkit lacks it, it is added there under a new tag, not in Wren. Answered: `ui.popover` holds a
+   `ui.custom` box whose size Wren gives each frame; nothing was added to the toolkit.
 8. **A store later.** If store install is wanted after phase 7, the CRX3 signature check and an update service must be
    planned. This changes nothing before phase 7 but decides whether `.crx` install keeps the public key now (the plan
    keeps it).

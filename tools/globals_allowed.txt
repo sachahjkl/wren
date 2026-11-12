@@ -31,6 +31,8 @@ browser/compositor.odin COMPOSITOR_PREFS const  # a table
 browser/compositor.odin comp_stuck thread  # the fixed and sticky parts of the last paint (window pixels), of the thread that paints
 browser/compositor.odin composite_stats thread  # the last composited frame's diagnostics, of the thread that paints
 browser/compositor.odin comps thread  # the compositor's layers of each layout, of the thread that paints
+browser/compositor.odin raster_props.once process  # the sync.Once that makes raster_props.set
+browser/compositor.odin raster_props.set const  # a table, made once (raster_props.once)
 browser/compositor_test.odin compositor_test_lock test
 browser/console_eval.odin GLOBALS const  # a table
 browser/console_eval.odin MEMBERS const  # a table
@@ -90,6 +92,7 @@ browser/fonts.odin text_ctx thread  # what the text API of the thread measures w
 browser/forms_plane.odin ctl_plane thread  # the plane a control is painted in, of the thread that paints
 browser/frames_shell.odin frame_tab_ids process  # the ids of the frames' views (atomic: unique in the process, above the tabs')
 browser/gpu_steps.odin GPU_STEP_NAMES const  # a table
+browser/headless_pixels.odin headless_no_pixels thread  # the headless App of this thread rasterizes nothing: set by a test that reads no pixel, before its app_start
 browser/history_settings.odin HISTORY_PREFS const  # a table
 browser/history_tree.odin HISTORY_TREE_PREFS const  # a table
 browser/history_ui.odin MONTHS const  # a table
@@ -97,7 +100,6 @@ browser/history_ui.odin WEEKDAYS const  # a table
 browser/hud.odin HUD_PREFS const  # a table
 browser/hud.odin HUD_SERIES_HELP const  # a table
 browser/hud.odin HUD_SERIES_NAMES const  # a table
-browser/headless_pixels.odin headless_no_pixels thread  # the headless App of this thread rasterizes nothing: set by a test that reads no pixel, before its app_start
 browser/hud.odin TITLE_FIELD_NAMES const  # a table
 browser/instance_shell.odin INSTANCE_PREFS const  # a table
 browser/instance_shell.odin inst process  # one single-instance channel per process
@@ -141,6 +143,8 @@ browser/render_settings.odin RENDER_PREFS const  # a table
 browser/search_engines.odin BUILTIN_ENGINES const  # a table
 browser/session.odin SESSION_PREFS const  # a table
 browser/settings.odin PREFS const  # a table
+browser/settings.odin theme_choices.names const  # a table, made once (theme_choices.once)
+browser/settings.odin theme_choices.once process  # the sync.Once that makes theme_choices.names
 browser/settings_page.odin SETTINGS_PAGES const  # a table
 browser/setup.odin SETUP_PREFS const  # a table
 browser/shaders.odin CARD_FOIL_ARGS const  # a table
@@ -256,7 +260,7 @@ media/wasapi_windows.odin IID_IAudioClient const  # a table
 media/wasapi_windows.odin IID_IAudioClock const  # a table
 media/wasapi_windows.odin IID_IAudioRenderClient const  # a table
 media/wasapi_windows.odin IID_IMMDeviceEnumerator const  # a table
-page/api_generated.odin api_imports const  # the imports the engine is given (generated)
+media/wasapi_windows.odin mono_ns.freq process  # the performance counter's frequency, read once (the same for every thread)
 page/async.odin all_vt const  # a host object's table of procedures
 page/async.odin buffer_vt const  # a host object's table of procedures
 page/async.odin promise_vt const  # a host object's table of procedures
@@ -309,9 +313,7 @@ page/dnd_entries.odin fs_entry_vt const  # a host object's table of procedures
 page/dnd_entries.odin fs_reader_vt const  # a host object's table of procedures
 page/eventsource.odin EVENTSOURCE_PREFS const  # a table
 page/eventsource.odin eventsource_vt const  # a host object's table of procedures
-page/ext_api.odin EXT_EVENTS const  # a table
-page/ext_api.odin EXT_METHODS const  # a table
-page/ext_offscreen.odin EXT_OFFSCREEN_REASONS const  # a table
+page/ext_decode.odin EXT_JSON_KIND_NAMES const  # a table: the JSON kinds as the errors name them
 page/ext_realm.odin EXT_KIND_NAMES const  # a table
 page/ext_tabs.odin EXT_CONTEXT_TYPES const  # a table
 page/formdata.odin formdata_vt const  # a host object's table of procedures
@@ -392,6 +394,7 @@ page/worker.odin worker_vt const  # a host object's table of procedures
 page/worker_settings.odin WORKER_PREFS const  # a table
 page/worker_test.odin LOGGING_SPIN_MODULE test
 page/worker_test.odin SPIN_MODULE test
+page/worker_test.odin terminate_stops_a_worker_busy_in_a_long_computation.spin_logged test
 page/worker_test.odin worker_tests test
 style/audit.odin audit_vars thread
 style/cascade.odin styled_serial process  # atomic: stamps of computed styles (the style threads stamp too)
@@ -465,6 +468,8 @@ style/props.odin prop_slots const  # ... the table
 style/props.odin props_once const  # a table built once
 style/restyle_dom.odin trace_cause process  # ... the mutation being marked
 style/restyle_dom.odin trace_note process  # ... the anchor being applied
+style/restyle_dom.odin trace_restyle.known process  # whether WREN_RESTYLE_TRACE was read (a trace for debugging: the same for every thread)
+style/restyle_dom.odin trace_restyle.on process  # ... and what it says
 style/restyle_dom.odin trace_roots process  # a trace for debugging (WREN_RESTYLE_TRACE), one thread at a time
 style/restyle_dom.odin trace_why process  # ... why it flipped
 style/restyle_dom_test.odin CLASSES test
@@ -482,6 +487,65 @@ style/shorthands.odin logical_names const  # ... the table
 style/shorthands.odin prop_by_name const  # ... the table
 style/shorthands.odin prop_names const  # ... the table
 style/shorthands.odin short_by_name const  # ... the table
+style/shorthands.odin short_longhands.animation const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.animation_range const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.b_bottom const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.b_left const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.b_right const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.b_top const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.background const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.bb_color const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.bb_style const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.bb_width const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.bi_color const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.bi_style const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.bi_width const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.border_all const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.border_block const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.border_color const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.border_inline const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.border_style const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.border_width const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.column_rule const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.columns const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.container const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.flex const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.flex_flow const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.font const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.font_variant const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.gap const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.grid const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.grid_area const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.grid_column const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.grid_row const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.grid_template const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.inset const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.inset_block const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.inset_inline const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.list_style const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.margin const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.margin_block const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.margin_inline const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.mask const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.outline const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.overflow const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.overscroll const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.padding const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.padding_block const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.padding_inline const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.place_content const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.place_items const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.place_self const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.position_try const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.radius const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.scroll_timeline const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.text_decoration const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.text_emphasis const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.text_stroke const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.text_wrap const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.transition const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.view_timeline const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.white_space const  # a table: the longhands of a shorthand
 style/shorthands.odin tables_once const  # ... its guard
 style/shorthands.odin tables_ready const  # a table built once
 style/shorthands_more.odin COLLAPSES const  # a table
@@ -521,70 +585,3 @@ style/values.odin ZERO_TIMES const  # a table
 style/values_more.odin FONT_STRETCH const  # a table
 style/writing_modes.odin flow_maps const  # ... the table
 style/writing_modes.odin flow_maps_once const  # a table built once
-browser/compositor.odin raster_props.set const  # a table, made once (raster_props.once)
-browser/compositor.odin raster_props.once process  # the sync.Once that makes raster_props.set
-browser/settings.odin theme_choices.names const  # a table, made once (theme_choices.once)
-browser/settings.odin theme_choices.once process  # the sync.Once that makes theme_choices.names
-page/worker_test.odin terminate_stops_a_worker_busy_in_a_long_computation.spin_logged test
-style/restyle_dom.odin trace_restyle.known process  # whether WREN_RESTYLE_TRACE was read (a trace for debugging: the same for every thread)
-style/restyle_dom.odin trace_restyle.on process  # ... and what it says
-style/shorthands.odin short_longhands.margin const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.padding const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.border_all const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.border_width const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.border_style const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.border_color const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.b_top const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.b_right const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.b_bottom const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.b_left const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.radius const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.background const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.font const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.white_space const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.text_wrap const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.font_variant const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.transition const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.animation const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.animation_range const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.scroll_timeline const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.view_timeline const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.overscroll const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.columns const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.column_rule const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.grid_template const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.grid const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.grid_row const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.grid_column const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.grid_area const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.flex const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.flex_flow const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.gap const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.overflow const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.inset const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.list_style const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.text_decoration const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.text_emphasis const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.text_stroke const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.outline const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.place_content const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.place_items const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.place_self const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.margin_block const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.margin_inline const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.padding_block const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.padding_inline const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.inset_block const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.inset_inline const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.container const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.border_block const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.border_inline const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.bb_width const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.bb_style const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.bb_color const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.bi_width const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.bi_style const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.bi_color const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.mask const  # a table: the longhands of a shorthand
-style/shorthands.odin short_longhands.position_try const  # a table: the longhands of a shorthand
-media/wasapi_windows.odin mono_ns.freq process  # the performance counter's frequency, read once (the same for every thread)

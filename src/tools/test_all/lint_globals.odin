@@ -39,6 +39,8 @@ find_globals :: proc(dir: string, allocator := context.allocator) -> []Global {
 	slice.sort_by(entries, proc(a, b: os.File_Info) -> bool { return strings.to_lower(a.name, context.temp_allocator) < strings.to_lower(b.name, context.temp_allocator) })
 	for e in entries {
 		if e.type == .Directory || !strings.has_suffix(e.name, ".odin") { continue }
+		// (a generated file's tables are its generator's: reviewed there, and their names follow the API it reads)
+		if strings.has_suffix(e.name, "_generated.odin") || strings.has_suffix(e.name, "_generated_test.odin") { continue }
 		data, rerr := os.read_entire_file(e.fullpath, context.allocator)
 		if rerr != nil { continue }
 		file := ast.File{src = string(data), fullpath = e.fullpath}

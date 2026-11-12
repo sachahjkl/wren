@@ -9,7 +9,6 @@ package page
 // never made or closed inside the call of a page, whose own tab may be the one that goes. The task answers the call.
 // An event is built per extension: a tab's URL and title are in it only when that extension may see them (ext_may_see).
 
-import "core:encoding/json"
 import "core:fmt"
 import "core:strings"
 import "wb:extensions"
@@ -175,40 +174,27 @@ ext_open_url_ok :: proc(e: ^extensions.Extension, u: string) -> (string, bool) {
 	return "", false
 }
 
-@(private = "file")
-jnum_value :: proc(v: json.Value) -> (f64, bool) {
-	#partial switch n in v {
-	case json.Float:   return n, true
-	case json.Integer: return f64(n), true
-	}
-	return 0, false
-}
-
 ////////////////////////////////
 // tabs
 
-ext_tabs_create :: proc(x: ^Ext_Call) {
-	props, ok := ext_arg(x, 0).(json.Object)
-	if !ok { ext_fail(x, "Error in invocation of tabs.create: createProperties must be an object"); return }
-	u, _ := jstr(props, "url")
+ext_tabs_create :: proc(x: ^Ext_Call, a: Ext_Tabs_Create_Args) {
+	props := a.create_properties
+	u := props.url.? or_else ""
 	abs, uok := ext_open_url_ok(x.e, u)
 	if !uok { ext_fail(x, fmt.tprintf("Cannot navigate to %q: only web pages and the extension's own pages can be opened", u)); return }
 	t := ext_task_for(x, .Tab_Create)
 	t.url = strings.clone(abs)
 	t.activate = true
-	if v, has := jbool(props, "active"); has { t.activate = v }
-	if v, has := jbool(props, "selected"); has { t.activate = v }
-	if n, has := jnum(props, "windowId"); has { t.window = n == -2 ? ext_current_window(x) : i64(n) }
-	if n, has := jnum(props, "index"); has { t.index = i64(n) }
+	if v, has := props.active.?; has { t.activate = v }
+	if v, has := props.selected.?; has { t.activate = v }
+	if n, has := props.window_id.?; has { t.window = n == -2 ? ext_current_window(x) : n }
+	if n, has := props.index.?; has { t.index = n }
 	ext_task_start(t)
 }
 
-ext_tabs_update :: proc(x: ^Ext_Call) {
-	// update([tabId], updateProperties)
-	tab := i64(-1)
-	props: json.Object
-	if n, ok := jnum_value(ext_arg(x, 0)); ok { tab, props = i64(n), jobj(ext_arg(x, 1)) } else { props = jobj(ext_arg(x, 0)) }
-	if props == nil { ext_fail(x, "Error in invocation of tabs.update: updateProperties must be an object"); return }
+ext_tabs_update :: proc(x: ^Ext_Call, a: Ext_Tabs_Update_Args) {
+	props := a.update_properties
+	tab := a.tab_id.? or_else -1
 	if tab < 0 {
 		// no id: the selected tab of the current window
 		want := ext_current_window(x)
@@ -219,31 +205,24 @@ ext_tabs_update :: proc(x: ^Ext_Call) {
 	for t in ext_tabs_list() { if t.id == tab { found = true; break } }
 	if !found { ext_fail(x, fmt.tprintf("No tab with id: %d.", tab)); return }
 	abs := ""
-	if u, has := jstr(props, "url"); has {
+	if u, has := props.url.?; has {
 		ok: bool
 		abs, ok = ext_open_url_ok(x.e, u)
 		if !ok { ext_fail(x, fmt.tprintf("Cannot navigate to %q: only web pages and the extension's own pages can be opened", u)); return }
 	}
 	t := ext_task_for(x, .Tab_Update)
 	t.tab, t.url = tab, strings.clone(abs)
-	if v, has := jbool(props, "active"); has && v { t.activate = true }
-	if v, has := jbool(props, "highlighted"); has && v { t.activate = true }
+	if v, has := props.active.?; has && v { t.activate = true }
+	if v, has := props.highlighted.?; has && v { t.activate = true }
 	ext_task_start(t)
 }
 
-ext_tabs_remove :: proc(x: ^Ext_Call) {
+ext_tabs_remove :: proc(x: ^Ext_Call, a: Ext_Tabs_Remove_Args) {
 	ids := make([dynamic]i64, 0, 4, context.temp_allocator)
-	if n, ok := jnum_value(ext_arg(x, 0)); ok {
-		append(&ids, i64(n))
-	} else if list, lok := ext_arg(x, 0).(json.Array); lok {
-		for v in list {
-			n2, nok := jnum_value(v)
-			if !nok { ext_fail(x, "Error in invocation of tabs.remove: tabIds must be integers"); return }
-			append(&ids, i64(n2))
-		}
-	} else {
-		ext_fail(x, "Error in invocation of tabs.remove: tabIds must be an integer or a list of integers")
-		return
+	switch v in a.tab_ids {
+	case nil:
+	case i64:   append(&ids, v)
+	case []i64: append(&ids, ..v)
 	}
 	known := ext_tabs_list()
 	for id in ids {
@@ -259,25 +238,17 @@ ext_tabs_remove :: proc(x: ^Ext_Call) {
 ////////////////////////////////
 // windows
 
-ext_windows_create :: proc(x: ^Ext_Call) {
-	data := jobj(ext_arg(x, 0))
+ext_windows_create :: proc(x: ^Ext_Call, a: Ext_Windows_Create_Args) {
+	data, _ := a.create_data.?
 	urls := make([dynamic]string, 0, 2, context.temp_allocator)
-	#partial switch u in data["url"] {
-	case json.String: append(&urls, u)
-	case json.Array:
-		for v in u {
-			s, ok := v.(json.String)
-			if !ok { ext_fail(x, "Error in invocation of windows.create: url must be a string or a list of strings"); return }
-			append(&urls, s)
-		}
+	switch u in data.url {
+	case nil:
+	case string:   append(&urls, u)
+	case []string: append(&urls, ..u)
 	}
-	if _, has := data["tabId"]; has { ext_fail(x, "windows.create: moving a tab into the new window (tabId) is not supported"); return }
-	if v, has := jbool(data, "incognito"); has && v { ext_fail(x, "Incognito mode is not available."); return }
-	kind, _ := jstr(data, "type")
-	switch kind {
-	case "", "normal", "popup", "panel":
-	case: ext_fail(x, fmt.tprintf("Error in invocation of windows.create: %q is not a window type", kind)); return
-	}
+	if _, has := data.tab_id.?; has { ext_fail(x, "windows.create: moving a tab into the new window (tabId) is not supported"); return }
+	if v, has := data.incognito.?; has && v { ext_fail(x, "Incognito mode is not available."); return }
+	kind := data.type.? or_else ""
 	t := ext_task_for(x, .Window_Create)
 	for u in urls {
 		abs, ok := ext_open_url_ok(x.e, u)
@@ -291,41 +262,40 @@ ext_windows_create :: proc(x: ^Ext_Call) {
 	}
 	t.popup = kind == "popup" || kind == "panel"
 	t.focus = true
-	if v, has := jbool(data, "focused"); has { t.focus = v }
-	if n, has := jnum(data, "width"); has { t.width = int(n) }
-	if n, has := jnum(data, "height"); has { t.height = int(n) }
-	l, has_l := jnum(data, "left")
-	tp, has_t := jnum(data, "top")
+	if v, has := data.focused.?; has { t.focus = v }
+	if n, has := data.width.?; has { t.width = int(n) }
+	if n, has := data.height.?; has { t.height = int(n) }
+	l, has_l := data.left.?
+	tp, has_t := data.top.?
 	if has_l || has_t { t.left, t.top, t.move = int(l), int(tp), true }
 	ext_task_start(t)
 }
 
+// The window a call names, -2 being the current one; false when no window has that id.
 @(private = "file")
-ext_window_id_arg :: proc(x: ^Ext_Call) -> (i64, bool) {
-	n, ok := jnum_value(ext_arg(x, 0))
-	if !ok { return -1, false }
-	id := i64(n)
+ext_window_id_of :: proc(x: ^Ext_Call, n: i64) -> (i64, bool) {
+	id := n
 	if id == -2 { id = ext_current_window(x) }
 	for w in ext_windows_list() { if w.id == id { return id, true } }
 	return id, false
 }
 
-ext_windows_update :: proc(x: ^Ext_Call) {
-	id, ok := ext_window_id_arg(x)
+ext_windows_update :: proc(x: ^Ext_Call, a: Ext_Windows_Update_Args) {
+	id, ok := ext_window_id_of(x, a.window_id)
 	if !ok { ext_fail(x, fmt.tprintf("No window with id: %d.", id)); return }
-	info := jobj(ext_arg(x, 1))
+	info, _ := a.update_info.?
 	t := ext_task_for(x, .Window_Update)
 	t.window = id
-	if v, has := jbool(info, "focused"); has && v { t.focus = true }
-	if s, has := jstr(info, "state"); has && s == "normal" { t.focus = true }
-	l, has_l := jnum(info, "left")
-	tp, has_t := jnum(info, "top")
+	if v, has := info.focused.?; has && v { t.focus = true }
+	if s, has := info.state.?; has && s == "normal" { t.focus = true }
+	l, has_l := info.left.?
+	tp, has_t := info.top.?
 	if has_l || has_t { t.left, t.top, t.move = int(l), int(tp), true }
 	ext_task_start(t)
 }
 
-ext_windows_remove :: proc(x: ^Ext_Call) {
-	id, ok := ext_window_id_arg(x)
+ext_windows_remove :: proc(x: ^Ext_Call, a: Ext_Windows_Remove_Args) {
+	id, ok := ext_window_id_of(x, a.window_id)
 	if !ok { ext_fail(x, fmt.tprintf("No window with id: %d.", id)); return }
 	t := ext_task_for(x, .Window_Remove)
 	t.window = id
@@ -340,7 +310,7 @@ ext_runtime_reload :: proc(x: ^Ext_Call) {
 	ext_task_post(.Reload, x.e.id, "")
 }
 
-ext_runtime_options :: proc(x: ^Ext_Call) {
+ext_runtime_open_options_page :: proc(x: ^Ext_Call) {
 	m := &x.e.image.manifest
 	if m.options_page == "" { ext_fail(x, "Could not create an options page."); return }
 	t := ext_task_for(x, .Tab_Create)
@@ -352,19 +322,21 @@ ext_runtime_options :: proc(x: ^Ext_Call) {
 EXT_CONTEXT_TYPES := [Ext_Kind]string{.Background = "BACKGROUND", .Popup = "POPUP", .Tab = "TAB", .Offscreen = "OFFSCREEN_DOCUMENT", .Content = ""}
 
 // runtime.getContexts(filter): the extension's contexts, as the router knows them (the background only while it runs).
-ext_runtime_contexts :: proc(x: ^Ext_Call) {
-	f := jobj(ext_arg(x, 0))
-	in_list :: proc(filter: json.Object, key: string, text: string, num: i64, number: bool) -> bool {
-		list, has := filter[key].(json.Array)
+ext_runtime_get_contexts :: proc(x: ^Ext_Call, a: Ext_Runtime_Get_Contexts_Args) {
+	f := a.filter
+	texts :: proc(list: Maybe([]string), text: string) -> bool {
+		l, has := list.?
 		if !has { return true }
-		for v in list {
-			if number {
-				if m, ok := jnum_value(v); ok && i64(m) == num { return true }
-			} else if s, ok := v.(json.String); ok && s == text { return true }
-		}
+		for v in l { if v == text { return true } }
 		return false
 	}
-	if v, has := jbool(f, "incognito"); has && v { ext_ok(x, "[]"); return }
+	numbers :: proc(list: Maybe([]i64), n: i64) -> bool {
+		l, has := list.?
+		if !has { return true }
+		for v in l { if v == n { return true } }
+		return false
+	}
+	if v, has := f.incognito.?; has && v { ext_ok(x, "[]"); return }
 	tabs := ext_tabs_list()
 	b := strings.builder_make(context.temp_allocator)
 	strings.write_byte(&b, '[')
@@ -382,10 +354,10 @@ ext_runtime_contexts :: proc(x: ^Ext_Call) {
 		type_name := EXT_CONTEXT_TYPES[c.kind]
 		context_id := fmt.tprintf("%d", c.id)
 		origin := fmt.tprintf("%s://%s", extensions.SCHEME_CHROME, c.ext)
-		if !in_list(f, "contextTypes", type_name, 0, false) || !in_list(f, "contextIds", context_id, 0, false) ||
-		   !in_list(f, "tabIds", "", tab_id, true) || !in_list(f, "windowIds", "", window_id, true) ||
-		   !in_list(f, "frameIds", "", frame, true) || !in_list(f, "documentUrls", c.url, 0, false) ||
-		   !in_list(f, "documentOrigins", origin, 0, false) { continue }
+		if !texts(f.context_types, type_name) || !texts(f.context_ids, context_id) ||
+		   !numbers(f.tab_ids, tab_id) || !numbers(f.window_ids, window_id) ||
+		   !numbers(f.frame_ids, frame) || !texts(f.document_urls, c.url) ||
+		   !texts(f.document_origins, origin) { continue }
 		if !first { strings.write_byte(&b, ',') }
 		first = false
 		fmt.sbprintf(&b, `{{"contextType":%s,"contextId":%s,"tabId":%d,"windowId":%d,"frameId":%d,"incognito":false`,

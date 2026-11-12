@@ -1,0 +1,58 @@
+/// The toolbar button of an extension whose manifest has an action (src/page/ext_api.odin; the shell draws it:
+/// src/browser/ext_toolbar.odin). A value set with a tabId holds for that tab only, until it closes.
+[Manifest=action]
+namespace action {
+  /// A colour: "#rrggbb", "#rgb", or [r, g, b, a].
+  typedef (string or i64[]) ColorArray;
+  /// An icon file, or an object of files by size.
+  typedef (string or object) IconPath;
+
+  struct TabDetails {
+    optional i64 tabId;
+  }
+  struct TitleDetails {
+    string title;
+    optional i64 tabId;
+  }
+  struct PopupDetails {
+    /// A file of the extension; "" : no popup (a click fires onClicked).
+    string popup;
+    optional i64 tabId;
+  }
+  struct BadgeTextDetails {
+    /// The button shows 4 characters; a text longer than 64 is cut.
+    optional string text;
+    optional i64 tabId;
+  }
+  struct BadgeColorDetails {
+    ColorArray color;
+    optional i64 tabId;
+  }
+  struct IconDetails {
+    /// Not shown yet: the icon stays the manifest's.
+    optional any imageData;
+    optional IconPath path;
+    optional i64 tabId;
+  }
+  struct UserSettings {
+    bool isOnToolbar;
+  }
+
+  void setTitle(TitleDetails details);
+  string getTitle(optional TabDetails details);
+  void setPopup(PopupDetails details);
+  string getPopup(optional TabDetails details);
+  void setBadgeText(BadgeTextDetails details);
+  string getBadgeText(optional TabDetails details);
+  void setBadgeBackgroundColor(BadgeColorDetails details);
+  i64[] getBadgeBackgroundColor(optional TabDetails details);
+  /// Accepted; the badge's text keeps its colour.
+  void setBadgeTextColor(BadgeColorDetails details);
+  void setIcon(IconDetails details);
+  /// With a tabId: accepted, and the button stays as it is.
+  void enable(optional i64 tabId);
+  void disable(optional i64 tabId);
+  bool isEnabled(optional i64 tabId);
+  UserSettings getUserSettings();
+  event onClicked(Tab tab);
+}

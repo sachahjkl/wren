@@ -141,3 +141,38 @@ a_fill_does_not_write_into_what_is_not_a_text_field :: proc(t: ^testing.T) {
 	testing.expect(t, !fill_field(x.f, by_id(x, "s"), "x"))
 	testing.expect_value(t, len(x.events), 0)
 }
+
+// A second step's field: by its autocomplete token, or by its name; it is never the user name.
+@(test)
+one_time_code_fields_are_found :: proc(t: ^testing.T) {
+	x := cx_make(`<form id=a><input id=u name=login><input id=p type=password><input id=c autocomplete=one-time-code></form>
+		<form id=b><input id=otp name=totp_code inputmode=numeric></form>
+		<form id=d><input id=n name=code inputmode=numeric maxlength=6></form>
+		<form id=e><input id=plain name=code></form>`)
+	defer cx_destroy(x)
+	lf := login_fields(x.f, by_id(x, "u"))
+	testing.expect_value(t, lf.username, by_id(x, "u"))
+	testing.expect_value(t, lf.password, by_id(x, "p"))
+	testing.expect_value(t, lf.one_time_code, by_id(x, "c"))
+	b := login_fields(x.f, by_id(x, "otp"))
+	testing.expect_value(t, b.one_time_code, by_id(x, "otp"))
+	testing.expect_value(t, b.username, base.NIL_HANDLE)   // (the code's field is not a user name)
+	testing.expect(t, is_one_time_code(x.f, by_id(x, "n")))
+	testing.expect(t, !is_one_time_code(x.f, by_id(x, "plain")))   // (a field named "code" alone says nothing)
+	testing.expect(t, !is_one_time_code(x.f, by_id(x, "p")))
+}
+
+// The dropdown shows on a login's fields only: a lone search field is no login.
+@(test)
+login_roles :: proc(t: ^testing.T) {
+	x := cx_make(`<form><input id=u><input id=p type=password><input id=c autocomplete=one-time-code></form>
+		<form><input id=q type=search></form><form><input id=lone name=city></form>
+		<form><input id=mail type=email autocomplete=username></form>`)
+	defer cx_destroy(x)
+	testing.expect_value(t, login_role(x.f, by_id(x, "u")), Login_Role.Username)
+	testing.expect_value(t, login_role(x.f, by_id(x, "p")), Login_Role.Password)
+	testing.expect_value(t, login_role(x.f, by_id(x, "c")), Login_Role.One_Time_Code)
+	testing.expect_value(t, login_role(x.f, by_id(x, "q")), Login_Role.None)
+	testing.expect_value(t, login_role(x.f, by_id(x, "lone")), Login_Role.None)
+	testing.expect_value(t, login_role(x.f, by_id(x, "mail")), Login_Role.Username)   // (the user name step of a multi-step login)
+}

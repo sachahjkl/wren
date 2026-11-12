@@ -1,11 +1,14 @@
 package page
 
-// The extension APIs of phases 1 and 2 (docs/extensions.md, section 2.2 "Start", "Log in and unlock"): one table of
-// methods and one of events, each with the permission it needs and whether a content script may use it. ext_info_json
-// lists what a context may use (its chrome.* is built from that list: an API outside it is `undefined`); ext_dispatch
-// checks the same rule before it runs anything (ext_allowed: the one gate). Arguments arrive as a JSON list, answers
-// leave as JSON text ("" : undefined, "!" : an error's message). Phase 2's are in ext_tabs.odin (tabs and windows that
-// change, runtime.getContexts / reload / openOptionsPage, their events), ext_offscreen.odin and ext_idle.odin.
+// The extension APIs of phases 1 and 2 (docs/extensions.md, section 2.2 "Start", "Log in and unlock"). Their
+// description is api/ext_<namespace>.widl: bindgen makes from it the tables (EXT_METHODS, EXT_EVENTS, EXT_LOCALS,
+// EXT_NAMESPACES), the decoders of the arguments and the trampolines to the implementations below
+// (ext_api_generated.odin, on ext_decode.odin). ext_info_json lists what a context may use (its chrome.* is built from
+// that list: an API outside it is `undefined`); ext_dispatch checks the same rule before it runs anything (ext_allowed:
+// the one gate). Arguments arrive as a JSON list, decoded into the method's struct before its implementation runs;
+// answers leave as JSON text ("" : undefined, "!" : an error's message). Phase 2's are in ext_tabs.odin (tabs and
+// windows that change, runtime.getContexts / reload / openOptionsPage, their events), ext_offscreen.odin and
+// ext_idle.odin.
 //
 // Not here yet (later phases): content scripts, scripting, webRequest, contextMenus, commands, notifications,
 // permissions.request (answers false).
@@ -25,130 +28,16 @@ Ext_Call :: struct {
 	e:        ^extensions.Extension,
 	reg:      ^extensions.Registry,
 	method:   string,
-	args:     json.Array,
+	args:     json.Array,   // as they came (the trampoline decodes them for the implementation)
 	to:       Ext_Target,
 	answered: bool,
 }
 
-Ext_Method_Proc :: #type proc(x: ^Ext_Call)
-
-Ext_Method :: struct {
-	name:       string,
-	permission: string,    // "" : none
-	content:    bool,      // a content script may call it
-	action:     bool,      // the manifest must have an action
-	impl:       Ext_Method_Proc,
-}
-
-Ext_Event :: struct {
-	name:       string,
-	permission: string,
-	content:    bool,
-	action:     bool,
-}
-
-EXT_METHODS := [?]Ext_Method{
-	{name = "runtime.sendMessage", content = true, impl = ext_runtime_send_message},
-	{name = "runtime.getPlatformInfo", impl = ext_runtime_platform},
-	{name = "runtime.setUninstallURL", impl = ext_nothing},
-	{name = "runtime.getContexts", impl = ext_runtime_contexts},
-	{name = "runtime.reload", impl = ext_runtime_reload},
-	{name = "runtime.openOptionsPage", impl = ext_runtime_options},
-	{name = "storage.local.get", permission = "storage", content = true, impl = ext_storage_get},
-	{name = "storage.local.set", permission = "storage", content = true, impl = ext_storage_set},
-	{name = "storage.local.remove", permission = "storage", content = true, impl = ext_storage_remove},
-	{name = "storage.local.clear", permission = "storage", content = true, impl = ext_storage_clear},
-	{name = "storage.local.getBytesInUse", permission = "storage", content = true, impl = ext_storage_bytes},
-	{name = "storage.local.getKeys", permission = "storage", content = true, impl = ext_storage_keys},
-	{name = "storage.sync.get", permission = "storage", content = true, impl = ext_storage_get},
-	{name = "storage.sync.set", permission = "storage", content = true, impl = ext_storage_set},
-	{name = "storage.sync.remove", permission = "storage", content = true, impl = ext_storage_remove},
-	{name = "storage.sync.clear", permission = "storage", content = true, impl = ext_storage_clear},
-	{name = "storage.sync.getBytesInUse", permission = "storage", content = true, impl = ext_storage_bytes},
-	{name = "storage.sync.getKeys", permission = "storage", content = true, impl = ext_storage_keys},
-	{name = "storage.session.get", permission = "storage", impl = ext_storage_get},
-	{name = "storage.session.set", permission = "storage", impl = ext_storage_set},
-	{name = "storage.session.remove", permission = "storage", impl = ext_storage_remove},
-	{name = "storage.session.clear", permission = "storage", impl = ext_storage_clear},
-	{name = "storage.session.getBytesInUse", permission = "storage", impl = ext_storage_bytes},
-	{name = "storage.session.getKeys", permission = "storage", impl = ext_storage_keys},
-	{name = "storage.session.setAccessLevel", permission = "storage", impl = ext_nothing},
-	{name = "storage.managed.get", permission = "storage", content = true, impl = ext_storage_get},
-	{name = "storage.managed.getBytesInUse", permission = "storage", content = true, impl = ext_storage_bytes},
-	{name = "tabs.query", impl = ext_tabs_query},
-	{name = "tabs.get", impl = ext_tabs_get},
-	{name = "tabs.getCurrent", impl = ext_tabs_current},
-	{name = "tabs.create", impl = ext_tabs_create},
-	{name = "tabs.update", impl = ext_tabs_update},
-	{name = "tabs.remove", impl = ext_tabs_remove},
-	{name = "windows.getCurrent", impl = ext_windows_current},
-	{name = "windows.getLastFocused", impl = ext_windows_current},
-	{name = "windows.getAll", impl = ext_windows_all},
-	{name = "windows.get", impl = ext_windows_get},
-	{name = "windows.create", impl = ext_windows_create},
-	{name = "windows.update", impl = ext_windows_update},
-	{name = "windows.remove", impl = ext_windows_remove},
-	{name = "idle.queryState", permission = "idle", impl = ext_idle_query},
-	{name = "idle.setDetectionInterval", permission = "idle", impl = ext_idle_interval},
-	{name = "offscreen.createDocument", permission = "offscreen", impl = ext_offscreen_create},
-	{name = "offscreen.hasDocument", permission = "offscreen", impl = ext_offscreen_has},
-	{name = "offscreen.closeDocument", permission = "offscreen", impl = ext_offscreen_close_call},
-	{name = "action.setTitle", action = true, impl = ext_action_set},
-	{name = "action.getTitle", action = true, impl = ext_action_get},
-	{name = "action.setPopup", action = true, impl = ext_action_set},
-	{name = "action.getPopup", action = true, impl = ext_action_get},
-	{name = "action.setBadgeText", action = true, impl = ext_action_set},
-	{name = "action.getBadgeText", action = true, impl = ext_action_get},
-	{name = "action.setBadgeBackgroundColor", action = true, impl = ext_action_set},
-	{name = "action.getBadgeBackgroundColor", action = true, impl = ext_action_get},
-	{name = "action.setBadgeTextColor", action = true, impl = ext_nothing},
-	{name = "action.setIcon", action = true, impl = ext_action_set},
-	{name = "action.enable", action = true, impl = ext_action_set},
-	{name = "action.disable", action = true, impl = ext_action_set},
-	{name = "action.isEnabled", action = true, impl = ext_action_get},
-	{name = "action.getUserSettings", action = true, impl = ext_action_get},
-	{name = "alarms.create", permission = "alarms", impl = ext_alarms_create},
-	{name = "alarms.get", permission = "alarms", impl = ext_alarms_get},
-	{name = "alarms.getAll", permission = "alarms", impl = ext_alarms_get},
-	{name = "alarms.clear", permission = "alarms", impl = ext_alarms_clear},
-	{name = "alarms.clearAll", permission = "alarms", impl = ext_alarms_clear},
-	{name = "permissions.contains", impl = ext_permissions},
-	{name = "permissions.getAll", impl = ext_permissions},
-	{name = "permissions.request", impl = ext_permissions},
-	{name = "permissions.remove", impl = ext_permissions},
-	{name = "management.getSelf", impl = ext_management_self},
-}
-
-EXT_EVENTS := [?]Ext_Event{
-	{name = "runtime.onMessage", content = true},
-	{name = "runtime.onConnect", content = true},
-	{name = "runtime.onInstalled"},
-	{name = "runtime.onStartup"},
-	{name = "runtime.onSuspend"},
-	{name = "runtime.onSuspendCanceled"},
-	{name = "runtime.onUpdateAvailable"},
-	{name = "storage.onChanged", permission = "storage", content = true},
-	{name = "storage.local.onChanged", permission = "storage", content = true},
-	{name = "storage.sync.onChanged", permission = "storage", content = true},
-	{name = "storage.session.onChanged", permission = "storage"},
-	{name = "storage.managed.onChanged", permission = "storage", content = true},
-	{name = "alarms.onAlarm", permission = "alarms"},
-	{name = "action.onClicked", action = true},
-	{name = "tabs.onActivated"}, {name = "tabs.onUpdated"}, {name = "tabs.onRemoved"}, {name = "tabs.onCreated"},
-	{name = "tabs.onReplaced"}, {name = "tabs.onAttached"}, {name = "tabs.onDetached"}, {name = "tabs.onMoved"},
-	{name = "tabs.onHighlighted"},
-	{name = "windows.onFocusChanged"}, {name = "windows.onRemoved"}, {name = "windows.onCreated"}, {name = "windows.onBoundsChanged"},
-	{name = "permissions.onAdded"}, {name = "permissions.onRemoved"},
-	{name = "idle.onStateChanged", permission = "idle"},
-}
-
-// The gate (rule 2 of section 3.11), for a method or an event: the permission is in the manifest (every required
-// permission is granted at install), the manifest has what it acts on, the kind of context may use it. An offscreen
-// document has runtime only, as in Chrome.
-@(private)
-ext_allowed :: proc(im: ^extensions.Image, kind: Ext_Kind, name, permission: string, content, action: bool) -> bool {
-	if kind == .Content && !content { return false }
-	if kind == .Offscreen && !strings.has_prefix(name, "runtime.") { return false }
+// The gate (rule 2 of section 3.11), for a method, an event or a member the realm answers: the kind of context may use
+// it, the manifest has what it acts on, and the permission is in the manifest (every required permission is granted at
+// install).
+ext_allowed :: proc(im: ^extensions.Image, kind: Ext_Kind, contexts: Ext_Contexts, permission: string, action: bool) -> bool {
+	if kind not_in contexts { return false }
 	if action && !im.manifest.has_action { return false }
 	if permission != "" && !extensions.manifest_has_permission(&im.manifest, permission) { return false }
 	return true
@@ -159,28 +48,50 @@ ext_method_find :: proc(name: string) -> ^Ext_Method {
 	return nil
 }
 
-// Ext_info's answer: what a context of `kind` of this extension may use (temp allocator).
+// Ext_info's answer: what a context of `kind` of this extension may use, and the constants of its namespaces (temp
+// allocator).
 ext_info_json :: proc(im: ^extensions.Image, kind: Ext_Kind) -> string {
 	b := strings.builder_make(context.temp_allocator)
-	lang := im.language
+	names := make([dynamic]string, 0, 64, context.temp_allocator)
 	fmt.sbprintf(&b, `{{"id":%s,"kind":%s,"base":%s,"flavour":%s,"lang":%s,"methods":[`, extensions.json_quote(im.id), extensions.json_quote(EXT_KIND_NAMES[kind]),
-		extensions.json_quote(im.base_url), extensions.json_quote(extensions.FLAVOUR_NAMES[im.manifest.flavour]), extensions.json_quote(lang))
+		extensions.json_quote(im.base_url), extensions.json_quote(extensions.FLAVOUR_NAMES[im.manifest.flavour]), extensions.json_quote(im.language))
 	first := true
 	for m in EXT_METHODS {
-		if !ext_allowed(im, kind, m.name, m.permission, m.content, m.action) { continue }
+		if !ext_allowed(im, kind, m.contexts, m.permission, m.action) { continue }
 		if !first { strings.write_byte(&b, ',') }
 		first = false
 		strings.write_string(&b, extensions.json_quote(m.name))
+		append(&names, m.name)
+	}
+	list :: proc(b: ^strings.Builder, names: ^[dynamic]string, im: ^extensions.Image, kind: Ext_Kind, members: []Ext_Member) {
+		first := true
+		for m in members {
+			if !ext_allowed(im, kind, m.contexts, m.permission, m.action) { continue }
+			if !first { strings.write_byte(b, ',') }
+			first = false
+			strings.write_string(b, extensions.json_quote(m.name))
+			append(names, m.name)
+		}
 	}
 	strings.write_string(&b, `],"events":[`)
+	list(&b, &names, im, kind, EXT_EVENTS[:])
+	strings.write_string(&b, `],"local":[`)
+	list(&b, &names, im, kind, EXT_LOCALS[:])
+	// the constants of the namespaces this context has (a namespace exists when one of its members does)
+	strings.write_string(&b, `],"constants":{`)
 	first = true
-	for ev in EXT_EVENTS {
-		if !ext_allowed(im, kind, ev.name, ev.permission, ev.content, ev.action) { continue }
+	for ns in EXT_NAMESPACES {
+		prefix := strings.concatenate({ns.name, "."}, context.temp_allocator)
+		has := false
+		for n in names { if strings.has_prefix(n, prefix) { has = true; break } }
+		if !has { continue }
 		if !first { strings.write_byte(&b, ',') }
 		first = false
-		strings.write_string(&b, extensions.json_quote(ev.name))
+		strings.write_string(&b, extensions.json_quote(ns.name))
+		strings.write_byte(&b, ':')
+		strings.write_string(&b, ns.constants)
 	}
-	strings.write_string(&b, "]}")
+	strings.write_string(&b, "}}")
 	return strings.to_string(b)
 }
 
@@ -196,7 +107,7 @@ ext_dispatch :: proc(c: ^Ext_Context, method, args: string, to: Ext_Target) {
 		ext_answer(to, fmt.tprintf("!%s is not supported", method))
 		return
 	}
-	if !ext_allowed(e.image, c.kind, m.name, m.permission, m.content, m.action) {
+	if !ext_allowed(e.image, c.kind, m.contexts, m.permission, m.action) {
 		ext_answer(to, fmt.tprintf("!%s is not allowed in this context (permission %q)", method, m.permission))
 		return
 	}
@@ -208,7 +119,7 @@ ext_dispatch :: proc(c: ^Ext_Context, method, args: string, to: Ext_Target) {
 	arr, ok := v.(json.Array)
 	if err != .None || !ok { ext_answer(to, fmt.tprintf("!Error in invocation of %s: the arguments are not a list", method)); return }
 	x := Ext_Call{c = c, e = e, reg = reg, method = method, args = arr, to = to}
-	m.impl(&x)
+	m.invoke(&x)   // decodes the arguments (an error answers the call), then runs the implementation
 	if !x.answered { ext_ok(&x, "") }
 }
 
@@ -224,50 +135,17 @@ ext_ok :: proc(x: ^Ext_Call, text: string) {
 ext_fail :: proc(x: ^Ext_Call, message: string) { ext_ok(x, strings.concatenate({"!", message}, context.temp_allocator)) }
 
 @(private)
-ext_arg :: proc(x: ^Ext_Call, i: int) -> json.Value { return i < len(x.args) ? x.args[i] : nil }
-
-@(private)
-jbool :: proc(o: json.Object, key: string) -> (bool, bool) {
-	v, ok := o[key].(json.Boolean)
-	return v, ok
-}
-
-@(private)
-jnum :: proc(o: json.Object, key: string) -> (f64, bool) {
-	#partial switch n in o[key] {
-	case json.Float:   return n, true
-	case json.Integer: return f64(n), true
-	}
-	return 0, false
-}
-
-@(private)
-jstr :: proc(o: json.Object, key: string) -> (string, bool) {
-	v, ok := o[key].(json.String)
-	return v, ok
-}
-
-@(private)
-jobj :: proc(v: json.Value) -> json.Object {
-	o, _ := v.(json.Object)
-	return o
-}
-
-@(private)
 jbool_text :: proc(b: bool) -> string { return b ? "true" : "false" }
-
-ext_nothing :: proc(x: ^Ext_Call) { ext_ok(x, "") }
 
 ////////////////////////////////
 // runtime
 
-ext_runtime_send_message :: proc(x: ^Ext_Call) {
-	msg := ext_arg(x, 0)
+ext_runtime_send_message :: proc(x: ^Ext_Call, a: Ext_Runtime_Send_Message_Args) {
 	x.answered = true   // (answered by the receivers, or by ext_send_message when there is none)
-	ext_send_message(x.c, extensions.json_text(msg), x.to)
+	ext_send_message(x.c, extensions.json_text(a.message), x.to)
 }
 
-ext_runtime_platform :: proc(x: ^Ext_Call) {
+ext_runtime_get_platform_info :: proc(x: ^Ext_Call) {
 	os_name := "linux"
 	when ODIN_OS == .Windows { os_name = "win" }
 	when ODIN_OS == .Darwin { os_name = "mac" }
@@ -275,6 +153,9 @@ ext_runtime_platform :: proc(x: ^Ext_Call) {
 	when ODIN_ARCH == .arm64 { arch = "arm64" }
 	ext_ok(x, fmt.tprintf(`{{"os":"%s","arch":"%s","nacl_arch":"%s"}}`, os_name, arch, arch))
 }
+
+// (no page opens when the extension is removed: the URL is not kept)
+ext_runtime_set_uninstall_url :: proc(x: ^Ext_Call, a: Ext_Runtime_Set_Uninstall_Url_Args) { ext_ok(x, "") }
 
 ////////////////////////////////
 // storage
@@ -291,38 +172,29 @@ ext_area :: proc(x: ^Ext_Call) -> (^extensions.Area, extensions.Area_Kind) {
 	return nil, .Managed
 }
 
-// The keys an argument names: nil value: all (all = true); a string; a list of strings; an object (its keys, with
-// defaults). False when it is none of these.
+// The keys an argument names: absent: all (all = true); a string; a list of strings; an object (its keys, with
+// defaults).
 @(private)
-ext_keys_of :: proc(v: json.Value) -> (keys: []string, defaults: json.Object, all: bool, ok: bool) {
-	switch k in v {
-	case nil, json.Null: return nil, nil, true, true
-	case json.String:
+ext_keys_of :: proc(k: Ext_Storage_Keys) -> (keys: []string, defaults: json.Object, all: bool) {
+	switch v in k {
+	case nil: return nil, nil, true
+	case string:
 		out := make([]string, 1, context.temp_allocator)
-		out[0] = k
-		return out, nil, false, true
-	case json.Array:
-		out := make([dynamic]string, 0, len(k), context.temp_allocator)
-		for e in k {
-			s, sok := e.(json.String)
-			if !sok { return nil, nil, false, false }
-			append(&out, s)
-		}
-		return out[:], nil, false, true
+		out[0] = v
+		return out, nil, false
+	case []string: return v, nil, false
 	case json.Object:
-		out := make([dynamic]string, 0, len(k), context.temp_allocator)
-		for key in k { append(&out, key) }
-		return out[:], k, false, true
-	case json.Integer, json.Float, json.Boolean:
+		out := make([dynamic]string, 0, len(v), context.temp_allocator)
+		for key in v { append(&out, key) }
+		return out[:], v, false
 	}
-	return nil, nil, false, false
+	return nil, nil, true
 }
 
-ext_storage_get :: proc(x: ^Ext_Call) {
-	a, _ := ext_area(x)
-	if a == nil { ext_ok(x, "{}"); return }   // managed: empty (no policy sets it)
-	keys, defaults, all, ok := ext_keys_of(ext_arg(x, 0))
-	if !ok { ext_fail(x, "Error in invocation of storage.get: keys must be a string, a list of strings or an object"); return }
+ext_storage_get :: proc(x: ^Ext_Call, a: Ext_Storage_Get_Args) {
+	area, _ := ext_area(x)
+	if area == nil { ext_ok(x, "{}"); return }   // managed: empty (no policy sets it)
+	keys, defaults, all := ext_keys_of(a.keys)
 	b := strings.builder_make(context.temp_allocator)
 	strings.write_byte(&b, '{')
 	first := true
@@ -334,10 +206,10 @@ ext_storage_get :: proc(x: ^Ext_Call) {
 		strings.write_string(b, v)
 	}
 	if all {
-		for k, v in a.items { item(&b, &first, k, v) }
+		for k, v in area.items { item(&b, &first, k, v) }
 	} else {
 		for k in keys {
-			if v, has := a.items[k]; has {
+			if v, has := area.items[k]; has {
 				item(&b, &first, k, v)
 			} else if defaults != nil {
 				item(&b, &first, k, extensions.json_text(defaults[k]))
@@ -393,46 +265,46 @@ ext_storage_save_all :: proc() {
 	for e in reg.list { extensions.registry_save_areas(reg, e) }
 }
 
-ext_storage_set :: proc(x: ^Ext_Call) {
-	a, kind := ext_area(x)
-	if a == nil { ext_fail(x, "storage.managed is read-only"); return }
-	o, ok := ext_arg(x, 0).(json.Object)
-	if !ok { ext_fail(x, "Error in invocation of storage.set: items must be an object"); return }
-	keys := make([dynamic]string, 0, len(o), context.temp_allocator)
-	values := make([dynamic]string, 0, len(o), context.temp_allocator)
-	for k, v in o {
+ext_storage_set :: proc(x: ^Ext_Call, a: Ext_Storage_Set_Args) {
+	area, kind := ext_area(x)
+	if area == nil { ext_fail(x, "storage.managed is read-only"); return }
+	keys := make([dynamic]string, 0, len(a.items), context.temp_allocator)
+	values := make([dynamic]string, 0, len(a.items), context.temp_allocator)
+	for k, v in a.items {
 		append(&keys, k)
 		append(&values, extensions.json_text(v))
 	}
-	changes, err := extensions.area_set(a, keys[:], values[:])
+	changes, err := extensions.area_set(area, keys[:], values[:])
 	if err != .None { ext_fail(x, extensions.area_error_text(err)); return }
 	ext_storage_changed(x, kind, changes)
 	ext_ok(x, "")
 }
 
-ext_storage_remove :: proc(x: ^Ext_Call) {
-	a, kind := ext_area(x)
-	if a == nil { ext_fail(x, "storage.managed is read-only"); return }
-	keys, _, all, ok := ext_keys_of(ext_arg(x, 0))
-	if !ok || all { ext_fail(x, "Error in invocation of storage.remove: keys must be a string or a list of strings"); return }
-	ext_storage_changed(x, kind, extensions.area_remove(a, keys))
+ext_storage_remove :: proc(x: ^Ext_Call, a: Ext_Storage_Remove_Args) {
+	area, kind := ext_area(x)
+	if area == nil { ext_fail(x, "storage.managed is read-only"); return }
+	keys, _, all := ext_keys_of(a.keys)
+	if all { ext_fail(x, "Error in invocation of storage.remove: keys must be a string or a list of strings"); return }
+	ext_storage_changed(x, kind, extensions.area_remove(area, keys))
 	ext_ok(x, "")
 }
 
 ext_storage_clear :: proc(x: ^Ext_Call) {
-	a, kind := ext_area(x)
-	if a == nil { ext_fail(x, "storage.managed is read-only"); return }
-	ext_storage_changed(x, kind, extensions.area_clear(a))
+	area, kind := ext_area(x)
+	if area == nil { ext_fail(x, "storage.managed is read-only"); return }
+	ext_storage_changed(x, kind, extensions.area_clear(area))
 	ext_ok(x, "")
 }
 
-ext_storage_bytes :: proc(x: ^Ext_Call) {
-	a, _ := ext_area(x)
-	if a == nil { ext_ok(x, "0"); return }
-	keys, _, all, ok := ext_keys_of(ext_arg(x, 0))
-	if !ok { ext_fail(x, "Error in invocation of storage.getBytesInUse"); return }
-	ext_ok(x, fmt.tprintf("%d", extensions.area_bytes_of(a, all ? nil : keys)))
+ext_storage_bytes :: proc(x: ^Ext_Call, a: Ext_Storage_Bytes_Args) {
+	area, _ := ext_area(x)
+	if area == nil { ext_ok(x, "0"); return }
+	keys, _, all := ext_keys_of(a.keys)
+	ext_ok(x, fmt.tprintf("%d", extensions.area_bytes_of(area, all ? nil : keys)))
 }
+
+// (content scripts keep no access to storage.session whatever the level: the gate's rule)
+ext_storage_session_set_access_level :: proc(x: ^Ext_Call, a: Ext_Storage_Session_Set_Access_Level_Args) { ext_ok(x, "") }
 
 ext_storage_keys :: proc(x: ^Ext_Call) {
 	a, _ := ext_area(x)
@@ -495,33 +367,34 @@ ext_tab_json_of :: proc(b: ^strings.Builder, reg: ^extensions.Registry, e: ^exte
 	strings.write_byte(b, '}')
 }
 
-ext_tabs_query :: proc(x: ^Ext_Call) {
-	q := jobj(ext_arg(x, 0))
+ext_tabs_query :: proc(x: ^Ext_Call, a: Ext_Tabs_Query_Args) {
+	q, _ := a.query_info.?
 	want_window := i64(-1)
-	if v, ok := jbool(q, "currentWindow"); ok && v { want_window = ext_current_window(x) }
-	if v, ok := jbool(q, "lastFocusedWindow"); ok && v {
+	if v, ok := q.current_window.?; ok && v { want_window = ext_current_window(x) }
+	if v, ok := q.last_focused_window.?; ok && v {
 		if em := &ext_router().embedder; em.focused_window != nil { want_window = em.focused_window(em.user) }
 	}
-	if n, ok := jnum(q, "windowId"); ok { want_window = n == -2 ? ext_current_window(x) : i64(n) }
+	if n, ok := q.window_id.?; ok { want_window = n == -2 ? ext_current_window(x) : n }
 	patterns := make([dynamic]extensions.Pattern, 0, 4, context.temp_allocator)
 	has_url := false
-	#partial switch u in q["url"] {
-	case json.String:
+	switch u in q.url {
+	case nil:
+	case string:
 		has_url = true
 		if p, ok := extensions.pattern_parse(u); ok { append(&patterns, p) }
-	case json.Array:
+	case []string:
 		has_url = true
-		for e in u { if s, ok := e.(json.String); ok { if p, pok := extensions.pattern_parse(s); pok { append(&patterns, p) } } }
+		for s in u { if p, ok := extensions.pattern_parse(s); ok { append(&patterns, p) } }
 	}
 	b := strings.builder_make(context.temp_allocator)
 	strings.write_byte(&b, '[')
 	first := true
 	for t in ext_tabs_list() {
-		if v, ok := jbool(q, "active"); ok && v != t.active { continue }
-		if v, ok := jbool(q, "highlighted"); ok && v != t.active { continue }
-		if v, ok := jbool(q, "pinned"); ok && v != t.pinned { continue }
-		if s, ok := jstr(q, "status"); ok && s != (t.loading ? "loading" : "complete") { continue }
-		if n, ok := jnum(q, "index"); ok && i64(n) != t.index { continue }
+		if v, ok := q.active.?; ok && v != t.active { continue }
+		if v, ok := q.highlighted.?; ok && v != t.active { continue }
+		if v, ok := q.pinned.?; ok && v != t.pinned { continue }
+		if s, ok := q.status.?; ok && s != (t.loading ? "loading" : "complete") { continue }
+		if n, ok := q.index.?; ok && n != t.index { continue }
 		if want_window >= 0 && t.window != want_window { continue }
 		if has_url && (!ext_may_see(x, t.url) || !extensions.patterns_match_href(patterns[:], t.url)) { continue }
 		if !first { strings.write_byte(&b, ',') }
@@ -532,21 +405,19 @@ ext_tabs_query :: proc(x: ^Ext_Call) {
 	ext_ok(x, strings.to_string(b))
 }
 
-ext_tabs_get :: proc(x: ^Ext_Call) {
-	n, ok := ext_arg(x, 0).(json.Float)
-	if !ok { ext_fail(x, "Error in invocation of tabs.get: tabId must be an integer"); return }
+ext_tabs_get :: proc(x: ^Ext_Call, a: Ext_Tabs_Get_Args) {
 	for t in ext_tabs_list() {
-		if t.id != i64(n) { continue }
+		if t.id != a.tab_id { continue }
 		b := strings.builder_make(context.temp_allocator)
 		ext_tab_json(&b, x, t)
 		ext_ok(x, strings.to_string(b))
 		return
 	}
-	ext_fail(x, fmt.tprintf("No tab with id: %d.", i64(n)))
+	ext_fail(x, fmt.tprintf("No tab with id: %d.", a.tab_id))
 }
 
 // The tab of the calling page (undefined for a popup or the background, as in Chrome).
-ext_tabs_current :: proc(x: ^Ext_Call) {
+ext_tabs_get_current :: proc(x: ^Ext_Call) {
 	if x.c.kind != .Tab { ext_ok(x, ""); return }
 	for t in ext_tabs_list() {
 		if t.page != x.c.page { continue }
@@ -579,8 +450,7 @@ ext_window_json_of :: proc(b: ^strings.Builder, reg: ^extensions.Registry, e: ^e
 }
 
 @(private)
-ext_window_answer :: proc(x: ^Ext_Call, id: i64, info: json.Value) {
-	populate, _ := jbool(jobj(info), "populate")
+ext_window_answer :: proc(x: ^Ext_Call, id: i64, populate: bool) {
 	for w in ext_windows_list() {
 		if w.id != id { continue }
 		b := strings.builder_make(context.temp_allocator)
@@ -591,24 +461,31 @@ ext_window_answer :: proc(x: ^Ext_Call, id: i64, info: json.Value) {
 	ext_fail(x, fmt.tprintf("No window with id: %d.", id))
 }
 
-ext_windows_current :: proc(x: ^Ext_Call) {
+@(private)
+ext_populate :: proc(options: Maybe(Ext_Windows_Query_Options)) -> bool {
+	o, _ := options.?
+	p, _ := o.populate.?
+	return p
+}
+
+ext_windows_get_current :: proc(x: ^Ext_Call, a: Ext_Windows_Get_Current_Args) {
+	ext_window_answer(x, ext_current_window(x), ext_populate(a.query_options))
+}
+
+ext_windows_get_last_focused :: proc(x: ^Ext_Call, a: Ext_Windows_Get_Last_Focused_Args) {
 	id := ext_current_window(x)
-	if strings.has_suffix(x.method, "getLastFocused") {
-		if em := &ext_router().embedder; em.focused_window != nil { id = em.focused_window(em.user) }
-	}
-	ext_window_answer(x, id, ext_arg(x, 0))
+	if em := &ext_router().embedder; em.focused_window != nil { id = em.focused_window(em.user) }
+	ext_window_answer(x, id, ext_populate(a.query_options))
 }
 
-ext_windows_get :: proc(x: ^Ext_Call) {
-	n, ok := ext_arg(x, 0).(json.Float)
-	if !ok { ext_fail(x, "Error in invocation of windows.get: windowId must be an integer"); return }
-	id := i64(n)
+ext_windows_get :: proc(x: ^Ext_Call, a: Ext_Windows_Get_Args) {
+	id := a.window_id
 	if id == -2 { id = ext_current_window(x) }
-	ext_window_answer(x, id, ext_arg(x, 1))
+	ext_window_answer(x, id, ext_populate(a.query_options))
 }
 
-ext_windows_all :: proc(x: ^Ext_Call) {
-	populate, _ := jbool(jobj(ext_arg(x, 0)), "populate")
+ext_windows_get_all :: proc(x: ^Ext_Call, a: Ext_Windows_Get_All_Args) {
+	populate := ext_populate(a.query_options)
 	b := strings.builder_make(context.temp_allocator)
 	strings.write_byte(&b, '[')
 	for w, i in ext_windows_list() {
@@ -639,19 +516,16 @@ ext_set_maybe :: proc(slot: ^Maybe(string), v: string) {
 
 // "#rrggbb", "#rgb", "rgb(...)" names are not parsed here: a colour list [r, g, b, a] or a hex text.
 @(private)
-ext_color_of :: proc(v: json.Value) -> ([4]u8, bool) {
-	#partial switch c in v {
-	case json.Array:
-		if len(c) < 3 { return {}, false }
+ext_color_of :: proc(c: Ext_Action_Color_Array) -> ([4]u8, bool) {
+	switch v in c {
+	case nil:
+	case []i64:
+		if len(v) < 3 { return {}, false }
 		out := [4]u8{0, 0, 0, 255}
-		for i in 0 ..< min(len(c), 4) {
-			n, ok := c[i].(json.Float)
-			if !ok { return {}, false }
-			out[i] = u8(clamp(n, 0, 255))
-		}
+		for i in 0 ..< min(len(v), 4) { out[i] = u8(clamp(v[i], 0, 255)) }
 		return out, true
-	case json.String:
-		s := strings.trim_prefix(c, "#")
+	case string:
+		s := strings.trim_prefix(v, "#")
 		hex :: proc(ch: u8) -> (u8, bool) {
 			switch ch {
 			case '0' ..= '9': return ch - '0', true
@@ -675,99 +549,122 @@ ext_color_of :: proc(v: json.Value) -> ([4]u8, bool) {
 	return {}, false
 }
 
-ext_action_set :: proc(x: ^Ext_Call) {
+// The state of tab `tab` that a setter writes (made when absent); nil: no tab named (the default of every tab).
+@(private)
+ext_action_slot :: proc(x: ^Ext_Call, tab: Maybe(i64)) -> ^extensions.Action_Tab {
+	id, ok := tab.?
+	if !ok || id < 0 { return nil }
 	a := &x.e.action
-	name := strings.trim_prefix(x.method, "action.")
-	if name == "enable" || name == "disable" {
-		on := name == "enable"
-		if _, ok := ext_arg(x, 0).(json.Float); ok { ext_ok(x, ""); return }   // per tab: the button stays as it is for now
-		if a.enabled != on { a.enabled = on; ext_action_changed(x) }
-		ext_ok(x, "")
-		return
-	}
-	d, ok := ext_arg(x, 0).(json.Object)
-	if !ok { ext_fail(x, fmt.tprintf("Error in invocation of action.%s: details must be an object", name)); return }
-	tab := i64(-1)
-	if n, has := jnum(d, "tabId"); has { tab = i64(n) }
-	per: ^extensions.Action_Tab
-	if tab >= 0 {
-		if u64(tab) not_in a.tabs { a.tabs[u64(tab)] = {} }
-		if slot, found := &a.tabs[u64(tab)]; found { per = slot }
-	}
-	switch name {
-	case "setTitle":
-		t, _ := jstr(d, "title")
-		if per != nil { ext_set_maybe(&per.title, t) } else { ext_set_text(&a.title, t) }
-	case "setPopup":
-		p, _ := jstr(d, "popup")
-		rel := ""
-		if p != "" {
-			if strings.has_prefix(p, x.e.image.base_url) { p = p[len(x.e.image.base_url):] }
-			n, nok := extensions.package_path_normalize(p, context.temp_allocator)
-			if !nok || !extensions.image_has_file(x.e.image, n) { ext_fail(x, fmt.tprintf("the popup %q is not a file of the extension", p)); return }
-			rel = n
-		}
-		if per != nil { ext_set_maybe(&per.popup, rel) } else { ext_set_text(&a.popup, rel) }
-	case "setBadgeText":
-		t, _ := jstr(d, "text")
-		if len(t) > 64 { t = t[:64] }   // (the button shows 4 characters; a longer text is cut here, not kept)
-		if per != nil { ext_set_maybe(&per.badge, t) } else { ext_set_text(&a.badge, t) }
-	case "setBadgeBackgroundColor":
-		col, cok := ext_color_of(d["color"])
-		if !cok { ext_fail(x, "action.setBadgeBackgroundColor: color must be a list [r, g, b, a] or a #rrggbb text"); return }
-		if per != nil { per.badge_color = col } else { a.badge_color = col }
-	case "setIcon":
-		path := ""
-		#partial switch p in d["path"] {
-		case json.String: path = p
-		case json.Object:
-			best := 0
-			for size, v in p {
-				s, sok := v.(json.String)
-				n := 0
-				for ch in transmute([]byte)size { if ch >= '0' && ch <= '9' { n = n * 10 + int(ch - '0') } }
-				if sok && (path == "" || (n >= 16 && n <= 32 && n > best)) { path, best = s, n }
-			}
-		}
-		if path != "" {
-			n, nok := extensions.package_path_normalize(path, context.temp_allocator)
-			if !nok || !extensions.image_has_file(x.e.image, n) { ext_fail(x, fmt.tprintf("the icon %q is not a file of the extension", path)); return }
-			if per != nil { ext_set_maybe(&per.icon, n) } else { ext_set_text(&a.icon, n) }
-		}
-		// (imageData: an icon drawn by the extension; shown when the toolbar can show pixels it is given)
-	}
-	ext_action_changed(x)
-	ext_ok(x, "")
+	if u64(id) not_in a.tabs { a.tabs[u64(id)] = {} }
+	slot, _ := &a.tabs[u64(id)]
+	return slot
 }
 
-ext_action_get :: proc(x: ^Ext_Call) {
-	a := &x.e.action
-	name := strings.trim_prefix(x.method, "action.")
-	if name == "getUserSettings" { ext_ok(x, `{"isOnToolbar":true}`); return }
-	if name == "isEnabled" { ext_ok(x, jbool_text(a.enabled)); return }
-	d := jobj(ext_arg(x, 0))
-	per: ^extensions.Action_Tab
-	if n, has := jnum(d, "tabId"); has {
-		if t, found := &a.tabs[u64(n)]; found { per = t }
+// The state of the tab a getter names (nil: none, or nothing set for it).
+@(private)
+ext_action_find :: proc(x: ^Ext_Call, details: Maybe(Ext_Action_Tab_Details)) -> ^extensions.Action_Tab {
+	d, _ := details.?
+	id, ok := d.tab_id.?
+	if !ok { return nil }
+	slot, found := &x.e.action.tabs[u64(id)]
+	return found ? slot : nil
+}
+
+ext_action_set_title :: proc(x: ^Ext_Call, a: Ext_Action_Set_Title_Args) {
+	if per := ext_action_slot(x, a.details.tab_id); per != nil { ext_set_maybe(&per.title, a.details.title) } else { ext_set_text(&x.e.action.title, a.details.title) }
+	ext_action_changed(x)
+}
+
+ext_action_set_popup :: proc(x: ^Ext_Call, a: Ext_Action_Set_Popup_Args) {
+	p := a.details.popup
+	rel := ""
+	if p != "" {
+		if strings.has_prefix(p, x.e.image.base_url) { p = p[len(x.e.image.base_url):] }
+		n, nok := extensions.package_path_normalize(p, context.temp_allocator)
+		if !nok || !extensions.image_has_file(x.e.image, n) { ext_fail(x, fmt.tprintf("the popup %q is not a file of the extension", p)); return }
+		rel = n
 	}
-	switch name {
-	case "getTitle":
-		t := a.title
-		if per != nil { if s, ok := per.title.?; ok { t = s } }
-		ext_ok(x, extensions.json_quote(t))
-	case "getPopup":
-		p := a.popup
-		if per != nil { if s, ok := per.popup.?; ok { p = s } }
-		ext_ok(x, extensions.json_quote(p != "" ? extensions.image_url(x.e.image, p) : ""))
-	case "getBadgeText":
-		t := a.badge
-		if per != nil { if s, ok := per.badge.?; ok { t = s } }
-		ext_ok(x, extensions.json_quote(t))
-	case "getBadgeBackgroundColor":
-		c := a.badge_color
-		if per != nil { if s, ok := per.badge_color.?; ok { c = s } }
-		ext_ok(x, fmt.tprintf("[%d,%d,%d,%d]", c[0], c[1], c[2], c[3]))
+	if per := ext_action_slot(x, a.details.tab_id); per != nil { ext_set_maybe(&per.popup, rel) } else { ext_set_text(&x.e.action.popup, rel) }
+	ext_action_changed(x)
+}
+
+ext_action_set_badge_text :: proc(x: ^Ext_Call, a: Ext_Action_Set_Badge_Text_Args) {
+	t := a.details.text.? or_else ""
+	if len(t) > 64 { t = t[:64] }   // (the button shows 4 characters; a longer text is cut here, not kept)
+	if per := ext_action_slot(x, a.details.tab_id); per != nil { ext_set_maybe(&per.badge, t) } else { ext_set_text(&x.e.action.badge, t) }
+	ext_action_changed(x)
+}
+
+ext_action_set_badge_background_color :: proc(x: ^Ext_Call, a: Ext_Action_Set_Badge_Background_Color_Args) {
+	col, ok := ext_color_of(a.details.color)
+	if !ok { ext_fail(x, "action.setBadgeBackgroundColor: color must be a list [r, g, b, a] or a #rrggbb text"); return }
+	if per := ext_action_slot(x, a.details.tab_id); per != nil { per.badge_color = col } else { x.e.action.badge_color = col }
+	ext_action_changed(x)
+}
+
+// (the text keeps its colour: the toolbar draws it in one colour)
+ext_action_set_badge_text_color :: proc(x: ^Ext_Call, a: Ext_Action_Set_Badge_Text_Color_Args) { ext_ok(x, "") }
+
+ext_action_set_icon :: proc(x: ^Ext_Call, a: Ext_Action_Set_Icon_Args) {
+	path := ""
+	switch p in a.details.path {
+	case nil:
+	case string: path = p
+	case json.Object:
+		best := 0
+		for size, v in p {
+			s, sok := v.(json.String)
+			n := 0
+			for ch in transmute([]byte)size { if ch >= '0' && ch <= '9' { n = n * 10 + int(ch - '0') } }
+			if sok && (path == "" || (n >= 16 && n <= 32 && n > best)) { path, best = s, n }
+		}
 	}
+	per := ext_action_slot(x, a.details.tab_id)
+	if path != "" {
+		n, nok := extensions.package_path_normalize(path, context.temp_allocator)
+		if !nok || !extensions.image_has_file(x.e.image, n) { ext_fail(x, fmt.tprintf("the icon %q is not a file of the extension", path)); return }
+		if per != nil { ext_set_maybe(&per.icon, n) } else { ext_set_text(&x.e.action.icon, n) }
+	}
+	// (imageData: an icon drawn by the extension; shown when the toolbar can show pixels it is given)
+	ext_action_changed(x)
+}
+
+@(private)
+ext_action_switch :: proc(x: ^Ext_Call, tab: Maybe(i64), on: bool) {
+	if _, per_tab := tab.?; per_tab { return }   // per tab: the button stays as it is for now
+	if x.e.action.enabled != on { x.e.action.enabled = on; ext_action_changed(x) }
+}
+
+ext_action_enable :: proc(x: ^Ext_Call, a: Ext_Action_Enable_Args) { ext_action_switch(x, a.tab_id, true) }
+
+ext_action_disable :: proc(x: ^Ext_Call, a: Ext_Action_Disable_Args) { ext_action_switch(x, a.tab_id, false) }
+
+ext_action_is_enabled :: proc(x: ^Ext_Call, a: Ext_Action_Is_Enabled_Args) { ext_ok(x, jbool_text(x.e.action.enabled)) }
+
+ext_action_get_user_settings :: proc(x: ^Ext_Call) { ext_ok(x, `{"isOnToolbar":true}`) }
+
+ext_action_get_title :: proc(x: ^Ext_Call, a: Ext_Action_Get_Title_Args) {
+	t := x.e.action.title
+	if per := ext_action_find(x, a.details); per != nil { if s, ok := per.title.?; ok { t = s } }
+	ext_ok(x, extensions.json_quote(t))
+}
+
+ext_action_get_popup :: proc(x: ^Ext_Call, a: Ext_Action_Get_Popup_Args) {
+	p := x.e.action.popup
+	if per := ext_action_find(x, a.details); per != nil { if s, ok := per.popup.?; ok { p = s } }
+	ext_ok(x, extensions.json_quote(p != "" ? extensions.image_url(x.e.image, p) : ""))
+}
+
+ext_action_get_badge_text :: proc(x: ^Ext_Call, a: Ext_Action_Get_Badge_Text_Args) {
+	t := x.e.action.badge
+	if per := ext_action_find(x, a.details); per != nil { if s, ok := per.badge.?; ok { t = s } }
+	ext_ok(x, extensions.json_quote(t))
+}
+
+ext_action_get_badge_background_color :: proc(x: ^Ext_Call, a: Ext_Action_Get_Badge_Background_Color_Args) {
+	c := x.e.action.badge_color
+	if per := ext_action_find(x, a.details); per != nil { if s, ok := per.badge_color.?; ok { c = s } }
+	ext_ok(x, fmt.tprintf("[%d,%d,%d,%d]", c[0], c[1], c[2], c[3]))
 }
 
 // What the toolbar shows for `tab` (temp strings): its title, popup (a package path), badge and colour, icon path.
@@ -812,17 +709,16 @@ ext_alarm_json :: proc(b: ^strings.Builder, al: extensions.Alarm) {
 	strings.write_byte(b, '}')
 }
 
-ext_alarms_create :: proc(x: ^Ext_Call) {
-	name := ""
-	info: json.Object
-	if s, ok := ext_arg(x, 0).(json.String); ok { name, info = s, jobj(ext_arg(x, 1)) } else { info = jobj(ext_arg(x, 0)) }
+ext_alarms_create :: proc(x: ^Ext_Call, a: Ext_Alarms_Create_Args) {
+	name := a.name.? or_else ""
+	info, _ := a.alarm_info.?
 	min_ms := f64(x.reg.settings.alarms_min_period_ms)
 	now := ext_now_ms()
 	period, delay := 0.0, -1.0
-	if p, ok := jnum(info, "periodInMinutes"); ok { period = max(p * 60000, min_ms) }
+	if p, ok := info.period_in_minutes.?; ok { period = max(p * 60000, min_ms) }
 	when_ms := -1.0
-	if w, ok := jnum(info, "when"); ok { when_ms = w }
-	if d, ok := jnum(info, "delayInMinutes"); ok { delay = max(d * 60000, min_ms) }
+	if w, ok := info.when_.?; ok { when_ms = w }
+	if d, ok := info.delay_in_minutes.?; ok { delay = max(d * 60000, min_ms) }
 	switch {
 	case when_ms >= 0:
 	case delay >= 0: when_ms = now + delay
@@ -838,18 +734,11 @@ ext_alarms_create :: proc(x: ^Ext_Call) {
 	ext_ok(x, "")
 }
 
-ext_alarms_get :: proc(x: ^Ext_Call) {
-	b := strings.builder_make(context.temp_allocator)
-	if strings.has_suffix(x.method, "getAll") {
-		strings.write_byte(&b, '[')
-		for al, i in x.e.alarms { if i > 0 { strings.write_byte(&b, ',') }; ext_alarm_json(&b, al) }
-		strings.write_byte(&b, ']')
-		ext_ok(x, strings.to_string(b))
-		return
-	}
-	name, _ := ext_arg(x, 0).(json.String)
+ext_alarms_get :: proc(x: ^Ext_Call, a: Ext_Alarms_Get_Args) {
+	name := a.name.? or_else ""
 	for al in x.e.alarms {
 		if al.name != name { continue }
+		b := strings.builder_make(context.temp_allocator)
 		ext_alarm_json(&b, al)
 		ext_ok(x, strings.to_string(b))
 		return
@@ -857,16 +746,26 @@ ext_alarms_get :: proc(x: ^Ext_Call) {
 	ext_ok(x, "")
 }
 
-ext_alarms_clear :: proc(x: ^Ext_Call) {
+ext_alarms_get_all :: proc(x: ^Ext_Call) {
+	b := strings.builder_make(context.temp_allocator)
+	strings.write_byte(&b, '[')
+	for al, i in x.e.alarms { if i > 0 { strings.write_byte(&b, ',') }; ext_alarm_json(&b, al) }
+	strings.write_byte(&b, ']')
+	ext_ok(x, strings.to_string(b))
+}
+
+ext_alarms_clear :: proc(x: ^Ext_Call, a: Ext_Alarms_Clear_Args) {
+	name := a.name.? or_else ""
 	cleared := false
-	if strings.has_suffix(x.method, "clearAll") {
-		cleared = len(x.e.alarms) > 0
-		for al in x.e.alarms { delete(al.name) }
-		clear(&x.e.alarms)
-	} else {
-		name, _ := ext_arg(x, 0).(json.String)
-		for al, i in x.e.alarms { if al.name == name { delete(al.name); ordered_remove(&x.e.alarms, i); cleared = true; break } }
-	}
+	for al, i in x.e.alarms { if al.name == name { delete(al.name); ordered_remove(&x.e.alarms, i); cleared = true; break } }
+	ext_alarms_schedule()
+	ext_ok(x, jbool_text(cleared))
+}
+
+ext_alarms_clear_all :: proc(x: ^Ext_Call) {
+	cleared := len(x.e.alarms) > 0
+	for al in x.e.alarms { delete(al.name) }
+	clear(&x.e.alarms)
 	ext_alarms_schedule()
 	ext_ok(x, jbool_text(cleared))
 }
@@ -939,45 +838,41 @@ ext_pattern_covers :: proc(g, p: extensions.Pattern) -> bool {
 	return extensions.glob_match(g.path, p.path)
 }
 
-ext_permissions :: proc(x: ^Ext_Call) {
-	name := strings.trim_prefix(x.method, "permissions.")
+ext_permissions_get_all :: proc(x: ^Ext_Call) {
 	m := &x.e.image.manifest
-	switch name {
-	case "getAll":
-		b := strings.builder_make(context.temp_allocator)
-		strings.write_string(&b, `{"permissions":[`)
-		for p, i in m.permissions { if i > 0 { strings.write_byte(&b, ',') }; strings.write_string(&b, extensions.json_quote(p)) }
-		strings.write_string(&b, `],"origins":[`)
-		for g, i in x.e.granted { if i > 0 { strings.write_byte(&b, ',') }; strings.write_string(&b, extensions.json_quote(g)) }
-		strings.write_string(&b, "]}")
-		ext_ok(x, strings.to_string(b))
-	case "contains":
-		d := jobj(ext_arg(x, 0))
-		if perms, ok := d["permissions"].(json.Array); ok {
-			for v in perms {
-				s, sok := v.(json.String)
-				if !sok || !extensions.manifest_has_permission(m, s) { ext_ok(x, "false"); return }
-			}
-		}
-		if origins, ok := d["origins"].(json.Array); ok {
-			for v in origins {
-				s, sok := v.(json.String)
-				if !sok { ext_ok(x, "false"); return }
-				p, pok := extensions.pattern_parse(s)
-				if !pok { ext_fail(x, fmt.tprintf("Invalid url pattern '%s'", s)); return }
-				covered := false
-				for g in x.e.grants { if ext_pattern_covers(g, p) { covered = true; break } }
-				if !covered { ext_ok(x, "false"); return }
-			}
-		}
-		ext_ok(x, "true")
-	case "request", "remove":
-		// (optional permissions and their prompt come with phase 6: nothing is added or taken away)
-		ext_ok(x, "false")
-	}
+	b := strings.builder_make(context.temp_allocator)
+	strings.write_string(&b, `{"permissions":[`)
+	for p, i in m.permissions { if i > 0 { strings.write_byte(&b, ',') }; strings.write_string(&b, extensions.json_quote(p)) }
+	strings.write_string(&b, `],"origins":[`)
+	for g, i in x.e.granted { if i > 0 { strings.write_byte(&b, ',') }; strings.write_string(&b, extensions.json_quote(g)) }
+	strings.write_string(&b, "]}")
+	ext_ok(x, strings.to_string(b))
 }
 
-ext_management_self :: proc(x: ^Ext_Call) {
+ext_permissions_contains :: proc(x: ^Ext_Call, a: Ext_Permissions_Contains_Args) {
+	m := &x.e.image.manifest
+	d, _ := a.permissions.?
+	if perms, ok := d.permissions.?; ok {
+		for s in perms { if !extensions.manifest_has_permission(m, s) { ext_ok(x, "false"); return } }
+	}
+	if origins, ok := d.origins.?; ok {
+		for s in origins {
+			p, pok := extensions.pattern_parse(s)
+			if !pok { ext_fail(x, fmt.tprintf("Invalid url pattern '%s'", s)); return }
+			covered := false
+			for g in x.e.grants { if ext_pattern_covers(g, p) { covered = true; break } }
+			if !covered { ext_ok(x, "false"); return }
+		}
+	}
+	ext_ok(x, "true")
+}
+
+// (optional permissions and their prompt come with phase 6: nothing is added or taken away)
+ext_permissions_request :: proc(x: ^Ext_Call, a: Ext_Permissions_Request_Args) { ext_ok(x, "false") }
+
+ext_permissions_remove :: proc(x: ^Ext_Call, a: Ext_Permissions_Remove_Args) { ext_ok(x, "false") }
+
+ext_management_get_self :: proc(x: ^Ext_Call) {
 	m := &x.e.image.manifest
 	b := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&b, `{{"id":%s,"name":%s,"shortName":%s,"description":%s,"version":%s,"versionName":%s,"mayDisable":true,"enabled":%s,"installType":"development","type":"extension","offlineEnabled":false,"homepageUrl":%s,"optionsUrl":%s,"permissions":[`,
