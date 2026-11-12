@@ -19,7 +19,7 @@ import "wb:e2e"
 
 @(private = "file")
 open :: proc(t: ^testing.T, prefs: []string = nil, loc := #caller_location) -> ^e2e.Session {
-	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, prefs = prefs, url = e2e.file_url(fmt.tprintf("%s/examples/site/scroll_driven_probe.html", e2e.repo_root()))}, loc)
+	s := e2e.start(t, {pixels = true, size = SIZE, dpi = e2e.DPI_ONE, prefs = prefs, url = e2e.file_url(fmt.tprintf("%s/examples/site/scroll_driven_probe.html", e2e.repo_root()))}, loc)
 	e2e.wait_idle(s)
 	e2e.wait_frames(s)
 	return s
@@ -328,7 +328,7 @@ a_task_that_changes_the_document_stops_the_layout_values :: proc(t: ^testing.T) 
 @(test)
 the_demo_frame_by_frame_under_tasks :: proc(t: ^testing.T) {
 	if base.perf_skip("scroll-driven animations frame by frame") { return }
-	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, url = e2e.file_url(fmt.tprintf("%s/examples/site/scroll_driven.html", e2e.repo_root()))})
+	s := e2e.start(t, {pixels = true, size = SIZE, dpi = e2e.DPI_ONE, url = e2e.file_url(fmt.tprintf("%s/examples/site/scroll_driven.html", e2e.repo_root()))})
 	e2e.wait_load(s)
 	e2e.wait_frames(s)
 	for ms in PERF_TASKS_MS { measure_tasks(t, s, ms) }

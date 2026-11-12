@@ -407,6 +407,7 @@ window_adopt_primary :: proc(app: ^App, w: ^platform.Window) -> ^Browser_Window 
 	bw.id, bw.win, bw.primary, bw.ui = sync.atomic_add(&window_ids, 1) + 1, w, true, new(ui.State)
 	bw.opened = time.tick_now()
 	append(&app.windows, bw)
+	app.made += {.Window}   // app_make.odin: app_free ends the windows
 	w.user = bw
 	app.front = bw
 	window_activate(app, bw)

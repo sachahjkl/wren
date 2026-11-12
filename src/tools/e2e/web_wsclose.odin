@@ -14,7 +14,7 @@ import "wb:base"
 import "wb:net"
 import "wb:tools/testenv"
 
-RUNS :: 50
+RUNS :: 10                      // a race lost one run in two shows in 10 runs with a probability of 1 - 2^-10 (50 runs were 39 s of a slot)
 RUNS_OF_A_LATE_ANSWER :: 5      // each takes the server's delay
 RUNS_OF_NO_ANSWER :: 3          // each takes the whole close timeout
 CLOSE_TIMEOUT_MS :: 10_000

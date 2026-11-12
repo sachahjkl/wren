@@ -17,7 +17,6 @@ import session "toolkit:testkit/session"
 import "toolkit:ui"
 import "wb:browser"
 import "wb:config"
-import "wb:host"
 import "wb:remote/api"
 
 @(private = "file") CHROME_SIZE :: [2]int{1100, 700}
@@ -73,51 +72,38 @@ chrome_frame :: proc(user: rawptr) {
 	}
 }
 
-// The interface, its first frame made. It ends with the test.
+// The interface, its first frame made. It ends with the test. The App is made by the browser's own stages (src/browser/app_make.odin), the
+// fonts embedded ones and the tabs pageless (tab_new_bare): what app_start adds besides (the profile, the network, the pages) is what this world leaves out.
 chrome_start :: proc(t: ^testing.T, o := Chrome_Options{}, loc := #caller_location) -> ^Chrome_World {
 	w := new(Chrome_World)
 	w.pixels = o.pixels
-	app := new(browser.App)
+	app := browser.app_make()
 	w.app = app
-	browser.the_app = app
-	app.prefs = config.prefs_make()
-	browser.register_all_prefs(&app.prefs)
-	for p in o.prefs {
-		name, _, value := strings.partition(p, "=")
-		testing.expectf(t, config.set_from_string(&app.prefs, name, value, .User) == .None, "the preference %s", p, loc = loc)
-	}
-	app.cfg = browser.settings_from_prefs(&app.prefs)
-	host.loop_init(&app.loop)
+	refused := browser.app_prefs_init(app, o.prefs)
+	testing.expectf(t, refused == "", "the preference %s", refused, loc = loc)
+	browser.app_settings_read(app)
+	browser.app_loop_init(app)
 	browser.frame_gate_init()
+	browser.app_fonts_init(app)
 	win := platform.open_window_offscreen("chrome", o.size.x > 0 ? o.size : CHROME_SIZE, o.scale)
 	w.wnd = browser.window_adopt_primary(app, win)
-	font.init(&app.fonts, browser.font_settings_from_prefs(&app.prefs))
 	ok: bool
 	app.ui_font, ok = font.load_embedded(&app.fonts, font.FALLBACK_UI_DATA)
 	testing.expect(t, ok, "the interface's font", loc = loc)
 	app.icons, ok = font.load_embedded(&app.fonts, ui.ICON_FONT_DATA)
 	testing.expect(t, ok, "the icons' font", loc = loc)
-	ui.init(w.wnd.ui, &app.fonts, &app.theme)
-	w.wnd.ui.icon_font = app.icons
-	browser.chrome_style_init(app)
-	browser.window_chrome_init(app)
-	browser.favicons_init(app)
-	browser.urlbar_init(app)
-	browser.hud_init(app)
-	browser.devtools_init(app)
+	browser.app_ui_init(app)
+	browser.app_interface_init(app)
 	if o.pixels {
 		testing.expect(t, render.init_offscreen(&app.r, win.size, warp = true), "an offscreen renderer", loc = loc)
-		draw.init(&app.dc, &app.r, &app.fonts)
+		browser.app_draw_init(app)
 	}
 	titles := o.tabs
 	if len(titles) == 0 { titles = {"blank"} }
-	for title, i in titles {
-		x := new(browser.Tab)
-		x.id, x.title = u64(i + 1), strings.clone(title)
-		x.url = fmt.aprintf("https://%s.test/", strings.to_lower(title, context.temp_allocator))
+	for title in titles {
+		url := fmt.tprintf("https://%s.test/", strings.to_lower(title, context.temp_allocator))
+		x := browser.tab_new_bare(app, w.wnd, url, title)   // (in the strip and the map of ids, as tab_new puts a tab)
 		x.kind = .Web
-		append(&w.wnd.tabs, x)
-		app.tab_ids[x.id] = x   // (as tab_new does: the shell finds its tabs by id there)
 	}
 	testing.cleanup(t, proc(p: rawptr) { chrome_end((^Chrome_World)(p)) }, w)
 	w.s = session.attach(t, {win = win, state = w.wnd.ui, renderer = o.pixels ? &app.r : nil, frame = chrome_frame, user = w}, loc)
@@ -128,31 +114,7 @@ chrome_start :: proc(t: ^testing.T, o := Chrome_Options{}, loc := #caller_locati
 // (testing.cleanup, after the session's)
 @(private = "file")
 chrome_end :: proc(w: ^Chrome_World) {
-	app := w.app
-	for x in w.wnd.tabs { delete_key(&app.tab_ids, x.id); delete(x.title); delete(x.url); free(x) }
-	clear(&w.wnd.tabs)
-	browser.devtools_destroy(app)
-	browser.hud_destroy(app)
-	browser.urlbar_destroy(app)
-	browser.sidebar_destroy(&w.wnd.own.sidebar)
-	browser.favicons_destroy(app)
-	browser.window_chrome_destroy(app)
-	browser.chrome_style_destroy(app)
-	browser.commands_destroy(&app.cmds)
-	delete(app.cfg.homepage)
-	delete(app.cfg.ui_theme)
-	if w.pixels {
-		draw.destroy(&app.dc)
-		render.destroy(&app.r)
-	}
-	browser.windows_destroy_ui(app)
-	browser.windows_destroy(app)
-	font.destroy(&app.fonts)
-	ui.theme_destroy(&app.theme)
-	host.loop_destroy(&app.loop)
-	config.prefs_destroy(&app.prefs)
-	browser.the_app = nil
-	free(app)
+	browser.app_free(w.app)   // (its tabs, its interface, its renderer, its window, its fonts, its loop, its preferences)
 	free(w)
 }
 

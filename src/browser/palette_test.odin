@@ -95,12 +95,9 @@ registry_well_formed :: proc(t: ^testing.T) {
 query_prefixes :: proc(t: ^testing.T) {
 	page_render_test_lock()
 	defer page_render_test_unlock()
-	app := new(App)
-	the_app = app   // (what the code reaches without an App: this one)
-	defer free(app)
-	app.prefs = config.prefs_make()
-	defer config.prefs_destroy(&app.prefs)
-	register_all_prefs(&app.prefs)
+	app := app_make()
+	defer app_free(app)
+	app_prefs_init(app)
 	defer palette_destroy(app)
 
 	m, _, q := palette_parse_query(app, "  >rel ")

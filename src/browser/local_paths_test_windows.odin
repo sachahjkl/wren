@@ -40,9 +40,8 @@ typed_paths_become_file_urls :: proc(t: ^testing.T) {
 
 @(test)
 address_bar_rules :: proc(t: ^testing.T) {
-	app := new(App)   // (the built-in search engines)
-	the_app = app   // (what the code reaches without an App: this one)
-	defer free(app)
+	app := app_make()   // (the built-in search engines)
+	defer app_free(app)
 	testing.expect_value(t, address_or_search(app, `S:\wb\examples\site`), "file:///S:/wb/examples/site")
 	testing.expect_value(t, address_or_search(app, `\\nas\films`), "file://nas/films")
 	testing.expect(t, strings.contains(address_or_search(app, `docs\a.html`), "?q="), "a relative path is ambiguous: a search")

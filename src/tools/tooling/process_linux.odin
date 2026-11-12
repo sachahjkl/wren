@@ -110,11 +110,11 @@ tree_active :: proc(p: ^Process) -> int {
 release :: proc(p: ^Process) {
 	if p.pid == 0 { return }
 	kill_tree(p)
-	if !p.ended {
-		for {
-			if done, _ := poll(p); done { break }
-			time.sleep(WAIT_SLICE)
-		}
+	// (bounded: a process stuck in the kernel stays a zombie rather than holding its caller for ever)
+	killed := time.tick_now()
+	for !p.ended && time.tick_since(killed) < KILL_GRACE {
+		if done, _ := poll(p); done { break }
+		time.sleep(WAIT_SLICE)
 	}
 	p.pid = 0
 }

@@ -275,24 +275,19 @@ addresses_of_the_about_pages :: proc(t: ^testing.T) {
 
 @(private = "file")
 license_app :: proc(path: string, persist: bool) -> ^App {
-	app := new(App)
-	the_app = app   // (what the code reaches without an App: this one)
-	app.prefs = config.prefs_make()
-	register_all_prefs(&app.prefs)
+	app := app_make()
 	seed := license.DEV_SEED
 	pub, _ := license.public_key_of(seed[:], context.temp_allocator)
-	assert(config.set_from_string(&app.prefs, "browser.license.public_key", pub, .User) == .None)
-	if path != "" { assert(config.set_from_string(&app.prefs, "browser.license.path", path, .User) == .None) }
+	values := [2]string{strings.concatenate({"browser.license.public_key=", pub}, context.temp_allocator), strings.concatenate({"browser.license.path=", path}, context.temp_allocator)}
+	refused := app_prefs_init(app, values[:path != "" ? 2 : 1])
+	assert(refused == "")
 	app.cfg.persist_profile = persist
 	app.profile_dir = ""
 	return app
 }
 
 @(private = "file")
-license_app_free :: proc(app: ^App) {
-	config.prefs_destroy(&app.prefs)
-	free(app)
-}
+license_app_free :: proc(app: ^App) { app_free(app) }
 
 @(private = "file")
 dev_license :: proc(name: string, seed: [32]byte = license.DEV_SEED) -> string {

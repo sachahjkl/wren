@@ -4,7 +4,6 @@ import "core:fmt"
 import "core:testing"
 import "core:time"
 import "toolkit:ui"
-import "wb:config"
 
 // The palette's search, timed: the registry, every preference (the largest source of rows) and a source of 5000 pages.
 // Runs only with -define:BENCH_PALETTE=true:
@@ -23,12 +22,9 @@ bench_palette :: proc(t: ^testing.T) {
 	page_render_test_lock()
 	defer page_render_test_unlock()
 	when !BENCH_PALETTE { return }
-	app := new(App)
-	the_app = app   // (what the code reaches without an App: this one)
-	defer free(app)
-	app.prefs = config.prefs_make()
-	defer config.prefs_destroy(&app.prefs)
-	register_all_prefs(&app.prefs)
+	app := app_make()
+	defer app_free(app)
+	app_prefs_init(app)
 	defer palette_destroy(app)
 	palette_collect(app, "")
 	pages := make([dynamic]Palette_Item)

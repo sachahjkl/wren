@@ -37,7 +37,6 @@ Js_Options :: struct {
 	log:         string,     // "": standard output
 }
 
-@(private = "file")
 collect_inputs :: proc(dir: string, recursive: bool, suffixes: []string, out: ^[dynamic]string) {
 	entries, err := os.read_all_directory_by_path(dir, context.temp_allocator)
 	if err != nil { return }

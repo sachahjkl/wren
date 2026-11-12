@@ -4,9 +4,11 @@ import "core:testing"
 
 @(private = "file")
 make_tabs :: proc(spec: []struct { pinned: bool, group: u64 }) -> []^Tab {
+	// (values only: the ordering procedures read ids, pins and groups, none of the browser's state)
+	backing := make([]Tab, len(spec), context.temp_allocator)
 	tabs := make([]^Tab, len(spec), context.temp_allocator)
 	for s, i in spec {
-		t := new(Tab, context.temp_allocator)
+		t := &backing[i]
 		t.id, t.pinned, t.group = u64(i + 1), s.pinned, s.group
 		tabs[i] = t
 	}

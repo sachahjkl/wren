@@ -38,7 +38,7 @@ pref_f64 :: proc(s: ^e2e.Session, name: string) -> f64 {
 
 @(test)
 classic_page_bar_takes_room_and_its_arrows_scroll :: proc(t: ^testing.T) {
-	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, url = "about:blank"})
+	s := e2e.start(t, {pixels = true, size = SIZE, dpi = e2e.DPI_ONE, url = "about:blank"})
 	e2e.eval(s, fmt.tprintf("document.open(); document.write(%q); document.close(); 1", PAGE))
 	bar := pref_f64(s, WIDTH_PREF)
 	inner := e2e.eval_f64(s, "innerWidth")
@@ -99,7 +99,7 @@ answers_the_pointer :: proc(t: ^testing.T, s: ^e2e.Session, at: e2e.Point, what:
 // buttons, and a box's thumb.
 @(test)
 a_scroll_bar_answers_the_pointer :: proc(t: ^testing.T) {
-	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, url = "about:blank"})
+	s := e2e.start(t, {pixels = true, size = SIZE, dpi = e2e.DPI_ONE, url = "about:blank"})
 	e2e.eval(s, fmt.tprintf("document.open(); document.write(%q); document.close(); 1", BOX_PAGE))
 	bar := pref_f64(s, WIDTH_PREF)
 	inner := e2e.eval_f64(s, "innerWidth")

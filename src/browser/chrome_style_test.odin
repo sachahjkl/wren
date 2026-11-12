@@ -248,9 +248,8 @@ classic_colors_compose_with_palettes :: proc(t: ^testing.T) {
 // The classic look is the style chosen, wherever the tabs are (top, left, right); the modern one likewise.
 @(test)
 classic_on_follows_the_style_at_every_position :: proc(t: ^testing.T) {
-	app := new(App)
-	the_app = app   // (what the code reaches without an App: this one)
-	defer free(app)
+	app := app_make()
+	defer app_free(app)
 	saved_pos := app.favs.cfg.position
 	defer app.favs.cfg.position = saved_pos
 	for style in Chrome_Style {

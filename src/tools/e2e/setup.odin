@@ -132,7 +132,14 @@ install_uninstall_standalone :: proc(t: ^testing.T) {
 	e2e.wait_for(t, client, proc(key: string) -> bool { return !registry_key_exists(key) }, "the browser registration to go")
 	e2e.wait_for(t, apps, proc(key: string) -> bool { return !registry_key_exists(key) }, "the Settings > Apps record to go")
 	setup_settled(p.s)
-	testing.expect(t, !os.exists(manifest) || os.exists(fmt.tprintf("%s.old", installed)), "the running copy is out of the way (renamed), the rest is gone")
+	// What stays is the running copy and what lists it, for the cleanup after it ends (waited for below): renamed out of the way when the
+	// system lets it, else under its own name. A rename fails while another program holds the file without sharing its deletion (a
+	// scanner that reads a new executable does), and the uninstall then keeps the name (desktop/install.odin files_remove): what the
+	// check read once was that moment, not a defect.
+	for f in e2e.files_with_prefix(scratch.install, "") {
+		name := f[max(strings.last_index_byte(f, '/'), strings.last_index_byte(f, '\\')) + 1:]
+		testing.expectf(t, name == "wren.exe" || name == "wren_install.txt" || strings.has_suffix(name, ".old") || strings.has_suffix(name, ".dll"), "only the running copy and what it holds stay, the rest is gone: %s", name)
+	}
 	testing.expect_value(t, e2e.quit(p), 0)
 	e2e.wait_gone(t, scratch.install)
 	// (the helper batch file deletes itself last)

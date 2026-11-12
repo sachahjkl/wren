@@ -6,6 +6,7 @@ import "core:path/filepath"
 import "core:slice"
 import "core:strings"
 import "core:sync"
+import "core:time"
 import "wb:tools/tooling"
 
 // AddressSanitizer builds: heap and stack overflows, use after free, double frees, in the unit tests of packages (steps, one per package) or by hand in the browser and in a program.
@@ -26,6 +27,8 @@ ASAN_REPORT :: "ERROR: AddressSanitizer"
 ASAN_REPORT_BEFORE :: 200
 ASAN_REPORT_BYTES :: 6000
 VSWHERE :: "C:/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe"
+// The browser's link flags are printed by a compile of the whole browser, under a lock three steps wait on: a hang there must end.
+ASAN_FLAGS_LIMIT :: 20 * time.Minute
 
 Asan_By_Hand :: struct {
 	browser, console: bool,
@@ -67,7 +70,7 @@ asan_prepare :: proc(log: string) -> ^Asan_Tools {
 	_ = os.make_directory_all(ASAN_DIR)
 	if content, rerr := os.read_entire_file(dll, context.temp_allocator); rerr == nil { _ = os.write_entire_file(fmt.tprintf("%s/clang_rt.asan_dynamic-x86_64.dll", ASAN_DIR), content) }
 	flags, flags_code := tooling.capture({tooling.odin_program(), "build", "src/browser", TOOLKIT, WB, "-sanitize:address", "-debug", "-define:WREN_CHANNEL=dev", "-resource:src/browser/wren_dev.rc",
-		fmt.tprintf("-out:%s/browser_flags.exe", ASAN_DIR), "-print-linker-flags"})
+		fmt.tprintf("-out:%s/browser_flags.exe", ASAN_DIR), "-print-linker-flags"}, limit = ASAN_FLAGS_LIMIT)
 	_ = flags_code   // (it prints them and goes on to fail or not: what counts is what it printed)
 	libs := make([dynamic]string)
 	paths := make([dynamic]string)
@@ -149,9 +152,9 @@ task_asan_package :: proc(t: ^Task_Run) -> bool {
 	return strings.contains(text, SUCCESS_MANY)
 }
 
-asan_steps :: proc(t: ^[dynamic]Step) {
+asan_steps :: proc(t: ^[dynamic]Step, cfg: ^Config) {
 	for pkg in ASAN_PACKAGES {
-		append(t, Step{name = fmt.aprintf("unit tests under AddressSanitizer: %s (overflows, use after free, double frees)", pkg), actions = slice_of(Task{"asan", task_asan_package, pkg}), marks = {.Asan}, needs = COMMON_NEEDS, inputs = .Tree, limit = LONG_STEP_SECONDS})
+		append(t, Step{name = fmt.aprintf("unit tests under AddressSanitizer: %s (overflows, use after free, double frees)", pkg), actions = slice_of(Task{"asan", task_asan_package, pkg}), marks = {.Asan}, needs = COMMON_NEEDS, inputs = .Tree, limit = suite_limit(cfg)})
 	}
 }
 

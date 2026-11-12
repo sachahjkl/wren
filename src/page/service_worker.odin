@@ -506,6 +506,9 @@ sw_instance_error :: proc(h: ^Worker_Host, message: string) {
 	sw_console(v, .Error, message)
 	if v.worker != h { return }   // (it could not even start: sw_version_start says so)
 	if v.running && v.state != .Parsed { return }   // an error of an event's listener: the worker goes on
+	// an extension's background that failed before it ran: what it owes is answered and its ports end (ext_background.odin), or a
+	// sender would wait for ever on a context that is gone
+	if v.reg.extension { if b := ext_bg_by_version(v.id); b != nil { ext_bg_stop(b); return } }
 	r := v.reg
 	sw_reject_registering(r, message)
 	if v.state == .Parsed || v.state == .Installing { sw_redundant(v) } else { sw_version_stop(v) }

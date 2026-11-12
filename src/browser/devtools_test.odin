@@ -27,9 +27,8 @@ console_lines_carry_their_level :: proc(t: ^testing.T) {
 // window it goes to has its own open, each keeps its own.
 @(test)
 devtools_go_with_their_tab_to_a_window_without_them :: proc(t: ^testing.T) {
-	app := new(App)
-	the_app = app   // (what the code reaches without an App: this one)
-	defer free(app)
+	app := app_make()
+	defer app_free(app)
 	a, b := new(Browser_Window), new(Browser_Window)
 	defer { free(a); free(b) }
 	a.id, b.id = 1, 2
@@ -125,15 +124,11 @@ contains :: proc(s, sub: string) -> bool {
 // list over; an answer and its end update the row.
 @(test)
 requests_are_logged_in_the_tab_they_run_in :: proc(t: ^testing.T) {
-	app := new(App)
-	the_app = app   // (what the code reaches without an App: this one)
-	defer free(app)
-	tab := new(Tab)
-	tab.id = 1
+	app := app_make()
+	defer app_free(app)   // (the tab with it)
+	tab := tab_new_bare(app, active_window(app))   // (in the strip and the map of ids, as tab_new puts it: the observer finds tabs there)
 	tab.scope = base.scope_make("tab")   // (a child of the process's scope, as tab_new makes it: the App's is nil here)
-	append(&app.bare.tabs, tab)
-	app.tab_ids[tab.id] = tab   // (as tab_new does: the observer finds tabs there)
-	defer { delete(app.bare.tabs); delete(app.tab_ids); net_log_destroy(&tab.net); base.scope_close(tab.scope); free(tab); net_destroy_owner(app) }
+	defer { net_log_destroy(&tab.net); base.scope_close(tab.scope); tab.scope = nil; net_destroy_owner(app) }
 
 	nav1 := base.scope_make("navigation", tab.scope)
 	page1 := base.scope_make("page", nav1)

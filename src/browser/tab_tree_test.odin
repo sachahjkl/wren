@@ -4,9 +4,11 @@ import "core:testing"
 
 @(private = "file")
 tree_tabs :: proc(n: int) -> []^Tab {
+	// (values only: the tree procedures read ids and levels, none of the browser's state)
+	backing := make([]Tab, n, context.temp_allocator)
 	out := make([]^Tab, n, context.temp_allocator)
 	for i in 0 ..< n {
-		out[i] = new(Tab, context.temp_allocator)
+		out[i] = &backing[i]
 		out[i].id = u64(i + 1)
 	}
 	return out

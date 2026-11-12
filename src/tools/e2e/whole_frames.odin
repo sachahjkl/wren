@@ -74,7 +74,7 @@ close_in_the_back :: proc(t: ^testing.T, by: Close_By, side: int, prefs: []strin
 	dir := e2e.temp_folder(t)
 	kept_url := e2e.file_page(dir, "kept.html", `<!doctype html><html style="background:rgb(46,139,87)"><title>Kept</title>`)
 	other_url := e2e.file_page(dir, "other.html", `<!doctype html><html style="background:rgb(200,30,30)"><title>Other</title>`)
-	s := e2e.start(t, {size = WINDOW_SIZE, url = other_url, prefs = prefs})
+	s := e2e.start(t, {pixels = true, size = WINDOW_SIZE, url = other_url, prefs = prefs})
 	before := e2e.targets(s).tabs[0].id
 	kept := e2e.new_tab(s, kept_url)
 	s.tab = kept
@@ -162,7 +162,7 @@ paper_at :: proc(f: browser.Tl_Frame, y: int) -> bool {
 
 @(test)
 ctrl_wheel_over_a_long_page_keeps_it_in_every_frame :: proc(t: ^testing.T) {
-	s := e2e.start(t, {size = WINDOW_SIZE, url = e2e.file_url(fmt.tprintf("%s/%s", e2e.repo_root(), ARTICLE))})
+	s := e2e.start(t, {pixels = true, size = WINDOW_SIZE, url = e2e.file_url(fmt.tprintf("%s/%s", e2e.repo_root(), ARTICLE))})
 	zoom_frames(t, s)
 }
 
@@ -170,7 +170,7 @@ ctrl_wheel_over_a_long_page_keeps_it_in_every_frame :: proc(t: ^testing.T) {
 // idle moment showed the page's background alone (seen with two tests in a process, whose wait reached the idle time).
 @(test)
 a_trim_leaves_the_chrome_frames_the_page_on_screen :: proc(t: ^testing.T) {
-	s := e2e.start(t, {size = WINDOW_SIZE, url = e2e.file_url(fmt.tprintf("%s/%s", e2e.repo_root(), ARTICLE))})
+	s := e2e.start(t, {pixels = true, size = WINDOW_SIZE, url = e2e.file_url(fmt.tprintf("%s/%s", e2e.repo_root(), ARTICLE))})
 	e2e.wait_frames(s, SCROLL_SETTLE_FRAMES)
 	context = s.ctx
 	tab := browser.current_tab(s.app)
@@ -184,7 +184,7 @@ a_trim_leaves_the_chrome_frames_the_page_on_screen :: proc(t: ^testing.T) {
 // (shown after it loaded in the back: no frame of it has been kept yet)
 @(test)
 ctrl_wheel_over_a_page_just_shown_keeps_it_in_every_frame :: proc(t: ^testing.T) {
-	s := e2e.start(t, {size = WINDOW_SIZE, url = "about:blank"})
+	s := e2e.start(t, {pixels = true, size = WINDOW_SIZE, url = "about:blank"})
 	id := e2e.new_tab(s, e2e.file_url(fmt.tprintf("%s/%s", e2e.repo_root(), ARTICLE)), background = true)
 	s.tab = id
 	e2e.wait_load(s)

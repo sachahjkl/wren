@@ -26,7 +26,7 @@ bubble :: proc(s: ^e2e.Session) -> (r: draw.Rect, ok: bool) {
 
 @(test)
 where_a_link_goes_is_shown_over_the_page :: proc(t: ^testing.T) {
-	s := e2e.start(t, {url = "about:blank"})
+	s := e2e.start(t, {pixels = true, url = "about:blank"})
 	e2e.eval(s, "document.open(); document.write(" + "`" + LINK_PAGE + "`" + "); document.close(); 1")
 	e2e.wait_frames(s)
 	_, shown := bubble(s)

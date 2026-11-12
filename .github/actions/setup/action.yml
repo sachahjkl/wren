@@ -45,10 +45,13 @@ runs:
         rustup default $env:RUST_VERSION
         rustc --version
 
+    # (Go's build cache: the test server's two programs and its tests compile the same packages, quic-go and HTTP/2, which took 135 s
+    # and 122 s from nothing in every run: docs/test-review.md, 4.4)
     - uses: actions/setup-go@v5
       with:
         go-version-file: tools/testserver/go.mod
-        cache: false
+        cache: true
+        cache-dependency-path: tools/testserver/go.sum
 
     # (the test server's library: go build -buildmode=c-shared calls a C compiler; the runner's MinGW)
     - shell: powershell
@@ -122,8 +125,20 @@ runs:
           build/js-test262/wren_js.wasm
           build/js-test262/wren_js_raw.wasm
           build/js-test262/STAMP
-        key: js-${{ hashFiles('native/js/**', 'src/wasm/*.odin', 'src/tools/jsengine/*.odin', 'src/tools/tooling/js_engine.odin') }}
+        key: js-${{ hashFiles('native/js/**', 'src/engine/**', 'src/config/**', 'src/wasm/*.odin', 'src/tools/jsengine/*.odin', 'src/tools/tooling/js_engine.odin') }}
         restore-keys: js-
+
+    # The test server's programs, each with the digest of the sources it was built from (<program>.stamp, tooling.ensure_testserver):
+    # a hit makes test_all's step a no-op.
+    - name: Cache the test server
+      uses: actions/cache@v4
+      with:
+        path: |
+          build/testserver.exe
+          build/testserver.exe.stamp
+          build/testserver.dll
+          build/testserver.dll.stamp
+        key: testserver-${{ hashFiles('tools/testserver/**', 'src/tools/tooling/files.odin') }}
 
     - name: Cache the test suites (test262, web-platform-tests)
       uses: actions/cache@v4

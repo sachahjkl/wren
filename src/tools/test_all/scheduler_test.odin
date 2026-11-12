@@ -191,13 +191,16 @@ every_action_runs_with_run_all :: proc(t: ^testing.T) {
 	testing.expect_value(t, status_of(s, "flaky"), Status.Flaky)
 }
 
+// A task that stays until its scheduler tells it to stop.
+@(private = "file")
+stuck_task :: proc(task: ^Task_Run) -> bool {
+	for !sync.atomic_load(&task.kill) { time.sleep(time.Millisecond) }
+	return true
+}
+
 @(test)
 a_stuck_task_is_told_to_stop_and_named :: proc(t: ^testing.T) {
 	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
-	stuck_task :: proc(task: ^Task_Run) -> bool {
-		for !sync.atomic_load(&task.kill) { time.sleep(time.Millisecond) }
-		return true
-	}
 	step := fake("stuck", task = stuck_task)
 	step.limit = 1
 	table := []Step{step}
@@ -208,6 +211,59 @@ a_stuck_task_is_told_to_stop_and_named :: proc(t: ^testing.T) {
 	testing.expect(t, time.tick_since(began) < STUCK_TEST_LIMIT, "it was stopped")
 }
 @(private = "file") STUCK_TEST_LIMIT :: 30 * time.Second
+
+// One cause that makes every step hang costs TIMEOUTS_MOST limits, not one per step: the steps after them do not start.
+@(test)
+after_five_stuck_steps_no_step_starts :: proc(t: ^testing.T) {
+	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
+	// (the two others are light steps with no light slot: they could start only once the stuck ones have ended, never beside them)
+	table := make([]Step, TIMEOUTS_MOST + 2)
+	for &step, i in table {
+		if i < TIMEOUTS_MOST {
+			step = fake("stuck", task = stuck_task)
+			step.limit = 1
+		} else {
+			step = fake("waits", marks = {.Light})
+		}
+	}
+	s := run_table(table, jobs = TIMEOUTS_MOST, light = 0)
+	counts: [Status]int
+	for &r in s.runs { counts[r.status] += 1 }
+	testing.expect_value(t, counts[.Fail], TIMEOUTS_MOST)
+	testing.expect_value(t, counts[.Not_Run], 2)
+	for &r in s.runs { if r.status == .Not_Run { testing.expect(t, strings.contains(r.why, "ran out of time"), r.why) } }
+}
+
+// Past -RunTimeoutSec what runs is stopped, and what waits never starts: the run ends before the job's own limit, with its report.
+@(test)
+the_run_budget_stops_what_runs_and_what_waits :: proc(t: ^testing.T) {
+	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
+	// ("after" is a light step with no light slot: it waits until the budget runs out)
+	table := []Step{fake("long", task = stuck_task), fake("after", marks = {.Light})}
+	s := table_scheduler(table, 1, 0)
+	s.cfg.run_timeout = 1
+	began := time.tick_now()
+	schedule(s)
+	testing.expect_value(t, status_of(s, "long"), Status.Fail)
+	testing.expect_value(t, status_of(s, "after"), Status.Not_Run)
+	testing.expect(t, time.tick_since(began) < STUCK_TEST_LIMIT, "the run was stopped")
+}
+
+// A limit from the last duration: a hang costs minutes; never under the floor, never over -StepTimeoutSec; what says by itself whether it has
+// anything to do, or has a limit of its own, keeps it.
+@(test)
+a_step_is_limited_by_its_last_duration :: proc(t: ^testing.T) {
+	cfg := Config{step_timeout = STEP_TIMEOUT_SECONDS}
+	plain := Step{name = "plain"}
+	testing.expect_value(t, step_limit(&cfg, &plain, -1), STEP_TIMEOUT_SECONDS)
+	testing.expect_value(t, step_limit(&cfg, &plain, 30), LIMIT_FACTOR * 30)
+	testing.expect_value(t, step_limit(&cfg, &plain, 1), LIMIT_FLOOR_SECONDS)
+	testing.expect_value(t, step_limit(&cfg, &plain, 3600), STEP_TIMEOUT_SECONDS)
+	build := Step{name = "build", marks = {.No_Result}}
+	testing.expect_value(t, step_limit(&cfg, &build, 5), STEP_TIMEOUT_SECONDS)
+	own := Step{name = "own", limit = 42}
+	testing.expect_value(t, step_limit(&cfg, &own, 5), 42)
+}
 
 @(test)
 checks_are_counted_from_what_a_step_says :: proc(t: ^testing.T) {

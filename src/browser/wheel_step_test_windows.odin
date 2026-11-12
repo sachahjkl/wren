@@ -6,9 +6,8 @@ import win "core:sys/windows"
 // One wheel notch: browser.scroll.step_px when set, else what Windows says, as Chromium (lines per notch x 100/3 px).
 @(test)
 wheel_step_follows_windows :: proc(t: ^testing.T) {
-	app := new(App)   // (an App is too large for a test's stack)
-	the_app = app   // (what the code reaches without an App: this one)
-	defer free(app)
+	app := app_make()
+	defer app_free(app)
 	app.cfg.scroll_step = 48
 	testing.expect_value(t, wheel_step(app), [2]f32{48, 48})
 	app.cfg.scroll_step = 0

@@ -1,17 +1,35 @@
-# The sleeps left in test sources, and why each stays: src\tools\test_all\lint_sleeps.odin fails on a sleep not listed here, and on a count above what the file has. "<path> <count>  # why".
+# The waits left in test sources whose end is a time and not a state, and why each stays: src\tools\test_all\lint_sleeps.odin fails on one not listed here, and on a count above what the file has. "<path> <count>  # why".
+# What counts (TEST_SLEEP_CALLS): a sleep; a spin (thread.yield, base.await: a whole processor for the wait); a wait with a timeout on a semaphore or a futex; e2e's real time (busy_wait, wait_at_rest, rest_turns).
 # A test simulates a failure, it does not wait for it (docs/testing.md, Waits): a fake at a seam, the loop's virtual clock, a condition, a gate of the test server.
 src/base/process_times_test.odin 1  # the system's count of a process's threads goes down some time after a thread ended: nothing signals it
 src/browser/pacing_wait_test.odin 1  # poll of a flag set by the thread under test, bounded by one slot: what is checked is that thread's real wait
-src/e2e/e2e.odin 1  # stop_test: the thread of a test that failed waits to be ended by the runner
+src/e2e/e2e.odin 4  # stop_test: the thread of a test that failed waits to be ended by the runner; rest_until_frames and wait_at_rest turn the loop with nothing asking (rest_turns): wait_at_rest ends when the timers due within 500 ms have run with no frame, rest_until_frames on a count of frames
 src/e2e/process.odin 1  # wait_for: what another process does to the disk or the registry, looked at until it holds: nothing can run its loop
 src/host/dialog_test.odin 1  # poll of the state the dialog's own thread sets, bounded: what is checked is that thread's real answer
-src/host/thread_test.odin 1  # -Perf only: how often a hook runs in real time is the measure
+src/host/loop_test.odin 1  # a hammer of posts from many threads: each post signals the semaphore, the timeout only bounds a lost one
+src/host/shutdown_test.odin 1  # base.await: the watchdog's report comes from its own thread, which has no signal for a test (docs/test-review.md 1.9: to wait on a futex)
+src/host/thread_test.odin 3  # -Perf only: how often a hook runs in real time is the measure; base.await on the state threads under test set (1.9)
+src/images/images_test.odin 4  # the decoder pool's threads end on their idle time and have no signal for a test (base.await on their count, 1.9); a yield between tries of a lock another thread holds for a moment
 src/layout/bench_load_test.odin 2  # a benchmark asked for these pauses: what the threads do during them is the measure
 src/media/av1_soft_test.odin 1  # looks at a real player between its turns: its threads have no signal for a test
+src/page/worker_test.odin 1  # base.await: the workers' threads end on their own; their count is the state (1.9)
 src/remote/server_test_linux.odin 1  # a client of the real socket: it connects once the server thread has made it
 src/remote/server_test_windows.odin 1  # a client of the real pipe: it connects once the server thread has made it
+src/tools/e2e/busy_page.odin 2  # busy_wait: an edge autoscroll's pace is a real timer; the animation's wait is a least time, so that the page's turn after it cannot show the box behind where the chrome frames showed it (the caret goes by busy_clock)
+src/tools/e2e/chrome_frames.odin 3  # busy_wait: what the chrome frames do while a script holds the page, the autoscroll's real pace (1.2)
+src/tools/e2e/devtools_fold.odin 1  # wait_at_rest: the tooltip's animation ended with nothing asking for frames (1.1)
 src/tools/e2e/frame_gate.odin 1  # keeps a thread's queue with something in it while a script holds that thread: what a message posted from outside does is the test
+src/tools/e2e/frames_at_rest.odin 11  # what the browser draws in real time left alone is the subject (rest_turns, wait_at_rest); the step is .No_CI
+src/tools/e2e/menu_wheel.odin 1  # wait_at_rest: the menu's opening ended (1.1)
+src/tools/e2e/pointer_gesture.odin 1  # wait_at_rest: the press's transitions ended (1.1)
 src/tools/e2e/remote_channel.odin 3  # a Wren with no channel can only be watched from outside (CPU over a second); the two others -Perf: idle cost is the measure
+src/tools/e2e/scroll_driven.odin 1  # wait_at_rest: the animations a scroll started have ended (1.1)
+src/tools/e2e/two_apps.odin 1  # a futex with a timeout: the two browsers meet at a barrier on their own threads; the timeout only ends a failing run
+src/tools/e2e/web_workers.odin 1  # the loop's own wait while a timer is armed: a worker's message ends it sooner
 src/tools/test_all/cache_test.odin 3  # a file's stamp must change: the file system's clock is what is tested against
 src/tools/test_all/scheduler_test.odin 2  # tasks that stay until told: the scheduler under test has no signal for them
+src/wasm/shared_memory_test.odin 1  # base.await: the other side runs on its own thread; its result is the state (1.9)
 src/wasm/wasm_test.odin 1  # the deadline of a guest call is on the real clock of the engine's ticker: the hook's real time is what is checked
+src/webaudio/webaudio_test.odin 5  # base.await: the audio thread renders on its own clock; what it has rendered is the state (1.9)
+src/webaudio/worklet_test.odin 2  # a fake realm's thread polls its queue between yields, as the audio thread does; base.await on the calls it made (1.9)
+src/webauthn/webauthn_test.odin 1  # base.await: the operation waits for its user on its own thread; that it waits is the state (1.9)

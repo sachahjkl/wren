@@ -9,10 +9,17 @@ import "wb:tools/tooling"
 
 // A test simulates a failure, it does not wait for it (docs/testing.md): a fake, a virtual clock, a condition, a gate of the test server. The sleeps left in test sources are the ones of
 // tools/test_sleeps_allowed.txt, each with why it stays: a new one fails here, and so does a line that says more than the file has, so that the list shrinks with the code.
+// A "sleep" is any wait whose end is a time and not a state: a sleep, a spin on the processor (thread.yield, base.await), a wait with a
+// timeout on a semaphore or a futex, and the waits of e2e that let real time pass (busy_wait, wait_at_rest, rest_turns).
 
 TEST_SLEEPS_ALLOWED :: "tools/test_sleeps_allowed.txt"
 TEST_SLEEP_DIRS :: [?]string{"src/tools/e2e", "src/e2e"}   // (and every *_test.odin and *_test_<system>.odin under src)
-TEST_SLEEP_CALLS :: [?]string{"time.sleep(", "win.Sleep(", "windows.Sleep("}
+TEST_SLEEP_CALLS :: [?]string{
+	"time.sleep(", "win.Sleep(", "windows.Sleep(",
+	"thread.yield(", "base.await(",                                      // a spin: a whole processor for the wait, which slows every other step
+	"sema_wait_with_timeout(", "futex_wait_with_timeout(",              // a wait that ends on its timeout when nothing signals
+	"busy_wait(", "wait_at_rest(", "rest_turns(",                       // e2e: real time while the page or the loop is left alone
+}
 
 @(private = "file")
 is_test_source :: proc(path: string) -> bool {

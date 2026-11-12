@@ -1,6 +1,6 @@
 // test_all: every test of the project, step by step (docs/testing.md). On Windows it all happens on a desktop of its own (desktop_windows.odin).
 //   odin run src/tools/test_all -collection:wb=src -keep-executable -out:build/test_all.exe -- -Quick
-//   build/test_all -Quick [-CI] [-Ui] [-Perf] [-NoCache] [-Cache] [-NoAsan] [-Jobs n] [-LightJobs n] [-StepTimeoutSec n]
+//   build/test_all -Quick [-CI] [-Ui] [-Perf] [-NoCache] [-Cache] [-NoAsan] [-Jobs n] [-LightJobs n] [-StepTimeoutSec n] [-RunTimeoutSec n] [-Group check|shell|other]
 //                  [-Only regex] [-Except regex] [-Failed] [-Changed] [-Base commit] [-List] [-Profile] [-Odin path]
 //   build/test_all -ProfileReport base | -ProfileCompare a b    the tables of runs that were profiled (build/prof)
 //   build/test_all -Globals | -GlobalsWrite                     the globals of the browser's packages with their class; the list rewritten from the code
@@ -38,6 +38,9 @@ TEMP_DIR :: "build/tmp"
 Config :: struct {
 	quick, ci, ui, perf, no_asan, no_cache, cache, failed, changed, list, profile: bool,
 	jobs, light_jobs, step_timeout: int,
+	run_timeout: int,      // seconds the whole run may take (0: no limit): past it what runs is stopped and the report is written
+	group:     Group,      // -Group: only the steps of this group (and what they need)
+	by_group:  bool,
 	only, except, base: string,
 	slow:      int,    // what the limits of what waits are multiplied by
 	use_cache: bool,   // results are read and kept in this run
@@ -47,7 +50,7 @@ Config :: struct {
 }
 
 usage :: proc() -> ! {
-	fmt.eprintln("usage: test_all [-Quick] [-CI] [-Ui] [-Perf] [-NoCache] [-Cache] [-NoAsan] [-Jobs n] [-LightJobs n] [-StepTimeoutSec n] [-Only regex] [-Except regex] [-Failed] [-Changed] [-Base commit] [-List] [-Profile] [-Odin path] | -ProfileReport base | -ProfileCompare a b | -Globals | -GlobalsWrite | -AsanBrowser [-AsanConsole] | -AsanProgram dir | -AsanPackages a,b [-AsanNames names]")
+	fmt.eprintln("usage: test_all [-Quick] [-CI] [-Ui] [-Perf] [-NoCache] [-Cache] [-NoAsan] [-Jobs n] [-LightJobs n] [-StepTimeoutSec n] [-RunTimeoutSec n] [-Group check|shell|other] [-Only regex] [-Except regex] [-Failed] [-Changed] [-Base commit] [-List] [-Profile] [-Odin path] | -ProfileReport base | -ProfileCompare a b | -Globals | -GlobalsWrite | -AsanBrowser [-AsanConsole] | -AsanProgram dir | -AsanPackages a,b [-AsanNames names]")
 	os.exit(EXIT_USAGE)
 }
 
@@ -85,6 +88,13 @@ main :: proc() {
 		case "-jobs": cfg.jobs = number(need(args, &i))
 		case "-lightjobs": cfg.light_jobs = number(need(args, &i))
 		case "-steptimeoutsec": cfg.step_timeout = number(need(args, &i))
+		case "-runtimeoutsec": cfg.run_timeout = number(need(args, &i))
+		case "-group":
+			name := strings.to_lower(need(args, &i), context.temp_allocator)
+			found := false
+			for g in Group { if GROUP_NAMES[g] == name { cfg.group, found = g, true } }
+			if !found { fmt.eprintfln("-Group: %s is none of check, shell, other", name); usage() }
+			cfg.by_group = true
 		case "-only": cfg.only = need(args, &i)
 		case "-except": cfg.except = need(args, &i)
 		case "-base": cfg.base = need(args, &i)

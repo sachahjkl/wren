@@ -96,7 +96,7 @@ row_gaps_in :: proc(img: e2e.Image, box: e2e.Rect, hue := Hue.Red) -> (gaps: int
 // A page of `body`, its font ready.
 @(private = "file")
 open_page :: proc(t: ^testing.T, body: string, size := DECO_SIZE, url_tail := "", prefs: []string = nil, loc := #caller_location) -> ^e2e.Session {
-	s := e2e.start(t, {size = size, dpi = e2e.DPI_ONE, prefs = prefs}, loc)
+	s := e2e.start(t, {pixels = true, size = size, dpi = e2e.DPI_ONE, prefs = prefs}, loc)
 	dir := e2e.temp_folder(t)
 	e2e.copy_file(fmt.tprintf("%s/examples/site/fonts/roboto.ttf", e2e.repo_root()), fmt.tprintf("%s/roboto.ttf", dir))
 	url := e2e.file_page(dir, "deco.html", strings.concatenate({DECO_STYLE, body}, context.temp_allocator))

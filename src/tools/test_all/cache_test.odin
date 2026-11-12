@@ -168,7 +168,7 @@ closure_against_the_compilers_import_graph :: proc(t: ^testing.T) {
 	for pkg in ([]string{"src/url", "src/page", "src/tools/wpt", "ext/gui_toolkit/tests/keyboard"}) {
 		mine, ok := closure_packages(&c, {pkg})
 		testing.expectf(t, ok && len(mine) > 0, "%s: its packages are found", pkg)
-		graph, _ := tooling.capture({tooling.odin_program(), "check", pkg, TOOLKIT, WB, ONE_THREAD, "-show-import-graph", "-no-entry-point", "-ignore-warnings"})
+		graph, _ := tooling.capture({tooling.odin_program(), "check", pkg, TOOLKIT, WB, ONE_THREAD, "-show-import-graph", "-no-entry-point", "-ignore-warnings"}, limit = 0)   // (a check of the browser under a loaded run: the step's limit bounds it)
 		graph, _ = strings.replace_all(graph, "\\", "/", context.temp_allocator)
 		root := here(".")
 		root, _ = strings.replace_all(root, "\\", "/", context.temp_allocator)
@@ -254,6 +254,9 @@ a_sleep_of_a_test_is_counted_and_a_listed_one_says_why :: proc(t: ^testing.T) {
 	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
 	TEXT :: "\ttime." + "sleep(x)\n\twin." + "Sleep(1); windows." + "Sleep(2)\n\ty := 1 // time." + "sleep(x) is gone\n"   // (in pieces: this file is counted too)
 	testing.expect_value(t, count_test_sleeps(TEXT), 3)
+	// (the waits that are a time, not a state: a spin, a timeout, e2e's real time)
+	SPINS :: "\tfor !done { thread." + "yield() }\n\tbase." + "await(&x, ready)\n\tsync.sema_wait_" + "with_timeout(&s, d)\n\te2e.busy_" + "wait(90), e2e.wait_at_" + "rest(s)\n"
+	testing.expect_value(t, count_test_sleeps(SPINS), 5)
 	allowed, bad := parse_test_sleeps_allowed("# a comment\nsrc/a_test.odin 2  # why\nsrc/b_test.odin 1\nsrc/c_test.odin two  # why\n")
 	testing.expect_value(t, len(allowed), 1)
 	testing.expect_value(t, allowed["src/a_test.odin"], 2)

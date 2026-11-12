@@ -49,11 +49,13 @@ task_browser :: proc(t: ^Task_Run) -> bool {
 
 // (nothing when the browser is newer than its sources, as the browser's step: a release build that the release workflow
 // tests must not get the dev profile of the native library under it, which would make the browser's step rebuild it as dev)
+// The generated web API too: the browser's build and the test program's compile read it, and run side by side (steps.odin), so it has
+// one writer that both wait for; the browser's build then finds it up to date.
 task_dependencies :: proc(t: ^Task_Run) -> bool {
 	o := builder.options_from_env(.Dev)
 	o.log = t.log
 	if browser_fresh(builder.program_of(o)) { return true }
-	return builder.dependencies(o)
+	return builder.dependencies(o) && builder.bindgen(o)
 }
 
 task_testserver :: proc(t: ^Task_Run) -> bool {
@@ -201,6 +203,8 @@ Stress_Case :: struct {
 // How long the server may take to listen.
 SERVER_LISTEN_LIMIT :: 60 * time.Second
 SERVER_POLL :: 20 * time.Millisecond
+// How long one case of build/fetch may take: the largest is 100 MB through a slow consumer, seconds on loopback.
+FETCH_CASE_LIMIT :: 120 * time.Second
 // The default first port the server tries when this run's block does not say otherwise.
 FLAT_MEMORY_MB :: 60
 QUEUED_MEMORY_MB :: 100
@@ -249,7 +253,7 @@ task_net_stress :: proc(t: ^Task_Run) -> bool {
 		_ = os.remove(output)
 		p, spawn_why := tooling.spawn({command = join({exe("build/fetch")}, c.args), log = output})
 		if spawn_why != "" { task_say(t, "build/fetch cannot start: %s", spawn_why); return false }
-		code, _ := tooling.wait(&p)
+		code, _ := tooling.wait(&p, FETCH_CASE_LIMIT)
 		u := tooling.usage(&p)
 		tooling.release(&p)
 		data, _ := os.read_entire_file(output, context.temp_allocator)

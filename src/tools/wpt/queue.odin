@@ -20,6 +20,8 @@ import "core:time"
 CHILD_AHEAD :: 2
 // How often the parent looks at its children (a test takes 60 ms at the least: a child never waits for it with CHILD_AHEAD).
 PARENT_TICK :: 50 * time.Millisecond
+// What a child that was killed is given to end: a process that a kill does not end in that time is let go (the run must end even then).
+CHILD_KILL_WAIT :: 30 * time.Second
 // How often a pass says how far it is, on its standard output (the log of test_all's step) as well as on a terminal.
 PROGRESS_EVERY :: 30 * time.Second
 // A child's exit code when JavaScript cannot start in it: every test would wait out its limit for nothing, the run stops at once.
@@ -246,16 +248,30 @@ queue_run :: proc(q: ^Run_Queue) -> (why: string) {
 		for &c in q.children {
 			if c.phase == .Free { continue }
 			_ = os.process_kill(c.process)
-			_, _ = os.process_wait(c.process)
+			_, _ = os.process_wait(c.process, CHILD_KILL_WAIT)
 			if c.feed != nil { os.close(c.feed); c.feed = nil }
 			c.phase = .Free
 		}
 	}
-	// The first child alone: the engine compiled once for all, and a run that cannot start JavaScript stops here.
+	// The first child alone: the engine compiled once for all, and a run that cannot start JavaScript stops here. It has the limit of
+	// the others: a first child that hangs would leave the run waiting for ever, and every child after it would hang the same way.
 	if opts.jobs > 1 && !opts.quiet {
-		if child_start(q, &q.children[0], false) {
-			state, _ := os.process_wait(q.children[0].process)
-			if w := child_ended(q, &q.children[0], state.exit_code); w != "" { return w }
+		first := &q.children[0]
+		if child_start(q, first, false) {
+			state: os.Process_State
+			for {
+				werr: os.Error
+				state, werr = os.process_wait(first.process, PARENT_TICK)
+				if werr == nil && state.exited { break }
+				if time.duration_milliseconds(time.tick_since(first.last_grow)) > q.hang_ms {
+					_ = os.process_kill(first.process)
+					_, _ = os.process_wait(first.process, CHILD_KILL_WAIT)
+					if first.feed != nil { os.close(first.feed); first.feed = nil }
+					first.phase = .Free
+					return fmt.aprintf("the first test process (it compiles the engine for the others) did not end in %.0f s: the run stops (%s)", q.hang_ms / 1000, first.log)
+				}
+			}
+			if w := child_ended(q, first, state.exit_code); w != "" { return w }
 		}
 	}
 	show_terminal := terminal.is_terminal(os.stderr)
@@ -266,10 +282,11 @@ queue_run :: proc(q: ^Run_Queue) -> (why: string) {
 				child_read(q, &c)
 				state, werr := os.process_wait(c.process, 0)
 				ended := werr == nil && state.exited
-				if !ended && len(c.handed) > 0 && time.duration_milliseconds(time.tick_since(c.last_grow)) > q.hang_ms {
-					// no result for longer than a test may take: killed, its test is a CRASH
+				if !ended && time.duration_milliseconds(time.tick_since(c.last_grow)) > q.hang_ms {
+					// no result for longer than a test may take: killed, the test in its hand is a CRASH. A child with nothing in hand (Draining,
+					// every test reported) that does not exit is killed too: its exit is no test's.
 					_ = os.process_kill(c.process)
-					state, _ = os.process_wait(c.process)
+					state, _ = os.process_wait(c.process, CHILD_KILL_WAIT)
 					ended = true
 				}
 				if ended {

@@ -10,9 +10,8 @@ import "wb:base"
 // and path; a tab or a line end in a name is a space), what still runs is not written, and a restored one has no live part.
 @(test)
 downloads_survive_a_restart :: proc(t: ^testing.T) {
-	app := new(App)   // (its downloads start empty)
-	the_app = app   // (what the code reaches without an App: this one)
-	defer free(app)
+	app := app_make()   // (its downloads start empty)
+	defer app_free(app)
 	dir := strings.concatenate({os.get_env("TEMP", context.temp_allocator), "/wren_downloads_test"}, context.temp_allocator)
 	_ = os.make_directory_all(dir)
 	app.profile_dir = dir

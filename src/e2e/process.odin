@@ -76,7 +76,7 @@ launch_begin :: proc(t: ^testing.T, o := Process_Options{}, loc := #caller_locat
 	}
 	testing.cleanup(t, proc(ptr: rawptr) {
 		p := (^Wren_Process)(ptr)
-		if !p.ended { p.s.on_failure = nil; api.finish(p.s, &p.wren, true, wait_ms = PROCESS_WAIT_MS) }
+		if !p.ended { p.s.on_failure = nil; api.finish(p.s, &p.wren, true, wait_ms = CLEANUP_WAIT_MS) }
 		delete(p.wren.name)
 		delete(p.wren.profile)
 		free(p.s)
@@ -140,7 +140,7 @@ program :: proc(t: ^testing.T, args: []string, o := api.Start_Options{}, loc := 
 	strings.builder_init(&p.err)
 	testing.cleanup(t, proc(ptr: rawptr) {
 		p := (^Program)(ptr)
-		if api.process_alive(&p.process) { api.process_kill(&p.process); api.process_wait(&p.process, ms_of(DEFAULT_DEADLINE)) }
+		if api.process_alive(&p.process) { api.process_kill(&p.process); api.process_wait(&p.process, CLEANUP_WAIT_MS) }
 		api.process_release(&p.process)
 		strings.builder_destroy(&p.out)
 		strings.builder_destroy(&p.err)

@@ -19,7 +19,10 @@ section("interfaces", () => {
   eq("document.getAnimations", typeof document.getAnimations, "function");
   t("document.timeline is a DocumentTimeline", document.timeline instanceof DocumentTimeline && document.timeline instanceof AnimationTimeline);
   eq("document.timeline is the same object", document.timeline, document.timeline);
-  t("document.timeline.currentTime is near performance.now()", near(document.timeline.currentTime, performance.now(), 50), document.timeline.currentTime + " vs " + performance.now());
+  // The timeline's time is the time of the last rendering update, so it is never ahead of performance.now(); how far behind depends on
+  // when the last frame ran, which a loaded machine decides (a window of 50 ms failed on the CI). The 1 ms is the coarsening of the two clocks.
+  const timelineTime = document.timeline.currentTime, now = performance.now();
+  t("document.timeline.currentTime is the time of a frame, not after performance.now()", typeof timelineTime === "number" && timelineTime >= 0 && timelineTime <= now + 1, timelineTime + " vs " + now);
   eq("Animation is constructible", typeof new Animation(), "object");
   eq("KeyframeEffect", typeof KeyframeEffect, "function");
   eq("AnimationPlaybackEvent", new AnimationPlaybackEvent("finish", { currentTime: 5 }).currentTime, 5);

@@ -27,6 +27,15 @@ PROGRESS_INTERVAL :: 60 * time.Second
 DEFAULT_DURATION :: 60
 // How long what a stuck step's threads are doing may take to read before it is killed anyway.
 DUMP_LIMIT :: 60 * time.Second
+// How long a task told to stop may take to end: past it the step is finished and its thread left behind, so that the run ends even when
+// a thread does not.
+TASK_STOP_GRACE :: 60 * time.Second
+// After this many steps that ran out of time, no new step starts: one cause (a broken library, a rasterizer that hangs on the runner)
+// would otherwise cost every step its whole limit, and the job its own limit with no report.
+TIMEOUTS_MOST :: 5
+// The limit of a step from its duration in the last run: this many times that, at least LIMIT_FLOOR_SECONDS, at most -StepTimeoutSec.
+LIMIT_FACTOR :: 10
+LIMIT_FLOOR_SECONDS :: 120
 ASAN_JOBS :: 3
 SUCCESS_MANY :: "All tests were successful"
 SUCCESS_ONE :: "The test was successful"
@@ -44,6 +53,7 @@ Task_Run :: struct {
 	kill:     bool,   // (atomic)
 	usage:    tooling.Usage,
 	port:     rawptr,   // the profiler's
+	told:     time.Tick,   // when `kill` was set
 }
 
 Step_Run :: struct {
@@ -56,7 +66,9 @@ Step_Run :: struct {
 	why:      string,     // what a step that did not pass says of itself: stuck, not run...
 	action:   int,        // the action it is in
 	failed:   bool,       // one of its actions has failed
+	// (what the circuit breaker counts. Not a test's "Test timed out": e2e ends every failed test that way, docs/testing.md)
 	stuck:    bool,
+	limit:    int,        // seconds: its own, or from its last duration (step_limit)
 	process:  tooling.Process,
 	has_process: bool,
 	offset:   i64,        // where what this command says begins in the log
@@ -92,6 +104,8 @@ Scheduler :: struct {
 	quiet:    bool,         // (a test of this file: nothing printed)
 	progress_file: string,  // where the progress lines go besides the console ("": the console only)
 	last_progress: time.Tick,
+	timeouts: int,          // steps that ran out of time (TIMEOUTS_MOST)
+	out_of_budget: bool,    // the run has run for -RunTimeoutSec: what runs is stopped, nothing more starts
 }
 
 slot_of :: proc(s: ^Step) -> Slot {
@@ -216,6 +230,7 @@ changed_files :: proc(cfg: ^Config) -> []string {
 }
 
 is_chosen :: proc(s: ^Step, sel: ^Selection, cfg: ^Config, c: ^Cache) -> bool {
+	if cfg.by_group && s.group != cfg.group { return false }
 	if sel.has_only && !matches(sel.only, s.name) { return false }
 	if sel.has_except && matches(sel.except, s.name) { return false }
 	if cfg.failed && s.name not_in sel.failed { return false }
@@ -239,7 +254,7 @@ is_chosen :: proc(s: ^Step, sel: ^Selection, cfg: ^Config, c: ^Cache) -> bool {
 choose_steps :: proc(cfg: ^Config, table: []Step, c: ^Cache, skipped_ci, skipped_ui, left_out: ^int) -> []^Step {
 	allowed: [dynamic]^Step
 	for &s in table { if marks_allow(&s, cfg, skipped_ci, skipped_ui) { append(&allowed, &s) } }
-	selecting := cfg.only != "" || cfg.except != "" || cfg.failed || cfg.changed
+	selecting := cfg.only != "" || cfg.except != "" || cfg.failed || cfg.changed || cfg.by_group
 	if !selecting { return allowed[:] }
 	sel := read_selection(cfg)
 	chosen := make(map[^Step]bool)
@@ -273,7 +288,9 @@ scheduler_make :: proc(cfg: ^Config, steps: []^Step, durations: ^map[string]int,
 	own := make([]f64, len(steps), context.temp_allocator)
 	for st, i in steps {
 		own[i] = DEFAULT_DURATION
-		if d, ok := durations[st.name]; ok { own[i] = f64(d) } else if st.weight > 0 { own[i] = f64(st.weight) }
+		d, known := durations[st.name]
+		if known { own[i] = f64(d) } else if st.weight > 0 { own[i] = f64(st.weight) }
+		s.runs[i].limit = step_limit(cfg, st, known ? d : -1)
 	}
 	// its duration and that of the longest chain below it: what makes something others wait for starts first
 	rank_of :: proc(s: ^Scheduler, own: []f64, i: int) -> f64 {
@@ -291,6 +308,15 @@ scheduler_make :: proc(cfg: ^Config, steps: []^Step, durations: ^map[string]int,
 	s.last_progress = s.began
 	s.cache_dirty = true
 	return s
+}
+
+// Seconds a step may run. Its own limit when it has one (steps.odin: a build, a whole suite); none for what says by itself whether there
+// is anything to do (.No_Result: seconds one time, minutes the next); else LIMIT_FACTOR times its last duration, at least
+// LIMIT_FLOOR_SECONDS: a step that hangs costs minutes instead of -StepTimeoutSec. `last` -1: no duration of a last run.
+step_limit :: proc(cfg: ^Config, st: ^Step, last: int) -> int {
+	if st.limit > 0 { return st.limit }
+	if last < 0 || .No_Result in st.marks { return cfg.step_timeout }
+	return clamp(LIMIT_FACTOR * last, min(LIMIT_FLOOR_SECONDS, cfg.step_timeout), cfg.step_timeout)
 }
 
 // One turn after the other until every step is Done.
@@ -323,6 +349,10 @@ progress_text :: proc(s: ^Scheduler) -> string {
 }
 
 schedule_turn :: proc(s: ^Scheduler) {
+	if !s.out_of_budget && s.cfg.run_timeout > 0 && time.duration_seconds(time.tick_since(s.began)) > f64(s.cfg.run_timeout) {
+		s.out_of_budget = true
+		print_line(s, fmt.tprintfln("watchdog: the run has run for %d s (-RunTimeoutSec): what runs is stopped, nothing more starts", s.cfg.run_timeout))
+	}
 	for &r in s.runs {
 		switch r.state {
 		case .Running: advance(s, &r)
@@ -371,6 +401,17 @@ admit :: proc(s: ^Scheduler) {
 				finish(s, r, .Cached)
 				continue
 			}
+		}
+		// (after the cache: a result kept costs nothing and is as true as before)
+		if s.out_of_budget {
+			r.why = fmt.aprintf("not run: the run's budget of %d s ran out (-RunTimeoutSec)", s.cfg.run_timeout)
+			finish(s, r, .Not_Run)
+			continue
+		}
+		if s.timeouts >= TIMEOUTS_MOST {
+			r.why = fmt.aprintf("not run: %d steps ran out of time, most likely for one cause: read the first of them", s.timeouts)
+			finish(s, r, .Not_Run)
+			continue
 		}
 		if .Alone in r.step.marks {
 			others := 0
@@ -432,32 +473,20 @@ start_action :: proc(s: ^Scheduler, r: ^Step_Run) {
 	}
 }
 
+// (what the task starts, through tooling.run or wait on this thread, a build of package builder included, reads the task's `kill`)
 task_thread :: proc(t: ^Task_Run) {
 	tooling.task_usage = &t.usage
 	tooling.task_port = t.port
+	tooling.task_kill = &t.kill
 	t.ok = t.run(t)
 	sync.atomic_store(&t.done, true)
 }
 
-// A command for a task, under the task's kill. Its exit code.
+// A command for a task, under the task's kill (tooling.task_kill). Its exit code.
 task_exec :: proc(t: ^Task_Run, command: []string, env: []string = nil, dir := "") -> int {
 	argv := slice.clone(command, context.temp_allocator)
 	if argv[0] == "odin" { argv[0] = tooling.odin_program() }
-	p, why := tooling.spawn({command = argv, env = env, dir = dir, log = t.log, console = .Own})
-	if why != "" {
-		tooling.append_text(t.log, fmt.tprintfln("%s cannot start: %s", command[0], why))
-		return -1
-	}
-	code := 0
-	for {
-		done, c := tooling.poll(&p)
-		if done { code = c; break }
-		if sync.atomic_load(&t.kill) { tooling.kill_tree(&p) }
-		time.sleep(tooling.WAIT_SLICE)
-	}
-	tooling.count_usage(&p)
-	tooling.release(&p)
-	return code
+	return tooling.run({command = argv, env = env, dir = dir, log = t.log, console = .Own})
 }
 
 task_say :: proc(t: ^Task_Run, format: string, args: ..any) {
@@ -466,15 +495,16 @@ task_say :: proc(t: ^Task_Run, format: string, args: ..any) {
 
 // What a running step's action has come to.
 advance :: proc(s: ^Scheduler, r: ^Step_Run) {
-	limit := r.step.limit > 0 ? r.step.limit : s.cfg.step_timeout
-	if time.duration_seconds(time.tick_since(r.began)) > f64(limit) && !r.stuck {
+	over := time.duration_seconds(time.tick_since(r.began)) > f64(r.limit)
+	if (over || s.out_of_budget) && !r.stuck {
 		r.stuck = true
-		r.why = fmt.aprintf("stuck: killed after %d s", limit)
+		r.why = over ? fmt.aprintf("stuck: killed after %d s", r.limit) : fmt.aprintf("stopped: the run's budget of %d s ran out (-RunTimeoutSec)", s.cfg.run_timeout)
 		tooling.append_text(r.log, fmt.tprintfln("\n%s", r.why))
-		print_line(s, fmt.tprintfln("watchdog: %s has run for %d s: what it is doing goes to its log, then it is killed", short_name(r.step.name), limit))
+		if over { print_line(s, fmt.tprintfln("watchdog: %s has run for %d s: what it is doing goes to its log, then it is killed", short_name(r.step.name), r.limit)) }
 		if r.has_process {
 			begin_dump(r)
 		} else if r.task != nil {
+			r.task.told = time.tick_now()
 			sync.atomic_store(&r.task.kill, true)
 		}
 		return
@@ -490,7 +520,8 @@ advance :: proc(s: ^Scheduler, r: ^Step_Run) {
 		action_ended(s, r, ok)
 		return
 	}
-	if r.task != nil && sync.atomic_load(&r.task.done) {
+	if r.task == nil { return }
+	if sync.atomic_load(&r.task.done) {
 		thread.join(r.task.thread)
 		thread.destroy(r.task.thread)
 		ok := r.task.ok
@@ -498,6 +529,13 @@ advance :: proc(s: ^Scheduler, r: ^Step_Run) {
 		r.processes += r.task.usage.processes
 		r.task = nil
 		action_ended(s, r, ok)
+		return
+	}
+	if r.stuck && time.tick_since(r.task.told) > TASK_STOP_GRACE {
+		// (its Task_Run stays allocated: the thread still writes to it)
+		tooling.append_text(r.log, fmt.tprintfln("(its thread did not stop %v after it was told: left behind)", TASK_STOP_GRACE))
+		r.task = nil
+		action_ended(s, r, false)
 	}
 }
 
@@ -533,8 +571,15 @@ dump_thread :: proc(r: ^Step_Run) {
 advance_dump :: proc(s: ^Scheduler, r: ^Step_Run) {
 	if !sync.atomic_load(&r.dump_done) && time.tick_since(r.dump_began) < DUMP_LIMIT { return }
 	tooling.kill_tree(&r.process)
-	if done, _ := tooling.poll(&r.process); !done { return }
-	collect_process(s, r)
+	if done, _ := tooling.poll(&r.process); done {
+		collect_process(s, r)
+	} else if time.tick_since(r.dump_began) > DUMP_LIMIT + tooling.KILL_GRACE {
+		// (not released: on Linux that waits for the process again; the run must end even when a process does not)
+		tooling.append_text(r.log, fmt.tprintfln("(its process did not end %v after it was killed: left behind)", tooling.KILL_GRACE))
+		r.has_process = false
+	} else {
+		return
+	}
 	r.state = .Running
 	r.failed = true
 	r.action = len(r.step.actions) - 1
@@ -569,6 +614,11 @@ finish :: proc(s: ^Scheduler, r: ^Step_Run, status: Status) {
 	r.status = status
 	s.left -= 1
 	if status == .Pass || status == .Fail || status == .Flaky { read_log_facts(r) }
+	// (a step stopped by the run's budget is not a cause of its own)
+	if (status == .Fail || status == .Flaky) && r.stuck && !s.out_of_budget {
+		s.timeouts += 1
+		if s.timeouts == TIMEOUTS_MOST { print_line(s, fmt.tprintfln("watchdog: %d steps ran out of time: no new step starts (most likely one cause: read the first of them)", TIMEOUTS_MOST)) }
+	}
 	if status == .Pass && s.cfg.use_cache && r.key != "" && .No_Result not_in r.step.marks {
 		// (a source edited while it ran: another run's)
 		cache_look_again(s.cache)

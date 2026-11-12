@@ -31,7 +31,7 @@ SLOW_SCRIPT_MS :: 120_000   // a task that waits for the software rasterizer, 20
 IDB_QUOTA_TEST_BYTES :: 1 << 20
 CUT_SECTIONS := [?]string{"abort", "blob", "canvas", "canvas_gc", "compat", "compile_large", "core", "fetch", "fetch_objects", "gc", "geometry", "history", "htmlmedia", "idb", "idb_buckets", "idb_clear", "idb_keys", "idb_pages_a", "idb_pages_b", "idb_persist", "idb_quota", "idb_worker", "media", "message", "navigator", "perf_crypto", "perf_timeline", "sockets", "storage", "storage_listener", "streams", "url", "webassembly", "webaudio", "webaudio_autoplay", "webcrypto", "xhr"}
 BROKEN_PAGES := [?]string{"<!doctype html><script>}{</script>", "<!doctype html><script>throw new Error(\"on purpose\")</script>"}
-CUT_AFTER_MS := [?]f64{0, 10, 100, 300}
+CUT_AFTER_TURNS := [?]int{0, 1, 10, 100}   // turns of the loop before a page is closed: a count, so the cut is the same on any machine
 OTHER_PROGRAM_TEST :: "webapi_closing_and_restart"   // (a test of a few milliseconds that empties a profile first)
 GC_MAX_HOST_OBJECTS :: 100
 CANVAS_BYTES_BEFORE_MIN :: 100_000_000
@@ -102,8 +102,7 @@ wait_script :: proc(pr: ^Probe, actions: map[string]Action = nil, seconds := DEF
 		}
 		testhost.flush(&pr.section, pr.t, loc)
 		if time.duration_seconds(time.tick_since(start)) > seconds {
-			testing.expectf(pr.t, false, "[%s] timeout: the script did not finish in %.0f s; its last lines: %v", pr.section.name, seconds, pr.lines[max(0, len(pr.lines) - LAST_LINES_ON_TIMEOUT):], loc = loc)
-			return false
+			world_timeout(pr.t, fmt.tprintf("[%s] timeout: the script did not finish in %.0f s; its last lines: %v", pr.section.name, seconds, pr.lines[max(0, len(pr.lines) - LAST_LINES_ON_TIMEOUT):]), loc)
 		}
 		host.loop_wait(&loop, LOOP_LOOK_MS)
 	}
@@ -308,21 +307,24 @@ jsweb_perf_timeline :: proc(t: ^testing.T) {
 }
 
 // A section that fails or runs out of time closes its page in the middle of what it does (requests, workers, crypto, transactions): what
-// follows in the process does not suffer from it. One test per time of the cut, so that they run side by side (src/tools/test_all: the 37 sections at
-// four times, one after the other, were 21 s of pages left at a set time).
-@(test) jsweb_sections_cut_short_at_once :: proc(t: ^testing.T) { sections_cut_short(t, CUT_AFTER_MS[0]) }
-@(test) jsweb_sections_cut_short_after_10ms :: proc(t: ^testing.T) { sections_cut_short(t, CUT_AFTER_MS[1]) }
-@(test) jsweb_sections_cut_short_after_100ms :: proc(t: ^testing.T) { sections_cut_short(t, CUT_AFTER_MS[2]) }
-@(test) jsweb_sections_cut_short_after_300ms :: proc(t: ^testing.T) { sections_cut_short(t, CUT_AFTER_MS[3]) }
+// follows in the process does not suffer from it. One test per point of the cut, so that they run side by side. The cut is a number of turns
+// of the loop, not a time: a time cut at another point on each machine, and the 37 sections at 0, 10, 100 and 300 ms were 15 s of real waits.
+@(test) jsweb_sections_cut_short_at_once :: proc(t: ^testing.T) { sections_cut_short(t, CUT_AFTER_TURNS[0]) }
+@(test) jsweb_sections_cut_short_after_1_turn :: proc(t: ^testing.T) { sections_cut_short(t, CUT_AFTER_TURNS[1]) }
+@(test) jsweb_sections_cut_short_after_10_turns :: proc(t: ^testing.T) { sections_cut_short(t, CUT_AFTER_TURNS[2]) }
+@(test) jsweb_sections_cut_short_after_100_turns :: proc(t: ^testing.T) { sections_cut_short(t, CUT_AFTER_TURNS[3]) }
 
-sections_cut_short :: proc(t: ^testing.T, ms: f64) {
+sections_cut_short :: proc(t: ^testing.T, turns: int) {
 	context.allocator = base.process_allocator()
 	section_begin(t)
 	defer section_end()
 	// (the verdict of a page closed in the middle says nothing)
-	abandon :: proc(pr: ^Probe, ms: f64) {
-		start := time.tick_now()
-		for time.duration_milliseconds(time.tick_since(start)) < ms && !pr.section.finished { host.loop_wait(&loop, LOOP_LOOK_MS) }
+	abandon :: proc(pr: ^Probe, turns: int) {
+		// (a turn ends on what the loop is given to run, or after LOOP_LOOK_MS with nothing)
+		for _ in 0 ..< turns {
+			if pr.section.finished { break }
+			host.loop_wait(&loop, LOOP_LOOK_MS)
+		}
 		page.page_close(pr.p)
 		testhost.forget(&pr.section)
 		for l in pr.lines { delete(l) }
@@ -336,10 +338,10 @@ sections_cut_short :: proc(t: ^testing.T, ms: f64) {
 		pr := page_make(t, "broken", testenv.url(PAGE))
 		page.set_embedder(pr.p, {navigate = navigate_hook, session = &session, tab_key = "tab-1", storage = storage_world()})
 		page_load(pr, html)
-		abandon(pr, ms)
+		abandon(pr, turns)
 	}
 	for name in CUT_SECTIONS {
-		abandon(open(t, name), ms)
+		abandon(open(t, name), turns)
 		free_all(context.temp_allocator)
 	}
 	script(t, "xhr", tests = 9)

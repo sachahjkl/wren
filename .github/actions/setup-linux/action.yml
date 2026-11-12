@@ -1,0 +1,86 @@
+name: Set up the Wren toolchain on Linux
+description: >-
+  For a job in the debian:bookworm container, after Debian's packages and the checkout: Odin (pinned release, SHA-256 checked), Rust
+  (pinned version), the caches of what wrentool fetches or builds (Wasmtime, Lexbor, the wgpu-native archive, the Rust library of
+  native/ and its crates, the JavaScript engine), then those native libraries and the engine. Every download is pinned as on Windows:
+  Odin by SHA-256 here, Wasmtime and wgpu-native in src/tools/wrentool/deps/fetch.odin, crates by Cargo.lock (--locked), Rust by version.
+
+runs:
+  using: composite
+  steps:
+    - name: Odin dev-2026-11a
+      shell: bash
+      env:
+        ODIN_TAG: dev-2026-11a
+        ODIN_SHA256: 65c9f6e97d6f8a30930e151f270ce5aeaa98fe8b2ba49fe067394e2af04f7618
+      run: |
+        # (tried again on an error of the network or of GitHub, a 504 at times: the digest below says whether what came is the archive)
+        curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o "$RUNNER_TEMP/odin.tar.gz" "https://github.com/odin-lang/Odin/releases/download/$ODIN_TAG/odin-linux-amd64-$ODIN_TAG.tar.gz"
+        echo "$ODIN_SHA256  $RUNNER_TEMP/odin.tar.gz" | sha256sum -c -
+        mkdir -p "$RUNNER_TEMP/odin" && tar -xzf "$RUNNER_TEMP/odin.tar.gz" -C "$RUNNER_TEMP/odin"
+        dirname "$(find "$RUNNER_TEMP/odin" -maxdepth 2 -name odin -type f | head -1)" >> "$GITHUB_PATH"
+
+    - name: Rust 1.99.1
+      shell: bash
+      run: |
+        # (rustup itself: the container has none; its homes named, in a container $HOME is not the user's)
+        export RUSTUP_HOME="$HOME/.rustup" CARGO_HOME="$HOME/.cargo"
+        echo "RUSTUP_HOME=$RUSTUP_HOME" >> "$GITHUB_ENV"; echo "CARGO_HOME=$CARGO_HOME" >> "$GITHUB_ENV"
+        curl -fsSL --retry 5 --retry-delay 10 --retry-all-errors https://sh.rustup.rs | sh -s -- -y -q --profile minimal --default-toolchain 1.99.1
+        echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
+
+    - name: Cache the Rust library and its compiled crates
+      uses: actions/cache@v4
+      with:
+        path: |
+          build/native-linux
+          ~/.cargo/registry
+        key: native-linux-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/**/*.rs', 'native/**/Cargo.toml', 'src/tools/wrentool/deps/native.odin') }}
+        restore-keys: native-linux-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-
+
+    # Wasmtime's sealed archive (build/wasmtime-linux/VERSION), Lexbor (build/lexbor-linux/STAMP) and the wgpu-native archive that
+    # wrentool fetch wgpu seals into Odin's vendor folder (the download is kept in build/tmp and checked by its digest): each stamp
+    # says whether what was restored is up to date, so a hit is a no-op and a stale entry is only rebuilt.
+    - name: Keys of the native libraries
+      id: keys
+      shell: bash
+      run: |
+        git config --global --add safe.directory "*"   # (the container runs as root, the checkout and its submodules are not root's)
+        echo "lexbor=$(git -C ext/lexbor rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+    - name: Cache Wasmtime, Lexbor and the wgpu-native archive
+      uses: actions/cache@v4
+      with:
+        path: |
+          build/wasmtime-linux
+          build/wasmtime/LICENSE
+          build/lexbor-linux
+          build/tmp/wgpu-linux-*-release.zip
+        key: linux-libs-${{ steps.keys.outputs.lexbor }}-${{ hashFiles('src/tools/wrentool/deps/fetch.odin', 'src/tools/wrentool/deps/fetch_linux.odin', 'src/tools/wrentool/deps/lexbor.odin', 'src/shim/**') }}
+        restore-keys: linux-libs-
+
+    # The engine took 177 s in every run before this cache (docs/test-review.md, 4.3). build/js/STAMP is the digest of its inputs: an entry
+    # restored by restore-keys is rebuilt when it is not the sources' own.
+    - name: Cache the JavaScript engine
+      uses: actions/cache@v4
+      with:
+        path: |
+          build/js/wren_js.wasm
+          build/js/wren_js_raw.wasm
+          build/js/wren_js.code
+          build/js/STAMP
+        key: linux-js-${{ hashFiles('native/js/**', 'src/engine/**', 'src/config/**', 'src/wasm/*.odin', 'src/tools/jsengine/*.odin', 'src/tools/tooling/js_engine.odin') }}
+        restore-keys: linux-js-
+
+    # (the Rust library with the toolkit's text backend and accessibility adapter, as build.sh builds it: the browser's tests that run here shape text)
+    - name: Native libraries (Wasmtime, Lexbor, the Rust library) and the JavaScript engine
+      shell: bash
+      run: |
+        mkdir -p build
+        odin build src/tools/wrentool -collection:wb=src -out:build/wrentool
+        build/wrentool fetch wasmtime
+        build/wrentool fetch wgpu
+        CC=clang build/wrentool build lexbor
+        build/wrentool build native -Profile quick -Features text,a11y
+        # the JavaScript engine (build.sh deps): its pre-initialization needs the 64 MiB stack, its linker is lld's wasm-ld
+        ( ulimit -s 65536 && odin run src/tools/buildjs -collection:wb=src -out:build/buildjs )

@@ -34,16 +34,20 @@ import "core:time"
 import "wb:base"
 import "wb:host"
 import "toolkit:platform"
+import "toolkit:ui"
 import "wb:browser"
 import "wb:dom"
 import "wb:page"
 import "wb:style"
 import "wb:remote/api"
 
-// What a test may take in all before the runner stops it (a barrier's deadline comes first).
+// What a test may take in all before the runner stops it (a barrier's deadline comes first). A scenario of many barriers takes minutes on a
+// runner that draws on the processor (cursor.odin: 40 elements), so this is no barrier's limit: it only ends a test that hangs outside one.
 TEST_LIMIT :: 5 * time.Minute
-// How long a barrier may take before the test is said to have failed: under TEST_LIMIT, and far above what any machine takes. It only ends a failing run, so no passing test depends on the speed of the machine.
-DEFAULT_DEADLINE :: 4 * time.Minute
+// How long a barrier may take before the test is said to have failed: under TEST_LIMIT, and far above what any machine takes (no barrier of a
+// passing CI run is near it). It only ends a failing run, so no passing test depends on the speed of the machine; a failure costs this, once:
+// the barrier that fails ends its test.
+DEFAULT_DEADLINE :: 60 * time.Second
 // The window when a test does not say.
 DEFAULT_SIZE :: [2]int{1280, 800}
 // 96 dots per inch: a scale of 1.
@@ -53,14 +57,17 @@ OUT_DIR :: "e2e"
 // What a test keeps when it fails: the window and the page's console.
 FAILURE_CAPTURE :: "failure.png"
 FAILURE_CONSOLE :: "failure_console.txt"
-// rest_turns: how often what wakes the loop wakes it. wait_at_rest: how long without a frame counts as settled (scenarios keep the status bar's window far below it).
+// rest_turns: how often what wakes the loop wakes it. wait_at_rest: a timer of the loop due further away than this is not waited for (scenarios keep the status
+// bar's window far below it).
 REST_WAKE_MS :: 1
-REST_QUIET :: 500 * time.Millisecond
+REST_HORIZON_MS :: 500
 // How long wait_idle and wait_stable want their state to hold. A client over the channel looks from outside, so browser.remote.idle_ms (400 ms) bridges the moments between two requests of a
 // chain; here the state is looked at on the loop's own turns, and what follows a timer or a reply says so itself (wait_js, wait_selector). Each of the 400 ms was a wait for nothing: a test of 70 hovers took 28 s.
 HOLD_MS :: 1
 // The same for a process: to start, to close.
 PROCESS_WAIT_MS :: int(DEFAULT_DEADLINE / time.Millisecond)
+// What a cleanup gives a process it told to close, or killed, before it lets it go: a test's end must not wait a barrier's deadline for it.
+CLEANUP_WAIT_MS :: 10_000
 // The stack the script engine's calls need (what /STACK:67108864 gives on Windows).
 STACK_BYTES :: 64 * 1024 * 1024
 
@@ -108,6 +115,7 @@ Options :: struct {
 	hidden:     bool,       // a real window of the system, never shown, and its swap chain: for what is about them (window.odin). It needs a desktop session
 	software:   bool,       // no window of the system, drawn on the system's software rasterizer (Windows: WARP) whatever GPU the machine has, as on a runner without one
 	own_thread: bool,       // started on a thread of the test's own (two_apps.odin): its profile is given, and that thread ends it (`stop`), not the test's end
+	pixels:     bool,       // the frames are rasterized: for a test that reads pixels (capture, shot, busy_capture). Without it (and without `hidden` or `software`) the browser makes every frame up to its display list and draws none of it: a runner with no GPU draws each frame on the processor
 }
 
 Session :: struct {
@@ -125,6 +133,7 @@ Session :: struct {
 	thread:  int,
 	allocator: runtime.Allocator,   // what made the session (its thread's: the test's own, or one of a thread of the test's)
 	own_thread: bool,
+	pixels:  bool,           // its frames are rasterized (Options.pixels)
 	began:   time.Tick,
 	trace:   bool,           // WREN_E2E_TRACE: each call says when and where on stderr: where the time of a test goes
 }
@@ -188,6 +197,7 @@ start :: proc(t: ^testing.T, o := Options{}, loc := #caller_location) -> ^Sessio
 	s.t = t
 	s.test = context
 	s.own_thread = o.own_thread
+	s.pixels = o.pixels || o.hidden || o.software   // (a real window, or the software rasterizer, is what such a test is about)
 	s.name = o.own_thread ? fmt.aprintf("%s_%d", loc.procedure, sync.current_thread_id()) : strings.clone(loc.procedure)   // (its own folder)
 	s.out = strings.clone(fmt.tprintf("%s/build/%s/%s", repo_root(), OUT_DIR, s.name))
 	s.thread = sync.current_thread_id()
@@ -216,6 +226,7 @@ start :: proc(t: ^testing.T, o := Options{}, loc := #caller_location) -> ^Sessio
 	{
 		context = s.ctx
 		browser.headless_software = o.software
+		browser.headless_no_pixels = !s.pixels   // (read by every frame of this thread's browser: end_of_browser clears it)
 		s.app = browser.app_start(args[:])
 		browser.headless_software = false
 		if s.app != nil { browser.control_begin(s.app) }
@@ -253,6 +264,7 @@ restart :: proc(s: ^Session, o := Options{}, loc := #caller_location) -> ^Sessio
 @(private)
 end_of_browser :: proc(s: ^Session) {
 	browser_stop(s)
+	browser.headless_no_pixels = false
 	runtime.default_temp_allocator_destroy(&s.temp)   // (`restart`: the session goes on, its browser's temporary memory does not)
 	if current == s { current = nil }
 }
@@ -289,9 +301,11 @@ keep_failure :: proc(s: ^Session) {
 	defer browser.control_outcome_free(&o)
 	c := browser.control_call(&o)
 	if t := browser.current_tab(s.app); t != nil {
-		// (a browser that is stuck is why the test failed: the capture has a short limit)
-		rep := browser.control_capture(s.app, &c, t, {path = strings.clone(fmt.tprintf("%s/%s", s.out, FAILURE_CAPTURE), context.temp_allocator), timeout_ms = FAILURE_CAPTURE_LIMIT_MS, settle = 0})
-		if rep.deferred { _ = browser.control_run(s.app, &o) }
+		// (a browser that is stuck is why the test failed: the capture has a short limit; a session that draws no pixels has no picture)
+		if s.pixels {
+			rep := browser.control_capture(s.app, &c, t, {path = strings.clone(fmt.tprintf("%s/%s", s.out, FAILURE_CAPTURE), context.temp_allocator), timeout_ms = FAILURE_CAPTURE_LIMIT_MS, settle = 0})
+			if rep.deferred { _ = browser.control_run(s.app, &o) }
+		}
 		lines := browser.control_console(t)
 		b := strings.builder_make(context.temp_allocator)
 		for l in lines { fmt.sbprintf(&b, "%s: %s\n", l.level, l.text) }
@@ -515,16 +529,78 @@ rest_until_frames :: proc(s: ^Session, frames: int, deadline: time.Duration = DE
 	}
 }
 
-// The browser left alone until it stops drawing by itself: no frame for REST_QUIET. (`moving_ok`: something of it keeps moving, a caret: until it has had the time to settle.)
+// The browser left alone until it stops drawing by itself: every timer of its loop due within REST_HORIZON_MS has run, no frame was made
+// meanwhile, and no window has a frame to make. What is pending is looked at, not a time: what is not armed cannot draw, and a browser at rest
+// returns after a turn or two. (`moving_ok`: something of it keeps moving, a caret: its timers and its frames are left out; it is at rest
+// when no other timer is due once to run within REST_HORIZON_MS, and no window has another cause to draw.)
 wait_at_rest :: proc(s: ^Session, moving_ok := false, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) {
 	end := time.tick_add(time.tick_now(), deadline)
-	frames, since := s.app.rates.frames, time.tick_now()
-	for time.tick_since(since) < REST_QUIET {
+	for {
+		frames := s.app.rates.frames
+		due := timers_due(s, moving_ok)
+		rest_turns(s, 1, loc)   // (a frame asked for is made at the next turn)
+		for timers_pending(s, due) {
+			if time.tick_diff(time.tick_now(), end) <= 0 { failed(s, fmt.tprintf("%v passed and %d timers of the loop are still to run", deadline, len(due)), loc) }
+			rest_turns(s, 1, loc)
+		}
+		quiet := moving_ok ? !one_shot_due(s, moving_ok) : s.app.rates.frames == frames
+		if quiet && !frame_wanted(s, moving_ok) { return }
 		if time.tick_diff(time.tick_now(), end) <= 0 { failed(s, fmt.tprintf("%v passed and the browser still draws, %d frames", deadline, s.app.rates.frames), loc) }
-		rest_turns(s, 1, loc)
-		if !moving_ok && s.app.rates.frames != frames { frames, since = s.app.rates.frames, time.tick_now() }
 	}
 }
+
+@(private) Due_Timer :: struct { h: base.Handle, deadline: i64 }
+
+// The timers of the browser's loop due within REST_HORIZON_MS (`moving_ok`: but the caret's, which keeps going).
+@(private)
+timers_due :: proc(s: ^Session, moving_ok: bool) -> []Due_Timer {
+	l := &s.app.loop
+	horizon := host.now_ns(l) + REST_HORIZON_MS * i64(time.Millisecond)
+	due := make([dynamic]Due_Timer, s.test.temp_allocator)
+	it: u32
+	for h, tm in base.pool_next(&l.timers, &it) {
+		if tm.deadline > horizon || (moving_ok && is_caret_site(tm.by)) { continue }
+		append(&due, Due_Timer{h, tm.deadline})
+	}
+	return due[:]
+}
+
+// One of them has not run yet (a timer that runs again has a later deadline once it ran).
+@(private)
+timers_pending :: proc(s: ^Session, due: []Due_Timer) -> bool {
+	for d in due {
+		if tm := base.pool_get(&s.app.loop.timers, d.h); tm != nil && tm.deadline == d.deadline { return true }
+	}
+	return false
+}
+
+// A timer that runs once is due within REST_HORIZON_MS (`moving_ok`: but the caret's): what is still settling arms them (the status bar's
+// numbers falling to rest, one step after the other). A timer that repeats is not one: it ran in the round, and keeps running.
+@(private)
+one_shot_due :: proc(s: ^Session, moving_ok: bool) -> bool {
+	l := &s.app.loop
+	horizon := host.now_ns(l) + REST_HORIZON_MS * i64(time.Millisecond)
+	it: u32
+	for _, tm in base.pool_next(&l.timers, &it) {
+		if tm.interval == 0 && tm.deadline <= horizon && !(moving_ok && is_caret_site(tm.by)) { return true }
+	}
+	return false
+}
+
+// A window has a cause to draw (`moving_ok`: but the caret's toggle): what browser/windows.odin window_causes looks at.
+@(private)
+frame_wanted :: proc(s: ^Session, moving_ok: bool) -> bool {
+	context = s.ctx
+	for w in s.app.windows {
+		if w.frames_requested != 0 && !(moving_ok && w.errand == .Caret) { return true }
+		if len(w.win.injected) > 0 || ui.needs_frame(w.ui) || ui.wake_due(w.ui) { return true }
+	}
+	return false
+}
+
+// The caret of a field blinks from there (browser/forms_shell.odin): its timer, the frames it asks for.
+@(private)
+is_caret_site :: proc(loc: runtime.Source_Code_Location) -> bool { return strings.has_suffix(loc.file_path, "forms_shell.odin") }
 
 // Any condition: `ready(s)` is looked at after each turn of the browser's loop, under the test's context. What it needs comes
 // as `data` in the second form: `ready(s, data)`.
@@ -783,8 +859,15 @@ drop :: proc(s: ^Session, at: Point, data: Drop_Data, space := Space.Page, leave
 ////////////////////////////////
 // Pixels
 
+// A test that reads pixels says so when it starts: the frames of the others are not rasterized.
+@(private)
+need_pixels :: proc(s: ^Session, what: string, loc: runtime.Source_Code_Location) {
+	if !s.pixels { failed(s, fmt.tprintf("%s reads pixels: start the session with `pixels = true` (e2e.Options)", what), loc) }
+}
+
 // The pixels of the next frame: the browser's real render.
 capture :: proc(s: ^Session, shot := Shot_Options{}, loc := #caller_location) -> Image {
+	need_pixels(s, "capture", loc)
 	back := s.test.temp_allocator
 	context = s.ctx
 	enter(s, loc)
@@ -798,8 +881,10 @@ capture :: proc(s: ^Session, shot := Shot_Options{}, loc := #caller_location) ->
 	return {rgba, o.size.x, o.size.y}
 }
 
-// The next frame to a PNG of this test's folder (what is left there stays when the test fails).
+// The next frame to a PNG of this test's folder (what is left there stays when the test fails). A picture for whoever reads a failure,
+// checked by nothing: in a session that draws no pixels (Options.pixels) there is none.
 shot :: proc(s: ^Session, name: string, shot_options := Shot_Options{}, loc := #caller_location) {
+	if !s.pixels { return }
 	context = s.ctx
 	enter(s, loc)
 	t := tab_of(s, loc)

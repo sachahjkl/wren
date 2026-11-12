@@ -20,12 +20,13 @@ After that `build\test_all.exe` (`build/test_all` on Linux) is the program: a co
 | Only what depends on what you changed since master | `build\test_all.exe -Quick -Changed` |
 | One step, or a family of them | `build\test_all.exe -Quick -Only "unit tests: (url\|http)$"` |
 | What failed in the last run | `build\test_all.exe -Quick -Failed` |
-| The names of the steps, and how many files each depends on | `build\test_all.exe -Quick -List` |
+| The names of the steps, their group, and how many files each depends on | `build\test_all.exe -Quick -List` |
 | Where the time of a run goes | `build\test_all.exe -Quick -Profile` |
 | What the CI runs (with test262 and the sanitizer as jobs of their own) | `build\test_all.exe -CI -NoAsan` |
+| What one Windows job of the CI runs | `build\test_all.exe -CI -NoAsan -Group check` (or `shell`, `other`) |
 | The full run | `build\test_all.exe` |
 
-A step that `-Only`, `-Failed` or `-Changed` chooses brings with it the steps that make what it needs (`build\e2e_test.exe`, the browser, the test server: `Step.needs` in the table). They all say at the end how many
+A step that `-Only`, `-Failed`, `-Changed` or `-Group` chooses brings with it the steps that make what it needs (`build\e2e_test.exe`, the browser, the test server: `Step.needs` in the table). They all say at the end how many
 steps they left out: they are for your loop, never instead of the CI's run.
 ## The end of a run
 
@@ -60,11 +61,32 @@ The web platform's names and keywords are ASCII case-insensitive (tag and attrib
 
 Every minute a run says which steps are running and for how long, on the console and in `build\test_report.txt` (which the report replaces at the end): a long step never looks hung. No test reaches past this machine: every step inherits `WREN_NETWORK_LOOPBACK_ONLY=1` (the browser's `network.loopback_only`), so a connection to anything but loopback and the test server's names fails at once, named in the step's log; `wrentool smoke` and `crash-e2e` set it too.
 
-A step has a limit (`-StepTimeoutSec`, 900 s; hours for what is legitimately long). Past it, what its threads are doing goes to its log (the code of `wren ctl stacks`), its whole process tree is killed (on Windows a step is a job object, on Linux a process group) and the report says `stuck`. Nothing
-of a step outlives it. A test that talks to the test server starts it in its own process, on a block of ports of its own ([below](#the-test-server)), so several worktrees test side by side. `-Perf` and `-Ui` add the steps that depend on the machine's speed or on a desktop
+A step has a limit, so that a hang costs minutes (`step_limit` in `scheduler.odin`):
+
+- a build or a suite has its own (`steps.odin`): under `-Quick` and `-CI` 10 minutes for a build, 20 for the dependencies (the Rust library from a cold cache of its crates), 15 for WPT, test262, the sanitizer's packages and the session and endurance run of the check build; hours in a full run;
+- any other step gets ten times its duration in the last run (`build\test_all_times.txt`), at least 120 s, at most `-StepTimeoutSec` (900 s), which is also the limit of a step with no duration yet and of a build that says by itself whether it has anything to do.
+
+Past it, what its threads are doing goes to its log (the code of `wren ctl stacks`), its whole process tree is killed (on Windows a step is a job object, on Linux a process group) and the report says `stuck`. A step that is a task on a thread of `test_all` (a build of the browser, the dependencies, the engine, the test server) is stopped the same way: every process a task starts goes through `tooling.wait`, which reads the task's kill flag (`tooling.task_kill`), so the flag reaches the compilers that `wrentool`'s builder starts. A task that has not ended 60 s after it was told is finished as `stuck` and its thread left behind; a process that has not ended 30 s after its kill is left behind too. Nothing
+of a step outlives it, and the run ends even when a thread or a process does not.
+
+A run that fails for one cause fails in minutes, not in the job's limit:
+
+- after 5 steps that were `stuck`, no new step starts: the others say `NOT RUN: 5 steps ran out of time` and the run fails (read the first of them). A test's own "Test timed out" does not count: `e2e` ends each failed test that way;
+- `-RunTimeoutSec n`: past n seconds of the run, what runs is stopped as if stuck, nothing more starts, and the report is written (the CI gives 2400 s, under the 45 minutes of its step).
+
+A unit test has no limit of its own (`core:testing` has none for every test of a program, and `testing.set_fail_timeout` ends a test's thread where it stands): the step's limit is its bound, and every unit step is built with `-define:ODIN_TEST_LOG_STATE_CHANGES=true`, so that the log of a step killed at its limit names the test that was running. A test that talks to the test server starts it in its own process, on a block of ports of its own ([below](#the-test-server)), so several worktrees test side by side. `-Perf` and `-Ui` add the steps that depend on the machine's speed or on a desktop
 ([CONTRIBUTING](../CONTRIBUTING.md)); a full run adds the check build, the AddressSanitizer unit tests (one step per package, three at a time), the whole of WPT and test262, the network stress.
 
 On Linux `build/test_all` (`odin run src/tools/test_all -collection:wb=src -out:build/test_all -keep-executable`) runs `odin check` for every portable package and their unit tests (`steps_linux.odin`, [portability](portability.md)). It also type-checks for Windows what a Windows build compiles (`check (Windows): src/browser`, `src/desktop`, `src/e2e`, `src/tools/e2e`), under an Odin root of its own (`build/odin-windows-check`: links to the real one, and an empty `wgpu_native.lib` for the vendor's check): an error only Windows sees fails there, before the CI.
+
+Two steps never write one product. `build\native` and the generated web API have one writer, the step of the dependencies (`.Native`): the browser's build finds them up to date. So the test program (`build\e2e_test.exe`) and WPT's runner do not wait for the browser's build: after a change of the browser the two compile side by side.
+
+## The CI
+
+`.github/workflows/ci.yml` runs the Windows tests in three jobs side by side, one per group of steps (`Step.group`, `-Group`): `check` (the check build, the sweep of local pages, the scripted session and the endurance run, the remote channel on it), `shell` (the end-to-end tests of the browser's shell, `e2e_step`) and `other` (unit and web tests, WPT, the toolkit's suites, the lints, the package). One runner is bound by its four processors, so more runners are the only way to more parallelism. test262 and the sanitizer have a job each; Linux has two: `odin check` and the unit tests, and the check build with its sweep. What the jobs build in common comes from the caches of `.github/actions/setup` and `.github/actions/setup-linux`: the native libraries, the JavaScript engine (on Linux too), the test server's programs (each with the digest of its sources, `<program>.stamp`: a restored file is older than the checkout) and Go's build cache.
+
+Each step of tests has a limit of 45 minutes and `test_all` stops itself before (`-RunTimeoutSec`). `build\test_logs`, the report and the pictures of failed end-to-end tests are uploaded whatever happened (`if: always()`), and `build\test_all_times.txt` is kept between runs, so that the limits from durations hold on a new runner.
+
 ## The result cache
 
 With `-Quick` on a developer's machine, a step that has passed with exactly the same inputs says `CACHED` and does not run again (`src\tools\test_all\cache.odin`, results in `build\test_cache\`). That is what makes the second run of the day short:
@@ -170,10 +192,11 @@ The rules:
 - **Something the browser does not let you see or do**: add it to the browser, not to the test. A typed procedure in `src/browser/control.odin`, which the remote method calls too: a handler `m_*` only decodes its request's JSON, calls that procedure and encodes what it gives. A field of `api.Stats`, filled by `control_stats` (what a poll reads) or `control_stats_all` (what takes a look at the process or a walk of a store: `Wren.stats`, `e2e.stats_all`). Then the wrapper in `src/e2e/e2e.odin`.
 - **One browser at a time in a process** (the browser's state is the process's), and `e2e.start` ends with the test, as do its profile (`e2e.temp_profile(t)` for one that `e2e.restart` must find again), `e2e.temp_folder(t)` and `e2e.test_server(t)`. The tests of one run go one after the other (`ODIN_TEST_THREADS=1`); `test_all` runs one process per file, side by side.
 - **Only what is about a process starts one**: a launch, an exit code, a crash, a second start, the console launcher, the channel itself. `e2e.launch(t, {...})` gives a Wren of its own, over the channel, with the typed client `wb:remote/api` (`api.navigate(p.s, url)`), `e2e.quit(p)` its exit code, `e2e.kill(p)` a crash. It is headless too unless `hidden = true`; `start` holds its environment, its folder, its outputs. Any other program is `e2e.program` (`e2e.run` to its end: its exit code and what it printed). What another process does to the disk is waited for with `e2e.wait_file`, `e2e.wait_gone`, `e2e.wait_for`. A hidden window needs a desktop nobody uses: `test_all`'s, or by hand `wrentool desktop -Command "..."`.
+- **Pixels are drawn only for a test that reads them**: `e2e.start(t, {pixels = true})` for a test that calls `capture` or takes `busy_capture` steps (`hidden` and `software` draw too). Any other session makes every frame up to its display list and rasterizes none of it (`browser.headless_no_pixels`): a runner with no GPU draws each frame on the processor. `capture` fails in such a session and says so; `shot` writes nothing.
 - **What shows only without a GPU runs on the system's software rasterizer, on any machine**: `e2e.start(t, {software = true})` (WARP): a frame takes 15 to 22 ms to draw there and 0.1 ms on a GPU, as on a runner that has none.
 - **What is about the window of the system runs on a real one, never shown**: `e2e.start(t, {hidden = true})`, in the test's process, so that the window procedure is called on the test's thread as the system calls it. `src/tools/e2e/real_window.odin` is that core (WM_DPICHANGED, WM_NCHITTEST, WM_SETCURSOR, the z-order for a drop, the swap chain), `frame_gate.odin` and `devtools_resize.odin` use it too; `e2e.launch(t, {hidden = true})` when something else must read it from outside (`a11y_uia.odin`). It needs a desktop session: `test_all`'s own, `wrentool desktop -Command "build\e2e_test.exe -tests:name"` by hand. What needs a paint or the system's frame goes through `show_unseen` (`window_native.odin`): shown where nobody sees nor touches it.
 
-- **What the browser does left alone**: a barrier and a poll ask for frames. `e2e.rest_turns(s, n)` turns the loop with nothing asking, a timer that draws nothing waking it each time; `e2e.wait_at_rest(s)` until it stops drawing by itself, `s.app.rates` and `e2e.stats(s).loop` count what it did and say who asked (`frames_at_rest.odin`: none on a static page).
+- **What the browser does left alone**: a barrier and a poll ask for frames. `e2e.rest_turns(s, n)` turns the loop with nothing asking, a timer that draws nothing waking it each time; `e2e.wait_at_rest(s)` until it stops drawing by itself (the loop's timers due within 500 ms have run with no frame, and no window asks for one), `s.app.rates` and `e2e.stats(s).loop` count what it did and say who asked (`frames_at_rest.odin`: none on a static page).
 
 - **Nothing left allocated**: every allocation of the process goes through the tracker of `base`. When a test's browser has ended and the test has let go of what it holds, whatever is still allocated, or was freed twice, is listed and fails the test (`end_of_test`).
 
@@ -197,7 +220,9 @@ chrome_sidebar_pinned_tabs :: proc(t: ^testing.T) {
 }
 ```
 
-What stays with `e2e.start`: what needs a page (a load, a script, what the page is told), a profile, a real window or a process. A subsystem the interface reads that the world has not made (`chrome_start`'s list of `*_init`) shows as a crash in the first frame that reads it: add it there, as the browser's start does.
+What stays with `e2e.start`: what needs a page (a load, a script, what the page is told), a profile, a real window or a process. A subsystem the interface reads that the world has not made shows as a crash in the first frame that reads it: add it to the stage of `src/browser/app_make.odin` that `app_start` and `chrome_start` both call (`app_interface_init` for the chrome's state).
+
+Every App is made by those stages: `app_make`, then the preferences, the loop, the pools, the fonts, the window, the renderer, the toolkit state and the interface, each where a program or a test needs it, and `app_free` ends the ones made. `test_app` is `app_make` and the loop. A tab made outside `tab_new` joins its App through `tab_adopt`; `tab_new_bare` makes one with no page. `src/tools/test_all/lint_app_make.odin` fails on a `new(App)` or a `new(Tab)` elsewhere: an App or a Tab built by hand misses the next invariant of the browser's.
 
 ## Writing a test that is quick
 
@@ -215,13 +240,14 @@ The chrome frames made while a script holds the page (`e2e.while_busy`, `src/bro
 too: after a step `e2e.busy_clock(ms)`, and until the steps run out, they show the page's animations `ms` after the page's last
 frame (`page.animations_wall_ms`), however long the frames took to come. What a picture shows is then a value at a known time:
 `a_colour_and_what_inherits_it_go_on_under_a_task` (`src/tools/e2e/scroll_driven.odin`) reads the animation's `currentTime` as
-the task begins and checks the colour of two pictures, 2 s and 6 s later, to a level. `busy_wait(ms)` stays for what a real
-timer decides (a caret's blink, an autoscroll's pace).
+the task begins and checks the colour of two pictures, 2 s and 6 s later, to a level. The same step sets the focused field's caret:
+it shows the phase of its blink `ms` after the blink began (`the_caret_blinks_while_the_page_is_busy`). `busy_wait(ms)` stays for what
+a real timer decides (an autoscroll's pace).
 
 A test does not sleep to wait for another thread: it waits on the state (a semaphore, a completion posted to the loop,
 `base.await` when the code under test has no signal). The few real sleeps left in unit tests measure the real clock, and say so.
 
-A test **simulates** a failure, it does not wait for it. In this order: a fake at a seam (a reader that holds a file open and lets go, a count of what was asked), the loop's virtual clock, a clock moved on both sides (`httpcache.clock_ahead_s` and the test server's `/cache/clock`), a condition or a gate of the test server (`?gate=K` holds an answer until the test calls `e2e.open_gate(server, K)`: a slow response whose end the test decides, `tools/testserver/gate.go`). A real wait stays only where a real client's or the system's timer is what is measured. `tools/test_sleeps_allowed.txt` lists the sleeps left in test sources, with why; `src/tools/test_all/lint_sleeps.odin` fails on any other.
+A test **simulates** a failure, it does not wait for it. In this order: a fake at a seam (a reader that holds a file open and lets go, a count of what was asked), the loop's virtual clock, a clock moved on both sides (`httpcache.clock_ahead_s` and the test server's `/cache/clock`), a condition or a gate of the test server (`?gate=K` holds an answer until the test calls `e2e.open_gate(server, K)`: a slow response whose end the test decides, `tools/testserver/gate.go`). A real wait stays only where a real client's or the system's timer is what is measured. `tools/test_sleeps_allowed.txt` lists the waits left in test sources whose end is a time and not a state, with why; `src/tools/test_all/lint_sleeps.odin` fails on any other: a sleep, a spin on a processor (`thread.yield`, `base.await`), a wait with a timeout on a semaphore or a futex, and the waits of `e2e` that let real time pass (`busy_wait`, `wait_at_rest`, `rest_turns`).
 
 No passing test depends on the speed of the machine: a barrier has one limit, `e2e.DEFAULT_DEADLINE` (`DEFAULT_WAIT` in the web tests), under the test's own, and it only ends a failing run. Do not add a longer one for a slow runner, and do not add a preference or a variable that only shortens a timeout for a test.
 
@@ -297,7 +323,7 @@ build.bat check
 build\wrentool sweep -List tools\site_compare_list.txt,tools\site_compare_list2.txt -Exe build\wren_check.exe -CloseMs 60000 -PingMs 60000
 ```
 
-`test_all` has it in every end-to-end test, in the unit tests of `base`, `style` and `layout`, in the crash reports (`crashmodes_poison`), `WREN_POISON_PAGES=1` for the tests that found something only with it, and `-CI` and full runs visit the pages of `tools/sweep_local.txt` on the check build (a minute, no network; a line of a list that is no address is a file of the repository). So does the Linux job of the CI.
+`test_all` has it in every end-to-end test, in the unit tests of `base`, `style` and `layout`, in the crash reports (`crashmodes_poison`), `WREN_POISON_PAGES=1` for the tests that found something only with it, and `-CI` and full runs visit the pages of `tools/sweep_local.txt` on the check build (a minute, no network; a line of a list that is no address is a file of the repository). So does a Linux job of the CI of its own (`linux-sweep`).
 
 ## The replay bench
 

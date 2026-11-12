@@ -3,88 +3,73 @@ package browser
 import "core:testing"
 import "toolkit:ui"
 
+// Tabs with no page in a list of their own (in no window): the App frees them (app_free).
 @(private = "file")
-fake_tabs :: proc(urls: ..string) -> [dynamic]^Tab {
+fake_list :: proc(app: ^App, urls: ..string) -> [dynamic]^Tab {
 	l := make([dynamic]^Tab)
-	for u in urls {
-		t := new(Tab)
-		t.url = u
-		append(&l, t)
-	}
+	for u in urls { append(&l, tab_new_bare(app, nil, u)) }
 	return l
 }
 
+// Tabs with no page at the end of a window's strip.
 @(private = "file")
-free_tabs :: proc(l: ^[dynamic]^Tab) {
-	for t in l { free(t) }
-	delete(l^)
+fake_tabs :: proc(app: ^App, w: ^Browser_Window, urls: ..string) {
+	for u in urls { tab_new_bare(app, w, u) }
 }
 
 @(test)
 tab_list_take_keeps_the_current_tab_right :: proc(t: ^testing.T) {
-	test_app(t)
-	l := fake_tabs("a", "b", "c", "d")
-	defer free_tabs(&l)
-	keep := l[:]
-	_ = keep
+	app := test_app(t)   // (the tabs go with it)
+	l := fake_list(app, "a", "b", "c", "d")
+	defer delete(l)
 	// before the current one: the current index follows its tab
-	x := l[0]
 	cur := tab_list_take(&l, 2, 0)
 	testing.expect_value(t, cur, 1)
 	testing.expect_value(t, l[cur].url, "c")
-	free(x)
 	// the current one: the tab that took its place, else the last
-	x = l[1]
 	cur = tab_list_take(&l, 1, 1)
 	testing.expect_value(t, cur, 1)
 	testing.expect_value(t, l[cur].url, "d")
-	free(x)
-	x = l[1]
 	cur = tab_list_take(&l, 1, 1)
 	testing.expect_value(t, cur, 0)
-	free(x)
 	// after it: unchanged; the only one: an empty list
-	x = l[0]
 	cur = tab_list_take(&l, 0, 0)
 	testing.expect_value(t, cur, 0)
 	testing.expect_value(t, len(l), 0)
-	free(x)
 	// an index out of the list changes nothing
 	testing.expect_value(t, tab_list_take(&l, 3, 7), 3)
 }
 
 @(test)
 tab_list_put_places_and_selects :: proc(t: ^testing.T) {
-	test_app(t)
-	l := fake_tabs("a", "b", "c")
-	defer free_tabs(&l)
-	n := new(Tab)
-	n.url = "n"
+	app := test_app(t)   // (the tabs go with it)
+	l := fake_list(app, "a", "b", "c")
+	defer delete(l)
+	n := tab_new_bare(app, nil, "n")
 	cur, at := tab_list_put(&l, 1, 1, n, true)
 	testing.expect_value(t, cur, 1)
 	testing.expect_value(t, at, 1)
 	testing.expect_value(t, l[1].url, "n")
 	testing.expect_value(t, len(l), 4)
 	// not selected, put before the current one: the current tab keeps its tab
-	m := new(Tab)
-	m.url = "m"
+	m := tab_new_bare(app, nil, "m")
 	cur, at = tab_list_put(&l, 2, 0, m, false)
 	testing.expect_value(t, cur, 3)
 	testing.expect_value(t, l[cur].url, "b")
 	// at the end (negative), and far past the end
-	e := new(Tab)
+	e := tab_new_bare(app, nil)
 	cur, at = tab_list_put(&l, 0, -1, e, false)
 	testing.expect_value(t, at, len(l) - 1)
 	testing.expect_value(t, cur, 0)
-	f := new(Tab)
+	f := tab_new_bare(app, nil)
 	_, at = tab_list_put(&l, 0, 99, f, false)
 	testing.expect_value(t, at, len(l) - 1)
 }
 
+// Two windows with no native window in the test's App (test_app): their tabs go with the App.
 @(private = "file")
-two_windows :: proc() -> (app: ^App, a, b: ^Browser_Window) {
-	app = new(App)
-	the_app = app   // (what the code reaches without an App: this one)
+two_windows :: proc(t: ^testing.T) -> (app: ^App, a, b: ^Browser_Window) {
+	app = test_app(t)
 	a, b = new(Browser_Window), new(Browser_Window)
 	a.id, b.id = 1, 2
 	append(&app.windows, a, b)
@@ -94,22 +79,21 @@ two_windows :: proc() -> (app: ^App, a, b: ^Browser_Window) {
 @(private = "file")
 free_windows :: proc(app: ^App, a, b: ^Browser_Window) {
 	for w in ([]^Browser_Window{a, b}) {
-		free_tabs(&w.ctx.tabs)
+		delete(w.ctx.tabs)
 		ui.field_destroy(&w.ctx.address)
 		free(w)
 	}
 	delete(app.windows)
-	delete(app.tab_ids)
-	free(app)
+	app.windows = nil   // (app_free takes the tabs out of the strips it finds)
 }
 
 @(test)
 tab_moves_between_windows :: proc(t: ^testing.T) {
-	test_app(t)
-	app, a, b := two_windows()
+	app, a, b := two_windows(t)
 	defer free_windows(app, a, b)
-	a.ctx.tabs, a.ctx.current = fake_tabs("a1", "a2", "a3"), 1
-	b.ctx.tabs, b.ctx.current = fake_tabs("b1"), 0
+	fake_tabs(app, a, "a1", "a2", "a3")
+	fake_tabs(app, b, "b1")
+	a.ctx.current, b.ctx.current = 1, 0
 	moved := a.ctx.tabs[1]
 	testing.expect(t, tab_move(app, moved, b, 0))
 	testing.expect_value(t, len(a.ctx.tabs), 2)
@@ -125,30 +109,29 @@ tab_moves_between_windows :: proc(t: ^testing.T) {
 
 @(test)
 the_window_that_loses_its_last_tab_closes :: proc(t: ^testing.T) {
-	test_app(t)
-	app, a, b := two_windows()
+	app, a, b := two_windows(t)
 	defer free_windows(app, a, b)
-	a.ctx.tabs, a.ctx.current = fake_tabs("only"), 0
-	b.ctx.tabs, b.ctx.current = fake_tabs("b1", "b2"), 1
+	fake_tabs(app, a, "only")
+	fake_tabs(app, b, "b1", "b2")
+	a.ctx.current, b.ctx.current = 0, 1
 	testing.expect(t, tab_move(app, a.ctx.tabs[0], b))
 	testing.expect(t, a.closing)
 	testing.expect_value(t, len(a.ctx.tabs), 0)
 	testing.expect_value(t, len(b.ctx.tabs), 3)
 	testing.expect_value(t, b.ctx.current, 2)   // at the end, and shown
-	// an unknown tab or window: nothing
-	stray := new(Tab)
-	defer free(stray)
+	// a tab of no window, or no window: nothing
+	stray := tab_new_bare(app, nil)
 	testing.expect(t, !tab_move(app, stray, b))
 	testing.expect(t, !tab_move(app, b.ctx.tabs[0], nil))
 }
 
 @(test)
 a_tab_moves_within_its_window :: proc(t: ^testing.T) {
-	test_app(t)
-	app, a, b := two_windows()
+	app, a, b := two_windows(t)
 	defer free_windows(app, a, b)
-	a.ctx.tabs, a.ctx.current = fake_tabs("1", "2", "3", "4"), 0
-	b.ctx.tabs = fake_tabs("x")
+	fake_tabs(app, a, "1", "2", "3", "4")
+	fake_tabs(app, b, "x")
+	a.ctx.current = 0
 	first := a.ctx.tabs[0]
 	testing.expect(t, tab_move(app, first, a, 2))
 	testing.expect_value(t, a.ctx.tabs[2].url, "1")
@@ -159,17 +142,14 @@ a_tab_moves_within_its_window :: proc(t: ^testing.T) {
 
 @(test)
 every_tab_of_every_window_is_listed_once :: proc(t: ^testing.T) {
-	test_app(t)
-	app, a, b := two_windows()
+	app, a, b := two_windows(t)
 	defer free_windows(app, a, b)
-	a.ctx.tabs = fake_tabs("a1", "a2")
-	b.ctx.tabs = fake_tabs("b1")
-	a.ctx.tabs[0].id, a.ctx.tabs[1].id, b.ctx.tabs[0].id = 1, 2, 3
-	for w in ([]^Browser_Window{a, b}) { for tab in w.ctx.tabs { app.tab_ids[tab.id] = tab } }   // (as tab_new does)
+	fake_tabs(app, a, "a1", "a2")
+	fake_tabs(app, b, "b1")
 	app.front = b
 	all := tabs_all(app)
 	testing.expect_value(t, len(all), 3)
 	testing.expect_value(t, all[0].url, "b1")   // the front window's first
-	testing.expect(t, tab_by_id(app, 2) == a.ctx.tabs[1])
-	testing.expect(t, tab_by_id(app, 9) == nil)
+	testing.expect(t, tab_by_id(app, a.ctx.tabs[1].id) == a.ctx.tabs[1])
+	testing.expect(t, tab_by_id(app, 0) == nil)   // (ids start at 1)
 }

@@ -18,7 +18,7 @@ import "wb:e2e"
 @(test)
 a_font_on_its_way_holds_its_text_and_not_the_page :: proc(t: ^testing.T) {
 	server := e2e.test_server(t)
-	s := e2e.start(t, {size = FONT_SIZE, prefs = {BLOCK_UNTIL_THE_GATE}})
+	s := e2e.start(t, {pixels = true, size = FONT_SIZE, prefs = {BLOCK_UNTIL_THE_GATE}})
 	e2e.navigate_begin(s, e2e.url(server, FONT_PAGE))
 	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool {
 		img := e2e.capture(s)

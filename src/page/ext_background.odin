@@ -30,6 +30,7 @@ Ext_Background :: struct {
 	idle:     base.Handle,
 	port_at:  time.Tick,           // when a port of its extension carried a message last
 	starts:   int,                 // how many times it started (about:extensions: one start a minute is a bug to look at)
+	unran:    int,                 // starts in a row whose script has not run yet (extensions.background.failed_starts_max)
 	saved:    bool,                // state.txt has its listeners (ext_bg_save_listeners)
 }
 
@@ -138,8 +139,13 @@ ext_bg_free :: proc(b: ^Ext_Background) {
 ext_bg_start :: proc(b: ^Ext_Background) -> bool {
 	v := b.version
 	if v.worker != nil { return true }
+	// (a script that fails before it runs would be started again by each event: a new worker and its realm each time, faster
+	// than the last ones are let go, and the senders wait for an answer that never comes. Past the limit it stays stopped and
+	// what it is sent fails at once, until the extension is reloaded: a new background.)
+	if limit := ext_registry().settings.background_failed_starts_max; limit > 0 && b.unran >= limit { return false }
 	if !sw_version_start(v) { return false }
 	b.starts += 1
+	b.unran += 1
 	ext_bg_touch(b)
 	return true
 }
@@ -235,6 +241,7 @@ ext_bg_reply :: proc(h: ^Worker_Host, v: ^Sw_Version, m: ^Worker_Msg) {
 	case .Script_Ran:
 		v.running = true
 		b.ever_ran = true
+		b.unran = 0
 		for q in v.queue { link_send(h.link, true, q) }
 		clear(&v.queue)
 		info := sw_event(.Registration)

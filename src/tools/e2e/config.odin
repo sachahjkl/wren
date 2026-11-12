@@ -47,7 +47,7 @@ pixels_differ :: proc(a, b: e2e.Image) -> int {
 
 @(test)
 config_end_to_end :: proc(t: ^testing.T) {
-	s := e2e.start(t, {size = CONFIG_SIZE, dpi = CONFIG_DPI, url = "about:config"})
+	s := e2e.start(t, {pixels = true, size = CONFIG_SIZE, dpi = CONFIG_DPI, url = "about:config"})
 
 	testing.expect_value(t, e2e.pref_get(s, SWITCH_PREF), "true")
 	search(s, "blocker badge enabled")

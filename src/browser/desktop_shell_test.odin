@@ -36,12 +36,9 @@ the_embedded_console_launcher_is_the_launcher :: proc(t: ^testing.T) {
 			testing.expect_value(t, string(exe[pe:pe + 4]), "PE\x00\x00")
 			testing.expect_value(t, int(exe[pe + 0x5C]), 3)   // optional header's Subsystem: IMAGE_SUBSYSTEM_WINDOWS_CUI
 		}
-		app := new(App)   // (an App is too large for a test's stack)
-		the_app = app   // (what the code reaches without an App: this one)
-		defer free(app)
-		app.prefs = config.prefs_make()
-		defer config.prefs_destroy(&app.prefs)
-		register_desktop_shell_prefs(&app.prefs)
+		app := app_make()
+		defer app_free(app)
+		app_prefs_init(app)   // (the desktop shell's among them)
 		o := desktop_options(app)
 		testing.expect_value(t, len(o.launcher), len(exe))
 	}
@@ -63,9 +60,8 @@ first_run_integration_defaults_to_the_release_channel_only :: proc(t: ^testing.T
 
 @(test)
 disposable_profiles_never_integrate :: proc(t: ^testing.T) {
-	app := new(App)   // (an App is too large for a test's stack)
-	the_app = app   // (what the code reaches without an App: this one)
-	defer free(app)
+	app := app_make()
+	defer app_free(app)
 	app.cfg.persist_profile = true
 	app.profile_dir = "C:/Users/someone/AppData/Roaming/Wren"
 	testing.expect(t, !desktop_profile_is_disposable(app, false), "the user's own profile")

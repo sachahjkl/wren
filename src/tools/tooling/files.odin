@@ -125,23 +125,51 @@ say :: proc(log, text: string) {
 TESTSERVER_EXE :: "build/testserver" + EXE_SUFFIX
 TESTSERVER_LIBRARY :: "build/testserver.dll" when ODIN_OS == .Windows else "build/testserver.so"
 
+// Each form is built again when <form>.stamp does not hold the digest of the sources: by content, not by time, because a cache of the
+// programs (the CI's) restores them older than the sources of a fresh checkout.
 ensure_testserver :: proc(log := "") -> bool {
-	stale :: proc(output: string) -> bool {
-		built, ok := modified(output)
-		if !ok { return true }
-		go_source :: proc(path: string) -> bool { return strings.has_suffix(path, ".go") || strings.has_suffix(path, "go.mod") || strings.has_suffix(path, "go.sum") }
-		return any_newer("tools/testserver", built, go_source)
+	stamp := testserver_stamp()
+	stamp_of :: proc(output: string) -> string { return strings.concatenate({output, ".stamp"}, context.temp_allocator) }
+	fresh :: proc(output, digest: string) -> bool {
+		if !os.exists(output) { return false }
+		known, err := os.read_entire_file(stamp_of(output), context.temp_allocator)
+		return err == nil && string(known) == digest
 	}
 	abs_of :: proc(path: string) -> string { full, _ := filepath.abs(path, context.temp_allocator); return full }
 	good := true
-	if stale(TESTSERVER_EXE) {
-		if run({command = {"go", "build", "-o", abs_of(TESTSERVER_EXE), "./cmd/testserver"}, dir = "tools/testserver", log = log}) != 0 { good = false }
+	if !fresh(TESTSERVER_EXE, stamp) {
+		_ = os.remove(stamp_of(TESTSERVER_EXE))
+		if run({command = {"go", "build", "-o", abs_of(TESTSERVER_EXE), "./cmd/testserver"}, dir = "tools/testserver", log = log}) != 0 {
+			good = false
+		} else {
+			_ = os.write_entire_file(stamp_of(TESTSERVER_EXE), stamp)
+		}
 	}
-	if stale(TESTSERVER_LIBRARY) {
+	if !fresh(TESTSERVER_LIBRARY, stamp) {
+		_ = os.remove(stamp_of(TESTSERVER_LIBRARY))
 		// (c-shared calls a C compiler; stripped, or the linker of an old MinGW makes a file Windows will not load)
 		code := run({command = {"go", "build", "-buildmode=c-shared", "-ldflags=-s -w", "-o", abs_of(TESTSERVER_LIBRARY), "./cdll"}, dir = "tools/testserver", env = {"CGO_ENABLED=1"}, log = log})
 		_ = os.remove(strings.concatenate({strings.trim_suffix(TESTSERVER_LIBRARY, filepath.ext(TESTSERVER_LIBRARY)), ".h"}, context.temp_allocator))
-		if code != 0 { good = false }
+		if code != 0 { good = false } else { _ = os.write_entire_file(stamp_of(TESTSERVER_LIBRARY), stamp) }
 	}
 	return good
+}
+
+TESTSERVER_SOURCES :: "tools/testserver"
+
+// The digest of the test server's sources: every .go file, go.mod and go.sum, with their paths from TESTSERVER_SOURCES (the same in
+// every checkout).
+testserver_stamp :: proc() -> string {
+	files := make([dynamic]string, context.temp_allocator)
+	collect_inputs(TESTSERVER_SOURCES, true, {".go", "go.mod", "go.sum"}, &files)
+	slice.sort(files[:])
+	all := strings.builder_make(context.temp_allocator)
+	for f in files {
+		name, _ := strings.replace_all(f, "\\", "/", context.temp_allocator)
+		if at := strings.index(name, TESTSERVER_SOURCES); at >= 0 { name = name[at:] }
+		strings.write_string(&all, name)
+		data, _ := os.read_entire_file(f, context.temp_allocator)
+		strings.write_bytes(&all, data)
+	}
+	return toolbox.sha256_hex(all.buf[:])
 }

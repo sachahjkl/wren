@@ -28,7 +28,7 @@ ADDRESS :: "http://127.0.0.1:8765/jsdom/"
 VIEW_W :: 800
 VIEW_H :: 600
 BAND_H :: 256
-PAGE_LIMIT_MS :: 120_000
+PAGE_LIMIT_MS :: int(DEFAULT_WAIT * 1000)   // the one limit of a wait: it only ends a page that fails
 BENCH_LIMIT_MS :: 600_000
 TOUCH_POINTS :: 5
 TOUCH_PAGE_POINTS :: 10

@@ -50,6 +50,7 @@ busy_resize :: proc(size: [2]int) -> Busy_Step { return {kind = .Resize, size = 
 
 // The steps go to the chrome frames to come; returns at once (a barrier, wait_js on what the page sets once it let go, runs them).
 while_busy :: proc(s: ^Session, steps: []Busy_Step, loc := #caller_location) {
+	for st in steps { if st.kind == .Capture { need_pixels(s, "busy_capture", loc); break } }
 	context = s.ctx
 	enter(s, loc)
 	browser.control_busy_input(s.app, steps)

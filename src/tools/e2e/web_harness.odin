@@ -21,6 +21,7 @@ import "core:strings"
 import "core:testing"
 import "core:time"
 import "wb:base"
+import "wb:e2e"
 import "wb:fetch"
 import "wb:host"
 import "wb:js"
@@ -36,8 +37,8 @@ import "wb:wasm"
 BLOCKING_THREADS :: 2
 SCRIPT_CACHE_BYTES :: 16 << 20
 STORAGE_ROOT :: "build/web_profile"   // a folder per process in it: subjects run side by side, and each empties its profile first
-TEST_LIMIT :: 5 * time.Minute          // ends a test that hangs
-DEFAULT_WAIT :: 240.0                  // seconds, under TEST_LIMIT: only ends a run that fails. The one limit of what waits: no passing test depends on the speed of the machine (a limit per test was raised by hand each time a runner was slower)
+TEST_LIMIT :: 5 * time.Minute          // ends a test that hangs outside a wait
+DEFAULT_WAIT :: 60.0                   // seconds, under TEST_LIMIT: only ends a run that fails. The one limit of what waits: no passing test depends on the speed of the machine (a limit per test was raised by hand each time a runner was slower); the slowest passing step of the CI is far from one wait of 60 s
 LOOP_LOOK_MS :: 5                      // the most the loop waits before a test looks again: anything that happens ends the wait sooner
 DRAIN_MAX_TURNS :: 1000
 UNCAUGHT :: "Uncaught"
@@ -59,6 +60,9 @@ storage_made: bool
 current: ^testing.T
 began: time.Tick                      // of the test that runs, and its name: WREN_E2E_TRACE says how long each took
 began_name: string
+// The test whose wait ran out of time ("": none). Its world (the loop, the pages, the stores) still holds what never came, so every later test of the
+// process fails at once instead of waiting out its own limit on it: a broken world ends its step in seconds, not at the step's limit.
+broken: string
 
 loop:     host.Loop
 client:   net.Client
@@ -73,6 +77,7 @@ pages:    page.Pages               // what the pages share (bound to the thread 
 // The first thing a test does, after `context.allocator = base.process_allocator()` (what the Wasm imports make and free goes through
 // the process's allocator: core:testing's tracker of the test does not know that memory; the process's finds the leaks in the last test).
 begin :: proc(t: ^testing.T, level := Level.Pages, loc := #caller_location) {
+	if broken != "" { e2e.stop_test(t, fmt.tprintf("%s ran out of time before this test: its world is left as it was (run this one alone: -tests:%s)", broken, loc.procedure), loc) }
 	began, began_name = time.tick_now(), loc.procedure
 	current = t
 	testing.set_fail_timeout(t, TEST_LIMIT, loc)
@@ -124,13 +129,17 @@ serve :: proc(t: ^testing.T, loc := #caller_location) { testenv.serve(t, loc) }
 wait_until :: proc(t: ^testing.T, what: string, data: $T, ready: proc(data: T) -> bool, seconds := DEFAULT_WAIT, loc := #caller_location) -> bool {
 	start := time.tick_now()
 	for !ready(data) {
-		if time.duration_seconds(time.tick_since(start)) > seconds {
-			testing.expectf(t, false, "timeout waiting for %s", what, loc = loc)
-			return false
-		}
+		if time.duration_seconds(time.tick_since(start)) > seconds { world_timeout(t, fmt.tprintf("timeout waiting for %s", what), loc) }
 		host.loop_wait(&loop, LOOP_LOOK_MS)
 	}
 	return true
+}
+
+// A wait ran out of time: the test ends here, and the world is marked broken. The first timeout is final: a test that went on would wait
+// out each of its later waits on what never comes. (The thread is ended at a turn of the loop, never inside one.)
+world_timeout :: proc(t: ^testing.T, why: string, loc := #caller_location) -> ! {
+	broken = began_name
+	e2e.stop_test(t, why, loc)
 }
 
 @(private = "file")
@@ -289,6 +298,8 @@ close_page :: proc(pr: ^Probe, tests := -1, min_checks := 0, script_ends := fals
 @(test)
 zz_the_process_ends_with_nothing_left :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
+	// (a world left in the middle of a test cannot be undone: its pages and its loop hold what never came, and its teardown would wait for them)
+	if broken != "" { testing.expectf(t, false, "%s ran out of time: the world was not undone, its leaks are not counted", broken); return }
 	if world_level >= .Pages { base.scope_close(process) }
 	if world_level >= .Net { host.blocking_settle(&blocking) }
 	if storage_made {

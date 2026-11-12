@@ -20,6 +20,15 @@ Mark :: enum {
 }
 Marks :: bit_set[Mark]
 
+// Which job of the CI runs a step (-Group, .github/workflows/ci.yml): three groups that need nothing of each other, on three runners side by side,
+// because one runner is bound by its processors (docs/test-review.md, 3.1). A step a group needs (a build) comes with it, whatever its group.
+Group :: enum {
+	Other,         // unit tests, web tests, WPT, the toolkit's suites, the lints
+	Shell,         // the end-to-end tests of the browser's shell (e2e_step)
+	Check_Build,   // the check build of the browser and what runs on it
+}
+GROUP_NAMES := [Group]string{.Other = "other", .Shell = "shell", .Check_Build = "check"}
+
 // What a step leaves that others use: a step that needs one runs after the step that makes it, which -Only and the like bring with them.
 Product :: enum {
 	JS_Engine,       // build/js/wren_js.wasm, which the programs embed
@@ -82,12 +91,17 @@ Step :: struct {
 	packages: []string,   // more packages (or the folders of .Dirs) than its commands compile
 	sources:  []string,   // files of a package it does not depend on as a whole: each counts as itself and what it imports (.Packages)
 	outs:     []string,   // what its tasks leave, as Command.out
-	limit:    int,        // seconds (0: -StepTimeoutSec)
+	limit:    int,        // seconds (0: from its last duration, scheduler.odin step_limit)
+	group:    Group,
 }
 
 COMMON_NEEDS :: Products{.JS_Engine, .Launcher, .Native}
 // Unit tests fail on a leak or a bad free (Odin's runner tracks each test's context.allocator but only warns by default).
 MEM_CHECK :: "-define:ODIN_TEST_FAIL_ON_BAD_MEMORY=true"
+// The runner says when each test starts and ends: a step killed at its limit then names the test that hung. (core:testing has no limit
+// for every test of a program, only testing.set_fail_timeout in each test, and that ends the test's thread where it stands: the step's
+// limit is the bound.)
+NAMES_RUNNING :: "-define:ODIN_TEST_LOG_STATE_CHANGES=true"
 // The end-to-end tools track every allocation of the process and fail when anything is left once they have shut down (src/tools/testenv/memory.odin); never in the builds of the browser.
 TRACK :: "-define:WREN_TRACK_MEMORY=true"
 // Freed memory poisoned and kept out of the heap (src/base/poison.odin): the end-to-end tools and the unit tests of what keeps records across passes; a read of it ends the step.
@@ -102,9 +116,22 @@ GUEST_FLAGS :: []string{"-target:freestanding_wasm32", "-no-entry-point", "-defa
 E2E_BUILD_FLAGS :: []string{"-build-mode:test", "-o:speed", "-debug", "-use-separate-modules", "-vet", TOOLKIT, WB, "-define:FONT_BACKEND=native", "-define:FONT_NATIVE_LINK=false",
 	"-define:A11Y_ACCESSKIT=true", "-define:A11Y_NATIVE_LINK=false", "-define:WREN_CHANNEL=dev", "-define:WREN_SHIPPED_CODE=true", "-define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=65536", ONE_THREAD, "-define:ODIN_TEST_FANCY=false",
 	"-extra-linker-flags:/STACK:67108864"}
-// How long what may legitimately take long gets, seconds. (A full WPT or test262 is hours under load: a hang shows as children that stop answering, which the tools end themselves.)
+// How long what may legitimately take long gets in a full run, seconds. (A full WPT or test262 is hours under load: a hang shows as children that stop answering, which the tools end themselves.)
 LONG_STEP_SECONDS :: 4 * 3600
+// Under -Quick and -CI, from what the CI runner measured (docs/test-review.md, 2.4) with room for a cold cache: a hang costs minutes, well
+// under a job's limit. A build: the browser 64 s, e2e_test 81 s, the test server 135 s.
+BUILD_LIMIT_SECONDS :: 600
+// The Rust library from a cold cache of its crates (a new Cargo.lock: minutes of crates.io code).
+DEPENDENCIES_LIMIT_SECONDS :: 1200
+// A suite: WPT 220 s, test262 390 to 460 s, the scripted session and the endurance run 278 s.
+SUITE_LIMIT_SECONDS :: 900
 ENDURANCE_LIMIT_SECONDS :: 1800
+// The endurance run's own limit under -Quick: under the step's, so that the tool says what it was doing.
+ENDURANCE_QUICK_LIMIT_SECONDS :: 480
+
+build_limit :: proc(cfg: ^Config) -> int { return cfg.quick ? BUILD_LIMIT_SECONDS : LONG_STEP_SECONDS }
+dependencies_limit :: proc(cfg: ^Config) -> int { return cfg.quick ? DEPENDENCIES_LIMIT_SECONDS : LONG_STEP_SECONDS }
+suite_limit :: proc(cfg: ^Config) -> int { return cfg.quick ? SUITE_LIMIT_SECONDS : LONG_STEP_SECONDS }
 WPT_TIMEOUT_MS :: 10000
 NET_STRESS_MB :: 100
 NASM_DIR :: "build/tools/nasm-2.16.03"
@@ -123,7 +150,7 @@ exe :: proc(path: string) -> string { return strings.concatenate({path, tooling.
 out_flag :: proc(path: string) -> string { return strings.concatenate({"-out:", path}) }
 
 odin_test :: proc(pkg, out: string, flags: []string = nil, stack := true) -> Command {
-	argv := join({"odin", "test", pkg, "-use-separate-modules", MEM_CHECK, "-vet"}, flags, {out_flag(out)}, stack ? tooling.STACK_FLAGS : nil)
+	argv := join({"odin", "test", pkg, "-use-separate-modules", MEM_CHECK, NAMES_RUNNING, "-vet"}, flags, {out_flag(out)}, stack ? tooling.STACK_FLAGS : nil)
 	return Command{argv = argv, pkg = pkg, rule = .Says_Successful}
 }
 
@@ -162,21 +189,21 @@ e2e_step :: proc(t: ^[dynamic]Step, name, file: string, marks := Marks{}, weight
 	if names, why := declared_tests(path); len(flaky) > 0 && why == "" {
 		rest := make([dynamic]string)
 		for test in names { if !slice.contains(flaky, test) { append(&rest, strings.clone(test)) } }
-		append(t, Step{name = name, actions = slice_of(Command{argv = strs(exe("build/e2e_test")), tests_of = path, only = rest[:], rule = .Says_Successful}), marks = marks, weight = weight, needs = needs, inputs = .Tree})
+		append(t, Step{name = name, actions = slice_of(Command{argv = strs(exe("build/e2e_test")), tests_of = path, only = rest[:], rule = .Says_Successful}), marks = marks, weight = weight, needs = needs, inputs = .Tree, group = .Shell})
 		for test in flaky {
-			append(t, Step{name = fmt.aprintf("%s [%s]", name, test), actions = slice_of(Command{argv = strs(exe("build/e2e_test")), tests_of = path, only = strs(test), rule = .Says_Successful}), marks = marks + {.Flaky}, needs = needs, inputs = .Tree})
+			append(t, Step{name = fmt.aprintf("%s [%s]", name, test), actions = slice_of(Command{argv = strs(exe("build/e2e_test")), tests_of = path, only = strs(test), rule = .Says_Successful}), marks = marks + {.Flaky}, needs = needs, inputs = .Tree, group = .Shell})
 		}
 		return
 	}
 	if names, why := declared_tests(path); each_test && why == "" {
 		for test in names {
 			append(t, Step{name = fmt.aprintf("%s [%s]", name, test), actions = slice_of(Command{argv = strs(exe("build/e2e_test")), tests_of = path, only = strs(test), rule = .Says_Successful}),
-				marks = marks, weight = weight / len(names), needs = needs, inputs = .Tree})
+				marks = marks, weight = weight / len(names), needs = needs, inputs = .Tree, group = .Shell})
 		}
 		return
 	}
 	// (a file that does not parse: the step says so when it runs)
-	append(t, Step{name = name, actions = slice_of(e2e_run(file)), marks = marks, weight = weight, needs = needs, inputs = .Tree})
+	append(t, Step{name = name, actions = slice_of(e2e_run(file)), marks = marks, weight = weight, needs = needs, inputs = .Tree, group = .Shell})
 }
 
 // A subject of the web tests in several steps side by side: each group of its tests in a process of its own, and the tests no group names in one more step, so that a new
@@ -221,7 +248,7 @@ unit :: proc(t: ^[dynamic]Step, name, pkg, out: string, flags: []string = nil, m
 
 // A group of the toolkit's test suites, or a single one: each suite must say that it passed.
 toolkit_suite :: proc(suite, out: string, flags: []string = nil) -> Action {
-	return Command{argv = join({"odin", "test", fmt.aprintf("ext/gui_toolkit/tests/%s", suite), "-use-separate-modules", MEM_CHECK, "-vet"}, flags, {out_flag(out)}), pkg = fmt.aprintf("ext/gui_toolkit/tests/%s", suite), rule = .Says_Successful}
+	return Command{argv = join({"odin", "test", fmt.aprintf("ext/gui_toolkit/tests/%s", suite), "-use-separate-modules", MEM_CHECK, NAMES_RUNNING, "-vet"}, flags, {out_flag(out)}), pkg = fmt.aprintf("ext/gui_toolkit/tests/%s", suite), rule = .Says_Successful}
 }
 
 build_table :: proc(cfg: ^Config) -> []Step {
@@ -238,14 +265,15 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "documentation site up to date and links intact (src\\tools\\docsite -check: site\\docs matches docs\\*.md, site\\classic the site's pages, zero dead internal links or anchors)",
 		actions = slice_of(odin_build("src/tools/docsite", exe("build/docsite"), {WB, "-vet"}), Command{argv = strs(exe("build/docsite"), "-check")}, odin_test("src/tools/docsite", exe("build/docsite_test"), strs(WB), false)), inputs = .Everything})
 	// What every build below embeds (nothing to do when up to date).
-	append(&t, Step{name = "the dependencies of the dev build (wrentool build's step 2; nothing to do when up to date)", actions = slice_of(Task{"the dependencies", task_dependencies, ""}), marks = {.No_Result}, makes = {.Native}, limit = LONG_STEP_SECONDS})
-	append(&t, Step{name = "JavaScript engine (src\\tools\\tooling\\js_engine.odin; nothing to do when up to date)", actions = slice_of(Task{"the engine", task_js_engine, ""}), marks = {.No_Result}, makes = {.JS_Engine}})
+	// (and the generated web API: the browser's build and the test program's compile both read it, so one step writes it before either)
+	append(&t, Step{name = "the dependencies of the dev build and the generated web API (wrentool build's steps 2 and 3; nothing to do when up to date)", actions = slice_of(Task{"the dependencies", task_dependencies, ""}), marks = {.No_Result}, makes = {.Native}, limit = dependencies_limit(cfg)})
+	append(&t, Step{name = "JavaScript engine (src\\tools\\tooling\\js_engine.odin; nothing to do when up to date)", actions = slice_of(Task{"the engine", task_js_engine, ""}), marks = {.No_Result}, makes = {.JS_Engine}, limit = build_limit(cfg)})
 	// (the two parts apart: everything waits for the program, nothing for its tests)
-	append(&t, Step{name = "console launcher: build\\wren.com (src\\tools\\wrencom; the browser embeds it)", actions = slice_of(Task{"wren.com", task_launcher, ""}), marks = {.No_Result}, makes = {.Launcher}})
+	append(&t, Step{name = "console launcher: build\\wren.com (src\\tools\\wrencom; the browser embeds it)", actions = slice_of(Task{"wren.com", task_launcher, ""}), marks = {.No_Result}, makes = {.Launcher}, limit = build_limit(cfg)})
 	unit(&t, "unit tests: console launcher (when to wait for wren.exe and when to let go, the command line it hands over)", "src/tools/wrencom", exe("build/wrencom_test"))
 	// The browser, as the steps that start one need it: built unless newer than its sources (a build takes a minute even when nothing changed).
-	append(&t, Step{name = "build the browser (wrentool build; nothing to do when newer than its sources)", actions = slice_of(Task{"wrentool build", task_browser, "dev"}), marks = {.No_Result, .Browser_Build}, needs = COMMON_NEEDS, makes = {.Browser}, limit = LONG_STEP_SECONDS})
-	if long_run { append(&t, Step{name = "build the check build of the browser (wrentool build check; nothing to do when newer than its sources)", actions = slice_of(Task{"wrentool build check", task_browser, "check"}), marks = {.No_Result, .Browser_Build}, needs = COMMON_NEEDS, makes = {.Check_Browser}, limit = LONG_STEP_SECONDS}) }
+	append(&t, Step{name = "build the browser (wrentool build; nothing to do when newer than its sources)", actions = slice_of(Task{"wrentool build", task_browser, "dev"}), marks = {.No_Result, .Browser_Build}, needs = COMMON_NEEDS, makes = {.Browser}, limit = build_limit(cfg)})
+	if long_run { append(&t, Step{name = "build the check build of the browser (wrentool build check; nothing to do when newer than its sources)", actions = slice_of(Task{"wrentool build check", task_browser, "check"}), marks = {.No_Result, .Browser_Build}, needs = COMMON_NEEDS, makes = {.Check_Browser}, limit = build_limit(cfg), group = .Check_Build}) }
 
 	PACKAGES := []string{"base", "host", "dom", "html", "url", "http", "cookies", "csp", "extensions", "httpcache", "fetch", "css", "style", "webfont", "xml", "images", "media", "webaudio", "canvas2d", "idb", "layout", "forms", "vault", "js", "page", "webauthn", "license", "update", "desktop", "adblock", "blocker", "a11y", "browser"}
 	for pkg in PACKAGES {
@@ -281,7 +309,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	page_tests := odin_test("src/page", exe("build/page_poison_test"), {TOOLKIT, WB, POISON})
 	page_tests.env = strs("WREN_POISON_PAGES=1")
 	append(&t, Step{name = "IndexedDB, loads cut short and the end of the browser with every block on pages of its own (WREN_POISON_PAGES=1, src\\base\\poison_windows.odin: any touch of a freed block faults)",
-		actions = slice_of(pages_run("src/tools/e2e/web_jsweb.odin", strs("jsweb_idb", "jsweb_sections_cut_short_after_100ms")), pages_run("src/tools/e2e/autoscroll.odin", strs("autoscroll_end_to_end")), page_tests), needs = COMMON_NEEDS + {.Guests, .E2E, .Test_Server}, inputs = .Tree})
+		actions = slice_of(pages_run("src/tools/e2e/web_jsweb.odin", strs("jsweb_idb", "jsweb_sections_cut_short_after_100_turns")), pages_run("src/tools/e2e/autoscroll.odin", strs("autoscroll_end_to_end")), page_tests), needs = COMMON_NEEDS + {.Guests, .E2E, .Test_Server}, inputs = .Tree})
 	e2e_step(&t, "the developer tools resized (src\\tools\\e2e\\devtools_resize.odin: a real window, never shown, and the panel's own keep their surface while they resize, 1:1 and clipped)", "devtools_resize", marks = {.No_CI})   // (a runner's screen is smaller than these real windows)
 	e2e_step(&t, "the interface with no browser around it (src\\tools\\e2e\\chrome_interface.odin: its zoom, by the keys and the wheel; the developer tools docked at their size; an open menu over the top resize band; the main menu in a short window, scrolled; the themes' colours; a row's menu over the downloads drop-down; the history tree's text through an animated zoom)", "chrome_interface")
 	e2e_step(&t, "every frame around a tab closed in the back and a Ctrl+wheel over a long page holds the page and the interface (src\\tools\\e2e\\whole_frames.odin: the frames the renderer drew, one by one)", "whole_frames")
@@ -298,7 +326,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	e2e_step(&t, "web APIs in the browser (src\\tools\\e2e\\page_apis.odin: a layout read by a first script, a timer that changes nothing, Web Animations, popovers, the Navigation API, XHTML; no window at all)", "page_apis")
 	e2e_step(&t, "two browsers in one process (src\\tools\\e2e\\two_apps.odin: each on a thread of its own, alive at once, sees only its own tabs, pages, storage, channel messages and frame; nothing of either is left; no window at all)", "two_apps")
 	e2e_step(&t, "where a link goes, over the page (src\\tools\\e2e\\link_bubble.odin: a box at the page's bottom left corner while the pointer is on a link, the other corner when the pointer is there, the page keeping its hover)", "link_bubble")
-	e2e_step(&t, "a browser at rest draws nothing (src\\tools\\e2e\\frames_at_rest.odin: frames over turns of the loop that nothing asked for: none on a static page, on about:blank, under a timer that changes nothing; a caret draws its own pixels at its own flips; an animation does draw, one nobody can see does not; the loading bar at its own rate; no window at all)", "frames_at_rest", marks = {.No_CI})   // (on a runner the address bar's caret drew 5 frames for 3 flips once: cause not found; it runs here)
+	e2e_step(&t, "a browser at rest draws nothing (src\\tools\\e2e\\frames_at_rest.odin: frames over turns of the loop that nothing asked for: none on a static page, on about:blank, under a timer that changes nothing; a caret draws its own pixels at its own flips; an animation does draw, one nobody can see does not; the loading bar at its own rate; no window at all)", "frames_at_rest")   // (on a runner the address bar's caret drew 5 frames for 3 flips once: cause not found; it runs here)
 	e2e_step(&t, "a teardown that hangs says where (src\\tools\\e2e\\shutdown_report.odin: the watchdog ends the process, and what its threads were doing is on its standard error first)", "shutdown_report")
 	e2e_step(&t, "accessibility end to end (src\\tools\\e2e\\a11y.odin: what a window tells a screen reader, the chrome's and a page's, and what a reader's requests do; no window at all)", "a11y")
 	e2e_step(&t, "what a screen reader reads (src\\tools\\e2e\\a11y_uia.odin: a Wren with a real window, never shown, read and driven through the system's UI Automation)", "a11y_uia", browser = true)
@@ -328,7 +356,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	e2e_step(&t, "the CSS Custom Highlight API painted (src\\tools\\e2e\\highlight.odin: ::highlight() over a range, what follows the registry, the ranges and the priorities; no window at all)", "highlight")
 	e2e_step(&t, "chrome frames and what they hold for a page (src\\tools\\e2e\\chrome_frames.odin: input held for a tab or a window stays off the others; the picture kept follows the hover, a box and the document; a trim leaves every window its picture; a release the system made and a press on the window's frame end a gesture; no window at all)", "chrome_frames")
 	e2e_step(&t, "the lines of text decoration by their pixels (src\\tools\\e2e\\text_decoration.odin: lines, ink, marks, strokes, highlights and their order, rows, columns, right to left, chrome frames)", "text_decoration")
-	e2e_step(&t, "input under a busy page (src\\tools\\e2e\\busy_page.odin: a script holds the thread, chrome frames take the input: a drag's selection, the scroll bar's thumb, Page Down and Ctrl+L follow at once, the page's turn sees the same; transform and opacity animations go on, a scroll box follows the wheel and its thumb, the caret blinks; no window at all)", "busy_page", flaky = {"the_caret_blinks_while_the_page_is_busy"})   // (failed once on the CI, 18 of 18 passed six at a time, nothing found by reading: a frame short of the screen or of the window's place in front)
+	e2e_step(&t, "input under a busy page (src\\tools\\e2e\\busy_page.odin: a script holds the thread, chrome frames take the input: a drag's selection, the scroll bar's thumb, Page Down and Ctrl+L follow at once, the page's turn sees the same; transform and opacity animations go on, a scroll box follows the wheel and its thumb, the caret blinks; no window at all)", "busy_page")
 	e2e_step(&t, "browser extensions (src\\tools\\e2e\\extensions.odin: an unpacked extension loads, its background starts on an event, its popup opens, calls made while the background is stopped are answered in order)", "extensions")
 	e2e_step(&t, "scroll-driven animations (src\\tools\\e2e\\scroll_driven.odin: scroll() and view() on every kind of value, on the page's turn and in the chrome frames under a script; no window at all)", "scroll_driven")
 	e2e_step(&t, "an inline <svg> through a hover (src\\tools\\e2e\\inline_svg_hover.odin: the painting start page's shortcut icons, a new colour being made on the held decoding threads: every frame shows the icon, then the new colour; no window at all)", "inline_svg_hover")
@@ -352,7 +380,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	e2e_step(&t, "wren ctl stop ends the Wren it started and nothing else (src\\tools\\e2e\\ctl_stop.odin: a session file whose pid is another program's now, or that does not say who the process was, leaves that program alone; a throwaway profile goes)", "ctl_stop", browser = true)
 	e2e_step(&t, "tabs come back after a crash and never loop (src\\tools\\e2e\\crash_recovery.odin: a killed Wren leaves running.txt and recovery.txt, the next start restores the tabs, a restoring start that ends too is followed by a blank page and the tabs kept in a file, a normal end removes both files, a Wren that still runs is not taken for a crash)", "crash_recovery", browser = true)
 	e2e_step(&t, "one Wren per profile (src\\tools\\e2e\\instance.odin: a second start hands its addresses over and ends with code 0; another profile, another executable, --new-window, a first one that does not answer keep their own; hidden windows)", "instance", browser = true, each_test = true)
-	e2e_step(&t, "Setup (src\\tools\\e2e\\setup.odin: the real dialog, registry and files against throwaway roots: install, uninstall of the running copy, standalone, the automatic opening and its exceptions, the daily update check)", "setup", marks = {.No_CI}, browser = true)   // (on a runner the running copy was not out of the way once: cause not found; it runs here)
+	e2e_step(&t, "Setup (src\\tools\\e2e\\setup.odin: the real dialog, registry and files against throwaway roots: install, uninstall of the running copy, standalone, the automatic opening and its exceptions, the daily update check)", "setup", browser = true)   // (on a runner the running copy was not out of the way once: cause not found; it runs here)
 	append(&t, Step{name = "crash reports (src\\tools\\e2e\\crash_reports.odin: src/tools/crashmodes dies by an access violation, an assertion, a stack overflow, a corrupted heap, a fail-fast: each leaves a report with a stack and a minidump, or the session file the next start turns into an unclean-exit report)",
 		actions = slice_of(odin_build("src/tools/crashmodes", "build/crashmodes.exe", {WB, "-debug", "-vet"}), odin_build("src/tools/crashmodes", "build/crashmodes_poison.exe", {WB, "-debug", "-vet", POISON}), e2e_run("crash_reports")), needs = COMMON_NEEDS + {.E2E, .Test_Server}, inputs = .Tree, marks = {.No_CI}})   // (on a runner overflow_thread left no report once: cause not found; it runs here)
 	e2e_step(&t, "the system menu of the Wren icon (src\\tools\\e2e\\system_menu.odin: a click opens it, a frame is made in its loop, a key closes it, tabs on top and in a sidebar; the menu was opened during the build and its frames were built inside it, the crash of the 2026-10-26 experimental build; a hidden window)", "system_menu", browser = true)
@@ -372,9 +400,9 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	// the glue, beside the browser's engine and not after it) and the runner. Then the interpreter's run and the JIT's side by side: each writes its own error file.
 	test262_quick := cfg.quick ? strs("-quick") : nil
 	append(&t, Step{name = "test262: the suite, the test image of the engine and the runner (src\\tools\\test262\\prepare.odin, build\\test262; nothing to do when up to date)",
-		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "test262 quick" : "test262"}, Command{argv = strs(exe("build/test262"), "-prepare")}), marks = {.No_Result}, makes = {.Test262}, limit = LONG_STEP_SECONDS})
+		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "test262 quick" : "test262"}, Command{argv = strs(exe("build/test262"), "-prepare")}), marks = {.No_Result}, makes = {.Test262}, limit = suite_limit(cfg)})
 	append(&t, Step{name = "test262 in the Wasm engine (-Quick: every 25th test; fails on a failure src\\tools\\test262\\known_failures.txt does not list)",
-		actions = slice_of(Command{argv = join({exe("build/test262")}, test262_quick)}), weight = 40, needs = {.Test262}, inputs = .Tree, limit = LONG_STEP_SECONDS})
+		actions = slice_of(Command{argv = join({exe("build/test262")}, test262_quick)}), weight = 40, needs = {.Test262}, inputs = .Tree, limit = suite_limit(cfg)})
 	append(&t, Step{name = "test262 with the JIT: examples\\jsbench\\jitcheck.js and recursion.js interpreted and compiled (every function and loop at once, synchronously and with the step path), then test262 the same way",
 		actions = slice_of(
 			Task{"the tool", task_runner, cfg.quick ? "jsengine=jsengine_jit quick" : "jsengine=jsengine_jit"},
@@ -394,7 +422,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 			Command{argv = strs(exe("build/jsengine_jit"), "polls", "-image", "build/js/wren_js.wasm")},
 			Command{argv = strs(exe("build/jsengine_jit"), "hung", "-image", "build/js/wren_js.wasm", "examples/jsbench/hung.js")},
 			Command{argv = join({exe("build/test262"), "-jit", "-jit-sync", "-jit-threshold", "2", "-jit-loop", "1"}, test262_quick)},
-		), weight = 70, needs = {.JS_Engine, .Test262}, inputs = .Tree, limit = LONG_STEP_SECONDS})
+		), weight = 70, needs = {.JS_Engine, .Test262}, inputs = .Tree, limit = suite_limit(cfg)})
 	append(&t, Step{name = "web API conformance (generated cases: bounds, UTF-8, handles, enums, capacity)",
 		actions = slice_of(
 			odin_build("examples/apiconformance", "build/apiconformance.wasm", {"-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-o:size"}),
@@ -419,7 +447,9 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "graphics toolkit interaction states tests (hover, press and selection at once, transitions on demand, palette cross-fade, state fills in both blend spaces; no window)", actions = slice_of(toolkit_suite("states", exe("build/toolkit_states_test"), toolkit_one))})
 
 	// The test program (src/tools/e2e, docs/testing.md): one program on Odin's test runner that links the browser, built once, every allocation tracked (what that costs a step does not show: 2 % of 500 s of CPU); a step runs the tests of one file of it, in a process of its own.
-	append(&t, Step{name = "build the test program (src\\tools\\e2e: the browser in the tests' process, no window, the real renderer offscreen, every allocation tracked, freed memory poisoned: a test that leaves anything allocated fails, a read of what was freed ends it)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test"), join({TRACK, POISON}, E2E_BUILD_FLAGS))), needs = COMMON_NEEDS + {.Browser}, makes = {.E2E}})   // (it links build/native, which the browser's build makes)
+	append(&t, Step{name = "build the test program (src\\tools\\e2e: the browser in the tests' process, no window, the real renderer offscreen, every allocation tracked, freed memory poisoned: a test that leaves anything allocated fails, a read of what was freed ends it)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test"), join({TRACK, POISON}, E2E_BUILD_FLAGS))), needs = COMMON_NEEDS, makes = {.E2E}, limit = build_limit(cfg)})
+	// (not after the browser's build: what both read, build/native and the generated web API, has one writer, the step that makes .Native,
+	// and the browser's build finds them up to date. So after a change of the browser the two compile side by side.)
 	append(&t, Step{name = "the Wasm guests of the pages of the web tests",
 		actions = slice_of(
 			guest("examples/e2e", "build/e2e.wasm"), guest("examples/counter", "examples/site/counter.wasm"), guest("examples/formstest", "examples/site/formstest.wasm"), guest("examples/fetchpage", "examples/site/fetchpage.wasm"),
@@ -439,20 +469,21 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	web_step(&t, "history end-to-end test (src\\tools\\e2e\\web_history.odin: the tree as pages see it, scrollRestoration, pageshow / pagehide persisted, back/forward cache freezing, persisted form state; no server)", "history")
 	web_step(&t, "Web Authentication end-to-end test (src\\tools\\e2e\\web_webauthn.odin: create then get from JavaScript on the virtual authenticator, signature checked; activation, RP ID, aborts, timer, mediation, JSON forms, secure context; no server)", "webauthn")
 	// (the two parts apart: what talks to the server waits for the programs, not for the 60 s of its tests' waits)
-	append(&t, Step{name = "build testserver", actions = slice_of(Task{"the programs", task_testserver, ""}), marks = {.No_Result}, makes = {.Test_Server}})
+	append(&t, Step{name = "build testserver", actions = slice_of(Task{"the programs", task_testserver, ""}), marks = {.No_Result}, makes = {.Test_Server}, limit = build_limit(cfg)})
 	append(&t, Step{name = "test server tests (go test: /site/ index, listings, extensionless pages, types)", actions = slice_of(Command{argv = strs("go", "test", "."), dir = "tools/testserver"}), marks = {.Light}, inputs = .Dirs, packages = strs("tools/testserver")})
 	if long_run {
 		// The browser's check build (wrentool build check: every allocation tracked). 1. It drives itself through a session and through tabs opened and closed by the dozen (src/tools/e2e/memcheck.odin, src/tools/endurance): nothing may
 		// be left allocated at exit, nor grow while it runs. It opens a window (no input of the desktop's); the endurance run is the long one in full runs (400 tabs, the native memory too).
-		endurance_args := join({exe("build/endurance"), "-timeout", fmt.aprint(ENDURANCE_LIMIT_SECONDS * cfg.slow)}, cfg.quick ? strs("-cycles", "8", "-warmup", "3", "-no-native") : nil)
+		endurance_limit := cfg.quick ? ENDURANCE_QUICK_LIMIT_SECONDS : ENDURANCE_LIMIT_SECONDS * cfg.slow
+		endurance_args := join({exe("build/endurance"), "-timeout", fmt.aprint(endurance_limit)}, cfg.quick ? strs("-cycles", "8", "-warmup", "3", "-no-native") : nil)
 		append(&t, Step{name = "browser check build: a scripted session (tabs, JavaScript, images, forms, back/forward cache, palette, history) exits with nothing allocated; tabs opened and closed by the dozen leave nothing growing (tracked bytes, handles; the native memory too in full runs)",
-			actions = slice_of(e2e_run("memcheck"), tool_build("src/tools/endurance", exe("build/endurance")), Command{argv = endurance_args}), weight = 120, needs = COMMON_NEEDS + {.Check_Browser, .E2E, .Test_Server}, inputs = .Tree, limit = LONG_STEP_SECONDS})
+			actions = slice_of(e2e_run("memcheck"), tool_build("src/tools/endurance", exe("build/endurance")), Command{argv = endurance_args}), weight = 120, needs = COMMON_NEEDS + {.Check_Browser, .E2E, .Test_Server}, inputs = .Tree, limit = suite_limit(cfg), group = .Check_Build})
 		// Freed memory poisoned (the check build): the pages of tools/sweep_local.txt visited as a person does, headless, no network; a read of what was freed ends the visit with a report.
 		append(&t, Step{name = "local pages on the check build (wrentool sweep -List tools\\sweep_local.txt: load, scroll, developer tools, back, reload, a tab, loads cut short, close, with freed memory poisoned)",
-			actions = slice_of(tool_build("src/tools/wrentool", exe("build/wrentool_step")), Command{argv = strs(exe("build/wrentool_step"), "sweep", "-List", "tools/sweep_local.txt", "-Exe", exe("build/wren_check"), "-OutDir", "build/sweep_local", "-CloseMs", SWEEP_CHECK_MS, "-PingMs", SWEEP_CHECK_MS)}), weight = 60, needs = COMMON_NEEDS + {.Check_Browser}, inputs = .Tree})
+			actions = slice_of(tool_build("src/tools/wrentool", exe("build/wrentool_step")), Command{argv = strs(exe("build/wrentool_step"), "sweep", "-List", "tools/sweep_local.txt", "-Exe", exe("build/wren_check"), "-OutDir", "build/sweep_local", "-CloseMs", SWEEP_CHECK_MS, "-PingMs", SWEEP_CHECK_MS)}), weight = 60, needs = COMMON_NEEDS + {.Check_Browser}, inputs = .Tree, limit = suite_limit(cfg), group = .Check_Build})
 		// 2. The remote control channel (every allocation tracked): a session that touches the whole channel exits with nothing allocated.
 		append(&t, Step{name = "remote control on the check build: a driven session (navigate, script, input, capture, events, a client that vanishes, reset, checkpoints, quit) leaves nothing allocated (src\\tools\\e2e\\remote_check.odin)",
-			actions = slice_of(e2e_run("remote_check")), weight = 30, needs = COMMON_NEEDS + {.Check_Browser, .E2E, .Test_Server}, inputs = .Tree})
+			actions = slice_of(e2e_run("remote_check")), weight = 30, needs = COMMON_NEEDS + {.Check_Browser, .E2E, .Test_Server}, inputs = .Tree, group = .Check_Build})
 	}
 
 	web_step(&t, "network policy test (CORS, cookies, redirects, CSP, schemes)", "policy", {.Light})
@@ -473,14 +504,14 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	// software adapter, the sections cut short 21 s of pages left at a set time, Web Audio 6 s, the media 12 s)
 	web_split(&t, "JavaScript web APIs end-to-end test (fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging; src\\tools\\e2e\\web_jsweb.odin)", "jsweb",
 		{{"jsweb_webcrypto"}, {"jsweb_webgl_api"}, {"jsweb_webaudio", "jsweb_webaudio_autoplay"}, {"jsweb_htmlmedia", "jsweb_mse", "jsweb_mse_builtin_decoders"},
-		 {"jsweb_sections_cut_short_at_once", "jsweb_sections_cut_short_after_10ms"}, {"jsweb_sections_cut_short_after_100ms"}, {"jsweb_sections_cut_short_after_300ms"}})
+		 {"jsweb_sections_cut_short_at_once", "jsweb_sections_cut_short_after_1_turn"}, {"jsweb_sections_cut_short_after_10_turns"}, {"jsweb_sections_cut_short_after_100_turns"}})
 	web_step(&t, "style run-time test (web fonts, transitions, animations)", "style")
 	web_step(&t, "image formats end-to-end test (AVIF, WebP, SVG images and backgrounds, inline <svg>, Accept, <picture>)", "media", {.Ui_Only})
 	web_step(&t, "images end-to-end test (events, srcset, picture, lazy, CSS images, cache, cancellation, 200 x 1 Mpx)", "images", {.Light})
 	web_step(&t, "whose work a timer is end-to-end test (src\\tools\\e2e\\web_work.odin: a script of another site, through its timers, responses and listeners)", "work", {.Light})
 	wpt_args := join({exe("build/wpt"), "-timeout", fmt.aprint(WPT_TIMEOUT_MS * cfg.slow)}, cfg.quick ? strs("-quick") : nil)
 	append(&t, Step{name = "web-platform-tests (wpt\\suites.txt, pinned; -Quick: a sample; fails on a regression against wpt\\expectations)",
-		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "wpt quick" : "wpt"}, Command{argv = wpt_args}), weight = 50, needs = COMMON_NEEDS + {.Test_Server, .Browser}, inputs = .Tree, limit = LONG_STEP_SECONDS})   // (.Browser: the runner links build/native, which the browser's build makes; built before it, it had the old network stack)
+		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "wpt quick" : "wpt"}, Command{argv = wpt_args}), weight = 50, needs = COMMON_NEEDS + {.Test_Server}, inputs = .Tree, limit = suite_limit(cfg)})   // (the runner links build/native: .Native is its only writer, the browser's build finds it up to date)
 
 	if long_run {
 		append(&t, Step{name = "the names of a release's crash frames (src\\tools\\wrentool\\deps\\symbols_test.odin: the report of a build with no PDB gives its fingerprint and offsets, wrentool crash-symbolize names them from the map, or through the minidump)",
@@ -490,17 +521,17 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		// (frames counted against the screen's refresh: on a loaded CI runner one frame in two came late; a measure with a real pointer, not a test of a tool: run with -Ui)
 		append(&t, Step{name = "splitters dragged (wrentool bench cadence, no window shown: the developer tools docked right and bottom, the tab sidebar's handle; their frames are drags of the cadence model and, on a variable refresh screen, presented at once; the rates are printed, never checked)",
 			actions = slice_of(tool_build("src/tools/wrentool", exe("build/wrentool_step")), Command{argv = strs(exe("build/wrentool_step"), "bench", "cadence")}), marks = {.Ui_Only}, needs = COMMON_NEEDS + {.Browser}, inputs = .Tree})
-		if !cfg.no_asan { asan_steps(&t) }
+		if !cfg.no_asan { asan_steps(&t, cfg) }
 	}
 	if !cfg.quick {
 		append(&t, Step{name = "network stress", actions = slice_of(Task{"fetch.exe against the server", task_net_stress, ""}), needs = {.Fetch, .Test_Server}, inputs = .Tree, packages = strs("src/tools/fetch")})
 		append(&t, Step{name = "WebGL device tests (native\\webgl: the GLSL ES translator, formats, hostile shaders, a context on the software adapter, the GPU process killed, hung and hostile)",
-			actions = slice_of(Command{argv = strs("cargo", "test", "--profile", "quick", "--locked", "--manifest-path", "native/Cargo.toml", "--target-dir", "build/native/target", "-p", "wren_webgl")}), inputs = .Tree, limit = LONG_STEP_SECONDS})
+			actions = slice_of(Command{argv = strs("cargo", "test", "--profile", "quick", "--locked", "--manifest-path", "native/Cargo.toml", "--target-dir", "build/native/target", "-p", "wren_webgl")}), inputs = .Tree, limit = suite_limit(cfg)})
 		append(&t, Step{name = "native WOFF2 decoder tests (real Google Fonts against their TrueType, collections, corruptions) and cssaudit",
 			actions = slice_of(
 				Command{argv = strs("cargo", "test", "--profile", "quick", "--locked", "--manifest-path", "native/Cargo.toml", "--target-dir", "build/native/target", "-p", "wren_media", "woff2"), env = strs(fmt.aprintf("PATH=%s;%s", here(NASM_DIR), os.get_env("PATH", context.allocator)))},
 				tool_build("src/tools/cssaudit", exe("build/cssaudit")),
-			), needs = COMMON_NEEDS, inputs = .Tree, limit = LONG_STEP_SECONDS})
+			), needs = COMMON_NEEDS, inputs = .Tree, limit = build_limit(cfg)})
 	}
 	// Last, and alone: closing the browser with every core saturated by busy loops, a video playing and a client connected, by wren ctl quit and by the window's close button, within 8 s and with no forced
 	// exit. A background thread starved by the load that the close waits for made it take 10 to 25 s (src/tools/e2e/remote_close_load.odin); this step saturates the machine.
@@ -520,5 +551,6 @@ lint_steps :: proc(steps: ^[dynamic]Step) {
 	append(t, Step{name = "no code of a test file runs in the programs (src\\tools\\test_all\\lint_test_inits.odin: no @(init), @(fini) or initialiser that calls something in a *_test.odin of src or ext\\gui_toolkit, which every program importing the package would run)", actions = slice_of(Task{"the inits of tests", task_lint_test_inits, ""}), marks = {.Light}, inputs = .Sources})
 	append(t, Step{name = "the web platform's case is ASCII (src\\tools\\test_all\\lint_unicode_case.odin: no strings.to_lower, to_upper, equal_fold or unicode.to_lower, to_upper in src or native that tools\\unicode_case_allowed.txt does not list with why: the Kelvin sign is no 'k' to a tag name)", actions = slice_of(Task{"the Unicode case calls", task_lint_unicode_case, ""}), marks = {.Light}, inputs = .Sources})
 	append(t, Step{name = "the address field has one writer (src\\tools\\test_all\\lint_address.odin: no ui.field_set on it but in address_sync, src\\browser\\windows.odin)", actions = slice_of(Task{"the address field", task_lint_address, ""}), marks = {.Light}, inputs = .Sources})
+	append(t, Step{name = "an App and a Tab have one constructor (src\\tools\\test_all\\lint_app_make.odin: no new(App) outside src\\browser\\app_make.odin, no new(Tab) outside src\\browser\\main.odin)", actions = slice_of(Task{"the App's constructor", task_lint_app_make, ""}), marks = {.Light}, inputs = .Sources})
 	append(t, Step{name = "the globals of the browser's packages against their list (src\\tools\\test_all\\lint_globals.odin: one App's state goes into App, a window's or a tab's into theirs; docs\\architecture.md, Where state lives)", actions = slice_of(Task{"the globals", task_lint_globals, ""}), marks = {.Light}, inputs = .Sources})
 }

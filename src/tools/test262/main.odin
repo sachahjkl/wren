@@ -360,7 +360,16 @@ Result :: struct {
 	runs:     int,
 	skipped:  int,
 	failures: [dynamic]Failure,
+	// What the worker runs now, for the main thread's watch (atomic): the test's index in the list, and when it began (ns after
+	// origin_tick, plus one; 0: none). The engine's interrupt is cooperative: a native call that does not return is seen only here.
+	current:  int,
+	began_ns: i64,
 }
+
+// A test that runs past this many times -timeout has hung where the engine's interrupt cannot reach: the run fails, with its name.
+HUNG_TEST_FACTOR :: 10
+// The exit code of a run that a hung test stopped.
+EXIT_HUNG :: 4
 
 image: []byte
 // Its SHA-256, once: instance_create would hash the 7 MB image for every test (23 ms of the 48 a test cost, the test itself aside).
@@ -624,7 +633,10 @@ worker_main :: proc(data: rawptr) {
 			for strict in ([2]bool{false, true}) {
 				if strict ? !use_strict : !use_nostrict { continue }
 				res.runs += 1
+				sync.atomic_store(&res.current, i)
+				sync.atomic_store(&res.began_ns, i64(time.tick_since(origin_tick)) + 1)
 				msg, trapped := run_one(&t, buf, strict)
+				sync.atomic_store(&res.began_ns, 0)
 				if msg != "" || trapped {
 					append(&res.failures, Failure{name = name, strict = strict, message = strings.clone(msg), agent = t.uses_agent, trap = trapped})
 				}
@@ -766,6 +778,15 @@ main :: proc() {
 		if finished { break }
 		d := sync.atomic_load(&shared.done)
 		if d / 1000 != last / 1000 { last = d; fmt.eprintf("%d/%d\r", d, len(list)) }
+		// (the threads are not joined: one that hangs in a native call never would be; the process ends with them)
+		now_ns := i64(time.tick_since(origin_tick))
+		for &r in shared.results {
+			began := sync.atomic_load(&r.began_ns)
+			if began == 0 || now_ns - (began - 1) <= HUNG_TEST_FACTOR * timeout_ms * i64(time.Millisecond) { continue }
+			fmt.eprintfln("test262: %s has run for %.0f s, more than %d times -timeout (%d ms): it hangs where the engine's interrupt cannot reach, the run stops",
+				shared.list[sync.atomic_load(&r.current)], f64(now_ns - (began - 1)) / 1e9, HUNG_TEST_FACTOR, timeout_ms)
+			os.exit(EXIT_HUNG)
+		}
 		time.sleep(100 * time.Millisecond)
 	}
 	for th in ths { host.thread_join(th) }

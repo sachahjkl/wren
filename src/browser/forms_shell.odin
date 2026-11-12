@@ -149,7 +149,7 @@ caret_phase :: proc(app: ^App, f: ^forms.Forms) -> (on, caret: bool, period: int
 	if !page_shows_focus(app) || !forms.is_text_field(f, f.focus) || !window_is_front(app) || a != b || !forms.is_mutable(f, f.focus) { return false, false, 0 }
 	period = blink_ms(app)
 	if period <= 0 { return true, true, 0 }
-	elapsed := time.duration_milliseconds(time.tick_since(fv.caret_epoch))
+	elapsed := busy_caret_elapsed_ms(app, fv.caret_epoch)
 	return int(elapsed / f64(period)) % 2 == 0, true, period
 }
 

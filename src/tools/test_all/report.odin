@@ -157,17 +157,22 @@ run_report :: proc(s: ^Scheduler, sum: ^Run_Summary) -> (failed: int) {
 		processes += r.processes
 	}
 	failed = counts[.Fail]
+	// (steps left out by the budget or the circuit breaker were not tested: the run fails even if what ran was flaky only)
+	cut_short := s.out_of_budget || s.timeouts >= TIMEOUTS_MOST
+	if cut_short { failed = max(failed, 1) }
 	text := strings.builder_make()
 	for status in Status {
 		if counts[status] == 0 { continue }
 		fmt.sbprintf(&text, "%s%d %s", strings.builder_len(text) > 0 ? ", " : "", counts[status], status_word(status))
 	}
 	append(&lines, fmt.aprintf("steps: %s; %d checks counted; %d explicit skip(s); skipped by their marks: %d for the CI, %d without -Ui", strings.to_string(text), checks, skips, sum.skipped_ci, sum.skipped_ui))
+	if s.out_of_budget { append(&lines, fmt.aprintf("the run was stopped: it ran for its budget of %d s (-RunTimeoutSec); the steps it stopped say so, the others did not run", s.cfg.run_timeout)) }
+	if s.timeouts >= TIMEOUTS_MOST { append(&lines, fmt.aprintf("%d steps ran out of time: no step started after the %dth (most likely one cause: read the first of them)", s.timeouts, TIMEOUTS_MOST)) }
 	for &r in s.runs { for l in r.skips { append(&lines, l) } }
 	if counts[.Cached] > 0 { append(&lines, fmt.aprintf("%d step(s) did not run: they passed with exactly these inputs (src\\tools\\test_all\\cache.odin). -NoCache runs them.", counts[.Cached])) }
 	wall := time.duration_seconds(time.tick_since(sum.began))
 	if s.cfg.use_cache { append(&lines, fmt.aprintf("the inputs of the steps were read in %.1f s; the first step started %.1f s after this run's start", s.key_seconds, s.first_start)) }
-	if sum.selecting { append(&lines, fmt.aprintf("%d step(s) left out by -Only / -Except / -Failed / -Changed.", sum.left_out)) }
+	if sum.selecting { append(&lines, fmt.aprintf("%d step(s) left out by -Only / -Except / -Failed / -Changed / -Group.", sum.left_out)) }
 	// (where the time goes: what the machine gave, what waited for what)
 	jobs := s.limits[.Heavy]
 	total := s.busy_slots + s.blocked_slots + s.idle_slots
@@ -260,10 +265,10 @@ run_all :: proc(cfg: ^Config, table: []Step) -> int {
 		cache_init(cache, ".", flags)
 	}
 	sum := Run_Summary{began = began, durations = read_durations()}
-	sum.selecting = cfg.only != "" || cfg.except != "" || cfg.failed || cfg.changed
+	sum.selecting = cfg.only != "" || cfg.except != "" || cfg.failed || cfg.changed || cfg.by_group
 	steps := choose_steps(cfg, table, cache, &sum.skipped_ci, &sum.skipped_ui, &sum.left_out)
 	if cfg.list {
-		for s in steps { fmt.printfln("%5s inputs  %s", fmt.tprint(len(step_inputs(cache, s))), s.name); free_all(context.temp_allocator) }
+		for s in steps { fmt.printfln("%5s inputs  %-6s %s", fmt.tprint(len(step_inputs(cache, s))), GROUP_NAMES[s.group], s.name); free_all(context.temp_allocator) }
 		return 0
 	}
 	tooling.raise_stack()

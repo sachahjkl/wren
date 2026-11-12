@@ -76,7 +76,7 @@ art_the_first_new_tab_shows_what_a_session_left :: proc(t: ^testing.T) {
 	leave_painting(dir, "older", browser.ART_CACHE_FORMAT, 1, OTHER)
 	leave_painting(dir, "old_format", browser.ART_CACHE_FORMAT - 1, 3, OTHER)
 	_ = os.write_entire_file(strings.concatenate({dir, "/stray.jpg"}, context.temp_allocator), []byte{1})
-	s := e2e.start(t, {size = ART_SIZE, profile = profile, prefs = {"browser.newtab.art.enabled=true", "browser.newtab.art.window=1"}})
+	s := e2e.start(t, {pixels = true, size = ART_SIZE, profile = profile, prefs = {"browser.newtab.art.enabled=true", "browser.newtab.art.window=1"}})
 	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { return s.app.art.scan == .Done }, "the scan")
 	testing.expect_value(t, len(s.app.art.ready), 1)
 	testing.expect(t, in_folder(dir, "newest.jpg") && in_folder(dir, "newest.json"), "the newest stays")

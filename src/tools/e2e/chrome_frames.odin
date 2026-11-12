@@ -17,7 +17,7 @@ import "wb:e2e"
 @(private = "file") SIZE :: [2]int{800, 600}
 @(private = "file") FRAME_CAP_LOW :: 30   // (below every rate browser.frame.cap offers)
 @(private = "file") SHORTER :: [2]int{800, 590}          // what lets the script go
-@(private = "file") HOLD_LIMIT_MS :: "85000"             // (a net for a test that died, under wait_js's deadline)
+@(private = "file") HOLD_LIMIT_MS :: "45000"             // (a net for a test that died, under wait_js's deadline: e2e.DEFAULT_DEADLINE)
 // The script: `turn` starts it (a task of the loop; requestAnimationFrame: in a frame of the page's own window), `mutates`: the first thing it does is change the document, and from
 // then on only the pixels kept are there to show.
 @(private = "file") HOLD :: "window.hold = (turn = f => setTimeout(f, 0), mutates = false) => { window.released = false; turn(() => { if (mutates) document.documentElement.dataset.held = 1; const h = innerHeight, begun = performance.now(); while (innerHeight == h && performance.now() - begun < " + HOLD_LIMIT_MS + ") {} window.released = innerHeight != h; }); return 1; }; 1"

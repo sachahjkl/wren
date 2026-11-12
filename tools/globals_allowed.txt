@@ -97,6 +97,7 @@ browser/history_ui.odin WEEKDAYS const  # a table
 browser/hud.odin HUD_PREFS const  # a table
 browser/hud.odin HUD_SERIES_HELP const  # a table
 browser/hud.odin HUD_SERIES_NAMES const  # a table
+browser/headless_pixels.odin headless_no_pixels thread  # the headless App of this thread rasterizes nothing: set by a test that reads no pixel, before its app_start
 browser/hud.odin TITLE_FIELD_NAMES const  # a table
 browser/instance_shell.odin INSTANCE_PREFS const  # a table
 browser/instance_shell.odin inst process  # one single-instance channel per process

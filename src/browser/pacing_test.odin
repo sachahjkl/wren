@@ -126,9 +126,8 @@ the_cadence_model_decides_as_the_browser_did :: proc(t: ^testing.T) {
 
 @(test)
 a_displayed_frame_gives_its_drag_sample_the_refresh_it_was_shown_at :: proc(t: ^testing.T) {
-	app := new(App)   // (no window: the pacing is the bare window's)
-	the_app = app   // (what the code reaches without an App: this one)
-	defer free(app)
+	app := app_make()   // (no window: the pacing is the bare window's)
+	defer app_free(app)
 	defer drag_probe_reset()
 	drag_probe_reset()
 	for i in 0 ..< 3 { app.drag_probe.ring[i] = {} }

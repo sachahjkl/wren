@@ -4,8 +4,8 @@ package browser
 // in order, so that what a test does during a long script depends on the frames made under it and not on when the script runs.
 // A step is an event (injected before the chrome frame polls, as a device's would come), a capture of the frame (its pixels
 // kept for the test; the next step waits for them), a wait (chrome frames until that long has passed: what moves by the clock
-// moves meanwhile), a clock (the chrome frames that follow show the page's animations that long after its last frame, whatever
-// the time: until the steps run out, the test's clock, not the machine's), or a new size of the window (what a script holding the
+// moves meanwhile), a clock (the chrome frames that follow show the page's animations that long after its last frame, and the
+// focused field's caret that long after its blink began, whatever the time: until the steps run out, the test's clock, not the machine's), or a new size of the window (what a script holding the
 // thread until innerWidth changes waits for). Nothing happens outside chrome frames: steps left when the page lets go wait for the
 // next long script.
 
@@ -95,6 +95,15 @@ busy_clock_wall :: proc(app: ^App, p: ^page.Page) -> f64 {
 	b := &app.remote.busy
 	if !b.clock_on || control_busy_left(app) == 0 { return pacer_of(app).frame_ms }
 	return page.animations_wall_ms(p) + b.clock_ms
+}
+
+// How long the caret has blinked, in ms since its epoch: the machine's clock, or a Clock step's while its steps last. A test then
+// sees the caret's phase at a time it sets, however long the frames under the task took (real waits of 90 ms between pictures of a
+// 200 ms blink depended on the frame times, and failed on a loaded runner).
+busy_caret_elapsed_ms :: proc(app: ^App, epoch: time.Tick) -> f64 {
+	b := &app.remote.busy
+	if b.clock_on && control_busy_left(app) > 0 { return b.clock_ms }
+	return time.duration_milliseconds(time.tick_since(epoch))
 }
 
 // A chrome frame, before it ends: the copy of the window, when a Capture step asked for it.

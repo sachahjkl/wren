@@ -66,7 +66,7 @@ a_wait_for_load_waits_for_a_page_whose_script_engine_is_not_there_yet :: proc(t:
 // A script ticks every 20 ms and touches nothing, which draws no frame (frames_at_rest.odin); a timer that turns the box blue then reaches the screen.
 @(test)
 a_timer_that_changes_the_page_reaches_the_screen :: proc(t: ^testing.T) {
-	s := e2e.start(t, {dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), "/site/remote/idle-timer.htm")})
+	s := e2e.start(t, {pixels = true, dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), "/site/remote/idle-timer.htm")})
 	e2e.wait_idle(s)
 	e2e.wait_stable(s)
 	e2e.eval(s, "window.paint(); 1")
@@ -80,7 +80,7 @@ a_timer_that_changes_the_page_reaches_the_screen :: proc(t: ^testing.T) {
 // resolves on the real event loop, and the demo's own animations listed.
 @(test)
 web_animations_are_painted_and_finish_on_the_loop :: proc(t: ^testing.T) {
-	s := e2e.start(t, {size = DEMO_WINDOW, dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), "/site/web-animations.html")})
+	s := e2e.start(t, {pixels = true, size = DEMO_WINDOW, dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), "/site/web-animations.html")})
 	e2e.wait_idle(s)
 	testing.expect_value(t, e2e.eval(s, "window.demo.count()"), "4")
 	e2e.eval(s, `window.probe = document.getElementById("probe").animate({ width: ["0px", "200px"] }, 1000); window.probe.pause(); window.probe.currentTime = 500; 1`)
@@ -98,7 +98,7 @@ web_animations_are_painted_and_finish_on_the_loop :: proc(t: ^testing.T) {
 @(test)
 popovers_are_in_the_top_layer :: proc(t: ^testing.T) {
 	server := e2e.test_server(t)
-	s := e2e.start(t, {size = DEMO_WINDOW, dpi = e2e.DPI_ONE, url = e2e.url(server, "/site/popover.html")})
+	s := e2e.start(t, {pixels = true, size = DEMO_WINDOW, dpi = e2e.DPI_ONE, url = e2e.url(server, "/site/popover.html")})
 	e2e.wait_idle(s)
 	e2e.click(s, "#open-menu")
 	e2e.wait_js(s, `document.getElementById("menu").matches(":popover-open")`)
@@ -126,7 +126,7 @@ popovers_are_in_the_top_layer :: proc(t: ^testing.T) {
 @(test)
 a_modal_dialog_has_a_backdrop :: proc(t: ^testing.T) {
 	server := e2e.test_server(t)
-	s := e2e.start(t, {size = DEMO_WINDOW, dpi = e2e.DPI_ONE, url = e2e.url(server, "/site/dialog.html")})
+	s := e2e.start(t, {pixels = true, size = DEMO_WINDOW, dpi = e2e.DPI_ONE, url = e2e.url(server, "/site/dialog.html")})
 	e2e.wait_idle(s)
 	corner := e2e.Point{f64(PAGE_CORNER.x), f64(PAGE_CORNER.y)}
 	e2e.click(s, "#open-plain")
@@ -202,7 +202,7 @@ the_navigation_api_with_the_browsers_own_buttons :: proc(t: ^testing.T) {
 // examples/site/remote/xhtml.xhtml, served as application/xhtml+xml: parsed as XML (a self-closed <div/> is empty, names keep their case), its CDATA script runs, its style applies (the box painted blue).
 @(test)
 an_xhtml_page_is_parsed_as_xml :: proc(t: ^testing.T) {
-	s := e2e.start(t, {dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), "/site/remote/xhtml.xhtml")})
+	s := e2e.start(t, {pixels = true, dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), "/site/remote/xhtml.xhtml")})
 	testing.expect_value(t, e2e.eval(s, "String(window.xhtml)"), "application/xhtml+xml,p,id dataName,0,myElement")
 	e2e.wait_stable(s)
 	px := e2e.pixel(e2e.capture(s, {target = .Selector, selector = "#box"}), INSIDE_A_BOX.x, INSIDE_A_BOX.y)

@@ -139,7 +139,7 @@ run_experimental :: proc(args: []string) -> int {
 	link := ""
 	if !tooling.flag_has(f, "-NoUpload") {
 		fmt.println("uploading to buzzheavier")
-		resp, code := tooling.capture({"curl", "-sS", "--fail", "--max-time", UPLOAD_LIMIT_SECONDS, "-T", zip, fmt.tprintf("%s/%s.zip", UPLOAD_URL, name)}, allocator = context.temp_allocator)
+		resp, code := tooling.capture({"curl", "-sS", "--fail", "--max-time", UPLOAD_LIMIT_SECONDS, "-T", zip, fmt.tprintf("%s/%s.zip", UPLOAD_URL, name)}, allocator = context.temp_allocator, limit = 0)   // (curl's --max-time bounds it)
 		if code != 0 { return fail("the upload failed:", resp) }
 		id := upload_id(resp)
 		if id == "" { return fail("the upload answered something with no file id:", resp) }

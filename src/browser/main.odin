@@ -181,7 +181,8 @@ App :: struct {
 	last_tick:        time.Tick,
 
 	windows:  [dynamic]^Browser_Window,   // windows.odin
-	tab_ids:  map[u64]^Tab,               // windows.odin tab_find: every tab from tab_new to tab_free, whatever its window (nil while there is none)
+	tab_ids:  map[u64]^Tab,               // windows.odin tab_find: every tab from tab_adopt to tab_free, whatever its window (nil while there is none)
+	made:     App_Stages,                 // app_make.odin: the stages of the App that are made (app_free ends them)
 	active:   ^Browser_Window,            // the one the frame is for; nil: none (active_window is then App.bare)
 	front:    ^Browser_Window,            // the one commands, remote calls and the tasks of the loop act on (the last used)
 	bare:     Browser_Window,             // active_window of an App with no window (the tests'), or between two
@@ -349,18 +350,57 @@ tab_open_new :: proc(app: ^App) -> ^Tab {
 	return t
 }
 
-// A tab at the end of the strip, showing nothing yet.
-tab_new :: proc(app: ^App) -> ^Tab {
+// A Tab, numbered, at rest. The only place a Tab is allocated (src/tools/test_all/lint_app_make.odin): every tab has an id
+// of the process's, and joins its App through tab_adopt.
+@(private = "file")
+tab_alloc :: proc() -> ^Tab {
 	t := new(Tab)
 	t.id = sync.atomic_add(&tab_ids, 1) + 1
 	t.hist = -1
 	t.zoom = 1
+	return t
+}
+
+// A tab joins the App: the map of ids (tab_find: what a request's end, an extension or a remote call looks its tab up by)
+// and, given a window, the end of its strip (nil: no strip, as an offscreen document). tab_new and every harness that
+// makes tabs come through here, so an invariant of the App's tabs is kept in one place.
+tab_adopt :: proc(app: ^App, w: ^Browser_Window, t: ^Tab) {
+	if w != nil { append(&w.tabs, t) }
+	if app.tab_ids == nil { app.tab_ids = make(map[u64]^Tab) }
+	app.tab_ids[t.id] = t
+}
+
+// The tab leaves the map of ids (first: what its scope's closing ends looks its tab up and finds none).
+@(private = "file")
+tab_forget :: proc(app: ^App, t: ^Tab) {
+	delete_key(&app.tab_ids, t.id)
+	if len(app.tab_ids) == 0 { delete(app.tab_ids); app.tab_ids = nil }   // (made again by the next tab: nothing left over at the end)
+}
+
+// A tab with no page (no scope, no navigable): what a test or the chrome world lays out, moves and looks up. It is freed by
+// tab_bare_free, else by app_free.
+tab_new_bare :: proc(app: ^App, w: ^Browser_Window, url := "", title := "") -> ^Tab {
+	t := tab_alloc()
+	t.url = strings.clone(url)
+	t.title = strings.clone(title)
+	tab_adopt(app, w, t)
+	return t
+}
+
+// A tab of tab_new_bare, out of the map of ids (its strip is the caller's). What the caller gave it besides is the caller's to free.
+tab_bare_free :: proc(app: ^App, t: ^Tab) {
+	tab_forget(app, t)
+	delete(t.url); delete(t.title); delete(t.status)
+	free(t)
+}
+
+// A tab at the end of the strip, showing nothing yet.
+tab_new :: proc(app: ^App) -> ^Tab {
+	t := tab_alloc()
 	t.scope = base.scope_make("tab", app.process)
 	t.top = page.navigable_top_new()
 	t.title = strings.clone("New tab")
-	append(&active_window(app).tabs, t)
-	if app.tab_ids == nil { app.tab_ids = make(map[u64]^Tab) }
-	app.tab_ids[t.id] = t
+	tab_adopt(app, active_window(app), t)
 	tab_history_limits(app, t)
 	blocker_tab_new(app, t)   // blocker_shell.odin
 	recovery_touch(app)   // crash_recovery.odin
@@ -412,9 +452,7 @@ tab_close_tab :: proc(app: ^App, t: ^Tab) {
 
 // Frees a tab taken out of the strip (closed, or at exit): its page and everything the shell keeps for it.
 tab_free :: proc(app: ^App, t: ^Tab) {
-	// (first: what its scope's closing ends, a request, looks its tab up and finds none)
-	delete_key(&app.tab_ids, t.id)
-	if len(app.tab_ids) == 0 { delete(app.tab_ids); app.tab_ids = nil }   // (made again by the next tab: nothing left over at the end)
+	tab_forget(app, t)   // (first: what its scope's closing ends, a request, looks its tab up and finds none)
 	bfcache_drop_tab(app, t)
 	tab_nav_destroy(app, t)
 	ext_tab_closed(app, t)   // ext_shell.odin: what the extensions kept for the tab (a popup's mark, per-tab action state)
@@ -1608,7 +1646,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	prof_begin(.UI_Draw)
 	// (the toolkit's automatic damage: each box is compared with its last frame; the page, replayed, is drawn every frame)
-	ui.set_partial_redraw(active_window(app).ui, app.cfg.partial_redraw)
+	ui.set_partial_redraw(active_window(app).ui, app.cfg.partial_redraw && !pixels_skipped(app))   // (headless_pixels.odin: its damage would be drawn)
 	ui.draw_tree(active_window(app).ui, &app.dc)
 	dnd_paint(app, &app.dc)   // dnd_image.odin: the picture of a drag from the page, over everything
 	autoscroll_paint(app, &app.dc)   // page_autoscroll.odin: the autoscroll anchor marker, over everything
@@ -1621,6 +1659,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 		draw.damage(&app.dc, caret.at)
 	}
 	own.status_drawn = app.hud.changes
+	pixels_skip_frame(app)   // headless_pixels.odin: a test that reads no pixel
 	prof_begin(.Submit)
 	draw.end_frame(&app.dc)   // GPU time: the renderer's timestamp queries around its submit (hud.odin, prof.odin)
 	prof_end(.Submit)
@@ -1685,9 +1724,7 @@ main :: proc() {
 headless_software: bool   // (read once, by the app_start of this thread)
 
 app_start :: proc(args: []string) -> ^App {
-	app := new(App)
-	the_app = app
-	page.bind(&app.pages)   // (this thread runs the App's pages)
+	app := app_make()   // app_make.odin: the stages of the App, shared with the tests and the chrome world
 	frame_gate_init()   // windows.odin: the frames of this thread, one state machine
 	platform.dragdrop_thread_init()   // OLE on this thread before any decoder joins it to the multithreaded apartment (dnd_shell.odin)
 
@@ -1716,7 +1753,7 @@ app_start :: proc(args: []string) -> ^App {
 	// window on the user's desktop
 	if hidden_mode && !platform.can_hide_windows() { hidden_mode, headless_mode = false, true }
 	cdp_port, cdp_have_port, cdp_address, a9 := cdp_extract_args(a8[:])   // --remote-debugging-port[=N] / --remote-debugging-address (cdp.odin)
-	app.prefs = config.prefs_make()
+	app_prefs_begin(app)
 	rest, arg_errors := config.apply_args(&app.prefs, a9[:], context.temp_allocator)   // (read before the first frame)
 	cfg_dir := platform.config_dir(context.temp_allocator)
 	portable_dir := profile_override == "" ? portable_profile_dir() : ""   // a copy with wren.portable beside it keeps its profile beside it (setup.odin)
@@ -1738,10 +1775,8 @@ app_start :: proc(args: []string) -> ^App {
 	config.load_file(&app.prefs, prefs_file, .User)
 	if policy_file == "" { policy_file = default_policy_file(process.executable_path(context.temp_allocator)) }   // beside the program, not in the working directory (policy_file.odin)
 	if policy_file != "" { config.load_file(&app.prefs, policy_file, .Policy) }
-	register_all_prefs(&app.prefs)
-	if app.private { private_prefs_apply(&app.prefs) }   // nothing written for later, no session restored
-	app.cfg = settings_from_prefs(&app.prefs)
-	memory_trim_settings(app, &app.prefs)   // memory_trim.odin
+	app_prefs_register(app)   // (and a private Wren's own values)
+	app_settings_read(app)
 	prof_mark(.Prefs)
 	if cli_bad != "" { process.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove, status or uninstall)\n", cli_bad)); os.exit(2) }
 	// `ctl` as an address is nearly always `wren ctl ...` meant for the remote control client that did not run as such (an option before it:
@@ -1763,7 +1798,7 @@ app_start :: proc(args: []string) -> ^App {
 	// page machinery and the first navigation, whose loads run on their own threads meanwhile.
 	host.phase("device and fonts started")
 	_ = render.preload_device(warp = headless_mode && headless_software)   // (the kind of device the renderer asks for below)
-	font.init(&app.fonts, font_settings_from_prefs(&app.prefs))
+	app_fonts_init(app)
 	preload := fonts_preload_start(app)   // the font state is the preload thread's until fonts_preload_finish
 	app.headless = headless_mode
 	app.hidden = hidden_mode
@@ -1785,14 +1820,14 @@ app_start :: proc(args: []string) -> ^App {
 	prof_mark(.Window)
 
 	host.phase("loop, network, cache, blocker")
-	host.loop_init(&app.loop, wake_window, app)   // (any thread wakes it: the App is its user)
+	app_loop_init(app, wake_window, app)   // (any thread wakes it: the App is its user)
 	instance_begin(app)   // instance_shell.odin: the window that takes the second starts' addresses
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	appearance_init(app)   // before any settings are derived: `system` colors, auto color scheme
 	ns := net.settings_from_prefs(&app.prefs)
 	if !net.client_init(&app.client, &app.loop, ns) { fmt.eprintln("network init failed"); return nil }
 	net.settings_destroy(&ns)
-	host.blocking_init(&app.blocking, &app.loop, app.cfg.blocking_threads)
+	app_pools_init(app, app.cfg.blocking_threads)
 	host.dialogs_init(&app.dialogs, &app.loop)
 	app.profile = fetch.profile_make(fetch.settings_from_prefs(&app.prefs), cookies.settings_from_prefs(&app.prefs))
 	http_cache_start(app)   // http_cache_ui.odin: the profile's HTTP cache (its index loads on a thread meanwhile)
@@ -1865,11 +1900,10 @@ app_start :: proc(args: []string) -> ^App {
 	if !fonts_preload_finish(app, preload) { fmt.eprintln("cannot load the UI or icon font"); return nil }
 	prof_mark(.UI_Fonts)
 	host.phase("draw, ui, page render, shells")
-	draw.init(&app.dc, &app.r, &app.fonts)
+	app_draw_init(app)
 	draw.set_partial_redraw(&app.dc, true)   // a frame that marks a region draws only that (a caret's toggle: frame()); others are whole
-	ui.init(active_window(app).ui, &app.fonts, &app.theme)
+	app_ui_init(app)
 	chrome_a11y_init()   // (what screen readers call the caption buttons: a11y_chrome.odin)
-	active_window(app).ui.icon_font = app.icons
 	page_render_init(app)
 	first_paint_init(app)
 	interaction_init(app)
@@ -1891,9 +1925,7 @@ app_start :: proc(args: []string) -> ^App {
 	autoscroll_init(app)   // page_autoscroll.odin (syncs every window's toolkit regions)
 	autoscroll_toolkit_setup(app, active_window(app).ui)
 	page_cursor_init(app)
-	window_chrome_init(app)
-	chrome_style_init(app)   // chrome_style.odin
-	favicons_init(app)   // favicon.odin
+	app_interface_init(app)   // app_make.odin: the window's chrome, its style, the tabs' icons, the status bar, the developer tools, the address bar
 	art_init(app)   // newtab_art.odin: the artistic new tab (no network until the first art new tab is shown)
 	downloads_init(app)   // download.odin
 	webauthn_shell_init(app)   // webauthn_shell.odin
@@ -1906,9 +1938,6 @@ app_start :: proc(args: []string) -> ^App {
 	clipboard_js_init(app)   // clipboard_win.odin: navigator.clipboard
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
-	hud_init(app)
-	devtools_init(app)   // devtools.odin
-	urlbar_init(app)   // urlbar.odin: the address bar's suggestions
 	host.phase("first windows")
 	app.last_tick = time.tick_now()
 	active_window(app).frames_requested = 4
@@ -2031,7 +2060,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("host.dialogs_destroy")
 	host.dialogs_destroy(&app.dialogs)   // (a dialog still open is let go: nobody waits for its answer)
 	host.shutdown_step("host.blocking_destroy")
-	host.blocking_destroy(&app.blocking)
+	app_pools_end(app)
 	host.shutdown_step("downloads_shutdown")
 	downloads_shutdown(app)   // (no write or dialog of theirs is running any more)
 	host.shutdown_step("net.client_destroy")
@@ -2055,6 +2084,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("window_chrome_destroy")
 	window_chrome_destroy(app)
 	chrome_style_destroy(app)
+	app.made -= {.Interface}   // (its parts went one by one above, each where the teardown needs it; the command registry goes with the palette)
 	host.shutdown_step("pacer_destroy")
 	pacer_destroy(app)
 	host.shutdown_step("font.set_color_ready_callback")
@@ -2064,7 +2094,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("page.discard_page_tasks")
 	page.discard_page_tasks(&app.loop)   // the tasks of pages that were queued and never ran free their data
 	host.shutdown_step("host.loop_destroy")
-	host.loop_destroy(&app.loop)
+	app_loop_end(app)
 	host.shutdown_step("page.frames_shutdown")
 	page.frames_shutdown()   // the registry of navigables (every page is closed): a top-level page asks for its navigable on first use
 	host.shutdown_step("page stores")
@@ -2094,28 +2124,18 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("palette_destroy")
 	palette_destroy(app)   // palette.odin (and the command registry)
 	host.shutdown_step("ui.destroy")
-	windows_destroy_ui(app)
-	host.shutdown_step("ui.theme_destroy")
-	ui.theme_destroy(&app.theme)
-	host.shutdown_step("draw.destroy")
-	draw.destroy(&app.dc)
+	app_ui_end(app)   // (the windows' toolkit states, the theme)
 	host.shutdown_step("render.destroy")
-	windows_destroy_surfaces(app)
-	render.destroy(&app.r)
+	app_renderer_end(app)   // (the drawing context, the windows' swap chains, the renderer)
 	host.shutdown_step("font.destroy")
 	fonts_color_join(app)
-	font.destroy(&app.fonts)
+	app_fonts_end(app)
 	host.shutdown_step("platform.destroy_window")
-	windows_destroy(app)
+	app_windows_end(app)
 	page.settings_destroy(&app.page_settings)
-	delete(app.cfg.homepage)
-	delete(app.cfg.ui_theme)
-	config.prefs_destroy(&app.prefs)
 	if app.private { base.remove_tree(app.profile_dir) }   // (a private Wren's profile goes with it)
 	delete(app.profile_dir)
-	delete(app.bare.tabs)
-	free(app)
-	the_app = nil
+	app_free(app)   // app_make.odin: the preferences, and the App
 	host.shutdown_step("instance_release")
 	instance_release()   // instance_shell.odin: the profile is written and free: a start that waited becomes the owner (before the watchdog's stop, which can wait for its next tick)
 	host.shutdown_step("shutdown_end")

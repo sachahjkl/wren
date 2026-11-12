@@ -82,7 +82,7 @@ a_caret_draws_its_own_pixels_on_the_software_rasterizer :: proc(t: ^testing.T) {
 
 // (`hidden`: on a real window's swap chain, real_window.odin.)
 caret_draws_its_own_pixels :: proc(t: ^testing.T, hidden := false, software := false) {
-	s := e2e.start(t, {url = e2e.file_page(e2e.temp_folder(t), "field.html", FIELD_PAGE), prefs = {STATUS_WINDOW_PREF, CARET_PREF}, hidden = hidden, software = software})
+	s := e2e.start(t, {url = e2e.file_page(e2e.temp_folder(t), "field.html", FIELD_PAGE), prefs = {STATUS_WINDOW_PREF, CARET_PREF}, hidden = hidden, software = software, pixels = true})
 	e2e.wait_idle(s)
 	e2e.click(s, "#f")
 	e2e.wait_at_rest(s, moving_ok = true)
@@ -103,9 +103,14 @@ caret_draws_its_own_pixels :: proc(t: ^testing.T, hidden := false, software := f
 
 // The address bar's caret, a field of the interface: frames at its flips, no more; whole ones, the interface does not say what it changed. (A count against the time gone by:
 // a slow machine makes fewer, never more.)
+// (Without the status bar: a flip is a whole frame, so it is a sample of the status bar, whose numbers then fall to rest in a frame of their
+// own when that frame took long. That is the status bar's frame, not the caret's, and only a slow machine shows it: a runner drew 5 frames
+// for 3 flips.)
+@(private = "file") NO_STATUS_BAR :: "browser.status_bar.visible=false"
+
 @(test)
 the_address_bars_caret_draws_at_its_flips :: proc(t: ^testing.T) {
-	s := e2e.start(t, {url = "about:blank", prefs = {STATUS_WINDOW_PREF}})
+	s := e2e.start(t, {url = "about:blank", prefs = {STATUS_WINDOW_PREF, NO_STATUS_BAR}})
 	e2e.wait_idle(s)
 	e2e.wait_at_rest(s)   // (what a start still has to draw is not the caret's)
 	e2e.address_bar_open(s)

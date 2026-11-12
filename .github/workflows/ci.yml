@@ -14,9 +14,26 @@ permissions:
   contents: read
 
 jobs:
+  # The tests of Windows on three runners side by side (test_all -Group, Step.group in src\tools\test_all\steps.odin). One runner is bound
+  # by its four processors: -Jobs 3 and 4 were slower than 2 (the steps compile and test, they do not wait), so more runners are the only
+  # way to more parallelism (docs/test-review.md, 3.1). On one runner the run took 34 min and 6800 s of CPU: the check build and what runs
+  # on it about 1800 s, the end-to-end tests of the browser's shell about 2700 s, the rest about 2300 s. Each job pays the setup; what they
+  # build in common (the native libraries, the engine, the test server) comes from the caches of the setup action, and a group brings the
+  # builds it needs with it.
+  # Two steps of test_all at a time (-Jobs 0 is two under -CI; the end-to-end timeouts of -CI are three times the usual). The checks that
+  # failed under three at a time (the wasm preemption tick count, a 50 000 element innerHTML under its 20 s limit, a font edge of canvas2d)
+  # are not run here any more or read a stronger pixel; one that fails again under the load depends on the machine's speed and goes behind
+  # -Perf. The end-to-end scenarios run on the runner's software rasterizer; those that cost too much there, or do not hold there, say why at
+  # their step (.No_CI). A pull request does not run again what has passed with exactly the same inputs (src\tools\test_all\cache.odin);
+  # master, and a run by hand, always run everything.
   build-and-test:
+    name: windows (${{ matrix.group }})
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [check, shell, other]
     runs-on: windows-2025
-    timeout-minutes: 90
+    timeout-minutes: 75
     defaults:
       run:
         shell: pwsh
@@ -27,20 +44,28 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      # A few seconds: every fragment of changelog.d is well formed and none was already released (CONTRIBUTING.md); then the
-      # tool's own tests.
-      - name: CHANGELOG fragments (wrentool changelog -Check)
+      # (once: the steps below use this file; the check group needs none of them)
+      - name: wrentool
+        if: matrix.group != 'check'
         run: |
           New-Item -ItemType Directory -Force build | Out-Null
           odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe
           if ($LASTEXITCODE) { exit 1 }
+
+      # A few seconds: every fragment of changelog.d is well formed and none was already released (CONTRIBUTING.md); then the tool's own tests.
+      - name: CHANGELOG fragments (wrentool changelog -Check)
+        if: matrix.group == 'other'
+        run: |
           build/wrentool changelog -Check
           if ($LASTEXITCODE) { exit 1 }
           odin test src/tools/wrentool/changelog -collection:wb=src -vet -out:build/changelog_test.exe
           if ($LASTEXITCODE) { exit 1 }
+
       # The build takes one to two minutes here (dependencies from the caches). A build that runs for 20 minutes is a defect (a local
-      # render.Surface in window_open once kept the -o:speed -debug codegen of one module going past the job's 90 minutes): it fails.
+      # render.Surface in window_open once kept the -o:speed -debug codegen of one module going past the job's limit): it fails. The check
+      # group builds only the check build, inside test_all.
       - name: Build (optimized, development channel)
+        if: matrix.group != 'check'
         timeout-minutes: 20
         run: |
           $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -49,47 +74,69 @@ jobs:
           "wrentool build took {0:N0} s" -f $sw.Elapsed.TotalSeconds
           exit $code
 
-      # Two steps of test_all at a time (-Jobs 0 is two under -CI; the end-to-end timeouts of -CI are three times the usual). Measured on this runner
-      # (4 vCPU) with the same steps: two at a time 514 s; three 539 s with three checks failing under the load; four 765 s, the sum of the steps'
-      # durations doubled (1 280 s to 2 580 s): the steps compile and test, they do not wait, and they slow each other down on four cores. The checks
-      # that failed under three (the wasm preemption tick count, a 50 000 element innerHTML under its 20 s limit, a font edge of canvas2d) are not run
-      # here any more or read a stronger pixel; one that fails again under the load depends on the machine's speed and goes behind -Perf. The AddressSanitizer unit tests
-      # are the long step (six minutes one package after the other): the `asan` job below runs them beside this one, three packages at a time.
-      # The end-to-end scenarios run here too, on the runner's software rasterizer; those that cost too much there, or do not hold there, say why at their step (.No_CI in src\tools\test_all\steps.odin).
-      # The tests that measure time are not run here (the runner's speed is unknown): `test_all -Perf` is for our own machines, and is ignored when CI is set.
-      # A pull request does not run again what has passed with exactly the same inputs (src\tools\test_all\cache.odin: results by the content of what a step reads, its text, its flags and Odin's
-      # version); master, and a run by hand, always run everything: a result never comes from a cache there.
       - name: Results of earlier runs of this pull request's steps
         if: github.event_name == 'pull_request'
         uses: actions/cache@v4
         with:
           path: build/test_cache
-          key: test-results-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: test-results-${{ github.event.pull_request.number }}-
+          key: test-results-${{ github.event.pull_request.number }}-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: test-results-${{ github.event.pull_request.number }}-${{ matrix.group }}-
 
-      - name: Tests (src\tools\test_all -CI -NoAsan)
+      # The durations of the last run: the order of this one (the longest path first) and the limit of each step (ten times its duration,
+      # at least 120 s): a step that hangs costs minutes, not -StepTimeoutSec.
+      - name: Durations of the last run
+        uses: actions/cache/restore@v4
+        with:
+          path: build/test_all_times.txt
+          key: test-times-windows-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: test-times-windows-${{ matrix.group }}-
+
+      # A run that fails for one cause fails in minutes: a step has a limit from its last duration, after five steps that ran out of
+      # time no new step starts, and past -RunTimeoutSec what runs is stopped and the report written, before this step's own limit.
+      - name: Tests (src\tools\test_all -CI -NoAsan -Group ${{ matrix.group }})
         shell: cmd
+        timeout-minutes: 45
         env:
           WREN_CI_CACHE: ${{ github.event_name == 'pull_request' && '-Cache' || '' }}
         run: |
           odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all.exe || exit /b 1
-          build\test_all.exe -CI -NoAsan -Except "^test262" %WREN_CI_CACHE%
+          build\test_all.exe -CI -NoAsan -Group ${{ matrix.group }} -Except "^test262" -RunTimeoutSec 2400 %WREN_CI_CACHE%
 
-      # what the JavaScript conformance steps of test_all measured (WPT sample per folder, test262 failures)
+      - name: Durations of this run
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build/test_all_times.txt
+          key: test-times-windows-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      # Every step's log, passed or not, and the pictures of the end-to-end tests that failed: a cancelled or timed out job leaves them too.
       - uses: actions/upload-artifact@v4
         if: always()
+        with:
+          name: test-logs-windows-${{ matrix.group }}-${{ github.sha }}
+          path: |
+            build/test_logs
+            build/test_report.txt
+            build/test_steps.tsv
+            build/e2e/*/failure*
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 14
+
+      # what the JavaScript conformance steps of test_all measured (WPT sample per folder)
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.group == 'other'
         with:
           name: js-conformance-${{ github.sha }}
           path: |
             build/wpt/report.md
             build/wpt/results.txt
-            build/test262/wasm_errors.txt
           if-no-files-found: ignore
           retention-days: 14
 
       # what the memory checks of test_all found (the check build's leak reports, the endurance curves)
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && matrix.group == 'check'
         with:
           name: memory-checks-${{ github.sha }}
           path: |
@@ -101,12 +148,12 @@ jobs:
           retention-days: 14
 
       - name: Package (smoke test of wrentool package)
+        if: matrix.group == 'other'
         shell: cmd
-        run: |
-          odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe || exit /b 1
-          build\wrentool.exe package -Dev -Extras
+        run: build\wrentool.exe package -Dev -Extras
 
       - uses: actions/upload-artifact@v4
+        if: matrix.group == 'other'
         with:
           name: wren-windows-x64-${{ github.sha }}
           path: build/dist/*.zip
@@ -114,13 +161,14 @@ jobs:
 
       # the build's map (wrentool symbols): names the frames of its crash reports (wrentool crash-symbolize); not in the package
       - uses: actions/upload-artifact@v4
+        if: matrix.group == 'other'
         with:
           name: wren-symbols-${{ github.sha }}
           path: build/dist/symbols/*.map
           retention-days: 14
 
   # The unit tests of every package under AddressSanitizer (src\tools\test_all\asan.odin): what test_all -CI runs without -NoAsan. A job of its own, so that
-  # the wall clock of a run is the longer of the two, not their sum. It builds the browser's dependencies as the first job does (the caches
+  # the wall clock of a run is the longest job, not the sum. It builds the browser's dependencies as the first job does (the caches
   # are shared: the second to start restores what the first saved, or builds the same), because the links read the libraries the browser links.
   asan:
     runs-on: windows-2025
@@ -149,9 +197,22 @@ jobs:
 
       - name: Unit tests under AddressSanitizer (src\tools\test_all -Only AddressSanitizer)
         shell: cmd
+        timeout-minutes: 35
         run: |
           odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all.exe || exit /b 1
-          build\test_all.exe -CI -Only "AddressSanitizer"
+          build\test_all.exe -CI -Only "AddressSanitizer" -RunTimeoutSec 1800
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-logs-asan-${{ github.sha }}
+          path: |
+            build/test_logs
+            build/test_report.txt
+            build/test_steps.tsv
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 14
 
   # test262, interpreted and with the JIT: the longest step of test_all on this runner (390 to 460 s of 850 to 1040, two steps at a time; 200 s of CPU on any machine). A job of its own, as the
   # AddressSanitizer one: the wall clock of a run is the longest job, and this one needs no browser.
@@ -178,22 +239,34 @@ jobs:
 
       - name: test262 (src\tools\test_all -CI -Only "^test262")
         shell: cmd
+        timeout-minutes: 30
         run: |
           odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all.exe || exit /b 1
-          build\test_all.exe -CI -NoAsan -Only "^test262"
+          build\test_all.exe -CI -NoAsan -Only "^test262" -RunTimeoutSec 1560
 
-  # The packages that are portable already (docs/portability.md): odin check for Linux and their unit tests, without a
-  # window. Every download pinned as on Windows: Odin by SHA-256 here, Wasmtime in src/tools/wrentool/deps/fetch.odin, crates by
-  # Cargo.lock (--locked), Rust by version.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-logs-test262-${{ github.sha }}
+          path: |
+            build/test_logs
+            build/test_report.txt
+            build/test_steps.tsv
+            build/test262/wasm_errors.txt
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 14
+
+  # The packages that are portable already (docs/portability.md): odin check for Linux and their unit tests, without a window. Debian 12
+  # (bookworm): its packages from deb.debian.org, not from the runner's Ubuntu mirrors (their DNS failed for hours), and its glibc 2.36:
+  # the oldest the Linux build then needs. Its clang 14 stops on the Wasmtime release ("LLVM ERROR: Invalid encoding"): clang, lld and
+  # wasm-ld 18 from LLVM's own packages for bookworm (apt.llvm.org). Before the checkout: it needs git for the submodules. (The same
+  # packages in the job below: a composite action is read from the checkout, which needs them first.)
   linux:
     runs-on: ubuntu-24.04
     container: debian:bookworm
     timeout-minutes: 45
     steps:
-      # Debian 12 (bookworm): its packages from deb.debian.org, not from the runner's Ubuntu mirrors (their DNS failed for hours),
-      # and its glibc 2.36: the oldest the Linux build then needs. Its clang 14 stops on the Wasmtime release ("LLVM ERROR:
-      # Invalid encoding"): clang, lld and wasm-ld 18 from LLVM's own packages for bookworm (apt.llvm.org). First: checkout
-      # needs git for the submodules.
       - name: Debian's packages, LLVM 18
         run: |
           apt-get update -qq && apt-get install -y -qq --no-install-recommends git ca-certificates curl jq xz-utils zstd unzip nasm pkg-config libasound2-dev libopus-dev libfontconfig1-dev xvfb mesa-vulkan-drivers libxkbcommon-x11-0 libxkbcommon0 libwayland-client0 xauth procps >/dev/null
@@ -207,57 +280,81 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Odin dev-2026-11a
-        env:
-          ODIN_TAG: dev-2026-11a
-          ODIN_SHA256: 65c9f6e97d6f8a30930e151f270ce5aeaa98fe8b2ba49fe067394e2af04f7618
-        run: |
-          # (tried again on an error of the network or of GitHub, a 504 at times: the digest below says whether what came is the archive)
-          curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o "$RUNNER_TEMP/odin.tar.gz" "https://github.com/odin-lang/Odin/releases/download/$ODIN_TAG/odin-linux-amd64-$ODIN_TAG.tar.gz"
-          echo "$ODIN_SHA256  $RUNNER_TEMP/odin.tar.gz" | sha256sum -c -
-          mkdir -p "$RUNNER_TEMP/odin" && tar -xzf "$RUNNER_TEMP/odin.tar.gz" -C "$RUNNER_TEMP/odin"
-          dirname "$(find "$RUNNER_TEMP/odin" -maxdepth 2 -name odin -type f | head -1)" >> "$GITHUB_PATH"
+      - uses: ./.github/actions/setup-linux
 
-      - name: Rust 1.99.1
-        run: |
-          # (rustup itself: the container has none; its homes named, in a container $HOME is not the user's)
-          export RUSTUP_HOME="$HOME/.rustup" CARGO_HOME="$HOME/.cargo"
-          echo "RUSTUP_HOME=$RUSTUP_HOME" >> "$GITHUB_ENV"; echo "CARGO_HOME=$CARGO_HOME" >> "$GITHUB_ENV"
-          curl -fsSL --retry 5 --retry-delay 10 --retry-all-errors https://sh.rustup.rs | sh -s -- -y -q --profile minimal --default-toolchain 1.99.1
-          echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
-
-      - name: Cache the Rust library and its compiled crates
-        uses: actions/cache@v4
+      - name: Durations of the last run
+        uses: actions/cache/restore@v4
         with:
-          path: |
-            build/native-linux
-            ~/.cargo/registry
-          key: native-linux-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/**/*.rs', 'native/**/Cargo.toml', 'src/tools/wrentool/deps/native.odin') }}
-          restore-keys: native-linux-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-
-
-      # (the Rust library with the toolkit's text backend and accessibility adapter, as build.sh builds it: the browser's tests that run here shape text)
-      - name: Native libraries (Wasmtime, Lexbor, the Rust library)
-        run: |
-          mkdir -p build
-          odin build src/tools/wrentool -collection:wb=src -out:build/wrentool
-          build/wrentool fetch wasmtime
-          build/wrentool fetch wgpu
-          CC=clang build/wrentool build lexbor
-          build/wrentool build native -Profile quick -Features text,a11y
-          # the JavaScript engine (build.sh deps): its pre-initialization needs the 64 MiB stack, its linker is lld's wasm-ld
-          ( ulimit -s 65536 && odin run src/tools/buildjs -collection:wb=src -out:build/buildjs )
+          path: build/test_all_times.txt
+          key: test-times-linux-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: test-times-linux-
 
       - name: odin check and unit tests (src/tools/test_all)
+        timeout-minutes: 25
         run: |
           mkdir -p build
           odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all
-          build/test_all -CI
+          build/test_all -CI -RunTimeoutSec 1320
+
+      - name: Durations of this run
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build/test_all_times.txt
+          key: test-times-linux-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Crash reports end to end (wrentool crash-e2e)
+        timeout-minutes: 10
         run: build/wrentool crash-e2e
 
-      # (the check build: free and realloc of the whole program poison and keep what is freed, src/base/poison_linux.odin; the pages of this repository, no network)
-      - name: Local pages with freed memory poisoned (wrentool sweep)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-logs-linux-${{ github.sha }}
+          path: |
+            build/test_logs
+            build/test_report.txt
+            build/test_steps.tsv
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 14
+
+  # The check build on Linux (free and realloc of the whole program poison and keep what is freed, src/base/poison_linux.odin) and the pages
+  # of this repository visited on it, no network: a job of its own, so that the job above does not wait for a whole check build and its
+  # sweep (docs/test-review.md, 4.2).
+  linux-sweep:
+    runs-on: ubuntu-24.04
+    container: debian:bookworm
+    timeout-minutes: 45
+    steps:
+      - name: Debian's packages, LLVM 18
         run: |
-          ./build.sh check
-          xvfb-run -a build/wrentool sweep -List tools/sweep_local.txt -Exe build/wren_check -OutDir build/sweep_local -CloseMs 60000 -PingMs 60000
+          apt-get update -qq && apt-get install -y -qq --no-install-recommends git ca-certificates curl jq xz-utils zstd unzip nasm pkg-config libasound2-dev libopus-dev libfontconfig1-dev xvfb mesa-vulkan-drivers libxkbcommon-x11-0 libxkbcommon0 libwayland-client0 xauth procps >/dev/null
+          curl -fsSL --retry 5 --retry-all-errors https://apt.llvm.org/llvm-snapshot.gpg.key > /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          echo "deb http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-18 main" > /etc/apt/sources.list.d/llvm.list
+          apt-get update -qq && apt-get install -y -qq --no-install-recommends clang-18 lld-18 >/dev/null
+          for t in clang clang++ ld.lld lld wasm-ld llvm-ar; do ln -sf "/usr/bin/$t-18" "/usr/local/bin/$t"; done
+          ln -sf /usr/bin/clang-18 /usr/local/bin/cc; ln -sf /usr/bin/clang++-18 /usr/local/bin/c++   # (what cargo's build scripts call)
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: ./.github/actions/setup-linux
+
+      - name: The check build (./build.sh check)
+        timeout-minutes: 20
+        run: ./build.sh check
+
+      - name: Local pages with freed memory poisoned (wrentool sweep)
+        timeout-minutes: 30
+        run: xvfb-run -a build/wrentool sweep -List tools/sweep_local.txt -Exe build/wren_check -OutDir build/sweep_local -CloseMs 60000 -PingMs 60000
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sweep-linux-${{ github.sha }}
+          path: build/sweep_local
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 14

@@ -228,7 +228,7 @@ RUST_CRATES_HEAD :: "Rust crates of native/ (wren_native.lib, linked into wren.e
 
 // Every Rust crate linked into the library, with its license and source, from cargo metadata of the locked graph (all features: the release's text backend is an optional one). wren.exe embeds the file (about:licenses).
 rust_crates_text :: proc() -> (text: string, ok: bool) {
-	text_out, code := tooling.capture({"cargo", "metadata", "--quiet", "--manifest-path", "native/Cargo.toml", "--format-version", "1", "--locked", "--all-features"}, allocator = context.temp_allocator)
+	text_out, code := tooling.capture({"cargo", "metadata", "--quiet", "--manifest-path", "native/Cargo.toml", "--format-version", "1", "--locked", "--all-features"}, allocator = context.temp_allocator, limit = 0)   // (it may fetch the registry's index)
 	if code != 0 { fmt.eprintln("cargo metadata failed"); return "", false }
 	data := transmute([]u8)text_out[max(strings.index_byte(text_out, '{'), 0):]
 	v, perr := json.parse(data, allocator = context.temp_allocator)
@@ -493,7 +493,7 @@ run_portability :: proc(args: []string) -> int {
 		cmd := make([dynamic]string, context.temp_allocator)
 		append(&cmd, tooling.odin_program(), "check", p, fmt.tprintf("-target:%s", target))
 		append(&cmd, ..PORTABILITY_FLAGS)
-		text, code := tooling.capture(cmd[:], allocator = context.temp_allocator)
+		text, code := tooling.capture(cmd[:], allocator = context.temp_allocator, limit = 0)   // (a check of a whole package: minutes under load)
 		own, total := 0, 0
 		for line in strings.split_lines(text, context.temp_allocator) {
 			if !strings.contains(line, ") Error:") && !strings.contains(line, ") Syntax Error:") { continue }

@@ -69,7 +69,7 @@ drag_splitter :: proc(s: ^e2e.Session, t: ^testing.T, panel, dock: string, loc :
 @(private = "file")
 split_both_sides :: proc(t: ^testing.T, panel: string, loc := #caller_location) {
 	page := e2e.file_page(e2e.temp_folder(t), "static.html", STILL_PAGE)
-	options := e2e.Options{size = SPLIT_SIZE, dpi = SPLIT_DPI, url = page, prefs = {"browser.devtools.visible=true", fmt.tprintf("browser.devtools.tab=%s", panel), "browser.devtools.dock=right"}}
+	options := e2e.Options{pixels = true, size = SPLIT_SIZE, dpi = SPLIT_DPI, url = page, prefs = {"browser.devtools.visible=true", fmt.tprintf("browser.devtools.tab=%s", panel), "browser.devtools.dock=right"}}
 	s := e2e.start(t, options, loc)
 	drag_splitter(s, t, panel, "right", loc)
 	options.prefs = {"browser.devtools.visible=true", fmt.tprintf("browser.devtools.tab=%s", panel), "browser.devtools.dock=left"}
@@ -93,7 +93,7 @@ devtools_bottom_beside_the_tabs_sidebar :: proc(t: ^testing.T) {
 	page := e2e.file_page(e2e.temp_folder(t), "static.html", STILL_PAGE)
 	s: ^e2e.Session
 	for side in ([]string{"left", "right"}) {
-		options := e2e.Options{size = SPLIT_SIZE, dpi = SPLIT_DPI, url = page, prefs = {"browser.devtools.visible=true", "browser.devtools.tab=console", "browser.devtools.dock=bottom", fmt.tprintf("browser.tabs.position=%s", side)}}
+		options := e2e.Options{pixels = true, size = SPLIT_SIZE, dpi = SPLIT_DPI, url = page, prefs = {"browser.devtools.visible=true", "browser.devtools.tab=console", "browser.devtools.dock=bottom", fmt.tprintf("browser.tabs.position=%s", side)}}
 		s = s == nil ? e2e.start(t, options) : e2e.restart(s, options)
 		e2e.wait_chrome_still(s)
 		st := e2e.stats(s)

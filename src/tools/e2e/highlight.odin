@@ -40,7 +40,7 @@ after :: proc(s: ^e2e.Session, script: string) -> e2e.Image {
 
 @(test)
 a_highlight_is_painted_and_follows_its_ranges :: proc(t: ^testing.T) {
-	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, url = e2e.file_url(fmt.tprintf("%s/examples/site/highlight.html", e2e.repo_root()))})
+	s := e2e.start(t, {pixels = true, size = SIZE, dpi = e2e.DPI_ONE, url = e2e.file_url(fmt.tprintf("%s/examples/site/highlight.html", e2e.repo_root()))})
 	defer e2e.stop(s)
 	e2e.wait_idle(s)
 	e2e.wait_frames(s)

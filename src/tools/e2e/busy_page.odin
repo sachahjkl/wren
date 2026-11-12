@@ -17,6 +17,7 @@ package e2e_scenarios
 //   * the focused field's caret blinks under the task.
 
 import "core:fmt"
+import "core:strings"
 import "core:testing"
 import "wb:e2e"
 
@@ -53,11 +54,9 @@ import "wb:e2e"
 @(private = "file") SLID_LEAST :: 40            // px the box moved between them, at least (half what the clock gives)
 @(private = "file") FADED_LEAST :: 10           // the faded box's red channel rose this much, at least (white shows through)
 @(private = "file") BOX_COLOR :: [3]u8{0x00, 0x88, 0xaa}   // .moving's background
-@(private = "file") CLOCK_WITHIN_MS :: 150      // the animation's currentTime once the task ran, against the time since it began
-// The caret: a short half period, pictures closer than it over two periods (both phases are seen whatever the timing).
+// The caret: one picture in the middle of each half period, on the test's clock (e2e.busy_clock): shown, hidden, shown...
 @(private = "file") CARET_BLINK_MS :: 200
 @(private = "file") CARET_SHOTS :: 6
-@(private = "file") CARET_GAP_MS :: 90
 // The scroll box: the wheel over it, then its thumb.
 @(private = "file") BOX_THUMB_GRAB :: 4      // below its bar's top arrow (CSS px): on the thumb, short as it is (40 lines in the box)
 @(private = "file") BOX_THUMB_MOVE :: 40
@@ -67,7 +66,7 @@ open :: proc(t: ^testing.T, extra: []string = nil, loc := #caller_location) -> ^
 	prefs := make([dynamic]string, context.temp_allocator)
 	append(&prefs, fmt.tprintf("browser.selection.background=%s", HIGHLIGHT), fmt.tprintf("browser.selection.inactive_background=%s", HIGHLIGHT))
 	append(&prefs, ..extra)
-	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, prefs = prefs[:], url = e2e.file_url(fmt.tprintf("%s/examples/site/busy_probe.html", e2e.repo_root()))}, loc)
+	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, pixels = true, prefs = prefs[:], url = e2e.file_url(fmt.tprintf("%s/examples/site/busy_probe.html", e2e.repo_root()))}, loc)
 	e2e.wait_idle(s)
 	e2e.eval(s, "for (const e of document.querySelectorAll('.moving')) e.style.animation = 'none'; 1")   // (two pictures of the page are alike)
 	e2e.wait_frames(s)
@@ -347,8 +346,9 @@ animations_of_transform_and_opacity_go_on_while_the_page_is_busy :: proc(t: ^tes
 	r0, r1 := int(e2e.pixel(shots[0], int(mid.x), int(mid.y))[0]), int(e2e.pixel(shots[1], int(mid.x), int(mid.y))[0])
 	testing.expectf(t, r1 - r0 >= FADED_LEAST, "the fade goes on under the task: red %d, then %d", r0, r1)
 	// the page's turn: its timeline went by the same clock (the chrome frames did not move it), and the box goes on from there
-	off := e2e.eval_f64(s, `document.getElementById("hoverbox").getAnimations()[0].currentTime - (performance.now() - window.began)`)
-	testing.expectf(t, abs(off) <= CLOCK_WITHIN_MS, "the animation's time at the page's turn is the clock's: %v ms off", off)
+	// (two orders, not a window: the frame the page last had is a moment that the machine's load decides)
+	times := e2e.eval(s, fmt.tprintf(`(() => {{ const at = document.getElementById("hoverbox").getAnimations()[0].currentTime, since = performance.now() - window.began; return at + " " + since + " " + (at >= %d && at <= since + 1); }})()`, ANIM_WAIT_MS))
+	testing.expectf(t, strings.has_suffix(times, " true"), "the animation's time at the page's turn is the clock's: past the wait under the task, not past the time since it began (time, since: %s)", times)
 	after := e2e.capture(s, {target = .Window})
 	testing.expectf(t, box_left(after, row, int(slid.x) - 1) >= x1, "no jump back once the page has its turn: at x %d, %d under the task", box_left(after, row, int(slid.x) - 1), x1)
 }
@@ -403,13 +403,16 @@ caret_blinks :: proc(t: ^testing.T, hold: string) {
 	short := false
 	field := e2e.box_model(s, "#field")
 	e2e.click_at(s, e2e.center(field.box))
+	// (the time since the caret's blink began is the step's: each picture is of a known phase, whatever the frames took)
 	steps := make([dynamic]e2e.Busy_Step, context.temp_allocator)
 	for i in 0 ..< CARET_SHOTS {
-		if i > 0 { append(&steps, e2e.busy_wait(CARET_GAP_MS)) }
-		append(&steps, e2e.busy_capture())
+		append(&steps, e2e.busy_clock(f64(i * CARET_BLINK_MS + CARET_BLINK_MS / 2)), e2e.busy_capture())
 	}
 	shots := while_held(s, &short, steps[:], hold)
-	toggled := 0
-	for sh in shots[1:] { if differing(shots[0], sh, field.window) > 0 { toggled += 1 } }
-	testing.expectf(t, toggled > 0, "the caret blinks under the task: %d of %d pictures differ from the first", toggled, len(shots) - 1)
+	if !testing.expectf(t, len(shots) == CARET_SHOTS, "a picture of each phase: %d of %d", len(shots), CARET_SHOTS) { return }
+	for sh, i in shots[1:] {
+		hidden := (i + 1) % 2 == 1
+		n := differing(shots[0], sh, field.window)
+		testing.expectf(t, (n > 0) == hidden, "the caret blinks under the task: picture %d (%s) differs from the first by %d px", i + 1, hidden ? "hidden" : "shown", n)
+	}
 }

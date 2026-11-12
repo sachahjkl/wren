@@ -463,6 +463,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	ui.draw_tree(wnd.ui, &app.dc)
 	autoscroll_paint(app, &app.dc)
+	pixels_skip_frame(app)   // headless_pixels.odin: a test that reads no pixel
 	draw.end_frame(&app.dc)
 	platform.frame_gate_stage(gate, .Presenting)
 	remote_capture_arm(app)   // remote_shell.odin: a capture of this window

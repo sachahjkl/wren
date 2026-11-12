@@ -173,18 +173,14 @@ tree_culling_and_detail :: proc(t: ^testing.T) {
 tree_takes_its_events :: proc(t: ^testing.T) {
 	page_render_test_lock()
 	defer page_render_test_unlock()
-	app := new(App)
-	the_app = app   // (what the code reaches without an App: this one)
-	defer free(app)
+	app := app_make()
+	defer app_free(app)   // (the tab with it)
 	active_window(app).ui = new(ui.State)
 	defer free(active_window(app).ui)
 	ui.init(active_window(app).ui, nil, nil)
 	defer ui.destroy(active_window(app).ui)
-	tab := new(Tab)
-	defer free(tab)
+	tab := tab_new_bare(app, active_window(app))
 	tab.kind = .History
-	append(&active_window(app).tabs, tab)
-	defer delete(active_window(app).tabs)
 	saved_mode := app.hview.mode
 	defer app.hview.mode = saved_mode
 	defer history_tree_destroy()   // the canvas's state, as about:history's closing leaves it

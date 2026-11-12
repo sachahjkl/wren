@@ -113,7 +113,7 @@ script_input_and_the_logs :: proc(t: ^testing.T) {
 
 @(test)
 captures_are_the_renders_own_wherever_the_window_is :: proc(t: ^testing.T) {
-	s := e2e.start(t, {size = {WINDOW_W, WINDOW_H}, dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), FIXTURE)})
+	s := e2e.start(t, {pixels = true, size = {WINDOW_W, WINDOW_H}, dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), FIXTURE)})
 	cx, cy := middle_in_window(s, "#box")
 	window := e2e.capture(s)
 	testing.expectf(t, window.width == WINDOW_W && window.height == WINDOW_H, "a capture has the window's size: %dx%d", window.width, window.height)

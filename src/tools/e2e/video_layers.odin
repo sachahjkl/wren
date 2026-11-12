@@ -37,7 +37,7 @@ import "wb:e2e"
 
 @(test)
 a_playing_video_is_a_plane_of_the_pages_paint_order :: proc(t: ^testing.T) {
-	s := e2e.start(t, {size = WINDOW, dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), PAGE)})
+	s := e2e.start(t, {pixels = true, size = WINDOW, dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), PAGE)})
 	e2e.wait_idle(s)
 	e2e.wait_js(s, `document.getElementById("v1").currentTime > 1 && document.getElementById("v2").currentTime > 1`)
 	n := CAPTURES

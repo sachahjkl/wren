@@ -43,7 +43,7 @@ linux_table :: proc(cfg: ^Config) -> []Step {
 	}
 	linux_unit :: proc(t: ^[dynamic]Step, p: string, flags: []string) {
 		name, _ := strings.replace_all(p, "/", "_")
-		argv := join({"odin", "test", fmt.aprintf("src/%s", p), "-vet", WB, TOOLKIT, MEM_CHECK}, flags, {out_flag(fmt.aprintf("build/linux/%s_test", name))})
+		argv := join({"odin", "test", fmt.aprintf("src/%s", p), "-vet", WB, TOOLKIT, MEM_CHECK, NAMES_RUNNING}, flags, {out_flag(fmt.aprintf("build/linux/%s_test", name))})
 		append(t, Step{name = fmt.aprintf("unit tests: %s", p), actions = slice_of(Command{argv = argv, pkg = fmt.aprintf("src/%s", p), rule = .Says_Successful})})
 	}
 	for p in UNITS {
@@ -53,7 +53,7 @@ linux_table :: proc(cfg: ^Config) -> []Step {
 	for p in ONE_AT_A_TIME { linux_unit(&t, p, {ONE_THREAD}) }
 	// freed memory poisoned (src/base/poison_linux.odin: free and realloc of the whole program)
 	for p in POISONED {
-		argv := join({"odin", "test", fmt.aprintf("src/%s", p), "-vet", WB, TOOLKIT, MEM_CHECK, POISON}, {out_flag(fmt.aprintf("build/linux/%s_poison_test", p))})
+		argv := join({"odin", "test", fmt.aprintf("src/%s", p), "-vet", WB, TOOLKIT, MEM_CHECK, NAMES_RUNNING, POISON}, {out_flag(fmt.aprintf("build/linux/%s_poison_test", p))})
 		append(&t, Step{name = fmt.aprintf("unit tests on poisoned memory: %s", p), actions = slice_of(Command{argv = argv, pkg = fmt.aprintf("src/%s", p), rule = .Says_Successful})})
 	}
 	// browser: the tests of its own that hold on Linux, with the text backend Wren has there (build/native-linux built with -Features text,a11y)

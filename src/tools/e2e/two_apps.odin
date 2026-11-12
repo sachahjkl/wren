@@ -75,7 +75,7 @@ app_run :: proc(data: rawptr) {
 	context.logger = r.logger
 	letter := LETTERS[r.index]
 	m := r.meeting
-	s := e2e.start(r.t, {url = r.url, profile = r.profile, size = WINDOW, own_thread = true})
+	s := e2e.start(r.t, {pixels = true, url = r.url, profile = r.profile, size = WINDOW, own_thread = true})
 	first := e2e.targets(s).tabs[0].id
 	e2e.new_tab(s, r.url)
 	e2e.wait_load(s)

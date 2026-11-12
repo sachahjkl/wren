@@ -216,13 +216,10 @@ urlbar_index_sync :: proc(t: ^testing.T) {
 // stays with the next row chosen.
 @(test)
 urlbar_rows_and_removal :: proc(t: ^testing.T) {
-	app := new(App)
-	the_app = app   // (what the code reaches without an App: this one)
-	defer free(app)
-	host.loop_init(&app.loop)
-	defer host.loop_destroy(&app.loop)
-	host.blocking_init(&app.blocking, &app.loop, 1)
-	defer host.blocking_destroy(&app.blocking)
+	app := app_make()
+	defer app_free(app)   // (its pool and its loop, after what the test defers below)
+	app_loop_init(app)
+	app_pools_init(app, 1)
 	sync.mutex_lock(&globals_lock)   // (the history, its settings and the bar are globals)
 	defer sync.mutex_unlock(&globals_lock)
 	saved_ghist, saved_hcfg, saved_ub := app.ghist, app.hcfg, app.ub
@@ -318,13 +315,10 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 // history during the build is caught up; the bar closing during a build waits for it and frees everything.
 @(test)
 urlbar_thread_build :: proc(t: ^testing.T) {
-	app := new(App)
-	the_app = app   // (what the code reaches without an App: this one)
-	defer free(app)
-	host.loop_init(&app.loop)
-	defer host.loop_destroy(&app.loop)
-	host.blocking_init(&app.blocking, &app.loop, 1)
-	defer host.blocking_destroy(&app.blocking)
+	app := app_make()
+	defer app_free(app)   // (its pool and its loop, after what the test defers below)
+	app_loop_init(app)
+	app_pools_init(app, 1)
 	sync.mutex_lock(&globals_lock)   // (the history, its settings and the bar are globals)
 	defer sync.mutex_unlock(&globals_lock)
 	saved_ghist, saved_hcfg, saved_ub := app.ghist, app.hcfg, app.ub
