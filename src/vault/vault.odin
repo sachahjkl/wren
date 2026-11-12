@@ -19,6 +19,7 @@
 // idle deadline, later than the Vault's, renewed by the keepalives that activity sends (at most one a minute).
 package vault
 
+import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:strings"
@@ -1697,6 +1698,8 @@ vault_say :: proc(v: ^Vault, text: string) { set_message(v, text) }
 
 @(private)
 set_message :: proc(v: ^Vault, text: string) {
+	// (on the standard error too: a failure the panel shows once, a sync's or a search's, is in the log to read again)
+	if !ODIN_TEST && text != "" { fmt.eprintfln("vault: %s", text) }
 	string_wipe(&v.message)
 	if text != "" { v.message = strings.clone(text, base.process_allocator()) }
 	changed(v)

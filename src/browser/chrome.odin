@@ -372,6 +372,9 @@ Chip_Segment :: struct {
 	border, ring:          draw.Color,
 	border_w, ring_w:      f32,
 	bar_right:             f32,
+	// focused, the chip's own ring and glow in its tone (a secure page's green): the field's ring stays the focus colour
+	// and goes up the divider, the chip and the address read as two parts
+	tone:                  draw.Color,
 }
 Chip_Icon :: struct { glyph: string, color: draw.Color }
 
@@ -380,6 +383,16 @@ Chip_Icon :: struct { glyph: string, color: draw.Color }
 chip_segment_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	s := (^Chip_Segment)(user)
 	r := b.rect
+	toned := s.ring.a > 0 && s.tone.a > 0
+	if toned {
+		// the glow of the chip's ring, outside it (the field's glow, of the focus colour, is under it)
+		glow := CHIP_GLOW_PX * ui.scale()
+		g := s.tone
+		g.a = CHIP_GLOW_ALPHA * s.ring.a
+		draw.push_clip(dc, {{r.min.x - glow, r.min.y - glow}, {r.max.x, r.max.y + glow}})
+		draw.rect(dc, draw.rect_pad({r.min, {s.bar_right, r.max.y}}, glow), g, s.radius + glow, 0, glow)
+		draw.pop_clip(dc)
+	}
 	// opaque: the field's text, scrolled to its end while edited, never shows through the chip
 	draw.rect_corners(dc, r, {s.under, s.under, s.under, s.under}, {s.radius, s.radius, 0, 0})
 	if s.color.a > 0 { draw.rect_corners(dc, r, {s.color, s.color, s.color, s.color}, {s.radius, s.radius, 0, 0}) }
@@ -395,10 +408,21 @@ chip_segment_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		whole := draw.Rect{r.min, {s.bar_right, r.max.y}}
 		draw.push_clip(dc, r)
 		if s.border.a > 0 { draw.rect(dc, whole, s.border, s.radius, s.border_w) }
-		if s.ring.a > 0 { draw.rect(dc, whole, s.ring, s.radius, s.ring_w) }
+		if toned {
+			t := s.tone
+			t.a = s.ring.a
+			draw.rect(dc, whole, t, s.radius, s.ring_w)
+		} else if s.ring.a > 0 {
+			draw.rect(dc, whole, s.ring, s.radius, s.ring_w)
+		}
 		draw.pop_clip(dc)
 	}
+	// the field's ring on its left edge: the address's part is framed whole in the focus colour
+	if toned { draw.rect(dc, {{r.max.x - s.ring_w, r.min.y}, {r.max.x, r.max.y}}, s.ring) }
 }
+
+@(private = "file") CHIP_GLOW_PX :: 6
+@(private = "file") CHIP_GLOW_ALPHA :: 0.6
 
 security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radius: f32 = 0, field: ^ui.Box = nil) {
 	em := ui.font_size()
@@ -441,6 +465,7 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 				chip_segment.ring = ui.color("focus border")
 				chip_segment.ring.a *= field.focus_t
 				chip_segment.ring_w = FOCUS_RING_WIDTH * ui.scale()
+				if sec.tone != .Weak && !classic_on(app) { chip_segment.tone, chip_segment.tone.a = var_tone, 1 }
 			}
 			ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(own.security_chip_width + inset), height = ui.px(height + 2 * inset)})
 		} else {

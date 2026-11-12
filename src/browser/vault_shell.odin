@@ -357,7 +357,8 @@ panel_line :: proc(text: string, id: string, weak := false) {
 	em := ui.font_size()
 	ui.next({width = ui.px(em * (VAULT_PANEL_W_EM - 1.8)), height = ui.text_size()})
 	if weak { ui.push_tags("weak") }
-	ui.label(strings.concatenate({text, "###", id}, ui.frame_allocator()))
+	// (a sync's or a search's failure says the server's reason: long, it goes on to more lines, never cut)
+	ui.build_box({.Draw_Text, .Text_Wrap, .No_Text_Trunc}, strings.concatenate({text, "###", id}, ui.frame_allocator()))
 	if weak { ui.pop_tags() }
 }
 
