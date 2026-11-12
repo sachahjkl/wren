@@ -240,9 +240,7 @@ vault_button :: proc(app: ^App, t: ^Tab) {
 	icon.accent.a = 1
 	icon.ink = ui.color("background")
 	icon.ink.a = 1
-	light := ui.color("text")
-	light.a = 1
-	icon.badge_ink = ui.readable(ui.contrast(icon.accent, icon.ink) >= ui.contrast(icon.accent, light) ? icon.ink : light, icon.accent, 4.5)
+	icon.badge_ink = ui.ink_on(icon.accent)
 	ui.next({width = ui.px(em * 2.3), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
 	ui.push_tags("icon_button")
 	b := ui.custom("###vault_icon", vault_icon_draw, icon, {.Clickable, .Focusable, .Draw_Background, .Draw_Hot_Effects})
@@ -349,7 +347,7 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 				label := v.state == .Locked || (v.state == .Failed && vault.vault_has_account(v)) ? i18n.tr("Unlock…") : i18n.tr("Log in…")
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.row(.Center, {}, "###vp_locked_actions") {
-					if icon_action_button(app, lucide.LOCK, label, "vp_open_dialog", ui.fill(), accent = true) {
+					if icon_action_button(app, lucide.LOCK, label, "vp_open_dialog", ui.fill(), hue = MAIN_ACT_HUE) {
 						ui.ctx_menu_close()
 						vault_dialog_open(app)
 					}
@@ -721,7 +719,7 @@ vault_login_build :: proc(app: ^App) {
 							ui.next({width = ui.fill(), height = ui.children_sum()})
 							if ui.row(.Center, {}, "###vd_unlock_ways") {
 								if v.passkey && !busy {
-									if icon_action_button(app, lucide.SHIELD, i18n.tr("Unlock with a passkey"), "vd_unlock_passkey", ui.fill()) {
+									if icon_action_button(app, lucide.KEY_ROUND, i18n.tr("Unlock with a passkey"), "vd_unlock_passkey", ui.fill()) {
 										if why := vault_passkey_unsupported(app); why != "" { vault.vault_say(v, why) } else { vault.vault_passkey_begin(v, .Unlock, url_host(vault.web_vault_url(v.settings))) }
 									}
 									if v.pin { ui.spacer(ui.px(em * 0.4)) }
@@ -753,11 +751,11 @@ vault_login_build :: proc(app: ^App) {
 						if !busy {
 							ui.next({width = ui.fill(), height = ui.children_sum()})
 							if ui.row(.Start, {}, "###vd_other_ways") {
-								if icon_action_button(app, lucide.SHIELD, i18n.tr("Log in with a passkey"), "vd_passkey", ui.fill()) {
+								if icon_action_button(app, lucide.KEY_ROUND, i18n.tr("Log in with a passkey"), "vd_passkey", ui.fill()) {
 									if why := vault_passkey_unsupported(app); why != "" { vault.vault_say(v, why) } else { vault.vault_passkey_begin(v, .Login, url_host(vault.web_vault_url(v.settings))) }
 								}
 								ui.spacer(ui.px(em * 0.4))
-								if icon_action_button(app, lucide.MONITOR, i18n.tr("Log in with a device"), "vd_device", ui.fill()) {
+								if icon_action_button(app, lucide.SMARTPHONE, i18n.tr("Log in with a device"), "vd_device", ui.fill()) {
 									if !vault.vault_login_device(v, ui.field_string(&s.email)) { vault.vault_say(v, i18n.tr("Type your email first.")) }
 								}
 							}
@@ -805,7 +803,7 @@ vault_login_build :: proc(app: ^App) {
 			}
 			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "vd_cancel", ui.px(em * 8)) { cancel = true }
 			ui.spacer(ui.px(em * 0.5))
-			if !busy && !waiting && icon_action_button(app, login ? lucide.USER : (unlock ? lucide.LOCK : lucide.CHECK), login ? i18n.tr("Log in") : (unlock ? i18n.tr("Unlock") : i18n.tr("Continue")), "vd_submit", ui.px(em * 8), accent = true) { submit = true }
+			if !busy && !waiting && icon_action_button(app, login ? lucide.USER : (unlock ? lucide.LOCK : lucide.CHECK), login ? i18n.tr("Log in") : (unlock ? i18n.tr("Unlock") : i18n.tr("Continue")), "vd_submit", ui.px(em * 8), hue = MAIN_ACT_HUE) { submit = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))
@@ -888,7 +886,7 @@ vault_pin_build :: proc(app: ^App) {
 			ui.spacer(ui.fill())
 			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "vpin_cancel", ui.px(em * 8)) { cancel = true }
 			ui.spacer(ui.px(em * 0.5))
-			if icon_action_button(app, lucide.CHECK, i18n.tr("Set"), "vpin_set", ui.px(em * 8), accent = true) { submit = true }
+			if icon_action_button(app, lucide.CHECK, i18n.tr("Set"), "vpin_set", ui.px(em * 8), hue = MAIN_ACT_HUE) { submit = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))

@@ -802,13 +802,14 @@ toolbar_panel_rect :: proc(button: ui.Rect, width: f32) -> ui.Rect {
 }
 
 // ui.button_icon with a Lucide glyph (Wren's other icons are its own font) and an id of its own. `width`: ui.fill()
-// shares the row (one across, or several side by side), px(...) a width of its own. `accent`: the dialog's main act
-// (Log in, Unlock, OK), in the theme's accent.
-icon_action_button :: proc(app: ^App, glyph, text, id: string, width: ui.Size, accent := false) -> bool {
-	if accent { ui.push_tags("accent_button") }
-	defer if accent { ui.pop_tags() }
-	return ui.button_icon(strings.concatenate({"###", id}, ui.frame_allocator()), glyph, text, width = width, icon_font = app.lucide).clicked
+// shares the row (one across, or several side by side), px(...) a width of its own. `hue`: filled with that hue of the
+// theme (the dialog's main act: Log in, Unlock, OK).
+icon_action_button :: proc(app: ^App, glyph, text, id: string, width: ui.Size, hue: Maybe(ui.Hue) = nil) -> bool {
+	return ui.button_icon(strings.concatenate({"###", id}, ui.frame_allocator()), glyph, text, width = width, icon_font = app.lucide, hue = hue).clicked
 }
+
+// The hue of a dialog's main act (Log in, Unlock, OK, Set): one for all of them.
+MAIN_ACT_HUE :: ui.Hue.Blue
 
 // A square button showing one Lucide glyph; `tip` is its name for a screen reader and its tooltip (a row's actions:
 // four of them side by side, where texts do not fit).

@@ -53,9 +53,6 @@ blocker_theme :: proc() {
 	SHIELD_GREEN, SHIELD_AMBER, SHIELD_GREY, BLOCK_RED = tone_color("good"), tone_color("warn"), tone_color("weak"), tone_color("bad")
 }
 
-// What the count on the shield's badge asks of its contrast with the badge (WCAG AA for text).
-@(private = "file") BADGE_INK_CONTRAST :: 4.5
-
 @(private = "file")
 shield_look :: proc(d: ^Shield_Draw, app: ^App, state: Shield_State, count: int) {
 	d.app, d.state, d.count = app, state, count
@@ -68,9 +65,7 @@ shield_look :: proc(d: ^Shield_Draw, app: ^App, state: Shield_State, count: int)
 	d.ink.a = 1
 	d.badge = ui.color("accent")
 	d.badge.a = 1
-	light := ui.color("text")
-	light.a = 1
-	d.badge_ink = ui.readable(ui.contrast(d.badge, d.ink) >= ui.contrast(d.badge, light) ? d.ink : light, d.badge, BADGE_INK_CONTRAST)
+	d.badge_ink = ui.ink_on(d.badge)
 	d.focus = ui.color("accent")
 	d.radius = ui.font_size() * CHROME_BUTTON_RADIUS
 }

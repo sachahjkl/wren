@@ -123,7 +123,7 @@ webauthn_pin_build :: proc(app: ^App) {
 			ui.spacer(ui.fill())
 			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "kp_cancel", ui.px(em * 8)) { cancel = true }
 			ui.spacer(ui.px(em * 0.5))
-			if icon_action_button(app, lucide.CHECK, i18n.tr("OK"), "kp_ok", ui.px(em * 8), accent = true) { submit = true }
+			if icon_action_button(app, lucide.CHECK, i18n.tr("OK"), "kp_ok", ui.px(em * 8), hue = MAIN_ACT_HUE) { submit = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))
