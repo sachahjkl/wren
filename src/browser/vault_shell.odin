@@ -925,6 +925,23 @@ vault_login_build :: proc(app: ^App) {
 						ui.spacer(ui.px(em * 0.4))
 						dialog_line(v.message, "vd_message", weak = true)
 					}
+					// (what it waits for, in the body: its words wrap there; in the row of the buttons they were cut)
+					if busy || waiting {
+						words := i18n.tr("Logging in…")
+						switch {
+						case approval:              words = i18n.tr("Waiting for the approval…")
+						case passkey:               words = i18n.tr("Waiting for the passkey…")
+						case v.state == .Unlocking: words = i18n.tr("Unlocking…")
+						case v.state == .Locating:  words = i18n.tr("Starting…")
+						}
+						ui.spacer(ui.px(em * 0.6))
+						ui.next({width = ui.fill(), height = ui.children_sum()})
+						if ui.row(.Center, {}, "###vd_wait") {
+							busy_spinner(app, em * 1.3)
+							ui.spacer(ui.px(em * 0.5))
+							dialog_line(words, "vd_busy", weak = true)
+						}
+					}
 					ui.spacer(ui.px(em * 0.4))
 				}
 				ui.spacer(ui.px(em * 1.0))
@@ -933,24 +950,7 @@ vault_login_build :: proc(app: ^App) {
 		ui.spacer(ui.px(em * 0.6))
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###vd_buttons") {
-			ui.spacer(ui.px(em * 1.0))
-			if busy || waiting {
-				words := i18n.tr("Logging in…")
-				switch {
-				case approval:                       words = i18n.tr("Waiting for the approval…")
-				case passkey:                        words = i18n.tr("Waiting for the passkey…")
-				case v.state == .Unlocking:          words = i18n.tr("Unlocking…")
-				case v.state == .Locating:           words = i18n.tr("Starting…")
-				}
-				busy_spinner(app, em * 1.3)
-				ui.spacer(ui.px(em * 0.5))
-				ui.next({width = ui.fill(), height = ui.text_size()})
-				ui.push_tags("weak")
-				ui.label(strings.concatenate({words, "###vd_busy"}, ui.frame_allocator()))
-				ui.pop_tags()
-			} else {
-				ui.spacer(ui.fill())
-			}
+			ui.spacer(ui.fill())
 			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "vd_cancel", ui.px(em * 8), intent = .Cancel) { cancel = true }
 			ui.spacer(ui.px(em * 0.5))
 			if !busy && !waiting && icon_action_button(app, login ? lucide.USER : (unlock ? lucide.LOCK : lucide.CHECK), login ? i18n.tr("Log in") : (unlock ? i18n.tr("Unlock") : i18n.tr("Continue")), "vd_submit", ui.px(em * 8), intent = .Success) { submit = true }

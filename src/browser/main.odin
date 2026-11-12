@@ -1181,8 +1181,8 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	fs_shell_build(app)   // fs_shell.odin: a page's file permission prompt (nothing while none waits)
 	notification_shell_build(app)   // notification_shell.odin: a page's notification permission prompt
 	qr_build(app)   // qr_shell.odin: the QR code of the page's address
-	webauthn_pin_build(app)    // webauthn_shell.odin: a security key's PIN, asked while a ceremony runs
 	vault_dialogs_build(app)   // vault_shell.odin: the Vault's login / unlock dialog, the question before a fill
+	webauthn_pin_build(app)    // webauthn_shell.odin: a security key's PIN, its touch, its account: built last, on top of the dialog that asked (the Vault's passkey)
 	bookmarks_dialog_build(app)   // bookmarks_ui.odin: the dialog that names a bookmark
 	bookmarks_bar_menus(app)   // bookmarks_bar.odin: the bar's menus
 	confirm_build(app)   // confirm_shell.odin: a question before an act not taken back
