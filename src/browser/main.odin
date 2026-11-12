@@ -1631,7 +1631,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	chrome_ui_apply(app, active_window(app).ui)
 	ui.begin_build(active_window(app).ui, {
 		window_size = size, events = events, dt = dt, animations = os_animations_enabled(app),
-		dpi_scale = ui_scale_of(app), base = base_style, clipboard_get = ui.window_clipboard_get, clipboard_set = ui.window_clipboard_set,
+		dpi_scale = ui_scale_of(app), base = base_style, clipboard_set = ui.window_clipboard_set,
 		disable_zoom = true,   // Ctrl+Plus / Minus / 0 and Ctrl+wheel zoom the page (zoom.odin), not the chrome
 		window = active_window(app).win, frame_ms = wnd.pacer.frame_ms,   // the integrated title bar's regions; scroll animations on the vblank clock
 		inactive = !window_is_front(app),   // a window in the back shows no caret in its fields (windows.odin)

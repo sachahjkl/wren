@@ -87,9 +87,13 @@ runs_code :: proc(expr: ^ast.Expr) -> bool {
 	calls := false
 	v := ast.Visitor{data = &calls, visit = proc(v: ^ast.Visitor, node: ^ast.Node) -> ^ast.Visitor {
 		if node == nil { return nil }
-		#partial switch _ in node.derived {
+		#partial switch n in node.derived {
 		case ^ast.Proc_Lit: return nil
-		case ^ast.Call_Expr: (^bool)(v.data)^ = true; return nil
+		case ^ast.Call_Expr:
+			// (#load, #config, #directory...: the compiler runs them, the program does not)
+			if _, directive := n.expr.derived.(^ast.Basic_Directive); directive { return nil }
+			(^bool)(v.data)^ = true
+			return nil
 		}
 		return v
 	}}

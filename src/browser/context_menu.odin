@@ -371,7 +371,7 @@ address_menu_items :: proc(app: ^App) {
 	ui.menu_separator()
 	if ui.menu_item("Cut", "Ctrl+X", enabled = sel).clicked { ui.field_cut(f) }
 	if ui.menu_item("Copy", "Ctrl+C", enabled = sel).clicked { ui.field_copy(f) }
-	if ui.menu_item("Paste", "Ctrl+V", enabled = clip != "").clicked { ui.field_paste(f) }
+	if ui.menu_item("Paste", "Ctrl+V", enabled = clip != "").clicked { ui.field_paste(address_key(app)) }
 	if ui.menu_item("Paste and go", enabled = strings.trim_space(clip) != "").clicked {
 		target := strings.clone(strings.trim_space(clip), context.temp_allocator)
 		if t := current_tab(app); t != nil { navigate(app, t, address_or_search(app, target), origin = .User) }
