@@ -11,6 +11,7 @@ import "core:fmt"
 import "core:strings"
 import "base:runtime"
 import "toolkit:platform"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:config"
 import "wb:host"
@@ -137,9 +138,9 @@ fs_shell_build :: proc(app: ^App) {
 		ui.label(req.what)
 		ui.spacer(ui.px(em * 0.8))
 		if ui.row() {
-			if action_button(i18n.tr("Allow"), "fs_allow", em * 8) { answered, granted = true, true }
+			if icon_action_button(app, lucide.CHECK, i18n.tr("Allow"), "fs_allow", ui.px(em * 8), intent = .Success) { answered, granted = true, true }
 			ui.spacer(ui.px(em * 0.6))
-			if action_button(i18n.tr("Block"), "fs_block", em * 8) { answered, granted = true, false }
+			if icon_action_button(app, lucide.SHIELD, i18n.tr("Block"), "fs_block", ui.px(em * 8), intent = .Danger) { answered, granted = true, false }
 		}
 		ui.spacer(ui.px(em * 0.8))
 	}

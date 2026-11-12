@@ -556,13 +556,6 @@ info_row :: proc(label, value, id: string, width: f32) {
 	}
 }
 
-@(private)
-action_button :: proc(text, id: string, width: f32) -> bool {
-	em := ui.font_size()
-	ui.next({width = ui.px(width), height = ui.px(ui.dense(em * 2.1))})
-	return ui.button(fmt.aprintf("%s###%s", text, id, allocator = ui.frame_allocator())).clicked
-}
-
 enum_label :: proc(v: any) -> string {
 	s := fmt.tprintf("%v", v)
 	out, _ := strings.replace_all(base.ascii_lower(s), "_", "-", context.temp_allocator)
@@ -634,11 +627,11 @@ page_info_popup :: proc(app: ^App, t: ^Tab, sec: Security, chip: ^ui.Box) {
 		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.2))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.9))
-			if action_button("Copy address", "pi_copy", em * 10) && t != nil { clip_set(t.url); ui.ctx_menu_close() }
+			if icon_action_button(app, lucide.COPY, "Copy address", "pi_copy", ui.px(em * 10), intent = .Primary) && t != nil { clip_set(t.url); ui.ctx_menu_close() }
 			ui.spacer(ui.px(em * 0.5))
 			host := t != nil && t.page != nil ? t.page.env.location.host : ""
 			if ui.disabled(host == "") {
-				if action_button("Clear site data", "pi_clear", em * 10) {
+				if icon_action_button(app, lucide.TRASH_2, "Clear site data", "pi_clear", ui.px(em * 10), intent = .Danger) {
 					// cookies, localStorage, sessionStorage, IndexedDB and the HTTP cache of the site (about:sites lists them)
 					tab_log(t, .Log, clear_site(app, host, CLEAR_ALL))
 					ui.ctx_menu_close()
@@ -799,9 +792,16 @@ toolbar_panel_rect :: proc(button: ui.Rect, width: f32) -> ui.Rect {
 
 // ui.button_icon with a Lucide glyph (Wren's other icons are its own font) and an id of its own. `width`: ui.fill()
 // shares the row (one across, or several side by side), px(...) a width of its own. `intent`: what the act means, its
-// colour the theme's (ui.Intent: Primary for a dialog's main act, Danger for one that removes).
-icon_action_button :: proc(app: ^App, glyph, text, id: string, width: ui.Size, intent := ui.Intent.Neutral) -> bool {
-	return ui.button_icon(strings.concatenate({"###", id}, ui.frame_allocator()), glyph, text, width = width, icon_font = app.lucide, intent = intent).clicked
+// colour the theme's (ui.Intent: Primary for a dialog's main act, Danger for one that removes). `tip_text`: a tooltip,
+// for an act whose words do not say all it does.
+icon_action_button :: proc(app: ^App, glyph, text, id: string, width: ui.Size, intent := ui.Intent.Neutral, disabled := false, tip_text := "") -> bool {
+	sig := ui.button_icon(strings.concatenate({"###", id}, ui.frame_allocator()), glyph, text, disabled = disabled, width = width, icon_font = app.lucide, intent = intent)
+	if tip_text != "" {
+		// (its words stay its name for a screen reader: the tip only describes it)
+		ui.a11y_set(sig.box, {role = .Button, name = strings.clone(text, ui.frame_allocator())})
+		tip(sig, tip_text)
+	}
+	return sig.clicked
 }
 
 // A square button showing one Lucide glyph; `tip` is its name for a screen reader and its tooltip (a row's actions:

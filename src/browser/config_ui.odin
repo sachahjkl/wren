@@ -33,6 +33,7 @@ import "core:fmt"
 import "core:slice"
 import "core:strings"
 import "toolkit:draw"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:config"
 import "wb:i18n"
@@ -495,8 +496,8 @@ config_list :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs) {
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
 				if ui.row(.Center) {
 					ui.spacer(ui.fill())
-					ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 1.9))})
-					if ui.button(i18n.tr("Show all categories###cfg_all")).clicked { config_set_category(v, "") }
+					// (the words keep their ###: the translation's key)
+					if icon_action_button(app, lucide.LIST, i18n.tr("Show all categories###cfg_all"), "cfg_all", {}, intent = .Primary) { config_set_category(v, "") }
 					ui.spacer(ui.fill())
 				}
 			}

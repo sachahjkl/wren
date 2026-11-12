@@ -10,6 +10,7 @@ import "core:fmt"
 import "core:math"
 import "core:strings"
 import "toolkit:draw"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:config"
 import "wb:i18n"
@@ -138,15 +139,13 @@ engines_row :: proc(app: ^App, v: ^Config_View, index: int) {
 				}
 				ui.spacer(ui.px(em * 0.5))
 				// the default: a pill; the others: a button to make it so (as wide, so the buttons line up)
-				ui.next({width = ui.px(em * 8), height = ui.px(ui.dense(em * 1.8))})
 				if i == def {
 					if ui.tags("selected") {
-						ui.next({width = ui.px(em * 8), height = ui.px(ui.dense(em * 1.5)), font_size = em * 0.85, radius = em * 0.75, text_align = .Center})
+						ui.next({width = ui.px(em * 9.5), height = ui.px(ui.dense(em * 1.5)), font_size = em * 0.85, radius = em * 0.75, text_align = .Center})
 						ui.build_box({.Draw_Text, .Draw_Background, .No_Text_Trunc}, fmt.tprintf("%s###ed_%d", i18n.tr("Default"), i))
 					}
-				} else if ui.tags("ghost_button") {
-					s := ui.button(fmt.tprintf("%s###ed_%d", i18n.tr("Make default"), i))
-					if s.clicked { action, target = 1, i }
+				} else if icon_action_button(app, lucide.STAR, i18n.tr("Make default"), fmt.tprintf("ed_%d", i), ui.px(em * 9.5), intent = .Primary) {
+					action, target = 1, i
 				}
 				ui.spacer(ui.px(em * 0.3))
 				btn :: proc(id, glyph, tooltip: string, enabled := true) -> bool {
@@ -160,8 +159,7 @@ engines_row :: proc(app: ^App, v: ^Config_View, index: int) {
 					}
 					return clicked
 				}
-				ui.next({width = ui.text_size(em * 0.6), height = ui.px(ui.dense(em * 1.8))})
-				if ui.tags("ghost_button") { if ui.button(fmt.tprintf("%s###ee_%d", i18n.tr("Edit"), i)).clicked { action, target = 2, i } }
+				if icon_action_button(app, lucide.PENCIL, i18n.tr("Edit"), fmt.tprintf("ee_%d", i), {}) { action, target = 2, i }
 				if btn(fmt.tprintf("###eup_%d", i), ui.ICON_UP, i18n.tr("Move up"), i > 0) { action, target = 3, i }
 				if btn(fmt.tprintf("###edn_%d", i), ui.ICON_DOWN, i18n.tr("Move down"), i + 1 < len(app.sengines.list)) { action, target = 4, i }
 				if btn(fmt.tprintf("###erm_%d", i), GLYPH_CLOSE, i18n.tr("Remove"), len(app.sengines.list) > 1) { action, target = 5, i }
@@ -171,17 +169,14 @@ engines_row :: proc(app: ^App, v: ^Config_View, index: int) {
 		}
 		if ed.edit < 0 { engines_form(app, ed) }
 		ui.spacer(ui.px(em * 0.4))
-		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.1))})
+		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
 		if ui.row(.Center, {}, "###eng_actions") {
-			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-			if ui.button(i18n.tr("Add a search engine###eng_add")).clicked { engines_edit_start(app, ed, -1) }
+			// (the words keep their ###: the translations' keys)
+			if icon_action_button(app, lucide.PLUS, i18n.tr("Add a search engine###eng_add"), "eng_add", {}, intent = .Primary) { engines_edit_start(app, ed, -1) }
 			ui.spacer(ui.px(em * 0.6))
 			missing := engines_missing_builtins(&app.sengines)
-			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-			if ui.disabled(missing == 0) {
-				label := missing > 0 ? fmt.tprintf(i18n.tr("Restore the built-in engines (%d)###eng_restore"), missing) : i18n.tr("Restore the built-in engines###eng_restore")
-				if ui.button(label).clicked && missing > 0 { engines_restore_builtins(&app.sengines); search_engines_changed(app) }
-			}
+			label := missing > 0 ? fmt.tprintf(i18n.tr("Restore the built-in engines (%d)###eng_restore"), missing) : i18n.tr("Restore the built-in engines###eng_restore")
+			if icon_action_button(app, lucide.ARCHIVE_RESTORE, label, "eng_restore", {}, disabled = missing == 0) && missing > 0 { engines_restore_builtins(&app.sengines); search_engines_changed(app) }
 		}
 		ui.spacer(ui.px(em * 0.55))
 		switch action {
@@ -255,11 +250,11 @@ engines_form :: proc(app: ^App, ed: ^Engines_Editor) {
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * ENGINES_ROW_H_EM))})
 		if ui.row(.Center, {}, "###eng_f3") {
 			ui.spacer(ui.px(em * 0.6))
-			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-			if ui.tags("accent_button") { if ui.button(ed.edit < 0 ? i18n.tr("Add###ef_save") : i18n.tr("Save###ef_save")).clicked { committed = true } }
+			// (the words keep their ###: the translations' keys)
+			adding := ed.edit < 0
+			if icon_action_button(app, adding ? lucide.PLUS : lucide.SAVE, adding ? i18n.tr("Add###ef_save") : i18n.tr("Save###ef_save"), "ef_save", {}, intent = .Success) { committed = true }
 			ui.spacer(ui.px(em * 0.4))
-			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-			if ui.button(i18n.tr("Cancel###ef_cancel")).clicked { cancelled = true }
+			if icon_action_button(app, lucide.X, i18n.tr("Cancel###ef_cancel"), "ef_cancel", {}, intent = .Cancel) { cancelled = true }
 		}
 		ui.spacer(ui.px(em * 0.5))
 		if cancelled { ed.edit, ed.error = 0, .None }

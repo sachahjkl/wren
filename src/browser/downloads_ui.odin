@@ -342,17 +342,17 @@ dl_row :: proc(app: ^App, d: ^Download, w: f32, compact: bool) -> (act: Dl_Row_A
 		case running && d.state == .Receiving:
 			if compact {
 				if remove_cross(fmt.tprintf("###dlx_%d", d.id), true, em, "Cancel the download").clicked { act = .Cancel }
-			} else if dl_button("Cancel", fmt.tprintf("dlc_%d", d.id), em * 6) { act = .Cancel }
+			} else if icon_action_button(app, lucide.X, "Cancel", fmt.tprintf("dlc_%d", d.id), ui.px(em * 6), intent = .Cancel) { act = .Cancel }
 		case d.state == .Done && download_file_present(d):
 			if compact {
 				if dl_folder_button(fmt.tprintf("###dlf_%d", d.id), hot, em).clicked { act = .Reveal }
 			} else {
-				if dl_button("Open", fmt.tprintf("dlo_%d", d.id), em * 5.5) { act = .Open }
+				if icon_action_button(app, lucide.FILE, "Open", fmt.tprintf("dlo_%d", d.id), ui.px(em * 5.5), intent = .Success) { act = .Open }
 				ui.spacer(ui.px(em * 0.4))
-				if dl_button("Show in folder", fmt.tprintf("dlf_%d", d.id), em * 8) { act = .Reveal }
+				if icon_action_button(app, lucide.FOLDER_OPEN, "Show in folder", fmt.tprintf("dlf_%d", d.id), ui.px(em * 8), intent = .Info) { act = .Reveal }
 			}
 		case download_finished(d):
-			if dl_button(d.state == .Done ? "Download again" : "Try again", fmt.tprintf("dlr_%d", d.id), em * (compact ? 9 : 9.5)) { act = .Retry }
+			if icon_action_button(app, d.state == .Done ? lucide.DOWNLOAD : lucide.REFRESH_CW, d.state == .Done ? "Download again" : "Try again", fmt.tprintf("dlr_%d", d.id), ui.px(em * (compact ? 9 : 9.5)), intent = .Primary) { act = .Retry }
 		}
 		if !compact && download_finished(d) {
 			ui.spacer(ui.px(em * 0.4))
@@ -373,13 +373,6 @@ dl_row :: proc(app: ^App, d: ^Download, w: f32, compact: bool) -> (act: Dl_Row_A
 		}
 	}
 	return
-}
-
-@(private = "file")
-dl_button :: proc(text, id: string, w: f32) -> bool {
-	em := ui.font_size()
-	ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
-	return ui.button(fmt.tprintf("%s###%s", text, id)).clicked
 }
 
 // A folder, drawn: the small button of the drop-down's finished rows.
@@ -495,13 +488,9 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 				if res.box != nil { app.dview.search_key = res.box.key }
 				if app.dview.focus_search && res.box != nil { app.dview.focus_search = false; ui.set_focus(res.box.key); ui.field_select_all(&app.dview.search) }
 				ui.spacer(ui.px(em * 0.6))
-				ui.next({width = ui.px(em * 8.5), height = ui.px(ui.dense(em * 2))})
-				cb := ui.button("Clear the list###dl_clear")
-				if cb.clicked { download_clear_finished(app); downloads_mark_seen(app) }
-				tip(cb, "Takes the finished downloads off the list; the files stay where they are")
+				if icon_action_button(app, lucide.TRASH_2, "Clear the list", "dl_clear", ui.px(em * 8.5), intent = .Danger, tip_text = "Takes the finished downloads off the list; the files stay where they are") { download_clear_finished(app); downloads_mark_seen(app) }
 				ui.spacer(ui.px(em * 0.4))
-				ui.next({width = ui.px(em * 9.5), height = ui.px(ui.dense(em * 2))})
-				if ui.button("Open the folder###dl_folder").clicked { platform_open_dir(download_dir(app)) }
+				if icon_action_button(app, lucide.FOLDER_OPEN, "Open the folder", "dl_folder", ui.px(em * 9.5), intent = .Info) { platform_open_dir(download_dir(app)) }
 				ui.spacer(ui.fill())
 				active, _, _, speed := downloads_progress(app)
 				if ui.tags("weak") {
@@ -513,7 +502,7 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 				ui.spacer(ui.px(em * 0.8))
 			}
 			// where they go: the folder, and whether the Save dialog asks each time
-			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
 			if ui.row(.Center) {
 				ui.spacer(ui.px(em * 0.8))
 				ask := app.dls.cfg.ask
@@ -526,16 +515,10 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 					ui.next({width = ui.fill(), height = ui.pct(1)})
 					ui.label(fmt.tprintf("Saved in %s###dl_dir", safe_label(download_dir(app), 120)))
 				}
-				ui.next({width = ui.px(em * 7.5), height = ui.px(ui.dense(em * 1.9)), radius = em * CHROME_BUTTON_RADIUS})
-				fb := ui.button("Change\u2026###dl_pick")
-				tip(fb, "Choose the folder the downloads go to (browser.download.directory)")
-				if fb.clicked { download_pick_folder(app) }
+				if icon_action_button(app, lucide.FOLDER_SEARCH, "Change\u2026", "dl_pick", ui.px(em * 7.5), intent = .Primary, tip_text = "Choose the folder the downloads go to (browser.download.directory)") { download_pick_folder(app) }
 				if app.dls.cfg.dir != "" {
 					ui.spacer(ui.px(em * 0.4))
-					ui.next({width = ui.px(em * 7.5), height = ui.px(ui.dense(em * 1.9)), radius = em * CHROME_BUTTON_RADIUS})
-					rb := ui.button("Default###dl_default")
-					tip(rb, "Back to the Downloads folder of Windows")
-					if rb.clicked { download_folder_default(app) }
+					if icon_action_button(app, lucide.ROTATE_CCW, "Default", "dl_default", ui.px(em * 7.5), tip_text = "Back to the Downloads folder of Windows") { download_folder_default(app) }
 				}
 				ui.spacer(ui.px(em * 0.8))
 			}
@@ -768,8 +751,7 @@ downloads_panel_body :: proc(app: ^App) {
 		ui.spacer(ui.px(em * 0.9))
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		ui.label("Downloads###dlp_title")
-		ui.next({width = ui.px(em * 8), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
-		if ui.button("Show all###dlp_all").clicked { ui.ctx_menu_close(); open_downloads(app); return }
+		if icon_action_button(app, lucide.LIST, "Show all", "dlp_all", ui.px(em * 8), intent = .Primary) { ui.ctx_menu_close(); open_downloads(app); return }
 		ui.spacer(ui.px(em * 0.6))
 	}
 	ui.hline(ui.px(w))
@@ -801,8 +783,7 @@ downloads_panel_body :: proc(app: ^App) {
 	ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.2))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
-		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
-		if ui.button("Open the folder###dlp_folder").clicked { ui.ctx_menu_close(); platform_open_dir(download_dir(app)) }
+		if icon_action_button(app, lucide.FOLDER_OPEN, "Open the folder", "dlp_folder", ui.px(em * 11), intent = .Info) { ui.ctx_menu_close(); platform_open_dir(download_dir(app)) }
 	}
 	ui.spacer(ui.px(em * 0.5))
 }

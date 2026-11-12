@@ -3,6 +3,7 @@ package browser
 import "core:fmt"
 import "core:strings"
 import "toolkit:draw"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
 import "wb:blocker"
@@ -263,7 +264,7 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 	ui.next({fixed_x = area.min.x, fixed_y = area.min.y, width = ui.px(draw.rect_size(area).x), height = ui.px(draw.rect_size(area).y)})
 	ui.custom("###bl_pick_outline", pick_overlay_draw, d)
 	picker_matches(t.page)
-	bar_h := ui.dense(em * 5.4)
+	bar_h := ui.dense(em * 5.6)
 	w := min(draw.rect_size(area).x - em * 2, em * 60)
 	ui.next({fixed_x = area.min.x + (draw.rect_size(area).x - w) * 0.5, fixed_y = area.max.y - bar_h - em * 1.0, width = ui.px(w), height = ui.px(bar_h), radius = em * 0.5})
 	if ui.column(.Start, {.Draw_Background, .Draw_Border}, "###bl_pick_bar") {
@@ -283,7 +284,7 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 			if ui.tags("weak") { ui.label(label) }
 			ui.spacer(ui.px(em * 0.6))
 		}
-		ui.next({width = ui.pct(1), height = ui.px(ui.dense(em * 2))})
+		ui.next({width = ui.pct(1), height = ui.px(ui.dense(em * 2.2))})   // (the height of its action buttons)
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.6))
 			ui.next({width = ui.px(em * 7), height = ui.pct(1)})
@@ -298,26 +299,19 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 				}
 			} else { ui.spacer(ui.px(em * 14)) }
 			ui.spacer(ui.px(em * 0.6))
-			if bar_button(i18n.tr("Preview"), "pk_prev", em * 6.5) { picker_preview(t) }
+			if icon_action_button(app, lucide.EYE, i18n.tr("Preview"), "pk_prev", ui.px(em * 6.5), intent = .Info) { picker_preview(t) }
 			ui.spacer(ui.px(em * 0.4))
 			host, _ := blocker_page_host(t)
 			if ui.disabled(!app.pick.valid || len(app.pick.matches) == 0) {
-				if bar_button(i18n.tr("Create"), "pk_create", em * 6.5) { picker_create(app, t, blocker_site_key(host)) }
+				if icon_action_button(app, lucide.SHIELD, i18n.tr("Create"), "pk_create", ui.px(em * 6.5), intent = .Danger) { picker_create(app, t, blocker_site_key(host)) }
 			}
 			ui.spacer(ui.px(em * 0.4))
-			if bar_button(i18n.tr("Pick again"), "pk_again", em * 7.5) { picker_unpreview(t); app.pick.stage = 0; app.pick.hover = base.NIL_HANDLE }
+			if icon_action_button(app, lucide.ROTATE_CCW, i18n.tr("Pick again"), "pk_again", ui.px(em * 7.5)) { picker_unpreview(t); app.pick.stage = 0; app.pick.hover = base.NIL_HANDLE }
 			ui.spacer(ui.px(em * 0.4))
-			if bar_button(i18n.tr("Cancel"), "pk_cancel", em * 6) { blocker_picker_cancel(app); return }
+			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "pk_cancel", ui.px(em * 6), intent = .Cancel) { blocker_picker_cancel(app); return }
 		}
 	}
 	if ui.key_press(.Escape) && ui.focus_key() == 0 { blocker_picker_cancel(app) }
-}
-
-@(private = "file")
-bar_button :: proc(text, id: string, w: f32) -> bool {
-	em := ui.font_size()
-	ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 1.8)), radius = em * 0.35})
-	return ui.button(fmt.aprintf("%s###%s", text, id, allocator = ui.frame_allocator())).clicked
 }
 
 @(private = "file")

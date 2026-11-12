@@ -6,6 +6,7 @@ import "core:slice"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:font"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:adblock"
 import "wb:blocker"
@@ -343,15 +344,6 @@ stat_pair :: proc(value, label, id: string, w: f32) {
 	}
 }
 
-@(private = "file")
-small_button :: proc(text, id: string, w: f32, tip_text := "") -> bool {
-	em := ui.font_size()
-	ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 1.9)), radius = em * 0.35})
-	sig := ui.button(fmt.aprintf("%s###%s", text, id, allocator = ui.frame_allocator()))
-	if tip_text != "" { tip(sig, tip_text) }
-	return sig.clicked
-}
-
 // Time graph: blocked requests during the page's load, as bars.
 Graph_Draw :: struct { points: []u32, span_ms: u32, color, track: draw.Color }
 
@@ -629,19 +621,19 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 
 	// the tools
 	ui.spacer(ui.px(em * 0.3))
-	ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.1))})
+	ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.2))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.6))
-		bw := (w - em * 1.2 - em * 0.4 * 3) / 4
 		if ui.disabled(!has_host || !enabled_site) {
-			if small_button(i18n.tr("Pick element"), "tl_pick", bw, i18n.tr("Aim at an element of the page and block it")) { blocker_picker_begin(app, t); ui.ctx_menu_close() }
+			if icon_action_button(app, lucide.SHIELD, i18n.tr("Pick element"), "tl_pick", ui.fill(), intent = .Danger, tip_text = i18n.tr("Aim at an element of the page and block it")) { blocker_picker_begin(app, t); ui.ctx_menu_close() }
 		}
 		ui.spacer(ui.px(em * 0.4))
-		if small_button(i18n.tr("Log"), "tl_log", bw, i18n.tr("The request log")) { blocker_open_dashboard(app, "journal"); ui.ctx_menu_close() }
+		if icon_action_button(app, lucide.SCROLL_TEXT, i18n.tr("Log"), "tl_log", ui.fill(), intent = .Info, tip_text = i18n.tr("The request log")) { blocker_open_dashboard(app, "journal"); ui.ctx_menu_close() }
 		ui.spacer(ui.px(em * 0.4))
-		if small_button(i18n.tr("Dashboard"), "tl_dash", bw, i18n.tr("Lists, rules, filters, statistics")) { blocker_open_dashboard(app); ui.ctx_menu_close() }
+		if icon_action_button(app, lucide.LAYOUT_GRID, i18n.tr("Dashboard"), "tl_dash", ui.fill(), intent = .Info, tip_text = i18n.tr("Lists, rules, filters, statistics")) { blocker_open_dashboard(app); ui.ctx_menu_close() }
 		ui.spacer(ui.px(em * 0.4))
-		if small_button(i18n.tr("Reload"), "tl_reload", bw, i18n.tr("Load the page again")) { if t != nil { reload(app, t) }; ui.ctx_menu_close() }
+		if icon_action_button(app, lucide.REFRESH_CW, i18n.tr("Reload"), "tl_reload", ui.fill(), tip_text = i18n.tr("Load the page again")) { if t != nil { reload(app, t) }; ui.ctx_menu_close() }
+		ui.spacer(ui.px(em * 0.6))
 	}
 	ui.spacer(ui.px(em * 0.5))
 }

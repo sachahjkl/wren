@@ -7,6 +7,7 @@ package browser
 
 import "core:fmt"
 import "core:strings"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:i18n"
 
@@ -42,9 +43,11 @@ crash_banner :: proc(app: ^App) {
 		if ui.tags("warn") { ui.label(fmt.aprintf("%s###crash_text", text, allocator = ui.frame_allocator())) }
 		ui.spacer(ui.px(em * 0.6))
 		primary := app.recovery.banner == .Twice ? i18n.tr("Restore tabs") : i18n.tr("Start fresh")
-		do_primary = action_button(primary, "crash_primary", em * 8.5)
+		// (restoring brings the tabs back; starting fresh closes the ones restored)
+		restore := app.recovery.banner == .Twice
+		do_primary = icon_action_button(app, restore ? lucide.ARCHIVE_RESTORE : lucide.ROTATE_CCW, primary, "crash_primary", ui.px(em * 8.5), intent = restore ? ui.Intent.Success : ui.Intent.Warning)
 		ui.spacer(ui.px(em * 0.4))
-		do_details = action_button(i18n.tr("Details"), "crash_details", em * 6.5)
+		do_details = icon_action_button(app, lucide.INFO, i18n.tr("Details"), "crash_details", ui.px(em * 6.5), intent = .Info)
 		ui.spacer(ui.px(em * 0.4))
 		close = nav_button("###crash_close", GLYPH_CLOSE, i18n.tr("Dismiss"), true)
 		ui.spacer(ui.px(em * 0.6))

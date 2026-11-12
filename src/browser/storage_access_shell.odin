@@ -5,6 +5,7 @@ package browser
 // "Block", one request at a time. browser.dialogs.test_answer answers for tests ("cancel": Block, anything else: Allow).
 
 import "core:fmt"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:config"
 import "wb:i18n"
@@ -46,9 +47,9 @@ storage_access_shell_build :: proc(app: ^App) {
 		ui.label(i18n.tr("Sign-in, payment and comment widgets may need it; it also lets the site recognise you across sites."))
 		ui.spacer(ui.px(em * 0.8))
 		if ui.row() {
-			if action_button(i18n.tr("Allow"), "sa_allow", em * 8) { answered, granted = true, true }
+			if icon_action_button(app, lucide.CHECK, i18n.tr("Allow"), "sa_allow", ui.px(em * 8), intent = .Success) { answered, granted = true, true }
 			ui.spacer(ui.px(em * 0.6))
-			if action_button(i18n.tr("Block"), "sa_block", em * 8) { answered, granted = true, false }
+			if icon_action_button(app, lucide.SHIELD, i18n.tr("Block"), "sa_block", ui.px(em * 8), intent = .Danger) { answered, granted = true, false }
 		}
 		ui.spacer(ui.px(em * 0.8))
 	}

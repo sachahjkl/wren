@@ -5,6 +5,7 @@ package browser
 // the page from it.
 
 import "core:strings"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:i18n"
 
@@ -38,9 +39,9 @@ qr_build :: proc(app: ^App) {
 			ui.spacer(ui.px(em * 0.8))
 			ui.next({width = ui.children_sum(), height = ui.children_sum()})
 			if ui.row(.Center, {}, "###page_qr_buttons") {
-				if action_button(i18n.tr("Copy the address"), "qr_copy", em * 10) { clip_set(app.qr_url); ui.toast(.Info, "Address copied") }
+				if icon_action_button(app, lucide.COPY, i18n.tr("Copy the address"), "qr_copy", ui.px(em * 10), intent = .Primary) { clip_set(app.qr_url); ui.toast(.Info, "Address copied") }
 				ui.spacer(ui.px(em * 0.6))
-				if action_button(i18n.tr("Close"), "qr_close", em * 6) { close = true }
+				if icon_action_button(app, lucide.X, i18n.tr("Close"), "qr_close", ui.px(em * 6), intent = .Cancel) { close = true }
 			}
 			ui.spacer(ui.px(em * 0.8))
 		}

@@ -193,11 +193,11 @@ bookmarks_dialog_build :: proc(app: ^App) {
 				ui.spacer(ui.px(em * 0.8))
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.row(.Center, {}, "###bm_edit_buttons") {
-					if v.edit_id != 0 && action_button(i18n.tr("Remove"), "bm_edit_remove", em * 7) { remove = true }
+					if v.edit_id != 0 && icon_action_button(app, lucide.TRASH_2, i18n.tr("Remove"), "bm_edit_remove", ui.px(em * 7), intent = .Danger) { remove = true }
 					ui.spacer(ui.fill())
-					if action_button(i18n.tr("Cancel"), "bm_edit_cancel", em * 7) { cancel = true }
+					if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "bm_edit_cancel", ui.px(em * 7), intent = .Cancel) { cancel = true }
 					ui.spacer(ui.px(em * 0.5))
-					if action_button(i18n.tr("Save"), "bm_edit_save", em * 7) { save = true }
+					if icon_action_button(app, lucide.SAVE, i18n.tr("Save"), "bm_edit_save", ui.px(em * 7), intent = .Success) { save = true }
 				}
 				ui.spacer(ui.px(em * 0.8))
 			}
@@ -278,12 +278,12 @@ bookmarks_page :: proc(app: ^App, t: ^Tab) {
 				if v.focus_search && res.box != nil { v.focus_search = false; ui.set_focus(res.box.key); ui.field_select_all(&v.search) }
 				if res.focused && ui.key_press(.Down) { ui.set_focus(v.list.key); if v.list.sel < 0 { ui.list_select(&v.list.list, 0) } }
 				ui.spacer(ui.px(em * 0.6))
-				if action_button(i18n.tr("New folder"), "bm_new_folder", em * 7.5) { bookmark_folder_new(app) }
+				if icon_action_button(app, lucide.FOLDER_PLUS, i18n.tr("New folder"), "bm_new_folder", ui.px(em * 7.5), intent = .Primary) { bookmark_folder_new(app) }
 				ui.spacer(ui.px(em * 0.4))
-				ib := action_button(i18n.tr("Import…"), "bm_import", em * 6.5)
+				ib := icon_action_button(app, lucide.FOLDER_INPUT, i18n.tr("Import…"), "bm_import", ui.px(em * 6.5))
 				if ib { bookmarks_import_pick(app) }
 				ui.spacer(ui.px(em * 0.4))
-				if action_button(i18n.tr("Export…"), "bm_export", em * 6.5) { bookmarks_export_pick(app) }
+				if icon_action_button(app, lucide.FOLDER_OUTPUT, i18n.tr("Export…"), "bm_export", ui.px(em * 6.5)) { bookmarks_export_pick(app) }
 				ui.spacer(ui.fill())
 				if ui.tags("weak") {
 					n := 0
