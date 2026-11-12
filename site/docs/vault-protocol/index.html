@@ -287,7 +287,8 @@ crosses the pipe.</p>
 <p>Version 5 (helper 0.5.0). Changes from version 4: new requests <code>save</code> (create a login, or update one) and <code>generate</code> (a
 password or a passphrase, by the SDK's generator; the vault need not be unlocked); rows of <code>search</code> carry <code>kind</code>
 (<code>login</code>, <code>card</code> or <code>identity</code>; secure notes and SSH keys are not listed), rows of <code>logins_for</code> carry <code>kind</code> <code>login</code>;
-<code>fill</code> takes the fields of cards and identities; the error <code>save_failed</code>.</p>
+<code>fill</code> takes the fields of cards and identities; the error <code>save_failed</code>; <code>search</code> is paged: it takes <code>offset</code>,
+<code>limit</code> (0: 100, at most 500) and <code>kinds</code>, answers <code>total</code>, and an empty query lists every item of the asked kinds.</p>
 <p>Version 4 (helper 0.4.0). Changes from version 3: new requests <code>password_hint</code>, <code>device_request</code>, <code>device_poll</code>,
 <code>passkey_options</code> and <code>login_passkey</code>; <code>login</code> takes <code>remember</code>; <code>unlock</code> takes <code>prf</code> and <code>credential_id</code>; <code>hello</code>
 answers <code>passkey</code>; the errors <code>denied</code>, <code>expired</code>, <code>no_passkey</code> and <code>account_locked</code>. Every token request carries the
@@ -327,7 +328,7 @@ event <code>locked</code>.</p>
 <tr><td><code>pin_set</code></td><td><code>pin</code> (4 characters or more)</td><td>none</td></tr>
 <tr><td><code>pin_clear</code></td><td>none</td><td>none</td></tr>
 <tr><td><code>logins_for</code></td><td><code>url</code>, <code>host</code>, <code>domain</code> (registrable domain by Wren's Public Suffix List, <code>""</code> if none)</td><td><code>rows</code>: <code>{id, kind, name, username, uri, match, has_totp}</code> (logins only, <code>kind</code> <code>login</code>); <code>equivalent</code>: the domains that the account makes equivalent to <code>domain</code></td></tr>
-<tr><td><code>search</code></td><td><code>query</code>, <code>limit</code> (0: 50; at most 50)</td><td><code>rows</code>: <code>{id, kind, name, username, uri, has_totp}</code> (no <code>match</code>; <code>uri</code>: a login's first <code>http(s)</code> address; see "Item kinds")</td></tr>
+<tr><td><code>search</code></td><td><code>query</code>, <code>offset</code> (0 by default), <code>limit</code> (0: 100; at most 500), <code>kinds</code> (a list of <code>login</code>, <code>card</code>, <code>identity</code>; empty or absent: all three)</td><td><code>rows</code>: <code>{id, kind, name, username, uri, has_totp}</code> from <code>offset</code>, at most <code>limit</code>, sorted by name (no <code>match</code>; <code>uri</code>: a login's first <code>http(s)</code> address; see "Item kinds"); <code>total</code>: how many items match in all (see "Search")</td></tr>
 <tr><td><code>fill</code></td><td><code>item</code>, <code>fields</code> (see "Fill fields")</td><td>one field per asked name that the item has (non-empty), named the same</td></tr>
 <tr><td><code>save</code></td><td><code>item</code> (<code>""</code>: a new login; else the id of the login to update), <code>name</code> (the item's name; on a creation Wren sends the site's host), <code>uri</code> (the page's address, <code>""</code> none), <code>username</code>, <code>password</code></td><td><code>item</code> (the id of the created or updated login)</td></tr>
 <tr><td><code>generate</code></td><td><code>kind</code> (<code>password</code> or <code>passphrase</code>); password: <code>length</code> (0: 20; 5 to 128), <code>uppercase</code>, <code>lowercase</code>, <code>numbers</code>, <code>special</code> (all false: all true), <code>min_numbers</code>, <code>min_special</code> (0: 1 when that class is on); passphrase: <code>words</code> (0: 5; 3 to 20), <code>separator</code> (<code>""</code>: <code>-</code>), <code>capitalize</code>, <code>include_number</code></td><td><code>value</code> (a secret, zeroed by the helper once written)</td></tr>
@@ -371,6 +372,13 @@ it does not know.</li>
 <code>username</code>, <code>ssn</code>, <code>passport</code>, <code>license</code>.</li>
 <li>A field of another kind of item gives nothing for it, and no error. <code>no_item</code>: an id that is neither a login, a card
 nor an identity.</li>
+</ul>
+<h3 id="search"><a class="anchor" href="#search" aria-hidden="true">#</a>Search</h3>
+<ul>
+<li>Each word of <code>query</code> must be in the item's name, its user name (a card's brand and last digits, an identity's name or
+email) or one of its URIs. An empty query matches every item of the asked <code>kinds</code>.</li>
+<li>The answer is one page: the matches sorted by name, from <code>offset</code>, at most <code>limit</code>. <code>total</code> counts every match, so
+that Wren asks the next page (<code>offset</code> = the rows it holds) only while there are more.</li>
 </ul>
 <h3 id="save"><a class="anchor" href="#save" aria-hidden="true">#</a>Save</h3>
 <ul>
@@ -420,7 +428,7 @@ only into the card or address fields where the user picked them (docs/bitwarden.
 <tbody>
 <tr><td><code>protocol.odin</code></td><td>The requests, written into one buffer reserved large enough at once; the answers, decoded into owned values. Every string that can hold a value is zeroed before it is freed.</td></tr>
 <tr><td><code>transport.odin</code>, <code>process.odin</code></td><td>The helper as a child process: a reader thread starts it, reads and decodes frames and posts each answer to the loop; a writer thread writes the queued frames in order and zeroes each. The loop thread never blocks on the helper.</td></tr>
-<tr><td><code>vault.odin</code></td><td>The one state of the Vault, the requests and their deadlines (<code>vault.request.timeout_ms</code>), the four sets of rows (the tab's document, the focused frame's document, the search, every item), the fill's ticket, the copies, the save offer and its never-save list, the generated value, the idle and sync timers, the blocking jobs (locating the helper, the account and never-save files, the check of the rows, the join of an ended helper).</td></tr>
+<tr><td><code>vault.odin</code></td><td>The one state of the Vault, the requests and their deadlines (<code>vault.request.timeout_ms</code>), the four sets of rows (the tab's document, the focused frame's document, the search, the cards or identities of a card or address field; the last two page by page), the fill's ticket, the copies, the save offer and its never-save list, the generated value, the idle and sync timers, the blocking jobs (locating the helper, the account and never-save files, the check of the rows, the join of an ended helper).</td></tr>
 <tr><td><code>match.odin</code></td><td>Wren's match check.</td></tr>
 <tr><td><code>settings.odin</code></td><td>The <code>vault.*</code> preferences and the server addresses (US, EU, self-hosted).</td></tr>
 </tbody>
@@ -438,6 +446,7 @@ only into the card or address fields where the user picked them (docs/bitwarden.
 <li class="lvl3"><a href="#login-steps">Login steps</a></li>
 <li class="lvl3"><a href="#item-kinds">Item kinds</a></li>
 <li class="lvl3"><a href="#fill-fields">Fill fields</a></li>
+<li class="lvl3"><a href="#search">Search</a></li>
 <li class="lvl3"><a href="#save">Save</a></li>
 <li class="lvl3"><a href="#idle-deadline">Idle deadline</a></li>
 <li class="lvl3"><a href="#errors">Errors</a></li>

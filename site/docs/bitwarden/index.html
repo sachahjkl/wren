@@ -524,7 +524,7 @@ exist: no other process can connect.</p>
 <tr><td><code>lock</code>, <code>logout</code></td><td>Nothing</td><td><code>ok</code></td></tr>
 <tr><td><code>sync</code></td><td>Nothing</td><td>Counts and the last sync time</td></tr>
 <tr><td><code>logins_for</code></td><td>Page URL, host, registrable domain (from Wren's Public Suffix List)</td><td>Rows: id, name, user name, matched host, match type, has TOTP, has passkey</td></tr>
-<tr><td><code>search</code></td><td>Query text, limit</td><td>Rows as above</td></tr>
+<tr><td><code>search</code></td><td>Query text, offset, limit, kinds</td><td>Rows as above, and the count of all matches</td></tr>
 <tr><td><code>fill</code></td><td>Item id, the wanted fields (<code>username</code>, <code>password</code>, <code>totp</code>)</td><td>The values</td></tr>
 <tr><td><code>totp</code></td><td>Item id</td><td>Code and seconds left</td></tr>
 <tr><td><code>save_login</code>, <code>update_password</code></td><td>Site URL, user name, password, optional item id</td><td>New item id</td></tr>
@@ -755,17 +755,31 @@ It disables nothing by itself.</li>
 <li><strong>Save offer</strong> (<code>vault.save.offer</code>). <code>forms.Host.submitting</code> runs inside a submission, after its validation and before
 its <code>submit</code> event (whose listeners may empty the fields), and for <code>form.submit()</code> too. The page hands it to the shell
 (<code>page.Forms_Embedder.submitting</code>), which reads the form's user name and password (<code>forms.sent_login</code>: a filled
-new-password field first) and gives them to <code>vault_offer_capture</code>. The Vault compares them with the document's rows
-(they are ready: the page's rows are asked when it shows). No login with this user name (case does not matter): Save.
-One: its password is asked of the helper (a <code>fill</code> whose answer goes to no hook), then Update if it differs, nothing
-if it is the same. The offer's state machine: <code>None</code>, <code>Checking</code>, <code>Save</code> or <code>Update</code>, <code>Saving</code>, <code>None</code>.</li>
+new-password field first) and gives them to <code>vault_offer_capture</code>. The Vault compares them with the site's rows: a
+document's set that is ready for that address, else for another address of the same host (the page after a login).
+When none is ready yet (the Vault was unlocked a moment before, the rows are on their way), the offer waits for them
+(<code>Waiting</code>) at most 10 s (<code>OFFER_WAIT_MS</code>), then is dropped. No login with this user name (case does not matter):
+Save. One: its password is asked of the helper (a <code>fill</code> whose answer goes to no hook), then Update if it differs,
+nothing if it is the same. The offer's state machine: <code>None</code>, [<code>Waiting</code>], [<code>Checking</code>], <code>Save</code> or <code>Update</code>,
+<code>Saving</code>, <code>None</code>.</li>
+<li><strong>A login sent by a script</strong> (no form submission: a click handler reads the fields and posts them with <code>fetch</code>).
+<code>forms.Forms.typed_password</code> is the password field the person last typed into (<code>set_edit_text</code>: only the person's
+edits, never a script's value or a fill). A form submission that owns it clears it (<code>typed_sent</code>): the submission's
+offer had it. The page asks <code>forms.unsent_login</code> once, when the document goes (<code>page_unload</code>, <code>page_freeze</code> for the
+back/forward cache, <code>forms_detach</code> for a closed tab; before <code>pagehide</code>, whose listeners may empty the field) or when
+the field leaves the document (the DOM's removal hook; looked at again at the next task, so that a form a script only
+moves is not taken). It gives a login when the field still holds a value that the person typed (a script's value
+over it gives nothing) and is a password field; the user name is the group's (its form, or the fields with no form,
+in the field's own tree: a removed form still holds its fields): autocomplete <code>username</code> or <code>email</code>, else the nearest
+text field before the password. The page hands it to the shell (<code>page.Forms_Embedder.login_left</code>), which captures it
+as a form's login: the offer shows over the tab's next page.</li>
 <li>The offer hangs under the toolbar's Vault button: the host, the user name, Save or Update, Not now, Never for this
 site. It is not modal and takes no focus. Save creates a login named after the host with the page's address; Update
 changes the password (and adds the address when no URI of the login matches it). The rows are asked again after the
 answer. "Never for this site" keeps the host in <code>&lt;profile&gt;/vault/never_save</code> (one host a line, written by a blocking
 job, one write at a time); no offer is made there again.</li>
 <li>The captured password is a secret: it is zeroed when it crossed to the helper, at a dismissal, at another capture
-and at a lock. A login form sent by a script without a form submission (a <code>fetch</code> of a click handler) is not seen.</li>
+and at a lock.</li>
 <li><strong>Generator</strong> (<code>vault.generator.*</code>). Under a password field that takes a new password (autocomplete <code>new-password</code>,
 or two password fields in its form) or of a site with no login yet, the dropdown ends with "Generate a password":
 the helper generates it, and it fills every new password field of the form (the password and its confirmation).
@@ -778,15 +792,22 @@ of the same site (the same registrable domain), and fills the code there once. T
 when its tree or its attributes change. Never in a frame of another origin or on a plain http page.
 <code>vault.totp.copy_on_fill</code> copies the code right after the login's fill.</li>
 <li><strong>Panel search</strong>: the field at the top of the unlocked panel. Empty: the page's logins. Typed: the whole vault
-(<code>search</code>), every kind, each row with the icon of its kind and its acts: a login fills (when it is one of the page's)
-and copies its user name, password and code; a card copies its number and security code; an identity its email.</li>
+(<code>search</code>), every kind, "N items" (the helper's <code>total</code>) under the field, each row with the icon of its kind and its
+acts: a login fills (when it is one of the page's) and copies its user name, password and code; a card copies its
+number and security code; an identity its email. The list is the toolkit's lazy column (<code>ui.lazy_begin</code>): only the
+rows near the view are built. The helper answers one page of 100 rows (<code>SEARCH_PAGE</code>); when the rows built come
+within half a page of the last row held, the next page is asked (<code>vault_search_more</code>) and appended, one page at a
+time, until <code>total</code>. A page of an older query (another <code>gen</code> of the set) or of another offset is dropped; a page that
+fails ends the paging of that query and keeps its rows.</li>
 <li><strong>Cards and identities</strong> (<code>src/forms/autofill.odin</code>). <code>autofill_role</code> gives a field's role from its autocomplete
 (<code>cc-name</code>, <code>cc-number</code>, <code>cc-exp</code>, <code>cc-exp-month</code>, <code>cc-exp-year</code>, <code>cc-csc</code>, <code>cc-type</code>; <code>name</code>, <code>given-name</code>,
 <code>additional-name</code>, <code>family-name</code>, <code>honorific-prefix</code>, <code>email</code>, <code>tel</code>, <code>organization</code>, <code>street-address</code>,
 <code>address-line1</code> to <code>3</code>, <code>address-level1</code> and <code>2</code>, <code>postal-code</code>, <code>country</code>, <code>country-name</code>), else from the words of
 its name and id (<code>cardnumber</code>, <code>cvv</code>, <code>expmonth</code>, <code>firstname</code>, <code>zip</code>, <code>city</code>...). A login's role wins over it. The
-dropdown under such a field lists the vault's cards or identities (an empty <code>search</code> kept in its own set, <code>Items</code>,
-while such a field has the focus); a pick fills every field of that kind in the form: an expiry date as <code>MM/YY</code> or
+dropdown under such a field lists the vault's cards or identities (an empty <code>search</code> with <code>kinds</code> <code>["card"]</code> or
+<code>["identity"]</code>, kept in its own set, <code>Items</code>, while such a field has the focus; more than 6 rows scroll in a lazy
+column, which asks the next page as it nears the end); a pick fills every field of that kind in the form: an expiry
+date as <code>MM/YY</code> or
 <code>MM/YYYY</code> by the field's placeholder and maxlength, a select by its option's value or text. Social security,
 passport and licence numbers are never asked.</li>
 </ul>
@@ -982,7 +1003,8 @@ on its input).</li>
 <ul>
 <li>The target of a fill is the document that holds the focused field: the focused frame's, else the tab's. The Vault
 keeps four sets of rows (<code>Row_Slot</code>): the tab's document (<code>Page</code>), the focused frame's document (<code>Frame</code>), the
-search of the palette or the panel (<code>Search</code>), every item while a card or address field has the focus (<code>Items</code>). <strong>This changes 3.1</strong>: the rows of the tab's document stay in Wren's memory while the
+search of the palette or the panel (<code>Search</code>), the cards or the identities while a card or address field has the
+focus (<code>Items</code>). <code>Search</code> and <code>Items</code> hold their search page by page. <strong>This changes 3.1</strong>: the rows of the tab's document stay in Wren's memory while the
 Vault is unlocked, not only while a surface shows them: the chip, the fill shortcut and the dropdown need them
 without a round trip to the helper. They are zeroed at a lock, at another address, and when remote control
 starts. Search rows go when the palette closes. No password and no code is ever in a row.</li>
@@ -1003,7 +1025,7 @@ login field, "Vault locked" (a click opens the unlock dialog).</li>
 <li>Palette: the source "Vault", prefix <code>$</code>, not in the plain search. <code>items</code> asks the helper (<code>vault_search</code>, once per
 query: the helper searches, off the interface thread) and lists, per login, its acts: "Fill" (only when the item is
 a checked row of the focused document: rule 10), copy the user name, the password or the code, open the site. The
-palette's own fuzzy match runs on at most 50 logins.</li>
+palette lists the first page (100 rows) and its own fuzzy match runs on those.</li>
 <li>Per-site list: the panel's rows have Copy user name, Copy password and Copy code. A copy is a <code>fill</code> (or <code>totp</code>)
 request whose answer goes to the <code>copy</code> hook, never to a page. The clipboard is cleared after
 <code>vault.clipboard.clear_seconds</code> if it still holds the value: Wren keeps only its hash and length.</li>
@@ -1022,8 +1044,8 @@ the dropdown in a frame whose fields the shell paints in another document's pass
 document at a time: the dropdown then does not show, the shortcut and the panel still fill); the e2e scenarios of
 phase 3.</li>
 </ul></li>
-<li>Phase 4 and cards (<code>src/browser/vault_save.odin</code>, <code>src/forms/autofill.odin</code>, protocol 5): see 4.10. Not yet: the save
-of a login sent by a script without a form, folders in the offer, a conflict when the item changed on the server.</li>
+<li>Phase 4 and cards (<code>src/browser/vault_save.odin</code>, <code>src/forms/autofill.odin</code>, protocol 5): see 4.10. Not yet: folders
+in the offer, a conflict when the item changed on the server.</li>
 <li>Not yet: lock on system sleep and session lock (<code>vault.lock.on_sleep</code>: the toolkit reports no such event yet); the
 fill on the page thread when <code>browser.shell.page_thread</code> is on (the fill runs on the loop thread, as the chrome's
 focus moves do); the e2e tests against Vaultwarden; <code>about:licenses</code> listing the helper; the flake's check of the
