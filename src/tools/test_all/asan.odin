@@ -149,7 +149,8 @@ task_asan_package :: proc(t: ^Task_Run) -> bool {
 		tooling.append_text(t.log, text[from:min(len(text), from + ASAN_REPORT_BYTES)])
 		return false
 	}
-	return strings.contains(text, SUCCESS_MANY)
+	// (a package of one test says it in the singular: urlpattern)
+	return strings.contains(text, SUCCESS_MANY) || strings.contains(text, SUCCESS_ONE)
 }
 
 asan_steps :: proc(t: ^[dynamic]Step, cfg: ^Config) {

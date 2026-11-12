@@ -465,7 +465,9 @@ hud_settle_timer :: proc(data: rawptr) {
 	// a frame only when what the status bar, its open panel or the title shows of them changes (the memory moved a few bytes, the
 	// numbers were at rest already): no frame, and the status bar stays what each window last drew
 	warn, bad := hud_warn(app), hud_bad(app)
-	same := !h.panel_open && hud_shown(n, h.cfg.comma, warn, bad) == hud_shown(h.nums, h.cfg.comma, warn, bad)
+	// (the frames' numbers alone: the settle is there to let them fall to rest after a burst; the memory moves under any
+	// script that allocates, and it is shown anew with the next frame drawn for another reason, never one of its own)
+	same := !h.panel_open && hud_shown(n, h.cfg.comma, warn, bad, memory = false) == hud_shown(h.nums, h.cfg.comma, warn, bad, memory = false)
 	h.nums = n
 	if same { return }
 	h.changes += 1
@@ -474,12 +476,13 @@ hud_settle_timer :: proc(data: rawptr) {
 }
 
 // What the status bar (its counters and their tips) and the window title show of `n`: two numbers with the same text show the same.
-hud_shown :: proc(n: Hud_Numbers, comma: bool, warn, bad: f32) -> string {
+// `memory`: with the memory's numbers (false: the frames' alone).
+hud_shown :: proc(n: Hud_Numbers, comma: bool, warn, bad: f32, memory := true) -> string {
 	cpu, gpu, tone, mem := "--", "--", "weak", ""
 	if n.frames > 0 { cpu = fmt_ms(n.cpu_mean, comma) }
 	if n.gpu_n > 0 { gpu = fmt_ms(n.gpu_mean, comma) }
 	if bad > 0 && n.cpu_mean > bad { tone = "bad" } else if warn > 0 && n.cpu_mean > warn { tone = "warn" }
-	if n.mem_valid {
+	if memory && n.mem_valid {
 		mem = fmt.tprintf("%s %s %d", fmt_bytes(n.working_set, comma), fmt_bytes(n.private_bytes, comma), n.working_set / BYTES_PER_MB_DECIMAL)
 	}
 	return fmt.tprintf("%.0f fps, CPU %s %s, GPU %s, %s", n.fps, cpu, tone, gpu, mem)

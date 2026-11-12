@@ -48,6 +48,7 @@ TEST_LIMIT :: 5 * time.Minute
 // passing CI run is near it). It only ends a failing run, so no passing test depends on the speed of the machine; a failure costs this, once:
 // the barrier that fails ends its test.
 DEFAULT_DEADLINE :: 60 * time.Second
+PAGE_GLIMPSE_MS :: 5000   // what a failed wait gives the page to say what it shows (page_glimpse)
 // The window when a test does not say.
 DEFAULT_SIZE :: [2]int{1280, 800}
 // 96 dots per inch: a scale of 1.
@@ -499,7 +500,27 @@ wait_js :: proc(s: ^Session, condition: string, deadline: time.Duration = DEFAUL
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
 	c := browser.control_call(&o)
-	answer(s, &o, browser.control_wait_js(s.app, &c, t, condition, ms_of(deadline)), fmt.tprintf("wait_js %s", condition), loc)
+	what := fmt.tprintf("wait_js %s", condition)
+	rep := browser.control_wait_js(s.app, &c, t, condition, ms_of(deadline))
+	if !rep.deferred {
+		if rep.code != 0 { failed(s, fmt.tprintf("%s: %s", what, rep.message), loc) }
+		return
+	}
+	kept := strings.clone(what, s.test.temp_allocator)   // (the frames the wait makes empty the temporary memory it was made in)
+	if !browser.control_run(s.app, &o) { failed(s, fmt.tprintf("%s: the browser ended meanwhile", kept), loc) }
+	// (what the page showed then: a wait that never held says nothing of why; a CI run is read from its log)
+	if o.code != 0 { failed(s, fmt.tprintf("%s: %s\n  the page then: %s", kept, o.message, page_glimpse(s, t)), loc) }
+}
+
+// The page's address and the start of its text, for a failure's message ("(no answer)" when its script engine gives none).
+@(private)
+page_glimpse :: proc(s: ^Session, t: ^browser.Tab) -> string {
+	o: browser.Control_Outcome
+	defer browser.control_outcome_free(&o)
+	c := browser.control_call(&o)
+	rep := browser.control_eval(s.app, &c, t, `location.href + " | " + (document.body ? document.body.textContent.replace(/\s+/g, " ").slice(0, 400) : "(no body)")`, false, PAGE_GLIMPSE_MS)
+	if !rep.deferred || !browser.control_run(s.app, &o) || o.code != 0 { return "(no answer)" }
+	return strings.clone(o.text, s.test.temp_allocator)
 }
 
 // One turn of the browser's loop, with a frame asked for: what a poll goes round on.

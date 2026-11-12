@@ -185,6 +185,8 @@ hud_shown_numbers :: proc(t: ^testing.T) {
 	grown := rest
 	grown.working_set = 313_600_000
 	testing.expect(t, hud_shown(grown, false, 16.7, 33.4) != hud_shown(rest, false, 16.7, 33.4))
+	// ... which the settle wake does not compare: a script that allocates under a timer draws no frame of its own
+	testing.expect_value(t, hud_shown(grown, false, 16.7, 33.4, memory = false), hud_shown(rest, false, 16.7, 33.4, memory = false))
 	// the GPU time
 	gpu := busy
 	gpu.gpu_n, gpu.gpu_mean = 10, 0.8
