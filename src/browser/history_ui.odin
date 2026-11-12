@@ -361,11 +361,12 @@ browsing_toolbar :: proc(app: ^App, t: ^Tab) {
 	if b.clicked { ui.ctx_menu_open_rect(key, b.box.rect, b.box.key) }
 	if ui.ctx_menu(key) {
 		now := now_unix_ms()
-		if ui.menu_item("The last hour").clicked { global_history_remove_range(app, now - 3_600_000, max(i64)) }
-		if ui.menu_item("Today").clicked { global_history_remove_range(app, local_midnight(now), max(i64)) }
-		if ui.menu_item("The last 7 days").clicked { global_history_remove_range(app, local_midnight(now) - 6 * 86_400_000, max(i64)) }
+		// (confirm_shell.odin: asked first, with how many visits go)
+		if ui.menu_item("The last hour\u2026").clicked { history_delete_asked(app, now - 3_600_000, max(i64), "the last hour") }
+		if ui.menu_item("Today\u2026").clicked { history_delete_asked(app, local_midnight(now), max(i64), "today") }
+		if ui.menu_item("The last 7 days\u2026").clicked { history_delete_asked(app, local_midnight(now) - 6 * 86_400_000, max(i64), "the last 7 days") }
 		ui.menu_separator()
-		if ui.menu_item("Everything").clicked { global_history_remove_range(app, min(i64), max(i64)) }
+		if ui.menu_item("Everything\u2026").clicked { history_delete_asked(app, min(i64), max(i64), "every day") }
 	}
 	ui.spacer(ui.px(em * 0.4))
 	if ui.tags("weak") {

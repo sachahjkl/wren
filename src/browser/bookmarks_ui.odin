@@ -206,9 +206,7 @@ bookmarks_dialog_build :: proc(app: ^App) {
 	}
 	switch {
 	case remove:
-		_ = bookmark_remove(&app.bms.items, v.edit_id)
-		bookmarks_changed(app)
-		ui.toast(.Info, "Bookmark removed")
+		bookmark_remove_asked(app, v.edit_id)   // confirm_shell.odin: a folder that holds something is asked about
 	case save:
 		name := strings.trim_space(ui.field_string(&v.edit_title))
 		addr := strings.trim_space(ui.field_string(&v.edit_url))
@@ -365,8 +363,7 @@ bookmarks_list :: proc(app: ^App, t: ^Tab, menu_key: ui.Key) {
 		if b.folder { v.open[b.id] = !v.open[b.id] } else { open_at = rows[v.list.sel].index }
 	}
 	if v.list.focused && ui.key_press(.Delete) && v.list.sel >= 0 && v.list.sel < len(rows) {
-		_ = bookmark_remove(&app.bms.items, app.bms.items[rows[v.list.sel].index].id)
-		bookmarks_changed(app)
+		bookmark_remove_asked(app, app.bms.items[rows[v.list.sel].index].id)
 		return
 	}
 	if open_at >= 0 { bookmark_open(app, t, app.bms.items[open_at].url, new_tab) }
@@ -410,9 +407,8 @@ bookmark_menu_items :: proc(app: ^App, t: ^Tab, i: int) {
 		}
 	}
 	ui.menu_separator()
-	if ui.menu_item(b.folder ? i18n.tr("Remove the folder and its bookmarks") : i18n.tr("Remove")).clicked {
-		_ = bookmark_remove(&app.bms.items, b.id)
-		bookmarks_changed(app)
+	if ui.menu_item(b.folder ? i18n.tr("Remove the folder and its bookmarks\u2026") : i18n.tr("Remove")).clicked {
+		bookmark_remove_asked(app, b.id)   // confirm_shell.odin: a folder that holds something is asked about
 	}
 }
 

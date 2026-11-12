@@ -466,7 +466,7 @@ dl_menu_items :: proc(app: ^App, d: ^Download) {
 	if ui.menu_item("Copy download link", icon = GLYPH_COPY).clicked { clip_set(d.url); return }
 	if ui.menu_item("Download again", enabled = d.url != "").clicked { download_retry(app, d); return }
 	ui.menu_separator()
-	if ui.menu_item("Delete the file", enabled = present).clicked { download_delete_file(app, d); return }
+	if ui.menu_item("Delete the file\u2026", enabled = present).clicked { download_delete_asked(app, d); return }   // confirm_shell.odin
 	if ui.menu_item("Remove from the list").clicked { download_remove(app, d); return }
 }
 

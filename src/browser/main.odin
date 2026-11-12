@@ -197,6 +197,7 @@ App :: struct {
 	cmds:          Command_Registry,         // commands.odin: the commands of the menu, the palette and the shortcuts
 	ghist:         Global_History,           // global_history.odin: the profile's history
 	bms:           Bookmarks,                // bookmarks.odin: the profile's bookmarks
+	confirm:       Pending_Confirm,          // confirm_shell.odin: the question before an act not taken back
 	sysicons:      System_Icons,             // system_icons.odin: the system's icons of files, as textures
 	favs:          Favicons,                 // favicon.odin: the tabs' icons
 	bf:            Bfcache,                  // bfcache.odin: the back/forward cache of the tabs
@@ -1121,6 +1122,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	qr_build(app)   // qr_shell.odin: the QR code of the page's address
 	bookmarks_dialog_build(app)   // bookmarks_ui.odin: the dialog that names a bookmark
 	bookmarks_bar_menus(app)   // bookmarks_bar.odin: the bar's menus
+	confirm_build(app)   // confirm_shell.odin: a question before an act not taken back
 	storage_access_shell_build(app)   // storage_access_shell.odin: a frame's storage access prompt
 	// notices go over the page, not over the title bar's window buttons
 	if pr := active_window(app).page_rect; pr.max.y > pr.min.y { ui.set_toast_area(pr) }
@@ -1937,6 +1939,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("bookmarks_shutdown")
 	bookmarks_shutdown(app)
 	bookmarks_ui_destroy(app)
+	confirm_destroy(app)
 	host.shutdown_step("history_ui_destroy")
 	history_ui_destroy()
 	downloads_ui_destroy()
