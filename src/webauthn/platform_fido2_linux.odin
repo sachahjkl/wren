@@ -100,8 +100,8 @@ Fido2_Lib :: struct {
 	fido_assert_id_len:     proc "c" (a: rawptr, idx: c.size_t) -> c.size_t,
 	fido_assert_user_id_ptr: proc "c" (a: rawptr, idx: c.size_t) -> [^]u8,
 	fido_assert_user_id_len: proc "c" (a: rawptr, idx: c.size_t) -> c.size_t,
-	fido_assert_user_name_ptr: proc "c" (a: rawptr, idx: c.size_t) -> cstring,
-	fido_assert_user_display_name_ptr: proc "c" (a: rawptr, idx: c.size_t) -> cstring,
+	fido_assert_user_name: proc "c" (a: rawptr, idx: c.size_t) -> cstring,
+	fido_assert_user_display_name: proc "c" (a: rawptr, idx: c.size_t) -> cstring,
 	fido_dev_get_assert:    proc "c" (dev, a: rawptr, pin: cstring) -> c.int,
 }
 
@@ -191,8 +191,8 @@ fido2_load :: proc() {
 	l.fido_assert_id_len = auto_cast sym(h, "fido_assert_id_len", &ok)
 	l.fido_assert_user_id_ptr = auto_cast sym(h, "fido_assert_user_id_ptr", &ok)
 	l.fido_assert_user_id_len = auto_cast sym(h, "fido_assert_user_id_len", &ok)
-	l.fido_assert_user_name_ptr = auto_cast sym(h, "fido_assert_user_name_ptr", &ok)
-	l.fido_assert_user_display_name_ptr = auto_cast sym(h, "fido_assert_user_display_name_ptr", &ok)
+	l.fido_assert_user_name = auto_cast sym(h, "fido_assert_user_name", &ok)
+	l.fido_assert_user_display_name = auto_cast sym(h, "fido_assert_user_display_name", &ok)
 	l.fido_dev_get_assert = auto_cast sym(h, "fido_dev_get_assert", &ok)
 	if !ok { return }
 	l.fido_init(0)
@@ -439,8 +439,8 @@ fido2_get_assertion :: proc(pl: ^Platform, rq: ^Get_Request, out: ^Credential, a
 		accounts: [CHOOSE_MAX]Choose_Account
 		n := min(count, CHOOSE_MAX)
 		for i in 0 ..< n {
-			name := fido2.fido_assert_user_name_ptr(as, c.size_t(i))
-			display := fido2.fido_assert_user_display_name_ptr(as, c.size_t(i))
+			name := fido2.fido_assert_user_name(as, c.size_t(i))
+			display := fido2.fido_assert_user_display_name(as, c.size_t(i))
 			accounts[i] = {name = name != nil ? string(name) : "", display_name = display != nil ? string(display) : ""}
 		}
 		chosen, ok := choose_ask(rq.cancel, rq.rp_id, accounts[:n])
