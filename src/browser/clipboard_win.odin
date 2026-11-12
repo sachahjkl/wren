@@ -19,7 +19,7 @@ clipboard_set_image :: proc(app: ^App, rgba: []u8, w, h, stride: int) -> bool {
 		px = make([]u8, w * h * 4, context.temp_allocator)
 		for y in 0 ..< h { copy(px[y * w * 4:][:w * 4], rgba[y * stride:][:w * 4]) }
 	}
-	return platform.clipboard_set_image(active_window(app).win, {px[:w * h * 4], {w, h}})
+	return platform.clipboard_set_image(active_window(app).win, {rgba = px[:w * h * 4], size = {w, h}})
 }
 
 // navigator.clipboard.writeText / readText (page/js_clipboard.odin decides who may; this is the clipboard they reach).

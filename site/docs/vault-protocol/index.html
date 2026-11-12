@@ -282,7 +282,12 @@ requests, its standard output the answers. The design is in <a href="../../docs/
 program under GPL-3.0-only, in its own repository; its <code>README.md</code> has the same description. This page and that
 README must stay equal: a change of the protocol changes both, and <code>PROTOCOL_VERSION</code> in <code>src/vault/protocol.odin</code> and
 in the helper.</p>
-<p>The protocol is generic: accounts, logins and plain values. No type of the Bitwarden SDK crosses the pipe.</p>
+<p>The protocol is generic: accounts, items (logins, cards, identities) and plain values. No type of the Bitwarden SDK
+crosses the pipe.</p>
+<p>Version 5 (helper 0.5.0). Changes from version 4: new requests <code>save</code> (create a login, or update one) and <code>generate</code> (a
+password or a passphrase, by the SDK's generator; the vault need not be unlocked); rows of <code>search</code> carry <code>kind</code>
+(<code>login</code>, <code>card</code> or <code>identity</code>; secure notes and SSH keys are not listed), rows of <code>logins_for</code> carry <code>kind</code> <code>login</code>;
+<code>fill</code> takes the fields of cards and identities; the error <code>save_failed</code>.</p>
 <p>Version 4 (helper 0.4.0). Changes from version 3: new requests <code>password_hint</code>, <code>device_request</code>, <code>device_poll</code>,
 <code>passkey_options</code> and <code>login_passkey</code>; <code>login</code> takes <code>remember</code>; <code>unlock</code> takes <code>prf</code> and <code>credential_id</code>; <code>hello</code>
 answers <code>passkey</code>; the errors <code>denied</code>, <code>expired</code>, <code>no_passkey</code> and <code>account_locked</code>. Every token request carries the
@@ -312,7 +317,7 @@ event <code>locked</code>.</p>
 <div class="table-box"><table>
 <thead><tr><th>op</th><th>Request fields</th><th>Answer fields</th></tr></thead>
 <tbody>
-<tr><td><code>hello</code></td><td><code>protocol</code> (4), <code>state_dir</code>, <code>identity_url</code>, <code>api_url</code>, <code>persist</code>, <code>device_name</code>, <code>client_version</code>, <code>idle_seconds</code></td><td><code>protocol</code>, <code>helper_version</code>, <code>account</code> (<code>none</code> or <code>locked</code>), <code>email</code>, <code>login</code> (<code>password</code> or <code>api_key</code>), <code>pin</code> (bool), <code>passkey</code> (bool: a passkey of the account unlocks)</td></tr>
+<tr><td><code>hello</code></td><td><code>protocol</code> (5), <code>state_dir</code>, <code>identity_url</code>, <code>api_url</code>, <code>persist</code>, <code>device_name</code>, <code>client_version</code>, <code>idle_seconds</code></td><td><code>protocol</code>, <code>helper_version</code>, <code>account</code> (<code>none</code> or <code>locked</code>), <code>email</code>, <code>login</code> (<code>password</code> or <code>api_key</code>), <code>pin</code> (bool), <code>passkey</code> (bool: a passkey of the account unlocks)</td></tr>
 <tr><td><code>login</code></td><td>first step: <code>email</code>, <code>password</code>; second step: <code>email</code>, <code>code</code>, <code>provider</code>; a new code: <code>email</code>, <code>provider</code>, <code>resend</code> (true); <code>remember</code> (true): the server lets this device skip the second step next time</td><td><code>result</code>: <code>ok</code>; or <code>need_two_factor</code> with <code>providers</code> and <code>email_sent</code>; or <code>need_device_code</code></td></tr>
 <tr><td><code>login_api_key</code></td><td><code>client_id</code>, <code>client_secret</code>, <code>password</code> (the master password)</td><td><code>result</code> (<code>ok</code>), <code>email</code></td></tr>
 <tr><td><code>unlock</code></td><td><code>password</code>, <code>pin</code>, or <code>prf</code> and <code>credential_id</code> (a passkey)</td><td>none; <code>bad_pin</code> errors carry <code>tries_left</code></td></tr>
@@ -321,9 +326,11 @@ event <code>locked</code>.</p>
 <tr><td><code>sync</code></td><td>none</td><td><code>items</code>, <code>last_sync</code> (Unix seconds)</td></tr>
 <tr><td><code>pin_set</code></td><td><code>pin</code> (4 characters or more)</td><td>none</td></tr>
 <tr><td><code>pin_clear</code></td><td>none</td><td>none</td></tr>
-<tr><td><code>logins_for</code></td><td><code>url</code>, <code>host</code>, <code>domain</code> (registrable domain by Wren's Public Suffix List, <code>""</code> if none)</td><td><code>rows</code>: <code>{id, name, username, uri, match, has_totp}</code>; <code>equivalent</code>: the domains that the account makes equivalent to <code>domain</code></td></tr>
-<tr><td><code>search</code></td><td><code>query</code>, <code>limit</code> (0: 50; at most 50)</td><td><code>rows</code>: <code>{id, name, username, uri, has_totp}</code> (no <code>match</code>; <code>uri</code>: the item's first <code>http(s)</code> address)</td></tr>
-<tr><td><code>fill</code></td><td><code>item</code>, <code>fields</code> (<code>username</code>, <code>password</code>, <code>totp</code>)</td><td><code>username</code>, <code>password</code>, <code>totp</code> (the asked ones the item has)</td></tr>
+<tr><td><code>logins_for</code></td><td><code>url</code>, <code>host</code>, <code>domain</code> (registrable domain by Wren's Public Suffix List, <code>""</code> if none)</td><td><code>rows</code>: <code>{id, kind, name, username, uri, match, has_totp}</code> (logins only, <code>kind</code> <code>login</code>); <code>equivalent</code>: the domains that the account makes equivalent to <code>domain</code></td></tr>
+<tr><td><code>search</code></td><td><code>query</code>, <code>limit</code> (0: 50; at most 50)</td><td><code>rows</code>: <code>{id, kind, name, username, uri, has_totp}</code> (no <code>match</code>; <code>uri</code>: a login's first <code>http(s)</code> address; see "Item kinds")</td></tr>
+<tr><td><code>fill</code></td><td><code>item</code>, <code>fields</code> (see "Fill fields")</td><td>one field per asked name that the item has (non-empty), named the same</td></tr>
+<tr><td><code>save</code></td><td><code>item</code> (<code>""</code>: a new login; else the id of the login to update), <code>name</code> (the item's name; on a creation Wren sends the site's host), <code>uri</code> (the page's address, <code>""</code> none), <code>username</code>, <code>password</code></td><td><code>item</code> (the id of the created or updated login)</td></tr>
+<tr><td><code>generate</code></td><td><code>kind</code> (<code>password</code> or <code>passphrase</code>); password: <code>length</code> (0: 20; 5 to 128), <code>uppercase</code>, <code>lowercase</code>, <code>numbers</code>, <code>special</code> (all false: all true), <code>min_numbers</code>, <code>min_special</code> (0: 1 when that class is on); passphrase: <code>words</code> (0: 5; 3 to 20), <code>separator</code> (<code>""</code>: <code>-</code>), <code>capitalize</code>, <code>include_number</code></td><td><code>value</code> (a secret, zeroed by the helper once written)</td></tr>
 <tr><td><code>totp</code></td><td><code>item</code></td><td><code>totp</code>, <code>period</code>, <code>remaining</code> (seconds)</td></tr>
 <tr><td><code>password_hint</code></td><td><code>email</code></td><td>none; the server mails the hint to the account's address</td></tr>
 <tr><td><code>device_request</code></td><td><code>email</code></td><td><code>fingerprint</code> (the phrase the other device shows)</td></tr>
@@ -346,6 +353,35 @@ second step forgets the kept password.</li>
 answers <code>need_two_factor</code> with <code>email_sent</code> true. With <code>device</code>, it sends the first step again and the server mails a
 new code. <code>email_sent</code> is also true when the email code is the account's only second step: the server mailed it.</li>
 </ul>
+<h3 id="item-kinds"><a class="anchor" href="#item-kinds" aria-hidden="true">#</a>Item kinds</h3>
+<ul>
+<li>A card row: <code>name</code> the item's name, <code>username</code> the brand and the last 4 digits (<code>Visa *1234</code>, <code>""</code> when no number),
+<code>uri</code> <code>""</code>.</li>
+<li>An identity row: <code>name</code> the item's name, <code>username</code> the full name or else the email, <code>uri</code> <code>""</code>.</li>
+<li><code>has_totp</code> is false for cards and identities. A row without <code>kind</code> is a login (version 4); Wren drops a row of a kind
+it does not know.</li>
+</ul>
+<h3 id="fill-fields"><a class="anchor" href="#fill-fields" aria-hidden="true">#</a>Fill fields</h3>
+<ul>
+<li>A login: <code>username</code>, <code>password</code>, <code>totp</code>.</li>
+<li>A card: <code>cardholder</code>, <code>number</code>, <code>exp_month</code> (as stored, <code>1</code> to <code>12</code>), <code>exp_year</code> (4 digits when stored so), <code>code</code>,
+<code>brand</code>.</li>
+<li>An identity: <code>title</code>, <code>first_name</code>, <code>middle_name</code>, <code>last_name</code>, <code>full_name</code> (first, middle and last, single spaces),
+<code>address1</code>, <code>address2</code>, <code>address3</code>, <code>city</code>, <code>state</code>, <code>postal_code</code>, <code>country</code>, <code>company</code>, <code>email</code>, <code>phone</code>,
+<code>username</code>, <code>ssn</code>, <code>passport</code>, <code>license</code>.</li>
+<li>A field of another kind of item gives nothing for it, and no error. <code>no_item</code>: an id that is neither a login, a card
+nor an identity.</li>
+</ul>
+<h3 id="save"><a class="anchor" href="#save" aria-hidden="true">#</a>Save</h3>
+<ul>
+<li>On an update, only the given non-empty fields change (<code>username</code>, <code>password</code>); the item keeps its password history
+as the SDK does it. The <code>uri</code> is added to the item's URIs when none matches it.</li>
+<li>The helper encrypts with the SDK, sends it to the server (<code>POST /api/ciphers</code> for a creation, <code>PUT
+/api/ciphers/{id}</code> for an update) and puts the result into its local copy of the vault: <code>logins_for</code>, <code>search</code> and
+<code>fill</code> see it at once, without a sync.</li>
+<li>Errors: <code>locked</code>, <code>no_item</code> (an update of an id that is not a login), <code>save_failed</code> (the server refused it or cannot
+be reached; the message says why).</li>
+</ul>
 <h3 id="idle-deadline"><a class="anchor" href="#idle-deadline" aria-hidden="true">#</a>Idle deadline</h3>
 <p><code>hello</code>'s <code>idle_seconds</code> (0: none) is the helper's own lock. When no request (<code>keepalive</code> included) comes for that
 long, the helper writes the event <code>locked</code> and exits. Wren sends it its own idle time and a margin
@@ -354,7 +390,8 @@ minute while the user is active.</p>
 <h3 id="errors"><a class="anchor" href="#errors" aria-hidden="true">#</a>Errors</h3>
 <p><code>bad_request</code>, <code>bad_protocol</code>, <code>no_hello</code>, <code>bad_server</code>, <code>bad_credentials</code>, <code>unsupported_two_factor</code>,
 <code>unsupported_account</code>, <code>network</code>, <code>login_failed</code>, <code>no_account</code>, <code>bad_password</code>, <code>bad_pin</code>, <code>pin_reset</code>, <code>no_pin</code>,
-<code>no_state</code>, <code>denied</code>, <code>expired</code>, <code>no_passkey</code>, <code>account_locked</code>, <code>locked</code>, <code>sync_failed</code>, <code>no_item</code>, <code>no_totp</code>, <code>decrypt</code>, <code>state_write</code>, <code>state_format</code>. The helper's README says what
+<code>no_state</code>, <code>denied</code>, <code>expired</code>, <code>no_passkey</code>, <code>account_locked</code>, <code>locked</code>, <code>sync_failed</code>, <code>no_item</code>, <code>no_totp</code>,
+<code>save_failed</code>, <code>decrypt</code>, <code>state_write</code>, <code>state_format</code>. The helper's README says what
 each means.</p>
 <h2 id="the-helpers-identity-at-the-server"><a class="anchor" href="#the-helpers-identity-at-the-server" aria-hidden="true">#</a>The helper's identity at the server</h2>
 <p>The helper sends its own token request (the SDK's sends the device type <code>ChromeBrowser</code> and one device identifier for
@@ -373,8 +410,9 @@ sync.</p>
 <p>Wren checks every returned row again with its own Public Suffix List (<code>src/vault/match.odin</code>) on the blocking pool,
 before a surface shows it. An <code>equivalent</code> row stays only if the saved host's registrable domain is in the answer's
 <code>equivalent</code>. A row with a match type Wren does not know is dropped when the answer is read. A row that fails the
-check is zeroed and dropped. <code>search</code> rows are not checked: they fill only when the same item is also a checked row of
-the focused document (docs/bitwarden.md 3.5, rule 10).</p>
+check is zeroed and dropped. <code>search</code> rows are not checked: a login of them fills only when the same item is also a
+checked row of the focused document (docs/bitwarden.md 3.5, rule 10). Cards and identities have no site: they fill
+only into the card or address fields where the user picked them (docs/bitwarden.md 4.10).</p>
 <h2 id="wrens-side"><a class="anchor" href="#wrens-side" aria-hidden="true">#</a>Wren's side</h2>
 <p><code>src/vault</code> (no interface, no dependency on the browser):</p>
 <div class="table-box"><table>
@@ -382,7 +420,7 @@ the focused document (docs/bitwarden.md 3.5, rule 10).</p>
 <tbody>
 <tr><td><code>protocol.odin</code></td><td>The requests, written into one buffer reserved large enough at once; the answers, decoded into owned values. Every string that can hold a value is zeroed before it is freed.</td></tr>
 <tr><td><code>transport.odin</code>, <code>process.odin</code></td><td>The helper as a child process: a reader thread starts it, reads and decodes frames and posts each answer to the loop; a writer thread writes the queued frames in order and zeroes each. The loop thread never blocks on the helper.</td></tr>
-<tr><td><code>vault.odin</code></td><td>The one state of the Vault, the requests and their deadlines (<code>vault.request.timeout_ms</code>), the three sets of rows (the tab's document, the focused frame's document, the palette's search), the fill's ticket, the copies, the idle and sync timers, the blocking jobs (locating the helper, the account file, the check of the rows, the join of an ended helper).</td></tr>
+<tr><td><code>vault.odin</code></td><td>The one state of the Vault, the requests and their deadlines (<code>vault.request.timeout_ms</code>), the four sets of rows (the tab's document, the focused frame's document, the search, every item), the fill's ticket, the copies, the save offer and its never-save list, the generated value, the idle and sync timers, the blocking jobs (locating the helper, the account and never-save files, the check of the rows, the join of an ended helper).</td></tr>
 <tr><td><code>match.odin</code></td><td>Wren's match check.</td></tr>
 <tr><td><code>settings.odin</code></td><td>The <code>vault.*</code> preferences and the server addresses (US, EU, self-hosted).</td></tr>
 </tbody>
@@ -398,6 +436,9 @@ the focused document (docs/bitwarden.md 3.5, rule 10).</p>
 <li><a href="#frames">Frames</a></li>
 <li><a href="#requests-and-answers">Requests and answers</a></li>
 <li class="lvl3"><a href="#login-steps">Login steps</a></li>
+<li class="lvl3"><a href="#item-kinds">Item kinds</a></li>
+<li class="lvl3"><a href="#fill-fields">Fill fields</a></li>
+<li class="lvl3"><a href="#save">Save</a></li>
 <li class="lvl3"><a href="#idle-deadline">Idle deadline</a></li>
 <li class="lvl3"><a href="#errors">Errors</a></li>
 <li><a href="#the-helpers-identity-at-the-server">The helper's identity at the server</a></li>
