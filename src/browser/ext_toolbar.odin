@@ -157,6 +157,20 @@ ext_toolbar_buttons :: proc(app: ^App, t: ^Tab) {
 	}
 }
 
+// How many buttons ext_toolbar_buttons builds (the title bar of a sidebar sizes its slot before it builds them).
+ext_toolbar_count :: proc(app: ^App) -> int {
+	if !app.ext.started { return 0 }
+	reg := ext_reg(app)
+	if !reg.settings.enabled { return 0 }
+	shown := 0
+	for e in reg.list {
+		if !e.enabled || e.image == nil || !e.image.ok || !e.image.manifest.has_action { continue }
+		if shown >= reg.settings.toolbar_max_buttons { break }
+		shown += 1
+	}
+	return shown
+}
+
 @(private = "file")
 ext_button :: proc(app: ^App, t: ^Tab, e: ^extensions.Extension) {
 	em := ui.font_size()

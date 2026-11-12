@@ -237,7 +237,7 @@ sidebar_rows_reorder_along_y :: proc(t: ^testing.T) {
 @(private = "file")
 TB_WANT :: [Titlebar_Part]f32{
 	.Lead = 32, .Back = 29, .Forward = 29, .Reload = 29, .Gap_Before = 6, .Field = 140, .Chips = 0, .Gap_After = 6,
-	.Shield = 35, .Menu = 32, .Drag = 42, .Buttons = 138,
+	.Tools = 35, .Menu = 32, .Drag = 42, .Buttons = 138,
 }
 @(private = "file")
 TB_DRAG_MIN :: 7
@@ -261,9 +261,9 @@ titlebar_parts_share_the_window :: proc(t: ^testing.T) {
 		testing.expect(t, l.w[.Drag] >= TB_DRAG_MIN && l.w[.Drag] <= want[.Drag])
 		for p in ([?]Titlebar_Part{.Lead, .Back, .Field, .Gap_Before, .Gap_After, .Menu, .Drag, .Buttons}) { testing.expect(t, p in l.shown) }
 		if .Reload in l.shown { testing.expect(t, l.w[.Field] >= want[.Field]) }   // under its minimum only once all made room
-		if .Forward not_in l.shown { testing.expect(t, .Shield not_in l.shown) }   // the shield first, then forward, then reload
+		if .Forward not_in l.shown { testing.expect(t, .Tools not_in l.shown) }   // the shield first, then forward, then reload
 		if .Reload not_in l.shown { testing.expect(t, .Forward not_in l.shown) }
-		if .Shield not_in l.shown { testing.expect(t, l.w[.Field] <= want[.Field] + 0.01) }   // nothing hidden for a wider field
+		if .Tools not_in l.shown { testing.expect(t, l.w[.Field] <= want[.Field] + 0.01) }   // nothing hidden for a wider field
 		if l.w[.Drag] < want[.Drag] { testing.expect(t, l.w[.Field] <= want[.Field] + 0.01) }
 	}
 	// wide: everything, the field takes the rest
@@ -278,17 +278,17 @@ titlebar_parts_share_the_window :: proc(t: ^testing.T) {
 	testing.expect_value(t, l.w[.Drag], 24)
 	// narrower: the shield goes (the drag strip gets back what it freed beyond the field), then forward, then reload
 	l = titlebar_layout(480, want, TB_DRAG_MIN)
-	testing.expect_value(t, l.shown, ~bit_set[Titlebar_Part]{} - {.Shield})
+	testing.expect_value(t, l.shown, ~bit_set[Titlebar_Part]{} - {.Tools})
 	testing.expect_value(t, l.w[.Field], 140)
 	testing.expect_value(t, l.w[.Drag], 39)
 	l = titlebar_layout(440, want, TB_DRAG_MIN)
-	testing.expect_value(t, l.shown, ~bit_set[Titlebar_Part]{} - {.Shield, .Forward})
+	testing.expect_value(t, l.shown, ~bit_set[Titlebar_Part]{} - {.Tools, .Forward})
 	testing.expect_value(t, l.w[.Drag], 28)
 	l = titlebar_layout(380, want, TB_DRAG_MIN)
-	testing.expect_value(t, l.shown, ~bit_set[Titlebar_Part]{} - {.Shield, .Forward, .Reload})
+	testing.expect_value(t, l.shown, ~bit_set[Titlebar_Part]{} - {.Tools, .Forward, .Reload})
 	testing.expect_value(t, l.w[.Field], 130)
 	// no shield (the blocker is off): nothing to hide for it, forward goes first
-	want[.Shield] = 0
+	want[.Tools] = 0
 	l = titlebar_layout(440, want, TB_DRAG_MIN)
 	testing.expect(t, .Forward not_in l.shown)
 	testing.expect(t, .Reload in l.shown)
@@ -325,7 +325,7 @@ titlebar_row_regions :: proc(t: ^testing.T) {
 			ui.next({width = ui.px(16), height = ui.px(16)})
 			_ = ui.build_box({.Clickable}, "###icon")
 			ui.spacer(ui.px(6))
-		case .Back, .Forward, .Reload, .Field, .Shield, .Menu:
+		case .Back, .Forward, .Reload, .Field, .Tools, .Menu:
 			ui.next({width = ui.pct(1), height = ui.pct(1)})
 			_ = ui.build_box({.Clickable}, "###hole")
 		case .Buttons:
@@ -351,7 +351,7 @@ titlebar_row_regions :: proc(t: ^testing.T) {
 	// each hole is its part, where the layout put it
 	found := 0
 	for h in c.holes {
-		for p in ([?]Titlebar_Part{.Back, .Forward, .Reload, .Field, .Shield, .Menu}) {
+		for p in ([?]Titlebar_Part{.Back, .Forward, .Reload, .Field, .Tools, .Menu}) {
 			if abs(h.min.x - l.x[p]) < 1 && abs(h.max.x - (l.x[p] + l.w[p])) < 1 { found += 1 }
 		}
 	}
@@ -367,7 +367,7 @@ titlebar_row_regions :: proc(t: ^testing.T) {
 	testing.expect_value(t, hit(c, mid(l, .Gap_Before), 16), platform.Hit.Caption)       // beside the field
 	testing.expect_value(t, hit(c, mid(l, .Gap_After), 16), platform.Hit.Caption)
 	testing.expect_value(t, hit(c, mid(l, .Drag), 16), platform.Hit.Caption)             // before the window buttons
-	for p in ([?]Titlebar_Part{.Back, .Forward, .Reload, .Field, .Shield, .Menu}) {
+	for p in ([?]Titlebar_Part{.Back, .Forward, .Reload, .Field, .Tools, .Menu}) {
 		testing.expect_value(t, hit(c, mid(l, p), 16), platform.Hit.Client)
 	}
 	bx := l.x[.Buttons]

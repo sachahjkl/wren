@@ -25,7 +25,7 @@ titlebar_field_centred :: proc(t: ^testing.T) {
 	test_app(t)
 	want := [Titlebar_Part]f32{
 		.Lead = 32, .Back = 29, .Forward = 29, .Reload = 29, .Gap_Before = 6, .Field = 140, .Chips = 0, .Gap_After = 6,
-		.Shield = 35, .Menu = 32, .Drag = 42, .Buttons = 138,
+		.Tools = 35, .Menu = 32, .Drag = 42, .Buttons = 138,
 	}
 	l := titlebar_layout(1280, want, 42, field_max = 500)
 	testing.expect_value(t, l.w[.Field], 500)
@@ -38,9 +38,9 @@ titlebar_field_centred :: proc(t: ^testing.T) {
 	l = titlebar_layout(1280, want, 42, field_max = 880)
 	testing.expect_value(t, l.w[.Gap_Before], 28)
 	testing.expect_value(t, l.w[.Gap_After], 6)
-	// narrow: as without a largest width, and the drag strip keeps its width (the shield goes first)
+	// narrow: as without a largest width, and the drag strip keeps its width (the tools go first)
 	l = titlebar_layout(500, want, 42, field_max = 500)
 	testing.expect_value(t, l.w[.Field], 140 + 35 - 18)
 	testing.expect_value(t, l.w[.Drag], 42)
-	testing.expect(t, .Shield not_in l.shown)
+	testing.expect(t, .Tools not_in l.shown)
 }

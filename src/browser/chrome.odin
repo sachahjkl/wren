@@ -186,11 +186,7 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	if ui.parent(ui.build_box({}, "###toolbar_end")) {
 		address_chips(app, t)
 		ui.spacer(ui.px(em * 0.4))
-		if downloads_button_visible(app) { downloads_button(app, t); ui.spacer(ui.px(em * 0.2)) }   // downloads_ui.odin
-		if app.vault.v.state != .Disabled { vault_button(app, t); ui.spacer(ui.px(em * 0.2)) }   // vault_shell.odin: the Vault's lock and panel
-		blocker_button(app, t)   // blocker_ui.odin: the content blocker's icon and panel
-		ui.spacer(ui.px(em * 0.2))
-		ext_toolbar_buttons(app, t)   // ext_toolbar.odin: the extensions' buttons (each with its spacer)
+		toolbar_tools(app, t)
 		main_menu_button(app, t)
 		ui.spacer(ui.px(em * 0.5))
 	}
@@ -832,4 +828,23 @@ icon_square_button :: proc(app: ^App, glyph, tip, id: string, intent := ui.Inten
 		}
 	}
 	return clicked
+}
+
+// The tools' buttons between the address bar and the main menu, each followed by its gap: the toolbar's and the title
+// bar's of a sidebar (tab_sidebar.odin) are this one list; a button added here is in both.
+toolbar_tools :: proc(app: ^App, t: ^Tab) {
+	gap := ui.px(ui.font_size() * 0.2)
+	if downloads_button_visible(app) { downloads_button(app, t); ui.spacer(gap) }   // downloads_ui.odin
+	if app.vault.v.state != .Disabled { vault_button(app, t); ui.spacer(gap) }   // vault_shell.odin: the Vault's lock and panel
+	if app.bl.started { blocker_button(app, t); ui.spacer(gap) }   // blocker_ui.odin: the content blocker's icon and panel
+	ext_toolbar_buttons(app, t)   // ext_toolbar.odin: the extensions' buttons (each with its gap)
+}
+
+// The width toolbar_tools takes: each of its buttons is 2.3 em wide, with its gap.
+toolbar_tools_width :: proc(app: ^App) -> f32 {
+	n := ext_toolbar_count(app)
+	if downloads_button_visible(app) { n += 1 }
+	if app.vault.v.state != .Disabled { n += 1 }
+	if app.bl.started { n += 1 }
+	return f32(n) * ui.font_size() * (2.3 + 0.2)
 }

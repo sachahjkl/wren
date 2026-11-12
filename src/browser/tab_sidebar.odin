@@ -190,15 +190,15 @@ side_visible_rows :: proc(off, target, view_h, rh: f32, n: int, overscan: f32) -
 // the window, what is clickable in them stays the browser's (ui: .Window_Caption, holes), and the window buttons are the
 // system's for its hit tests (Snap Layouts).
 
-Titlebar_Part :: enum u8 { Lead, Back, Forward, Reload, Gap_Before, Field, Chips, Gap_After, Shield, Menu, Drag, Buttons }
+Titlebar_Part :: enum u8 { Lead, Back, Forward, Reload, Gap_Before, Field, Chips, Gap_After, Tools, Menu, Drag, Buttons }
 
 // Hidden in this order when the address bar would be narrower than its minimum.
-TITLEBAR_HIDE_ORDER :: [?]Titlebar_Part{.Shield, .Forward, .Reload}
+TITLEBAR_HIDE_ORDER :: [?]Titlebar_Part{.Tools, .Forward, .Reload}
 
 TITLEBAR_SLOT_IDS := [Titlebar_Part]string{
 	.Lead = "###tb_lead", .Back = "###tb_back", .Forward = "###tb_forward", .Reload = "###tb_reload",
 	.Gap_Before = "###tb_gap_before", .Field = "###tb_field", .Chips = "###tb_chips", .Gap_After = "###tb_gap_after",
-	.Shield = "###tb_shield", .Menu = "###tb_menu", .Drag = "###tb_drag", .Buttons = "###tb_buttons",
+	.Tools = "###tb_tools", .Menu = "###tb_menu", .Drag = "###tb_drag", .Buttons = "###tb_buttons",
 }
 
 Titlebar_Layout :: struct {
@@ -288,7 +288,7 @@ titlebar_wants :: proc(app: ^App, chips_w: f32) -> (want: [Titlebar_Part]f32, dr
 		.Field = app.favs.cfg.side_address_min_em * em,
 		.Chips = chips_w,
 		.Gap_After = em * 0.4,
-		.Shield = (app.bl.started ? em * 2.3 + em * 0.2 : 0) + (downloads_button_visible(app) ? em * 2.3 + em * 0.2 : 0),   // (the downloads button and blocker_button, and the gap before each)
+		.Tools = toolbar_tools_width(app),   // (chrome.odin: the downloads, the Vault, the blocker, the extensions)
 		.Menu = em * 2.3,
 		.Drag = max(app.wchrome.cfg.min_drag_em * em, em * 0.5),
 		.Buttons = 3 * math.round(ui.CAPTION_BUTTON_WIDTH * dpi),
@@ -331,12 +331,7 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 		case .Reload: nav_reload_button(app, t)
 		case .Field: address_bar(app, t, ui.fill())   // (the slot has the field's width: titlebar_layout)
 		case .Chips: address_chips(app, t)
-		case .Shield:
-			if downloads_button_visible(app) { downloads_button(app, t); ui.spacer(ui.px(ui.font_size() * 0.2)) }
-			if app.bl.started {
-				blocker_button(app, t)
-				ui.spacer(ui.px(ui.font_size() * 0.2))
-			}
+		case .Tools: toolbar_tools(app, t)   // chrome.odin: the same buttons as the toolbar's
 		case .Menu: main_menu_button(app, t)
 		case .Buttons: _, _ = ui.window_buttons()
 		case .Gap_Before, .Gap_After, .Drag:   // (the window's)
