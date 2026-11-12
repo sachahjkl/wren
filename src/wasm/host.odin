@@ -15,7 +15,7 @@ package wasm
 // (addresses and lengths as i64, `wide_params`) is defined, shadowing it, for each module whose memory 0 is 64-bit
 // (module_cache.odin, `ensure_pre`), with the callback's `env` = WIDE so the same code reads i64 addresses.
 
-import "base:runtime"
+@(require) import "base:runtime"   // (the poisoned build uses only base's arena)
 import "core:fmt"
 import "core:hash"
 import "core:strings"

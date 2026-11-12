@@ -1,6 +1,7 @@
 package layout
 
 import "core:math"
+import "wb:base"
 import "wb:style"
 
 // Floats are tested against a band at least this tall (CSS px), even an empty one.
@@ -346,6 +347,10 @@ quirks_percent_base :: proc(c: ^Ctx, bi: i32) -> f32 {
 // A box whose own height, min-height and max-height have no percentage reads the height of its containing block
 // nowhere (its children resolve theirs against its own): one key for every such height, so that a flex item laid out
 // in a container of indefinite height and again in the same container at its final, definite height finds its entry.
+//
+// In quirks mode the body fills the window (layout_contents): its height, and the root element's that holds it, follow
+// the window's height, which no other part of the key holds (a viewport change marks only the initial containing block
+// dirty, incremental.odin). Their key has the window's height instead of a containing block height they do not read.
 @(private)
 cache_key :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32) -> (key: [3]f32, cb_h: f32) {
 	b := &c.l.boxes[bi]
@@ -357,10 +362,11 @@ cache_key :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32) -> (key: [3]f32, 
 		if qb := quirks_percent_base(c, bi); qb >= 0 { cb_h = qb }
 	}
 	key = {w, cb_h, forced_h}
-	if quirks && is_quirks_body(c, bi) {
-		// (the quirks-mode body's height follows the window's: in the key)
-		if cb_h < 0 { key[1] = -2 - c.vp.y }
-	} else if !reads_cb_height(c, bi) {
+	reads := reads_cb_height(c, bi)
+	root_el := b.node != base.NIL_HANDLE && b.node == c.root_el && .Pseudo not_in b.flags
+	if quirks && (root_el || is_quirks_body(c, bi)) {
+		if !reads || cb_h < 0 { key[1] = -2 - c.vp.y }
+	} else if !reads {
 		key[1] = -1
 	}
 	return

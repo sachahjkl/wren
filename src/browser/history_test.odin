@@ -62,12 +62,13 @@ history_file_round_trip :: proc(t: ^testing.T) {
 	few, _, _, _ := history_parse(text, 1, 0, 1024)
 	testing.expect(t, len(few) == 1 && few[0].id == 5)
 	visits_destroy(&few)
-	// damaged files, and another version's
+	// damaged files
 	bad, _, _, bok := history_parse("garbage\nv\t1\t1\thttps://a/\tA\n", 100, 0, 1024)
 	testing.expect(t, !bok)
 	visits_destroy(&bad)
+	// version 1 (only `v` lines) reads as a log of version 2
 	v1, _, _, v1ok := history_parse("wren-history 1\nv\t1\t1\thttps://a/\tA\n", 100, 0, 1024)
-	testing.expect(t, !v1ok)
+	testing.expect(t, v1ok && len(v1) == 1 && v1[0].url == "https://a/")
 	visits_destroy(&v1)
 	part, _, _, pok := history_parse("wren-history 2\nv\tx\t1\thttps://a/\tA\nv\t3\t5\tnot a url\tB\nv\t4\t6\thttps://ok/\n\nzzz\n", 100, 0, 1024)
 	testing.expect(t, pok && len(part) == 1 && part[0].url == "https://ok/" && part[0].title == "")

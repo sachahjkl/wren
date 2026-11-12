@@ -308,7 +308,10 @@ index/hash/compare). Source text handed to the compiler keeps lone surrogates (W
 with <code>Compile_Options.keep_source</code>; <code>Host_Config.strip_source</code> drops it).</li>
 <li><strong>Atoms</strong> (<code>atom.odin</code>, <code>atoms_table.odin</code>): 32‑bit interned property keys; array indices set bit 31
 and never allocate. The predefined atoms are generated from <code>quickjs-atom.h</code>, so serialized bytecode
-refers to the same indices. Atoms are never collected.</li>
+refers to the same indices. The predefined atoms and symbols are permanent. An atom made at run time (a key read or
+written by a script, a JSON key) is freed by a collection when no live shape, bytecode atom table, module, for‑in
+iterator or string that caches it refers to it, and outside a native call; its slot is reused (<code>atom_free</code>). The C API
+counts its references as QuickJS does (<code>JS_NewAtom*</code>, <code>JS_DupAtom</code>, <code>JS_FreeAtom</code>).</li>
 <li><strong>Shapes</strong> (<code>shape.odin</code>/<code>object.odin</code>): hidden classes with transitions and an open‑addressed hash;
 an object stores a flat <code>[]Prop_Slot</code>; deleting a property or growing past 48 properties switches the
 object to a private dictionary shape.</li>
@@ -527,7 +530,7 @@ a cycle collector (the C API layer re‑creates the counted‑reference contract
 <li><strong>Exhaustive Odin enums + <code>switch</code></strong> for tags, exotic kinds and opcodes; <strong>comptime‑generated opcode and
 atom tables</strong> from the QuickJS headers.</li>
 <li><strong>Rope strings with Latin‑1/UTF‑16 compaction</strong> as the default string representation.</li>
-<li>Atoms are permanent; <code>JS_WriteObject</code> of data (structured clone format) is not implemented.</li>
+<li><code>JS_WriteObject</code> of data (structured clone format) is not implemented.</li>
 </ul>
 <h2 id="known-gaps"><a class="anchor" href="#known-gaps" aria-hidden="true">#</a>Known gaps</h2>
 <p>The 34 test262 failures above (all shared with QuickJS‑ng). Speed is at parity with QuickJS on the micro

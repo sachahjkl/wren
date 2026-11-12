@@ -642,7 +642,12 @@ td{border:1px solid} .ib{display:inline-block;width:50px} .hid{display:none}</st
 			if rand.int_max(3) == 0 { f.vp.y = f32(200 + rand.int_max(400)) }
 			what = "viewport"
 		case 8:
-			for h, _ in f.sizes { f.sizes[h] = {f32(5 + rand.int_max(80)), f32(5 + rand.int_max(60))}; break }
+			// the image of the lowest handle: a map's order follows its addresses, which other tests' allocations move, and
+			// a failure must replay
+			first := base.NIL_HANDLE
+			for h in f.sizes { if first == base.NIL_HANDLE || h < first { first = h } }
+			if first == base.NIL_HANDLE { continue }
+			f.sizes[first] = {f32(5 + rand.int_max(80)), f32(5 + rand.int_max(60))}
 			f.images_gen += 1
 			what = "image"
 		case 9:

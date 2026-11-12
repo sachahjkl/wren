@@ -99,6 +99,7 @@ free_windows :: proc(app: ^App, a, b: ^Browser_Window) {
 		free(w)
 	}
 	delete(app.windows)
+	delete(app.tab_ids)
 	free(app)
 }
 
@@ -164,6 +165,7 @@ every_tab_of_every_window_is_listed_once :: proc(t: ^testing.T) {
 	a.ctx.tabs = fake_tabs("a1", "a2")
 	b.ctx.tabs = fake_tabs("b1")
 	a.ctx.tabs[0].id, a.ctx.tabs[1].id, b.ctx.tabs[0].id = 1, 2, 3
+	for w in ([]^Browser_Window{a, b}) { for tab in w.ctx.tabs { app.tab_ids[tab.id] = tab } }   // (as tab_new does)
 	app.front = b
 	all := tabs_all(app)
 	testing.expect_value(t, len(all), 3)

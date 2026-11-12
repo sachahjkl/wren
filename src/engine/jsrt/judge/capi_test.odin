@@ -591,7 +591,7 @@ capi_main :: proc() -> int {
 	oom_check := "(function (f) { try { f(); return 0 } catch (e) { return e instanceof RangeError ? 1 : 2 } })"
 	check(is_int(eval(ctx, strings.concatenate({oom_check, "(() => 'x'.repeat(2 ** 28))"}, context.temp_allocator)), 1), "repeat past the heap limit")
 	check(is_int(eval(ctx, strings.concatenate({oom_check, "(() => 'ab'.padEnd(2 ** 28, 'c'))"}, context.temp_allocator)), 1), "padEnd past the heap limit")
-	check(is_int(eval(ctx, strings.concatenate({oom_check, "(() => ({length: 4e9}).toReversed())"}, context.temp_allocator)), 1), "toReversed of a length past any block")
+	check(is_int(eval(ctx, strings.concatenate({oom_check, "(() => Array.prototype.toReversed.call({length: 4e9}))"}, context.temp_allocator)), 1), "toReversed of a length past any block")
 	check(is_int(eval(ctx, "'x'.repeat(1000).length"), 1000), "and the engine goes on")
 	capi.JS_SetMemoryLimit(rt, 0)
 
