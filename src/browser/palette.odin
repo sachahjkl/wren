@@ -30,6 +30,7 @@ import "core:time"
 import "core:unicode"
 import "core:unicode/utf8"
 import "toolkit:draw"
+import lucide "toolkit:lucide"
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
@@ -491,6 +492,7 @@ Palette_Item :: struct {
 	detail: string,   // shown weak after the title (its address)
 	key:    string,   // given back to `activate`
 	glyph:  string,
+	site:   string,   // an address whose site icon the row shows ("": its glyph)
 }
 
 Palette_Source :: struct {
@@ -523,7 +525,7 @@ tab_history_items :: proc(user: rawptr, app: ^App, out: ^[dynamic]Palette_Item) 
 			u := t.history[i]
 			if u == "" || u in seen { continue }
 			seen[u] = true
-			append(out, Palette_Item{title = default_tab_title(u), detail = u, key = u})
+			append(out, Palette_Item{title = default_tab_title(u), detail = u, key = u, site = u})
 		}
 	}
 }
@@ -572,6 +574,7 @@ Palette_Row :: struct {
 	detail:   string,
 	category: string,
 	glyph:    string,
+	site:     string,         // a source item's address whose site icon shows
 	score:    int,
 	usage:    f64,
 	order:    int,
@@ -780,7 +783,7 @@ palette_collect :: proc(app: ^App, text: string) {
 				s, lo, hi, ok := match(app, &fq, it.title, it.detail)
 				if !ok { continue }
 				push(app, {kind = .Source, index = si, key = it.key, title = it.title, detail = it.detail,
-					category = src.name, glyph = it.glyph, score = s - 4, range_lo = lo, range_hi = hi}, &order)   // (pages after commands and tabs that match as well)
+					category = src.name, glyph = it.glyph, site = it.site, score = s - 4, range_lo = lo, range_hi = hi}, &order)   // (pages after commands and tabs that match as well)
 			}
 		}
 	}
@@ -820,6 +823,7 @@ palette_collect :: proc(app: ^App, text: string) {
 		r.detail = strings.clone(r.detail, a)
 		r.key = strings.clone(r.key, a)
 		r.glyph = strings.clone(r.glyph, a)
+		r.site = strings.clone(r.site, a)
 		if r.range_hi > r.range_lo {
 			r.ranges = make([]ui.Fuzzy_Range, r.range_hi - r.range_lo, a)
 			copy(r.ranges, app.cpal.pool[r.range_lo:r.range_hi])
@@ -1135,7 +1139,13 @@ palette_row :: proc(app: ^App, t: ^Tab, i: int, w, rh, pad: f32, cols: [2]f32, m
 			if ui.parent(item) {
 				ui.spacer(ui.px(em * 0.45))
 				isz := em * 1.5
+				// (a page's site icon, its globe until it comes; a closed tab's key is its address)
+				site := r.kind == .Closed_Tab ? r.key : r.site
+				site_tex, site_ok := favicon_of_url(app, site)
+				if site != "" && !site_ok && glyph == "" { glyph = lucide.GLOBE }
 				switch {
+				case site_ok:
+					favicon_box(site_tex, "###pal_site", isz)
 				case r.kind == .Tab:
 					tab: ^Tab
 					tab = tab_by_id(app, r.tab_id)

@@ -18,7 +18,9 @@ import "core:fmt"
 import "core:mem"
 import "core:strings"
 import "toolkit:draw"
+import lucide "toolkit:lucide"
 import "toolkit:platform"
+import "toolkit:render"
 import "toolkit:ui"
 import "wb:base"
 import "wb:dom"
@@ -172,6 +174,15 @@ vault_fill_send :: proc(app: ^App, x: Vault_Target, item: string, fields: vault.
 	s.fill_item = strings.clone(item)
 	s.fill_site = strings.clone(vault_site_key(x.url))
 	s.fill_totp = r != nil && r.kind == .Login && r.has_totp && .Password in fields && .Totp not_in fields
+}
+
+// The icon of a login's site, when it is ready (favicon_cache.odin). Cards and identities have none: their kind's
+// icon shows.
+vault_row_favicon :: proc(app: ^App, r: vault.Row) -> (tex: render.Texture, ok: bool) {
+	if r.kind != .Login { return }
+	site, web := vault.site_of(r.uri)
+	if !web { return }
+	return favicon_of_url(app, site.url)
 }
 
 // The site of an address, for "the same site": its registrable domain, else its host ("" when it is no web page).
@@ -635,6 +646,15 @@ vault_dropdown_build :: proc(app: ^App) {
 		detail = app.vault.role == .One_Time_Code ? i18n.tr("Fill the code") : rows[i].username
 		return
 	}
+	// a login's site icon (its globe until it comes), a card's or an identity's kind
+	icon_of :: proc(app: ^App, rows: []vault.Row, locked: bool, listed, i: int) -> (glyph: string, tex: render.Texture) {
+		switch {
+		case locked:      return lucide.LOCK, 0
+		case i >= listed: return lucide.DICES, 0
+		}
+		tex, _ = vault_row_favicon(app, rows[i])
+		return vault_kind_glyph(rows[i].kind), tex
+	}
 	if ui.tags("floating") {
 		ui.next({fixed_x = r.min.x, fixed_y = r.min.y, width = ui.px(w), height = ui.children_sum(), axis = .Y, radius = em * 0.4})
 		panel := ui.build_box({.Clickable, .Draw_Background, .Draw_Border, .Draw_Shadow, .Clip}, "###vault_dropdown")
@@ -669,7 +689,8 @@ vault_dropdown_build :: proc(app: ^App) {
 							if ui.lazy_item(lz, fmt.aprintf("###vdd_it_%d", i, allocator = ui.frame_allocator())) {
 								last_built = i
 								title, detail := entry(app, rows, locked, listed, i)
-								if dropdown_row(i, title, detail, i == s.dd_sel, w, rh) { chosen = i }
+								glyph, tex := icon_of(app, rows, locked, listed, i)
+								if dropdown_row(app, i, title, detail, glyph, tex, i == s.dd_sel, w, rh) { chosen = i }
 							}
 						}
 					}
@@ -679,7 +700,8 @@ vault_dropdown_build :: proc(app: ^App) {
 			} else {
 				for i in 0 ..< n {
 					title, detail := entry(app, rows, locked, listed, i)
-					if dropdown_row(i, title, detail, i == s.dd_sel, w, rh) { chosen = i }
+					glyph, tex := icon_of(app, rows, locked, listed, i)
+					if dropdown_row(app, i, title, detail, glyph, tex, i == s.dd_sel, w, rh) { chosen = i }
 				}
 			}
 			ui.spacer(ui.px(em * 0.3))
@@ -690,7 +712,7 @@ vault_dropdown_build :: proc(app: ^App) {
 }
 
 @(private = "file")
-dropdown_row :: proc(i: int, title, detail: string, selected: bool, w, rh: f32) -> bool {
+dropdown_row :: proc(app: ^App, i: int, title, detail, glyph: string, tex: render.Texture, selected: bool, w, rh: f32) -> bool {
 	em := ui.font_size()
 	ui.next({width = ui.px(w), height = ui.px(rh), axis = .X, cross = .Center})
 	outer := ui.build_box({}, fmt.tprintf("###vdd_row_%d", i))
@@ -699,24 +721,33 @@ dropdown_row :: proc(i: int, title, detail: string, selected: bool, w, rh: f32) 
 		ui.spacer(ui.px(em * 0.3))
 		ui.push_tags("menu_item")
 		if selected { ui.push_tags("selected") }
-		ui.next({width = ui.fill(), height = ui.pct(1), radius = em * CHROME_BUTTON_RADIUS, axis = .Y})
+		ui.next({width = ui.fill(), height = ui.pct(1), radius = em * CHROME_BUTTON_RADIUS, axis = .X, cross = .Center})
 		item := ui.build_box({.Clickable, .Draw_Background, .Draw_Hot_Effects}, fmt.tprintf("###vdd_item_%d", i))
 		if selected { ui.pop_tags() }
 		sig := ui.signal(item)
 		ui.a11y_set(item, {role = .List_Item, name = title, description = detail, selected = selected})
 		clicked = sig.clicked
 		if ui.parent(item) {
-			// (each line its own height, the two centred in the row: a label's text_size is a row's, two did not fit)
-			ui.spacer(ui.fill())
-			ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
-			ui.label(fmt.aprintf("%s###vdd_t_%d", title, i, allocator = ui.frame_allocator()))
-			if detail != "" {
-				ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
-				ui.push_tags("weak")
-				ui.label(fmt.aprintf("%s###vdd_d_%d", detail, i, allocator = ui.frame_allocator()))
-				ui.pop_tags()
+			ui.spacer(ui.px(em * 0.4))
+			if tex != 0 {
+				favicon_box(tex, fmt.aprintf("###vdd_ic_%d", i, allocator = ui.frame_allocator()), em * 1.6)
+			} else {
+				vault_glyph(app, glyph, fmt.aprintf("vdd_ic_%d", i, allocator = ui.frame_allocator()), em * 1.6)
 			}
-			ui.spacer(ui.fill())
+			ui.spacer(ui.px(em * 0.4))
+			// (each line its own height, the two centred in the row: a label's text_size is a row's, two did not fit)
+			ui.next({width = ui.fill(), height = ui.children_sum()})
+			if ui.column(.Start, {}, fmt.aprintf("###vdd_text_%d", i, allocator = ui.frame_allocator())) {
+				ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
+				ui.label(fmt.aprintf("%s###vdd_t_%d", title, i, allocator = ui.frame_allocator()))
+				if detail != "" {
+					ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
+					ui.push_tags("weak")
+					ui.label(fmt.aprintf("%s###vdd_d_%d", detail, i, allocator = ui.frame_allocator()))
+					ui.pop_tags()
+				}
+			}
+			ui.spacer(ui.px(em * 0.4))
 		}
 		ui.pop_tags()
 		ui.spacer(ui.px(em * 0.3))
@@ -768,17 +799,17 @@ vault_palette_items :: proc(user: rawptr, app: ^App, out: ^[dynamic]Palette_Item
 		case .Login:
 		}
 		if has_target && x.rule != .Never && vault.vault_row_find(v, r.id, x.slot) != nil {
-			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Fill: %s"), name), detail = r.username, key = fmt.tprintf("fill:%s", r.id)})
+			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Fill: %s"), name), detail = r.username, key = fmt.tprintf("fill:%s", r.id), site = r.uri})
 		}
 		if r.username != "" {
-			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the user name: %s"), name), detail = r.username, key = fmt.tprintf("user:%s", r.id)})
+			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the user name: %s"), name), detail = r.username, key = fmt.tprintf("user:%s", r.id), site = r.uri})
 		}
-		append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the password: %s"), name), detail = r.username, key = fmt.tprintf("pass:%s", r.id)})
+		append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the password: %s"), name), detail = r.username, key = fmt.tprintf("pass:%s", r.id), site = r.uri})
 		if r.has_totp {
-			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the code: %s"), name), detail = r.username, key = fmt.tprintf("totp:%s", r.id)})
+			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the code: %s"), name), detail = r.username, key = fmt.tprintf("totp:%s", r.id), site = r.uri})
 		}
 		if _, web := vault.site_of(r.uri); web {
-			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Open the site: %s"), name), detail = url_host(r.uri), key = fmt.tprintf("open:%s", r.id)})
+			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Open the site: %s"), name), detail = url_host(r.uri), key = fmt.tprintf("open:%s", r.id), site = r.uri})
 		}
 	}
 }

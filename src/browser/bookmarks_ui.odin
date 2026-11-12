@@ -328,8 +328,12 @@ bookmarks_list :: proc(app: ^App, t: ^Tab, menu_key: ui.Key) {
 				ui.spacer(ui.px(em * (0.6 + 1.4 * f32(r.depth))))
 				ui.next({width = ui.px(em * 1.2), height = ui.pct(1), font = app.lucide, font_size = em * 0.9, text_pad = 0})
 				if ui.tags("weak") { ui.label(fmt.tprintf("%s###bmc_%d", b.folder ? (v.open[b.id] ? lucide.CHEVRON_DOWN : lucide.CHEVRON_RIGHT) : "", b.id)) }
-				ui.next({width = ui.px(em * 1.6), height = ui.pct(1), font = app.lucide, font_size = em * 1.05, text_pad = 0})
-				ui.label(fmt.tprintf("%s###bmi_%d", b.folder ? lucide.FOLDER : lucide.GLOBE, b.id))
+				if tex, has := favicon_of_url(app, b.url); has && !b.folder {
+					favicon_box(tex, fmt.tprintf("###bmi_%d", b.id), em * 1.6)
+				} else {
+					ui.next({width = ui.px(em * 1.6), height = ui.pct(1), font = app.lucide, font_size = em * 1.05, text_pad = 0})
+					ui.label(fmt.tprintf("%s###bmi_%d", b.folder ? lucide.FOLDER : lucide.GLOBE, b.id))
+				}
 				ui.spacer(ui.px(em * 0.3))
 				ui.next({width = b.folder ? ui.fill() : ui.pct(0.4), height = ui.pct(1)})
 				ui.label(fmt.tprintf("%s###bmn_%d", safe_label(b.title, 120), b.id))
@@ -509,7 +513,7 @@ bookmarks_file_job :: proc(app: ^App, export: bool) {
 
 @(private = "file")
 palette_bookmark_items :: proc(user: rawptr, app: ^App, out: ^[dynamic]Palette_Item) {
-	for b in app.bms.items { if !b.folder { append(out, Palette_Item{title = b.title, detail = b.url, key = b.url}) } }
+	for b in app.bms.items { if !b.folder { append(out, Palette_Item{title = b.title, detail = b.url, key = b.url, site = b.url}) } }
 }
 
 @(private = "file")

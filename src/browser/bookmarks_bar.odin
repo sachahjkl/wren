@@ -55,12 +55,10 @@ bar_items :: proc(app: ^App) -> []int {
 	return out[:]
 }
 
-// The texture of the icon the history knows for `url` (0: none).
+// The texture of the site icon of `url` (0: not ready, or none: favicon_cache.odin).
 @(private = "file")
 bar_icon_of :: proc(app: ^App, url: string) -> render.Texture {
-	if k, ok := app.ub.idx.by_url[url]; ok && k < len(app.ub.idx.entries) && app.ub.idx.entries[k].icon != "" {
-		if tex, tok := favicon_texture(app, app.ub.idx.entries[k].icon); tok { return tex }
-	}
+	if tex, ok := favicon_of_url(app, url); ok { return tex }
 	return 0
 }
 

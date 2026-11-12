@@ -9,6 +9,8 @@ package browser
 // (package images: ICO picks its best size, SVG is rasterised at the tab's size), and kept in a small process cache keyed
 // by URL (browser.tabs.favicon_cache_entries, least recently drawn first out), so tabs of one site share one texture.
 // Built-in pages show the Wren icon, file: pages a file glyph, others a neutral globe until (or unless) their icon comes.
+// The icon of a site that no tab shows (the address bar's suggestions, bookmarks, the Vault) comes from
+// favicon_of_url, which keeps the icons in the profile too (favicon_cache.odin).
 //
 // Titles: document.title semantics (the first <title>, ASCII whitespace stripped and collapsed), refreshed when the
 // document changed, at most every browser.tabs.title_refresh_ms (a page that mutates every frame does not walk its tree
@@ -56,6 +58,10 @@ TAB_PREFS := [?]config.Def{
 		description = "Largest width or height of an icon image that is decoded (larger ones are refused)."},
 	{name = "browser.tabs.favicon_cache_entries", kind = .Int, default = {i = 128}, bounded = true, min = 4, max = 100_000,
 		description = "Icons kept decoded (one texture each, shared by the tabs of a site); the least recently shown go first."},
+	{name = "browser.tabs.favicon_disk_max_bytes", kind = .Int, default = {i = 16 << 20}, bounded = true, min = 0, max = 1 << 30, bytes = true, unit = "bytes",
+		description = "Icons of sites kept in the profile (its favicons folder), so that the address bar's suggestions, the bookmarks and the Vault show them without asking the sites again. The least recently refreshed go first beyond this size. 0: none kept."},
+	{name = "browser.tabs.favicon_disk_days", kind = .Int, default = {i = 30}, bounded = true, min = 1, max = 3650, unit = "days",
+		description = "An icon kept in the profile and not refreshed for this long is asked from its site again. A visit of the site refreshes it."},
 	{name = "browser.tabs.spinner_fps", kind = .Float, default = {f = 30}, bounded = true, min = 1, max = 240, unit = "Hz",
 		description = "How often the loading indicators move while a tab loads: the icon of its tab, and the bar along the top of a page not painted yet. Nothing is drawn for them once the load is over."},
 	{name = "browser.tabs.spinner_max_s", kind = .Float, default = {f = 120}, bounded = true, min = 0, max = 86_400, unit = "s",
@@ -89,6 +95,8 @@ Tab_Settings :: struct {
 	favicons, fallback_ico:           bool,
 	icon_max_bytes, icon_max_dim:     int,
 	icon_cache:                       int,
+	icon_disk_max:                    int,   // bytes of icons kept in the profile (0: none)
+	icon_disk_days:                   int,
 	spinner_fps:                      f32,
 	spinner_max_ms:                   f64,
 	title_refresh_ms:                 f64,
@@ -118,6 +126,8 @@ tab_settings_from_prefs :: proc(p: ^config.Prefs) -> Tab_Settings {
 		icon_max_bytes = int(config.int_of(p, "browser.tabs.favicon_max_bytes")),
 		icon_max_dim = int(config.int_of(p, "browser.tabs.favicon_max_dimension")),
 		icon_cache = int(config.int_of(p, "browser.tabs.favicon_cache_entries")),
+		icon_disk_max = int(config.int_of(p, "browser.tabs.favicon_disk_max_bytes")),
+		icon_disk_days = int(config.int_of(p, "browser.tabs.favicon_disk_days")),
 		spinner_fps = f32(config.float_of(p, "browser.tabs.spinner_fps")),
 		spinner_max_ms = config.float_of(p, "browser.tabs.spinner_max_s") * 1000,
 		title_refresh_ms = f64(config.int_of(p, "browser.tabs.title_refresh_ms")),
@@ -156,12 +166,15 @@ Favicon :: struct {
 	nav:       rawptr,          // the navigation (scope) that asked for it: a Failed icon is asked for again by another one
 	px:        int,             // the size it was decoded for (the largest of the windows' scales then)
 	blob:      ^images.Blob,    // its bytes (small: browser.tabs.icon_max_bytes), decoded again when a window's scale grows past `px`
+	origin:    string,          // owned: the site whose icon it is, stored in the profile once it decodes ("": not stored)
 }
 
 Favicons :: struct {
 	cfg:      Tab_Settings,
 	watch:    int,
 	entries:  map[string]^Favicon,
+	sites:    map[string]^Favicon_Site,   // favicon_cache.odin: the icon of each site asked for, keys its origin
+	disk:     Favicon_Disk,               // favicon_cache.odin: the reads and writes of the profile's favicons folder
 	port:     images.Port_Id,
 	frame:    u64,
 	decode_px: int,          // favicon_decode_px of this frame (favicon_frame: not counted again for every tab)
@@ -172,6 +185,7 @@ Favicons :: struct {
 favicons_init :: proc(app: ^App) {
 	app.favs.cfg = tab_settings_from_prefs(&app.prefs)
 	app.favs.entries = make(map[string]^Favicon)
+	app.favs.sites = make(map[string]^Favicon_Site)
 	app.favs.watch = config.watch(&app.prefs, "browser.tabs.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
 		app.favs.cfg = tab_settings_from_prefs(p)
@@ -183,23 +197,72 @@ favicons_destroy :: proc(app: ^App) {
 	config.unwatch(&app.prefs, app.favs.watch)
 	if app.favs.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.favs.timer) }
 	if app.favs.spin != base.NIL_HANDLE { host.clear_timer(&app.loop, app.favs.spin) }
+	favicon_cache_destroy(app)   // (first: a disk job that ends now can still make an entry)
 	if app.favs.port != 0 { images.port_close(app.favs.port) }   // jobs not delivered are freed by the image threads
 	for _, e in app.favs.entries { favicon_free(app, e) }
 	delete(app.favs.entries)
 	app.favs = {}
 }
 
-@(private = "file")
 favicon_free :: proc(app: ^App, e: ^Favicon) {
 	if e.task != base.NIL_HANDLE {
-		base.forget_cleanup(e.scope, e.cleanup)
+		if e.scope != nil { base.forget_cleanup(e.scope, e.cleanup) }
 		fetch.cancel(&app.loader, e.task)
 	}
 	images.job_cancel(e.job)
 	if e.tex != 0 { render.destroy_texture(&app.r, e.tex) }
 	if e.blob != nil { images.blob_release(e.blob) }
 	delete(e.url)
+	delete(e.origin)
 	free(e)
+}
+
+// Takes `e` out of the cache and frees it.
+favicon_forget :: proc(app: ^App, e: ^Favicon) {
+	delete_key(&app.favs.entries, e.url)
+	favicon_free(app, e)
+}
+
+// A new entry for the icon at `address`, in the cache (room made first), waiting for its bytes.
+favicon_entry_make :: proc(app: ^App, address: string) -> ^Favicon {
+	favicon_evict(app)
+	e := new(Favicon)
+	e.app = app
+	e.url = strings.clone(address)
+	e.used = app.favs.frame
+	app.favs.entries[e.url] = e
+	return e
+}
+
+// The request of an icon that no page asks for (a site's, favicon_cache.odin): the browser's own, without cookies, its
+// page's rules (no initiator) and scope. False: no request left.
+favicon_fetch :: proc(app: ^App, e: ^Favicon) -> bool {
+	if app.favs.disk.offline { app.favs.disk.fetches += 1; return true }   // (unit tests: the entry stays Loading)
+	e.task = fetch.start(&app.loader, {
+		request = {url = e.url, mode = .No_Cors, credentials = .Omit, redirect = .Follow, destination = .Image, max_body = app.favs.cfg.icon_max_bytes},
+		on_event = favicon_event, user = e, collect = true,
+	})
+	return e.task != base.NIL_HANDLE
+}
+
+// The icon's bytes came (from the network or from the profile; copied): decoded on the image threads.
+favicon_take_bytes :: proc(app: ^App, e: ^Favicon, data: []byte) {
+	if len(data) == 0 || len(data) > app.favs.cfg.icon_max_bytes { e.state = .Failed; return }
+	bytes := make([]byte, len(data))
+	copy(bytes, data)
+	e.blob = images.blob_make(bytes)   // (kept: decoded again for a window of a larger scale)
+	e.state = .Decoding
+	if app.favs.disk.hold_decode { return }   // (unit tests: no image threads)
+	if !images.decoder_running() {
+		s := &app.page_settings.images
+		n := s.decode_threads
+		if n < 0 { n = clamp(host.processor_count() / 2, 1, 4) }
+		images.decoder_start(n, s.decode_stack_bytes > 0 ? s.decode_stack_bytes : images.DECODER_STACK_DEFAULT, s.decode_idle_ms)
+	}
+	if app.favs.port == 0 { app.favs.port = images.port_open(&app.loop, favicon_decoded, nil) }
+	if app.favs.port == 0 { e.state = .Failed; return }
+	favicon_decode(app, e, favicon_decode_px(app))
+	if e.job == 0 { e.state = .Failed }
 }
 
 ////////////////////////////////
@@ -430,20 +493,18 @@ favicon_frame :: proc(app: ^App) {
 
 @(private = "file")
 favicon_request :: proc(app: ^App, t: ^Tab, address: string) {
+	// (the page's site takes the icon: the suggestions and the Vault show it, and the profile keeps it)
+	origin := favicon_origin(t.page.env.location.href, context.temp_allocator)
 	if old := app.favs.entries[address]; old != nil {
 		// an icon that failed is asked for again by the next navigation that names it (the site may have been down), not
 		// by every refresh of the same one
-		if old.state != .Failed || old.nav == rawptr(t.nav) { return }
-		delete_key(&app.favs.entries, old.url)
-		favicon_free(app, old)
+		if old.state != .Failed || old.nav == rawptr(t.nav) { favicon_site_seen(app, origin, old); return }
+		favicon_forget(app, old)
 	}
-	favicon_evict(app)
-	e := new(Favicon)
-	e.app = app
-	e.url = strings.clone(address)
-	e.used = app.favs.frame
+	e := favicon_entry_make(app, address)
 	e.nav = t.nav
-	app.favs.entries[e.url] = e
+	if origin != "" { e.origin = strings.clone(origin) }
+	favicon_site_seen(app, origin, e)
 	e.scope = t.nav
 	e.task = fetch.start(&app.loader, {
 		request = {
@@ -457,6 +518,7 @@ favicon_request :: proc(app: ^App, t: ^Tab, address: string) {
 		f := (^Favicon)(data)
 		delete_key(&f.app.favs.entries, f.url)
 		delete(f.url)
+		delete(f.origin)
 		free(f)
 	}, e)
 }
@@ -467,27 +529,14 @@ favicon_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	app := e.app
 	#partial switch ev.kind {
 	case .Done:
-		base.forget_cleanup(e.scope, e.cleanup)
+		if e.scope != nil { base.forget_cleanup(e.scope, e.cleanup) }
 		e.task, e.scope = base.NIL_HANDLE, nil
-		if len(ev.data) == 0 { e.state = .Failed; return }
-		if !images.decoder_running() {
-			s := &app.page_settings.images
-			n := s.decode_threads
-			if n < 0 { n = clamp(host.processor_count() / 2, 1, 4) }
-			images.decoder_start(n, s.decode_stack_bytes > 0 ? s.decode_stack_bytes : images.DECODER_STACK_DEFAULT, s.decode_idle_ms)
-		}
-		if app.favs.port == 0 { app.favs.port = images.port_open(&app.loop, favicon_decoded, nil) }
-		if app.favs.port == 0 { e.state = .Failed; return }
-		bytes := make([]byte, len(ev.data))
-		copy(bytes, ev.data)
-		e.blob = images.blob_make(bytes)   // (kept: decoded again for a window of a larger scale)
-		e.state = .Decoding
-		favicon_decode(app, e, favicon_decode_px(app))
-		if e.job == 0 { e.state = .Failed }
+		favicon_take_bytes(app, e, ev.data)
 	case .Failed:
-		base.forget_cleanup(e.scope, e.cleanup)
+		if e.scope != nil { base.forget_cleanup(e.scope, e.cleanup) }
 		e.task, e.scope = base.NIL_HANDLE, nil
 		e.state = .Failed
+		if e.origin != "" { request_frames(app, 1) }   // (the site's next candidate is asked by the next frame that draws it)
 	}
 }
 
@@ -499,7 +548,10 @@ favicon_decoded :: proc(user: rawptr, j: ^images.Job) {
 	e.job = 0
 	img := j.image
 	if j.err != .None || img == nil || len(img.frames) == 0 || img.width <= 0 || img.height <= 0 {
-		if e.state != .Ready { e.state = .Failed }   // (a decode again at another size that failed: the picture it had stays)
+		if e.state != .Ready {
+			e.state = .Failed   // (a decode again at another size that failed: the picture it had stays)
+			if e.origin != "" { request_frames(app, 1) }   // (the site's next candidate)
+		}
 		return
 	}
 	if e.tex != 0 { render.destroy_texture(&app.r, e.tex) }   // (decoded again at a larger size)
@@ -507,12 +559,17 @@ favicon_decoded :: proc(user: rawptr, j: ^images.Job) {
 	render.update_texture_rgba(&app.r, e.tex, 0, 0, img.width, img.height, img.frames[0].pixels, img.stride)
 	e.w, e.h = img.width, img.height
 	e.state = .Ready
+	// (only an icon that decodes is kept in the profile: a page that names an HTML page as its icon stores nothing)
+	if e.origin != "" && e.blob != nil {
+		favicon_disk_store(app, e.origin, e.url, e.blob.bytes)
+		delete(e.origin)
+		e.origin = ""
+	}
 	request_frames(app, 2)
 }
 
 // Room for one more entry: the least recently drawn ones go (never one still loading or decoding, nor one a tab shows:
 // the tabs out of view are not drawn, and their icons are not marked at each frame for it).
-@(private = "file")
 favicon_evict :: proc(app: ^App) {
 	if len(app.favs.entries) < app.favs.cfg.icon_cache { return }
 	in_use := make(map[string]struct{}, len(app.tab_ids), context.temp_allocator)

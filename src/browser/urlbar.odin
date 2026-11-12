@@ -731,6 +731,10 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 					case .Search:
 						icon.kind = .Search
 						engine, words := urlbar_search_of(app, uv)
+						// (the engine's site icon, else the lens)
+						if engine >= 0 && engine < len(app.sengines.list) {
+							if tex, ok := favicon_of_url(app, app.sengines.list[engine].url); ok { icon.kind, icon.tex = .Favicon, tex }
+						}
 						title, hint = words, fmt.tprintf(i18n.tr("Search with %s"), search_engine_name(app, engine))
 					case .Tab:
 						if x := tab_by_id(app, r.tab_id); x != nil {
@@ -741,16 +745,13 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 						icon.kind = .Globe
 						if bi := bookmark_index(app.bms.items[:], r.tab_id); bi >= 0 {
 							b := app.bms.items[bi]
-							// (the icon the history knows for the address)
-							if k, ok := app.ub.idx.by_url[b.url]; ok && app.ub.idx.entries[k].icon != "" {
-								if tex, tok := favicon_texture(app, app.ub.idx.entries[k].icon); tok { icon.kind, icon.tex = .Favicon, tex }
-							}
+							if tex, ok := favicon_of_url(app, b.url); ok { icon.kind, icon.tex = .Favicon, tex }
 							title, detail, hint = b.title != "" ? b.title : default_tab_title(b.url), shown_address(b.url), i18n.tr("Bookmark")
 						}
 					case .History:
 						e := &app.ub.idx.entries[r.entry]
 						icon.kind = .Globe
-						if e.icon != "" { if tex, ok := favicon_texture(app, e.icon); ok { icon.kind, icon.tex = .Favicon, tex } }
+						if tex, ok := favicon_of_url(app, e.url); ok { icon.kind, icon.tex = .Favicon, tex }
 						title = e.title != "" ? e.title : default_tab_title(e.url)
 						detail = shown_address(e.url)
 					}

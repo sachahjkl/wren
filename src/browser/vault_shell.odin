@@ -565,7 +565,12 @@ vault_row_item :: proc(app: ^App, r: vault.Row, prefix: string, i: int, rh, gutt
 	em := ui.font_size()
 	ui.next({width = ui.fill(), height = ui.px(rh)})
 	if ui.row(.Center, {}, strings.concatenate({"###", pid(prefix, "row", i)}, ui.frame_allocator())) {
-		vault_glyph(app, vault_kind_glyph(r.kind), pid(prefix, "kind", i), em * 1.6)
+		// (a login's site icon once it is ready, its kind's glyph meanwhile)
+		if tex, has := vault_row_favicon(app, r); has {
+			favicon_box(tex, strings.concatenate({"###", pid(prefix, "kind", i)}, ui.frame_allocator()), em * 1.6)
+		} else {
+			vault_glyph(app, vault_kind_glyph(r.kind), pid(prefix, "kind", i), em * 1.6)
+		}
 		ui.spacer(ui.px(em * 0.3))
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.column(.Start, {}, strings.concatenate({"###", pid(prefix, "text", i)}, ui.frame_allocator())) {
