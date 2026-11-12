@@ -9,10 +9,12 @@ package webauthn
 // attestation object (CBOR), signature and user handle the response layer expects. The "hybrid" transport (a phone) is
 // not here: that is a later, separate transport.
 //
-// What is not done yet and fails cleanly (a NotAllowedError, never a wrong result): client PINs and on-device user
-// verification need a prompt, which belongs to the toolkit's UI (no Linux window yet); a key that demands a PIN is
-// reported as unavailable for that request. Discoverable credentials (passkeys stored on the key) work for creation;
-// silent discovery for an empty allow list is left to the key's own user presence.
+// The key's PIN: when the key has one and the request does not discourage user verification (Chrome's rule), the
+// browser asks the person for it (pin.odin) before the key is touched; a wrong PIN is asked again with the tries left.
+// The PRF extension goes to the key as hmac-secret, its salts SHA-256("WebAuthn PRF" || 0x00 || input) (WebAuthn
+// §10.1.4); with evalByCredential and several allowed credentials, a silent probe (no touch) finds the one the key
+// holds first, so that its own salts are sent. With an empty allow list and several passkeys of the site on the key,
+// the first one the key gives is used (no account picker yet).
 
 import "base:runtime"
 import "core:c"
@@ -23,6 +25,12 @@ import "wb:base"
 
 @(private = "file")
 FIDO_OK :: 0
+@(private = "file") FIDO_ERR_PIN_INVALID :: 0x31
+@(private = "file") FIDO_ERR_PIN_BLOCKED :: 0x32
+@(private = "file") FIDO_ERR_PIN_AUTH_BLOCKED :: 0x34
+@(private = "file") FIDO_ERR_PIN_NOT_SET :: 0x35
+@(private = "file") FIDO_ERR_NO_CREDENTIALS :: 0x2e
+@(private = "file") FIDO_EXT_HMAC_SECRET :: 0x01
 @(private = "file")
 FIDO_ERR_PIN_REQUIRED :: 0x36
 @(private = "file")
@@ -51,6 +59,7 @@ Fido2_Lib :: struct {
 	fido_dev_cancel:        proc "c" (dev: rawptr) -> c.int,
 	fido_dev_has_pin:       proc "c" (dev: rawptr) -> b32,
 	fido_dev_is_fido2:      proc "c" (dev: rawptr) -> b32,
+	fido_dev_get_retry_count: proc "c" (dev: rawptr, retries: ^c.int) -> c.int,
 	// credential (make)
 	fido_cred_new:          proc "c" () -> rawptr,
 	fido_cred_free:         proc "c" (p: ^rawptr),
@@ -60,6 +69,7 @@ Fido2_Lib :: struct {
 	fido_cred_set_user:     proc "c" (cred: rawptr, user_id: [^]u8, user_id_len: c.size_t, name, display_name, icon: cstring) -> c.int,
 	fido_cred_set_rk:       proc "c" (cred: rawptr, rk: c.int) -> c.int,
 	fido_cred_set_uv:       proc "c" (cred: rawptr, uv: c.int) -> c.int,
+	fido_cred_set_extensions: proc "c" (cred: rawptr, flags: c.int) -> c.int,
 	fido_cred_exclude:      proc "c" (cred: rawptr, id: [^]u8, len: c.size_t) -> c.int,
 	fido_cred_authdata_raw_ptr: proc "c" (cred: rawptr) -> [^]u8,
 	fido_cred_authdata_raw_len: proc "c" (cred: rawptr) -> c.size_t,
@@ -76,6 +86,11 @@ Fido2_Lib :: struct {
 	fido_assert_set_rp:     proc "c" (a: rawptr, id: cstring) -> c.int,
 	fido_assert_allow_cred: proc "c" (a: rawptr, id: [^]u8, len: c.size_t) -> c.int,
 	fido_assert_set_uv:     proc "c" (a: rawptr, uv: c.int) -> c.int,
+	fido_assert_set_up:     proc "c" (a: rawptr, up: c.int) -> c.int,
+	fido_assert_set_extensions: proc "c" (a: rawptr, flags: c.int) -> c.int,
+	fido_assert_set_hmac_salt: proc "c" (a: rawptr, ptr: [^]u8, len: c.size_t) -> c.int,
+	fido_assert_hmac_secret_ptr: proc "c" (a: rawptr, idx: c.size_t) -> [^]u8,
+	fido_assert_hmac_secret_len: proc "c" (a: rawptr, idx: c.size_t) -> c.size_t,
 	fido_assert_count:      proc "c" (a: rawptr) -> c.size_t,
 	fido_assert_authdata_raw_ptr: proc "c" (a: rawptr, idx: c.size_t) -> [^]u8,
 	fido_assert_authdata_raw_len: proc "c" (a: rawptr, idx: c.size_t) -> c.size_t,
@@ -158,6 +173,13 @@ fido2_load :: proc() {
 	l.fido_assert_set_rp = auto_cast sym(h, "fido_assert_set_rp", &ok)
 	l.fido_assert_allow_cred = auto_cast sym(h, "fido_assert_allow_cred", &ok)
 	l.fido_assert_set_uv = auto_cast sym(h, "fido_assert_set_uv", &ok)
+	l.fido_assert_set_up = auto_cast sym(h, "fido_assert_set_up", &ok)
+	l.fido_assert_set_extensions = auto_cast sym(h, "fido_assert_set_extensions", &ok)
+	l.fido_assert_set_hmac_salt = auto_cast sym(h, "fido_assert_set_hmac_salt", &ok)
+	l.fido_assert_hmac_secret_ptr = auto_cast sym(h, "fido_assert_hmac_secret_ptr", &ok)
+	l.fido_assert_hmac_secret_len = auto_cast sym(h, "fido_assert_hmac_secret_len", &ok)
+	l.fido_dev_get_retry_count = auto_cast sym(h, "fido_dev_get_retry_count", &ok)
+	l.fido_cred_set_extensions = auto_cast sym(h, "fido_cred_set_extensions", &ok)
 	l.fido_assert_count = auto_cast sym(h, "fido_assert_count", &ok)
 	l.fido_assert_authdata_raw_ptr = auto_cast sym(h, "fido_assert_authdata_raw_ptr", &ok)
 	l.fido_assert_authdata_raw_len = auto_cast sym(h, "fido_assert_authdata_raw_len", &ok)
@@ -206,7 +228,7 @@ fido2_capabilities :: proc(pl: ^Platform) -> Capabilities {
 		user_verifying_platform = false,
 		passkey_platform = false,
 		hybrid = false,
-		extensions = {.Cred_Protect, .Hmac_Secret},
+		extensions = {.Cred_Protect, .Hmac_Secret, .Prf},
 	}
 }
 
@@ -295,7 +317,11 @@ cstr :: proc(s: string, allocator: runtime.Allocator) -> cstring {
 @(private = "file")
 status_of_fido :: proc(r: c.int, token: ^Cancel_Token) -> Status {
 	if c, _ := cancelled(token); c { return fail(.Not_Allowed, "NotAllowedError: the operation was cancelled") }
-	if r == FIDO_ERR_PIN_REQUIRED { return fail(.Not_Allowed, "NotAllowedError: this security key needs a PIN, which is not supported on Linux yet") }
+	if r == FIDO_ERR_PIN_REQUIRED { return fail(.Not_Allowed, "NotAllowedError: this security key needs its PIN") }
+	if r == FIDO_ERR_PIN_BLOCKED { return fail(.Not_Allowed, "NotAllowedError: this security key's PIN is blocked after too many wrong tries; reset the key to use it again") }
+	if r == FIDO_ERR_PIN_AUTH_BLOCKED { return fail(.Not_Allowed, "NotAllowedError: too many wrong PINs: remove the security key and insert it again") }
+	if r == FIDO_ERR_PIN_NOT_SET { return fail(.Not_Allowed, "NotAllowedError: this site needs a PIN on the security key, and the key has none: set one with its maker's tool") }
+	if r == FIDO_ERR_NO_CREDENTIALS { return fail(.Not_Allowed, "NotAllowedError: this security key has no passkey for this site") }
 	if r == FIDO_ERR_UP_REQUIRED { return fail(.Not_Allowed, "NotAllowedError: the security key was not touched") }
 	return fail(.Not_Allowed, "NotAllowedError: the security key refused or was removed")
 }
@@ -325,8 +351,14 @@ fido2_make_credential :: proc(pl: ^Platform, rq: ^Make_Request, out: ^Credential
 	fido2.fido_cred_set_rk(cred, o.resident_key == .Required ? FIDO_OPT_TRUE : FIDO_OPT_OMIT)
 	fido2.fido_cred_set_uv(cred, o.user_verification == .Required ? FIDO_OPT_TRUE : FIDO_OPT_OMIT)
 	for d in o.exclude { if len(d.id) > 0 { fido2.fido_cred_exclude(cred, raw_data(d.id), c.size_t(len(d.id))) } }
+	if o.ext.prf { fido2.fido_cred_set_extensions(cred, FIDO_EXT_HMAC_SECRET) }
 
-	r := fido2.fido_dev_make_cred(dev, cred, nil)
+	need_pin := bool(fido2.fido_dev_has_pin(dev)) && o.user_verification != .Discouraged
+	r := with_pin(dev, rq.cancel, rq.rp_id, need_pin, proc(dev, obj: rawptr, pin: cstring) -> c.int {
+		// (the PIN gives the key's verification: the uv option with it is refused by some keys)
+		if pin != nil { fido2.fido_cred_set_uv(obj, FIDO_OPT_OMIT) }
+		return fido2.fido_dev_make_cred(dev, obj, pin)
+	}, cred)
 	if r != FIDO_OK { return status_of_fido(r, rq.cancel) }
 
 	// authenticatorData (raw) and the attestation object = CBOR {fmt, attStmt, authData}.
@@ -338,6 +370,10 @@ fido2_make_credential :: proc(pl: ^Platform, rq: ^Make_Request, out: ^Credential
 	out.transports = {.USB}
 	out.attachment = .Cross_Platform
 	out.used_transport = {.USB}
+	if o.ext.prf {
+		out.ext.has_prf = true
+		out.ext.has_prf_enabled, out.ext.prf_enabled = true, authdata_has_hmac_secret(ad)
+	}
 	return OK
 }
 
@@ -358,10 +394,37 @@ fido2_get_assertion :: proc(pl: ^Platform, rq: ^Get_Request, out: ^Credential, a
 	if fido2.fido_assert_set_rp(as, cstr(rq.rp_id, context.temp_allocator)) != FIDO_OK { return fail(.Not_Allowed, "NotAllowedError: bad relying party") }
 	hash := clientdata_hash(rq.client_data_json)
 	if fido2.fido_assert_set_clientdata_hash(as, raw_data(hash[:]), len(hash)) != FIDO_OK { return fail(.Not_Allowed, "NotAllowedError: bad client data") }
-	for d in o.allow { if len(d.id) > 0 { fido2.fido_assert_allow_cred(as, raw_data(d.id), c.size_t(len(d.id))) } }
+	// PRF: the salts of the credential the key will use (evalByCredential), else of `eval`
+	prf_values: Prf_Values
+	has_prf := false
+	allow_only: []byte   // the one allowed credential the silent probe found (nil: the request's list)
+	if o.ext.prf {
+		if len(o.ext.prf_by_credential) > 0 {
+			held := o.allow[0].id if len(o.allow) == 1 else probe_held(dev, rq, hash[:])
+			for pc in o.ext.prf_by_credential {
+				if string(pc.credential) == string(held) { prf_values, has_prf = pc.values, true; allow_only = held }
+			}
+		}
+		if !has_prf && o.ext.has_prf_eval { prf_values, has_prf = o.ext.prf_eval, true }
+	}
+	if allow_only != nil {
+		fido2.fido_assert_allow_cred(as, raw_data(allow_only), c.size_t(len(allow_only)))
+	} else {
+		for d in o.allow { if len(d.id) > 0 { fido2.fido_assert_allow_cred(as, raw_data(d.id), c.size_t(len(d.id))) } }
+	}
+	if has_prf {
+		salt: [64]u8
+		n := prf_salt(prf_values, &salt)
+		fido2.fido_assert_set_extensions(as, FIDO_EXT_HMAC_SECRET)
+		fido2.fido_assert_set_hmac_salt(as, raw_data(salt[:]), c.size_t(n))
+	}
 	fido2.fido_assert_set_uv(as, o.user_verification == .Required ? FIDO_OPT_TRUE : FIDO_OPT_OMIT)
 
-	r := fido2.fido_dev_get_assert(dev, as, nil)
+	need_pin := bool(fido2.fido_dev_has_pin(dev)) && o.user_verification != .Discouraged
+	r := with_pin(dev, rq.cancel, rq.rp_id, need_pin, proc(dev, obj: rawptr, pin: cstring) -> c.int {
+		if pin != nil { fido2.fido_assert_set_uv(obj, FIDO_OPT_OMIT) }
+		return fido2.fido_dev_get_assert(dev, obj, pin)
+	}, as)
 	if r != FIDO_OK { return status_of_fido(r, rq.cancel) }
 	if int(fido2.fido_assert_count(as)) == 0 { return fail(.Not_Allowed, "NotAllowedError: the security key returned no assertion") }
 
@@ -376,7 +439,81 @@ fido2_get_assertion :: proc(pl: ^Platform, rq: ^Get_Request, out: ^Credential, a
 	}
 	out.attachment = .Cross_Platform
 	out.used_transport = {.USB}
+	if o.ext.prf {
+		out.ext.has_prf = true
+		if secret := ptr_slice(fido2.fido_assert_hmac_secret_ptr(as, idx), fido2.fido_assert_hmac_secret_len(as, idx)); has_prf && len(secret) >= 32 {
+			out.ext.has_prf_results = true
+			out.ext.prf_results.first = clone_bytes_wa(secret[:32], allocator)
+			if len(secret) >= 64 && prf_values.has_second {
+				out.ext.prf_results.second, out.ext.prf_results.has_second = clone_bytes_wa(secret[32:64], allocator), true
+			}
+		}
+	}
 	return OK
+}
+
+// Runs `call` (a make or a get on `obj`) with the key's PIN when it needs one: asked of the person first when
+// `need_pin`, asked again with the tries left after a wrong one, asked when the key answers that it needs one. The
+// PIN is zeroed after each try.
+@(private = "file")
+with_pin :: proc(dev: rawptr, token: ^Cancel_Token, rp_id: string, need_pin: bool, call: proc(dev, obj: rawptr, pin: cstring) -> c.int, obj: rawptr) -> c.int {
+	ask := need_pin
+	wrong := false
+	for {
+		if !ask { return call(dev, obj, nil) }
+		retries: c.int = -1
+		if fido2.fido_dev_get_retry_count(dev, &retries) != FIDO_OK { retries = -1 }
+		if retries == 0 { return FIDO_ERR_PIN_BLOCKED }
+		buf: [PIN_MAX + 1]u8
+		_, given := pin_ask(token, rp_id, int(retries), wrong, &buf)
+		if !given {
+			for &b in buf { b = 0 }
+			if c, _ := cancelled(token); c { return FIDO_ERR_RX }
+			return FIDO_ERR_PIN_REQUIRED
+		}
+		r := call(dev, obj, cstring(raw_data(buf[:])))
+		for &b in buf { b = 0 }
+		switch r {
+		case FIDO_ERR_PIN_INVALID: wrong = true   // (asked again, with the tries left)
+		case FIDO_ERR_PIN_REQUIRED: ask = true
+		case: return r
+		}
+	}
+}
+
+// The credential of the allow list that the key holds, by a silent assertion (no touch, no PIN): the first it answers.
+// nil when it holds none, or does not answer a probe.
+@(private = "file")
+probe_held :: proc(dev: rawptr, rq: ^Get_Request, hash: []u8) -> []byte {
+	as := fido2.fido_assert_new()
+	if as == nil { return nil }
+	defer { a := as; fido2.fido_assert_free(&a) }
+	fido2.fido_assert_set_rp(as, cstr(rq.rp_id, context.temp_allocator))
+	fido2.fido_assert_set_clientdata_hash(as, raw_data(hash), c.size_t(len(hash)))
+	for d in rq.options.allow { if len(d.id) > 0 { fido2.fido_assert_allow_cred(as, raw_data(d.id), c.size_t(len(d.id))) } }
+	fido2.fido_assert_set_up(as, FIDO_OPT_FALSE)
+	if fido2.fido_dev_get_assert(dev, as, nil) != FIDO_OK || fido2.fido_assert_count(as) == 0 { return nil }
+	id := ptr_slice(fido2.fido_assert_id_ptr(as, 0), fido2.fido_assert_id_len(as, 0))
+	for d in rq.options.allow { if string(d.id) == string(id) { return d.id } }
+	return nil
+}
+
+// Whether a new credential's authenticatorData says hmac-secret: true in its extensions (flag ED, the CBOR text
+// "hmac-secret" then true).
+@(private = "file")
+authdata_has_hmac_secret :: proc(ad: []u8) -> bool {
+	if len(ad) < 33 || ad[32] & 0x80 == 0 { return false }
+	key := "\x6bhmac-secret\xf5"
+	return len(ad) >= len(key) && contains_bytes(ad, transmute([]u8)string(key))
+}
+
+@(private = "file")
+contains_bytes :: proc(hay, needle: []u8) -> bool {
+	outer: for i in 0 ..= len(hay) - len(needle) {
+		for b, j in needle { if hay[i + j] != b { continue outer } }
+		return true
+	}
+	return false
 }
 
 // SHA-256 of the clientDataJSON: what the key signs (crypto.odin's hash).

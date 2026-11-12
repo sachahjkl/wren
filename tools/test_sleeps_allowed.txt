@@ -33,3 +33,4 @@ src/wasm/wasm_test.odin 1  # the deadline of a guest call is on the real clock o
 src/webaudio/webaudio_test.odin 5  # base.await: the audio thread renders on its own clock; what it has rendered is the state (1.9)
 src/webaudio/worklet_test.odin 2  # a fake realm's thread polls its queue between yields, as the audio thread does; base.await on the calls it made (1.9)
 src/webauthn/webauthn_test.odin 1  # base.await: the operation waits for its user on its own thread; that it waits is the state (1.9)
+src/webauthn/pin_test.odin 2  # sema_wait_with_timeout: pin_ask runs on its own thread and signals the question that opens and closes; the signal is the state, the timeout only bounds a hang

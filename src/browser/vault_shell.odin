@@ -32,7 +32,7 @@ import "wb:style"
 import "wb:vault"
 
 VAULT_PANEL_W_EM :: f32(26)
-VAULT_DIALOG_FOOT_EM :: f32(3.7)   // under what a dialog says: the gap, its buttons and the margin under them
+DIALOG_FOOT_EM :: f32(3.7)   // under what a dialog says: the gap, its buttons and the margin under them
 VAULT_PANEL_LIST_EM :: f32(22)   // the most height the logins take in the panel before they scroll
 VAULT_SECRET_RESERVE :: 512   // bytes reserved in a secret field before any typing: a buffer that grows would leave copies
 
@@ -45,6 +45,7 @@ Vault_Shell :: struct {
 	dialog_size:    ui.Vec2, // the size the person gave the dialog (ui.modal_sized; {}: its own)
 	dialog_body:    ui.Key,  // the box of what the dialog says: its height makes the dialog's
 	pin_size:       ui.Vec2, // the same for the PIN dialog
+	pin_body:       ui.Key,
 	focus:          bool,   // the dialog's first field takes the keyboard next frame
 	api_key:        bool,   // the login dialog asks for the API key rather than the email
 	use_password:   bool,   // the unlock dialog asks for the master password though a PIN is set
@@ -133,7 +134,6 @@ vault_fields :: proc(s: ^Vault_Shell) -> [7]^ui.Text_Field {
 }
 
 // Zeroes a text field's bytes and its undo history, then empties it (its capacity stays: VAULT_SECRET_RESERVE).
-@(private = "file")
 secret_wipe :: proc(f: ^ui.Text_Field) {
 	if cap(f.buf) > 0 { mem.zero_explicit(raw_data(f.buf), cap(f.buf)) }
 	for &snap in f.undo { if len(snap.text) > 0 { mem.zero_explicit(raw_data(snap.text), len(snap.text)) } }
@@ -504,7 +504,14 @@ vault_first_field :: proc(email_known: bool, email_box, password_box: ^ui.Box) -
 	return email_known && password_box != nil ? password_box : email_box
 }
 
-@(private = "file")
+// The size a dialog opens at (ui.modal_sized's `preferred`): `width`, and the height of what it says (`body`: its box,
+// as the last frame laid it out) and of its buttons under it; `fallback_h` before its first layout. Once the person
+// resized it, their size wins (ui.modal_sized).
+dialog_preferred :: proc(body: ui.Key, width, fallback_h: f32) -> draw.Vec2 {
+	if b := ui.box_from_key(body); b != nil && b.size.y > 0 { return {width, b.size.y + ui.font_size() * DIALOG_FOOT_EM} }
+	return {width, fallback_h}
+}
+
 dialog_line :: proc(text, id: string, weak := false) {
 	if weak { ui.push_tags("weak") }
 	// (a server's message is long: it goes on to more lines, never cut)
@@ -514,7 +521,6 @@ dialog_line :: proc(text, id: string, weak := false) {
 }
 
 // One text field of the dialogs; Enter submits, Escape cancels.
-@(private = "file")
 dialog_field :: proc(id: string, f: ^ui.Text_Field, placeholder: string, secret: bool, submit, cancel: ^bool, reveal: ^bool = nil) -> ^ui.Box {
 	em := ui.font_size()
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
@@ -584,10 +590,7 @@ vault_login_build :: proc(app: ^App) {
 		s.pending_submit = false
 		submit = true
 	}
-	// (its height by default: what it says, as the last frame laid it out, and its buttons; the person's own once resized)
-	preferred := draw.Vec2{em * 32, em * 21}
-	if b := ui.box_from_key(s.dialog_body); b != nil && b.size.y > 0 { preferred.y = b.size.y + em * VAULT_DIALOG_FOOT_EM }
-	if ui.modal_sized("vault_dialog", preferred, &s.dialog_size, &open, {em * 22, em * 12}) {
+	if ui.modal_sized("vault_dialog", dialog_preferred(s.dialog_body, em * 32, em * 21), &s.dialog_size, &open, {em * 22, em * 12}) {
 		// what the dialog says scrolls when the person makes it small; its buttons stay under it
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###vd_scroll") {
@@ -803,12 +806,13 @@ vault_pin_build :: proc(app: ^App) {
 	em := ui.font_size()
 	open := true
 	submit, cancel := false, false
-	if ui.modal_sized("vault_pin", {em * 26, em * 13.5}, &s.pin_size, &open, {em * 20, em * 10}) {
+	if ui.modal_sized("vault_pin", dialog_preferred(s.pin_body, em * 26, em * 13.5), &s.pin_size, &open, {em * 20, em * 10}) {
 		// (the same frame as the login dialog: what it says scrolls when made small, its buttons stay at its foot)
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###vpin_scroll") {
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.row(.Start, {}, "###vpin_margins") {
+				s.pin_body = ui.parent_box().key
 				ui.spacer(ui.px(em * 1.0))
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###vpin_col") {

@@ -118,3 +118,19 @@ rs256_verify :: proc(n, e: []byte, message, signature: []byte) -> bool {
 	defer rsa.public_key_clear(&pub)
 	return rsa.verify_pkcs1(&pub, hash.Algorithm.SHA256, message, signature)
 }
+
+// The hmac-secret salts of PRF inputs: SHA-256("WebAuthn PRF" || 0x00 || input), one or two (WebAuthn §10.1.4).
+prf_salt :: proc(v: Prf_Values, out: ^[64]u8) -> int {
+	one :: proc(input: []u8, out: []u8) {
+		label := "WebAuthn PRF"
+		buf := make([]u8, len(label) + 1 + len(input), context.temp_allocator)
+		copy(buf, label)
+		copy(buf[len(label) + 1:], input)
+		h := sha256(buf)
+		copy(out, h[:])
+	}
+	one(v.first, out[:32])
+	if !v.has_second { return 32 }
+	one(v.second, out[32:])
+	return 64
+}
