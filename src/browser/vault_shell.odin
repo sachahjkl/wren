@@ -32,6 +32,7 @@ import "wb:style"
 import "wb:vault"
 
 VAULT_PANEL_W_EM :: f32(26)
+VAULT_DIALOG_FOOT_EM :: f32(3.7)   // under what a dialog says: the gap, its buttons and the margin under them
 VAULT_PANEL_LIST_EM :: f32(22)   // the most height the logins take in the panel before they scroll
 VAULT_SECRET_RESERVE :: 512   // bytes reserved in a secret field before any typing: a buffer that grows would leave copies
 
@@ -42,6 +43,7 @@ Vault_Shell :: struct {
 	panel_was:      bool,   // the panel was open last frame (its rows are released when it closes)
 	dialog:         bool,   // the login / unlock dialog is open
 	dialog_size:    ui.Vec2, // the size the person gave the dialog (ui.modal_sized; {}: its own)
+	dialog_body:    ui.Key,  // the box of what the dialog says: its height makes the dialog's
 	pin_size:       ui.Vec2, // the same for the PIN dialog
 	focus:          bool,   // the dialog's first field takes the keyboard next frame
 	api_key:        bool,   // the login dialog asks for the API key rather than the email
@@ -580,12 +582,16 @@ vault_login_build :: proc(app: ^App) {
 		s.pending_submit = false
 		submit = true
 	}
-	if ui.modal_sized("vault_dialog", {em * 32, em * 21}, &s.dialog_size, &open, {em * 22, em * 12}) {
+	// (its height by default: what it says, as the last frame laid it out, and its buttons; the person's own once resized)
+	preferred := draw.Vec2{em * 32, em * 21}
+	if b := ui.box_from_key(s.dialog_body); b != nil && b.size.y > 0 { preferred.y = b.size.y + em * VAULT_DIALOG_FOOT_EM }
+	if ui.modal_sized("vault_dialog", preferred, &s.dialog_size, &open, {em * 22, em * 12}) {
 		// what the dialog says scrolls when the person makes it small; its buttons stay under it
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###vd_scroll") {
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.row(.Start, {}, "###vd_margins") {
+				s.dialog_body = ui.parent_box().key
 				ui.spacer(ui.px(em * 1.0))
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###vd_col") {
@@ -647,8 +653,15 @@ vault_login_build :: proc(app: ^App) {
 						if !busy && icon_action_button(app, lucide.SEND_HORIZONTAL, i18n.tr("Send a new code"), "vd_send_device", ui.px(em * 16)) { vault.vault_send_code(v) }
 					case unlock:
 						dialog_line(v.email, "vd_email_shown")
-						ui.spacer(ui.px(em * 0.4))
+						ui.spacer(ui.px(em * 0.6))
+						// (what the field takes stays said above it: a placeholder goes with the first character)
+						dialog_line(use_pin ? i18n.tr("Your PIN") : i18n.tr("Your master password"), "vd_secret_label", weak = true)
+						ui.spacer(ui.px(em * 0.2))
 						first = dialog_field("###vd_password", &s.password, use_pin ? i18n.tr("PIN") : i18n.tr("Master password"), true, &submit, &cancel, &app.vault.reveal)
+						if !v.pin {
+							ui.spacer(ui.px(em * 0.3))
+							dialog_line(i18n.tr("No PIN is set: a new login removes it. Once unlocked, set one from the Vault panel."), "vd_no_pin", weak = true)
+						}
 						if v.passkey && !busy {
 							ui.spacer(ui.px(em * 0.3))
 							if icon_action_button(app, lucide.SHIELD, i18n.tr("Unlock with a passkey"), "vd_unlock_passkey", ui.px(em * 16)) {
