@@ -95,7 +95,11 @@ async fn socket(inner: &Arc<Inner>, st: &Arc<ReqState>, d: Desc, mut rx: Unbound
         .map_err(|_| hs(NetError::new(error::ERROR_BAD_URL)))?;
 
     let c = conn::connect(&inner.shared, &http_uri, Alpn::Ws).await.map_err(hs)?;
-    let (mut sender, connection) = hyper::client::conn::http1::handshake(c)
+    // the same limit of the head as every HTTP request (http.rs)
+    let mut builder = hyper::client::conn::http1::Builder::new();
+    builder.max_buf_size(crate::HEADER_BLOCK_MOST);
+    let (mut sender, connection) = builder
+        .handshake(c)
         .await
         .map_err(|e| hs(error::from_any(&e, error::CONNECTION_ERROR)))?;
     tokio::spawn(async move {
@@ -227,13 +231,13 @@ async fn socket(inner: &Arc<Inner>, st: &Arc<ReqState>, d: Desc, mut rx: Unbound
                 Some(Err(e)) => return Err(err(OP_RECEIVE, ws_error(&e))),
                 Some(Ok(m)) => {
                     let (btype, data) = match m {
-                        Message::Text(t) => (UTF8_MESSAGE, Bytes::from(t).to_vec()),
-                        Message::Binary(b) => (BINARY_MESSAGE, b.to_vec()),
+                        Message::Text(t) => (UTF8_MESSAGE, Bytes::from(t)),
+                        Message::Binary(b) => (BINARY_MESSAGE, b),
                         Message::Close(f) => {
                             peer_closed = true;
                             let (code, reason) = match f {
-                                Some(f) => (u16::from(f.code) as u32, f.reason.as_bytes().to_vec()),
-                                None => (1005, Vec::new()),
+                                Some(f) => (u16::from(f.code) as u32, Bytes::from(f.reason)),
+                                None => (1005, Bytes::new()),
                             };
                             inner.push(Ev { kind: EV_WS_PEER_CLOSE, tag, code, data: reason, ..Default::default() });
                             continue;

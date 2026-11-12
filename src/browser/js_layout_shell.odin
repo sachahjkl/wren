@@ -65,8 +65,8 @@ js_layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 // (WREN_RESTYLE_TRACE) one line per layout pass, as a script's reading (`read`) or a frame (`frame`) asked for it.
 layout_trace :: proc(who: string, l: ^lay.Layout, style_ms, layout_ms: f64) {
 	if !style.trace_restyle() { return }
-	@(static) failures: int
-	if l.inc.verify_failures != failures { failures = l.inc.verify_failures; fmt.eprintfln("layout.incremental.verify: %s", l.inc.verify_report) }
+	app := the_app   // (the loop's or the page thread's: the App whose layout this is)
+	if app != nil && l.inc.verify_failures != app.layout_verify_seen { app.layout_verify_seen = l.inc.verify_failures; fmt.eprintfln("layout.incremental.verify: %s", l.inc.verify_report) }
 	fmt.eprintfln("layout pass: %s %v style %.1f layout %.1f ms, steps %.1f %.1f %.1f %.1f %.1f, %d boxes, rebuilt %d, laid %d, verify failures %d: %s", who, l.last_pass, style_ms, layout_ms,
 		l.stats[0], l.stats[1], l.stats[2], l.stats[3], l.stats[4], len(l.boxes), l.inc.last_rebuilt, l.inc.last_laid, l.inc.verify_failures, l.inc.fallback)
 }

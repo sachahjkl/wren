@@ -158,9 +158,10 @@ clone_one :: proc(d: ^Document, h: base.Handle, work: ^[dynamic]Clone_Work, root
 	c := Node{kind = n.kind, ns = n.ns, xml = n.xml, name = n.name_static ? n.name : heap_str(n.name), name_static = n.name_static, text = heap_str(n.text), doc = n.doc}
 	if len(n.attrs) > 0 {
 		c.attrs = make([dynamic]Attr, 0, len(n.attrs))
-		for a in n.attrs { append(&c.attrs, Attr{heap_str(a.name), heap_str(a.value), a.ns}) }
+		for a in n.attrs { append(&c.attrs, Attr{name = a.name_static ? a.name : heap_str(a.name), value = heap_str(a.value), ns = a.ns, name_static = a.name_static}) }
 	}
-	nh, _ := base.pool_insert_tagged(&d.nodes, d.tag, c)
+	nh, cn := base.pool_insert_tagged(&d.nodes, d.tag, c)
+	bytes_add(d, node_bytes(cn))
 	if c.kind == .Element {
 		if x, ok := d.ns_extra[h]; ok { d.ns_extra[nh] = Ns_Extra{uri = heap_str(x.uri), prefix = heap_str(x.prefix)} }
 		if d.ids.on { for a in c.attrs { if a.name == "id" && a.ns == ATTR_NS_NONE { ids_add(d, nh, a.value); break } } }
@@ -242,12 +243,13 @@ copy_children_across :: proc(src, dst: ^Document, from, to: base.Handle) {
 listener_copy :: proc(d: ^Document, h: base.Handle, l: Listener, owner: u32) {
 	n := get(d, h)
 	if n == nil { return }
+	if l.removed { return }
 	c := l
-	c.type = strings.clone(l.type)
+	c.type = event_type_string(l.atom, l.type)
 	c.owner = owner
 	append(&n.listeners, c)
 	if c.id >= d.next_listener { d.next_listener = c.id + 1 }
-	d.listener_changes += 1
+	listener_counted(d, c, 1)
 }
 
 // Appends `child` (fresh, detached, unpinned) under a detached parent without journaling: building a copy that nobody
@@ -345,7 +347,8 @@ normalize :: proc(d: ^Document, h: base.Handle) {
 			b := strings.builder_make(context.temp_allocator)
 			strings.write_string(&b, n.text)
 			for s := nx; s != base.NIL_HANDLE && get(d, s).kind == .Text; s = get(d, s).next { strings.write_string(&b, get(d, s).text) }
-			set_data(d, t, strings.to_string(b))
+			// (refused past the document's byte limit: the siblings then stay, their text not lost)
+			if set_data(d, t, strings.to_string(b)) != .None { continue }
 			for {
 				s := get(d, t).next
 				if s == base.NIL_HANDLE || get(d, s).kind != .Text { break }

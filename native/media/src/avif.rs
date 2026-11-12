@@ -301,16 +301,27 @@ fn plane_row(plane: *const u8, stride: isize, y: usize, w: usize, hbd: bool, lut
     }
 }
 
-/// The picture as RGBA8 into `out` (w x h, alpha 255). Chroma is upsampled bilinearly (sample centres between luma
-/// samples, as libavif's default); normalisation goes through lookup tables, chroma rows are made once and kept.
+/// The planes of a decoded picture as to_rgba reads them.
+struct Yuv {
+    y: *const u8,
+    u: *const u8,
+    v: *const u8,
+    ys: isize,
+    cs: isize,
+    w: usize,
+    h: usize,
+    bpc: u32,
+    sx: bool,   // chroma halved horizontally
+    sy: bool,   // and vertically
+    mono: bool,
+}
+
+/// The picture as RGBA8 into `out` (w x h, alpha 255).
 fn to_rgba(pic: &Dav1dPicture, cicp: Cicp, out: &mut [u8]) -> Result<(), i32> {
-    let w = pic.p.w as usize;
-    let h = pic.p.h as usize;
     let bpc = pic.p.bpc as u32;
     if !(8..=12).contains(&bpc) {
         return Err(ERR_UNSUPPORTED);
     }
-    let hbd = bpc > 8;
     let layout = pic.p.layout;
     let (sx, sy) = match layout {
         DAV1D_PIXEL_LAYOUT_I420 => (true, true),
@@ -318,16 +329,32 @@ fn to_rgba(pic: &Dav1dPicture, cicp: Cicp, out: &mut [u8]) -> Result<(), i32> {
         _ => (false, false),
     };
     let mono = layout == DAV1D_PIXEL_LAYOUT_I400;
-    let ydata = pic.data[0].ok_or(ERR_CORRUPT)?.as_ptr() as *const u8;
-    let (udata, vdata) = if mono {
-        (ydata, ydata)
+    let y = pic.data[0].ok_or(ERR_CORRUPT)?.as_ptr() as *const u8;
+    let (u, v) = if mono {
+        (y, y)
     } else {
         (pic.data[1].ok_or(ERR_CORRUPT)?.as_ptr() as *const u8, pic.data[2].ok_or(ERR_CORRUPT)?.as_ptr() as *const u8)
     };
-    let ys = pic.stride[0];
-    let cs = pic.stride[1];
-    let cw = if sx { (w + 1) / 2 } else { w };
-    let chh = if sy { (h + 1) / 2 } else { h };
+    let yuv = Yuv { y, u, v, ys: pic.stride[0], cs: pic.stride[1], w: pic.p.w as usize, h: pic.p.h as usize, bpc, sx, sy, mono };
+    yuv_to_rgba(&yuv, cicp, out, true);
+    Ok(())
+}
+
+/// Bytes [0, n) of row `y` of a plane.
+/// SAFETY: the caller keeps the row and the bytes inside the plane.
+unsafe fn plane_bytes<'a>(plane: *const u8, stride: isize, y: usize, n: usize) -> &'a [u8] {
+    std::slice::from_raw_parts(plane.offset(y as isize * stride), n)
+}
+
+/// The conversion of `yuv` into `out`. Chroma is upsampled bilinearly (sample centres between luma samples, as libavif's
+/// default). 8-bit YCbCr goes through integers when `fixed` (fixed_8bit); the rest, and the reference, through f32 with
+/// lookup tables, chroma rows made once and kept.
+fn yuv_to_rgba(p: &Yuv, cicp: Cicp, out: &mut [u8], fixed: bool) {
+    let (w, h, bpc) = (p.w, p.h, p.bpc);
+    let hbd = bpc > 8;
+    let (ydata, udata, vdata, ys, cs) = (p.y, p.u, p.v, p.ys, p.cs);
+    let cw = if p.sx { (w + 1) / 2 } else { w };
+    let chh = if p.sy { (h + 1) / 2 } else { h };
     let max = ((1u32 << bpc) - 1) as f32;
     let shift = (1u32 << (bpc - 8)) as f32;
     let identity = cicp.matrix == 0;
@@ -337,16 +364,32 @@ fn to_rgba(pic: &Dav1dPicture, cicp: Cicp, out: &mut [u8]) -> Result<(), i32> {
     } else {
         (16.0 * shift, 1.0 / (219.0 * shift), 128.0 * shift, 1.0 / (224.0 * shift))
     };
-    let n = 1usize << bpc;
-    let ylut: Vec<f32> = (0..n).map(|c| (c as f32 - y_off) * y_scale).collect();
-    // identity (GBR): the chroma planes hold B and R with the luma range
-    let clut: Vec<f32> = if identity { ylut.clone() } else { (0..n).map(|c| (c as f32 - c_off) * c_scale).collect() };
     let (kr, kb) = kr_kb(cicp.matrix, cicp.primaries);
     let kg = 1.0 - kr - kb;
     let (cr_r, cb_b) = (2.0 * (1.0 - kr), 2.0 * (1.0 - kb));
     let (g_r, g_b, inv_kg) = (kr / kg, kb / kg, 1.0 / kg);
-    let xt = chroma_taps(w, sx, cw);
-    let yt = chroma_taps(h, sy, chh);
+    let xt = chroma_taps(w, p.sx, cw);
+    let yt = chroma_taps(h, p.sy, chh);
+    if fixed && !hbd && !p.mono && !identity && !ycgco {
+        // the output unit is 1 / 255, the fixed point 1 / 65536 of it; chroma comes in 1 / 16 of a code
+        let unit = 255.0 * 65536.0;
+        let c = c_scale as f64 * unit / 16.0;
+        let k = Fixed {
+            y_off: y_off as i32,
+            ky: (y_scale as f64 * unit).round() as i32,
+            c_mid: (c_off * 16.0) as i32,
+            r_v: (cr_r as f64 * c).round() as i32,
+            g_u: (g_b as f64 * cb_b as f64 * c).round() as i32,
+            g_v: (g_r as f64 * cr_r as f64 * c).round() as i32,
+            b_u: (cb_b as f64 * c).round() as i32,
+        };
+        fixed_8bit(p, cw, &xt, &yt, &k, out);
+        return;
+    }
+    let n = 1usize << bpc;
+    let ylut: Vec<f32> = (0..n).map(|c| (c as f32 - y_off) * y_scale).collect();
+    // identity (GBR): the chroma planes hold B and R with the luma range
+    let clut: Vec<f32> = if identity { ylut.clone() } else { (0..n).map(|c| (c as f32 - c_off) * c_scale).collect() };
     // chroma rows upsampled horizontally, cached by chroma row index (two are needed at a time)
     let mut raw = vec![0f32; cw];
     let mut rows: [(usize, Vec<f32>, Vec<f32>); 2] = [(usize::MAX, vec![0f32; w], vec![0f32; w]), (usize::MAX, vec![0f32; w], vec![0f32; w])];
@@ -368,7 +411,7 @@ fn to_rgba(pic: &Dav1dPicture, cicp: Cicp, out: &mut [u8]) -> Result<(), i32> {
     for y in 0..h {
         plane_row(ydata, ys, y, w, hbd, &ylut, &mut yrow);
         let row = &mut out[y * w * 4..(y + 1) * w * 4];
-        if mono {
+        if p.mono {
             for (x, &yy) in yrow.iter().enumerate() {
                 let v = to8(yy);
                 row[x * 4..x * 4 + 4].copy_from_slice(&[v, v, v, 255]);
@@ -403,7 +446,65 @@ fn to_rgba(pic: &Dav1dPicture, cicp: Cicp, out: &mut [u8]) -> Result<(), i32> {
             row[o + 3] = 255;
         }
     }
-    Ok(())
+}
+
+/// The YCbCr matrix in fixed point: a code times a coefficient is in 1 / 65536 of an output unit (0..255).
+struct Fixed {
+    y_off: i32, // luma code of black
+    ky: i32,    // per luma code
+    c_mid: i32, // chroma's zero, in 1 / 16 of a code
+    r_v: i32,   // per 1 / 16 of a chroma code
+    g_u: i32,
+    g_v: i32,
+    b_u: i32,
+}
+
+/// 8-bit YCbCr (4:2:0, 4:2:2, 4:4:4) in integers. Chroma's bilinear weights are 0, 1/4 or 3/4 (chroma_taps), so it is
+/// upsampled exactly in quarters each way; the matrix is G = Y - g_u U - g_v V, the same as the float path's
+/// Y / kg - (kr / kg) R - (kb / kg) B. Within one unit of yuv_to_rgba's float path, and its loops are over slices
+/// zipped together, which LLVM vectorises.
+fn fixed_8bit(p: &Yuv, cw: usize, xt: &[(usize, usize, f32)], yt: &[(usize, usize, f32)], k: &Fixed, out: &mut [u8]) {
+    let w = p.w;
+    let quarter = |f: f32| (f * 4.0).round() as i32;
+    let xq: Vec<(usize, usize, i32)> = xt.iter().map(|&(a, b, f)| (a, b, quarter(f))).collect();
+    // chroma rows upsampled horizontally (4 x the code), cached by chroma row index
+    let mut rows: [(usize, Vec<i32>, Vec<i32>); 2] = [(usize::MAX, vec![0; w], vec![0; w]), (usize::MAX, vec![0; w], vec![0; w])];
+    let make_row = |cy: usize, slot: &mut (usize, Vec<i32>, Vec<i32>)| {
+        if slot.0 == cy {
+            return;
+        }
+        slot.0 = cy;
+        for (plane, dst) in [(p.u, &mut slot.1), (p.v, &mut slot.2)] {
+            // SAFETY: cy < the chroma height and cw its width (yuv_to_rgba's taps).
+            let raw = unsafe { plane_bytes(plane, p.cs, cy, cw) };
+            for (d, &(i0, i1, q)) in dst.iter_mut().zip(xq.iter()) {
+                *d = raw[i0] as i32 * (4 - q) + raw[i1] as i32 * q;
+            }
+        }
+    };
+    const HALF: i32 = 1 << 15;
+    for y in 0..p.h {
+        let (cy0, cy1, fy) = yt[y];
+        let qy = quarter(fy);
+        let (a, b) = rows.split_at_mut(1);
+        let (s0, s1) = if b[0].0 == cy0 { (&mut b[0], &mut a[0]) } else { (&mut a[0], &mut b[0]) };
+        make_row(cy0, s0);
+        make_row(cy1, s1);
+        // SAFETY: y < the picture's height, w its width.
+        let yrow = unsafe { plane_bytes(p.y, p.ys, y, w) };
+        let row = &mut out[y * w * 4..(y + 1) * w * 4];
+        let us = s0.1.iter().zip(s1.1.iter());
+        let vs = s0.2.iter().zip(s1.2.iter());
+        for (((o, &yc), (&ua, &ub)), (&va, &vb)) in row.chunks_exact_mut(4).zip(yrow.iter()).zip(us).zip(vs) {
+            let u = ua * (4 - qy) + ub * qy - k.c_mid;
+            let v = va * (4 - qy) + vb * qy - k.c_mid;
+            let yy = (yc as i32 - k.y_off) * k.ky + HALF;
+            o[0] = ((yy + k.r_v * v) >> 16).clamp(0, 255) as u8;
+            o[1] = ((yy - k.g_u * u - k.g_v * v) >> 16).clamp(0, 255) as u8;
+            o[2] = ((yy + k.b_u * u) >> 16).clamp(0, 255) as u8;
+            o[3] = 255;
+        }
+    }
 }
 /// The alpha picture's luma into the alpha channel of `out` (same size), then straight alpha if it was premultiplied.
 fn apply_alpha(pic: &Dav1dPicture, out: &mut [u8], w: usize, h: usize, premultiplied: bool) -> Result<(), i32> {
@@ -647,4 +748,72 @@ fn probe_parsed(p: &AvifParser, l: &Limits) -> Result<Info, i32> {
         info.has_alpha |= a.has_alpha as u8;
     }
     Ok(info)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A small xorshift, so the planes are the same on every run.
+    fn noise(seed: &mut u64) -> u8 {
+        *seed ^= *seed << 13;
+        *seed ^= *seed >> 7;
+        *seed ^= *seed << 17;
+        (*seed >> 32) as u8
+    }
+
+    /// The fixed-point path against the float one, on every 8-bit layout it takes, odd and even sizes, both ranges and
+    /// several matrices, with codes at the ends of their ranges too.
+    #[test]
+    fn fixed_point_yuv_is_within_one_unit_of_the_float_path() {
+        let mut seed = 0x2545_F491_4F6C_DD1Du64;
+        for &(sx, sy) in &[(true, true), (true, false), (false, false)] {
+            for &(w, h) in &[(1usize, 1usize), (2, 2), (7, 5), (33, 9), (16, 17)] {
+                for &matrix in &[1u16, 5, 9, 2] {
+                    for &full in &[false, true] {
+                        let cw = if sx { (w + 1) / 2 } else { w };
+                        let ch = if sy { (h + 1) / 2 } else { h };
+                        // strides wider than the rows, as the decoder's are
+                        let (ys, cs) = (w + 3, cw + 5);
+                        let mut plane = |stride: usize, rows: usize| -> Vec<u8> {
+                            (0..stride * rows)
+                                .map(|_| match noise(&mut seed) % 8 {
+                                    0 => 0,
+                                    1 => 255,
+                                    2 => 16,
+                                    3 => 235,
+                                    _ => noise(&mut seed),
+                                })
+                                .collect()
+                        };
+                        let (yp, up, vp) = (plane(ys, h), plane(cs, ch), plane(cs, ch));
+                        let yuv = Yuv {
+                            y: yp.as_ptr(),
+                            u: up.as_ptr(),
+                            v: vp.as_ptr(),
+                            ys: ys as isize,
+                            cs: cs as isize,
+                            w,
+                            h,
+                            bpc: 8,
+                            sx,
+                            sy,
+                            mono: false,
+                        };
+                        let cicp = Cicp { primaries: 1, transfer: 13, matrix, full };
+                        let mut fast = vec![0u8; w * h * 4];
+                        let mut slow = vec![0u8; w * h * 4];
+                        yuv_to_rgba(&yuv, cicp, &mut fast, true);
+                        yuv_to_rgba(&yuv, cicp, &mut slow, false);
+                        for (i, (a, b)) in fast.iter().zip(slow.iter()).enumerate() {
+                            assert!(
+                                (*a as i32 - *b as i32).abs() <= 1,
+                                "layout ({sx}, {sy}), {w} x {h}, matrix {matrix}, full {full}: byte {i} is {a}, float {b}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

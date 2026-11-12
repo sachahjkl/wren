@@ -273,6 +273,51 @@ capi_main :: proc() -> int {
 	eval(ctx, "globalThis.keep = {}; keep.live = 1; for (var i = 0; i < 2000; i++) { var o = {}; o['dead' + i] = i; o = null; }")
 	capi.JS_RunGC(rt)
 	check(is_int(eval(ctx, "var q = {}; q.dead7 = 3; q.live = 4; var r = {}; r.live = 5; Object.keys(q).length * 10 + Object.keys(r).length"), 21), "a transition after a collection that dropped others")
+	// weak atoms: the keys made at run time and dropped go at the next collection and their slots are used again; a key
+	// that a live object, a registered symbol, a for-in or the host holds stays
+	rtj := cast(^js.Runtime)rt
+	eval(ctx, "globalThis.kept = {}; kept['kept' + 7] = 7; globalThis.sym = Symbol.for('reg' + 1); 0")
+	held := capi.JS_NewAtom(ctx, "held-by-the-host")
+	capi.JS_RunGC(rt)
+	freed0 := rtj.atoms_freed
+	live0 := js.atoms_live(rtj)
+	eval(ctx, "(function () { for (var i = 0; i < 20000; i++) { var o = {}; o['tmp' + i] = i; if (!(('tmp' + i) in o)) throw 1; } })(); 0")
+	capi.JS_RunGC(rt)
+	check(rtj.atoms_freed - freed0 >= 19000 && js.atoms_live(rtj) < live0 + 1000, fmt.tprintf("dropped keys are freed (%d freed, %d live, %d before)", rtj.atoms_freed - freed0, js.atoms_live(rtj), live0))
+	slots := len(rtj.atoms)
+	check(is_int(eval(ctx, "(function () { var o = {}, s = 0; for (var i = 0; i < 5000; i++) o['new' + i] = i; for (var i = 0; i < 5000; i++) s += o['n' + 'ew' + i]; return s === 12497500 ? 1 : 0 })()"), 1), "keys in freed slots are the keys they spell")
+	check(len(rtj.atoms) <= slots + 100, fmt.tprintf("new keys take the freed slots (%d slots, then %d)", slots, len(rtj.atoms)))
+	capi.JS_RunGC(rt)
+	check(is_int(eval(ctx, "kept['ke' + 'pt7']"), 7), "a key a live object holds survives the collections")
+	check(text(ctx, eval(ctx, "String(Symbol.for('re' + 'g1') === sym)")) == "true", "a registered symbol's key survives")
+	check(text(ctx, eval(ctx, "(function () { var o = {}; o['a' + 1] = 1; o['b' + 2] = 2; var r = ''; for (var k in o) { delete o.b2; r += k; } return r })()")) == "a1", "for-in over keys deleted in the loop")
+	hs := capi.JS_AtomToString(ctx, held)
+	check(text(ctx, hs) == "held-by-the-host", "an atom the host holds survives the collections")
+	capi.JS_FreeValue(ctx, hs)
+	capi.JS_FreeAtom(ctx, held)
+	// a getter that deletes the next key while the host walks the keys (JS_GetOwnPropertyNames owns them until freed)
+	gv := eval(ctx, "globalThis.walked = { get ['x' + 1]() { delete walked['y' + 2]; for (var i = 0; i < 3000; i++) ({})['z' + i] = 0; return 1 }, ['y' + 2]: 2 }")
+	wtab: [^]capi.Property_Enum
+	wn: u32
+	check(capi.JS_GetOwnPropertyNames(ctx, &wtab, &wn, gv, capi.GPN_STRING_MASK) == 0 && wn == 2, "the keys of walked")
+	capi.JS_FreeValue(ctx, capi.JS_GetProperty(ctx, gv, wtab[0].atom))
+	capi.JS_RunGC(rt)
+	ws := capi.JS_AtomToString(ctx, wtab[1].atom)
+	check(text(ctx, ws) == "y2", "a key the host holds is not freed when its property goes")
+	capi.JS_FreeValue(ctx, ws)
+	capi.JS_FreePropertyEnum(ctx, wtab, wn)
+	capi.JS_FreeValue(ctx, gv)
+	// Map and Set: a loop of delete then set keeps the order and the values (the index is not rebuilt at each insert)
+	check(text(ctx, eval(ctx, "(function () { var m = new Map(); for (var i = 0; i < 1000; i++) m.set(i, i); for (var i = 0; i < 100000; i++) { m.delete(i); m.set(i + 1000, i); } return m.size + ',' + m.get(100999) + ',' + m.keys().next().value })()")) == "1000,99999,100000", "Map: delete then set")
+	check(text(ctx, eval(ctx, "(function () { var s = new Set(); for (var i = 0; i < 100; i++) s.add(i); var it = s.values(); it.next(); for (var i = 0; i < 5000; i++) { s.delete(i); s.add(i + 100); } return s.size + ',' + it.next().value })()")) == "100,5000", "Set: delete then add under an iterator")
+	// strings: a long slice shares its string's units and reads the same; equality and order by width
+	check(text(ctx, eval(ctx, "(function () { var b = 'x'.repeat(100) + 'abc' + 'y'.repeat(100); var p = b.slice(50, 160); return p.length + ',' + p.indexOf('abc') + ',' + (p === 'x'.repeat(50) + 'abc' + 'y'.repeat(57)) })()")) == "110,50,true", "a long slice")
+	check(text(ctx, eval(ctx, "String(['b\\u0100', 'a\\u0100', 'a', 'ab'.repeat(20) + 'c', 'ab'.repeat(20) + 'b'].sort())")) == strings.concatenate({"a,ab", strings.repeat("ab", 19, context.temp_allocator), "b,ab", strings.repeat("ab", 19, context.temp_allocator), "c,aĀ,bĀ"}, context.temp_allocator), "compare of strings by width")
+	check(is_int(eval(ctx, "('abc' + 'x'.repeat(40) + 'abc').lastIndexOf('abc')"), 43), "lastIndexOf")
+	check(is_int(eval(ctx, "'a\\u0100bca\\u0100b'.lastIndexOf('a\\u0100', 3)"), 0), "lastIndexOf, 16-bit, from a position")
+	check(text(ctx, eval(ctx, "JSON.stringify({a: 1, '\\u0101': undefined, b: 2})")) == "{\"a\":1,\"b\":2}", "JSON: a 16-bit key rolled back")
+	check(text(ctx, eval(ctx, "var big = ''; for (var i = 0; i < 2000; i++) big += String.fromCharCode(65 + i % 26); var j = [big, big].join(''); j.length + ',' + (j + '!').length + ',' + j.charAt(3999)")) == "4000,4001,X", "a joined string's buffer, appended to")
+
 	// the search of indexOf and replace, each width of string against each width of pattern (Ā makes a string 16-bit)
 	check(is_int(eval(ctx, "'abcabd'.indexOf('abd')"), 3), "indexOf: the first unit matches earlier than the pattern")
 	check(is_int(eval(ctx, "'aaab'.indexOf('ab', 1)"), 2), "indexOf from a position")
@@ -537,6 +582,18 @@ capi_main :: proc() -> int {
 	check(is_int(eval(ctx, caught), 1), "... and at its next")
 	capi.js_free(ctx, img)
 	capi.JS_FreeValue(ctx, fnv)
+
+	// --- a block over the heap limit: a RangeError the script catches, not a trap ---
+	capi.JS_RunGC(rt)
+	lim: capi.Memory_Usage
+	capi.JS_ComputeMemoryUsage(rt, &lim)
+	capi.JS_SetMemoryLimit(rt, uint(lim.malloc_size + (8 << 20)))
+	oom_check := "(function (f) { try { f(); return 0 } catch (e) { return e instanceof RangeError ? 1 : 2 } })"
+	check(is_int(eval(ctx, strings.concatenate({oom_check, "(() => 'x'.repeat(2 ** 28))"}, context.temp_allocator)), 1), "repeat past the heap limit")
+	check(is_int(eval(ctx, strings.concatenate({oom_check, "(() => 'ab'.padEnd(2 ** 28, 'c'))"}, context.temp_allocator)), 1), "padEnd past the heap limit")
+	check(is_int(eval(ctx, strings.concatenate({oom_check, "(() => ({length: 4e9}).toReversed())"}, context.temp_allocator)), 1), "toReversed of a length past any block")
+	check(is_int(eval(ctx, "'x'.repeat(1000).length"), 1000), "and the engine goes on")
+	capi.JS_SetMemoryLimit(rt, 0)
 
 	// --- soak: many temporaries through the API, GC in between ---
 	for i in 0 ..< 20000 {

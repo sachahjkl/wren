@@ -104,6 +104,7 @@ HUD_SERIES_HELP := [Hud_Series]string{
 Hud_Settings :: struct {
 	bar_visible:  bool,
 	items:        [dynamic]Status_Item,
+	item_set:     bit_set[Status_Item],   // the same, as a set
 	metrics:      [dynamic]Status_Metric,
 	link_preview: bool,
 	refresh_ms:   f64,
@@ -121,6 +122,9 @@ Hud_Settings :: struct {
 	title_stats:  bool,
 	title_ms:     f64,
 	title_sep:    string,   // owned
+	// what title_format names, read once with it (not searched at every frame)
+	title_has_stats: bool,   // a statistic: {fps}, {cpu}, {gpu} or {mem}
+	title_has_gpu:   bool,   // {gpu}
 }
 
 hud_settings_from_prefs :: proc(p: ^config.Prefs) -> (s: Hud_Settings) {
@@ -137,6 +141,7 @@ hud_settings_from_prefs :: proc(p: ^config.Prefs) -> (s: Hud_Settings) {
 		case "zoom":     append(&s.items, Status_Item.Zoom)
 		}
 	}
+	for it in s.items { s.item_set += {it} }
 	for name in strings.split(config.string_of(p, "browser.status_bar.metrics"), ",", context.temp_allocator) {
 		switch strings.trim_space(name) {
 		case "graph":  append(&s.metrics, Status_Metric.Graph)
@@ -170,6 +175,8 @@ hud_settings_from_prefs :: proc(p: ^config.Prefs) -> (s: Hud_Settings) {
 	s.title_stats = config.bool_of(p, "browser.title.stats")
 	s.title_ms = f64(config.int_of(p, "browser.title.interval_ms"))
 	s.title_sep = strings.clone(config.string_of(p, "browser.title.separator"))
+	s.title_has_stats = title_has_stats(s.title_format)
+	s.title_has_gpu = strings.contains(s.title_format, "{gpu}")
 	return
 }
 
@@ -241,6 +248,7 @@ Hud_Numbers :: struct {
 
 Hud :: struct {
 	cfg:          Hud_Settings,
+	cfg_serial:   u64,                 // bumped when cfg is read again (what the status bar's cache is keyed by: status_bar.odin)
 	watch:        int,
 	history:      ui.Frame_History,   // series = the CPU phases (stats); the GPU time is drawn on top (v[GPU])
 	details:      []Frame_Detail,      // indexed by serial % len
@@ -256,10 +264,6 @@ Hud :: struct {
 	nums:         Hud_Numbers,
 	settle:       base.Handle,         // wake to bring the numbers to rest after the last frame (a host loop timer)
 	settle_skip:  bool,                // the frames of that wake are not samples
-	title_ms:     f64,
-	title_text:   string,              // owned: what the window shows
-	title_page:   string,              // the tab title it was made with (identity: the tab's own string)
-	title_url:    string,
 	panel_open:   bool,
 	shown:        [dynamic]Shown_Sample,  // frames that reached the screen, oldest first (hud_displayed)
 	mono:         font.Font_Id,
@@ -294,8 +298,10 @@ hud_init :: proc(app: ^App) {
 		app := (^App)(user)
 		hud_settings_destroy(&app.hud.cfg)
 		app.hud.cfg = hud_settings_from_prefs(p)
+		app.hud.cfg_serial += 1
 		hud_resize(app)
-		app.hud.title_ms, app.hud.nums.at_ms = 0, 0   // shows the change at the next frame
+		app.hud.nums.at_ms = 0   // shows the change at the next frame
+		for w in app.windows { w.title_ms = 0 }   // (each window's title too)
 		request_frames(app, 2)
 	}, app)
 }
@@ -322,20 +328,23 @@ hud_destroy :: proc(app: ^App) {
 	ui.history_destroy(&app.hud.history)
 	delete(app.hud.details)
 	delete(app.hud.shown)
-	delete(app.hud.title_text)
+	// (an App with no window titles its stand-in: a real window's go with it, windows_destroy)
+	delete(app.bare.title); delete(app.bare.title_page); delete(app.bare.title_url)
+	status_cache_destroy(&app.bare.own.status)
+	app.bare.title, app.bare.title_page, app.bare.title_url = "", "", ""
 	app.hud = {}
 }
 
 // Somebody reads the frame's phases: the status bar, or statistics in the title.
 hud_wants_clock :: proc() -> bool {
-	return the_app.hud.cfg.bar_visible || (the_app.hud.cfg.title_stats && title_has_stats(the_app.hud.cfg.title_format)) || devtools_any_showing(the_app, .Performance)   // (the developer tools' Performance tab reads the frames too)
+	return the_app.hud.cfg.bar_visible || (the_app.hud.cfg.title_stats && the_app.hud.cfg.title_has_stats) || devtools_any_showing(the_app, .Performance)   // (the developer tools' Performance tab reads the frames too)
 }
 
 @(private = "file")
 hud_wants_gpu :: proc() -> bool {
 	if !the_app.hud.cfg.gpu_timing { return false }
 	if the_app.hud.cfg.bar_visible { return true }
-	return the_app.hud.cfg.title_stats && strings.contains(the_app.hud.cfg.title_format, "{gpu}")
+	return the_app.hud.cfg.title_stats && the_app.hud.cfg.title_has_gpu
 }
 
 // The style pass of the frame (after page.styles): full restyle, partial, or nothing new.
@@ -413,7 +422,7 @@ hud_sample :: proc(app: ^App, now: f64) {
 		s.v[Hud_Series.Submit] = f32(a[.Submit])
 		h.details[h.serial % u64(len(h.details))] = d
 		h.last_frame_ms = now
-		hud_arm_settle()
+		hud_arm_settle(app)
 	}
 	// a GPU time read back now belongs to a frame a few frames ago
 	if ms, index, ok := render.gpu_result(&app.r); ok && index != h.gpu_applied {
@@ -433,15 +442,15 @@ hud_sample :: proc(app: ^App, now: f64) {
 // timer of the event loop, not of the window: its fire wakes the loop for exactly one frame (a task of the loop asks
 // for more), which the numbers are refreshed for before it is built and which is no sample.
 @(private = "file")
-hud_arm_settle :: proc() {
-	if the_app.hud.settle != base.NIL_HANDLE || the_app == nil { return }
-	the_app.hud.settle = host.set_timer(&the_app.loop, the_app.hud.cfg.window_ms + HUD_SETTLE_EXTRA_MS, 0, hud_settle_timer, the_app)
+hud_arm_settle :: proc(app: ^App) {
+	if app.hud.settle != base.NIL_HANDLE { return }
+	app.hud.settle = host.set_timer(&app.loop, app.hud.cfg.window_ms + HUD_SETTLE_EXTRA_MS, 0, hud_settle_timer, app)
 }
 
 @(private = "file")
 hud_settle_timer :: proc(data: rawptr) {
-	the_app.hud.settle = base.NIL_HANDLE
-	app := (^App)(data)
+	app := (^App)(data)   // (the App that set it: the timer carries it)
+	app.hud.settle = base.NIL_HANDLE
 	// (this timer is no work of the page's: counted as a task it drew two frames, which were samples, which put the settling off and armed
 	// it again: four or five frames a second, forever, at rest)
 	host.quiet_note(&app.loop)
@@ -699,24 +708,31 @@ title_due :: proc(same_page: bool, stats: bool, since_ms, interval_ms: f64, sett
 	return settling || since_ms >= interval_ms
 }
 
-// Sets the window title when it changed (title_due), calling the system only when the text differs.
+// Sets the active window's title when it changed (title_due), calling the system only when the text differs. What it
+// was made from is the window's (each window shows its own tab), and kept as copies: the tab's strings are freed and
+// made again as its title and address change, so their addresses say nothing.
 @(private = "file")
 hud_title :: proc(app: ^App, now: f64) {
 	h := &app.hud
+	w := active_window(app)
 	t := current_tab(app)
 	page_title, page_url := "", ""
 	if t != nil { page_title, page_url = t.title, t.url }
-	same_page := raw_data(page_title) == raw_data(h.title_page) && len(page_title) == len(h.title_page) && raw_data(page_url) == raw_data(h.title_url)
-	stats := h.cfg.title_stats && app.phase_clock.on && title_has_stats(h.cfg.title_format)
-	if !title_due(h.title_text != "" && same_page, stats, now - h.title_ms, h.cfg.title_ms, h.settle_skip) { return }
-	h.title_page, h.title_url, h.title_ms = page_title, page_url, now
+	same_page := page_title == w.title_page && page_url == w.title_url
+	stats := h.cfg.title_stats && app.phase_clock.on && h.cfg.title_has_stats
+	if !title_due(w.title != "" && same_page, stats, now - w.title_ms, h.cfg.title_ms, h.settle_skip) { return }
+	if !same_page {
+		delete(w.title_page); w.title_page = strings.clone(page_title)
+		delete(w.title_url); w.title_url = strings.clone(page_url)
+	}
+	w.title_ms = now
 	text := title_compose(h.cfg.title_format, h.cfg.title_sep, title_values(app, t))
 	if text == "" { text = APP_NAME }
 	if app.private { text = fmt.tprintf("%s (Private)", text) }   // private_browsing.odin
-	if text == h.title_text { return }
-	delete(h.title_text)
-	h.title_text = strings.clone(text)
-	platform.set_title(active_window(app).win, text)
+	if text == w.title { return }
+	delete(w.title)
+	w.title = strings.clone(text)
+	if w.win != nil { platform.set_title(w.win, text) }
 }
 
 ////////////////////////////////

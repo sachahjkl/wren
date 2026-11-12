@@ -200,7 +200,8 @@ emit_host :: proc(api: ^Api, cfg: Host_Config) -> string {
 	if api.error_enum != nil { emit_host_failures(cfg, &o) }
 	for d in api.callbacks { emit_host_invoker(cfg, &o, d) }
 	for d in api.exports { emit_host_export(cfg, &o, d) }
-	for d in api.functions { emit_trampoline(cfg, &o, d) }
+	// (the number of a function is its place in the list, from 1: what Oversized.fn names)
+	for d, i in api.functions { emit_trampoline(cfg, &o, d, u32(i + 1)) }
 
 	// the import table
 	wl(&o, "// Every import, for wasm.register.")
@@ -420,19 +421,71 @@ fail :: proc(o: ^Out, mode: Fail_Mode, indent: string, code: string, msg: string
 	}
 }
 
+// The digest of the arguments of a function with a string or bytes result (wasm.Oversized): every argument value, and the
+// bytes of every memory range, which the trampoline checked already.
 @(private)
-emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
+emit_digest :: proc(o: ^Out, d: ^Decl) {
+	wl(o, "@(private = \"file\")")
+	wl(o, "_digest_%s_%s :: proc \"contextless\" (f: ^wasm.Frame, a: [^]wasm.Raw) -> u64 {{", d.module.name, d.host_name)
+	wl(o, "\td := wasm.DIGEST_SEED")
+	slots := len(d.abi.params) - 2   // without the result buffer
+	for k in 0 ..< slots {
+		switch d.abi.params[k] {
+		case .I32: wl(o, "\td = wasm.digest_value(d, u64(u32(a[%d].i32)))", k)
+		case .I64: wl(o, "\td = wasm.digest_value(d, u64(a[%d].i64))", k)
+		case .F32: wl(o, "\td = wasm.digest_value(d, u64(transmute(u32)a[%d].f32))", k)
+		case .F64: wl(o, "\td = wasm.digest_value(d, transmute(u64)a[%d].f64)", k)
+		case .P:   wl(o, "\td = wasm.digest_value(d, wasm.addr(f, a[%d]))", k)
+		}
+	}
+	slot := 0
+	for p, i in d.params {
+		t := p.type
+		switch {
+		case t.seq:
+			el := mem_size(Type{kind = t.kind, decl = t.decl})
+			wl(o, "\t_n%d := wasm.addr(f, a[%d])", i, slot + 1)
+			wl(o, "\tif _s%d, _k%d := wasm.span(f, wasm.addr(f, a[%d]), _n%d, %d); _k%d {{ d = wasm.digest_bytes(d, _s%d[:_n%d * %d]) }}", i, i, slot, i, el, i, i, i, el)
+			slot += 2
+		case t.kind == .String || t.kind == .Usv_String || t.kind == .Bytes:
+			if p.optional {
+				wl(o, "\t_n%d := 0 if wasm.is_absent(f, a[%d]) else wasm.addr(f, a[%d])", i, slot + 1, slot + 1)
+			} else {
+				wl(o, "\t_n%d := wasm.addr(f, a[%d])", i, slot + 1)
+			}
+			wl(o, "\tif _s%d, _k%d := wasm.span(f, wasm.addr(f, a[%d]), _n%d); _k%d {{ d = wasm.digest_bytes(d, _s%d[:_n%d]) }}", i, i, slot, i, i, i, i)
+			slot += 2
+		case t.kind == .Struct:
+			slot += len(t.decl.fields)
+		case:
+			slot += 1
+		}
+	}
+	wl(o, "\treturn d")
+	wl(o, "}")
+	wl(o, "")
+}
+
+@(private)
+emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl, id: u32) {
 	q := qname(d)
 	mode := Fail_Mode.Trap
 	if d.raises { mode = d.abi.out_string ? .Size : .Status }
 
+	if d.abi.out_string { emit_digest(o, d) }
 	wl(o, "// %s", host_prototype(cfg, d))
 	wl(o, "@(private = \"file\")")
 	wl(o, "%s :: proc \"c\" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {{", tramp_name(d))
 	wl(o, "\tf := wasm.frame(env, caller)")
 	wl(o, "\tcontext = wasm.default_context()")
 	wl(o, "\tc := %s(f.inst)", cfg.begin)
+	// what the call allocates in the temporary allocator is given back when it returns: its result is in the guest's
+	// memory then (wasm.temp_mark; released after the unrouting below, which runs first)
+	wl(o, "\t_tm := wasm.temp_mark()")
+	wl(o, "\tdefer wasm.temp_release(_tm)")
 	if cfg.unroute != "" { wl(o, "\tdefer if c.routed {{ %s(&c) }}", cfg.unroute) }
+	// a result kept for a retry answers only the very next call (wasm.Oversized)
+	if !d.abi.out_string { wl(o, "\tif f.inst.oversized.fn != 0 {{ wasm.oversized_drop(f.inst) }}") }
 
 	// 1. every memory range first: a bad pointer traps before anything else happens
 	slot := 0
@@ -467,6 +520,8 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 		wl(o, "\t_on := wasm.addr(&f, a[%d])", slot + 1)
 		wl(o, "\t_os, _ok := wasm.span(&f, wasm.addr(&f, a[%d]), _on)", slot)
 		wl(o, "\tif !_ok {{ return wasm.trap_bounds(&f, %s, \"result buffer\") }}", base.json_quote(q))
+		// the retry of a call whose result did not fit: answered from the copy the first call kept
+		wl(o, "\tif f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], %d, _digest_%s_%s(&f, a)) {{ return nil }}", id, d.module.name, d.host_name)
 		slot += 2
 	}
 	if d.abi.ret_ptr {
@@ -597,9 +652,12 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 	switch {
 	case d.abi.out_string:
 		// a bytes result is a []u8 already
-		if d.result.kind == .Bytes { wl(o, "\tcopy(_os[:_on], _r)") } else { wl(o, "\tcopy(_os[:_on], transmute([]u8)_r)") }
-		// too small: the guest grows its buffer and calls again, and that call acts on the same document
+		bytes := d.result.kind == .Bytes ? "_r" : "transmute([]u8)_r"
+		wl(o, "\tcopy(_os[:_on], %s)", bytes)
+		// too small: the guest grows its buffer and calls again, and that call acts on the same document; it gets this
+		// result, kept, instead of running the implementation again
 		if cfg.route != "" { wl(o, "\tif c.routed && u64(len(_r)) > u64(_on) {{ c.caller.route_next = c.tag }}") }
+		wl(o, "\tif u64(len(_r)) > u64(_on) {{ wasm.oversized_keep(f.inst, %d, _digest_%s_%s(&f, a), %s) }}", id, d.module.name, d.host_name, bytes)
 		wl(o, "\twasm.put_size(&f, a, i64(len(_r)))")
 	case d.abi.ret_ptr:
 		if d.result.kind == .Struct {

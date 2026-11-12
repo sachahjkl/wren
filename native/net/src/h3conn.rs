@@ -55,6 +55,21 @@ impl H3Body {
     }
 }
 
+/// The most origins `alt` and `broken` each remember. An entry is otherwise dropped only when its origin is asked for
+/// again after it expired, and a session visits origins without end.
+const ORIGINS_MOST: usize = 512;
+
+/// Room for one more entry in a map of origins whose values expire (`until` gives when): the expired go first, then,
+/// if it is still full, the one that expires soonest.
+fn make_room<V>(map: &mut HashMap<String, V>, now: Instant, until: impl Fn(&V) -> Instant) {
+    if map.len() < ORIGINS_MOST { return; }
+    map.retain(|_, v| until(v) > now);
+    if map.len() < ORIGINS_MOST { return; }
+    if let Some(k) = map.iter().min_by_key(|(_, v)| until(v)).map(|(k, _)| k.clone()) {
+        map.remove(&k);
+    }
+}
+
 fn origin_key(uri: &http::Uri) -> Option<String> {
     Some(format!("{}:{}", conn::bare_host(uri)?.to_ascii_lowercase(), conn::default_port(uri)))
 }
@@ -109,7 +124,9 @@ impl H3 {
         let mut st = self.state.lock().unwrap_or_else(|e| e.into_inner());
         match alt {
             Some((port, ma)) => {
-                st.alt.insert(key, (port, Instant::now() + ma));
+                let now = Instant::now();
+                if !st.alt.contains_key(&key) { make_room(&mut st.alt, now, |v| v.1); }
+                st.alt.insert(key, (port, now + ma));
             }
             None => {
                 st.alt.remove(&key);
@@ -147,7 +164,9 @@ impl H3 {
 
     fn mark_broken(state: &Mutex<State>, key: &str, for_: Duration) {
         let mut st = state.lock().unwrap_or_else(|e| e.into_inner());
-        st.broken.insert(key.to_string(), Instant::now() + for_);
+        let now = Instant::now();
+        if !st.broken.contains_key(key) { make_room(&mut st.broken, now, |v| *v); }
+        st.broken.insert(key.to_string(), now + for_);
         st.conns.remove(key);
     }
 
@@ -254,7 +273,12 @@ async fn connect(
     info.remote = Some(qc.remote_address());
     info.connect_end = Some(Instant::now());
     info.secure_end = info.connect_end;
-    let (mut driver, sender) = h3::client::new(h3_quinn::Connection::new(qc)).await.map_err(|_| NetError::new(error::CONNECTION_ERROR))?;
+    // h3's default accepts a field section of any size (2^62): the same limit as HTTP/1.1 and HTTP/2 (http.rs)
+    let (mut driver, sender) = h3::client::builder()
+        .max_field_section_size(crate::HEADER_BLOCK_MOST as u64)
+        .build(h3_quinn::Connection::new(qc))
+        .await
+        .map_err(|_| NetError::new(error::CONNECTION_ERROR))?;
     tokio::spawn(async move {
         let _ = futures_util::future::poll_fn(|cx| driver.poll_close(cx)).await;
         H3::drop_conn(&state, &key, id);

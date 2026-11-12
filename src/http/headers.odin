@@ -59,16 +59,27 @@ has_header :: proc(h: Headers, name: string) -> bool {
 }
 
 // "get": the values of all headers called `name` joined with ", " (Set-Cookie must use `get_all`).
+// The value is a copy in `allocator` (callers keep it after the list is gone): one allocation of the exact size, as
+// this runs several times for every response.
 get_header :: proc(h: Headers, name: string, allocator := context.temp_allocator) -> (value: string, found: bool) {
-	sb := strings.builder_make(allocator)
-	n := 0
+	n, size, only := 0, 0, -1
+	for e, i in h.list {
+		if !base.ascii_equal_fold(e.name, name) { continue }
+		if n > 0 { size += 2 }
+		size += len(e.value)
+		n += 1
+		only = i
+	}
+	if n == 0 { return "", false }
+	if n == 1 { return strings.clone(h.list[only].value, allocator), true }
+	buf := make([]byte, size, allocator)
+	at := 0
 	for e in h.list {
 		if !base.ascii_equal_fold(e.name, name) { continue }
-		if n > 0 { strings.write_string(&sb, ", ") }
-		strings.write_string(&sb, e.value)
-		n += 1
+		if at > 0 { at += copy(buf[at:], ", ") }
+		at += copy(buf[at:], e.value)
 	}
-	return strings.to_string(sb), n > 0
+	return string(buf), true
 }
 
 get_all :: proc(h: Headers, name: string, allocator := context.temp_allocator) -> []string {

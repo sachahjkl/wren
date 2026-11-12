@@ -139,30 +139,94 @@ bitmap_read_straight :: proc(b: ^Bitmap, x, y, w, h: int, out: []u8) {
 	}
 }
 
+// ceil(2^24 / a) for a in 1..255 (0 for 0): (n * UNPREMULTIPLY_RECIPROCALS[a]) >> 24 is floor(n / a) exactly for every
+// n <= 255 * 255 + 127, what an unpremultiplied channel divides (the error n * (ceil(2^24/a) - 2^24/a) / 2^24 stays below
+// 1/a because n < 2^24 / 255).
+@(rodata)
+UNPREMULTIPLY_RECIPROCALS := [256]u32{
+	0, 16777216, 8388608, 5592406, 4194304, 3355444, 2796203, 2396746,
+	2097152, 1864136, 1677722, 1525202, 1398102, 1290556, 1198373, 1118482,
+	1048576, 986896, 932068, 883012, 838861, 798916, 762601, 729445,
+	699051, 671089, 645278, 621379, 599187, 578525, 559241, 541201,
+	524288, 508401, 493448, 479350, 466034, 453439, 441506, 430186,
+	419431, 409201, 399458, 390168, 381301, 372828, 364723, 356963,
+	349526, 342393, 335545, 328966, 322639, 316552, 310690, 305041,
+	299594, 294338, 289263, 284360, 279621, 275037, 270601, 266306,
+	262144, 258112, 254201, 250407, 246724, 243149, 239675, 236299,
+	233017, 229825, 226720, 223697, 220753, 217886, 215093, 212370,
+	209716, 207127, 204601, 202136, 199729, 197380, 195084, 192842,
+	190651, 188509, 186414, 184366, 182362, 180401, 178482, 176603,
+	174763, 172961, 171197, 169467, 167773, 166112, 164483, 162886,
+	161320, 159784, 158276, 156797, 155345, 153920, 152521, 151147,
+	149797, 148471, 147169, 145889, 144632, 143396, 142180, 140986,
+	139811, 138655, 137519, 136401, 135301, 134218, 133153, 132105,
+	131072, 130056, 129056, 128071, 127101, 126145, 125204, 124276,
+	123362, 122462, 121575, 120700, 119838, 118988, 118150, 117324,
+	116509, 115705, 114913, 114131, 113360, 112599, 111849, 111108,
+	110377, 109656, 108943, 108241, 107547, 106862, 106185, 105518,
+	104858, 104207, 103564, 102928, 102301, 101681, 101068, 100463,
+	99865, 99274, 98690, 98113, 97542, 96979, 96421, 95870,
+	95326, 94787, 94255, 93728, 93207, 92692, 92183, 91679,
+	91181, 90688, 90201, 89718, 89241, 88769, 88302, 87839,
+	87382, 86929, 86481, 86038, 85599, 85164, 84734, 84308,
+	83887, 83469, 83056, 82647, 82242, 81841, 81443, 81050,
+	80660, 80274, 79892, 79513, 79138, 78767, 78399, 78034,
+	77673, 77315, 76960, 76609, 76261, 75916, 75574, 75235,
+	74899, 74566, 74236, 73909, 73585, 73263, 72945, 72629,
+	72316, 72006, 71698, 71393, 71090, 70790, 70493, 70198,
+	69906, 69616, 69328, 69043, 68760, 68479, 68201, 67924,
+	67651, 67379, 67109, 66842, 66577, 66314, 66053, 65794,
+}
+
+// bitmap_read_straight's bytes, faster (the interface thread converts a changed canvas at every frame): a reciprocal from a
+// table instead of three divisions per pixel (opaque and transparent pixels need neither). The same bytes: browser's
+// images_shell_test.odin compares both on every channel value and alpha.
+bitmap_read_straight_fast :: proc(b: ^Bitmap, x, y, w, h: int, out: []u8) {
+	if w <= 0 || h <= 0 || len(out) < w * h * 4 { return }
+	for row in 0 ..< h {
+		sy := y + row
+		dst := out[row * w * 4:][:w * 4]
+		if sy < 0 || sy >= b.h || (b.all_opaque && x >= 0 && x + w <= b.w) {
+			if sy < 0 || sy >= b.h { for i in 0 ..< len(dst) { dst[i] = 0 } } else { copy(dst, b.pix[(sy * b.w + x) * 4:][:w * 4]) }
+			continue
+		}
+		for col in 0 ..< w {
+			sx := x + col
+			d := dst[col * 4:][:4]
+			if sx < 0 || sx >= b.w { d[0], d[1], d[2], d[3] = 0, 0, 0, 0; continue }
+			s := b.pix[(sy * b.w + sx) * 4:][:4]
+			a := s[3]
+			switch a {
+			case 255: d[0], d[1], d[2], d[3] = s[0], s[1], s[2], 255
+			case 0:   d[0], d[1], d[2], d[3] = 0, 0, 0, 0
+			case:
+				r := u64(UNPREMULTIPLY_RECIPROCALS[a])
+				half := u64(a) / 2
+				d[0] = u8(min(((u64(s[0]) * 255 + half) * r) >> 24, 255))
+				d[1] = u8(min(((u64(s[1]) * 255 + half) * r) >> 24, 255))
+				d[2] = u8(min(((u64(s[2]) * 255 + half) * r) >> 24, 255))
+				d[3] = a
+			}
+		}
+	}
+}
+
 // Writes straight-alpha RGBA8 `src` (w x h, tightly packed, from (sx, sy) of it, `dw` x `dh` pixels) at (x, y) of the
 // bitmap, premultiplying; no compositing, no transform, no clip (putImageData). Pixels outside the bitmap are skipped.
 bitmap_write_straight :: proc(b: ^Bitmap, src: []u8, src_w: int, sx, sy, dw, dh: int, x, y: int) {
 	if src_w <= 0 || dw <= 0 || dh <= 0 { return }
+	// the columns inside the bitmap, the same for every row
+	c0, c1 := max(0, -x), min(dw, b.w - x)
 	for row in 0 ..< dh {
 		dy := y + row
 		if dy < 0 || dy >= b.h { continue }
-		for col in 0 ..< dw {
-			dx := x + col
-			if dx < 0 || dx >= b.w { continue }
-			si := ((sy + row) * src_w + sx + col) * 4
-			if si < 0 || si + 4 > len(src) { continue }
-			s := src[si:][:4]
-			d := b.pix[(dy * b.w + dx) * 4:][:4]
-			a := u32(s[3])
-			if a == 255 {
-				d[0], d[1], d[2], d[3] = s[0], s[1], s[2], 255
-			} else {
-				d[0] = u8((u32(s[0]) * a + 127) / 255)
-				d[1] = u8((u32(s[1]) * a + 127) / 255)
-				d[2] = u8((u32(s[2]) * a + 127) / 255)
-				d[3] = u8(a)
-			}
-		}
+		// and, of those, the ones `src` has (a pixel is 4 bytes, so the bounds are whole pixels)
+		base := ((sy + row) * src_w + sx) * 4
+		lo, hi := c0, c1
+		if base < 0 { lo = max(lo, (-base + 3) / 4) }
+		hi = min(hi, (len(src) - base) / 4 if len(src) >= base else 0)
+		if lo >= hi { continue }
+		premultiply_row(b.pix[(dy * b.w + x + lo) * 4:][:(hi - lo) * 4], src[base + lo * 4:][:(hi - lo) * 4], hi - lo)
 	}
 	bitmap_touch(b, x, y, x + dw, y + dh)
 }

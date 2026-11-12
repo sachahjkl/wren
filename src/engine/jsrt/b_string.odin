@@ -191,9 +191,26 @@ str_last_index_of :: proc(rt: ^Runtime, s, pat: ^JS_String, from: int) -> int {
 	fp := str_flat(rt, pat)
 	n, m := int(fs.len), int(fp.len)
 	start := min(from, n - m)
+	if start < 0 {return -1}
+	if m == 0 {return start}
+	// (each width read straight, chosen once: str_at tested the widths at each unit)
+	if fs.is_wide {
+		if fp.is_wide {return units_last_index_of(str_u16(fs), str_u16(fp), m, start)}
+		return units_last_index_of(str_u16(fs), str_u8(fp), m, start)
+	}
+	if fp.is_wide {return units_last_index_of(str_u8(fs), str_u16(fp), m, start)}
+	return units_last_index_of(str_u8(fs), str_u8(fp), m, start)
+}
+
+// The last position at or before `start` where the m units of p are in h: the first and the last unit tried first.
+@(private = "file")
+units_last_index_of :: proc "contextless" (h: [^]$H, p: [^]$P, m: int, start: int) -> int {
+	c0, cl := u32(p[0]), u32(p[m - 1])
+	last := m - 1
 	outer: for i := start; i >= 0; i -= 1 {
-		for j in 0 ..< m {
-			if str_at(fs, i + j) != str_at(fp, j) {continue outer}
+		if u32(h[i]) != c0 || u32(h[i + last]) != cl {continue}
+		for j in 1 ..< last {
+			if u32(h[i + j]) != u32(p[j]) {continue outer}
 		}
 		return i
 	}
@@ -381,7 +398,11 @@ sp_pad :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 	sb := sb_init(rt, int(ml))
 	if magic == 0 {sb_str(&sb, s)}
 	ff := str_flat(rt, filler)
-	for i in 0 ..< fill_len {sb_unit(&sb, str_at(ff, i % int(ff.len)))}
+	for i in 0 ..< fill_len {
+		if i & NATIVE_LOOP_POLL_MASK == 0 && (sb.overflow || poll_native_loop(ctx)) {break}
+		sb_unit(&sb, str_at(ff, i % int(ff.len)))
+	}
+	if has_exception(ctx) {sb_destroy(&sb); return EXCEPTION}
 	if magic == 1 {sb_str(&sb, s)}
 	return sb_finish_value(ctx, &sb)
 }
@@ -398,7 +419,11 @@ sp_repeat :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Valu
 	if d * f64(s.len) > STRING_LEN_MAX {return throw_range_error(ctx, "invalid string length")}
 	n := int(d)
 	sb := sb_init(rt, n * int(s.len))
-	for _ in 0 ..< n {sb_str(&sb, s)}
+	for i in 0 ..< n {
+		if i & NATIVE_LOOP_POLL_MASK == 0 && (sb.overflow || poll_native_loop(ctx)) {break}
+		sb_str(&sb, s)
+	}
+	if has_exception(ctx) {sb_destroy(&sb); return EXCEPTION}
 	return sb_finish_value(ctx, &sb)
 }
 

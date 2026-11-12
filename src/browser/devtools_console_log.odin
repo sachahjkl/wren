@@ -27,6 +27,9 @@ Con_Meta :: struct {
 Con_Log :: struct {
 	meta:   [dynamic]Con_Meta,
 	counts: [Con_Kind]int,    // of the lines in t.console now
+	// the tab's, not the developer tools': a page logs whether or not they are open, in whichever window is active
+	pending_payload: string,  // owned: the structured description its page sent for its next line
+	evaluating:      bool,    // lines added now are the result of what was typed in its console (or stored from the tools)
 }
 
 console_register_prefs :: proc(p: ^config.Prefs) {
@@ -111,11 +114,12 @@ con_trim :: proc(t: ^Tab) {
 // The meta of a tab follows its lines: whatever was dropped (here, or by code that clears t.console) goes from the front.
 con_sync_meta :: proc(t: ^Tab) {
 	m := &t.conlog
-	for len(m.meta) > len(t.console) {
-		first := m.meta[0]
-		m.counts[first.kind] = max(m.counts[first.kind] - 1, 0)
-		delete(first.payload)
-		ordered_remove(&m.meta, 0)
+	if drop := len(m.meta) - len(t.console); drop > 0 {
+		for x in m.meta[:drop] {
+			m.counts[x.kind] = max(m.counts[x.kind] - 1, 0)
+			delete(x.payload)
+		}
+		remove_range(&m.meta, 0, drop)   // (one move for the batch)
 	}
 	if len(t.console) == 0 { m.counts = {} }
 }
@@ -129,8 +133,8 @@ console_append :: proc(t: ^Tab, level: page.Log_Level, message: string) {
 	if len(control) > 3 && control[0] == 1 {
 		switch {
 		case strings.has_prefix(control, "\x01dt:"):
-			delete(dev().con.pending_payload)
-			dev().con.pending_payload = len(control) - 4 <= max(the_app.con_prefs.max_payload, 1024) ? strings.clone(control[4:]) : ""
+			delete(t.conlog.pending_payload)
+			t.conlog.pending_payload = len(control) - 4 <= max(the_app.con_prefs.max_payload, 1024) ? strings.clone(control[4:]) : ""
 			return
 		case strings.has_prefix(control, "\x01dtc:"):
 			console_complete_reply(control[5:])
@@ -151,13 +155,13 @@ console_append :: proc(t: ^Tab, level: page.Log_Level, message: string) {
 	append(&t.console, fmt.aprintf("%s%s", prefix, message))
 	t.console_added += 1
 	if kind == .Log {
-		if strings.has_prefix(message, "> ") { kind = .Input } else if dev().con.evaluating { kind = .Result }
+		if strings.has_prefix(message, "> ") { kind = .Input } else if t.conlog.evaluating { kind = .Result }
 	}
 	con_sync_meta(t)   // (lines dropped behind our back)
 	m := &t.conlog
 	for len(m.meta) < len(t.console) - 1 { append(&m.meta, Con_Meta{kind = .Log}); m.counts[.Log] += 1 }
 	payload := ""
-	if dev().con.pending_payload != "" { payload, dev().con.pending_payload = dev().con.pending_payload, "" }
+	if m.pending_payload != "" { payload, m.pending_payload = m.pending_payload, "" }
 	if payload != "" && kind == .Log {
 		switch payload_level(payload) {
 		case "info": kind = .Info
@@ -188,6 +192,7 @@ console_reset :: proc(t: ^Tab) {
 console_log_destroy :: proc(t: ^Tab) {
 	for m in t.conlog.meta { delete(m.payload) }
 	delete(t.conlog.meta)
+	delete(t.conlog.pending_payload)
 	t.conlog = {}
 }
 

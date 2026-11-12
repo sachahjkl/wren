@@ -11,6 +11,7 @@ package wren_net
 import "core:os"
 import "core:strings"
 import "core:sync"
+import "core:time"
 import "wb:base"
 import "wb:host"
 
@@ -222,12 +223,38 @@ rust_begin :: proc(c: ^Client, h: base.Handle, r: ^Request) -> u32 {
 @(private)
 rust_drain :: proc(data: rawptr) {
 	c := (^Client)(data)
+	// A callback that turns the loop again (a nested loop) reaches here while an outer drain still uses the bytes of the
+	// event it polled, which the next poll takes back: the nested turn leaves the queue to a later one.
+	// (posting it again from here would spin the nested loop: the outer drain posts it once it is done)
+	if c.draining {
+		c.drain_again = true
+		return
+	}
+	c.draining = true
+	defer {
+		c.draining = false
+		// (not once the client is destroyed: rust_destroy discarded what was posted, and nothing may outlive it)
+		if c.drain_again && c.rs != nil { host.post(c.loop, rust_drain, c, .Arrival) }
+		c.drain_again = false
+	}
 	we: Wn_Event
 	// (a drain that only carried a background download, the content blocker's lists, is no reason to draw: each of its chunks drew two
 	// frames, 8 a second for as long as it lasted)
 	shows := false
 	defer if !shows { host.quiet_note(c.loop) }
-	for c.rs != nil && wn_net_poll(c.rs, &we) != 0 {
+	// a burst of answers is handled over several turns of the loop, so input and painting go between them; the library
+	// does not notify again while its queue is not empty, so a drain that stops early posts the next one itself
+	budget_events := max(c.settings.drain_max_events, 1)
+	budget_ns := i64(max(c.settings.drain_max_ms, 1)) * 1_000_000
+	start := time.tick_now()
+	handled := 0
+	for c.rs != nil {
+		if handled >= budget_events || i64(time.tick_since(start)) >= budget_ns {
+			host.post(c.loop, rust_drain, c, .Arrival)
+			return
+		}
+		if wn_net_poll(c.rs, &we) == 0 { break }
+		handled += 1
 		if we.kind >= WN_WS_FIRST {
 			shows = true
 			rust_ws_event(c, &we)
@@ -249,6 +276,15 @@ rust_drain :: proc(data: rawptr) {
 			ev.remote_len = u8(n)
 		case WN_DATA:
 			ev.kind = .Data
+			if r.link == nil {
+				// delivered now, within this poll: the library's own bytes, no copy (an Event's bytes are valid only
+				// during its callback). A throttled request keeps its events for later: those are copied.
+				ev.data = we.data[:we.data_len]
+				handle_event(c, &ev)
+				ev.data = nil   // not ours to free
+				free_event(&ev)
+				continue
+			}
 			ev.data = make([]byte, we.data_len, heap())
 			copy(ev.data, we.data[:we.data_len])
 		case WN_DONE:

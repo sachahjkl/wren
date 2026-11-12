@@ -79,6 +79,53 @@ test_memory_store_and_lru :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(c.entries), 0)
 }
 
+// An unsafe request invalidates its URL in every partition, through the URL's list, which follows every store and
+// removal; a body given to the cache is kept without a copy.
+@(test)
+test_invalidate_url_in_every_partition :: proc(t: ^testing.T) {
+	l: host.Loop
+	host.loop_init(&l)
+	defer host.loop_destroy(&l)
+	s := test_settings()
+	defer settings_destroy(&s)
+	c := create(&l, s, "")
+	defer destroy(c)
+	h := http.parse_header_block("Cache-Control: max-age=60\r\n", context.temp_allocator)
+	for key in ([]string{"p1 u", "p2 u", "p3 u", "p1 other"}) {
+		u := key[3:]
+		store(c, Store_Desc{key = key, url = u, status = 200, headers = h, body = transmute([]byte)string("x"), response_time = now_s()})
+	}
+	remove_key(c, "p2 u")   // a middle one goes: the list stays whole
+	owned := make([]byte, 3, base.process_allocator())
+	e := store(c, Store_Desc{key = "p4 u", url = "u", status = 200, headers = h, body = owned, body_owned = true, response_time = now_s()})
+	testing.expect(t, e != nil && raw_data(e.body.data) == raw_data(owned), "an owned body is not copied")
+	testing.expect_value(t, invalidate_url(c, "u"), 3)
+	testing.expect_value(t, len(c.entries), 1)
+	testing.expect(t, find(c, "p1 other") != nil)
+	testing.expect_value(t, len(c.by_url), 1)
+	testing.expect_value(t, invalidate_url(c, "u"), 0)
+}
+
+// The writer seals the head of an entry: what it writes reads back, and a damaged body does not.
+@(test)
+test_entry_head_sealed_off_the_loop :: proc(t: ^testing.T) {
+	m := Meta{key = "k", url = "u", status = 200, headers = "A: b\r\n", vary = "", request_time = 1, response_time = 2, stored_ms = 3}
+	body := transmute([]byte)string("hello")
+	head := encode_entry_head(m, 9, len(body))
+	defer delete(head, base.process_allocator())
+	seal_entry_head(head, body)
+	file := make([]byte, len(head) + len(body), context.temp_allocator)
+	copy(file, head)
+	copy(file[len(head):], body)
+	got, _, blen, fresh, ok := decode_entry(file, true)
+	defer meta_destroy(&got)
+	testing.expect(t, ok && blen == 5 && fresh == 9 && got.key == "k" && got.headers == "A: b\r\n")
+	file[len(file) - 1] = 'X'
+	bad, _, _, _, bad_ok := decode_entry(file, true)
+	defer meta_destroy(&bad)
+	testing.expect(t, !bad_ok, "the body's checksum catches a damaged body")
+}
+
 @(test)
 test_refresh_304 :: proc(t: ^testing.T) {
 	l: host.Loop

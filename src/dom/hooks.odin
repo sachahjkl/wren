@@ -32,10 +32,13 @@ Hooks :: struct {
 	// an attribute of `element` was set, changed or removed
 	attribute: proc(user: rawptr, d: ^Document, element: base.Handle, name: string, change: Attr_Change),
 	// `node` left `parent` (a removal, or the first half of a move): called at once, even when muted, with the tree
-	// consistent; it must not change the tree (the embedder checks what got disconnected: nested documents' frames)
+	// consistent; it must not change the tree (the embedder checks what got disconnected: nested documents' frames).
+	// While muted, `removed_pending` is set too, and the last unmute calls it once more with NIL node and parent: the
+	// checks that look at the whole document (is each frame still connected?) run once per batch, not per node.
 	removed:   proc(user: rawptr, d: ^Document, node, parent: base.Handle),
 	muted:     int,
 	queued:    [dynamic]Hook_Event,
+	removed_pending: bool,
 }
 
 hooks_set :: proc(d: ^Document, h: Hooks) {
@@ -43,6 +46,7 @@ hooks_set :: proc(d: ^Document, h: Hooks) {
 	d.hooks = h
 	d.hooks.muted = 0
 	d.hooks.queued = nil
+	d.hooks.removed_pending = false
 }
 
 hooks_mute :: proc(d: ^Document) { d.hooks.muted += 1 }
@@ -52,15 +56,25 @@ hooks_unmute :: proc(d: ^Document) {
 	if d.hooks.muted == 0 { return }
 	d.hooks.muted -= 1
 	if d.hooks.muted > 0 { return }
-	for len(d.hooks.queued) > 0 {
-		ev := d.hooks.queued[0]
-		ordered_remove(&d.hooks.queued, 0)
+	// the removals of the batch first (the tree is final: one check finds every node that left), then the queue
+	if d.hooks.removed_pending {
+		d.hooks.removed_pending = false
+		if d.hooks.removed != nil { d.hooks.removed(d.hooks.user, d, base.NIL_HANDLE, base.NIL_HANDLE) }
+	}
+	// The queue is taken out whole and walked by index: removing each event from the front made inserting a fragment of
+	// N nodes O(N^2). A hook that mutes again (a script that sets innerHTML) queues into a new list, which its own
+	// unmute reports before the rest of this one, as the DOM runs a nested operation's steps to their end first.
+	q := d.hooks.queued
+	d.hooks.queued = nil
+	for i in 0 ..< len(q) {
+		ev := q[i]
 		switch ev.kind {
 		case .Inserted: if d.hooks.inserted != nil { d.hooks.inserted(d.hooks.user, d, ev.node) }
 		case .Attribute: if d.hooks.attribute != nil { d.hooks.attribute(d.hooks.user, d, ev.node, ev.name, ev.change) }
 		}
 		delete(ev.name)
 	}
+	delete(q)
 }
 
 @(private)

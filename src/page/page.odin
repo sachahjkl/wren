@@ -71,6 +71,7 @@ Timer :: struct {
 }
 
 Page :: struct {
+	base_url:  Base_Url_Cache,   // the parsed base URL of the document (js_dom_tree.odin)
 	scope:     ^base.Scope,
 	tag:       u32,            // in the handles of its nodes, events and host objects (base.pool_insert_tagged)
 	prior_tag: u32,            // the tag of what its Window made before its document was replaced in it (frame_keep_window); 0: none

@@ -4,6 +4,7 @@ src/base/process_times_test.odin 1  # the system's count of a process's threads 
 src/browser/pacing_wait_test.odin 1  # poll of a flag set by the thread under test, bounded by one slot: what is checked is that thread's real wait
 src/e2e/e2e.odin 1  # stop_test: the thread of a test that failed waits to be ended by the runner
 src/e2e/process.odin 1  # wait_for: what another process does to the disk or the registry, looked at until it holds: nothing can run its loop
+src/host/dialog_test.odin 1  # poll of the state the dialog's own thread sets, bounded: what is checked is that thread's real answer
 src/host/thread_test.odin 1  # -Perf only: how often a hook runs in real time is the measure
 src/layout/bench_load_test.odin 2  # a benchmark asked for these pauses: what the threads do during them is the measure
 src/media/av1_soft_test.odin 1  # looks at a real player between its turns: its threads have no signal for a test

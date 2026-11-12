@@ -161,7 +161,7 @@ websocket_policy_check :: proc(l: ^Loader, env: ^Environment, u: ^url.URL) -> (e
 		}
 	}
 	if port := url.effective_port(u^); is_bad_port(port, &p.settings) { return .Bad_Port, fmt.tprintf("port %d is blocked", port) }
-	if env != nil && env.location.scheme == "https" && !url.is_potentially_trustworthy(u^) {
+	if env != nil && prohibits_mixed_content(env) && !url.is_potentially_trustworthy(u^) {
 		if p.settings.block_active_mixed || (csp_on && csp.has_directive(&env.policies, "block-all-mixed-content")) {
 			return .Blocked_Mixed_Content, fmt.tprintf("blocked insecure WebSocket %s from a secure document", u.href)
 		}

@@ -94,6 +94,7 @@ Context :: struct {
 	flat:    Flat,
 	polys:   Polys,
 	gpu:     ^Gpu,             // non-nil: the canvas is drawn on the GPU (gpu.odin), `bmp` only gives its size
+	span:    Span_Scratch,     // the buffers of a row the CPU draws (span.odin)
 }
 
 // Services of the page the context needs: parsing a CSS color (drop-shadow() in a filter).
@@ -126,6 +127,7 @@ context_destroy :: proc(c: ^Context) {
 	raster_destroy(&c.r)
 	flat_destroy(&c.flat)
 	polys_destroy(&c.polys)
+	span_scratch_destroy(&c.span)
 	gpu_destroy(c.gpu)
 	c^ = {}
 }
@@ -273,6 +275,31 @@ Job :: struct {
 	alpha:   f32,
 	clip:    ^Clip,       // nil: none
 	touch:   [4]int,      // x0 y0 x1 y1 written (canvas coordinates)
+	span:    ^Span_Scratch, // the context's row buffers (nil: every pixel goes the general way)
+}
+
+// The coverage of the pixels from (x, y) along a row, times the job's alpha and the clip, in the job's scratch. The
+// clip is cut to the row once; each pixel's value is the one the per-pixel path computes ((cov * alpha) * clip).
+@(private)
+row_coverage :: proc(j: ^Job, y, x: int, cov: []f32) -> []f32 {
+	n := len(cov)
+	resize(&j.span.a, n)
+	a := j.span.a[:]
+	for i in 0 ..< n { a[i] = cov[i] * j.alpha }
+	cl := j.clip
+	if cl == nil { return a }
+	if y < cl.y0 || y >= cl.y1 {
+		for &v in a { v *= 0 }
+		return a
+	}
+	lo, hi := clamp(cl.x0 - x, 0, n), clamp(cl.x1 - x, 0, n)
+	for i in 0 ..< lo { a[i] *= 0 }
+	for i in hi ..< n { a[i] *= 0 }
+	if cl.mask != nil && lo < hi {
+		m := cl.mask[(y - cl.y0) * (cl.x1 - cl.x0) + (x + lo - cl.x0):][:hi - lo]
+		for i in lo ..< hi { a[i] *= f32(m[i - lo]) * (1.0 / 255.0) }
+	}
+	return a
 }
 
 @(private)
@@ -312,54 +339,27 @@ job_row :: proc(user: rawptr, y, x0: int, cov: []f32) {
 	p := j.paint
 	tw := j.target.w
 	row := j.target.pix[ty * tw * 4:][:tw * 4]
-	over8 := j.op == .Source_Over && !j.target.opaque   // the common case runs on 8-bit integers
-	// a linear gradient is an affine function of x along a row: t is stepped, not computed from the matrix
-	stepped := p.kind == .Gradient && p.grad.kind == .Linear && p.lut != nil
-	t, dt := 0.0, 0.0
-	if stepped {
+	if p.kind == .Gradient && p.grad.kind == .Linear && p.lut != nil {
 		g := p.grad
-		dx, dy := g.x1 - g.x0, g.y1 - g.y0
-		len2 := dx * dx + dy * dy
-		if len2 == 0 { return }   // (nothing is painted)
-		q := matrix_apply(p.inv, {f64(x0 + i0) + 0.5, f64(y) + 0.5})
-		t = ((q.x - g.x0) * dx + (q.y - g.y0) * dy) / len2
-		dt = (p.inv.a * dx + p.inv.b * dy) / len2
+		if (g.x1 - g.x0) * (g.x1 - g.x0) + (g.y1 - g.y0) * (g.y1 - g.y0) == 0 { return }   // (nothing is painted)
+	}
+	if j.op == .Source_Over && !j.target.opaque && j.span != nil {
+		// the common case: the row's coverage, then its sources, then source-over, a run at a time on 8-bit integers
+		a := row_coverage(j, y, x0 + i0, cov[i0:i1])
+		dst := row[(x0 + i0 - j.ox) * 4:][:(i1 - i0) * 4]
+		if p.kind == .Solid {
+			over_span_solid(dst, p.s8, a)
+		} else {
+			over_span(dst, paint_row(p, x0 + i0, y, a, &j.span.src), a)
+		}
+		j.touch = {min(j.touch[0], x0), min(j.touch[1], y), max(j.touch[2], x0 + len(cov)), max(j.touch[3], y + 1)}
+		return
 	}
 	for i in i0 ..< i1 {
 		x := x0 + i
 		a := cov[i] * j.alpha
 		if j.clip != nil { a *= clip_coverage(j.clip, x, y) }
-		ti := t
-		t += dt
 		if a <= 0 { continue }
-		px := row[(x - j.ox) * 4:][:4]
-		if over8 {
-			s: [4]u32
-			switch {
-			case p.kind == .Solid: s = p.s8
-			case stepped:
-				e := p.lut[ti == ti ? int(clamp(ti, 0, 1) * f64(LUT_SIZE - 1) + 0.5) : 0]
-				s = {u32(e[0]), u32(e[1]), u32(e[2]), u32(e[3])}
-			case:
-				f := paint_at(p, x, y)
-				s = {u32(f.r * 255 + 0.5), u32(f.g * 255 + 0.5), u32(f.b * 255 + 0.5), u32(f.a * 255 + 0.5)}
-			}
-			if a < 0.998 {
-				s[0], s[1], s[2], s[3] = u32(f32(s[0]) * a + 0.5), u32(f32(s[1]) * a + 0.5), u32(f32(s[2]) * a + 0.5), u32(f32(s[3]) * a + 0.5)
-			}
-			sa := s[3]
-			if sa == 0 { continue }
-			if sa >= 255 {
-				px[0], px[1], px[2], px[3] = u8(s[0]), u8(s[1]), u8(s[2]), 255
-			} else {
-				inv := 255 - sa
-				px[0] = u8(min(s[0] + (u32(px[0]) * inv + 127) / 255, 255))
-				px[1] = u8(min(s[1] + (u32(px[1]) * inv + 127) / 255, 255))
-				px[2] = u8(min(s[2] + (u32(px[2]) * inv + 127) / 255, 255))
-				px[3] = u8(min(sa + (u32(px[3]) * inv + 127) / 255, 255))
-			}
-			continue
-		}
 		src := p.kind == .Solid ? p.premul : paint_at(p, x, y)
 		src *= a
 		d := load_px(j.target, x - j.ox, ty)
@@ -441,7 +441,7 @@ paint_edges :: proc(c: ^Context, rule: Fill_Rule, paint: ^Paint) {
 	shadow := shadow_active(c)
 	filtered := filter_active(c)
 	if !shadow && !filtered && !op_is_unbounded(op) {
-		j := Job{target = c.bmp, paint = paint, op = op, alpha = alpha, clip = st.clip, touch = {max(int), max(int), min(int), min(int)}}
+		j := Job{target = c.bmp, paint = paint, op = op, alpha = alpha, clip = st.clip, touch = {max(int), max(int), min(int), min(int)}, span = &c.span}
 		raster_fill(&c.r, rule, max(bx0, ex0), max(by0, ey0), min(bx1, ex1), min(by1, ey1), c.opts.samples, job_row, &j)
 		bitmap_touch(c.bmp, j.touch[0], j.touch[1], j.touch[2], j.touch[3])
 		return
@@ -469,7 +469,7 @@ paint_edges :: proc(c: ^Context, rule: Fill_Rule, paint: ^Paint) {
 	layer, lok := bitmap_create(lx1 - lx0, ly1 - ly0, c.opts.max_layer_bytes)
 	if !lok { return }
 	defer bitmap_destroy(&layer)
-	j := Job{target = &layer, ox = lx0, oy = ly0, paint = paint, op = .Source_Over, alpha = alpha, touch = {max(int), max(int), min(int), min(int)}}
+	j := Job{target = &layer, ox = lx0, oy = ly0, paint = paint, op = .Source_Over, alpha = alpha, touch = {max(int), max(int), min(int), min(int)}, span = &c.span}
 	raster_fill(&c.r, rule, lx0, ly0, lx1, ly1, c.opts.samples, job_row, &j)
 	if filtered { filter_apply(c, &layer) }
 	if shadow { composite_shadow(c, &layer, lx0, ly0) }
@@ -561,7 +561,7 @@ fill_rect_with :: proc(c: ^Context, x, y, w, h: f64, paint: ^Paint) {
 		bx0, by0, bx1, by1 := draw_bounds(c)
 		paint_lut(paint, int(abs((p1.x - p0.x) * (p1.y - p0.y))))
 		j := Job{target = c.bmp, paint = paint, op = c.state.op, alpha = f32(clamp(c.state.alpha, 0, 1)), clip = c.state.clip,
-			touch = {max(int), max(int), min(int), min(int)}}
+			touch = {max(int), max(int), min(int), min(int)}, span = &c.span}
 		raster_fill_rect(&c.r, min(p0.x, p1.x), min(p0.y, p1.y), max(p0.x, p1.x), max(p0.y, p1.y), bx0, by0, bx1, by1, job_row, &j)
 		bitmap_touch(c.bmp, j.touch[0], j.touch[1], j.touch[2], j.touch[3])
 		return
@@ -902,16 +902,46 @@ ctx_put_image_data :: proc(c: ^Context, data: []u8, data_w, data_h: int, dx, dy,
 gaussian_blur :: proc(plane: []f32, w, h: int, sigma: f64) {
 	if w <= 0 || h <= 0 || sigma <= 0 { return }
 	boxes := boxes_for_gauss(sigma)
-	tmp := make([]f32, max(w, h))
+	tmp := make([]f32, w)
 	defer delete(tmp)
-	line := make([]f32, max(w, h))
-	defer delete(line)
+	sums := make([]f32, w)
+	defer delete(sums)
+	ring := make([]f32, min(max(boxes[0], boxes[1], boxes[2]) + 1, h) * w)
+	defer delete(ring)
 	for r in boxes {
-		for y in 0 ..< h { box_blur_line(plane[y * w:][:w], tmp[:w], r) }
-		for x in 0 ..< w {
-			for y in 0 ..< h { line[y] = plane[y * w + x] }
-			box_blur_line(line[:h], tmp[:h], r)
-			for y in 0 ..< h { plane[y * w + x] = line[y] }
+		for y in 0 ..< h { box_blur_line(plane[y * w:][:w], tmp, r) }
+		box_blur_columns(plane, w, h, r, sums, ring)
+	}
+}
+
+// Box blur of radius r of every column of `plane` (w x h), in place: one row of running sums moves down the plane, so
+// that memory is read and written row by row, not a column at a time. `sums` holds w values, `ring` min(r + 1, h) rows
+// (the rows the sums have yet to subtract, as they were before they were overwritten). Each column gets exactly what
+// box_blur_line gives it: the same additions in the same order.
+@(private)
+box_blur_columns :: proc(plane: []f32, w, h, r: int, sums, ring: []f32) {
+	if r <= 0 || w <= 0 || h <= 0 { return }
+	inv := 1 / f32(2 * r + 1)
+	s := sums[:w]
+	for x in 0 ..< w { s[x] = 0 }
+	for y in 0 ..= min(r, h - 1) {
+		in_row := plane[y * w:][:w]
+		for x in 0 ..< w { s[x] += in_row[x] }
+	}
+	// a row leaves the window (y - r >= 0) only when the window is shorter than the plane
+	slots := r + 1
+	keep := slots <= h
+	for y in 0 ..< h {
+		row := plane[y * w:][:w]
+		if keep { copy(ring[(y % slots) * w:][:w], row) }
+		for x in 0 ..< w { row[x] = s[x] * inv }
+		if add := y + r + 1; add < h {
+			in_row := plane[add * w:][:w]
+			for x in 0 ..< w { s[x] += in_row[x] }
+		}
+		if sub := y - r; sub >= 0 {
+			old := ring[(sub % slots) * w:][:w]
+			for x in 0 ..< w { s[x] -= old[x] }
 		}
 	}
 }

@@ -270,6 +270,7 @@ Attr_Test :: struct {
 Inv_Index :: struct {
 	rebuilds:   u64,                // the engine rebuild this was made for
 	keys:       ^Key_Sets,          // the engine's: what the sets of its reaches are numbers in
+	keys_gen:   u64,                // ... the generation of them it was made with (key_sets_reset makes it stale)
 	watched:    ^dom.Document,      // the document whose Watch has the features of the anchors (watch_sync), and its generation
 	watched_gen: u32,
 	ready:      bool,
@@ -363,11 +364,12 @@ inv_index :: proc(e: ^Engine) -> ^Inv_Index { return inv_index_of(e, &e.rules) }
 inv_index_of :: proc(e: ^Engine, rs: ^Rule_Set) -> ^Inv_Index {
 	ix := &rs.inv
 	gen := rs == &e.rules ? e.rebuilds : rs.gen
-	if ix.ready && ix.rebuilds == gen { return ix }
+	if ix.ready && ix.rebuilds == gen && ix.keys_gen == e.key_sets.gen { return ix }
 	inv_free(ix)
 	ix.rebuilds = gen
 	ix.ready = true
 	ix.keys = &e.key_sets
+	ix.keys_gen = e.key_sets.gen
 	ix.has_anchors = make([dynamic]Has_Anchor)
 	inv_visit_index(ix, &rs.index)
 	inv_visit(ix, rs.host_entries)
@@ -401,7 +403,8 @@ inv_visit_index :: proc(ix: ^Inv_Index, index: ^Index) {
 @(private)
 inv_extend :: proc(e: ^Engine, fresh: ^Index) {
 	ix := &e.rules.inv
-	if !ix.ready || ix.rebuilds + 1 != e.rebuilds { return }   // (not made, or not for the rules before these: it is made when asked for)
+	// (not made, or not for the rules before these, or with sets since dropped: it is made when asked for)
+	if !ix.ready || ix.rebuilds + 1 != e.rebuilds || ix.keys_gen != e.key_sets.gen { return }
 	ix.rebuilds = e.rebuilds
 	anchors := len(ix.has_anchors)
 	inv_visit_index(ix, fresh)
@@ -410,7 +413,7 @@ inv_extend :: proc(e: ^Engine, fresh: ^Index) {
 
 // watch_prepare, when the rules' :has() anchors are not those the document's Watch has.
 watch_refresh :: proc(e: ^Engine, doc: ^dom.Document) {
-	if ix := &e.rules.inv; ix.ready && ix.rebuilds == e.rebuilds && ix.watched == doc { return }
+	if ix := &e.rules.inv; ix.ready && ix.rebuilds == e.rebuilds && ix.keys_gen == e.key_sets.gen && ix.watched == doc { return }
 	watch_prepare(e, doc)
 }
 
@@ -759,6 +762,20 @@ Key_Sets :: struct {
 	sets:  [dynamic]Key_Set,         // set n is sets[n - 1]
 	single: [Subject_Key_Kind]map[string]u32,   // the one-key sets by name
 	unions: map[u64]u32,             // the union of two sets (key_sets_union): each sheet that comes builds the index again, from the same pairs
+	gen:    u64,                     // bumped when the sets are dropped (key_sets_reset): an index made with older numbers is made again
+}
+
+// The memory of the sets, which grows with every name the engine's sheets ever named (a page that loads new sheets for hours).
+@(private)
+key_sets_bytes :: proc(ks: ^Key_Sets) -> int { return ks.ready ? int(ks.arena.total_used) : 0 }
+
+// Drops every set past style.invalidation.key_sets_max_bytes (engine_rebuild: the document's index is made again after it anyway;
+// those of shadow trees are made again because their generation moved).
+@(private)
+key_sets_reset :: proc(ks: ^Key_Sets) {
+	gen := ks.gen + 1
+	key_sets_destroy(ks)
+	ks.gen = gen
 }
 
 @(private = "file")
@@ -972,13 +989,7 @@ members_candidates :: proc(keys: ^Members_Index, h: base.Handle, n: ^dom.Node, u
 		case "id": if l, found := keys.by_id[a.value]; found { test(user, h, l[:]) }
 		case "class":
 			rest := a.value
-			for len(rest) > 0 {
-				for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
-				end := 0
-				for end < len(rest) && !is_space(rest[end]) { end += 1 }
-				if end > 0 { if l, found := keys.by_class[rest[:end]]; found { test(user, h, l[:]) } }
-				rest = rest[end:]
-			}
+			for c in token_next(&rest) { if l, found := keys.by_class[c]; found { test(user, h, l[:]) } }
 		}
 	}
 }

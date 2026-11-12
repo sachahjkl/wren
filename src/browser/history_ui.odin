@@ -291,16 +291,24 @@ history_model :: proc(app: ^App, query: string) {
 	yl := local_time(local_midnight(now) - 1000)
 	today, yesterday := tl.year * 10000 + tl.month * 100 + tl.day, yl.year * 10000 + yl.month * 100 + yl.day
 	last_day := -1
+	// [day_lo, day_hi): the local day of the last heading. The time zone is asked only when a visit leaves it (a few
+	// times per model, not once per visit: it is a call to the system's calendar).
+	day_lo, day_hi: i64 = 1, 0
 	for i in history_search(app.ghist.visits[:], query) {
 		vis := app.ghist.visits[i]
-		lt := local_time(vis.at_ms)
-		key := lt.year * 10000 + lt.month * 100 + lt.day
-		if key != last_day {
-			last_day = key
-			append(&v.rows, History_Row{kind = .Day, day = strings.clone(day_heading(lt, today, yesterday), context.allocator)})
-			append(&v.ids, u64(key) | 1 << 63)
-			append(&v.labels, "")
-			append(&v.selectable, false)
+		if vis.at_ms < day_lo || vis.at_ms >= day_hi {
+			lt := local_time(vis.at_ms)
+			day_lo = local_midnight(vis.at_ms)
+			day_hi = local_midnight(day_lo + 30 * 3_600_000)   // (a day lasts 23 to 25 hours: 30 lands in the next one)
+			if day_hi <= day_lo { day_hi = day_lo + 86_400_000 }
+			key := lt.year * 10000 + lt.month * 100 + lt.day
+			if key != last_day {
+				last_day = key
+				append(&v.rows, History_Row{kind = .Day, day = strings.clone(day_heading(lt, today, yesterday), context.allocator)})
+				append(&v.ids, u64(key) | 1 << 63)
+				append(&v.labels, "")
+				append(&v.selectable, false)
+			}
 		}
 		append(&v.rows, History_Row{kind = .Visit, visit = i})
 		append(&v.ids, vis.id)

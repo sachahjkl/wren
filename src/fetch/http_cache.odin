@@ -1,6 +1,7 @@
 package fetch
 
 import "core:fmt"
+import "core:strconv"
 import "core:strings"
 import "wb:base"
 import "wb:cookies"
@@ -154,10 +155,9 @@ vary_block :: proc(resp: http.Headers, req: http.Headers) -> string {
 	return strings.to_string(sb)
 }
 
-// Whether the stored response of `e` fits a request with fields `req` (RFC 9111 §4.1).
+// Whether the stored response of `e` (its fields `resp`, parsed) fits a request with fields `req` (RFC 9111 §4.1).
 @(private)
-vary_matches :: proc(e: ^httpcache.Entry, req: http.Headers) -> bool {
-	resp := httpcache.headers_of(e)
+vary_matches :: proc(e: ^httpcache.Entry, resp: http.Headers, req: http.Headers) -> bool {
 	names, star := httpcache.vary_names(resp)
 	if star { return false }
 	if len(names) == 0 { return true }
@@ -173,10 +173,11 @@ vary_matches :: proc(e: ^httpcache.Entry, req: http.Headers) -> bool {
 ////////////////////////////////
 // Before the network
 
-// The cache's part of sending the request. True when it took the task over: served from the cache, waiting for the
-// disk, or failed (only-if-cached); false: the network, with `t.cache` saying how (conditional, storing).
+// The cache's part of sending the request, whose fields are `req` (request_header_list's, built once per hop). True
+// when it took the task over: served from the cache, waiting for the disk, or failed (only-if-cached); false: the
+// network, with `t.cache` saying how (conditional, storing).
 @(private)
-cache_lookup :: proc(t: ^Task) -> bool {
+cache_lookup :: proc(t: ^Task, req: ^http.Headers) -> bool {
 	t.cache.validating = false
 	t.cache.outcome = .Network
 	mode := t.cache.mode
@@ -203,17 +204,18 @@ cache_lookup :: proc(t: ^Task) -> bool {
 		cache_wait(t, c, e)
 		return true
 	}
-	req := request_header_list(t)
-	if e == nil || !vary_matches(e, req) {
+	// the stored fields, parsed once for every question below
+	resp: http.Headers
+	if e != nil { resp = httpcache.headers_of(e) }
+	if e == nil || !vary_matches(e, resp, req^) {
 		c.stats.misses += 1
 		if mode == .Only_If_Cached { cache_miss_fail(t); return true }
 		if rcc.only_if_cached { cache_gateway_timeout(t); return true }
 		return false
 	}
-	resp := httpcache.headers_of(e)
 	switch mode {
 	case .Force_Cache, .Only_If_Cached:
-		cache_serve(t, c, e, .Hit)
+		cache_serve(t, c, e, .Hit, resp)
 		return true
 	case .No_Cache:
 		t.cache.validating = httpcache.has_validator(resp)
@@ -223,11 +225,11 @@ cache_lookup :: proc(t: ^Task) -> bool {
 		j := httpcache.judge(e.meta.status, resp, times, rcc, httpcache.now_s(), c.settings.heuristic, c.settings.stale_while_revalidate)
 		switch j.use {
 		case .Fresh:
-			cache_serve(t, c, e, .Hit)
+			cache_serve(t, c, e, .Hit, resp)
 			return true
 		case .Stale_Revalidate:
-			revalidate_in_background(t, c, e)
-			cache_serve(t, c, e, .Stale)
+			revalidate_in_background(t, c, resp, req)
+			cache_serve(t, c, e, .Stale, resp)
 			return true
 		case .Validate:
 			if rcc.only_if_cached { cache_gateway_timeout(t); return true }
@@ -313,9 +315,10 @@ cache_request_headers :: proc(t: ^Task, h: ^http.Headers) {
 ////////////////////////////////
 // Serving
 
-// Delivers the stored response of `e` as the task's response: the checks of a network response, then the body.
+// Delivers the stored response of `e`, whose fields `resp` the caller parsed, as the task's response: the checks of a
+// network response, then the body.
 @(private)
-cache_serve :: proc(t: ^Task, c: ^httpcache.Cache, e: ^httpcache.Entry, outcome: Cache_Outcome) {
+cache_serve :: proc(t: ^Task, c: ^httpcache.Cache, e: ^httpcache.Entry, outcome: Cache_Outcome, resp: http.Headers) {
 	httpcache.touch(c, e)
 	if outcome == .Hit || outcome == .Stale { c.stats.hits += 1 }
 	c.stats.bytes_served += e.body_size
@@ -324,7 +327,7 @@ cache_serve :: proc(t: ^Task, c: ^httpcache.Cache, e: ^httpcache.Entry, outcome:
 	t.cache.outcome = outcome
 	t.cache.store = false
 	http.headers_destroy(&t.raw_headers)
-	t.raw_headers = http.parse_header_block(e.meta.headers)
+	t.raw_headers = http.headers_clone(resp)   // (the task's own: `resp` is temporary)
 	t.status = e.meta.status
 	h, l := t.self, t.loader
 	if !check_and_send_response(t) { return }
@@ -397,6 +400,17 @@ cache_on_response :: proc(t: ^Task) -> bool {
 		return false
 	}
 	t.cache.store = true
+	if !t.collect {
+		// the cache keeps this buffer itself at the end (cache_on_done): process memory, sized ahead when the length
+		// is announced (the server's word, bounded by what an entry may be)
+		delete(t.cache.body)
+		t.cache.body = make([dynamic]byte, base.process_allocator())
+		if v, ok := http.get_header(t.raw_headers, "content-length"); ok {
+			if n, nok := strconv.parse_i64(strings.trim_space(v), 10); nok && n > 0 && n <= c.settings.max_entry_bytes {
+				reserve(&t.cache.body, int(n))
+			}
+		}
+	}
 	return false
 }
 
@@ -421,14 +435,31 @@ cache_on_done :: proc(t: ^Task) {
 	t.cache.store = false
 	c := cache_usable(t)
 	if c == nil { return }
-	cache_store(t, c, t.collect ? t.collected[:] : t.cache.body[:])
-	delete(t.cache.body)
+	if t.collect {
+		// (copied: the task still delivers these bytes, and its filter may add to them)
+		cache_store(t, c, t.collected[:])
+		return
+	}
+	// the streamed body is the cache's from here, without a copy, unless most of its buffer is spare room (a body
+	// longer than announced grew by doublings)
+	n := len(t.cache.body)
+	if cap(t.cache.body) - n > n / 4 {
+		cache_store(t, c, t.cache.body[:])
+		delete(t.cache.body)
+	} else {
+		cache_store(t, c, t.cache.body[:], owned = true)
+	}
 	t.cache.body = nil
 }
 
+// `owned`: the cache takes `body` (process memory) instead of copying it.
 @(private)
-cache_store :: proc(t: ^Task, c: ^httpcache.Cache, body: []byte) {
-	if i64(len(body)) > c.settings.max_entry_bytes { httpcache.remove_key(c, t.cache.key); return }
+cache_store :: proc(t: ^Task, c: ^httpcache.Cache, body: []byte, owned := false) {
+	if i64(len(body)) > c.settings.max_entry_bytes {
+		if owned { delete(body, base.process_allocator()) }
+		httpcache.remove_key(c, t.cache.key)
+		return
+	}
 	now := httpcache.now_s()
 	req := http.parse_header_block(t.cache.sent, context.temp_allocator)
 	times := httpcache.Response_Times{t.cache.request_time, now}
@@ -438,7 +469,7 @@ cache_store :: proc(t: ^Task, c: ^httpcache.Cache, body: []byte) {
 	httpcache.store(c, {
 		key = t.cache.key, url = url_no_fragment(t.target), status = t.status, headers = t.raw_headers,
 		vary = vary_block(t.raw_headers, req), request_time = t.cache.request_time, response_time = now, body = body,
-		fresh_until = now + max(life - age, 0),
+		body_owned = owned, fresh_until = now + max(life - age, 0),
 	})
 }
 
@@ -466,7 +497,7 @@ cache_answer_304 :: proc(t: ^Task) {
 	age := httpcache.current_age(merged, times, now)
 	httpcache.refresh(c, e, t.raw_headers, t.cache.request_time, now, now + max(life - age, 0))
 	t.cache.validating = false
-	cache_serve(t, c, e, .Revalidated)
+	cache_serve(t, c, e, .Revalidated, httpcache.headers_of(e))   // (the fields the refresh just stored)
 }
 
 ////////////////////////////////
@@ -488,15 +519,16 @@ Revalidation :: struct {
 	req:          base.Handle,
 }
 
+// `resp`: the stored fields; `req`: the request's (changed here: the task does not send them, the cache serves it).
 @(private)
-revalidate_in_background :: proc(t: ^Task, c: ^httpcache.Cache, e: ^httpcache.Entry) {
+revalidate_in_background :: proc(t: ^Task, c: ^httpcache.Cache, resp: http.Headers, req: ^http.Headers) {
 	l := t.loader
 	for r in l.revalidations { if r.key == t.cache.key { return } }   // one at a time per response
-	h := request_header_list(t)
-	sent := join_headers(h)
-	inm, ims := httpcache.conditional_headers(httpcache.headers_of(e))
-	if inm != "" { http.set_header(&h, "If-None-Match", inm) }
-	if ims != "" { http.set_header(&h, "If-Modified-Since", ims) }
+	h := req
+	sent := join_headers(h^)
+	inm, ims := httpcache.conditional_headers(resp)
+	if inm != "" { http.set_header(h, "If-None-Match", inm) }
+	if ims != "" { http.set_header(h, "If-Modified-Since", ims) }
 	r := new(Revalidation)
 	r.loader = l
 	r.key = strings.clone(t.cache.key)
@@ -511,7 +543,7 @@ revalidate_in_background :: proc(t: ^Task, c: ^httpcache.Cache, e: ^httpcache.En
 	}
 	append(&l.revalidations, r)
 	r.req = net.fetch(l.net, {
-		url = r.target, method = "GET", headers = join_headers(h), on_event = revalidation_event, user = r,
+		url = r.target, method = "GET", headers = join_headers(h^), on_event = revalidation_event, user = r,
 		collect = true, max_body = int(min(c.settings.max_entry_bytes, i64(max(int)))), priority = .Low,
 	})
 }

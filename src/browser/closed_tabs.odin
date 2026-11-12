@@ -54,6 +54,7 @@ Closed_Tabs :: struct {
 	loaded:        bool,
 	dirty:         bool,   // closed.txt is behind the list
 	session_waits: bool,   // this start did not reopen session.txt: it is the session of the run before
+	file:          Profile_File,   // closed.txt (profile_writes.odin)
 }
 
 closed_path :: proc(app: ^App) -> string { return strings.concatenate({app.profile_dir, "/closed.txt"}, context.temp_allocator) }
@@ -110,18 +111,22 @@ closed_parse :: proc(text: string) -> [dynamic]Closed_Item {
 
 // No more than the most recent `max_items`, of which `max_sessions` sessions.
 closed_cap :: proc(items: ^[dynamic]Closed_Item, max_items, max_sessions: int) {
+	// the sessions older than the newest `max_sessions` go: counted from the end, the kept ones moved down in one pass
 	sessions := 0
-	for i := len(items) - 1; i >= 0; i -= 1 {
-		if items[i].kind != .Session { continue }
-		sessions += 1
-		if sessions > max_sessions {
-			closed_item_destroy(items[i])
-			ordered_remove(items, i)
+	for it in items { if it.kind == .Session { sessions += 1 } }
+	drop := max(sessions - max(max_sessions, 0), 0)
+	if drop > 0 {
+		k := 0
+		for it in items {
+			if it.kind == .Session && drop > 0 { closed_item_destroy(it); drop -= 1; continue }
+			items[k] = it
+			k += 1
 		}
+		resize(items, k)
 	}
-	for len(items) > max(max_items, 0) {
-		closed_item_destroy(items[0])
-		ordered_remove(items, 0)
+	if n := len(items) - max(max_items, 0); n > 0 {
+		for it in items[:n] { closed_item_destroy(it) }
+		remove_range(items, 0, n)
 	}
 }
 
@@ -174,13 +179,13 @@ closed_items :: proc(app: ^App) -> []Closed_Item {
 	return app.closed.items[:]
 }
 
-// Writes closed.txt when it changed (session_save).
+// Writes closed.txt when it changed (session_save), on the blocking pool (profile_writes.odin: a failed write is made again).
 closed_save :: proc(app: ^App) {
 	c := &app.closed
 	if !c.dirty { return }
-	if base.file_write_atomic(closed_path(app), transmute([]byte)closed_serialize(c.items[:], int(config.int_of(&app.prefs, "browser.session.max_url_bytes")))) {
-		c.dirty = false
-	}
+	profile_file_init(&c.file, app, closed_path(app))
+	profile_file_write(&c.file, closed_serialize(c.items[:], int(config.int_of(&app.prefs, "browser.session.max_url_bytes"))))
+	c.dirty = false
 }
 
 // A tab closing (tab_close_in), before it leaves `w`'s strip: a tab that shows nothing is not worth reopening.
@@ -313,5 +318,6 @@ closed_tabs_destroy :: proc(app: ^App) {
 	c := &app.closed
 	for item in c.items { closed_item_destroy(item) }
 	delete(c.items)
+	profile_file_destroy(&c.file)   // (written by profile_files_flush, before the loop ended)
 	c^ = {}
 }

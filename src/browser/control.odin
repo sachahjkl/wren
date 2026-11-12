@@ -855,7 +855,7 @@ control_forget_clicks :: proc(app: ^App) {
 control_downloads :: proc(app: ^App, allocator := context.temp_allocator) -> []api.Download {
 	list := make([]api.Download, len(app.dls.list), allocator)
 	for d, i in app.dls.list {
-		list[i] = {name = strings.clone(d.name, allocator), error = strings.clone(d.error, allocator), finished = download_finished(d) && !d.moving, saved = d.state == .Done}
+		list[i] = {name = strings.clone(d.name, allocator), error = strings.clone(d.error, allocator), finished = download_finished(d), saved = d.state == .Done}
 	}
 	return list
 }

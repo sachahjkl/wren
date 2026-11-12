@@ -1,5 +1,6 @@
 package browser
 
+import "core:sync"
 import "core:math"
 import "toolkit:draw"
 import "wb:base"
@@ -97,12 +98,14 @@ Comp_Chunk :: struct {
 	clips:    [dynamic]i32,            // clips recorded into the picture (their radii are watched)
 	screen:   lay.Rect,                // this frame: what its items paint (before the filters of their groups)
 	visible:  bool,
+	highlit:  bool,                    // its picture holds a highlight (selection, find, CSS highlight, drop caret): recorded again when they change
 }
 
 @(private)
 Comp :: struct {
 	seen_passes, seen_refresh, seen_restyled: u64,
 	sel_key:    u64,   // selection_paint_key when the pictures were recorded
+	sel_global: u64,   // selection_paint_global_key then
 	items_len:  int,
 	chunk_items: int,
 	direct:     bool,                    // too many chunks: drawn item by item
@@ -186,13 +189,13 @@ RASTER_PROPS :: [?]style.Prop{
 
 @(private = "file")
 raster_props :: proc() -> style.Prop_Set {
+	// (a table made once, by whichever thread asks first: the painting threads of several Apps may)
 	@(static) set: style.Prop_Set
-	@(static) ready: bool
-	if !ready {
+	@(static) once: sync.Once
+	sync.once_do(&once, proc() {
 		list := RASTER_PROPS
 		set = style.ps_of(..list[:])
-		ready = true
-	}
+	})
 	return set
 }
 
@@ -664,6 +667,7 @@ record_chunk :: proc(c: ^Comp, l: ^Layout, dc: ^draw.Context, d: ^dom.Document, 
 	r := Recorder{c = c, l = l, dc = dc, v = v, ch = ch, chain = make([dynamic]i32, 0, 8, context.temp_allocator)}
 	want := make([dynamic]i32, 0, 8, context.temp_allocator)
 	draw.picture_begin(dc, ch.pic, raster_scale)
+	the_app.spaint.painted = false   // (the painter says whether this picture holds a highlight)
 	for i in ch.first ..< ch.end {
 		it := &l.items[i]
 		local := local_clips(c, l, it, &want)
@@ -683,6 +687,7 @@ record_chunk :: proc(c: ^Comp, l: ^Layout, dc: ^draw.Context, d: ^dom.Document, 
 	for len(r.chain) > 0 { draw.pop_clip(dc); pop(&r.chain) }
 	if r.pushed != 0 { draw.pop_transform(dc) }
 	draw.picture_end(dc)
+	ch.highlit = the_app.spaint.painted
 	ch.recorded = true
 	composite_stats.recorded += 1
 }
@@ -740,10 +745,20 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 		check_paint_values(c, l)
 	}
 	if c.direct { return false }
-	// the selection and find highlights are recorded with the text: a change records the chunks again (lazily, as they show)
+	// the selection and find highlights are recorded with the text: a change records again (lazily, as they show) the chunks
+	// that held one and those that will; a change of the CSS highlights or of the page's highlight rules, every chunk
 	if k := selection_paint_key(); k != c.sel_key {
 		c.sel_key = k
-		for &ch in c.chunks { if !ch.immediate { ch.recorded = false } }
+		g := selection_paint_global_key()
+		all := g != c.sel_global
+		c.sel_global = g
+		for &ch in c.chunks {
+			if ch.immediate || !ch.recorded { continue }
+			if all || ch.highlit { ch.recorded = false; continue }
+			for i in ch.first ..< ch.end {
+				if selection_item_touched(l, int(i)) { ch.recorded = false; break }
+			}
+		}
 	}
 	v := lay.view_make(l, size, scroll, cull = false)
 	screen := lay.Rect{origin, origin + size}

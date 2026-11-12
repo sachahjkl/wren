@@ -74,6 +74,14 @@ decode_document :: proc(data: []byte, header_charset: string, default_encoding: 
 	}
 
 	if d.source == .Default && canonical_encoding(d.encoding) == "" { d.encoding = "windows-1252" }   // a broken preference must not break loading
+	// UTF-8 that is valid already (most of the web): decoding would give the same bytes, through code points and three
+	// copies. One check (ASCII runs a block at a time) and one copy instead; the decoder for the rest (U+FFFD).
+	if canonical_encoding(d.encoding) == "UTF-8" && base.utf8_valid(string(input)) {
+		d.text = make([]byte, len(input), allocator)
+		copy(d.text, input)
+		d.encoding = strings.clone(d.encoding, context.temp_allocator)
+		return d, true
+	}
 	out: [^]u8
 	out_len: uint
 	empty: u8

@@ -241,3 +241,26 @@ download_names_random :: proc(t: ^testing.T) {
 		free_all(context.temp_allocator)
 	}
 }
+// The state machine of a download: the ways forward, the ends that stay ends, and a move that cannot be cancelled.
+@(test)
+download_transitions :: proc(t: ^testing.T) {
+	test_app(t)
+	ok :: download_transition_ok
+	// the way of a download that is saved
+	testing.expect(t, ok(.Receiving, .Flushing) && ok(.Flushing, .Moving) && ok(.Moving, .Done))
+	// ... with the Save dialog still open when everything is written
+	testing.expect(t, ok(.Flushing, .Awaiting_Path) && ok(.Awaiting_Path, .Moving))
+	// no step is skipped: the last chunks are written before the move
+	testing.expect(t, !ok(.Receiving, .Moving) && !ok(.Receiving, .Awaiting_Path) && !ok(.Receiving, .Done))
+	// cancelled or failed until the move; the move only ends
+	for s in ([]Download_State{.Receiving, .Flushing, .Awaiting_Path}) {
+		testing.expect(t, ok(s, .Cancelled) && ok(s, .Failed), "cancelled or failed before the move")
+	}
+	testing.expect(t, !ok(.Moving, .Cancelled) && ok(.Moving, .Failed))
+	// an end is an end: a second cancel, a late failure or a late write do nothing
+	for e in ([]Download_State{.Done, .Failed, .Cancelled}) {
+		for to in Download_State { testing.expect(t, !ok(e, to), "nothing after an end") }
+	}
+	// no state goes to itself (a second call is nothing)
+	for s in Download_State { testing.expect(t, !ok(s, s)) }
+}

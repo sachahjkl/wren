@@ -24,6 +24,27 @@ Cookie :: struct {
 	http_only:   bool,
 	same_site:   Same_Site,
 	partition:   string,   // the top-level site it was set under in a third-party context ("": first-party, unpartitioned)
+	// the registrable domain of `domain` (or `domain` itself: localhost, IPs), the key of the per-site limit; a suffix
+	// of `domain`, so it shares its memory and is computed once, not at every eviction (a PSL lookup each)
+	site:        string,
+}
+
+// The registrable domain of a cookie domain, as a slice of it, without allocating (`registrable_domain` splits the
+// host on the temporary allocator; this runs for every cookie stored or loaded).
+site_of :: proc(domain: string) -> string {
+	if domain == "" || domain[0] == '[' || is_ip_string(domain) { return domain }
+	labels := 1
+	for i in 0 ..< len(domain) { if domain[i] == '.' { labels += 1 } }
+	k := url.public_suffix_labels_fast(domain)
+	if labels <= k { return domain }
+	// the suffix of k + 1 labels
+	seen := 0
+	for i := len(domain) - 1; i >= 0; i -= 1 {
+		if domain[i] != '.' { continue }
+		seen += 1
+		if seen == k + 1 { return domain[i + 1:] }
+	}
+	return domain
 }
 
 // What kind of request a cookie is attached to / received from, as far as SameSite is concerned.

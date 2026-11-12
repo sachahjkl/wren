@@ -2,6 +2,7 @@ package fetch
 
 import "core:fmt"
 import "core:os"
+import "core:strconv"
 import "core:strings"
 import "wb:base"
 import "wb:cookies"
@@ -382,7 +383,7 @@ http_hop :: proc(t: ^Task) {
 	}
 
 	// mixed content: a secure document must not load insecure subresources
-	if t.initiator != nil && t.initiator.location.scheme == "https" && t.destination != .Document && !url.is_potentially_trustworthy(t.target) {
+	if t.initiator != nil && prohibits_mixed_content(t.initiator) && t.destination != .Document && !url.is_potentially_trustworthy(t.target) {
 		#partial switch t.destination {
 		case .Image, .Audio, .Video:   // optionally blockable: upgraded, unless the configuration says otherwise
 			if p.settings.upgrade_passive_mixed {
@@ -433,6 +434,19 @@ http_hop :: proc(t: ^Task) {
 
 @(private)
 url_no_fragment :: proc(u: url.URL) -> string { return url.without_fragment(u) }
+
+// Mixed Content's "prohibits mixed security contexts", by the environment's origin rather than its URL: a blob:,
+// about:blank or about:srcdoc document of an https origin is as secure as its creator. An opaque origin (a sandbox, a
+// data: frame) has no scheme to look at: its secure context, inherited from its creator, says it, except for a file:
+// document, whose http subresources are no mixed content.
+prohibits_mixed_content :: proc(env: ^Environment) -> bool {
+	if !env.origin.opaque { return env.origin.scheme == "https" }
+	switch env.location.scheme {
+	case "https":                 return true
+	case "about", "blob", "data": return env.secure_context
+	}
+	return false
+}
 
 // no-cors requests may only carry CORS-safelisted headers and methods.
 @(private)
@@ -740,14 +754,16 @@ handle_preflight_result :: proc(t: ^Task, pf: ^Preflight) {
 send_main :: proc(t: ^Task) {
 	l := t.loader
 	t.stage = .Fetching
-	if cache_lookup(t) { return }   // served from the HTTP cache, waiting for it, or failed (only-if-cached)
+	// built once for the hop: the cache matches Vary against it, and it is what goes to the network
 	h := request_header_list(t)
+	if cache_lookup(t, &h) { return }   // served from the HTTP cache, waiting for it, or failed (only-if-cached)
 	cache_request_headers(t, &h)
-	if observing(t.loader) { observe(t, Observed{kind = .Request, method = t.method, url = t.target.href, headers = join_headers(h), request_body = t.body}) }
+	block := join_headers(h)
+	if observing(t.loader) { observe(t, Observed{kind = .Request, method = t.method, url = t.target.href, headers = block, request_body = t.body}) }
 	k := new_clone(Kick{l, t.self})
 	t.net_user = k
 	t.net_req = net.fetch(l.net, {
-		url = url_no_fragment(t.target), method = t.method, headers = join_headers(h), body = t.body,
+		url = url_no_fragment(t.target), method = t.method, headers = block, body = t.body,
 		on_event = main_event, user = k, collect = false, max_body = t.max_body, link = link_of(l, t.scope),
 		priority = t.destination == .Document || is_frame_destination(t.destination) || t.destination == .Script || t.destination == .Style ? .High : .Normal,
 	})
@@ -836,6 +852,16 @@ on_response_headers :: proc(t: ^Task, ev: ^net.Event) {
 		if v, ok := http.get_header(raw, "strict-transport-security"); ok { hsts_note(&l.profile.hsts, t.target.host, v, now) }
 	}
 	if cache_on_response(t) { return }   // a 304 for the stored response: the cache answers (http_cache.odin)
+	if t.collect && len(t.collected) == 0 && !is_redirect_status(t.status) {
+		// the body grows to its announced length in one allocation, not by doublings (bounded: the length is the
+		// server's word, max_body is ours; a compressed body only makes it a first guess)
+		if v, ok := http.get_header(raw, "content-length"); ok {
+			if n, nok := strconv.parse_int(strings.trim_space(v), 10); nok && n > 0 {
+				limit := t.max_body > 0 ? t.max_body : l.net.settings.max_body
+				reserve(&t.collected, min(n, limit))
+			}
+		}
+	}
 	check_and_send_response(t)
 }
 

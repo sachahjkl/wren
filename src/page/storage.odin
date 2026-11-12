@@ -134,9 +134,7 @@ area_path :: proc(m: ^Storage_Manager, origin: string) -> string {
 
 // Length of `s` in UTF-16 code units.
 utf16_length :: proc(s: string) -> int {
-	n := 0
-	for r in s { n += 2 if r >= 0x10000 else 1 }
-	return n
+	return base.utf16_length(s)
 }
 
 ////////////////////////////////
@@ -203,8 +201,15 @@ area_remove :: proc(a: ^Storage_Area, key: string) -> bool {
 	it := a.items[i]
 	a.used -= utf16_length(it.key) + utf16_length(it.value)
 	delete_key(&a.index, it.key)
-	ordered_remove(&a.items, i)
-	for j in i ..< len(a.items) { a.index[a.items[j].key] = j }
+	// the last item takes its place: O(1), where shifting the later ones and indexing each again made clearing an area
+	// key by key quadratic. Web Storage leaves the order of keys to the browser while their number does not change;
+	// it changes here.
+	last := len(a.items) - 1
+	if i != last {
+		a.items[i] = a.items[last]
+		a.index[a.items[i].key] = i
+	}
+	pop(&a.items)
 	delete(it.key); delete(it.value)
 	return true
 }

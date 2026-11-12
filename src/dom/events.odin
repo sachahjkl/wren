@@ -7,6 +7,7 @@ Phase :: enum u8 { None, Capturing, At_Target, Bubbling }
 
 Event :: struct {
 	type:            string,    // owned
+	atom:            Event_Atom,   // of `type` (event_types.odin), set when it is dispatched
 	target:          base.Handle,
 	current_target:  base.Handle,
 	phase:           Phase,
@@ -110,49 +111,176 @@ dispatcher_destroy :: proc(dp: ^Dispatcher) {
 
 // DOM "invoke": the prefixed name of an event that has one; "" for the others.
 legacy_event_type :: proc(type: string) -> string {
-	switch type {
-	case "animationend":       return "webkitAnimationEnd"
-	case "animationiteration": return "webkitAnimationIteration"
-	case "animationstart":     return "webkitAnimationStart"
-	case "transitionend":      return "webkitTransitionEnd"
+	return EVENT_TYPES[EVENT_TYPES[event_atom(type)].legacy].name
+}
+
+////////////////////////////////
+// Listener lists
+//
+// A node's, a host object's and the Window's listeners are each a [dynamic]Listener, run by the procedures below (one
+// copy of the rules: a snapshot of the matching listeners, each run only while still registered, `once` removed before
+// it runs, tombstones dropped). `d` is the document whose counts the list is in (listener_changes, the listened
+// types); nil for a host object's list.
+
+// Adds a listener to `list` unless the same one is there (DOM: same type, callback, capture: a no-op). `max_live` bounds
+// the list (0: no bound): past it, Quota.
+listener_add :: proc(list: ^[dynamic]Listener, d: ^Document, id: Listener_Id, type: string, callback, user, owner: u32, capture, once, passive: bool, work: base.Work, max_live: int) -> (Listener_Id, Error) {
+	if type == "" { return 0, .Invalid_Argument }
+	atom := event_atom(type)
+	live := 0
+	for l in list^ {
+		if l.removed { continue }
+		live += 1
+		if type_matches(l.atom, l.type, atom, type) && l.callback == callback && l.user == user && l.capture == capture && l.owner == owner { return l.id, .None }
 	}
-	return ""
+	if max_live > 0 && live >= max_live { return 0, .Quota }
+	l := Listener{id = id, type = event_type_string(atom, type), atom = atom, callback = callback, user = user, owner = owner, capture = capture, once = once, passive = passive, work = work}
+	append(list, l)
+	if d != nil { listener_counted(d, l, 1) }
+	return id, .None
+}
+
+// Removes listener `id` of `list` (a tombstone: a dispatch in progress reads a copy and finds its listeners again by id).
+// Tombstones go when a dispatch ends at the target; a list that never sees an event (listeners added and removed in a
+// loop) drops them here once they are half of it.
+listener_remove :: proc(list: ^[dynamic]Listener, d: ^Document, id: Listener_Id) -> Error {
+	for &l in list^ {
+		if l.id != id || l.removed { continue }
+		listener_tombstone(&l, d)
+		dead := 0
+		for x in list^ { if x.removed { dead += 1 } }
+		if dead * 2 > len(list^) { listeners_compact(list) }
+		return .None
+	}
+	return .Not_Found
+}
+
+// Every listener of `list` goes (tombstones, as listener_remove leaves).
+listeners_erase :: proc(list: ^[dynamic]Listener, d: ^Document) {
+	for &l in list^ { if !l.removed { listener_tombstone(&l, d) } }
+}
+
+// Drops the tombstones of `list`.
+listeners_compact :: proc(list: ^[dynamic]Listener) {
+	w := 0
+	for l in list^ {
+		if !l.removed { list^[w] = l; w += 1 }
+	}
+	resize(list, w)
+}
+
+// Frees what the listeners of `list` own (the list itself too), taking the live ones out of `d`'s counts.
+listeners_free :: proc(list: ^[dynamic]Listener, d: ^Document) {
+	for l in list^ {
+		if !l.removed && d != nil { listener_counted(d, l, -1) }
+		event_type_free(l.atom, l.type)
+	}
+	delete(list^)
+	list^ = nil
+}
+
+// Whether someone in `list` listens for `type`.
+listeners_have :: proc(list: []Listener, type: string) -> bool {
+	atom := event_atom(type)
+	for l in list { if !l.removed && type_matches(l.atom, l.type, atom, type) { return true } }
+	return false
+}
+
+// Appends to `out` the live listeners of `list` for (`atom`, `type`), of one phase (`capture`) unless `any_phase`.
+// The copies do not share the list's strings (a listener may remove, and free, its own): the event has the type.
+listeners_snapshot :: proc(list: []Listener, atom: Event_Atom, type: string, capture, any_phase: bool, out: ^[dynamic]Listener) {
+	for l in list {
+		if l.removed || !type_matches(l.atom, l.type, atom, type) || (!any_phase && l.capture != capture) { continue }
+		snap := l
+		snap.type = ""
+		append(out, snap)
+	}
+}
+
+// What listeners_run needs of a target: its list as it is now (nil: the target is gone; with the document whose counts
+// it is in), running one listener (false: stop dispatching altogether), and whether the event says stop
+// (stopImmediatePropagation, or the event is gone).
+Listener_Target :: struct {
+	user:    rawptr,
+	list:    proc(user: rawptr) -> (^[dynamic]Listener, ^Document),
+	run:     proc(user: rawptr, l: Listener) -> bool,
+	stopped: proc(user: rawptr) -> bool,
+}
+
+// Runs the listeners of `snapshot` that are still registered, in order: a `once` one is removed before it runs, the
+// owner is the one the list has now (a node moved to another document has its owners in that document's terms).
+// Drops the list's tombstones at the end. Returns false when `run` did.
+listeners_run :: proc(t: Listener_Target, snapshot: []Listener) -> bool {
+	for l in snapshot {
+		list, d := t.list(t.user)
+		if list == nil { return true }
+		run := l
+		still := false
+		for &cur in list^ {
+			if cur.id != l.id || cur.removed { continue }
+			still = true
+			run.owner = cur.owner
+			if cur.once { listener_tombstone(&cur, d) }
+			break
+		}
+		if !still { continue }
+		if !t.run(t.user, run) { return false }
+		if t.stopped(t.user) { break }
+	}
+	if list, _ := t.list(t.user); list != nil { listeners_compact(list) }
+	return true
+}
+
+@(private)
+listener_tombstone :: proc(l: ^Listener, d: ^Document) {
+	if d != nil { listener_counted(d, l^, -1) }
+	event_type_free(l.atom, l.type)
+	l.type = ""
+	l.removed = true
+}
+
+// A live listener added to (+1) or taken from (-1) a list of document `d`: listener_changes moves, and the count of
+// its type (Document.listened_atoms, listened_others) that `listens` reads.
+@(private)
+listener_counted :: proc(d: ^Document, l: Listener, delta: int) {
+	d.listener_changes += 1
+	if l.atom != .None {
+		d.listened_atoms[l.atom] = u32(max(int(d.listened_atoms[l.atom]) + delta, 0))
+		return
+	}
+	if delta > 0 {
+		if v, ok := &d.listened_others[l.type]; ok { v^ += delta; return }
+		d.listened_others[strings.clone(l.type)] = delta
+		return
+	}
+	if v, ok := &d.listened_others[l.type]; ok {
+		v^ += delta
+		if v^ <= 0 {
+			key, _ := delete_key(&d.listened_others, l.type)
+			delete(key)
+		}
+	}
+}
+
+// Whether some node of the document (in its tree or not) has a listener of `type`: an event of that type would run
+// the page's code. One read, whatever the size of the document.
+listens :: proc(d: ^Document, type: string) -> bool {
+	if atom := event_atom(type); atom != .None { return d.listened_atoms[atom] > 0 }
+	return d.listened_others[type] > 0
 }
 
 add_listener :: proc(d: ^Document, target: base.Handle, type: string, callback, user: u32, capture, once, passive: bool, owner: u32 = 0, work := base.Work{}) -> (Listener_Id, Error) {
 	n := get(d, target)
 	if n == nil { return 0, .Invalid_Handle }
-	if type == "" { return 0, .Invalid_Argument }
-	// same (type, callback, user, capture) is a no-op, as in the DOM
-	for l in n.listeners {
-		if !l.removed && l.type == type && l.callback == callback && l.user == user && l.capture == capture && l.owner == owner { return l.id, .None }
-	}
-	id := d.next_listener
-	d.next_listener += 1
-	d.listener_changes += 1
-	append(&n.listeners, Listener{id = id, type = strings.clone(type), callback = callback, user = user, owner = owner, capture = capture, once = once, passive = passive, work = work})
-	return id, .None
+	id, err := listener_add(&n.listeners, d, d.next_listener, type, callback, user, owner, capture, once, passive, work, d.limits.max_listeners)
+	if err == .None && id == d.next_listener { d.next_listener += 1 }
+	return id, err
 }
 
 remove_listener :: proc(d: ^Document, target: base.Handle, id: Listener_Id) -> Error {
 	n := get(d, target)
 	if n == nil { return .Invalid_Handle }
-	for l, i in n.listeners {
-		if l.id == id && !l.removed {
-			delete(l.type)
-			n.listeners[i].type = ""
-			n.listeners[i].removed = true
-			d.listener_changes += 1
-			// tombstones go when a dispatch ends at the node; one that never sees an event (listeners added and
-			// removed in a loop) drops them here once they are half the list. A dispatch in progress reads a copy and
-			// finds its listeners again by id: compacting under it is safe.
-			dead := 0
-			for x in n.listeners { if x.removed { dead += 1 } }
-			if dead * 2 > len(n.listeners) { compact_listeners(n) }
-			return .None
-		}
-	}
-	return .Not_Found
+	return listener_remove(&n.listeners, d, id)
 }
 
 // HTML "erase all event listeners and handlers" on every shadow-including inclusive descendant of `root` (what
@@ -164,42 +292,16 @@ erase_listeners :: proc(d: ^Document, root: base.Handle) {
 		h := pop(&stack)
 		n := get(d, h)
 		if n == nil { continue }
-		for &l in n.listeners {
-			if l.removed { continue }
-			delete(l.type)
-			l.type = ""
-			l.removed = true
-			d.listener_changes += 1
-		}
-		compact_listeners(n)
+		listeners_erase(&n.listeners, d)
+		listeners_compact(&n.listeners)
 		if n.kind == .Element && n.shadow != base.NIL_HANDLE { append(&stack, n.shadow) }
 		for ch := n.first_child; ch != base.NIL_HANDLE; ch = get(d, ch).next { append(&stack, ch) }
 	}
 }
 
-@(private)
-compact_listeners :: proc(n: ^Node) {
-	w := 0
-	for l in n.listeners {
-		if !l.removed { n.listeners[w] = l; w += 1 }
-	}
-	resize(&n.listeners, w)
-}
-
 // Event types the browser dispatches with `composed` set (UI Events, Pointer Events, Input Events, HTML focus): they
 // cross shadow boundaries. Events scripts make say themselves.
-ui_composed :: proc(type: string) -> bool {
-	switch type {
-	case "click", "dblclick", "auxclick", "mousedown", "mouseup", "mousemove", "mouseover", "mouseout", "contextmenu",
-	     "pointerdown", "pointerup", "pointermove", "pointerover", "pointerout", "pointercancel", "gotpointercapture",
-	     "lostpointercapture", "wheel", "keydown", "keyup", "keypress", "focus", "blur", "focusin", "focusout", "input",
-	     "beforeinput", "compositionstart", "compositionupdate", "compositionend", "touchstart", "touchend", "touchmove",
-	     "touchcancel", "dragstart", "drag", "dragenter", "dragleave", "dragover", "drop", "dragend", "select",
-	     "selectstart", "copy", "cut", "paste":
-		return true
-	}
-	return false
-}
+ui_composed :: proc(type: string) -> bool { return EVENT_TYPES[event_atom(type)].composed }
 
 // Runs the capture / target / bubble phases. Returns false if a listener called preventDefault on a cancelable event.
 dispatch :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: Event) -> bool {
@@ -219,7 +321,8 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 	ev.text = strings.clone(proto.text)
 	ev.target = target
 	ev.path = nil
-	if !proto.untrusted && proto.engine_id == 0 && !proto.composed { ev.composed = ui_composed(proto.type) }
+	ev.atom = event_atom(proto.type)
+	if !proto.untrusted && proto.engine_id == 0 && !proto.composed { ev.composed = EVENT_TYPES[ev.atom].composed }
 	original_related := proto.related
 	eh, _ := base.pool_insert_tagged(&dp.events, dp.tag, ev)
 	defer {
@@ -227,7 +330,7 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 		base.pool_remove_tagged(&dp.events, eh)
 	}
 	composed := base.pool_get(&dp.events, eh).composed
-	to_window_ok := dp.window != nil && proto.type != "load"
+	to_window_ok := dp.window != nil && ev.atom != .load
 
 	closed_root :: proc(d: ^Document, h: base.Handle) -> bool {
 		n := get(d, h)
@@ -252,20 +355,33 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 		return n.parent, false
 	}
 
-	// the event path
+	// the event path. The tree roots it compares are carried along the walk, not looked up again at each ancestor: a
+	// parent reached by its child's `parent` link has that child's root, so only a step across a shadow boundary (to a slot
+	// or a host) looks one up, and the ancestry test of two roots is redone only when one of them changes. A document
+	// without shadow trees needs neither (one tree: every ancestor is in the target's), and building the path of a
+	// deep tree stays O(depth).
 	path := make([dynamic]Path_Entry)
 	{
+		shadows := has_shadow_trees(d)
 		cur_target := target
-		rel := retarget_rel(d, original_related, target)
+		rel := shadows ? retarget_rel(d, original_related, target) : original_related
 		if u64(cur_target) != rel || u64(target) == original_related {
-			append(&path, Path_Entry{node = target, shadow_target = target, related = rel, root_of_closed_tree = closed_root(d, target)})
+			prev, prev_root := target, shadows ? tree_root(d, target) : base.NIL_HANDLE
+			cur_root := prev_root   // the root of cur_target's tree
+			anc_cur, anc_parent: base.Handle   // the pair `anc` was computed for
+			anc := false
+			append(&path, Path_Entry{node = target, shadow_target = target, related = rel, root_of_closed_tree = closed_root(d, target), in_shadow_tree = shadows && is_shadow_root(d, prev_root)})
 			slottable := get(d, target).slot != base.NIL_HANDLE
 			slot_in_closed := false
 			parent, is_win := get_parent(d, target, composed, to_window_ok, target)
 			for parent != base.NIL_HANDLE || is_win {
+				parent_root := base.NIL_HANDLE
+				if shadows && !is_win {
+					if pn := get(d, prev); pn != nil && pn.parent == parent { parent_root = prev_root } else { parent_root = tree_root(d, parent) }
+				}
 				if slottable {
 					slottable = false
-					if closed_root(d, tree_root(d, parent)) { slot_in_closed = true }
+					if closed_root(d, shadows ? parent_root : tree_root(d, parent)) { slot_in_closed = true }
 				}
 				if is_win {
 					rel = original_related
@@ -283,26 +399,37 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 					append(&path, Path_Entry{window = true, related = rel, slot_in_closed_tree = slot_in_closed})
 					break
 				}
-				rel = retarget_rel(d, original_related, parent)
-				if shadow_including_ancestor(d, tree_root(d, cur_target), parent) {
-					append(&path, Path_Entry{node = parent, related = rel, root_of_closed_tree = closed_root(d, parent), slot_in_closed_tree = slot_in_closed})
+				in_cur_tree := true   // cur_target's root is a shadow-including inclusive ancestor of parent
+				if shadows {
+					rel = retarget_rel(d, original_related, parent)
+					// cur_root is a root: it is an ancestor of `parent` exactly when it is one of parent_root (the only
+					// parentless node between them)
+					if anc_cur != cur_root || anc_parent != parent_root {
+						anc_cur, anc_parent = cur_root, parent_root
+						anc = shadow_including_ancestor(d, cur_root, parent_root)
+					}
+					in_cur_tree = anc
+				}
+				in_shadow := shadows && is_shadow_root(d, parent_root)
+				if in_cur_tree {
+					append(&path, Path_Entry{node = parent, related = rel, root_of_closed_tree = closed_root(d, parent), slot_in_closed_tree = slot_in_closed, in_shadow_tree = in_shadow})
 				} else if u64(parent) == rel {
 					break
 				} else {
 					cur_target = parent
-					append(&path, Path_Entry{node = parent, shadow_target = parent, related = rel, root_of_closed_tree = closed_root(d, parent), slot_in_closed_tree = slot_in_closed})
+					cur_root = parent_root
+					append(&path, Path_Entry{node = parent, shadow_target = parent, related = rel, root_of_closed_tree = closed_root(d, parent), slot_in_closed_tree = slot_in_closed, in_shadow_tree = in_shadow})
 				}
 				slot_in_closed = false
+				prev, prev_root = parent, parent_root
 				parent, is_win = get_parent(d, parent, composed, to_window_ok, target)
 			}
 		}
 	}
 	// DOM "clear targets", decided on the path as built (listeners moving nodes do not change it): the last struct's
 	// shadow-adjusted target or relatedTarget is in a shadow tree
+	// (each entry's in_shadow_tree was set as the path was built)
 	clear_targets := false
-	if has_shadow_trees(d) {
-		for &s in path { if !s.window { s.in_shadow_tree = is_shadow_root(d, tree_root(d, s.node)) } }
-	}
 	for i := len(path) - 1; i >= 0; i -= 1 {
 		s := path[i]
 		if s.shadow_target == base.NIL_HANDLE { continue }
@@ -325,53 +452,47 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 	run_node :: proc(d_in: ^Document, dp: ^Dispatcher, eh: base.Handle, phase: Phase, capture: bool) -> bool {
 		e := base.pool_get(&dp.events, eh)
 		if e == nil { return true }
-		d, runner, node := holder(d_in, dp, e)
+		d, _, node := holder(d_in, dp, e)
 		n := d != nil ? get(d, node) : nil
 		if n == nil { return true }
 		e.current_target = node
 		e.phase = phase
-		snapshot: [dynamic]Listener
-		defer delete(snapshot)
-		listening :: proc(n: ^Node, type: string, capture: bool, snapshot: ^[dynamic]Listener) {
-			for l in n.listeners {
-				if l.removed || l.type != type || l.capture != capture { continue }
-				snap := l
-				snap.type = ""   // the node's string: a listener may remove (and free) it; the event has the type
-				append(snapshot, snap)
-			}
-		}
-		listening(n, e.type, capture, &snapshot)
+		snapshot := make([dynamic]Listener, context.temp_allocator)
+		listeners_snapshot(n.listeners[:], e.atom, e.type, capture, false, &snapshot)
 		// DOM "invoke": a trusted event nobody listens to under its name goes to those of its legacy name, under that name
-		name := e.type
-		defer if cur := base.pool_get(&dp.events, eh); cur != nil { cur.type = name }
-		if legacy := legacy_event_type(e.type); legacy != "" && len(snapshot) == 0 && !e.untrusted {
-			listening(n, legacy, capture, &snapshot)
-			if len(snapshot) > 0 { e.type = legacy }
+		name, atom := e.type, e.atom
+		defer if cur := base.pool_get(&dp.events, eh); cur != nil { cur.type, cur.atom = name, atom }
+		if legacy := EVENT_TYPES[e.atom].legacy; legacy != .None && len(snapshot) == 0 && !e.untrusted {
+			listeners_snapshot(n.listeners[:], legacy, EVENT_TYPES[legacy].name, capture, false, &snapshot)
+			if len(snapshot) > 0 { e.type, e.atom = EVENT_TYPES[legacy].name, legacy }
 		}
-		for l in snapshot {
-			// (a listener may have moved the node to another document: its listeners went with it, owners in that document's terms)
-			d, runner, node = holder(d_in, dp, e)
-			n = d != nil ? get(d, node) : nil
-			if n == nil { return true }
-			run := l
-			still := false
-			for cur in n.listeners {
-				if cur.id != l.id || cur.removed { continue }
-				still = true
-				run.owner = cur.owner
-				break
-			}
-			if !still { continue }
-			e.current_target = node
-			if l.once { remove_listener(d, node, l.id) }
-			ok := runner.invoke(runner.user, run, eh)
-			if !ok { return false }
-			e = base.pool_get(&dp.events, eh)
-			if e == nil || e.stop_immediate { return true }
-		}
-		d, _, node = holder(d_in, dp, e)
-		if d != nil { if n = get(d, node); n != nil { compact_listeners(n) } }
-		return true
+		// the node is looked up again before each listener: one may have moved it to another document (its listeners
+		// went with it, owners in that document's terms) or destroyed it
+		Node_Run :: struct { d_in: ^Document, dp: ^Dispatcher, eh: base.Handle, runner: ^Dispatcher, node: base.Handle }
+		r := Node_Run{d_in = d_in, dp = dp, eh = eh}
+		return listeners_run(Listener_Target{
+			user = &r,
+			list = proc(user: rawptr) -> (^[dynamic]Listener, ^Document) {
+				r := (^Node_Run)(user)
+				e := base.pool_get(&r.dp.events, r.eh)
+				if e == nil { return nil, nil }
+				d, runner, node := holder(r.d_in, r.dp, e)
+				n := d != nil ? get(d, node) : nil
+				if n == nil { return nil, nil }
+				r.runner, r.node = runner, node
+				return &n.listeners, d
+			},
+			run = proc(user: rawptr, l: Listener) -> bool {
+				r := (^Node_Run)(user)
+				if e := base.pool_get(&r.dp.events, r.eh); e != nil { e.current_target = r.node }
+				return r.runner.invoke(r.runner.user, l, r.eh)
+			},
+			stopped = proc(user: rawptr) -> bool {
+				r := (^Node_Run)(user)
+				e := base.pool_get(&r.dp.events, r.eh)
+				return e == nil || e.stop_immediate
+			},
+		}, snapshot[:])
 	}
 
 	// one struct of the path: target and relatedTarget as seen from it, then its listeners of one pass

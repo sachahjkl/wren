@@ -8,8 +8,8 @@ import "wb:dom"
 
 // A family of up to this many siblings is counted directly (sibling_info); a larger one is indexed once per parent.
 SIBLINGS_COUNTED_MAX :: 32
-// A hard stop of a selector's match, independent of any configured limit.
-MATCH_MAX_DEPTH :: 4096
+// The default of style.selector_match.max_steps, for a context made without the engine's settings (match_ctx_init).
+MATCH_MAX_STEPS_DEFAULT :: 1 << 20
 
 // Selector matching (Selectors Level 4) against the DOM, right to left. The input state (hover, focus...) comes from the
 // shell; everything else is read from the tree.
@@ -58,7 +58,14 @@ Match_Ctx :: struct {
 	scope:  base.Handle,                 // :scope and a top-level `&` (the root element when nil)
 	sibs:   map[base.Handle]Sib_Info,    // filled one parent at a time, cleared with the style pass
 	filled: map[base.Handle]bool,
-	max_depth: int,
+	// steps of one chain match (match_chain calls); past max_steps the selector does not match (style.selector_match.max_steps):
+	// the three-state result keeps a chain at depth x compounds, this stops what nested :is() and :has() could still multiply
+	max_steps: int,
+	steps:     int,
+	chain_nest: int,   // chains being matched, the outermost first (chain_matches): the budget starts again with each outermost one
+	// the chain being matched started inside the :has() anchor's subtree (has_in_subtree): a relative selector led by a
+	// descendant combinator relates to the anchor without a walk up to it
+	anchor_inside: bool,
 	ignore_state: bool,                  // state pseudo-classes count as matching: "could this element match?"
 	// matching the rules of a shadow tree: its host, which they see featureless (only :host, :host(), :host-context()
 	// match it), reached as the parent of the tree's top elements (CSS Scoping §3.2); NIL for the document's rules
@@ -82,6 +89,7 @@ Has_Key :: struct { anchor: base.Handle, list: rawptr }
 
 match_ctx_init :: proc(m: ^Match_Ctx, d: ^dom.Document, state: State, allocator := context.allocator) {
 	m.doc, m.state = d, state
+	m.max_steps = MATCH_MAX_STEPS_DEFAULT
 	m.sibs = make(map[base.Handle]Sib_Info, allocator)
 	m.filled = make(map[base.Handle]bool, allocator)
 	m.has_memo = make(map[Has_Key]bool, allocator)
@@ -138,14 +146,21 @@ has_class :: proc(n: ^dom.Node, name: string) -> bool {
 @(private)
 class_listed :: proc(v, name: string) -> bool {
 	rest := v
-	for len(rest) > 0 {
-		for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
-		end := 0
-		for end < len(rest) && !is_space(rest[end]) { end += 1 }
-		if end > 0 && rest[:end] == name { return true }
-		rest = rest[end:]
-	}
+	for c in token_next(&rest) { if c == name { return true } }
 	return false
+}
+
+// The next token of a list separated by ASCII whitespace (a class attribute, the value [x~=y] reads), `rest` moved past it;
+// false at the end. The one loop every reader of such a list uses: `for c in token_next(&rest) { ... }`.
+@(private)
+token_next :: #force_inline proc(rest: ^string) -> (tok: string, ok: bool) {
+	s := rest^
+	i := 0
+	for i < len(s) && is_space(s[i]) { i += 1 }
+	j := i
+	for j < len(s) && !is_space(s[j]) { j += 1 }
+	rest^ = s[j:]
+	return s[i:j], j > i
 }
 
 @(private)
@@ -172,13 +187,7 @@ attr_value_matches :: proc(has: bool, v: string, s: css.Simple) -> bool {
 	case .Includes:
 		if want == "" || strings.contains_any(want, " \t\n\r\f") { return false }
 		rest := v
-		for len(rest) > 0 {
-			for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
-			end := 0
-			for end < len(rest) && !is_space(rest[end]) { end += 1 }
-			if end > 0 && value_equals(rest[:end], want, s.ci) { return true }
-			rest = rest[end:]
-		}
+		for tok in token_next(&rest) { if value_equals(tok, want, s.ci) { return true } }
 		return false
 	case .Dash_Match: return value_equals(v, want, s.ci) || (len(v) > len(want) && v[len(want)] == '-' && value_equals(v[:len(want)], want, s.ci))
 	case .Prefix: return want != "" && len(v) >= len(want) && value_equals(v[:len(want)], want, s.ci)
@@ -230,31 +239,28 @@ fill_siblings :: proc(m: ^Match_Ctx, parent: base.Handle) {
 @(private)
 sibling_info :: proc(m: ^Match_Ctx, h: base.Handle) -> Sib_Info {
 	n := node_of(m, h)
-	if !m.filled[n.parent] {
-		info := Sib_Info{index = 1, type_index = 1, index_last = 1, type_index_last = 1}
-		steps := 0
-		for cur := n.prev; cur != base.NIL_HANDLE && steps < SIBLINGS_COUNTED_MAX; steps += 1 {
+	// counted first, before any map is read: a small family is the common case, and the counts equal the index's
+	info := Sib_Info{index = 1, type_index = 1, index_last = 1, type_index_last = 1}
+	cur := n.prev
+	for steps := 0; cur != base.NIL_HANDLE && steps < SIBLINGS_COUNTED_MAX; steps += 1 {
+		s := node_of(m, cur)
+		if s.kind == .Element {
+			info.index += 1
+			if s.name == n.name { info.type_index += 1 }
+		}
+		cur = s.prev
+	}
+	if cur == base.NIL_HANDLE {
+		cur = n.next
+		for steps := 0; cur != base.NIL_HANDLE && steps < SIBLINGS_COUNTED_MAX; steps += 1 {
 			s := node_of(m, cur)
 			if s.kind == .Element {
-				info.index += 1
-				if s.name == n.name { info.type_index += 1 }
+				info.index_last += 1
+				if s.name == n.name { info.type_index_last += 1 }
 			}
-			cur = s.prev
-			if cur == base.NIL_HANDLE { steps = -1; break }
+			cur = s.next
 		}
-		if steps < 0 || n.prev == base.NIL_HANDLE {
-			steps = 0
-			for cur := n.next; cur != base.NIL_HANDLE && steps < SIBLINGS_COUNTED_MAX; steps += 1 {
-				s := node_of(m, cur)
-				if s.kind == .Element {
-					info.index_last += 1
-					if s.name == n.name { info.type_index_last += 1 }
-				}
-				cur = s.next
-				if cur == base.NIL_HANDLE { steps = -1; break }
-			}
-			if steps < 0 || n.next == base.NIL_HANDLE { return info }
-		}
+		if cur == base.NIL_HANDLE { return info }
 	}
 	fill_siblings(m, n.parent)
 	return m.sibs[h]
@@ -384,38 +390,78 @@ matches_list :: proc(m: ^Match_Ctx, el: base.Handle, list: css.Selector_List) ->
 }
 
 matches_complex :: proc(m: ^Match_Ctx, el: base.Handle, c: ^css.Complex) -> bool {
-	return match_chain(m, el, c, len(c.compounds) - 1, base.NIL_HANDLE, 0)
+	return chain_matches(m, el, c, base.NIL_HANDLE, false)
 }
 
+// What a part of a chain answers when it does not match: what else is still worth trying (WebKit's SelectorChecker). Without it,
+// `.a .b .c .d` on an element under no .a tried every pair of ancestors: the depth to the power of the compounds.
 @(private)
-match_chain :: proc(m: ^Match_Ctx, el: base.Handle, c: ^css.Complex, idx: int, anchor: base.Handle, depth: int) -> bool {
-	if depth > MATCH_MAX_DEPTH { return false }
-	if !matches_compound(m, el, c.compounds[idx]) { return false }
+Chain_Result :: enum u8 {
+	Matches,
+	Fails_Locally,        // this element fails: another (an earlier sibling, an ancestor further up) may match
+	Fails_All_Siblings,   // no earlier sibling of it can match either (they share its parent): an ancestor further up may
+	Fails_Completely,     // nothing further up the tree can match: every search under way stops
+}
+
+// A chain matched from its subject `el` (`anchor`: the :has() element of a relative selector; `inside`: `el` is under it). The
+// chains nested in it (:is(), :not(), :has()) share its step budget: the whole match is bounded.
+@(private)
+chain_matches :: proc(m: ^Match_Ctx, el: base.Handle, c: ^css.Complex, anchor: base.Handle, inside: bool) -> bool {
+	if len(c.compounds) == 0 { return false }
+	if m.chain_nest == 0 { m.steps = 0 }
+	m.chain_nest += 1
+	saved := m.anchor_inside
+	m.anchor_inside = inside
+	r := match_chain(m, el, c, len(c.compounds) - 1, anchor)
+	m.anchor_inside = saved
+	m.chain_nest -= 1
+	return r == .Matches
+}
+
+// Whether the step budget of the chain being matched ran out (its answers since then are "no match").
+@(private)
+match_budget_spent :: #force_inline proc(m: ^Match_Ctx) -> bool { return m.max_steps > 0 && m.steps > m.max_steps }
+
+@(private)
+match_chain :: proc(m: ^Match_Ctx, el: base.Handle, c: ^css.Complex, idx: int, anchor: base.Handle) -> Chain_Result {
+	m.steps += 1
+	if match_budget_spent(m) { return .Fails_Completely }
+	if !matches_compound(m, el, c.compounds[idx]) { return .Fails_Locally }
 	if idx == 0 {
-		if !c.relative { return true }
-		return relates_to_anchor(m, el, c.leading, anchor)
+		if !c.relative || relates_to_anchor(m, el, c.leading, anchor) { return .Matches }
+		return .Fails_Locally
 	}
+	// a relative selector led by a child or descendant combinator lies wholly under its anchor: none of its compounds
+	// matches the anchor or what is above it
+	under_anchor := c.relative && (c.leading == .Descendant || c.leading == .Child)
 	switch c.combinators[idx - 1] {
 	case .Child:
 		p := parent_for_match(m, el)
-		return p != base.NIL_HANDLE && match_chain(m, p, c, idx - 1, anchor, depth + 1)
+		if p == base.NIL_HANDLE || (under_anchor && p == anchor) { return .Fails_Completely }
+		r := match_chain(m, p, c, idx - 1, anchor)
+		if r == .Matches || r == .Fails_Completely { return r }
+		return .Fails_All_Siblings   // (the siblings of `el` have the same parent)
 	case .Descendant:
 		for p := parent_for_match(m, el); p != base.NIL_HANDLE; p = parent_for_match(m, p) {
-			if match_chain(m, p, c, idx - 1, anchor, depth + 1) { return true }
+			if under_anchor && p == anchor { break }
+			r := match_chain(m, p, c, idx - 1, anchor)
+			if r == .Matches || r == .Fails_Completely { return r }
 		}
-		return false
+		return .Fails_Completely   // every ancestor was tried: one further up of a caller is one of them
 	case .Next_Sibling:
-		if el == m.featureless { return false }   // the host has no siblings in the shadow tree
+		if el == m.featureless { return .Fails_All_Siblings }   // the host has no siblings in the shadow tree
 		p := prev_element(m, el)
-		return p != base.NIL_HANDLE && match_chain(m, p, c, idx - 1, anchor, depth + 1)
+		if p == base.NIL_HANDLE { return .Fails_All_Siblings }
+		return match_chain(m, p, c, idx - 1, anchor)
 	case .Subsequent_Sibling:
-		if el == m.featureless { return false }
+		if el == m.featureless { return .Fails_All_Siblings }
 		for p := prev_element(m, el); p != base.NIL_HANDLE; p = prev_element(m, p) {
-			if match_chain(m, p, c, idx - 1, anchor, depth + 1) { return true }
+			r := match_chain(m, p, c, idx - 1, anchor)
+			if r != .Fails_Locally { return r }
 		}
-		return false
+		return .Fails_All_Siblings
 	}
-	return false
+	return .Fails_Completely
 }
 
 // How the leftmost compound of a relative selector must stand to the :has() anchor.
@@ -424,6 +470,8 @@ relates_to_anchor :: proc(m: ^Match_Ctx, el: base.Handle, comb: css.Combinator, 
 	switch comb {
 	case .Child: return parent_element(m, el) == anchor
 	case .Descendant:
+		// a chain begun under the anchor never climbs to it (match_chain stops there): what it reached is under it
+		if m.anchor_inside { return true }
 		for p := parent_element(m, el); p != base.NIL_HANDLE; p = parent_element(m, p) { if p == anchor { return true } }
 		return false
 	case .Next_Sibling: return prev_element(m, el) == anchor
@@ -721,7 +769,7 @@ matches_has :: proc(m: ^Match_Ctx, anchor: base.Handle, list: css.Selector_List)
 		if answer, known := m.has_known(m.has_known_user, anchor, list); known { return answer }
 	}
 	r := matches_has_scan(m, anchor, list)
-	if memo { m.has_memo[key] = r }
+	if memo && !match_budget_spent(m) { m.has_memo[key] = r }   // (an answer cut short by the budget is not kept for other elements)
 	return r
 }
 
@@ -756,7 +804,7 @@ matches_has_scan :: proc(m: ^Match_Ctx, anchor: base.Handle, list: css.Selector_
 			for sib != base.NIL_HANDLE {
 				if is_element(m, sib) {
 					m.has_steps += 1
-					if match_chain(m, sib, &c, len(c.compounds) - 1, anchor, 0) { return true }
+					if chain_matches(m, sib, &c, anchor, false) { return true }
 					if down && has_in_subtree(m, anchor, sib, &c) { return true }
 					if !across { break }
 				}
@@ -780,7 +828,8 @@ has_in_subtree :: proc(m: ^Match_Ctx, anchor, root: base.Handle, c: ^css.Complex
 			ch := node_of(m, child)
 			if ch.kind == .Element {
 				m.has_steps += 1
-				if match_chain(m, child, c, len(c.compounds) - 1, anchor, 0) { return true }
+				if chain_matches(m, child, c, anchor, root == anchor) { return true }   // (under the anchor, or under a sibling of it)
+				if match_budget_spent(m) { return false }
 				append(&stack, child)
 			}
 			child = ch.prev

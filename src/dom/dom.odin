@@ -40,16 +40,18 @@ is_xml_element :: #force_inline proc(n: ^Node) -> bool { return n != nil && n.ki
 // (attr_ns.odin). What the browser itself reads of an attribute (style, src, on*, id, slot...) is the one of no
 // namespace: get_attribute.
 Attr :: struct {
-	name:  string,
+	name:  string,   // the program's string when name_static (names.odin), else owned
 	value: string,
 	ns:    Attr_Ns,
+	name_static: bool,
 }
 
 Listener_Id :: distinct u32
 
 Listener :: struct {
 	id:       Listener_Id,
-	type:     string,
+	type:     string,   // the table's string when `atom` names it, else owned (event_types.odin)
+	atom:     Event_Atom,
 	callback: u32,    // function-table index in the owning instance
 	user:     u32,    // opaque value handed back to the callback
 	owner:    u32,    // which instance of the page registered it (a page can run several modules)
@@ -98,6 +100,14 @@ Document :: struct {
 	root:       base.Handle,       // the Document node
 	next_listener: Listener_Id,
 	listener_changes: u64,         // bumped when a listener is added or removed (what a click acts on: accessibility)
+	// the live listeners of the document's nodes by type (events.odin `listens`): known types by atom, others by name
+	// (keys owned)
+	listened_atoms:  [Event_Atom]u32,
+	listened_others: map[string]int,
+	// what scripts may build in this document (0: no bound; the embedder sets them), and the heap bytes of its nodes'
+	// strings (text, names, attributes) they are checked against: quota_check
+	limits:     Limits,
+	bytes:      int,
 	mutations:  u64,               // monotonic: renderers compare it to know when to re-layout
 	journal:    Journal,           // what the mutations were, when some reader asked (journal.odin)
 	implicit_anchors: map[base.Handle]base.Handle,   // showing popover -> its invoker: its implicit anchor (CSS Anchor Positioning; page/popover.odin)
@@ -110,6 +120,9 @@ Document :: struct {
 	// tree_version moves on every insertion or removal of a node, attr_version on every attribute change
 	tree_version: u64,
 	attr_version: u64,
+	// the same for one parent's children, and for the attributes of one name, kept while someone watches (watch.odin)
+	child_versions: map[base.Handle]Version_Watch,
+	attr_versions:  map[string]Version_Watch,
 	ids:        Id_Index,          // elements by id, built on first use (ids.odin)
 	ns_extra:   map[base.Handle]Ns_Extra,   // namespace URI of Other elements, prefixes (createElementNS)
 	attr_namespaces: [dynamic]string,       // the namespace URIs of attributes past the fixed ones, each once (attr_ns.odin)
@@ -190,6 +203,38 @@ Ns_Extra :: struct {
 	prefix: string,   // owned; "" = none
 }
 
+// Bounds on what scripts build in a document (architecture rule 5: a page that loops creating nodes, attributes, text or
+// listeners hits them and gets QuotaExceededError, not the process's memory). 0: no bound. The page sets them from
+// its preferences (javascript.dom.max_nodes, max_bytes, max_listeners_per_target).
+Limits :: struct {
+	max_nodes:     int,   // nodes of the document (in its tree or not)
+	max_bytes:     int,   // Document.bytes
+	max_listeners: int,   // listeners of one node
+}
+
+limits_set :: proc(d: ^Document, l: Limits) { d.limits = l }
+
+// Whether `nodes` more nodes and `bytes` more bytes of strings fit in the document's limits: Quota when they do not.
+quota_check :: proc(d: ^Document, nodes, bytes: int) -> Error {
+	if d.limits.max_nodes > 0 && nodes > 0 && d.nodes.count + nodes > d.limits.max_nodes { return .Quota }
+	if d.limits.max_bytes > 0 && bytes > 0 && d.bytes + bytes > d.limits.max_bytes { return .Quota }
+	return .None
+}
+
+// The heap bytes a node's strings take (what Document.bytes counts of it).
+@(private)
+node_bytes :: proc(n: ^Node) -> int {
+	b := len(n.text)
+	if !n.name_static { b += len(n.name) }
+	for a in n.attrs { b += attr_bytes(a) }
+	return b
+}
+
+// Moves the document's byte account. It never goes below 0: a name changed by set_name (which has no document) is
+// not counted, and its node's free may take off more than was put on.
+@(private)
+bytes_add :: #force_inline proc(d: ^Document, delta: int) { d.bytes = max(d.bytes + delta, 0) }
+
 // The document's compatibility mode (DOM §4.5): what the rendering's quirks follow.
 Document_Mode :: enum u8 { No_Quirks, Quirks, Limited_Quirks }
 
@@ -201,6 +246,7 @@ Error :: enum i32 {
 	Invalid_Argument  = -4,
 	Attached          = -5,   // release of a node that is still in the tree
 	Not_Supported     = -6,   // attachShadow on an element that cannot be a host, or is one already
+	Quota             = -13,  // past the document's Limits (the value of the API's Quota: QuotaExceededError)
 }
 
 @(private)
@@ -254,8 +300,11 @@ scope_closed :: proc(data: rawptr) { free_document((^Document)(data)) }
 @(private)
 free_document :: proc(d: ^Document) {
 	it: u32
-	for _, n in base.pool_next(&d.nodes, &it) { free_node_data(n) }
+	for _, n in base.pool_next(&d.nodes, &it) { free_node_data(d, n) }
 	base.pool_destroy(&d.nodes)
+	for k in d.listened_others { delete(k) }
+	delete(d.listened_others)
+	versions_free(d)
 	journal_free(d)
 	delete(d.implicit_anchors)
 	hooks_free(d)
@@ -273,13 +322,13 @@ free_document :: proc(d: ^Document) {
 }
 
 @(private)
-free_node_data :: proc(n: ^Node) {
+free_node_data :: proc(d: ^Document, n: ^Node) {
+	bytes_add(d, -node_bytes(n))
 	if !n.name_static { delete(n.name) }
 	delete(n.text)
-	for a in n.attrs { delete(a.name); delete(a.value) }
+	for a in n.attrs { attr_free(a) }
 	delete(n.attrs)
-	for l in n.listeners { delete(l.type) }
-	delete(n.listeners)
+	listeners_free(&n.listeners, d)
 }
 
 get :: proc(d: ^Document, h: base.Handle) -> ^Node { return base.pool_get(&d.nodes, h) }
@@ -304,16 +353,21 @@ create_element :: proc(d: ^Document, tag: string) -> base.Handle {
 	name := make([]u8, len(tag))
 	for i in 0 ..< len(tag) { name[i] = base.ascii_lower_byte(tag[i]) }
 	h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Element, name = string(name)})
+	bytes_add(d, len(name))
 	return h
 }
 
+// (the create_* procedures always succeed: the parser and the browser build with them. What a script asks for is
+// checked first with quota_check.)
 create_text :: proc(d: ^Document, text: string) -> base.Handle {
 	h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Text, text = heap_str(text)})
+	bytes_add(d, len(text))
 	return h
 }
 
 create_comment :: proc(d: ^Document, text: string) -> base.Handle {
 	h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Comment, text = heap_str(text)})
+	bytes_add(d, len(text))
 	return h
 }
 
@@ -331,8 +385,9 @@ create_element_ns :: proc(d: ^Document, tag: string, ns: Namespace, uri := "", p
 
 create_doctype :: proc(d: ^Document, name, public_id, system_id: string) -> base.Handle {
 	h, n := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Doctype, name = heap_str(name)})
-	if public_id != "" { append(&n.attrs, Attr{name = heap_str("publicId"), value = heap_str(public_id)}) }
-	if system_id != "" { append(&n.attrs, Attr{name = heap_str("systemId"), value = heap_str(system_id)}) }
+	if public_id != "" { append(&n.attrs, attr_make("publicId", public_id, ATTR_NS_NONE)) }
+	if system_id != "" { append(&n.attrs, attr_make("systemId", system_id, ATTR_NS_NONE)) }
+	bytes_add(d, node_bytes(n))
 	return h
 }
 
@@ -378,9 +433,13 @@ detach :: proc(d: ^Document, h: base.Handle) {
 	n.parent, n.prev, n.next = base.NIL_HANDLE, base.NIL_HANDLE, base.NIL_HANDLE
 	touch(d)
 	d.tree_version += 1
+	child_changed(d, old_parent)
 	journal_record(d, .Remove, h, old_parent, prev = old_prev, next = old_next, watch = watch)
 	if len(d.shadow_roots) > 0 { shadow_removed(d, h, old_parent) }
-	if d.hooks.removed != nil { d.hooks.removed(d.hooks.user, d, h, old_parent) }
+	if d.hooks.removed != nil {
+		if d.hooks.muted > 0 { d.hooks.removed_pending = true }
+		d.hooks.removed(d.hooks.user, d, h, old_parent)
+	}
 }
 
 // DOM "adopt": `h` and its shadow-including descendants get `doc` as node document (a document of its own, NIL: the
@@ -411,6 +470,9 @@ insert_before :: proc(d: ^Document, parent, child, ref: base.Handle) -> Error {
 		if r.parent != parent { return .Not_Found }
 		if ref == child { return .None }   // already in place
 	}
+	// a document past its node limit takes no new node into a tree (moving one is still allowed): what a script built
+	// past it stays detached, and goes when its wrappers do
+	if c.parent == base.NIL_HANDLE && d.limits.max_nodes > 0 && d.nodes.count > d.limits.max_nodes { return .Quota }
 	detach(d, child)
 	c = get(d, child)
 	p = get(d, parent)
@@ -430,6 +492,7 @@ insert_before :: proc(d: ^Document, parent, child, ref: base.Handle) -> Error {
 	if to := p.as_document ? parent : p.doc; c.doc != to { set_node_document(d, child, to) }   // DOM "adopt"
 	touch(d)
 	d.tree_version += 1
+	child_changed(d, parent)
 	journal_record(d, .Insert, child, parent, prev = c.prev, next = c.next)
 	if len(d.shadow_roots) > 0 { shadow_inserted(d, child, parent) }
 	notify_inserted(d, child)   // last: it may run scripts (hooks.odin)
@@ -503,7 +566,7 @@ destroy_node :: proc(d: ^Document, h: base.Handle, n: ^Node, more: ^[dynamic]bas
 		if n.shadow != base.NIL_HANDLE { more_push(more, n.shadow); n.shadow = base.NIL_HANDLE }
 	}
 	if len(d.shadow_roots) > 0 || len(d.assigned) > 0 || len(d.manual_slot) > 0 || len(d.custom_states) > 0 || len(d.ce_custom) > 0 { shadow_forget_node(d, h, n) }
-	free_node_data(n)
+	free_node_data(d, n)
 	base.pool_remove_tagged(&d.nodes, h)
 }
 
@@ -526,9 +589,14 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string, exact :
 	lname := name
 	if !exact && lowers_attribute_names(n) { lname = base.ascii_lower(name) }
 	for a, i in n.attrs {
-		if a.name == lname { attribute_write(d, h, i, a.ns == ATTR_NS_NONE ? lname : attr_local(a), value); return .None }
+		if a.name == lname {
+			if err := quota_check(d, 0, len(value) - len(a.value)); err != .None { return err }
+			attribute_write(d, h, i, a.ns == ATTR_NS_NONE ? lname : attr_local(a), value)
+			return .None
+		}
 	}
-	attribute_add(d, h, Attr{heap_str(lname), heap_str(value), ATTR_NS_NONE}, lname)
+	if err := quota_check(d, 0, len(lname) + len(value)); err != .None { return err }
+	attribute_add(d, h, attr_make(lname, value, ATTR_NS_NONE), lname)
 	return .None
 }
 
@@ -540,11 +608,18 @@ set_attribute_ns :: proc(d: ^Document, h: base.Handle, ns: Attr_Ns, qualified, v
 	if n.kind != .Element || qualified == "" { return .Invalid_Argument }
 	local := attr_local_of(ns, qualified)
 	if i := attribute_index_ns(n, ns, local); i >= 0 {
-		if a := &n.attrs[i]; replace_prefix && a.name != qualified { delete(a.name); a.name = heap_str(qualified) }
+		a := &n.attrs[i]
+		if err := quota_check(d, 0, len(value) - len(a.value)); err != .None { return err }
+		if replace_prefix && a.name != qualified {
+			before := attr_bytes(a^)
+			attr_rename(a, qualified)
+			bytes_add(d, attr_bytes(a^) - before)
+		}
 		attribute_write(d, h, i, local, value)
 		return .None
 	}
-	attribute_add(d, h, Attr{heap_str(qualified), heap_str(value), ns}, local)
+	if err := quota_check(d, 0, len(qualified) + len(value)); err != .None { return err }
+	attribute_add(d, h, attr_make(qualified, value, ns), local)
 	return .None
 }
 
@@ -564,8 +639,10 @@ attribute_write :: proc(d: ^Document, h: base.Handle, i: int, name, value: strin
 		return
 	}
 	a.value = heap_str(value)
+	bytes_add(d, len(value) - len(old))
 	touch(d)
 	d.attr_version += 1
+	attr_name_changed(d, name)
 	if plain && name == "id" { ids_changed(d, h, old, true, value, true) }
 	journal_record(d, .Attribute, h, base.NIL_HANDLE, name, old, true, ns = a.ns)
 	delete(old)
@@ -578,8 +655,10 @@ attribute_write :: proc(d: ^Document, h: base.Handle, i: int, name, value: strin
 @(private = "file")
 attribute_add :: proc(d: ^Document, h: base.Handle, a: Attr, name: string) {
 	append(&get(d, h).attrs, a)
+	bytes_add(d, attr_bytes(a))
 	touch(d)
 	d.attr_version += 1
+	attr_name_changed(d, name)
 	plain := a.ns == ATTR_NS_NONE
 	if plain && name == "id" { ids_changed(d, h, "", false, a.value, true) }
 	if plain && name == TIMED_ATTRIBUTE { timed_add(d, h) }
@@ -684,10 +763,12 @@ attribute_remove :: proc(d: ^Document, h: base.Handle, i: int, name: string) {
 	ordered_remove(&n.attrs, i)
 	touch(d)
 	d.attr_version += 1
+	attr_name_changed(d, name)
 	plain := a.ns == ATTR_NS_NONE
 	if plain && name == "id" { ids_changed(d, h, a.value, true, "", false) }
 	journal_record(d, .Attribute, h, base.NIL_HANDLE, name, a.value, true, ns = a.ns)
-	delete(a.name); delete(a.value)
+	bytes_add(d, -attr_bytes(a))
+	attr_free(a)
 	if !plain { return }
 	if len(d.shadow_roots) > 0 { shadow_attribute(d, h, name) }
 	notify_attribute(d, h, name, .Removed)
@@ -699,8 +780,11 @@ set_text_content :: proc(d: ^Document, h: base.Handle, text: string) -> Error {
 	if n == nil { return .Invalid_Handle }
 	switch n.kind {
 	case .Text, .Comment:
-		set_data(d, h, text)
+		return set_data(d, h, text)
 	case .Element, .Document, .Fragment:
+		// (checked before the children go: a refused write changes nothing; the node it needs is counted, not the ones
+		// it frees)
+		if text != "" { if err := quota_check(d, 1, len(text)); err != .None { return err } }
 		batch := batch_begin(d)
 		defer batch_end(d, batch)
 		for n.first_child != base.NIL_HANDLE {
@@ -725,8 +809,10 @@ set_data :: proc(d: ^Document, h: base.Handle, data: string) -> Error {
 	n := get(d, h)
 	if n == nil { return .Invalid_Handle }
 	if n.kind != .Text && n.kind != .Comment { return .Invalid_Argument }
+	if err := quota_check(d, 0, len(data) - len(n.text)); err != .None { return err }
 	old := n.text
 	n.text = heap_str(data)
+	bytes_add(d, len(data) - len(old))
 	touch(d)
 	journal_record(d, .Text, h, n.parent, old = old, had_old = true)
 	delete(old)
@@ -753,16 +839,9 @@ text_content :: proc(d: ^Document, h: base.Handle, allocator := context.temp_all
 	if n == nil || n.kind == .Doctype { return "" }
 	if n.kind == .Text || n.kind == .Comment { return strings.clone(n.text, allocator) }
 	sb := strings.builder_make(allocator)
-	stack: [dynamic]base.Handle
-	defer delete(stack)
-	append(&stack, h)
-	for len(stack) > 0 {
-		cur := pop(&stack)
-		c := get(d, cur)
-		if c == nil { continue }
-		if c.kind == .Text { strings.write_string(&sb, c.text) }
-		// push children in reverse so the first child is popped first
-		for ch := c.last_child; ch != base.NIL_HANDLE; ch = get(d, ch).prev { append(&stack, ch) }
+	// the tree's own links give the order: no stack to allocate, whatever the depth or width
+	for cur := h; cur != base.NIL_HANDLE; cur = next_in_tree(d, cur, h) {
+		if c := get(d, cur); c != nil && c.kind == .Text { strings.write_string(&sb, c.text) }
 	}
 	return strings.to_string(sb)
 }
@@ -771,16 +850,9 @@ text_content :: proc(d: ^Document, h: base.Handle, allocator := context.temp_all
 find_by_id :: proc(d: ^Document, id: string) -> base.Handle { return ids_lookup(d, id) }
 
 find_first_by_tag :: proc(d: ^Document, tag: string) -> base.Handle {
-	ltag := base.ascii_lower(tag)
-	stack: [dynamic]base.Handle
-	defer delete(stack)
-	append(&stack, d.root)
-	for len(stack) > 0 {
-		cur := pop(&stack)
-		n := get(d, cur)
-		if n == nil { continue }
-		if n.kind == .Element && n.name == ltag { return cur }
-		for ch := n.last_child; ch != base.NIL_HANDLE; ch = get(d, ch).prev { append(&stack, ch) }
+	// compared folding the query's ASCII case (names are stored in lower case): nothing allocated, no stack
+	for cur := d.root; cur != base.NIL_HANDLE; cur = next_in_tree(d, cur, d.root) {
+		if n := get(d, cur); n != nil && n.kind == .Element && base.ascii_equal_fold(n.name, tag) { return cur }
 	}
 	return base.NIL_HANDLE
 }

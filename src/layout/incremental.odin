@@ -58,6 +58,8 @@ Box_Info :: struct {
 	natural:     [2]f32,           // replaced: natural size used (device px)
 	natural_has: [2]bool,
 	natural_ok:  bool,
+	natural_placeholder: bool,     // ... an image's placeholder size (no natural size, no ratio yet)
+	natural_pass: u64,             // ... found in the pass of this Ctx.pass_serial (0: none): read again as is
 	items:       [2]i32,           // display items of its lines ([marker,] emit_lines), for splicing...
 	items_gen:   u32,              // ... valid when this is Inc_State.dl_gen
 	segs:        [2]i32,           // inline formatting contexts: their measured segments in Inc_State.segs
@@ -68,6 +70,7 @@ Inc_State :: struct {
 	doc:         rawptr,
 	images_gen, fonts_gen: u64,
 	lh_normal:   f32,
+	pass_serial: u64,               // passes made (Ctx.pass_serial)
 	quotes:      bool,              // generated quotes: their depth runs through the whole document
 	dl_gen:      u32,               // display lists built (Box_Info.items_gen)
 	doc_extent:  Rect,              // what the document's content covers (before the viewport is added), from finish
@@ -764,7 +767,7 @@ check_natural_sizes :: proc(c: ^Ctx) {
 		b := &l.boxes[i]
 		if b.kind != .Replaced || .Dead in b.flags { continue }
 		inf := l.inc.info[i]
-		w, h, hw, hh := natural_size_of(c, i)
+		w, h, hw, hh, _ := natural_size_of(c, i)
 		if !inf.natural_ok || inf.natural != {w, h} || inf.natural_has != {hw, hh} { mark_dirty(l, i) }
 	}
 }

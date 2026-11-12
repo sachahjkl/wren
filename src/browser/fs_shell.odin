@@ -73,7 +73,11 @@ fs_shell_pick :: proc(user: rawptr, p: ^page.Page, req: ^page.Fs_Pick) {
 	case .Save: d.title = i18n.tr("Save as")
 	case .Directory: d.title = i18n.tr("Choose a folder")
 	}
-	host.run_blocking(&app.blocking, pick_work, pick_done, j)
+	// (a dialog waits for a person: a thread of its own, not a worker of the blocking pool; at the end, pick_done answers the page with nothing)
+	if !host.run_dialog(&app.dialogs, pick_work, pick_done, j, pick_done) {
+		j.result.status = .Cancelled
+		pick_done(j)
+	}
 }
 
 @(private = "file")

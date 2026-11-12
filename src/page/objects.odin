@@ -66,8 +66,7 @@ objects_destroy :: proc(p: ^Page) {
 	it: u32
 	for _, o in base.pool_next(&p.objects.pool, &it) {
 		if o.vt != nil && o.vt.destroy != nil { o.vt.destroy(p, o.data) }
-		for l in o.listeners { delete(l.type) }
-		delete(o.listeners)
+		dom.listeners_free(&o.listeners, nil)
 	}
 	base.pool_destroy(&p.objects.pool)
 	delete(p.objects.microtasks)
@@ -98,8 +97,7 @@ object_release :: proc(p: ^Page, h: u64) -> bool {
 	o, ok := base.pool_remove_tagged(&p.objects.pool, base.Handle(h &~ OBJECT_TAG))
 	if !ok { return false }
 	if o.vt != nil && o.vt.destroy != nil { o.vt.destroy(p, o.data) }
-	for l in o.listeners { delete(l.type) }
-	delete(o.listeners)
+	dom.listeners_free(&o.listeners, nil)
 	return true
 }
 
@@ -110,49 +108,38 @@ object_release :: proc(p: ^Page, h: u64) -> bool {
 object_add_listener :: proc(p: ^Page, h: u64, type: string, callback, user: u32, once: bool, owner: u32, capture := false) -> (dom.Listener_Id, dom.Error) {
 	o := object_get(p, h)
 	if o == nil { return 0, .Invalid_Handle }
-	if type == "" { return 0, .Invalid_Argument }
-	for l in o.listeners {
-		if !l.removed && l.type == type && l.callback == callback && l.user == user && l.owner == owner && l.capture == capture { return l.id, .None }
-	}
-	id := p.doc.next_listener
-	p.doc.next_listener += 1
-	append(&o.listeners, dom.Listener{id = id, type = strings.clone(type), callback = callback, user = user, owner = owner, once = once, capture = capture, work = page_work(p, .Background)})
-	return id, .None
+	// (the list's rules are the nodes': dom.listener_add; ids come from the document's counter, so that a node's and an
+	// object's never meet)
+	id, err := dom.listener_add(&o.listeners, nil, p.doc.next_listener, type, callback, user, owner, capture, once, false, page_work(p, .Background), p.settings.dom.max_listeners)
+	if err == .None && id == p.doc.next_listener { p.doc.next_listener += 1 }
+	return id, err
 }
 
+// (tombstones are dropped once they are half the list: dom.listener_remove)
 object_remove_listener :: proc(p: ^Page, h: u64, id: dom.Listener_Id) -> dom.Error {
 	o := object_get(p, h)
 	if o == nil { return .Invalid_Handle }
-	for &l in o.listeners {
-		if l.id == id && !l.removed { delete(l.type); l.type = ""; l.removed = true; return .None }
-	}
-	return .Not_Found
+	return dom.listener_remove(&o.listeners, nil, id)
 }
 
 // Every listener of the object goes (tombstones: a dispatch in progress skips them).
 object_erase_listeners :: proc(p: ^Page, h: u64) {
 	o := object_get(p, h)
 	if o == nil { return }
-	for &l in o.listeners {
-		if !l.removed { delete(l.type); l.type = ""; l.removed = true }
-	}
+	dom.listeners_erase(&o.listeners, nil)
 }
 
 // True when someone listens for `type` (lets a source skip work nobody would see).
 object_has_listener :: proc(p: ^Page, h: u64, type: string) -> bool {
 	o := object_get(p, h)
 	if o == nil { return false }
-	for l in o.listeners { if !l.removed && l.type == type { return true } }
-	return false
+	return dom.listeners_have(o.listeners[:], type)
 }
 
 // Whether some node of the document, or its Window, has a listener of `type`: an event of the user's of that type would
-// run the page's code.
+// run the page's code. (The document counts its listeners by type: no walk of its nodes.)
 page_listens :: proc(p: ^Page, type: string) -> bool {
-	it: u32
-	for _, n in base.pool_next(&p.doc.nodes, &it) {
-		for l in n.listeners { if !l.removed && l.type == type { return true } }
-	}
+	if dom.listens(p.doc, type) { return true }
 	return p.web != nil && p.web.window != 0 && object_has_listener(p, p.web.window, type)
 }
 
@@ -167,38 +154,53 @@ object_dispatch :: proc(p: ^Page, h: u64, proto: dom.Event) -> bool {
 	ev.target = base.Handle(h)
 	ev.current_target = base.Handle(h)
 	ev.phase = .At_Target
+	ev.atom = dom.event_atom(proto.type)
 	eh, _ := base.pool_insert_tagged(&p.dp.events, p.tag, ev)
 	defer {
 		if e := base.pool_get(&p.dp.events, eh); e != nil { delete(e.type); delete(e.data); delete(e.text) }
 		base.pool_remove_tagged(&p.dp.events, eh)
 	}
 	snapshot := make([dynamic]dom.Listener, context.temp_allocator)
-	for l in o.listeners { if !l.removed && l.type == proto.type { append(&snapshot, l) } }
-	for l in snapshot {
-		o = object_get(p, h)
-		if o == nil { break }
-		still := false
-		for cur in o.listeners { if cur.id == l.id && !cur.removed { still = true; break } }
-		if !still { continue }
-		if l.once { object_remove_listener(p, h, l.id) }
-		argv := [3]u32{l.user, u32(u64(eh)), u32(u64(eh) >> 32)}
-		inst := instance_by_index(p, l.owner)
-		if inst != nil {
-			loaf_set_invoker(p, .Event_Listener, proto.type)   // Long Animation Frames: invoker is the event type
+	dom.listeners_snapshot(o.listeners[:], ev.atom, proto.type, false, true, &snapshot)
+	run_object_listeners(p, h, eh, snapshot[:], proto.type)
+	if e := base.pool_get(&p.dp.events, eh); e != nil { return !(e.cancelable && e.default_prevented) }
+	return true
+}
+
+// Runs the listeners of `snapshot` taken from object `h`'s list (the object may be released by one of them) for event
+// `eh`: dom.listeners_run's rules. `loaf_type` names the invoker to Long Animation Frames ("" for none).
+@(private)
+run_object_listeners :: proc(p: ^Page, h: u64, eh: base.Handle, snapshot: []dom.Listener, loaf_type: string) {
+	Object_Run :: struct { p: ^Page, h: u64, eh: base.Handle, loaf_type: string }
+	r := Object_Run{p = p, h = h, eh = eh, loaf_type = loaf_type}
+	dom.listeners_run(dom.Listener_Target{
+		user = &r,
+		list = proc(user: rawptr) -> (^[dynamic]dom.Listener, ^dom.Document) {
+			r := (^Object_Run)(user)
+			o := object_get(r.p, r.h)
+			if o == nil || r.p.closed { return nil, nil }
+			return &o.listeners, nil
+		},
+		run = proc(user: rawptr, l: dom.Listener) -> bool {
+			r := (^Object_Run)(user)
+			p := r.p
+			// (the Window's listeners run in a propagation path: the target they see is the Window)
+			if e := base.pool_get(&p.dp.events, r.eh); e != nil { e.current_target = base.Handle(r.h) }
+			inst := instance_by_index(p, l.owner)
+			if inst == nil { return true }
+			argv := [3]u32{l.user, u32(u64(r.eh)), u32(u64(r.eh) >> 32)}
+			if r.loaf_type != "" { loaf_set_invoker(p, .Event_Listener, r.loaf_type) }   // Long Animation Frames: invoker is the event type
 			scope := host.work_enter(p.loop, callback_work(l.work, p.loop.work.class))
 			call_guest(p, inst, l.callback, argv[:])
 			host.work_leave(p.loop, scope)
-		}
-		e := base.pool_get(&p.dp.events, eh)
-		if e == nil || e.stop_immediate { break }
-	}
-	if o = object_get(p, h); o != nil {
-		w := 0
-		for l in o.listeners { if !l.removed { o.listeners[w] = l; w += 1 } }
-		resize(&o.listeners, w)
-	}
-	if e := base.pool_get(&p.dp.events, eh); e != nil { return !(e.cancelable && e.default_prevented) }
-	return true
+			return true
+		},
+		stopped = proc(user: rawptr) -> bool {
+			r := (^Object_Run)(user)
+			e := base.pool_get(&r.p.dp.events, r.eh)
+			return e == nil || e.stop_immediate
+		},
+	}, snapshot)
 }
 
 ////////////////////////////////

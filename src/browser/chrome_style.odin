@@ -525,8 +525,13 @@ field_frame_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 toolbar_row :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
-	// (clickable: a right click where no button is opens the bookmarks bar's menu, bookmarks_bar.odin)
-	if ui.row(.Center, {.Clickable}, "###toolbar") {
+	// With the integrated title bar, the free space of the toolbar (on either side of the address bar) drags the window
+	// as the title bar's does, and its right click comes as the title bar's (toolbar_menu.odin). (Not clickable then: a
+	// clickable box over a caption is the browser's whole.) Else clickable: a right click where no button is opens the
+	// toolbar's menu (bookmarks_bar_menu).
+	w := active_window(app).win
+	caption := platform.is_integrated_title(w) && !platform.is_fullscreen(w)
+	if ui.row(.Center, caption ? {.Window_Caption} : {.Clickable}, "###toolbar") {
 		b := ui.parent_box()
 		if classic_on(app) { b.custom, b.custom_user = toolbar_draw, classic_colors_frame(app) }
 		address_row(app, t)

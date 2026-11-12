@@ -325,6 +325,27 @@ mem_over_limit :: proc(rt: ^Runtime, extra: i64) -> bool {
 	return rt.heap_bytes + extra > rt.config.malloc_limit
 }
 
+// From this size, a block a script's data asks for (a string, the values of an array, a builder's buffer) is checked
+// against the heap limit first: the safe point that would see the heap over it comes after the allocation, and a block
+// the host cannot give is a trap that takes the engine with it. Below it, the check costs more than it saves.
+MEM_CHECK_BYTES :: 64 * 1024
+
+// The largest such block, with or without a heap limit: no more than the address space of the Wasm module (4 GiB, of
+// which the engine's code and stack take some), so that what cannot be given is refused, not a trap.
+MEM_BLOCK_MAX :: 1 << 31
+
+// May a block of `bytes` more be allocated (false: over the heap limit, or larger than any block can be)?
+// (i64: a size a script chose overflows the int of wasm32)
+mem_may_grow :: #force_inline proc(rt: ^Runtime, bytes: i64) -> bool {
+	if bytes < MEM_CHECK_BYTES {return true}
+	return bytes <= MEM_BLOCK_MAX && !mem_over_limit(rt, bytes)
+}
+
+// The error of an allocation refused because of the heap limit: catchable, the heap is still under it.
+throw_out_of_memory :: proc(ctx: ^Context) -> Value {
+	return throw_range_error(ctx, "out of memory")
+}
+
 // --- cells ---
 
 cell_new :: proc(rt: ^Runtime, $T: typeid, kind: Cell_Kind, extra := 0) -> ^T {
@@ -367,6 +388,17 @@ root_cell :: #force_inline proc(rt: ^Runtime, c: ^Cell) {
 }
 
 temp_mark :: #force_inline proc "contextless" (rt: ^Runtime) -> int {return len(rt.temp_roots)}
+
+// A list of the collector's (temp_roots, gray) emptied, whose room passed GC_LIST_KEEP_CAP: the room goes back to
+// GC_LIST_INITIAL_CAP. They grow with the largest native call or the deepest marking and never shrank: a page that once
+// made millions of cells in one call kept megabytes of list.
+GC_LIST_KEEP_CAP :: 64 * 1024
+
+gc_list_trim :: proc(rt: ^Runtime, list: ^[dynamic]^Cell) {
+	if len(list) != 0 || cap(list) <= GC_LIST_KEEP_CAP {return}
+	delete(list^)
+	list^ = make([dynamic]^Cell, 0, GC_LIST_INITIAL_CAP, rt.allocator)
+}
 
 // Odin's resize is a call, and this runs at each call, return and back edge.
 temp_reset :: #force_inline proc "contextless" (rt: ^Runtime, m: int) {
@@ -454,8 +486,9 @@ mark_cell :: #force_inline proc(rt: ^Runtime, c: ^Cell) {
 		if c.mark {return}
 		c.mark = true
 	}
-	// (a plain string holds no cell: it does not go through the list, nearly half of what a page's heap has)
-	if c.kind != .string || c.flags & STR_TAIL != 0 {list_push(&rt.gray, c)}
+	// (a plain string holds no cell: it does not go through the list, nearly half of what a page's heap has; one that
+	// caches a weak atom holds that atom: gc_trace)
+	if c.kind != .string || c.flags & STR_TAIL != 0 || (cast(^JS_String)c).atom >= Atom(PREDEF_ATOM_COUNT) {list_push(&rt.gray, c)}
 }
 
 mark_value :: #force_inline proc(rt: ^Runtime, v: Value) {
@@ -491,13 +524,18 @@ gc_mark :: proc(rt: ^Runtime) {
 
 	rt.int_strings = {} // (what they hold may die: they are caches, not roots)
 	rt.concat_strings = {}
-	gc_mark_roots(rt)
+	// String atoms are weak unless a native call is in progress: a builtin may hold an atom in a local that nothing
+	// marks (a key it read from a shape a getter then changed), and an atom freed under it would come back as another key.
+	weak_atoms := rt.native_calls == nil
+	gc_mark_roots(rt, weak_atoms)
 	gc_drain(rt)
 	gc_process_weak(rt)
 	gc_prune_ext(rt)
 	gc_release_map_iters(rt)
 	host_run_finalizers(rt)
 	gc_clear_weak_caches(rt)
+	if weak_atoms {atoms_sweep(rt)}
+	gc_list_trim(rt, &rt.gray) // (drained: its room was the deepest marking's)
 	rt.sweep = {active = true, chunk = rt.pool_chunks, big = len(rt.big_cells), big_kept = len(rt.big_cells), heap = rt.heap_bytes}
 
 	rt.gc_count += 1
@@ -526,11 +564,12 @@ span_stage :: #force_inline proc(s: Span_Stage, begin: bool) {
 }
 
 @(private = "file")
-gc_mark_roots :: proc(rt: ^Runtime) {
-	// atoms and interned singletons are pinned: their cells are marked so they are never swept, and
-	// traced so a symbol's description stays alive.
-	for &e in rt.atoms {
-		if e.str != nil {mark_cell(rt, e.str)}
+gc_mark_roots :: proc(rt: ^Runtime, weak_atoms: bool) {
+	// the predefined atoms and interned singletons are pinned: their cells are marked so they are never swept, and
+	// traced so a symbol's description stays alive. Symbols used as keys stay too. A string atom made at run time is
+	// a root only when the atoms are not weak in this collection (atom.odin).
+	for &e, i in rt.atoms {
+		if e.str != nil && (!weak_atoms || i < PREDEF_ATOM_COUNT) {mark_cell(rt, e.str)}
 		if e.sym != nil {mark_cell(rt, e.sym)}
 	}
 	for s in rt.char_strings {if s != nil {mark_cell(rt, s)}}
@@ -682,6 +721,7 @@ gc_trace :: proc(rt: ^Runtime, c: ^Cell) {
 	switch c.kind {
 	case .string:
 		s := cast(^JS_String)c
+		mark_atom(rt, s.atom) // (its own string, or the atom a probe string cached: the cache must not outlive the atom)
 		if s.flags & STR_TAIL != 0 {
 			if s.is_rope {
 				mark_cell(rt, str_tail(s).rope.left)
@@ -697,9 +737,14 @@ gc_trace :: proc(rt: ^Runtime, c: ^Cell) {
 	case .shape:
 		sh := cast(^Shape)c
 		mark_cell(rt, sh.proto)
+		for &p in sh.props {mark_atom(rt, p.atom)}
+		// (a transition's key is a key of the shape it leads to: it lives as long as that shape, and a dead one goes)
 		if len(sh.transitions) > 0 {list_push(&rt.gc_shapes, sh)}
 	case .function_bc:
 		b := cast(^Function_Bytecode)c
+		store_mark_atoms(rt, b.store)
+		mark_atom(rt, b.func_name)
+		mark_atom(rt, b.filename)
 		mark_values(rt, b.cpool)
 		mark_cell(rt, b.source_string)
 		if b.jit != nil {jit_mark(rt, b.jit)}

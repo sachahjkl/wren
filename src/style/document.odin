@@ -21,13 +21,7 @@ is_css_type :: proc(n: ^dom.Node) -> bool {
 
 has_token :: proc(list, token: string) -> bool {
 	rest := list
-	for len(rest) > 0 {
-		for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
-		end := 0
-		for end < len(rest) && !is_space(rest[end]) { end += 1 }
-		if end > 0 && base.ascii_equal_fold(rest[:end], token) { return true }
-		rest = rest[end:]
-	}
+	for t in token_next(&rest) { if base.ascii_equal_fold(t, token) { return true } }
 	return false
 }
 

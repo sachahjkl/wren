@@ -5,8 +5,6 @@ import "wb:style"
 
 // Floats are tested against a band at least this tall (CSS px), even an empty one.
 FLOAT_PROBE_MIN_H :: 0.01
-// How many boxes the search for the first baseline of a list item visits.
-FIRST_BASELINE_MAX_STEPS :: 4096
 
 // Block formatting (CSS 2.1 §9.4.1, §10.3.3, §10.6.3, §8.3.1 margin collapsing, §9.5 floats).
 //
@@ -29,11 +27,18 @@ strut_value :: proc(s: Strut) -> f32 { return s.pos + s.neg }
 Float_Box :: struct { r: Rect, left: bool }
 
 // The floats of one block formatting context, in its coordinates (origin: the root's content box).
+//
+// A float is never placed above an earlier one, so `last_top` only grows. A query at or below it can only meet the
+// floats whose bottom is below it: `live` lists them, and the queries of a long run of floats (a gallery, a float per
+// paragraph) read those few instead of every float placed so far. A query above `last_top` (content raised by a negative
+// margin) reads them all.
 @(private)
 Bfc :: struct {
 	floats:   [dynamic]Float_Box,
+	live:     [dynamic]i32,   // indexes into `floats` of those whose bottom is below last_top
 	last_top: f32,   // a float may not be placed above an earlier one (§9.5.1 rule 5)
 	bottom:   f32,   // lowest float bottom so far
+	bottom_l, bottom_r: f32,   // lowest left / right float bottom so far (clearance)
 }
 
 @(private)
@@ -47,7 +52,29 @@ Flow_Ctx :: struct {
 content_top :: proc(fc: ^Flow_Ctx) -> f32 { return fc.y + (fc.open != nil ? strut_value(fc.open^) : 0) }
 
 @(private)
-bfc_make :: proc() -> Bfc { return Bfc{floats = make([dynamic]Float_Box, context.temp_allocator), last_top = -math.F32_MAX, bottom = -math.F32_MAX} }
+bfc_make :: proc() -> Bfc {
+	return Bfc{
+		floats = make([dynamic]Float_Box, context.temp_allocator), live = make([dynamic]i32, context.temp_allocator),
+		last_top = -math.F32_MAX, bottom = -math.F32_MAX, bottom_l = -math.F32_MAX, bottom_r = -math.F32_MAX,
+	}
+}
+
+// Adds a float placed at `y`, its top (never above last_top).
+@(private)
+bfc_add :: proc(bfc: ^Bfc, f: Float_Box) {
+	append(&bfc.floats, f)
+	if f.r.min.y > bfc.last_top {
+		bfc.last_top = f.r.min.y
+		n := 0
+		for i in bfc.live {
+			if bfc.floats[i].r.max.y > bfc.last_top { bfc.live[n] = i; n += 1 }
+		}
+		resize(&bfc.live, n)
+	}
+	if f.r.max.y > bfc.last_top { append(&bfc.live, i32(len(bfc.floats) - 1)) }
+	bfc.bottom = max(bfc.bottom, f.r.max.y)
+	if f.left { bfc.bottom_l = max(bfc.bottom_l, f.r.max.y) } else { bfc.bottom_r = max(bfc.bottom_r, f.r.max.y) }
+}
 
 // No float of the formatting context can reach the content of `b` laid out in flow at `fc`: none inside it, and those
 // placed so far end above where its content can start (its content cannot rise above that: no negative margin inside).
@@ -66,6 +93,15 @@ floats_clear_of :: proc(fc: ^Flow_Ctx, b: ^Box) -> bool {
 bfc_band :: proc(bfc: ^Bfc, y0, y1, left, right: f32) -> (l, r: f32) {
 	l, r = left, right
 	if bfc == nil { return }
+	// (the floats left out of `live` end at or above last_top <= y0: the test below skips them all the same)
+	if y0 >= bfc.last_top {
+		for i in bfc.live {
+			f := &bfc.floats[i]
+			if f.r.max.y <= y0 || f.r.min.y >= max(y1, y0 + FLOAT_PROBE_MIN_H) { continue }
+			if f.left { l = max(l, f.r.max.x) } else { r = min(r, f.r.min.x) }
+		}
+		return
+	}
 	for &f in bfc.floats {
 		if f.r.max.y <= y0 || f.r.min.y >= max(y1, y0 + FLOAT_PROBE_MIN_H) { continue }
 		if f.left { l = max(l, f.r.max.x) } else { r = min(r, f.r.min.x) }
@@ -78,6 +114,14 @@ bfc_band :: proc(bfc: ^Bfc, y0, y1, left, right: f32) -> (l, r: f32) {
 bfc_next_bottom :: proc(bfc: ^Bfc, y: f32) -> f32 {
 	best: f32 = math.F32_MAX
 	if bfc == nil { return best }
+	if y >= bfc.last_top {
+		// the floats left out of `live` end at or above y; and no float starts below last_top
+		for i in bfc.live {
+			f := &bfc.floats[i]
+			if f.r.max.y > y + 0.01 && f.r.min.y <= y + 0.01 { best = min(best, f.r.max.y) }
+		}
+		return best
+	}
 	for &f in bfc.floats {
 		if f.r.max.y > y + 0.01 && f.r.min.y <= y + 0.01 { best = min(best, f.r.max.y) }
 	}
@@ -91,18 +135,13 @@ bfc_next_bottom :: proc(bfc: ^Bfc, y: f32) -> f32 {
 bfc_clear_floor :: proc(bfc: ^Bfc, clear: style.Clear) -> f32 {
 	floor: f32 = -math.F32_MAX
 	if bfc == nil || clear == .None { return floor }
-	for &f in bfc.floats {
-		if (f.left && (clear == .Left || clear == .Both)) || (!f.left && (clear == .Right || clear == .Both)) { floor = max(floor, f.r.max.y) }
-	}
+	if clear == .Left || clear == .Both { floor = max(floor, bfc.bottom_l) }
+	if clear == .Right || clear == .Both { floor = max(floor, bfc.bottom_r) }
 	return floor
 }
 
 @(private)
-bfc_bottom :: proc(bfc: ^Bfc) -> f32 {
-	b: f32 = -math.F32_MAX
-	for &f in bfc.floats { b = max(b, f.r.max.y) }
-	return b
-}
+bfc_bottom :: proc(bfc: ^Bfc) -> f32 { return bfc.bottom }
 
 @(private)
 is_rtl :: proc(cs: ^style.Computed) -> bool { return cs.direction == .Rtl }
@@ -112,6 +151,25 @@ is_rtl :: proc(cs: ^style.Computed) -> bool { return cs.direction == .Rtl }
 shrink_to_fit :: proc(c: ^Ctx, bi: i32, avail: f32) -> f32 {
 	in2 := intrinsic(c, bi)
 	return min(max(in2[0], avail), in2[1])
+}
+
+// Used border-box width of a box whose auto width shrinks to fit, a float (§10.3.5) or an atomic inline (§10.3.9): a
+// replaced element's from its natural size, a table's from its columns, a specified width, min-content or max-content,
+// else shrink-to-fit in `cw` less its margins; then min-width and max-width. `ch`: the percentage base of a replaced
+// element's height (< 0: indefinite).
+@(private)
+used_width_shrink :: proc(c: ^Ctx, k: i32, cw: f32, ch: f32 = -1) -> f32 {
+	kb := &c.l.boxes[k]
+	if kb.kind == .Replaced { return replaced_size(c, k, cw, ch).x }
+	if kb.kind == .Table { return table_width(c, k, cw, cw - mg_w(kb)) }
+	if spec, ok := to_border_w(c, kb, kb.cs.width, cw); ok { return clamp_w(c, kb, spec, cw) }
+	w: f32
+	#partial switch kb.cs.width.kind {
+	case .Min_Content: w = intrinsic(c, k)[0]
+	case .Max_Content: w = intrinsic(c, k)[1]
+	case: w = shrink_to_fit(c, k, cw - mg_w(kb))
+	}
+	return clamp_w(c, &c.l.boxes[k], w, cw)
 }
 
 // Border-box width of a block-level box in normal flow and its used horizontal margins (§10.3.3, §10.3.4).
@@ -282,14 +340,65 @@ quirks_percent_base :: proc(c: ^Ctx, bi: i32) -> f32 {
 	return -1
 }
 
+// The key of the layout cache for box `bi` laid out at width `w`, containing block height `cb_h_in` and imposed height
+// `forced_h`; and the containing block height its layout uses (quirks mode may find another, quirks_percent_base).
+//
+// A box whose own height, min-height and max-height have no percentage reads the height of its containing block
+// nowhere (its children resolve theirs against its own): one key for every such height, so that a flex item laid out
+// in a container of indefinite height and again in the same container at its final, definite height finds its entry.
+@(private)
+cache_key :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32) -> (key: [3]f32, cb_h: f32) {
+	b := &c.l.boxes[bi]
+	cb_h = cb_h_in
+	quirks := c.st != nil && c.st.quirks
+	// quirks mode (HTML §15 / Quirks Mode §3.5): a percentage height against an auto-height block looks further up
+	// (the base found is part of the cache key: it follows the window's height)
+	if cb_h < 0 && quirks && b.cs != nil && b.cs.height.kind == .Percent && b.kind != .Cell {
+		if qb := quirks_percent_base(c, bi); qb >= 0 { cb_h = qb }
+	}
+	key = {w, cb_h, forced_h}
+	if quirks && is_quirks_body(c, bi) {
+		// (the quirks-mode body's height follows the window's: in the key)
+		if cb_h < 0 { key[1] = -2 - c.vp.y }
+	} else if !reads_cb_height(c, bi) {
+		key[1] = -1
+	}
+	return
+}
+
+// The layout of box `bi` reads the height of its containing block: some percentage in its own height, min-height or
+// max-height (the root, a box without a style: taken as reading it).
+@(private)
+reads_cb_height :: proc(c: ^Ctx, bi: i32) -> bool {
+	if is_plain(c, bi) { return false }   // (all auto: the style is not read)
+	b := &c.l.boxes[bi]
+	if b.cs == nil || .Root in b.flags { return true }
+	return style.has_percent(b.cs.height) || style.has_percent(b.cs.min_height) || style.has_percent(b.cs.max_height)
+}
+
+// The border-box height of `bi` laid out on its own at width `w` with an auto height, for a caller that lays it out
+// again at its final size before anything reads its content (a flex item's base size and automatic minimum): the second
+// entry of its layout cache serves too, though its content then stays as its last layout left it. Nested flex
+// containers lay each item out at two sizes: without it, every level doubled the work of the levels inside.
+@(private)
+measure_height :: proc(c: ^Ctx, bi: i32, w, cb_h: f32) -> f32 {
+	if c.pre != nil { pre_wait_box(c, bi) }
+	b := &c.l.boxes[bi]
+	if b.alt_ok && b.cache_ok && b.inc == {} && .Frame_Root not_in b.fx {
+		if key, _ := cache_key(c, bi, w, cb_h, -1); b.alt_in == key { return b.alt_h }
+	}
+	return layout_contents(c, bi, w, cb_h, -1, nil).h
+}
+
 // Lays out the content of box `bi` at border-box width `w` (already stored in size.x), and returns its height.
 //   cb_h:     height of the containing block (percentages of `height`), < 0: indefinite
 //   forced_h: >= 0 imposes the border-box height (flex, tables)
 //   fc:       for a block container taking part in its parent's block formatting context: where its content box sits in
 //             that context (nil: the box is a formatting context root or is laid out on its own)
 //
-// The result is cached in the box for the same inputs (`w`, `cb_h`, `forced_h`), across passes too: a later pass that
-// left the box and its content untouched (`Box.inc` empty) takes it as is. A box laid out in its parent's flow is cached
+// The result is cached in the box for the same inputs (`w`, `cb_h`, `forced_h`: cache_key), across passes too: a later
+// pass that left the box and its content untouched (`Box.inc` empty) takes it as is. A layout at other inputs keeps the
+// entry it replaces as a second one (Box.alt_*), for measure_height; impose_height marks it as laid out the same. A box laid out in its parent's flow is cached
 // only when no float of that block formatting context can reach it (none placed yet, none inside it): its content is
 // then independent of where it sits; the margins it adds to a strut it shares with its parent (collapsing through its
 // top) are recorded apart and merged, which is the same as adding them in place (a strut is a max / min).
@@ -304,21 +413,15 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 	b.size.x = w
 	fc := fc_in
 	independent := fc == nil
-	cb_h := cb_h_in
-	// quirks mode (HTML §15 / Quirks Mode §3.5): a percentage height against an auto-height block looks further up
-	// (the base found is part of the cache key: it follows the window's height)
-	if cb_h < 0 && c.st != nil && c.st.quirks && b.cs != nil && b.cs.height.kind == .Percent && b.kind != .Cell {
-		if qb := quirks_percent_base(c, bi); qb >= 0 { cb_h = qb }
-	}
-	key := [3]f32{w, cb_h, forced_h}
-	// (the quirks-mode body's height follows the window's: in the key)
-	if cb_h < 0 && c.st != nil && c.st.quirks && is_quirks_body(c, bi) { key[1] = -2 - c.vp.y }
+	key, cb_h := cache_key(c, bi, w, cb_h_in, forced_h)
+	b = &c.l.boxes[bi]
 	flow_ok := !independent && floats_clear_of(fc, b)
 	// a subgrid's items are also laid out by its parent's track sizing (through their proxies) between two layouts of
 	// the subgrid itself: its cached result no longer describes its children (they keep their measuring size)
 	subgrid := b.kind == .Grid && b.parent != NONE && c.l.boxes[b.parent].kind == .Grid && b.cs != nil &&
 		(grid_template(b.cs, 0).kind == .Subgrid || grid_template(b.cs, 1).kind == .Subgrid)
-	if b.cache_ok && b.inc == {} && b.cache_in == key && !subgrid {
+	valid := b.cache_ok && b.inc == {} && !subgrid
+	if valid && b.cache_in == key {
 		if independent && !b.cache_flow {
 			b.size.y = b.cache_h
 			return Result{h = b.cache_h}
@@ -330,6 +433,19 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 			return Result{h = b.cache_h, end = b.cache_end, through = b.cache_through}
 		}
 	}
+	// the second entry, when its content is laid out as for the first (only its height differs: impose_height)
+	if valid && independent && !b.cache_flow && b.alt_ok && b.alt_same && b.alt_in == key {
+		b.size.y = b.alt_h
+		return Result{h = b.alt_h}
+	}
+	// the entry this layout replaces becomes the second one (the same content, at other inputs)
+	// (its content moves to this layout's: no longer laid out as for the second entry)
+	if valid && independent && !b.cache_flow && b.cache_in != key && .Frame_Root not_in b.fx {
+		b.alt_ok, b.alt_in, b.alt_h = true, b.cache_in, b.cache_h
+	} else if !valid || !independent || .Frame_Root in b.fx {
+		b.alt_ok = false
+	}
+	b.alt_same = false
 	if c.inc != nil { inc_note_layout(c, bi) }
 	b.inc = {}
 	b.cache_ok = false
@@ -630,16 +746,7 @@ place_float :: proc(c: ^Ctx, fi, ci: i32, cw: f32, fc: ^Flow_Ctx, min_y: f32) {
 	if k.auto_r { k.margin[1] = 0 }
 	if k.auto_t { k.margin[0] = 0 }
 	if k.auto_b { k.margin[2] = 0 }
-	w: f32
-	if k.kind == .Replaced {
-		w = replaced_size(c, fi, cw, -1).x
-	} else if k.kind == .Table {
-		w = table_width(c, fi, cw, cw - mg_w(k))
-	} else if spec, ok := to_border_w(c, k, k.cs.width, cw); ok {
-		w = clamp_w(c, k, spec, cw)
-	} else {
-		w = clamp_w(c, k, shrink_to_fit(c, fi, cw - mg_w(k)), cw)
-	}
+	w := used_width_shrink(c, fi, cw)
 	res := layout_contents(c, fi, w, -1, -1, nil)
 	k = &c.l.boxes[fi]
 	mw, mh := w + mg_w(k), res.h + k.pre_h + mg_h(k)
@@ -657,9 +764,7 @@ place_float :: proc(c: ^Ctx, fi, ci: i32, cw: f32, fc: ^Flow_Ctx, min_y: f32) {
 		if nb == math.F32_MAX { x = left ? l : r - mw; break }
 		y = nb
 	}
-	append(&fc.bfc.floats, Float_Box{Rect{{x, y}, {x + mw, y + mh}}, left})
-	fc.bfc.last_top = y
-	fc.bfc.bottom = max(fc.bfc.bottom, y + mh)
+	bfc_add(fc.bfc, Float_Box{Rect{{x, y}, {x + mw, y + mh}}, left})
 	cb := &c.l.boxes[ci]
 	ctop := content_top(fc)
 	k.pos = {x - fc.x + content_x(cb) + k.margin[3], y - ctop + content_y(cb) + k.margin[0] + k.pre_h}
@@ -672,7 +777,7 @@ place_float :: proc(c: ^Ctx, fi, ci: i32, cw: f32, fc: ^Flow_Ctx, min_y: f32) {
 first_baseline_in :: proc(c: ^Ctx, bi: i32) -> (f32, bool) {
 	off: f32 = 0
 	cur := bi
-	for steps := 0; steps < FIRST_BASELINE_MAX_STEPS && cur != NONE; steps += 1 {
+	for steps := 0; steps < c.set.marker_baseline_steps && cur != NONE; steps += 1 {
 		b := &c.l.boxes[cur]
 		if .Ifc in b.flags && b.lines[1] > b.lines[0] {
 			ln := &c.l.lines[b.lines[0]]

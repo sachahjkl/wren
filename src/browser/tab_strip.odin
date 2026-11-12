@@ -13,6 +13,7 @@ package browser
 
 import "core:fmt"
 import "core:math"
+import "core:strconv"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:font"
@@ -31,8 +32,20 @@ Tab_Strip :: struct {
 	area_key:     ui.Key,       // the box holding the tabs (their keys derive from it)
 }
 
+// The id string of the box of tab `id`, "###tab_<id>", written in `buf` (the caller's: valid while it is). Made for every tab
+// at every frame, so with no formatting and no allocation.
+tab_box_id :: proc(buf: ^[32]u8, id: u64) -> string {
+	PREFIX :: "###tab_"
+	copy(buf[:], PREFIX)
+	digits := strconv.write_uint(buf[len(PREFIX):], id, 10)
+	return string(buf[:len(PREFIX) + len(digits)])
+}
+
 // The key of the box of tab `id` built under the box `parent`: a tab's press is held on it, and so is its drag (ui/reorder.odin).
-tab_box_key :: proc(parent: ui.Key, id: u64) -> ui.Key { return ui.key_from_string(parent, fmt.tprintf("###tab_%d", id)) }
+tab_box_key :: proc(parent: ui.Key, id: u64) -> ui.Key {
+	buf: [32]u8
+	return ui.key_from_string(parent, tab_box_id(&buf, id))
+}
 
 // The tab whose box a press drags, in the strip, the sidebar's list or its pinned tabs (0: none); asked at the start of a build.
 strip_dragged :: proc(wnd: ^Browser_Window) -> u64 {
@@ -60,7 +73,7 @@ focused_tab_index :: proc(app: ^App) -> int {
 	own := window_own(app)
 	if k == 0 || own.strip.area_key == 0 { return -1 }
 	for t, i in active_window(app).tabs {
-		if ui.key_from_string(own.strip.area_key, fmt.tprintf("###tab_%d", t.id)) == k { return i }
+		if tab_box_key(own.strip.area_key, t.id) == k { return i }
 	}
 	return -1
 }
@@ -236,11 +249,11 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 		}
 		tab_sound_frame(app)   // tab_sound.odin
 		any_turning := false
-		for t, i in wnd.tabs {
-			tab_refresh(app, t, tab_icon_px(app))
+		icon_px := tab_icon_px(app)
+		for t in wnd.tabs {
+			tab_refresh(app, t, icon_px)
 			any_turning ||= tab_busy(t) && spinner_turning(app, t)
-			// (an icon not drawn this frame is still in use: the cache keeps what its tabs show)
-			if (i < first || i >= last) && t.icon.url != "" { _, _ = favicon_texture(app, t.icon.url) }
+			// (an icon not drawn this frame is still in use: favicon_evict keeps what the tabs show)
 		}
 		if any_turning { spinner_wake(app) }
 
@@ -281,7 +294,8 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	em := ui.font_size()
 	dpi := ui_scale_of(app)
 	on := i == wnd.current
-	id := fmt.tprintf("###tab_%d", t.id)
+	id_buf: [32]u8
+	id := tab_box_id(&id_buf, t.id)
 	slot := f32(i) * w - own.strip.offset
 	if app.active != nil && app.active.dropping && i >= app.active.drop.index { slot += w }   // room for the tab carried over this bar (tab_drag.odin)
 	// (the release slides from where the pointer left it)

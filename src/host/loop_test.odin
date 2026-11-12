@@ -82,6 +82,44 @@ cleared_and_scoped_timers_never_fire :: proc(t: ^testing.T) {
 	testing.expect_value(t, next_timeout_ms(&l), -1)   // the stale queue entries are dropped
 }
 
+// A scope's timers cost it one cleanup whatever their number; clearing or firing some leaves the others to the scope;
+// its last timer takes the cleanup away.
+@(test)
+scoped_timers_share_one_cleanup :: proc(t: ^testing.T) {
+	l: Loop
+	loop_init(&l)
+	defer loop_destroy(&l)
+	clock: Virtual_Clock
+	clock_virtual(&l, &clock)
+	c: Counter
+	scope := base.scope_make("doc")
+	own := len(scope.cleanups)   // (a build that poisons memory gives a scope a cleanup of its own)
+	hs: [100]base.Handle
+	for i in 0 ..< len(hs) { hs[i] = set_timer(&l, f64(10 + i), 0, bump, &c, scope) }
+	testing.expect_value(t, len(scope.cleanups), own + 1)
+	for i := 0; i < len(hs); i += 2 { testing.expect(t, clear_timer(&l, hs[i])) }   // the middle of the list, its head, its tail
+	testing.expect_value(t, len(scope.cleanups), own + 1)
+	advance(&l, 30)   // timers 11..29 (odd) fire: one-shots leave the list as they run
+	run_ready(&l)
+	testing.expect_value(t, c.n, 10)
+	testing.expect_value(t, l.timers.count, 40)
+	base.scope_close(scope)
+	testing.expect_value(t, l.timers.count, 0)
+	testing.expect_value(t, len(l.scoped), 0)
+	advance(&l, 200)
+	run_ready(&l)
+	testing.expect_value(t, c.n, 10)
+
+	// the last timer of a scope gone: so is its cleanup
+	other := base.scope_make("doc")
+	defer base.scope_close(other)
+	h := set_timer(&l, 5, 0, bump, &c, other)
+	testing.expect_value(t, len(other.cleanups), own + 1)
+	testing.expect(t, clear_timer(&l, h))
+	testing.expect_value(t, len(other.cleanups), own)
+	testing.expect_value(t, len(l.scoped), 0)
+}
+
 @(test)
 interval_does_not_replay_a_burst :: proc(t: ^testing.T) {
 	l: Loop
@@ -181,6 +219,52 @@ blocking_jobs_run_off_thread_and_complete_on_loop :: proc(t: ^testing.T) {
 		testing.expect(t, j.worker_thread != main_id, "work ran on a worker")
 		testing.expect_value(t, j.done_thread, main_id)   // completion on the loop thread
 	}
+}
+
+// The loop says whom the callbacks that drew something worked for: the browser's (counted), each page once; quiet ones not.
+@(test)
+ran_take_names_whom_the_callbacks_worked_for :: proc(t: ^testing.T) {
+	l: Loop
+	loop_init(&l)
+	defer loop_destroy(&l)
+	c: Counter
+	post(&l, bump, &c)
+	post_work(&l, bump, &c, base.Work{page = 7})
+	post_work(&l, bump, &c, base.Work{page = 7})
+	post_work(&l, bump, &c, base.Work{page = 9})
+	Quiet :: struct { l: ^Loop }
+	q := Quiet{&l}
+	post_work(&l, proc(data: rawptr) { quiet_note((^Quiet)(data).l) }, &q, base.Work{page = 11})
+	testing.expect_value(t, run_ready(&l), 5)
+	quiet_take(&l)
+	browser, pages := ran_take(&l)
+	testing.expect_value(t, browser, 1)
+	testing.expect_value(t, len(pages), 2)
+	testing.expect(t, len(pages) == 2 && pages[0] == 7 && pages[1] == 9, "each page once, in order")
+	browser, pages = ran_take(&l)
+	testing.expect_value(t, browser, 0)
+	testing.expect_value(t, len(pages), 0)
+}
+
+// A pool that ends with jobs no worker took hands each one's data to its `discard`, never to `done`. (No worker at all: nothing
+// takes them, whatever the timing.)
+@(test)
+blocking_jobs_never_started_are_discarded :: proc(t: ^testing.T) {
+	l: Loop
+	loop_init(&l)
+	defer loop_destroy(&l)
+	pool: Blocking_Pool
+	blocking_init(&pool, &l, 0)
+	Job :: struct { done, discarded: int }
+	j: Job
+	for _ in 0 ..< 3 {
+		run_blocking(&pool, proc(data: rawptr) {}, proc(data: rawptr) { (^Job)(data).done += 1 }, &j, proc(data: rawptr) { (^Job)(data).discarded += 1 })
+	}
+	run_blocking(&pool, proc(data: rawptr) {}, proc(data: rawptr) { (^Job)(data).done += 1 }, &j)   // (no discard: dropped)
+	blocking_destroy(&pool)
+	loop_drain(&l)
+	testing.expect_value(t, j.discarded, 3)
+	testing.expect_value(t, j.done, 0)
 }
 
 @(private = "file")

@@ -6,7 +6,9 @@ package browser
 //
 //   * The toolbar is the title bar (integrated): one row of the Wren icon, the navigation buttons, the address bar, the
 //     shield, the menu and the window buttons, whose empty parts drag the window (sidebar_titlebar; a narrow window gives
-//     the address bar its room by hiding the shield, then forward, then reload: titlebar_layout). With the system's title
+//     the address bar its room by hiding the shield, then forward, then reload: titlebar_layout; the strip before the
+//     window buttons keeps browser.window.min_drag_em; the address bar is centred, at most ADDRESS_BAR_MAX_EM wide, unless
+//     browser.address_bar.sizing_mode; a right click on the empty parts: the toolbar's menu). With the system's title
 //     bar, the toolbar is its own row under it. Below, a column of the sidebar and the page (build_ui); the window's own
 //     resize bands are the system's frame, outside the client area, so the sidebar never covers them. Full screen shows
 //     the row of tabs over the page as ever.
@@ -207,8 +209,10 @@ Titlebar_Layout :: struct {
 // The row's parts in a window `win_w` wide (pure: tab_sidebar_test.odin). `want`: each part's width, the field's its
 // minimum, the drag strip's the one it would like. The field takes what is left; when that is under its minimum, the
 // drag strip gives up to `drag_min`, then the parts of TITLEBAR_HIDE_ORDER go one by one, then the field is narrower.
+// `field_max` > 0: the field is never wider, and the gaps on either side of it take the rest so that it is in the middle
+// of the window when its neighbours let it (that free space drags the window).
 // The parts touch, in order, from 0 to `win_w` (while the window is wider than the parts that never go).
-titlebar_layout :: proc(win_w: f32, want: [Titlebar_Part]f32, drag_min: f32) -> (l: Titlebar_Layout) {
+titlebar_layout :: proc(win_w: f32, want: [Titlebar_Part]f32, drag_min: f32, field_max: f32 = 0) -> (l: Titlebar_Layout) {
 	l.shown = ~bit_set[Titlebar_Part]{}
 	l.w = want
 	field_min := want[.Field]
@@ -232,6 +236,18 @@ titlebar_layout :: proc(win_w: f32, want: [Titlebar_Part]f32, drag_min: f32) -> 
 		room -= back
 	}
 	l.w[.Field] = max(room, 0)
+	if field_max > 0 && l.w[.Field] > field_max {
+		extra := l.w[.Field] - field_max
+		l.w[.Field] = field_max
+		before: f32
+		for p in Titlebar_Part {
+			if p == .Field { break }
+			before += l.w[p]
+		}
+		add := clamp(math.round((win_w - field_max) * 0.5) - before, 0, extra)
+		l.w[.Gap_Before] += add
+		l.w[.Gap_After] += extra - add
+	}
 	x: f32
 	for p in Titlebar_Part {
 		l.x[p] = x
@@ -264,7 +280,7 @@ titlebar_row_build :: proc(l: Titlebar_Layout, h: f32, part: proc(p: Titlebar_Pa
 titlebar_wants :: proc(app: ^App, chips_w: f32) -> (want: [Titlebar_Part]f32, drag_min: f32) {
 	em := ui.font_size()
 	dpi := ui_scale_of(app)
-	nav := em * 2.1   // (nav_button)
+	nav := em * NAV_BUTTON_EM
 	want = {
 		.Lead = math.round(10 * dpi) + math.round(16 * dpi) + math.round(6 * dpi),   // (as in the row of tabs)
 		.Back = nav, .Forward = nav, .Reload = nav,
@@ -277,7 +293,9 @@ titlebar_wants :: proc(app: ^App, chips_w: f32) -> (want: [Titlebar_Part]f32, dr
 		.Drag = max(app.wchrome.cfg.min_drag_em * em, em * 0.5),
 		.Buttons = 3 * math.round(ui.CAPTION_BUTTON_WIDTH * dpi),
 	}
-	return want, em * 0.5
+	// the strip that drags the window keeps its width in a narrow window (the toolbar's buttons go first): the toolbar
+	// is the whole title bar, nothing else of it is free
+	return want, want[.Drag]
 }
 
 @(private = "file")
@@ -294,7 +312,9 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 		if c := ui.box_from_key(ui.key_from_string(bar.key, TITLEBAR_SLOT_IDS[.Chips])); c != nil { chips_w = c.rect.max.x - c.rect.min.x }
 	}
 	want, drag_min := titlebar_wants(app, chips_w)
-	l := titlebar_layout(f32(active_window(app).win.size.x), want, drag_min)
+	field_max := (app.wchrome.cfg.address_sizing == .Full_Width) ? 0 : ADDRESS_BAR_MAX_EM * em   // (chrome.odin: centred, as in the toolbar)
+	l := titlebar_layout(f32(active_window(app).win.size.x), want, drag_min, field_max)
+	toolbar_caption_menu(app)   // toolbar_menu.odin: a right click on the free parts of this title bar
 	tb := ui.frame_new(Titlebar_Build)
 	tb^ = {app, t}
 	bar := titlebar_row_build(l, h, proc(p: Titlebar_Part, user: rawptr) {
@@ -309,7 +329,7 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 		case .Back: nav_back_button(app, t)
 		case .Forward: nav_forward_button(app, t)
 		case .Reload: nav_reload_button(app, t)
-		case .Field: address_bar(app, t)
+		case .Field: address_bar(app, t, ui.fill())   // (the slot has the field's width: titlebar_layout)
 		case .Chips: address_chips(app, t)
 		case .Shield:
 			if downloads_button_visible(app) { downloads_button(app, t); ui.spacer(ui.px(ui.font_size() * 0.2)) }

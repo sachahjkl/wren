@@ -45,11 +45,10 @@ Bookmarks :: struct {
 	toolbar:    u64,          // the bookmarks bar's folder (0: none yet)
 	serial:     u64,          // bumped at every change (views rebuild)
 	path:       string,       // owned; "" = memory only
-	dirty:      bool,
-	saving:     bool,         // a write is running on the blocking pool
-	again:      bool,         // ... and another change came meanwhile
+	dirty:      bool,         // changed since the text was last handed to `file`
 	unreadable: bool,         // the file is not a bookmarks file: never overwritten
-	timer:      base.Handle,
+	timer:      base.Handle,  // the write BOOKMARKS_SAVE_DELAY_MS after the first change
+	file:       Profile_File, // bookmarks.html: one write at a time on the blocking pool, retried later and later (profile_writes.odin)
 }
 
 bookmark_free :: proc(b: ^Bookmark) {
@@ -295,8 +294,7 @@ bookmarks_changed :: proc(app: ^App) {
 	app.bms.serial += 1
 	app.bms.dirty = true
 	request_frames(app, 2)
-	if app.bms.path == "" || app.bms.timer != base.NIL_HANDLE { return }
-	if app.bms.saving { app.bms.again = true; return }
+	if app.bms.path == "" || app.bms.unreadable || app.bms.timer != base.NIL_HANDLE { return }
 	app.bms.timer = host.set_timer(&app.loop, BOOKMARKS_SAVE_DELAY_MS, 0, proc(data: rawptr) {
 		app := (^App)(data)
 		app.bms.timer = base.NIL_HANDLE
@@ -305,42 +303,22 @@ bookmarks_changed :: proc(app: ^App) {
 	}, app)
 }
 
-@(private = "file")
-Save_Job :: struct { app: ^App, path, text: string, ok: bool }
-
-// Writes the bookmarks on the blocking pool (one write at a time).
+// The text goes to the file's writer (it writes on the blocking pool, one write at a time, the newest text last).
 @(private = "file")
 bookmarks_save :: proc(app: ^App) {
 	if app.bms.path == "" || !app.bms.dirty || app.bms.unreadable { return }
-	if app.bms.saving { app.bms.again = true; return }
 	app.bms.dirty = false
-	app.bms.saving = true
-	job := new(Save_Job)
-	job.app = app
-	job.path = strings.clone(app.bms.path)
-	job.text = strings.clone(bookmarks_serialize(app.bms.items[:], app.bms.toolbar))
-	host.run_blocking(&app.blocking, proc(data: rawptr) {
-		j := (^Save_Job)(data)
-		j.ok = base.file_write_atomic(j.path, transmute([]byte)j.text, flush = true)
-		free_all(context.temp_allocator)
-	}, proc(data: rawptr) {
-		j := (^Save_Job)(data)
-		app := j.app
-		host.quiet_note(&app.loop)
-		app.bms.saving = false
-		if !j.ok { app.bms.dirty = true }
-		delete(j.path); delete(j.text); free(j)
-		if app.bms.again || app.bms.dirty { app.bms.again = false; bookmarks_changed(app) }
-	}, job)
+	profile_file_init(&app.bms.file, app, app.bms.path, flush = true)
+	profile_file_write(&app.bms.file, bookmarks_serialize(app.bms.items[:], app.bms.toolbar))
 }
 
 // At exit: what is not written yet is written now, on this thread.
 bookmarks_shutdown :: proc(app: ^App) {
-	if app.bms.saving { host.blocking_settle(&app.blocking) }
 	if app.bms.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.bms.timer) }
-	if app.bms.path != "" && app.bms.dirty && !app.bms.unreadable {
-		_ = base.file_write_atomic(app.bms.path, transmute([]byte)bookmarks_serialize(app.bms.items[:], app.bms.toolbar), flush = true)
-	}
+	app.bms.timer = base.NIL_HANDLE
+	bookmarks_save(app)
+	profile_file_flush(&app.bms.file)
+	profile_file_destroy(&app.bms.file)
 	bookmarks_list_destroy(&app.bms.items)
 	delete(app.bms.path)
 	app.bms = {}

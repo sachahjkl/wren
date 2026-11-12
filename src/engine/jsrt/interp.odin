@@ -2014,6 +2014,7 @@ copy_data_properties :: proc(ctx: ^Context, target, source, excluded: Value, set
 	if excl == nil && copy_source_is_plain(rt, src) {
 		// the keys in the shape's order, the values from the slots: unless a setter of the target changes the source
 		sh := src.shape
+		root_cell(rt, sh) // (a setter that changes the source leaves this shape, and its keys, to nothing else)
 		for p, i in sh.props {
 			v: Value
 			if src.shape == sh {

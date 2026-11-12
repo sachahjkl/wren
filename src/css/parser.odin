@@ -4,7 +4,6 @@ import "base:runtime"
 import "core:strings"
 import "wb:base"
 
-MAX_PARSE_ERRORS_KEPT :: 100          // the parse errors a sheet keeps
 SELECTOR_ERROR_TEXT_MAX_BYTES :: 200  // the text of a rejected selector quoted in a parse error
 
 Arena_Alloc :: runtime.Allocator
@@ -73,6 +72,7 @@ Stylesheet :: struct {
 	newlines: []u32,           // the code point offsets of its line feeds (line_of: the code points themselves are not kept)
 	rules:  []^Rule,
 	errors: [dynamic]string,   // parse problems, for the console
+	errors_dropped: int,       // ... and how many more there were than Parse_Options.max_errors_kept
 	namespaces: Namespaces,    // its @namespace rules, which its selectors read
 }
 
@@ -80,6 +80,13 @@ Stylesheet :: struct {
 Parse_Options :: struct {
 	max_nesting_depth: int,   // blocks and functions inside one another
 	max_rules:         int,   // rules (nested ones included) in one sheet
+	max_errors_kept:   int,   // parse errors a sheet keeps the text of (the others are counted: errors_dropped)
+}
+
+// Keeps a parse problem found outside the sheet's own parse (a rule a script inserts) with the sheet's others.
+stylesheet_add_error :: proc(s: ^Stylesheet, msg: string, opt: Parse_Options) {
+	if msg == "" { return }
+	if len(s.errors) < opt.max_errors_kept { append(&s.errors, strings.clone(msg, s.errors.allocator)) } else { s.errors_dropped += 1 }
 }
 
 stylesheet_destroy :: proc(s: ^Stylesheet) {
@@ -97,6 +104,9 @@ Parser :: struct {
 	opt:   Parse_Options,
 	rules: int,
 	errors: ^[dynamic]string,
+	dropped: ^int,           // errors past opt.max_errors_kept (nil: not counted)
+	first_error: ^string,    // where the first problem met goes, kept or not (temp allocator): what a single rule's parse reports (nil: unwanted)
+	block_depth: int,        // the rule-list blocks (@media { }...) the parser is in: their rules read straight from the tokens
 	runes: []rune,
 	ns:      ^Namespaces,   // the sheet's namespaces, which selectors read (nil: no prefix is declared)
 	ns_open: bool,          // an @namespace rule may come here: the sheet's start, before any rule but @import
@@ -124,7 +134,12 @@ keep_values :: proc(p: ^Parser, vs: []Value) -> []Value {
 
 @(private)
 perr :: proc(p: ^Parser, msg: string) {
-	if len(p.errors^) < MAX_PARSE_ERRORS_KEPT { append(p.errors, strings.clone(msg, p.errors.allocator)) }
+	if p.first_error != nil && p.first_error^ == "" { p.first_error^ = strings.clone(msg, context.temp_allocator) }
+	if len(p.errors^) < p.opt.max_errors_kept {
+		append(p.errors, strings.clone(msg, p.errors.allocator))
+	} else if p.dropped != nil {
+		p.dropped^ += 1
+	}
 }
 
 // Parses `source` as a stylesheet (CSS Syntax §5, "parse a stylesheet").
@@ -150,15 +165,16 @@ parse_stylesheet :: proc(source: string, opt: Parse_Options) -> ^Stylesheet {
 	rule_scratch: base.Arena
 	_ = base.arena_init_growing(&rule_scratch)
 	defer base.arena_destroy(&rule_scratch)
-	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors, runes = runes, scratch = sa, ns = &s.namespaces, ns_open = true, rule_arena = &rule_scratch}
+	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors, dropped = &s.errors_dropped, runes = runes, scratch = sa, ns = &s.namespaces, ns_open = true, rule_arena = &rule_scratch}
 	s.rules = parse_rule_list(&p, true)
 	return s
 }
 
 // CSSOM "parse a CSS rule" (insertRule): `text` holds one rule, whitespace around it. The rule is made in the memory of
 // `s` and lives as long as the sheet; it is not added to `s.rules` (the caller places it). nil when `text` is not
-// exactly one valid rule. Positions (`pos`) are offsets in `text`, not in the sheet's source.
-parse_rule_into :: proc(s: ^Stylesheet, text: string, opt: Parse_Options) -> ^Rule {
+// exactly one valid rule. Positions (`pos`) are offsets in `text`, not in the sheet's source. `first_error`: the first
+// problem met (temp allocator; "" for none), which a rule dropped otherwise loses.
+parse_rule_into :: proc(s: ^Stylesheet, text: string, opt: Parse_Options) -> (rule: ^Rule, first_error: string) {
 	scratch: base.Arena
 	_ = base.arena_init_growing(&scratch)
 	defer base.arena_destroy(&scratch)
@@ -167,29 +183,33 @@ parse_rule_into :: proc(s: ^Stylesheet, text: string, opt: Parse_Options) -> ^Ru
 	errors := make([dynamic]string, sa)
 	// its selectors read the sheet's namespaces; an @namespace rule inserted declares nothing (a copy takes it)
 	ns := s.namespaces
-	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &errors, runes = runes, scratch = sa, ns = &ns, ns_open = true}
+	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &errors, first_error = &first_error, runes = runes, scratch = sa, ns = &ns, ns_open = true}
 	rules := parse_rule_list(&p, true)
-	return len(rules) == 1 ? rules[0] : nil
+	if len(rules) == 1 { return rules[0], first_error }
+	if first_error == "" { first_error = len(rules) == 0 ? "no rule" : "more than one rule" }
+	return nil, first_error
 }
 
 // CSSOM "parse a CSS rule" with nested set (CSSGroupingRule.insertRule inside a style rule `parent`, CSS Nesting): one
 // rule as the block of `parent` reads it (& and relative selectors against its selectors, group rules holding
 // declarations), or declarations alone, which make a nested declarations rule (selector_text "", the selectors of
-// `parent`). nil when `text` is neither.
-parse_nested_rule_into :: proc(s: ^Stylesheet, text: string, opt: Parse_Options, parent: ^Rule) -> ^Rule {
+// `parent`). nil when `text` is neither. `first_error` as parse_rule_into's.
+parse_nested_rule_into :: proc(s: ^Stylesheet, text: string, opt: Parse_Options, parent: ^Rule) -> (rule: ^Rule, first_error: string) {
 	scratch: base.Arena
 	_ = base.arena_init_growing(&scratch)
 	defer base.arena_destroy(&scratch)
 	sa := base.arena_allocator(&scratch)
 	toks, runes := tokenize_with_source(text, s.alloc, sa)
 	errors := make([dynamic]string, sa)
-	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &errors, runes = runes, scratch = sa, ns = &s.namespaces}
+	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &errors, first_error = &first_error, runes = runes, scratch = sa, ns = &s.namespaces}
 	decls, nested := parse_block_contents(&p, parse_values(&p, .EOF, 0), parent)
 	switch {
-	case len(nested) == 1 && len(decls) == 0: return nested[0]
-	case len(nested) == 0 && len(decls) > 0: return nested_declarations(&p, parent, decls)
+	case len(nested) == 1 && len(decls) == 0: return nested[0], first_error
+	case len(nested) == 0 && len(decls) > 0:
+		if r := nested_declarations(&p, parent, decls); r != nil { return r, first_error }
 	}
-	return nil
+	if first_error == "" { first_error = "neither one rule nor declarations" }
+	return nil, first_error
 }
 
 // The rules a rule holds that a script's list shows (CSSGroupingRule.cssRules): a group's rules, a style rule's nested
@@ -348,11 +368,12 @@ parse_qualified_rule :: proc(p: ^Parser, parent: ^Rule) -> ^Rule {
 		if t.kind == .Open_Curly {
 			p.pos += 1
 			p.va = saved
-			body := parse_values(p, .Close_Curly, 1)
+			body := parse_values(p, .Close_Curly, 1 + p.block_depth)
 			if p.pos < len(p.toks) && p.toks[p.pos].kind == .Close_Curly { p.pos += 1 }
 			return finish_style_rule(p, prelude[:], body, parent)
 		}
-		if t.kind == .Close_Curly && parent != nil { break }   // a stray } inside a nested block ends it
+		// a stray } inside a nested block or a rule-list block ends it (the rule is dropped, the } left to the block)
+		if t.kind == .Close_Curly && (parent != nil || p.block_depth > 0) { break }
 		// build values for the prelude (functions and blocks nest)
 		vs := parse_one_value(p)
 		append(&prelude, vs)
@@ -370,12 +391,12 @@ parse_one_value :: proc(p: ^Parser) -> Value {
 	#partial switch t.kind {
 	case .Open_Paren, .Open_Square:
 		v := Value{kind = .Block, tok = t}
-		v.children = parse_values(p, closing_for(t.kind), 1)
+		v.children = parse_values(p, closing_for(t.kind), 1 + p.block_depth)
 		if p.pos < len(p.toks) && p.toks[p.pos].kind == closing_for(t.kind) { p.pos += 1 }
 		return v
 	case .Function:
 		v := Value{kind = .Function, tok = t}
-		v.children = parse_values(p, .Close_Paren, 1)
+		v.children = parse_values(p, .Close_Paren, 1 + p.block_depth)
 		if p.pos < len(p.toks) && p.toks[p.pos].kind == .Close_Paren { p.pos += 1 }
 		return v
 	}
@@ -511,6 +532,7 @@ parse_nested_item :: proc(p: ^Parser, item: []Value, owner: ^Rule) -> ^Rule {
 			perr(p, strings.concatenate({"@", item[0].tok.text, " inside a style rule: rule dropped"}, context.temp_allocator))
 			return nil
 		}
+		p.rules += 1
 		return build_at_rule(p, item[0].tok.text, prelude[1:], blk, owner)
 	}
 	return finish_style_rule(p, prelude, blk.children, owner)
@@ -556,12 +578,18 @@ parse_component_values :: proc(source: string, opt: Parse_Options, allocator: Ar
 
 // Declarations from a style attribute or any bare declaration list.
 parse_declarations :: proc(source: string, opt: Parse_Options, allocator: Arena_Alloc) -> []Declaration {
+	decls, _ := parse_declarations_checked(source, opt, allocator)
+	return decls
+}
+
+// parse_declarations, and the first problem met (temp allocator; "" for none) for a caller that reports it.
+parse_declarations_checked :: proc(source: string, opt: Parse_Options, allocator: Arena_Alloc) -> (decls: []Declaration, first_error: string) {
 	var_errors := make([dynamic]string, context.temp_allocator)
 	toks := tokenize(source, allocator)
-	p := Parser{toks = toks, a = allocator, opt = opt, errors = &var_errors}
+	p := Parser{toks = toks, a = allocator, opt = opt, errors = &var_errors, first_error = &first_error}
 	body := parse_values(&p, .EOF, 0)
-	decls, _ := parse_block_contents(&p, body, nil)
-	return decls
+	decls, _ = parse_block_contents(&p, body, nil)
+	return
 }
 
 ////////////////////////////////
@@ -572,19 +600,34 @@ parse_at_rule :: proc(p: ^Parser, name: string) -> ^Rule {
 	// prelude up to ';' (statement) or a { } block; gathered in scratch memory, kept at its final size (build_at_rule
 	// may keep it: @supports, @container, @import...)
 	gathered := make([dynamic]Value, p_scratch(p))
+	p.rules += 1   // (before the rules of its block, which the limit counts after it)
 	for p.pos < len(p.toks) {
 		t := p.toks[p.pos]
 		if t.kind == .Semicolon { p.pos += 1; return build_at_rule(p, name, trim_values(keep_values(p, gathered[:])), Value{}, nil) }
 		if t.kind == .Open_Curly {
 			p.pos += 1
 			blk := Value{kind = .Block, tok = t}
-			// a block of rules is turned back into tokens and parsed as a rule list: its values are scratch
-			saved := p.va
-			if holds_rule_list(name) { p.va = p_scratch(p) }
-			blk.children = parse_values(p, .Close_Curly, 1)
-			p.va = saved
+			prelude := trim_values(keep_values(p, gathered[:]))
+			// (a block as deep as the nesting limit is skipped, as parse_values skips one)
+			if p.block_depth >= p.opt.max_nesting_depth {
+				perr(p, "nesting too deep: block skipped")
+				skip_block(p, .Close_Curly)
+				return build_at_rule(p, name, prelude, blk, nil)
+			}
+			if holds_rule_list(name) {
+				// a block of rules is read as a rule list straight from the tokens, up to its `}` (an @namespace cannot come in it)
+				p.block_depth += 1
+				saved_ns := p.ns_open
+				p.ns_open = false
+				rules := parse_rule_list(p, false)
+				p.ns_open = saved_ns
+				p.block_depth -= 1
+				if p.pos < len(p.toks) && p.toks[p.pos].kind == .Close_Curly { p.pos += 1 }
+				return build_at_rule(p, name, prelude, blk, nil, rules)
+			}
+			blk.children = parse_values(p, .Close_Curly, 1 + p.block_depth)
 			if p.pos < len(p.toks) && p.toks[p.pos].kind == .Close_Curly { p.pos += 1 }
-			return build_at_rule(p, name, trim_values(keep_values(p, gathered[:])), blk, nil)
+			return build_at_rule(p, name, prelude, blk, nil)
 		}
 		if t.kind == .Close_Curly { break }
 		append(&gathered, parse_one_value(p))
@@ -593,59 +636,17 @@ parse_at_rule :: proc(p: ^Parser, name: string) -> ^Rule {
 	return build_at_rule(p, name, trim_values(keep_values(p, gathered[:])), Value{}, nil)
 }
 
-// The at-rules whose block is a list of rules (at the top level: build_at_rule reads it with parse_rules_in_block).
+// The at-rules whose block is a list of rules (at the top level: parse_at_rule reads it with parse_rule_list).
 @(private)
 holds_rule_list :: proc(name: string) -> bool {
 	for n in ([]string{"media", "supports", "container", "layer"}) { if base.ascii_equal_fold(name, n) { return true } }
 	return false
 }
 
+// The at-rule `name` (counted by the caller in p.rules). `block_rules`: the rules of its block when it holds a rule list
+// outside a style rule (parse_at_rule read them from the tokens); inside one (`parent`) they come from `blk`.
 @(private)
-parse_rules_in_block :: proc(p: ^Parser, blk: Value) -> []^Rule {
-	sub := Parser{toks = flatten(blk.children, p_scratch(p)), a = p.a, opt = p.opt, errors = p.errors, rules = p.rules, runes = p.runes, scratch = p.scratch, ns = p.ns}
-	rules := parse_rule_list(&sub, false)
-	p.rules = sub.rules
-	return rules
-}
-
-// Re-flattens component values to tokens (so nested blocks can be parsed by the rule-list parser).
-@(private)
-flatten :: proc(vs: []Value, a: Arena_Alloc) -> []Token {
-	out := make([dynamic]Token, a)
-	flatten_into(&out, vs)
-	return out[:]
-}
-
-@(private)
-flatten_into :: proc(out: ^[dynamic]Token, vs: []Value) {
-	// iterative with an explicit stack of (values, index, closing token)
-	Frame :: struct { vs: []Value, i: int, close: Token_Kind }
-	stack := make([dynamic]Frame, context.temp_allocator)
-	append(&stack, Frame{vs, 0, .EOF})
-	for len(stack) > 0 {
-		f := &stack[len(stack) - 1]
-		if f.i >= len(f.vs) {
-			if f.close != .EOF { append(out, Token{kind = f.close}) }
-			pop(&stack)
-			continue
-		}
-		v := f.vs[f.i]
-		f.i += 1
-		switch v.kind {
-		case .Token: append(out, v.tok)
-		case .Function:
-			append(out, v.tok)
-			append(&stack, Frame{v.children, 0, .Close_Paren})
-		case .Block:
-			append(out, Token{kind = v.tok.kind})
-			append(&stack, Frame{v.children, 0, closing_for(v.tok.kind)})
-		}
-	}
-}
-
-@(private)
-build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, parent: ^Rule) -> ^Rule {
-	p.rules += 1
+build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, parent: ^Rule, block_rules: []^Rule = nil) -> ^Rule {
 	r := new(Rule, p.a)
 	lname := base.ascii_lower_clone(name, p.a)
 	r.name = lname
@@ -656,12 +657,12 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 		r.kind = .Media
 		r.media = parse_media_query_list(prelude, p.a)
 		r.prelude = prelude
-		r.rules = parse_rules_in_block_or_nested(p, blk, parent)
+		r.rules = parse_rules_in_block_or_nested(p, blk, parent, block_rules)
 	case "supports":
 		if !has_block { return nil }
 		r.kind = .Supports
 		r.supports = prelude
-		r.rules = parse_rules_in_block_or_nested(p, blk, parent)
+		r.rules = parse_rules_in_block_or_nested(p, blk, parent, block_rules)
 	case "container":
 		if !has_block { return nil }
 		r.kind = .Container
@@ -671,7 +672,7 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 			perr(p, "invalid @container condition: rule dropped")
 			return nil
 		}
-		r.rules = parse_rules_in_block_or_nested(p, blk, parent)
+		r.rules = parse_rules_in_block_or_nested(p, blk, parent, block_rules)
 	case "import":
 		r.kind = .Import
 		url := ""
@@ -701,7 +702,7 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 		if has_block {
 			r.kind = .Layer_Block
 			r.layer = layer_name_of(prelude, p.a)
-			r.rules = parse_rules_in_block_or_nested(p, blk, parent)
+			r.rules = parse_rules_in_block_or_nested(p, blk, parent, block_rules)
 		} else {
 			r.kind = .Layer_Statement
 			names := make([dynamic]string, p.a)
@@ -824,8 +825,9 @@ namespace_url_of :: proc(v: Value) -> (string, bool) {
 }
 
 @(private)
-parse_rules_in_block_or_nested :: proc(p: ^Parser, blk: Value, parent: ^Rule) -> []^Rule {
-	if parent == nil { return parse_rules_in_block(p, blk) }
+parse_rules_in_block_or_nested :: proc(p: ^Parser, blk: Value, parent: ^Rule, block_rules: []^Rule) -> []^Rule {
+	// (outside a style rule: read by parse_at_rule; in a declaration list with no owner, nil, which the caller drops)
+	if parent == nil { return block_rules }
 	// inside a style rule: a conditional group holds nested rules, and declarations as nested declarations rules (applied
 	// to the parent's selector), those before its first rule too
 	decls, nested := parse_block_contents(p, blk.children, parent)

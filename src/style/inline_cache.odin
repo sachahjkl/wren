@@ -37,7 +37,8 @@ Inline_Decl :: struct {
 inline_cache_destroy :: proc(s: ^Styled) {
 	delete(s.inline_rules)
 	delete(s.inline_decls)
-	s.inline_rules, s.inline_decls = nil, nil
+	delete(s.hint_rules)
+	s.inline_rules, s.inline_decls, s.hint_rules = nil, nil, nil
 }
 
 // The compiled rule of a style attribute (nil when its declarations are all invalid).

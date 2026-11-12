@@ -125,6 +125,9 @@ timer_fire :: proc(data: rawptr) {
 
 @(private)
 timer_start :: proc(p: ^Page, inst: u32, cb: i32, user: u64, wide: bool, delay_ms: f64, repeat: bool) -> u64 {
+	// a script that arms timers in a loop is refused past timers.max_timers (0: no timer, as requestAnimationFrame past
+	// its own bound): each waiting timer holds host memory and a slot in the loop's timer queue
+	if limit := p.settings.web.max_timers; limit > 0 && p.timers.count >= limit { return 0 }
 	nesting := p.web.timer_nesting
 	d := timer_effective_delay(delay_ms, nesting, p.settings.web)
 	h, t := base.pool_insert(&p.timers, Timer{page = p, instance = inst, callback = u32(cb), user = u32(user), user64 = user,

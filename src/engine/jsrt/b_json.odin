@@ -527,8 +527,6 @@ json_object :: proc(w: ^JSON_Writer, v: Value) -> int {
 		pv := get(ctx, v, k)
 		if is_exception(pv) {return -1}
 		mark := w.sb.len
-		saved8 := len(w.sb.b8)
-		saved16 := len(w.sb.b16)
 		if !first {sb_unit(&w.sb, ',')}
 		json_newline(w)
 		json_quote(&w.sb, atom_to_string(rt, k))
@@ -537,10 +535,8 @@ json_object :: proc(w: ^JSON_Writer, v: Value) -> int {
 		r := json_property(w, v, k, pv)
 		if r < 0 {return -1}
 		if r == 0 {
-			// roll back the key
-			w.sb.len = mark
-			resize(&w.sb.b8, saved8)
-			resize(&w.sb.b16, saved16)
+			// roll back the key (sb_truncate: the key may have made the builder 16-bit)
+			sb_truncate(&w.sb, mark)
 			continue
 		}
 		first = false

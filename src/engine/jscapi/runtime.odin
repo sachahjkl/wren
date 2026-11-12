@@ -3,7 +3,6 @@ package jscapi
 // JSRuntime / JSContext life cycle, the host hooks, jobs, classes and native functions.
 
 import "base:runtime"
-import "core:mem"
 import jsdate "wb:engine/datetime"
 import js "wb:engine/jsrt"
 
@@ -183,6 +182,7 @@ JS_SetIsHTMLDDA :: proc "c" (c: ^Context, obj: JSValue) {
 }
 
 JS_ComputeMemoryUsage :: proc "c" (r: ^Runtime, s: ^Memory_Usage) {
+	context = api_ctx()
 	rt := jrt(r)
 	s^ = {}
 	s.malloc_size = rt.heap_bytes
@@ -190,7 +190,7 @@ JS_ComputeMemoryUsage :: proc "c" (r: ^Runtime, s: ^Memory_Usage) {
 	s.memory_used_size = rt.heap_bytes
 	s.memory_used_count = i64(rt.cell_count)
 	s.malloc_count = i64(rt.cell_count)
-	s.atom_count = i64(len(rt.atoms))
+	s.atom_count = i64(js.atoms_live(rt))
 }
 
 // Heap census counter `index` (jsrt memprof.odin), -1 past the end. Not part of the quickjs.h API.
@@ -518,8 +518,10 @@ ex_own_keys :: proc(ctx: ^js.Context, o: ^js.Object, out: ^[dynamic]js.Atom, fil
 		if sym && .symbols not_in filter {continue}
 		if !sym && .strings not_in filter {continue}
 		append(out, a)
+		js.root_atom(ctx.rt, a) // (the host's reference goes with the table: the list keeps the atom until the caller is done)
 	}
-	if tab != nil {mem.free(tab, host_allocator)}
+	// the table's atoms were the host's (JS_NewAtom), as QuickJS's js_free_prop_enum takes them
+	if tab != nil {JS_FreePropertyEnum(wctx(ctx), tab, n)}
 	return true
 }
 

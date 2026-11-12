@@ -18,13 +18,43 @@ Hsts_Entry :: struct {
 }
 
 Hsts :: struct {
-	hosts:     map[string]Hsts_Entry,   // lower-case ASCII domain -> entry; keys are owned
-	allocator: runtime.Allocator,
-	dirty:     bool,
+	hosts:       map[string]Hsts_Entry,   // lower-case ASCII domain -> entry; keys are owned
+	allocator:   runtime.Allocator,
+	dirty:       bool,
+	// every site visited may add a host: past this, the entry that expires first goes (network.hsts.max_entries)
+	max_entries: int,
+	max_age_ms:  i64,                     // a longer max-age is cut to this (network.hsts.max_age_s)
 }
 
-hsts_make :: proc(allocator := context.allocator) -> Hsts {
-	return Hsts{hosts = make(map[string]Hsts_Entry, allocator), allocator = allocator}
+// The defaults of network.hsts.max_entries and network.hsts.max_age_s (settings.odin), for a store made without them.
+HSTS_MAX_ENTRIES :: 10_000
+HSTS_MAX_AGE_S :: 365 * 86_400
+
+// `max_entries` / `max_age_s` 0: the defaults.
+hsts_make :: proc(max_entries := 0, max_age_s: i64 = 0, allocator := context.allocator) -> Hsts {
+	return Hsts{
+		hosts = make(map[string]Hsts_Entry, allocator), allocator = allocator,
+		max_entries = max_entries > 0 ? max_entries : HSTS_MAX_ENTRIES,
+		max_age_ms = (max_age_s > 0 ? max_age_s : HSTS_MAX_AGE_S) * 1000,
+	}
+}
+
+// Sets the entry of `host`, making room first when it is a new host and the store is full.
+@(private)
+hsts_put :: proc(h: ^Hsts, host: string, entry: Hsts_Entry, now: i64) {
+	if v, exists := &h.hosts[host]; exists { v^ = entry; return }
+	if len(h.hosts) >= h.max_entries {
+		hsts_purge(h, now)
+		// still full: the entry that expires first is the one the store would lose soonest anyway
+		for len(h.hosts) >= h.max_entries && len(h.hosts) > 0 {
+			first_key := ""
+			first_exp := max(i64)
+			for k, e in h.hosts { if e.expires_ms < first_exp { first_key, first_exp = k, e.expires_ms } }
+			key, _ := delete_key(&h.hosts, first_key)
+			delete(key, h.allocator)
+		}
+	}
+	h.hosts[strings.clone(host, h.allocator)] = entry
 }
 
 hsts_destroy :: proc(h: ^Hsts) {
@@ -73,12 +103,9 @@ hsts_note :: proc(h: ^Hsts, host: string, header: string, now: i64) -> bool {
 		if k, _ := delete_key(&h.hosts, host); k != "" { delete(k, h.allocator); h.dirty = true; return true }
 		return false
 	}
-	entry := Hsts_Entry{expires_ms = now + max_age * 1000, include_subdomains = include}
-	if _, exists := h.hosts[host]; exists {
-		h.hosts[host] = entry
-	} else {
-		h.hosts[strings.clone(host, h.allocator)] = entry
-	}
+	// (in seconds first: a huge max-age times 1000 would overflow)
+	age_ms := min(max_age, h.max_age_ms / 1000) * 1000
+	hsts_put(h, host, Hsts_Entry{expires_ms = now + age_ms, include_subdomains = include}, now)
 	h.dirty = true
 	return true
 }
@@ -144,7 +171,8 @@ hsts_load :: proc(h: ^Hsts, path: string, now: i64) -> (loaded: int, ok: bool) {
 		exp, ok1 := strconv.parse_i64(f[1], 10)
 		inc, ok2 := strconv.parse_int(f[2], 10)
 		if !ok1 || !ok2 || exp <= now || f[0] == "" { continue }
-		if _, exists := h.hosts[f[0]]; exists { h.hosts[f[0]] = Hsts_Entry{exp, inc != 0} } else { h.hosts[strings.clone(f[0], h.allocator)] = Hsts_Entry{exp, inc != 0} }
+		// (a file written before the cap, or under a larger one, keeps no entry longer than the cap from now)
+		hsts_put(h, f[0], Hsts_Entry{min(exp, now + h.max_age_ms), inc != 0}, now)
 		loaded += 1
 	}
 	return loaded, true

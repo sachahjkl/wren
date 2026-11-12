@@ -23,9 +23,9 @@ import "wb:dom"
 // A list is kept once however many elements have it (hash consing, by rule and selector): cards of a page, rows of a list.
 // The store is the engine's and outlives a Styled: the next full pass finds the lists there.
 
-// The store's first block, and what it may hold: past that no new list is kept (their elements match as before) until the next full pass starts over.
+// The store's first block. What it may hold is style.matched.max_bytes: past that no new list is kept (their elements match as before)
+// until the next full pass starts over.
 MATCHED_BLOCK :: 64 << 10
-MATCHED_MAX_BYTES :: 16 << 20
 // The table's first size in slots (a power of two); it doubles at SHARE_LOAD_NUM / SHARE_LOAD_DEN full, as the share table does.
 MATCHED_MIN_SLOTS :: 1024
 
@@ -80,8 +80,9 @@ matched_begin :: proc(e: ^Engine, s: ^Styled) {
 	st := &e.matched
 	if st.gen == 0 {
 		_ = base.arena_init_growing(&st.arena, MATCHED_BLOCK)
-		st.gen, st.limit = 1, MATCHED_MAX_BYTES
+		st.gen = 1
 	}
+	st.limit = e.settings.matched_max_bytes   // (read at each full pass: a changed preference holds from the next one)
 	if int(st.arena.total_used) > st.limit { matched_reset(st) }
 	s.matched_gen = st.gen
 }
@@ -114,7 +115,7 @@ matched_keep :: proc(p: ^Pass, h: base.Handle) {
 	s := p.s
 	i := int(base.handle_index(h))
 	if i >= len(s.matched) { styled_size(s, i + 1) }
-	s.matched[i] = matched_intern(&p.e.matched, &p.lists)
+	s.matched[i] = matched_intern(&p.e.matched, &p.lists, &p.matched_local)
 }
 
 // p.lists from what `h` matched last; false: nothing kept, the caller matches.
@@ -135,9 +136,10 @@ matched_take :: proc(p: ^Pass, h: base.Handle, ctx: Elem_Ctx) -> bool {
 	return true
 }
 
-// The one list equal to `lists`; nil past what a list or the store may hold.
+// The one list equal to `lists`; nil past what a list or the store may hold. `local`: the lists this pass found already, by
+// hash: the threads of a parallel pass took the store's lock once per element, for lists nearly always found before.
 @(private = "file")
-matched_intern :: proc(st: ^Matched_Store, lists: ^[Entry_List][dynamic]Entry) -> ^Matched_List {
+matched_intern :: proc(st: ^Matched_Store, lists: ^[Entry_List][dynamic]Entry, local: ^map[u64]^Matched_List) -> ^Matched_List {
 	hash := SHARE_HASH_SEED
 	total := 0
 	for &l in lists {
@@ -149,6 +151,15 @@ matched_intern :: proc(st: ^Matched_Store, lists: ^[Entry_List][dynamic]Entry) -
 			hash = (hash ~ u64(uintptr(rawptr(ent.complex)))) * SHARE_HASH_PRIME
 		}
 	}
+	// (a list of the store is written whole before the lock that hands it out is let go, and never changes: read without it)
+	if l, ok := local[hash]; ok && matched_equal(l, lists) { return l }
+	l := matched_intern_locked(st, lists, hash, total)
+	if l != nil { local[hash] = l }
+	return l
+}
+
+@(private = "file")
+matched_intern_locked :: proc(st: ^Matched_Store, lists: ^[Entry_List][dynamic]Entry, hash: u64, total: int) -> ^Matched_List {
 	sync.mutex_lock(&st.mu)
 	defer sync.mutex_unlock(&st.mu)
 	if (st.count + 1) * SHARE_LOAD_DEN > len(st.slots) * SHARE_LOAD_NUM { matched_grow(st) }

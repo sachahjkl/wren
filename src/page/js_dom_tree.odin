@@ -11,9 +11,9 @@ package page
 // One document per page: adopting is removing from the parent, importing is cloning.
 
 import "core:strings"
-import "core:unicode/utf8"
 import "wb:base"
 import "wb:dom"
+import "wb:url"
 
 ////////////////////////////////
 // Helpers shared by the js_dom_*.odin files
@@ -79,25 +79,12 @@ jd_is_element :: #force_inline proc(d: ^dom.Document, h: base.Handle) -> bool {
 jd_is_char_data :: #force_inline proc(n: ^dom.Node) -> bool { return n.kind == .Text || n.kind == .Comment }
 
 // The byte index of UTF-16 offset `off` in UTF-8 `s` (clamped to the end; an offset inside a surrogate pair goes to the
-// character's start: this DOM keeps text as UTF-8, where a lone surrogate cannot exist).
+// character's start: this DOM keeps text as UTF-8, where a lone surrogate cannot exist). ASCII is skipped 16 bytes at a
+// time (base.utf8_index_of_utf16).
 @(private)
-utf8_index :: proc(s: string, off: int) -> int {
-	n := 0
-	i := 0
-	for i < len(s) && n < off {
-		b := s[i]
-		step, units := 1, 1
-		switch {
-		case b < 0x80:
-		case b < 0xE0: step = 2
-		case b < 0xF0: step = 3
-		case: step, units = 4, 2
-		}
-		if n + units > off { break }
-		n += units
-		i += step
-	}
-	return min(i, len(s))
+utf8_index :: #force_inline proc(s: string, off: int) -> int {
+	i, _ := base.utf8_index_of_utf16(s, off)
+	return i
 }
 
 @(private)
@@ -170,8 +157,90 @@ Node_baseURI :: proc(c: ^Call, node: Api_Node) -> string {
 	return document_base_url(p)
 }
 
-// The document's base URL: the first <base href> resolved against the document's URL, else the document's URL.
+// The document's base URL: the first <base href> resolved against the document's URL, else the document's URL. A copy
+// in the temporary allocator: the kept one (Base_Url_Cache) changes with the document.
 document_base_url :: proc(p: ^Page) -> string {
+	if bc := base_url_current(p); bc != nil { return strings.clone(bc.href, context.temp_allocator) }
+	return document_base_url_uncached(p)
+}
+
+// The document's base URL parsed, or nil when it is no URL. Valid until the document, its URL or its <base> change (the
+// next call of a script): resolve with it and let go of it.
+document_base_url_parsed :: proc(p: ^Page) -> ^url.URL {
+	bc := base_url_current(p)
+	if bc == nil { return nil }
+	if bc.parse == .Not_Tried {
+		parsed, ok := url.parse_absolute(bc.href, base.process_allocator())
+		bc.parse = .Not_A_Url
+		if ok { bc.parsed, bc.parse = parsed, .Parsed }
+	}
+	return bc.parse == .Parsed ? &bc.parsed : nil
+}
+
+// The base URL of a document, kept (Page.base_url): finding <base> walks the <head>, and resolving its href parses two
+// URLs through Lexbor, for each of the URLs a page resolves (images, stylesheets, links, fonts). It is good while the
+// document, its tree and attributes (their versions), its URL and its frame's fallback base are those it was made from.
+Base_Url_Cache :: struct {
+	valid:        bool,
+	cleanup_set:  bool,             // base_url_cache_free is registered on the page's scope
+	doc:          ^dom.Document,
+	tree_version: u64,
+	attr_version: u64,
+	location:     string,           // owned (process allocator), as the rest: what it was made from
+	fallback:     string,
+	href:         string,           // the base URL
+	parsed:       url.URL,          // of href, made the first time it is asked for
+	parse:        enum u8 { Not_Tried, Parsed, Not_A_Url },
+}
+
+// The kept base URL, made again if what it was made from changed; nil for a page that is closing (no cleanup can be
+// registered then: the caller computes it).
+@(private)
+base_url_current :: proc(p: ^Page) -> ^Base_Url_Cache {
+	if p.closed || p.scope == nil || p.scope.closing || p.doc == nil { return nil }
+	bc := &p.base_url
+	d := p.doc
+	location := p.env.location.href
+	fallback := frame_fallback_base(p)
+	if bc.valid && bc.doc == d && bc.tree_version == d.tree_version && bc.attr_version == d.attr_version && bc.location == location && bc.fallback == fallback {
+		return bc
+	}
+	href := document_base_url_uncached(p)
+	if !bc.cleanup_set {
+		base.on_close(p.scope, base_url_cache_free, bc)
+		bc.cleanup_set = true
+	}
+	base_url_cache_clear(bc)
+	a := base.process_allocator()
+	bc^ = Base_Url_Cache{
+		valid = true, cleanup_set = true, doc = d, tree_version = d.tree_version, attr_version = d.attr_version,
+		location = strings.clone(location, a), fallback = strings.clone(fallback, a), href = strings.clone(href, a),
+	}
+	return bc
+}
+
+@(private)
+base_url_cache_clear :: proc(bc: ^Base_Url_Cache) {
+	a := base.process_allocator()
+	delete(bc.location, a)
+	delete(bc.fallback, a)
+	delete(bc.href, a)
+	if bc.parse == .Parsed { delete(bc.parsed.href, a) }   // (url.destroy frees with the context's allocator)
+	set := bc.cleanup_set
+	bc^ = {}
+	bc.cleanup_set = set
+}
+
+@(private)
+base_url_cache_free :: proc(data: rawptr) {
+	bc := (^Base_Url_Cache)(data)
+	base_url_cache_clear(bc)
+	bc.cleanup_set = false
+}
+
+// document_base_url without the kept copy: the <head> searched, the href resolved.
+@(private)
+document_base_url_uncached :: proc(p: ^Page) -> string {
 	d := p.doc
 	head := jd_head(d)
 	if head != base.NIL_HANDLE {
@@ -372,7 +441,7 @@ node_length :: proc(d: ^dom.Document, h: base.Handle) -> int {
 	n := dom.get(d, h)
 	if n == nil { return 0 }
 	#partial switch n.kind {
-	case .Text, .Comment: return utf16_length(n.text)
+	case .Text, .Comment: return base.utf16_length(n.text)
 	case .Doctype: return 0
 	}
 	return dom.child_count(d, h)
@@ -612,7 +681,7 @@ unpack_items :: proc(d: ^dom.Document, items: []u8) -> (out: [dynamic]base.Handl
 			if i + 4 > len(items) { return out, false }
 			n := int(u32(items[i]) | u32(items[i + 1]) << 8 | u32(items[i + 2]) << 16 | u32(items[i + 3]) << 24)
 			i += 4
-			if n > len(items) - i || !utf8.valid_string(string(items[i:i + n])) { return out, false }
+			if n > len(items) - i || !base.utf8_valid(string(items[i:i + n])) { return out, false }
 			append(&out, dom.create_text(d, string(items[i:i + n])))
 			i += n
 		case:
@@ -767,19 +836,17 @@ CharacterData_set_data :: proc(c: ^Call, node: Api_Node, value: string) {
 	if jd_is_char_data(node.data) { dom.set_data(c.page.doc, H(node.handle), value) }
 }
 
-CharacterData_length :: proc(c: ^Call, node: Api_Node) -> u32 { return jd_is_char_data(node.data) ? u32(utf16_length(node.data.text)) : 0 }
+CharacterData_length :: proc(c: ^Call, node: Api_Node) -> u32 { return jd_is_char_data(node.data) ? u32(base.utf16_length(node.data.text)) : 0 }
 
-// DOM "replace data": UTF-16 offsets; Index_Size past the length.
+// DOM "replace data": UTF-16 offsets; Index_Size past the length. One scan of the text, up to the end of the range
+// (base.utf16_range).
 @(private)
 replace_data :: proc(c: ^Call, h: base.Handle, offset, count: u32, data: string) -> Api_Error {
 	d := c.page.doc
 	n := dom.get(d, h)
 	if n == nil || !jd_is_char_data(n) { return .None }
-	length := utf16_length(n.text)
-	if int(offset) > length { return fail(c, .Index_Size, "The offset is greater than the node's length.") }
-	end16 := min(int(offset) + int(count), length)
-	a := utf8_index(n.text, int(offset))
-	b := utf8_index(n.text, end16)
+	a, b, ok := base.utf16_range(n.text, int(offset), int(count))
+	if !ok { return fail(c, .Index_Size, "The offset is greater than the node's length.") }
 	out := strings.concatenate({n.text[:a], data, n.text[b:]}, context.temp_allocator)
 	dom.set_data(d, h, out)
 	return .None
@@ -788,10 +855,8 @@ replace_data :: proc(c: ^Call, h: base.Handle, offset, count: u32, data: string)
 CharacterData_substringData :: proc(c: ^Call, node: Api_Node, offset: u32, count: u32) -> (string, Api_Error) {
 	if !jd_is_char_data(node.data) { return "", .None }
 	t := node.data.text
-	length := utf16_length(t)
-	if int(offset) > length { return "", fail(c, .Index_Size, "The offset is greater than the node's length.") }
-	a := utf8_index(t, int(offset))
-	b := utf8_index(t, min(int(offset) + int(count), length))
+	a, b, ok := base.utf16_range(t, int(offset), int(count))
+	if !ok { return "", fail(c, .Index_Size, "The offset is greater than the node's length.") }
 	return t[a:b], .None
 }
 
@@ -817,8 +882,8 @@ Text_splitText :: proc(c: ^Call, node: Api_Node, offset: u32) -> (u64, Api_Error
 	h := H(node.handle)
 	if node.data.kind != .Text { return 0, fail(c, .Invalid_Handle, "splitText: not a Text node") }
 	t := node.data.text
-	if int(offset) > utf16_length(t) { return 0, fail(c, .Index_Size, "The offset is greater than the Text node's length.") }
-	at := utf8_index(t, int(offset))
+	at, _, ok := base.utf16_range(t, int(offset), 0)
+	if !ok { return 0, fail(c, .Index_Size, "The offset is greater than the Text node's length.") }
 	tail := strings.clone(t[at:], context.temp_allocator)
 	head := strings.clone(t[:at], context.temp_allocator)
 	nt := dom.create_text(d, tail)
@@ -860,6 +925,7 @@ Document_createElementChecked :: proc(c: ^Call, local_name: string) -> (u64, Api
 	d := jd_doc(c)
 	if d == nil { return 0, no_document(c) }
 	if !valid_element_name(local_name) { return 0, fail(c, .Invalid_Character, "The tag name provided is not a valid name.") }
+	if e := create_quota(c, d, len(local_name)); e != .None { return 0, e }
 	h: base.Handle
 	if root := dom.get(d, d.root); dom.is_xml_document(root) {
 		// a page loaded as XML: its elements keep their names' case (application/xhtml+xml: in the HTML namespace)
@@ -871,10 +937,19 @@ Document_createElementChecked :: proc(c: ^Call, local_name: string) -> (u64, Api
 	return u64(h), .None
 }
 
+// A script's new node in `d`: refused (QuotaExceededError) once the document holds javascript.dom.max_nodes nodes or
+// javascript.dom.max_bytes bytes of strings, so that a page cannot fill the browser's memory through the DOM.
+@(private)
+create_quota :: proc(c: ^Call, d: ^dom.Document, bytes: int) -> Api_Error {
+	if dom.quota_check(d, 1, bytes) != .None { return fail(c, .Quota, "The document holds as many nodes or bytes as a page may build.") }
+	return .None
+}
+
 Document_createElementInert :: proc(c: ^Call, local_name: string) -> (u64, Api_Error) {
 	d := jd_doc(c)
 	if d == nil { return 0, no_document(c) }
 	if !valid_element_name(local_name) { return 0, fail(c, .Invalid_Character, "The tag name provided is not a valid name.") }
+	if e := create_quota(c, d, len(local_name)); e != .None { return 0, e }
 	return u64(dom.create_element(d, local_name)), .None
 }
 
@@ -904,6 +979,7 @@ Document_createElementNSChecked :: proc(c: ^Call, namespace: Maybe(string), qual
 	if d == nil { return 0, no_document(c) }
 	ns, prefix, local, err := validate_and_extract(c, namespace, qualified_name, true)
 	if err != .None { return 0, err }
+	if e := create_quota(c, d, len(qualified_name)); e != .None { return 0, e }
 	if dom.is_xml_document(dom.get(d, d.root)) { return u64(xml_create_element(d, ns, prefix, local)), .None }
 	h := dom.create_element_ns(d, local, dom.namespace_of(ns), ns, prefix)
 	// the local name as given (createElementNS lower-cases nothing); an SVG name in its own case stays the browser's
@@ -920,12 +996,14 @@ Document_validateAttributeNS :: proc(c: ^Call, namespace: Maybe(string), qualifi
 Document_createDocumentFragment :: proc(c: ^Call) -> (u64, Api_Error) {
 	d := jd_doc(c)
 	if d == nil { return 0, no_document(c) }
+	if e := create_quota(c, d, 0); e != .None { return 0, e }
 	return u64(dom.create_fragment(d)), .None
 }
 
 Document_createComment :: proc(c: ^Call, data: string) -> (u64, Api_Error) {
 	d := jd_doc(c)
 	if d == nil { return 0, no_document(c) }
+	if e := create_quota(c, d, len(data)); e != .None { return 0, e }
 	return u64(dom.create_comment(d, data)), .None
 }
 

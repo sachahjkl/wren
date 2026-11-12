@@ -21,6 +21,7 @@ package browser
 // Pixels handed to `update` are RGBA8, straight alpha, sRGB, `stride` bytes per row (package images).
 
 import "core:math"
+import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "toolkit:draw"
@@ -51,6 +52,10 @@ Texture_Api :: struct {
 	draw:       proc(user: rawptr, dc: ^draw.Context, tex: Image_Texture, dst, src: draw.Rect, tint: draw.Color, radii: [4]f32),
 	draw_tiled: proc(user: rawptr, dc: ^draw.Context, tex: Image_Texture, dst, tile: draw.Rect, tint: draw.Color, radii: [4]f32),   // optional
 	max_size:   proc(user: rawptr) -> int,   // optional: largest texture side
+	// optional: a texture filled with premultiplied sRGB-encoded RGBA8 as it is (a CPU canvas's own bytes, no conversion);
+	// create gives 0 when the renderer has none (then `create` and `update` with straight alpha)
+	create_premultiplied: proc(user: rawptr, w, h: int) -> Image_Texture,
+	update_premultiplied: proc(user: rawptr, tex: Image_Texture, x, y, w, h: int, pixels: []u8, stride: int),
 	placeholder: bool,                        // draws placeholders, not pixels
 }
 
@@ -62,6 +67,7 @@ Shell_Texture :: struct {
 	frame:      int,
 	bytes:      int,
 	epoch:      u64,
+	premultiplied: bool,   // made by create_premultiplied: filled by update_premultiplied
 }
 
 Images_Shell :: struct {
@@ -267,15 +273,14 @@ images_after_paint :: proc(app: ^App) {
 enforce_texture_budget :: proc(app: ^App) {
 	limit := app.page_settings.images.gpu_max_bytes
 	if app.images_shell.bytes <= limit { return }
-	ids := make([dynamic]u64, 0, len(app.images_shell.textures), context.temp_allocator)
-	for id, st in app.images_shell.textures { if st.epoch != app.images_shell.epoch { append(&ids, id) } }
-	// oldest first
-	for i in 1 ..< len(ids) {
-		for j := i; j > 0 && app.images_shell.textures[ids[j]].epoch < app.images_shell.textures[ids[j - 1]].epoch; j -= 1 { ids[j], ids[j - 1] = ids[j - 1], ids[j] }
-	}
-	for id in ids {
+	// the textures not drawn this frame, oldest first (each one's epoch read once, not at every comparison)
+	Aged :: struct { id, epoch: u64 }
+	aged := make([dynamic]Aged, 0, len(app.images_shell.textures), context.temp_allocator)
+	for id, st in app.images_shell.textures { if st.epoch != app.images_shell.epoch { append(&aged, Aged{id, st.epoch}) } }
+	slice.sort_by(aged[:], proc(a, b: Aged) -> bool { return a.epoch < b.epoch })
+	for a in aged {
 		if app.images_shell.bytes <= limit { break }
-		release_texture(id)
+		release_texture(a.id)
 	}
 }
 
@@ -469,8 +474,9 @@ paint_canvas :: proc(dc: ^draw.Context, node: base.Handle, content, border: draw
 	if clip { draw.pop_clip(dc) }
 }
 
-// The texture of a canvas bitmap. Created at the bitmap's size; the changed rectangle is converted to straight alpha and
-// uploaded (all of it for a new texture). The bitmap's dirty rectangle is cleared by the upload.
+// The texture of a canvas bitmap. Created at the bitmap's size; the changed rectangle is uploaded (all of it for a new
+// texture): as it is, premultiplied, when the renderer takes that (Direct3D), else converted to straight alpha (the
+// renderer premultiplies it again). The bitmap's dirty rectangle is cleared by the upload.
 @(private = "file")
 canvas_texture_for :: proc(v: page.Canvas_View) -> (Image_Texture, bool) {
 	bmp := v.bmp
@@ -478,10 +484,17 @@ canvas_texture_for :: proc(v: page.Canvas_View) -> (Image_Texture, bool) {
 	if st != nil && (st.w != bmp.w || st.h != bmp.h) { release_texture(v.id); st = nil }
 	fresh := false
 	if st == nil {
-		tex := the_app.images_shell.api.create(the_app.images_shell.api.user, bmp.w, bmp.h)
+		api := &the_app.images_shell.api
+		tex: Image_Texture
+		premultiplied := false
+		if api.create_premultiplied != nil && api.update_premultiplied != nil {
+			tex = api.create_premultiplied(api.user, bmp.w, bmp.h)
+			premultiplied = tex != 0
+		}
+		if tex == 0 { tex = api.create(api.user, bmp.w, bmp.h) }
 		if tex == 0 { return 0, false }
 		st = new(Shell_Texture)
-		st.tex, st.w, st.h = tex, bmp.w, bmp.h
+		st.tex, st.w, st.h, st.premultiplied = tex, bmp.w, bmp.h, premultiplied
 		st.bytes = bmp.w * bmp.h * 4 * 4 / 3
 		the_app.images_shell.bytes += st.bytes
 		the_app.images_shell.textures[v.id] = st
@@ -491,12 +504,15 @@ canvas_texture_for :: proc(v: page.Canvas_View) -> (Image_Texture, bool) {
 		x0, y0, x1, y1 := 0, 0, bmp.w, bmp.h
 		if !fresh && canvas2d.bitmap_has_dirty(bmp) { x0, y0, x1, y1 = bmp.dirty_min.x, bmp.dirty_min.y, bmp.dirty_max.x, bmp.dirty_max.y }
 		w, h := x1 - x0, y1 - y0
-		if bmp.all_opaque {
+		switch {
+		case st.premultiplied:
+			the_app.images_shell.api.update_premultiplied(the_app.images_shell.api.user, st.tex, x0, y0, w, h, bmp.pix[(y0 * bmp.w + x0) * 4:], bmp.w * 4)
+		case bmp.all_opaque:
 			// (premultiplied and straight are the same bytes: a WebGL frame of a whole screen costs no conversion)
 			the_app.images_shell.api.update(the_app.images_shell.api.user, st.tex, x0, y0, w, h, bmp.pix[(y0 * bmp.w + x0) * 4:], bmp.w * 4)
-		} else {
+		case:
 			scratch := make([]u8, w * h * 4, context.temp_allocator)
-			canvas2d.bitmap_read_straight(bmp, x0, y0, w, h, scratch)
+			canvas2d.bitmap_read_straight_fast(bmp, x0, y0, w, h, scratch)
 			the_app.images_shell.api.update(the_app.images_shell.api.user, st.tex, x0, y0, w, h, scratch, w * 4)
 		}
 		canvas2d.bitmap_clean(bmp)
@@ -641,5 +657,12 @@ renderer_texture_api :: proc(app: ^App) -> Texture_Api {
 		draw     = proc(u: rawptr, dc: ^draw.Context, t: Image_Texture, dst, src: draw.Rect, tint: draw.Color, radii: [4]f32) { draw.image_corners(dc, render.Texture(t), dst, src, tint, radii) },
 		draw_tiled = proc(u: rawptr, dc: ^draw.Context, t: Image_Texture, dst, tile: draw.Rect, tint: draw.Color, radii: [4]f32) { draw.image_tiled(dc, render.Texture(t), dst, tile, tint, radii) },
 		max_size = proc(u: rawptr) -> int { return render.max_texture_size(&(^App)(u).r) },
+		// a canvas source texture of the renderer (render.canvas_texture_create: premultiplied sRGB RGBA8; Direct3D only, 0 elsewhere)
+		create_premultiplied = proc(u: rawptr, w, h: int) -> Image_Texture {
+			r := &(^App)(u).r
+			if !render.canvas_supported(r) { return 0 }
+			return Image_Texture(render.canvas_texture_create(r, w, h, false, true))
+		},
+		update_premultiplied = proc(u: rawptr, t: Image_Texture, x, y, w, h: int, px: []u8, stride: int) { render.canvas_upload(&(^App)(u).r, render.Texture(t), x, y, w, h, px, stride) },
 	}
 }

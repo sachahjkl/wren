@@ -38,6 +38,20 @@ test_host_anchor :: proc(t: ^testing.T) {
 	testing.expect(t, !blocked(e, "https://tracker.net/p", "https://www.tracker.net/", .Image))
 }
 
+// A filter whose token lies past the first 96 tokens, or past 8 KiB of URL, still matches: the request was cut there,
+// and a long URL escaped every such filter.
+@(test)
+test_long_urls_are_read_to_the_end :: proc(t: ^testing.T) {
+	e := engine_from_text("&trackme=\n")
+	defer engine_destroy(e)
+	src := "https://site.org/"
+	many := strings.concatenate({"https://x.org/p?", strings.repeat("a=1&", 200, context.temp_allocator), "trackme=1"}, context.temp_allocator)
+	testing.expect(t, blocked(e, many, src, .Xhr), "past 96 tokens")
+	long := strings.concatenate({"https://x.org/p?pad=", strings.repeat("z", 10_000, context.temp_allocator), "&trackme=1"}, context.temp_allocator)
+	testing.expect(t, blocked(e, long, src, .Xhr), "past 8 KiB")
+	testing.expect(t, !blocked(e, strings.concatenate({"https://x.org/p?", strings.repeat("a=1&", 200, context.temp_allocator)}, context.temp_allocator), src, .Xhr))
+}
+
 @(test)
 test_patterns :: proc(t: ^testing.T) {
 	e := engine_from_text("/banner/*/img^\n||example.com/ads/*.gif\n|http://exact.com/|\n/adframe.\n&adtype=\n")

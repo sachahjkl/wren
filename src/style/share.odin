@@ -16,7 +16,8 @@ import "wb:dom"
 // invalidated, and a lookup that finds nothing costs what styling cost before it.
 //
 // Some styles depend on the element beyond those inputs; they are made for it alone and never put in the table:
-// - the element: presentational hints (its attributes as declarations), a `lang` or `xml:lang` other than its parent's
+// - the element: presentational hints compiled for it alone (those the Styled keeps by text are one rule for every element
+//   with the same hints, an entry of the key: hint_rule_of), a `lang` or `xml:lang` other than its parent's
 //   language, an element the embedder hides, an ancestor of the top layer (share_eligible);
 // - the style: a query container (its size is the element's), position-try fallbacks (tried against the element's own
 //   anchors), a list marker that shows a counter, generated content with attr(), counters or quotes (resolved per

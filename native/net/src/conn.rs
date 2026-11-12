@@ -143,10 +143,26 @@ impl tower_service::Service<Uri> for Connector {
                 return Ok(c);
             }
             shared.track_start(&key);
+            let mut tracking = Tracking { shared: &*shared, key: &key, ok: false };
             let r = connect(&shared, &uri, if h2 { Alpn::H2 } else { Alpn::H1 }).await;
-            shared.track_end(&key, r.is_ok());
+            tracking.ok = r.is_ok();
+            drop(tracking);
             r
         })
+    }
+}
+
+/// Ends `track_start`'s count also when the connect future is dropped half way (the request was cancelled): a count
+/// left behind would hold the origin's entry, and the head timeout of its requests, for the whole session.
+struct Tracking<'a> {
+    shared: &'a crate::Shared,
+    key: &'a str,
+    ok: bool,
+}
+
+impl Drop for Tracking<'_> {
+    fn drop(&mut self) {
+        self.shared.track_end(self.key, self.ok);
     }
 }
 

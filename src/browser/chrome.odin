@@ -125,10 +125,13 @@ CHROME_BUTTON_RADIUS :: 0.4
 // Height of a control (field, button, choice) in the rows of about:blocker and about:config's search engines, in em
 TOOL_CONTROL_H_EM :: 1.9
 
+// Width of a navigation button (back, forward, reload), in em.
+NAV_BUTTON_EM :: 2.1
+
 nav_button :: proc(id, glyph, tooltip: string, enabled: bool) -> bool {
 	em := ui.font_size()
 	clicked := false
-	ui.next({width = ui.px(em * 2.1), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
+	ui.next({width = ui.px(em * NAV_BUTTON_EM), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
 	if ui.disabled(!enabled) {
 		sig := ui.icon_button(id, glyph)
 		clicked = sig.clicked
@@ -140,23 +143,54 @@ nav_button :: proc(id, glyph, tooltip: string, enabled: bool) -> bool {
 ////////////////////////////////
 // The address row
 
+// By default the address bar is at most this wide, in the middle of the window (browser.address_bar.sizing_mode full_width: all
+// the width its row leaves it).
+ADDRESS_BAR_MAX_EM :: 48
+
+// Where the address bar goes in a row `row_w` wide whose parts take `lead` on its left and `trail` on its right: at
+// most `max_w` wide, in the middle of the row when they leave room for that, else as near it as they let it, and
+// narrower once the row is too narrow (pure: address_bar_test.odin). `before`: the free space between the lead and the
+// bar; what is after the bar is the rest.
+address_bar_span :: proc(row_w, lead, trail, max_w: f32) -> (before, width: f32) {
+	room := max(row_w - lead - trail, 0)
+	width = min(max(max_w, 0), room)
+	x := clamp(math.round((row_w - width) * 0.5), lead, lead + room - width)
+	return x - lead, width
+}
+
 // The toolbar's row: navigation, the address bar, its chips, the blocker's shield and the menu. With the tabs in a sidebar
 // and an integrated title bar, the same parts are the title bar (sidebar_titlebar, tab_sidebar.odin).
 address_row :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
+	toolbar_caption_menu(app)   // toolbar_menu.odin: once per build, in the layouts whose toolbar is not the title bar
 	ui.spacer(ui.px(em * 0.5))
 	nav_back_button(app, t)
 	nav_forward_button(app, t)
 	nav_reload_button(app, t)
 	ui.spacer(ui.px(em * 0.4))
-	address_bar(app, t)
-	address_chips(app, t)
-	ui.spacer(ui.px(em * 0.4))
-	if downloads_button_visible(app) { downloads_button(app, t); ui.spacer(ui.px(em * 0.2)) }   // downloads_ui.odin
-	blocker_button(app, t)   // blocker_ui.odin: the content blocker's icon and panel
-	ui.spacer(ui.px(em * 0.2))
-	main_menu_button(app, t)
-	ui.spacer(ui.px(em * 0.5))
+	if (app.wchrome.cfg.address_sizing == .Full_Width) {
+		address_bar(app, t, ui.fill())
+	} else {
+		// centred in the window, whose width the row has (the toolbar spans it in every layout, full screen too); what
+		// follows the bar is as wide as last frame (its chips come and go: one frame late, as in sidebar_titlebar)
+		lead := em * (0.5 + 3 * NAV_BUTTON_EM + 0.4)
+		trail: f32
+		if end := ui.prev_box("###toolbar_end"); end != nil { trail = end.rect.max.x - end.rect.min.x }
+		before, width := address_bar_span(f32(active_window(app).win.size.x), lead, trail, ADDRESS_BAR_MAX_EM * em)
+		ui.spacer(ui.px(before))
+		address_bar(app, t, ui.px(width))
+		ui.spacer(ui.fill())   // (the free space after the bar: with the integrated title bar, it drags the window as the one before)
+	}
+	ui.next({width = ui.children_sum(), height = ui.pct(1), axis = .X, cross = .Center})
+	if ui.parent(ui.build_box({}, "###toolbar_end")) {
+		address_chips(app, t)
+		ui.spacer(ui.px(em * 0.4))
+		if downloads_button_visible(app) { downloads_button(app, t); ui.spacer(ui.px(em * 0.2)) }   // downloads_ui.odin
+		blocker_button(app, t)   // blocker_ui.odin: the content blocker's icon and panel
+		ui.spacer(ui.px(em * 0.2))
+		main_menu_button(app, t)
+		ui.spacer(ui.px(em * 0.5))
+	}
 }
 
 // (a right click or a long press lists the entries that way: history_ui.odin)
@@ -172,8 +206,9 @@ nav_reload_button :: proc(app: ^App, t: ^Tab) {
 	if nav_button("###nav_reload", GLYPH_RELOAD, i18n.tr("Reload (F5)"), t != nil && t.url != "") { reload(app, t) }
 }
 
-// The address bar: it fills what its row leaves it.
-address_bar :: proc(app: ^App, t: ^Tab) {
+// The address bar, `width` wide (ui.fill: what its row leaves it). The suggestions under it take its width and place
+// (urlbar_popup: the field's rect).
+address_bar :: proc(app: ^App, t: ^Tab, width: ui.Size) {
 	wnd := active_window(app)
 	em := ui.font_size()
 	// One bar: the field fills it, the security chip sits inside on its left (the field's text starts after it, and its
@@ -183,7 +218,7 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 	chip_w := security_chip_measure(app, t)
 	window_own(app).security_chip_width = chip_w
 	res: ui.Edit_Result
-	ui.next({width = ui.fill(), height = ui.px(h)})
+	ui.next({width = width, height = ui.px(h)})
 	if ui.row(.Center, {}, "###address_bar") {
 		// rounded like the popovers and menus of the chrome (popups: em * 0.5)
 		field := ui.Style_Mod{width = ui.pct(1), height = ui.pct(1), radius = em * 0.5}

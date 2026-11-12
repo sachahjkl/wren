@@ -60,6 +60,11 @@ header_block_parsing :: proc(t: ^testing.T) {
 	testing.expect(t, found && v == "")
 	_, found = get_header(h, "bad line")
 	testing.expect(t, !found)
+	v, _ = get_header(h, "set-cookie")   // (get_all is Set-Cookie's; this checks the join of several)
+	testing.expect_value(t, v, "a=1, b=2")
+	j := parse_header_block("Vary: a\r\nVary:\r\nVary: c\r\n", context.temp_allocator)
+	v, _ = get_header(j, "vary")
+	testing.expect_value(t, v, "a, , c")
 }
 
 // Header names and methods are ASCII case-insensitive: the long s U+017F is no 's', the Kelvin sign U+212A no 'k'.

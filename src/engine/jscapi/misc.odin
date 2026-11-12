@@ -21,7 +21,7 @@ JS_ToStringView :: proc "c" (c: ^Context, plen: ^uint, val: JSValue) -> [^]u8 {
 	}
 	if s.is_wide {return nil}
 	p := js.str_u8(s)
-	for i in 0 ..< int(s.len) {if p[i] >= 0x80 {return nil}}
+	if js.ascii_prefix(p[:s.len]) != int(s.len) {return nil}
 	plen^ = uint(s.len)
 	return p
 }
@@ -325,7 +325,7 @@ JS_GetModuleRequest :: proc "c" (c: ^Context, mdef: ^Module_Def, i: i32, attribu
 		return 0
 	}
 	if attributes != nil {attributes^ = own(jctx(c).rt, mod.req[i].attributes)}
-	return mod.req[i].name
+	return atom_hold(jctx(c).rt, mod.req[i].name) // (owned by the host, as in QuickJS: it calls JS_FreeAtom)
 }
 
 // import.meta of a module (created on first use, populated by the host's import_meta hook).

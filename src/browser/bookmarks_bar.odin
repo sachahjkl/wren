@@ -39,7 +39,7 @@ Bookmarks_Bar_State :: struct {
 	key:      ui.Key,  // the bar's box
 }
 
-bookmarks_bar_shown :: proc(app: ^App) -> bool { return config.bool_of(&app.prefs, "browser.bookmarks.bar") }
+bookmarks_bar_shown :: proc(app: ^App) -> bool { return app.cfg.bookmarks_bar }
 
 bookmarks_bar_toggle :: proc(app: ^App) {
 	set_pref_bool(app, "browser.bookmarks.bar", !bookmarks_bar_shown(app))
@@ -102,14 +102,14 @@ bookmarks_bar :: proc(app: ^App, t: ^Tab) {
 	more_w := math.round(em * 2)
 	// how many fit (with the » button when not all do)
 	total: f32 = pad
-	for w in widths { total += w + 2 }
+	for w in widths { total += w + BAR_ITEM_GAP }
 	fits := len(items)
 	if total > room && room > 0 {
 		x: f32 = pad
 		fits = 0
 		for w in widths {
-			if x + w + 2 > room - more_w - pad { break }
-			x += w + 2
+			if x + w + BAR_ITEM_GAP > room - more_w - pad { break }
+			x += w + BAR_ITEM_GAP
 			fits += 1
 		}
 	}
@@ -118,8 +118,8 @@ bookmarks_bar :: proc(app: ^App, t: ^Tab) {
 	if ui.parent(bar) {
 		slots := make([]f32, len(items), context.temp_allocator)
 		x: f32 = pad
-		for n in 0 ..< len(items) { slots[n] = x; x += widths[n] + 2 }
-		hi := max(x - pad - 2, 0)
+		for n in 0 ..< len(items) { slots[n] = x; x += widths[n] + BAR_ITEM_GAP }
+		hi := max(x - pad - BAR_ITEM_GAP, 0)
 		for k, n in items {
 			if n >= fits { break }
 			b := app.bms.items[k]
@@ -167,10 +167,7 @@ bookmarks_bar :: proc(app: ^App, t: ^Tab) {
 				_ = ui.reorder_begin(btn.key, ui.reorder_moved(sig.drag_delta, .X, false), 4 * ui.scale(), press, slots[n])
 			}
 			if ui.reorder_dragging(btn.key) {
-				mid := pos + widths[n] * 0.5
-				to := 0
-				for m in 0 ..< len(items) { if m != n && slots[m] + widths[m] * 0.5 < mid { to += 1 } }
-				if to != n {
+				if to := bar_drag_slot(pos, pad, em, widths, n); to != n {
 					if bookmark_move_to(&app.bms.items, b.id, app.bms.toolbar, to) { bookmarks_changed(app) }
 				}
 				request_frames(app, 2)
@@ -200,7 +197,20 @@ bookmarks_bar :: proc(app: ^App, t: ^Tab) {
 	if open_k >= 0 { bookmark_open(app, t, app.bms.items[open_k].url, open_new) }
 }
 
-// The bar's own menu (its right click, the toolbar's): show or hide it, a new folder in it.
+// Space between two items of the bar (px).
+@(private = "file") BAR_ITEM_GAP :: 2
+// How far past the swap point an item must go (em), so that it does not swap back on the pixel it swapped at.
+@(private = "file") BAR_SWAP_HYSTERESIS_EM :: 0.2
+
+// The place of the item `current` dragged with its leading edge at `pos` (bar px): it takes a neighbour's place as soon
+// as its edge on that side is half into it. Measured against the middles, a short title had to pass the whole of a long
+// one. (pure: bookmarks_bar_test.odin)
+bar_drag_slot :: proc(pos, pad, em: f32, widths: []f32, current: int) -> int {
+	return ui.reorder_slot_sized(pos, pad, BAR_ITEM_GAP, widths, current, into = 0.5, hysteresis = em * BAR_SWAP_HYSTERESIS_EM)
+}
+
+// The bar's own menu, which is the toolbar's too (toolbar_menu.odin: the right click on the bar, the toolbar, the row of
+// tabs where no tab is, the free space of the title bar): show or hide the bar, a new folder in it, then the chrome's choices.
 bookmarks_bar_menu :: proc(app: ^App, pos: [2]f32) {
 	app.bview.bar.own_menu = true
 	ui.ctx_menu_open(ui.key_from_string(0, "###bmbar_own_menu"), pos)
@@ -280,6 +290,7 @@ bookmarks_bar_menus :: proc(app: ^App) {
 				open_bookmarks(app)
 				ui.ctx_menu_close()
 			}
+			toolbar_menu_items(app, t)   // toolbar_menu.odin: the tabs, the address bar, the window's menu
 		} else {
 			v.bar.own_menu = false
 		}

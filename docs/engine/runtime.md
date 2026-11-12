@@ -63,7 +63,10 @@ in the 64‑bit NaN‑boxed word QuickJS uses on wasm32, because Wren's glue is 
   with `Compile_Options.keep_source`; `Host_Config.strip_source` drops it).
 - **Atoms** (`atom.odin`, `atoms_table.odin`): 32‑bit interned property keys; array indices set bit 31
   and never allocate. The predefined atoms are generated from `quickjs-atom.h`, so serialized bytecode
-  refers to the same indices. Atoms are never collected.
+  refers to the same indices. The predefined atoms and symbols are permanent. An atom made at run time (a key read or
+  written by a script, a JSON key) is freed by a collection when no live shape, bytecode atom table, module, for‑in
+  iterator or string that caches it refers to it, and outside a native call; its slot is reused (`atom_free`). The C API
+  counts its references as QuickJS does (`JS_NewAtom*`, `JS_DupAtom`, `JS_FreeAtom`).
 - **Shapes** (`shape.odin`/`object.odin`): hidden classes with transitions and an open‑addressed hash;
   an object stores a flat `[]Prop_Slot`; deleting a property or growing past 48 properties switches the
   object to a private dictionary shape.
@@ -298,7 +301,7 @@ budget (30 000 mutants on `language/` and `built-ins/`, no crash).
 - **Exhaustive Odin enums + `switch`** for tags, exotic kinds and opcodes; **comptime‑generated opcode and
   atom tables** from the QuickJS headers.
 - **Rope strings with Latin‑1/UTF‑16 compaction** as the default string representation.
-- Atoms are permanent; `JS_WriteObject` of data (structured clone format) is not implemented.
+- `JS_WriteObject` of data (structured clone format) is not implemented.
 
 ## Known gaps
 

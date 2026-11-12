@@ -183,7 +183,7 @@ matched_lists_are_shared :: proc(t: ^testing.T) {
 matched_past_the_limit_matching_runs :: proc(t: ^testing.T) {
 	f := load(PAGE)
 	defer fixture_unload(f)
-	f.eng.matched.limit = 0
+	f.eng.settings.matched_max_bytes = 0   // (style.matched.max_bytes: read by the full pass)
 	old := f.st
 	f.st = compute_styles(f.eng, f.doc, {})
 	styled_destroy(old)

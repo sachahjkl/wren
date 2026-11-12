@@ -293,7 +293,7 @@ WebAudio_setBuffer :: proc(c: ^Call, graph: u64, node: i32, pcm: u64) {
 }
 
 WebAudio_setConvolver :: proc(c: ^Call, graph: u64, node: i32, pcm: u64, normalize: bool) {
-	if g := graph_of(c, graph); g != nil { webaudio.convolver_set(g, node, pcm_of(c, pcm), normalize) }
+	if g := graph_of(c, graph); g != nil { webaudio.convolver_set(g, node, pcm_of(c, pcm), normalize, c.page.settings.webaudio.max_convolver_seconds) }
 }
 
 WebAudio_setCurve :: proc(c: ^Call, graph: u64, node: i32, curve: []u8) {

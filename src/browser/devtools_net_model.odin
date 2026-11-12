@@ -106,6 +106,16 @@ Net_Log :: struct {
 	profile:  string,            // owned: the network speed of this tab (a profile's id); "" = the default (the preference)
 	link:     net.Throttle_Link, // what the requests of this tab go through when it is throttled
 	link_id:  string,            // owned: the profile `link` was made for
+	// The Network panel showed this tab: its requests keep their headers, request bodies and redirects from then on. Until
+	// then a tab keeps what its row and the status bar show (thousands of requests of a tab nobody inspects cost no headers).
+	detailed: bool,
+}
+
+// Where a request's entry is: its tab, and its number in the tab's log (the entries' numbers follow each other from the
+// first kept: entries[seq - entries[0].seq]).
+Net_Ref :: struct {
+	tab: u64,
+	seq: int,
 }
 
 NETWORK_PREFS := [?]config.Def{
@@ -208,26 +218,29 @@ net_log_destroy :: proc(l: ^Net_Log) {
 }
 
 
-// The tab a scope belongs to, and the scope of its navigation (the child of the tab's scope on the way up).
+// The tab a scope belongs to, and the scope of its navigation (the child of the tab's scope on the way up). A tab's scope is
+// a child of the process's (tab_new): the walk goes up to that level, then one look at the tabs.
 tab_of_scope :: proc(app: ^App, s: ^base.Scope) -> (t: ^Tab, nav: uintptr) {
-	for sc := s; sc != nil; sc = sc.parent {
-		for x in tabs_all(app) {
-			if sc == x.scope { return x, 0 }
-			if sc.parent == x.scope { return x, uintptr(sc) }
-		}
-	}
+	below: ^base.Scope
+	sc := s
+	for sc != nil && sc.parent != app.process { below, sc = sc, sc.parent }
+	if sc == nil { return nil, 0 }
+	for _, x in app.tab_ids { if x.scope == sc { return x, uintptr(below) } }
 	return nil, 0
-}
-
-@(private = "file")
-tab_by_id :: proc(app: ^App, id: u64) -> ^Tab {
-	for t in tabs_all(app) { if t.id == id { return t } }
-	return nil
 }
 
 net_entry_of :: proc(l: ^Net_Log, id: u64) -> ^Net_Entry {
 	for i := len(l.entries) - 1; i >= 0; i -= 1 { if l.entries[i].id == id { return &l.entries[i] } }
 	return nil
+}
+
+// The entry `ref` names, if it is still in the log and still request `id`'s (a log cleared or cut since: nil).
+@(private = "file")
+net_entry_at :: proc(l: ^Net_Log, ref: Net_Ref, id: u64) -> ^Net_Entry {
+	if len(l.entries) == 0 { return nil }
+	i := ref.seq - l.entries[0].seq
+	if i < 0 || i >= len(l.entries) || l.entries[i].id != id { return nil }
+	return &l.entries[i]
 }
 
 net_destroy_owner :: proc(app: ^App) {
@@ -268,16 +281,17 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 	app := (^App)(user)
 	now_ms := f64(host.now_ns(&app.loop)) / 1e6
 	touched: ^Tab
+	count_before, pending_before := -1, -1
+	shown := false   // what the status bar or the tools' tab badges show changed (an answer's status, a failure)
 	#partial switch ev.kind {
 	case .Started, .Ws_Started:
 		t, nav := tab_of_scope(app, ev.scope)
 		if t == nil { return }
 		touched = t
+		count_before, pending_before = len(t.net.entries), t.net.pending
 		if t.net.nav != nav {
 			if app.net_prefs.preserve && len(t.net.entries) > 0 { t.net.nav = nav } else { net_clear(&t.net); t.net.nav = nav }
 		}
-		if app.net_owner == nil { app.net_owner = make(map[u64]u64) }
-		app.net_owner[ev.id] = t.id
 		net_trim(app, &t.net)
 		if len(t.net.entries) == 0 {
 			t.net.t0_ms, t.net.t0_cycles = now_ms, base.thread_cycles()
@@ -290,37 +304,44 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 			start_ms = now_ms, ms = -1, navigate = ev.navigate, parser = ev.parser, initiator = strings.clone(ev.initiator_url),
 		})
 		e := &t.net.entries[len(t.net.entries) - 1]
+		if app.net_owner == nil { app.net_owner = make(map[u64]Net_Ref) }
+		app.net_owner[ev.id] = {t.id, e.seq}
 		if ev.kind == .Ws_Started {
 			e.is_ws, e.type = true, .WS
-			e.req_headers = strings.clone(ev.headers)
+			if t.net.detailed { e.req_headers = strings.clone(ev.headers) }
 		} else {
 			e.type = net_type_of(e)
 		}
 	case:
-		tid, found := app.net_owner[ev.id]
+		ref, found := app.net_owner[ev.id]
 		if !found { return }
-		t := tab_by_id(app, tid)
+		t := tab_find(app, ref.tab)
 		if t == nil { delete_key(&app.net_owner, ev.id); return }
-		e := net_entry_of(&t.net, ev.id)
+		e := net_entry_at(&t.net, ref, ev.id)
 		if e == nil { delete_key(&app.net_owner, ev.id); return }
 		touched = t
+		count_before, pending_before = len(t.net.entries), t.net.pending
 		was_pending := e.ms < 0
+		detailed := t.net.detailed
 		#partial switch ev.kind {
 		case .Request:
-			delete(e.req_headers)
-			e.req_headers = strings.clone(ev.headers)
-			if len(ev.request_body) > 0 && e.req_body == nil {
-				e.req_body = make([]byte, min(len(ev.request_body), 1 << 20))
-				copy(e.req_body, ev.request_body)
+			if detailed {
+				delete(e.req_headers)
+				e.req_headers = strings.clone(ev.headers)
+				if len(ev.request_body) > 0 && e.req_body == nil {
+					e.req_body = make([]byte, min(len(ev.request_body), 1 << 20))
+					copy(e.req_body, ev.request_body)
+				}
 			}
 			if ev.method != "" && ev.method != e.method { delete(e.method); e.method = strings.clone(ev.method) }
 		case .Redirect:
-			append(&e.redirects, fmt.aprintf("%d %s -> %s", ev.status, ev.url, ev.detail))
+			if detailed { append(&e.redirects, fmt.aprintf("%d %s -> %s", ev.status, ev.url, ev.detail)) }
 		case .Response:
+			shown = true
 			e.status, e.cache = ev.status, ev.cache
 			if ev.url != "" && ev.url != e.url { delete(e.url); e.url = strings.clone(ev.url) }
 			delete(e.mime); e.mime = strings.clone(ev.mime)
-			delete(e.res_headers); e.res_headers = strings.clone(ev.headers)
+			if detailed { delete(e.res_headers); e.res_headers = strings.clone(ev.headers) }
 			delete(e.status_text); e.status_text = strings.clone(ev.status_text)
 			delete(e.protocol); e.protocol = strings.clone(ev.protocol)
 			delete(e.remote); e.remote = strings.clone(ev.remote)
@@ -363,6 +384,7 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 			if was_pending { t.net.pending = max(t.net.pending - 1, 0) }
 			delete_key(&app.net_owner, ev.id)
 		case .Failed:
+			shown = true
 			e.failed, e.ms = true, f32(now_ms - e.start_ms)
 			if ev.bytes > e.bytes { e.bytes = ev.bytes }
 			delete(e.error)
@@ -373,8 +395,9 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 			if was_pending { t.net.pending = max(t.net.pending - 1, 0) }
 			delete_key(&app.net_owner, ev.id)
 		case .Ws_Response:
+			shown = true
 			e.status = ev.status
-			delete(e.res_headers); e.res_headers = strings.clone(ev.headers)
+			if detailed { delete(e.res_headers); e.res_headers = strings.clone(ev.headers) }
 			delete(e.status_text); e.status_text = strings.clone(ev.status == 101 ? "Switching Protocols" : ev.status_text)
 			delete(e.ws_sub); e.ws_sub = strings.clone(ev.protocol)
 			if ev.status == 101 { e.ws_state = .Open }
@@ -392,9 +415,13 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 			delete_key(&app.net_owner, ev.id)
 		}
 	}
-	// whatever the event was, the rows of that tab are made again, and a frame shows it
-	if touched != nil { touched.net.version += 1 }
-	if touched != nil && touched == current_tab(app) { request_frames(app, 2) }
+	if touched == nil { return }
+	// whatever the event was, the rows of that tab are made again; a frame only where they show (the Network panel), or
+	// where what the status bar and the tools' badges count changed (a body's piece or a socket's frame changes neither)
+	touched.net.version += 1
+	if shown || len(touched.net.entries) != count_before || touched.net.pending != pending_before {
+		if w, i := window_of_tab(app, touched); w != nil && window_current(app, w)^ == i { window_request(app, w, 2) }
+	}
 	devtools_request_showing(app, touched, .Network)
 	devtools_request_showing(app, nil, .Performance)
 }

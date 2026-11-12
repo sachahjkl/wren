@@ -20,39 +20,54 @@ data_url_destroy :: proc(d: ^Data_URL) {
 	d^ = {}
 }
 
-// "forgiving-base64 decode" (WHATWG Infra): ASCII whitespace is removed, padding is optional.
+// What each byte is to base64: 0 not allowed, 1..64 a digit (its value + 1), B64_SPACE ASCII whitespace, B64_PAD '='.
+@(private) B64_SPACE :: 65
+@(private) B64_PAD :: 66
+@(private, rodata)
+b64_table := [256]u8{
+	65 = 1, 66 = 2, 67 = 3, 68 = 4, 69 = 5, 70 = 6, 71 = 7, 72 = 8,
+	73 = 9, 74 = 10, 75 = 11, 76 = 12, 77 = 13, 78 = 14, 79 = 15, 80 = 16,
+	81 = 17, 82 = 18, 83 = 19, 84 = 20, 85 = 21, 86 = 22, 87 = 23, 88 = 24,
+	89 = 25, 90 = 26, 97 = 27, 98 = 28, 99 = 29, 100 = 30, 101 = 31, 102 = 32,
+	103 = 33, 104 = 34, 105 = 35, 106 = 36, 107 = 37, 108 = 38, 109 = 39, 110 = 40,
+	111 = 41, 112 = 42, 113 = 43, 114 = 44, 115 = 45, 116 = 46, 117 = 47, 118 = 48,
+	119 = 49, 120 = 50, 121 = 51, 122 = 52, 48 = 53, 49 = 54, 50 = 55, 51 = 56,
+	52 = 57, 53 = 58, 54 = 59, 55 = 60, 56 = 61, 57 = 62, 43 = 63, 47 = 64,
+	9 = B64_SPACE, 10 = B64_SPACE, 12 = B64_SPACE, 13 = B64_SPACE, 32 = B64_SPACE,
+	61 = B64_PAD,
+}
+
+// "forgiving-base64 decode" (WHATWG Infra): ASCII whitespace is removed, padding is optional. One pass over the input
+// (a data: URL may be megabytes): whitespace skipped, four digits give three bytes, written into one allocation.
 forgiving_base64_decode :: proc(input: []byte, allocator := context.allocator) -> (out: []byte, ok: bool) {
-	data := make([dynamic]byte, 0, len(input), context.temp_allocator)
-	for c in input { if c != ' ' && c != '\t' && c != '\n' && c != '\r' && c != '\f' { append(&data, c) } }
-	if len(data) % 4 == 0 && len(data) >= 1 {
-		if data[len(data) - 1] == '=' { pop(&data) }
-		if len(data) > 0 && data[len(data) - 1] == '=' { pop(&data) }
-	}
-	if len(data) % 4 == 1 { return nil, false }
-	val :: proc(c: u8) -> int {
-		switch {
-		case c >= 'A' && c <= 'Z': return int(c - 'A')
-		case c >= 'a' && c <= 'z': return int(c - 'a') + 26
-		case c >= '0' && c <= '9': return int(c - '0') + 52
-		case c == '+': return 62
-		case c == '/': return 63
+	res := make([]byte, len(input) / 4 * 3 + 3, allocator)
+	w, digits, quad, pad := 0, 0, 0, 0
+	acc: u32
+	for c in input {
+		v := b64_table[c]
+		switch v {
+		case 0:         delete(res, allocator); return nil, false
+		case B64_SPACE: continue
+		case B64_PAD:   pad += 1; continue
 		}
-		return -1
-	}
-	res := make([dynamic]byte, 0, len(data) * 3 / 4, allocator)
-	buffer, bits := 0, 0
-	for c in data {
-		v := val(c)
-		if v < 0 { delete(res); return nil, false }
-		buffer = buffer << 6 | v
-		bits += 6
-		if bits >= 8 {
-			bits -= 8
-			append(&res, u8(buffer >> uint(bits) & 0xFF))
-			buffer &= (1 << uint(bits)) - 1
+		if pad > 0 { delete(res, allocator); return nil, false }   // a digit after '='
+		acc = acc << 6 | u32(v - 1)
+		digits += 1
+		quad += 1
+		if quad == 4 {
+			res[w], res[w + 1], res[w + 2] = u8(acc >> 16), u8(acc >> 8), u8(acc)
+			w += 3
+			quad, acc = 0, 0
 		}
 	}
-	return res[:], true
+	// '=' only as the padding of a length that is a multiple of 4: one or two of them, at the end
+	if pad > 0 && ((digits + pad) % 4 != 0 || pad > 2) { delete(res, allocator); return nil, false }
+	switch quad {
+	case 1: delete(res, allocator); return nil, false
+	case 2: res[w] = u8(acc >> 4); w += 1
+	case 3: res[w], res[w + 1] = u8(acc >> 10), u8(acc >> 2); w += 2
+	}
+	return res[:w], true
 }
 
 // Processes a `data:` URL (already parsed). ok = false when it is malformed.

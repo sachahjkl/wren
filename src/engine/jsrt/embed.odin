@@ -40,6 +40,7 @@ host_exit :: proc(rt: ^Runtime, mark: int, result: Value) {
 	rt.host_depth -= 1
 	if rt.host_depth == 0 {
 		temp_reset(rt, 0)
+		gc_list_trim(rt, &rt.temp_roots) // (a native that made millions of cells left its list that long)
 		root(rt, result) // until the host's next call
 		root(rt, rt.exception)
 		mem_free_all_scratch(rt)

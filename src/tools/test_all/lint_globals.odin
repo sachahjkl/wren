@@ -10,8 +10,9 @@ import "core:slice"
 import "core:strings"
 import "wb:tools/tooling"
 
-// The package-level variables of the browser's packages (GLOBALS_DIRS; not the constants, procedures and types: `name :: ...`; those of `when` blocks too), against the list of those allowed (tools/globals_allowed.txt,
-// one line each: "<dir>/<file> <name> <class>  # why"). A global that is not in the list fails, and so does one the list names that is gone (the list follows the code). The rule
+// The package-level variables of the browser's packages (GLOBALS_DIRS; not the constants, procedures and types: `name :: ...`; those of `when` blocks too), and the @(static)
+// variables of their procedures (a global by another name: "<procedure>.<name>"; not those also @(rodata), which nothing can write), against the list of those allowed
+// (tools/globals_allowed.txt, one line each: "<dir>/<file> <name> <class>  # why"). A global that is not in the list fails, and so does one the list names that is gone (the list follows the code). The rule
 // (docs/architecture.md, "Where state lives"): what is one App's lives in App (or what App owns: a window, a tab, a page; page.Pages for the page package), so that several
 // Apps can run in one process, each on a thread of its own. There is no class for one App's state: a global is allowed only as what it is:
 //   const     a table: written by the compiler, or once (a sync.Once) before anything reads it, and never again. Any thread reads it.
@@ -66,7 +67,17 @@ top_level :: proc(found: ^[dynamic]Global, stmts: []^ast.Stmt, file: string, all
 				break
 			}
 		case ^ast.Value_Decl:
-			if !s.is_mutable { continue }
+			if !s.is_mutable {
+				// a procedure: its @(static) variables are globals too
+				for v, i in s.values {
+					lit, is_proc := v.derived_expr.(^ast.Proc_Lit)
+					if !is_proc || lit.body == nil || i >= len(s.names) { continue }
+					id, is_ident := s.names[i].derived_expr.(^ast.Ident)
+					if !is_ident { continue }
+					proc_statics(found, lit.body, file, id.name, allocator)
+				}
+				continue
+			}
 			local := is_thread_local(s)
 			for name in s.names {
 				if id, is_ident := name.derived_expr.(^ast.Ident); is_ident {
@@ -77,14 +88,38 @@ top_level :: proc(found: ^[dynamic]Global, stmts: []^ast.Stmt, file: string, all
 	}
 }
 
+// The @(static) variables anywhere in the body of procedure `owner` (in its nested procedure literals too), as "<owner>.<name>".
+@(private = "file")
+proc_statics :: proc(found: ^[dynamic]Global, body: ^ast.Stmt, file, owner: string, allocator: mem.Allocator) {
+	Walk :: struct { found: ^[dynamic]Global, file, owner: string, allocator: mem.Allocator }
+	w := Walk{found, file, owner, allocator}
+	context.user_ptr = &w   // (ast.inspect's procedure has no data of its own)
+	ast.inspect(body, proc(node: ^ast.Node) -> bool {
+		if node == nil { return false }   // (inspect calls once more with nil after the children of each node)
+		w := (^Walk)(context.user_ptr)
+		v, is_decl := node.derived.(^ast.Value_Decl)
+		if !is_decl || !v.is_mutable || !has_attribute(v, "static") || has_attribute(v, "rodata") { return true }
+		for name in v.names {
+			if id, is_ident := name.derived_expr.(^ast.Ident); is_ident {
+				append(w.found, Global{strings.clone(w.file, w.allocator), strings.concatenate({w.owner, ".", id.name}, w.allocator), strings.has_suffix(w.file, "_test.odin"), has_attribute(v, "thread_local")})
+			}
+		}
+		return true
+	})
+}
+
 // `@(thread_local)`, alone or among other attributes (`@(private = "file", thread_local)`).
 @(private = "file")
-is_thread_local :: proc(v: ^ast.Value_Decl) -> bool {
+is_thread_local :: proc(v: ^ast.Value_Decl) -> bool { return has_attribute(v, "thread_local") }
+
+// Whether the declaration has attribute `want` (`@(want)`, `@(other, want)`, `@(want = ...)`).
+@(private = "file")
+has_attribute :: proc(v: ^ast.Value_Decl, want: string) -> bool {
 	for a in v.attributes {
 		for elem in a.elems {
 			name := elem
 			if fv, is_field := elem.derived_expr.(^ast.Field_Value); is_field { name = fv.field }
-			if id, is_ident := name.derived_expr.(^ast.Ident); is_ident && id.name == "thread_local" { return true }
+			if id, is_ident := name.derived_expr.(^ast.Ident); is_ident && id.name == want { return true }
 		}
 	}
 	return false

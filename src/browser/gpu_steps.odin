@@ -27,6 +27,8 @@ Gpu_Steps_State :: struct {
 	last:    render.Gpu_Profile,
 	have:    bool,
 	cache:   draw.Layer_Cache_Stats,
+	env:     int,    // WREN_GPU_STEPS: 0 off, 1 the steps, 2 every draw call (read once: env_read)
+	env_read: bool,
 }
 
 @(private)
@@ -44,11 +46,12 @@ gpu_steps_of :: proc(p: render.Gpu_Profile) -> Gpu_Steps_Frame {
 // profiler takes them only with WREN_GPU_STEPS=1, so that its frame times stay those of an unmeasured frame); the
 // latest profile and the cache's numbers for the panel.
 gpu_steps_frame :: proc(app: ^App) {
-	@(static) env := -1
-	if env < 0 {
+	st := &app.gpu_steps_state
+	if !st.env_read {
 		v := os.get_env("WREN_GPU_STEPS", context.temp_allocator)
-		env = v == "2" ? 2 : v == "1" ? 1 : 0
+		st.env, st.env_read = v == "2" ? 2 : v == "1" ? 1 : 0, true
 	}
+	env := st.env
 	// WREN_GPU_STEPS=2: every draw call timed (the report lists the slowest)
 	render.set_gpu_profile(&app.r, (prof_on() && env >= 1) || (app.hud.panel_open && app.hud.cfg.gpu_timing), prof_on() && env == 2)
 	if p, ok := render.gpu_profile(&app.r); ok { app.gpu_steps_state.last, app.gpu_steps_state.have = p, true }

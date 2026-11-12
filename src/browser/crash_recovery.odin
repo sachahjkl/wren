@@ -274,6 +274,9 @@ Recovery :: struct {
 	inflight:     bool,             // a write is out
 	snap_timer:   base.Handle,
 	stable_timer: base.Handle,
+	// the other files of the session and the profile's stores, written by profile_save (profile_writes.odin): kept with
+	// the snapshot, whose changes (recovery_touch) also say when session.txt must be made again
+	writes:       Profile_Writes,
 }
 
 
@@ -360,6 +363,7 @@ recovery_stable :: proc(data: rawptr) {
 // Something that the snapshot holds changed (a tab opened, closed or moved, an entry added, a document loaded): the snapshot
 // is written once browser.session.crash_snapshot_ms has passed, whatever else changes meanwhile. Cheap; the interface thread.
 recovery_touch :: proc(app: ^App) {
+	app.recovery.writes.session_serial += 1   // (session.odin: session.txt is made again at the next save)
 	if !app.recovery.active || app.recovery.closing { return }
 	app.recovery.dirty = true
 	if app.recovery.snap_timer != base.NIL_HANDLE { return }
@@ -434,6 +438,7 @@ recovery_destroy :: proc() {
 	delete(the_app.recovery.text)
 	delete(the_app.recovery.backup)
 	delete(the_app.recovery.last)
+	profile_writes_destroy(&the_app.recovery.writes)
 	the_app.recovery = {}
 }
 

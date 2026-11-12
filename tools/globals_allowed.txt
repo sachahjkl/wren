@@ -511,3 +511,70 @@ style/values.odin ZERO_TIMES const  # a table
 style/values_more.odin FONT_STRETCH const  # a table
 style/writing_modes.odin flow_maps const  # ... the table
 style/writing_modes.odin flow_maps_once const  # a table built once
+browser/compositor.odin raster_props.set const  # a table, made once (raster_props.once)
+browser/compositor.odin raster_props.once process  # the sync.Once that makes raster_props.set
+browser/settings.odin theme_choices.names const  # a table, made once (theme_choices.once)
+browser/settings.odin theme_choices.once process  # the sync.Once that makes theme_choices.names
+page/worker_test.odin terminate_stops_a_worker_busy_in_a_long_computation.spin_logged test
+style/restyle_dom.odin trace_restyle.known process  # whether WREN_RESTYLE_TRACE was read (a trace for debugging: the same for every thread)
+style/restyle_dom.odin trace_restyle.on process  # ... and what it says
+style/shorthands.odin short_longhands.margin const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.padding const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.border_all const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.border_width const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.border_style const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.border_color const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.b_top const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.b_right const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.b_bottom const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.b_left const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.radius const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.background const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.font const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.white_space const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.text_wrap const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.font_variant const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.transition const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.animation const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.animation_range const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.scroll_timeline const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.view_timeline const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.overscroll const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.columns const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.column_rule const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.grid_template const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.grid const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.grid_row const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.grid_column const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.grid_area const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.flex const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.flex_flow const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.gap const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.overflow const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.inset const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.list_style const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.text_decoration const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.text_emphasis const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.text_stroke const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.outline const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.place_content const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.place_items const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.place_self const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.margin_block const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.margin_inline const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.padding_block const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.padding_inline const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.inset_block const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.inset_inline const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.container const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.border_block const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.border_inline const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.bb_width const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.bb_style const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.bb_color const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.bi_width const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.bi_style const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.bi_color const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.mask const  # a table: the longhands of a shorthand
+style/shorthands.odin short_longhands.position_try const  # a table: the longhands of a shorthand
+media/wasapi_windows.odin mono_ns.freq process  # the performance counter's frequency, read once (the same for every thread)

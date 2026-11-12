@@ -1,6 +1,7 @@
 package browser
 
 import "core:strings"
+import "core:sync"
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
@@ -35,6 +36,17 @@ Settings :: struct {
 	persist_profile:   bool,
 	layout_band_px:    f32,
 	blocking_threads:  int,
+	// read at every frame: kept here, read again on each change (apply_prefs), never looked up by name per frame
+	loaded:              bool,   // made from the preferences (an App of a test has none: its zero value)
+	partial_redraw:      bool,   // browser.ui.partial_redraw
+	scrollbar_autohide:  bool,   // browser.ui.scrollbar_autohide (chrome_zoom.odin)
+	ui_zoom:             f32,    // browser.ui.zoom (chrome_zoom.odin)
+	bookmarks_bar:       bool,   // browser.bookmarks.bar (bookmarks_bar.odin)
+	tabs_tree:           bool,   // browser.tabs.tree (tab_tree.odin, tab_sidebar_list.odin)
+	audio_indicator:     bool,   // browser.tabs.audio_indicator (tab_sound.odin)
+	audio_hold_ms:       f64,    // browser.tabs.audio_hold_ms
+	page_thread:         bool,   // browser.shell.page_thread (page_thread.odin)
+	page_thread_min_ms:  f64,    // browser.shell.page_thread_min_ms
 }
 
 PREFS := [?]config.Def{
@@ -163,16 +175,27 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		persist_profile = config.bool_of(p, "browser.profile.persist"),
 		layout_band_px = f32(config.float_of(p, "browser.layout.band_height_px")),
 		blocking_threads = int(config.int_of(p, "browser.threads.blocking")),
+		loaded = true,
+		partial_redraw = config.bool_of(p, "browser.ui.partial_redraw"),
+		scrollbar_autohide = config.bool_of(p, "browser.ui.scrollbar_autohide"),
+		ui_zoom = f32(config.float_of(p, "browser.ui.zoom")),
+		bookmarks_bar = config.bool_of(p, "browser.bookmarks.bar"),
+		tabs_tree = config.bool_of(p, "browser.tabs.tree"),
+		audio_indicator = config.bool_of(p, "browser.tabs.audio_indicator"),
+		audio_hold_ms = f64(config.int_of(p, "browser.tabs.audio_hold_ms")),
+		page_thread = config.bool_of(p, "browser.shell.page_thread"),
+		page_thread_min_ms = config.float_of(p, "browser.shell.page_thread_min_ms"),
 	}
 }
 
 // The values of browser.ui.theme: the names of the toolkit's themes, lower case (made once; the process keeps them).
 theme_choices :: proc() -> []string {
 	@(static) names: []string
-	if names == nil {
+	@(static) once: sync.Once   // (every App registers its preferences: two may on their threads at once)
+	sync.once_do(&once, proc() {
 		// (kept until the process ends on purpose: never a leak)
 		names = make([]string, len(ui.THEMES), base.permanent_allocator())
 		for t, i in ui.THEMES { names[i] = base.ascii_lower_clone(t.name, base.permanent_allocator()) }
-	}
+	})
 	return names
 }

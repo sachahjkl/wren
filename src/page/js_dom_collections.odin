@@ -229,16 +229,28 @@ Dom_Collection :: struct {
 	arg:      string,         // owned: the name; Tag_Name_NS: the local name
 	ns:       string,         // owned: Tag_Name_NS: the namespace ("*" any)
 	classes:  []string,       // owned: Class_Names, the set
+	arg_lower: string,        // owned: Tag_Name, `arg` in ASCII lower case (compared with every element)
 	tree_v:   u64,
-	attr_v:   u64,
+	attr_v:   u64,            // attr_version, or the watched name's version (watch_name)
+	child_v:  u64,            // the root's child version (child kinds)
 	valid:    bool,
 	items:    [dynamic]base.Handle,
+	// what the collection watches in the document of tag `watch_tag` (0: nothing; dom/watch.odin): the root's children
+	// (the kinds made of its children), or the attributes named `watch_name` (a literal) for the kinds that read one
+	watch_tag:      u32,
+	watch_children: bool,
+	watch_name:     string,
 }
 
 @(private)
 collection_vt := Object_VTable{name = "DOMCollection", destroy = proc(p: ^Page, data: rawptr) {
 	col := (^Dom_Collection)(data)
-	delete(col.arg); delete(col.ns)
+	// (a closing page frees its document whole; another document than the one watched has nothing of ours)
+	if col.watch_tag != 0 && !p.closed && p.doc != nil && p.doc.tag == col.watch_tag {
+		if col.watch_children { dom.child_unwatch(p.doc, col.root) }
+		if col.watch_name != "" { dom.attr_unwatch(p.doc, col.watch_name) }
+	}
+	delete(col.arg); delete(col.ns); delete(col.arg_lower)
 	for k in col.classes { delete(k) }
 	delete(col.classes)
 	delete(col.items)
@@ -337,7 +349,36 @@ Collection_create :: proc(c: ^Call, root: Api_Node, kind: i32, arg: string) -> (
 	case:
 		col.arg = strings.clone(arg)
 	}
+	if col.kind == .Tag_Name { col.arg_lower = base.ascii_lower_clone(arg) }
+	// what it watches: a list of one parent's children changes only with them, a list that reads one attribute only
+	// with the tree or that attribute (dom/watch.odin)
+	d := c.page.doc
+	#partial switch col.kind {
+	case .Child_Nodes, .Children, .Row_Cells, .Table_Bodies: col.watch_children = true
+	case .Class_Names: col.watch_name = "class"
+	case .Name, .Anchors: col.watch_name = "name"
+	case .Links: col.watch_name = "href"
+	}
+	if col.watch_children || col.watch_name != "" {
+		col.watch_tag = d.tag
+		if col.watch_children { dom.child_watch(d, col.root) }
+		if col.watch_name != "" { dom.attr_watch(d, col.watch_name) }
+	}
 	return object_create(c.page, &collection_vt, col, c.owner), .None
+}
+
+// Whether the collection's list is still what a walk would find. A collection made for another document than the
+// page's (document.open() replaced it) falls back to the document-wide counters.
+@(private)
+collection_current :: proc(p: ^Page, col: ^Dom_Collection) -> bool {
+	d := p.doc
+	if !col.valid || col.kind == .Selected_Options { return false }   // (the options' selectedness is the forms model's state)
+	if dom.get(d, col.root) == nil { return len(col.items) == 0 }
+	if col.watch_tag == d.tag {
+		if col.watch_children { return col.child_v == dom.child_version(d, col.root) }
+		if col.watch_name != "" { return col.tree_v == d.tree_version && col.attr_v == dom.attr_name_version(d, col.watch_name) }
+	}
+	return col.tree_v == d.tree_version && (!uses_attributes(col.kind) || col.attr_v == d.attr_version)
 }
 
 @(private)
@@ -373,7 +414,7 @@ collection_accepts :: proc(p: ^Page, col: ^Dom_Collection, h: base.Handle, n: ^d
 	case .Tag_Name:
 		if col.arg == "*" { return true }
 		// an HTML element of an HTML document: its qualified name against the argument in ASCII lower case
-		if html && n.xml != .Element { return jd_qualified_name(p.doc, h, false) == base.ascii_lower(col.arg) }
+		if html && n.xml != .Element { return jd_qualified_name(p.doc, h, false) == col.arg_lower }
 		return jd_qualified_name(p.doc, h, false) == col.arg
 	case .Tag_Name_NS:
 		if col.ns != "*" && dom.ns_uri(p.doc, h) != col.ns { return false }
@@ -429,10 +470,13 @@ collection_accepts :: proc(p: ^Page, col: ^Dom_Collection, h: base.Handle, n: ^d
 @(private)
 collection_refresh :: proc(p: ^Page, col: ^Dom_Collection) {
 	d := p.doc
-	// the options' selectedness is the forms model's state, which the versions do not follow
-	if col.valid && col.kind != .Selected_Options && col.tree_v == d.tree_version && (!uses_attributes(col.kind) || col.attr_v == d.attr_version) { return }
+	if collection_current(p, col) { return }
 	clear(&col.items)
 	col.valid, col.tree_v, col.attr_v = true, d.tree_version, d.attr_version
+	if col.watch_tag == d.tag {
+		if col.watch_children { col.child_v = dom.child_version(d, col.root) }
+		if col.watch_name != "" { col.attr_v = dom.attr_name_version(d, col.watch_name) }
+	}
 	root := dom.get(d, col.root)
 	if root == nil { return }
 	switch col.kind {

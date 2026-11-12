@@ -14,7 +14,8 @@ import "wb:i18n"
 BLOCKER_IMPORT_MAX_BYTES :: 64 << 20
 
 // The system's Open and Save dialogs for the dashboard (export and import of the configuration and of the user's
-// filters). The dialog runs on a worker thread; what it chose is read or written back on the interface thread.
+// filters). The dialog runs on a thread of its own (host.run_dialog); what it chose is read or written back on the
+// interface thread.
 
 @(private = "file")
 Job :: struct {
@@ -23,13 +24,23 @@ Job :: struct {
 	suggested: string,
 	path:      string,
 	kind:      int,    // 0: the whole configuration, 1: the user's filters
+	owner:     ^platform.Window,   // the window the dialog belongs to (read on the loop's thread, not on the dialog's)
 }
 
 file_dialog :: proc(app: ^App, save: bool, suggested: string, kind: int) {
 	j := new(Job)
-	j.app, j.save, j.kind = app, save, kind
+	j.app, j.save, j.kind, j.owner = app, save, kind, active_window(app).win
 	j.suggested = strings.clone(suggested)
-	host.run_blocking(&app.blocking, dialog_work, dialog_done, j)
+	if !host.run_dialog(&app.dialogs, dialog_work, dialog_done, j, job_free) {
+		ui.toast(.Bad, i18n.tr("The dialog could not open"))
+		job_free(j)
+	}
+}
+
+@(private = "file")
+job_free :: proc(data: rawptr) {
+	j := (^Job)(data)
+	delete(j.suggested); delete(j.path); free(j)
 }
 
 @(private = "file")
@@ -38,7 +49,7 @@ dialog_work :: proc(data: rawptr) {
 	patterns := [1]string{"*.txt"}
 	filters := [1]platform.File_Filter{{name = i18n.tr("Text files"), patterns = patterns[:]}}
 	d := platform.File_Dialog{
-		owner            = active_window(j.app).win,
+		owner            = j.owner,
 		filters          = filters[:],
 		all_files        = true,
 		suggested_name   = j.suggested,
@@ -55,7 +66,7 @@ dialog_work :: proc(data: rawptr) {
 @(private = "file")
 dialog_done :: proc(data: rawptr) {
 	j := (^Job)(data)
-	defer { delete(j.suggested); delete(j.path); free(j) }
+	defer job_free(j)
 	app := j.app
 	if j.path == "" { return }
 	b := &app.bl.b

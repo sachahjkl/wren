@@ -7,8 +7,14 @@ package jsrt
 // predefined atoms, numbered exactly as quickjs-atom.h so serialized bytecode references them
 // directly; the last ones are the well-known symbols themselves (Symbol.iterator is an atom).
 //
-// Interned strings and symbols used as keys are pinned for the runtime's lifetime (QuickJS refcounts
-// atoms; pinning keeps property keys free of any bookkeeping on the hot paths).
+// The predefined atoms and symbols used as keys live as long as the runtime. A string atom made at run time is
+// weak (QuickJS refcounts atoms; tracing keeps property keys free of any bookkeeping on the hot paths): a
+// collection keeps the atoms that something live holds and frees the others (atoms_sweep), and their slots are
+// used again. What holds an atom marks the atom's string (mark_atom): a shape for its keys, a bytecode stream for
+// its atom table, a module for its names, a for-in iterator for its keys, and any live string that caches the
+// atom in `JS_String.atom`. Native code that keeps an atom in a local holds it while a native call is in progress:
+// a collection then keeps every atom (gc_mark). The key lists made by own_property_keys are rooted for the others
+// (the interpreter's spread and the C API).
 
 Atom :: u32
 
@@ -76,6 +82,7 @@ atom_index :: proc(rt: ^Runtime, a: Atom) -> (u32, bool) {
 atoms_init :: proc(rt: ^Runtime) {
 	rt.atoms = make([dynamic]Atom_Entry, 0, 1024, rt.allocator)
 	rt.atom_hash = make([]u32, 2048, rt.allocator)
+	rt.atom_free = make([dynamic]Atom, rt.allocator)
 	append(&rt.atoms, Atom_Entry{}) // ATOM_NULL
 	// one-character strings and "" first, so seeding below reuses them
 	for i in 0 ..< 256 {
@@ -116,6 +123,57 @@ atoms_init :: proc(rt: ^Runtime) {
 atoms_free :: proc(rt: ^Runtime) {
 	delete(rt.atoms)
 	delete(rt.atom_hash, rt.allocator)
+	delete(rt.atom_free)
+}
+
+// A slot for a new atom: one a collection freed, else a new one at the end.
+@(private = "file")
+atom_slot :: proc(rt: ^Runtime, e: Atom_Entry) -> Atom {
+	if n := len(rt.atom_free); n > 0 {
+		a := rt.atom_free[n - 1]
+		resize(&rt.atom_free, n - 1)
+		rt.atoms[a] = e
+		return a
+	}
+	a := Atom(len(rt.atoms))
+	append(&rt.atoms, e)
+	return a
+}
+
+// Keep the atom `a` alive through this collection (a string atom made at run time; the others are permanent).
+mark_atom :: #force_inline proc(rt: ^Runtime, a: Atom) {
+	if a < Atom(PREDEF_ATOM_COUNT) || atom_is_int(a) || int(a) >= len(rt.atoms) {return}
+	if s := rt.atoms[a].str; s != nil {mark_cell(rt, s)}
+}
+
+// Root the string of atom `a` until the current native call or safe point is done: a key list that native code
+// holds while it calls into JS (a getter can delete the property that held the key).
+root_atom :: #force_inline proc(rt: ^Runtime, a: Atom) {
+	if a < Atom(PREDEF_ATOM_COUNT) || atom_is_int(a) || int(a) >= len(rt.atoms) {return}
+	if s := rt.atoms[a].str; s != nil {list_push(&rt.temp_roots, &s.cell)}
+}
+
+// After a marking that treated string atoms as weak: the string atoms whose string was not marked are freed, their
+// slots listed for reuse, and the hash table made again without them. Their strings are swept as any other cell.
+atoms_sweep :: proc(rt: ^Runtime) {
+	freed := 0
+	for i in PREDEF_ATOM_COUNT ..< len(rt.atoms) {
+		e := &rt.atoms[i]
+		if e.kind != .string || e.str == nil {continue}
+		if cell_marked(rt, e.str) || e.str.pinned {continue}
+		e.str = nil
+		append(&rt.atom_free, Atom(i))
+		freed += 1
+	}
+	if freed > 0 {
+		atom_rehash(rt, len(rt.atom_hash))
+		rt.atoms_freed += i64(freed)
+	}
+}
+
+// String atoms in use (for the tests and the memory census).
+atoms_live :: proc(rt: ^Runtime) -> int {
+	return len(rt.atoms) - len(rt.atom_free)
 }
 
 @(private = "file")
@@ -166,7 +224,7 @@ str_index_u32 :: proc(rt: ^Runtime, s: ^JS_String, max_v: u64) -> (u32, bool) {
 	return u32(v), true
 }
 
-// Intern a string as an atom (the string itself becomes the pinned atom text).
+// Intern a string as an atom (the string itself becomes the atom's text; weak: see the top of the file).
 atom_from_string :: proc(rt: ^Runtime, s: ^JS_String) -> Atom {
 	if s.atom != 0 {return s.atom}
 	if idx, ok := str_array_index(rt, s); ok {return atom_from_u32(idx)}
@@ -179,15 +237,15 @@ atom_from_string :: proc(rt: ^Runtime, s: ^JS_String) -> Atom {
 		if a == 0 {break}
 		e := &rt.atoms[a]
 		if e.str.hash == h && str_eq(rt, e.str, f) {
-			if !f.pinned {f.atom = a} // cache on the probe string too
+			// cache on the probe string too: a live string that caches the atom keeps it (gc_trace)
+			if !f.pinned {f.atom = a}
 			return a
 		}
 		i = (i + 1) & mask
 	}
-	a := Atom(len(rt.atoms))
-	f.pinned = true
+	// (not pinned: the atom is weak, and its string lives as long as something holds the atom; see the top of the file)
+	a := atom_slot(rt, Atom_Entry{str = f, kind = .string})
 	f.atom = a
-	append(&rt.atoms, Atom_Entry{str = f, kind = .string})
 	atom_hash_insert(rt, a)
 	return a
 }
@@ -215,10 +273,9 @@ atom_from_utf8 :: proc(rt: ^Runtime, text: string) -> Atom {
 
 atom_from_symbol :: proc(rt: ^Runtime, sym: ^Symbol) -> Atom {
 	if sym.atom != 0 {return sym.atom}
-	a := Atom(len(rt.atoms))
-	sym.atom = a
 	kind: Atom_Kind = sym.is_private ? .private : (sym.is_registered ? .global_symbol : .symbol)
-	append(&rt.atoms, Atom_Entry{sym = sym, kind = kind})
+	a := atom_slot(rt, Atom_Entry{sym = sym, kind = kind})
+	sym.atom = a
 	return a
 }
 

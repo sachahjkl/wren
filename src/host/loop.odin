@@ -34,8 +34,20 @@ Timer :: struct {
 	work:        base.Work,                      // who it works for
 	deadline:    i64,   // ns since loop origin
 	interval:    i64,   // 0 = one-shot
-	scope:       ^base.Scope,
-	cleanup:     base.Cleanup_Id,
+	scope:       ^Scope_Timers,   // the timers of its scope on this loop (nil: no scope)
+	// its neighbours in scope's list (intrusive: a scope closing walks its own timers, a timer leaving unlinks in O(1))
+	prev, next:  base.Handle,
+}
+
+// The timers of one scope on one loop: one cleanup on the scope for all of them, whatever their number (a page that
+// sets thousands of timers registers one cleanup, not thousands searched at each removal). It lives while the scope
+// has a timer here.
+@(private)
+Scope_Timers :: struct {
+	l:       ^Loop,
+	scope:   ^base.Scope,
+	head:    base.Handle,
+	cleanup: base.Cleanup_Id,
 }
 
 Timer_Entry :: struct {
@@ -70,6 +82,11 @@ Loop :: struct {
 	// Callbacks of the last run_ready that made nothing show by themselves (a media player's notice that its decoders
 	// advanced): quiet_take hands the count to the shell, which does not draw a frame for them. Loop thread only.
 	quiet:     int,
+	// Whom the callbacks of the last run_ready that were not quiet worked for: the browser's own work (Work.page 0, counted) and
+	// the pages (their numbers, each once). The shell draws the windows of those pages, not every window. Loop thread only.
+	// (Each run_ready starts them over: a program that never takes them keeps no more than one run's.)
+	ran_browser: int,
+	ran_pages:   [dynamic]u32,
 	// Who posted or set the last callback that ran and was not quiet: what a frame made for it names (the browser's loop_rates.odin).
 	last_ran:  runtime.Source_Code_Location,
 	last_quiet: runtime.Source_Code_Location,   // ... and the last that was (what a wake with no frame names)
@@ -80,6 +97,7 @@ Loop :: struct {
 	work:      base.Work,
 	thread:    int,   // atomic: the thread that runs the loop, so that a post from another one inherits nothing (0: none yet)
 	origins:   map[string]u32,   // the numbers of Work.origin (origin_number); as many as the origins this loop's pages ran scripts of
+	scoped:    map[^base.Scope]^Scope_Timers,   // the scopes that have timers on this loop (set_timer with a scope)
 }
 
 // What work a thread does inside a task for someone else: a script of another origin, the response of a request made
@@ -150,6 +168,8 @@ loop_init :: proc(l: ^Loop, wake: proc(user: rawptr) = nil, wake_user: rawptr = 
 	l.posted = make([dynamic]Task, base.process_allocator())
 	l.scratch = make([dynamic]Task, base.process_allocator())
 	l.origins = make(map[string]u32, base.process_allocator())
+	l.scoped = make(map[^base.Scope]^Scope_Timers, base.process_allocator())
+	l.ran_pages = make([dynamic]u32, base.process_allocator())
 	l.wake = wake
 	l.wake_user = wake_user
 	l.timer_slice_ns = DEFAULT_TIMER_SLICE_NS
@@ -161,6 +181,13 @@ loop_destroy :: proc(l: ^Loop) {
 	delete(l.scratch)
 	for origin in l.origins { delete(origin, base.process_allocator()) }
 	delete(l.origins)
+	// scopes that outlive the loop with timers still on it: their cleanup would reach a loop that is gone
+	for scope, st in l.scoped {
+		base.forget_cleanup(scope, st.cleanup)
+		free(st, base.process_allocator())
+	}
+	delete(l.scoped)
+	delete(l.ran_pages)
 	priority_queue.destroy(&l.queue)
 	base.pool_destroy(&l.timers)
 }
@@ -257,10 +284,9 @@ set_timer :: proc(l: ^Loop, delay_ms: f64, interval_ms: f64, fn: Task_Proc, data
 		fn = fn, data = data, by = by, work = work_now(l, class),
 		deadline = now_ns(l) + timer_ns(delay_ms),
 		interval = timer_ns(interval_ms),
-		scope = scope,
 	}
 	h, p := base.pool_insert(&l.timers, t)
-	if scope != nil { p.cleanup = base.on_close(scope, timer_scope_closed, new_clone(Timer_Owner{l, h})) }
+	if scope != nil { scope_timers_link(l, scope, h, p) }
 	l.timer_seq += 1
 	priority_queue.push(&l.queue, Timer_Entry{p.deadline, l.timer_seq, h})
 	return h
@@ -272,21 +298,55 @@ timer_ns :: proc(ms: f64) -> i64 {
 	return i64(min(ms, MAX_TIMER_MS) * 1e6)
 }
 
+// Puts timer `h` (`p`) at the head of its scope's list, made with its one cleanup when it is the scope's first timer here.
 @(private)
-Timer_Owner :: struct { l: ^Loop, h: base.Handle }
+scope_timers_link :: proc(l: ^Loop, scope: ^base.Scope, h: base.Handle, p: ^Timer) {
+	st := l.scoped[scope]
+	if st == nil {
+		st = new(Scope_Timers, base.process_allocator())
+		st.l, st.scope = l, scope
+		st.cleanup = base.on_close(scope, scope_timers_closed, st)
+		l.scoped[scope] = st
+	}
+	p.scope, p.next = st, st.head
+	if old := base.pool_get(&l.timers, st.head); old != nil { old.prev = h }
+	st.head = h
+}
 
+// Takes timer `t` (already out of the pool) out of its scope's list; the scope's last timer here takes the list and its
+// cleanup with it.
 @(private)
-timer_scope_closed :: proc(data: rawptr) {
-	o := (^Timer_Owner)(data)
-	base.pool_remove(&o.l.timers, o.h)   // the scope is closing: nothing to unregister
-	free(o)
+scope_timers_unlink :: proc(l: ^Loop, t: Timer) {
+	st := t.scope
+	if prev := base.pool_get(&l.timers, t.prev); prev != nil { prev.next = t.next } else { st.head = t.next }
+	if next := base.pool_get(&l.timers, t.next); next != nil { next.prev = t.prev }
+	if st.head != base.NIL_HANDLE { return }
+	base.forget_cleanup(st.scope, st.cleanup)
+	delete_key(&l.scoped, st.scope)
+	free(st, base.process_allocator())
+}
+
+// The scope is closing: its timers go, with nothing to unregister.
+@(private)
+scope_timers_closed :: proc(data: rawptr) {
+	st := (^Scope_Timers)(data)
+	l := st.l
+	for h := st.head; h != base.NIL_HANDLE; {
+		t, ok := base.pool_remove(&l.timers, h)
+		if !ok { break }
+		h = t.next
+		l.stale += 1   // (its queue entry stays until its deadline, as for a cleared timer)
+	}
+	delete_key(&l.scoped, st.scope)
+	free(st, base.process_allocator())
+	if l.stale > l.timers.count + 64 { compact_timers(l) }
 }
 
 // Loop thread. False when the timer already fired (one-shot) or was cleared.
 clear_timer :: proc(l: ^Loop, h: base.Handle) -> bool {
 	loop_owned(l, "host.clear_timer off the loop's thread")
 	t, ok := base.pool_remove(&l.timers, h)
-	if ok && t.scope != nil { release_scope_hook(t) }
+	if ok && t.scope != nil { scope_timers_unlink(l, t) }
 	if ok {
 		// its queue entry stays until its deadline: a page clearing long timers in a loop would pile them up
 		l.stale += 1
@@ -307,19 +367,6 @@ compact_timers :: proc(l: ^Loop) {
 	priority_queue.clear(&l.queue)
 	for e in keep { priority_queue.push(&l.queue, e) }
 	l.stale = 0
-}
-
-@(private)
-release_scope_hook :: proc(t: Timer) {
-	// The cleanup's closure data is owned by the cleanup record; run it instead of forgetting so it is freed.
-	for i := len(t.scope.cleanups) - 1; i >= 0; i -= 1 {
-		if t.scope.cleanups[i].id == t.cleanup {
-			c := t.scope.cleanups[i]
-			ordered_remove(&t.scope.cleanups, i)
-			free(c.data)
-			return
-		}
-	}
 }
 
 // Milliseconds until the next timer, 0 if a wake is already pending or a timer is due, -1 for "no timer".
@@ -343,6 +390,22 @@ quiet_take :: proc(l: ^Loop) -> int {
 	return n
 }
 
+// Loop thread. Whom the callbacks of the last run_ready that were not quiet worked for: how many were the browser's own, and
+// the pages' numbers (Work.page, each once; valid until the next run). Both start over.
+ran_take :: proc(l: ^Loop) -> (browser: int, pages: []u32) {
+	browser, pages = l.ran_browser, l.ran_pages[:]
+	l.ran_browser = 0
+	clear(&l.ran_pages)   // (the slice stays readable: nothing is written over it before the next run)
+	return
+}
+
+@(private = "file")
+ran_note :: proc(l: ^Loop, page: u32) {
+	if page == 0 { l.ran_browser += 1; return }
+	for p in l.ran_pages { if p == page { return } }
+	append(&l.ran_pages, page)
+}
+
 @(private = "file")
 run_one :: proc(l: ^Loop, fn: Task_Proc, data: rawptr, by: runtime.Source_Code_Location, work: base.Work) {
 	quiet := l.quiet
@@ -351,7 +414,7 @@ run_one :: proc(l: ^Loop, fn: Task_Proc, data: rawptr, by: runtime.Source_Code_L
 	fn(data)
 	l.work = {}
 	base.span_add(.Task, at, by.file_path, by.line, work = work)
-	if l.quiet == quiet { l.last_ran = by } else { l.last_quiet = by }
+	if l.quiet == quiet { l.last_ran = by; ran_note(l, work.page) } else { l.last_quiet = by }
 }
 
 // Loop thread. Runs the posted tasks, then the timers due at this instant. Returns how many callbacks ran.
@@ -359,6 +422,8 @@ run_ready :: proc(l: ^Loop) -> int {
 	loop_owned(l, "host.run_ready off the loop's thread")
 	sync.atomic_store(&l.thread, sync.current_thread_id())
 	sync.atomic_store(&l.pending, false)   // before draining: a post racing with us re-arms the wake
+	l.ran_browser = 0
+	clear(&l.ran_pages)
 	ran := 0
 	// timers set by this turn's callbacks wait for the next turn, even when already due: a timer a posted task sets runs after
 	// what that task posted (HTML: a task queued before the timer's)
@@ -388,7 +453,7 @@ run_ready :: proc(l: ^Loop) -> int {
 			priority_queue.push(&l.queue, Timer_Entry{t.deadline, l.timer_seq, e.handle})
 		} else {
 			done, _ := base.pool_remove(&l.timers, e.handle)
-			if done.scope != nil { release_scope_hook(done) }
+			if done.scope != nil { scope_timers_unlink(l, done) }
 		}
 		run_one(l, fn, data, by, work)
 		ran += 1

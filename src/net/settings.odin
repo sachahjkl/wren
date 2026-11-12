@@ -37,6 +37,13 @@ Settings :: struct {
 	max_idle_per_host: int,
 	hosts:         string,   // owned: "name address" lines (network.hosts)
 	loopback_only: bool,
+	// the loop thread's share: what one drain of the built-in stack handles before it yields to the rest of the loop
+	drain_max_events: int,
+	drain_max_ms:     int,
+	// requests waiting for a slot: past these, a new request fails at once (a page cannot queue without end)
+	max_waiting:           int,
+	max_waiting_per_scope: int,
+	ws_max_buffered:  int,   // a WebSocket's bytes waiting to be sent; past this it is closed with 1009
 }
 
 // What turns network.loopback_only on whatever the preferences say: test_all sets it for every step (no test reaches past this machine).
@@ -91,6 +98,16 @@ PREFS := [?]config.Def{
 		description = "Back-pressure: reading a response pauses when this many bytes wait for its consumer."},
 	{name = "network.queue.low_water_bytes", kind = .Int, default = {i = 256 << 10}, bounded = true, min = 1024, max = 1 << 30, bytes = true, unit = "bytes",
 		description = "Back-pressure: reading resumes when the unconsumed bytes fall below this."},
+	{name = "network.drain.max_events", kind = .Int, default = {i = 64}, bounded = true, min = 1, max = 1_000_000,
+		description = "Built-in stack: network events handled in one turn of the browser's loop; the rest wait for the next turn, so input and painting are not held up by a burst of answers."},
+	{name = "network.drain.max_ms", kind = .Int, default = {i = 4}, bounded = true, min = 1, max = 1000, unit = "ms",
+		description = "Built-in stack: the longest one turn of the browser's loop spends on network events."},
+	{name = "network.queue.max_waiting", kind = .Int, default = {i = 10_000}, bounded = true, min = 1, max = 10_000_000,
+		description = "Requests waiting for a connection slot, all pages together. A request past this fails at once."},
+	{name = "network.queue.max_waiting_per_page", kind = .Int, default = {i = 2000}, bounded = true, min = 1, max = 10_000_000,
+		description = "Requests one page (or one of its frames, or a worker) may have waiting for a connection slot. A request past this fails at once."},
+	{name = "network.websocket.max_buffered_bytes", kind = .Int, default = {i = 64 << 20}, bounded = true, min = 1024, max = 1 << 40, bytes = true, unit = "bytes",
+		description = "Bytes a WebSocket may have waiting to be sent. A send past this closes the connection with code 1009 (message too big)."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
@@ -143,6 +160,11 @@ settings_from_prefs :: proc(p: ^config.Prefs, allocator := context.allocator) ->
 	s.max_idle_per_host = int(config.int_of(p, "network.pool.max_idle_per_host"))
 	s.hosts = hosts_lines(config.string_of(p, "network.hosts"), allocator)
 	s.loopback_only = config.bool_of(p, "network.loopback_only")
+	s.drain_max_events = int(config.int_of(p, "network.drain.max_events"))
+	s.drain_max_ms = int(config.int_of(p, "network.drain.max_ms"))
+	s.max_waiting = int(config.int_of(p, "network.queue.max_waiting"))
+	s.max_waiting_per_scope = int(config.int_of(p, "network.queue.max_waiting_per_page"))
+	s.ws_max_buffered = int(config.int_of(p, "network.websocket.max_buffered_bytes"))
 	return s
 }
 

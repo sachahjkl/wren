@@ -899,19 +899,20 @@ restyle_dom_parallel_what_an_inherited_change_forces :: proc(t: ^testing.T) {
 }
 
 // `.a .b` is tried on the ancestors of `.b`: a partial pass reads each class attribute once, as a full pass does, and an element it
-// did not meet is not read at all.
+// did not meet keeps what the last pass read of it.
 @(test)
 restyle_dom_reads_each_class_attribute_once :: proc(t: ^testing.T) {
 	f := rx_load(`<style>.y .z .b { color: red }</style><div id=top class="x y"><div id=mid class="z"><p id=p class=q>t</p></div></div><div id=other class=w>u</div>`)
 	defer rx_unload(f)
+	word :: proc(f: ^Rx, id: string) -> u64 { return f.eng.class_bits[base.handle_index(by_id(f, id))] }
+	other := word(f, "other")   // (what the load's full pass left: a partial pass clears only the journaled elements' words)
 	dom.set_attribute(f.doc, by_id(f, "p"), "class", "b")
 	_, ok := restyle_dom(f.eng, f.doc, f.st)   // (rx_step would make a full pass after it, which reads them all)
 	testing.expect(t, ok && f.eng.last_restyle.marked == 1, "one element")
-	word :: proc(f: ^Rx, id: string) -> u64 { return f.eng.class_bits[base.handle_index(by_id(f, id))] }
 	bit :: proc(class: string) -> u64 { return 1 << (css.class_hash(class) & CLASS_BIT_MASK) }
 	testing.expect(t, word(f, "mid") & CLASS_BITS_READ != 0 && word(f, "mid") & bit("z") != 0, "its parent was read")
 	testing.expect(t, word(f, "top") & bit("x") != 0 && word(f, "top") & bit("y") != 0, "and above it")
-	testing.expect_value(t, word(f, "other"), 0)
+	testing.expect_value(t, word(f, "other"), other)   // not read again: its class did not change
 	testing.expect(t, !f.eng.class_bits_live, "they are of that pass")
 }
 

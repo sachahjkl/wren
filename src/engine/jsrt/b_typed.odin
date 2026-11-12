@@ -1103,8 +1103,13 @@ ta_fill :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 		ta := typed_array_of(o)
 		ab := array_buffer_of(ta.buffer)
 		host_pin(ctx.rt, ab, ta.offset + int(start) * elem_size[e], ta.offset + int(end) * elem_size[e])
-		for k in start ..< end {write_elem(e, elem_ptr(o, int(k)), ev)}
+		interrupted := false
+		for k in start ..< end {
+			if k & NATIVE_LOOP_POLL_MASK == 0 && poll_native_loop(ctx) {interrupted = true; break}
+			write_elem(e, elem_ptr(o, int(k)), ev)
+		}
 		host_unpin(ctx.rt, ab, true)
+		if interrupted {return EXCEPTION}
 	}
 	return this
 }
@@ -1126,6 +1131,7 @@ ta_index_of :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Va
 			k = d >= 0 ? i64(min(d, f64(n - 1))) : i64(f64(n) + d)
 		}
 		for ; k >= 0; k -= 1 {
+			if k & NATIVE_LOOP_POLL_MASK == 0 && poll_native_loop(ctx) {return EXCEPTION}
 			if int(k) >= typed_array_length(ctx, o) {continue}
 			if strict_equals(ctx, ta_get(ctx, o, int(k)), target) {return mk_i64(k)}
 		}
@@ -1136,6 +1142,7 @@ ta_index_of :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Va
 	if d == INF {return not_found}
 	k: i64 = d >= 0 ? i64(d) : max(0, i64(f64(n) + d))
 	for ; k < i64(n); k += 1 {
+		if k & NATIVE_LOOP_POLL_MASK == 0 && poll_native_loop(ctx) {return EXCEPTION}
 		cur := typed_array_length(ctx, o)
 		if int(k) >= cur {
 			if magic == 0 && is_undefined(target) {return TRUE}
@@ -1163,6 +1170,7 @@ ta_join :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 	}
 	sb := sb_init(rt)
 	for k in 0 ..< n {
+		if k & NATIVE_LOOP_POLL_MASK == 0 && poll_native_loop(ctx) {sb_destroy(&sb); return EXCEPTION}
 		if k > 0 {sb_str(&sb, sep)}
 		v := ta_get(ctx, o, k)
 		if is_undefined(v) {continue}

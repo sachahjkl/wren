@@ -28,20 +28,63 @@ LEGACY_FONT_SIZE_DIGITS_MAX :: 100
 @(private)
 hint_complex: css.Complex
 
-// Appends to `p.lists[.Element]` the entry holding the presentational hints of element `n`, if it has some (true).
+// Appends to `p.lists[.Element]` the entry holding the presentational hints of element `n`, if it has some (`hinted`).
+// `shared`: its rule is the one every element with the same hints gets from this Styled (hint_rule_of), so that the share key,
+// which holds the entries' rules, tells hints apart; otherwise the rule is this element's alone (its address may be another's later).
 @(private)
-add_hint_entry :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node) -> bool {
-	if !p.e.settings.presentational_hints || !p.e.settings.author_stylesheets { return false }
+add_hint_entry :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node) -> (hinted: bool, shared: bool) {
+	if !p.e.settings.presentational_hints || !p.e.settings.author_stylesheets { return }
 	text := hint_text(p.mc.doc, h, n, p.e.settings.quirks_rules)
-	if text == "" { return false }
-	decls := css.parse_declarations(text, p.opt, context.temp_allocator)
-	pre, customs := compile_declarations(p.e, decls, p.alloc, &p.stats, &p.scratch)
-	if len(pre) == 0 { return false }
-	own_custom_names(customs, p.alloc)
-	r := new(Rule, context.temp_allocator)
-	r^ = Rule{decls = pre, customs = customs, origin = .Author, layer = 0, order = 0, hint = true}
+	if text == "" { return }
+	r: ^Rule
+	r, shared = hint_rule_of(p, text)
+	if r == nil { return false, false }
 	append(&p.lists[.Element], Entry{rule = r, complex = &hint_complex, ctx = p.own_depth})
-	return true
+	return true, shared
+}
+
+// The compiled rule of hint declarations `text` (nil when none is valid). Rows of a table, the cells of a grid of <td align>:
+// one text, compiled once per Styled, as inline_rule_of does for style attributes (the same rules for who may insert: the pass
+// that owns the Styled's arena; style threads only read). `shared`: the rule lives in the Styled (see add_hint_entry).
+@(private)
+hint_rule_of :: proc(p: ^Pass, text: string) -> (r: ^Rule, shared: bool) {
+	s := p.s
+	if cached, ok := s.hint_rules[text]; ok { return cached, true }
+	owner := p.alloc.data == s.alloc.data
+	if !owner || p.e.settings.hint_cache_entries <= 0 {
+		decls := css.parse_declarations(text, p.opt, context.temp_allocator)
+		pre, customs := compile_declarations(p.e, decls, p.alloc, &p.stats, &p.scratch)
+		if len(pre) == 0 { return nil, false }
+		own_custom_names(customs, p.alloc)
+		r = new(Rule, context.temp_allocator)
+		r^ = Rule{decls = pre, customs = customs, origin = .Author, layer = 0, order = 0, hint = true}
+		return r, false
+	}
+	// parsed into the arena: the compiled values point into what was parsed
+	decls := css.parse_declarations(text, p.opt, s.alloc)
+	pre, customs := compile_declarations(p.e, decls, s.alloc, &p.stats, &p.scratch)
+	if len(pre) > 0 {
+		r = new(Rule, s.alloc)
+		r^ = Rule{decls = pre, customs = customs, origin = .Author, layer = 0, order = 0, hint = true}
+	}
+	if len(s.hint_rules) >= p.e.settings.hint_cache_entries { clear(&s.hint_rules) }
+	s.hint_rules[strings.clone(text, s.alloc)] = r
+	s.inline_rules_made += 1   // (memory of the Styled's arena that outlives the element: a restyle that rolls back keeps it)
+	return r, r != nil
+}
+
+// Whether element `n` can have hints at all: most elements have none, and most of the others none without an attribute of
+// their own (the cells of a table and the quirks of a few take theirs from elsewhere). What hint_text writes for the others is "".
+@(private = "file")
+hint_may :: proc(n: ^dom.Node) -> bool {
+	switch n.name {
+	case "table", "thead", "tbody", "tfoot", "tr", "td", "th", "input", "textarea", "form":
+		return true
+	case "body", "caption", "col", "colgroup", "div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "pre", "listing", "xmp", "font", "br",
+	     "img", "object", "embed", "iframe", "svg", "video", "hr", "ol", "ul", "li", "a", "area":
+		return len(n.attrs) > 0
+	}
+	return false
 }
 
 // Attributes that are presentational hints of some element; `subtree`: a change to it on this element also changes the
@@ -70,7 +113,7 @@ hint_attribute :: proc(element, name: string) -> (hint: bool, subtree: bool) {
 
 // The hint declarations of element `h` as CSS text (temp allocator), "" when it has none.
 hint_text :: proc(doc: ^dom.Document, h: base.Handle, n: ^dom.Node, quirks_rules := true) -> string {
-	if n == nil || n.kind != .Element { return "" }
+	if n == nil || n.kind != .Element || !hint_may(n) { return "" }   // (no builder for the elements that have none)
 	quirks := quirks_rules && doc.mode == .Quirks
 	sb := strings.builder_make(context.temp_allocator)
 	w := &sb

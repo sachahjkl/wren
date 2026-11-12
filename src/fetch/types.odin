@@ -195,7 +195,7 @@ Profile :: struct {
 profile_make :: proc(fetch_settings: Settings = {}, cookie_settings: cookies.Settings = {}) -> Profile {
 	fs := fetch_settings
 	if fs.max_redirects == 0 && fs.accept_language == "" { fs = settings_default() }
-	return Profile{settings = fs, jar = cookies.jar_make(cookie_settings), hsts = hsts_make(), preflights = preflight_cache_make()}
+	return Profile{settings = fs, jar = cookies.jar_make(cookie_settings), hsts = hsts_make(fs.hsts_max_entries, fs.hsts_max_age_s), preflights = preflight_cache_make()}
 }
 
 profile_destroy :: proc(p: ^Profile) {

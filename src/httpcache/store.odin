@@ -98,6 +98,7 @@ Entry :: struct {
 	// lists
 	prev, next:   ^Entry,   // every entry, most recently used first
 	rprev, rnext: ^Entry,   // resident entries, most recently used first
+	uprev, unext: ^Entry,   // the entries of the same URL (other partitions, credentials): Cache.by_url
 }
 
 Stats :: struct {
@@ -127,6 +128,9 @@ Cache :: struct {
 	loop:           ^host.Loop,
 	settings:       Settings,
 	entries:        map[string]^Entry,
+	// the first entry of each URL (its key is that entry's url): an unsafe request invalidates its URL without a scan of
+	// every entry
+	by_url:         map[string]^Entry,
 	head, tail:     ^Entry,
 	rhead, rtail:   ^Entry,
 	resident_bytes: i64,
@@ -148,6 +152,7 @@ create :: proc(loop: ^host.Loop, settings: Settings, dir: string) -> ^Cache {
 	c.loop = loop
 	c.settings = settings_clone(settings)
 	c.entries = make(map[string]^Entry)
+	c.by_url = make(map[string]^Entry)
 	c.waiters = make([dynamic]Waiter)
 	if dir != "" && settings.disk_enabled {
 		c.disk = disk_open(c, dir)
@@ -172,6 +177,7 @@ destroy :: proc(c: ^Cache) {
 		e = n
 	}
 	delete(c.entries)
+	delete(c.by_url)   // (its keys were the entries' urls)
 	for w in c.waiters { delete(w.key) }
 	delete(c.waiters)
 	settings_destroy(&c.settings)
@@ -258,17 +264,26 @@ Store_Desc :: struct {
 	vary:          string,         // request values of the varied fields (Vary block)
 	request_time:  i64,
 	response_time: i64,
-	body:          []byte,         // copied
+	body:          []byte,         // copied, unless body_owned
+	// the cache takes `body` (allocated with base.process_allocator()) instead of copying it: the caller let go of it,
+	// whatever store returns
+	body_owned:    bool,
 	fresh_until:   i64,
 }
 
 // Stores a response, replacing any entry of the same key. Nil when it is larger than an entry may be.
 store :: proc(c: ^Cache, d: Store_Desc) -> ^Entry {
-	if i64(len(d.body)) > c.settings.max_entry_bytes { return nil }
-	if old := find(c, d.key); old != nil { remove(c, old) }
 	a := base.process_allocator()
-	data := make([]byte, len(d.body), a)
-	copy(data, d.body)
+	if i64(len(d.body)) > c.settings.max_entry_bytes {
+		if d.body_owned { delete(d.body, a) }
+		return nil
+	}
+	if old := find(c, d.key); old != nil { remove(c, old) }
+	data := d.body
+	if !d.body_owned {
+		data = make([]byte, len(d.body), a)
+		copy(data, d.body)
+	}
 	e := new(Entry)
 	e.key = strings.clone(d.key, a)
 	e.url = strings.clone(d.url, a)
@@ -284,6 +299,7 @@ store :: proc(c: ^Cache, d: Store_Desc) -> ^Entry {
 	e.body = body_make(data)
 	e.resident = true
 	c.entries[e.key] = e
+	url_link(c, e)
 	list_push_front(c, e)
 	rlist_push_front(c, e)
 	c.resident_bytes += e.body_size
@@ -340,6 +356,7 @@ remove :: proc(c: ^Cache, e: ^Entry) {
 	if e == nil { return }
 	if cur := find(c, e.key); cur != e { return }
 	delete_key(&c.entries, e.key)
+	url_unlink(c, e)
 	list_unlink(c, e)
 	if e.resident { rlist_unlink(c, e); c.resident_bytes -= e.body_size }
 	if e.serial != 0 && c.disk != nil {
@@ -354,10 +371,40 @@ remove_key :: proc(c: ^Cache, key: string) { remove(c, find(c, key)) }
 
 // RFC 9111 §4.4: an unsafe request succeeded: every stored response for `url` (in every partition) goes.
 invalidate_url :: proc(c: ^Cache, url: string) -> int {
-	doomed := make([dynamic]^Entry, context.temp_allocator)
-	for _, e in c.entries { if e.url == url { append(&doomed, e) } }
-	for e in doomed { remove(c, e) }
-	return len(doomed)
+	n := 0
+	for {
+		e := c.by_url[url] or_else nil
+		if e == nil { break }
+		remove(c, e)   // (unlinks it: the next of its URL becomes the first)
+		if (c.by_url[url] or_else nil) == e { break }   // (never: an entry is listed while it is in c.entries)
+		n += 1
+	}
+	return n
+}
+
+// Links `e` (in c.entries already) at the head of its URL's entries.
+@(private)
+url_link :: proc(c: ^Cache, e: ^Entry) {
+	first := c.by_url[e.url] or_else nil
+	e.uprev, e.unext = nil, first
+	if first != nil {
+		first.uprev = e
+		delete_key(&c.by_url, e.url)   // (the key is the old first's url: it is `e`'s from now on)
+	}
+	c.by_url[e.url] = e
+}
+
+@(private)
+url_unlink :: proc(c: ^Cache, e: ^Entry) {
+	if e.unext != nil { e.unext.uprev = e.uprev }
+	if e.uprev != nil {
+		e.uprev.unext = e.unext
+	} else if c.by_url[e.url] == e {
+		// the first goes: the map's key is its url, which goes with it
+		delete_key(&c.by_url, e.url)
+		if e.unext != nil { c.by_url[e.unext.url] = e.unext }
+	}
+	e.uprev, e.unext = nil, nil
 }
 
 // Everything goes (memory and disk). Requests waiting for an entry are told it is gone.

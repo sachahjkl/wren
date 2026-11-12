@@ -294,48 +294,55 @@ angle_unit_to_deg :: proc(n: f64, unit: string) -> (f64, bool) {
 }
 
 // Absolute units are converted when parsed; relative ones are resolved by the style system with its context.
-length_unit_to_px :: proc(n: f64, unit: string, _: f64) -> (px: f64, ok: bool) {
-	switch base.ascii_lower(unit) {
-	case "px": return n, true
-	case "cm": return n * 96 / 2.54, true
-	case "mm": return n * 96 / 25.4, true
-	case "q":  return n * 96 / 101.6, true
-	case "in": return n * 96, true
-	case "pt": return n * 96 / 72, true
-	case "pc": return n * 16, true
+length_unit_to_px :: proc(n: f64, unit: string, _: f64) -> (px: f64, ok: bool) { return dim_unit_to_px(n, dim_unit_of(unit)) }
+
+// length_unit_to_px of a unit classified already (Token.unit).
+dim_unit_to_px :: proc(n: f64, u: Dim_Unit) -> (px: f64, ok: bool) {
+	#partial switch u {
+	case .Px: return n, true
+	case .Cm: return n * 96 / 2.54, true
+	case .Mm: return n * 96 / 25.4, true
+	case .Q:  return n * 96 / 101.6, true
+	case .In: return n * 96, true
+	case .Pt: return n * 96 / 72, true
+	case .Pc: return n * 16, true
 	}
 	return 0, false
 }
 
-relative_unit :: proc(unit: string) -> (Unit, bool) {
-	switch base.ascii_lower(unit) {
-	case "em": return .Em, true
-	case "rem": return .Rem, true
-	case "ex": return .Ex, true
-	case "ch": return .Ch, true
-	case "lh": return .Lh, true
-	case "rlh": return .Rlh, true
-	case "cap": return .Cap, true
-	case "ic": return .Ic, true
-	case "rex": return .Rex, true
-	case "rch": return .Rch, true
-	case "ric": return .Ric, true
-	case "rcap": return .Rcap, true
-	// the viewport never has collapsing browser bars here: small, large and dynamic viewports are the same
-	case "vw", "svw", "lvw", "dvw": return .Vw, true
-	case "vh", "svh", "lvh", "dvh": return .Vh, true
-	case "vi", "svi", "lvi", "dvi": return .Vi, true
-	case "vb", "svb", "lvb", "dvb": return .Vb, true
-	case "vmin", "svmin", "lvmin", "dvmin": return .Vmin, true
-	case "vmax", "svmax", "lvmax", "dvmax": return .Vmax, true
-	// container query units (horizontal writing: inline = width)
-	case "cqw", "cqi": return .Cqw, true
-	case "cqh", "cqb": return .Cqh, true
-	case "cqmin": return .Cqmin, true
-	case "cqmax": return .Cqmax, true
+relative_unit :: proc(unit: string) -> (Unit, bool) { return dim_unit_relative(dim_unit_of(unit)) }
+
+// relative_unit of a unit classified already (Token.unit).
+dim_unit_relative :: proc(u: Dim_Unit) -> (Unit, bool) {
+	#partial switch u {
+	case .Em: return .Em, true
+	case .Rem: return .Rem, true
+	case .Ex: return .Ex, true
+	case .Ch: return .Ch, true
+	case .Lh: return .Lh, true
+	case .Rlh: return .Rlh, true
+	case .Cap: return .Cap, true
+	case .Ic: return .Ic, true
+	case .Rex: return .Rex, true
+	case .Rch: return .Rch, true
+	case .Ric: return .Ric, true
+	case .Rcap: return .Rcap, true
+	case .Vw: return .Vw, true
+	case .Vh: return .Vh, true
+	case .Vi: return .Vi, true
+	case .Vb: return .Vb, true
+	case .Vmin: return .Vmin, true
+	case .Vmax: return .Vmax, true
+	case .Cqw: return .Cqw, true
+	case .Cqh: return .Cqh, true
+	case .Cqmin: return .Cqmin, true
+	case .Cqmax: return .Cqmax, true
 	}
 	return .Px, false
 }
+
+// The length unit of a dimension token: its classified unit, or its text's for a token made by hand.
+token_dim_unit :: #force_inline proc(t: Token) -> Dim_Unit { return t.unit != .Unknown ? t.unit : dim_unit_of(t.text) }
 
 // The bases relative units resolve against.
 Length_Context :: struct {

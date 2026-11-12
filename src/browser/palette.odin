@@ -458,12 +458,12 @@ usage_load :: proc(app: ^App) {
 	_ = usage_parse(u, string(data), app.cpal.cfg.usage_max)
 }
 
-// Written as soon as it changes (a few hundred bytes), to a temporary file then moved over the old one.
+// Written as soon as it changes (a few hundred bytes), by the blocking pool (profile_writes.odin).
 @(private = "file")
 usage_save :: proc(app: ^App) {
 	if !app.cfg.persist_profile { return }
-	path := usage_path(app)
-	_ = base.file_write_atomic(path, transmute([]byte)usage_serialize(&app.cpal.usage))
+	profile_file_init(&app.cpal.usage_file, app, usage_path(app))
+	profile_file_write(&app.cpal.usage_file, usage_serialize(&app.cpal.usage))
 }
 
 @(private = "file")
@@ -601,6 +601,7 @@ Palette_State :: struct {
 	cfg_version:   u64,
 	cfg_ready:     bool,
 	usage:         Palette_Usage,
+	usage_file:    Profile_File,    // palette_usage.txt (profile_writes.odin)
 	sources:       [dynamic]Palette_Source,
 	sources_ready: bool,
 }
@@ -617,6 +618,7 @@ palette_destroy :: proc(app: ^App) {
 	if app.cpal.arena_ready { base.arena_destroy(&app.cpal.arena) }
 	delete(app.cpal.cache_text)
 	usage_destroy(&app.cpal.usage)
+	profile_file_destroy(&app.cpal.usage_file)   // (written by profile_files_flush, before the loop ended)
 	delete(app.cpal.sources)
 	app.cpal = {}
 	commands_destroy(&app.cmds)

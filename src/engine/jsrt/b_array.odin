@@ -132,7 +132,7 @@ array_ctor :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) -> Value
 			array_push_fast(ctx.rt, a, l)
 		}
 	} else {
-		array_reserve(ctx.rt, a, u32(len(args)))
+		if !array_reserve(ctx.rt, a, u32(len(args))) {return throw_out_of_memory(ctx)}
 		for v in args {array_push_fast(ctx.rt, a, v)}
 	}
 	return mk_obj(a)
@@ -379,6 +379,7 @@ ap_fill :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 	v := arg(args, 0)
 	for k in start ..< end {
 		if set_index(ctx, o, k, v) < 0 {return EXCEPTION}
+		if k & NATIVE_LOOP_POLL_MASK == 0 && poll_native_loop(ctx) {return EXCEPTION}
 	}
 	return o
 }
@@ -493,6 +494,7 @@ ap_index_of :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Va
 			k = d >= 0 ? i64(min(d, f64(n - 1))) : i64(f64(n) + d)
 		}
 		for ; k >= 0; k -= 1 {
+			if k & NATIVE_LOOP_POLL_MASK == 0 && poll_native_loop(ctx) {return EXCEPTION}
 			h := has_index(ctx, oo, k)
 			if h < 0 {return EXCEPTION}
 			if h == 0 {continue}
@@ -508,6 +510,7 @@ ap_index_of :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Va
 	k: i64
 	if d >= 0 {k = i64(d)} else {k = max(0, i64(max(f64(n) + d, 0)))}
 	for ; k < n; k += 1 {
+		if k & NATIVE_LOOP_POLL_MASK == 0 && poll_native_loop(ctx) {return EXCEPTION}
 		if magic == 0 {
 			v := get_index(ctx, o, k)
 			if is_exception(v) {return EXCEPTION}
@@ -544,6 +547,7 @@ ap_join :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 	defer pop(&rt.join_stack)
 	sb := sb_init(rt)
 	for k in 0 ..< n {
+		if k & NATIVE_LOOP_POLL_MASK == 0 && poll_native_loop(ctx) {sb_destroy(&sb); return EXCEPTION}
 		if k > 0 {sb_str(&sb, sep)}
 		v := get_index(ctx, o, k)
 		if is_exception(v) {sb_destroy(&sb); return EXCEPTION}
@@ -600,7 +604,7 @@ ap_push :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 		if o.class == .array && o.fast_array && o.extensible && .writable in o.shape.props[0].flags && array_append_ok(ctx, o) {
 			ad := array_data(o)
 			if ad.count == array_length_u32(o) && u64(ad.count) + u64(len(args)) <= 0xffffffff {
-				array_reserve(rt, o, ad.count + u32(len(args)))
+				if !array_reserve(rt, o, ad.count + u32(len(args))) {return throw_out_of_memory(ctx)}
 				for v in args {array_push_fast(rt, o, v)}
 				return mk_u32(ad.count)
 			}
@@ -684,6 +688,7 @@ ap_reverse :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	}
 	lower: i64 = 0
 	for lower < n / 2 {
+		if lower & NATIVE_LOOP_POLL_MASK == 0 && poll_native_loop(ctx) {return EXCEPTION}
 		upper := n - 1 - lower
 		le := has_index(ctx, oo, lower)
 		if le < 0 {return EXCEPTION}
@@ -877,6 +882,7 @@ merge_sort :: proc(sc: ^Sort_Ctx, a: []Value, tmpbuf: []Value) {
 		}
 		k += 1
 		if sc.error {return}
+		if k & NATIVE_LOOP_POLL_MASK == 0 && poll_native_loop(sc.ctx) {sc.error = true; return}
 	}
 	for i < mid {a[k] = tmpbuf[i]; i += 1; k += 1}
 	for j < n {a[k] = tmpbuf[j]; j += 1; k += 1}
@@ -889,6 +895,7 @@ sort_collect :: proc(ctx: ^Context, o: Value, n: i64, cmp: Value, skip_holes: bo
 	oo := as_obj(o)
 	vals := make([dynamic]Value, 0, int(min(n, SORT_COLLECT_RESERVE_MAX)), tmp(rt))
 	for k in 0 ..< n {
+		if k & NATIVE_LOOP_POLL_MASK == 0 && poll_native_loop(ctx) {return nil, false}
 		if skip_holes {
 			h := has_index(ctx, oo, k)
 			if h < 0 {return nil, false}
@@ -917,6 +924,7 @@ ap_sort :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 		if set_index(ctx, o, i64(i), v) < 0 {return EXCEPTION}
 	}
 	for k := i64(len(vals)); k < n; k += 1 {
+		if k & NATIVE_LOOP_POLL_MASK == 0 && poll_native_loop(ctx) {return EXCEPTION}
 		if !delete_index(ctx, as_obj(o), k) {return EXCEPTION}
 	}
 	return o
@@ -1011,7 +1019,8 @@ ap_to_reversed :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) ->
 	o, n, ok := this_obj(ctx, this)
 	if !ok {return EXCEPTION}
 	if n > 0xffffffff {return throw_range_error(ctx, "invalid array length")}
-	a := array_new(ctx, int(n))
+	a := array_new_checked(ctx, n)
+	if a == nil {return EXCEPTION}
 	for k in 0 ..< n {
 		v := get_index(ctx, o, n - 1 - k)
 		if is_exception(v) {return EXCEPTION}
@@ -1029,7 +1038,8 @@ ap_with :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 	idx := rel >= 0 ? rel : f64(n) + rel
 	if idx < 0 || idx >= f64(n) {return throw_range_error(ctx, "index out of range")}
 	if n > 0xffffffff {return throw_range_error(ctx, "invalid array length")}
-	a := array_new(ctx, int(n))
+	a := array_new_checked(ctx, n)
+	if a == nil {return EXCEPTION}
 	for k in 0 ..< n {
 		v: Value
 		if k == i64(idx) {
@@ -1063,7 +1073,8 @@ ap_to_spliced :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> 
 	nl := n + ic - skip
 	if nl > MAX_SAFE_INT {return throw_type_error(ctx, "array too long")}
 	if nl > 0xffffffff {return throw_range_error(ctx, "invalid array length")}
-	a := array_new(ctx, int(nl))
+	a := array_new_checked(ctx, nl)
+	if a == nil {return EXCEPTION}
 	for k in 0 ..< start {
 		v := get_index(ctx, o, k)
 		if is_exception(v) {return EXCEPTION}

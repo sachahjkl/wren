@@ -37,7 +37,7 @@ HISTORY_PREFS := [?]config.Def{
 	{name = "history.global.max_url_bytes", kind = .Int, default = {i = 8 << 10}, bounded = true, min = 256, max = 2 << 20, bytes = true, unit = "bytes",
 		description = "Longest address the browsing history records (longer ones are not recorded)."},
 	{name = "history.global.save_delay_ms", kind = .Int, default = {i = 2000}, bounded = true, min = 0, max = 600_000, unit = "ms",
-		description = "The browsing history is written to the profile this long after the first unsaved change (on a background thread, atomically), and when the browser closes."},
+		description = "The browsing history is written to the profile this long after the first unsaved change, and when the browser closes: the new visits and titles are appended to the file on a background thread; the whole file is written again (atomically) after a deletion or when it has grown to twice what the history holds."},
 	{name = "history.global.record_file_urls", kind = .Bool, default = {b = true},
 		description = "Record local files (file:) in the browsing history."},
 	{name = "history.ui.menu_entries", kind = .Int, default = {i = 15}, bounded = true, min = 1, max = 100,

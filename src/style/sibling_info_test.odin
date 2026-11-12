@@ -27,7 +27,8 @@ sibling_info_direct_matches_index :: proc(t: ^testing.T) {
 		fill_siblings(&indexed, parent)
 		for ch := dom.get(doc, parent).first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next {
 			if dom.get(doc, ch).kind != .Element { continue }
-			a, b := sibling_info(&direct, ch), sibling_info(&indexed, ch)
+			// (the index itself: sibling_info counts a small family directly whether or not it is indexed)
+			a, b := sibling_info(&direct, ch), indexed.sibs[ch]
 			testing.expectf(t, a == b, "family of %d: %v, indexed %v", size, a, b)
 		}
 	}

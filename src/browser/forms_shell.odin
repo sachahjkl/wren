@@ -1721,7 +1721,7 @@ open_external :: proc(app: ^App, target: string) {
 }
 
 ////////////////////////////////
-// Pickers (file and color dialogs), on a worker thread so the window keeps painting
+// Pickers (file and color dialogs), on a thread of their own (host.run_dialog) so the window keeps painting
 
 @(private = "file")
 Picker_Job :: struct {
@@ -1759,7 +1759,19 @@ start_picker :: proc(app: ^App, p: ^page.Page, input: base.Handle, color: bool) 
 		job.filter = accept_filter(accept)
 	}
 	job.cleanup = base.on_close(p.scope, proc(data: rawptr) { (^Picker_Job)(data).cancelled = true }, job)
-	host.run_blocking(&app.blocking, picker_work, picker_done, job)
+	// (a dialog waits for a person: a thread of its own, not a worker of the blocking pool)
+	if !host.run_dialog(&app.dialogs, picker_work, picker_done, job, picker_discard) { picker_discard(job) }
+}
+
+// The browser ends with the picker answered and not yet given to its page: what it holds is freed.
+@(private = "file")
+picker_discard :: proc(data: rawptr) {
+	job := (^Picker_Job)(data)
+	if !job.cancelled { base.forget_cleanup(job.page.scope, job.cleanup) }
+	for &fl in job.files { forms.file_destroy(&fl) }
+	delete(job.files)
+	delete(job.filter)
+	free(job)
 }
 
 shell_pick_files :: proc(user: rawptr, p: ^page.Page, input: base.Handle) { start_picker((^App)(user), p, input, false) }
@@ -1816,7 +1828,7 @@ picker_work :: proc(data: rawptr) {
 		return
 	}
 	// the toolkit's Open dialog (the one File System Access pickers use too)
-	d := platform.File_Dialog{owner = active_window(job.app).win, multiple = job.multiple, all_files = true, remember_id = "input-file"}
+	d := platform.File_Dialog{owner = job.owner, multiple = job.multiple, all_files = true, remember_id = "input-file"}
 	filters: [1]platform.File_Filter
 	if job.filter != "" {
 		filters[0] = {name = "Accepted files", patterns = strings.split(job.filter, ";", context.temp_allocator)}

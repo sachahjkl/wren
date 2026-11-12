@@ -459,6 +459,7 @@ Save_Job :: struct {
 	url:       string,   // owned
 	suggested: string,   // owned
 	path:      string,   // owned: where to write (set by the dialog)
+	owner:     ^platform.Window,   // the window the dialog belongs to (read on the loop's thread, not on the dialog's)
 	task:      base.Handle,
 	cleanup:   base.Cleanup_Id,   // the process scope frees the job if the browser closes during the download
 	bytes:     []byte,   // owned: what was downloaded
@@ -500,24 +501,33 @@ clean_file_name :: proc(s: string) -> string {
 	return out == "" ? "download" : out
 }
 
-// Asks where to save `address` (the system's Save dialog, on a worker thread), then downloads it there.
+// Asks where to save `address` (the system's Save dialog, on a thread of its own), then downloads it there.
 save_as :: proc(app: ^App, address, suggested: string) {
 	job := new(Save_Job)
 	job.app = app
 	job.url = strings.clone(address)
 	job.suggested = strings.clone(suggested)
-	host.run_blocking(&app.blocking, save_dialog_work, save_dialog_done, job)
+	save_dialog_start(app, job)
 }
 
-// Asks where to save `data` (the system's Save dialog, on a worker thread), then writes it there: what the browser already
-// holds (a network log as HAR, a response body), with no download.
+// Asks where to save `data` (the system's Save dialog, on a thread of its own), then writes it there: what the browser
+// already holds (a network log as HAR, a response body), with no download.
 save_data_as :: proc(app: ^App, suggested: string, data: []byte) {
 	job := new(Save_Job)
 	job.app = app
 	job.suggested = strings.clone(suggested)
 	job.bytes = make([]byte, len(data))
 	copy(job.bytes, data)
-	host.run_blocking(&app.blocking, save_dialog_work, save_dialog_done, job)
+	save_dialog_start(app, job)
+}
+
+@(private = "file")
+save_dialog_start :: proc(app: ^App, job: ^Save_Job) {
+	job.owner = active_window(app).win
+	if !host.run_dialog(&app.dialogs, save_dialog_work, save_dialog_done, job, proc(data: rawptr) { save_job_free((^Save_Job)(data)) }) {
+		ui.toast(.Bad, "The Save dialog could not open")
+		save_job_free(job)
+	}
 }
 
 @(private = "file")
@@ -530,7 +540,7 @@ save_job_free :: proc(job: ^Save_Job) {
 save_dialog_work :: proc(data: rawptr) {
 	job := (^Save_Job)(data)
 	dlg := platform.File_Dialog{
-		owner            = active_window(job.app).win,
+		owner            = job.owner,
 		suggested_name   = job.suggested,
 		all_files        = true,
 		overwrite_prompt = true,

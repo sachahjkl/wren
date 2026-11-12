@@ -57,6 +57,12 @@ Text_Api :: struct {
 	// Optional. `width` of text drawn with letter spacing (added after each character), which turns optional ligatures
 	// off; without it, `width` plus the spacing of each character.
 	width_spaced: proc(user: rawptr, f: Font, size: f32, text: string, letter_spacing: f32) -> f32,
+	// Optional. The width of each code point of `text` measured alone, exactly as `width` measures a string of that one
+	// code point (an invalid byte: that byte alone), in out[i] for the code point whose first byte is text[i]
+	// (len(out) == len(text); the other entries are left as they are). Text that breaks anywhere (overflow-wrap,
+	// word-break, text-overflow: ellipsis) is then measured in one call instead of one per character. Called like `width`
+	// (from several threads when `concurrent`).
+	char_widths: proc(user: rawptr, f: Font, size: f32, text: string, out: []f32),
 	// Optional (selection, find, carets: interaction code on the UI thread). The x of the caret before byte `index` of
 	// a text fragment shaped as painted, from its left edge, and the byte index whose caret is nearest to `x`: through
 	// the shaped clusters (a ligature or a grapheme of several characters is one cluster), right to left when
@@ -67,7 +73,7 @@ Text_Api :: struct {
 	// (font fallback: an emoji, a script the face lacks), at most len(out) of them; returns how many there are. Lines
 	// of line-height: normal make room for them as Chromium does. Without it, only the first face counts.
 	fallback_metrics: proc(user: rawptr, f: Font, size: f32, text: string, out: []Font_Metrics) -> int,
-	// `width`, `bidi`, `line_break` and `fallback_metrics` may be called from several threads at once (`font` and
+	// `width`, `char_widths`, `bidi`, `line_break` and `fallback_metrics` may be called from several threads at once (`font` and
 	// `metrics` never are):
 	// lines of independent paragraphs are then built on the layout threads (parallel.odin)
 	concurrent: bool,
@@ -246,6 +252,12 @@ Box :: struct {
 	cache_in:  [3]f32,
 	cache_h:   f32,
 	cache_end, cache_contrib: Strut,   // flow: trailing strut; margins it added to the strut it was given
+	// a second entry, of a layout on its own (block.odin: layout_contents, measure_height, impose_height): the height
+	// the same content had at other inputs (a flex item measured at its auto height, then laid out at its final one)
+	alt_ok:    bool,
+	alt_same:  bool,                // ... its content is laid out as for the first entry: any layout may take it
+	alt_in:    [3]f32,
+	alt_h:     f32,
 	inc:       Inc_Flags,           // invalidation between passes (incremental.odin)
 	// tables
 	col, row, colspan, rowspan: i32,

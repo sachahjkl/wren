@@ -70,7 +70,7 @@ page_mute :: proc(p: ^page.Page, on: bool, depth: int) {
 // Once per frame for the window's tabs: what each one plays, its mute applied to the players it has now.
 tab_sound_frame :: proc(app: ^App) {
 	now := f64(host.now_ns(&app.loop)) / 1e6
-	hold := f64(config.int_of(&app.prefs, "browser.tabs.audio_hold_ms"))
+	hold := app.cfg.audio_hold_ms
 	for t in active_window(app).tabs {
 		if t.page == nil { t.sound.playing = false; continue }
 		if t.muted || t.page.media != nil || t.page.frames != nil { page_mute(t.page, t.muted, 0) }
@@ -93,9 +93,9 @@ tab_audible :: proc(t: ^Tab, now, hold: f64) -> bool {
 Tab_Speaker :: enum u8 { None, Sound, Muted }
 
 tab_speaker :: proc(app: ^App, t: ^Tab) -> Tab_Speaker {
-	if !config.bool_of(&app.prefs, "browser.tabs.audio_indicator") { return .None }
+	if !app.cfg.audio_indicator { return .None }
 	if t.muted { return .Muted }
-	if tab_audible(t, f64(host.now_ns(&app.loop)) / 1e6, f64(config.int_of(&app.prefs, "browser.tabs.audio_hold_ms"))) { return .Sound }
+	if tab_audible(t, f64(host.now_ns(&app.loop)) / 1e6, app.cfg.audio_hold_ms) { return .Sound }
 	return .None
 }
 

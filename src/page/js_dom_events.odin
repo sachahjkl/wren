@@ -7,7 +7,6 @@ package page
 
 import "core:fmt"
 import "wb:base"
-import "wb:host"
 import "wb:dom"
 
 // dom.Dispatcher.window: runs the Window's listeners of one phase for the event being dispatched.
@@ -22,29 +21,8 @@ window_phase :: proc(user: rawptr, eh: base.Handle, capture: bool) -> bool {
 	if e == nil { return true }
 	e.current_target = base.Handle(win)
 	snapshot := make([dynamic]dom.Listener, 0, 4, context.temp_allocator)
-	for l in o.listeners { if !l.removed && l.type == e.type && l.capture == capture { append(&snapshot, l) } }
-	for l in snapshot {
-		o = object_get(p, win)
-		if o == nil { break }
-		still := false
-		for cur in o.listeners { if cur.id == l.id && !cur.removed { still = true; break } }
-		if !still { continue }
-		if l.once { object_remove_listener(p, win, l.id) }
-		argv := [3]u32{l.user, u32(u64(eh)), u32(u64(eh) >> 32)}
-		if inst := instance_by_index(p, l.owner); inst != nil {
-			scope := host.work_enter(p.loop, callback_work(l.work, p.loop.work.class))
-			call_guest(p, inst, l.callback, argv[:])
-			host.work_leave(p.loop, scope)
-		}
-		e = base.pool_get(&p.dp.events, eh)
-		if e == nil || e.stop_immediate { break }
-		e.current_target = base.Handle(win)
-	}
-	if o = object_get(p, win); o != nil {
-		k := 0
-		for l in o.listeners { if !l.removed { o.listeners[k] = l; k += 1 } }
-		resize(&o.listeners, k)
-	}
+	dom.listeners_snapshot(o.listeners[:], e.atom, e.type, capture, false, &snapshot)
+	run_object_listeners(p, win, eh, snapshot[:], "")
 	return true
 }
 
@@ -53,8 +31,8 @@ window_phase :: proc(user: rawptr, eh: base.Handle, capture: bool) -> bool {
 @(private)
 derived_buttons :: proc(e: ^dom.Event) -> u32 {
 	if e.buttons != 0 { return u32(e.buttons) }
-	switch e.type {
-	case "mousedown", "pointerdown":
+	#partial switch event_atom_of(e) {
+	case .mousedown, .pointerdown:
 		switch e.button {
 		case 0: return 1
 		case 1: return 4
@@ -69,9 +47,9 @@ derived_buttons :: proc(e: ^dom.Event) -> u32 {
 @(private)
 derived_detail :: proc(e: ^dom.Event) -> i32 {
 	if e.detail != 0 { return e.detail }
-	switch e.type {
-	case "click", "mousedown", "mouseup", "auxclick", "contextmenu": return 1
-	case "dblclick": return 2
+	#partial switch event_atom_of(e) {
+	case .click, .mousedown, .mouseup, .auxclick, .contextmenu: return 1
+	case .dblclick: return 2
 	}
 	return 0
 }
@@ -102,7 +80,7 @@ Event_uiData :: proc(c: ^Call, event: Api_Event) -> Api_UiEventData {
 	if r.height <= 0 { r.height = 1 }
 	r.page_x, r.page_y = e.x, e.y
 	r.offset_x, r.offset_y = e.x, e.y
-	if p.worker == nil && (e.x != 0 || e.y != 0 || is_pointer_type(e.type)) {
+	if p.worker == nil && (e.x != 0 || e.y != 0 || dom.event_info(event_atom_of(e)).pointer) {
 		vp := viewport_now(c)
 		r.page_x, r.page_y = e.x + vp.scroll_x, e.y + vp.scroll_y
 		// offsetX / offsetY: from the target's padding edge
@@ -117,21 +95,16 @@ Event_uiData :: proc(c: ^Call, event: Api_Event) -> Api_UiEventData {
 	return r
 }
 
+// The atom of an event: the one set when it was dispatched while its type is still that one's, else looked up.
 @(private)
-is_pointer_type :: proc(t: string) -> bool {
-	switch t {
-	case "click", "dblclick", "auxclick", "mousedown", "mouseup", "mousemove", "mouseover", "mouseout", "mouseenter",
-	     "mouseleave", "contextmenu", "wheel", "pointerdown", "pointerup", "pointermove", "pointerover", "pointerout",
-	     "pointerenter", "pointerleave", "pointercancel", "gotpointercapture", "lostpointercapture", "dragstart", "drag",
-	     "dragenter", "dragleave", "dragover", "drop", "dragend":
-		return true
-	}
-	return false
+event_atom_of :: proc(e: ^dom.Event) -> dom.Event_Atom {
+	if e.atom != .None && dom.event_info(e.atom).name == e.type { return e.atom }
+	return dom.event_atom(e.type)
 }
 
 UiEvent_key :: proc(c: ^Call, event: Api_Event) -> string {
 	e := event.data
-	if e.text != "" && (e.type == "keydown" || e.type == "keyup" || e.type == "keypress") { return e.text }
+	if e.text != "" && dom.event_info(event_atom_of(e)).class == .Keyboard { return e.text }
 	return "Unidentified"
 }
 

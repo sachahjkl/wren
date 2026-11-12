@@ -16,7 +16,6 @@ import "core:strings"
 import "toolkit:draw"
 import "toolkit:ui"
 import lucide "toolkit:lucide"
-import "wb:config"
 import "wb:i18n"
 
 ////////////////////////////////
@@ -160,7 +159,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 	if ui.signal(area).right_clicked { bookmarks_bar_menu(app, ui.mouse_pos()) }   // the wheel; a right click where no tab is (bookmarks_bar.odin)
 	own.strip.area_key = area.key
 	tab_press_follows(wnd, own.sidebar.pins_key, area.key)   // (a pinned tab dragged down into the list: unpinned on the way)
-	total := side_list_layout(wnd.tabs[:], wnd.groups[:], rh, hh, &own.sidebar.items, wnd.current, config.bool_of(&app.prefs, "browser.tabs.tree"))
+	total := side_list_layout(wnd.tabs[:], wnd.groups[:], rh, hh, &own.sidebar.items, wnd.current, app.cfg.tabs_tree)
 	if cc != nil {
 		// classic: the feet of the current tab reach beyond its row, above the first and below the last: room for them inside the
 		// clip, else they are cut and the tab's outline does not join the panel's edge line
@@ -198,7 +197,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 		row_w = extent - outer
 		row_x = pos == .Left ? outer : 0
 	}
-	tree := config.bool_of(&app.prefs, "browser.tabs.tree")
+	tree := app.cfg.tabs_tree
 	first, last := side_visible_items(items, area.view_off.y, area.view_target.y, view_h, rh * 2)
 	dragged := -1
 	for t, i in wnd.tabs {
@@ -296,26 +295,21 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 	} else {
 		own.sidebar.drag_tab = 0
 	}
-	tabs_frame(app, first, last, items)
+	tabs_frame(app)
 }
 
 // What every frame of the sidebar does for every tab: its title and icon follow its document (throttled per tab), the
-// loading indicators turn, the icons of the tabs out of view stay in the cache.
+// loading indicators turn. (The icons of the tabs out of view stay in the cache: favicon_evict.)
 @(private = "file")
-tabs_frame :: proc(app: ^App, first, last: int, items: []Side_Item) {
+tabs_frame :: proc(app: ^App) {
 	wnd := active_window(app)
-	shown_lo, shown_hi := len(wnd.tabs), -1
-	if first < last {
-		for k in first ..< last { if items[k].kind == .Tab { shown_lo = min(shown_lo, items[k].index); shown_hi = max(shown_hi, items[k].index) } }
-	}
-	np := pinned_count(wnd.tabs[:])
 	tab_sound_frame(app)   // tab_sound.odin
 	any_turning := false
-	for t, i in wnd.tabs {
-		tab_refresh(app, t, tab_icon_px(app))
+	icon_px := tab_icon_px(app)
+	for t in wnd.tabs {
+		tab_refresh(app, t, icon_px)
 		any_turning ||= tab_busy(t) && spinner_turning(app, t)
-		// (an icon not drawn this frame is still in use: the cache keeps what its tabs show)
-		if i >= np && (i < shown_lo || i > shown_hi) && t.icon.url != "" { _, _ = favicon_texture(app, t.icon.url) }
+		// (an icon not drawn this frame is still in use: favicon_evict keeps what the tabs show)
 	}
 	if any_turning { spinner_wake(app) }
 }
@@ -364,7 +358,8 @@ sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Clas
 				p = {math.round(ui.anim(kx, slot.x, 30, slot.x)), math.round(ui.anim(ky, slot.y, 30, slot.y))}
 			}
 			gap := math.round(em * 0.15)
-			id := fmt.tprintf("###tab_%d", t.id)
+			id_buf: [32]u8
+			id := tab_box_id(&id_buf, t.id)
 			if !on { ui.push_tags("weak") }
 			ui.next({fixed_x = margin + p.x + gap, fixed_y = p.y + gap, width = ui.px(cell - gap * 2), height = ui.px(cell - gap * 2), axis = .X, cross = .Center, radius = em * 0.45})
 			ui.push_tags("tab")
@@ -448,7 +443,8 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 	em := ui.font_size()
 	dpi := ui_scale_of(app)
 	on := i == wnd.current
-	id := fmt.tprintf("###tab_%d", t.id)
+	id_buf: [32]u8
+	id := tab_box_id(&id_buf, t.id)
 	// (list coordinates: the scroll box places the rows; the release slides from where the pointer left it)
 	y, dragging = ui.reorder_item_pos(tab_box_key(area.key, t.id), slot, ui.mouse_pos().y - area.rect.min.y + area.view_off.y, 0, max(total - rh, 0))
 	prev := ui.prev_box(id)
@@ -478,7 +474,8 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 		look.hover = ui.anim(ui.key_from_string(b.key, "hov"), (inside || dragging) && !on ? 1 : 0, CHROME_ANIM_HOVER_RATE)
 		// an engraved line under it, between two tabs that are neither current nor under the pointer
 		if open > 0 && !on && !inside && !dragging && i + 1 < n && i + 1 != wnd.current && !wnd.tabs[i + 1].pinned {
-			nb := ui.prev_box(fmt.tprintf("###tab_%d", wnd.tabs[i + 1].id))
+			next_buf: [32]u8
+			nb := ui.prev_box(tab_box_id(&next_buf, wnd.tabs[i + 1].id))
 			look.rule = !(nb != nil && ui.box_contains(nb, ui.mouse_pos()) && draw.rect_contains(area.rect, ui.mouse_pos()))
 		}
 		b.custom, b.custom_user = classic_side_tab_draw, look
@@ -504,7 +501,7 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 		ui.spacer(ui.px(ix))
 		// tab_tree.odin: a tab with children shows, in its icon's place, a chevron that folds them away: while the pointer
 		// is on the row, and always while they are folded (the icons stay in line by depth)
-		if open >= 0.5 && config.bool_of(&app.prefs, "browser.tabs.tree") && tree_has_children(wnd.tabs[:], i) && (inside || t.fold) {
+		if open >= 0.5 && app.cfg.tabs_tree && tree_has_children(wnd.tabs[:], i) && (inside || t.fold) {
 			s := math.round(max(isz, em * 1.2))
 			ui.next({width = ui.px(isz), height = ui.pct(1), axis = .X, cross = .Center})
 			ui.push_parent(ui.build_box({}, "###twisty_slot"))

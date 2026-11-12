@@ -51,7 +51,6 @@ PREFS := [?]config.Def{
 	{name = "wasm.wasmtime.memory_guard_bytes", kind = .Int, default = {i = 32 << 20}, bounded = true, min = 0, max = 4 << 30, bytes = true, unit = "bytes", restart = true,
 		description = "Unmapped guard region after each linear memory, so most out-of-bounds accesses fault instead of needing explicit checks."},
 
-	{name = "wasm.features.simd", kind = .Bool, default = {b = true}, restart = true, description = "Fixed-width 128-bit SIMD (wasmtime). Forced on while wasm.features.relaxed_simd is on."},
 	{name = "wasm.features.relaxed_simd", kind = .Bool, default = {b = true}, restart = true, description = "Relaxed SIMD (wasmtime with cranelift)."},
 	{name = "wasm.features.relaxed_simd_deterministic", kind = .Bool, default = {b = true}, restart = true, description = "Relaxed SIMD instructions give the same results on every machine instead of the fastest local ones."},
 	{name = "wasm.features.bulk_memory", kind = .Bool, default = {b = true}, restart = true, description = "Bulk memory operations (memory.copy, memory.fill, passive segments) (wasmtime)."},
@@ -128,7 +127,7 @@ Runtime_Settings :: struct {
 // `profile_dir` holds the disk cache (wasm-cache); "" or wasm.cache.disk off = none.
 runtime_settings_from_prefs :: proc(p: ^config.Prefs, profile_dir: string) -> Runtime_Settings {
 	f := Features{
-		simd = config.bool_of(p, "wasm.features.simd"),
+		simd = true,   // the JavaScript engine is built with simd128 (tooling/js_engine.odin): no image loads without it
 		relaxed_simd = config.bool_of(p, "wasm.features.relaxed_simd"),
 		relaxed_simd_deterministic = config.bool_of(p, "wasm.features.relaxed_simd_deterministic"),
 		bulk_memory = config.bool_of(p, "wasm.features.bulk_memory"),

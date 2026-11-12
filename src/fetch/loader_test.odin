@@ -3,6 +3,24 @@ package fetch
 import "core:testing"
 import "wb:base"
 import "wb:host"
+import "wb:url"
+
+// A document of an https origin prohibits mixed content whatever its URL: blob:, about:blank and about:srcdoc ones
+// were let through, as their URL is not https.
+@(test)
+mixed_content_follows_the_origin :: proc(t: ^testing.T) {
+	secure := url.Origin{scheme = "https", host = "a.example", port = 443}
+	for scheme in ([]string{"https", "blob", "about"}) {
+		env := Environment{origin = secure, location = url.URL{scheme = scheme}}
+		testing.expectf(t, prohibits_mixed_content(&env), "an https origin with a %s: URL", scheme)
+	}
+	plain := Environment{origin = url.Origin{scheme = "http", host = "a.example", port = 80}, location = url.URL{scheme = "blob"}}
+	testing.expect(t, !prohibits_mixed_content(&plain))
+	sandboxed := Environment{origin = url.Origin{opaque = true}, location = url.URL{scheme = "about"}, secure_context = true}
+	testing.expect(t, prohibits_mixed_content(&sandboxed), "an opaque srcdoc document of a secure creator")
+	local := Environment{origin = url.Origin{opaque = true}, location = url.URL{scheme = "file"}, secure_context = true}
+	testing.expect(t, !prohibits_mixed_content(&local), "a file: document may load http")
+}
 
 @(private = "file")
 Probe :: struct {

@@ -3,6 +3,7 @@ package webaudio
 // The larger nodes: panners, the compressor, the wave shaper, the analyser, the convolver, and the two that exchange audio
 // with something outside the graph (a script processor, a media element).
 
+import "base:intrinsics"
 import "core:math"
 import "core:sync"
 
@@ -450,11 +451,18 @@ analyser_read :: proc(g: ^Graph, id: i32, what: Analyser_Read, out: []u8) -> int
 	return 0
 }
 
-// ---- ConvolverNode: uniform partitioned convolution, no latency ----
+// ---- ConvolverNode: non-uniform partitioned convolution, no latency ----
+//
+// The impulse is cut into stages of growing blocks: a quantum (128 frames) at its head, then 256, 512... up to
+// CONV_MAX_BLOCK for the rest of the tail. A stage of blocks of B frames convolves by transforms of 2B (overlap-save)
+// once every B frames, so the work per frame grows with the logarithm of the impulse's length, not with its length.
+// A stage starts at least B - 128 frames into the impulse: its output for a block is due no earlier than the quantum
+// that completes the block, so nothing waits (no latency). The multiply-adds of a stage's older partitions, whose
+// input is already known, are spread over the quanta of the block; only the newest partition waits for the block's end.
 
-// The partitions are a quantum long: the transforms are twice that.
-CONV_FFT :: 2 * RENDER_QUANTUM
-CONV_BINS :: RENDER_QUANTUM + 1
+CONV_MAX_BLOCK :: 4096
+// Blocks of each stage shorter than CONV_MAX_BLOCK (the last stage has as many as the impulse needs).
+CONV_STAGE_BLOCKS :: 2
 // Web Audio API, "Convolver": the normalization of an impulse response.
 CONV_CALIBRATION :: 0.00125
 CONV_CALIBRATION_RATE :: 44100
@@ -463,35 +471,60 @@ CONV_MIN_POWER :: 0.000125
 // The rounding error of the transforms: below it there is nothing.
 CONV_NOISE :: 1e-11
 
-// The spectra of an impulse's channel: partitions * CONV_BINS.
-Conv_Kernel :: struct {
-	re, im: []f64,
+// Complex spectra, real and imaginary parts apart, `stride` floats per partition (the block + 1 bins of a real
+// signal, rounded up to 4 so that the vector loop has no tail; the extra bins stay 0).
+Conv_Spectra :: struct {
+	re, im: []f32,
 }
 
-Conv_Path :: struct {
-	in_re, in_im: []f64,    // the last spectra of the input, partitions * CONV_BINS, a ring
-	head: int,
-	prev: [RENDER_QUANTUM]f64,
+// The impulse's frames [offset, offset + count * block), in `count` partitions of `block` frames.
+Conv_Stage :: struct {
+	block, count, offset: int,
+	stride:  int,                // block + 4
+	plan:    Fft_Plan,           // of 2 * block
+	kernels: [4]Conv_Spectra,    // per impulse channel, `count` partitions
+	inputs:  [2]Conv_Spectra,    // per path (input side), the spectra of its last `count` blocks, a ring
+	time:    [2][]f64,           // per path, 2 * block frames: the last block, then the one being filled
+	acc:     [2]Conv_Spectra,    // per output channel, the partitions added so far for the block being filled
+	head:    int,                // the ring slot of the newest input spectrum
+	fill:    int,                // frames of the block being filled
+	done:    int,                // partitions (from 1) already in `acc`
 }
 
 Convolver_Data :: struct {
-	normalize: bool,
-	channels:  int,        // of the impulse: 1, 2 or 4; 0: none
-	partitions: int,
-	scale:     f64,
-	kernels:   [4]Conv_Kernel,
-	paths:     [2]Conv_Path,
-	work_re, work_im: []f64,
-	sum_re, sum_im: []f64,
-	quiet_quanta: int,     // quanta of silent input in a row
+	normalize:  bool,
+	channels:   int,          // of the impulse: 1, 2 or 4; 0: none
+	scale:      f64,
+	stages:     []Conv_Stage,
+	out:        [2][]f32,     // per output channel, what is still to come: a ring, a power of two long
+	out_pos:    int,          // the ring's frame of the current quantum
+	work_re, work_im: []f64,  // 2 * the largest block
+	tail_frames: int,         // how long the output goes on after the input ends
+	quiet_quanta: int,        // quanta of silent input in a row
+}
+
+@(private = "file")
+spectra_make :: proc(n: int) -> Conv_Spectra { return {make([]f32, n), make([]f32, n)} }
+
+@(private = "file")
+spectra_free :: proc(s: ^Conv_Spectra) {
+	delete(s.re)
+	delete(s.im)
+	s^ = {}
 }
 
 @(private = "file")
 convolver_free_content :: proc(d: ^Convolver_Data) {
-	for &k in d.kernels { delete(k.re); delete(k.im); k = {} }
-	for &p in d.paths { delete(p.in_re); delete(p.in_im); p = {} }
-	delete(d.work_re); delete(d.work_im); delete(d.sum_re); delete(d.sum_im)
-	d.work_re, d.work_im, d.sum_re, d.sum_im = nil, nil, nil, nil
+	for &st in d.stages {
+		fft_plan_destroy(&st.plan)
+		for &k in st.kernels { spectra_free(&k) }
+		for &x in st.inputs { spectra_free(&x) }
+		for &a in st.acc { spectra_free(&a) }
+		for t in st.time { delete(t) }
+	}
+	delete(d.stages)
+	delete(d.out[0]); delete(d.out[1]); delete(d.work_re); delete(d.work_im)
+	d.stages, d.out, d.work_re, d.work_im = nil, {}, nil, nil
 }
 
 convolver_destroy :: proc(d: ^Convolver_Data) {
@@ -499,17 +532,19 @@ convolver_destroy :: proc(d: ^Convolver_Data) {
 	free(d)
 }
 
-// `buffer = pcm`: the spectra are made before the lock is taken (a long impulse takes a moment). nil: none.
-convolver_set :: proc(g: ^Graph, id: i32, pcm: ^Pcm, normalize: bool) {
+// `buffer = pcm`: the spectra are made before the lock is taken (a long impulse takes a moment). nil: none. Only the
+// first `max_seconds` of the impulse are used (webaudio.max_convolver_seconds): the memory and the work grow with it.
+convolver_set :: proc(g: ^Graph, id: i32, pcm: ^Pcm, normalize: bool, max_seconds := MAX_CONVOLVER_SECONDS) {
 	context.allocator = alloc()
 	new_data: Convolver_Data
 	new_data.normalize = normalize
 	if pcm != nil && pcm.length > 0 && (pcm.channels == 1 || pcm.channels == 2 || pcm.channels == 4) {
 		new_data.channels = pcm.channels
-		new_data.partitions = (pcm.length + RENDER_QUANTUM - 1) / RENDER_QUANTUM
-		parts := new_data.partitions
+		length := pcm.length
+		if max_seconds > 0 && max_seconds * pcm.rate < f64(length) { length = max(int(max_seconds * pcm.rate), 1) }
 		new_data.scale = 1
 		if normalize {
+			// (the power of the whole buffer, as the specification says, even past the part that is used)
 			power := 0.0
 			for v in pcm.samples { power += f64(v) * f64(v) }
 			power = math.sqrt_f64(power / f64(pcm.channels * pcm.length))
@@ -517,26 +552,7 @@ convolver_set :: proc(g: ^Graph, id: i32, pcm: ^Pcm, normalize: bool) {
 			new_data.scale = 1 / power * CONV_CALIBRATION * CONV_CALIBRATION_RATE / pcm.rate
 			if pcm.channels == 4 { new_data.scale *= 0.5 }
 		}
-		re, im := make([]f64, CONV_FFT), make([]f64, CONV_FFT)
-		defer { delete(re); delete(im) }
-		for c in 0 ..< pcm.channels {
-			k := &new_data.kernels[c]
-			k.re, k.im = make([]f64, parts * CONV_BINS), make([]f64, parts * CONV_BINS)
-			src := pcm_channel(pcm, c)
-			for p in 0 ..< parts {
-				for i in 0 ..< CONV_FFT { re[i], im[i] = 0, 0 }
-				from := p * RENDER_QUANTUM
-				for i in 0 ..< min(RENDER_QUANTUM, pcm.length - from) { re[i] = f64(src[from + i]) * new_data.scale }
-				fft(re, im)
-				copy(k.re[p * CONV_BINS:][:CONV_BINS], re[:CONV_BINS])
-				copy(k.im[p * CONV_BINS:][:CONV_BINS], im[:CONV_BINS])
-			}
-		}
-		for &path in new_data.paths {
-			path.in_re, path.in_im = make([]f64, parts * CONV_BINS), make([]f64, parts * CONV_BINS)
-		}
-		new_data.work_re, new_data.work_im = make([]f64, CONV_FFT), make([]f64, CONV_FFT)
-		new_data.sum_re, new_data.sum_im = make([]f64, CONV_FFT), make([]f64, CONV_FFT)
+		conv_build(&new_data, pcm, length)
 	}
 	graph_guard(g)
 	n := node_of(g, id)
@@ -546,46 +562,168 @@ convolver_set :: proc(g: ^Graph, id: i32, pcm: ^Pcm, normalize: bool) {
 	if !ok { convolver_free_content(&new_data); return }
 	convolver_free_content(d)
 	d^ = new_data
-	if pcm != nil { n.active_until = g.frame + i64(pcm.length) }
+	if pcm != nil { n.active_until = g.frame + i64(new_data.tail_frames) }
 }
 
-// The input's next spectrum of a path.
+// The stages of an impulse of `length` frames, and their spectra.
 @(private = "file")
-conv_feed :: proc(d: ^Convolver_Data, path: ^Conv_Path, s: []f32) {
-	for i in 0 ..< RENDER_QUANTUM {
-		d.work_re[i] = path.prev[i]
-		d.work_re[RENDER_QUANTUM + i] = f64(s[i])
-		path.prev[i] = f64(s[i])
-		d.work_im[i], d.work_im[RENDER_QUANTUM + i] = 0, 0
+conv_build :: proc(d: ^Convolver_Data, pcm: ^Pcm, length: int) {
+	stages := 0
+	off, block := 0, RENDER_QUANTUM
+	for off < length {
+		off += conv_stage_count(length - off, block) * block
+		if block < CONV_MAX_BLOCK { block *= 2 }
+		stages += 1
 	}
-	fft(d.work_re, d.work_im)
-	path.head = (path.head + 1) % d.partitions
-	copy(path.in_re[path.head * CONV_BINS:][:CONV_BINS], d.work_re[:CONV_BINS])
-	copy(path.in_im[path.head * CONV_BINS:][:CONV_BINS], d.work_im[:CONV_BINS])
-}
-
-// Adds what a kernel gives for a path's history to `out`.
-@(private = "file")
-conv_apply :: proc(d: ^Convolver_Data, path: ^Conv_Path, k: ^Conv_Kernel, out: []f32) {
-	for i in 0 ..< CONV_FFT { d.sum_re[i], d.sum_im[i] = 0, 0 }
-	for p in 0 ..< d.partitions {
-		at := (path.head - p + d.partitions) % d.partitions
-		xr, xi := path.in_re[at * CONV_BINS:][:CONV_BINS], path.in_im[at * CONV_BINS:][:CONV_BINS]
-		hr, hi := k.re[p * CONV_BINS:][:CONV_BINS], k.im[p * CONV_BINS:][:CONV_BINS]
-		for b in 0 ..< CONV_BINS {
-			d.sum_re[b] += xr[b] * hr[b] - xi[b] * hi[b]
-			d.sum_im[b] += xr[b] * hi[b] + xi[b] * hr[b]
+	d.stages = make([]Conv_Stage, stages)
+	off, block = 0, RENDER_QUANTUM
+	biggest := RENDER_QUANTUM
+	for &st in d.stages {
+		st.block, st.count, st.offset, st.stride = block, conv_stage_count(length - off, block), off, block + 4
+		st.plan = fft_plan_make(2 * block)
+		st.done = 1
+		for c in 0 ..< pcm.channels { st.kernels[c] = spectra_make(st.count * st.stride) }
+		for p in 0 ..< 2 {
+			st.inputs[p] = spectra_make(st.count * st.stride)
+			st.acc[p] = spectra_make(st.stride)
+			st.time[p] = make([]f64, 2 * block)
+		}
+		off += st.count * block
+		biggest = block
+		if block < CONV_MAX_BLOCK { block *= 2 }
+	}
+	d.work_re, d.work_im = make([]f64, 2 * biggest), make([]f64, 2 * biggest)
+	for &st in d.stages {
+		re, im := d.work_re[:2 * st.block], d.work_im[:2 * st.block]
+		for c in 0 ..< pcm.channels {
+			src := pcm_channel(pcm, c)
+			k := &st.kernels[c]
+			for q in 0 ..< st.count {
+				for i in 0 ..< len(re) { re[i], im[i] = 0, 0 }
+				from := st.offset + q * st.block
+				for i in 0 ..< min(st.block, length - from) { re[i] = f64(src[from + i]) * d.scale }
+				fft_planned(&st.plan, re, im)
+				for b in 0 ..= st.block { k.re[q * st.stride + b], k.im[q * st.stride + b] = f32(re[b]), f32(im[b]) }
+			}
 		}
 	}
-	// the other half of the spectrum of a real signal
-	for b in 1 ..< RENDER_QUANTUM {
-		d.sum_re[CONV_FFT - b], d.sum_im[CONV_FFT - b] = d.sum_re[b], -d.sum_im[b]
+	// the ring reaches from the current quantum to the end of what the last stage writes (its offset + 128)
+	ring := RENDER_QUANTUM
+	for ring < off + 2 * biggest + RENDER_QUANTUM { ring *= 2 }
+	d.out[0], d.out[1] = make([]f32, ring), make([]f32, ring)
+	d.tail_frames = off + 2 * biggest
+}
+
+// Partitions of a stage of blocks of `block` frames for the `rest` frames of the impulse not yet covered.
+@(private = "file")
+conv_stage_count :: proc "contextless" (rest, block: int) -> int {
+	n := (rest + block - 1) / block
+	return block < CONV_MAX_BLOCK ? min(n, CONV_STAGE_BLOCKS) : n
+}
+
+// The (path, impulse channel) pairs summed into an output channel (Web Audio API, "Channel Configurations for Input,
+// Impulse Response and Output"): a mono or stereo impulse convolves each side; "true" stereo (4 channels) mixes
+// LL + RL into the left, LR + RR into the right.
+@(private = "file")
+conv_pairs :: proc "contextless" (channels, out: int) -> (pairs: [2][2]int, n: int) {
+	switch channels {
+	case 1: return {{out, 0}, {}}, 1
+	case 2: return {{out, out}, {}}, 1
 	}
-	fft(d.sum_re, d.sum_im, true)
-	for i in 0 ..< RENDER_QUANTUM {
-		v := d.sum_re[RENDER_QUANTUM + i] / CONV_FFT
-		if abs(v) > CONV_NOISE { out[i] += f32(v) }   // (what is left of a zero after two transforms stays a zero)
+	if out == 0 { return {{0, 0}, {1, 2}}, 2 }
+	return {{0, 1}, {1, 3}}, 2
+}
+
+// acc += x * h, bin by bin (complex, real and imaginary parts apart), 4 bins a step: the convolver's inner loop.
+conv_cmac :: proc "contextless" (acc_re, acc_im, xr, xi, hr, hi: []f32) #no_bounds_check {
+	n := len(acc_re)
+	if len(acc_im) < n || len(xr) < n || len(xi) < n || len(hr) < n || len(hi) < n { return }
+	V :: #simd[4]f32
+	i := 0
+	for ; i + 4 <= n; i += 4 {
+		a, b := intrinsics.unaligned_load((^V)(&xr[i])), intrinsics.unaligned_load((^V)(&xi[i]))
+		c, e := intrinsics.unaligned_load((^V)(&hr[i])), intrinsics.unaligned_load((^V)(&hi[i]))
+		intrinsics.unaligned_store((^V)(&acc_re[i]), intrinsics.unaligned_load((^V)(&acc_re[i])) + (a * c - b * e))
+		intrinsics.unaligned_store((^V)(&acc_im[i]), intrinsics.unaligned_load((^V)(&acc_im[i])) + (a * e + b * c))
 	}
+	conv_cmac_scalar(acc_re[i:n], acc_im[i:n], xr[i:n], xi[i:n], hr[i:n], hi[i:n])
+}
+
+// The reference of conv_cmac.
+conv_cmac_scalar :: proc "contextless" (acc_re, acc_im, xr, xi, hr, hi: []f32) {
+	for b in 0 ..< len(acc_re) {
+		acc_re[b] += xr[b] * hr[b] - xi[b] * hi[b]
+		acc_im[b] += xr[b] * hi[b] + xi[b] * hr[b]
+	}
+}
+
+// Adds partitions [st.done, upto) of the block being filled to the stage's sums: partition q meets the input of q
+// blocks ago, already in the ring (the newest spectrum, at `head`, is the block before the one being filled).
+@(private = "file")
+conv_accumulate :: proc(d: ^Convolver_Data, st: ^Conv_Stage, upto: int) {
+	w := st.stride
+	for q in st.done ..< upto {
+		x := ((st.head - (q - 1)) % st.count + st.count) % st.count * w
+		for ch in 0 ..< 2 {
+			acc := &st.acc[ch]
+			pairs, np := conv_pairs(d.channels, ch)
+			for k in 0 ..< np {
+				in_s, h := &st.inputs[pairs[k][0]], &st.kernels[pairs[k][1]]
+				conv_cmac(acc.re, acc.im, in_s.re[x:][:w], in_s.im[x:][:w], h.re[q * w:][:w], h.im[q * w:][:w])
+			}
+		}
+	}
+	st.done = max(st.done, upto)
+}
+
+// One quantum of input through a stage; at the end of a block, its output into the ring.
+@(private = "file")
+conv_stage_run :: proc(d: ^Convolver_Data, st: ^Conv_Stage, ins: [2][]f32) {
+	B := st.block
+	for p in 0 ..< 2 {
+		t := st.time[p][B + st.fill:][:RENDER_QUANTUM]
+		for i in 0 ..< RENDER_QUANTUM { t[i] = f64(ins[p][i]) }
+	}
+	st.fill += RENDER_QUANTUM
+	if st.fill < B {
+		// the older partitions' share of this quantum
+		conv_accumulate(d, st, 1 + (st.count - 1) * st.fill / B)
+		return
+	}
+	conv_accumulate(d, st, st.count)
+	// the block is complete: its spectrum becomes the newest, and it the last block
+	st.head = (st.head + 1) % st.count
+	re, im := d.work_re[:2 * B], d.work_im[:2 * B]
+	w := st.stride
+	for p in 0 ..< 2 {
+		copy(re, st.time[p])
+		for i in 0 ..< len(im) { im[i] = 0 }
+		fft_planned(&st.plan, re, im)
+		x := &st.inputs[p]
+		for b in 0 ..= B { x.re[st.head * w + b], x.im[st.head * w + b] = f32(re[b]), f32(im[b]) }
+		copy(st.time[p][:B], st.time[p][B:])
+	}
+	ring_mask := len(d.out[0]) - 1
+	// overlap-save: the second half of the inverse is the block's output, due `offset` frames after the block began
+	at := d.out_pos + RENDER_QUANTUM - B + st.offset
+	inv_n := 1 / f64(2 * B)
+	for ch in 0 ..< 2 {
+		acc := &st.acc[ch]
+		pairs, np := conv_pairs(d.channels, ch)
+		for k in 0 ..< np {
+			in_s, h := &st.inputs[pairs[k][0]], &st.kernels[pairs[k][1]]
+			conv_cmac(acc.re, acc.im, in_s.re[st.head * w:][:w], in_s.im[st.head * w:][:w], h.re[:w], h.im[:w])
+		}
+		for b in 0 ..= B { re[b], im[b] = f64(acc.re[b]), f64(acc.im[b]) }
+		// the other half of the spectrum of a real signal
+		for b in 1 ..< B { re[2 * B - b], im[2 * B - b] = re[b], -im[b] }
+		fft_planned(&st.plan, re, im, true)
+		out := d.out[ch]
+		for i in 0 ..< B { out[(at + i) & ring_mask] += f32(re[B + i] * inv_n) }
+		for b in 0 ..< w { acc.re[b], acc.im[b] = 0, 0 }
+	}
+	st.fill = 0
+	st.done = 1
 }
 
 convolver_run :: proc(n: ^Node) {
@@ -596,10 +734,11 @@ convolver_run :: proc(n: ^Node) {
 		bus_clear(o, 1)
 		return
 	}
-	// the tail of what came in is over: not actively processing, one channel of silence (the specification)
+	// the tail of what came in is over: not actively processing, one channel of silence (the specification). Every
+	// buffer of the stages holds zeros by then, so stopping them (and the ring) keeps them in step.
 	if in_mix.silent {
 		d.quiet_quanta += 1
-		if d.quiet_quanta > d.partitions + 1 {
+		if d.quiet_quanta > d.tail_frames / RENDER_QUANTUM + 2 {
 			bus_clear(o, 1)
 			return
 		}
@@ -613,27 +752,19 @@ convolver_run :: proc(n: ^Node) {
 	sl := bus_ch(in_mix, 0)
 	// (a mono input up-mixed: to both by the speakers rule, to the left alone by the discrete one)
 	sr := in_mix.channels > 1 ? bus_ch(in_mix, 1) : (n.interp == .Discrete ? conv_silence[:] : sl)
-	conv_feed(d, &d.paths[0], sl)
-	conv_feed(d, &d.paths[1], sr)
-	if !stereo {
-		conv_apply(d, &d.paths[0], &d.kernels[0], bus_ch(o, 0))
-		return
+	for &st in d.stages { conv_stage_run(d, &st, {sl, sr}) }
+	// the quantum due now, out of the ring, then cleared for its next turn
+	for ch in 0 ..< 2 {
+		ring := d.out[ch][d.out_pos:][:RENDER_QUANTUM]
+		if ch < o.channels {
+			out := bus_ch(o, ch)
+			for i in 0 ..< RENDER_QUANTUM {
+				if abs(ring[i]) > CONV_NOISE { out[i] += ring[i] }   // (what is left of a zero after two transforms stays a zero)
+			}
+		}
+		for &v in ring { v = 0 }
 	}
-	l, r := bus_ch(o, 0), bus_ch(o, 1)
-	switch d.channels {
-	case 1:
-		conv_apply(d, &d.paths[0], &d.kernels[0], l)
-		conv_apply(d, &d.paths[1], &d.kernels[0], r)
-	case 2:
-		conv_apply(d, &d.paths[0], &d.kernels[0], l)
-		conv_apply(d, &d.paths[1], &d.kernels[1], r)
-	case:
-		// "true" stereo: LL, LR, RL, RR
-		conv_apply(d, &d.paths[0], &d.kernels[0], l)
-		conv_apply(d, &d.paths[1], &d.kernels[2], l)
-		conv_apply(d, &d.paths[0], &d.kernels[1], r)
-		conv_apply(d, &d.paths[1], &d.kernels[3], r)
-	}
+	d.out_pos = (d.out_pos + RENDER_QUANTUM) & (len(d.out[0]) - 1)
 }
 
 // ---- MediaElementAudioSourceNode: the player gives what it plays; a ring in between ----

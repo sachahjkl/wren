@@ -21,7 +21,7 @@ import "wb:e2e"
 
 @(private = "file") Known :: struct { url, title: string, visits: int }
 
-// The profile's history: `wren-history 1`, a line per visit.
+// The profile's history: `wren-history 2`, a line per visit.
 @(private = "file")
 write_history :: proc(profile, origin: string) {
 	known := []Known{
@@ -33,7 +33,7 @@ write_history :: proc(profile, origin: string) {
 	}
 	now := time.to_unix_nanoseconds(time.now()) / i64(time.Millisecond)
 	b := strings.builder_make(context.temp_allocator)
-	strings.write_string(&b, "wren-history 1\n")
+	strings.write_string(&b, "wren-history 2\n")
 	id := 0
 	for k in known {
 		for _ in 0 ..< k.visits {

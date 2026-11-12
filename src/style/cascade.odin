@@ -14,6 +14,8 @@ import "wb:host"
 
 // The steps of a chain of revert-layer and revert (each one leaves a layer or an origin behind).
 REVERT_CHAIN_MAX_STEPS :: 64
+// The [name=value] index key of an attribute is built on the stack up to this size (collect_entries); a longer one in the temp allocator.
+ATTR_KEY_STACK_BYTES :: 256
 
 // The environment variables env() knows (CSS Environment Variables): a window with no notch, no title bar overlay and no
 // virtual keyboard, as Chromium's on a desktop: every one is ENV_INSET_NONE and takes no indices.
@@ -125,7 +127,8 @@ Styled :: struct {
 	// compiled style attributes and CSSOM declarations by text (inline_cache.odin), in `alloc`
 	inline_rules:   map[string]^Rule,
 	inline_decls:   map[string]Inline_Decl,
-	inline_rules_made: u64,                // entries put in inline_rules so far: what a restyle that rolls its memory back must keep
+	inline_rules_made: u64,                // entries put in inline_rules and hint_rules so far: what a restyle that rolls its memory back must keep
+	hint_rules:     map[string]^Rule,      // compiled presentational hints by text (hints.odin hint_rule_of), in `alloc`
 	// records made by this pass and the partial restyles since with background, mask or cursor images: when it has not moved,
 	// the page's image loader has no new CSS image URL to look for (page/images.odin css_images_sync)
 	image_records:  int,
@@ -144,6 +147,11 @@ Style_Change :: struct {
 }
 
 @(private) styled_serial: u64
+
+// A serial no other pass of the process has: the style threads and the pages of other Apps stamp at the same time, so
+// every site takes it here, atomically.
+@(private)
+styled_next_serial :: #force_inline proc() -> u64 { return sync.atomic_add(&styled_serial, 1) + 1 }
 
 // The memory the computed styles of `s` take: its own arena and the style threads' (a parallel pass).
 styled_bytes :: proc(s: ^Styled) -> int {
@@ -299,7 +307,7 @@ base_style_of :: proc(s: ^Styled, h: base.Handle) -> ^Computed {
 
 // Gives every style a new serial: layout notices that something changed (and lays out again).
 styled_touch :: proc(s: ^Styled) {
-	s.serial = sync.atomic_add(&styled_serial, 1) + 1   // (atomic: the style threads stamp too)
+	s.serial = styled_next_serial()
 	s.layout_serial = s.serial
 	journal_stamp(s)
 }
@@ -354,6 +362,41 @@ Var_Env :: struct {
 	final:    ^Custom_Props,          // set once resolution is finished
 	budget:   int,
 	cx:       ^Cx,                    // the element: registered properties compute their values with it (nil: as written)
+	parsed:   ^Var_Parsed,            // the pass's texts already parsed (nil: each var() parses its text)
+}
+
+// Custom property texts parsed into component values, for one pass: a var() whose text the pass met before (the theme's
+// variables, declared once on <html>, read by every element) is not tokenized again. Keyed by content, not by address: the
+// texts of a partial restyle may live in memory that a restyle of one element rolls back. In an arena of the pass's own,
+// emptied past style.custom_properties.parsed_cache_bytes. The values are only read (substitute copies what it changes).
+@(private)
+Var_Parsed :: struct {
+	arena:   base.Arena,
+	by_text: map[string][]css.Value,
+}
+
+@(private)
+var_parsed_destroy :: proc(vp: ^Var_Parsed) {
+	delete(vp.by_text)
+	base.arena_destroy(&vp.arena)
+	vp^ = {}
+}
+
+// The component values of a resolved custom property's text: from the pass's table, else parsed (into it, or into `sa`).
+@(private)
+var_values_of :: proc(env: ^Var_Env, text: string, sa: runtime.Allocator) -> []css.Value {
+	s := &env.engine.settings
+	vp := env.parsed
+	if vp == nil || s.var_parsed_bytes <= 0 { return css.parse_component_values(text, parse_options(s), sa) }
+	if vs, ok := vp.by_text[text]; ok { return vs }
+	if int(vp.arena.total_used) > s.var_parsed_bytes {
+		clear(&vp.by_text)
+		base.arena_free_all(&vp.arena)
+	}
+	a := base.arena_allocator(&vp.arena)
+	vs := css.parse_component_values(text, parse_options(s), a)
+	vp.by_text[strings.clone(text, a)] = vs
+	return vs
 }
 
 // What an element gets for a custom property it does not declare: its parent's value, except for a registered property
@@ -479,7 +522,7 @@ substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, 
 			if found {
 				env.budget -= len(text)
 				if env.budget < 0 { return nil, false }
-				parsed := css.parse_component_values(text, parse_options(s), sa)
+				parsed := var_values_of(env, text, sa)
 				sub, ok := substitute(env, parsed, depth + 1)
 				if !ok { return nil, false }
 				for p in css.trim_values(sub) { append(&out, p) }
@@ -535,12 +578,14 @@ Pass :: struct {
 	gate_probe: []bool,        // media_gate.odin: the entries of the gates in it are the only ones matched, on or off (which elements a flip reaches)
 	matched_on: bool,          // the lists of s are in force (matched_holds)
 	matched_taken: int,        // elements styled from their list
+	matched_local: map[u64]^Matched_List,   // the lists of the store this pass met, by hash (matched_intern: no lock for them)
 	unmarked: bool,            // style_subtree: nothing but what elements inherit moved: their lists hold
 	compare:  bool,            // partial restyle: keep the old computed style when nothing changed
 	changed:  bool,            // ... and report whether some element really changed
 	layout_changed: bool,      // ... in a way that is not paint-only (paint_change.odin)
 	alloc:    runtime.Allocator,   // where computed styles go: the Styled's arena, or this thread's in a parallel pass
 	scratch:  base.Arena,       // what styling one element needs only while it runs (var() substitution: build_style)
+	var_parsed: Var_Parsed,     // the custom property texts this pass parsed for var() (var_values_of)
 	stats:    Compile_Stats,   // merged into the engine by pass_destroy (on the thread that owns the engine)
 	counters: ^Counter_State,  // full pass: counters and quotes, resolved in tree order
 	unscoped: bool,            // partial restyle: a change reaches counters, the caller must do a full pass
@@ -619,20 +664,26 @@ collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Blo
 	}
 	if cls, ok := attr(n, "class"); ok {
 		rest := cls
-		for len(rest) > 0 {
-			for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
-			end := 0
-			for end < len(rest) && !is_space(rest[end]) { end += 1 }
-			if end > 0 {
-				if l, found := ix.by_class[rest[:end]]; found { check(p, el, l[:], ancestors, rec) }
-			}
-			rest = rest[end:]
+		for c in token_next(&rest) {
+			if l, found := ix.by_class[c]; found { check(p, el, l[:], ancestors, rec) }
 		}
 	}
 	if len(ix.by_attr) > 0 {
+		// the key (name, NUL, value) in a buffer of the stack when it fits: concatenated in the temp allocator, for every
+		// attribute of every element of a page whose sheets have one [name=value] subject, it was memory to touch for nothing
+		buf: [ATTR_KEY_STACK_BYTES]u8
 		for a in n.attrs {
 			if a.name not_in ix.attr_names { continue }
-			key := strings.concatenate({a.name, "\x00", a.value}, context.temp_allocator)
+			key: string
+			if len(a.name) + 1 + len(a.value) <= len(buf) {
+				k := copy(buf[:], a.name)
+				buf[k] = 0
+				k += 1
+				k += copy(buf[k:], a.value)
+				key = string(buf[:k])
+			} else {
+				key = strings.concatenate({a.name, "\x00", a.value}, context.temp_allocator)
+			}
 			if l, found := ix.by_attr[key]; found { check(p, el, l[:], ancestors, rec) }
 		}
 	}
@@ -735,7 +786,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	// element is bounded, whatever the number of its declarations; the token trees go to the pass's scratch arena
 	scratch := base.arena_temp_begin(&p.scratch)
 	defer base.arena_temp_end(scratch)
-	env := Var_Env{engine = e, alloc = a, scratch = base.arena_allocator(&p.scratch), budget = e.settings.max_var_bytes, cx = &cx}
+	env := Var_Env{engine = e, alloc = a, scratch = base.arena_allocator(&p.scratch), budget = e.settings.max_var_bytes, cx = &cx, parsed = &p.var_parsed}
 	env.parent = c.custom
 	defer {   // (a table that grew while it was used is another block of memory: the pass keeps the one it has now)
 		if env.resolved != nil { p.res_map = env.resolved }
@@ -1041,12 +1092,13 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 		match_element(p, h, n, ancestors, ctx, depth)
 		matched_keep(p, h)
 	}
-	hinted := add_hint_entry(p, h, n)
+	hinted, hint_shared := add_hint_entry(p, h, n)
 
 	inline_text: string
 	if text, ok := attr(n, "style"); ok && p.e.settings.author_stylesheets && text != "" { inline_text = text }
-	// an element with the inputs of a style this pass made gets that record (share.odin)
-	shareable := share_eligible(p, h, n, parent, hinted)
+	// an element with the inputs of a style this pass made gets that record (share.odin); hints whose rule is the Styled's
+	// are in the key as any other entry
+	shareable := share_eligible(p, h, n, parent, hinted && !hint_shared)
 	if shareable {
 		share_key(&p.share, parent, p.own_depth, &p.lists, inline_text)
 		if c = share_find(&p.share, inline_text); c != nil {
@@ -1163,6 +1215,7 @@ pass_make :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State) -> ^
 	p.alloc = s.alloc
 	p.matched_on = matched_holds(e, s, doc)
 	match_ctx_init(&p.mc, doc, state)
+	p.mc.max_steps = e.settings.match_max_steps
 	if e.class_bits_live { p.mc.class_bits = e.class_bits[:] }
 	// the fullscreen element is in the top layer: what its ancestors would do to it (a stacking context under a masthead,
 	// a transform or filter that makes them its containing block) does not apply (fullscreen_ancestor_reset)
@@ -1191,10 +1244,12 @@ pass_destroy :: proc(p: ^Pass) {
 	delete(p.fs_chain)
 	delete(p.touched)
 	delete(p.cust_map); delete(p.res_map); delete(p.state_map)
+	delete(p.matched_local)
 	for l in p.lists { delete(l) }
 	share_destroy(&p.share)
 	sib_match_destroy(&p.sib)
 	base.arena_destroy(&p.scratch)
+	var_parsed_destroy(&p.var_parsed)
 	free(p, p.made_with)
 }
 
@@ -1358,7 +1413,7 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	s.mutations = doc.mutations
 	s.state = state
 	s.state.target_id = strings.clone(state.target_id, s.alloc)
-	s.serial = sync.atomic_add(&styled_serial, 1) + 1   // (atomic: the style threads stamp too)
+	s.serial = styled_next_serial()
 	s.layout_serial = s.serial
 	s.pass_id = s.serial
 	s.line_height_normal = e.settings.line_height_normal
@@ -1659,7 +1714,7 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 	}
 	set_state(s, new_state)
 	if p.changed {
-		s.serial = sync.atomic_add(&styled_serial, 1) + 1   // (atomic: the style threads stamp too)
+		s.serial = styled_next_serial()
 		if p.layout_changed { s.layout_serial = s.serial }
 		journal_stamp(s)
 		update_canvas(s, doc)

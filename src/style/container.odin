@@ -2,7 +2,6 @@ package style
 
 import "core:slice"
 import "core:strings"
-import "core:sync"
 import "wb:base"
 import "wb:css"
 import "wb:dom"
@@ -105,7 +104,7 @@ restyle_containers :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled) -> (chang
 	}
 	e.last_restyle.taken = p.matched_taken
 	if p.changed {
-		s.serial = sync.atomic_add(&styled_serial, 1) + 1   // (atomic: the style threads stamp too)
+		s.serial = styled_next_serial()
 		if p.layout_changed { s.layout_serial = s.serial }
 		journal_stamp(s)
 		update_canvas(s, doc)

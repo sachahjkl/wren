@@ -1250,14 +1250,20 @@ inline_allowed :: proc(p: ^Page, kind: csp.Inline_Kind, source: string, nonce: s
 @(private)
 scripts_install_hooks :: proc(p: ^Page) {
 	dom.hooks_set(p.doc, dom.Hooks{user = p, inserted = hook_inserted, attribute = hook_attribute, removed = hook_removed})
+	dom.limits_set(p.doc, js_dom_limits(p.settings.dom))   // what scripts may build in it (javascript.dom.max_*)
 }
 
-// A node left the tree: frames whose container went with it are destroyed (frames.odin).
+// A node left the tree: frames whose container went with it are destroyed (frames.odin). The checks below look at the
+// whole document (each frame, media element, modal dialog): inside a muted batch (innerHTML, a fragment) they run once,
+// when the DOM calls again with NIL at the batch's end, not for each node removed.
 @(private)
 hook_removed :: proc(user: rawptr, d: ^dom.Document, node, parent: base.Handle) {
 	p := (^Page)(user)
 	if p.closed || d != p.doc { return }
-	if p.formctl != nil { forms.note_tree_change(p.formctl.model, node, parent) }   // an option out of a select (values.odin)
+	if node != base.NIL_HANDLE {
+		if p.formctl != nil { forms.note_tree_change(p.formctl.model, node, parent) }   // an option out of a select (values.odin)
+		if d.hooks.muted > 0 { return }   // (the batch's end calls again)
+	}
 	frames_note_removed(p)
 	media_note_removed(p)
 	dialog_note_removed(p)       // a modal dialog that left the document is not modal any more (dialog_modal.odin)

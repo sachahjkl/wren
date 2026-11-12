@@ -34,6 +34,7 @@ Options :: struct {
 }
 
 Instance :: struct {
+	oversized:         Oversized,   // the last string result too large for the guest's buffer, served to its retry (host.odin)
 	name:              string,
 	scope:             ^base.Scope,
 	cleanup:           base.Cleanup_Id,
@@ -174,6 +175,7 @@ instance_free :: proc(inst: ^Instance) {
 	delete(inst.name)
 	delete(inst.last_error)
 	delete(inst.exception_message, base.process_allocator())
+	oversized_drop(inst)
 	free(inst)
 }
 

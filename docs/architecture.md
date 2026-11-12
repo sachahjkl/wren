@@ -18,7 +18,7 @@ feature list, see the [README](../README.md).
    ambient credentials. `fetch` decides, per hop, on the UI thread, with the document's Environment in hand. A guest, a
    module load and a navigation all go through the same code, so there is one place where "may this request happen"
    is answered.
-5. **Bounded everything, with a reason each.** Per-host (6) and global (64) request limits in our own priority queues
+5. **Bounded everything, with a reason each.** Per-host (6) and global (256) request limits in our own priority queues
    (so waiting never counts against connect timeouts); reading pauses when 1 MB is queued for a request; `max_body`
    caps a response; at most 20 redirects (the Fetch Standard's number); cookies: at most 180 per site and 3000 in
    total with LRU eviction; at most 1000 preflight cache entries; guest memory is capped; every host → guest call has
@@ -245,8 +245,9 @@ runs the transport on both; `WREN_NET_BACKEND=rust|winhttp` makes a web test run
   cache with max-age. Cross-origin Wasm modules need CORS; modules must be `application/wasm`.
 - **Cookies**: stored and sent only by `fetch` (WinHTTP's are off). `Secure` needs a secure context (localhost
   counts), `__Secure-` / `__Host-` prefixes, `SameSite` (default Lax, `None` needs `Secure`), HttpOnly invisible to
-  scripts, "leave Secure cookies alone", Domain checked against the PSL. **Third-party cookies are blocked by
-  default**. `document.cookie` exists only for tuple origins.
+  scripts, "leave Secure cookies alone", Domain checked against the PSL. **Third-party cookies are allowed by default**
+  (`privacy.third_party_cookies`, Chromium's default: SameSite applies, and they are partitioned per top-level site,
+  `storage.partitioned`). `document.cookie` exists only for tuple origins.
 - **HSTS**, **referrer policy** (header, `<meta>`, per request), **mixed content** (blocked; images auto-upgraded),
   **bad ports**, **Fetch Metadata** headers (`Sec-Fetch-*`), **CSP** (headers and `<meta>`, report-only,
   `upgrade-insecure-requests`, `block-all-mixed-content`; `script-src` governs Wasm modules, `worker-src` workers).

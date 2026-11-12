@@ -153,6 +153,46 @@ secure_and_prefixes :: proc(t: ^testing.T) {
 }
 
 @(test)
+a_nameless_cookie_cannot_pose_as_a_prefixed_one :: proc(t: ^testing.T) {
+	j := jar_make()
+	defer jar_destroy(&j)
+	plain := ctx_for("http://example.com/")
+	secure := ctx_for("https://example.com/")
+	// sent as `__Host-sid`: the server would take it for a cookie the prefix's rules checked
+	testing.expect_value(t, store(&j, "__Host-sid", plain), Store_Result.Rejected_Prefix)
+	testing.expect_value(t, store(&j, "=__Host-sid=evil; Domain=example.com", secure), Store_Result.Rejected_Prefix)
+	testing.expect_value(t, store(&j, "=__secure-sid=evil", secure), Store_Result.Rejected_Prefix)   // case-insensitive
+	testing.expect_value(t, count(&j), 0)
+	testing.expect_value(t, store(&j, "plain-value", plain), Store_Result.Stored)
+}
+
+@(test)
+the_site_of_a_cookie_is_its_registrable_domain :: proc(t: ^testing.T) {
+	testing.expect_value(t, site_of("a.b.example.co.uk"), "example.co.uk")
+	testing.expect_value(t, site_of("example.com"), "example.com")
+	testing.expect_value(t, site_of("user.github.io"), "user.github.io")
+	testing.expect_value(t, site_of("github.io"), "github.io")
+	testing.expect_value(t, site_of("localhost"), "localhost")
+	testing.expect_value(t, site_of("192.168.0.5"), "192.168.0.5")
+	testing.expect_value(t, site_of("[::1]"), "[::1]")
+}
+
+@(test)
+the_per_site_count_follows_the_jar :: proc(t: ^testing.T) {
+	j := jar_make()
+	defer jar_destroy(&j)
+	st := ctx_for("https://a.example.com/")
+	store(&j, "a=1", st)
+	store(&j, "b=1; Domain=example.com", st)
+	store(&j, "a=2", st)   // replaced: still two
+	testing.expect_value(t, site_count(&j, "example.com"), 2)
+	remove(&j, "a", "a.example.com", "/")
+	testing.expect_value(t, site_count(&j, "example.com"), 1)
+	clear_all(&j)
+	testing.expect_value(t, len(j.per_site), 0)
+}
+
+@(test)
 same_site_semantics :: proc(t: ^testing.T) {
 	j := jar_make()
 	defer jar_destroy(&j)

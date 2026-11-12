@@ -31,5 +31,6 @@ quinn = { version = "=0.11.12", default-features = false, features = ["runtime-t
 h3 = "=0.0.8"
 h3-quinn = "=0.0.10"
 tokio-tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
-flate2 = { version = "=1.1.10", default-features = false, features = ["rust_backend"] }
+# zlib-rs (pure Rust, zlib-ng's SIMD inner loops chosen at run time: runtime_detection) inflates faster than miniz_oxide
+flate2 = { version = "=1.1.10", default-features = false, features = ["zlib-rs", "runtime_detection"] }
 brotli-decompressor = { version = "=6.1.0", default-features = false, features = ["std"] }

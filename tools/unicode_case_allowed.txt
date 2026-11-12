@@ -22,7 +22,7 @@ src/browser/downloads_ui.odin query := strings.to_lower(  # user text: the downl
 src/browser/downloads_ui.odin return strings.contains(strings.to_lower(x.name  # user text: the downloads' search
 src/browser/find_bar.odin utf8.encode_rune(unicode.to_lower(r))  # user text: find in page
 src/browser/global_history.odin q := strings.to_lower(  # user text: the history's search
-src/browser/global_history.odin !strings.contains(strings.to_lower(v.url  # user text: the history's search
+src/browser/global_history.odin v.low = strings.concatenate({strings.to_lower(v.url  # user text: the history's search (its lower-case copy)
 src/browser/http_cache_ui.odin needle := strings.to_lower(filter  # user text: the cache page's filter
 src/browser/http_cache_ui.odin !strings.contains(strings.to_lower(e.key  # user text: the cache page's filter
 src/browser/palette.odin return unicode.to_lower(r)  # user text: the command palette's fuzzy match

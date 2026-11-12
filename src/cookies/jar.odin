@@ -12,6 +12,9 @@ import "wb:url"
 
 Jar :: struct {
 	cookies:      [dynamic]Cookie,   // every string is owned by the jar
+	// cookies per site (Cookie.site): the per-site limit is checked without a scan of the jar; the keys are the jar's
+	// own copies, since the cookie a key came from can go while others of its site stay
+	per_site:     map[string]int,
 	settings:     Settings,
 	dirty:        bool,              // changed since the last save
 	allocator:    runtime.Allocator,
@@ -20,13 +23,39 @@ Jar :: struct {
 // `settings` zero value = the defaults.
 jar_make :: proc(settings: Settings = {}, allocator := context.allocator) -> Jar {
 	s := settings.max_total == 0 ? settings_default() : settings
-	return Jar{cookies = make([dynamic]Cookie, allocator), settings = s, allocator = allocator}
+	return Jar{cookies = make([dynamic]Cookie, allocator), per_site = make(map[string]int, allocator), settings = s, allocator = allocator}
 }
 
 jar_destroy :: proc(j: ^Jar) {
 	for &c in j.cookies { free_cookie(j, &c) }
 	delete(j.cookies)
+	for k in j.per_site { delete(k, j.allocator) }
+	delete(j.per_site)
 	j^ = {}
+}
+
+// Appends a cookie whose strings the jar owns, and counts it in its site.
+@(private)
+add :: proc(j: ^Jar, c: Cookie) {
+	n := c
+	n.site = site_of(n.domain)
+	append(&j.cookies, n)
+	if v, ok := &j.per_site[n.site]; ok {
+		v^ += 1
+	} else {
+		j.per_site[strings.clone(n.site, j.allocator)] = 1
+	}
+}
+
+// The site count of a cookie that leaves the jar (called before its strings are freed).
+@(private)
+uncount :: proc(j: ^Jar, site: string) {
+	v, ok := &j.per_site[site]
+	if !ok { return }
+	v^ -= 1
+	if v^ > 0 { return }
+	key, _ := delete_key(&j.per_site, site)
+	delete(key, j.allocator)
 }
 
 @(private)
@@ -83,6 +112,11 @@ store :: proc(j: ^Jar, header: string, ctx: Context) -> Store_Result {
 	secure_origin := url.is_potentially_trustworthy(u)
 
 	if !ctx.http_api && c.http_only { return .Rejected_Http_Only }
+	// a nameless cookie is sent as its bare value: `=__Host-sid=evil` would reach the server as a `__Host-sid` cookie
+	// that none of the prefix's rules checked (RFC 6265bis 5.6, step 6 of the storage model's name-value checks)
+	if c.name == "" && (base.ascii_has_prefix_fold(c.value, "__Secure-") || base.ascii_has_prefix_fold(c.value, "__Host-")) {
+		return .Rejected_Prefix
+	}
 
 	// domain
 	if p.has_domain {
@@ -151,14 +185,17 @@ store :: proc(j: ^Jar, header: string, ctx: Context) -> Store_Result {
 	result := Store_Result.Stored
 	if idx >= 0 {
 		c.created_ms = j.cookies[idx].created_ms
+		// the same name, domain and path: the same site, the count does not change
+		c.site = site_of(c.domain)
 		free_cookie(j, &j.cookies[idx])
 		j.cookies[idx] = c
 		result = .Replaced
 	} else {
-		append(&j.cookies, c)
+		add(j, c)
 	}
 	j.dirty = true
-	evict(j, now, c.domain)
+	// a copy: the eviction may remove the cookie just stored, whose domain the site is a slice of
+	evict(j, now, strings.clone(site_of(c.domain), context.temp_allocator))
 	return result
 }
 
@@ -183,6 +220,7 @@ find :: proc(j: ^Jar, name, domain, path: string, partition: Maybe(string) = nil
 
 @(private)
 remove_at :: proc(j: ^Jar, i: int) {
+	uncount(j, j.cookies[i].site)
 	free_cookie(j, &j.cookies[i])
 	ordered_remove(&j.cookies, i)
 	j.dirty = true
@@ -190,20 +228,17 @@ remove_at :: proc(j: ^Jar, i: int) {
 
 // Drops expired cookies, then enforces the per-site and global limits (least recently used first).
 @(private)
-evict :: proc(j: ^Jar, now: i64, domain: string) {
+evict :: proc(j: ^Jar, now: i64, site: string) {
 	for i := len(j.cookies) - 1; i >= 0; i -= 1 {
 		if e := j.cookies[i].expires_ms; e != 0 && e <= now { remove_at(j, i) }
 	}
-	site_key := registrable_or_host(domain)
-	for {
-		n := 0
+	for site_count(j, site) > j.settings.max_per_site {
 		oldest := -1
 		for c, i in j.cookies {
-			if registrable_or_host(c.domain) != site_key { continue }
-			n += 1
+			if c.site != site { continue }
 			if oldest < 0 || c.accessed_ms < j.cookies[oldest].accessed_ms { oldest = i }
 		}
-		if n <= j.settings.max_per_site || oldest < 0 { break }
+		if oldest < 0 { break }
 		remove_at(j, oldest)
 	}
 	for len(j.cookies) > j.settings.max_total {
@@ -214,10 +249,7 @@ evict :: proc(j: ^Jar, now: i64, domain: string) {
 }
 
 @(private)
-registrable_or_host :: proc(host: string) -> string {
-	if d, ok := url.registrable_domain(host); ok { return d }
-	return host
-}
+site_count :: proc(j: ^Jar, site: string) -> int { return j.per_site[site] }
 
 // The value of the `Cookie` request header for `ctx.url`, "" when no cookie applies.
 header_for :: proc(j: ^Jar, ctx: Context, allocator := context.allocator) -> string {
@@ -327,6 +359,7 @@ copy_all :: proc(j: ^Jar, allocator := context.allocator) -> []Cookie {
 		out[i].name, out[i].value = strings.clone(c.name, allocator), strings.clone(c.value, allocator)
 		out[i].domain, out[i].path = strings.clone(c.domain, allocator), strings.clone(c.path, allocator)
 		out[i].partition = strings.clone(c.partition, allocator)
+		out[i].site = site_of(out[i].domain)   // a slice of the copy's domain, not of the jar's
 	}
 	return out
 }
@@ -344,7 +377,7 @@ replace_all :: proc(j: ^Jar, list: []Cookie) {
 		n.name, n.value = strings.clone(c.name, j.allocator), strings.clone(c.value, j.allocator)
 		n.domain, n.path = strings.clone(c.domain, j.allocator), strings.clone(c.path, j.allocator)
 		n.partition = strings.clone(c.partition, j.allocator)
-		append(&j.cookies, n)
+		add(j, n)
 	}
 	j.dirty = true
 }
@@ -422,7 +455,13 @@ load :: proc(j: ^Jar, path: string, now: i64 = 0) -> (loaded: int, ok: bool) {
 		c.host_only, c.secure, c.http_only = flags & 1 != 0, flags & 2 != 0, flags & 4 != 0
 		c.same_site = Same_Site(ss)
 		if fields == 10 { c.partition = strings.clone(url.percent_decode(f[9]), a) }
-		if idx := find(j, c.name, c.domain, c.path, c.partition); idx >= 0 { free_cookie(j, &j.cookies[idx]); j.cookies[idx] = c } else { append(&j.cookies, c) }
+		if idx := find(j, c.name, c.domain, c.path, c.partition); idx >= 0 {
+			c.site = site_of(c.domain)   // the same domain: the same site, counted once already
+			free_cookie(j, &j.cookies[idx])
+			j.cookies[idx] = c
+		} else {
+			add(j, c)
+		}
 		loaded += 1
 	}
 	return loaded, true

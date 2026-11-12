@@ -106,8 +106,9 @@ parse_length :: proc(cx: ^Cx, input: []css.Value, flags: Len_Flags) -> (Length, 
 			if t.num == 0 { return px(0), true }
 		case .Dimension:
 			if t.num < 0 && .Negative not_in flags { return {}, false }
-			if p, ok := css.length_unit_to_px(t.num, t.text, 0); ok { return px(f32(p)), true }
-			if u, ok := css.relative_unit(t.text); ok { return px(f32(css.resolve_unit(t.num, u, cx.lc))), true }
+			du := css.token_dim_unit(t)   // (classified by the tokenizer: no lower-casing per element)
+			if p, ok := css.dim_unit_to_px(t.num, du); ok { return px(f32(p)), true }
+			if u, ok := css.dim_unit_relative(du); ok { return px(f32(css.resolve_unit(t.num, u, cx.lc))), true }
 		case .Percentage:
 			if .Percent in flags && (t.num >= 0 || .Negative in flags) { return Length{kind = .Percent, v = f32(t.num)}, true }
 		case .Ident:

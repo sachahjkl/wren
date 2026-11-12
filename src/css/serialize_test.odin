@@ -4,7 +4,7 @@ import "core:strings"
 import "core:testing"
 
 @(private = "file")
-OPT :: Parse_Options{max_nesting_depth = 64, max_rules = 1000}
+OPT :: Parse_Options{max_nesting_depth = 64, max_rules = 1000, max_errors_kept = 100}
 
 // The selector of a sheet's first rule, as CSSOM gives it back.
 @(private = "file")

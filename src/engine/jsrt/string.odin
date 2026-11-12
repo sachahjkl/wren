@@ -91,13 +91,10 @@ str_from_latin1 :: proc(rt: ^Runtime, b: []u8) -> ^JS_String {
 // Build from UTF-16 units, narrowing to Latin-1 when possible.
 str_from_u16 :: proc(rt: ^Runtime, u: []u16) -> ^JS_String {
 	if len(u) == 0 {return rt.empty_string}
-	wide := false
-	for c in u {if c > 0xff {wide = true; break}}
-	if !wide {
+	if units_fit_latin1(u) {
 		if len(u) == 1 && rt.char_strings[u[0]] != nil {return rt.char_strings[u[0]]}
 		s := str_alloc(rt, len(u), false)
-		d := str_u8(s)
-		for c, i in u {d[i] = u8(c)}
+		narrow_u16(str_u8(s), u)
 		return s
 	}
 	s := str_alloc(rt, len(u), true)
@@ -107,22 +104,27 @@ str_from_u16 :: proc(rt: ^Runtime, u: []u16) -> ^JS_String {
 
 str_from_utf8 :: proc(rt: ^Runtime, src: string) -> ^JS_String {
 	if len(src) == 0 {return rt.empty_string}
+	// (most text is ASCII: its prefix is found 16 bytes at a time, and copied as it is)
+	head := ascii_prefix(transmute([]u8)src)
+	if head == len(src) {return str_from_latin1(rt, transmute([]u8)src)}
 	wide := false
-	units := 0
-	ascii := true
-	for i := 0; i < len(src); {
+	units := head
+	for i := head; i < len(src); {
 		c := src[i]
 		if c < 0x80 {units += 1; i += 1; continue}
-		ascii = false
 		r, w := utf8.decode_rune_in_string(src[i:])
 		if r > 0xff {wide = true}
 		units += r > 0xffff ? 2 : 1
 		i += w
 	}
-	if ascii {return str_from_latin1(rt, transmute([]u8)src)}
 	s := str_alloc(rt, units, wide)
-	k := 0
-	for r in src {
+	if wide {
+		widen_latin1(str_u16(s), transmute([]u8)src[:head])
+	} else {
+		copy(str_u8(s)[:head], src[:head])
+	}
+	k := head
+	for r in src[head:] {
 		if wide {
 			d := str_u16(s)
 			if r > 0xffff {
@@ -186,8 +188,7 @@ str_flatten :: proc(rt: ^Runtime, s: ^JS_String) {
 			if cur.is_wide {
 				copy(d[pos:pos + m], str_u16(cur)[:m])
 			} else {
-				src := str_u8(cur)
-				for i in 0 ..< m {d[pos + i] = u16(src[i])}
+				widen_latin1(d[pos:], str_u8(cur)[:m])
 			}
 		} else {
 			copy((cast([^]u8)buf)[pos:pos + m], str_u8(cur)[:m])
@@ -232,8 +233,7 @@ str_copy_units :: proc(rt: ^Runtime, dst: rawptr, wide: bool, at: int, src: ^JS_
 		if f.is_wide {
 			copy(d[at:at + m], str_u16(f)[:m])
 		} else {
-			s8 := str_u8(f)
-			for i in 0 ..< m {d[at + i] = u16(s8[i])}
+			widen_latin1(d[at:], str_u8(f)[:m])
 		}
 	} else {
 		copy((cast([^]u8)dst)[at:at + m], str_u8(f)[:m])
@@ -251,22 +251,16 @@ str_concat :: proc(rt: ^Runtime, a, b: ^JS_String) -> ^JS_String {
 		// a number's string and a constant (`t.toString() + ":true"` for each element of a list: 2.4 million strings a load of
 		// npr.org): their join is the same string until the next collection
 		kept: ^Concat_String
-		if (a.flags | b.flags) & STR_NUMBER != 0 && (a.pinned || a.flags & STR_NUMBER != 0) && (b.pinned || b.flags & STR_NUMBER != 0) {
+		// (a constant of the code is an interned string: pinned when predefined, else it has its atom)
+		if (a.flags | b.flags) & STR_NUMBER != 0 && (a.pinned || a.atom != 0 || a.flags & STR_NUMBER != 0) && (b.pinned || b.atom != 0 || b.flags & STR_NUMBER != 0) {
 			kept = &rt.concat_strings[((uintptr(a) >> POOL_GRAIN_SHIFT) ~ (uintptr(b) >> (POOL_GRAIN_SHIFT + 2))) & (CONCAT_STRINGS - 1)]
 			if kept.a == a && kept.b == b {return kept.s}
 		}
 		fa := str_flat(rt, a)
 		fb := str_flat(rt, b)
 		s := str_alloc(rt, total, wide)
-		if wide {
-			d := str_u16(s)
-			for i in 0 ..< int(fa.len) {d[i] = str_at(fa, i)}
-			for i in 0 ..< int(fb.len) {d[int(fa.len) + i] = str_at(fb, i)}
-		} else {
-			d := str_u8(s)
-			copy(d[:fa.len], str_u8(fa)[:fa.len])
-			copy(d[fa.len:total], str_u8(fb)[:fb.len])
-		}
+		str_copy_units(rt, s.data, wide, 0, fa)
+		str_copy_units(rt, s.data, wide, int(fa.len), fb)
 		if kept != nil {kept^ = {a, b, s}}
 		return s
 	}
@@ -285,16 +279,24 @@ str_concat :: proc(rt: ^Runtime, a, b: ^JS_String) -> ^JS_String {
 		}
 	}
 	if a.len >= b.len && (!a.is_rope || a.depth >= ROPE_APPEND_FLATTEN_DEPTH) {
-		fa := str_flat(rt, a)
-		cap := min(total + total / 2, STRING_LEN_MAX)
-		s := str_alloc_tail(rt, total, wide)
-		s.data = mem_alloc(rt, cap * (wide ? 2 : 1))
-		s.owns_buf = true
-		str_tail(s).buf.cap = u32(cap)
-		str_tail(s).buf.used = u32(total)
-		str_copy_units(rt, s.data, wide, 0, fa)
-		str_copy_units(rt, s.data, wide, int(fa.len), b)
-		return s
+		// The exact size for a first join (most are one-off); room to grow by half when `a` came from an append buffer
+		// already, which is a loop of `s += x`: amortized linear from its second step. A block the heap limit refuses
+		// leaves a rope instead (a node, no units).
+		w := wide ? 2 : 1
+		appended := a.flags & STR_TAIL != 0 && !a.is_rope && (str_tail(a).buf.base != nil || (a.owns_buf && str_tail(a).buf.cap > 0))
+		cap := appended ? min(total + total / 2, STRING_LEN_MAX) : total
+		if !mem_may_grow(rt, i64(cap) * i64(w)) {cap = total}
+		if mem_may_grow(rt, i64(cap) * i64(w)) {
+			fa := str_flat(rt, a)
+			s := str_alloc_tail(rt, total, wide)
+			s.data = mem_alloc(rt, cap * w)
+			s.owns_buf = true
+			str_tail(s).buf.cap = u32(cap)
+			str_tail(s).buf.used = u32(total)
+			str_copy_units(rt, s.data, wide, 0, fa)
+			str_copy_units(rt, s.data, wide, int(fa.len), b)
+			return s
+		}
 	}
 	s := str_alloc_tail(rt, total, wide)
 	s.is_rope = true
@@ -310,6 +312,11 @@ str_sub :: proc(rt: ^Runtime, s: ^JS_String, start, end: int) -> ^JS_String {
 	if start == 0 && end == int(s.len) {return s}
 	f := str_flat(rt, s)
 	n := end - start
+	// A long part of a string shares its units (a cell of a header and a tail, whatever its length), unless it is small
+	// beside the string it would keep alive. A 16-bit part that fits Latin-1 is copied narrow, as str_from_u16 makes it.
+	if n >= ROPE_MIN_LEN && n >= int(f.len) / STR_SLICE_SHARE && (!f.is_wide || !units_fit_latin1(str_u16(f)[start:end])) {
+		return str_slice(rt, f, start, n)
+	}
 	if f.is_wide {
 		return str_from_u16(rt, str_u16(f)[start:end])
 	}
@@ -317,6 +324,22 @@ str_sub :: proc(rt: ^Runtime, s: ^JS_String, start, end: int) -> ^JS_String {
 	r := str_alloc(rt, n, false)
 	copy(str_u8(r)[:n], str_u8(f)[start:end])
 	return r
+}
+
+// A part shares its string's units when it is at least this fraction of it (1/4): a smaller one is copied, so that a
+// short substring does not keep a long text alive.
+STR_SLICE_SHARE :: 4
+
+// `n` units of the flat string `f` from `start`, without a copy: the units of the string that owns them (the base of an
+// append buffer or of another slice), which the slice keeps alive (gc_trace). Nobody writes the units below an owner's
+// `used`, and an owner's buffer never moves (str_concat makes a new one), so they stay as they are.
+@(private = "file")
+str_slice :: proc(rt: ^Runtime, f: ^JS_String, start, n: int) -> ^JS_String {
+	base := f.flags & STR_TAIL != 0 && str_tail(f).buf.base != nil ? str_tail(f).buf.base : f
+	s := str_alloc_tail(rt, n, f.is_wide)
+	s.data = rawptr(uintptr(f.data) + uintptr(start * (f.is_wide ? 2 : 1)))
+	str_tail(s).buf.base = base
+	return s
 }
 
 // --- comparison and hashing ---
@@ -345,13 +368,18 @@ str_eq :: proc(rt: ^Runtime, a, b: ^JS_String) -> bool {
 	fa := str_flat(rt, a)
 	fb := str_flat(rt, b)
 	n := int(a.len)
-	if !fa.is_wide && !fb.is_wide {
-		da, db := str_u8(fa), str_u8(fb)
-		for i in 0 ..< n {if da[i] != db[i] {return false}}
-		return true
+	if fa.data == fb.data {return true} // (two strings over the same units: appends of one buffer, slices)
+	return str_mismatch(fa, fb, n) == n
+}
+
+// The first index below n where the flat strings a and b differ, or n: by width, 16 bytes a step (string_scan.odin).
+str_mismatch :: proc "contextless" (a, b: ^JS_String, n: int) -> int {
+	switch {
+	case !a.is_wide && !b.is_wide: return mismatch_u8(str_u8(a), str_u8(b), n)
+	case a.is_wide && b.is_wide:   return mismatch_u16(str_u16(a), str_u16(b), n)
+	case a.is_wide:                return mismatch_u8_u16(str_u8(b), str_u16(a), n)
 	}
-	for i in 0 ..< n {if str_at(fa, i) != str_at(fb, i) {return false}}
-	return true
+	return mismatch_u8_u16(str_u8(a), str_u16(b), n)
 }
 
 // Lexicographic comparison of code units: <0, 0, >0.
@@ -359,10 +387,7 @@ str_cmp :: proc(rt: ^Runtime, a, b: ^JS_String) -> int {
 	fa := str_flat(rt, a)
 	fb := str_flat(rt, b)
 	n := min(int(fa.len), int(fb.len))
-	for i in 0 ..< n {
-		ca, cb := str_at(fa, i), str_at(fb, i)
-		if ca != cb {return int(ca) - int(cb)}
-	}
+	if i := str_mismatch(fa, fb, n); i < n {return int(str_at(fa, i)) - int(str_at(fb, i))}
 	return int(fa.len) - int(fb.len)
 }
 
@@ -423,17 +448,23 @@ str_code_point_at :: proc(f: ^JS_String, i: int) -> (u32, int) {
 // --- builder ---
 
 // Accumulates code units and produces a JS_String. Starts narrow, widens on the first unit > 255.
+// Its buffers come from rt_allocator, so the heap counts them; a buffer that would grow past the heap limit, or that
+// the allocator refuses, stops the builder (oom) instead of a trap, and sb_finish_value throws.
 String_Builder :: struct {
 	rt:    ^Runtime,
 	b8:    [dynamic]u8,
 	b16:   [dynamic]u16,
 	wide:  bool,
 	len:   int,
-	overflow: bool,
+	overflow: bool, // the string would pass STRING_LEN_MAX, or oom: nothing more is appended
+	oom:      bool, // the heap limit or the allocator refused a buffer
 }
 
 sb_init :: proc(rt: ^Runtime, cap := 16) -> String_Builder {
-	return String_Builder{rt = rt, b8 = make([dynamic]u8, 0, cap, rt.allocator), b16 = make([dynamic]u16, rt.allocator)}
+	a := rt_allocator(rt)
+	sb := String_Builder{rt = rt, b8 = make([dynamic]u8, a), b16 = make([dynamic]u16, a)}
+	if cap > 0 {sb_grow(&sb, cap)} // (a large first room, `repeat`'s, is checked as any growth)
+	return sb
 }
 
 sb_destroy :: proc(sb: ^String_Builder) {
@@ -441,20 +472,73 @@ sb_destroy :: proc(sb: ^String_Builder) {
 	delete(sb.b16)
 }
 
+// Room for `need` units in the active buffer, growing it by doubling. false: refused (sb.oom), nothing changed.
+@(private = "file")
+sb_grow :: proc(sb: ^String_Builder, need: int) -> bool {
+	if sb.oom {return false}
+	w := sb.wide ? 2 : 1
+	old := sb.wide ? cap(sb.b16) : cap(sb.b8)
+	if need <= old {return true}
+	new_cap := max(need, min(old * 2, STRING_LEN_MAX), 16)
+	if !mem_may_grow(sb.rt, i64(new_cap) * i64(w)) {
+		// (the room to grow is what goes over: exactly what is asked may still fit)
+		new_cap = need
+		if !mem_may_grow(sb.rt, i64(new_cap) * i64(w)) {
+			sb_refuse(sb)
+			return false
+		}
+	}
+	err: runtime.Allocator_Error
+	if sb.wide {err = reserve(&sb.b16, new_cap)} else {err = reserve(&sb.b8, new_cap)}
+	if err != nil {
+		sb_refuse(sb)
+		return false
+	}
+	return true
+}
+
+@(private = "file")
+sb_refuse :: proc(sb: ^String_Builder) {
+	sb.oom = true
+	sb.overflow = true
+}
+
+// Room for `n` more units: false when the builder refused them (nothing is to be appended).
+@(private = "file")
+sb_room :: #force_inline proc(sb: ^String_Builder, n: int) -> bool {
+	if sb.overflow {return false}
+	if sb.len + n > STRING_LEN_MAX {sb.overflow = true; return false}
+	have := sb.wide ? cap(sb.b16) - len(sb.b16) : cap(sb.b8) - len(sb.b8)
+	return n <= have || sb_grow(sb, sb.len + n)
+}
+
 @(private = "file")
 sb_widen :: proc(sb: ^String_Builder) {
-	reserve(&sb.b16, len(sb.b8) + SB_WIDEN_SLACK)
-	for c in sb.b8 {append(&sb.b16, u16(c))}
-	clear(&sb.b8)
+	if sb.overflow {return}
+	n := len(sb.b8)
 	sb.wide = true
+	if !sb_grow(sb, n + SB_WIDEN_SLACK) {
+		sb.wide = false
+		return
+	}
+	resize(&sb.b16, n)
+	for c, i in sb.b8 {sb.b16[i] = u16(c)}
+	delete(sb.b8)
+	sb.b8 = make([dynamic]u8, rt_allocator(sb.rt)) // (its memory goes now: the builder stays 16-bit)
 }
 
 sb_unit :: proc(sb: ^String_Builder, c: u16) {
-	if sb.len >= STRING_LEN_MAX {sb.overflow = true; return}
+	if c > 0xff && !sb.wide {
+		sb_widen(sb)
+		if !sb.wide {return}
+	}
+	if !sb_room(sb, 1) {return}
 	sb.len += 1
-	if sb.wide {append(&sb.b16, c); return}
-	if c > 0xff {sb_widen(sb); append(&sb.b16, c); return}
-	append(&sb.b8, u8(c))
+	if sb.wide {
+		list_push(&sb.b16, c) // (sb_room made the room)
+	} else {
+		list_push(&sb.b8, u8(c))
+	}
 }
 
 sb_code_point :: proc(sb: ^String_Builder, cp: u32) {
@@ -465,10 +549,10 @@ sb_code_point :: proc(sb: ^String_Builder, cp: u32) {
 }
 
 sb_ascii :: proc(sb: ^String_Builder, s: string) {
-	if sb.len + len(s) > STRING_LEN_MAX {sb.overflow = true; return}
+	if !sb_room(sb, len(s)) {return}
 	sb.len += len(s)
 	if sb.wide {
-		for i in 0 ..< len(s) {append(&sb.b16, u16(s[i]))}
+		for i in 0 ..< len(s) {list_push(&sb.b16, u16(s[i]))}
 	} else {
 		append(&sb.b8, s)
 	}
@@ -480,67 +564,105 @@ sb_utf8 :: proc(sb: ^String_Builder, s: string) {
 
 sb_str :: proc(sb: ^String_Builder, s: ^JS_String) {
 	f := str_flat(sb.rt, s)
-	n := int(f.len)
-	if sb.len + n > STRING_LEN_MAX {sb.overflow = true; return}
-	if f.is_wide && !sb.wide {sb_widen(sb)}
-	sb.len += n
-	if sb.wide {
-		reserve(&sb.b16, len(sb.b16) + n)
-		if f.is_wide {
-			append(&sb.b16, ..str_u16(f)[:n])
-		} else {
-			d := str_u8(f)
-			for i in 0 ..< n {append(&sb.b16, u16(d[i]))}
-		}
-	} else {
-		append(&sb.b8, ..str_u8(f)[:n])
-	}
+	sb_str_range(sb, f, 0, int(f.len))
 }
 
 sb_str_range :: proc(sb: ^String_Builder, s: ^JS_String, start, end: int) {
 	f := str_flat(sb.rt, s)
 	n := end - start
 	if n <= 0 {return}
+	if sb.overflow {return}
 	if sb.len + n > STRING_LEN_MAX {sb.overflow = true; return}
-	if !f.is_wide {
-		bytes := str_u8(f)[start:end]
-		sb.len += n
-		if sb.wide {
-			reserve(&sb.b16, len(sb.b16) + n)
-			for c in bytes {append(&sb.b16, u16(c))}
-		} else {
-			append(&sb.b8, ..bytes)
-		}
-		return
-	}
-	units := str_u16(f)[start:end]
-	if !sb.wide {
-		// (a wide string's slice may hold only Latin-1: the builder stays narrow until a unit needs it)
-		narrow := true
-		for c in units {if c > 0xff {narrow = false; break}}
-		if narrow {
-			reserve(&sb.b8, len(sb.b8) + n)
-			for c in units {append(&sb.b8, u8(c))}
+	if f.is_wide && !sb.wide {
+		// (a 16-bit string's slice may hold only Latin-1: the builder stays narrow until a unit needs it)
+		if units_fit_latin1(str_u16(f)[start:end]) {
+			if !sb_room(sb, n) {return}
+			at := len(sb.b8)
+			resize(&sb.b8, at + n)
+			narrow_u16(raw_data(sb.b8)[at:], str_u16(f)[start:end])
 			sb.len += n
 			return
 		}
 		sb_widen(sb)
+		if !sb.wide {return}
 	}
+	if !sb_room(sb, n) {return}
 	sb.len += n
-	append(&sb.b16, ..units)
+	if sb.wide {
+		at := len(sb.b16)
+		resize(&sb.b16, at + n)
+		if f.is_wide {
+			copy(sb.b16[at:], str_u16(f)[start:end])
+		} else {
+			widen_latin1(raw_data(sb.b16)[at:], str_u8(f)[start:end])
+		}
+	} else {
+		append(&sb.b8, ..str_u8(f)[start:end])
+	}
 }
 
+// Back to `mark` units (a mark of sb.len taken before): what was appended since goes. The builder stays 16-bit if it became so.
+sb_truncate :: proc(sb: ^String_Builder, mark: int) {
+	if mark >= sb.len {return}
+	sb.len = mark
+	if sb.wide {resize(&sb.b16, mark)} else {resize(&sb.b8, mark)}
+}
+
+// The string: a buffer past the pool's blocks becomes the string's own (no copy; its spare room lets `s += x` append in
+// place, str_concat), a small one is copied into the string's cell.
 sb_finish :: proc(sb: ^String_Builder) -> ^JS_String {
 	defer sb_destroy(sb)
-	if sb.wide {return str_from_u16(sb.rt, sb.b16[:])}
-	return str_from_latin1(sb.rt, sb.b8[:])
+	rt := sb.rt
+	// (adopted only when the buffer, after giving back its slack, is past the pool's blocks: str_finalize frees it by
+	// its size, and a size of the pool would put memory of rt.allocator on a free list of the pool)
+	if sb.wide {
+		n := len(sb.b16)
+		// (a 16-bit builder may hold only Latin-1, from a 16-bit source: the string is then narrowed, as str_from_u16 does)
+		if n * 2 > POOL_MAX_BYTES && !units_fit_latin1(sb.b16[:]) {
+			sb_shrink_slack(&sb.b16)
+			if cap(sb.b16) * 2 > POOL_MAX_BYTES {
+				s := str_adopt(rt, raw_data(sb.b16), n, cap(sb.b16), true)
+				sb.b16 = {}
+				return s
+			}
+		}
+		return str_from_u16(rt, sb.b16[:])
+	}
+	n := len(sb.b8)
+	if n > POOL_MAX_BYTES {
+		sb_shrink_slack(&sb.b8)
+		if cap(sb.b8) > POOL_MAX_BYTES {
+			s := str_adopt(rt, raw_data(sb.b8), n, cap(sb.b8), false)
+			sb.b8 = {}
+			return s
+		}
+	}
+	return str_from_latin1(rt, sb.b8[:])
 }
 
-// Finish into a Value, throwing RangeError on overflow.
+// A buffer much larger than what it holds gives the rest back first (a builder doubles: up to half of it is room).
+@(private = "file")
+sb_shrink_slack :: proc(buf: ^[dynamic]$T) {
+	if cap(buf) - len(buf) > len(buf) / 4 + 64 {shrink(buf)}
+}
+
+// A string over a buffer of `cap` units from rt_allocator, larger than a block of the pool (str_finalize gives it back
+// with mem_free of that size, which goes to rt.allocator past POOL_MAX_BYTES).
+@(private = "file")
+str_adopt :: proc(rt: ^Runtime, data: rawptr, n, cap: int, wide: bool) -> ^JS_String {
+	s := str_alloc_tail(rt, n, wide)
+	s.data = data
+	s.owns_buf = true
+	str_tail(s).buf = {base = nil, cap = u32(cap), used = u32(n)}
+	return s
+}
+
+// Finish into a Value, throwing on overflow: RangeError, "out of memory" when the heap refused the buffer.
 sb_finish_value :: proc(ctx: ^Context, sb: ^String_Builder) -> Value {
 	if sb.overflow {
+		oom := sb.oom
 		sb_destroy(sb)
-		return throw_range_error(ctx, "invalid string length")
+		return oom ? throw_out_of_memory(ctx) : throw_range_error(ctx, "invalid string length")
 	}
 	return mk_str(sb_finish(sb))
 }

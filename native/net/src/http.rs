@@ -27,6 +27,10 @@ pub(crate) fn build_client(shared: Arc<Shared>, idle_ms: u32, max_idle: u32) -> 
         .pool_idle_timeout(Duration::from_millis(if idle_ms == 0 { 90_000 } else { idle_ms as u64 }))
         .pool_max_idle_per_host(if max_idle == 0 { usize::MAX } else { max_idle as usize })
         .http2_adaptive_window(true)
+        // one limit of the head for the three protocols (h3conn.rs sets HTTP/3's); HTTP/1.1's buffer holds the whole
+        // head, so its size is the head's limit
+        .http1_max_buf_size(crate::HEADER_BLOCK_MOST)
+        .http2_max_header_list_size(crate::HEADER_BLOCK_MOST as u32)
         .retry_canceled_requests(true);
     b.build(Connector { shared })
 }
@@ -290,31 +294,47 @@ async fn request(inner: &Arc<Inner>, id: u64, st: &Arc<ReqState>, d: Desc) -> Re
         };
         let Some(chunk) = chunk else { break };
         if dec.is_identity() {
-            deliver(inner, id, st, &s, &chunk, &mut total).await?;
+            deliver(inner, id, st, &s, chunk, &mut total).await?;
         } else {
-            for piece in chunk.chunks(8 << 10) {
-                let out = dec.push(piece).map_err(|_| NetError::new(error::INVALID_SERVER_RESPONSE))?;
-                deliver(inner, id, st, &s, &out, &mut total).await?;
-            }
+            dec.feed(&chunk);
+            drop(chunk);
+            deliver_decoded(inner, id, st, &s, &mut dec, &mut total).await?;
         }
     }
-    let tail = dec.finish().map_err(|_| NetError::new(error::INVALID_SERVER_RESPONSE))?;
-    deliver(inner, id, st, &s, &tail, &mut total).await?;
+    dec.end();
+    deliver_decoded(inner, id, st, &s, &mut dec, &mut total).await?;
     marks.done = Some(Instant::now());
     inner.push(Ev { kind: EV_DONE, tag: st.tag, timing: marks.timing(start), ..Default::default() });
     Ok(())
 }
 
-/// Hands decoded bytes to the host in `read_chunk` pieces, waiting while too much is unconsumed.
-async fn deliver(inner: &Inner, _id: u64, st: &ReqState, s: &crate::Settings, data: &[u8], total: &mut u64) -> Result<(), NetError> {
-    for piece in data.chunks(s.read_chunk) {
+/// Decodes what the decoder was fed, one bounded step at a time, each handed over (and waited on under back-pressure,
+/// checked against `max_body`) before the next is decoded: a bomb stops at `max_body` with one step in memory.
+async fn deliver_decoded(inner: &Inner, id: u64, st: &ReqState, s: &crate::Settings, dec: &mut Decoder, total: &mut u64) -> Result<(), NetError> {
+    loop {
+        let step = match dec.next() {
+            Ok(Some(out)) => Bytes::copy_from_slice(out),
+            Ok(None) => return Ok(()),
+            Err(_) => return Err(NetError::new(error::INVALID_SERVER_RESPONSE)),
+        };
+        deliver(inner, id, st, s, step, total).await?;
+    }
+}
+
+/// Hands body bytes to the host in `read_chunk` pieces (slices of `data`, not copies), waiting while too much is
+/// unconsumed.
+async fn deliver(inner: &Inner, _id: u64, st: &ReqState, s: &crate::Settings, data: Bytes, total: &mut u64) -> Result<(), NetError> {
+    let mut at = 0;
+    while at < data.len() {
+        let piece = data.slice(at..(at + s.read_chunk).min(data.len()));
+        at += piece.len();
         *total += piece.len() as u64;
         if *total > st.max_body.load(Ordering::Acquire) {
             return Err(NetError::new(error::ERROR_BODY_TOO_LARGE));
         }
         // counted before it is handed over: the host may consume it as soon as it is pushed, and what it consumed first would stay counted for ever
         let q = st.queued.fetch_add(piece.len(), Ordering::AcqRel) + piece.len();
-        inner.push(Ev { kind: EV_DATA, tag: st.tag, data: piece.to_vec(), ..Default::default() });
+        inner.push(Ev { kind: EV_DATA, tag: st.tag, data: piece, ..Default::default() });
         if q >= s.high_water {
             loop {
                 let woken = st.wake.notified();

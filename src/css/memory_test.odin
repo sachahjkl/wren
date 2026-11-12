@@ -17,7 +17,7 @@ parsed_sheet_memory :: proc(t: ^testing.T) {
 		}
 	}
 	src := strings.to_string(b)
-	s := parse_stylesheet(src, Parse_Options{max_nesting_depth = 512, max_rules = 100_000})
+	s := parse_stylesheet(src, Parse_Options{max_nesting_depth = 512, max_rules = 100_000, max_errors_kept = 100})
 	defer { stylesheet_destroy(s); free(s) }
 	testing.expect(t, len(s.rules) == 3000 + 150, fmt.tprintf("rules: %d", len(s.rules)))
 	ratio := f64(s.arena.total_used) / f64(len(src))

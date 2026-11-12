@@ -154,7 +154,8 @@ pub(crate) struct Ev {
     pub n: u64,
     pub headers: Vec<u8>,
     pub url: Vec<u8>,
-    pub data: Vec<u8>,
+    /// Bytes, not Vec: a body chunk or a WebSocket message reaches the host as the protocol handed it, without a copy
+    pub data: bytes::Bytes,
     pub timing: [f32; 9],
     pub remote: Vec<u8>,
 }
@@ -209,6 +210,15 @@ struct Running {
     ws: Option<tokio::sync::mpsc::UnboundedSender<ws::Cmd>>,
 }
 
+/// The most bytes of response head (status line and fields) taken over any protocol: HTTP/1.1's read buffer, HTTP/2's
+/// SETTINGS_MAX_HEADER_LIST_SIZE, HTTP/3's SETTINGS_MAX_FIELD_SECTION_SIZE. A server cannot make a head cost more
+/// memory than this; 256 KiB is far above what sites send (cookies included: browsers cap those near 8 KiB each).
+pub(crate) const HEADER_BLOCK_MOST: usize = 256 << 10;
+
+/// The most origins `Shared::track` remembers. Its entries matter for the time of one pooled connection (minutes);
+/// far more origins than a session has open at once, far fewer than one left running for weeks visits.
+const TRACK_MOST: usize = 512;
+
 /// What the connections need, shared by the HTTP client's connector, the WebSockets and HTTP/3.
 pub(crate) struct Shared {
     pub settings: RwLock<Settings>,
@@ -260,15 +270,23 @@ impl Shared {
     }
 
     pub fn track_start(&self, key: &str) {
-        self.track.lock().unwrap_or_else(|e| e.into_inner()).entry(key.to_string()).or_insert((0, None)).0 += 1;
+        let mut t = self.track.lock().unwrap_or_else(|e| e.into_inner());
+        if !t.contains_key(key) && t.len() >= TRACK_MOST {
+            // a session visits origins without end: forget the one whose last connection is the oldest (its pooled
+            // connection has long been closed), never one with a connection being opened
+            let oldest = t.iter().filter(|(_, e)| e.0 == 0).min_by_key(|(_, e)| e.1).map(|(k, _)| k.clone());
+            if let Some(k) = oldest { t.remove(&k); }
+        }
+        t.entry(key.to_string()).or_insert((0, None)).0 += 1;
     }
 
     pub fn track_end(&self, key: &str, ok: bool) {
         let mut t = self.track.lock().unwrap_or_else(|e| e.into_inner());
-        if let Some(e) = t.get_mut(key) {
-            e.0 = e.0.saturating_sub(1);
-            if ok { e.1 = Some(Instant::now()); }
-        }
+        let Some(e) = t.get_mut(key) else { return };
+        e.0 = e.0.saturating_sub(1);
+        if ok { e.1 = Some(Instant::now()); }
+        // nothing opening and nothing ever came up: there is nothing to remember
+        if e.0 == 0 && e.1.is_none() { t.remove(key); }
     }
 }
 

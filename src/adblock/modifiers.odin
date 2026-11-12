@@ -17,7 +17,7 @@ collect_matches :: proc(e: ^Engine, class: Class, c: ^Ctx, out: ^[dynamic]u32) {
 // The filters of `class` that match the request and, when there are any, the exceptions of `allow` that do (temp).
 @(private)
 request_matches :: proc(e: ^Engine, req: ^Request, class, allow: Class) -> (found, allowed: [dynamic]u32) {
-	buf: [MAX_URL]u8
+	buf: [MAX_URL]u8 = ---   // (ctx_init writes what it reads: zeroing 8 KiB per request is waste)
 	c: Ctx
 	ctx_init(&c, req, buf[:])
 	if c.he <= c.hs { return }
@@ -134,7 +134,7 @@ Header_Lookup :: #type proc(user: rawptr, name: string) -> (value: string, ok: b
 // `value` may be a plain string, `/regex/` or negated with `~`.
 match_response_headers :: proc(e: ^Engine, req: ^Request, lookup: Header_Lookup, user: rawptr) -> u32 {
 	if e == nil || class_empty(e, .Header) { return NO_FILTER }
-	buf: [MAX_URL]u8
+	buf: [MAX_URL]u8 = ---   // (ctx_init writes what it reads: zeroing 8 KiB per request is waste)
 	c: Ctx
 	ctx_init(&c, req, buf[:])
 	if c.he <= c.hs { return NO_FILTER }

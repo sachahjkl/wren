@@ -160,6 +160,7 @@ App :: struct {
 	loop:     host.Loop,
 	client:   net.Client,
 	blocking: host.Blocking_Pool,
+	dialogs:  host.Dialogs,       // the system's modal dialogs, a thread each (a person answers them: no work of the blocking pool)
 	prefs:    config.Prefs,   // every tunable of the browser (about:config)
 	cfg:      Settings,       // the shell's own, derived from prefs
 	page_settings: page.Settings,
@@ -180,10 +181,14 @@ App :: struct {
 	last_tick:        time.Tick,
 
 	windows:  [dynamic]^Browser_Window,   // windows.odin
+	tab_ids:  map[u64]^Tab,               // windows.odin tab_find: every tab from tab_new to tab_free, whatever its window (nil while there is none)
 	active:   ^Browser_Window,            // the one the frame is for; nil: none (active_window is then App.bare)
 	front:    ^Browser_Window,            // the one commands, remote calls and the tasks of the loop act on (the last used)
 	bare:     Browser_Window,             // active_window of an App with no window (the tests'), or between two
 	pass_first: bool,                     // the next frame of this pass of the loop is the first: it runs the tasks of the loop
+	tasks_running: bool,                  // frame_tasks runs the loop's callbacks now: request_frames asks for the window of the page they work for
+	task_own:   int,                      // ... the frames they asked for the active window as their page's own (not spilled to the others)
+	layout_verify_seen: int,              // js_layout_shell.odin layout_trace: the incremental layout's verify failures reported
 	rendering:  ^Tab,                     // the tab whose rendering update the frame runs (its animation frame callbacks, then its page phase): what it lays out, this frame paints
 	headless:   bool,                     // no window at all (`--headless`)
 	private:    bool,                     // a private Wren (--private): its profile is made for it and goes at its end (private_browsing.odin)
@@ -233,7 +238,7 @@ App :: struct {
 	gpu_slow:      map[i32]Slow_Step,        // gpu_steps.odin: the slow GPU steps
 	gpu_slow_frames: int,                    // gpu_steps.odin
 	gpu_kept:      [dynamic][3]i32,          // gpu_steps.odin: per recorded frame: kept effect results reused, redrawn, kept anew
-	net_owner:     map[u64]u64,              // devtools_net_model.odin: request id -> id of its tab
+	net_owner:     map[u64]Net_Ref,          // devtools_net_model.odin: request id -> its tab and its entry there
 	net_media:     Net_Media,                // devtools_net_media.odin: the media the Network tab plays
 	dl_picking:    bool,                     // download.odin: the folder dialog of the downloads page is open
 	drag_probe_moves: i32,                   // drag_probe.odin: the pointer moves of the frame whose events were just read
@@ -352,6 +357,8 @@ tab_new :: proc(app: ^App) -> ^Tab {
 	t.top = page.navigable_top_new()
 	t.title = strings.clone("New tab")
 	append(&active_window(app).tabs, t)
+	if app.tab_ids == nil { app.tab_ids = make(map[u64]^Tab) }
+	app.tab_ids[t.id] = t
 	tab_history_limits(app, t)
 	blocker_tab_new(app, t)   // blocker_shell.odin
 	recovery_touch(app)   // crash_recovery.odin
@@ -402,6 +409,9 @@ tab_close_tab :: proc(app: ^App, t: ^Tab) {
 
 // Frees a tab taken out of the strip (closed, or at exit): its page and everything the shell keeps for it.
 tab_free :: proc(app: ^App, t: ^Tab) {
+	// (first: what its scope's closing ends, a request, looks its tab up and finds none)
+	delete_key(&app.tab_ids, t.id)
+	if len(app.tab_ids) == 0 { delete(app.tab_ids); app.tab_ids = nil }   // (made again by the next tab: nothing left over at the end)
 	bfcache_drop_tab(app, t)
 	tab_nav_destroy(app, t)
 	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone (a held page too)
@@ -1310,13 +1320,15 @@ profile_load :: proc(app: ^App) {
 	fetch.hsts_load(&app.profile.hsts, h, fetch.now_ms())
 }
 
+// The profile's files that changed: the texts are made here, the blocking pool writes them (profile_writes.odin). With `force`
+// (at exit) everything is written before it returns.
 profile_save :: proc(app: ^App, force := false) {
 	c, h, pf := profile_paths(app)
-	if app.prefs.dirty || force { config.save_user(&app.prefs, pf) }
-	session_save(app)   // session.odin (when it changed)
-	if !app.cfg.persist_profile { return }
-	if force || app.profile.jar.dirty { cookies.save(&app.profile.jar, c) }
-	if force || app.profile.hsts.dirty { fetch.hsts_save(&app.profile.hsts, h, fetch.now_ms()) }
+	// (the preferences change only when the user changes one; the toolkit's config makes the text and writes it in one call)
+	if app.prefs.dirty || force { profile_write_report(&app.recovery.writes.prefs, pf, config.save_user(&app.prefs, pf), tell = !force && profile_can_tell(app)) }
+	session_save(app, force)   // session.odin (when it changed)
+	profile_stores_save(app, c, h, force)   // the cookies and the HSTS hosts
+	if force { profile_files_flush(app) }
 }
 
 autosave :: proc(data: rawptr) {
@@ -1402,16 +1414,37 @@ chrome_frame_style :: proc(app: ^App) -> ui.Style {
 }
 
 // The loop's network completions, timers and posted tasks that are ready, run by the first frame of a pass (in its wait for
-// its slot, else in its page phase): they belong to the process, not to a window, and what they ask of the frames goes to
-// every window (windows.odin windows_spill). Returns how many ran that draw something.
+// its slot, else in its page phase). A callback that works for a page (host.Task.work) draws its page's window: by itself
+// (a frame there, for what it may have changed), and what it asks of the frames goes there (request_frames). The browser's
+// own work, and a page that is no tab's, may concern any window: what they ask goes to every window (windows.odin
+// windows_spill). Returns how many ran that draw something in the active window.
 frame_tasks :: proc(app: ^App) -> int {
 	wnd := active_window(app)
 	asked := wnd.frames_requested
-	ran := host.run_ready(&app.loop)
-	ran -= host.quiet_take(&app.loop)   // (a media player's notices draw nothing: its pictures come on their own timer)
-	if ran > 0 { request_frames(app, 2) }
+	was_running, was_own := app.tasks_running, app.task_own
+	app.tasks_running, app.task_own = true, 0
+	host.run_ready(&app.loop)
+	app.tasks_running = was_running
+	host.quiet_take(&app.loop)   // (a media player's notices draw nothing: its pictures come on their own timer)
+	browser, pages := host.ran_take(&app.loop)
+	ran := browser
+	if browser > 0 { window_request(app, wnd, 2) }
+	for id in pages {
+		w := window_of_page_work(app, id)
+		if w == nil {
+			ran += 1
+			window_request(app, wnd, 2)   // (whose it is is not known: every window, as the browser's)
+		} else if w == wnd {
+			ran += 1
+			app.task_own = max(app.task_own, 2)
+		} else {
+			window_request(app, w, 2)
+		}
+	}
 	images_shell_frame(app)
 	if wnd.frames_requested > asked { windows_spill(app, wnd.frames_requested) }
+	if app.task_own > 0 { window_request(app, wnd, app.task_own) }   // (after the spill: its page's own)
+	app.task_own = was_own
 	return ran
 }
 
@@ -1567,7 +1600,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	prof_begin(.UI_Draw)
 	// (the toolkit's automatic damage: each box is compared with its last frame; the page, replayed, is drawn every frame)
-	ui.set_partial_redraw(active_window(app).ui, config.bool_of(&app.prefs, "browser.ui.partial_redraw"))
+	ui.set_partial_redraw(active_window(app).ui, app.cfg.partial_redraw)
 	ui.draw_tree(active_window(app).ui, &app.dc)
 	dnd_paint(app, &app.dc)   // dnd_image.odin: the picture of a drag from the page, over everything
 	autoscroll_paint(app, &app.dc)   // page_autoscroll.odin: the autoscroll anchor marker, over everything
@@ -1752,6 +1785,7 @@ app_start :: proc(args: []string) -> ^App {
 	if !net.client_init(&app.client, &app.loop, ns) { fmt.eprintln("network init failed"); return nil }
 	net.settings_destroy(&ns)
 	host.blocking_init(&app.blocking, &app.loop, app.cfg.blocking_threads)
+	host.dialogs_init(&app.dialogs, &app.loop)
 	app.profile = fetch.profile_make(fetch.settings_from_prefs(&app.prefs), cookies.settings_from_prefs(&app.prefs))
 	http_cache_start(app)   // http_cache_ui.odin: the profile's HTTP cache (its index loads on a thread meanwhile)
 	fetch.loader_init(&app.loader, &app.loop, &app.client, &app.blocking, &app.profile)
@@ -1934,6 +1968,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("urlbar_destroy")
 	urlbar_destroy(app)   // urlbar.odin
 	sidebar_destroy(&window_own(app).sidebar)   // tab_sidebar.odin
+	status_cache_destroy(&window_own(app).status)   // status_bar.odin
 	host.shutdown_step("global_history_shutdown")
 	global_history_shutdown(app)
 	host.shutdown_step("bookmarks_shutdown")
@@ -1980,6 +2015,8 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	page.timeline_shutdown()   // the requests the performance timeline still describes (no more events once the loader is gone)
 	host.shutdown_step("http_cache_stop")
 	http_cache_stop(app)   // writes what is pending and the index
+	host.shutdown_step("host.dialogs_destroy")
+	host.dialogs_destroy(&app.dialogs)   // (a dialog still open is let go: nobody waits for its answer)
 	host.shutdown_step("host.blocking_destroy")
 	host.blocking_destroy(&app.blocking)
 	host.shutdown_step("downloads_shutdown")

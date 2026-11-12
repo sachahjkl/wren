@@ -417,16 +417,21 @@ session_groups_of :: proc(groups: []Tab_Group) -> []Session_Group {
 	return out
 }
 
-// Writes the session when it changed (profile_save: autosave and exit).
-session_save :: proc(app: ^App) {
+// Writes the session when it changed (profile_save: autosave, and at exit with `force`). The text is made only when a tab
+// changed since the last one (recovery_touch counts the changes; a scroll alone waits for the next change or the exit); the
+// blocking pool writes it (profile_writes.odin).
+session_save :: proc(app: ^App, force := false) {
 	if !app.cfg.persist_profile { return }
 	closed_load(app)   // (what session.txt holds of the run before goes on the closed list first)
 	closed_save(app)
+	w := &app.recovery.writes
+	if !force && w.session_made == w.session_serial { return }
+	w.session_made = w.session_serial
 	if !config.bool_of(&app.prefs, "browser.session.restore") { pinned_save(app) }
 	text := session_text(app)
 	if text == app.session_last { return }
-	path := session_path(app)
-	if !base.file_write_atomic(path, transmute([]byte)text) { return }   // temp file renamed over the old one
+	profile_file_init(&w.session, app, session_path(app))
+	profile_file_write(&w.session, text)   // (a failed write is made again by the file itself)
 	delete(app.session_last)
 	app.session_last = strings.clone(text)
 }
@@ -569,8 +574,9 @@ session_lazy_load :: proc(app: ^App) {
 pinned_path :: proc(app: ^App) -> string { return strings.concatenate({app.profile_dir, "/pinned.txt"}, context.temp_allocator) }
 
 // Writes the pinned tabs of every window to pinned.txt (a session file of one window) when they changed; none: the file goes.
+// What the file holds is kept in memory: it is not read again to compare.
 pinned_save :: proc(app: ^App) {
-	path := pinned_path(app)
+	w := &app.recovery.writes
 	pins := make([dynamic]Session_Tab, context.temp_allocator)
 	if config.bool_of(&app.prefs, "browser.tabs.restore_pinned") {
 		for w in app.windows {
@@ -581,13 +587,15 @@ pinned_save :: proc(app: ^App) {
 			}
 		}
 	}
-	if len(pins) == 0 {
-		if os.exists(path) { _ = os.remove(path) }
-		return
+	text := ""
+	if len(pins) > 0 {
+		text = session_serialize_tabs(pins[:], 0, int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")))
 	}
-	text := session_serialize_tabs(pins[:], 0, int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")))
-	if old, err := os.read_entire_file(path, context.temp_allocator); err == nil && string(old) == text { return }
-	_ = base.file_write_atomic(path, transmute([]byte)text)
+	if w.pinned_known && text == w.pinned_last { return }
+	profile_file_init(&w.pinned, app, pinned_path(app))
+	if text == "" { profile_file_remove(&w.pinned) } else { profile_file_write(&w.pinned, text) }
+	delete(w.pinned_last)
+	w.pinned_last, w.pinned_known = strings.clone(text), true
 }
 
 // At start-up, when the session was not restored: the pinned tabs saved by pinned_save, before the first tab.

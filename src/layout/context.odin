@@ -60,6 +60,8 @@ Ctx :: struct {
 	vp_phys:  Vec2,
 	vp_logical: bool,                        // `vp` is in the logical coordinates of the root's frame
 	frame_entered, frame_intr: i32,          // the frame root whose content is being reached (layout_contents, intrinsic_compute)
+	pass_serial: u64,                        // this pass among those of the layout (> 0): per-pass records in Box_Info
+	seg_cache: ^Seg_Cache,                   // segments measured by this pass (inline.odin), nil until the first; a layout thread's own
 }
 
 // The box's width and height properties are all auto (Ctx.plain).

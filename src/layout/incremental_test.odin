@@ -804,3 +804,37 @@ inc_fonts_reused_across_partial_restyles :: proc(t: ^testing.T) {
 	testing.expectf(t, len(f.l.fonts) == fonts, "fonts after 30 partial passes: %d, after the full one: %d", len(f.l.fonts), fonts)
 	testing.expect_value(t, f.l.passes[.Full], 1)
 }
+
+// Nested flex containers lay each item out twice (column: measured at its auto height, then at its final one; row: then
+// stretched): with the second entry of the layout cache (block.odin) a change deep inside, or a new width, lays out
+// each level a few times, not twice as often as the level around it. The result is still that of a full pass.
+@(test)
+inc_nested_flex_lays_out_each_level_a_few_times :: proc(t: ^testing.T) {
+	DEPTH :: 10
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<body style="margin:0;font-size:10px;line-height:12px">`)
+	for i in 0 ..< DEPTH {
+		dir := i % 3 == 2 ? "row" : "column"
+		fmt.sbprintf(&sb, `<div style="display:flex;flex-direction:%s;padding:1px"><div style="height:3px"></div>`, dir)
+	}
+	strings.write_string(&sb, `<p id=deep style="margin:0">some words in the deepest box</p><div>beside</div>`)
+	for _ in 0 ..< DEPTH { strings.write_string(&sb, `</div>`) }
+	strings.write_string(&sb, `</body>`)
+	f := ix_load(strings.to_string(sb))
+	defer ix_unload(f)
+	ix_frame(f)
+	ix_check(t, f, .None)
+	dom.set_text_content(f.doc, first_text_node(f, id(f, "deep")), "other words, many more of them, in the deepest box of all, enough to wrap in narrow boxes")
+	ix_frame(f)
+	if ix_check(t, f) {
+		testing.expectf(t, f.l.inc.last_laid < 8 * DEPTH, "a change deep inside: %d layouts", f.l.inc.last_laid)
+	}
+	f.vp.x = 300
+	ix_frame(f)
+	if ix_check(t, f) {
+		testing.expectf(t, f.l.inc.last_laid < 12 * DEPTH, "a new width: %d layouts", f.l.inc.last_laid)
+	}
+	f.vp.x = 500
+	ix_frame(f)
+	ix_check(t, f)
+}

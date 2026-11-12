@@ -8,7 +8,7 @@ import "core:testing"
 // @property preludes, @import conditions, media features, selectors of other engines.
 
 @(private = "file")
-OPT :: Parse_Options{max_nesting_depth = 512, max_rules = 100_000}
+OPT :: Parse_Options{max_nesting_depth = 512, max_rules = 100_000, max_errors_kept = 100}
 
 @(private = "file")
 calc_of :: proc(src: string, a: Arena_Alloc) -> ^Calc {

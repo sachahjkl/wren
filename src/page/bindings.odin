@@ -22,12 +22,14 @@ Document_createElement :: proc(c: ^Call, tag: string) -> (u64, Api_Error) {
 	d := call_doc(c)
 	if d == nil { return 0, fail(c, .Invalid_Handle, "no document in a worker") }
 	if tag == "" { return 0, fail(c, .Invalid_Argument, "createElement: empty tag name") }
+	if e := create_quota(c, d, len(tag)); e != .None { return 0, e }
 	return u64(dom.create_element(d, tag)), .None
 }
 
 Document_createTextNode :: proc(c: ^Call, text: string) -> (u64, Api_Error) {
 	d := call_doc(c)
 	if d == nil { return 0, fail(c, .Invalid_Handle, "no document in a worker") }
+	if e := create_quota(c, d, len(text)); e != .None { return 0, e }
 	return u64(dom.create_text(d, text)), .None
 }
 

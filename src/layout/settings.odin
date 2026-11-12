@@ -28,6 +28,9 @@ Settings :: struct {
 	marker_gap:         f32,       // em: between an outside list marker and the content
 	sub_shift, super_shift: f32,   // em of the parent: vertical-align sub / super
 	sub_super_extra:    f32,       // device px added to both shifts
+	balance_max_lines:  int,       // text-wrap: balance: contexts of more lines are not balanced
+	balance_steps:      int,       // text-wrap: balance: steps of the search for the balanced width
+	marker_baseline_steps: int,    // boxes the search for a list item's first baseline visits
 	round_metrics:      bool,      // ascent, descent, line gap and the top half-leading on whole device pixels (Blink)
 	paint_refresh:      bool,      // paint-only style changes refresh the existing layout instead of redoing it
 	opacity_layers:     bool,      // opacity groups are composited from an offscreen layer (else per primitive)
@@ -102,6 +105,12 @@ PREFS := [?]config.Def{
 		description = "How far vertical-align: super raises text, in em of the parent."},
 	{name = "layout.text.sub_super_extra_device_px", kind = .Float, default = {f = 1}, bounded = true, min = 0, max = 16, unit = "device px",
 		description = "Added to the shift of vertical-align: sub and super, in device pixels (Chromium: a fifth of the parent's font size + 1 for sub, a third + 1 for super)."},
+	{name = "layout.text.balance_max_lines", kind = .Int, default = {i = 6}, bounded = true, min = 0, max = 100, unit = "lines",
+		description = "text-wrap: balance evens out the lines of a paragraph of at most this many lines (Chromium: 6). Longer paragraphs are wrapped as usual: each balancing lays the paragraph out again once per search step."},
+	{name = "layout.text.balance_search_steps", kind = .Int, default = {i = 10}, bounded = true, min = 0, max = 32, unit = "steps",
+		description = "Steps of the search for the narrowest width that keeps the number of lines of a balanced paragraph (text-wrap: balance). Each step lays the paragraph out once; 10 steps find the width to a thousandth of the line."},
+	{name = "layout.list.marker_baseline_max_boxes", kind = .Int, default = {i = 4096}, bounded = true, min = 1, max = 1 << 20, unit = "boxes",
+		description = "Boxes visited down the first children of a list item to find the first line its marker sits on. Past it, the marker sits on the item's own first line position (protects against hostile nesting)."},
 	{name = "layout.text.round_font_metrics", kind = .Bool, default = {b = true},
 		description = "Round each font's ascent, descent and line gap to whole device pixels (line-height: normal is then their sum), and put the odd pixel of the leading below the text, as Chromium does: text sits on the same pixel rows as in Chrome and Edge. Off: the face's exact metrics."},
 	{name = "layout.paint_refresh", kind = .Bool, default = {b = true},
@@ -184,6 +193,9 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		sub_shift = f32(config.float_of(p, "layout.text.sub_shift_em")),
 		super_shift = f32(config.float_of(p, "layout.text.super_shift_em")),
 		sub_super_extra = f32(config.float_of(p, "layout.text.sub_super_extra_device_px")),
+		balance_max_lines = int(config.int_of(p, "layout.text.balance_max_lines")),
+		balance_steps = int(config.int_of(p, "layout.text.balance_search_steps")),
+		marker_baseline_steps = int(config.int_of(p, "layout.list.marker_baseline_max_boxes")),
 		round_metrics = config.bool_of(p, "layout.text.round_font_metrics"),
 		paint_refresh = config.bool_of(p, "layout.paint_refresh"),
 		opacity_layers = config.bool_of(p, "layout.paint.opacity_layers"),

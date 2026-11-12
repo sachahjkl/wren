@@ -444,7 +444,8 @@ bookmarks_file_job :: proc(app: ^App, export: bool) {
 	j.owner = active_window(app).win
 	j.test = strings.clone(config.string_of(&app.prefs, "browser.dialogs.test_answer"))
 	if export { j.text = strings.clone(bookmarks_serialize(app.bms.items[:], app.bms.toolbar)) }
-	host.run_blocking(&app.blocking, proc(data: rawptr) {
+	// (a thread of its own, host.run_dialog: the dialog holds it until the user answers)
+	started := host.run_dialog(&app.dialogs, proc(data: rawptr) {
 		j := (^File_Job)(data)
 		path: string
 		switch {
@@ -492,7 +493,15 @@ bookmarks_file_job :: proc(app: ^App, export: bool) {
 		if !ok { ui.toast(.Bad, "%s is not a bookmark file", j.path); return }
 		if added > 0 { bookmarks_changed(app) }
 		ui.toast(.Info, added == 1 ? "%d bookmark imported" : "%d bookmarks imported", added)
-	}, j)
+	}, j, proc(data: rawptr) {   // (the browser ended before the answer was read)
+		j := (^File_Job)(data)
+		delete(j.test); delete(j.text); delete(j.path); free(j)
+	})
+	if !started {
+		app.bview.picking = false
+		ui.toast(.Bad, "The file dialog could not be opened")
+		delete(j.test); delete(j.text); free(j)
+	}
 }
 
 ////////////////////////////////

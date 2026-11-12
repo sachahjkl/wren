@@ -38,22 +38,9 @@ decode_cached :: proc(url: string, data: []byte, max_bytes: int, cache_bytes: in
 		sfnt, format, err = decode(data, max_bytes, allocator)
 		return
 	}
+	if s, f, hit := decoded_lookup(url, data, max_bytes, cache_bytes, allocator); hit { return s, f, .None, true }
 	a := base.process_allocator()
-	key := fmt.tprintf("%016x %d %s", xxhash.XXH3_64_default(data), len(data), url)
-	sync.mutex_lock(&cache.mu)
-	if d, ok := cache.entries[key]; ok && len(d.sfnt) <= max_bytes {
-		unlink(d)
-		push_front(d)
-		cache.hits += 1
-		sfnt = make([]byte, len(d.sfnt), allocator)
-		copy(sfnt, d.sfnt)
-		format = d.format
-		sync.mutex_unlock(&cache.mu)
-		return sfnt, format, .None, true
-	}
-	cache.misses += 1
-	sync.mutex_unlock(&cache.mu)
-
+	key := cache_key(url, data)
 	sfnt, format, err = decode(data, max_bytes, allocator)
 	if err != .None || len(sfnt) > cache_bytes { return }
 
@@ -71,6 +58,32 @@ decode_cached :: proc(url: string, data: []byte, max_bytes: int, cache_bytes: in
 	cache.bytes += len(d.sfnt)
 	for cache.bytes > cache_bytes && cache.tail != nil { drop(cache.tail) }
 	return
+}
+
+// The sfnt of `data` (downloaded from `url`) when it was decoded before (a copy in `allocator`), without decoding: what
+// a caller does at once, before it sends the decoding to a thread of its own. `count_miss` false: the decode_cached that
+// follows counts it.
+decoded_lookup :: proc(url: string, data: []byte, max_bytes: int, cache_bytes: int, allocator := context.allocator, count_miss := true) -> (sfnt: []byte, format: Format, hit: bool) {
+	if cache_bytes <= 0 { return nil, .Unknown, false }
+	key := cache_key(url, data)
+	sync.mutex_lock(&cache.mu)
+	defer sync.mutex_unlock(&cache.mu)
+	d, ok := cache.entries[key]
+	if !ok || len(d.sfnt) > max_bytes {
+		if count_miss { cache.misses += 1 }
+		return nil, .Unknown, false
+	}
+	unlink(d)
+	push_front(d)
+	cache.hits += 1
+	sfnt = make([]byte, len(d.sfnt), allocator)
+	copy(sfnt, d.sfnt)
+	return sfnt, d.format, true
+}
+
+@(private = "file")
+cache_key :: proc(url: string, data: []byte) -> string {
+	return fmt.tprintf("%016x %d %s", xxhash.XXH3_64_default(data), len(data), url)
 }
 
 // Hits and misses so far, and what the cache holds.

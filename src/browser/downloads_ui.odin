@@ -74,7 +74,7 @@ dl_by_id :: proc(app: ^App, id: u64) -> ^Download {
 }
 
 @(private = "file")
-dl_running :: proc(d: ^Download) -> bool { return d.state == .Receiving || d.state == .Saving }
+dl_running :: proc(d: ^Download) -> bool { return download_running(d) }
 
 @(private = "file")
 dl_host :: proc(url: string) -> string {
@@ -106,7 +106,7 @@ dl_speed_of :: proc(d: ^Download) -> f64 {
 dl_status :: proc(d: ^Download) -> string {
 	switch d.state {
 	case .Receiving:
-		if d.asking { return "Choose where to save it\u2026" }
+		if .Dialog in d.out { return "Choose where to save it\u2026" }
 		sp := dl_speed_of(d)
 		if d.total > 0 {
 			s := fmt.tprintf("%s of %s", human_bytes(d.received), human_bytes(d.total))
@@ -114,7 +114,8 @@ dl_status :: proc(d: ^Download) -> string {
 			return s
 		}
 		return sp > 0 ? fmt.tprintf("%s \u00b7 %s/s", human_bytes(d.received), human_bytes(i64(sp))) : human_bytes(d.received)
-	case .Saving: return "Finishing\u2026"
+	case .Awaiting_Path: return "Choose where to save it\u2026"
+	case .Flushing, .Moving: return "Finishing\u2026"
 	case .Done:
 		if !download_file_present(d) { return "Deleted or moved" }
 		parts := make([dynamic]string, context.temp_allocator)
@@ -281,7 +282,7 @@ dl_bar_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 dl_bar :: proc(app: ^App, d: ^Download, height: f32) {
 	b := ui.frame_new(Dl_Bar)
 	frac: f32
-	if d.state == .Saving { frac = 1 } else if d.total > 0 { frac = clamp(f32(f64(d.received) / f64(d.total)), 0, 1) }
+	if dl_running(d) && d.state != .Receiving { frac = 1 }   // (everything is here: written, waiting for its place, or moved) else if d.total > 0 { frac = clamp(f32(f64(d.received) / f64(d.total)), 0, 1) }
 	acc := ui.color("accent")
 	trk := ui.color("text")   // the text's colour, faint: a track that shows on the page and on the drop-down alike
 	trk.a = 0.14
@@ -321,7 +322,7 @@ dl_row :: proc(app: ^App, d: ^Download, w: f32, compact: bool) -> (act: Dl_Row_A
 			if ui.row(.Center) {
 				ui.next({width = ui.fill(), height = ui.pct(1)})
 				ui.label(fmt.tprintf("%s###dln_%d", safe_label(d.state == .Done && d.path != "" ? filepath.base(d.path) : d.name, 120), d.id))
-				if !compact && d.state == .Receiving && d.total > 0 && !d.asking {
+				if !compact && d.state == .Receiving && d.total > 0 && .Dialog not_in d.out {
 					// the figure the bar stands for
 					ui.next({width = ui.text_size(em * 0.5), height = ui.pct(1), font_size = em * 0.92})
 					if ui.tags("weak") { ui.label(fmt.tprintf("%d %%###dlp_%d", int(d.received * 100 / max(d.total, 1)), d.id)) }

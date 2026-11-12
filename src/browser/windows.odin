@@ -66,7 +66,9 @@ Browser_Window :: struct {
 	zone:      Drop_Zone,         // where its tabs were laid out (tab_drag.odin)
 	drop:      Drop_Slot,         // a tab is carried over its tabs (`dropping`): where it would go, and its mark (tab_drag.odin)
 	dropping:  bool,
-	title:   string,              // what its title was set to last (owned)
+	title:   string,              // owned: what its title was set to last (hud.odin hud_title)
+	title_page, title_url: string,   // owned: the tab title and address that title was made with
+	title_ms: f64,                // when it was made (ui.now_ms; 0: at the next frame)
 	opened:  time.Tick,
 	own:     Window_Own,          // the chrome's state of this window, always here (not exchanged by window_activate)
 }
@@ -78,6 +80,7 @@ Window_Own :: struct {
 	security_chip_width: f32,                 // chrome.odin: the security chip's width in the address bar (measured while building)
 	status_left_width:   f32,                 // status_bar.odin: the left part's width in the frame before
 	status_drawn:        u64,                 // hud.changes when this window last drew
+	status:              Status_Cache,        // status_bar.odin: the items of its status bar, as last made
 	fullscreen:          Window_Fullscreen,   // fullscreen_shell.odin: a page's element full screen
 	full:                Window_Full,         // window_chrome.odin: the bars shown over the page in the window's full screen
 	cursor:              Page_Cursor_View,    // page_cursor.odin: the window's cursors made from page images, what it shows
@@ -127,6 +130,7 @@ window_own_destroy :: proc(app: ^App, own: ^Window_Own) {
 	device_input_destroy(&own.devices)
 	page_a11y_destroy(&own.a11y)
 	sidebar_destroy(&own.sidebar)
+	status_cache_destroy(&own.status)
 }
 
 ////////////////////////////////
@@ -224,16 +228,41 @@ window_request_errand :: proc(app: ^App, w: ^Browser_Window, errand: Frame_Erran
 	if alone { w.errand = errand }
 }
 
-// Asks for frames of the active window (the frame being made, or the front one between frames).
-request_frames :: proc(app: ^App, n := 2, loc := #caller_location) { window_request(app, active_window(app), n, loc) }
+// Asks for frames of the active window (the frame being made, or the front one between frames). A callback of the loop that
+// works for a page (frame_tasks) asks for that page's window instead: the active one only runs the loop's callbacks.
+request_frames :: proc(app: ^App, n := 2, loc := #caller_location) {
+	// (not from a chrome frame made while a page's script runs: what it asks is its window's own)
+	if app.tasks_running && !app.chrome_frames.nested && host.on_loop_thread(&app.loop) {
+		if w := window_of_page_work(app, app.loop.work.page); w != nil {
+			if w == active_window(app) { app.task_own = max(app.task_own, n) } else { window_request(app, w, n, loc) }
+			return
+		}
+	}
+	window_request(app, active_window(app), n, loc)
+}
 
-// The window that holds the tab, and its place there.
+// The window of the tab whose page (or one of its frames) has the number `page_id` (base.Work.page): nil for the browser's
+// own work (0) and for a page that is no tab's (a page kept by the back/forward cache, one closed since).
+window_of_page_work :: proc(app: ^App, page_id: u32) -> ^Browser_Window {
+	if page_id == 0 { return nil }
+	p := page.page_by_id(u64(page_id))
+	if p == nil { return nil }
+	t := tab_of_page(app, page.page_top(p))
+	if t == nil { return nil }
+	w, _ := window_of_tab(app, t)
+	return w
+}
+
 // The tab whose page is `p` (nil: none).
 tab_of_page :: proc(app: ^App, p: ^page.Page) -> ^Tab {
-	for t in tabs_all(app) { if t.page == p { return t } }
+	for _, t in app.tab_ids { if t.page == p { return t } }
 	return nil
 }
 
+// The tab with this id, whatever its window (nil: none, or freed). Without a list of the tabs: App.tab_ids.
+tab_find :: proc(app: ^App, id: u64) -> ^Tab { return app.tab_ids[id] }
+
+// The window that holds the tab, and its place there.
 window_of_tab :: proc(app: ^App, t: ^Tab) -> (^Browser_Window, int) {
 	for w in app.windows {
 		for x, i in window_tabs(app, w)^ { if x == t { return w, i } }
@@ -341,7 +370,7 @@ window_asked :: proc(app: ^App, r: Chrome_Request, placed: ^ui.Box = nil) -> boo
 }
 
 // What the tasks of the loop (and anything else made outside a frame) asked of the active window's frames, for the others too: the
-// task does not say which window it is about.
+// browser's own work does not say which window it is about (a page's goes to its window: request_frames, frame_tasks).
 windows_spill :: proc(app: ^App, n: int) {
 	for w in app.windows {
 		if w == app.active || w.minimized { continue }
@@ -530,7 +559,7 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 	}
 	ui.destroy(w.ui)
 	free(w.ui)
-	delete(w.title)
+	delete(w.title); delete(w.title_page); delete(w.title_url)
 	dnd_window_detach(w.win)
 	window_chrome_forget(app, w.win)
 	platform.destroy_window(w.win)
@@ -776,7 +805,7 @@ windows_destroy_surfaces :: proc(app: ^App) {
 
 windows_destroy :: proc(app: ^App) {
 	for w in app.windows {
-		delete(w.title)
+		delete(w.title); delete(w.title_page); delete(w.title_url)
 		delete(w.tabs)
 		tab_groups_destroy(&w.groups)
 		free(w.ui)

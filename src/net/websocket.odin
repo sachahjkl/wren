@@ -138,7 +138,8 @@ Socket :: struct {
 	counted:    bool,           // holds a connecting slot of host_key
 	timer:      base.Handle,
 	timer_data: ^Ws_Owner,
-	out:        [dynamic]Out_Msg,
+	out:        Fifo(Out_Msg),  // the messages waiting to be sent
+	out_bytes:  int,            // their bytes, bounded by network.websocket.max_buffered_bytes
 	sending:    bool,
 	send_off, send_len: int,
 	cur_binary: bool,
@@ -310,22 +311,51 @@ websocket_send :: proc(c: ^Client, h: base.Handle, data: []byte, binary: bool) -
 	if m == nil { return false }
 	s := base.pool_get(&m.sockets, h)
 	if s == nil || s.state != .Open || s.close_wanted { return false }
+	// a page that sends faster than the peer reads would grow the queue without end: past the cap the connection is
+	// closed with 1009 (message too big), as the WebSocket standard has it for data that cannot be buffered
+	if limit := max(c.settings.ws_max_buffered, 0); limit > 0 && s.out_bytes + len(data) > limit {
+		s.close_wanted = true
+		s.close_code = WS_CLOSE_TOO_BIG
+		s.close_len = 0
+		s.state = .Closing
+		ws_try_close(m, h, s)
+		return false
+	}
 	msg := Out_Msg{binary = binary}
 	if len(data) > 0 { msg.data = make([]byte, len(data), heap()); copy(msg.data, data) }
-	append(&s.out, msg)
+	fifo_push(&s.out, msg)
+	s.out_bytes += len(data)
 	ws_pump_send(m, h, s)
 	return true
 }
+
+// The close code of a connection that had more to send than it may buffer (RFC 6455 7.4.1: Message Too Big).
+WS_CLOSE_TOO_BIG :: 1009
 
 // Bytes queued and not yet handed to the OS.
 websocket_buffered :: proc(c: ^Client, h: base.Handle) -> int {
 	if c.ws == nil { return 0 }
 	s := base.pool_get(&c.ws.sockets, h)
 	if s == nil { return 0 }
-	n := 0
-	for o in s.out { n += len(o.data) }
+	n := s.out_bytes
 	if s.has_cur { n += len(s.job.send_buf) - s.send_off }
 	return n
+}
+
+// Takes the first waiting message.
+@(private)
+out_take :: proc(s: ^Socket) -> Out_Msg {
+	msg := fifo_pop(&s.out)
+	s.out_bytes -= len(msg.data)
+	return msg
+}
+
+// Every waiting message dropped.
+@(private)
+out_clear :: proc(s: ^Socket) {
+	for o in fifo_slice(&s.out) { delete(o.data, heap()) }
+	fifo_clear(&s.out)
+	s.out_bytes = 0
 }
 
 // Starts the closing handshake once the queued messages are out. `reason` is cut at 123 bytes (the caller validates).
@@ -467,8 +497,8 @@ ws_release :: proc(m: ^Ws_Manager, h: base.Handle) -> bool {
 	ws_leave_connecting(m, &s)
 	delete(s.host_key, heap())
 	delete(s.peer_reason, heap())
-	for o in s.out { delete(o.data, heap()) }
-	delete(s.out)
+	out_clear(&s)
+	fifo_destroy(&s.out)
 	delete(s.msg)
 	if s.scope != nil { base.run_cleanup(s.scope, s.cleanup) }
 	if s.free_user != nil { s.free_user(s.user) }
@@ -507,9 +537,8 @@ ws_pump_send :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket) {
 	if s.sending || !(s.hws != nil || s.upgraded) || !(s.state == .Open || s.state == .Closing) || s.close_issued { return }
 	job := s.job
 	if !s.has_cur {
-		if len(s.out) == 0 { return }
-		msg := s.out[0]
-		ordered_remove(&s.out, 0)
+		if fifo_len(&s.out) == 0 { return }
+		msg := out_take(s)
 		job.send_buf = msg.data   // nil for an empty message: still one frame
 		s.cur_binary = msg.binary
 		s.send_off = 0
@@ -535,7 +564,7 @@ ws_pump_send :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket) {
 @(private)
 ws_try_close :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket) {
 	if s.close_issued || s.sending || !(s.hws != nil || s.upgraded) { return }
-	if s.close_wanted && (len(s.out) > 0 || s.has_cur) { return }
+	if s.close_wanted && (fifo_len(&s.out) > 0 || s.has_cur) { return }
 	s.close_issued = true
 	if s.limits.close_timeout_ms > 0 {
 		ws_clear_timer(m, s)
@@ -660,8 +689,7 @@ ws_handle :: proc(m: ^Ws_Manager, r: ^Raw) {
 			s.close_len = 0
 		}
 		// no new message starts after the peer's close frame (the one being sent may finish)
-		for o in s.out { delete(o.data, heap()) }
-		clear(&s.out)
+		out_clear(s)
 		if was_open {
 			ev := Ws_Event{kind = .Closing, sock = h, code = r.code, reason = s.peer_reason}
 			ws_deliver(s, &ev)

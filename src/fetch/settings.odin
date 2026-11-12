@@ -26,6 +26,8 @@ Settings :: struct {
 	block_active_mixed:     bool,     // scripts, fetches, styles over http from an https document
 	upgrade_passive_mixed:  bool,     // images, audio, video are upgraded to https instead of blocked
 	hsts:                   bool,
+	hsts_max_entries:       int,
+	hsts_max_age_s:         i64,
 	csp:                    bool,
 	fetch_metadata:         bool,     // Sec-Fetch-* request headers
 	file_access:            File_Access,
@@ -57,6 +59,10 @@ PREFS := [?]config.Def{
 	{name = "security.mixed_content.upgrade_passive", kind = .Bool, default = {b = true},
 		description = "Load images, audio and video over https instead of blocking them when an https page asks for http."},
 	{name = "network.hsts.enabled", kind = .Bool, default = {b = true}, description = "Remember Strict-Transport-Security and upgrade http to https for those hosts."},
+	{name = "network.hsts.max_entries", kind = .Int, default = {i = HSTS_MAX_ENTRIES}, bounded = true, min = 1, max = 10_000_000,
+		description = "Hosts remembered as https only. Past this, the host whose entry expires first is forgotten."},
+	{name = "network.hsts.max_age_s", kind = .Int, default = {i = HSTS_MAX_AGE_S}, bounded = true, min = 1, max = 10 * 365 * 86_400, unit = "s",
+		description = "Upper bound for the max-age of Strict-Transport-Security: a host is remembered at most this long after it last said so."},
 	{name = "security.csp.enabled", kind = .Bool, default = {b = true}, description = "Enforce the Content-Security-Policy of pages and workers (headers and <meta>): what they may fetch and connect to (connect-src, script-src, img-src...), inline scripts and handlers, eval, javascript: URLs. Off: no policy is taken from pages at all (a debugging aid: pages lose a protection)."},
 	{name = "network.fetch_metadata.enabled", kind = .Bool, default = {b = true}, description = "Send Sec-Fetch-Dest / Mode / Site / User to trustworthy servers."},
 	{name = "security.file_access.policy", kind = .String, default = {s = "own_tree"}, choices = {"own_tree", "none", "all"},
@@ -91,6 +97,8 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.block_active_mixed = config.bool_of(p, "security.mixed_content.block_active")
 	s.upgrade_passive_mixed = config.bool_of(p, "security.mixed_content.upgrade_passive")
 	s.hsts = config.bool_of(p, "network.hsts.enabled")
+	s.hsts_max_entries = int(config.int_of(p, "network.hsts.max_entries"))
+	s.hsts_max_age_s = config.int_of(p, "network.hsts.max_age_s")
 	s.csp = config.bool_of(p, "security.csp.enabled")
 	s.fetch_metadata = config.bool_of(p, "network.fetch_metadata.enabled")
 	switch config.string_of(p, "security.file_access.policy") {

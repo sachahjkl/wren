@@ -76,38 +76,36 @@ event_target_vt := Object_VTable{name = "EventTarget"}
 
 // The wrapper interface of an event the browser made, from its type (UI Events, HTML, CSSOM...).
 Event_interface :: proc(c: ^Call, event: Api_Event) -> u32 {
-	switch event.data.type {
-	case "click", "dblclick", "auxclick", "mousedown", "mouseup", "mousemove", "mouseover", "mouseout", "mouseenter",
-	     "mouseleave", "contextmenu":
-		return JS_IFACE_MouseEvent
-	case "pointerdown", "pointerup", "pointermove", "pointerover", "pointerout", "pointerenter", "pointerleave",
-	     "pointercancel", "gotpointercapture", "lostpointercapture":
-		return JS_IFACE_PointerEvent
-	case "dragstart", "drag", "dragenter", "dragleave", "dragover", "drop", "dragend": return JS_IFACE_DragEvent
-	case "touchstart", "touchmove", "touchend", "touchcancel": return JS_IFACE_TouchEvent
-	case "wheel": return JS_IFACE_WheelEvent
-	case "keydown", "keyup", "keypress": return JS_IFACE_KeyboardEvent
-	case "focus", "blur", "focusin", "focusout": return JS_IFACE_FocusEvent
-	case "input", "beforeinput": return JS_IFACE_InputEvent
-	case "compositionstart", "compositionupdate", "compositionend": return JS_IFACE_CompositionEvent
-	case "message", "messageerror": return JS_IFACE_MessageEvent
-	case "hashchange": return JS_IFACE_HashChangeEvent
-	case "popstate": return JS_IFACE_PopStateEvent
-	case "storage": return JS_IFACE_StorageEvent
-	case "close": if is_object(u64(event.data.target)) { return JS_IFACE_CloseEvent }
-	case "change": if mql_get(c.page, u64(event.data.target)) != nil { return JS_IFACE_MediaQueryListEvent }
-	case "submit": return JS_IFACE_SubmitEvent
-	case "formdata": return JS_IFACE_FormDataEvent
-	case "toggle", "beforetoggle": return JS_IFACE_ToggleEvent
-	case "transitionrun", "transitionstart", "transitionend", "transitioncancel": return JS_IFACE_TransitionEvent
-	case "animationstart", "animationend", "animationiteration", "animationcancel": return JS_IFACE_AnimationEvent
-	case "pageshow", "pagehide": return JS_IFACE_PageTransitionEvent
-	case "beforeunload": return JS_IFACE_BeforeUnloadEvent
-	case "finish", "cancel", "remove":
+	// (the event type's class: one table read, dom/event_types.odin)
+	switch dom.event_info(event_atom_of(event.data)).class {
+	case .Event: return JS_IFACE_Event
+	case .Mouse: return JS_IFACE_MouseEvent
+	case .Pointer: return JS_IFACE_PointerEvent
+	case .Drag: return JS_IFACE_DragEvent
+	case .Touch: return JS_IFACE_TouchEvent
+	case .Wheel: return JS_IFACE_WheelEvent
+	case .Keyboard: return JS_IFACE_KeyboardEvent
+	case .Focus: return JS_IFACE_FocusEvent
+	case .Input: return JS_IFACE_InputEvent
+	case .Composition: return JS_IFACE_CompositionEvent
+	case .Message: return JS_IFACE_MessageEvent
+	case .Hash_Change: return JS_IFACE_HashChangeEvent
+	case .Pop_State: return JS_IFACE_PopStateEvent
+	case .Storage: return JS_IFACE_StorageEvent
+	case .Close: if is_object(u64(event.data.target)) { return JS_IFACE_CloseEvent }
+	case .Change: if mql_get(c.page, u64(event.data.target)) != nil { return JS_IFACE_MediaQueryListEvent }
+	case .Submit: return JS_IFACE_SubmitEvent
+	case .Form_Data: return JS_IFACE_FormDataEvent
+	case .Toggle: return JS_IFACE_ToggleEvent
+	case .Transition: return JS_IFACE_TransitionEvent
+	case .Animation: return JS_IFACE_AnimationEvent
+	case .Page_Transition: return JS_IFACE_PageTransitionEvent
+	case .Before_Unload: return JS_IFACE_BeforeUnloadEvent
+	case .Playback:
 		if object_data(c.page, u64(event.data.target), &web_animation_vt) != nil { return JS_IFACE_AnimationPlaybackEvent }
-	case "progress", "loadstart", "loadend", "abort", "timeout":
+	case .Progress:
 		if is_object(u64(event.data.target)) { return JS_IFACE_ProgressEvent }
-	case "error":
+	case .Error:
 		t := u64(event.data.target)
 		// a worker's uncaught error at its Worker object is an ErrorEvent too (worker.odin: message, filename)
 		if event.data.data != "" && (!is_object(t) || object_data(c.page, t, &worker_vt) != nil || nested_of(c.page, t) != nil) { return JS_IFACE_ErrorEvent }

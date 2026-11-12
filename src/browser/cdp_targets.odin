@@ -161,7 +161,9 @@ cdp_emit :: proc(cl: ^Cdp_Client, method, params: string) {
 cdp_write_active_port :: proc(app: ^App) {
 	path := strings.concatenate({app.profile_dir, "/DevToolsActivePort"}, context.temp_allocator)
 	body := fmt.tprintf("%d\n/devtools/browser\n", the_cdp.port)
-	_ = os.write_entire_file(path, transmute([]byte)body)
+	// (written once when the endpoint opens: a tool that cannot find it is told why in the log and a toast)
+	health: Write_Health
+	profile_write_report(&health, path, base.file_write_atomic(path, transmute([]byte)body), tell = profile_can_tell(app))
 }
 
 @(private)

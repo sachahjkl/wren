@@ -297,23 +297,39 @@ oriented :: proc(w, h: int, o: u8) -> (int, int) { return o >= 5 && o <= 8 ? h :
 apply_orientation :: proc(src: []u8, w, h: int, o: u8, allocator := context.allocator) -> (dst: []u8, dw, dh: int) {
 	dw, dh = oriented(w, h, o)
 	dst = make([]u8, len(src), allocator)
-	if o <= 1 || o > 8 { copy(dst, src); return }
-	for y in 0 ..< h {
-		for x in 0 ..< w {
-			// where the stored pixel (x, y) lands in the upright image
-			nx, ny: int
-			switch o {
-			case 2: nx, ny = w - 1 - x, y              // mirrored horizontally
-			case 3: nx, ny = w - 1 - x, h - 1 - y      // rotated 180
-			case 4: nx, ny = x, h - 1 - y              // mirrored vertically
-			case 5: nx, ny = y, x                      // transposed
-			case 6: nx, ny = h - 1 - y, x              // rotated 90 clockwise
-			case 7: nx, ny = h - 1 - y, w - 1 - x      // transversed
-			case 8: nx, ny = y, w - 1 - x              // rotated 90 counter-clockwise
+	if o <= 1 || o > 8 || w <= 0 || h <= 0 || len(src) < w * h * 4 { copy(dst, src); return }
+	// where the stored pixel (x, y) lands in the upright image:
+	//   2 mirrored horizontally (w - 1 - x, y)    3 rotated 180 (w - 1 - x, h - 1 - y)    4 mirrored vertically (x, h - 1 - y)
+	//   5 transposed (y, x)    6 rotated 90 clockwise (h - 1 - y, x)    7 transversed (h - 1 - y, w - 1 - x)
+	//   8 rotated 90 counter-clockwise (y, w - 1 - x)
+	// The case is chosen once, not per pixel; a pixel moves as one 4-byte value.
+	Px :: [4]u8
+	s := ([^]Px)(raw_data(src))[:w * h]
+	d := ([^]Px)(raw_data(dst))[:w * h]
+	switch o {
+	case 2, 3, 4:
+		// rows stay rows: each is copied, reversed or not, to its row
+		for y in 0 ..< h {
+			from := s[y * w:][:w]
+			to := d[(o == 2 ? y : h - 1 - y) * w:][:w]
+			if o == 4 {
+				copy(to, from)
+			} else {
+				for x in 0 ..< w { to[w - 1 - x] = from[x] }
 			}
-			s := (y * w + x) * 4
-			d := (ny * dw + nx) * 4
-			dst[d], dst[d + 1], dst[d + 2], dst[d + 3] = src[s], src[s + 1], src[s + 2], src[s + 3]
+		}
+	case:
+		// rows become columns: done in tiles, so that both the rows read and the rows written stay in the cache
+		TILE :: 32
+		flip_x := o == 7 || o == 8   // the stored x counts from the bottom of the upright image
+		flip_y := o == 6 || o == 7   // the stored y counts from the right of the upright image
+		for ty := 0; ty < h; ty += TILE {
+			for tx := 0; tx < w; tx += TILE {
+				for x in tx ..< min(tx + TILE, w) {
+					to := d[(flip_x ? w - 1 - x : x) * dw:][:dw]
+					for y in ty ..< min(ty + TILE, h) { to[flip_y ? h - 1 - y : y] = s[y * w + x] }
+				}
+			}
 		}
 	}
 	return

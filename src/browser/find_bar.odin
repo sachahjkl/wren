@@ -25,6 +25,7 @@ Find_Match :: struct { start, end: lay.Text_Pos }
 Find_Span :: struct { lo, hi: int, match: int }   // a match's part in one text node
 
 Find_State :: struct {
+	said_closed: bool,                   // find_paint_item logged its matches painted with the bar closed (once)
 	open:       bool,
 	focus:      bool,                    // give the field the focus at the next build
 	field:      ui.Text_Field,
@@ -235,8 +236,7 @@ find_paint_item :: proc(fs: ^Find_State, l: ^Layout, dc: ^draw.Context, it: ^lay
 	// reached once with the bar closed (find.page nil: an access violation on the 3D transforms demo, 22/10, cause
 	// not found); the painter's state said otherwise: said once in the log, the highlight is skipped
 	if !fs.open || fs.page == nil {
-		@(static) said: bool
-		if !said { said = true; log.errorf("find: matches painted with the find bar closed (open %v, page %p)", fs.open, fs.page) }
+		if !fs.said_closed { fs.said_closed = true; log.errorf("find: matches painted with the find bar closed (open %v, page %p)", fs.open, fs.page) }
 		return
 	}
 	d := fs.page.doc
@@ -256,6 +256,7 @@ find_paint_item :: proc(fs: ^Find_State, l: ^Layout, dc: ^draw.Context, it: ^lay
 		x0, x1 := min(ca, cb), max(ca, cb)
 		span := .Vertical in it.flags ? draw.Rect{{r.min.x, r.min.y + x0}, {r.max.x, r.min.y + x1}} : draw.Rect{{r.min.x + x0, r.min.y}, {r.min.x + x1, r.max.y}}
 		draw.rect(dc, span, s.match == fs.active ? act : bg, 2 * active_window(the_app).ui.scale)
+		the_app.spaint.painted = true   // (the chunk recorded now holds a highlight: compositor.odin)
 	}
 }
 

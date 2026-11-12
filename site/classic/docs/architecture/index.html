@@ -72,7 +72,7 @@ loop thread. The DOM and the Wasm instances of a page live on the UI thread (wor
 ambient credentials. <code>fetch</code> decides, per hop, on the UI thread, with the document's Environment in hand. A guest, a
 module load and a navigation all go through the same code, so there is one place where "may this request happen"
 is answered.</li>
-<li><strong>Bounded everything, with a reason each.</strong> Per-host (6) and global (64) request limits in our own priority queues
+<li><strong>Bounded everything, with a reason each.</strong> Per-host (6) and global (256) request limits in our own priority queues
 (so waiting never counts against connect timeouts); reading pauses when 1 MB is queued for a request; <code>max_body</code>
 caps a response; at most 20 redirects (the Fetch Standard's number); cookies: at most 180 per site and 3000 in
 total with LRU eviction; at most 1000 preflight cache entries; guest memory is capped; every host → guest call has
@@ -279,8 +279,9 @@ domain).</li>
 cache with max-age. Cross-origin Wasm modules need CORS; modules must be <code>application/wasm</code>.</li>
 <li><strong>Cookies</strong>: stored and sent only by <code>fetch</code> (WinHTTP's are off). <code>Secure</code> needs a secure context (localhost
 counts), <code>__Secure-</code> / <code>__Host-</code> prefixes, <code>SameSite</code> (default Lax, <code>None</code> needs <code>Secure</code>), HttpOnly invisible to
-scripts, "leave Secure cookies alone", Domain checked against the PSL. <strong>Third-party cookies are blocked by
-default</strong>. <code>document.cookie</code> exists only for tuple origins.</li>
+scripts, "leave Secure cookies alone", Domain checked against the PSL. <strong>Third-party cookies are allowed by default</strong>
+(<code>privacy.third_party_cookies</code>, Chromium's default: SameSite applies, and they are partitioned per top-level site,
+<code>storage.partitioned</code>). <code>document.cookie</code> exists only for tuple origins.</li>
 <li><strong>HSTS</strong>, <strong>referrer policy</strong> (header, <code>&lt;meta&gt;</code>, per request), <strong>mixed content</strong> (blocked; images auto-upgraded),
 <strong>bad ports</strong>, <strong>Fetch Metadata</strong> headers (<code>Sec-Fetch-*</code>), <strong>CSP</strong> (headers and <code>&lt;meta&gt;</code>, report-only,
 <code>upgrade-insecure-requests</code>, <code>block-all-mixed-content</code>; <code>script-src</code> governs Wasm modules, <code>worker-src</code> workers).</li>

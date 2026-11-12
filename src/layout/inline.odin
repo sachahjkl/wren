@@ -39,6 +39,77 @@ Seg_Iter :: struct {
 	bidi:       ^Bidi_Para,   // nil: every level is 0
 }
 
+// The segments measured by a pass (Ctx.seg_cache), for the next layouts of the same context in that pass: a flex item
+// measured then laid out at its final size, the probes of text-wrap: balance, the intrinsic widths and the lines. Only
+// the edges of inline boxes follow the width (resolved again when read); words and spaces keep theirs. A context laid
+// out once (most of them, in a page load) keeps nothing: its second layout keeps what it measures.
+@(private)
+Seg_Cache :: struct {
+	segs: [dynamic]Seg,
+	of:   map[i32]Seg_Entry,
+	seen: []u64,              // per box: a context measured once already in this pass
+}
+
+@(private)
+Seg_Entry :: struct {
+	items: [2]i32,            // the context's items when measured
+	segs:  [2]i32,            // into Seg_Cache.segs
+	bidi:  bool,              // measured as a bidi paragraph (levels set, split where they change)
+	kept:  bool,              // also kept for later passes (keep_segs)
+}
+
+// The segments of context `bi` this pass measured, as a bidi paragraph or not; ok = false: none.
+@(private)
+pass_segs_find :: proc(c: ^Ctx, bi: i32, bidi: bool) -> (e: Seg_Entry, ok: bool) {
+	sc := c.seg_cache
+	if sc == nil || sc.of == nil || int(bi) >= len(sc.seen) * 64 { return }
+	if sc.seen[bi >> 6] & (u64(1) << u32(bi & 63)) == 0 { return }
+	found: bool
+	e, found = sc.of[bi]
+	if !found { return {}, false }
+	if e.bidi != bidi || e.items != c.l.boxes[bi].items { return {}, false }
+	return e, true
+}
+
+// Whether the segments context `bi` is about to measure are worth keeping for the rest of the pass: `now` (the probes
+// of a balanced context, its intrinsic widths: lines follow), or it was measured once already in this pass.
+@(private)
+pass_segs_wanted :: proc(c: ^Ctx, bi: i32, now: bool) -> bool {
+	sc := c.seg_cache
+	if sc == nil { return false }
+	if sc.seen == nil {
+		sc.seen = make([]u64, (len(c.l.boxes) + 63) / 64, context.temp_allocator)
+		sc.segs = make([dynamic]Seg, 0, 256, context.temp_allocator)
+		sc.of = make(map[i32]Seg_Entry, 64, context.temp_allocator)
+	}
+	if int(bi) >= len(sc.seen) * 64 { return false }   // (a box made since the first: not tracked)
+	bit := u64(1) << u32(bi & 63)
+	seen := sc.seen[bi >> 6] & bit != 0
+	sc.seen[bi >> 6] |= bit
+	return now || seen
+}
+
+@(private)
+pass_segs_keep :: proc(c: ^Ctx, bi: i32, segs: []Seg, bidi, kept: bool) {
+	sc := c.seg_cache
+	n := i32(len(sc.segs))
+	append(&sc.segs, ..segs)
+	sc.of[bi] = Seg_Entry{items = c.l.boxes[bi].items, segs = {n, i32(len(sc.segs))}, bidi = bidi, kept = kept}
+}
+
+// The width of the edge of an inline box a cached segment is (Open, Close), as next_seg finds it at percentage base `cw`.
+@(private)
+seg_edge :: proc(c: ^Ctx, s: ^Seg, cw: f32) {
+	if s.kind == .Open {
+		ib := &c.l.boxes[c.l.inline_items[s.item].box]
+		resolve_box_model(c, ib, cw)
+		s.w = ib.margin[3] + ib.border[3] + ib.padding[3]
+	} else if s.kind == .Close {
+		ib := &c.l.boxes[c.l.inline_items[s.item].box]
+		s.w = ib.margin[1] + ib.border[1] + ib.padding[1]
+	}
+}
+
 @(private)
 is_ws :: #force_inline proc(b: u8) -> bool { return b == ' ' || b == '\t' || b == '\n' || b == '\r' || b == '\f' }
 
@@ -102,6 +173,43 @@ text_width :: proc(c: ^Ctx, fi: i32, cs: ^style.Computed, s: string) -> f32 {
 		for i := 0; i + 1 < len(s); i += 1 { if s[i] == 0xC2 && s[i + 1] == 0xA0 { w += cs.word_spacing * c.scale } }
 	}
 	return w
+}
+
+// Text_Api.char_widths applies to text of this font and style: each code point's width is the callback's plus the
+// spacing text_width adds (letter-spacing shaped as drawn and vertical text are measured otherwise).
+@(private)
+char_widths_apply :: proc(c: ^Ctx, fi: i32, cs: ^style.Computed) -> bool {
+	if c.text.char_widths == nil { return false }
+	if c.l.frames_on && c.l.fonts[fi].vmode == .Central { return false }
+	return cs.letter_spacing == 0 || c.text.width_spaced == nil
+}
+
+// The width text_width gives each code point of `s` alone, at the index of its first byte (the other entries 0): one
+// call to the shell when char_widths_apply, else one per code point.
+@(private)
+char_widths :: proc(c: ^Ctx, fi: i32, cs: ^style.Computed, s: string) -> []f32 {
+	out := make([]f32, len(s), context.temp_allocator)
+	if !char_widths_apply(c, fi, cs) {
+		for i := 0; i < len(s); {
+			_, n := utf8.decode_rune_in_string(s[i:])
+			out[i] = text_width(c, fi, cs, s[i:i + n])
+			i += n
+		}
+		return out
+	}
+	f := &c.l.fonts[fi]
+	c.text.char_widths(c.text.user, f.font, f.size, s, out)
+	// (as text_width adds them to a string of one code point, in the same order)
+	for i := 0; i < len(s); {
+		_, n := utf8.decode_rune_in_string(s[i:])
+		w := out[i]
+		if cs.letter_spacing != 0 { w += cs.letter_spacing * c.scale * 1 }
+		if cs.word_spacing != 0 && n == 2 && s[i] == 0xC2 && s[i + 1] == 0xA0 { w += cs.word_spacing * c.scale }
+		out[i] = w
+		for j in i + 1 ..< i + n { out[j] = 0 }
+		i += n
+	}
+	return out
 }
 
 @(private)
@@ -466,10 +574,11 @@ split_unit :: proc(lb: ^Line_Builder) {
 		if s.kind != .Text || !s.breakable { place_seg(lb, s); continue }
 		it := &c.l.inline_items[s.item]
 		text := it.text
+		widths := char_widths(c, it.fi, it.cs, text[s.start:s.end])
 		i := int(s.start)
 		for i < int(s.end) {
 			_, n := utf8.decode_rune_in_string(text[i:])
-			rw := text_width(c, it.fi, it.cs, text[i:i + n])
+			rw := widths[i - int(s.start)]
 			if !lb.empty && lb.pen + rw > lb.right - lb.left + 0.01 { finish_line(lb, false, false) }
 			emit_text(lb, s.item, i32(i), i32(i + n), rw, 0, s.level)
 			lb.empty, lb.content = false, true
@@ -852,9 +961,12 @@ apply_ellipsis :: proc(lb: ^Line_Builder, right, baseline: f32) {
 			it := &c.l.inline_items[f.item]
 			x := f.x
 			keep := 0
+			// (one call for the whole fragment when the shell measures code points at once; else only those that fit)
+			widths: []f32
+			if char_widths_apply(c, f.fi, it.cs) { widths = char_widths(c, f.fi, it.cs, f.text) }
 			for keep < len(f.text) {
 				_, n := utf8.decode_rune_in_string(f.text[keep:])
-				rw := text_width(c, f.fi, it.cs, f.text[keep:keep + n])
+				rw := widths != nil ? widths[keep] : text_width(c, f.fi, it.cs, f.text[keep:keep + n])
 				if x + rw > limit { break }
 				x += rw
 				keep += n
@@ -898,19 +1010,8 @@ line_float :: proc(lb: ^Line_Builder, k: i32) {
 	if len(lb.pending_floats) == 0 {
 		// lay it out to know its width (cached for the placement)
 		resolve_box_model(c, &c.l.boxes[k], lb.cw)
-		kb := &c.l.boxes[k]
-		w: f32
-		if kb.kind == .Replaced {
-			w = replaced_size(c, k, lb.cw, -1).x
-		} else if kb.kind == .Table {
-			w = table_width(c, k, lb.cw, lb.cw - mg_w(kb))
-		} else if spec, ok := to_border_w(c, kb, kb.cs.width, lb.cw); ok {
-			w = clamp_w(c, kb, spec, lb.cw)
-		} else {
-			w = clamp_w(c, kb, shrink_to_fit(c, k, lb.cw - mg_w(kb)), lb.cw)
-		}
-		kb = &c.l.boxes[k]
-		mw := w + mg_w(kb)
+		w := used_width_shrink(c, k, lb.cw)
+		mw := w + mg_w(&c.l.boxes[k])
 		if lb.pen + pending_w + mw <= lb.right - lb.left + 0.01 || (lb.empty && len(lb.unit) == 0) {
 			place_float(c, k, lb.bi, lb.cw, lb.fc, content_top(lb.fc) + lb.y)
 			lb_band(lb)
@@ -929,22 +1030,7 @@ layout_atomic :: proc(c: ^Ctx, k: i32, cw: f32, ch: f32 = -1) -> f32 {
 	if kb.auto_r { kb.margin[1] = 0 }
 	if kb.auto_t { kb.margin[0] = 0 }
 	if kb.auto_b { kb.margin[2] = 0 }
-	w: f32
-	if kb.kind == .Replaced {
-		w = replaced_size(c, k, cw, ch).x
-	} else if kb.kind == .Table {
-		w = table_width(c, k, cw, cw - mg_w(kb))
-	} else if spec, ok := to_border_w(c, kb, kb.cs.width, cw); ok {
-		w = clamp_w(c, kb, spec, cw)
-	} else {
-		#partial switch kb.cs.width.kind {
-		case .Min_Content: w = intrinsic(c, k)[0]
-		case .Max_Content: w = intrinsic(c, k)[1]
-		case: w = shrink_to_fit(c, k, cw - mg_w(kb))
-		}
-		kb = &c.l.boxes[k]
-		w = clamp_w(c, kb, w, cw)
-	}
+	w := used_width_shrink(c, k, cw, ch)
 	layout_contents(c, k, w, ch, -1, nil)
 	kb = &c.l.boxes[k]
 	return w + mg_w(kb)
@@ -992,9 +1078,9 @@ ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32 = -1) -> (ou
 		_, lines0, _, _, _ := ifc_build_at(c, bi, cw, fc, ch, 0, true)
 		n := len(lines0)
 		trim: f32 = 0
-		if n > 1 && n <= BALANCE_MAX_LINES {
+		if n > 1 && n <= c.set.balance_max_lines {
 			lo, hi := f32(0), cw
-			for _ in 0 ..< BALANCE_SEARCH_STEPS {
+			for _ in 0 ..< c.set.balance_steps {
 				mid := (lo + hi) * 0.5
 				_, l2, _, _, _ := ifc_build_at(c, bi, cw, fc, ch, mid, true)
 				if len(l2) <= n { lo = mid } else { hi = mid }
@@ -1005,13 +1091,6 @@ ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32 = -1) -> (ou
 	}
 	return ifc_build_at(c, bi, cw, fc, ch, 0, false)
 }
-
-// Blink balances up to six lines.
-@(private)
-BALANCE_MAX_LINES :: 6
-// Steps of the bisection for a balanced width.
-@(private)
-BALANCE_SEARCH_STEPS :: 10
 
 // Only plain text (and inline boxes around it): a float, an atomic inline, a <br> or a block inside would be laid out or
 // placed again by every probe.
@@ -1064,32 +1143,36 @@ ifc_build_at :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32, trim: f3
 	blocks := false
 	it := Seg_Iter{c = c, idx = b.items[0], end = b.items[1], cw = cw, bidi = lb.bidi}
 	// the segments of an unchanged context measured by an earlier pass (a resize lays every paragraph out again at a
-	// new width: its words keep their widths); else measured now and kept
+	// new width: its words keep their widths), or by an earlier layout in this pass; else measured now and kept
 	cached := cached_segs(c, bi)   // a range of Inc_State.segs: read by index (nested contexts may append to it)
-	ci := cached[0]
+	src := &c.l.inc.segs
 	measuring := cached[1] <= cached[0]
-	recording := measuring && c.inc != nil && !probe   // incremental passes only: a full pass (a page load) does not pay for it
+	pass_entry: Seg_Entry   // (a copy: the contexts of atomic inlines laid out below may grow the table)
+	from_pass := false
+	if measuring {
+		if e, ok := pass_segs_find(c, bi, lb.bidi != nil); ok {
+			cached, src, measuring, pass_entry, from_pass = e.segs, &c.seg_cache.segs, false, e, true
+		}
+	}
+	ci := cached[0]
+	// (a context laid out again in this pass, or probed for balance: its segments are kept for its next layouts)
+	storing := measuring && pass_segs_wanted(c, bi, probe)
+	// incremental passes only: a full pass (a page load) does not pay for it (a probe's segments when kept for the pass)
+	recording := measuring && c.inc != nil && (!probe || storing)
 	clear(&bufs.segs)
 	for {
 		s: Seg
 		ok: bool
 		if !measuring {
 			if ci >= cached[1] { break }
-			s, ok = c.l.inc.segs[ci], true
+			s, ok = src^[ci], true
 			ci += 1
-			if s.kind == .Open {
-				// edges of inline boxes resolve against the width: as next_seg does
-				ib := &c.l.boxes[c.l.inline_items[s.item].box]
-				resolve_box_model(c, ib, cw)
-				s.w = ib.margin[3] + ib.border[3] + ib.padding[3]
-			} else if s.kind == .Close {
-				ib := &c.l.boxes[c.l.inline_items[s.item].box]
-				s.w = ib.margin[1] + ib.border[1] + ib.padding[1]
-			}
+			// edges of inline boxes resolve against the width: as next_seg does
+			seg_edge(c, &s, cw)
 		} else {
 			s, ok = next_seg(&it)
 			if !ok { break }
-			if recording { append(&bufs.segs, s) }
+			if recording || storing { append(&bufs.segs, s) }
 		}
 		switch s.kind {
 		case .Text, .Space, .Tab, .Open, .Close:
@@ -1126,6 +1209,14 @@ ifc_build_at :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32, trim: f3
 	if recording {
 		// a layout thread hands them back: kept by the UI thread if the result is taken (pre_adopt)
 		if c.segs_out != nil { append(c.segs_out, ..bufs.segs[:]) } else { keep_segs(c, bi, bufs.segs[:]) }
+	}
+	if storing { pass_segs_keep(c, bi, bufs.segs[:], lb.bidi != nil, recording) }
+	if from_pass && !pass_entry.kept && c.inc != nil && !probe {
+		// measured in this pass by its intrinsic widths: kept for later passes as a layout would have
+		r := pass_entry.segs
+		pass_entry.kept = true
+		c.seg_cache.of[bi] = pass_entry
+		if c.segs_out != nil { append(c.segs_out, ..c.seg_cache.segs[r[0]:r[1]]) } else { keep_segs(c, bi, c.seg_cache.segs[r[0]:r[1]]) }
 	}
 	h = lb.y
 	if blocks && lb.block_margin != 0 && lb.block_end == lb.y && len(lb.lines) == lb.lines_at_block {
@@ -1262,9 +1353,27 @@ ifc_intrinsic :: proc(c: ^Ctx, bi: i32) -> [2]f32 {
 	if b.cs.text_indent.kind == .Px { line = b.cs.text_indent.v * c.scale; unit = line }
 	it := Seg_Iter{c = c, idx = b.items[0], end = b.items[1], cw = 0}
 	end_unit :: proc(mn, unit: ^f32) { mn^ = max(mn^, unit^); unit^ = 0 }
+	// the segments of its lines when they have no bidi levels (those of an earlier layout in this pass, or kept for
+	// those to come: a box sized by its content is laid out next)
+	ci, cend: i32
+	from_pass := false
+	if e, ok := pass_segs_find(c, bi, false); ok { ci, cend, from_pass = e.segs[0], e.segs[1], true }
+	store := !from_pass && pass_segs_wanted(c, bi, true)
+	measured: [dynamic]Seg
+	if store { measured = make([dynamic]Seg, 0, int(b.items[1] - b.items[0]) + 8, context.temp_allocator) }
 	for {
-		s, ok := next_seg(&it)
-		if !ok { break }
+		s: Seg
+		if from_pass {
+			if ci >= cend { break }
+			s = c.seg_cache.segs[ci]   // (by index: the contexts of atomic inlines measured below may append)
+			ci += 1
+			seg_edge(c, &s, 0)
+		} else {
+			ok: bool
+			s, ok = next_seg(&it)
+			if !ok { break }
+			if store { append(&measured, s) }
+		}
 		switch s.kind {
 		case .Text, .Open, .Close:
 			unit += s.w
@@ -1274,11 +1383,7 @@ ifc_intrinsic :: proc(c: ^Ctx, bi: i32) -> [2]f32 {
 				// may break anywhere: its widest character is what cannot be broken
 				itm := &c.l.inline_items[s.item]
 				widest: f32
-				for i := int(s.start); i < int(s.end); {
-					_, n := utf8.decode_rune_in_string(itm.text[i:])
-					widest = max(widest, text_width(c, itm.fi, itm.cs, itm.text[i:i + n]))
-					i += n
-				}
+				for w in char_widths(c, itm.fi, itm.cs, itm.text[s.start:s.end]) { widest = max(widest, w) }
 				unit = unit - s.w + widest
 				end_unit(&mn, &unit)
 			}
@@ -1323,5 +1428,6 @@ ifc_intrinsic :: proc(c: ^Ctx, bi: i32) -> [2]f32 {
 	}
 	end_unit(&mn, &unit)
 	mx = max(mx, line - tail)
+	if store { pass_segs_keep(c, bi, measured[:], false, false) }
 	return {mn, max(mx, mn)}
 }

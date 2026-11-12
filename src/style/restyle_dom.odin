@@ -314,13 +314,7 @@ apply_keyed :: proc(m: ^Marker, x: base.Handle, k: ^Keyed_Reach) {
 	if len(k.by_class) == 0 { return }
 	if cls, has := attr(n, "class"); has {
 		rest := cls
-		for len(rest) > 0 {
-			for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
-			end := 0
-			for end < len(rest) && !is_space(rest[end]) { end += 1 }
-			if end > 0 { if r, ok := k.by_class[rest[:end]]; ok { apply(m, x, r) } }
-			rest = rest[end:]
-		}
+		for c in token_next(&rest) { if r, ok := k.by_class[c]; ok { apply(m, x, r) } }
 	}
 }
 
@@ -412,13 +406,7 @@ carries_key :: proc(n: ^dom.Node, keys: ^Key_Lookup) -> bool {
 		case "id": if a.value in keys.ids { return true }
 		case "class":
 			rest := a.value
-			for len(rest) > 0 {
-				for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
-				end := 0
-				for end < len(rest) && !is_space(rest[end]) { end += 1 }
-				if end > 0 && rest[:end] in keys.classes { return true }
-				rest = rest[end:]
-			}
+			for c in token_next(&rest) { if c in keys.classes { return true } }
 		}
 	}
 	return false
@@ -426,13 +414,7 @@ carries_key :: proc(n: ^dom.Node, keys: ^Key_Lookup) -> bool {
 @(private = "file")
 each_class :: proc(v: string, out: ^map[string]bool) {
 	rest := v
-	for len(rest) > 0 {
-		for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
-		end := 0
-		for end < len(rest) && !is_space(rest[end]) { end += 1 }
-		if end > 0 { out[rest[:end]] = true }
-		rest = rest[end:]
-	}
+	for c in token_next(&rest) { out[c] = true }
 }
 
 // Could `el` match `comp` with its :has() taken as true (an anchor whose :has() may have changed)?
@@ -1640,7 +1622,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	exact := false   // the members of the exact :has() anchors are of the document before these mutations (watch_sync was made by a pass that came before)
 	if !shadows && ix.uses_has { exact = !watch_sync(ix, doc) }
 
-	class_bits_begin(e, doc)
+	class_bits_begin(e, doc, s.mutations, entries)
 	defer e.class_bits_live = false
 	m := Marker{e = e, s = s, doc = doc, ix = ix, shadows = shadows}
 	m.marks = make([]u8, int(doc.nodes.used), context.temp_allocator)
@@ -1652,6 +1634,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	m.flips = make(map[Flip_Key]bool, 16, context.temp_allocator)
 	m.has_walked = make(map[Has_Walk_Key]int, 16, context.temp_allocator)
 	match_ctx_init(&m.mc, doc, s.state, context.temp_allocator)
+	m.mc.max_steps = e.settings.match_max_steps
 	m.mc.class_bits = e.class_bits[:]
 	w := Walker{e = e, s = s, doc = doc, marks = m.marks}
 	w.p = pass_make(e, s, doc, s.state)
@@ -1765,8 +1748,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 		return w.changed > 0, false
 	}
 	if w.changed > 0 {
-		styled_serial += 1
-		s.serial = styled_serial
+		s.serial = styled_next_serial()
 		if w.layout_changed { s.layout_serial = s.serial }
 		journal_stamp(s)
 		update_canvas(s, doc)
@@ -1780,7 +1762,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 // (The transitions hear of it from `changes`: timeline_restyled.)
 @(private)
 styled_superseded :: proc(s: ^Styled) {
-	s.serial = sync.atomic_add(&styled_serial, 1) + 1   // (atomic: the style threads stamp too)
+	s.serial = styled_next_serial()
 }
 
 // Restyles `roots` in place: elements whose own rules changed and that no rule change reaches below (the elements that a flipped
@@ -1823,8 +1805,7 @@ restyle_roots :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, p: ^Pass, root
 	if w.motion { sync.atomic_store(&s.motion, true) }
 	e.last_restyle.changed = w.changed
 	if w.changed > 0 {
-		styled_serial += 1
-		s.serial = styled_serial
+		s.serial = styled_next_serial()
 		if w.layout_changed { s.layout_serial = s.serial }
 		journal_stamp(s)
 		update_canvas(s, doc)
@@ -2451,7 +2432,7 @@ is_below :: proc(doc: ^dom.Document, x, top: base.Handle) -> bool {
 @(private = "file")
 chain_holds :: proc(m: ^Marker, ha: ^Has_Anchor, a, x: base.Handle) -> bool {
 	if !ha.chain { return true }
-	return match_chain(&m.mc, x, ha.cx, len(ha.cx.compounds) - 1, a, 0)
+	return chain_matches(&m.mc, x, ha.cx, a, false)
 }
 
 // Is `h` or an ancestor of it among the elements inserted (and not moved) in this batch?

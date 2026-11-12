@@ -26,6 +26,12 @@ Settings :: struct {
 	recycle_bytes:       int,       // largest style memory kept from one full pass for the next
 	custom_max_layers:   int,       // layers of custom properties a lookup may walk (custom_props.odin)
 	inline_cache_entries: int,      // compiled style attributes (and CSSOM declarations) kept per pass (inline_cache.odin)
+	max_parse_errors_kept: int,     // parse errors a sheet keeps the text of (css.Parse_Options.max_errors_kept)
+	match_max_steps:     int,       // steps of one selector match (Match_Ctx.max_steps)
+	matched_max_bytes:   int,       // memory of the lists of what elements matched (matched.odin)
+	hint_cache_entries:  int,       // compiled presentational hints kept per pass (hints.odin)
+	key_sets_max_bytes:  int,       // memory of the invalidation indexes' subject keys kept across rebuilds (invalidation.odin)
+	var_parsed_bytes:    int,       // memory of the custom property texts a pass keeps parsed for var() (cascade.odin Var_Parsed)
 	ua_stylesheet:       bool,
 	author_stylesheets:  bool,      // false: pages are shown with the browser's styles only
 	author_colors:       bool,      // false: the page's colors are ignored (high-contrast reading)
@@ -138,6 +144,18 @@ PREFS := [?]config.Def{
 		description = "An element that sets custom properties (--x) keeps only its own over the ones it inherits; past this many such layers under it, it gets a copy of all of them instead. Fewer: faster var() lookups, more memory on pages that set variables on many elements. 0 = always a copy."},
 	{name = "style.inline_cache.entries", kind = .Int, default = {i = 8192}, bounded = true, min = 0, max = 1 << 24, unit = "style attributes",
 		description = "Compiled style attributes kept by text until the next full restyle, so that restyling an element (or many elements with the same style attribute) does not parse it again, and a value a script sets through element.style is compiled once. The same number of single declarations is kept for scripts. 0 = parse at every restyle."},
+	{name = "style.max_parse_errors_kept", kind = .Int, default = {i = 100}, bounded = true, min = 0, max = 100_000, unit = "errors",
+		description = "Parse errors of one stylesheet whose text is kept for the console and the developer tools; the others are only counted."},
+	{name = "style.selector_match.max_steps", kind = .Int, default = {i = MATCH_MAX_STEPS_DEFAULT}, bounded = true, min = 1000, max = 1 << 40, unit = "steps",
+		description = "Most steps (an element tried against a compound selector) one selector may take to match one element, what its :is(), :not() and :has() try included; past it the selector does not match that element. A safety net against selectors built to be slow: ordinary pages stay far below it."},
+	{name = "style.matched.max_bytes", kind = .Int, default = {i = 16 << 20}, bounded = true, min = 0, max = 1 << 34, bytes = true, unit = "bytes",
+		description = "Memory for the lists of what elements matched, kept so that an element restyled only for what it inherits is not matched again; past it no new list is kept until the next full pass. 0: none kept."},
+	{name = "style.presentational_hints.cache_entries", kind = .Int, default = {i = 4096}, bounded = true, min = 0, max = 1 << 24, unit = "hints",
+		description = "Compiled presentational hints (the CSS an element's align, bgcolor, width... attributes map to) kept by text until the next full restyle, so that rows of a table with the same attributes parse it once. 0 = parse for every element."},
+	{name = "style.invalidation.key_sets_max_bytes", kind = .Int, default = {i = 4 << 20}, bounded = true, min = 0, max = 1 << 32, bytes = true, unit = "bytes",
+		description = "The class, id and tag names that the restyle after a DOM change looks for are kept from one rebuild of the rules to the next, so that the same rules do not name them again. Past this memory they are dropped at the next rebuild and named again from the rules then in force (a page that loads new stylesheets for hours)."},
+	{name = "style.custom_properties.parsed_cache_bytes", kind = .Int, default = {i = 4 << 20}, bounded = true, min = 0, max = 1 << 32, bytes = true, unit = "bytes",
+		description = "The values of custom properties (--x) that var() reads are kept parsed during a style pass, so that a variable declared once and read by every element is parsed once per pass and style thread, not once per element. Past this memory the kept values are dropped and parsed again. 0: parse at every var()."},
 	{name = "style.ua_stylesheet.enabled", kind = .Bool, default = {b = true}, description = "Use the browser's default styles (headings, lists, links...). Without them pages are unstyled."},
 	{name = "style.author_stylesheets.enabled", kind = .Bool, default = {b = true}, description = "Apply the styles that pages bring. Off: every page is shown with browser styles only."},
 	{name = "style.author_colors.enabled", kind = .Bool, default = {b = true}, description = "Let pages set colors. Off: color and background properties from pages are ignored."},
@@ -248,6 +266,12 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.recycle_bytes = int(config.int_of(p, "style.recycle_bytes"))
 	s.custom_max_layers = int(config.int_of(p, "style.custom_properties.max_layers"))
 	s.inline_cache_entries = int(config.int_of(p, "style.inline_cache.entries"))
+	s.max_parse_errors_kept = int(config.int_of(p, "style.max_parse_errors_kept"))
+	s.match_max_steps = int(config.int_of(p, "style.selector_match.max_steps"))
+	s.matched_max_bytes = int(config.int_of(p, "style.matched.max_bytes"))
+	s.hint_cache_entries = int(config.int_of(p, "style.presentational_hints.cache_entries"))
+	s.key_sets_max_bytes = int(config.int_of(p, "style.invalidation.key_sets_max_bytes"))
+	s.var_parsed_bytes = int(config.int_of(p, "style.custom_properties.parsed_cache_bytes"))
 	s.ua_stylesheet = config.bool_of(p, "style.ua_stylesheet.enabled")
 	s.author_stylesheets = config.bool_of(p, "style.author_stylesheets.enabled")
 	s.author_colors = config.bool_of(p, "style.author_colors.enabled")
@@ -328,7 +352,7 @@ settings_destroy :: proc(s: ^Settings) {
 }
 
 parse_options :: proc(s: ^Settings) -> css.Parse_Options {
-	return css.Parse_Options{max_nesting_depth = s.max_nesting_depth, max_rules = s.max_rules_per_sheet}
+	return css.Parse_Options{max_nesting_depth = s.max_nesting_depth, max_rules = s.max_rules_per_sheet, max_errors_kept = s.max_parse_errors_kept}
 }
 
 // The family name a generic keyword stands for.

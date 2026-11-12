@@ -53,6 +53,14 @@ Bytecode_Store :: struct {
 	atoms:   []Atom, // the stream's atoms, ATOM_NULL until read if atom_at has an offset
 	atom_at: []u32,
 	refs:    int,    // the functions, and a reader at work
+	marked:  int,    // the collection (Runtime.gc_count + 1) that marked its atoms last: once for all its functions
+}
+
+// The atoms a stream's functions use are those of its table: a live function keeps them (the atoms are weak, atom.odin).
+store_mark_atoms :: proc(rt: ^Runtime, s: ^Bytecode_Store) {
+	if s == nil || s.marked == rt.gc_count + 1 {return}
+	s.marked = rt.gc_count + 1
+	for a in s.atoms {mark_atom(rt, a)}
 }
 
 @(private = "file")

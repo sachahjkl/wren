@@ -4,6 +4,7 @@ package base
 
 import "base:intrinsics"
 import "core:fmt"
+import "core:simd"
 import "core:strconv"
 import "core:strings"
 import "core:unicode/utf8"
@@ -184,7 +185,62 @@ Escape :: enum u8 {
 }
 Escapes :: bit_set[Escape; u8]
 
+// Blocks of 16 bytes with none of the bytes to escape are skipped by one test (core:simd); a block with one goes byte by
+// byte. A byte `also` does not ask for is compared as '&' instead, so the test is the same whatever `also` is.
 write_escaped :: proc(b: ^strings.Builder, s: string, also: Escapes = {}) {
+	amp: V16 = u8('&')
+	lt: V16 = u8('<')
+	gt: V16 = u8('>')
+	q := u8('"') if .Quote in also else u8('&')
+	a := u8('\'') if .Apos in also else u8('&')
+	nb := u8(0xC2) if .Nbsp in also else u8('&')
+	quote: V16 = q
+	apos: V16 = a
+	nbsp: V16 = nb
+	p := raw_data(s)
+	n := len(s)
+	start := 0
+	i := 0
+	for i < n {
+		if i + 16 <= n {
+			v := intrinsics.unaligned_load((^V16)(&p[i]))
+			hit := simd.lanes_eq(v, amp) | simd.lanes_eq(v, lt) | simd.lanes_eq(v, gt) | simd.lanes_eq(v, quote) | simd.lanes_eq(v, apos) | simd.lanes_eq(v, nbsp)
+			if simd.reduce_or(hit) == 0 {
+				i += 16
+				continue
+			}
+		}
+		// this block byte by byte (a no-break space may end one byte past it)
+		stop := min(i + 16, n)
+		for i < stop {
+			rep := ""
+			width := 1
+			switch p[i] {
+			case '&': rep = "&amp;"
+			case '<': rep = "&lt;"
+			case '>': rep = "&gt;"
+			case '"': if .Quote in also { rep = "&quot;" }
+			case '\'': if .Apos in also { rep = "&#39;" }
+			case 0xC2: if .Nbsp in also && i + 1 < n && p[i + 1] == 0xA0 { rep, width = "&nbsp;", 2 }
+			}
+			if rep == "" {
+				i += 1
+				continue
+			}
+			strings.write_string(b, s[start:i])
+			strings.write_string(b, rep)
+			i += width
+			start = i
+		}
+	}
+	strings.write_string(b, s[start:])
+}
+
+@(private = "file") V16 :: #simd[16]u8
+
+// write_escaped byte by byte: the reference utf8_scan_test.odin compares it with.
+@(private)
+write_escaped_scalar :: proc(b: ^strings.Builder, s: string, also: Escapes = {}) {
 	start := 0
 	for i := 0; i < len(s); i += 1 {
 		rep := ""

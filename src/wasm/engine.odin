@@ -553,6 +553,7 @@ wt_leave :: proc(inst: ^Instance) {
 	guest_clock_leave()
 	inst.depth -= 1
 	if inst.depth == 0 {
+		oversized_drop(inst)   // a kept result must not outlive its task: the document can change before the next one
 		if inst.poll_word != nil { polls_leave(inst) }
 		sync.atomic_sub(&wt.running, 1)
 		inst.wt.deadline = {}

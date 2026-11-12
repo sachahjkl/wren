@@ -129,9 +129,11 @@ requests_are_logged_in_the_tab_they_run_in :: proc(t: ^testing.T) {
 	the_app = app   // (what the code reaches without an App: this one)
 	defer free(app)
 	tab := new(Tab)
-	tab.scope = base.scope_make("tab")
+	tab.id = 1
+	tab.scope = base.scope_make("tab")   // (a child of the process's scope, as tab_new makes it: the App's is nil here)
 	append(&app.bare.tabs, tab)
-	defer { delete(app.bare.tabs); net_log_destroy(&tab.net); base.scope_close(tab.scope); free(tab); net_destroy_owner(app) }
+	app.tab_ids[tab.id] = tab   // (as tab_new does: the observer finds tabs there)
+	defer { delete(app.bare.tabs); delete(app.tab_ids); net_log_destroy(&tab.net); base.scope_close(tab.scope); free(tab); net_destroy_owner(app) }
 
 	nav1 := base.scope_make("navigation", tab.scope)
 	page1 := base.scope_make("page", nav1)
@@ -151,11 +153,22 @@ requests_are_logged_in_the_tab_they_run_in :: proc(t: ^testing.T) {
 	testing.expect_value(t, e.type, Net_Type.Doc)
 	testing.expect(t, tab.net.entries[1].failed && tab.net.entries[1].error == "connection reset", "the failure is kept")
 	testing.expect_value(t, tab.net.bytes, i64(1234))
+	testing.expect_value(t, e.res_headers, "")   // the Network panel never showed this tab: no headers kept
+	testing.expect_value(t, tab.net.pending, 0)
+
+	// shown once: its requests keep their headers from then on
+	tab.net.detailed = true
+	net_observe(app, &fetch.Observed{kind = .Started, id = 5, scope = page1, method = "GET", url = "https://x.test/h"})
+	net_observe(app, &fetch.Observed{kind = .Response, id = 5, url = "https://x.test/h", status = 204, headers = "Server: t"})
+	testing.expect_value(t, tab.net.entries[2].res_headers, "Server: t")
+	testing.expect_value(t, tab.net.pending, 1)
+	net_observe(app, &fetch.Observed{kind = .Done, id = 5})
+	testing.expect_value(t, tab.net.pending, 0)
 
 	// a request of no tab is not logged
 	other := base.scope_make("elsewhere")
 	net_observe(app, &fetch.Observed{kind = .Started, id = 3, scope = other, method = "GET", url = "https://y.test/"})
-	testing.expect_value(t, len(tab.net.entries), 2)
+	testing.expect_value(t, len(tab.net.entries), 3)
 	base.scope_close(other)
 
 	// a new navigation: the list starts over

@@ -75,7 +75,7 @@ page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, 
 		t.scroll = clamp(t.scroll + shift, lo, hi)
 	}
 	job := Layout_Job{app, &t.layout, t, styled, size, scale, fonts_gen}
-	if !page_thread_wanted(app) || (t.layout_ms_known && t.layout_ms < config.float_of(&app.prefs, "browser.shell.page_thread_min_ms")) {
+	if !page_thread_wanted(app) || (t.layout_ms_known && t.layout_ms < app.cfg.page_thread_min_ms) {
 		layout_job_run(&job)
 		return
 	}
@@ -106,13 +106,13 @@ page_world_check :: #force_inline proc(what: string) {
 
 // The last layout pass of `t` was long enough for the page thread (and the preference allows it).
 page_layout_is_long :: proc(app: ^App, t: ^Tab) -> bool {
-	return t.layout_ms_known && config.bool_of(&app.prefs, "browser.shell.page_thread") && app.chrome_frames.cfg.preempt && t.layout_ms >= config.float_of(&app.prefs, "browser.shell.page_thread_min_ms")
+	return t.layout_ms_known && app.cfg.page_thread && app.chrome_frames.cfg.preempt && t.layout_ms >= app.cfg.page_thread_min_ms
 }
 
 // Chrome frames can be made now (the frame is in its page phase, not inside one), and the preference allows it.
 @(private = "file")
 page_thread_wanted :: proc(app: ^App) -> bool {
-	return config.bool_of(&app.prefs, "browser.shell.page_thread") && app.chrome_frames.cfg.preempt && app.chrome_frames.phase != .None && !app.chrome_frames.nested
+	return app.cfg.page_thread && app.chrome_frames.cfg.preempt && app.chrome_frames.phase != .None && !app.chrome_frames.nested
 }
 
 @(private = "file")

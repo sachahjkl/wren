@@ -15,10 +15,10 @@ package wasm
 // (addresses and lengths as i64, `wide_params`) is defined, shadowing it, for each module whose memory 0 is 64-bit
 // (module_cache.odin, `ensure_pre`), with the callback's `env` = WIDE so the same code reads i64 addresses.
 
-import "base:intrinsics"
+import "base:runtime"
 import "core:fmt"
+import "core:hash"
 import "core:strings"
-import "core:unicode/utf8"
 import "wb:base"
 
 Val_Kind :: enum u8 { I32, I64, F32, F64 }
@@ -243,17 +243,9 @@ span_slow :: proc "contextless" (inst: ^Instance, off, n: u64) -> ([^]u8, bool) 
 	return nil, false
 }
 
-// Whether `s` is UTF-8 (a `string` argument): ASCII is checked 8 bytes at a time, the rest by the decoder.
-valid_utf8 :: proc(s: string) -> bool {
-	p := raw_data(s)
-	i := 0
-	for i + 8 <= len(s) {
-		if intrinsics.unaligned_load((^u64)(&p[i])) & 0x8080_8080_8080_8080 != 0 { break }
-		i += 8
-	}
-	for i < len(s) && p[i] < 0x80 { i += 1 }
-	return i == len(s) || utf8.valid_string(s[i:])
-}
+// Whether `s` is UTF-8 (a `string` argument): ASCII runs 32 or 16 bytes at a time, the scan returning to them after each
+// multi-byte sequence (base.utf8_valid).
+valid_utf8 :: #force_inline proc "contextless" (s: string) -> bool { return base.utf8_valid(s) }
 
 // A string or bytes result: the full length (address-sized; negative = an Error).
 put_size :: #force_inline proc "contextless" (f: ^Frame, a: [^]Raw, n: i64) {
@@ -296,4 +288,109 @@ set_exception :: proc(inst: ^Instance, code: i32, message: string) {
 	if inst.exception_message == message { return }
 	delete(inst.exception_message, base.process_allocator())
 	inst.exception_message = strings.clone(message, base.process_allocator())
+}
+
+////////////////////////////////
+// The temporary memory of a host function
+
+// Implementations return their results in the temporary allocator (a serialization, a list of handles), which the loop
+// frees once per pass: a script task that makes a million calls would hold the memory of all of them. So each trampoline
+// takes a mark when it starts and goes back to it when it returns, once its result is in the guest's memory. Calls nest
+// (host -> guest -> host): each gives back only what was allocated after its own mark, newest first.
+when base.POISON_MEMORY {
+	Temp_Mark :: base.Poison_Arena_Temp
+} else {
+	Temp_Mark :: runtime.Arena_Temp
+}
+
+// A mark of the calling thread's temporary allocator: process_context's (the trampolines run in it). Another allocator
+// gets an empty mark, which temp_release ignores.
+temp_mark :: #force_inline proc() -> Temp_Mark {
+	when base.POISON_MEMORY {
+		if context.temp_allocator.procedure != base.poison_arena_proc { return {} }
+		return base.poison_arena_temp_begin((^base.Poison_Arena)(context.temp_allocator.data))
+	} else {
+		return runtime.default_temp_allocator_temp_begin()
+	}
+}
+
+// Frees what the temporary allocator gave since `m`. When a free_all ran meanwhile (a loop nested in the call), the
+// memory the mark names may be gone: nothing is given back then, the next pass of the loop frees it.
+temp_release :: proc(m: Temp_Mark) {
+	when base.POISON_MEMORY {
+		a := m.arena
+		if a == nil { return }
+		if m.chunk >= len(a.chunks) || (m.chunk >= 0 && a.chunks[m.chunk].used < m.used) { return }
+		base.poison_arena_temp_end(m)
+	} else {
+		a := m.arena
+		if a == nil { return }
+		if m.block != nil {
+			found := false
+			for b := a.curr_block; b != nil; b = b.prev {
+				if b == m.block { found = true; break }
+			}
+			if !found || m.block.used < m.used {
+				runtime.arena_temp_ignore(m)
+				return
+			}
+		}
+		runtime.arena_temp_end(m)
+	}
+}
+
+////////////////////////////////
+// A result larger than the guest's buffer
+
+// A string or bytes result the guest's buffer was too small for: the guest grows its buffer and calls again with the same
+// arguments. That call is answered from this copy, instead of running the implementation (a serialization of a whole
+// tree) a second time. The copy answers only the very next import call of the instance, and only when it is the same
+// function with the same arguments (their values and the bytes of their memory ranges): any other call drops it first,
+// and so do the end of the outermost call from the host (engine.odin, wt_leave) and the end of the instance.
+Oversized :: struct {
+	data:   []u8,   // from the process allocator
+	fn:     u32,    // the import's number (generated, from 1); 0: nothing kept
+	digest: u64,    // of the arguments (digest_value, digest_bytes)
+}
+
+DIGEST_SEED :: u64(0xcbf29ce484222325)   // FNV-1a's offset basis
+
+digest_value :: #force_inline proc "contextless" (d: u64, v: u64) -> u64 {
+	b := transmute([8]u8)v
+	return hash.fnv64a(b[:], d)
+}
+
+// The length is part of the digest: "ab" + "c" and "a" + "bc" differ.
+digest_bytes :: #force_inline proc "contextless" (d: u64, b: []u8) -> u64 {
+	return hash.fnv64a(b, digest_value(d, u64(len(b))))
+}
+
+// Keeps a copy of `result` for the retry of call `fn` with arguments `digest`.
+oversized_keep :: proc(inst: ^Instance, fn: u32, digest: u64, result: []u8) {
+	oversized_drop(inst)
+	data, err := make([]u8, len(result), base.process_allocator())
+	if err != nil { return }
+	copy(data, result)
+	inst.oversized = Oversized{data = data, fn = fn, digest = digest}
+}
+
+oversized_drop :: proc(inst: ^Instance) {
+	if inst.oversized.fn == 0 { return }
+	delete(inst.oversized.data, base.process_allocator())
+	inst.oversized = {}
+}
+
+// Answers call `fn` from the copy when it is the retry of the call that made it: true then, the result is in `out` and
+// its full length in `a`. Otherwise the copy goes, and the call runs.
+oversized_serve :: proc(f: ^Frame, a: [^]Raw, out: []u8, fn: u32, digest: u64) -> bool {
+	inst := f.inst
+	o := &inst.oversized
+	if o.fn != fn || o.digest != digest {
+		oversized_drop(inst)
+		return false
+	}
+	copy(out, o.data)
+	put_size(f, a, i64(len(o.data)))
+	if len(o.data) <= len(out) { oversized_drop(inst) }   // the guest has all of it now
+	return true
 }

@@ -52,10 +52,11 @@ map_new :: proc(ctx: ^Context, proto: ^Object, class: Class_ID) -> ^Object {
 	return o
 }
 
+// The index made again for `count` entries (the live ones; every entry while an iterator keeps the deleted ones in place).
 @(private = "file")
-map_rehash :: proc(rt: ^Runtime, ms: ^Map_State) {
+map_rehash :: proc(rt: ^Runtime, ms: ^Map_State, count: int) {
 	size := 16
-	for size < ms.live * 2 + 8 {size *= 2}
+	for size < count * 2 + 8 {size *= 2}
 	if ms.index != nil {delete(ms.index, rt_allocator(rt))}
 	ms.index = make([]i32, size, rt_allocator(rt))
 	mask := u32(size - 1)
@@ -125,7 +126,14 @@ map_set :: proc(rt: ^Runtime, ms: ^Map_State, key: Value, val: Value) {
 	ms.live += 1
 	if len(ms.entries) > MAP_LINEAR_MAX_ENTRIES {
 		if ms.index == nil || len(ms.entries) * 2 > len(ms.index) {
-			map_rehash(rt, ms)
+			// The index is full of entries, live or deleted. Sized from the live ones only, a loop of delete then set
+			// filled it again at the next insert and rebuilt it at each one: the deleted entries go first, else (an
+			// iterator holds their places) the index is sized for all of them.
+			if ms.iterators == 0 && ms.live < len(ms.entries) {
+				map_compact(rt, ms)
+			} else {
+				map_rehash(rt, ms, len(ms.entries))
+			}
 		} else {
 			mask := u32(len(ms.index) - 1)
 			h := map_hash(rt, k) & mask
@@ -168,7 +176,9 @@ map_compact :: proc(rt: ^Runtime, ms: ^Map_State) {
 		}
 	}
 	resize(&ms.entries, j)
-	if j > MAP_LINEAR_MAX_ENTRIES {map_rehash(rt, ms)} else if ms.index != nil {
+	// (room for half as many again: a loop of delete then set fills the index at the pace it deletes, and the next
+	// compaction must wait for a number of inserts in proportion to the entries it moves)
+	if j > MAP_LINEAR_MAX_ENTRIES {map_rehash(rt, ms, j + j / 2)} else if ms.index != nil {
 		delete(ms.index, rt_allocator(rt))
 		ms.index = nil
 	}

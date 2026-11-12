@@ -7,7 +7,7 @@ import "core:strings"
 import "core:testing"
 
 @(private = "file")
-OPT :: Parse_Options{max_nesting_depth = 512, max_rules = 100_000}
+OPT :: Parse_Options{max_nesting_depth = 512, max_rules = 100_000, max_errors_kept = 100}
 
 @(private = "file")
 Arena :: struct { a: base.Arena, alloc: Arena_Alloc }

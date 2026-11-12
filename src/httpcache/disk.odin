@@ -54,14 +54,14 @@ Op :: struct {
 	serial:    u64,
 	old:       u64,              // write: the file it replaces (deleted once the new one is there)
 	key:       string,           // read: heap
-	head:      []byte,           // write: header + metadata; save index: the whole file (heap)
+	head:      []byte,           // write: header + metadata, checksums still 0; save index: the keys and URLs of `records` (heap)
 	body:      ^Body,            // write
 	// results
 	ok:        bool,
 	meta:      Meta,             // read
 	read_body: ^Body,            // read
-	records:   [dynamic]Index_Record,   // load
-	next_serial: u64,            // load
+	records:   [dynamic]Index_Record,   // load (strings: heap, each); save index (strings: slices of `head`)
+	next_serial: u64,            // load; save index
 	changed:   bool,             // load: the index did not match the directory
 }
 
@@ -71,7 +71,9 @@ Disk :: struct {
 	dir:           string,
 	mu:            sync.Mutex,
 	cond:          sync.Cond,
+	// the writer's and the readers' queues, taken from wq[wq_head] and rq[rq_head] on (op_queue_pop)
 	wq, rq:        [dynamic]^Op,
+	wq_head, rq_head: int,
 	stopping:      bool,
 	writer:        ^host.Thread,
 	readers:       [dynamic]^host.Thread,
@@ -132,8 +134,8 @@ disk_close_raw :: proc(d: ^Disk) {
 	sync.mutex_unlock(&d.mu)
 	if d.writer != nil { host.thread_join(d.writer) }
 	for t in d.readers { host.thread_join(t) }
-	for op in d.wq { op_free(op) }
-	for op in d.rq { op_free(op) }
+	for op in d.wq[d.wq_head:] { op_free(op) }
+	for op in d.rq[d.rq_head:] { op_free(op) }
 	for op in d.done { op_free(op) }
 	a := heap()
 	delete(d.wq); delete(d.rq); delete(d.done); delete(d.readers)
@@ -149,9 +151,28 @@ op_free :: proc(op: ^Op) {
 	body_release(op.body)
 	body_release(op.read_body)
 	meta_destroy(&op.meta)
-	for &r in op.records { delete(r.key, a); delete(r.url, a) }
+	// (a snapshot's strings are slices of `head`)
+	if op.kind != .Save_Index { for &r in op.records { delete(r.key, a); delete(r.url, a) } }
 	delete(op.records)
 	free(op, a)
+}
+
+// Takes the first op of a queue of the disk (under d.mu). The slots before the head are given back once the queue is
+// empty, or once they are more than half of it: each op moves at most once.
+@(private)
+op_queue_pop :: proc(q: ^[dynamic]^Op, head: ^int) -> ^Op {
+	op := q^[head^]
+	q^[head^] = nil
+	head^ += 1
+	if head^ == len(q^) {
+		clear(q)
+		head^ = 0
+	} else if head^ > len(q^) / 2 {
+		n := copy(q^[:], q^[head^:])
+		resize(q, n)
+		head^ = 0
+	}
+	return op
 }
 
 @(private)
@@ -179,7 +200,7 @@ disk_write :: proc(c: ^Cache, e: ^Entry) {
 	op.old = e.serial
 	op.serial = d.next_serial
 	d.next_serial += 1
-	op.head = encode_entry_head(e.meta, e.fresh_until, e.body.data)
+	op.head = encode_entry_head(e.meta, e.fresh_until, len(e.body.data))   // (the writer adds the checksums)
 	op.body = body_retain(e.body)
 	op.key = strings.clone(e.key, a)
 	if e.serial != 0 { c.disk_bytes -= e.file_size }
@@ -215,41 +236,66 @@ disk_read :: proc(c: ^Cache, key: string, serial: u64) {
 	op.key = strings.clone(key, heap())
 	op.serial = serial
 	sync.mutex_lock(&d.mu)
-	append(&d.rq, op)
+	append(&d.rq, op)   // (op_queue_pop takes from rq_head)
 	sync.cond_broadcast(&d.cond)
 	sync.mutex_unlock(&d.mu)
 }
 
-// A snapshot of the entries on disk (or being written), most recently used first.
+// A snapshot of the entries on disk (or being written), most recently used first. The loop thread only copies the
+// records (their strings into one buffer); the writer encodes them and computes the checksum.
 @(private)
 disk_save_index :: proc(c: ^Cache) {
 	d := c.disk
-	buf := make([dynamic]byte, heap())
-	put_u32(&buf, INDEX_MAGIC)
-	put_u32(&buf, FORMAT_VERSION)
-	put_u64(&buf, d.next_serial)
-	count_at := len(buf)
-	put_u32(&buf, 0)
-	n: u32
+	a := heap()
+	n, text := 0, 0
 	for e := c.head; e != nil; e = e.next {
 		if e.disk == .None || e.serial == 0 { continue }
-		put_u64(&buf, e.serial)
-		put_u64(&buf, u64(e.file_size))
-		put_u64(&buf, u64(e.body_size))
-		put_u64(&buf, u64(e.last_used_ms))
-		put_u64(&buf, u64(e.fresh_until))
-		put_u32(&buf, u32(e.status))
-		put_str(&buf, e.key)
-		put_str(&buf, e.url)
 		n += 1
+		text += len(e.key) + len(e.url)
 	}
-	(^u32le)(&buf[count_at])^ = u32le(n)
-	put_u32(&buf, hash.crc32(buf[:]))
-	op := new(Op, heap())
+	op := new(Op, a)
 	op.kind = .Save_Index
-	op.head = buf[:]
+	op.next_serial = d.next_serial
+	op.head = make([]byte, text, a)
+	op.records = make([dynamic]Index_Record, 0, n, a)
+	at := 0
+	for e := c.head; e != nil; e = e.next {
+		if e.disk == .None || e.serial == 0 { continue }
+		k := string(op.head[at:][:copy(op.head[at:], e.key)])
+		at += len(k)
+		u := string(op.head[at:][:copy(op.head[at:], e.url)])
+		at += len(u)
+		append(&op.records, Index_Record{
+			serial = e.serial, file_size = e.file_size, body_size = e.body_size, last_used = e.last_used_ms,
+			fresh_until = e.fresh_until, status = e.status, key = k, url = u,
+		})
+	}
 	push_write(d, op)
 	c.index_dirty = false
+}
+
+// The index file of a snapshot's records (writer thread).
+@(private)
+encode_index :: proc(op: ^Op, allocator := context.temp_allocator) -> []byte {
+	size := 4 + 4 + 8 + 4 + 4
+	for r in op.records { size += 8 * 5 + 4 + 4 + len(r.key) + 4 + len(r.url) }
+	buf := make([dynamic]byte, 0, size, allocator)
+	put_u32(&buf, INDEX_MAGIC)
+	put_u32(&buf, FORMAT_VERSION)
+	put_u64(&buf, op.next_serial)
+	put_u32(&buf, u32(len(op.records)))
+	for r in op.records {
+		put_u64(&buf, r.serial)
+		put_u64(&buf, u64(r.file_size))
+		put_u64(&buf, u64(r.body_size))
+		put_u64(&buf, u64(r.last_used))
+		put_u64(&buf, u64(r.fresh_until))
+		put_u32(&buf, u32(r.status))
+		put_str(&buf, r.key)
+		put_str(&buf, r.url)
+	}
+	put_u32(&buf, hash.crc32(buf[:]))
+	return buf[:]
 }
 
 ////////////////////////////////
@@ -355,6 +401,7 @@ index_loaded :: proc(c: ^Cache, op: ^Op) {
 		e.last_used_ms = r.last_used
 		e.fresh_until = r.fresh_until
 		c.entries[e.key] = e
+		url_link(c, e)
 		list_push_back(c, e)
 		c.disk_bytes += e.file_size
 	}
@@ -374,14 +421,15 @@ writer_main :: proc(data: rawptr) {
 	context.allocator = heap()
 	for {
 		sync.mutex_lock(&d.mu)
-		for len(d.wq) == 0 && !d.stopping { sync.cond_wait(&d.cond, &d.mu) }
-		if len(d.wq) == 0 { sync.mutex_unlock(&d.mu); return }   // stopping, everything written
-		op := d.wq[0]
-		ordered_remove(&d.wq, 0)
+		for len(d.wq) == d.wq_head && !d.stopping { sync.cond_wait(&d.cond, &d.mu) }
+		if len(d.wq) == d.wq_head { sync.mutex_unlock(&d.mu); return }   // stopping, everything written
+		op := op_queue_pop(&d.wq, &d.wq_head)
 		sync.mutex_unlock(&d.mu)
 		switch op.kind {
 		case .Load_Index: load_index(d, op)
 		case .Write:
+			// the checksums, here rather than on the loop thread: a body is up to network.cache.max_entry_bytes
+			seal_entry_head(op.head, op.body.data)
 			tmp := entry_path(d, op.serial, "tmp")
 			final := entry_path(d, op.serial, "wce")
 			op.ok = write_file(tmp, {op.head, op.body.data}, false) && replace_file(tmp, final)
@@ -392,7 +440,7 @@ writer_main :: proc(data: rawptr) {
 		case .Save_Index:
 			tmp := strings.concatenate({d.dir, SEP, INDEX_NAME, ".tmp"}, context.temp_allocator)
 			final := strings.concatenate({d.dir, SEP, INDEX_NAME}, context.temp_allocator)
-			op.ok = write_file(tmp, {op.head}, true) && replace_file(tmp, final)
+			op.ok = write_file(tmp, {encode_index(op)}, true) && replace_file(tmp, final)
 			if !op.ok { delete_file(tmp) }
 		case .Clear:
 			for f in list_dir(d.dir) {
@@ -411,10 +459,9 @@ reader_main :: proc(data: rawptr) {
 	context.allocator = heap()
 	for {
 		sync.mutex_lock(&d.mu)
-		for len(d.rq) == 0 && !d.stopping { sync.cond_wait(&d.cond, &d.mu) }
+		for len(d.rq) == d.rq_head && !d.stopping { sync.cond_wait(&d.cond, &d.mu) }
 		if d.stopping { sync.mutex_unlock(&d.mu); return }
-		op := d.rq[0]
-		ordered_remove(&d.rq, 0)
+		op := op_queue_pop(&d.rq, &d.rq_head)
 		sync.mutex_unlock(&d.mu)
 		read_entry(d, op)
 		free_all(context.temp_allocator)
@@ -573,9 +620,14 @@ get_str :: proc(r: ^Reader) -> string {
 	return s
 }
 
-// The fixed header and the metadata of an entry file (the body follows them).
+// The checksums of an entry's head (seal_entry_head's) are at these offsets of its fixed header.
+@(private) ENTRY_META_CRC_AT :: 12
+@(private) ENTRY_BODY_CRC_AT :: 24
+
+// The fixed header and the metadata of an entry file (the body follows them), its checksums 0: seal_entry_head writes
+// them, on the writer thread.
 @(private)
-encode_entry_head :: proc(m: Meta, fresh_until: i64, body: []byte) -> []byte {
+encode_entry_head :: proc(m: Meta, fresh_until: i64, body_len: int) -> []byte {
 	meta := make([dynamic]byte, context.temp_allocator)
 	put_str(&meta, m.key)
 	put_str(&meta, m.url)
@@ -590,12 +642,19 @@ encode_entry_head :: proc(m: Meta, fresh_until: i64, body: []byte) -> []byte {
 	put_u32(&out, ENTRY_MAGIC)
 	put_u32(&out, FORMAT_VERSION)
 	put_u32(&out, u32(len(meta)))
-	put_u32(&out, hash.crc32(meta[:]))
-	put_u64(&out, u64(len(body)))
-	put_u32(&out, hash.crc32(body))
+	put_u32(&out, 0)   // ENTRY_META_CRC_AT
+	put_u64(&out, u64(body_len))
+	put_u32(&out, 0)   // ENTRY_BODY_CRC_AT
 	put_u32(&out, 0)
 	append(&out, ..meta[:])
 	return out[:]
+}
+
+// Writes the checksums of the metadata and of the body into an encode_entry_head's head.
+@(private)
+seal_entry_head :: proc(head: []byte, body: []byte) {
+	(^u32le)(&head[ENTRY_META_CRC_AT])^ = u32le(hash.crc32(head[ENTRY_HEADER:]))
+	(^u32le)(&head[ENTRY_BODY_CRC_AT])^ = u32le(hash.crc32(body))
 }
 
 // Reads an entry file. `check_body`: the body's checksum too (start-up recovery reads the metadata only). The metadata

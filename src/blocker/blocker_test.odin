@@ -211,3 +211,16 @@ test_base_list_compiles :: proc(t: ^testing.T) {
 	testing.expect_value(t, srcs[0].invalid, u32(0))
 	testing.expect(t, srcs[0].net > 100)
 }
+
+// A list that moved is followed to its new https address, relative or absolute; never to plain http or another scheme.
+@(test)
+list_redirects_go_to_https_only :: proc(t: ^testing.T) {
+	to, ok := list_redirect_target("https://lists.test/a/easylist.txt", "/b/easylist.txt", context.temp_allocator)
+	testing.expect(t, ok && to == "https://lists.test/b/easylist.txt")
+	to, ok = list_redirect_target("https://lists.test/a.txt", "https://cdn.test/a.txt#x", context.temp_allocator)
+	testing.expect(t, ok && to == "https://cdn.test/a.txt")
+	_, ok = list_redirect_target("https://lists.test/a.txt", "http://lists.test/a.txt", context.temp_allocator)
+	testing.expect(t, !ok, "no downgrade to http")
+	_, ok = list_redirect_target("https://lists.test/a.txt", "file:///etc/hosts", context.temp_allocator)
+	testing.expect(t, !ok)
+}

@@ -26,12 +26,15 @@ MO_ATTRIBUTE_OLD_VALUE :: 16
 MO_CHARACTER_DATA_OLD_VALUE :: 32
 MO_ATTRIBUTE_FILTER :: 64
 
+// A registration lives in the list of its node (Observers.on_node): the hook's ancestor walk reads only the
+// registrations of the nodes it passes, whatever the number of observers and of their other registrations.
 @(private)
 Mo_Registration :: struct {
-	node:      base.Handle,
+	mo:        ^Mutation_Observer,
 	options:   u32,
 	filter:    []string,       // owned
 	transient: bool,           // a removed node's copy of an ancestor's registration (until the next notification)
+	source:    base.Handle,    // transient: the ancestor whose registration it copies (one copy per removed node)
 }
 
 @(private)
@@ -56,7 +59,8 @@ Mutation_Observer :: struct {
 	instance: u32,
 	notify:   u32,
 	user:     u32,
-	regs:     [dynamic]Mo_Registration,
+	nodes:    [dynamic]base.Handle,   // the nodes it has registrations on (each once; transient ones too)
+	transients: int,                  // how many of its registrations are transient
 	queue:    [dynamic]Mo_Record,
 	taken:    int,             // records the engine took (removed at release)
 	pending:  bool,            // a notification microtask is queued
@@ -65,14 +69,14 @@ Mutation_Observer :: struct {
 
 Observers :: struct {
 	list:    [dynamic]^Mutation_Observer,   // in creation order
-	on_node: map[base.Handle]int,          // registrations per node, for the hook's ancestor walk
+	on_node: map[base.Handle][dynamic]Mo_Registration,   // the registrations on each node (no key: none)
 }
 
 @(private)
 mo_vt := Object_VTable{name = "MutationObserver", destroy = proc(p: ^Page, data: rawptr) {
 	mo := (^Mutation_Observer)(data)
 	mo_clear(p, mo)
-	delete(mo.regs)
+	delete(mo.nodes)
 	delete(mo.queue)
 	if p.jsdom != nil {
 		obs := &p.jsdom.observers
@@ -84,11 +88,22 @@ mo_vt := Object_VTable{name = "MutationObserver", destroy = proc(p: ^Page, data:
 
 @(private)
 observers_destroy :: proc(p: ^Page, obs: ^Observers) {
-	// the observers themselves are host objects, freed with the others; only the shared tables go here
+	// the observers themselves are host objects, freed with the others (before or after this); only the shared tables
+	// go here, with the registrations still in them
 	delete(obs.list)
+	for _, regs in obs.on_node {
+		for r in regs { filter_free(r.filter) }
+		delete(regs)
+	}
 	delete(obs.on_node)
 	obs^ = {}
 	if p.doc != nil { p.doc.observer = nil }
+}
+
+@(private = "file")
+filter_free :: proc(f: []string) {
+	for s in f { delete(s) }
+	delete(f)
 }
 
 @(private)
@@ -102,24 +117,67 @@ record_free :: proc(p: ^Page, r: ^Mo_Record, unpin: bool) {
 	delete(r.added); delete(r.removed); delete(r.name); delete(r.old)
 }
 
-@(private)
-reg_free :: proc(p: ^Page, mo: ^Mutation_Observer, i: int) {
-	r := mo.regs[i]
-	for f in r.filter { delete(f) }
-	delete(r.filter)
-	if p.jsdom != nil {
-		obs := &p.jsdom.observers
-		if n, ok := obs.on_node[r.node]; ok {
-			if n <= 1 { delete_key(&obs.on_node, r.node) } else { obs.on_node[r.node] = n - 1 }
+// Adds registration `r` (of r.mo) to the list of `node`.
+@(private = "file")
+reg_add :: proc(obs: ^Observers, node: base.Handle, r: Mo_Registration) {
+	regs := obs.on_node[node]
+	had := false
+	for x in regs { if x.mo == r.mo { had = true; break } }
+	append(&regs, r)
+	obs.on_node[node] = regs
+	if !had { append(&r.mo.nodes, node) }
+	if r.transient { r.mo.transients += 1 }
+}
+
+// Removes the registrations of `mo` on `node` (only the transient ones when `only_transient`), keeping the order of the
+// others. Returns whether `mo` still has one there.
+@(private = "file")
+regs_drop :: proc(obs: ^Observers, mo: ^Mutation_Observer, node: base.Handle, only_transient: bool) -> (left: bool) {
+	regs, ok := &obs.on_node[node]
+	if !ok { return false }
+	w := 0
+	for r in regs^ {
+		if r.mo == mo && (!only_transient || r.transient) {
+			filter_free(r.filter)
+			if r.transient { mo.transients -= 1 }
+			continue
 		}
+		if r.mo == mo { left = true }
+		regs^[w] = r
+		w += 1
 	}
-	ordered_remove(&mo.regs, i)
+	if w == 0 {
+		delete(regs^)
+		delete_key(&obs.on_node, node)
+	} else {
+		resize(regs, w)
+	}
+	return
+}
+
+// The transient registrations of an observer go (its notification ran, or it observes anew): one pass over the nodes it
+// has registrations on.
+@(private = "file")
+mo_drop_transients :: proc(p: ^Page, mo: ^Mutation_Observer) {
+	if mo.transients == 0 || p.jsdom == nil { return }
+	obs := &p.jsdom.observers
+	kept := 0
+	for node in mo.nodes {
+		if regs_drop(obs, mo, node, true) { mo.nodes[kept] = node; kept += 1 }
+	}
+	resize(&mo.nodes, kept)
+	mo.transients = 0
 }
 
 // Every registration and record of an observer gone (disconnect, destruction).
 @(private)
 mo_clear :: proc(p: ^Page, mo: ^Mutation_Observer) {
-	for len(mo.regs) > 0 { reg_free(p, mo, len(mo.regs) - 1) }
+	// (without the page's DOM state its tables, and the registrations in them, are gone already)
+	if p.jsdom != nil {
+		for node in mo.nodes { regs_drop(&p.jsdom.observers, mo, node, false) }
+	}
+	clear(&mo.nodes)
+	mo.transients = 0
 	for &r in mo.queue { record_free(p, &r, true) }
 	clear(&mo.queue)
 	mo.taken = 0
@@ -177,11 +235,17 @@ MutationObserver_observe :: proc(c: ^Call, observer: u64, target: Api_Node, opti
 	h := H(target.handle)
 	obs := &js_dom_state(c.page).observers
 	// a registration of this observer on the node is replaced (its transient copies go)
-	for i := len(mo.regs) - 1; i >= 0; i -= 1 {
-		if mo.regs[i].transient || mo.regs[i].node == h { reg_free(c.page, mo, i) }
+	mo_drop_transients(c.page, mo)
+	if regs, ok := &obs.on_node[h]; ok {
+		for &r in regs^ {
+			if r.mo != mo || r.transient { continue }
+			filter_free(r.filter)
+			r.options, r.filter = opts, names
+			mo_hook_update(c.page)
+			return .None
+		}
 	}
-	append(&mo.regs, Mo_Registration{node = h, options = opts, filter = names})
-	obs.on_node[h] += 1
+	reg_add(obs, h, Mo_Registration{mo = mo, options = opts, filter = names})
 	mo_hook_update(c.page)
 	return .None
 }
@@ -197,7 +261,11 @@ MutationObserver_live :: proc(c: ^Call, observer: u64) -> bool {
 	mo := observer_of(c, observer)
 	if mo == nil { return false }
 	if len(mo.queue) > 0 { return true }
-	for r in mo.regs { if !r.transient && dom.get(c.page.doc, r.node) != nil { return true } }
+	obs := &js_dom_state(c.page).observers
+	for node in mo.nodes {
+		if dom.get(c.page.doc, node) == nil { continue }
+		for r in obs.on_node[node] { if r.mo == mo && !r.transient { return true } }
+	}
 	return false
 }
 
@@ -240,7 +308,7 @@ MutationObserver_release :: proc(c: ^Call, observer: u64) {
 	remove_range(&mo.queue, 0, n)
 	mo.taken = 0
 	mo.pending = false
-	for i := len(mo.regs) - 1; i >= 0; i -= 1 { if mo.regs[i].transient { reg_free(c.page, mo, i) } }
+	mo_drop_transients(c.page, mo)
 	mo_hook_update(c.page)
 }
 
@@ -266,45 +334,56 @@ mutation_hook :: proc(user: rawptr, d: ^dom.Document, e: ^dom.Journal_Entry) {
 	for cur := target; cur != base.NIL_HANDLE; {
 		n := dom.get(d, cur)
 		if n == nil { break }
-		if cur in obs.on_node {
-			for mo in obs.list {
-				for &r in mo.regs {
-					if r.node != cur { continue }
-					if cur != target && r.options & MO_SUBTREE == 0 { continue }
-					if !registration_wants(&r, kind, e) { continue }
-					want_old := (kind == 0 && r.options & MO_ATTRIBUTE_OLD_VALUE != 0) || (kind == 1 && r.options & MO_CHARACTER_DATA_OLD_VALUE != 0)
-					found := false
-					for &x in interested { if x.mo == mo { x.old = x.old || want_old; found = true; break } }
-					if !found { append(&interested, Interest{mo, want_old}) }
-				}
+		if regs, ok := obs.on_node[cur]; ok {
+			for &r in regs {
+				if cur != target && r.options & MO_SUBTREE == 0 { continue }
+				if !registration_wants(&r, kind, e) { continue }
+				want_old := (kind == 0 && r.options & MO_ATTRIBUTE_OLD_VALUE != 0) || (kind == 1 && r.options & MO_CHARACTER_DATA_OLD_VALUE != 0)
+				found := false
+				for &x in interested { if x.mo == r.mo { x.old = x.old || want_old; found = true; break } }
+				if !found { append(&interested, Interest{r.mo, want_old}) }
 			}
 		}
 		cur = n.parent
 	}
-	for x in interested { mo_record(p, x.mo, kind, target, e, x.old) }
-	// a removed node keeps the subtree registrations of its old ancestors until the next notification
+	// (records in the observers' creation order, as the DOM queues them)
+	if len(interested) > 1 {
+		for mo in obs.list {
+			for x in interested { if x.mo == mo { mo_record(p, x.mo, kind, target, e, x.old); break } }
+		}
+	} else {
+		for x in interested { mo_record(p, x.mo, kind, target, e, x.old) }
+	}
+	// a removed node keeps the subtree registrations of its old ancestors until the next notification: one transient
+	// registration per ancestor registration, never two for the same one (the node removed again before the
+	// notification)
 	if e.kind == .Remove {
 		for cur := e.parent; cur != base.NIL_HANDLE; {
 			n := dom.get(d, cur)
 			if n == nil { break }
-			if cur in obs.on_node {
-				for mo in obs.list {
-					for i in 0 ..< len(mo.regs) {
-						r := mo.regs[i]
-						if r.node != cur || r.options & MO_SUBTREE == 0 { continue }
-						f: []string
-						if len(r.filter) > 0 {
-							f = make([]string, len(r.filter))
-							for s, k in r.filter { f[k] = strings.clone(s) }
-						}
-						append(&mo.regs, Mo_Registration{node = e.node, options = r.options, filter = f, transient = true})
-						obs.on_node[e.node] += 1
+			if regs, ok := obs.on_node[cur]; ok {
+				// (reg_add below grows the list of e.node, never this one: a detached node is no ancestor)
+				for r in regs {
+					if r.options & MO_SUBTREE == 0 { continue }
+					if transient_exists(obs, e.node, r.mo, cur) { continue }
+					f: []string
+					if len(r.filter) > 0 {
+						f = make([]string, len(r.filter))
+						for s, k in r.filter { f[k] = strings.clone(s) }
 					}
+					reg_add(obs, e.node, Mo_Registration{mo = r.mo, options = r.options, filter = f, transient = true, source = cur})
 				}
 			}
 			cur = n.parent
 		}
 	}
+}
+
+// Whether `node` has a transient registration of `mo` copied from the registration on `source`.
+@(private = "file")
+transient_exists :: proc(obs: ^Observers, node: base.Handle, mo: ^Mutation_Observer, source: base.Handle) -> bool {
+	for r in obs.on_node[node] { if r.mo == mo && r.transient && r.source == source { return true } }
+	return false
 }
 
 @(private)
@@ -347,8 +426,11 @@ mo_record :: proc(p: ^Page, mo: ^Mutation_Observer, kind: u8, target: base.Handl
 			log(p, .Warn, fmt.tprintf("a MutationObserver has more than javascript.dom.max_mutation_records (%d) records waiting: the oldest are dropped", p.settings.dom.max_mutation_records))
 		}
 		if mo.taken == 0 {
-			record_free(p, &mo.queue[0], true)
-			ordered_remove(&mo.queue, 0)
+			// the older half goes at once (as dom/journal.odin does): removing one record from the front for each new one
+			// made every mutation past the bound O(bound)
+			drop := max(len(mo.queue) / 2, 1)
+			for i in 0 ..< drop { record_free(p, &mo.queue[i], true) }
+			remove_range(&mo.queue, 0, drop)
 		} else {
 			return
 		}

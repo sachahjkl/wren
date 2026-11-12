@@ -23,6 +23,8 @@ MIN_SAMPLE_RATE :: 3000
 MAX_SAMPLE_RATE :: 768000
 // The audio output plays stereo (media.Audio_Output): what destination.maxChannelCount says for a running context.
 OUTPUT_CHANNELS :: 2
+// The default of webaudio.max_convolver_seconds (and of convolver_set's bound).
+MAX_CONVOLVER_SECONDS :: 20.0
 
 Settings :: struct {
 	enabled:          bool,   // the interfaces exist at all
@@ -31,6 +33,7 @@ Settings :: struct {
 	max_buffer_bytes: int,    // the samples of one AudioBuffer or OfflineAudioContext
 	max_contexts:     int,    // running AudioContexts of a page
 	worklet_stall_ms: int,    // how long an AudioWorklet's realm may stay without answering before it is stopped
+	max_convolver_seconds: f64, // the part of a ConvolverNode's impulse response that is used
 }
 
 WEBAUDIO_PREFS := [?]config.Def{
@@ -46,6 +49,8 @@ WEBAUDIO_PREFS := [?]config.Def{
 		description = "Most AudioContexts a page may have open at once (each running one has a thread and an audio stream). Past it, new AudioContext() fails with NotSupportedError."},
 	{name = "webaudio.worklet_stall_ms", kind = .Int, default = {i = 5000}, bounded = true, min = 100, max = 600000, unit = "ms",
 		description = "How long an AudioWorklet's realm may leave the render thread without an answer (a process() that never returns) before it is stopped and its nodes fire processorerror. A quantum it misses meanwhile is silence."},
+	{name = "webaudio.max_convolver_seconds", kind = .Float, default = {f = MAX_CONVOLVER_SECONDS}, bounded = true, min = 0.1, max = 600, unit = "s",
+		description = "Longest part of a ConvolverNode's impulse response that is used; the rest of a longer one is cut. The memory and the work of the convolver grow with it."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, WEBAUDIO_PREFS[:]) }
@@ -58,5 +63,6 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		max_buffer_bytes = int(config.int_of(p, "webaudio.max_buffer_mb")) << 20,
 		max_contexts     = int(config.int_of(p, "webaudio.max_contexts")),
 		worklet_stall_ms = int(config.int_of(p, "webaudio.worklet_stall_ms")),
+		max_convolver_seconds = config.float_of(p, "webaudio.max_convolver_seconds"),
 	}
 }

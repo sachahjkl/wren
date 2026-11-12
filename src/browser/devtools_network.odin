@@ -391,6 +391,7 @@ head_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 // The panel
 
 network_panel :: proc(app: ^App, t: ^Tab) {
+	t.net.detailed = true   // (from now on its requests keep their headers: devtools_net_model.odin)
 	v := &dev().net
 	if !v.cols_ok { net_cols_load(app, v) }
 	net_refresh(t, v)

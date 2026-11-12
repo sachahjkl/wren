@@ -56,9 +56,7 @@ Dev_Console :: struct {
 	sel_a, sel_b: u64,                 // the selected rows: from one to the other (absolute numbers), either order
 	menu_abs:  u64,
 	last_rows: int,
-	// the evaluation line
-	evaluating: bool,                  // lines added now are the result of what was typed
-	pending_payload: string,           // owned: the structured description to attach to the next line
+	// the evaluation line (what it is evaluating, and the payload a line waits for, are the tab's: Con_Log)
 	eval:      Con_Eval,
 	// the levels of the console of the tab (the preference is the default)
 	menu_src:  Con_Source,
@@ -74,7 +72,6 @@ console_panel_destroy :: proc() {
 	dt_filter_destroy(&c.filter)
 	delete(c.expanded)
 	delete(c.folded)
-	delete(c.pending_payload)
 	delete(c.ctx)
 	delete(c.menu_file)
 	console_eval_destroy()
@@ -588,9 +585,9 @@ console_row_menu_items :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 	if ui.menu_item("Copy all messages shown###dt_con_copy_all", enabled = n > 0).clicked { clip_set(con_text(t, c, false, app.con_prefs.timestamps)) }
 	ui.menu_separator()
 	if ui.menu_item("Store as global variable###dt_con_store", enabled = ref > 0 && rpage != nil).clicked {
-		dev().con.evaluating = true
+		t.conlog.evaluating = true
 		page.dev_console_store(rpage, ref)
-		dev().con.evaluating = false
+		t.conlog.evaluating = false
 		request_frames(app, 3)
 	}
 	if ui.menu_item("Select all###dt_con_all", "Ctrl+A", enabled = n > 0).clicked { c.has_sel, c.sel_a, c.sel_b = true, c.rows[0].abs, c.rows[n - 1].abs }

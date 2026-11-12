@@ -62,11 +62,14 @@ ctx_make :: proc(l: ^Layout, input: Input, marker: ^u8) -> Ctx {
 		stack_base = uintptr(marker), stack_limit = l.settings.max_stack_bytes, rebuilding = NONE,
 	}
 	c.flat = dom.has_shadow_trees(input.doc)
+	l.inc.pass_serial += 1
+	c.pass_serial = l.inc.pass_serial
 	c.font_keys = make([dynamic]Font_Key, 0, max(len(l.fonts), FONTS_RESERVE), context.temp_allocator)
 	c.font_order = make([dynamic]i32, 0, FONTS_RESERVE, context.temp_allocator)
 	c.anon_cs = make(map[Anon_Key]^style.Computed, 16, context.temp_allocator)
 	c.counters = make(map[base.Handle]List_Counter, 16, context.temp_allocator)
 	c.lb_bufs = make([dynamic]^LB_Buffers, 0, 8, context.temp_allocator)
+	c.seg_cache = new(Seg_Cache, context.temp_allocator)
 	return c
 }
 

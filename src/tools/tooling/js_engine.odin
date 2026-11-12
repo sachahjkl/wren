@@ -183,8 +183,10 @@ build_js_engine :: proc(options: Js_Options) -> bool {
 	// The glue and engine to one freestanding wasm32 object, no Odin runtime start-up (wj_preinit runs it). -o:speed: the natives gain more than the interpreter loses on a page (round 34 of docs/performance.md).
 	object := fmt.tprintf("%s/odin_glue.o", o.out)
 	cmd := make([dynamic]string, context.temp_allocator)
+	// -target-features:simd128: core:simd's #simd[16]u8 becomes Wasm SIMD128 (the engine's scans of strings, jsrt string_scan.odin), not
+	// the scalar code LLVM makes of it without the feature. Wasmtime always has SIMD on (wasm/settings.odin).
 	append(&cmd, odin_program(), "build", "native/js/odin", "-build-mode:obj", "-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-vet",
-		fmt.tprintf("-o:%s", o.odin_opt))
+		"-target-features:simd128", fmt.tprintf("-o:%s", o.odin_opt))
 	append(&cmd, ..o.odin_flags)
 	append(&cmd, "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit/src", "-define:WJ_JSRT=true", "-define:JSCAPI_EXPORT=true")
 	if o.test262 { append(&cmd, "-define:WREN_TEST262=true") }

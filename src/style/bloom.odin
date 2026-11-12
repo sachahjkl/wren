@@ -42,7 +42,7 @@ bloom_has :: #force_inline proc(b: ^Bloom, h: u32) -> bool {
 
 // The classes of every element of `doc`, for a full pass (Match_Ctx.class_bits): a bit per class, from its hash.
 class_bits_fill :: proc(e: ^Engine, doc: ^dom.Document) {
-	class_bits_begin(e, doc)
+	class_bits_reset(e, doc)
 	it: u32
 	for h, n in base.pool_next(&doc.nodes, &it) {
 		if n.kind != .Element { continue }
@@ -50,13 +50,60 @@ class_bits_fill :: proc(e: ^Engine, doc: ^dom.Document) {
 	}
 }
 
-// For a partial pass: the elements' classes are read as they are met, ancestors above all (matches_simple). A rule of `.a .b` is tried
-// on the ancestors of `.b`, and class attributes read again and again were a quarter of what a restyle cost on cnn.com.
-@(private)
-class_bits_begin :: proc(e: ^Engine, doc: ^dom.Document) {
+// Every word read again (0: not read).
+@(private = "file")
+class_bits_reset :: proc(e: ^Engine, doc: ^dom.Document) {
 	resize(&e.class_bits, int(doc.nodes.used))
 	slice.zero(e.class_bits[:])
+	e.class_bits_doc, e.class_bits_at = doc, doc.mutations   // (the document does not change while a pass reads it)
 	e.class_bits_live = true
+}
+
+// For a partial pass: the elements' classes are read as they are met, ancestors above all (matches_simple). A rule of `.a .b` is tried
+// on the ancestors of `.b`, and class attributes read again and again were a quarter of what a restyle cost on cnn.com. The words
+// read by the pass before, which covered the document up to `since`, stay, but for the elements `entries` (the journal since
+// then) name: a class attribute set, or inserted with what they hold (a node in a slot freed by another). Clearing every word made
+// a restyle of one element cost a pass over the whole document's nodes.
+@(private)
+class_bits_begin :: proc(e: ^Engine, doc: ^dom.Document, since: u64, entries: []dom.Journal_Entry) {
+	if e.class_bits_doc != doc || e.class_bits_at != since || len(e.class_bits) == 0 {
+		class_bits_reset(e, doc)
+		return
+	}
+	old := len(e.class_bits)
+	resize(&e.class_bits, int(doc.nodes.used))
+	if len(e.class_bits) > old { slice.zero(e.class_bits[old:]) }
+	stack := make([dynamic]base.Handle, 0, 16, context.temp_allocator)
+	for &en in entries {
+		#partial switch en.kind {
+		case .Attribute:
+			if en.name == "class" { class_bits_drop(e, en.node) }
+		case .Insert:
+			clear(&stack)
+			append(&stack, en.node)
+			for len(stack) > 0 {
+				h := pop(&stack)
+				n := dom.get(doc, h)
+				if n == nil { continue }
+				class_bits_drop(e, h)
+				for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
+			}
+		}
+	}
+	e.class_bits_doc, e.class_bits_at = doc, doc.mutations
+	e.class_bits_live = true
+}
+
+// For a pass that reads no journal (an @media block that flipped, a sheet that came): the words stay if the document did not change
+// since they were read, else every word is read again.
+@(private)
+class_bits_resume :: proc(e: ^Engine, doc: ^dom.Document) {
+	class_bits_begin(e, doc, doc.mutations, nil)
+}
+
+@(private = "file")
+class_bits_drop :: #force_inline proc(e: ^Engine, h: base.Handle) {
+	if i := int(base.handle_index(h)); i < len(e.class_bits) { e.class_bits[i] = 0 }
 }
 
 // The bits of the classes of `n`; never 0.
@@ -64,13 +111,7 @@ class_bits_begin :: proc(e: ^Engine, doc: ^dom.Document) {
 class_bits_of :: proc(n: ^dom.Node) -> u64 {
 	bits := CLASS_BITS_READ
 	rest, _ := attr(n, "class")
-	for len(rest) > 0 {
-		for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
-		end := 0
-		for end < len(rest) && !is_space(rest[end]) { end += 1 }
-		if end > 0 { bits |= 1 << (css.class_hash(rest[:end]) & CLASS_BIT_MASK) }
-		rest = rest[end:]
-	}
+	for c in token_next(&rest) { bits |= 1 << (css.class_hash(c) & CLASS_BIT_MASK) }
 	return bits
 }
 
@@ -79,13 +120,7 @@ bloom_add_element :: proc(b: ^Bloom, n: ^dom.Node) {
 	if id, ok := attr(n, "id"); ok && id != "" { bloom_add(b, hash_name(id, SALT_ID)) }
 	if cls, ok := attr(n, "class"); ok {
 		rest := cls
-		for len(rest) > 0 {
-			for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
-			end := 0
-			for end < len(rest) && !is_space(rest[end]) { end += 1 }
-			if end > 0 { bloom_add(b, hash_name(rest[:end], SALT_CLASS)) }
-			rest = rest[end:]
-		}
+		for c in token_next(&rest) { bloom_add(b, hash_name(c, SALT_CLASS)) }
 	}
 }
 

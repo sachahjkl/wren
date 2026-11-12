@@ -104,13 +104,27 @@ set_style_state :: proc(p: ^Page, state: style.State) {
 	}
 }
 
+// `src` resolved against `base_url`: an owned string (context.allocator), or false.
 @(private)
 resolve_against :: proc(src, base_url: string) -> (string, bool) {
 	b, ok := url.parse_absolute(base_url, context.temp_allocator)
 	if !ok { return "", false }
-	u, ok2 := url.parse(src, &b, context.temp_allocator)
-	if !ok2 { return "", false }
-	return strings.clone(u.href), true
+	return resolve_against_url(src, &b)
+}
+
+// `src` resolved against a base URL parsed already (document_base_url_parsed): one parse instead of two.
+@(private)
+resolve_against_url :: proc(src: string, b: ^url.URL) -> (string, bool) {
+	u, ok := url.parse(src, b)
+	if !ok { return "", false }
+	return u.href, true   // (the other fields are slices of it)
+}
+
+// `src` resolved against the document's base URL, kept parsed between calls (Base_Url_Cache).
+@(private)
+resolve_in_document :: proc(p: ^Page, src: string) -> (string, bool) {
+	if b := document_base_url_parsed(p); b != nil { return resolve_against_url(src, b) }
+	return resolve_against(src, document_base_url(p))
 }
 
 @(private)
@@ -157,7 +171,7 @@ sync_styles :: proc(p: ^Page) {
 			free_load(p, old)
 			delete_key(&p.link_loads, k.owner)
 		}
-		abs, ok := resolve_against(k.href, document_base_url(p))
+		abs, ok := resolve_in_document(p, k.href)
 		l := new(Style_Load)
 		l.page, l.owner, l.url = p, k.owner, abs
 		l.href, l.media = strings.clone(k.href), strings.clone(k.media)
@@ -182,8 +196,9 @@ sync_styles :: proc(p: ^Page) {
 @(private)
 start_pending_imports :: proc(p: ^Page) {
 	for pi in style.engine_take_pending_imports(p.engine) {
-		base_url := pi.base_url != "" ? pi.base_url : document_base_url(p)
-		abs, ok := resolve_against(pi.url, base_url)
+		abs: string
+		ok: bool
+		if pi.base_url != "" { abs, ok = resolve_against(pi.url, pi.base_url) } else { abs, ok = resolve_in_document(p, pi.url) }
 		if !ok {
 			log(p, .Warn, fmt.tprintf("@import: invalid URL %q", pi.url))
 			style.engine_fail_import(p.engine, pi.sheet_id, pi.slot)

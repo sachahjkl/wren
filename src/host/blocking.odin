@@ -3,15 +3,19 @@ package host
 // A small pool of worker threads for blocking work (file reads, hashing, anything that must not run on the UI thread).
 // `work` runs on a worker; `done` runs on the loop thread afterwards, with the same data pointer. The data must stay
 // valid until `done` has run (heap or loop-owned), and is never touched by the submitter in between.
+//
+// A job that waits for a person (a modal dialog of the system) does not belong here: it holds a worker until the person
+// answers, and the jobs queued behind it wait as long. run_dialog (dialog.odin) gives each one a thread of its own.
 
 import "core:fmt"
 import "core:sync"
 import "wb:base"
 
 Blocking_Job :: struct {
-	work: Task_Proc,
-	done: Task_Proc,
-	data: rawptr,
+	work:    Task_Proc,
+	done:    Task_Proc,
+	discard: Task_Proc,   // the pool ends before the job started: frees its data instead of `done` (nil: nothing to free)
+	data:    rawptr,
 }
 
 Blocking_Pool :: struct {
@@ -19,11 +23,17 @@ Blocking_Pool :: struct {
 	mu:       sync.Mutex,
 	cond:     sync.Cond,
 	queue:    [dynamic]Blocking_Job,
+	head:     int,        // the next job to take: queue[head:] waits (taking one moves nothing)
 	threads:  [dynamic]^Thread,
 	stopping: bool,
 	running:  int,        // jobs taken by a worker whose `done` is not posted yet
 	idle:     sync.Cond,  // signalled when the queue is empty and no job runs (blocking_flush)
 }
+
+// Above this many taken jobs at the head of the queue (and half of it), they are cut off: the queue does not grow for ever
+// under a steady flow of jobs that never lets it empty.
+@(private = "file")
+BLOCKING_COMPACT_AT :: 64
 
 blocking_init :: proc(p: ^Blocking_Pool, loop: ^Loop, workers := 4) {
 	p.loop = loop
@@ -35,24 +45,31 @@ blocking_init :: proc(p: ^Blocking_Pool, loop: ^Loop, workers := 4) {
 	}
 }
 
-// Waits for running jobs to finish; queued jobs that never started are dropped (their `done` is not called).
+// Waits for running jobs to finish; queued jobs that never started are dropped: their `done` is not called, their
+// `discard` is (on this thread), so that what they hold is freed.
 blocking_destroy :: proc(p: ^Blocking_Pool) {
 	sync.mutex_lock(&p.mu)
 	p.stopping = true
-	clear(&p.queue)
 	sync.cond_broadcast(&p.cond)
 	sync.mutex_unlock(&p.mu)
 	for t in p.threads { thread_join(t) }
+	// (no worker is left: the queue is this thread's)
+	for job in p.queue[p.head:] { if job.discard != nil { job.discard(job.data) } }
 	delete(p.threads)
 	delete(p.queue)
+	p.head = 0
 }
+
+// Jobs waiting for a worker. Under p.mu.
+@(private = "file")
+blocking_waiting :: #force_inline proc(p: ^Blocking_Pool) -> int { return len(p.queue) - p.head }
 
 // Any thread but a worker's. Waits until every queued job has run its `work` and posted its `done` to the loop (run them
 // with host.loop_drain). Before tearing a program down, while the owners of the jobs still live: blocking_destroy drops
-// the jobs still queued, whose data would leak.
+// the jobs still queued.
 blocking_flush :: proc(p: ^Blocking_Pool) {
 	sync.mutex_lock(&p.mu)
-	for (len(p.queue) > 0 || p.running > 0) && !p.stopping && len(p.threads) > 0 { sync.cond_wait(&p.idle, &p.mu) }
+	for (blocking_waiting(p) > 0 || p.running > 0) && !p.stopping && len(p.threads) > 0 { sync.cond_wait(&p.idle, &p.mu) }
 	sync.mutex_unlock(&p.mu)
 }
 
@@ -63,16 +80,16 @@ blocking_settle :: proc(p: ^Blocking_Pool, max_rounds := 100) {
 		blocking_flush(p)
 		if loop_drain(p.loop) > 0 { continue }
 		sync.mutex_lock(&p.mu)
-		idle := len(p.queue) == 0 && p.running == 0
+		idle := blocking_waiting(p) == 0 && p.running == 0
 		sync.mutex_unlock(&p.mu)
 		if idle { break }
 	}
 }
 
-// Loop thread (or any thread).
-run_blocking :: proc(p: ^Blocking_Pool, work, done: Task_Proc, data: rawptr) {
+// Loop thread (or any thread). `discard`: what frees `data` when the pool ends before the job starts.
+run_blocking :: proc(p: ^Blocking_Pool, work, done: Task_Proc, data: rawptr, discard: Task_Proc = nil) {
 	sync.mutex_lock(&p.mu)
-	append(&p.queue, Blocking_Job{work, done, data})
+	append(&p.queue, Blocking_Job{work, done, discard, data})
 	sync.cond_signal(&p.cond)
 	sync.mutex_unlock(&p.mu)
 }
@@ -82,10 +99,17 @@ blocking_worker :: proc(data: rawptr) {
 	p := (^Blocking_Pool)(data)
 	for {
 		sync.mutex_lock(&p.mu)
-		for len(p.queue) == 0 && !p.stopping { sync.cond_wait(&p.cond, &p.mu) }
+		for blocking_waiting(p) == 0 && !p.stopping { sync.cond_wait(&p.cond, &p.mu) }
 		if p.stopping { sync.mutex_unlock(&p.mu); return }
-		job := p.queue[0]
-		ordered_remove(&p.queue, 0)
+		job := p.queue[p.head]
+		p.head += 1
+		if p.head == len(p.queue) {
+			clear(&p.queue)
+			p.head = 0
+		} else if p.head >= BLOCKING_COMPACT_AT && p.head * 2 >= len(p.queue) {
+			remove_range(&p.queue, 0, p.head)
+			p.head = 0
+		}
 		p.running += 1
 		sync.mutex_unlock(&p.mu)
 		job.work(job.data)
@@ -93,7 +117,7 @@ blocking_worker :: proc(data: rawptr) {
 		post(p.loop, job.done, job.data)
 		sync.mutex_lock(&p.mu)
 		p.running -= 1
-		if p.running == 0 && len(p.queue) == 0 { sync.cond_broadcast(&p.idle) }
+		if p.running == 0 && blocking_waiting(p) == 0 { sync.cond_broadcast(&p.idle) }
 		sync.mutex_unlock(&p.mu)
 	}
 }

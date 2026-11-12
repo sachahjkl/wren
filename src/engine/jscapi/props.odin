@@ -221,9 +221,11 @@ JS_DefineHostAutoInitProperty :: proc "c" (c: ^Context, obj: JSValue, prop: Atom
 	m := js.host_enter(ctx.rt)
 	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
 	js.auto_init_getter = is_auto_init_getter
-	data := [4]JSValue{obj, enc(js.mk_int(i32(prop))), enc(js.mk_int(i32(uintptr(rawptr(fn))))), enc(js.mk_int(flags))}
-	getter := JS_NewCFunctionData2(c, auto_init_native, "", 0, 0, 4, &data[0])
-	setter := JS_NewCFunctionData2(c, auto_init_native, "", 1, 1, 4, &data[0])
+	// (the key as a value too: the pair keeps its atom alive, which jsrt frees when nothing holds it, should the
+	// property be deleted while a script still holds the getter)
+	data := [5]JSValue{obj, enc(js.mk_int(i32(prop))), enc(js.mk_int(i32(uintptr(rawptr(fn))))), enc(js.mk_int(flags)), enc(js.atom_to_value(ctx.rt, prop))}
+	getter := JS_NewCFunctionData2(c, auto_init_native, "", 0, 0, 5, &data[0])
+	setter := JS_NewCFunctionData2(c, auto_init_native, "", 1, 1, 5, &data[0])
 	r := define_impl(ctx, obj, prop, UNDEFINED, getter, setter, (flags & (PROP_CONFIGURABLE | PROP_ENUMERABLE)) | PROP_HAS_GET | PROP_HAS_SET | PROP_HAS_CONFIGURABLE | PROP_HAS_ENUMERABLE)
 	disown(getter)
 	disown(setter)
@@ -378,6 +380,8 @@ JS_GetOwnPropertyNames :: proc "c" (c: ^Context, ptab: ^[^]Property_Enum, plen: 
 		tab[n] = Property_Enum{is_enumerable = enumerable, atom = a}
 		n += 1
 	}
+	// (the host owns the atoms of the table until JS_FreePropertyEnum: a getter it calls may delete their properties)
+	for i in 0 ..< n {atom_hold(ctx.rt, tab[i].atom)}
 	ptab^ = tab
 	plen^ = u32(n)
 	return 0
@@ -385,7 +389,9 @@ JS_GetOwnPropertyNames :: proc "c" (c: ^Context, ptab: ^[^]Property_Enum, plen: 
 
 JS_FreePropertyEnum :: proc "c" (c: ^Context, tab: [^]Property_Enum, len: u32) {
 	context = api_ctx()
-	if tab != nil {mem.free(rawptr(tab), host_allocator)}
+	if tab == nil {return}
+	for i in 0 ..< int(len) {JS_FreeAtom(c, tab[i].atom)}
+	mem.free(rawptr(tab), host_allocator)
 }
 
 // ---- prototypes ----

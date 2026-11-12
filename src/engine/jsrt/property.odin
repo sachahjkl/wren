@@ -215,7 +215,10 @@ fast_array_define :: proc(ctx: ^Context, o: ^Object, idx: u32, d: ^Prop_Desc) ->
 	}
 	if idx == ad.count && o.extensible && .writable in d.flags && .enumerable in d.flags && .configurable in d.flags &&
 	   d.has >= {.writable, .enumerable, .configurable} {
-		array_reserve(ctx.rt, o, ad.count + 1)
+		if !array_reserve(ctx.rt, o, ad.count + 1) {
+			throw_out_of_memory(ctx)
+			return -1, true
+		}
 		ad.values[ad.count] = .value in d.has ? d.value : UNDEFINED
 		ad.count += 1
 		return 1, true
@@ -872,7 +875,10 @@ create_data_property :: proc(ctx: ^Context, o: ^Object, a: Atom, val: Value, thr
 			ad := &o.data.(Array_Data)
 			if idx < ad.count {ad.values[idx] = val; return 1}
 			if idx == ad.count && idx == array_length_u32(o) && .writable in o.shape.props[0].flags {
-				array_push_fast(ctx.rt, o, val)
+				if !array_push_fast(ctx.rt, o, val) {
+					throw_out_of_memory(ctx)
+					return -1
+				}
 				return 1
 			}
 		}
@@ -889,7 +895,10 @@ create_data_index :: proc(ctx: ^Context, o: ^Object, idx: i64, val: Value, throw
 			return 1
 		}
 		if idx == i64(ad.count) {
-			array_reserve(ctx.rt, o, ad.count + 1)
+			if !array_reserve(ctx.rt, o, ad.count + 1) {
+				throw_out_of_memory(ctx)
+				return -1
+			}
 			ad.values[ad.count] = val
 			ad.count += 1
 			if l := o.slots[0].value; l.tag == .int && i64(l.u.i) <= idx {o.slots[0].value = mk_u32(ad.count)}
@@ -969,6 +978,20 @@ Keys_Filters :: bit_set[Keys_Filter;u8]
 // Collect the own keys of `o` in spec order: integer indices ascending, then strings, then symbols,
 // each in creation order. The caller owns `out` (allocated in `allocator`).
 own_property_keys :: proc(ctx: ^Context, o: ^Object, out: ^[dynamic]Atom, filter: Keys_Filters = {.strings, .symbols}) -> bool {
+	rt := ctx.rt
+	first := len(out)
+	ok := own_property_keys_collect(ctx, o, out, filter)
+	// The caller holds the keys while it may call into JS (a getter, a proxy trap), which can delete the property that
+	// held a key: its atom would be freed and its slot used again for another key. Within a native call no atom is freed
+	// (gc_mark); outside one, the keys are rooted until the caller's safe point.
+	if ok && rt.native_calls == nil {
+		for i in first ..< len(out) {root_atom(rt, out[i])}
+	}
+	return ok
+}
+
+@(private = "file")
+own_property_keys_collect :: proc(ctx: ^Context, o: ^Object, out: ^[dynamic]Atom, filter: Keys_Filters) -> bool {
 	if o.class == .proxy {return proxy_own_keys(ctx, o, out, filter)}
 	rt := ctx.rt
 	shape_ensure(o.shape)

@@ -654,11 +654,45 @@ remove_property_at :: proc(rt: ^Runtime, o: ^Object, idx: int) {
 	object_make_dict(rt, o)
 	sh := o.shape
 	n := len(sh.props)
+	// The key leaves the hash in place (no rehash of every key): the last property, the usual delete, costs its probe.
+	keep_hash := sh.hash != nil && n - 1 > SHAPE_LINEAR_MAX
+	if keep_hash {shape_hash_remove(sh, idx)}
 	ordered_remove(&sh.props, idx)
 	sh.version += 1
 	for i in idx ..< n - 1 {o.slots[i] = o.slots[i + 1]}
 	o.slots[n - 1] = {}
-	shape_build_hash(rt, sh)
+	if !keep_hash {
+		shape_build_hash(rt, sh)
+	} else if idx < n - 1 {
+		// (the properties after it moved down one place)
+		for &v in sh.hash {if v > u32(idx + 1) {v -= 1}}
+	}
+}
+
+// Take property idx out of the hash of sh, whose props still hold it: linear probing's deletion, which moves back the
+// entries after it that its slot separated from their home.
+@(private = "file")
+shape_hash_remove :: proc(sh: ^Shape, idx: int) {
+	mask := u32(len(sh.hash) - 1)
+	i := atom_mix(sh.props[idx].atom) & mask
+	for sh.hash[i] != u32(idx + 1) {i = (i + 1) & mask}
+	j := i
+	for {
+		sh.hash[i] = 0
+		for {
+			j = (j + 1) & mask
+			v := sh.hash[j]
+			if v == 0 {return}
+			home := atom_mix(sh.props[v - 1].atom) & mask
+			// the entry stays when its home lies cyclically in (i, j]
+			stays := i <= j ? (i < home && home <= j) : (i < home || home <= j)
+			if !stays {
+				sh.hash[i] = v
+				i = j
+				break
+			}
+		}
+	}
 }
 
 // Change the attributes/kind of an existing own property.
@@ -752,6 +786,16 @@ array_new :: proc(ctx: ^Context, cap := 0) -> ^Object {
 	return array_like_new(ctx.rt, ctx.array_shape, .array, cap)
 }
 
+// array_new for a room a script chose (`{length: 4e9}.toReversed()`): nil, with the error thrown, when the heap limit
+// refuses it.
+array_new_checked :: proc(ctx: ^Context, cap: i64) -> ^Object {
+	if cap < 0 || !mem_may_grow(ctx.rt, cap * size_of(Value)) {
+		throw_out_of_memory(ctx)
+		return nil
+	}
+	return array_new(ctx, int(cap))
+}
+
 // An object of shape `sh` whose elements are an Array_Data with room for `cap` values (an Array, an arguments object, a match),
 // in its cell when they fit a block of the pool.
 array_like_new :: proc(rt: ^Runtime, sh: ^Shape, class: Class_ID, cap: int) -> ^Object {
@@ -787,10 +831,18 @@ array_data :: #force_inline proc(o: ^Object) -> ^Array_Data {
 	return &o.data.(Array_Data)
 }
 
-array_reserve :: proc(rt: ^Runtime, o: ^Object, n: u32) {
+// Room for `n` values. false: the heap limit refuses it, and nothing changed (the caller throws throw_out_of_memory
+// where it can, and never writes past the capacity).
+array_reserve :: proc(rt: ^Runtime, o: ^Object, n: u32) -> bool {
 	ad := cast(^Array_Data)&o.data // (an array's: the variant's payload is at the start of the union)
-	if n <= ad.cap {return}
-	new_cap := max(n, ad.cap * 3 / 2 + 4)
+	if n <= ad.cap {return true}
+	new_cap := max(n, u32(min(u64(ad.cap) * 3 / 2 + 4, u64(max(u32)))))
+	// (the whole new block: a resize holds both until it copied)
+	if !mem_may_grow(rt, i64(new_cap) * size_of(Value)) {
+		// (the room to grow is what goes over: exactly what is asked may still fit)
+		new_cap = n
+		if !mem_may_grow(rt, i64(new_cap) * size_of(Value)) {return false}
+	}
 	if ad.values != nil && cell_holds(o, ad.values) {
 		// (the values in the cell stay there, unused, until it dies)
 		nv := mem_array(rt, Value, int(new_cap))
@@ -800,15 +852,18 @@ array_reserve :: proc(rt: ^Runtime, o: ^Object, n: u32) {
 		ad.values = cast([^]Value)mem_resize(rt, ad.values, int(ad.cap) * size_of(Value), int(new_cap) * size_of(Value))
 	}
 	ad.cap = new_cap
+	return true
 }
 
-// Push onto a fast array (caller guarantees fast_array and that length == count).
-array_push_fast :: proc(rt: ^Runtime, o: ^Object, v: Value) {
+// Push onto a fast array (caller guarantees fast_array and that length == count). false: refused by the heap limit
+// (array_reserve), the array unchanged.
+array_push_fast :: proc(rt: ^Runtime, o: ^Object, v: Value) -> bool {
 	ad := &o.data.(Array_Data)
-	if ad.count >= ad.cap {array_reserve(rt, o, ad.count + 1)}
+	if ad.count >= ad.cap && !array_reserve(rt, o, ad.count + 1) {return false}
 	ad.values[ad.count] = v
 	ad.count += 1
 	o.slots[0].value = mk_u32(ad.count)
+	return true
 }
 
 // --- finalization ---

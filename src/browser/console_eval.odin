@@ -65,9 +65,9 @@ console_eval_row :: proc(app: ^App, t: ^Tab, row_h: f32) {
 			c.cursor = len(c.history)
 			ui.field_clear(&c.field)
 			c.open = false
-			dev().con.evaluating = true
+			t.conlog.evaluating = true
 			page.js_console_eval(console_target(t), source)
-			dev().con.evaluating = false
+			t.conlog.evaluating = false
 			request_frames(app, 3)
 		}
 	}

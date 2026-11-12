@@ -132,6 +132,7 @@ Tab_Icon :: struct {
 	read_ms:   f64,      // when (loop clock)
 	url:       string,   // owned: the icon's URL, "" = none
 	loaded:    bool,     // the page's load event had fired then (a script may have added an icon before it)
+	title_el:  base.Handle,   // the <title> the title was read from, looked for again only once it left the document
 }
 
 tab_icon_destroy :: proc(i: ^Tab_Icon) {
@@ -152,6 +153,7 @@ Favicon :: struct {
 	tex:       render.Texture,
 	w, h:      int,
 	used:      u64,             // frame count when last drawn
+	nav:       rawptr,          // the navigation (scope) that asked for it: a Failed icon is asked for again by another one
 	px:        int,             // the size it was decoded for (the largest of the windows' scales then)
 	blob:      ^images.Blob,    // its bytes (small: browser.tabs.icon_max_bytes), decoded again when a window's scale grows past `px`
 }
@@ -162,6 +164,7 @@ Favicons :: struct {
 	entries:  map[string]^Favicon,
 	port:     images.Port_Id,
 	frame:    u64,
+	decode_px: int,          // favicon_decode_px of this frame (favicon_frame: not counted again for every tab)
 	timer:    base.Handle,   // the title refresh's deadline
 	spin:     base.Handle,   // the spinner's next turn
 }
@@ -325,46 +328,65 @@ icon_url_of :: proc(app: ^App, t: ^Tab, want: int) -> string {
 ////////////////////////////////
 // Per frame
 
-// The tab's title and icon from its document, when the document changed (throttled). `icon_px`: the size drawn.
-tab_refresh :: proc(app: ^App, t: ^Tab, icon_px: int) {
+// The tab's title and icon from its document, when the document changed (throttled). `icon_px`: the size drawn. true:
+// the title or the icon changed (what the tab shows).
+tab_refresh :: proc(app: ^App, t: ^Tab, icon_px: int) -> (changed: bool) {
 	p := t.page
 	if t.kind != .Web || p == nil || strings.has_prefix(t.url, VIEW_SOURCE) {
-		if t.icon.page != nil || t.icon.url != "" { tab_icon_destroy(&t.icon) }
-		return
+		if t.icon.page != nil || t.icon.url != "" { tab_icon_destroy(&t.icon); return true }
+		return false
 	}
-	if !p.render.adopted { return }   // no document yet (the parse runs on a thread)
+	if !p.render.adopted { return false }   // no document yet (the parse runs on a thread)
 	loaded := p.scripts != nil && p.scripts.phase == .Complete
 	same := rawptr(p) == t.icon.page && rawptr(p.doc) == t.icon.doc
-	if same && p.doc.mutations == t.icon.mutations && loaded == t.icon.loaded { return }
+	if same && p.doc.mutations == t.icon.mutations && loaded == t.icon.loaded { return false }
 	now := f64(host.now_ns(&app.loop)) / 1e6
 	if same && now - t.icon.read_ms < app.favs.cfg.title_refresh_ms {
 		title_wake(app, t.icon.read_ms + app.favs.cfg.title_refresh_ms - now)
-		return
+		return false
 	}
+	if !same { t.icon.title_el = base.NIL_HANDLE }
 	t.icon.page, t.icon.doc, t.icon.mutations, t.icon.read_ms, t.icon.loaded = p, p.doc, p.doc.mutations, now, loaded
 
+	// the <title> read last, while it is still one in the document: a page that mutates all the time does not walk its
+	// tree for it at each refresh (a <title> put before it later is not seen until this one goes)
+	el := t.icon.title_el
+	if n := dom.get(p.doc, el); n == nil || n.kind != .Element || n.name != "title" || !dom.is_connected(p.doc, el) {
+		el = dom.find_first_by_tag(p.doc, "title")
+		t.icon.title_el = el
+	}
 	title := ""
-	if el := dom.find_first_by_tag(p.doc, "title"); el != base.NIL_HANDLE { title = collapse_title(dom.text_content(p.doc, el)) }
+	if el != base.NIL_HANDLE { title = collapse_title(dom.text_content(p.doc, el)) }
 	if title == "" { title = default_tab_title(t.url) }
-	if title != t.title { delete(t.title); t.title = strings.clone(title) }
+	if title != t.title { delete(t.title); t.title = strings.clone(title); changed = true }
 
 	icon := app.favs.cfg.favicons ? icon_url_of(app, t, icon_px) : ""
 	if icon != t.icon.url {
 		delete(t.icon.url)
 		t.icon.url = strings.clone(icon)
+		changed = true
 	}
 	if icon != "" { favicon_request(app, t, icon) }
 	history_title_seen(app, t)   // the entry and the browsing history take the title and icon (history_ui.odin)
+	return
 }
 
+// The refresh a throttled change waits for: done here, by the timer, and a frame only for a window whose tab changed
+// (a page that mutates every frame draws its own frames; one that changed something else than its title draws none).
 @(private = "file")
 title_wake :: proc(app: ^App, ms: f64) {
 	if app.favs.timer != base.NIL_HANDLE { return }
 	app.favs.timer = host.set_timer(&app.loop, max(ms, 1), 0, proc(data: rawptr) {
 		app := (^App)(data)
 		app.favs.timer = base.NIL_HANDLE
-		a := (^App)(data)
-		request_frames(a, 1)
+		host.quiet_note(&app.loop)   // (what it changes asks for its own frame)
+		px := favicon_decode_px(app)
+		for w in app.windows {
+			for t in w.tabs { if tab_refresh(app, t, px) { window_request(app, w, 1) } }
+		}
+		if len(app.windows) == 0 {
+			for t in app.bare.tabs { if tab_refresh(app, t, px) { window_request(app, &app.bare, 1) } }
+		}
 	}, app)
 }
 
@@ -386,9 +408,7 @@ favicon_texture :: proc(app: ^App, address: string) -> (tex: render.Texture, ok:
 	e.used = app.favs.frame
 	// a window's scale grew past what it was decoded for (it moved to another monitor): decoded again at that size, the picture it
 	// has drawn meanwhile
-	if e.job == 0 && e.blob != nil && app.favs.port != 0 {
-		if px := favicon_decode_px(app); px > e.px { favicon_decode(app, e, px) }
-	}
+	if e.job == 0 && e.blob != nil && app.favs.port != 0 && app.favs.decode_px > e.px { favicon_decode(app, e, app.favs.decode_px) }
 	return e.tex, true
 }
 
@@ -403,16 +423,26 @@ favicon_decode :: proc(app: ^App, e: ^Favicon, px: int) {
 	e.job = images.submit(app.favs.port, images.job_make(.Decode, e.blob, opts, user = e))
 }
 
-favicon_frame :: proc(app: ^App) { app.favs.frame += 1 }
+favicon_frame :: proc(app: ^App) {
+	app.favs.frame += 1
+	app.favs.decode_px = favicon_decode_px(app)
+}
 
 @(private = "file")
 favicon_request :: proc(app: ^App, t: ^Tab, address: string) {
-	if address in app.favs.entries { return }
+	if old := app.favs.entries[address]; old != nil {
+		// an icon that failed is asked for again by the next navigation that names it (the site may have been down), not
+		// by every refresh of the same one
+		if old.state != .Failed || old.nav == rawptr(t.nav) { return }
+		delete_key(&app.favs.entries, old.url)
+		favicon_free(app, old)
+	}
 	favicon_evict(app)
 	e := new(Favicon)
 	e.app = app
 	e.url = strings.clone(address)
 	e.used = app.favs.frame
+	e.nav = t.nav
 	app.favs.entries[e.url] = e
 	e.scope = t.nav
 	e.task = fetch.start(&app.loader, {
@@ -480,13 +510,17 @@ favicon_decoded :: proc(user: rawptr, j: ^images.Job) {
 	request_frames(app, 2)
 }
 
-// Room for one more entry: the least recently drawn ones go (never one still loading or decoding).
+// Room for one more entry: the least recently drawn ones go (never one still loading or decoding, nor one a tab shows:
+// the tabs out of view are not drawn, and their icons are not marked at each frame for it).
 @(private = "file")
 favicon_evict :: proc(app: ^App) {
+	if len(app.favs.entries) < app.favs.cfg.icon_cache { return }
+	in_use := make(map[string]struct{}, len(app.tab_ids), context.temp_allocator)
+	for _, t in app.tab_ids { if t.icon.url != "" { in_use[t.icon.url] = {} } }
 	for len(app.favs.entries) >= app.favs.cfg.icon_cache {
 		oldest: ^Favicon
 		for _, e in app.favs.entries {
-			if e.state == .Loading || e.state == .Decoding { continue }
+			if e.state == .Loading || e.state == .Decoding || e.url in in_use { continue }
 			if oldest == nil || e.used < oldest.used { oldest = e }
 		}
 		if oldest == nil { return }

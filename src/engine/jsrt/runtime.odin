@@ -241,7 +241,8 @@ Runtime :: struct {
 	// atoms (atom.odin)
 	atoms:          [dynamic]Atom_Entry,
 	atom_hash:      []u32,
-	atom_free:      u32,
+	atom_free:      [dynamic]Atom, // the slots of string atoms a collection freed (atoms_sweep), used again first
+	atoms_freed:    i64,           // string atoms freed since the runtime began
 
 	// interned singletons
 	char_strings:   [256]^JS_String, // one-unit Latin-1 strings
@@ -570,6 +571,17 @@ poll_hook: proc "contextless" ()
 
 poll_host :: #force_inline proc "contextless" () {
 	if intrinsics.volatile_load(&poll_word) != 0 && poll_hook != nil {poll_hook()}
+}
+
+// A native loop that calls no JS polls every NATIVE_LOOP_POLL_STEPS of its steps (`i & NATIVE_LOOP_POLL_MASK == 0`), each
+// step counted as a back edge: a `fill` or a `join` of a hundred million elements stops at the slow-script interrupt.
+NATIVE_LOOP_POLL_STEPS :: 4096
+NATIVE_LOOP_POLL_MASK :: NATIVE_LOOP_POLL_STEPS - 1
+
+// true: interrupted (the uncatchable error is pending).
+poll_native_loop :: proc(ctx: ^Context) -> bool {
+	ctx.rt.interrupt_counter += NATIVE_LOOP_POLL_STEPS - 1
+	return poll_interrupt(ctx)
 }
 
 poll_interrupt :: proc(ctx: ^Context) -> bool {

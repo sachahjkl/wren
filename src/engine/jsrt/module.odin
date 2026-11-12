@@ -92,11 +92,19 @@ module_finalize :: proc(rt: ^Runtime, m: ^Module) {
 }
 
 module_trace :: proc(rt: ^Runtime, m: ^Module) {
+	// (the names: a module made by the host has no stream whose atom table holds them, and the atoms are weak)
+	mark_atom(rt, m.name)
 	for &r in m.req {
+		mark_atom(rt, r.name)
 		mark_cell(rt, r.module)
 		mark_value(rt, r.attributes)
 	}
-	for &e in m.exports {mark_cell(rt, e.var_ref)}
+	for &e in m.exports {
+		mark_atom(rt, e.local_name)
+		mark_atom(rt, e.export_name)
+		mark_cell(rt, e.var_ref)
+	}
+	for &im in m.imports {mark_atom(rt, im.import_name)}
 	mark_cell(rt, m.func_bc)
 	mark_cell(rt, m.func_obj)
 	mark_cell(rt, m.namespace)

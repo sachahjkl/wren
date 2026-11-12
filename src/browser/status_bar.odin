@@ -11,9 +11,11 @@ import "core:math"
 import "toolkit:draw"
 import "toolkit:render"
 import "toolkit:ui"
+import "core:strings"
 import "wb:base"
 import "wb:config"
 import "wb:cookies"
+import "wb:fetch"
 import lay "wb:layout"
 import "wb:page"
 import "wb:url"
@@ -218,18 +220,93 @@ status_left_fit :: proc(items: []Status_Left_Item, avail, sep_w: f32, measure: p
 	}
 }
 
+// What the left part of the status bar was built from: while it is the same, its items (all but the page state, which
+// is made every frame) are not made again (formatting, origins, the cookies of the jar counted).
+Status_Key :: struct {
+	tab:        u64,
+	page:       rawptr,
+	cfg:        u64,                 // Hud.cfg_serial: the items asked for, the decimal separator
+	load_bytes: int,
+	net:        u64,                 // Net_Log.version
+	pending:    int,
+	counts:     fetch.Fetch_Counts,
+	cookies:    int,
+	nodes:      int,
+	instances:  int,
+	js_failed:  bool,
+	zoom:       int,
+}
+
+// A window's status bar from frame to frame (Window_Own.status).
+Status_Cache :: struct {
+	key:     Status_Key,
+	valid:   bool,
+	items:   [dynamic]Status_Left_Item,   // in the order of the items asked for, the page state's place left out
+	state_at: int,                        // where the page state goes among them (-1: not asked for)
+	text:    []u8,                        // owned: the items' strings
+	cookies: Cookie_Count,
+}
+
+// The cookies of a host, counted again when the host changes, when the jar's number of cookies does, or after the status
+// bar's refresh interval (what expires on the way, a cookie replaced by another of another host: the jar has no version).
+Cookie_Count :: struct {
+	host:     string,   // owned
+	jar_len:  int,
+	at_ms:    f64,
+	n:        int,
+}
+
+status_cache_destroy :: proc(c: ^Status_Cache) {
+	delete(c.items)
+	delete(c.text)
+	delete(c.cookies.host)
+	c^ = {}
+}
 
 @(private = "file")
-status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
+cookie_count :: proc(app: ^App, c: ^Cookie_Count, host: string) -> int {
+	now := ui.now_ms()
+	jar_len := len(app.profile.jar.cookies)
+	if host == c.host && jar_len == c.jar_len && now - c.at_ms < max(app.hud.cfg.refresh_ms, 1) { return c.n }
+	if host != c.host { delete(c.host); c.host = strings.clone(host) }
+	c.jar_len, c.at_ms = jar_len, now
+	c.n = cookies.count_for_host(&app.profile.jar, host)
+	return c.n
+}
+
+// Keeps `items` (strings of the temporary allocator) in the cache, their strings copied into one block.
+@(private = "file")
+status_cache_store :: proc(c: ^Status_Cache, items: []Status_Left_Item) {
+	n := 0
+	for it in items { n += len(it.text) + len(it.short) + len(it.tip) }
+	delete(c.text)
+	c.text = make([]u8, n)
+	at := 0
+	keep :: proc(buf: []u8, at: ^int, s: string) -> string {
+		copy(buf[at^:], s)
+		r := string(buf[at^:at^ + len(s)])
+		at^ += len(s)
+		return r
+	}
+	clear(&c.items)
+	for it in items {
+		x := it   // (id and tone are the program's own strings)
+		x.text, x.short, x.tip = keep(c.text, &at, it.text), keep(c.text, &at, it.short), keep(c.text, &at, it.tip)
+		append(&c.items, x)
+	}
+}
+
+// The items of the left part other than the page state, as the key says (strings of the temporary allocator).
+@(private = "file")
+status_items_make :: proc(app: ^App, t: ^Tab, cookie_n: int) -> (items: [dynamic]Status_Left_Item, state_at: int) {
 	p := t.page
-	items := make([dynamic]Status_Left_Item, 0, 8, context.temp_allocator)
+	items = make([dynamic]Status_Left_Item, 0, 8, context.temp_allocator)
+	state_at = -1
 	add :: proc(items: ^[dynamic]Status_Left_Item, it: Status_Left_Item) { append(items, it) }
 	for item in app.hud.cfg.items {
 		switch item {
 		case .State:
-			st := page_state(t)
-			if st.text == "" { continue }
-			add(&items, {kind = item, text = st.text, id = "###sb_state", tone = st.tone, tip = st.detail != st.text ? st.detail : "", priority = 100})
+			if state_at < 0 { state_at = len(items) }
 		case .Size:
 			if t.load == nil || t.load.bytes <= 0 { continue }
 			add(&items, {kind = item, text = fmt_bytes(t.load.bytes, app.hud.cfg.comma), id = "###sb_size", tone = "weak", tip = "Size of the document", priority = 50})
@@ -248,7 +325,7 @@ status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
 				id = "###sb_req", tone = pending > 0 ? "" : "weak", tip = cache_requests_tip(t), priority = 60})
 		case .Cookies:
 			if p == nil || p.env.location.host == "" { continue }
-			n := cookies.count_for_host(&app.profile.jar, p.env.location.host)
+			n := cookie_n
 			add(&items, {kind = item, text = fmt.tprintf("%s cookie%s", fmt_count(n), n == 1 ? "" : "s"), short = fmt.tprintf("%s ck.", fmt_count(n)),
 				id = "###sb_cookies", tone = "weak", tip = fmt.tprintf("Cookies of %s", p.env.location.host), priority = 30})
 		case .Nodes:
@@ -272,6 +349,32 @@ status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
 		case .Zoom:
 			if zoom_percent(t) == 100 { continue }
 			add(&items, {kind = item, text = fmt.tprintf("%d %%", zoom_percent(t)), id = "###sb_zoom", tone = "", tip = "Page zoom: click to reset (Ctrl+0)", priority = 90})
+		}
+	}
+	return
+}
+
+@(private = "file")
+status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
+	p := t.page
+	c := &window_own(app).status
+	key := Status_Key{tab = t.id, page = p, cfg = app.hud.cfg_serial, net = t.net.version, pending = t.net.pending, zoom = zoom_percent(t)}
+	if t.load != nil { key.load_bytes = t.load.bytes }
+	if p != nil {
+		key.counts, key.nodes, key.instances = p.env.counts, p.doc.nodes.count, len(p.instances)
+		key.js_failed = p.js != nil && p.js.failed
+		if .Cookies in app.hud.cfg.item_set && p.env.location.host != "" { key.cookies = cookie_count(app, &c.cookies, p.env.location.host) }
+	}
+	if !c.valid || key != c.key {
+		made, state_at := status_items_make(app, t, key.cookies)
+		status_cache_store(c, made[:])
+		c.key, c.valid, c.state_at = key, true, state_at
+	}
+	items := make([dynamic]Status_Left_Item, 0, len(c.items) + 1, context.temp_allocator)
+	append(&items, ..c.items[:])
+	if c.state_at >= 0 {
+		if st := page_state(t); st.text != "" {
+			inject_at(&items, c.state_at, Status_Left_Item{kind = .State, text = st.text, id = "###sb_state", tone = st.tone, tip = st.detail != st.text ? st.detail : "", priority = 100})
 		}
 	}
 	em := ui.font_size()

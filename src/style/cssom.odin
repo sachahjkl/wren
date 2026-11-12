@@ -118,7 +118,8 @@ cssom_list :: proc(e: ^Engine, s: ^Sheet) -> ^Cssom_List {
 				}
 				continue
 			}
-			r := css.parse_rule_into(s.sheet, t, opt)
+			// (what the sheet's own parse reported of a piece left out is in its errors already)
+			r, _ := css.parse_rule_into(s.sheet, t, opt)
 			if r == nil || r.kind == .Import { continue }
 			append(&l.rules, r)
 			append(&l.texts, strings.clone(t))
@@ -239,8 +240,11 @@ engine_sheet_insert_rule :: proc(e: ^Engine, id: u64, text: string, index: int) 
 	if len(split_rules(t)) != 1 { return .Syntax }
 	opt := parse_options(&e.settings)
 	if len(l.rules) >= opt.max_rules { return .Too_Many }
-	r := css.parse_rule_into(s.sheet, t, opt)
-	if r == nil { return .Syntax }
+	r, why := css.parse_rule_into(s.sheet, t, opt)
+	if r == nil {
+		css.stylesheet_add_error(s.sheet, strings.concatenate({"insertRule: ", why}, context.temp_allocator), opt)   // (for the console, with the sheet's own)
+		return .Syntax
+	}
 	if r.kind == .Import && s.constructed { return .Syntax }
 	if err := placement_error(l.rules[:], r.kind, index); err != .None { return err }
 	if r.kind == .Import { return .Import }
@@ -286,10 +290,15 @@ engine_rule_insert :: proc(e: ^Engine, id: u64, rule_id: u32, text: string, inde
 	nest := at.rule.kind == .Style ? at.rule : at.nest
 	t := strings.trim_space(text)
 	r: ^css.Rule
-	if nest != nil { r = css.parse_nested_rule_into(s.sheet, t, opt, nest) } else if len(split_rules(t)) == 1 { r = css.parse_rule_into(s.sheet, t, opt) }
+	why := "more than one rule"
+	if nest != nil { r, why = css.parse_nested_rule_into(s.sheet, t, opt, nest) } else if len(split_rules(t)) == 1 { r, why = css.parse_rule_into(s.sheet, t, opt) }
 	if r == nil {
 		// a valid rule that cannot be there, or no rule
-		return -1, nest != nil && len(split_rules(t)) == 1 && css.parse_rule_into(s.sheet, t, opt) != nil ? .Hierarchy : .Syntax
+		if nest != nil && len(split_rules(t)) == 1 {
+			if top_rule, _ := css.parse_rule_into(s.sheet, t, opt); top_rule != nil { return -1, .Hierarchy }
+		}
+		css.stylesheet_add_error(s.sheet, strings.concatenate({"insertRule: ", why}, context.temp_allocator), opt)
+		return -1, .Syntax
 	}
 	if r.kind == .Import || r.kind == .Namespace { return -1, .Hierarchy }
 	if r.selector_text == "" && r.kind == .Style && !any_known_property(r.declarations) { return -1, .Syntax }   // (csswg-drafts#10520)

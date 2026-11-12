@@ -133,7 +133,6 @@ layout_equal :: proc(a, b: ^Computed) -> bool {
 
 // A new serial for paint-only changes: layout notices that styles changed, and that it may refresh instead of laying out.
 styled_touch_paint :: proc(s: ^Styled) {
-	styled_serial += 1
-	s.serial = styled_serial
+	s.serial = styled_next_serial()
 	journal_stamp(s)
 }

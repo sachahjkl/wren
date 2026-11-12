@@ -916,9 +916,9 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	if ui.menu_item("Collapse all underneath###dt_em_col", enabled = r.expandable).clicked { budget := DEV_ELEMENTS_TOGGLE_BUDGET; toggle_all(e, t.page.doc, h, false, &budget) }
 	if ui.menu_item("Scroll into view###dt_em_scroll", enabled = is_el).clicked { scroll_into_view(app, t, h) }
 	if ui.menu_item("Store as global variable###dt_em_store", enabled = r.kind != .Close && r.kind != .Doctype).clicked {
-		dev().con.evaluating = true
+		t.conlog.evaluating = true
 		if page.dev_store_node(t.page, h) { ui.toast(.Info, "Stored as a global variable: see the Console") } else { ui.toast(.Warn, "This node is not in the document's own tree (a shadow tree or a detached node)") }
-		dev().con.evaluating = false
+		t.conlog.evaluating = false
 	}
 	if sp := e.menu_span; e.menu_has_span && sp.val_a >= 0 {
 		val := r.label[sp.val_a:sp.val_b]

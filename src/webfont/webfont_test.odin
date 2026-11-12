@@ -54,6 +54,29 @@ make_woff :: proc(ttf: []byte, lie_about_size := false) -> []byte {
 	return out
 }
 
+// The page asks the decoded fonts first, on its own thread, and decodes elsewhere only on a miss: a lookup never
+// decodes, and finds what decode_cached kept.
+@(test)
+decoded_lookup_finds_what_was_decoded :: proc(t: ^testing.T) {
+	ttf, err := os.read_entire_file(FONT_PATH, context.allocator)
+	if err != nil { testing.fail_now(t, "test font missing") }
+	defer delete(ttf)
+	defer decoded_cache_clear()
+	woff := make_woff(ttf)
+	defer delete(woff)
+	URL :: "https://fonts.test/decoded_lookup.woff"
+	_, _, hit := decoded_lookup(URL, woff, 1 << 26, 1 << 26)
+	testing.expect(t, !hit, "nothing decoded yet")
+	sfnt, format, derr, cached := decode_cached(URL, woff, 1 << 26, 1 << 26)
+	defer delete(sfnt)
+	testing.expect(t, derr == .None && format == .Woff && !cached)
+	again, aformat, ahit := decoded_lookup(URL, woff, 1 << 26, 1 << 26)
+	defer delete(again)
+	testing.expect(t, ahit && aformat == .Woff && string(again) == string(sfnt))
+	_, _, other := decoded_lookup("https://fonts.test/other.woff", woff, 1 << 26, 1 << 26)
+	testing.expect(t, !other, "the URL is part of the key")
+}
+
 @(test)
 truetype_passes_through :: proc(t: ^testing.T) {
 	ttf, err := os.read_entire_file(FONT_PATH, context.allocator)

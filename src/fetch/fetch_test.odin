@@ -53,6 +53,23 @@ hsts_parsing_and_upgrade :: proc(t: ^testing.T) {
 	testing.expect_value(t, up.href, "https://example.com:8080/x")
 }
 
+// Every https site may add a host: the store keeps at most max_entries, dropping the one that expires first, and no
+// entry lives longer than the max-age cap.
+@(test)
+hsts_is_bounded :: proc(t: ^testing.T) {
+	h := hsts_make(max_entries = 2, max_age_s = 1000)
+	defer hsts_destroy(&h)
+	testing.expect(t, hsts_note(&h, "long.org", "max-age=900", 0))
+	testing.expect(t, hsts_note(&h, "short.org", "max-age=10", 0))
+	testing.expect(t, hsts_note(&h, "new.org", "max-age=500", 0))
+	testing.expect_value(t, len(h.hosts), 2)
+	testing.expect(t, !hsts_should_upgrade(&h, "short.org", 1), "the entry expiring first went")
+	testing.expect(t, hsts_should_upgrade(&h, "long.org", 1) && hsts_should_upgrade(&h, "new.org", 1))
+	testing.expect(t, hsts_note(&h, "new.org", "max-age=99999999999999999", 0), "a huge max-age is cut, not overflowed")
+	testing.expect_value(t, h.hosts["new.org"].expires_ms, i64(1_000_000))
+	testing.expect_value(t, len(h.hosts), 2)   // an update takes no room
+}
+
 @(test)
 hsts_persistence :: proc(t: ^testing.T) {
 	h := hsts_make()
@@ -304,4 +321,20 @@ hsts_and_preflight_stores_can_be_emptied :: proc(t: ^testing.T) {
 	preflight_cache_store(&c, "https://a", "https://b/x", false, {"PUT"}, {"X-Token"}, 60, 10_000, 7200, 1000)
 	testing.expect_value(t, preflight_cache_clear(&c), 1)
 	testing.expect(t, !preflight_cache_allows(&c, "https://a", "https://b/x", false, "PUT", {"x-token"}, 10_001))
+}
+
+// WHATWG Infra's forgiving-base64: whitespace anywhere, padding optional but only at the end of a multiple of four.
+@(test)
+forgiving_base64_cases :: proc(t: ^testing.T) {
+	Case :: struct { in_: string, out: string, ok: bool }
+	cases := []Case{
+		{"", "", true}, {"YQ", "a", true}, {"YQ==", "a", true}, {"YWI", "ab", true}, {"YWI=", "ab", true},
+		{"YWJj", "abc", true}, {" Y W\tJ\nj\r\f", "abc", true}, {"aGVsbG8gd29ybGQ=", "hello world", true},
+		{"YQ=", "", false}, {"YQ===", "", false}, {"Y", "", false}, {"YQ==YQ==", "", false}, {"YW*j", "", false},
+		{"=", "", false}, {"YWJjZA", "abcd", true}, {"+/+/", "\xfb\xff\xbf", true},
+	}
+	for c in cases {
+		got, ok := forgiving_base64_decode(transmute([]byte)c.in_, context.temp_allocator)
+		testing.expectf(t, ok == c.ok && (!ok || string(got) == c.out), "%q: %v %q", c.in_, ok, string(got))
+	}
 }

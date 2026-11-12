@@ -20,6 +20,7 @@ Flex_Item :: struct {
 	auto_m:    [4]bool,
 	grow, shrink: f32,
 	stretch:   bool,
+	measured:  bool,       // row: only measured at its auto height (measure_height): laid out at its final one when stretched
 	baseline:  f32,        // from the cross-start margin edge, < 0: none
 	pos_main, pos_cross: f32,
 }
@@ -42,7 +43,9 @@ self_align :: proc(container, item: ^style.Computed) -> style.Content_Align {
 	return a
 }
 
-// Does the content of `k` depend on its height (so that stretching it needs a new layout)?
+// Does the content of `k` depend on its height (so that imposing another height needs a new layout)? Its content box
+// height is the percentage base of its children's heights, also of the atomic inlines inside its inline boxes; the
+// boxes it positions, its columns and a <button>'s centred content follow it; flex, grid and table layouts share it out.
 @(private)
 depends_on_height :: proc(c: ^Ctx, ki: i32) -> bool {
 	k := &c.l.boxes[ki]
@@ -50,10 +53,19 @@ depends_on_height :: proc(c: ^Ctx, ki: i32) -> bool {
 	if k.abs_first != NONE { return true }
 	// a <button> centers its content in its height (layout_block)
 	if .Control in k.flags && k.kind == .Block { return true }
-	for ch := k.first; ch != NONE; ch = c.l.boxes[ch].next {
-		cs := c.l.boxes[ch].cs
-		if style.has_percent(cs.height) || style.has_percent(cs.min_height) || style.has_percent(cs.max_height) { return true }
-		if c.l.boxes[ch].kind == .Inline { continue }
+	// columns are balanced in the height; a frame root lays its content out in its own writing mode (frames.odin)
+	if k.fx & {.Multicol, .Frame_Root} != {} { return true }
+	stack := make([dynamic]i32, 0, 8, context.temp_allocator)
+	append(&stack, ki)
+	for len(stack) > 0 {
+		x := pop(&stack)
+		for ch := c.l.boxes[x].first; ch != NONE; ch = c.l.boxes[ch].next {
+			cb := &c.l.boxes[ch]
+			cs := cb.cs
+			if style.has_percent(cs.height) || style.has_percent(cs.min_height) || style.has_percent(cs.max_height) { return true }
+			if .Frame_Root in cb.fx { return true }
+			if cb.kind == .Inline { append(&stack, ch) }
+		}
 	}
 	return false
 }
@@ -67,10 +79,25 @@ set_height :: proc(c: ^Ctx, ki: i32, w, cb_h, h: f32) {
 		layout_contents(c, ki, w, cb_h, h, nil)
 		return
 	}
+	impose_height(c, ki, w, cb_h, h)
+}
+
+// Imposes border-box height `h` on box `ki`, whose content does not depend on its height (depends_on_height) and which
+// was just laid out on its own at width `w` with an auto height (containing block height `cb_h`): only its height and its
+// layout cache change, the entry of its auto height kept as the second one (its content is the same: block.odin).
+@(private)
+impose_height :: proc(c: ^Ctx, ki: i32, w, cb_h, h: f32) {
+	key, _ := cache_key(c, ki, w, cb_h, h)
+	k := &c.l.boxes[ki]
 	k.size.y = h
+	valid := k.cache_ok && k.inc == {} && !k.cache_flow
+	if valid && k.cache_in == key { return }
+	k.alt_ok = valid && .Frame_Root not_in k.fx
+	k.alt_same = true
+	if k.alt_ok { k.alt_in, k.alt_h = k.cache_in, k.cache_h }
 	k.cache_ok = true
 	k.cache_flow = false
-	k.cache_in = {w, cb_h, h}
+	k.cache_in = key
 	k.cache_h = h
 }
 
@@ -207,9 +234,9 @@ layout_flex :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 				}
 			} else {
 				w := flex_col_width(c, it, k, cw)
-				r := layout_contents(c, id, w, -1, -1, nil)
-				it.base = r.h
-				content_main = r.h
+				// (laid out again at its final size below: the cross sizes)
+				it.base = measure_height(c, id, w, -1)
+				content_main = it.base
 			}
 		}
 		k = &c.l.boxes[id]
@@ -234,7 +261,7 @@ layout_flex :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 			} else {
 				if content_main < 0 {
 					w := flex_col_width(c, it, k, cw)
-					content_main = layout_contents(c, id, w, -1, -1, nil).h
+					content_main = measure_height(c, id, w, -1)
 				}
 				auto_min = content_main
 				if spec, ok := to_border_h(c, k, ks.height, main_avail); ok { auto_min = min(auto_min, spec) }
@@ -333,13 +360,23 @@ layout_flex :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 				h := clamp_h(c, k, spec, cross_avail)
 				layout_contents(c, it.box, it.main, cross_avail, h, nil)
 				it.cross = h
+			} else if it.stretch && depends_on_height(c, it.box) {
+				// laid out below, at the height of its line (or at this one again when it keeps it)
+				it.cross = measure_height(c, it.box, it.main, cross_avail)
+				it.measured = true
 			} else {
 				r := layout_contents(c, it.box, it.main, cross_avail, -1, nil)
 				it.cross = r.h
 			}
 		} else {
 			w := flex_col_width(c, &it, k, cw)
-			layout_contents(c, it.box, w, main_avail, it.main, nil)
+			if depends_on_height(c, it.box) {
+				layout_contents(c, it.box, w, main_avail, it.main, nil)
+			} else {
+				// its content is that of its auto height (as the base size found it): only the height is imposed
+				layout_contents(c, it.box, w, main_avail, -1, nil)
+				impose_height(c, it.box, w, main_avail, it.main)
+			}
 			it.cross = w
 		}
 		k = &c.l.boxes[it.box]
@@ -416,7 +453,18 @@ layout_flex :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 			target := ln.cross - it.m[2] - it.m[3]
 			if row {
 				target = clamp_h(c, k, target, cross_avail)
-				if math.abs(target - it.cross) > 0.01 { set_height(c, it.box, it.main, cross_avail, target); it.cross = target }
+				if it.measured {
+					// (its content depends on its height: as set_height lays it out, or at the height measured)
+					if math.abs(target - it.cross) > 0.01 {
+						layout_contents(c, it.box, it.main, cross_avail, target, nil)
+						it.cross = target
+					} else {
+						layout_contents(c, it.box, it.main, cross_avail, -1, nil)
+					}
+				} else if math.abs(target - it.cross) > 0.01 {
+					set_height(c, it.box, it.main, cross_avail, target)
+					it.cross = target
+				}
 			} else {
 				target = clamp_w(c, k, target, cw)
 				if math.abs(target - it.cross) > 0.01 {

@@ -78,6 +78,7 @@ iter_state_free :: proc(rt: ^Runtime, st: ^Iter_State) {
 
 iter_state_trace :: proc(rt: ^Runtime, st: ^Iter_State) {
 	mark_value(rt, st.target)
+	for a in st.keys {mark_atom(rt, a)} // (a for-in's keys: the atoms are weak, and a key the loop deletes is still listed)
 	if st.extra == nil {return}
 	for v in st.buf {mark_value(rt, v)}
 	mark_value(rt, st.a)

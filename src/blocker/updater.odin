@@ -8,6 +8,7 @@ import "wb:host"
 import "wb:i18n"
 import "wb:http"
 import "wb:net"
+import "wb:url"
 
 // Keeping the lists up to date: a round downloads every enabled list that is due (or all of them when asked), one at a
 // time, as low-priority requests with conditional headers (If-None-Match / If-Modified-Since: an unchanged list answers
@@ -43,8 +44,33 @@ Updater :: struct {
 	pending_status: int,
 }
 
+// One list's download. A redirect is followed by a new request with the same Ctx (net never follows one).
 @(private)
-Ctx :: struct { b: ^Blocker, id: string }
+Ctx :: struct {
+	b:         ^Blocker,
+	id:        string,
+	url:       string,   // owned: the URL asked now (the list's, or where it redirected)
+	headers:   string,   // owned: the request's fields, the same for every hop
+	redirects: int,
+	next:      string,   // owned: where the answer being read redirects ("" none)
+	refused:   string,   // why that redirect is not followed ("" when it is, or there is none)
+}
+
+@(private)
+ctx_free :: proc(c: ^Ctx) {
+	delete(c.id); delete(c.url); delete(c.headers); delete(c.next)
+	free(c)
+}
+
+// Where a list download goes after a redirect of `current` to `location`: an https URL only (a list rewrites what every
+// page may load: it never comes over plain http, nor from a scheme the network does not speak).
+list_redirect_target :: proc(current, location: string, allocator := context.allocator) -> (target: string, ok: bool) {
+	base_url, bok := url.parse_absolute(current, context.temp_allocator)
+	if !bok { return "", false }
+	next, nok := url.parse(location, &base_url, context.temp_allocator)
+	if !nok || next.scheme != "https" { return "", false }
+	return strings.clone(url.without_fragment(next), allocator), true
+}
 
 // A round in `delay_s` seconds (the first one after start-up), then every hour to see what is due.
 updater_schedule :: proc(b: ^Blocker, delay_s: int) {
@@ -58,7 +84,7 @@ updater_stop :: proc(b: ^Blocker) {
 		net.cancel(b.client, b.upd.current); b.upd.current = base.NIL_HANDLE
 		// a cancelled request sends no more events: what they carried would stay allocated (the check build found it at exit when the
 		// lists were downloaded while the browser closed, which a machine with its lists up to date never does)
-		if c := b.upd.current_ctx; c != nil { b.upd.current_ctx = nil; delete(c.id); free(c) }
+		if c := b.upd.current_ctx; c != nil { b.upd.current_ctx = nil; ctx_free(c) }
 	}
 	if b.upd.job != nil {
 		j := b.upd.job
@@ -131,16 +157,27 @@ updater_next :: proc(b: ^Blocker) {
 		}
 		c := new(Ctx)
 		c.b, c.id = b, strings.clone(id)
-		b.upd.current_ctx = c
-		b.upd.current = net.fetch(b.client, {
-			url = l.url, method = "GET", headers = strings.to_string(sb), on_event = list_event, user = c,
-			collect = true, max_body = b.cfg.max_list_bytes, priority = .Low, background = true,
-		})
+		c.url, c.headers = strings.clone(l.url), strings.clone(strings.to_string(sb))
+		list_request(c)
 		touch(b)
 		return
 	}
 	updater_finish(b)
 }
+
+// Asks for c.url (the list's first, then each redirect's).
+@(private)
+list_request :: proc(c: ^Ctx) {
+	b := c.b
+	b.upd.current_ctx = c
+	b.upd.current = net.fetch(b.client, {
+		url = c.url, method = "GET", headers = c.headers, on_event = list_event, user = c,
+		collect = true, max_body = b.cfg.max_list_bytes, priority = .Low, background = true,
+	})
+}
+
+@(private)
+is_redirect :: proc(status: int) -> bool { return status == 301 || status == 302 || status == 303 || status == 307 || status == 308 }
 
 @(private)
 list_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
@@ -151,6 +188,18 @@ list_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 		l := list_by_id(&b.conf, c.id)
 		if l == nil { return }
 		hdr := http.parse_header_block(ev.headers, context.temp_allocator)
+		delete(c.next)
+		c.next, c.refused = "", ""
+		if is_redirect(ev.status) {
+			// followed once its (small) body is in: on Done
+			loc, has := http.get_header(hdr, "location")
+			switch {
+			case !has:                                   c.refused = "a redirect without a Location"
+			case c.redirects >= b.cfg.max_list_redirects: c.refused = "too many redirects (blocker.update.max_redirects)"
+			case:
+				if t, ok := list_redirect_target(c.url, loc); ok { c.next = t } else { c.refused = "a redirect to an address that is not https" }
+			}
+		}
 		if ev.status == 304 {
 			l.checked = unix_ms() / 1000
 			delete(l.error); l.error = ""
@@ -163,9 +212,21 @@ list_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 		b.upd.pending_status = ev.status
 	case .Done:
 		l := list_by_id(&b.conf, c.id)
+		if l != nil && c.next != "" {
+			// the list moved: the same download goes on at its new address (the state stays Downloading)
+			delete(c.url)
+			c.url, c.next = c.next, ""
+			c.redirects += 1
+			list_request(c)
+			return
+		}
 		if l != nil {
 			l.state = .Idle
 			switch {
+			case c.refused != "":
+				delete(l.error)
+				l.error = strings.clone(c.refused)
+				b.upd.errors += 1
 			case b.upd.pending_status == 200 && len(ev.data) > 0:
 				a := base.process_allocator()
 				body := make([]byte, len(ev.data), a)
@@ -198,8 +259,7 @@ list_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 finish_request :: proc(c: ^Ctx) {
 	c.b.upd.current = base.NIL_HANDLE
 	if c.b.upd.current_ctx == c { c.b.upd.current_ctx = nil }
-	delete(c.id)
-	free(c)
+	ctx_free(c)
 }
 
 @(private)

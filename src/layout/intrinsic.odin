@@ -85,7 +85,7 @@ intrinsic_compute :: proc(c: ^Ctx, bi: i32, ignore_width: bool) -> [2]f32 {
 			// a ratio and no natural size (an <svg> with only a viewBox): it fills what it is given and asks for nothing (as other
 			// browsers: in a grid track or a shrink-to-fit box it does not count as 300 px)
 			if cs.width.kind == .Auto && cs.height.kind == .Auto {
-				nw, nh, has_w, has_h := natural_size(c, bi)
+				nw, nh, has_w, has_h, _ := natural_size(c, bi)
 				if !has_w && !has_h && nw > 0 && nh > 0 { w = 0 }
 			}
 			res = {w, w}
@@ -186,13 +186,21 @@ attr_int :: proc(c: ^Ctx, h: base.Handle, name: string, fallback: int) -> int {
 	return n > 0 ? n : fallback
 }
 
-// Natural size in device px (content box). has_w / has_h: the dimension is known. Remembered per box: an incremental
-// pass compares it when natural sizes may have changed (an image decoded).
+// Natural size in device px (content box). has_w / has_h: the dimension is known. `placeholder`: an image's placeholder
+// size (natural_size_of). Remembered per box: an incremental pass compares it when natural sizes may have changed (an
+// image decoded); and the pass that found it reads it again as it is (a box asks for its size several times a pass: a
+// <select> measures every option label).
 @(private)
-natural_size :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
-	w, h, has_w, has_h = natural_size_of(c, bi)
+natural_size :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h, placeholder: bool) {
 	inf := &c.l.inc.info[bi]
-	inf.natural, inf.natural_has, inf.natural_ok = {w, h}, {has_w, has_h}, true
+	if c.pass_serial != 0 && inf.natural_ok && inf.natural_pass == c.pass_serial {
+		w, h, has_w, has_h, placeholder = inf.natural.x, inf.natural.y, inf.natural_has[0], inf.natural_has[1], inf.natural_placeholder
+	} else {
+		w, h, has_w, has_h, placeholder = natural_size_of(c, bi)
+		inf = &c.l.inc.info[bi]
+		inf.natural, inf.natural_has, inf.natural_ok = {w, h}, {has_w, has_h}, true
+		inf.natural_placeholder, inf.natural_pass = placeholder, c.pass_serial
+	}
 	// in the frame's axes
 	// (an image's natural size is physical; a form control's is along the line and across it; a meter's, a progress bar's, along its
 	// own lines, whatever those of its frame are)
@@ -208,16 +216,20 @@ natural_size :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
 	return
 }
 
+// The natural size of box `bi` (natural_size), found again. `placeholder`: an image with neither a natural size nor a
+// natural ratio yet (not loaded, broken), given the placeholder size, which has no natural ratio to speak of.
 @(private)
-natural_size_of :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
+natural_size_of :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h, placeholder: bool) {
 	b := &c.l.boxes[bi]
 	h_node := b.node
 	n := dom.get(c.d, h_node)
 	if n == nil { return }
 	s := c.scale
-	fi := b.fi >= 0 ? b.fi : font_info(c, b.cs)
-	f := c.l.fonts[fi]
-	char_w := measure(c, fi, "0")
+	// (only the controls read the font: an image does not make one, nor measure the width of a digit)
+	font :: proc(c: ^Ctx, bi: i32) -> i32 {
+		b := &c.l.boxes[bi]
+		return b.fi >= 0 ? b.fi : font_info(c, b.cs)
+	}
 	// a natural ratio without a natural size comes back as (ratio, 1) with neither dimension known (replaced_size)
 	ratio_only :: proc(c: ^Ctx, node: base.Handle) -> (f32, f32, bool, bool, bool) {
 		if c.replaced.ratio == nil { return 0, 0, false, false, false }
@@ -227,39 +239,41 @@ natural_size_of :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
 	switch n.name {
 	case "svg":
 		if c.replaced.intrinsic != nil {
-			if iw, ih, ok := c.replaced.intrinsic(c.replaced.user, h_node); ok { return iw * s, ih * s, true, true }
+			if iw, ih, ok := c.replaced.intrinsic(c.replaced.user, h_node); ok { return iw * s, ih * s, true, true, false }
 		}
-		if rw, rh, hw, hh, ok := ratio_only(c, h_node); ok { return rw, rh, hw, hh }
-		return 300 * s, 150 * s, true, true
+		if rw, rh, hw, hh, ok := ratio_only(c, h_node); ok { return rw, rh, hw, hh, false }
+		return 300 * s, 150 * s, true, true, false
 	case "img":
 		if c.replaced.intrinsic != nil {
-			if iw, ih, ok := c.replaced.intrinsic(c.replaced.user, h_node); ok { return iw * s, ih * s, true, true }
+			if iw, ih, ok := c.replaced.intrinsic(c.replaced.user, h_node); ok { return iw * s, ih * s, true, true, false }
 		}
-		if rw, rh, hw, hh, ok := ratio_only(c, h_node); ok { return rw, rh, hw, hh }
+		if rw, rh, hw, hh, ok := ratio_only(c, h_node); ok { return rw, rh, hw, hh, false }
 		// (its width / height attributes are presentational hints, CSS width / height and aspect-ratio: style's hints.odin)
-		return c.set.placeholder_w * s, c.set.placeholder_h * s, true, true
+		return c.set.placeholder_w * s, c.set.placeholder_h * s, true, true, true
 	case "canvas":
 		// HTML "rules for parsing non-negative integers": the digits at the start; 300 x 150 when there are none
-		return f32(canvas_dim(c, h_node, "width", 300)) * s, f32(canvas_dim(c, h_node, "height", 150)) * s, true, true
+		return f32(canvas_dim(c, h_node, "width", 300)) * s, f32(canvas_dim(c, h_node, "height", 150)) * s, true, true, false
 	case "iframe", "embed", "object", "video":
 		if n.name == "video" && c.replaced.intrinsic != nil {
-			if iw, ih, ok := c.replaced.intrinsic(c.replaced.user, h_node); ok { return iw * s, ih * s, true, true }
+			if iw, ih, ok := c.replaced.intrinsic(c.replaced.user, h_node); ok { return iw * s, ih * s, true, true, false }
 		}
 		aw, okw := attr_px(c, h_node, "width")
 		ah, okh := attr_px(c, h_node, "height")
-		return (okw ? aw : c.set.embed_w) * s, (okh ? ah : c.set.embed_h) * s, true, true
+		return (okw ? aw : c.set.embed_w) * s, (okh ? ah : c.set.embed_h) * s, true, true, false
 	case "audio":
-		return c.set.embed_w * s, f.line_h * 2, true, true
-	case "meter": return 80 * s, f.size, true, true
-	case "progress": return 160 * s, f.size, true, true
+		return c.set.embed_w * s, c.l.fonts[font(c, bi)].line_h * 2, true, true, false
+	case "meter": return 80 * s, c.l.fonts[font(c, bi)].size, true, true, false
+	case "progress": return 160 * s, c.l.fonts[font(c, bi)].size, true, true, false
 	case "textarea":
+		fi := font(c, bi)
 		cols := attr_int(c, h_node, "cols", c.set.textarea_cols)
 		rows := attr_int(c, h_node, "rows", c.set.textarea_rows)
 		// (with room for its vertical scroll bar unless it can have none, as in Blink)
 		cs := c.l.boxes[bi].cs
 		bar := cs.overflow_y == .Hidden || cs.overflow_y == .Clip ? 0 : bar_thickness(c.set, cs, s)
-		return f32(cols) * char_w + bar, f32(rows) * f.line_h, true, true
+		return f32(cols) * measure(c, fi, "0") + bar, f32(rows) * c.l.fonts[fi].line_h, true, true, false
 	case "select":
+		fi := font(c, bi)
 		widest: f32
 		stack := make([dynamic]base.Handle, 0, 16, context.temp_allocator)
 		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(c.d, ch).prev { append(&stack, ch) }
@@ -280,47 +294,39 @@ natural_size_of :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
 		if _, multi := dom.get_attribute(c.d, h_node, "multiple"); multi { rows = 4 }
 		rows = attr_int(c, h_node, "size", rows)
 		// (Blink: the label's width rounded up to a whole layout unit, then its internal padding: 4 + the arrow's 16)
-		return math.ceil(widest) + (c.set.select_start + c.set.select_arrow) * s, f32(rows) * f.line_h, true, true
+		return math.ceil(widest) + (c.set.select_start + c.set.select_arrow) * s, f32(rows) * c.l.fonts[fi].line_h, true, true, false
 	case "input":
 		t, _ := dom.get_attribute(c.d, h_node, "type")
 		t = base.ascii_lower(strings.trim_space(t))
 		switch t {
-		case "checkbox", "radio": return 13 * s, 13 * s, true, true
-		case "range": return 129 * s, 16 * s, true, true
-		case "color": return 44 * s, f.line_h, true, true
-		case "button", "submit", "reset":
-			label, ok := dom.get_attribute(c.d, h_node, "value")
-			if !ok { label = t == "submit" ? "Submit" : (t == "reset" ? "Reset" : "") }
-			return measure(c, fi, label), f.line_h, true, true
+		case "checkbox", "radio": return 13 * s, 13 * s, true, true, false
+		case "range": return 129 * s, 16 * s, true, true, false
 		case "image":
 			if c.replaced.intrinsic != nil {
-				if iw, ih, ok := c.replaced.intrinsic(c.replaced.user, h_node); ok { return iw * s, ih * s, true, true }
+				if iw, ih, ok := c.replaced.intrinsic(c.replaced.user, h_node); ok { return iw * s, ih * s, true, true, false }
 			}
 			aw, okw := attr_px(c, h_node, "width")
 			ah, okh := attr_px(c, h_node, "height")
-			return aw * s, ah * s, okw, okh
+			return aw * s, ah * s, okw, okh, false
+		}
+		fi := font(c, bi)
+		f := &c.l.fonts[fi]
+		switch t {
+		case "color": return 44 * s, f.line_h, true, true, false
+		case "button", "submit", "reset":
+			label, ok := dom.get_attribute(c.d, h_node, "value")
+			if !ok { label = t == "submit" ? "Submit" : (t == "reset" ? "Reset" : "") }
+			return measure(c, fi, label), f.line_h, true, true, false
 		case "file":
-			return measure(c, fi, "Choose File") + 8 * s + measure(c, fi, "No file chosen"), f.line_h, true, true
+			return measure(c, fi, "Choose File") + 8 * s + measure(c, fi, "No file chosen"), f.line_h, true, true, false
 		case "date", "time", "datetime-local", "month", "week":
-			return 12 * char_w, max(f.line_h, f.normal_h), true, true
+			return 12 * measure(c, fi, "0"), max(f.line_h, f.normal_h), true, true, false
 		}
 		// (a line-height smaller than normal leaves a text field as tall as normal: Blink's inner editor keeps its line)
 		size := attr_int(c, h_node, "size", c.set.input_size)
-		return f32(size) * char_w, max(f.line_h, f.normal_h), true, true
+		return f32(size) * measure(c, fi, "0"), max(f.line_h, f.normal_h), true, true, false
 	}
-	return 0, 0, true, true
-}
-
-// An image whose natural size is not known yet (not loaded, broken): natural_size_of gave it the placeholder size, which
-// has no natural ratio to speak of.
-@(private)
-placeholder_size :: proc(c: ^Ctx, bi: i32) -> bool {
-	n := dom.get(c.d, c.l.boxes[bi].node)
-	if n == nil || n.name != "img" { return false }
-	if c.replaced.intrinsic != nil {
-		if _, _, ok := c.replaced.intrinsic(c.replaced.user, c.l.boxes[bi].node); ok { return false }
-	}
-	return c.replaced.ratio == nil || c.replaced.ratio(c.replaced.user, c.l.boxes[bi].node) <= 0
+	return 0, 0, true, true, false
 }
 
 // Used border-box size of a replaced element. cb_w / cb_h < 0: indefinite percentage bases. used_w >= 0: the border-box
@@ -332,13 +338,13 @@ replaced_size :: proc(c: ^Ctx, bi: i32, cb_w, cb_h: f32, used_w: f32 = -1) -> Ve
 	pbw := px_of(c, cs.padding[.Left], base) + px_of(c, cs.padding[.Right], base) + border_px(c, cs.border_width[.Left]) + border_px(c, cs.border_width[.Right])
 	pbh := px_of(c, cs.padding[.Top], base) + px_of(c, cs.padding[.Bottom], base) + border_px(c, cs.border_width[.Top]) + border_px(c, cs.border_width[.Bottom])
 	bb := cs.box_sizing == .Border_Box
-	nw, nh, has_w, has_h := natural_size(c, bi)
+	nw, nh, has_w, has_h, placeholder := natural_size(c, bi)
 	b = &c.l.boxes[bi]
 	ratio := cs.aspect_ratio
 	// only real replaced content (images, video, canvas...) has a natural aspect ratio: a text field given a width keeps
 	// its natural height instead of growing in proportion. `auto && <ratio>` (an image's width and height attributes):
 	// the natural ratio once there is one, the given ratio until then (no natural size: the placeholder's is not one)
-	natural_ratio := has_w && has_h && nh > 0 && nw > 0 && .Control not_in b.flags && !placeholder_size(c, bi)
+	natural_ratio := has_w && has_h && nh > 0 && nw > 0 && .Control not_in b.flags && !placeholder
 	if (ratio <= 0 || cs.aspect_ratio_auto) && natural_ratio { ratio = nw / nh }
 	if ratio <= 0 && has_w && has_h && nh > 0 && nw > 0 && .Control not_in b.flags { ratio = nw / nh }
 	// a natural ratio and no natural size (natural_size_of): stretched to the containing block, 300 px when it has none

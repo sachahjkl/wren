@@ -36,6 +36,7 @@ ERROR_BAD_URL        :: 1
 ERROR_BODY_TOO_LARGE :: 2
 ERROR_START_FAILED   :: 3
 ERROR_NOT_LOOPBACK   :: 4   // network.loopback_only: an address or a name that is not this machine's (native/net/src/error.rs)
+ERROR_QUEUE_FULL     :: 5   // network.queue.max_waiting or max_waiting_per_page: too many requests wait already (ours only)
 
 Event_Kind :: enum u8 {
 	Headers,   // status + raw header block + final URL (after redirects)
@@ -146,7 +147,7 @@ Request :: struct {
 	priority: Priority,
 	host_key: string,    // "host:port", counted in Client.active while Active; "" = never counted
 	link:     ^Throttle_Link,
-	delayed:  [dynamic]Delayed,   // events held back by the link, in order
+	delayed:  Fifo(Delayed),      // events held back by the link, in order
 	timer:    base.Handle,       // the timer that starts the request or delivers the next delayed event
 	timer_owner: ^Owner,
 	recorded_head: string,          // record.odin
@@ -159,16 +160,25 @@ Delayed :: struct { ev: Event, due: f64 }
 
 // A host's requests in flight. Its last answer says what they cost: on HTTP/1.1 a connection each, so few (max_per_host); on HTTP/2 and 3 a stream of one connection (max_streams_per_host).
 // A host that multiplexes keeps its entry when nothing is in flight: the next page asks it again.
+// Its waiting requests are its own queues: a slot the host frees is given without looking at other hosts' requests.
+// The queues may hold handles of requests cancelled while they waited (skipped when their turn comes); `queued` counts
+// the live ones.
 @(private)
-Host_Slots :: struct { active: int, multiplexed: bool }
+Host_Slots :: struct {
+	active:      int,
+	multiplexed: bool,
+	queued:      int,
+	waiting:     [Priority]Fifo(base.Handle),
+}
 
 Client :: struct {
 	loop:          ^host.Loop,
 	session:       HINTERNET,
 	requests:      base.Pool(Request),
-	queues:        [Priority][dynamic]base.Handle,
 	hosts:         map[string]Host_Slots,
 	active_total:  int,
+	queued_total:  int,                   // requests waiting for a slot (network.queue.max_waiting)
+	queued_by_scope: map[^base.Scope]int, // ... by scope (network.queue.max_waiting_per_page); no entry when none
 	settings:      Settings,
 	shutting_down: bool,
 
@@ -179,6 +189,8 @@ Client :: struct {
 	live_jobs:     int,   // atomic
 	ws:            ^Ws_Manager,   // WebSockets of this client (websocket.odin), created on first use
 	rs:            rawptr,        // the Rust stack's client (rust.odin) when settings.backend == .Rust
+	draining:      bool,          // rust_drain runs (loop thread): a nested turn of the loop must not poll
+	drain_again:   bool,          // ... and one came meanwhile: the outer drain posts another
 }
 
 // `settings` zero value = the defaults (what about:config shows). The WREN_NET_BACKEND environment variable (winhttp,
@@ -237,9 +249,12 @@ client_destroy :: proc(c: ^Client) {
 	for &ev in c.events { free_event(&ev) }
 	delete(c.events)
 	delete(c.scratch)
-	for &q in c.queues { delete(q) }
-	for k in c.hosts { delete(k, heap()) }
+	for k, &s in c.hosts {
+		for &q in s.waiting { fifo_destroy(&q) }
+		delete(k, heap())
+	}
 	delete(c.hosts)
+	delete(c.queued_by_scope)
 	delete(c.settings.user_agent)
 	delete(c.settings.extra_ca_file)
 	delete(c.settings.hosts)
@@ -262,9 +277,54 @@ fetch :: proc(c: ^Client, d: Request_Desc) -> base.Handle {
 	}
 	rp.job = job
 	rp.host_key = key
-	append(&c.queues[d.priority], h)
-	pump(c)
+	s := host_slots(c, key)
+	fifo_push(&s.waiting[d.priority], h)
+	s.queued += 1
+	c.queued_total += 1
+	if d.scope != nil { c.queued_by_scope[d.scope] += 1 }
+	pump_host(c, key)
+	// still waiting, and more wait than allowed: it fails now (its handle stays in the host's queue, skipped there)
+	if rp = base.pool_get(&c.requests, h); rp != nil && rp.state == .Queued {
+		over := c.queued_total > max(c.settings.max_waiting, 1)
+		if d.scope != nil { over ||= c.queued_by_scope[d.scope] > max(c.settings.max_waiting_per_scope, 1) }
+		if over {
+			unqueue(c, rp)
+			host_tidy(c, rp.host_key)
+			free_job(rp.job)
+			rp.job = nil
+			delete(rp.host_key, heap())
+			rp.host_key = ""
+			rp.state = .Active   // nothing queued, nothing counted: it only has to deliver its failure
+			push_event(c, Event{kind = .Failed, req = h, error = ERROR_QUEUE_FULL})
+		}
+	}
 	return h
+}
+
+// A request leaves the waiting count (it starts, fails or is cancelled while it waited).
+@(private)
+unqueue :: proc(c: ^Client, r: ^Request) {
+	if s, ok := &c.hosts[r.host_key]; ok { s.queued -= 1 }
+	c.queued_total -= 1
+	if r.scope != nil {
+		if n, ok := &c.queued_by_scope[r.scope]; ok {
+			n^ -= 1
+			if n^ <= 0 { delete_key(&c.queued_by_scope, r.scope) }
+		}
+	}
+}
+
+// A host with nothing waiting drops the handles its queues still hold (requests cancelled while they waited), and its
+// entry when nothing is in flight either and it does not multiplex.
+@(private)
+host_tidy :: proc(c: ^Client, key: string) {
+	s, ok := &c.hosts[key]
+	if !ok || s.queued > 0 { return }
+	for &q in s.waiting { fifo_clear(&q) }
+	if s.active > 0 || s.multiplexed { return }
+	for &q in s.waiting { fifo_destroy(&q) }
+	k, _ := delete_key(&c.hosts, key)
+	delete(k, heap())
 }
 
 // A request to the origin of `url` is likely soon: its connection is opened now, or with `dns_only` its address is asked for
@@ -279,24 +339,41 @@ preconnected :: proc(c: ^Client, url: string) -> bool {
 	return c.settings.backend == .Rust && c.rs != nil && wn_net_preconnected(c.rs, raw_data(url), uint(len(url))) != 0
 }
 
-// Starts every queued request that fits under the limits, highest priority first, FIFO within a priority.
+// Starts every queued request that fits under the limits, highest priority first, FIFO within a priority and a host
+// (the limits changed, or a global slot freed: any host may take it).
 @(private)
 pump :: proc(c: ^Client) {
 	if c.shutting_down { return }
-	for &q in c.queues {
-		w := 0
-		for i in 0 ..< len(q) {
-			h := q[i]
-			r := base.pool_get(&c.requests, h)
-			if r == nil || r.state != .Queued { continue }   // cancelled while waiting
-			if c.active_total < c.settings.max_total && host_has_slot(c, r.host_key) {
-				activate(c, h, r)
-			} else {
-				q[w] = h
-				w += 1
-			}
+	for p in Priority {
+		for key, &s in c.hosts {
+			if s.queued == 0 { continue }
+			pump_queue(c, key, &s.waiting[p])
 		}
-		resize(&q, w)
+	}
+}
+
+// Starts the queued requests of one host that fit under the limits (a slot of that host freed, or a request came).
+@(private)
+pump_host :: proc(c: ^Client, key: string) {
+	if c.shutting_down { return }
+	s, ok := &c.hosts[key]
+	if !ok { return }
+	for p in Priority {
+		if s.queued == 0 { break }
+		pump_queue(c, key, &s.waiting[p])
+	}
+}
+
+// (activate changes no key of c.hosts: the queue and its host stay where they are)
+@(private)
+pump_queue :: proc(c: ^Client, key: string, q: ^Fifo(base.Handle)) {
+	for fifo_len(q) > 0 {
+		if c.active_total >= c.settings.max_total || !host_has_slot(c, key) { return }
+		h := fifo_pop(q)
+		r := base.pool_get(&c.requests, h)
+		if r == nil || r.state != .Queued { continue }   // cancelled while waiting
+		unqueue(c, r)
+		activate(c, h, r)
 	}
 }
 
@@ -360,16 +437,15 @@ throttle_fire :: proc(data: rawptr) {
 		return
 	}
 	now := now_ms(c)
-	for len(r.delayed) > 0 && r.delayed[0].due <= now + 0.5 {
-		d := r.delayed[0]
-		ordered_remove(&r.delayed, 0)
+	for fifo_len(&r.delayed) > 0 && fifo_front(&r.delayed).due <= now + 0.5 {
+		d := fifo_pop(&r.delayed)
 		ev := d.ev
 		process_event(c, &ev)
 		free_event(&ev)
 		r = base.pool_get(&c.requests, h)   // (the event may have ended the request)
 		if r == nil { return }
 	}
-	if len(r.delayed) > 0 { throttle_timer(c, h, r, r.delayed[0].due - now) }
+	if fifo_len(&r.delayed) > 0 { throttle_timer(c, h, r, fifo_front(&r.delayed).due - now) }
 }
 
 // Silent: the request's callbacks will not run again. False if it already finished or was cancelled.
@@ -500,26 +576,29 @@ release :: proc(c: ^Client, h: base.Handle) -> bool {
 	}
 	if r.hconnect != nil { winhttp_close(r.hconnect) }
 	freed_slot := false
+	was_full := c.active_total >= c.settings.max_total
 	if r.host_key != "" {
-		if r.state == .Active {
+		switch r.state {
+		case .Active:
 			c.active_total -= 1
-			s := host_slots(c, r.host_key)
-			s.active -= 1
-			if s.active == 0 && !s.multiplexed {
-				k, _ := delete_key(&c.hosts, r.host_key)
-				delete(k, heap())
-			}
+			host_slots(c, r.host_key).active -= 1
 			freed_slot = true
+		case .Queued:
+			unqueue(c, &r)   // (its handle stays in the host's queue, skipped there)
 		}
-		delete(r.host_key, heap())
 	}
 	delete(r.body)
 	if r.timer != base.NIL_HANDLE { host.clear_timer(c.loop, r.timer); free(r.timer_owner, heap()) }
-	for &d in r.delayed { free_event(&d.ev) }
+	for &d in fifo_slice(&r.delayed) { free_event(&d.ev) }
 	record_forget(&r)
-	delete(r.delayed)
+	fifo_destroy(&r.delayed)
 	if r.scope != nil { base.run_cleanup(r.scope, r.cleanup) }
-	if freed_slot { pump(c) }
+	if r.host_key != "" {
+		// a global slot that freed may go to any host's request; a host slot, to that host's only
+		if freed_slot { if was_full { pump(c) } else { pump_host(c, r.host_key) } }
+		host_tidy(c, r.host_key)
+		delete(r.host_key, heap())
+	}
 	return true
 }
 
@@ -567,12 +646,12 @@ handle_event :: proc(c: ^Client, ev: ^Event) {
 		#partial switch ev.kind {
 		case .Data: due = link_schedule(r.link, now, len(ev.data), false)
 		}
-		if len(r.delayed) > 0 { due = max(due, r.delayed[len(r.delayed) - 1].due) }
-		if due > now + 0.5 || len(r.delayed) > 0 {
+		if fifo_len(&r.delayed) > 0 { due = max(due, fifo_back(&r.delayed).due) }
+		if due > now + 0.5 || fifo_len(&r.delayed) > 0 {
 			req := ev.req
-			append(&r.delayed, Delayed{ev = ev^, due = due})
+			fifo_push(&r.delayed, Delayed{ev = ev^, due = due})
 			ev^ = {}   // the delayed list owns what it holds
-			throttle_timer(c, req, r, r.delayed[0].due - now)
+			throttle_timer(c, req, r, fifo_front(&r.delayed).due - now)
 			return
 		}
 	}
@@ -590,8 +669,10 @@ process_event :: proc(c: ^Client, ev: ^Event) {
 		host := r.host_key != "" ? host_slots(c, r.host_key) : nil
 		was := host != nil && host.multiplexed
 		if host != nil { host.multiplexed = ev.protocol != PROTOCOL_HTTP_1 }
+		// (a copy: the callback may release the request, and its key with it)
+		key := strings.clone(r.host_key, context.temp_allocator)
 		deliver(r, ev)
-		if !was && ev.protocol != PROTOCOL_HTTP_1 { pump(c) }   // (what waited for a connection of its own goes now)
+		if !was && ev.protocol != PROTOCOL_HTTP_1 && key != "" { pump_host(c, key) }   // (what waited for a connection of its own goes now)
 	case .Data:
 		n := len(ev.data)
 		job := r.job
@@ -685,6 +766,7 @@ error_text :: proc(code, secure_flags: u32, allocator := context.temp_allocator)
 	case ERROR_BODY_TOO_LARGE: return "response body too large"
 	case ERROR_START_FAILED:   return "could not start the request"
 	case ERROR_NOT_LOOPBACK:   return "refused: not this machine (network.loopback_only)"
+	case ERROR_QUEUE_FULL:     return "too many requests waiting (network.queue.max_waiting, network.queue.max_waiting_per_page)"
 	case 12002:                return "request timed out"
 	case 12007:                return "host name could not be resolved"
 	case 12017:                return "request cancelled"

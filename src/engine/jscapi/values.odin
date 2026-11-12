@@ -80,10 +80,29 @@ JS_FreeValueRT :: proc "c" (r: ^Runtime, v: JSValue) {
 	disown(v)
 }
 
-JS_DupAtom :: proc "c" (c: ^Context, a: Atom) -> Atom {return a}
+// An atom the host owns, as in QuickJS: jsrt frees the string atoms nothing holds (jsrt atom.odin), so each one handed
+// to the host counts a host reference on the atom's string, which the host gives back with JS_FreeAtom. Predefined,
+// index and symbol atoms are permanent and count nothing.
+atom_hold :: proc(rt: ^js.Runtime, a: Atom) -> Atom {
+	if s := atom_weak_string(rt, a); s != nil {js.ext_ref(rt, &s.cell)}
+	return a
+}
 
-// Atoms are never collected by jsrt: freeing one is a no-op.
-JS_FreeAtom :: proc "c" (c: ^Context, a: Atom) {}
+@(private = "file")
+atom_weak_string :: proc "contextless" (rt: ^js.Runtime, a: Atom) -> ^js.JS_String {
+	if a < Atom(js.PREDEF_ATOM_COUNT) || js.atom_is_int(a) || int(a) >= len(rt.atoms) {return nil}
+	return rt.atoms[a].str
+}
+
+JS_DupAtom :: proc "c" (c: ^Context, a: Atom) -> Atom {
+	context = api_ctx()
+	return atom_hold(jctx(c).rt, a)
+}
+
+JS_FreeAtom :: proc "c" (c: ^Context, a: Atom) {
+	if c == nil {return}
+	if s := atom_weak_string(jctx(c).rt, a); s != nil {js.ext_unref(&s.cell)}
+}
 
 // ---- strings ----
 
@@ -93,6 +112,29 @@ JS_FreeAtom :: proc "c" (c: ^Context, a: Atom) {}
 to_cstring :: proc(rt: ^js.Runtime, s: ^js.JS_String, cesu8: bool) -> (p: [^]u8, n: int) {
 	f := js.str_flat(rt, s)
 	units := int(f.len)
+	if !f.is_wide {
+		// Latin-1: one pass for the size (an ASCII run is found 16 bytes at a time), ASCII copied as it is
+		b := js.str_u8(f)[:units]
+		head := js.ascii_prefix(b)
+		size := units + 1
+		for x in b[head:] {if x >= 0x80 {size += 1}}
+		raw, _ := mem.alloc(size, JS_ALLOC_ALIGN, host_allocator)
+		p = cast([^]u8)raw
+		copy(p[:head], b[:head])
+		o := head
+		for x in b[head:] {
+			if x < 0x80 {
+				p[o] = x
+				o += 1
+			} else {
+				p[o] = 0xc0 | (x >> 6)
+				p[o + 1] = 0x80 | (x & 0x3f)
+				o += 2
+			}
+		}
+		p[o] = 0
+		return p, o
+	}
 	size := 1
 	i := 0
 	for i < units {
@@ -476,18 +518,21 @@ JS_IsUncatchableError :: proc "c" (val: JSValue) -> bool {
 
 JS_NewAtom :: proc "c" (c: ^Context, str: cstring) -> Atom {
 	context = api_ctx()
-	return js.atom_from_utf8(jctx(c).rt, string(str))
+	rt := jctx(c).rt
+	return atom_hold(rt, js.atom_from_utf8(rt, string(str)))
 }
 
 JS_NewAtomLen :: proc "c" (c: ^Context, str: [^]u8, len: uint) -> Atom {
 	context = api_ctx()
-	return js.atom_from_utf8(jctx(c).rt, len == 0 ? "" : string(str[:len]))
+	rt := jctx(c).rt
+	return atom_hold(rt, js.atom_from_utf8(rt, len == 0 ? "" : string(str[:len])))
 }
 
 JS_NewAtomUInt32 :: proc "c" (c: ^Context, n: u32) -> Atom {
 	context = api_ctx()
 	if n < 0x80000000 {return js.atom_from_u32(n)}
-	return js.atom_from_string(jctx(c).rt, js.str_from_u64(jctx(c).rt, u64(n)))
+	rt := jctx(c).rt
+	return atom_hold(rt, js.atom_from_string(rt, js.str_from_u64(rt, u64(n))))
 }
 
 JS_ValueToAtom :: proc "c" (c: ^Context, v: JSValue) -> Atom {
@@ -496,7 +541,7 @@ JS_ValueToAtom :: proc "c" (c: ^Context, v: JSValue) -> Atom {
 	m := js.host_enter(ctx.rt)
 	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
 	a, ok := js.to_property_key(ctx, dec(v))
-	return ok ? a : 0
+	return ok ? atom_hold(ctx.rt, a) : 0
 }
 
 JS_AtomToValue :: proc "c" (c: ^Context, a: Atom) -> JSValue {

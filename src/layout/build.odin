@@ -382,6 +382,17 @@ group_items :: proc(c: ^Ctx, start := 0) {
 	n := len(items)
 	if n == 0 { return }
 	nb := len(c.l.boxes)
+	if start > 0 && n < nb / 8 && items_grouped(items) {
+		// a partial rebuild's few items, already grouped (the usual case): their ranges, without a counter per box
+		base := i32(start)
+		for i := 0; i < n; {
+			j := i + 1
+			for j < n && items[j].ifc == items[i].ifc { j += 1 }
+			c.l.boxes[items[i].ifc].items = {base + i32(i), base + i32(j)}
+			i = j
+		}
+		return
+	}
 	count := make([]i32, nb + 1, context.temp_allocator)
 	// already grouped (no context's items interrupted by another's, the usual case): ranges only, no sort
 	grouped := true
@@ -413,6 +424,18 @@ group_items :: proc(c: ^Ctx, start := 0) {
 		fill[it.ifc] += 1
 	}
 	copy(items, sorted)
+}
+
+// No context's items are interrupted by another's: each context's run starts once.
+@(private)
+items_grouped :: proc(items: []Inline_Item) -> bool {
+	seen := make(map[i32]struct{}, 16, context.temp_allocator)
+	for &it, i in items {
+		if i > 0 && it.ifc == items[i - 1].ifc { continue }
+		if it.ifc in seen { return false }
+		seen[it.ifc] = {}
+	}
+	return true
 }
 
 @(private)

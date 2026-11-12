@@ -26,8 +26,64 @@ Token :: struct {
 	is_int:  bool,      // the number was written without fraction or exponent
 	is_id:   bool,      // Hash: the text is a valid identifier (an id selector)
 	has_sign: bool,     // Number: written with an explicit + or -
+	unit:    Dim_Unit,  // Dimension: its unit, classified once here (fits in the padding: the token stays 40 bytes)
 	pos:     u32,       // code point offset of the token in its (preprocessed) source: lets a grammar that needs the raw
 	                    // representation (unicode-range) read it back
+}
+
+// The unit of a <dimension-token> among the length units, ASCII case-insensitive. Classified once when the token is read:
+// every element a declaration applies to lower-cased and compared the unit text again. Unknown: not classified (a token
+// made by hand: dim_unit_of reads its text); Other: a unit that is no length (s, deg, fr...).
+Dim_Unit :: enum u8 {
+	Unknown, Other,
+	Px, Cm, Mm, Q, In, Pt, Pc,
+	Em, Rem, Ex, Ch, Lh, Rlh, Cap, Ic, Rex, Rch, Ric, Rcap,
+	Vw, Vh, Vi, Vb, Vmin, Vmax, Cqw, Cqh, Cqmin, Cqmax,
+}
+
+// The length unit `text` names (never Unknown).
+dim_unit_of :: proc(text: string) -> Dim_Unit {
+	buf: [5]u8   // (the longest length unit: vmin with a viewport prefix, cqmin, cqmax)
+	if len(text) == 0 || len(text) > len(buf) { return .Other }
+	for i in 0 ..< len(text) {
+		c := text[i]
+		if c >= 'A' && c <= 'Z' { c += 32 }
+		buf[i] = c
+	}
+	switch string(buf[:len(text)]) {
+	case "px": return .Px
+	case "cm": return .Cm
+	case "mm": return .Mm
+	case "q": return .Q
+	case "in": return .In
+	case "pt": return .Pt
+	case "pc": return .Pc
+	case "em": return .Em
+	case "rem": return .Rem
+	case "ex": return .Ex
+	case "ch": return .Ch
+	case "lh": return .Lh
+	case "rlh": return .Rlh
+	case "cap": return .Cap
+	case "ic": return .Ic
+	case "rex": return .Rex
+	case "rch": return .Rch
+	case "ric": return .Ric
+	case "rcap": return .Rcap
+	// the viewport never has collapsing browser bars here: small, large and dynamic viewports are the same
+	case "vw", "svw", "lvw", "dvw": return .Vw
+	case "vh", "svh", "lvh", "dvh": return .Vh
+	case "vi", "svi", "lvi", "dvi": return .Vi
+	case "vb", "svb", "lvb", "dvb": return .Vb
+	case "vmin", "svmin", "lvmin", "dvmin": return .Vmin
+	case "vmax", "svmax", "lvmax", "dvmax": return .Vmax
+	// container query units (horizontal writing: inline = width)
+	case "cqw", "cqi": return .Cqw
+	case "cqh", "cqb": return .Cqh
+	case "cqmin": return .Cqmin
+	case "cqmax": return .Cqmax
+	}
+	return .Other
 }
 
 @(private)
@@ -267,21 +323,26 @@ consume_ident_like :: proc(l: ^Lexer) -> Token {
 consume_numeric :: proc(l: ^Lexer) -> Token {
 	v, is_int, signed := consume_number(l)
 	if would_start_ident(peek(l), peek(l, 1), peek(l, 2)) {
-		return Token{kind = .Dimension, num = v, is_int = is_int, has_sign = signed, text = consume_name(l)}
+		name := consume_name(l)
+		return Token{kind = .Dimension, num = v, is_int = is_int, has_sign = signed, text = name, unit = dim_unit_of(name)}
 	}
 	if peek(l) == '%' { l.pos += 1; return Token{kind = .Percentage, num = v, is_int = is_int, has_sign = signed} }
 	return Token{kind = .Number, num = v, is_int = is_int, has_sign = signed}
 }
 
+// Skips comments (an unclosed one runs to the end).
 @(private)
-next_token :: proc(l: ^Lexer) -> Token {
-	// comments
+skip_comments :: proc(l: ^Lexer) {
 	for peek(l) == '/' && peek(l, 1) == '*' {
 		l.pos += 2
 		for l.pos < len(l.src) && !(peek(l) == '*' && peek(l, 1) == '/') { l.pos += 1 }
 		l.pos = min(l.pos + 2, len(l.src))
 	}
-	r := peek(l)
+}
+
+@(private)
+next_token :: proc(l: ^Lexer) -> Token {
+	r := peek(l)   // (comments were skipped by the caller: skip_comments, so that `pos` is the token's)
 	switch {
 	case r == -1: return Token{kind = .EOF}
 	case is_ws(r):
@@ -351,11 +412,7 @@ tokenize_with_source :: proc(input: string, arena: Arena_Alloc, scratch: Arena_A
 	// about one token per four bytes of CSS: one allocation in the common case
 	out := make([dynamic]Token, 0, len(input) / 4 + 16, scratch)
 	for {
-		for peek(&l) == '/' && peek(&l, 1) == '*' {
-			l.pos += 2
-			for l.pos < len(l.src) && !(peek(&l) == '*' && peek(&l, 1) == '/') { l.pos += 1 }
-			l.pos = min(l.pos + 2, len(l.src))
-		}
+		skip_comments(&l)
 		start := l.pos
 		t := next_token(&l)
 		if t.kind == .EOF { break }

@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:strings"
 import "wb:base"
 import "wb:fetch"
+import "wb:host"
 import "wb:style"
 import "wb:webfont"
 
@@ -50,6 +51,21 @@ Web_Font :: struct {
 	format:        webfont.Format,  // Ready: what the downloaded file was
 	started_ms:    f64,             // when the page asked for it (loop clock): font-display periods count from here
 	cached:        bool,            // the HTTP cache held it fresh when it was asked for: it is waited for (font_block_ms)
+	decoding:      ^Font_Decode_Job,   // its file is being decoded on the blocking pool (state stays Loading)
+}
+
+// A downloaded font file decoded on the blocking pool (WOFF2: Brotli and its transforms take milliseconds per face,
+// which the page's thread does not wait for). Process memory: the page may be gone when it comes back.
+@(private)
+Font_Decode_Job :: struct {
+	font:        ^Web_Font,   // nil once the face is gone (fonts_destroy): the job then frees itself only (loop thread)
+	url:         string,
+	data:        []byte,
+	max_bytes:   int,
+	cache_bytes: int,
+	sfnt:        []byte,
+	format:      webfont.Format,
+	err:         webfont.Error,
 }
 
 Page_Fonts :: struct {
@@ -75,11 +91,12 @@ fonts_init :: proc(p: ^Page) {
 fonts_destroy :: proc(p: ^Page) {
 	for _, f in p.fonts.faces {
 		if f.task != base.NIL_HANDLE { fetch.cancel(p.loader, f.task) }
+		if f.decoding != nil { f.decoding.font = nil }   // (the job comes back to nothing, and frees itself)
 		for s in f.sources { delete(s.url) }
 		delete(f.sources)
 		delete(f.unicode_range)
 		delete(f.key); delete(f.family)
-		delete(f.data)
+		delete(f.data, base.process_allocator())
 		free(f)
 	}
 	delete(p.fonts.faces)
@@ -144,10 +161,11 @@ fonts_sync :: proc(p: ^Page) {
 		f.unicode_range = make([][2]u32, len(ff.unicode_range))
 		copy(f.unicode_range, ff.unicode_range)
 		srcs := make([dynamic]Web_Font_Source)
-		base_url := ff.base_url != "" ? ff.base_url : document_base_url(p)
 		for src in ff.sources {
 			if src.kind != .Url { continue }   // local(): the shell's font engine knows the installed fonts
-			abs, ok := resolve_against(src.url, base_url)
+			abs: string
+			ok: bool
+			if ff.base_url != "" { abs, ok = resolve_against(src.url, ff.base_url) } else { abs, ok = resolve_in_document(p, src.url) }
 			if !ok { log(p, .Warn, fmt.tprintf("@font-face %q: invalid URL %q", ff.family, src.url)); continue }
 			append(&srcs, Web_Font_Source{url = abs, format = src.format, supported = src.supported})
 		}
@@ -214,31 +232,93 @@ font_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	case .Done:
 		f.task = base.NIL_HANDLE
 		if f.bad_status { font_retry(p, f); return }
-		sfnt, format, err, _ := webfont.decode_cached(f.url, ev.data, p.settings.style.webfont_max_bytes, p.settings.style.webfont_decoded_cache_bytes)
-		if err != .None {
-			log(p, .Warn, fmt.tprintf("font %s: cannot use it (%v, %v)", f.url, format, err))
-			font_retry(p, f)
-			return
-		}
-		// font-display: past its periods, a font is not swapped in any more (CSS Fonts 4 §4.9.1)
 		s := &p.settings.style
-		late := now_ms(p) - f.started_ms
-		too_late := (f.display == .Optional && late > s.webfont_short_block_ms) ||
-		            (f.display == .Fallback && late > s.webfont_short_block_ms + s.webfont_swap_ms)
-		if too_late {
-			delete(sfnt)
-			f.state = .Failed
-			log(p, .Log, fmt.tprintf("font %s arrived after %.0f ms: not used by this page (font-display: %v)", f.url, late, f.display))
-			p.fonts.loading -= 1
-			fonts_pump(p)
+		a := base.process_allocator()
+		// decoded before (another page, this one again): at once; else on the blocking pool
+		if sfnt, format, hit := webfont.decoded_lookup(f.url, ev.data, s.webfont_max_bytes, s.webfont_decoded_cache_bytes, a, count_miss = false); hit {
+			font_decoded(p, f, sfnt, format, .None)
 			return
 		}
-		f.data, f.format, f.state = sfnt, format, .Ready
-		append(&p.fonts.ready, f)
-		p.fonts.generation += 1
+		j := new(Font_Decode_Job, a)
+		j^ = Font_Decode_Job{font = f, max_bytes = s.webfont_max_bytes, cache_bytes = s.webfont_decoded_cache_bytes}
+		j.url = strings.clone(f.url, a)
+		j.data = make([]byte, len(ev.data), a)   // (the event's bytes live as long as this callback)
+		copy(j.data, ev.data)
+		f.decoding = j
+		if p.loader != nil && p.loader.blocking != nil {
+			host.run_blocking(p.loader.blocking, font_decode_work, font_decode_done, j, font_decode_discard)
+		} else {
+			// (no pool, a test: decoded here, at once)
+			font_decode_work(j)
+			font_decode_done(j)
+		}
+	}
+}
+
+@(private)
+font_decode_work :: proc(data: rawptr) {
+	j := (^Font_Decode_Job)(data)
+	j.sfnt, j.format, j.err, _ = webfont.decode_cached(j.url, j.data, j.max_bytes, j.cache_bytes, base.process_allocator())
+}
+
+@(private)
+font_decode_free :: proc(data: rawptr) {
+	j := (^Font_Decode_Job)(data)
+	a := base.process_allocator()
+	delete(j.url, a)
+	delete(j.data, a)
+	delete(j.sfnt, a)
+	free(j, a)
+}
+
+// The pool ended before the job ran: the face forgets it (it stays Loading: the page goes too).
+@(private)
+font_decode_discard :: proc(data: rawptr) {
+	j := (^Font_Decode_Job)(data)
+	if j.font != nil { j.font.decoding = nil }
+	font_decode_free(j)
+}
+
+@(private)
+font_decode_done :: proc(data: rawptr) {
+	j := (^Font_Decode_Job)(data)
+	defer font_decode_free(j)
+	f := j.font
+	if f == nil { return }   // its face is gone (fonts_destroy let go of the job)
+	f.decoding = nil
+	p := f.page
+	sfnt := j.sfnt
+	j.sfnt = nil   // the font's now
+	font_decoded(p, f, sfnt, j.format, j.err)
+}
+
+// The end of a face's load: its decoded file (process memory, the face's from here), or why there is none.
+@(private)
+font_decoded :: proc(p: ^Page, f: ^Web_Font, sfnt: []byte, format: webfont.Format, err: webfont.Error) {
+	if err != .None {
+		delete(sfnt, base.process_allocator())
+		log(p, .Warn, fmt.tprintf("font %s: cannot use it (%v, %v)", f.url, format, err))
+		font_retry(p, f)
+		return
+	}
+	// font-display: past its periods, a font is not swapped in any more (CSS Fonts 4 §4.9.1)
+	s := &p.settings.style
+	late := now_ms(p) - f.started_ms
+	too_late := (f.display == .Optional && late > s.webfont_short_block_ms) ||
+	            (f.display == .Fallback && late > s.webfont_short_block_ms + s.webfont_swap_ms)
+	if too_late {
+		delete(sfnt, base.process_allocator())
+		f.state = .Failed
+		log(p, .Log, fmt.tprintf("font %s arrived after %.0f ms: not used by this page (font-display: %v)", f.url, late, f.display))
 		p.fonts.loading -= 1
 		fonts_pump(p)
+		return
 	}
+	f.data, f.format, f.state = sfnt, format, .Ready
+	append(&p.fonts.ready, f)
+	p.fonts.generation += 1
+	p.fonts.loading -= 1
+	fonts_pump(p)
 }
 
 // How long text waits for face  (CSS Fonts 4 §4.9 block period): by font-display, at least

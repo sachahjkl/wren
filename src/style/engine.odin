@@ -119,6 +119,8 @@ Engine :: struct {
 	settings:  Settings,               // owned copy
 	class_bits: [dynamic]u64,          // the document's classes during a full pass (class_bits_fill), by node index
 	class_bits_live: bool,             // ... which this is: the passes made now take them
+	class_bits_doc: ^dom.Document,     // ... the document they were read from, as it was at mutation class_bits_at (class_bits_begin)
+	class_bits_at:  u64,
 	forced_hidden: map[base.Handle]struct{},   // elements the embedder hides (engine_set_hidden)
 	top_layer:     [dynamic]base.Handle,       // the embedder's top layer, the fullscreen element aside (engine_set_top_layer)
 	sheets:    [dynamic]^Sheet,        // browser, user, then document sheets
@@ -1054,6 +1056,8 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	t0 := time.tick_now()
 	defer { rebuild_total.n += 1; rebuild_total.ns += i64(time.tick_since(t0)); rebuild_total.sheets += len(e.sheets) }
 	matched_reset(&e.matched)   // (what they point at goes now)
+	// the subject keys of the invalidation indexes are kept across rebuilds (the same rules find their sets again), up to a bound
+	if key_sets_bytes(&e.key_sets) > e.settings.key_sets_max_bytes { key_sets_reset(&e.key_sets) }
 	free_all(e.alloc)
 	rule_set_clear(&e.rules)
 	departed_free(e)

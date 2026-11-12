@@ -241,8 +241,7 @@ bfcache_forget :: proc(app: ^App, t: ^Tab, entry: u64) {
 }
 
 tab_by_id :: proc(app: ^App, id: u64) -> ^Tab {
-	for t in tabs_all(app) { if t.id == id { return t } }
-	return nil
+	return tab_find(app, id)
 }
 
 // Whether `entry` of `t` has a page in the cache.

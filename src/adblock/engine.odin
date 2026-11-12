@@ -172,10 +172,11 @@ filter_ref :: proc(e: ^Engine, id: u32) -> Filter_Ref {
 ////////////////////////////////
 // The request context
 
+// What a request's context holds on the stack; a longer URL, or one of more tokens, goes on the temporary allocator
+// (a cut would make a filter whose token or 4-byte gram lies past it never match: an evasion by a long URL).
 MAX_TOKENS :: 96
 MAX_URL    :: 8192
 MAX_SUFFIXES :: 12
-GRAM_WINDOWS :: 2048   // 4-byte windows of a URL looked up in the gram table
 
 @(private)
 Ctx :: struct {
@@ -188,7 +189,8 @@ Ctx :: struct {
 	hs, he:  int,
 	host:    string,            // lower-case request host
 	n_tok:   int,
-	tokens:  [MAX_TOKENS]u32,
+	tokens:  []u32,             // the URL's tokens: tok_buf's, or temporary ones past MAX_TOKENS
+	tok_buf: [MAX_TOKENS]u32,
 
 	n_dst:   int,               // label suffixes of the request host
 	dst_h:   [MAX_SUFFIXES]u32,
@@ -201,28 +203,39 @@ Ctx :: struct {
 	n_src_names: int,
 }
 
+// `buf`: the caller's stack buffer for the lower-case URL (MAX_URL bytes, left uninitialised); a longer URL takes a
+// temporary one. `c` must not move afterwards (c.tokens may point into it).
 @(private)
 ctx_init :: proc(c: ^Ctx, req: ^Request, buf: []u8) {
 	c.req = req
 	c.type_bit = u32(1) << u32(req.type)
 	c.party_skip = req.third_party ? META_FIRST_PARTY : META_THIRD_PARTY
-	n := min(len(req.url), len(buf))
-	lower_into(buf[:n], req.url[:n])
+	n := len(req.url)
+	buf := buf
+	if n > len(buf) { buf = make([]u8, n, context.temp_allocator) }
+	lower_into(buf[:n], req.url)
 	c.url_l = string(buf[:n])
-	c.url_o = req.url[:n]
+	c.url_o = req.url
 	if p, ok := url_parts(c.url_l); ok { c.hs, c.he = p.host_start, p.host_end }
 	c.host = c.url_l[c.hs:c.he]
 
 	// tokens
+	toks := c.tok_buf[:]
 	i := 0
-	for i < n && c.n_tok < MAX_TOKENS {
+	for i < n {
 		ch := buf[i]
 		if !is_token_char(ch) { i += 1; continue }
 		h := FNV_OFFSET
 		for i < n && is_token_char(buf[i]) { h = (h ~ u32(buf[i])) * FNV_PRIME; i += 1 }
-		c.tokens[c.n_tok] = h == 0 ? 1 : h
+		if c.n_tok == len(toks) {
+			more := make([]u32, 2 * len(toks), context.temp_allocator)
+			copy(more, toks)
+			toks = more
+		}
+		toks[c.n_tok] = h == 0 ? 1 : h
 		c.n_tok += 1
 	}
+	c.tokens = toks[:c.n_tok]
 
 	// label suffixes of the host
 	host := c.host
@@ -411,7 +424,7 @@ scan :: proc(e: ^Engine, class: Class, c: ^Ctx, opts: Scan_Opts) -> Scan_Result 
 		}
 	}
 	if len(ix.gram) > 0 {
-		n := min(len(c.url_l) - 3, GRAM_WINDOWS)
+		n := len(c.url_l) - 3   // (every window: a gram past a cut would never match)
 		p := raw_data(c.url_l)
 		for i in 0 ..< n {
 			key := intrinsics.unaligned_load((^u32)(rawptr(uintptr(p) + uintptr(i))))
@@ -447,7 +460,7 @@ match :: proc(e: ^Engine, req: ^Request) -> Verdict {
 	case 'h', 'H', 'w', 'W', 'f', 'F': // http(s), ws(s), ftp
 	case: return v
 	}
-	buf: [MAX_URL]u8
+	buf: [MAX_URL]u8 = ---   // (ctx_init writes what it reads: zeroing 8 KiB per match is waste)
 	c: Ctx
 	ctx_init(&c, req, buf[:])
 	if c.he <= c.hs { return v }
@@ -486,7 +499,7 @@ match :: proc(e: ^Engine, req: ^Request) -> Verdict {
 // Would a request be blocked, ignoring exceptions? (for tools that explain a page)
 match_blocking :: proc(e: ^Engine, req: ^Request) -> u32 {
 	if e == nil { return NO_FILTER }
-	buf: [MAX_URL]u8
+	buf: [MAX_URL]u8 = ---   // (ctx_init writes what it reads: zeroing 8 KiB per match is waste)
 	c: Ctx
 	ctx_init(&c, req, buf[:])
 	r := scan(e, .Block, &c, {})
@@ -501,7 +514,7 @@ page_flags :: proc(e: ^Engine, page_url: string) -> (flags: Page_Flags, filter: 
 	filter = NO_FILTER
 	if e == nil || class_empty(e, .Page) { return }
 	req := make_request(page_url, "", .Document)
-	buf: [MAX_URL]u8
+	buf: [MAX_URL]u8 = ---   // (ctx_init writes what it reads: zeroing 8 KiB per match is waste)
 	c: Ctx
 	ctx_init(&c, &req, buf[:])
 	if c.he <= c.hs { return }

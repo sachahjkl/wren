@@ -478,6 +478,7 @@ pre_chunk :: proc(pre: ^Pre_Pass, k: int) {
 	wc.lb_bufs = make([dynamic]^LB_Buffers, 0, 2, context.temp_allocator)
 	wc.lb_depth = 0
 	wc.pre = nil
+	wc.seg_cache = nil   // (the UI thread's: a layout thread measures what it lays out, and keeps nothing for the pass)
 	l := wc.l
 	ch := &l.pre_chunks[k]
 	clear(&ch.frags)
@@ -759,6 +760,7 @@ dl_chunk :: proc(data: rawptr, k: int) {
 	sh := (^Dl_Share)(data)
 	marker: u8
 	wc := sh.c^
+	wc.seg_cache = nil   // (the UI thread's)
 	wc.stack_base = uintptr(&marker)
 	l := wc.l
 	ch := &l.pre_chunks[k]
