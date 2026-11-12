@@ -258,3 +258,44 @@ save_and_generate_requests_are_written :: proc(t: ^testing.T) {
 	testing.expect(t, g_ok)
 	testing.expect_value(t, body_of(gf), `{"id":8,"op":"generate","kind":"passphrase","words":5}`)
 }
+
+@(test)
+passkey_rows_and_assertions_decode :: proc(t: ^testing.T) {
+	src := `{"id":5,"ok":true,"rows":[{"item":"i1","name":"Example","username":"me","credential_id":"Y3JlZA","user_handle":"dXNlcg"},{"item":"i2","name":"No credential"},{"name":"No item","credential_id":"eA"}]}`
+	a, ok := answer_decode(transmute([]u8)src)
+	defer answer_free(a)
+	testing.expect(t, ok)
+	testing.expect_value(t, len(a.passkeys), 1)
+	testing.expect_value(t, len(a.rows), 0)   // (a passkey row is no item row, and a row with neither id goes)
+	testing.expect_value(t, a.passkeys[0].item, "i1")
+	testing.expect_value(t, a.passkeys[0].name, "Example")
+	testing.expect_value(t, a.passkeys[0].username, "me")
+	testing.expect_value(t, a.passkeys[0].credential_id, "Y3JlZA")
+	testing.expect_value(t, a.passkeys[0].user_handle, "dXNlcg")
+	s, ok2 := answer_decode(transmute([]u8)string(`{"id":6,"ok":true,"authenticator_data":"YWQ","signature":"c2ln","user_handle":"dWg","credential_id":"Y3JlZA"}`))
+	defer answer_free(s)
+	testing.expect(t, ok2)
+	testing.expect_value(t, s.signed.authenticator_data, "YWQ")
+	testing.expect_value(t, s.signed.signature, "c2ln")
+	testing.expect_value(t, s.signed.user_handle, "dWg")
+	testing.expect_value(t, s.signed.credential_id, "Y3JlZA")
+}
+
+@(test)
+passkey_requests_are_written :: proc(t: ^testing.T) {
+	r: Request
+	request_begin(&r, 8, .Passkeys_For, 64)
+	request_string(&r, "rp_id", "example.com")
+	request_list(&r, "allow", {"Y3JlZA"})
+	frame, ok := request_end(&r)
+	defer frame_free(frame)
+	testing.expect(t, ok)
+	testing.expect_value(t, body_of(frame), `{"id":8,"op":"passkeys_for","rp_id":"example.com","allow":["Y3JlZA"]}`)
+	q: Request
+	request_begin(&q, 9, .Passkey_Assert, 64)
+	request_string(&q, "item", "i1")
+	frame2, ok2 := request_end(&q)
+	defer frame_free(frame2)
+	testing.expect(t, ok2)
+	testing.expect(t, strings.has_prefix(body_of(frame2), `{"id":9,"op":"passkey_assert"`))
+}

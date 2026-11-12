@@ -86,6 +86,20 @@ fake_send :: proc(t: ^Transport, frame: []u8) {
 		if list, has := o["kinds"].(json.Array); has { for k in list { append(&kinds, string(k.(json.String))) } }
 		append(&f.script.notes, fmt.aprintf("search=%d+%d:%s", off, lim, strings.join(kinds[:], ",", context.temp_allocator)))
 	}
+	if list, has := o["allow"].(json.Array); has {
+		ids := make([dynamic]string, 0, len(list), context.temp_allocator)
+		for n in list { append(&ids, string(n.(json.String))) }
+		rp, _ := o["rp_id"].(json.String)
+		append(&f.script.notes, strings.concatenate({"passkeys=", string(rp), ":", strings.join(ids[:], ",", context.temp_allocator)}))
+	}
+	if op == "passkey_assert" {
+		parts := make([dynamic]string, 0, 4, context.temp_allocator)
+		for key in ([]string{"item", "credential_id", "rp_id", "client_data_hash"}) {
+			s, _ := o[key].(json.String)
+			append(&parts, string(s))
+		}
+		append(&f.script.notes, strings.concatenate({"assert=", strings.join(parts[:], ",", context.temp_allocator)}))
+	}
 	if list, has := o["fields"].(json.Array); has {
 		names := make([dynamic]string, 0, len(list), context.temp_allocator)
 		for n in list { append(&names, string(n.(json.String))) }
@@ -1207,4 +1221,148 @@ card_and_identity_copies_name_what_is_missing :: proc(t: ^testing.T) {
 	testing.expect_value(t, x.copied[0], "number:4111")
 	testing.expect_value(t, x.v.message, "This identity has no email.")
 	testing.expect_value(t, x.script.notes[len(x.script.notes) - 1], "fields=email")
+}
+
+// What a page's passkey request heard from the Vault (copies: the answer is zeroed after the callback).
+@(private = "file")
+Heard :: struct {
+	calls:  int,
+	ticket: u64,
+	ok:     bool,
+	error:  string,
+	rows:   [dynamic]string,   // "item:name:username:credential_id:user_handle"
+	signed: string,            // "authenticator_data:signature:user_handle:credential_id"
+}
+
+@(private = "file")
+heard_passkey :: proc(user: rawptr, ticket: u64, a: ^Passkey_Answer) {
+	h := (^Heard)(user)
+	h.calls += 1
+	h.ticket, h.ok = ticket, a.ok
+	delete(h.error)
+	h.error = strings.clone(a.error)
+	for r in a.rows {
+		append(&h.rows, strings.concatenate({r.item, ":", r.name, ":", r.username, ":", r.credential_id, ":", r.user_handle}))
+	}
+	s := a.signed
+	if s.signature != "" {
+		delete(h.signed)
+		h.signed = strings.concatenate({s.authenticator_data, ":", s.signature, ":", s.user_handle, ":", s.credential_id})
+	}
+}
+
+@(private = "file")
+heard_free :: proc(h: ^Heard) {
+	delete(h.error)
+	for r in h.rows { delete(r) }
+	delete(h.rows)
+	delete(h.signed)
+}
+
+@(test)
+passkeys_for_gives_the_sites_rows_to_its_caller :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	heard: Heard
+	defer heard_free(&heard)
+	answer(x, "passkeys_for",
+		`"ok":true,"rows":[{"item":"i1","name":"Example","username":"me","credential_id":"Y3JlZA","user_handle":"dXNlcg"},{"item":"","name":"No item","credential_id":"eA"}]`)
+	ticket := vault_passkeys_for(&x.v, "example.com", {"Y3JlZA", "b3RoZXI"}, heard_passkey, &heard)
+	testing.expect(t, ticket != 0)
+	testing.expect_value(t, heard.calls, 0)   // (the answer comes through the loop)
+	settle(x)
+	testing.expect_value(t, heard.calls, 1)
+	testing.expect_value(t, heard.ticket, ticket)
+	testing.expect(t, heard.ok)
+	testing.expect_value(t, len(heard.rows), 1)   // (a row without its item is no passkey to use)
+	testing.expect_value(t, heard.rows[0], "i1:Example:me:Y3JlZA:dXNlcg")
+	testing.expect_value(t, x.script.notes[len(x.script.notes) - 1], "passkeys=example.com:Y3JlZA,b3RoZXI")
+	testing.expect_value(t, x.v.state, State.Unlocked)
+}
+
+@(test)
+a_locked_vault_or_the_offer_off_asks_nothing :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	heard: Heard
+	defer heard_free(&heard)
+	set_pref(x, "vault.passkeys.offer", "false")
+	testing.expect(t, !vault_passkeys_offered(&x.v))
+	testing.expect_value(t, vault_passkeys_for(&x.v, "example.com", nil, heard_passkey, &heard), u64(0))
+	set_pref(x, "vault.passkeys.offer", "true")
+	testing.expect(t, vault_passkeys_offered(&x.v))
+	vault_lock(&x.v)
+	settle(x)
+	testing.expect(t, !vault_passkeys_offered(&x.v))
+	testing.expect_value(t, vault_passkeys_for(&x.v, "example.com", nil, heard_passkey, &heard), u64(0))
+	testing.expect_value(t, vault_passkey_assert(&x.v, "i1", "Y3JlZA", "example.com", "aGFzaA", heard_passkey, &heard), u64(0))
+	testing.expect_value(t, heard.calls, 0)
+	testing.expect_value(t, count_op(x, "passkeys_for"), 0)
+}
+
+@(test)
+passkey_assert_gives_the_signed_values_or_the_refusal :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	heard: Heard
+	defer heard_free(&heard)
+	answer(x, "passkey_assert",
+		`"ok":true,"authenticator_data":"YWQ","signature":"c2ln","user_handle":"dWg","credential_id":"Y3JlZA"`,
+		`"ok":false,"error":"no_item","message":"The passkey is not in the vault any more."`,
+		`"ok":true,"authenticator_data":"YWQ","credential_id":"Y3JlZA"`)
+	ticket := vault_passkey_assert(&x.v, "i1", "Y3JlZA", "example.com", "aGFzaA", heard_passkey, &heard)
+	testing.expect(t, ticket != 0)
+	settle(x)
+	testing.expect_value(t, heard.calls, 1)
+	testing.expect_value(t, heard.ticket, ticket)
+	testing.expect(t, heard.ok)
+	testing.expect_value(t, heard.signed, "YWQ:c2ln:dWg:Y3JlZA")
+	testing.expect_value(t, x.script.notes[len(x.script.notes) - 1], "assert=i1,Y3JlZA,example.com,aGFzaA")
+	testing.expect(t, vault_passkey_assert(&x.v, "i1", "Y3JlZA", "example.com", "aGFzaA", heard_passkey, &heard) != 0)
+	settle(x)
+	testing.expect_value(t, heard.calls, 2)
+	testing.expect(t, !heard.ok)
+	testing.expect_value(t, heard.error, "no_item")
+	// (an answer without a signature is no assertion)
+	testing.expect(t, vault_passkey_assert(&x.v, "i1", "Y3JlZA", "example.com", "aGFzaA", heard_passkey, &heard) != 0)
+	settle(x)
+	testing.expect_value(t, heard.calls, 3)
+	testing.expect(t, !heard.ok)
+	testing.expect_value(t, heard.error, "assert_failed")
+	testing.expect_value(t, x.v.state, State.Unlocked)
+}
+
+@(test)
+a_passkey_request_hears_a_timeout_a_lock_or_nothing_once_forgotten :: proc(t: ^testing.T) {
+	x := unlocked_fx(t, virtual_clock = true, idle_minutes = "0")
+	defer fx_destroy(x)
+	heard: Heard
+	defer heard_free(&heard)
+	answer(x, "passkeys_for", "")
+	answer(x, "passkey_assert", "")
+	// past vault.request.timeout_ms: "timeout", and the helper goes on
+	ticket := vault_passkeys_for(&x.v, "example.com", nil, heard_passkey, &heard)
+	testing.expect(t, ticket != 0)
+	host.clock_advance(&x.loop, 999 * 1_000_000)
+	settle(x)
+	testing.expect_value(t, heard.calls, 0)
+	host.clock_advance(&x.loop, 2 * 1_000_000)
+	settle(x)
+	testing.expect_value(t, heard.calls, 1)
+	testing.expect_value(t, heard.error, "timeout")
+	testing.expect_value(t, x.v.state, State.Unlocked)
+	// a forgotten request is never heard
+	ticket = vault_passkey_assert(&x.v, "i1", "Y3JlZA", "example.com", "aGFzaA", heard_passkey, &heard)
+	vault_passkey_forget(&x.v, ticket)
+	host.clock_advance(&x.loop, 1001 * 1_000_000)
+	settle(x)
+	testing.expect_value(t, heard.calls, 1)
+	// a lock while it waits: "locked", at once
+	ticket = vault_passkey_assert(&x.v, "i1", "Y3JlZA", "example.com", "aGFzaA", heard_passkey, &heard)
+	vault_lock(&x.v)
+	testing.expect_value(t, heard.calls, 2)
+	testing.expect_value(t, heard.ticket, ticket)
+	testing.expect_value(t, heard.error, "locked")
+	settle(x)
+	testing.expect_value(t, heard.calls, 2)
 }

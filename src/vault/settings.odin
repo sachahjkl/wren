@@ -38,6 +38,7 @@ Settings :: struct {
 	save_offer:   bool,     // after a login form is sent, offer to save or update its login
 	totp_autofill: bool,    // a one-time-code field that comes after a fill of a login with a code gets the code
 	totp_copy:    bool,     // a fill of a login with a code copies the code
+	passkeys_offer: bool,   // a page's passkey request offers the unlocked vault's passkeys of the site
 	generator:    Generate_Options,   // the generator's defaults (its separator owned)
 }
 
@@ -96,6 +97,9 @@ PREFS := [?]config.Def{
 		description = "After the Vault filled a login that has a one-time code, fill the code into the code field that the same site shows within 2 minutes."},
 	{name = "vault.totp.copy_on_fill", kind = .Bool, default = {b = false},
 		description = "When the Vault fills a login that has a one-time code, copy the code to the clipboard (cleared after vault.clipboard.clear_seconds)."},
+	{name = "vault.passkeys.offer", kind = .Bool, default = {b = true},
+		description = "When a page asks for a passkey and the unlocked Vault holds passkeys of that site, ask which to use: one of the Vault's, or a security key or this device. Off: a page's passkey request goes to the security key or this device only.",
+		tags = {"passkey", "passkeys", "webauthn"}},
 	{name = "vault.generator.kind", kind = .String, default = {s = "password"}, choices = {"password", "passphrase"},
 		description = "What the password generator makes first: a password of random characters, or a passphrase of random words."},
 	{name = "vault.generator.length", kind = .Int, default = {i = 20}, bounded = true, min = GENERATE_LENGTH_MIN, max = GENERATE_LENGTH_MAX,
@@ -142,6 +146,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.save_offer = config.bool_of(p, "vault.save.offer")
 	s.totp_autofill = config.bool_of(p, "vault.totp.autofill")
 	s.totp_copy = config.bool_of(p, "vault.totp.copy_on_fill")
+	s.passkeys_offer = config.bool_of(p, "vault.passkeys.offer")
 	g := &s.generator
 	g.passphrase = config.string_of(p, "vault.generator.kind") == "passphrase"
 	g.length = int(config.int_of(p, "vault.generator.length"))

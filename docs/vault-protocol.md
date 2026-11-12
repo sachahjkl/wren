@@ -13,7 +13,9 @@ Version 5 (helper 0.5.0). Changes from version 4: new requests `save` (create a 
 password or a passphrase, by the SDK's generator; the vault need not be unlocked); rows of `search` carry `kind`
 (`login`, `card` or `identity`; secure notes and SSH keys are not listed), rows of `logins_for` carry `kind` `login`;
 `fill` takes the fields of cards and identities; the error `save_failed`; `search` is paged: it takes `offset`,
-`limit` (0: 100, at most 500) and `kinds`, answers `total`, and an empty query lists every item of the asked kinds.
+`limit` (0: 100, at most 500) and `kinds`, answers `total`, and an empty query lists every item of the asked kinds;
+new requests `passkeys_for` and `passkey_assert` (the vault's passkeys answer a page's `navigator.credentials.get`) and
+the error `assert_failed`.
 
 Version 4 (helper 0.4.0). Changes from version 3: new requests `password_hint`, `device_request`, `device_poll`,
 `passkey_options` and `login_passkey`; `login` takes `remember`; `unlock` takes `prf` and `credential_id`; `hello`
@@ -68,6 +70,8 @@ An event answers no request: `{"id": 0, "ok": true, "event": "<name>"}`.
 | `device_poll` | none | `result`: `"pending"`, or `"ok"` (unlocked) with `email` |
 | `passkey_options` | `purpose` (`"login"` or `"unlock"`), `rp_id` (the web vault's domain) | `options` (the WebAuthn request's options, JSON text) |
 | `login_passkey` | `credential_id`, `authenticator_data`, `client_data_json`, `signature`, `user_handle` (each base64url), `prf` (the PRF output, base64url) | `result` (`"ok"`), `email` |
+| `passkeys_for` | `rp_id`, `allow` (credential ids, base64url; empty or absent: any passkey of `rp_id`) | `rows`: `{item, name, username, credential_id, user_handle}` (see "Passkeys of sites") |
+| `passkey_assert` | `item`, `credential_id`, `rp_id`, `client_data_hash` (base64url of the SHA-256 of the clientDataJSON) | `authenticator_data`, `signature`, `user_handle`, `credential_id` (each base64url) |
 | `keepalive` | none | no answer; the idle deadline starts again |
 
 ### Login steps
@@ -119,6 +123,22 @@ An event answers no request: `{"id": 0, "ok": true, "event": "<name>"}`.
 - Errors: `locked`, `no_item` (an update of an id that is not a login), `save_failed` (the server refused it or cannot
   be reached; the message says why).
 
+### Passkeys of sites
+
+- `passkeys_for` lists the vault's passkeys (the passkeys of login items) whose relying party is `rp_id` (ASCII case
+  aside). With a non-empty `allow` (the credential ids of the page's `allowCredentials`, base64url), it lists only the
+  passkeys in it. A passkey without a user handle is not listed. `username` is the passkey's user name, else its
+  display name, else the login's username, else the item's name. `credential_id` and `user_handle` are base64url. The
+  rows are sorted by item name.
+- `passkey_assert` signs with the SDK's authenticator (`bitwarden-fido`). The authenticator data holds the SHA-256 of
+  `rp_id`, the flags UP and UV (an unlocked vault is a verified user) and the sign count. The signature (ES256, DER) is
+  over the authenticator data and `client_data_hash`. Wren makes the clientDataJSON and its hash: the helper sees
+  only the hash.
+- A passkey with a sign counter (not 0) gets its new count saved in its item, as `save` does (`PUT
+  {api}/ciphers/{id}`). A failed save does not fail the assertion.
+- Errors: `locked`; `bad_request` (an empty `rp_id`, a `client_data_hash` that is not 32 bytes); `no_item` (the item
+  or the passkey is not in the vault, or not of `rp_id`); `assert_failed` (the authenticator refused to sign).
+
 ### Idle deadline
 
 `hello`'s `idle_seconds` (0: none) is the helper's own lock. When no request (`keepalive` included) comes for that
@@ -131,7 +151,7 @@ minute while the user is active.
 `bad_request`, `bad_protocol`, `no_hello`, `bad_server`, `bad_credentials`, `unsupported_two_factor`,
 `unsupported_account`, `network`, `login_failed`, `no_account`, `bad_password`, `bad_pin`, `pin_reset`, `no_pin`,
 `no_state`, `denied`, `expired`, `no_passkey`, `account_locked`, `locked`, `sync_failed`, `no_item`, `no_totp`,
-`save_failed`, `decrypt`, `state_write`, `state_format`. The helper's README says what
+`save_failed`, `assert_failed`, `decrypt`, `state_write`, `state_format`. The helper's README says what
 each means.
 
 ## The helper's identity at the server
@@ -167,6 +187,6 @@ only into the card or address fields where the user picked them (docs/bitwarden.
 |---|---|
 | `protocol.odin` | The requests, written into one buffer reserved large enough at once; the answers, decoded into owned values. Every string that can hold a value is zeroed before it is freed. |
 | `transport.odin`, `process.odin` | The helper as a child process: a reader thread starts it, reads and decodes frames and posts each answer to the loop; a writer thread writes the queued frames in order and zeroes each. The loop thread never blocks on the helper. |
-| `vault.odin` | The one state of the Vault, the requests and their deadlines (`vault.request.timeout_ms`), the four sets of rows (the tab's document, the focused frame's document, the search, the cards or identities of a card or address field; the last two page by page), the fill's ticket, the copies, the save offer and its never-save list, the generated value, the idle and sync timers, the blocking jobs (locating the helper, the account and never-save files, the check of the rows, the join of an ended helper). |
+| `vault.odin` | The one state of the Vault, the requests and their deadlines (`vault.request.timeout_ms`), the four sets of rows (the tab's document, the focused frame's document, the search, the cards or identities of a card or address field; the last two page by page), the fill's ticket, the copies, the save offer and its never-save list, the generated value, a page's passkey requests (each answered once to its caller's callback: the rows or the signature, a refusal, `timeout` or `locked`), the idle and sync timers, the blocking jobs (locating the helper, the account and never-save files, the check of the rows, the join of an ended helper). |
 | `match.odin` | Wren's match check. |
 | `settings.odin` | The `vault.*` preferences and the server addresses (US, EU, self-hosted). |

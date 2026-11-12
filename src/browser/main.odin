@@ -273,6 +273,7 @@ App :: struct {
 	qr_url:        string,                   // qr_shell.odin: the address whose QR code is shown ("": none), owned
 	vault:         Vault_Shell,              // vault_shell.odin: the Vault (src/vault) and its surfaces
 	key_pin:       Key_Pin_Dialog,           // webauthn_shell.odin: the security key's PIN, asked while a ceremony runs
+	passkey_choice: Passkey_Choice,          // passkey_choice.odin: a page's passkey request, from the Vault or the platform
 	drag_probe:    Drag_Probe,               // drag_probe.odin
 	lm:            Load_Measure,             // blocker_measure.odin: WREN_BLOCKER_MEASURE
 	lm_report_path: string,

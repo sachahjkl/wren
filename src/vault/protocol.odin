@@ -16,7 +16,7 @@ FRAME_HEAD :: 4
 
 Op :: enum u8 {
 	Hello, Login, Login_Api_Key, Unlock, Lock, Logout, Sync, Pin_Set, Pin_Clear, Logins_For, Search, Fill, Totp, Keepalive,
-	Password_Hint, Device_Request, Device_Poll, Passkey_Options, Login_Passkey, Save, Generate,
+	Password_Hint, Device_Request, Device_Poll, Passkey_Options, Login_Passkey, Save, Generate, Passkeys_For, Passkey_Assert,
 }
 
 OP_NAMES := [Op]string{
@@ -24,7 +24,7 @@ OP_NAMES := [Op]string{
 	.Sync = "sync", .Pin_Set = "pin_set", .Pin_Clear = "pin_clear", .Logins_For = "logins_for", .Search = "search", .Fill = "fill",
 	.Totp = "totp", .Keepalive = "keepalive", .Password_Hint = "password_hint", .Device_Request = "device_request",
 	.Device_Poll = "device_poll", .Passkey_Options = "passkey_options", .Login_Passkey = "login_passkey", .Save = "save",
-	.Generate = "generate",
+	.Generate = "generate", .Passkeys_For = "passkeys_for", .Passkey_Assert = "passkey_assert",
 }
 
 // The second steps of a login that the Vault supports (the helper's provider names).
@@ -198,6 +198,17 @@ FILL_FIELD_NAMES := [Fill_Field]string{
 	.Ssn = "ssn", .Passport = "passport", .License = "license",
 }
 
+// One passkey of the vault for a page's relying party (`passkeys_for`): its item, what the choice shows, its ids
+// (base64url). Owned.
+Passkey_Row :: struct {
+	item, name, username, credential_id, user_handle: string,
+}
+
+// A page's assertion signed by the helper with a passkey of the vault (`passkey_assert`), each value base64url.
+Passkey_Signed :: struct {
+	authenticator_data, signature, user_handle, credential_id: string,
+}
+
 CARD_FIELDS :: Fill_Fields{.Cardholder, .Number, .Exp_Month, .Exp_Year, .Code, .Brand}
 IDENTITY_FIELDS :: Fill_Fields{.Title, .First_Name, .Middle_Name, .Last_Name, .Full_Name, .Address1, .Address2, .Address3,
 	.City, .State, .Postal_Code, .Country, .Company, .Email, .Phone, .Ssn, .Passport, .License}
@@ -238,6 +249,10 @@ Answer :: struct {
 	item:           string,
 	// generate: a secret
 	value:          string,
+	// passkeys_for: its rows (`rows` keeps the item rows of logins_for and search)
+	passkeys:       [dynamic]Passkey_Row,
+	// passkey_assert (owned strings)
+	signed:         Passkey_Signed,
 }
 
 // Decodes the JSON of one answer. ok = false when it is not an answer of this protocol.
@@ -292,6 +307,8 @@ answer_decode :: proc(body: []u8) -> (a: ^Answer, ok: bool) {
 	}
 	a.item = owned_string(o, "item")
 	a.value = owned_string(o, "value")
+	a.signed = Passkey_Signed{authenticator_data = owned_string(o, "authenticator_data"), signature = owned_string(o, "signature"),
+		user_handle = owned_string(o, "user_handle"), credential_id = owned_string(o, "credential_id")}
 	if n, is_int := o["period"].(json.Integer); is_int { a.period = int(n) }
 	if n, is_int := o["remaining"].(json.Integer); is_int { a.remaining = int(n) }
 	if list, is_array := o["equivalent"].(json.Array); is_array {
@@ -305,6 +322,14 @@ answer_decode :: proc(body: []u8) -> (a: ^Answer, ok: bool) {
 		for r in rows {
 			ro, row_ok := r.(json.Object)
 			if !row_ok { continue }
+			// (a row of passkeys_for: an item and a credential, no id)
+			if _, is_passkey := ro["credential_id"].(json.String); is_passkey {
+				pk := Passkey_Row{item = owned_string(ro, "item"), name = owned_string(ro, "name"), username = owned_string(ro, "username"),
+					credential_id = owned_string(ro, "credential_id"), user_handle = owned_string(ro, "user_handle")}
+				if pk.item == "" || pk.credential_id == "" { passkey_row_free(&pk); continue }
+				append(&a.passkeys, pk)
+				continue
+			}
 			row := Row{id = owned_string(ro, "id"), name = owned_string(ro, "name"), username = owned_string(ro, "username"), uri = owned_string(ro, "uri")}
 			known := true
 			if m, is_str := ro["match"].(json.String); is_str {
@@ -362,6 +387,27 @@ rows_free :: proc(rows: ^[dynamic]Row) {
 	rows^ = nil
 }
 
+passkey_row_free :: proc(r: ^Passkey_Row) {
+	string_wipe(&r.item)
+	string_wipe(&r.name)
+	string_wipe(&r.username)
+	string_wipe(&r.credential_id)
+	string_wipe(&r.user_handle)
+}
+
+passkey_rows_free :: proc(rows: ^[dynamic]Passkey_Row) {
+	for &r in rows { passkey_row_free(&r) }
+	delete(rows^)
+	rows^ = nil
+}
+
+passkey_signed_free :: proc(s: ^Passkey_Signed) {
+	string_wipe(&s.authenticator_data)
+	string_wipe(&s.signature)
+	string_wipe(&s.user_handle)
+	string_wipe(&s.credential_id)
+}
+
 strings_free :: proc(list: ^[dynamic]string) {
 	for &s in list { string_wipe(&s) }
 	delete(list^)
@@ -383,6 +429,8 @@ answer_free :: proc(a: ^Answer) {
 	string_wipe(&a.value)
 	rows_free(&a.rows)
 	strings_free(&a.equivalent)
+	passkey_rows_free(&a.passkeys)
+	passkey_signed_free(&a.signed)
 	free(a, base.process_allocator())
 }
 

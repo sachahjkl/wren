@@ -3,7 +3,7 @@ package browser
 // Passkeys in the shell (page/bindings_webauthn.odin does the ceremonies): which window the system's WebAuthn dialog
 // belongs to and whether the asking page is the one the user looks at (security.webauthn.require_focus), and, while a
 // page waits for the dialog, a chip in the address bar saying so; clicking it cancels the request (the page gets
-// NotAllowedError, as when the dialog is dismissed).
+// NotAllowedError, as when the dialog is dismissed). A page's get asks the Vault first (passkey_choice.odin).
 
 import "core:fmt"
 import "core:strings"
@@ -30,6 +30,10 @@ webauthn_shell_init :: proc(app: ^App) {
 		changed = proc(p: ^page.Page) {
 			if the_app != nil { request_frames(the_app, 2) }
 		},
+		// a page's get: the unlocked Vault's passkeys of its site are offered first (passkey_choice.odin)
+		provider = proc(p: ^page.Page, rq: ^page.Webauthn_Provider_Request) -> bool {
+			return the_app != nil && passkey_choice_offer(the_app, rq)
+		},
 	}
 	// a security key's PIN is asked on the ceremony's thread: the loop wakes, the next frame shows the question
 	webauthn.pin_wake = proc "contextless" () {
@@ -40,6 +44,7 @@ webauthn_shell_init :: proc(app: ^App) {
 
 webauthn_shell_destroy :: proc(app: ^App) {
 	app.pages.webauthn_embedder = {}
+	passkey_choice_reset(app)
 	if q := webauthn.pin_question(); q.number != 0 { webauthn.pin_answer(q.number, "", false) }   // (a ceremony that waits for a PIN stops waiting)
 	if q := webauthn.choose_question(); q.number != 0 { webauthn.choose_answer(q.number, 0, false) }   // (and one that waits for an account)
 	secret_wipe(&app.key_pin.field)
@@ -81,6 +86,8 @@ Key_Pin_Dialog :: struct {
 }
 
 webauthn_pin_build :: proc(app: ^App) {
+	// (the Vault's passkeys or the platform: asked before a platform ceremony starts, so never with its PIN or touch)
+	passkey_choice_build(app)
 	d := &app.key_pin
 	q := webauthn.pin_question()
 	if q.number != d.number {

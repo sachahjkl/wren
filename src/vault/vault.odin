@@ -137,7 +137,23 @@ Pending :: struct {
 	copy_what: Copy_What,
 	resend:  bool,          // .Login: a code asked again; a failure keeps the login waiting (`back`)
 	back:    State,         // .Login with resend: the step it came from
+	passkey_done: Passkey_Callback,   // .Passkeys_For, .Passkey_Assert: called once (nil: its caller forgot it)
+	passkey_user: rawptr,
 }
+
+// The answer to a page's passkey request (vault_passkeys_for, vault_passkey_assert), handed to its callback once: the
+// rows of the site, or the signed assertion, or a failure (`error`: the helper's code; "timeout" past
+// vault.request.timeout_ms; "locked" when the Vault locked or stopped meanwhile). Valid for the call only: the strings
+// are zeroed after it.
+Passkey_Answer :: struct {
+	ok:     bool,
+	error:  string,
+	rows:   []Passkey_Row,
+	signed: Passkey_Signed,
+}
+
+// Runs on the loop thread. `ticket`: what vault_passkeys_for or vault_passkey_assert returned.
+Passkey_Callback :: proc(user: rawptr, ticket: u64, answer: ^Passkey_Answer)
 
 // What a passkey ceremony is for.
 Passkey_Purpose :: enum u8 { Login, Unlock }
@@ -243,7 +259,7 @@ vault_init :: proc(v: ^Vault, loop: ^host.Loop, pool: ^host.Blocking_Pool, prefs
 // Loop thread. Kills a helper that still works, waits for the jobs, zeroes what is kept.
 vault_destroy :: proc(v: ^Vault) {
 	timers_stop(v)
-	drop_pending(v)
+	drop_pending(v, notify = false)
 	if v.t != nil { v.t.destroy(v.t); v.t = nil }
 	for t in v.closed { t.destroy(t) }
 	delete(v.closed)
@@ -845,6 +861,75 @@ vault_generated_take :: proc(v: ^Vault) -> (value: string, id: u64, ok: bool) {
 }
 
 ////////////////////////////////
+// Passkeys of sites (docs/bitwarden.md 4.11)
+
+// Whether a page's passkey request asks the Vault first: unlocked, with vault.passkeys.offer on. Locked or off, the
+// request goes to the platform's authenticator as without a Vault.
+vault_passkeys_offered :: proc(v: ^Vault) -> bool {
+	return v.state == .Unlocked && v.t != nil && v.settings.passkeys_offer
+}
+
+// Asks the vault's passkeys of the relying party `rp_id` (in `allow`, the page's allowCredentials ids in base64url, when
+// it gives some). `done` gets the rows once, or a failure. Returns the request's ticket; 0: nothing was asked
+// (vault_passkeys_offered is false) and `done` is never called.
+vault_passkeys_for :: proc(v: ^Vault, rp_id: string, allow: []string, done: Passkey_Callback, user: rawptr) -> u64 {
+	if !vault_passkeys_offered(v) || rp_id == "" || done == nil { return 0 }
+	room := len(rp_id) + 32
+	for a in allow { room += len(a) + 3 }
+	r: Request
+	request_begin(&r, next_id(v), .Passkeys_For, room)
+	request_string(&r, "rp_id", rp_id)
+	request_list(&r, "allow", allow)
+	id := v.next_id
+	p := send(v, &r, .Passkeys_For)
+	if p == nil { return 0 }
+	p.passkey_done, p.passkey_user = done, user
+	return id
+}
+
+// Asks the helper to sign a page's assertion with the passkey `credential_id` of `item` (a row of vault_passkeys_for).
+// `client_data_hash`: the SHA-256 of the clientDataJSON that Wren made, in base64url. `done` gets the signed values once,
+// or a failure. Returns the ticket; 0: nothing was asked and `done` is never called.
+vault_passkey_assert :: proc(v: ^Vault, item, credential_id, rp_id, client_data_hash: string, done: Passkey_Callback, user: rawptr) -> u64 {
+	if v.state != .Unlocked || v.t == nil || item == "" || credential_id == "" || rp_id == "" || done == nil { return 0 }
+	r: Request
+	request_begin(&r, next_id(v), .Passkey_Assert, len(item) + len(credential_id) + len(rp_id) + len(client_data_hash) + 64)
+	request_string(&r, "item", item)
+	request_string(&r, "credential_id", credential_id)
+	request_string(&r, "rp_id", rp_id)
+	request_string(&r, "client_data_hash", client_data_hash)
+	id := v.next_id
+	p := send(v, &r, .Passkey_Assert)
+	if p == nil { return 0 }
+	p.passkey_done, p.passkey_user = done, user
+	return id
+}
+
+// The caller of a passkey request is gone (its page closed, its ceremony ended): its callback is never called. The
+// answer, when it comes, is dropped.
+vault_passkey_forget :: proc(v: ^Vault, ticket: u64) {
+	if ticket == 0 { return }
+	for &p in v.pending {
+		if p.id == ticket { p.passkey_done, p.passkey_user = nil, nil }
+	}
+}
+
+// Calls a passkey request's callback once with `answer`, then forgets it.
+@(private)
+passkey_reply :: proc(p: ^Pending, answer: ^Passkey_Answer) {
+	done, user := p.passkey_done, p.passkey_user
+	p.passkey_done, p.passkey_user = nil, nil
+	if done != nil { done(user, p.id, answer) }
+}
+
+// A passkey request that ends without the helper's answer: the callback hears `why`.
+@(private)
+passkey_fail :: proc(p: ^Pending, why: string) {
+	answer := Passkey_Answer{ok = false, error = why}
+	passkey_reply(p, &answer)
+}
+
+////////////////////////////////
 // The save offer
 
 // A login was sent from the document at `url` with these values (a form's submission, or a page left with a password
@@ -1100,14 +1185,19 @@ pending_free :: proc(v: ^Vault, p: ^Pending, clear_timer: bool) {
 	string_wipe(&p.key)
 }
 
+// `notify`: a page's passkey request hears that the Vault went ("locked"), after the table is cleared (its callback may
+// ask again). vault_destroy calls none: the browser is ending.
 @(private)
-drop_pending :: proc(v: ^Vault) {
+drop_pending :: proc(v: ^Vault, notify := true) {
+	waiting := make([dynamic]Pending, 0, 0, context.temp_allocator)
 	for &p in v.pending {
 		if p.op == .Fill && !p.copy && p.offer == 0 { v.fill_state = .Dropped }
+		if notify && p.passkey_done != nil { append(&waiting, p) }
 		pending_free(v, &p, true)
 	}
 	clear(&v.pending)
 	v.syncing = false
+	for &p in waiting { passkey_fail(&p, "locked") }
 }
 
 @(private)
@@ -1164,6 +1254,9 @@ request_timed_out :: proc(data: rawptr) {
 		set_message(v, i18n.tr("The Vault did not answer in time: the login may not be saved. Sync, then look."))
 	case .Generate:
 		set_message(v, i18n.tr("The password generator did not answer in time."))
+	case .Passkeys_For, .Passkey_Assert:
+		// (the page's request goes on without the Vault, or fails: its caller decides; the helper is not stopped)
+		passkey_fail(&p, "timeout")
 	case .Hello, .Login, .Login_Api_Key, .Unlock, .Lock, .Logout, .Sync, .Pin_Set, .Pin_Clear, .Keepalive,
 	     .Password_Hint, .Device_Request, .Device_Poll, .Passkey_Options, .Login_Passkey:
 		// (the helper answers in order: one that does not answer holds every later request)
@@ -1553,6 +1646,14 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 		v.generated, a.value = a.value, ""
 		v.generated_id = p.id
 		changed(v)
+	case .Passkeys_For, .Passkey_Assert:
+		answer := Passkey_Answer{ok = a.ok, error = a.error, rows = a.passkeys[:], signed = a.signed}
+		if a.ok && p.op == .Passkey_Assert && (a.signed.authenticator_data == "" || a.signed.signature == "" || a.signed.credential_id == "") {
+			// (an answer without what the page needs is no assertion)
+			answer.ok, answer.error = false, "assert_failed"
+		}
+		if !answer.ok && answer.error == "" { answer.error = "failed" }
+		passkey_reply(&p, &answer)
 	case .Lock, .Logout, .Keepalive:
 	}
 }

@@ -440,7 +440,7 @@ All in `src/vault/settings.odin`, registered in `src/browser/settings.odin`.
 | `vault.generator.separator` | String, `-` | What goes between its words. |
 | `vault.generator.capitalize`, `.include_number` | Bool, `false` | Capital first letters; a digit after a word. |
 | `vault.clipboard.clear_seconds` | Int, 30, 0 to 600 | 0: never clear. |
-| `vault.passkeys.enabled` | Bool, `true` | Offer the vault as an authenticator (phase 5). |
+| `vault.passkeys.offer` | Bool, `true` | A page's passkey request offers the unlocked vault's passkeys of the site (4.11). |
 | `vault.request.timeout_ms` | Int, 15000, 1000 to 120000 | Deadline of one helper request. |
 | `vault.helper.path` | String, empty | Override of the helper path. |
 | `vault.test.remote` | Bool, `false` | For automated tests only: remote control can drive the Vault surfaces. |
@@ -582,6 +582,39 @@ Protocol 5 (`save`, `generate`, the kinds of items, the fields of cards and iden
   date as `MM/YY` or
   `MM/YYYY` by the field's placeholder and maxlength, a select by its option's value or text. Social security,
   passport and licence numbers are never asked.
+
+### 4.11 Passkeys of sites (sign in)
+
+Protocol 5 (`passkeys_for`, `passkey_assert`: [vault-protocol.md](vault-protocol.md)). A page's
+`navigator.credentials.get` can use a passkey of the vault (the `fido2Credentials` of a login item). Creation
+(`navigator.credentials.create`) stays with the platform's authenticator.
+
+- **When.** The Vault is unlocked and `vault.passkeys.offer` is on. The page's own conditions come first, as for the
+  platform (a secure context, a recent click or key press, the focused tab, one ceremony at a time, the options
+  checked, the RP ID resolved). Locked or off: the request goes to the platform as without a Vault, and nothing is
+  asked.
+- **Hook.** `page/bindings_webauthn.odin` asks the embedder's `provider` before it starts the platform's thread. It
+  hands the effective RP ID, the allow list (base64url) and the SHA-256 of the `clientDataJSON` that Wren made. The
+  request is then Asking (no thread, no platform call); the page's signal, its lifetime timer, the address bar's chip
+  and a closed tab still end it (NotAllowedError or the signal's reason, in a task of its own). The shell ends it once:
+  `webauthn_provider_resolve` (an assertion), `webauthn_provider_platform` (the platform's ceremony, as without a
+  provider), or `webauthn_provider_refuse` (NotAllowedError, as a dismissed system dialog).
+- **Choice** (`src/browser/passkey_choice.odin`). The shell asks `passkeys_for` (the request's deadline is
+  `vault.request.timeout_ms`; nothing blocks the page or the interface). No row, a failure, a lock or no answer in
+  time: the platform takes the request. Rows: a modal question, the look of the security key's account choice, one
+  row per passkey (a key icon, the item's name, the passkey's user name), then "Use a security key or this device",
+  and Cancel. Up, Down and Enter choose. One question at a time: a second page's request meanwhile goes to the
+  platform.
+- **Signature.** A passkey of the vault: `passkey_assert`. The helper signs with the SDK's authenticator
+  (`bitwarden-fido`'s `Fido2Authenticator`, its credential store over the decrypted items, its user interface that
+  picks the chosen passkey without asking): authenticator data with the RP ID's hash, the flags UP and UV (the unlocked
+  vault verified the user) and the sign count; the signature over the authenticator data and the client data's hash.
+  A passkey with a sign counter gets its new count saved on the server, as `save` does.
+- **Answer.** Wren checks the helper's answer (it decodes; the authenticator data starts with the hash of the RP ID;
+  the credential is in the allow list when the page gave one), then builds the page's `PublicKeyCredential` by the
+  same end as a platform credential (`webauthn_settle`, `credential_json`): `authenticatorAttachment` is `platform`,
+  as browser extensions that provide passkeys report it; no client extension output. A refusal of the helper is
+  NotAllowedError.
 
 ## 5. Phases
 

@@ -13,6 +13,9 @@ package page
 //     lifetime timer, the AbortSignal, the page closing and the address bar's cancel all cancel the platform operation
 //     (again every security.webauthn cancel_retry while it has not returned: a cancel can arrive before Windows knows
 //     the operation).
+//   * A get goes to the embedder's passkey provider first (the Vault's passkeys of the site, docs/bitwarden.md 4.11):
+//     the shell asks the person, then answers with an assertion, hands the request to the platform, or refuses. Its
+//     assertion becomes the page's credential by the same end as the platform's (webauthn_settle).
 //   * Nothing about credentials is logged; the console only gets the error names a page would see anyway.
 
 import "core:strings"
@@ -34,6 +37,25 @@ Webauthn_Embedder :: struct {
 	window:  proc(p: ^Page) -> (hwnd: rawptr, focused: bool),
 	// a ceremony of the page started or ended (the address bar shows it)
 	changed: proc(p: ^Page),
+	// a get may be answered by a passkey provider (the Vault's passkeys): asked before the platform starts. true: the
+	// shell took the request and ends it once, with webauthn_provider_resolve, webauthn_provider_platform or
+	// webauthn_provider_refuse (unless the page cancels it first: webauthn_provider_waiting); false: the platform runs at
+	// once. nil: no provider.
+	provider: proc(p: ^Page, request: ^Webauthn_Provider_Request) -> bool,
+}
+
+// A page's get, as a passkey provider sees it. The strings are valid for the call only.
+Webauthn_Provider_Request :: struct {
+	page_id:          u64,
+	ticket:           u64,        // the request's number (each get its own)
+	rp_id:            string,     // the effective relying party
+	allow:            []string,   // the page's allowCredentials ids, base64url (empty: any discoverable passkey)
+	client_data_hash: string,     // base64url SHA-256 of the clientDataJSON that Wren made: what the passkey signs
+}
+
+// A provider's assertion, each value base64url (what the Vault's helper answers).
+Webauthn_Provider_Assertion :: struct {
+	credential_id, authenticator_data, signature, user_handle: string,
 }
 
 
@@ -64,10 +86,15 @@ Webauthn_Op :: struct {
 	retry:     base.Handle,   // repeated cancellation
 	rp_id:     string,        // in the ceremony's arena (address bar)
 	cancel_ns: i64,           // loop clock of the first cancellation (0: none)
+	// A get goes Asking (the shell's provider has it; no platform call, no thread) -> Platform (the thread runs) or an
+	// end; a create starts at Platform.
+	asking:    bool,
+	ticket:    u64,           // Asking: the request's number for the shell
 }
 
 // UI thread only (each App's: its pages run on the thread of its loop).
 @(private="file", thread_local) webauthn_docs: map[u64]^Webauthn_Doc
+@(private="file", thread_local) webauthn_next_ticket: u64
 
 @(private="file")
 webauthn_doc :: proc(p: ^Page, create := false) -> ^Webauthn_Doc {
@@ -91,10 +118,16 @@ webauthn_doc_closed :: proc(data: rawptr) {
 	delete_key(&webauthn_docs, d.page_id)
 	if len(webauthn_docs) == 0 { delete(webauthn_docs); webauthn_docs = nil }   // made again by the next document
 	if op := d.active; op != nil {
-		webauthn.cancel(op.platform, &op.c.cancel, .Not_Allowed)
-		// the page's timers go with its scope; the op lives on until its thread returns (webauthn_finished)
-		op.timer, op.retry = base.NIL_HANDLE, base.NIL_HANDLE
-		op.page_id = 0
+		if op.asking {
+			// (no platform call and no thread: the request ends with its page; the shell finds it gone)
+			webauthn.ceremony_destroy(op.c)
+			free(op, base.process_allocator())
+		} else {
+			webauthn.cancel(op.platform, &op.c.cancel, .Not_Allowed)
+			// the page's timers go with its scope; the op lives on until its thread returns (webauthn_finished)
+			op.timer, op.retry = base.NIL_HANDLE, base.NIL_HANDLE
+			op.page_id = 0
+		}
 	}
 	free(d, base.process_allocator())
 }
@@ -342,7 +375,9 @@ webauthn_start :: proc(c: ^Call, kind: webauthn.Ceremony_Kind, options: string, 
 		return pr
 	}
 	pl := webauthn.platform_for(&p.settings.authn)
-	if pl == nil {
+	// (a get asks the shell's passkey provider first: without a platform, the provider's passkeys still answer)
+	offer := kind == .Get && the_pages.webauthn_embedder.provider != nil
+	if pl == nil && !offer {
 		reject_later(p, pr, WEB_ERR_NOT_SUPPORTED, "NotSupportedError: " + webauthn.NO_PLATFORM_REASON)
 		webauthn.ceremony_destroy(cer)
 		return pr
@@ -354,7 +389,6 @@ webauthn_start :: proc(c: ^Call, kind: webauthn.Ceremony_Kind, options: string, 
 	timeout := kind == .Create ? cer.make.timeout_ms : cer.get.timeout_ms
 	d := webauthn_doc(p, true)
 	d.active = op
-	append(&the_pages.webauthn_ops, op)
 	if op.signal != 0 {
 		op.algo = signal_add_algorithm(p, op.signal, proc(pg: ^Page, data: u64, signal: u64) {
 			webauthn_cancel_op(pg, (^Webauthn_Op)(uintptr(data)), .Abort)
@@ -365,6 +399,33 @@ webauthn_start :: proc(c: ^Call, kind: webauthn.Ceremony_Kind, options: string, 
 		op.timer = base.NIL_HANDLE
 		webauthn_cancel_op(page_by_id(op.page_id), op, .Not_Allowed)
 	}, op, p.scope)
+	if offer {
+		webauthn_next_ticket += 1
+		op.ticket, op.asking = webauthn_next_ticket, true
+		hash := webauthn.sha256(cer.get.client_data_json)
+		allow := make([]string, len(cer.request.allow), context.temp_allocator)
+		for x, i in cer.request.allow { allow[i] = webauthn.base64url_encode(x.id, context.temp_allocator) }
+		rq := Webauthn_Provider_Request{page_id = op.page_id, ticket = op.ticket, rp_id = op.rp_id, allow = allow,
+			client_data_hash = webauthn.base64url_encode(hash[:], context.temp_allocator)}
+		if the_pages.webauthn_embedder.provider(p, &rq) {
+			if the_pages.webauthn_embedder.changed != nil { the_pages.webauthn_embedder.changed(p) }
+			return pr
+		}
+		op.asking = false
+	}
+	webauthn_platform_run(p, op)
+	return pr
+}
+
+// The platform's ceremony of `op`, on a thread of its own (its answer: webauthn_finished). Without a platform (a get that
+// a provider could have answered), NotSupportedError.
+@(private="file")
+webauthn_platform_run :: proc(p: ^Page, op: ^Webauthn_Op) {
+	if op.platform == nil {
+		webauthn_settle(p, op, webauthn.fail(.Not_Supported, "NotSupportedError: " + webauthn.NO_PLATFORM_REASON))
+		return
+	}
+	append(&the_pages.webauthn_ops, op)
 	op.thread = host.thread_start(proc(data: rawptr) {
 		op := (^Webauthn_Op)(data)
 		webauthn.run(op.c, op.platform)
@@ -376,11 +437,16 @@ webauthn_start :: proc(c: ^Call, kind: webauthn.Ceremony_Kind, options: string, 
 		host.post(p.loop, webauthn_finished, op)
 	}
 	if the_pages.webauthn_embedder.changed != nil { the_pages.webauthn_embedder.changed(p) }
-	return pr
 }
 
 @(private="file")
 webauthn_cancel_op :: proc(p: ^Page, op: ^Webauthn_Op, reason: webauthn.Error) {
+	if op.asking {
+		// (no platform call to stop: the request ends in a task of its own, outside the signal's or the timer's dispatch;
+		// the shell finds it gone)
+		if p != nil { webauthn_provider_end_later(p, op.ticket, reason) }
+		return
+	}
 	webauthn.cancel(op.platform, &op.c.cancel, reason)
 	if p == nil || op.retry != base.NIL_HANDLE { return }
 	op.cancel_ns = host.now_ns(p.loop)
@@ -420,19 +486,27 @@ webauthn_finished :: proc(data: rawptr) {
 	op := (^Webauthn_Op)(data)
 	host.thread_join(op.thread)
 	for x, i in the_pages.webauthn_ops { if x == op { unordered_remove(&the_pages.webauthn_ops, i); break } }
-	defer free(op, base.process_allocator())
 	p := op.page_id != 0 ? page_by_id(op.page_id) : nil
 	if p == nil {
 		webauthn.ceremony_destroy(op.c)
+		free(op, base.process_allocator())
 		return
 	}
+	webauthn_settle(p, op, op.c.status)
+}
+
+// The one end of a ceremony that is not the platform's thread any more (its answer, a provider's, a refusal, a
+// cancel): its timers and its signal go, the document may start another, and the page's promise settles with the
+// credential of op.c.result, or with the error of `st`. Frees the op.
+@(private="file")
+webauthn_settle :: proc(p: ^Page, op: ^Webauthn_Op, st: webauthn.Status) {
+	defer free(op, base.process_allocator())
 	if op.timer != base.NIL_HANDLE { host.clear_timer(p.loop, op.timer) }
 	if op.retry != base.NIL_HANDLE { host.clear_timer(p.loop, op.retry) }
 	if op.signal != 0 && op.algo != 0 { signal_remove_algorithm(p, op.signal, op.algo) }
 	if d := webauthn_doc(p); d != nil && d.active == op { d.active = nil }
 	defer if the_pages.webauthn_embedder.changed != nil && !p.closed { the_pages.webauthn_embedder.changed(p) }
 
-	st := op.c.status
 	if st.error == .Abort && op.signal != 0 {
 		_, code, reason := signal_aborted(p, op.signal)
 		webauthn.ceremony_destroy(op.c)
@@ -448,6 +522,95 @@ webauthn_finished :: proc(data: rawptr) {
 	}
 	h := credential_create(p, op.c, op.owner)   // the credential owns the ceremony from here
 	promise_resolve_object(p, op.promise, h)
+}
+
+////////////////////////////////
+// A passkey provider's answer (Webauthn_Embedder.provider; UI thread)
+
+// The get `ticket` of the page `page_id` while the provider has it; nil once it ended (answered, cancelled by the page,
+// its timer or the address bar, or its page gone).
+@(private="file")
+provider_op :: proc(page_id, ticket: u64) -> (^Page, ^Webauthn_Op) {
+	p := page_by_id(page_id)
+	if p == nil { return nil, nil }
+	d := webauthn_doc(p)
+	if d == nil || d.active == nil || !d.active.asking || d.active.ticket != ticket { return nil, nil }
+	return p, d.active
+}
+
+// Whether the page still waits for the provider's answer (the shell closes its question when not).
+webauthn_provider_waiting :: proc(page_id, ticket: u64) -> bool {
+	_, op := provider_op(page_id, ticket)
+	return op != nil
+}
+
+// The person chose the platform's authenticator (a security key, this device), or the provider has no passkey for the
+// request: the ceremony goes on as without a provider.
+webauthn_provider_platform :: proc(page_id, ticket: u64) {
+	p, op := provider_op(page_id, ticket)
+	if op == nil { return }
+	op.asking = false
+	webauthn_platform_run(p, op)
+}
+
+// The person refused (the question's Cancel), or the provider failed to sign: NotAllowedError, as when the system's
+// dialog is dismissed.
+webauthn_provider_refuse :: proc(page_id, ticket: u64) {
+	p, op := provider_op(page_id, ticket)
+	if op == nil { return }
+	webauthn_settle(p, op, webauthn.fail(.Not_Allowed, "NotAllowedError: the operation either timed out or was not allowed"))
+}
+
+// The provider's assertion: the page gets its PublicKeyCredential as from a platform credential (authenticator
+// attachment "platform", as browser extensions that provide passkeys report it). An answer that is not an assertion
+// for this request (a value that does not decode, authenticator data of another relying party, a credential outside
+// the page's allow list) is NotAllowedError.
+webauthn_provider_resolve :: proc(page_id, ticket: u64, a: Webauthn_Provider_Assertion) {
+	p, op := provider_op(page_id, ticket)
+	if op == nil { return }
+	al := webauthn.ceremony_allocator(op.c)
+	raw, raw_ok := webauthn.base64url_decode(a.credential_id, al)
+	data, data_ok := webauthn.base64url_decode(a.authenticator_data, al)
+	sig, sig_ok := webauthn.base64url_decode(a.signature, al)
+	handle, handle_ok := webauthn.base64url_decode(a.user_handle, al)
+	// authenticator data: the rp id hash (32 bytes), the flags (1), the sign count (4)
+	valid := raw_ok && data_ok && sig_ok && handle_ok && len(raw) > 0 && len(data) >= 37 && len(sig) > 0
+	if valid {
+		rp_hash := webauthn.sha256(transmute([]byte)op.rp_id)
+		valid = string(data[:32]) == string(rp_hash[:])
+	}
+	if valid && len(op.c.request.allow) > 0 {
+		listed := false
+		for x in op.c.request.allow { if string(x.id) == string(raw) { listed = true; break } }
+		valid = listed
+	}
+	if !valid {
+		webauthn_settle(p, op, webauthn.fail(.Not_Allowed, "NotAllowedError: the passkey provider's answer is not an assertion for this request"))
+		return
+	}
+	op.c.result = webauthn.Credential{
+		kind = .Get, raw_id = raw, client_data_json = op.c.get.client_data_json, authenticator_data = data, signature = sig,
+		user_handle = handle, has_user_handle = len(handle) > 0, attachment = .Platform,
+	}
+	webauthn_settle(p, op, webauthn.OK)
+}
+
+// A cancel while the provider has the request (the page's signal, its lifetime timer, the address bar): the promise
+// settles in a task of its own, if the request is still the provider's then.
+@(private="file")
+webauthn_provider_end_later :: proc(p: ^Page, ticket: u64, reason: webauthn.Error) {
+	R :: struct { page_id, ticket: u64, reason: webauthn.Error }
+	r := new(R, base.process_allocator())
+	r^ = {page_id(p), ticket, reason}
+	post_page_task(p, proc(pg: ^Page, data: rawptr) {
+		r := (^R)(data)
+		defer free(r, base.process_allocator())
+		if pg == nil { return }
+		asked, op := provider_op(r.page_id, r.ticket)
+		if op == nil { return }
+		st := r.reason == .Abort ? webauthn.fail(.Abort, "AbortError: the operation was aborted") : webauthn.fail(.Not_Allowed, "NotAllowedError: the operation either timed out or was not allowed")
+		webauthn_settle(asked, op, st)
+	}, r)
 }
 
 ////////////////////////////////
