@@ -347,13 +347,13 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 				label := v.state == .Locked || (v.state == .Failed && vault.vault_has_account(v)) ? i18n.tr("Unlock…") : i18n.tr("Log in…")
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.row(.Center, {}, "###vp_locked_actions") {
-					if icon_action_button(app, lucide.LOCK, label, "vp_open_dialog", ui.fill(), hue = MAIN_ACT_HUE) {
+					if icon_action_button(app, lucide.LOCK, label, "vp_open_dialog", ui.fill(), intent = .Primary) {
 						ui.ctx_menu_close()
 						vault_dialog_open(app)
 					}
 					if vault.vault_has_account(v) && v.state != .Need_Two_Factor && v.state != .Need_Device_Code {
 						ui.spacer(ui.px(em * 0.4))
-						if icon_action_button(app, lucide.LOG_OUT, i18n.tr("Log out"), "vp_logout", ui.fill()) {
+						if icon_action_button(app, lucide.LOG_OUT, i18n.tr("Log out"), "vp_logout", ui.fill(), intent = .Danger) {
 							ui.ctx_menu_close()
 							app.vault.logout_ask = true
 						}
@@ -379,14 +379,14 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 				if ui.row(.Center, {}, "###vp_account") {
 					if vault.vault_can_pin(v) {
 						if v.pin {
-							if icon_action_button(app, lucide.TRASH_2, i18n.tr("Remove the PIN"), "vp_pin_clear", ui.fill()) { vault.vault_pin_clear(v) }
+							if icon_action_button(app, lucide.TRASH_2, i18n.tr("Remove the PIN"), "vp_pin_clear", ui.fill(), intent = .Danger) { vault.vault_pin_clear(v) }
 						} else if icon_action_button(app, lucide.KEYBOARD, i18n.tr("Set a PIN…"), "vp_pin_set", ui.fill()) {
 							ui.ctx_menu_close()
 							vault_pin_open(app)
 						}
 						ui.spacer(ui.px(em * 0.4))
 					}
-					if icon_action_button(app, lucide.LOG_OUT, i18n.tr("Log out"), "vp_logout_open", ui.fill()) {
+					if icon_action_button(app, lucide.LOG_OUT, i18n.tr("Log out"), "vp_logout_open", ui.fill(), intent = .Danger) {
 						ui.ctx_menu_close()
 						app.vault.logout_ask = true   // (a logout drops the account's keys: asked first)
 					}
@@ -454,7 +454,7 @@ vault_rows :: proc(app: ^App, t: ^Tab) {
 				}
 				if icon_square_button(app, lucide.COPY, i18n.tr("Copy the password"), fmt_id("vp_copy_pass", i)) { vault.vault_copy(v, id, .Password) }
 				ui.spacer(ui.px(em * 0.3))
-				if icon_square_button(app, lucide.TEXT_CURSOR_INPUT, i18n.tr("Fill this page"), fmt_id("vp_fill", i), accent = true) {
+				if icon_square_button(app, lucide.TEXT_CURSOR_INPUT, i18n.tr("Fill this page"), fmt_id("vp_fill", i), intent = .Primary) {
 					ui.ctx_menu_close()
 					vault_fill_clicked(app, r.id)
 					break   // (the rows may change with the fill)
@@ -801,9 +801,9 @@ vault_login_build :: proc(app: ^App) {
 			} else {
 				ui.spacer(ui.fill())
 			}
-			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "vd_cancel", ui.px(em * 8)) { cancel = true }
+			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "vd_cancel", ui.px(em * 8), intent = .Cancel) { cancel = true }
 			ui.spacer(ui.px(em * 0.5))
-			if !busy && !waiting && icon_action_button(app, login ? lucide.USER : (unlock ? lucide.LOCK : lucide.CHECK), login ? i18n.tr("Log in") : (unlock ? i18n.tr("Unlock") : i18n.tr("Continue")), "vd_submit", ui.px(em * 8), hue = MAIN_ACT_HUE) { submit = true }
+			if !busy && !waiting && icon_action_button(app, login ? lucide.USER : (unlock ? lucide.LOCK : lucide.CHECK), login ? i18n.tr("Log in") : (unlock ? i18n.tr("Unlock") : i18n.tr("Continue")), "vd_submit", ui.px(em * 8), intent = .Success) { submit = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))
@@ -884,9 +884,9 @@ vault_pin_build :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###vpin_buttons") {
 			ui.spacer(ui.fill())
-			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "vpin_cancel", ui.px(em * 8)) { cancel = true }
+			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "vpin_cancel", ui.px(em * 8), intent = .Cancel) { cancel = true }
 			ui.spacer(ui.px(em * 0.5))
-			if icon_action_button(app, lucide.CHECK, i18n.tr("Set"), "vpin_set", ui.px(em * 8), hue = MAIN_ACT_HUE) { submit = true }
+			if icon_action_button(app, lucide.CHECK, i18n.tr("Set"), "vpin_set", ui.px(em * 8), intent = .Success) { submit = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))

@@ -121,9 +121,9 @@ webauthn_pin_build :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###kp_buttons") {
 			ui.spacer(ui.fill())
-			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "kp_cancel", ui.px(em * 8)) { cancel = true }
+			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "kp_cancel", ui.px(em * 8), intent = .Cancel) { cancel = true }
 			ui.spacer(ui.px(em * 0.5))
-			if icon_action_button(app, lucide.CHECK, i18n.tr("OK"), "kp_ok", ui.px(em * 8), hue = MAIN_ACT_HUE) { submit = true }
+			if icon_action_button(app, lucide.CHECK, i18n.tr("OK"), "kp_ok", ui.px(em * 8), intent = .Success) { submit = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))
@@ -175,7 +175,7 @@ webauthn_touch_build :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###kt_buttons") {
 			ui.spacer(ui.fill())
-			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "kt_cancel", ui.px(em * 8)) { cancel = true }
+			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "kt_cancel", ui.px(em * 8), intent = .Cancel) { cancel = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))
