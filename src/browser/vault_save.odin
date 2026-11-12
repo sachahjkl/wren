@@ -4,8 +4,10 @@ package browser
 //
 // The save offer: when a form with a password is sent (forms.Host.submitting, at once inside the submission), its user
 // name and password are copied into the Vault's offer (vault.vault_offer_capture), which compares them with the site's
-// logins. The offer hangs under the toolbar's Vault button, not modal: Save or Update, Not now, Never for this site.
-// Nothing is saved without a click on Save or Update.
+// logins (or waits for them, 10 s at most). A login a script sends, with no submission, is caught when its document goes
+// or its form leaves it (page.Forms_Embedder.login_left: a password the person typed, still in its field). The offer
+// hangs under the toolbar's Vault button, not modal: Save or Update, Not now, Never for this site. Nothing is saved
+// without a click on Save or Update.
 //
 // The generator: the dropdown's entry under a new password field fills the generated value into the form's new password
 // fields (and remembers it for the save offer of that form); the panel's Generator opens a dialog that shows the value
@@ -80,17 +82,18 @@ vault_form_sent :: proc(user: rawptr, p: ^page.Page, form: base.Handle) {
 		if s.gen_filled_forms != f.id || s.gen_filled == "" { return }
 		password = s.gen_filled
 	}
-	// the document's rows: the focused frame's or the tab's (the Vault keeps no others)
-	url: string
-	slot: vault.Row_Slot
-	if x, has := vault_target(app); has && x.page == p {
-		url, slot = x.url, x.slot
-	} else if top, has_top := vault_target(app, top_only = true); has_top && top.page == p {
-		url, slot = top.url, .Page
-	} else {
-		return
-	}
-	if vault.vault_offer_capture(&s.v, url, username, password, slot) { request_frames(app, 2) }
+	// (the Vault compares with the logins it keeps for the site, or waits for them)
+	if vault.vault_offer_capture(&s.v, p.env.location.href, username, password) { request_frames(app, 2) }
+}
+
+// page.Forms_Embedder.login_left: a password the person typed in `p` and no form sent goes with the document (it is
+// left, closed, or a script took its form away): it is taken as sent by a script, and offered as a form's login is. The
+// offer shows over the tab's next page. `p` may be closing: only its address is read.
+vault_login_left :: proc(user: rawptr, p: ^page.Page, username, password: string) {
+	app := (^App)(user)
+	s := &app.vault
+	if !vault_usable(app) || app.private || s.v.state != .Unlocked || !s.v.settings.save_offer { return }
+	if vault.vault_offer_capture(&s.v, p.env.location.href, username, password) { request_frames(app, 2) }
 }
 
 // Whether a press at `pos` is the offer's (the page under it gets none).

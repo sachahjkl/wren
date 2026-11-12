@@ -79,6 +79,13 @@ fake_send :: proc(t: ^Transport, frame: []u8) {
 	if p, has := o["provider"].(json.String); has { append(&f.script.notes, strings.concatenate({"provider=", p})) }
 	if r, has := o["resend"].(json.Boolean); has && bool(r) { append(&f.script.notes, strings.clone("resend")) }
 	if idle, has := o["idle_seconds"].(json.Integer); has { f.script.hello_idle = i64(idle) }
+	if op == "search" {
+		off, _ := o["offset"].(json.Integer)
+		lim, _ := o["limit"].(json.Integer)
+		kinds := make([dynamic]string, 0, 3, context.temp_allocator)
+		if list, has := o["kinds"].(json.Array); has { for k in list { append(&kinds, string(k.(json.String))) } }
+		append(&f.script.notes, fmt.aprintf("search=%d+%d:%s", off, lim, strings.join(kinds[:], ",", context.temp_allocator)))
+	}
 	if list, has := o["fields"].(json.Array); has {
 		names := make([dynamic]string, 0, len(list), context.temp_allocator)
 		for n in list { append(&names, string(n.(json.String))) }
@@ -906,20 +913,20 @@ offer_fx :: proc(t: ^testing.T, profile := false) -> ^Fx {
 a_sent_login_is_offered_for_a_save_or_an_update :: proc(t: ^testing.T) {
 	x := offer_fx(t)
 	defer fx_destroy(x)
-	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/login", "other", "pw", .Page))
+	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/login", "other", "pw"))
 	testing.expect_value(t, x.v.offer.state, Offer_State.Save)
 	testing.expect_value(t, x.v.offer.host, "example.com")
 	testing.expect_value(t, count_op(x, "fill"), 0)   // (nothing to compare: no login has this user name)
 
 	answer(x, "fill", `"ok":true,"password":"old"`, `"ok":true,"password":"same"`)
-	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/login", " me@example.com ", "new", .Page))
+	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/login", " me@example.com ", "new"))
 	testing.expect_value(t, x.v.offer.state, Offer_State.Checking)
 	settle(x)
 	testing.expect_value(t, x.v.offer.state, Offer_State.Update)
 	testing.expect_value(t, x.v.offer.item, "1")
 	testing.expect_value(t, len(x.filled), 0)   // (the compared password never reaches a page)
 
-	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/login", "me@example.com", "same", .Page))
+	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/login", "me@example.com", "same"))
 	settle(x)
 	testing.expect_value(t, x.v.offer.state, Offer_State.None)
 	testing.expect_value(t, x.v.offer.password, "")
@@ -930,16 +937,17 @@ an_accepted_offer_saves_and_a_lock_drops_one :: proc(t: ^testing.T) {
 	x := offer_fx(t)
 	defer fx_destroy(x)
 	answer(x, "save", `"ok":true,"item":"2"`)
-	testing.expect(t, !vault_offer_capture(&x.v, "https://other.example/", "u", "pw", .Page))   // (no rows of that document)
-	testing.expect(t, !vault_offer_capture(&x.v, "https://example.com/login", "u", "", .Page))   // (no password)
-	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/login", "new", "pw", .Page))
+	testing.expect(t, vault_offer_capture(&x.v, "https://other.example/", "u", "pw"))   // (no rows of that site yet: it waits)
+	testing.expect_value(t, x.v.offer.state, Offer_State.Waiting)
+	testing.expect(t, !vault_offer_capture(&x.v, "https://example.com/login", "u", ""))   // (no password)
+	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/login", "new", "pw"))
 	testing.expect(t, vault_offer_accept(&x.v))
 	testing.expect_value(t, x.v.offer.state, Offer_State.Saving)
 	testing.expect_value(t, x.v.offer.password, "")   // (it crossed: zeroed)
 	settle(x)
 	testing.expect_value(t, x.v.offer.state, Offer_State.None)
 	testing.expect_value(t, last_op(x), "logins_for")   // (the rows asked again after the save)
-	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/login", "new2", "pw", .Page))   // (the rows came again)
+	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/login", "new2", "pw"))   // (the rows came again)
 	vault_lock(&x.v)
 	settle(x)
 	testing.expect_value(t, x.v.offer.state, Offer_State.None)
@@ -951,7 +959,7 @@ an_offer_is_not_made_when_turned_off :: proc(t: ^testing.T) {
 	x := offer_fx(t)
 	defer fx_destroy(x)
 	set_pref(x, "vault.save.offer", "false")
-	testing.expect(t, !vault_offer_capture(&x.v, "https://example.com/login", "other", "pw", .Page))
+	testing.expect(t, !vault_offer_capture(&x.v, "https://example.com/login", "other", "pw"))
 	testing.expect_value(t, x.v.offer.state, Offer_State.None)
 }
 
@@ -960,12 +968,12 @@ an_offer_is_not_made_when_turned_off :: proc(t: ^testing.T) {
 never_for_this_site_is_remembered :: proc(t: ^testing.T) {
 	x := offer_fx(t, profile = true)
 	defer fx_destroy(x)
-	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/login", "other", "pw", .Page))
+	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/login", "other", "pw"))
 	vault_offer_dismiss(&x.v, never = true)
 	settle(x)
 	testing.expect_value(t, x.v.offer.state, Offer_State.None)
 	testing.expect(t, vault_never_has(&x.v, "EXAMPLE.com"))
-	testing.expect(t, !vault_offer_capture(&x.v, "https://example.com/login", "other", "pw", .Page))
+	testing.expect(t, !vault_offer_capture(&x.v, "https://example.com/login", "other", "pw"))
 	bytes, err := os.read_entire_file(join_path({x.profile, "vault", NEVER_FILE}), context.temp_allocator)
 	testing.expect(t, err == nil)
 	testing.expect_value(t, string(bytes), "example.com\n")
@@ -1027,24 +1035,153 @@ a_card_fill_asks_for_the_cards_fields :: proc(t: ^testing.T) {
 	testing.expect_value(t, x.filled[0], "card:4111111111111111:7/2031")
 }
 
-// Every item (an empty query, slot Items) is its own set: the palette's search does not replace it.
+// The cards of a card field (slot Items, one kind asked) are their own set: the palette's search does not replace it,
+// and the same kinds asked again send nothing; other kinds start the set again.
 @(test)
 the_items_set_is_apart_from_the_search :: proc(t: ^testing.T) {
 	x := unlocked_fx(t)
 	defer fx_destroy(x)
-	answer(x, "search", `"ok":true,"rows":[{"id":"c","kind":"card","name":"Visa","username":"Visa *1111","uri":""},{"id":"l","kind":"login","name":"Git","username":"a","uri":"https://git.example"}]`,
-		`"ok":true,"rows":[{"id":"l","kind":"login","name":"Git","username":"a","uri":"https://git.example"}]`)
-	vault_search(&x.v, "", .Items)
+	answer(x, "search", `"ok":true,"total":1,"rows":[{"id":"c","kind":"card","name":"Visa","username":"Visa *1111","uri":""}]`,
+		`"ok":true,"total":1,"rows":[{"id":"l","kind":"login","name":"Git","username":"a","uri":"https://git.example"}]`,
+		`"ok":true,"total":1,"rows":[{"id":"i","kind":"identity","name":"Me","username":"Ada","uri":""}]`)
+	vault_search(&x.v, "", .Items, {.Card})
 	vault_search(&x.v, "git")
 	settle(x)
+	testing.expect_value(t, x.script.notes[0], "search=0+100:card")
+	testing.expect_value(t, x.script.notes[1], "search=0+100:login,card,identity")
 	items, state, _ := vault_rows(&x.v, .Items)
 	testing.expect_value(t, state, Rows_State.Ready)
-	testing.expect_value(t, len(items), 2)
+	testing.expect_value(t, len(items), 1)
 	testing.expect_value(t, items[0].kind, Item_Kind.Card)
 	found, _, _ := vault_rows(&x.v, .Search)
 	testing.expect_value(t, len(found), 1)
+	vault_search(&x.v, "", .Items, {.Card})
+	testing.expect_value(t, count_op(x, "search"), 2)
+	vault_search(&x.v, "", .Items, {.Identity})
+	settle(x)
+	testing.expect_value(t, x.script.notes[2], "search=0+100:identity")
+	items, _, _ = vault_rows(&x.v, .Items)
+	testing.expect_value(t, items[0].id, "i")
 	vault_ask_rows(&x.v, "https://x.example/", .Items)   // (not a document's set: nothing is asked)
 	testing.expect_value(t, count_op(x, "logins_for"), 0)
+}
+
+// Rows of one search page, with the helper's count: `n` rows named from `first`.
+@(private = "file")
+page_rows :: proc(first, n, total: int) -> string {
+	b := strings.builder_make(context.temp_allocator)
+	strings.write_string(&b, `"ok":true,"total":`)
+	strings.write_string(&b, fmt.tprint(total))
+	strings.write_string(&b, `,"rows":[`)
+	for i in 0 ..< n {
+		if i > 0 { strings.write_byte(&b, ',') }
+		id := fmt.tprint(first + i)
+		strings.write_string(&b, strings.concatenate({`{"id":"`, id, `","kind":"login","name":"Item `, id, `","username":"u","uri":""}`}, context.temp_allocator))
+	}
+	strings.write_byte(&b, ']')
+	return strings.to_string(b)
+}
+
+// A search comes page by page: each next page is asked at its offset and appended, one at a time, until the count.
+@(test)
+a_search_comes_page_by_page :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	answer(x, "search", page_rows(0, 2, 5), page_rows(2, 2, 5), page_rows(4, 1, 5))
+	testing.expect(t, !vault_search_more(&x.v))   // (nothing asked yet)
+	vault_search(&x.v, "", limit = 2)
+	testing.expect(t, !vault_search_more(&x.v))   // (the first page has not come)
+	settle(x)
+	rows, state, _ := vault_rows(&x.v, .Search)
+	testing.expect_value(t, state, Rows_State.Ready)
+	testing.expect_value(t, len(rows), 2)
+	testing.expect_value(t, vault_search_total(&x.v), 5)
+	testing.expect(t, vault_search_more(&x.v))
+	testing.expect(t, !vault_search_more(&x.v))   // (one page on its way at a time)
+	settle(x)
+	testing.expect(t, vault_search_more(&x.v))
+	settle(x)
+	rows, _, _ = vault_rows(&x.v, .Search)
+	testing.expect_value(t, len(rows), 5)
+	testing.expect_value(t, rows[4].id, "4")
+	testing.expect(t, !vault_search_more(&x.v))   // (every row is there)
+	testing.expect_value(t, count_op(x, "search"), 3)
+	testing.expect_value(t, x.script.notes[1], "search=2+2:login,card,identity")
+	testing.expect_value(t, x.script.notes[2], "search=4+2:login,card,identity")
+}
+
+// A page of an older query comes after a new query was asked: it is dropped, and the new query's rows are alone.
+@(test)
+a_late_page_of_an_older_query_is_dropped :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	answer(x, "search", page_rows(0, 2, 4), page_rows(2, 2, 4), page_rows(100, 1, 1))
+	vault_search(&x.v, "a", limit = 2)
+	settle(x)
+	testing.expect(t, vault_search_more(&x.v))
+	vault_search(&x.v, "b", limit = 2)   // (before the page of "a" runs)
+	settle(x)
+	rows, state, key := vault_rows(&x.v, .Search)
+	testing.expect_value(t, state, Rows_State.Ready)
+	testing.expect_value(t, key, "b")
+	testing.expect_value(t, len(rows), 1)
+	testing.expect_value(t, rows[0].id, "100")
+	testing.expect_value(t, vault_search_total(&x.v), 1)
+}
+
+// A page that fails keeps the rows there, and no other page is asked for this query (the shell asks at each frame).
+@(test)
+a_failed_page_keeps_the_rows :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	answer(x, "search", page_rows(0, 2, 6), `"ok":false,"error":"locked","message":"no"`)
+	vault_search(&x.v, "", limit = 2)
+	settle(x)
+	testing.expect(t, vault_search_more(&x.v))
+	settle(x)
+	rows, state, _ := vault_rows(&x.v, .Search)
+	testing.expect_value(t, state, Rows_State.Ready)
+	testing.expect_value(t, len(rows), 2)
+	testing.expect(t, !vault_search_more(&x.v))
+	testing.expect_value(t, count_op(x, "search"), 2)
+}
+
+// The save offer before the site's logins are known: it waits for them, then compares.
+@(test)
+an_offer_waits_for_the_sites_logins :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	answer(x, "logins_for", `"ok":true,"rows":[{"id":"1","name":"Site","username":"me","uri":"https://example.com","match":"domain"}]`)
+	answer(x, "fill", `"ok":true,"password":"old"`)
+	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/login", "me", "new"))
+	testing.expect_value(t, x.v.offer.state, Offer_State.Waiting)
+	testing.expect_value(t, count_op(x, "fill"), 0)
+	// (the rows of another page of the same host decide too: the page after a login)
+	vault_ask_rows(&x.v, "https://example.com/home")
+	settle(x)
+	testing.expect_value(t, x.v.offer.state, Offer_State.Update)
+	testing.expect_value(t, x.v.offer.item, "1")
+}
+
+// The site's logins never come: the offer goes after OFFER_WAIT_MS, its password zeroed.
+@(test)
+a_waiting_offer_ends_after_its_wait :: proc(t: ^testing.T) {
+	x := unlocked_fx(t, virtual_clock = true, idle_minutes = "0")
+	defer fx_destroy(x)
+	testing.expect(t, vault_offer_capture(&x.v, "https://example.com/login", "me", "pw"))
+	testing.expect_value(t, x.v.offer.state, Offer_State.Waiting)
+	host.clock_advance(&x.loop, seconds(9))
+	settle(x)
+	testing.expect_value(t, x.v.offer.state, Offer_State.Waiting)
+	host.clock_advance(&x.loop, seconds(2))
+	settle(x)
+	testing.expect_value(t, x.v.offer.state, Offer_State.None)
+	testing.expect_value(t, x.v.offer.password, "")
+	// (rows that come later make no offer)
+	answer(x, "logins_for", `"ok":true,"rows":[]`)
+	vault_ask_rows(&x.v, "https://example.com/login")
+	settle(x)
+	testing.expect_value(t, x.v.offer.state, Offer_State.None)
 }
 
 @(test)

@@ -151,6 +151,26 @@ Item_Kind :: enum u8 { Login, Card, Identity }
 
 ITEM_KIND_NAMES := [Item_Kind]string{.Login = "login", .Card = "card", .Identity = "identity"}
 
+Item_Kinds :: bit_set[Item_Kind; u8]
+ALL_KINDS :: Item_Kinds{.Login, .Card, .Identity}
+
+SEARCH_PAGE :: 100       // the rows of one page of a search (the helper's default)
+SEARCH_PAGE_MAX :: 500   // the helper's bound on `limit`
+
+// The fields of a `search`: the words, the page (`offset`, `limit` clamped to 1 ... SEARCH_PAGE_MAX) and the kinds of
+// item asked ({}: every kind).
+request_search :: proc(r: ^Request, query: string, offset, limit: int, kinds: Item_Kinds) {
+	request_string(r, "query", query)
+	request_int(r, "offset", max(offset, 0))
+	request_int(r, "limit", clamp(limit, 1, SEARCH_PAGE_MAX))
+	names: [len(Item_Kind)]string
+	n := 0
+	for k in Item_Kind {
+		if k in kinds { names[n] = ITEM_KIND_NAMES[k]; n += 1 }
+	}
+	request_list(r, "kinds", names[:n])
+}
+
 // One item of `logins_for` or `search`: what a surface shows. No password, no code. A card's `username` is its brand
 // and last 4 digits, an identity's its full name or email; their `uri` is "".
 Row :: struct {
@@ -207,6 +227,7 @@ Answer :: struct {
 	last_sync:      i64,
 	// logins_for, search
 	rows:           [dynamic]Row,
+	total:          int,      // search: how many items match in all (-1: not said, an older helper)
 	equivalent:     [dynamic]string,   // logins_for: the domains the account makes equivalent to the page's
 	// fill (and totp: `totp`): one value per asked field that the item has
 	values:         [Fill_Field]string,
@@ -261,6 +282,8 @@ answer_decode :: proc(body: []u8) -> (a: ^Answer, ok: bool) {
 	if n, is_int := o["tries_left"].(json.Integer); is_int { a.tries_left = int(n) }
 	if n, is_int := o["items"].(json.Integer); is_int { a.items = int(n) }
 	if n, is_int := o["last_sync"].(json.Integer); is_int { a.last_sync = i64(n) }
+	a.total = -1
+	if n, is_int := o["total"].(json.Integer); is_int && n >= 0 { a.total = int(n) }
 	for f in Fill_Field {
 		if s, is_str := o[FILL_FIELD_NAMES[f]].(json.String); is_str {
 			a.values[f] = clone(s)

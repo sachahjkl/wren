@@ -83,6 +83,7 @@ Vault_Shell :: struct {
 	dd_shown:       bool,            // built this frame
 	dd_rect:        draw.Rect,
 	dd_sel:         int,             // -1: no row chosen (the keys are the field's)
+	dd_reveal:      bool,            // the keys moved dd_sel: a scrolled dropdown shows it at its next build
 	dd_dismissed_forms: u64,         // Escape hid it on this field
 	dd_dismissed_field: base.Handle,
 	fill_kind:      forms.Autofill_Kind, // the focused field's when it is no login's: a card's or an address's (the dropdown lists those items)
@@ -472,7 +473,8 @@ vault_rows :: proc(app: ^App, t: ^Tab) {
 	vault_row_list(app, rows, "vp")
 }
 
-// The items of the panel's search (the whole vault, every kind): asked once per query, shown from what the Vault keeps.
+// The items of the panel's search (the whole vault, every kind): asked once per query, shown from what the Vault keeps,
+// with their count; the next page is asked as the list nears the last rows the Vault holds.
 @(private = "file")
 vault_search_rows :: proc(app: ^App, query: string) {
 	v := &app.vault.v
@@ -486,7 +488,10 @@ vault_search_rows :: proc(app: ^App, query: string) {
 	case len(rows) == 0:
 		panel_line(i18n.tr("Nothing in the Vault holds these words."), "vp_search_none", weak = true)
 	case:
-		vault_row_list(app, rows, "vs")
+		total := vault.vault_search_total(v)
+		panel_line(total == 1 ? i18n.tr("1 item") : fmt.tprintf(i18n.tr("%d items"), total), "vp_search_count", weak = true)
+		ui.spacer(ui.px(ui.font_size() * 0.3))
+		vault_row_list(app, rows, "vs", paged = true)
 	}
 }
 
@@ -520,66 +525,89 @@ vault_glyph :: proc(app: ^App, glyph, id: string, side: f32) {
 
 // A list of items, each with its kind's icon, its name and detail, and the acts that fit its kind: a login fills (when
 // it is also one of the page's logins: rule 10) and copies its user name, password and code; a card copies its number
-// and security code; an identity its email. A list longer than the panel's room scrolls.
+// and security code; an identity its email. A list longer than the panel's room scrolls; only the rows near the view
+// are built (a lazy column: a vault of thousands of items costs a screen of them). `paged`: the rows are the Search
+// set's pages, and the next page is asked when the rows built come within half a page of the last one held.
 @(private = "file")
-vault_row_list :: proc(app: ^App, rows: []vault.Row, prefix: string) {
+vault_row_list :: proc(app: ^App, rows: []vault.Row, prefix: string, paged := false) {
 	v := &app.vault.v
 	em := ui.font_size()
 	rh := ui.dense(em * 3.2)
 	list_h := min(f32(len(rows)) * rh, em * VAULT_PANEL_LIST_EM)
 	// (the bar is drawn over the rows: when they scroll, their buttons stay clear of it)
 	gutter := f32(len(rows)) * rh > list_h ? ui.scrollbar_gutter() : 0
+	last_built := -1
+	stop := false
 	ui.next({width = ui.fill(), height = ui.px(list_h)})
 	if ui.scroll_y(strings.concatenate({"###", prefix, "_rows"}, ui.frame_allocator())) {
-		rows_loop: for r, i in rows {
-			ui.next({width = ui.fill(), height = ui.px(rh)})
-			if ui.row(.Center, {}, strings.concatenate({"###", pid(prefix, "row", i)}, ui.frame_allocator())) {
-				vault_glyph(app, vault_kind_glyph(r.kind), pid(prefix, "kind", i), em * 1.6)
-				ui.spacer(ui.px(em * 0.3))
-				ui.next({width = ui.fill(), height = ui.children_sum()})
-				if ui.column(.Start, {}, strings.concatenate({"###", pid(prefix, "text", i)}, ui.frame_allocator())) {
-					ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
-					ui.label(fmt.aprintf("%s###%s", r.name != "" ? r.name : r.uri, pid(prefix, "name", i), allocator = ui.frame_allocator()))
-					if r.username != "" {
-						ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
-						ui.push_tags("weak")
-						ui.label(fmt.aprintf("%s###%s", r.username, pid(prefix, "user", i), allocator = ui.frame_allocator()))
-						ui.pop_tags()
-					}
+		ui.next({width = ui.fill(), height = ui.children_sum()})
+		if ui.column(.Start, {}, strings.concatenate({"###", prefix, "_lazy"}, ui.frame_allocator())) {
+			lz := ui.lazy_begin()
+			for r, i in rows {
+				if ui.lazy_item(lz, strings.concatenate({"###", pid(prefix, "item", i)}, ui.frame_allocator())) {
+					last_built = i
+					stop = vault_row_item(app, r, prefix, i, rh, gutter)
 				}
-				ui.spacer(ui.px(em * 0.4))
-				// the copies: a click of the user, the value goes to the clipboard when it comes (vault_copied)
-				id := strings.clone(r.id, context.temp_allocator)   // (the rows may change with a copy's answer)
-				switch r.kind {
-				case .Login:
-					if r.has_totp {
-						if icon_square_button(app, lucide.HASH, i18n.tr("Copy the code"), pid(prefix, "copy_totp", i)) { vault.vault_copy(v, id, .Totp) }
-						ui.spacer(ui.px(em * 0.3))
-					}
-					if r.username != "" {
-						if icon_square_button(app, lucide.USER, i18n.tr("Copy the user name"), pid(prefix, "copy_user", i)) { vault.vault_copy(v, id, .Username) }
-						ui.spacer(ui.px(em * 0.3))
-					}
-					if icon_square_button(app, lucide.COPY, i18n.tr("Copy the password"), pid(prefix, "copy_pass", i)) { vault.vault_copy(v, id, .Password) }
-					if vault.vault_row_find(v, id, .Page) != nil {
-						ui.spacer(ui.px(em * 0.3))
-						if icon_square_button(app, lucide.TEXT_CURSOR_INPUT, i18n.tr("Fill this page"), pid(prefix, "fill", i), intent = .Primary) {
-							ui.ctx_menu_close()
-							vault_fill_clicked(app, id)
-							break rows_loop   // (the rows may change with the fill)
-						}
-					}
-				case .Card:
-					if icon_square_button(app, lucide.LOCK_KEYHOLE, i18n.tr("Copy the security code"), pid(prefix, "copy_code", i)) { vault.vault_copy(v, id, .Code) }
-					ui.spacer(ui.px(em * 0.3))
-					if icon_square_button(app, lucide.COPY, i18n.tr("Copy the number"), pid(prefix, "copy_number", i)) { vault.vault_copy(v, id, .Number) }
-				case .Identity:
-					if icon_square_button(app, lucide.MAIL, i18n.tr("Copy the email"), pid(prefix, "copy_email", i)) { vault.vault_copy(v, id, .Email) }
-				}
-				ui.spacer(ui.px(em * 0.2 + gutter))
+				if stop { break }   // (a fill: the rows may change with it)
 			}
 		}
 	}
+	// (the rows built are those near the view: within half a page of the last row held, the next page is asked)
+	if paged && !stop && last_built >= 0 && last_built + vault.SEARCH_PAGE / 2 >= len(rows) { vault.vault_search_more(v, .Search) }
+}
+
+// One row of vault_row_list. True when its Fill was clicked (the list stops: the rows may change with the fill).
+@(private = "file")
+vault_row_item :: proc(app: ^App, r: vault.Row, prefix: string, i: int, rh, gutter: f32) -> (filled: bool) {
+	v := &app.vault.v
+	em := ui.font_size()
+	ui.next({width = ui.fill(), height = ui.px(rh)})
+	if ui.row(.Center, {}, strings.concatenate({"###", pid(prefix, "row", i)}, ui.frame_allocator())) {
+		vault_glyph(app, vault_kind_glyph(r.kind), pid(prefix, "kind", i), em * 1.6)
+		ui.spacer(ui.px(em * 0.3))
+		ui.next({width = ui.fill(), height = ui.children_sum()})
+		if ui.column(.Start, {}, strings.concatenate({"###", pid(prefix, "text", i)}, ui.frame_allocator())) {
+			ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
+			ui.label(fmt.aprintf("%s###%s", r.name != "" ? r.name : r.uri, pid(prefix, "name", i), allocator = ui.frame_allocator()))
+			if r.username != "" {
+				ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
+				ui.push_tags("weak")
+				ui.label(fmt.aprintf("%s###%s", r.username, pid(prefix, "user", i), allocator = ui.frame_allocator()))
+				ui.pop_tags()
+			}
+		}
+		ui.spacer(ui.px(em * 0.4))
+		// the copies: a click of the user, the value goes to the clipboard when it comes (vault_copied)
+		id := strings.clone(r.id, context.temp_allocator)   // (the rows may change with a copy's answer)
+		switch r.kind {
+		case .Login:
+			if r.has_totp {
+				if icon_square_button(app, lucide.HASH, i18n.tr("Copy the code"), pid(prefix, "copy_totp", i)) { vault.vault_copy(v, id, .Totp) }
+				ui.spacer(ui.px(em * 0.3))
+			}
+			if r.username != "" {
+				if icon_square_button(app, lucide.USER, i18n.tr("Copy the user name"), pid(prefix, "copy_user", i)) { vault.vault_copy(v, id, .Username) }
+				ui.spacer(ui.px(em * 0.3))
+			}
+			if icon_square_button(app, lucide.COPY, i18n.tr("Copy the password"), pid(prefix, "copy_pass", i)) { vault.vault_copy(v, id, .Password) }
+			if vault.vault_row_find(v, id, .Page) != nil {
+				ui.spacer(ui.px(em * 0.3))
+				if icon_square_button(app, lucide.TEXT_CURSOR_INPUT, i18n.tr("Fill this page"), pid(prefix, "fill", i), intent = .Primary) {
+					ui.ctx_menu_close()
+					vault_fill_clicked(app, id)
+					filled = true
+				}
+			}
+		case .Card:
+			if icon_square_button(app, lucide.LOCK_KEYHOLE, i18n.tr("Copy the security code"), pid(prefix, "copy_code", i)) { vault.vault_copy(v, id, .Code) }
+			ui.spacer(ui.px(em * 0.3))
+			if icon_square_button(app, lucide.COPY, i18n.tr("Copy the number"), pid(prefix, "copy_number", i)) { vault.vault_copy(v, id, .Number) }
+		case .Identity:
+			if icon_square_button(app, lucide.MAIL, i18n.tr("Copy the email"), pid(prefix, "copy_email", i)) { vault.vault_copy(v, id, .Email) }
+		}
+		ui.spacer(ui.px(em * 0.2 + gutter))
+	}
+	return
 }
 
 @(private = "file")

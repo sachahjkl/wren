@@ -99,11 +99,27 @@ vault_fill_frame :: proc(app: ^App) {
 		}
 		// (the Search set is the palette's or the panel's: it goes when neither shows it)
 		if !palette_open(app) && !s.searching { release_if_kept(v, .Search) }
-		// (the cards and identities while a card or address field has the focus)
-		if ok && s.fill_kind != .None && s.role_forms == x.f.id && s.role_field == x.field { vault.vault_search(v, "", .Items) } else { release_if_kept(v, .Items) }
+		// (the cards while a card field has the focus, the identities while an address field has it: the helper lists
+		// only that kind, page by page)
+		if ok && s.fill_kind != .None && s.role_forms == x.f.id && s.role_field == x.field {
+			vault.vault_search(v, "", .Items, dropdown_kinds(s.fill_kind))
+		} else {
+			release_if_kept(v, .Items)
+		}
 	}
 	// (locked too: the dropdown's one row and the chip offer the unlock on a login field)
 	vault_dropdown_update(app, ok ? &x : nil)
+}
+
+// The kind of item a card or address field's dropdown lists.
+@(private = "file")
+dropdown_kinds :: proc(k: forms.Autofill_Kind) -> vault.Item_Kinds {
+	switch k {
+	case .Card:     return {.Card}
+	case .Identity: return {.Identity}
+	case .None:
+	}
+	return {}
 }
 
 @(private = "file")
@@ -483,12 +499,10 @@ dropdown_rows :: proc(app: ^App, x: Vault_Target) -> (rows: []vault.Row, locked,
 		return
 	}
 	if s.fill_kind != .None {
-		want := s.fill_kind == .Card ? vault.Item_Kind.Card : vault.Item_Kind.Identity
+		// (the helper listed only the field's kind: vault_fill_frame)
 		items, state, _ := vault.vault_rows(v, .Items)
 		if state != .Ready { return }
-		kept := make([dynamic]vault.Row, 0, len(items), context.temp_allocator)
-		for r in items { if r.kind == want { append(&kept, r) } }
-		return kept[:], false, false, len(kept) > 0
+		return items, false, false, len(items) > 0
 	}
 	all, state, _ := vault.vault_rows(v, x.slot)
 	if state != .Ready { return }
@@ -499,11 +513,19 @@ dropdown_rows :: proc(app: ^App, x: Vault_Target) -> (rows: []vault.Row, locked,
 	return kept[:], false, false, len(kept) > 0
 }
 
+// The rows a dropdown lists: a login field's first VAULT_DROPDOWN_ROWS (the site's logins: few); a card or address
+// field's every row the Vault holds, in a scroll that asks the next page as it nears the end.
+@(private = "file")
+dropdown_listed :: proc(app: ^App, rows: []vault.Row) -> int {
+	if app.vault.fill_kind != .None { return len(rows) }
+	return min(len(rows), VAULT_DROPDOWN_ROWS)
+}
+
 // The entries of a shown dropdown: its rows, the unlock's one row, and the generator's entry after the rows.
 @(private = "file")
-dropdown_count :: proc(rows: []vault.Row, locked, generate: bool) -> int {
+dropdown_count :: proc(app: ^App, rows: []vault.Row, locked, generate: bool) -> int {
 	if locked { return 1 }
-	return min(len(rows), VAULT_DROPDOWN_ROWS) + (generate ? 1 : 0)
+	return dropdown_listed(app, rows) + (generate ? 1 : 0)
 }
 
 // The keys of a shown dropdown, before the page's keydown (forms_shell.odin route_key): Down and Up move (Up past the
@@ -526,12 +548,14 @@ vault_dropdown_key :: proc(app: ^App, f: ^forms.Forms, ev: platform.Event) -> bo
 	}
 	rows, locked, generate, shown := dropdown_rows(app, x)
 	if !shown { return false }
-	n := dropdown_count(rows, locked, generate)
+	n := dropdown_count(app, rows, locked, generate)
 	#partial switch ev.key {
 	case .Down:
 		s.dd_sel = min(s.dd_sel + 1, n - 1)
+		s.dd_reveal = true
 	case .Up:
 		s.dd_sel = max(s.dd_sel - 1, -1)
+		s.dd_reveal = true
 	case .Escape:
 		s.dd_dismissed_forms, s.dd_dismissed_field = f.id, f.focus
 		s.dd_sel = -1
@@ -551,7 +575,7 @@ dropdown_choose :: proc(app: ^App, x: Vault_Target, rows: []vault.Row, locked, g
 	s.dd_sel = -1
 	s.dd_dismissed_forms, s.dd_dismissed_field = x.f.id, x.field   // (filled: the list leaves the field)
 	if locked { vault_dialog_open(app); return }
-	shown := min(len(rows), VAULT_DROPDOWN_ROWS)
+	shown := dropdown_listed(app, rows)
 	if generate && i == shown { vault_generate_for_field(app, x); return }   // vault_save.odin
 	if i < 0 || i >= shown { return }
 	r := rows[i]
@@ -584,18 +608,33 @@ vault_dropdown_build :: proc(app: ^App) {
 	if !draw.rect_contains(area, {field.min.x, field.max.y}) && !draw.rect_contains(area, field.min) { return }   // (scrolled out)
 	em := ui.font_size()
 	rh := ui.dense(em * 3.3)   // (two lines: the name and the user name)
-	n := dropdown_count(rows, locked, generate)
+	n := dropdown_count(app, rows, locked, generate)
+	listed := locked ? 0 : dropdown_listed(app, rows)
+	// (a card or address field's items scroll past VAULT_DROPDOWN_ROWS: a lazy column, paged)
+	scrolled := !locked && s.fill_kind != .None && n > VAULT_DROPDOWN_ROWS
+	visible := scrolled ? VAULT_DROPDOWN_ROWS : n
 	note := ""
 	switch {
 	case x.rule == .Confirm: note = fmt.tprintf(i18n.tr("In a frame of %s: each fill asks first."), url_host(x.url))
 	case strings.has_prefix(x.url, "http:"): note = i18n.tr("This page is not secure.")
 	}
-	h := f32(n) * rh + em * 0.6 + (note != "" ? ui.dense(em * 1.6) : 0)
+	h := f32(visible) * rh + em * 0.6 + (note != "" ? ui.dense(em * 1.6) : 0)
 	w := max(VAULT_DROPDOWN_W_EM * em, field.max.x - field.min.x)
 	r := vault_dropdown_place(field, area, w, h)
 	s.dd_shown, s.dd_rect = true, r
 	s.dd_sel = clamp(s.dd_sel, -1, n - 1)
 	chosen := -1
+	entry :: proc(app: ^App, rows: []vault.Row, locked: bool, listed, i: int) -> (title, detail: string) {
+		switch {
+		case locked:
+			return i18n.tr("Unlock the Vault"), i18n.tr("to fill this form")
+		case i >= listed:
+			return i18n.tr("Generate a password"), i18n.tr("fill a new strong password")
+		}
+		title = rows[i].name != "" ? rows[i].name : rows[i].uri
+		detail = app.vault.role == .One_Time_Code ? i18n.tr("Fill the code") : rows[i].username
+		return
+	}
 	if ui.tags("floating") {
 		ui.next({fixed_x = r.min.x, fixed_y = r.min.y, width = ui.px(w), height = ui.children_sum(), axis = .Y, radius = em * 0.4})
 		panel := ui.build_box({.Clickable, .Draw_Background, .Draw_Border, .Draw_Shadow, .Clip}, "###vault_dropdown")
@@ -614,22 +653,39 @@ vault_dropdown_build :: proc(app: ^App) {
 					}
 				}
 			}
-			for i in 0 ..< n {
-				title, detail: string
-				switch {
-				case locked:
-					title, detail = i18n.tr("Unlock the Vault"), i18n.tr("to fill this form")
-				case i >= len(rows) || i >= VAULT_DROPDOWN_ROWS:
-					title, detail = i18n.tr("Generate a password"), i18n.tr("fill a new strong password")
-				case:
-					title = rows[i].name != "" ? rows[i].name : rows[i].uri
-					detail = s.role == .One_Time_Code ? i18n.tr("Fill the code") : rows[i].username
+			if scrolled {
+				last_built := -1
+				ui.next({width = ui.px(w), height = ui.px(f32(visible) * rh)})
+				if ui.scroll_y("###vdd_scroll") {
+					// (the keys moved the selection: the view goes to it; every row is rh high, from the top)
+					if s.dd_reveal && s.dd_sel >= 0 {
+						sb := ui.parent_box()   // (the scroll box: scroll_y made it the parent)
+						if ui.Box_Flag.View_Scroll_Y in sb.flags { _ = ui.view_reveal(sb, f32(s.dd_sel) * rh, f32(s.dd_sel + 1) * rh) }
+					}
+					ui.next({width = ui.px(w), height = ui.children_sum()})
+					if ui.column(.Start, {}, "###vdd_lazy") {
+						lz := ui.lazy_begin()
+						for i in 0 ..< n {
+							if ui.lazy_item(lz, fmt.aprintf("###vdd_it_%d", i, allocator = ui.frame_allocator())) {
+								last_built = i
+								title, detail := entry(app, rows, locked, listed, i)
+								if dropdown_row(i, title, detail, i == s.dd_sel, w, rh) { chosen = i }
+							}
+						}
+					}
 				}
-				if dropdown_row(i, title, detail, i == s.dd_sel, w, rh) { chosen = i }
+				// (near the last row the Vault holds: its next page)
+				if last_built >= 0 && last_built + vault.SEARCH_PAGE / 2 >= len(rows) { vault.vault_search_more(&s.v, .Items) }
+			} else {
+				for i in 0 ..< n {
+					title, detail := entry(app, rows, locked, listed, i)
+					if dropdown_row(i, title, detail, i == s.dd_sel, w, rh) { chosen = i }
+				}
 			}
 			ui.spacer(ui.px(em * 0.3))
 		}
 	}
+	s.dd_reveal = false
 	if chosen >= 0 { dropdown_choose(app, x, rows, locked, generate, chosen) }
 }
 

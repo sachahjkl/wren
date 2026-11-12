@@ -162,6 +162,68 @@ one_time_code_fields_are_found :: proc(t: ^testing.T) {
 	testing.expect(t, !is_one_time_code(x.f, by_id(x, "p")))
 }
 
+// A login a script sends: the person typed it, and the document goes without a form sending it. Asked once.
+@(test)
+a_typed_login_left_unsent_is_a_login :: proc(t: ^testing.T) {
+	x := cx_make(`<form id=f><input id=s type=search><input id=u name=user><input id=p type=password></form>`)
+	defer cx_destroy(x)
+	_, _, none := unsent_login(x.f)
+	testing.expect(t, !none)   // (nothing typed)
+	testing.expect(t, edit(x.f, by_id(x, "u"), .Insert_Text, "me"))
+	testing.expect(t, edit(x.f, by_id(x, "p"), .Insert_Text, "s3cret"))
+	u, p, ok := unsent_login(x.f)
+	testing.expect(t, ok)
+	testing.expect_value(t, u, "me")
+	testing.expect_value(t, p, "s3cret")
+	_, _, again := unsent_login(x.f)
+	testing.expect(t, !again)
+}
+
+// A script's value is no login the person typed: neither alone nor over what was typed.
+@(test)
+a_scripts_password_is_no_typed_login :: proc(t: ^testing.T) {
+	x := cx_make(`<form><input id=u><input id=p type=password></form>`)
+	defer cx_destroy(x)
+	testing.expect(t, set_value(x.f, by_id(x, "p"), "from a script") == .None)
+	_, _, ok := unsent_login(x.f)
+	testing.expect(t, !ok)
+	testing.expect(t, edit(x.f, by_id(x, "p"), .Insert_Text, "typed"))
+	testing.expect(t, set_value(x.f, by_id(x, "p"), "replaced") == .None)
+	_, _, ok = unsent_login(x.f)
+	testing.expect(t, !ok)
+}
+
+// A form that sends the typed password: the save offer had it from the submission, the page's leaving gives nothing.
+@(test)
+a_submitted_login_is_not_taken_twice :: proc(t: ^testing.T) {
+	x := cx_make(`<form id=f><input id=u><input id=p type=password></form><form id=g><input id=q></form>`)
+	defer cx_destroy(x)
+	testing.expect(t, edit(x.f, by_id(x, "p"), .Insert_Text, "s3cret"))
+	submit(x.f, by_id(x, "g"), base.NIL_HANDLE)   // (another form: it does not send the password)
+	testing.expect_value(t, x.f.typed_password, by_id(x, "p"))
+	submit(x.f, by_id(x, "f"), base.NIL_HANDLE)
+	_, _, ok := unsent_login(x.f)
+	testing.expect(t, !ok)
+}
+
+// The form taken out of the document (a script's login replaced it): its fields still hold the login.
+@(test)
+a_removed_form_keeps_its_typed_login :: proc(t: ^testing.T) {
+	x := cx_make(`<div id=box><form id=f><input id=mail type=email autocomplete=username><input id=p type=password><input id=after></form></div>`)
+	defer cx_destroy(x)
+	testing.expect(t, edit(x.f, by_id(x, "mail"), .Insert_Text, "me@example.com"))
+	testing.expect(t, edit(x.f, by_id(x, "p"), .Insert_Text, "s3cret"))
+	testing.expect(t, edit(x.f, by_id(x, "after"), .Insert_Text, "not me"))
+	box, form := by_id(x, "box"), by_id(x, "f")
+	testing.expect(t, !typed_within(x.f, by_id(x, "mail")))
+	testing.expect(t, dom.remove_child(x.doc, box, form) == .None)
+	testing.expect(t, typed_within(x.f, form))
+	u, p, ok := unsent_login(x.f)
+	testing.expect(t, ok)
+	testing.expect_value(t, u, "me@example.com")
+	testing.expect_value(t, p, "s3cret")
+}
+
 // The dropdown shows on a login's fields only: a lone search field is no login.
 @(test)
 login_roles :: proc(t: ^testing.T) {

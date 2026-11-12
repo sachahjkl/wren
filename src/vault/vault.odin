@@ -46,15 +46,23 @@ State :: enum u8 {
 Rows_State :: enum u8 { None, Asked, Checking, Ready, Failed }
 
 // The sets of rows the Vault keeps: the logins of the active tab's document, of the focused frame's document (a form in
-// a frame: its own origin decides), the search of the palette or the panel, and every item (an empty query: the cards and
-// identities that the dropdown of a card or address field lists).
+// a frame: its own origin decides), the search of the palette or the panel, and the cards or the identities that the
+// dropdown of a card or address field lists (a search of one kind).
 Row_Slot :: enum u8 { Page, Frame, Search, Items }
 
+// Search and Items hold a search page by page: the first page makes the set Ready, each later one (vault_search_more)
+// is appended until `total` rows are there. A page asked for an older query, or for another offset, is dropped.
 Row_Set :: struct {
-	rows:  [dynamic]Row,   // Page, Frame: checked by Wren (match.odin); Search: as the helper sent them
-	key:   string,         // owned: the document's address (Page, Frame) or the query (Search)
+	rows:  [dynamic]Row,   // Page, Frame: checked by Wren (match.odin); Search, Items: as the helper sent them
+	key:   string,         // owned: the document's address (Page, Frame) or the query (Search, Items)
 	state: Rows_State,
-	gen:   u64,            // each ask: a check of an older ask is dropped
+	gen:   u64,            // each ask: a check or a page of an older ask is dropped
+	// Search, Items
+	kinds:       Item_Kinds,   // the kinds of item asked
+	limit:       int,          // the rows of each page
+	total:       int,          // how many items match in all (the helper's count)
+	more_asked:  bool,         // a next page is on its way
+	more_failed: bool,         // a next page failed: no other is asked for this query
 }
 
 // What a copy puts on the clipboard: a login's, a card's (its number, its security code), an identity's email.
@@ -83,10 +91,13 @@ Fill_Values :: struct {
 	has:    Fill_Fields,
 }
 
-// The offer to save a login after a form was sent (docs/bitwarden.md 4.10): None -> Checking (the password of the
-// login with the same user name is asked, to compare) -> Save | Update -> Saving -> None. Same password: None at once.
-// A lock, another capture or a dismissal ends it; its password is zeroed then.
-Offer_State :: enum u8 { None, Checking, Save, Update, Saving }
+// The offer to save a login after a form was sent (docs/bitwarden.md 4.10): None -> [Waiting (the site's logins are not
+// known yet: at most OFFER_WAIT_MS for them)] -> [Checking (the password of the login with the same user name is asked,
+// to compare)] -> Save | Update -> Saving -> None. Same password, or no rows in time: None. A lock, another capture or a
+// dismissal ends it; its password is zeroed then.
+Offer_State :: enum u8 { None, Waiting, Checking, Save, Update, Saving }
+
+OFFER_WAIT_MS :: 10_000
 
 Offer :: struct {
 	state:    Offer_State,
@@ -96,6 +107,7 @@ Offer :: struct {
 	username: string,   // owned
 	password: string,   // owned, a secret
 	item:     string,   // owned: Update, the login to change ("" for Save)
+	timer:    base.Handle,   // Waiting: its deadline
 }
 
 Hooks :: struct {
@@ -115,6 +127,7 @@ Pending :: struct {
 	key:     string,        // .Logins_For: the document; .Search: the query (owned)
 	slot:    Row_Slot,      // .Logins_For, .Search
 	gen:     u64,           // .Logins_For, .Search: the set's gen when asked (another gen: the set was asked again or let go)
+	offset:  int,           // .Search: the page's first row (0: the first page)
 	offer:   u64,           // .Fill, .Save: for the save offer of this id (0: not)
 	copy:    bool,          // .Fill, .Totp: for the clipboard (copy_what), not for a page
 	copy_what: Copy_What,
@@ -206,7 +219,6 @@ NEVER_FILE :: "never_save"  // <profile>/vault/never_save: one host a line, wher
 HELPER_NAME :: "wren-vault.exe" when ODIN_OS == .Windows else "wren-vault"
 KEEPALIVE_EVERY_NS :: i64(60) * 1_000_000_000   // activity sends at most one keepalive a minute
 PIN_MIN :: 4
-SEARCH_LIMIT :: 50   // rows of one search: what a palette lists (the helper's bound too)
 
 ////////////////////////////////
 // Life
@@ -661,26 +673,49 @@ vault_ask_rows :: proc(v: ^Vault, address: string, slot := Row_Slot.Page) {
 	changed(v)
 }
 
-// The items whose name, user name or address hold every word of `query` (the palette's Vault prefix, the panel's search;
-// slot Items: "", every item). The helper searches (Wren does no work in proportion to the vault); an answer for an
-// older query is dropped. The rows come later (state Ready); they hold no password.
-vault_search :: proc(v: ^Vault, query: string, slot := Row_Slot.Search) {
+// The items of `kinds` whose name, user name or address hold every word of `query` ("": every item of those kinds),
+// sorted by name, one page of `limit` rows at a time: the first page here, the next ones with vault_search_more (the
+// palette's Vault prefix and the panel's search: slot Search; the dropdown of a card or address field: slot Items). The
+// helper searches (Wren does no work in proportion to the vault); an answer for an older query is dropped. The rows
+// come later (state Ready); they hold no password. The same query and kinds asked again: nothing is sent.
+vault_search :: proc(v: ^Vault, query: string, slot := Row_Slot.Search, kinds := ALL_KINDS, limit := SEARCH_PAGE) {
 	if v.state != .Unlocked || (slot != .Search && slot != .Items) { return }
 	set := &v.sets[slot]
-	if set.state != .None && query == set.key { return }
+	if set.state != .None && query == set.key && kinds == set.kinds { return }
 	set_reset(v, slot)
 	set.key = strings.clone(query, base.process_allocator())
-	r: Request
-	request_begin(&r, next_id(v), .Search, len(query) + 16)
-	request_string(&r, "query", query)
-	request_int(&r, "limit", SEARCH_LIMIT)
-	p := send(v, &r, .Search)
-	if p != nil {
-		p.key = strings.clone(query, base.process_allocator())
-		p.slot, p.gen = slot, set.gen
-	}
+	set.kinds, set.limit = kinds, clamp(limit, 1, SEARCH_PAGE_MAX)
 	set.state = .Asked
+	if !search_send(v, slot, 0) { set.state = .Failed }
 	changed(v)
+}
+
+// Asks the next page of the search in `slot` (appended to its rows when it comes). False when there is none to ask:
+// the first page has not come, a page is on its way, every row is there, or a page failed.
+vault_search_more :: proc(v: ^Vault, slot := Row_Slot.Search) -> bool {
+	if v.state != .Unlocked || (slot != .Search && slot != .Items) { return false }
+	set := &v.sets[slot]
+	if set.state != .Ready || set.more_asked || set.more_failed || len(set.rows) >= set.total { return false }
+	if !search_send(v, slot, len(set.rows)) { set.more_failed = true; return false }
+	set.more_asked = true
+	changed(v)
+	return true
+}
+
+// How many items match the search in `slot` in all (its rows may be fewer: the pages not asked yet).
+vault_search_total :: proc(v: ^Vault, slot := Row_Slot.Search) -> int { return v.sets[slot].total }
+
+@(private)
+search_send :: proc(v: ^Vault, slot: Row_Slot, offset: int) -> bool {
+	set := &v.sets[slot]
+	r: Request
+	request_begin(&r, next_id(v), .Search, len(set.key) + 96)
+	request_search(&r, set.key, offset, set.limit, set.kinds)
+	p := send(v, &r, .Search)
+	if p == nil { return false }
+	p.key = strings.clone(set.key, base.process_allocator())
+	p.slot, p.gen, p.offset = slot, set.gen, offset
+	return true
 }
 
 // The rows of a set as they are now (valid until the Vault changes them: use them within the frame).
@@ -808,29 +843,57 @@ vault_generated_take :: proc(v: ^Vault) -> (value: string, id: u64, ok: bool) {
 ////////////////////////////////
 // The save offer
 
-// A login form was sent on the document at `url` (its rows in `slot`) with these values. When the Vault is unlocked,
-// vault.save.offer is on, the host is not in the never list and the document's rows are ready: no login with this user
-// name: Save; one with another password: Update (its password is asked first, to compare); the same: nothing. The
-// values are copied (the password zeroed when the offer ends). False: no offer.
-vault_offer_capture :: proc(v: ^Vault, url, username, password: string, slot: Row_Slot) -> bool {
-	if v.state != .Unlocked || !v.settings.save_offer || password == "" || slot == .Search || slot == .Items { return false }
+// A login was sent from the document at `url` with these values (a form's submission, or a page left with a password
+// typed and not sent by a form). When the Vault is unlocked, vault.save.offer is on and the host is not in the never
+// list, the values are compared with the logins of the site: no login with this user name: Save; one with another
+// password: Update (its password is asked first, to compare); the same: nothing. When the site's rows are not known
+// yet, the offer waits for them (Waiting) for OFFER_WAIT_MS, then is dropped. The values are copied (the password
+// zeroed when the offer ends). False: no offer.
+vault_offer_capture :: proc(v: ^Vault, url, username, password: string) -> bool {
+	if v.state != .Unlocked || !v.settings.save_offer || password == "" { return false }
 	site, ok := site_of(url)
 	if !ok || vault_never_has(v, site.host) { return false }
-	set := &v.sets[slot]
-	if set.state != .Ready || set.key != url { return false }   // (the rows to compare with are not known)
-	user := strings.trim_space(username)
-	match: ^Row
-	for &r in set.rows {
-		if r.kind == .Login && base.ascii_equal_fold(strings.trim_space(r.username), user) { match = &r; break }
-	}
 	offer_reset(v)
 	v.next_offer += 1
 	o := &v.offer
 	o.id = v.next_offer
 	o.host = strings.clone(site.host, base.process_allocator())
 	o.url = strings.clone(url, base.process_allocator())
-	o.username = strings.clone(user, base.process_allocator())
+	o.username = strings.clone(strings.trim_space(username), base.process_allocator())
 	o.password = strings.clone(password, base.process_allocator())
+	if slot, ready := offer_rows(v); ready { return offer_compare(v, v.sets[slot].rows[:]) }
+	// (the rows to compare with are not known yet: they come with the document's ask, or never)
+	o.state = .Waiting
+	o.timer = host.set_timer(v.loop, OFFER_WAIT_MS, 0, offer_wait_due, v)
+	changed(v)
+	return true
+}
+
+// The set whose rows decide the offer: a document's set (Page or Frame) that is Ready, for the offer's address, else for
+// another address of the same host (the page that followed a login is often another of the site's).
+@(private)
+offer_rows :: proc(v: ^Vault) -> (slot: Row_Slot, ok: bool) {
+	o := &v.offer
+	for s in ([]Row_Slot{.Page, .Frame}) {
+		if v.sets[s].state == .Ready && v.sets[s].key == o.url { return s, true }
+	}
+	for s in ([]Row_Slot{.Page, .Frame}) {
+		set := &v.sets[s]
+		if set.state != .Ready || set.key == "" { continue }
+		if site, web := site_of(set.key); web && base.ascii_equal_fold(site.host, o.host) { return s, true }
+	}
+	return .Page, false
+}
+
+// The offer against the site's logins: Save, Checking (then Update or nothing), or nothing.
+@(private)
+offer_compare :: proc(v: ^Vault, rows: []Row) -> bool {
+	o := &v.offer
+	if o.timer != base.NIL_HANDLE { host.clear_timer(v.loop, o.timer); o.timer = base.NIL_HANDLE }
+	match: ^Row
+	for &r in rows {
+		if r.kind == .Login && base.ascii_equal_fold(strings.trim_space(r.username), o.username) { match = &r; break }
+	}
 	if match == nil {
 		o.state = .Save
 		changed(v)
@@ -842,11 +905,27 @@ vault_offer_capture :: proc(v: ^Vault, url, username, password: string, slot: Ro
 	request_string(&r, "item", match.id)
 	request_fields(&r, {.Password})
 	p := send(v, &r, .Fill)
-	if p == nil { offer_reset(v); return false }
+	if p == nil { offer_reset(v); changed(v); return false }
 	p.offer = o.id
 	o.state = .Checking
 	changed(v)
 	return true
+}
+
+// A document's rows became Ready: a waiting offer of that site compares now.
+@(private)
+offer_rows_came :: proc(v: ^Vault) {
+	if v.offer.state != .Waiting { return }
+	if slot, ready := offer_rows(v); ready { offer_compare(v, v.sets[slot].rows[:]) }
+}
+
+@(private)
+offer_wait_due :: proc(data: rawptr) {
+	v := (^Vault)(data)
+	v.offer.timer = base.NIL_HANDLE
+	if v.offer.state != .Waiting { return }
+	offer_reset(v)   // (the site's logins never came: no offer rather than a wrong one)
+	changed(v)
 }
 
 // Save or Update: the offer is accepted, the login goes to the helper.
@@ -881,6 +960,7 @@ vault_never_has :: proc(v: ^Vault, host: string) -> bool {
 @(private)
 offer_reset :: proc(v: ^Vault) {
 	o := &v.offer
+	if o.timer != base.NIL_HANDLE { host.clear_timer(v.loop, o.timer); o.timer = base.NIL_HANDLE }
 	string_wipe(&o.host)
 	string_wipe(&o.url)
 	string_wipe(&o.username)
@@ -894,10 +974,12 @@ offer_reset :: proc(v: ^Vault) {
 rows_refresh :: proc(v: ^Vault) {
 	for slot in Row_Slot {
 		key := strings.clone(v.sets[slot].key, context.temp_allocator)
+		kinds, limit := v.sets[slot].kinds, v.sets[slot].limit
 		if key == "" && slot != .Search && slot != .Items { continue }
 		if v.sets[slot].state == .None { continue }
 		set_reset(v, slot)
-		if slot == .Search || slot == .Items { vault_search(v, key, slot) } else { vault_ask_rows(v, key, slot) }
+		// (a search starts again at its first page: the next ones come as they are asked)
+		if slot == .Search || slot == .Items { vault_search(v, key, slot, kinds, limit) } else { vault_ask_rows(v, key, slot) }
 	}
 }
 
@@ -1033,9 +1115,20 @@ request_timed_out :: proc(data: rawptr) {
 	switch p.op {
 	case .Logins_For, .Search:
 		if !current { return }
+		if p.op == .Search && p.offset > 0 {
+			// (a later page: the rows there stay, no other page is asked for this query)
+			set := &v.sets[p.slot]
+			if set.more_asked && p.offset == len(set.rows) { set.more_asked, set.more_failed = false, true }
+			set_message(v, i18n.tr("The Vault did not answer in time."))
+			changed(v)
+			return
+		}
+		kinds, limit := v.sets[p.slot].kinds, v.sets[p.slot].limit
 		set_reset(v, p.slot)
-		// (the key stays: the shell asks each frame, and a failed ask is not sent again for the same document)
+		// (the key and the kinds stay: the shell asks each frame, and a failed ask is not sent again for the same document
+		// or query)
 		v.sets[p.slot].key = strings.clone(key, base.process_allocator())
+		v.sets[p.slot].kinds, v.sets[p.slot].limit = kinds, limit
 		v.sets[p.slot].state = .Failed
 		set_message(v, i18n.tr("The Vault did not answer in time."))
 	case .Fill, .Totp:
@@ -1343,7 +1436,12 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 	case .Logins_For, .Search:
 		set := &v.sets[p.slot]
 		// (another document or query was asked meanwhile, or the rows were released)
-		if set.state != .Asked || p.gen != set.gen { return }
+		if p.gen != set.gen { return }
+		if p.op == .Search && p.offset > 0 {
+			search_page_came(v, set, p.offset, a)
+			return
+		}
+		if set.state != .Asked { return }
 		if !a.ok {
 			set.state = .Failed
 			set_message(v, a.message)
@@ -1355,6 +1453,8 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 			// an identity has no site)
 			rows_free(&set.rows)
 			set.rows, a.rows = a.rows, nil
+			// (a helper that does not count says nothing of other pages: what it sent is all)
+			set.total = a.total >= len(set.rows) ? a.total : len(set.rows)
 			set.state = .Ready
 			changed(v)
 			return
@@ -1428,6 +1528,27 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 	}
 }
 
+// A later page of a search: appended when it is the page the set waits for (its offset is the rows it holds); a failed
+// page ends the paging of this query, its rows stay.
+@(private)
+search_page_came :: proc(v: ^Vault, set: ^Row_Set, offset: int, a: ^Answer) {
+	if set.state != .Ready || !set.more_asked || offset != len(set.rows) { return }
+	set.more_asked = false
+	if !a.ok {
+		set.more_failed = true
+		set_message(v, a.message)
+		changed(v)
+		return
+	}
+	n := len(a.rows)
+	for r in a.rows { append(&set.rows, r) }
+	clear(&a.rows)   // (the set owns the rows now)
+	if a.total >= 0 { set.total = a.total }
+	// (an empty page, or a helper that does not count: no page after this one, which would be asked again and again)
+	if n == 0 || a.total < 0 || set.total < len(set.rows) { set.total = len(set.rows) }
+	changed(v)
+}
+
 // Whether a request of `op` is on its way (the shell shows its wait).
 vault_waits_for :: proc(v: ^Vault, op: Op) -> bool {
 	for p in v.pending { if p.op == op { return true } }
@@ -1472,6 +1593,8 @@ set_reset :: proc(v: ^Vault, slot: Row_Slot) {
 	string_wipe(&set.key)
 	set.state = .None
 	set.gen += 1
+	set.kinds, set.limit, set.total = {}, 0, 0
+	set.more_asked, set.more_failed = false, false
 	// (an ask on its way is forgotten: its answer finds another key)
 	for &p in v.pending {
 		if (p.op == .Logins_For || p.op == .Search) && p.slot == slot { string_wipe(&p.key) }
@@ -1557,6 +1680,7 @@ check_done :: proc(data: rawptr) {
 		set.rows = j.rows
 		j.rows = nil
 		set.state = .Ready
+		offer_rows_came(v)
 		changed(v)
 	}
 	check_free(j)

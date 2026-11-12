@@ -12,7 +12,8 @@ crosses the pipe.
 Version 5 (helper 0.5.0). Changes from version 4: new requests `save` (create a login, or update one) and `generate` (a
 password or a passphrase, by the SDK's generator; the vault need not be unlocked); rows of `search` carry `kind`
 (`login`, `card` or `identity`; secure notes and SSH keys are not listed), rows of `logins_for` carry `kind` `login`;
-`fill` takes the fields of cards and identities; the error `save_failed`.
+`fill` takes the fields of cards and identities; the error `save_failed`; `search` is paged: it takes `offset`,
+`limit` (0: 100, at most 500) and `kinds`, answers `total`, and an empty query lists every item of the asked kinds.
 
 Version 4 (helper 0.4.0). Changes from version 3: new requests `password_hint`, `device_request`, `device_poll`,
 `passkey_options` and `login_passkey`; `login` takes `remember`; `unlock` takes `prf` and `credential_id`; `hello`
@@ -57,7 +58,7 @@ An event answers no request: `{"id": 0, "ok": true, "event": "<name>"}`.
 | `pin_set` | `pin` (4 characters or more) | none |
 | `pin_clear` | none | none |
 | `logins_for` | `url`, `host`, `domain` (registrable domain by Wren's Public Suffix List, `""` if none) | `rows`: `{id, kind, name, username, uri, match, has_totp}` (logins only, `kind` `login`); `equivalent`: the domains that the account makes equivalent to `domain` |
-| `search` | `query`, `limit` (0: 50; at most 50) | `rows`: `{id, kind, name, username, uri, has_totp}` (no `match`; `uri`: a login's first `http(s)` address; see "Item kinds") |
+| `search` | `query`, `offset` (0 by default), `limit` (0: 100; at most 500), `kinds` (a list of `login`, `card`, `identity`; empty or absent: all three) | `rows`: `{id, kind, name, username, uri, has_totp}` from `offset`, at most `limit`, sorted by name (no `match`; `uri`: a login's first `http(s)` address; see "Item kinds"); `total`: how many items match in all (see "Search") |
 | `fill` | `item`, `fields` (see "Fill fields") | one field per asked name that the item has (non-empty), named the same |
 | `save` | `item` (`""`: a new login; else the id of the login to update), `name` (the item's name; on a creation Wren sends the site's host), `uri` (the page's address, `""` none), `username`, `password` | `item` (the id of the created or updated login) |
 | `generate` | `kind` (`password` or `passphrase`); password: `length` (0: 20; 5 to 128), `uppercase`, `lowercase`, `numbers`, `special` (all false: all true), `min_numbers`, `min_special` (0: 1 when that class is on); passphrase: `words` (0: 5; 3 to 20), `separator` (`""`: `-`), `capitalize`, `include_number` | `value` (a secret, zeroed by the helper once written) |
@@ -100,6 +101,13 @@ An event answers no request: `{"id": 0, "ok": true, "event": "<name>"}`.
   `username`, `ssn`, `passport`, `license`.
 - A field of another kind of item gives nothing for it, and no error. `no_item`: an id that is neither a login, a card
   nor an identity.
+
+### Search
+
+- Each word of `query` must be in the item's name, its user name (a card's brand and last digits, an identity's name or
+  email) or one of its URIs. An empty query matches every item of the asked `kinds`.
+- The answer is one page: the matches sorted by name, from `offset`, at most `limit`. `total` counts every match, so
+  that Wren asks the next page (`offset` = the rows it holds) only while there are more.
 
 ### Save
 
@@ -159,6 +167,6 @@ only into the card or address fields where the user picked them (docs/bitwarden.
 |---|---|
 | `protocol.odin` | The requests, written into one buffer reserved large enough at once; the answers, decoded into owned values. Every string that can hold a value is zeroed before it is freed. |
 | `transport.odin`, `process.odin` | The helper as a child process: a reader thread starts it, reads and decodes frames and posts each answer to the loop; a writer thread writes the queued frames in order and zeroes each. The loop thread never blocks on the helper. |
-| `vault.odin` | The one state of the Vault, the requests and their deadlines (`vault.request.timeout_ms`), the four sets of rows (the tab's document, the focused frame's document, the search, every item), the fill's ticket, the copies, the save offer and its never-save list, the generated value, the idle and sync timers, the blocking jobs (locating the helper, the account and never-save files, the check of the rows, the join of an ended helper). |
+| `vault.odin` | The one state of the Vault, the requests and their deadlines (`vault.request.timeout_ms`), the four sets of rows (the tab's document, the focused frame's document, the search, the cards or identities of a card or address field; the last two page by page), the fill's ticket, the copies, the save offer and its never-save list, the generated value, the idle and sync timers, the blocking jobs (locating the helper, the account and never-save files, the check of the rows, the join of an ended helper). |
 | `match.odin` | Wren's match check. |
 | `settings.odin` | The `vault.*` preferences and the server addresses (US, EU, self-hosted). |

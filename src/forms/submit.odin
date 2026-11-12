@@ -432,12 +432,14 @@ submit :: proc(f: ^Forms, form: base.Handle, submitter: base.Handle, from_method
 			if c := control_peek(f, form); c != nil { c.firing_submission = false }
 			return
 		}
+		typed_sent(f, form)
 		if f.host.submitting != nil { f.host.submitting(f.host.user, form) }
 		go_on := fire(f, form, "submit", bubbles = true, cancelable = true, object = u64(submitter))
 		if c := control_peek(f, form); c != nil { c.firing_submission = false }
 		if !go_on || !is_connected(f, form) { return }
-	} else if f.host.submitting != nil {
-		f.host.submitting(f.host.user, form)
+	} else {
+		typed_sent(f, form)
+		if f.host.submitting != nil { f.host.submitting(f.host.user, form) }
 	}
 	charset := pick_charset(f, form)
 	list, ok := construct_entry_list(f, form, submitter, charset)

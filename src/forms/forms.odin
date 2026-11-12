@@ -202,6 +202,7 @@ Forms :: struct {
 	patterns:     map[string]^Regex,   // compiled `pattern` attributes (nil: invalid), keyed by source
 	faces:        [dynamic]base.Handle,   // the form-associated custom elements (custom.odin), in no order
 	vault_filled: bool,          // the Vault filled a control of this document once: the back/forward cache does not keep it
+	typed_password: base.Handle, // the password field the person last typed into, until a form sends it (unsent_login)
 }
 
 Radio_Key :: struct { owner: base.Handle, name: string }

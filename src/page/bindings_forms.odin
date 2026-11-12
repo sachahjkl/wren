@@ -32,6 +32,36 @@ Forms_Embedder :: struct {
 	// A form is being sent (forms.Host.submitting): called at once, inside the submission, so that the shell reads what
 	// it sends before a listener clears it. The shell only copies values there.
 	submitting: proc(user: rawptr, p: ^Page, form: base.Handle),
+	// A password the person typed was not sent by a form, and the document goes or the field left it
+	// (forms.unsent_login): the values are valid for the call only. Called at once, before pagehide; the page may be
+	// closing (only its address is to be read). The shell only copies values there.
+	login_left: proc(user: rawptr, p: ^Page, username, password: string),
+}
+
+// Hands the typed password that no form sent to the embedder, once (page_unload, page_freeze, forms_detach, a removal).
+@(private)
+page_login_left :: proc(p: ^Page) {
+	pf := p.formctl
+	if pf == nil || pf.model == nil || pf.model.typed_password == base.NIL_HANDLE { return }
+	username, password, ok := forms.unsent_login(pf.model)
+	if !ok || pf.embedder.login_left == nil { return }
+	pf.embedder.login_left(pf.embedder.user, p, username, password)
+}
+
+// The typed password's field left the document: at the next task, if it is still out of it (a script that moves a form
+// removes it and inserts it again in one go), its login is handed over.
+@(private)
+page_login_left_soon :: proc(p: ^Page) {
+	pf := p.formctl
+	if pf == nil || pf.left_timer != base.NIL_HANDLE { return }
+	pf.left_timer = host.set_timer(p.loop, 0, 0, proc(data: rawptr) {
+		p := (^Page)(data)
+		if p.closed || p.formctl == nil { return }
+		pf := p.formctl
+		pf.left_timer = base.NIL_HANDLE
+		h := pf.model.typed_password
+		if h != base.NIL_HANDLE && !forms.is_connected(pf.model, h) { page_login_left(p) }
+	}, p, p.scope)
 }
 
 // A form submission planned as a navigation (HTML "plan to navigate"): each target has its own, a newer submission to
@@ -50,6 +80,7 @@ Page_Forms :: struct {
 	picker:    base.Handle,         // input waiting for its picker
 	picker_color: bool,
 	picker_timer: base.Handle,
+	left_timer: base.Handle,        // page_login_left_soon: the look at a typed password's field that left the document
 	popover:   Popover_State,      // the showing popovers (popover.odin)
 }
 
@@ -114,6 +145,7 @@ forms_attach :: proc(p: ^Page) {
 forms_detach :: proc(p: ^Page) {
 	pf := p.formctl
 	if pf == nil { return }
+	page_login_left(p)   // (a tab closed: no unload ran before)
 	for e in pf.pending { forms.submission_destroy(e.s) }
 	delete(pf.pending)
 	forms.forms_destroy(pf.model)

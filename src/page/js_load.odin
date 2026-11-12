@@ -1263,7 +1263,11 @@ hook_removed :: proc(user: rawptr, d: ^dom.Document, node, parent: base.Handle) 
 	p := (^Page)(user)
 	if p.closed || d != p.doc { return }
 	if node != base.NIL_HANDLE {
-		if p.formctl != nil { forms.note_tree_change(p.formctl.model, node, parent) }   // an option out of a select (values.odin)
+		if p.formctl != nil {
+			forms.note_tree_change(p.formctl.model, node, parent)   // an option out of a select (values.odin)
+			// (the typed password's form left the document: a script's login took it away, bindings_forms.odin)
+			if forms.typed_within(p.formctl.model, node) { page_login_left_soon(p) }
+		}
 		if d.hooks.muted > 0 { return }   // (the batch's end calls again)
 	}
 	frames_note_removed(p)

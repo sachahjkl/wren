@@ -66,6 +66,7 @@ page_frozen :: proc(p: ^Page) -> bool { return p != nil && p.web != nil && p.web
 // The document goes into the back/forward cache: pagehide (persisted), hidden, then frozen.
 page_freeze :: proc(p: ^Page) {
 	if p == nil || p.closed || p.web.frozen { return }
+	page_login_left(p)   // (before pagehide: its listeners may empty the field)
 	fire_page_transition(p, "pagehide", true)
 	if p.closed { return }
 	set_page_visible(p, false)
@@ -108,6 +109,7 @@ fire_page_transition :: proc(p: ^Page, type: string, persisted: bool) {
 page_unload :: proc(p: ^Page) {
 	if p == nil || p.closed || p.web.frozen || p.web.unloaded { return }
 	p.web.unloaded = true
+	page_login_left(p)   // (before pagehide and unload: their listeners may empty the field)
 	if p.frames != nil {
 		ids := make([dynamic]u64, 0, len(p.frames.children), context.temp_allocator)
 		for n in p.frames.children { append(&ids, n.id) }

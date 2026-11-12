@@ -420,6 +420,9 @@ set_edit_text :: proc(f: ^Forms, h: base.Handle, text: string) {
 		c.dirty_value = true
 	}
 	c.user_edited = true
+	// (only the person's edits come here: a script's value goes through set_value; the Vault's save offer needs to know
+	// which password was typed, unsent_login)
+	if kind_of(n) == .Input && t == .Password { f.typed_password = h }
 }
 
 // The field suffers from bad input: the user typed something its type cannot represent.

@@ -4,11 +4,13 @@ package forms
 // or an identity of the Vault that the user picked. The autocomplete attribute decides first (HTML's autofill field
 // names); else words of the field's name and id. Pure functions over the DOM and the forms model, plus the fill of a
 // select (a country, a month), which writes as a user's choice does. Also: the values of a login form being sent (the
-// Vault's save offer) and the one-time-code field of a document (its code's fill after a login's).
+// Vault's save offer, with a form or without one) and the one-time-code field of a document (its code's fill after a
+// login's).
 
 import "core:strconv"
 import "core:strings"
 import "wb:base"
+import "wb:dom"
 
 Autofill_Role :: enum u8 {
 	None,
@@ -262,6 +264,64 @@ sent_login :: proc(f: ^Forms, form: base.Handle) -> (username, password: string,
 	if pw == base.NIL_HANDLE || value(f, pw) == "" { return "", "", false }
 	if lf.username != base.NIL_HANDLE { username = value(f, lf.username) }
 	return username, value(f, pw), true
+}
+
+////////////////////////////////
+// A login sent without a form
+
+// A login a script sends (it reads the fields, posts them itself, then goes to another page) never passes through a
+// submission. What says it was sent: the person typed a password, the field still holds it, no form sent it, and the
+// document goes (a navigation, a close) or the field leaves the document. The page asks here at that moment, once.
+
+// A form is being sent (submit): the password it owns was sent with it, and is no unsent login any more.
+@(private)
+typed_sent :: proc(f: ^Forms, form: base.Handle) {
+	if f.typed_password != base.NIL_HANDLE && form_owner(f, f.typed_password) == form { f.typed_password = base.NIL_HANDLE }
+}
+
+// Whether the typed password field is `node` or inside it (the page asks when `node` leaves the document).
+typed_within :: proc(f: ^Forms, node: base.Handle) -> bool {
+	if f.typed_password == base.NIL_HANDLE || node == base.NIL_HANDLE { return false }
+	for cur := f.typed_password; cur != base.NIL_HANDLE; {
+		if cur == node { return true }
+		n := dom.get(f.doc, cur)
+		if n == nil { return false }
+		cur = n.parent
+	}
+	return false
+}
+
+// The login that the person typed and no form sent, and forgets it (asked once: the page goes or the field left it).
+// ok false: no password typed, a script's value replaced it, it is empty, or it is no password field now. The user name
+// is the group's (its form, or the fields with no form, in the field's tree: a form taken out of the document still
+// holds its fields): autocomplete username or email first, else the nearest text field before the password. The values
+// are the model's own: copy them at once.
+unsent_login :: proc(f: ^Forms) -> (username, password: string, ok: bool) {
+	h := f.typed_password
+	f.typed_password = base.NIL_HANDLE
+	if h == base.NIL_HANDLE { return }
+	c := control_peek(f, h)
+	if c == nil || !c.user_edited || kind(f, h) != .Input || input_type(f, h) != .Password || is_one_time_code(f, h) { return }
+	password = value(f, h)
+	if password == "" { return "", "", false }
+	owner := form_owner(f, h)
+	all := make([dynamic]base.Handle, context.temp_allocator)
+	walk_elements(f, tree_root(f, h), &all)
+	nearest, named := base.NIL_HANDLE, base.NIL_HANDLE
+	before := true
+	for e in all {
+		if e == h { before = false; continue }
+		if kind(f, e) != .Input || form_owner(f, e) != owner || is_one_time_code(f, e) { continue }
+		#partial switch input_type(f, e) {
+		case .Text, .Email, .Tel:
+		case: continue
+		}
+		if named == base.NIL_HANDLE && autocomplete_tokens(f, e) & {.Username, .Email} != {} { named = e }
+		if before { nearest = e }
+	}
+	user := named != base.NIL_HANDLE ? named : nearest
+	if user != base.NIL_HANDLE { username = value(f, user) }
+	return username, password, true
 }
 
 // The password fields of the group of `anchor` that take a new password: autocomplete new-password, or every password

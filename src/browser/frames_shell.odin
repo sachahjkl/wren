@@ -337,6 +337,7 @@ frames_tick_doc :: proc(app: ^App, p: ^page.Page, frame_ms: f64) -> bool {
 			page.set_forms_embedder(c, page.Forms_Embedder{
 				user = app, navigate = shell_navigate_submission, pick_files = shell_pick_files, pick_color = shell_pick_color,
 				submitting = vault_form_sent,   // vault_save.odin
+				login_left = vault_login_left,   // vault_save.odin
 				changed = proc(user: rawptr, p: ^page.Page) { request_frames((^App)(user), 2) },
 			})
 		}
