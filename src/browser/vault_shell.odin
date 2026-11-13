@@ -715,9 +715,16 @@ vault_first_field :: proc(email_known: bool, email_box, password_box: ^ui.Box) -
 // height is added, or the body's last lines would scroll out of sight.
 dialog_preferred :: proc(body: ui.Key, width, fallback_h: f32) -> draw.Vec2 {
 	em := ui.font_size()
-	head := ui.dense(em * ui.DIALOG_HEADER_EM)
-	if b := ui.box_from_key(body); b != nil && b.size.y > 0 { return {width, head + b.size.y + em * DIALOG_FOOT_EM} }
-	return {width, head + fallback_h}
+	// (measured, not added up from constants: the dialog as it was, less what its scroll showed, plus all that the scroll
+	// holds. The header, the buttons, the borders of the theme are counted as they are drawn; a sum of ems fell a few
+	// pixels short and every dialog had a scroll bar)
+	if b := ui.box_from_key(body); b != nil && b.size.y > 0 {
+		if sc := b.parent; sc != nil && sc.parent != nil && sc.view_bounds.y > 0 {
+			return {width, sc.parent.size.y - sc.size.y + sc.view_bounds.y}
+		}
+		return {width, ui.dense(em * ui.DIALOG_HEADER_EM) + b.size.y + em * DIALOG_FOOT_EM}
+	}
+	return {width, ui.dense(em * ui.DIALOG_HEADER_EM) + fallback_h}
 }
 
 dialog_line :: proc(text, id: string, weak := false) {
