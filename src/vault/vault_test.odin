@@ -607,6 +607,27 @@ a_search_keeps_the_rows_of_its_last_query :: proc(t: ^testing.T) {
 	testing.expect_value(t, x.v.sets[.Search].key, "")
 }
 
+// A new query keeps the last one's rows until its own come: the panel's list does not empty and fill at each letter.
+@(test)
+a_new_query_keeps_the_last_rows_until_its_own :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	answer(x, "search", `"ok":true,"rows":[{"id":"1","name":"Git","username":"a","uri":"https://git.example"}]`,
+		`"ok":true,"rows":[{"id":"2","name":"GitHub","username":"b","uri":"https://github.com"},{"id":"3","name":"GitLab","username":"c","uri":"https://gitlab.com"}]`)
+	vault_search(&x.v, "gi")
+	settle(x)
+	vault_search(&x.v, "git")
+	rows, state, key := vault_rows(&x.v, .Search)
+	testing.expect_value(t, state, Rows_State.Asked)
+	testing.expect_value(t, key, "git")
+	testing.expect_value(t, len(rows), 1)   // (the last query's, shown meanwhile)
+	settle(x)
+	rows, state, key = vault_rows(&x.v, .Search)
+	testing.expect_value(t, state, Rows_State.Ready)
+	testing.expect_value(t, len(rows), 2)
+	testing.expect_value(t, rows[0].id, "2")
+}
+
 // A copy's value goes to the copy hook only, never to a page; a code comes with the seconds it stays valid.
 @(test)
 copies_go_to_the_clipboard_hook :: proc(t: ^testing.T) {

@@ -484,8 +484,10 @@ vault_search_rows :: proc(app: ^App, query: string) {
 	v := &app.vault.v
 	vault.vault_search(v, query)
 	rows, state, key := vault.vault_rows(v, .Search)
+	// (while a new query is on its way, the last one's rows stay: the list does not empty and fill again at each letter)
+	waiting := key != query || state == .None || state == .Asked
 	switch {
-	case key != query || state == .None || state == .Asked:
+	case waiting && len(rows) == 0:
 		panel_line(i18n.tr("Searching…"), "vp_search_wait", weak = true)
 	case state == .Failed:
 		panel_line(i18n.tr("The Vault cannot search now."), "vp_search_failed", weak = true)

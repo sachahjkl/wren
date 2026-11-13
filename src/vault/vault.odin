@@ -703,7 +703,7 @@ vault_search :: proc(v: ^Vault, query: string, slot := Row_Slot.Search, kinds :=
 	if v.state != .Unlocked || (slot != .Search && slot != .Items) { return }
 	set := &v.sets[slot]
 	if set.state != .None && query == set.key && kinds == set.kinds { return }
-	set_reset(v, slot)
+	set_reset(v, slot, keep_rows = true)
 	set.key = strings.clone(query, base.process_allocator())
 	set.kinds, set.limit = kinds, clamp(limit, 1, SEARCH_PAGE_MAX)
 	set.state = .Asked
@@ -1727,13 +1727,18 @@ rows_reset :: proc(v: ^Vault) {
 }
 
 @(private)
-set_reset :: proc(v: ^Vault, slot: Row_Slot) {
+set_reset :: proc(v: ^Vault, slot: Row_Slot, keep_rows := false) {
 	set := &v.sets[slot]
-	rows_free(&set.rows)
+	// (keep_rows: a new query's rows replace the last one's when they come; meanwhile the list shows those, it does not
+	// empty and fill again at each letter typed)
+	if !keep_rows {
+		rows_free(&set.rows)
+		set.total = 0
+	}
 	string_wipe(&set.key)
 	set.state = .None
 	set.gen += 1
-	set.kinds, set.limit, set.total = {}, 0, 0
+	set.kinds, set.limit = {}, 0
 	set.more_asked, set.more_failed = false, false
 	// (an ask on its way is forgotten: its answer finds another key)
 	for &p in v.pending {
