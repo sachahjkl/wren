@@ -1528,6 +1528,13 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 	case .Sync:
 		v.syncing = false
 		changed(v)
+		if !a.ok && a.error == "session_expired" {
+			// (the server refuses the session and its token cannot be renewed: only a new login opens one; the vault's
+			// copy would go stale while it stays open, so the account is logged out, its email remembered for the login)
+			vault_logout(v)
+			set_message(v, a.message != "" ? a.message : i18n.tr("The server ended this session. Log in again with the master password."))
+			return
+		}
 		if !a.ok { set_message(v, a.message != "" ? a.message : i18n.tr("The vault could not be synced.")); return }
 		v.last_sync = a.last_sync
 		if a.passkey != v.passkey {

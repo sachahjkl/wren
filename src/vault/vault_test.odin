@@ -794,6 +794,20 @@ the_helper_locking_itself_is_a_lock_not_a_failure :: proc(t: ^testing.T) {
 	testing.expect_value(t, x.v.message, "The Vault locked itself after a time without activity.")
 }
 
+// The server refused the session and the helper could not renew it: the account is logged out (only a new login opens
+// one), its message kept for the login.
+@(test)
+a_session_the_server_ended_logs_out :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	answer(x, "sync", `"ok":false,"error":"session_expired","message":"The server ended this session. Log in again with the master password."`)
+	testing.expect(t, vault_sync(&x.v))
+	settle(x)
+	testing.expect_value(t, x.v.state, State.Logged_Out)
+	testing.expect_value(t, x.v.message, "The server ended this session. Log in again with the master password.")
+	testing.expect_value(t, last_op(x), "logout")
+}
+
 @(test)
 a_pin_unlocks_and_too_many_wrong_ones_remove_it :: proc(t: ^testing.T) {
 	x := unlocked_fx(t, profile = true)

@@ -150,7 +150,7 @@ minute while the user is active.
 
 `bad_request`, `bad_protocol`, `no_hello`, `bad_server`, `bad_credentials`, `unsupported_two_factor`,
 `unsupported_account`, `network`, `login_failed`, `no_account`, `bad_password`, `bad_pin`, `pin_reset`, `no_pin`,
-`no_state`, `denied`, `expired`, `no_passkey`, `account_locked`, `locked`, `sync_failed`, `no_item`, `no_totp`,
+`no_state`, `denied`, `expired`, `no_passkey`, `account_locked`, `locked`, `sync_failed`, `session_expired`, `no_item`, `no_totp`,
 `save_failed`, `assert_failed`, `decrypt`, `state_write`, `state_format`. The helper's README says what
 each means.
 
