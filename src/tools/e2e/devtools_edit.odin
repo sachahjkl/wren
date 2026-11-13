@@ -255,7 +255,7 @@ devtools_style_numbers_step_by_the_keyboard :: proc(t: ^testing.T) {
 	for st in steps {
 		e2e.key(s, st.keys)
 		e2e.wait_frames(s, 3)
-		testing.expect_value(t, ui.field_string(&sty.field_v), st.want)
+		testing.expect_value(t, ui.line_edit_string(&sty.field_v), st.want)
 		testing.expectf(t, abs(left(s) - st.left) < LEFT_NEAR, "%s: the element is %v px from the left (want %v)", st.keys, left(s), st.left)
 	}
 	// Escape: as it was
@@ -272,7 +272,7 @@ devtools_style_numbers_step_by_the_keyboard :: proc(t: ^testing.T) {
 	e2e.key(s, "ctrl+a")
 	e2e.type_text(s, "disp")
 	e2e.key(s, "tab")
-	testing.expect_value(t, ui.field_string(&sty.field_n), "display")
+	testing.expect_value(t, ui.line_edit_string(&sty.field_n), "display")
 	e2e.type_text(s, "fl")
 	e2e.key(s, "enter")
 	e2e.wait_frames(s, 3)

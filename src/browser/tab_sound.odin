@@ -20,9 +20,9 @@ import "wb:page"
 
 TAB_SOUND_PREFS := [?]config.Def{
 	{name = "browser.tabs.audio_indicator", kind = .Bool, default = {b = true},
-		description = i18n.tr("Show a speaker on a tab that plays sound (a click on it mutes the tab), and a crossed-out one on a muted tab.")},
+		description = i18n.later("Show a speaker on a tab that plays sound (a click on it mutes the tab), and a crossed-out one on a muted tab.")},
 	{name = "browser.tabs.audio_hold_ms", kind = .Int, default = {i = 2000}, bounded = true, min = 0, max = 60_000, unit = "ms",
-		description = i18n.tr("How long the speaker of a tab stays after its sound stops (a pause between two sounds does not make it blink).")},
+		description = i18n.later("How long the speaker of a tab stays after its sound stops (a pause between two sounds does not make it blink).")},
 }
 
 // What a tab's sound was at the last frame.

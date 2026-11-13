@@ -35,6 +35,7 @@ import "toolkit:ui"
 import "wb:base"
 import "wb:config"
 import "wb:host"
+import "wb:i18n"
 
 PALETTE_PREFS := [?]config.Def{
 	{name = "browser.palette.ctrl_k", kind = .Bool, default = {b = true},
@@ -329,7 +330,7 @@ Palette_Row :: struct {
 Palette_State :: struct {
 	open:          bool,
 	window:        int,             // the window it is open in (Browser_Window.id)
-	field:         ui.Text_Field,
+	field:         ui.Line_Edit,
 	opened:        time.Tick,
 	focus_pending: bool,
 	saved_focus:   ui.Key,
@@ -357,7 +358,7 @@ Palette_State :: struct {
 palette_open :: proc(app: ^App) -> bool { return app.cpal.open && app.active != nil && app.cpal.window == app.active.id }
 
 palette_destroy :: proc(app: ^App) {
-	ui.field_destroy(&app.cpal.field)
+	ui.line_edit_destroy(&app.cpal.field)
 	delete(app.cpal.rows)
 	ui.fuzzy_cache_destroy(&app.cpal.search)
 	if app.cpal.arena_ready { base.arena_destroy(&app.cpal.arena) }
@@ -392,10 +393,10 @@ palette_toggle :: proc(app: ^App) {
 palette_show :: proc(app: ^App, text := "") {
 	palette_ready(app)
 	usage_load(app)
-	ui.ctx_menu_close()
+	ui.menu_close()
 	app.cpal.open = true
 	app.cpal.window = app.active != nil ? app.active.id : 0
-	ui.field_set(&app.cpal.field, text)
+	ui.line_edit_set(&app.cpal.field, text)
 	app.cpal.sel, app.cpal.first, app.cpal.scroll_acc = 0, 0, 0
 	app.cpal.cache_valid = false
 	app.cpal.saved_focus = ui.focus_key()
@@ -460,7 +461,7 @@ palette_collect :: proc(app: ^App, text: string) {
 			if c.hidden { continue }
 			enabled := command_enabled(app, t, &c)
 			if !enabled && !app.cpal.cfg.show_disabled { continue }
-			append(&cands, Palette_Row{kind = .Command, index = i, title = c.label, category = c.group, glyph = c.icon, tags = c.tags, last = c.name,
+			append(&cands, Palette_Row{kind = .Command, index = i, title = i18n.tr(c.label), category = c.group, glyph = c.icon, tags = c.tags, last = c.name,
 				usage = usage_of(app, strings.concatenate({"cmd:", c.name}, context.temp_allocator), now), disabled = !enabled})
 		}
 	}
@@ -480,7 +481,7 @@ palette_collect :: proc(app: ^App, text: string) {
 		for name in config.sorted_names(&app.prefs) {
 			r := config.ref_of(&app.prefs, name)
 			e := config.entry(&app.prefs, r)
-			append(&cands, Palette_Row{kind = .Pref, ref = r, title = name, category = "Setting", last = e.def.description,
+			append(&cands, Palette_Row{kind = .Pref, ref = r, title = name, category = "Setting", last = i18n.tr(e.def.description),
 				usage = usage_of(app, strings.concatenate({"pref:", name}, context.temp_allocator), now), disabled = e.source == .Policy})
 		}
 	}
@@ -602,7 +603,7 @@ palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
 		palette_close(app)
 		dest := t
 		if new_tab || dest == nil { dest = tab_open(app, "about:config", origin = .User) } else { navigate(app, dest, "about:config", origin = .User) }
-		ui.field_set(&app.config_view.search, name)
+		ui.line_edit_set(&app.config_view.search, name)
 		app.config_view.focus_list = true
 	case .Source:
 		if r.index < 0 || r.index >= len(app.cpal.sources) { return }
@@ -693,14 +694,14 @@ palette_build :: proc(app: ^App) {
 			if ui.row(.Center) {
 				ui.spacer(ui.px(pad))
 				ui.next({width = ui.fill(), height = ui.pct(1), radius = em * CHROME_BUTTON_RADIUS})
-				res = ui.line_edit("###palette_field", &app.cpal.field, PALETTE_PLACEHOLDER)
+				res = ui.line_edit("###palette_field", &app.cpal.field, {placeholder = PALETTE_PLACEHOLDER})
 				ui.spacer(ui.px(pad))
 			}
 			if app.cpal.focus_pending && res.box != nil { app.cpal.focus_pending = false; ui.set_focus(res.box.key) }
 			if res.cancelled { palette_close(app); return }
 
 			// the rows, again only when something they depend on changed
-			text := ui.field_string(&app.cpal.field)
+			text := ui.line_edit_string(&app.cpal.field)
 			key := results_key(app)
 			if !app.cpal.cache_valid || key != app.cpal.cache_key || text != app.cpal.cache_text {
 				query_changed := text != app.cpal.cache_text || !app.cpal.cache_valid

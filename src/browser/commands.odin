@@ -98,7 +98,7 @@ RESERVED_SHORTCUTS := [?]ui.Chord{
 commands_dispatch :: proc(app: ^App) -> bool {
 	t := current_tab(app)
 	for &c in commands(app) {
-		if !command_pressed(app, &c, !c.guarded || command_enabled(app, t, &c)) { continue }
+		if !command_pressed(app, &c, c.guarded && !command_enabled(app, t, &c)) { continue }
 		command_run(app, t, &c)
 		return true
 	}
@@ -106,12 +106,12 @@ commands_dispatch :: proc(app: ^App) -> bool {
 }
 
 // One of the command's keys was pressed this frame (ui.command_pressed: the press is taken), the second only while its
-// key_pref is on, the third too. `enabled` false: none is taken.
-command_pressed :: proc(app: ^App, c: ^Command, enabled := true) -> bool {
+// key_pref is on, the third too. `disabled`: none is taken.
+command_pressed :: proc(app: ^App, c: ^Command, disabled := false) -> bool {
 	spec := c.spec
 	if c.key_pref != "" && !config.bool_of(&app.prefs, c.key_pref) { spec.keys[1] = {} }
-	if ui.command_pressed(spec, enabled) { return true }
-	return enabled && c.third_key.key != .None && ui.key_press(c.third_key.key, c.third_key.mods)
+	if ui.command_pressed(spec, disabled) { return true }
+	return !disabled && c.third_key.key != .None && ui.key_press(c.third_key.key, c.third_key.mods)
 }
 
 // A menu item for a command: its title, first shortcut, glyph, check mark and condition. True when it ran.
@@ -119,7 +119,7 @@ menu_command :: proc(app: ^App, t: ^Tab, name: string, title := "", force_disabl
 	c := command(app, name)
 	if c == nil { return false }
 	checked := c.checked != nil && c.checked(app, t, c)
-	if ui.menu_item(title != "" ? title : c.label, ui.command_shortcut(c.spec), checked = checked, icon = c.icon, enabled = !force_disabled && command_enabled(app, t, c)).clicked {
+	if ui.menu_item(title != "" ? title : i18n.tr(c.label), ui.command_shortcut(c.spec), checked = checked, icon = c.icon, disabled = force_disabled || !command_enabled(app, t, c)).clicked {
 		return command_run(app, t, c)
 	}
 	return false
@@ -197,28 +197,28 @@ commands_build :: proc(r: ^Command_Registry) {
 		},
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_detach(app, t) }})
 	// pinned tabs and groups (tab_groups.odin)
-	add(r, {name = "tab.pin", label = i18n.tr("Pin or unpin tab"), group = "Tabs", tags = command_words(r, "pinned app tab sticky keep"),
+	add(r, {name = "tab.pin", label = i18n.later("Pin or unpin tab"), group = "Tabs", tags = command_words(r, "pinned app tab sticky keep"),
 		enabled = has_tab, checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.pinned },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_set_pinned(app, t, !t.pinned) }})
-	add(r, {name = "tab.mute", label = i18n.tr("Mute or unmute tab"), group = "Tabs", tags = command_words(r, "sound audio silence speaker volume"),
+	add(r, {name = "tab.mute", label = i18n.later("Mute or unmute tab"), group = "Tabs", tags = command_words(r, "sound audio silence speaker volume"),
 		enabled = has_tab, checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.muted },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_set_muted(app, t, !t.muted) }})
-	add(r, {name = "tab.fold", label = i18n.tr("Fold or show the tabs this tab opened"), group = "Tabs", tags = command_words(r, "tree children collapse expand fold"),
+	add(r, {name = "tab.fold", label = i18n.later("Fold or show the tabs this tab opened"), group = "Tabs", tags = command_words(r, "tree children collapse expand fold"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && tab_tree_has_children(app, t) },
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.fold },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_tree_toggle(app, t) }})
-	add(r, {name = "tab.group_new", label = i18n.tr("Add tab to a new group"), group = "Tabs", tags = command_words(r, "group tabs together organize"),
+	add(r, {name = "tab.group_new", label = i18n.later("Add tab to a new group"), group = "Tabs", tags = command_words(r, "group tabs together organize"),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { _ = tab_group_new(app, t) }})
-	add(r, {name = "tab.group_leave", label = i18n.tr("Remove tab from its group"), group = "Tabs", tags = command_words(r, "ungroup group"),
+	add(r, {name = "tab.group_leave", label = i18n.later("Remove tab from its group"), group = "Tabs", tags = command_words(r, "ungroup group"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.group != 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_group_leave(app, t) }})
-	add(r, {name = "tab.group_collapse", label = i18n.tr("Collapse or expand the tab's group"), group = "Tabs", tags = command_words(r, "group fold hide"),
+	add(r, {name = "tab.group_collapse", label = i18n.later("Collapse or expand the tab's group"), group = "Tabs", tags = command_words(r, "group fold hide"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.group != 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			w, _ := window_of_tab(app, t)
 			if gi := group_index(w.groups[:], t.group); gi >= 0 { group_set_collapsed(app, w, t.group, !w.groups[gi].collapsed) }
 		}})
-	add(r, {name = "tab.group_rename", label = i18n.tr("Rename the tab's group"), group = "Tabs", tags = command_words(r, "group name title"),
+	add(r, {name = "tab.group_rename", label = i18n.later("Rename the tab's group"), group = "Tabs", tags = command_words(r, "group name title"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.group != 0 && app.favs.cfg.position != .Top },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { group_rename_begin(app, t.group) }})
 	for gc in Group_Color {
@@ -232,10 +232,10 @@ commands_build :: proc(r: ^Command_Registry) {
 	}
 	add(r, {name = "window.new", label = "New window", group = "Window", tags = command_words(r, "open another"), keys = {{key = .N, mods = ctrl}, {}},
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { window_new(app) }})
-	add(r, {name = "window.new_private", label = i18n.tr("New private window"), group = "Window", tags = command_words(r, "incognito private browsing inprivate"),
+	add(r, {name = "window.new_private", label = i18n.later("New private window"), group = "Window", tags = command_words(r, "incognito private browsing inprivate"),
 		keys = {{key = .N, mods = cs}, {}},
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { private_window_open(app) }})
-	add(r, {name = "browser.session_restore", label = i18n.tr("Restore tabs at start-up"), group = "Tabs", tags = command_words(r, "session reopen previous startup"),
+	add(r, {name = "browser.session_restore", label = i18n.later("Restore tabs at start-up"), group = "Tabs", tags = command_words(r, "session reopen previous startup"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return config.bool_of(&app.prefs, "browser.session.restore") },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.session.restore", !config.bool_of(&app.prefs, "browser.session.restore")) }})
 	add(r, {name = "tab.restore_crashed", label = "Restore the tabs of the session that crashed", group = "Tabs", tags = command_words(r, "crash recovery reopen saved"),
@@ -318,7 +318,7 @@ commands_build :: proc(r: ^Command_Registry) {
 
 	// --- view
 	// the frame rate (pacing.odin): the choices of browser.frame.cap, in their order
-	cap_titles := [?][2]string{{FRAME_CAP_AUTO, i18n.tr("Frame rate: auto")}, {"60", i18n.tr("Frame rate: 60")}, {"120", i18n.tr("Frame rate: 120")}, {"240", i18n.tr("Frame rate: 240")}, {FRAME_CAP_CUSTOM, i18n.tr("Frame rate: custom (browser.frame.cap_custom_hz)")}, {FRAME_CAP_UNCAPPED, i18n.tr("Frame rate: uncapped")}}
+	cap_titles := [?][2]string{{FRAME_CAP_AUTO, i18n.later("Frame rate: auto")}, {"60", i18n.later("Frame rate: 60")}, {"120", i18n.later("Frame rate: 120")}, {"240", i18n.later("Frame rate: 240")}, {FRAME_CAP_CUSTOM, i18n.later("Frame rate: custom (browser.frame.cap_custom_hz)")}, {FRAME_CAP_UNCAPPED, i18n.later("Frame rate: uncapped")}}
 	for x in cap_titles {
 		add(r, {name = fmt.aprintf("view.frame_cap.%s", x[0], allocator = a), label = x[1], group = "View", arg = x[0], tags = command_words(r, "fps limit cap uncapped unlimited vsync frames per second"),
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.pacing.cfg.cap == c.arg },
@@ -405,14 +405,14 @@ commands_build :: proc(r: ^Command_Registry) {
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.wchrome.cfg.integrated },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, prefs_page.SYSTEM_TITLE_PREF, app.wchrome.cfg.integrated) }})
 	// the tabs along the top or in a sidebar (tab_sidebar.odin)
-	pos_titles := [Tabs_Position]string{.Top = i18n.tr("Tabs: at the top"), .Left = i18n.tr("Tabs: in a sidebar at the left"), .Right = i18n.tr("Tabs: in a sidebar at the right")}
+	pos_titles := [Tabs_Position]string{.Top = i18n.later("Tabs: at the top"), .Left = i18n.later("Tabs: in a sidebar at the left"), .Right = i18n.later("Tabs: in a sidebar at the right")}
 	for pos in Tabs_Position {
 		add(r, {name = fmt.aprintf("view.tabs_position.%s", TABS_POSITION_NAMES[pos], allocator = a), label = pos_titles[pos], group = "View", arg = TABS_POSITION_NAMES[pos],
 			tags = command_words(r, "tabs sidebar vertical side bar position left right top row horizontal layout"),
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return TABS_POSITION_NAMES[app.favs.cfg.position] == c.arg },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) { tabs_set_position(app, tabs_position_of(c.arg)) }})
 	}
-	add(r, {name = "view.tabs_sidebar_collapse", label = i18n.tr("Tab sidebar: icons only"), group = "View", tags = command_words(r, "tabs sidebar vertical collapse narrow compact titles"),
+	add(r, {name = "view.tabs_sidebar_collapse", label = i18n.later("Tab sidebar: icons only"), group = "View", tags = command_words(r, "tabs sidebar vertical collapse narrow compact titles"),
 		keys = {{key = .Comma, mods = cs}, {}},
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.favs.cfg.position != .Top },
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.favs.cfg.side_collapsed },
@@ -434,7 +434,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	}
 
 	for style in Chrome_Style {
-		titles := [Chrome_Style]string{.Classic = i18n.tr("Appearance: classic tabs"), .Modern = i18n.tr("Appearance: modern tabs")}
+		titles := [Chrome_Style]string{.Classic = i18n.later("Appearance: classic tabs"), .Modern = i18n.later("Appearance: modern tabs")}
 		add(r, {name = fmt.aprintf("view.chrome_style.%s", CHROME_STYLE_NAMES[style], allocator = a), group = "View", arg = CHROME_STYLE_NAMES[style],
 			label = titles[style],
 			tags = command_words(r, "chrome tabs style look trapezoid sloped angular gradient pill appearance interface"),
@@ -457,19 +457,19 @@ commands_build :: proc(r: ^Command_Registry) {
 		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Main_Menu) }})
 	add(r, {name = "browser.history", label = "History", group = "Browser", tags = command_words(r, "about:history visited pages past"), url = HISTORY_URL, keys = {{key = .H, mods = ctrl}, {}},
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_history(app, t, false) }})
-	add(r, {name = "browser.bookmarks", label = i18n.tr("Bookmarks"), group = "Browser", tags = command_words(r, "about:bookmarks favorites saved pages folders"), url = BOOKMARKS_URL, keys = {{key = .O, mods = cs}, {}},
+	add(r, {name = "browser.bookmarks", label = i18n.later("Bookmarks"), group = "Browser", tags = command_words(r, "about:bookmarks favorites saved pages folders"), url = BOOKMARKS_URL, keys = {{key = .O, mods = cs}, {}},
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_bookmarks(app) }})
-	add(r, {name = "bookmark.page", label = i18n.tr("Bookmark this page"), group = "Page", tags = command_words(r, "star favorite save keep"), keys = {{key = .D, mods = ctrl}, {}},
+	add(r, {name = "bookmark.page", label = i18n.later("Bookmark this page"), group = "Page", tags = command_words(r, "star favorite save keep"), keys = {{key = .D, mods = ctrl}, {}},
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return bookmarkable(t) },
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && bookmark_of_url(app.bms.items[:], t.url) >= 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { bookmark_star(app, t) }})
-	add(r, {name = "view.bookmarks_bar", label = i18n.tr("Show the bookmarks bar"), group = "View", tags = command_words(r, "favorites toolbar bookmarks bar"),
+	add(r, {name = "view.bookmarks_bar", label = i18n.later("Show the bookmarks bar"), group = "View", tags = command_words(r, "favorites toolbar bookmarks bar"),
 		keys = {{key = .B, mods = cs}, {}},
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return bookmarks_bar_shown(app) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { bookmarks_bar_toggle(app) }})
-	add(r, {name = "bookmarks.import", label = i18n.tr("Import bookmarks…"), group = "Browser", tags = command_words(r, "html netscape chrome firefox edge favorites"),
+	add(r, {name = "bookmarks.import", label = i18n.later("Import bookmarks…"), group = "Browser", tags = command_words(r, "html netscape chrome firefox edge favorites"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { bookmarks_import_pick(app) }})
-	add(r, {name = "bookmarks.export", label = i18n.tr("Export bookmarks…"), group = "Browser", tags = command_words(r, "html netscape backup save favorites"),
+	add(r, {name = "bookmarks.export", label = i18n.later("Export bookmarks…"), group = "Browser", tags = command_words(r, "html netscape backup save favorites"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { bookmarks_export_pick(app) }})
 	add(r, {name = "browser.downloads", label = "Downloads", group = "Browser", tags = command_words(r, "about:downloads files saved folder progress"), url = DOWNLOADS_URL, keys = {{key = .J, mods = ctrl}, {}},
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_downloads(app) }})
@@ -483,23 +483,23 @@ commands_build :: proc(r: ^Command_Registry) {
 	// the content blocker (blocker_shell.odin, blocker_ui.odin)
 	blocker_on := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.bl.started && app.bl.b.cfg.enabled }
 	web_http := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { _, ok := blocker_page_host(t); return ok && app.bl.started }
-	add(r, {name = "blocker.panel", label = i18n.tr("Blocker: open the panel"), group = "Blocker", tags = command_words(r, "ads adblock shield tracker matrix"),
+	add(r, {name = "blocker.panel", label = i18n.later("Blocker: open the panel"), group = "Blocker", tags = command_words(r, "ads adblock shield tracker matrix"),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Blocker_Panel); request_frames(app, 3) }})
-	add(r, {name = "blocker.picker", label = i18n.tr("Blocker: block an element\u2026"), group = "Blocker", tags = command_words(r, "ads element picker zapper hide"),
+	add(r, {name = "blocker.picker", label = i18n.later("Blocker: block an element\u2026"), group = "Blocker", tags = command_words(r, "ads element picker zapper hide"),
 		keys = {{key = .K, mods = cs}, {}}, enabled = web_http, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_picker_begin(app, t) }})
-	add(r, {name = "blocker.dashboard", label = i18n.tr("Blocker: dashboard"), group = "Blocker", tags = command_words(r, "lists filters rules whitelist statistics"), url = "about:blocker",
+	add(r, {name = "blocker.dashboard", label = i18n.later("Blocker: dashboard"), group = "Blocker", tags = command_words(r, "lists filters rules whitelist statistics"), url = "about:blocker",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_open_dashboard(app) }})
-	add(r, {name = "blocker.journal", label = i18n.tr("Blocker: request log"), group = "Blocker", tags = command_words(r, "logger journal requests blocked"), url = "about:blocker#journal",
+	add(r, {name = "blocker.journal", label = i18n.later("Blocker: request log"), group = "Blocker", tags = command_words(r, "logger journal requests blocked"), url = "about:blocker#journal",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_open_dashboard(app, "journal") }})
-	add(r, {name = "blocker.filters", label = i18n.tr("Blocker: my filters"), group = "Blocker", tags = command_words(r, "custom rules editor"), url = "about:blocker#filters",
+	add(r, {name = "blocker.filters", label = i18n.later("Blocker: my filters"), group = "Blocker", tags = command_words(r, "custom rules editor"), url = "about:blocker#filters",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_open_dashboard(app, "filters") }})
-	add(r, {name = "blocker.site", label = i18n.tr("Blocker: switch off / on for this site"), group = "Blocker", tags = command_words(r, "whitelist broken site disable allow"),
+	add(r, {name = "blocker.site", label = i18n.later("Blocker: switch off / on for this site"), group = "Blocker", tags = command_words(r, "whitelist broken site disable allow"),
 		enabled = web_http, run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			if host, ok := blocker_page_host(t); ok { blocker_set_site_enabled(app, t, host, !blocker_site_enabled(host)) }
 		}})
-	add(r, {name = "blocker.update", label = i18n.tr("Blocker: update the filter lists now"), group = "Blocker", tags = command_words(r, "download refresh easylist"),
+	add(r, {name = "blocker.update", label = i18n.later("Blocker: update the filter lists now"), group = "Blocker", tags = command_words(r, "download refresh easylist"),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_update_now() }})
-	add(r, {name = "blocker.toggle", label = i18n.tr("Blocker: on"), group = "Blocker", tags = command_words(r, "ads adblock enable disable"),
+	add(r, {name = "blocker.toggle", label = i18n.later("Blocker: on"), group = "Blocker", tags = command_words(r, "ads adblock enable disable"),
 		checked = blocker_on, run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			config.set_from_string(&app.prefs, "blocker.enabled", app.bl.b.cfg.enabled ? "false" : "true", .User)
 			if t != nil && t.kind == .Web { reload(app, t) }
@@ -598,20 +598,20 @@ js_toggle_site :: proc(app: ^App, t: ^Tab) {
 	host := tab_host(t)
 	if host == "" { return }
 	p := &app.prefs
-	set :: proc(p: ^config.Prefs, name, value: string) -> bool {
-		if err := config.set_from_string(p, name, value, .User); err != .None { ui.toast(.Warn, "%s: %s", name, config.set_error_text(err)); return false }
+	set :: proc(app: ^App, name, value: string) -> bool {
+		if err := config.set_from_string(&app.prefs, name, value, .User); err != .None { announce(app, .Warn, fmt.tprintf("%s: %s", name, config.set_error_text(err))); return false }
 		return true
 	}
 	if js_on_for(p, host) {
-		if !set(p, "javascript.sites.enabled", site_list_edit(config.string_of(p, "javascript.sites.enabled"), host, false)) { return }
-		if js_on_for(p, host) && !set(p, "javascript.sites.disabled", site_list_edit(config.string_of(p, "javascript.sites.disabled"), host, true)) { return }
+		if !set(app, "javascript.sites.enabled", site_list_edit(config.string_of(p, "javascript.sites.enabled"), host, false)) { return }
+		if js_on_for(p, host) && !set(app, "javascript.sites.disabled", site_list_edit(config.string_of(p, "javascript.sites.disabled"), host, true)) { return }
 	} else {
-		if !set(p, "javascript.sites.disabled", site_list_edit(config.string_of(p, "javascript.sites.disabled"), host, false)) { return }
+		if !set(app, "javascript.sites.disabled", site_list_edit(config.string_of(p, "javascript.sites.disabled"), host, false)) { return }
 		if !js_on_for(p, host) && !site_listed(config.string_of(p, "javascript.sites.disabled"), host) {
-			if !set(p, "javascript.sites.enabled", site_list_edit(config.string_of(p, "javascript.sites.enabled"), host, true)) { return }
+			if !set(app, "javascript.sites.enabled", site_list_edit(config.string_of(p, "javascript.sites.enabled"), host, true)) { return }
 		}
-		if !js_on_for(p, host) { ui.toast(.Warn, "A pattern of javascript.sites.disabled still blocks %s", host); return }
+		if !js_on_for(p, host) { announce(app, .Warn, fmt.tprintf("A pattern of javascript.sites.disabled still blocks %s", host)); return }
 	}
-	ui.toast(.Info, "JavaScript %s on %s", js_on_for(p, host) ? "on" : "off", host)
+	announce(app, .Info, fmt.tprintf("JavaScript %s on %s", js_on_for(p, host) ? "on" : "off", host))
 	reload(app, t)
 }

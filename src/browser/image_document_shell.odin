@@ -27,7 +27,7 @@ image_document_events :: proc(app: ^App, events: []platform.Event) -> []platform
 	out := make([dynamic]platform.Event, 0, len(events), context.temp_allocator)
 	for ev in events {
 		at := (ev.pos - wnd.page_rect.min) / scale
-		over := draw.rect_contains(wnd.page_rect, ev.pos) && !hud_captures(app, ev.pos) && !ui.ctx_menu_any_open() && ui.hot_key() == 0
+		over := draw.rect_contains(wnd.page_rect, ev.pos) && !hud_captures(app, ev.pos) && !ui.menu_any_open() && ui.hot_key() == 0
 		take := false
 		#partial switch ev.kind {
 		case .Scroll:

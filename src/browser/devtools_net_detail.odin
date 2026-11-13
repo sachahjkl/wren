@@ -316,7 +316,7 @@ items_list :: proc(app: ^App, d: ^Net_Detail, l: ^Dt_List, id: string, items: []
 	y: f32
 	for it, i in items { offs[i] = y; y += it.h }
 	offs[n] = y
-	menu_key := ui.key_from_string(0, "###dt_nd_menu")
+	menu_key := "###dt_nd_menu"
 	if rows, ok := dt_list(id, l, n, app.dtm.row, offs, ui.fill(), ui.fill()); ok {
 		for k in rows.first ..< rows.last {
 			it := items[k]
@@ -331,11 +331,11 @@ items_list :: proc(app: ^App, d: ^Net_Detail, l: ^Dt_List, id: string, items: []
 			if sig.right_clicked && it.kind == .Pair {
 				delete(d.menu_text); delete(d.menu_name)
 				d.menu_text, d.menu_name = strings.clone(it.value), strings.clone(it.name)
-				ui.ctx_menu_open(menu_key, ui.mouse_pos())
+				ui.menu_open(menu_key, ui.mouse_pos())
 			}
 		}
 	}
-	if ui.ctx_menu(menu_key, dt_px(220)) {
+	if ui.menu(menu_key, dt_px(220)) {
 		if ui.menu_item("Copy value###dt_nd_cv", icon = lucide.COPY).clicked { clip_set(d.menu_text) }
 		if ui.menu_item("Copy name###dt_nd_cn", icon = lucide.COPY).clicked { clip_set(d.menu_name) }
 		if ui.menu_item("Copy name and value###dt_nd_cnv", icon = lucide.COPY).clicked { clip_set(fmt.tprintf("%s: %s", d.menu_name, d.menu_text)) }
@@ -713,7 +713,7 @@ detail_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		rows := make([dynamic]Json_Row, 0, 64, context.temp_allocator)
 		json_flatten(d, &rows, "", false, d.json_val, 0, 0)
 		n := len(rows)
-		menu_key := ui.key_from_string(0, "###dt_nd_jmenu")
+		menu_key := "###dt_nd_jmenu"
 		if lst, ok := dt_list("###dt_nd_json", &d.jlist, n, app.dtm.row, nil, ui.fill(), ui.fill()); ok {
 			for k in lst.first ..< lst.last {
 				jd := ui.frame_new(Json_Draw)
@@ -751,11 +751,11 @@ detail_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 				if sig.right_clicked {
 					delete(d.menu_text)
 					d.menu_text = strings.clone(r.text)
-					ui.ctx_menu_open(menu_key, ui.mouse_pos())
+					ui.menu_open(menu_key, ui.mouse_pos())
 				}
 			}
 		}
-		if ui.ctx_menu(menu_key, dt_px(200)) {
+		if ui.menu(menu_key, dt_px(200)) {
 			if ui.menu_item("Copy value###dt_nd_jcv", icon = lucide.COPY).clicked { clip_set(d.menu_text) }
 			if ui.menu_item("Copy the whole JSON###dt_nd_jall", icon = lucide.COPY).clicked { clip_set(string(e.body[:])) }
 		}
@@ -924,7 +924,7 @@ detail_messages :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		return
 	}
 	pane_h := d.msg_sel >= 0 && d.msg_sel < len(e.msgs) ? app.dtm.row * 5 : 0
-	menu_key := ui.key_from_string(0, "###dt_nm_menu")
+	menu_key := "###dt_nm_menu"
 	if rows, ok := dt_list("###dt_nm_list", &d.msg_list, n, app.dtm.row, nil, ui.fill(), ui.fill(), follow = true); ok {
 		for k in rows.first ..< rows.last {
 			i := d.msg_rows[k]
@@ -943,7 +943,7 @@ detail_messages :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 			md.hot = sig.hovering
 			rb.custom, rb.custom_user = msg_paint, md
 			if sig.pressed { d.msg_sel = d.msg_sel == i ? -1 : i; d.msg_list.sel = k; ui.set_focus(d.msg_list.key) }
-			if sig.right_clicked { d.msg_sel, d.msg_menu = i, i; ui.ctx_menu_open(menu_key, ui.mouse_pos()) }
+			if sig.right_clicked { d.msg_sel, d.msg_menu = i, i; ui.menu_open(menu_key, ui.mouse_pos()) }
 		}
 	}
 	if d.msg_list.focused && dt_list_keys(&d.msg_list, n, 8) { d.msg_sel = d.msg_rows[clamp(d.msg_list.sel, 0, n - 1)] }
@@ -976,11 +976,11 @@ detail_messages :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 			}
 		}
 	}
-	if ui.ctx_menu(menu_key, dt_px(220)) {
+	if ui.menu(menu_key, dt_px(220)) {
 		if d.msg_menu >= 0 && d.msg_menu < len(e.msgs) {
 			m := &e.msgs[d.msg_menu]
 			if ui.menu_item("Copy message###dt_nm_cm", icon = lucide.COPY).clicked { clip_set(msg_copy_text(m)) }
-			if ui.menu_item("Copy as hex###dt_nm_hex", enabled = m.binary, icon = lucide.COPY).clicked { clip_set(m.text) }
+			if ui.menu_item("Copy as hex###dt_nm_hex", disabled = !m.binary, icon = lucide.COPY).clicked { clip_set(m.text) }
 		}
 		if ui.menu_item("Copy all messages shown###dt_nm_ca", icon = lucide.COPY).clicked {
 			b := strings.builder_make(context.temp_allocator)

@@ -14,7 +14,7 @@ import "wb:tools/tooling"
 
 ADDRESS_LINT_DIRS :: [?]string{"src/browser", "src/tools/e2e"}
 ADDRESS_WRITER :: "address_sync"
-ADDRESS_WRITES :: [?]string{"ui.field_set(", "ui.field_clear("}
+ADDRESS_WRITES :: [?]string{"ui.line_edit_set(", "ui.line_edit_clear("}
 ADDRESS_NAMES :: [?]string{".address", "window_address("}
 
 @(private = "file")

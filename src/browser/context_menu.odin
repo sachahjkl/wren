@@ -208,20 +208,20 @@ short :: proc(s: string, n: int) -> string {
 
 // Builds the open context menu (call once per frame, after the chrome and the page area).
 context_menus_build :: proc(app: ^App) {
-	key := ui.key_from_string(0, CTX_MENU_ID)
+	key := CTX_MENU_ID
 	cm := &window_own(app).ctx_menu
 	context_menu_pastes(app, cm)
 	if cm.pending {
 		cm.pending = false
 		request_free(&cm.open)
 		cm.open, cm.req = cm.req, {}
-		ui.ctx_menu_open(key, cm.open.pos, from_keyboard = cm.open.keyboard)
+		ui.menu_open(key, cm.open.pos, from_keyboard = cm.open.keyboard)
 	}
-	if !ui.ctx_menu_is_open(key) { return }
+	if !ui.menu_is_open(key) { return }
 	t := current_tab(app)
 	r := &cm.open
-	if r.kind == .Page && (t == nil || t.page != r.page) { ui.ctx_menu_close(); return }
-	if ui.ctx_menu(key) {
+	if r.kind == .Page && (t == nil || t.page != r.page) { ui.menu_close(); return }
+	if ui.menu(key) {
 		switch r.kind {
 		case .Page: page_menu_items(app, t, r)
 		case .Tab: tab_menu_items(app, r)
@@ -239,28 +239,28 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 	if r.editable != base.NIL_HANDLE && p.formctl != nil {
 		f := page.page_forms(p)
 		h := r.editable
-		if dom.get(p.doc, h) == nil { ui.ctx_menu_close(); return }
+		if dom.get(p.doc, h) == nil { ui.menu_close(); return }
 		mutable := forms.is_mutable(f, h)
 		a, b, _ := forms.selection(f, h)
 		has_sel := a != b
 		pw := forms.kind(f, h) == .Input && forms.input_type(f, h) == .Password
 		sep(&groups)
-		if ui.menu_item("Undo", "Ctrl+Z", icon = lucide.UNDO_2, enabled = mutable && forms.can_undo(f, h)).clicked { forms.edit(f, h, .History_Undo) }
-		if ui.menu_item("Redo", "Ctrl+Y", icon = lucide.REDO_2, enabled = mutable && forms.can_redo(f, h)).clicked { forms.edit(f, h, .History_Redo) }
+		if ui.menu_item("Undo", "Ctrl+Z", icon = lucide.UNDO_2, disabled = !(mutable && forms.can_undo(f, h))).clicked { forms.edit(f, h, .History_Undo) }
+		if ui.menu_item("Redo", "Ctrl+Y", icon = lucide.REDO_2, disabled = !(mutable && forms.can_redo(f, h))).clicked { forms.edit(f, h, .History_Redo) }
 		ui.menu_separator()
-		if ui.menu_item("Cut", "Ctrl+X", icon = lucide.SCISSORS, enabled = mutable && has_sel && !pw).clicked {
+		if ui.menu_item("Cut", "Ctrl+X", icon = lucide.SCISSORS, disabled = !(mutable && has_sel && !pw)).clicked {
 			if page.dispatch_event(p, h, dom.Event{type = "cut", bubbles = true, cancelable = true}) { if s := forms.cut(f, h); s != "" { clip_set(s) } }
 		}
-		if ui.menu_item("Copy", "Ctrl+C", icon = lucide.COPY, enabled = has_sel && !pw).clicked {
+		if ui.menu_item("Copy", "Ctrl+C", icon = lucide.COPY, disabled = !(has_sel && !pw)).clicked {
 			if page.dispatch_event(p, h, dom.Event{type = "copy", bubbles = true, cancelable = true}) { if s := forms.copy_text(f, h); s != "" { clip_set(s) } }
 		}
-		if ui.menu_item("Paste", "Ctrl+V", icon = lucide.CLIPBOARD_PASTE, enabled = mutable).clicked {
+		if ui.menu_item("Paste", "Ctrl+V", icon = lucide.CLIPBOARD_PASTE, disabled = !mutable).clicked {
 			cm := &window_own(app).ctx_menu
 			if ui.paste_request(ui.key_from_string(0, PASTE_PAGE_ID)) { cm.paste_page, cm.paste_field = p, h }
 		}
-		if ui.menu_item("Delete", "Del", icon = lucide.TRASH_2, enabled = mutable && has_sel).clicked { forms.edit(f, h, .Delete_Backward) }
+		if ui.menu_item("Delete", "Del", icon = lucide.TRASH_2, disabled = !(mutable && has_sel)).clicked { forms.edit(f, h, .Delete_Backward) }
 		ui.menu_separator()
-		if ui.menu_item("Select all", "Ctrl+A", icon = lucide.LIST_CHECKS, enabled = forms.edit_text(f, h) != "").clicked { forms.select_all(f, h) }
+		if ui.menu_item("Select all", "Ctrl+A", icon = lucide.LIST_CHECKS, disabled = forms.edit_text(f, h) == "").clicked { forms.select_all(f, h) }
 		request_frames(app, 2)
 	}
 	if r.link != "" {
@@ -269,14 +269,14 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		if ui.menu_item("Open link in new tab", icon = lucide.EXTERNAL_LINK).clicked { open_in_new_tab(app, r.link, p) }
 		ui.menu_separator()
 		if ui.menu_item("Copy link address", icon = lucide.COPY).clicked { clip_set(r.link) }
-		if ui.menu_item("Copy link text", icon = lucide.TEXT_QUOTE, enabled = r.link_text != "").clicked { clip_set(r.link_text) }
+		if ui.menu_item("Copy link text", icon = lucide.TEXT_QUOTE, disabled = r.link_text == "").clicked { clip_set(r.link_text) }
 	}
 	if r.image != "" {
 		sep(&groups)
 		if ui.menu_item("Open image in new tab", icon = lucide.EXTERNAL_LINK).clicked { open_in_new_tab(app, r.image, p) }
 		if ui.menu_item("Save image as…", icon = lucide.SAVE).clicked { save_as(app, r.image, suggested_name(r.image, "image")) }
 		view := page.image_view(p, r.image_node)
-		if ui.menu_item("Copy image", icon = lucide.FILE_IMAGE, enabled = view.state == .Ready && view.id != 0).clicked { copy_image(app, view) }
+		if ui.menu_item("Copy image", icon = lucide.FILE_IMAGE, disabled = !(view.state == .Ready && view.id != 0)).clicked { copy_image(app, view) }
 		if ui.menu_item("Copy image address", icon = lucide.COPY).clicked { clip_set(r.image) }
 		if r.image_node == p.image_document.img && page.image_document_active(p) {   // an image opened by itself (image_document_shell.odin)
 			ui.menu_separator()
@@ -321,7 +321,7 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		// (the element right-clicked: the picker's command, aimed; its icon is the command's)
 		if ui.menu_item(i18n.tr("Block element…"), "Ctrl+Shift+K", icon = command_icon("blocker.picker")).clicked { blocker_picker_target(app, t, r.target); return }
 		res := r.image != "" ? r.image : r.link
-		if ui.menu_item(i18n.tr("Block this resource"), icon = lucide.SHIELD, enabled = res != "").clicked { blocker_block_resource(app, res) }
+		if ui.menu_item(i18n.tr("Block this resource"), icon = lucide.SHIELD, disabled = res == "").clicked { blocker_block_resource(app, res) }
 		menu_command(app, t, "blocker.panel")
 	}
 	if r.target != base.NIL_HANDLE || groups == 0 {
@@ -333,7 +333,7 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 @(private = "file")
 tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 	wnd := active_window(app)
-	if r.tab < 0 || r.tab >= len(wnd.tabs) { ui.ctx_menu_close(); return }
+	if r.tab < 0 || r.tab >= len(wnd.tabs) { ui.menu_close(); return }
 	t := wnd.tabs[r.tab]
 	// (the tab's acts are commands, given the tab right-clicked)
 	if menu_command(app, t, "tab.new") { return }
@@ -342,7 +342,7 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 	menu_command(app, t, "tab.duplicate")
 	ui.menu_separator()
 	tab_menu_group_items(app, t)   // tab_groups.odin: pin, groups
-	if !ui.ctx_menu_is_open(ui.key_from_string(0, CTX_MENU_ID)) { return }
+	if !ui.menu_is_open(CTX_MENU_ID) { return }
 	ui.menu_separator()
 	if menu_command(app, t, "tab.close") { return }
 	if menu_command(app, t, "tab.close_others") { return }
@@ -357,7 +357,7 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 				if ui.menu_item(fmt.tprintf("%s###mv_%d", window_label(app, w), w.id), icon = lucide.APP_WINDOW).clicked { target = w }
 			}
 		}
-		if target != nil { tab_move(app, t, target); ui.ctx_menu_close(); return }
+		if target != nil { tab_move(app, t, target); ui.menu_close(); return }
 	}
 	ui.menu_separator()
 	if ui.menu_submenu(fmt.tprintf("%s###tabbar_sub", i18n.tr("Tab bar")), icon = lucide.COLUMNS_2) {   // tab_sidebar.odin
@@ -373,18 +373,18 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 @(private = "file")
 address_menu_items :: proc(app: ^App) {
 	f := &active_window(app).address
-	sel := ui.field_has_selection(f)
-	if ui.menu_item("Undo", "Ctrl+Z", icon = lucide.UNDO_2, enabled = ui.field_can_undo(f)).clicked { ui.field_undo(f) }
-	if ui.menu_item("Redo", "Ctrl+Y", icon = lucide.REDO_2, enabled = ui.field_can_redo(f)).clicked { ui.field_redo(f) }
+	sel := ui.line_edit_has_selection(f)
+	if ui.menu_item("Undo", "Ctrl+Z", icon = lucide.UNDO_2, disabled = !ui.line_edit_can_undo(f)).clicked { ui.line_edit_undo(f) }
+	if ui.menu_item("Redo", "Ctrl+Y", icon = lucide.REDO_2, disabled = !ui.line_edit_can_redo(f)).clicked { ui.line_edit_redo(f) }
 	ui.menu_separator()
-	if ui.menu_item("Cut", "Ctrl+X", icon = lucide.SCISSORS, enabled = sel).clicked { ui.field_cut(f) }
-	if ui.menu_item("Copy", "Ctrl+C", icon = lucide.COPY, enabled = sel).clicked { ui.field_copy(f) }
+	if ui.menu_item("Cut", "Ctrl+X", icon = lucide.SCISSORS, disabled = !sel).clicked { ui.line_edit_cut(f) }
+	if ui.menu_item("Copy", "Ctrl+C", icon = lucide.COPY, disabled = !sel).clicked { ui.line_edit_copy(f) }
 	// (the clipboard is not read to enable them: it belongs to another program, which can be slow; an empty one does nothing)
-	if ui.menu_item("Paste", "Ctrl+V", icon = lucide.CLIPBOARD_PASTE).clicked { ui.field_paste(address_key(app)) }
+	if ui.menu_item("Paste", "Ctrl+V", icon = lucide.CLIPBOARD_PASTE).clicked { ui.edit_paste(address_key(app)) }
 	if ui.menu_item("Paste and go", icon = lucide.ARROW_RIGHT).clicked { ui.paste_request(ui.key_from_string(0, PASTE_GO_ID)) }
-	if ui.menu_item("Delete", "Del", icon = lucide.TRASH_2, enabled = sel).clicked { ui.field_delete(f) }
+	if ui.menu_item("Delete", "Del", icon = lucide.TRASH_2, disabled = !sel).clicked { ui.line_edit_delete(f) }
 	ui.menu_separator()
-	if ui.menu_item("Select all", "Ctrl+A", icon = lucide.LIST_CHECKS, enabled = len(f.buf) > 0).clicked { ui.field_select_all(f) }
+	if ui.menu_item("Select all", "Ctrl+A", icon = lucide.LIST_CHECKS, disabled = !(len(f.buf) > 0)).clicked { ui.line_edit_select_all(f) }
 }
 
 // The clipboard's answers to the menus' pastes, in the build they come: the address bar's Paste and go opens the text, a
@@ -472,7 +472,7 @@ close_other_tabs :: proc(app: ^App, keep: int) {
 copy_image :: proc(app: ^App, v: page.Image_View) {
 	fp := page.frame_pixels(v.id, f64(host.now_ns(&app.loop)) / 1e6, v.pixel_size[0], v.pixel_size[1])
 	if !fp.ok { return }
-	if !clipboard_set_image(app, fp.pixels, fp.width, fp.height, fp.stride) { ui.toast(.Warn, "The image could not be copied") }
+	if !clipboard_set_image(app, fp.pixels, fp.width, fp.height, fp.stride) { announce(app, .Warn, "The image could not be copied") }
 }
 
 ////////////////////////////////
@@ -549,7 +549,7 @@ save_data_as :: proc(app: ^App, suggested: string, data: []byte) {
 save_dialog_start :: proc(app: ^App, job: ^Save_Job) {
 	job.owner = active_window(app).win
 	if !host.run_dialog(&app.dialogs, save_dialog_work, save_dialog_done, job, proc(data: rawptr) { save_job_free((^Save_Job)(data)) }) {
-		ui.toast(.Bad, "The Save dialog could not open")
+		announce(app, .Bad, "The Save dialog could not open")
 		save_job_free(job)
 	}
 }
@@ -597,7 +597,7 @@ save_dialog_done :: proc(data: rawptr) {
 			j.ok = os.write_entire_file(j.path, j.bytes) == nil
 		}, proc(data: rawptr) {
 			j := (^Save_Job)(data)
-			if j.ok { announce(j.app, .Good, fmt.tprintf("Saved %s", filepath.base(j.path))) } else { ui.toast(.Bad, "Could not write %s", j.path) }
+			if j.ok { announce(j.app, .Good, fmt.tprintf("Saved %s", filepath.base(j.path))) } else { announce(j.app, .Bad, fmt.tprintf("Could not write %s", j.path)) }
 			request_frames(j.app, 3)
 			save_job_free(j)
 		}, job)
@@ -624,12 +624,12 @@ save_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			j.ok = os.write_entire_file(j.path, j.bytes) == nil
 		}, proc(data: rawptr) {
 			j := (^Save_Job)(data)
-			if j.ok { announce(j.app, .Good, fmt.tprintf("Saved %s", filepath.base(j.path))) } else { ui.toast(.Bad, "Could not write %s", j.path) }
+			if j.ok { announce(j.app, .Good, fmt.tprintf("Saved %s", filepath.base(j.path))) } else { announce(j.app, .Bad, fmt.tprintf("Could not write %s", j.path)) }
 			request_frames(j.app, 3)
 			save_job_free(j)
 		}, job)
 	case .Failed:
-		ui.toast(.Bad, "Download failed: %s", ev.detail)
+		announce(job.app, .Bad, fmt.tprintf("Download failed: %s", ev.detail))
 		save_job_free(job)
 	}
 	request_frames(the_app, 3)

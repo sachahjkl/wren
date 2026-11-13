@@ -40,21 +40,21 @@ SIDEBAR_MAX_CSS :: 640
 
 SIDEBAR_PREFS := [?]config.Def{
 	{name = "browser.tabs.position", kind = .String, default = {s = "top"}, choices = {"top", "left", "right"},
-		description = i18n.tr("Where the tabs are. top: the row of tabs along the top of the window (in the title bar when it is integrated). left or right: a sidebar with one tab per row, next to the page (with the classic style, browser.ui.chrome_style, the current tab is a panel that flows into the page's side). Applies at once.")},
+		description = i18n.later("Where the tabs are. top: the row of tabs along the top of the window (in the title bar when it is integrated). left or right: a sidebar with one tab per row, next to the page (with the classic style, browser.ui.chrome_style, the current tab is a panel that flows into the page's side). Applies at once.")},
 	{name = "browser.tabs.sidebar_width", kind = .Int, default = {i = 240}, bounded = true, min = SIDEBAR_MIN_CSS, max = SIDEBAR_MAX_CSS, unit = "px",
-		description = i18n.tr("Width of the tab sidebar (interface pixels, times the display scale). Drag its inner edge to change it. The sidebar never takes more than half of the window.")},
+		description = i18n.later("Width of the tab sidebar (interface pixels, times the display scale). Drag its inner edge to change it. The sidebar never takes more than half of the window.")},
 	{name = "browser.tabs.sidebar_collapsed", kind = .Bool, default = {b = false},
-		description = i18n.tr("The tab sidebar shows only the icons of the tabs (the button at the top of the sidebar, or Ctrl+Shift+Comma, toggles it).")},
+		description = i18n.later("The tab sidebar shows only the icons of the tabs (the button at the top of the sidebar, or Ctrl+Shift+Comma, toggles it).")},
 	{name = "browser.tabs.sidebar_collapsed_width", kind = .Int, default = {i = 48}, bounded = true, min = 32, max = 96, unit = "px",
-		description = i18n.tr("Width of the tab sidebar when it shows only icons (interface pixels, times the display scale).")},
+		description = i18n.later("Width of the tab sidebar when it shows only icons (interface pixels, times the display scale).")},
 	{name = "browser.tabs.sidebar_animation_ms", kind = .Int, default = {i = 240}, bounded = true, min = 0, max = 2000, unit = "ms",
-		description = i18n.tr("How long the tab sidebar takes to open or close to its icons (the titles fade in or out while its width changes). 0: at once. The system's setting to reduce animations turns it off too.")},
+		description = i18n.later("How long the tab sidebar takes to open or close to its icons (the titles fade in or out while its width changes). 0: at once. The system's setting to reduce animations turns it off too.")},
 	{name = "browser.tabs.sidebar_pins_max", kind = .Float, default = {f = 0.4}, bounded = true, min = 0.1, max = 0.9,
-		description = i18n.tr("Most of the window's height the pinned tabs take at the top of the tab sidebar (a share: 0.4 is 40 %); beyond, they scroll.")},
+		description = i18n.later("Most of the window's height the pinned tabs take at the top of the tab sidebar (a share: 0.4 is 40 %); beyond, they scroll.")},
 	{name = "browser.tabs.sidebar_row_em", kind = .Float, default = {f = 2.4}, bounded = true, min = 1.6, max = 5, unit = "em",
-		description = i18n.tr("Height of a tab in the sidebar.")},
+		description = i18n.later("Height of a tab in the sidebar.")},
 	{name = "browser.tabs.sidebar_address_min_em", kind = .Float, default = {f = 10}, bounded = true, min = 4, max = 40, unit = "em",
-		description = i18n.tr("With the tabs in a sidebar and the integrated title bar, the address bar is in the title bar: its narrowest width there. Below it, in a narrow window, the shield, then the forward button, then the reload button make room.")},
+		description = i18n.later("With the tabs in a sidebar and the integrated title bar, the address bar is in the title bar: its narrowest width there. Below it, in a narrow window, the shield, then the forward button, then the reload button make room.")},
 }
 
 Tabs_Position :: enum u8 { Top, Left, Right }
@@ -86,7 +86,7 @@ Tab_Sidebar :: struct {
 	pin_grab:  [2]f32, // a pinned tab dragged: where the pointer holds it (pointer minus its top-left)
 	pins_key:  ui.Key, // the pinned tabs' box (their keys derive from it)
 	renaming:  u64,    // the group whose name is being edited in its header (0: none)
-	rename_field:   ui.Text_Field,
+	rename_field:   ui.Line_Edit,
 	rename_focused: bool,   // the name's field had the keyboard (losing it commits the name)
 	items:     [dynamic]Side_Item,   // the list's rows, this frame (kept to reuse its memory)
 	// a tab dragged in the list (tab_tree.odin): sideways, it goes deeper or less deep in the tree
@@ -96,7 +96,7 @@ Tab_Sidebar :: struct {
 }
 
 sidebar_destroy :: proc(s: ^Tab_Sidebar) {
-	ui.field_destroy(&s.rename_field)
+	ui.line_edit_destroy(&s.rename_field)
 	delete(s.items)
 	s.items = nil
 	s.renaming, s.rename_focused = 0, false
@@ -449,7 +449,7 @@ sidebar_header :: proc(app: ^App, pos: Tabs_Position, open, extent, closed: f32)
 	// the glyph alone, lit under the pointer as the toolbar's buttons (the toggle's size), in either style
 	add := proc(app: ^App, bw, bh, em: f32, at: [2]f32) {
 		ui.next({fixed_x = at.x, fixed_y = at.y, width = ui.px(bw), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
-		sig := ui.icon_button("###newtab", lucide.PLUS)
+		sig := ui.button("###newtab", icon = lucide.PLUS)
 		tip(sig, i18n.tr("New tab (Ctrl+T)"))
 		if sig.clicked { tab_open_new(app) }
 	}

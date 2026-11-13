@@ -366,7 +366,7 @@ page_cursor_events :: proc(app: ^App, events: []platform.Event) {
 		case .Mouse_Press:
 			if ev.button != .Left || v.dragging { continue }
 			t := page_tab(app)
-			if t == nil || !draw.rect_contains(active_window(app).page_rect, ev.pos) || hud_captures(app, ev.pos) || ui.ctx_menu_any_open() || ui.hot_key() != 0 { continue }
+			if t == nil || !draw.rect_contains(active_window(app).page_rect, ev.pos) || hud_captures(app, ev.pos) || ui.menu_any_open() || ui.hot_key() != 0 { continue }
 			v.frozen = page_window_cursor(app, t, ev.pos)
 			v.dragging = true
 		case .Mouse_Release:
@@ -385,10 +385,10 @@ window_cursor_apply :: proc(app: ^App) {
 	if v.dragging && page_tab(app) != nil {
 		wc = v.frozen
 	} else if t := page_tab(app); t != nil && st.mouse_valid && wc.keyword == .Arrow && draw.rect_contains(wnd.page_rect, pos) &&
-	          ui.hot_key() == 0 && ui.active_key() == 0 && !ui.ctx_menu_any_open() && !hud_captures(app, pos) {
+	          ui.hot_key() == 0 && ui.active_key() == 0 && !ui.menu_any_open() && !hud_captures(app, pos) {
 		wc = page_window_cursor(app, t, pos)
 	} else if ct := current_tab(app); ct != nil && ct.kind == .Web && app.ccfg.progress_loading && tab_loading(ct) && st.mouse_valid && wc.keyword == .Arrow &&
-	          draw.rect_contains(wnd.page_rect, pos) && ui.hot_key() == 0 && ui.active_key() == 0 && !ui.ctx_menu_any_open() && !hud_captures(app, pos) {
+	          draw.rect_contains(wnd.page_rect, pos) && ui.hot_key() == 0 && ui.active_key() == 0 && !ui.menu_any_open() && !hud_captures(app, pos) {
 		wc.keyword = .Progress   // (nothing laid out yet: a document on its way)
 	}
 	if c, dragging := dnd_cursor(); dragging { wc = Window_Cursor{keyword = c} }   // dnd_shell.odin: the drag's operation

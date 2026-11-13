@@ -454,7 +454,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	// the chrome's cursor over the chrome; over the page, the page's as the last full frame set it (page_cursor.odin
 	// hit-tests the layout, which is not read here)
 	pos := ui.mouse_pos()
-	if !draw.rect_contains(wnd.page_rect, pos) || ui.hot_key() != 0 || ui.active_key() != 0 || ui.ctx_menu_any_open() {
+	if !draw.rect_contains(wnd.page_rect, pos) || ui.hot_key() != 0 || ui.active_key() != 0 || ui.menu_any_open() {
 		platform.set_cursor(wnd.win, ui.cursor(wnd.ui))
 	}
 	platform.frame_gate_stage(gate, .Drawing)
@@ -504,7 +504,7 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 	wnd := active_window(app)
 	t := current_tab(app)
 	page_shown := t != nil && t.kind == .Web
-	over_page := page_shown && draw.rect_contains(wnd.page_rect, ev.pos) && !ui.ctx_menu_any_open() && !hud_captures(app, ev.pos)
+	over_page := page_shown && draw.rect_contains(wnd.page_rect, ev.pos) && !ui.menu_any_open() && !hud_captures(app, ev.pos)
 	g := gesture_of(app)
 	shown_tab := page_shown ? t : nil
 	if g.owner == .Autoscroll && !hold_buttons_and_keys && autoscroll_event(app, ev) {

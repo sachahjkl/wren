@@ -5,7 +5,6 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 import "toolkit:platform"
-import "toolkit:ui"
 import "wb:blocker"
 import "wb:host"
 import "wb:i18n"
@@ -41,7 +40,7 @@ file_dialog :: proc(app: ^App, save: bool, suggested: string, kind: int) {
 		j.text = kind == 0 ? blocker.conf_text(b, false) : strings.clone(b.conf.my_filters)
 	}
 	if !host.run_dialog(&app.dialogs, dialog_work, dialog_done, j, job_free) {
-		ui.toast(.Bad, i18n.tr("The dialog could not open"))
+		announce(app, .Bad, i18n.tr("The dialog could not open"))
 		job_free(j)
 	}
 }
@@ -94,13 +93,13 @@ dialog_done :: proc(data: rawptr) {
 	name := filepath.base(j.path)
 	switch {
 	case j.save && j.failed:
-		ui.toast(.Bad, i18n.tr("Could not write %s"), j.path)
+		announce(app, .Bad, fmt.tprintf(i18n.tr("Could not write %s"), j.path))
 	case j.save:
 		announce(app, .Good, j.kind == 0 ? fmt.tprintf(i18n.tr("Configuration saved to %s"), name) : fmt.tprintf(i18n.tr("Filters saved to %s"), name))
 	case j.failed:
-		ui.toast(.Bad, i18n.tr("Could not read %s"), j.path)
+		announce(app, .Bad, fmt.tprintf(i18n.tr("Could not read %s"), j.path))
 	case j.too_large:
-		ui.toast(.Bad, i18n.tr("%s is too large"), name)
+		announce(app, .Bad, fmt.tprintf(i18n.tr("%s is too large"), name))
 	case:
 		data := j.data
 		if j.kind == 0 {
@@ -112,7 +111,7 @@ dialog_done :: proc(data: rawptr) {
 			delete(app.dash.status)
 			app.dash.status = strings.clone(fmt.tprintf(i18n.tr("imported %s"), name))
 			words := fmt.tprintf(i18n.tr("settings count, file, ignored lines", "%d settings imported from %s (%d lines ignored)"), ok, name, bad)
-			if ok > 0 { announce(app, .Good, words) } else { ui.toast(.Bad, "%s", words) }
+			if ok > 0 { announce(app, .Good, words) } else { announce(app, .Bad, words) }
 		} else {
 			dash_add_filter(app, strings.trim_space(string(data)))
 		}

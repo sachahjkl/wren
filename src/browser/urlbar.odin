@@ -251,7 +251,7 @@ set_owned :: proc(s: ^string, v: string) {
 
 // The field shows `text`; `mark` < len: the part after it is selected (an inline completion).
 @(private = "file")
-field_show :: proc(f: ^ui.Text_Field, text: string, mark := -1) {
+field_show :: proc(f: ^ui.Line_Edit, text: string, mark := -1) {
 	clear(&f.buf)
 	append(&f.buf, text)
 	f.cursor = len(f.buf)
@@ -519,7 +519,7 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 	uv.just_focused = !uv.focused
 	if !uv.focused {
 		// the field just got the keyboard: what it shows is what is "typed" until the user types
-		set_owned(&uv.typed, ui.field_string(&wnd.address))
+		set_owned(&uv.typed, ui.line_edit_string(&wnd.address))
 		uv.tab_id = t != nil ? t.id : 0
 		// the index in step now (a first build, or the day's new weights), not at the first letter typed
 		if app.ub.cfg.enabled && app.ub.cfg.history && app.hcfg.global { _ = urlbar_index_ready(app, age = true) }
@@ -535,15 +535,15 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 
 	if ui.key_press(.Return, {.Alt}) || ui.key_press(.Return, {.Ctrl}) {
 		if uv.idle || !urlbar_open(app, t, uv.sel, true) {
-			text := strings.clone(strings.trim_space(ui.field_string(&wnd.address)), context.temp_allocator)
+			text := strings.clone(strings.trim_space(ui.line_edit_string(&wnd.address)), context.temp_allocator)
 			if text != "" { urlbar_close(uv); tab_open(app, address_or_search(app, text), origin = .User); ui.set_focus(0) }
 		}
 		return
 	}
 	if !uv.open {
 		// Down on a closed list: the suggestions for what the field shows
-		if ui.field_string(&wnd.address) != "" && ui.key_press(.Down) {
-			set_owned(&uv.typed, ui.field_string(&wnd.address))
+		if ui.line_edit_string(&wnd.address) != "" && ui.key_press(.Down) {
+			set_owned(&uv.typed, ui.line_edit_string(&wnd.address))
 			uv.zero, uv.idle = false, false
 			urlbar_refresh(app, .None)
 		}
@@ -588,11 +588,11 @@ urlbar_edited :: proc(app: ^App, t: ^Tab, res: ui.Edit_Result) -> (handled: bool
 	if uv.just_focused && res.pressed && .Shift not_in res.mods { uv.click_selects = true }
 	if uv.click_selects {
 		if res.dragging && abs(res.drag_delta.x) + abs(res.drag_delta.y) > 3 * ui.scale() { uv.click_selects = false }
-		else if res.pressed || res.dragging { ui.field_select_all(f) }
+		else if res.pressed || res.dragging { ui.line_edit_select_all(f) }
 		else { uv.click_selects = false }
 	}
 	if res.changed {
-		text := ui.field_string(f)
+		text := ui.line_edit_string(f)
 		// letters added at the end (not a deletion, not an edit inside): the completion may follow
 		grew := strings.has_prefix(text, uv.typed) && len(text) > len(uv.typed) && f.cursor == len(f.buf) && f.mark == f.cursor
 		set_owned(&uv.typed, text)
@@ -603,7 +603,7 @@ urlbar_edited :: proc(app: ^App, t: ^Tab, res: ui.Edit_Result) -> (handled: bool
 	}
 	if res.committed && t != nil && uv.open && !uv.idle {
 		// the inline completion was kept (Right / End) or is still selected: it is what Enter opens
-		if uv.sel == 0 && len(uv.rows) > 0 && uv.rows[0].fill && ui.field_string(f) != uv.fill_text && ui.field_string(f) != uv.typed {
+		if uv.sel == 0 && len(uv.rows) > 0 && uv.rows[0].fill && ui.line_edit_string(f) != uv.fill_text && ui.line_edit_string(f) != uv.typed {
 			return false
 		}
 		return urlbar_open(app, t, uv.sel, false)

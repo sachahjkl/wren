@@ -45,9 +45,9 @@ crash_banner :: proc(app: ^App) {
 		primary := app.recovery.banner == .Twice ? i18n.tr("Restore tabs") : i18n.tr("Start fresh")
 		// (restoring brings the tabs back; starting fresh closes the ones restored)
 		restore := app.recovery.banner == .Twice
-		do_primary = ui.button_icon("###crash_primary", restore ? lucide.ARCHIVE_RESTORE : lucide.ROTATE_CCW, primary, intent = restore ? ui.Intent.Success : ui.Intent.Warning, width = ui.px(em * 8.5)).clicked
+		do_primary = ui.button("crash_primary", primary, restore ? lucide.ARCHIVE_RESTORE : lucide.ROTATE_CCW, {intent = restore ? ui.Intent.Success : ui.Intent.Warning, width = ui.px(em * 8.5)}).clicked
 		ui.spacer(ui.px(em * 0.4))
-		do_details = ui.button_icon("###crash_details", lucide.INFO, i18n.tr("Details"), intent = .Info, width = ui.px(em * 6.5)).clicked
+		do_details = ui.button("crash_details", i18n.tr("Details"), lucide.INFO, {intent = .Info, width = ui.px(em * 6.5)}).clicked
 		ui.spacer(ui.px(em * 0.4))
 		close = nav_button("###crash_close", lucide.X, i18n.tr("Dismiss"), true)
 		ui.spacer(ui.px(em * 0.6))

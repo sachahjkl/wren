@@ -413,7 +413,7 @@ status_right :: proc(app: ^App) -> (graph_box: ^ui.Box) {
 			ui.next({width = ui.px(em * app.hud.cfg.graph_em), height = ui.px(ui.dense(em * 1.25))})
 			flat := transmute([len(Hud_Series)]draw.Color)colors
 			budget := hud_budget(app)
-			opts := ui.Frame_Graph_Opts{
+			opts := ui.Frame_Graph_Options{
 				colors = flat[:], series = len(Hud_Series), bars = app.hud.cfg.samples, budget = app.hud.cfg.budget_line ? budget : 0,
 				scale = app.hud.cfg.scale > 0 ? app.hud.cfg.scale : budget, max_scale = app.hud.cfg.max_scale, warn = hud_warn(app), bad = hud_bad(app),
 			}
@@ -610,7 +610,7 @@ frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 				what := n.frames > 0 ? fmt.tprintf("last %s s, %d frames", fmt_ms(f32(app.hud.cfg.window_ms / 1000), src.comma), n.frames) : "idle: no frames drawn lately"
 				ui.label(fmt.tprintf("Frame statistics, %s###fs_title", what))
 				ui.next({width = ui.px(em * 1.9), height = ui.px(em * 1.9), radius = em * CHROME_BUTTON_RADIUS})
-				close := ui.icon_button("###fs_close", lucide.X)
+				close := ui.button("###fs_close", icon = lucide.X)
 				tip(close, "Close (Ctrl+Shift+F)")
 				if close.clicked { app.hud.panel_open = false }
 				ui.spacer(ui.px(em * 0.4))
@@ -756,14 +756,14 @@ toggle_frame_stats :: proc(app: ^App) {
 }
 
 set_pref_bool :: proc(app: ^App, name: string, v: bool) {
-	if err := config.set_bool(&app.prefs, config.ref_of(&app.prefs, name), v); err != .None {
-		ui.toast(.Warn, "%s: %s", name, config.set_error_text(err))
+	if err := config.set_bool(&app.prefs, name, v); err != .None {
+		announce(app, .Warn, fmt.tprintf("%s: %s", name, config.set_error_text(err)))
 	}
 }
 
 set_pref_int :: proc(app: ^App, name: string, v: int) {
-	if err := config.set_int(&app.prefs, config.ref_of(&app.prefs, name), i64(v)); err != .None {
-		ui.toast(.Warn, "%s: %s", name, config.set_error_text(err))
+	if err := config.set_int(&app.prefs, name, i64(v)); err != .None {
+		announce(app, .Warn, fmt.tprintf("%s: %s", name, config.set_error_text(err)))
 	}
 }
 

@@ -17,7 +17,6 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:time"
-import "toolkit:ui"
 import "wb:base"
 import "wb:config"
 import desktop "toolkit:desktop"
@@ -123,9 +122,9 @@ update_checking :: proc(app: ^App) -> bool { return app.upd.checking }
 // The command: asks now.
 update_check_now :: proc(app: ^App) {
 	update_load(app)
-	if app.upd.checking { ui.toast(.Info, "Already checking for updates\u2026"); return }
+	if app.upd.checking { announce(app, .Info, "Already checking for updates\u2026"); return }
 	update_request(app, true)
-	ui.toast(.Info, "Checking for updates\u2026")
+	announce(app, .Info, "Checking for updates\u2026")
 }
 
 @(private = "file")
@@ -156,22 +155,22 @@ update_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		delete(app.upd.latest); app.upd.latest = strings.clone(version)
 		delete(app.upd.url); app.upd.url = strings.clone(page)
 		newer := desktop.compare_versions(version, APP_VERSION) > 0
-		announce := newer && (app.upd.forced || app.upd.notified != version)
+		tell := newer && (app.upd.forced || app.upd.notified != version)
 		if newer { delete(app.upd.notified); app.upd.notified = strings.clone(version) }
 		update_save(app)
 		// a release this program may install: its signed manifest is fetched and checked (update_install.odin), About Wren offers the install
 		installable, _ := update_install_allowed(app)
 		if newer { update_verify_start(app, version) }
 		switch {
-		case announce && app.upd.forced && installable:
-			ui.toast(.Info, "%s v%s is available (you have v%s): checking its signature…", APP_NAME, version, APP_VERSION)
-		case announce && app.upd.forced:
-			ui.toast(.Info, "%s v%s is available (you have v%s): opening its page", APP_NAME, version, APP_VERSION)
+		case tell && app.upd.forced && installable:
+			announce(app, .Info, fmt.tprintf("%s v%s is available (you have v%s): checking its signature…", APP_NAME, version, APP_VERSION))
+		case tell && app.upd.forced:
+			announce(app, .Info, fmt.tprintf("%s v%s is available (you have v%s): opening its page", APP_NAME, version, APP_VERSION))
 			if page != "" { tab_open(app, page) }
-		case announce:
-			ui.toast(.Info, "%s v%s is available (you have v%s). Menu > Check for updates opens its page.", APP_NAME, version, APP_VERSION)
+		case tell:
+			announce(app, .Info, fmt.tprintf("%s v%s is available (you have v%s). Menu > Check for updates opens its page.", APP_NAME, version, APP_VERSION))
 		case app.upd.forced:
-			ui.toast(.Good, "%s is up to date (v%s)", APP_NAME, APP_VERSION)
+			announce(app, .Good, fmt.tprintf("%s is up to date (v%s)", APP_NAME, APP_VERSION))
 		}
 		request_frames(app, 3)
 	case .Failed:
@@ -182,7 +181,7 @@ update_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 
 @(private = "file")
 update_failed :: proc(app: ^App, why: string) {
-	if app.upd.forced { ui.toast(.Warn, "Could not check for updates: %s", why) }
+	if app.upd.forced { announce(app, .Warn, fmt.tprintf("Could not check for updates: %s", why)) }
 	request_frames(app, 2)
 }
 

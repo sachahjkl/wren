@@ -41,7 +41,7 @@ Window_Ctx :: struct {
 	tabs:             [dynamic]^Tab,
 	current:          int,            // the tab shown (an index in tabs)
 	groups:           [dynamic]Tab_Group,   // tab_groups.odin: the groups its tabs are in (freed with the window)
-	address:          ui.Text_Field,  // the address field
+	address:          ui.Line_Edit,  // the address field
 	page_rect:        draw.Rect,      // where the page was painted last frame (physical pixels)
 	frames_requested: int,            // frames asked for (request_frames, window_request): the loop counts one off per frame
 	asked_by:   runtime.Source_Code_Location,   // the last who asked for frames (loop_rates.odin)
@@ -197,7 +197,7 @@ window_by_id :: proc(app: ^App, id: int) -> ^Browser_Window {
 // A window's tabs, its current one, its address field (active or not: they are only in the window).
 window_tabs :: proc(app: ^App, w: ^Browser_Window) -> ^[dynamic]^Tab { return &w.tabs }
 window_current :: proc(app: ^App, w: ^Browser_Window) -> ^int { return &w.current }
-window_address :: proc(app: ^App, w: ^Browser_Window) -> ^ui.Text_Field { return &w.address }
+window_address :: proc(app: ^App, w: ^Browser_Window) -> ^ui.Line_Edit { return &w.address }
 
 window_current_tab :: proc(app: ^App, w: ^Browser_Window) -> ^Tab {
 	tabs := window_tabs(app, w)
@@ -336,7 +336,7 @@ address_sync :: proc(app: ^App, w: ^Browser_Window, drop_edit := false) {
 	t := window_current_tab(app, w)
 	want := tab_address(t)
 	id := t != nil ? t.id : 0
-	text := ui.field_string(field)
+	text := ui.line_edit_string(field)
 	if text == want && a.shown == want { a.tab = id; return }
 	focused := w == app.active && w.own.address_key != 0 && ui.focus_key() == w.own.address_key
 	whole := min(field.cursor, field.mark) == 0 && max(field.cursor, field.mark) == len(text)
@@ -345,12 +345,12 @@ address_sync :: proc(app: ^App, w: ^Browser_Window, drop_edit := false) {
 	delete(a.shown)
 	a.shown = strings.clone(want)
 	a.tab = id
-	ui.field_set(field, want)
-	if focused { ui.field_select_all(field) }
+	ui.line_edit_set(field, want)
+	if focused { ui.line_edit_select_all(field) }
 }
 
 address_destroy :: proc(w: ^Browser_Window) {
-	ui.field_destroy(&w.address)
+	ui.line_edit_destroy(&w.address)
 	delete(w.own.address_text.shown)
 }
 
@@ -521,7 +521,7 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 	bw.opened = time.tick_now()
 	nw.user = bw
 	ui.init(bw.ui, &app.fonts, &app.theme)
-	chrome_a11y_init()   // (the caption buttons' names are each interface state's)
+	chrome_a11y_init(bw.ui)   // (the caption buttons' names are each interface state's)
 	bw.ui.icon_font = app.lucide
 	bw.ui.menu_icon_font = app.lucide
 	bw.ui.mono_font = active_window(app).ui.mono_font

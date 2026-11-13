@@ -111,7 +111,7 @@ chrome_open_menu_over_the_resize_band :: proc(t: ^testing.T) {
 
 	chrome_command(w, "browser.main_menu")
 	session.frames(w.s, 2)
-	testing.expect(t, ui.ctx_menu_any_open(), "the menu is open")
+	testing.expect(t, ui.menu_any_open(), "the menu is open")
 	chrome_still(w)
 	testing.expect_value(t, hit(w, corner), platform.Hit.Client)       // the open menu over the band and its corner is the browser's
 	testing.expect_value(t, hit(w, band), platform.Hit.Client)
@@ -270,5 +270,5 @@ chrome_downloads_row_menu_over_the_panel :: proc(t: ^testing.T) {
 	session.click_text(w.s, "Remove from the list")
 	chrome_still(w)
 	testing.expect_value(t, len(w.app.dls.list), 0)
-	testing.expect(t, !ui.ctx_menu_any_open(), "choosing closes the menu and the drop-down")
+	testing.expect(t, !ui.menu_any_open(), "choosing closes the menu and the drop-down")
 }

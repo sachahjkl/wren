@@ -120,7 +120,7 @@ nav_button :: proc(id, glyph, tooltip: string, enabled: bool) -> bool {
 	clicked := false
 	ui.next({width = ui.px(em * NAV_BUTTON_EM), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
 	if ui.disabled(!enabled) {
-		sig := ui.icon_button(id, glyph)
+		sig := ui.button(id, icon = glyph)
 		clicked = sig.clicked
 		tip(sig, tooltip)
 	}
@@ -227,7 +227,7 @@ address_bar :: proc(app: ^App, t: ^Tab, width: ui.Size) {
 		}
 		ui.next(field)
 		ui.a11y({name = i18n.tr("Address and search bar"), shortcut = "Ctrl+L"})
-		res = ui.line_edit("###address", &wnd.address, i18n.tr("Search or enter an address"))
+		res = ui.line_edit("###address", &wnd.address, {placeholder = i18n.tr("Search or enter an address")})
 		field_radius := res.box != nil ? res.box.radius : em * 0.5
 		security_chip(app, t, inset, h - 2 * inset, field_radius, res.box)
 		zoom_overlay(app, t, res.box, h)
@@ -236,7 +236,7 @@ address_bar :: proc(app: ^App, t: ^Tab, width: ui.Size) {
 		if b := res.box; b != nil {   // the field's own box: it sits in the address bar's container
 			if ui.focus_key() != b.key { urlbar_view(app).key_focus = true }   // the list waits for a click (urlbar_keys)
 			ui.set_focus(b.key)
-			ui.field_select_all(&wnd.address)
+			ui.line_edit_select_all(&wnd.address)
 		}
 	}
 	if urlbar_edited(app, t, res) {
@@ -244,7 +244,7 @@ address_bar :: proc(app: ^App, t: ^Tab, width: ui.Size) {
 	}
 	urlbar_popup(app, t, res.box)
 	if res.committed && t != nil {
-		address := strings.clone(strings.trim_space(ui.field_string(&wnd.address)), context.temp_allocator)
+		address := strings.clone(strings.trim_space(ui.line_edit_string(&wnd.address)), context.temp_allocator)
 		if address != "" {
 			navigate(app, t, address_or_search(app, address), origin = .User)
 			forms_focus_from_chrome(app, t, 1)   // the page has the keyboard after a navigation from the address bar
@@ -283,19 +283,19 @@ zoom_overlay :: proc(app: ^App, t: ^Tab, field: ^ui.Box, bar_h: f32) {
 	if ui.row(.Center, {.Draw_Background, .Draw_Border}, "###zoom_pill") {
 		ui.next({width = ui.px(btn), height = ui.pct(1), radius = ph * 0.5, text_pad = 0})
 		if ui.tags("ghost_button") {
-			out := ui.button("−###zoom_out")
+			out := ui.button("zoom_out", "−")
 			tip(out, "Zoom out (Ctrl+-)")
 			if out.clicked { zoom_step(app, t, -1) }
 		}
 		ui.next({width = ui.px(label), height = ui.pct(1), radius = ph * 0.5, text_pad = 0})
 		if ui.tags("ghost_button") {
-			z := ui.button(fmt.aprintf("%d %%###zoom_chip", zoom_percent(t), allocator = ui.frame_allocator()))
+			z := ui.button("zoom_chip", fmt.tprintf("%d %%", zoom_percent(t)))
 			tip(z, "Page zoom: click to reset (Ctrl+0)")
 			if z.clicked { zoom_set(app, t, 1) }
 		}
 		ui.next({width = ui.px(btn), height = ui.pct(1), radius = ph * 0.5, text_pad = 0})
 		if ui.tags("ghost_button") {
-			in_ := ui.button("+###zoom_in")
+			in_ := ui.button("zoom_in", "+")
 			tip(in_, "Zoom in (Ctrl++)")
 			if in_.clicked { zoom_step(app, t, 1) }
 		}
@@ -489,11 +489,11 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 			ui.label(fmt.aprintf("%s###sec_label", sec.label, allocator = ui.frame_allocator()))
 		}
 		ui.spacer(ui.px(em * 0.65))
-		if window_asked(app, .Page_Info, ui.parent_box()) { sig.clicked = !ui.ctx_menu_is_open(ui.key_from_string(ui.parent_box().parent.key, "###page_info")) }
+		if window_asked(app, .Page_Info, ui.parent_box()) { sig.clicked = !ui.menu_is_open(fmt.tprintf("page_info_%x", u64(ui.parent_box().parent.key))) }
 		if sig.clicked {
-			key := ui.key_from_string(ui.parent_box().parent.key, "###page_info")
-			if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else {
-				ui.ctx_menu_open(key, {b.rect.min.x, b.rect.max.y + 6}, b.key)
+			key := fmt.tprintf("page_info_%x", u64(ui.parent_box().parent.key))
+			if ui.menu_is_open(key) { ui.menu_close() } else {
+				ui.menu_open(key, ui.Vec2{b.rect.min.x, b.rect.max.y + 6}, b.key)
 			}
 		}
 		tip(sig, "Page information")
@@ -585,9 +585,9 @@ enum_label :: proc(v: any) -> string {
 
 page_info_popup :: proc(app: ^App, t: ^Tab, sec: Security, chip: ^ui.Box) {
 	em := ui.font_size()
-	key := ui.key_from_string(chip.parent.key, "###page_info")
+	key := fmt.tprintf("page_info_%x", u64(chip.parent.key))
 	w := em * 25
-	if ui.ctx_menu(key, w) {
+	if ui.menu(key, w) {
 		// header: what the connection is, in the tone of the chip
 		ui.spacer(ui.px(em * 0.5))
 		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.4))})
@@ -648,14 +648,14 @@ page_info_popup :: proc(app: ^App, t: ^Tab, sec: Security, chip: ^ui.Box) {
 		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.2))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.9))
-			if ui.button_icon("###pi_copy", lucide.COPY, "Copy address", intent = .Primary, width = ui.px(em * 10)).clicked && t != nil { clip_set(t.url); ui.ctx_menu_close() }
+			if ui.button("###pi_copy", "Copy address", lucide.COPY, {intent = .Primary, width = ui.px(em * 10)}).clicked && t != nil { clip_set(t.url); ui.menu_close() }
 			ui.spacer(ui.px(em * 0.5))
 			host := t != nil && t.page != nil ? t.page.env.location.host : ""
 			if ui.disabled(host == "") {
-				if ui.button_icon("###pi_clear", lucide.TRASH_2, "Clear site data", intent = .Danger, width = ui.px(em * 10)).clicked {
+				if ui.button("###pi_clear", "Clear site data", lucide.TRASH_2, {intent = .Danger, width = ui.px(em * 10)}).clicked {
 					// cookies, localStorage, sessionStorage, IndexedDB and the HTTP cache of the site (about:sites lists them)
 					tab_log(t, .Log, clear_site(app, host, CLEAR_ALL))
-					ui.ctx_menu_close()
+					ui.menu_close()
 				}
 			}
 		}
@@ -676,18 +676,18 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 	b := ui.custom("###burger", burger_draw, d, {.Clickable, .Draw_Background, .Draw_Hot_Effects})
 	ui.pop_tags()
 	sig := ui.signal(b)
-	key := ui.key_from_string(b.parent.key, "###main_menu")
+	key := fmt.tprintf("main_menu_%x", u64(b.parent.key))
 	// Alt+F / Alt+E: opened from the keyboard, its first item active
-	if window_asked(app, .Main_Menu, b) && !ui.ctx_menu_is_open(key) { ui.ctx_menu_open_rect(key, b.rect, b.key, from_keyboard = true) }
+	if window_asked(app, .Main_Menu, b) && !ui.menu_is_open(key) { ui.menu_open(key, b.rect, b.key, from_keyboard = true) }
 	if sig.clicked {
-		if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else {
-			ui.ctx_menu_open_rect(key, b.rect, b.key)
+		if ui.menu_is_open(key) { ui.menu_close() } else {
+			ui.menu_open(key, b.rect, b.key)
 		}
 	}
 	tip(sig, i18n.tr("Menu"))
-	ui.a11y_set(b, {popup = .Menu, expanded = ui.ctx_menu_is_open(key), shortcut = "Alt+F"})
+	ui.a11y_set(b, {popup = .Menu, expanded = ui.menu_is_open(key), shortcut = "Alt+F"})
 
-	if ui.ctx_menu(key) {
+	if ui.menu(key) {
 		// the items are commands of the registry (commands.odin): same titles, shortcuts and conditions as elsewhere
 		web := t != nil && t.kind == .Web
 		if menu_command(app, t, "tab.new") { return }
@@ -704,7 +704,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		menu_command(app, t, "view.bookmarks_bar")
 		menu_command(app, t, "browser.history_tree")
 		ui.menu_separator()
-		if ui.menu_submenu(fmt.tprintf("Zoom (%d %%)###zoom_sub", zoom_percent(t)), icon = lucide.ZOOM_IN, enabled = web) {
+		if ui.menu_submenu(fmt.tprintf("Zoom (%d %%)###zoom_sub", zoom_percent(t)), icon = lucide.ZOOM_IN, disabled = !web) {
 			menu_command(app, t, "page.zoom_in")
 			menu_command(app, t, "page.zoom_out")
 			menu_command(app, t, "page.zoom_reset")
@@ -804,7 +804,7 @@ stop_loading :: proc(app: ^App, t: ^Tab) {
 	request_frames(app, 2)
 }
 
-// Where a toolbar button's panel opens (ui.ctx_menu_open_rect): under the button, its right edge on the button's right
+// Where a toolbar button's panel opens (ui.menu_open): under the button, its right edge on the button's right
 // edge, so a panel of a button at the end of the toolbar keeps the toolbar's margin from the window's edge instead of
 // being pushed against it.
 toolbar_panel_rect :: proc(button: ui.Rect, width: f32) -> ui.Rect {

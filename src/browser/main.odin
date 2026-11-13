@@ -1214,7 +1214,7 @@ page_move_flush :: proc(app: ^App, t: ^Tab, last_move: platform.Event) {
 	hovered := base.NIL_HANDLE
 	// (the pointer over a menu, a chrome widget that overlaps the page or the statistics panel is not over the page: its hover state and
 	// its pointer events stay where they were: the card under a menu used to light up as the pointer crossed the menu)
-	over_chrome := ui.ctx_menu_any_open() || ui.hot_key() != 0 || hud_captures(app, last_move.pos)
+	over_chrome := ui.menu_any_open() || ui.hot_key() != 0 || hud_captures(app, last_move.pos)
 	scrollbar_over_move(app, t, last_move.pos, !over_chrome && draw.rect_contains(wnd.page_rect, last_move.pos))
 	if !over_chrome && draw.rect_contains(wnd.page_rect, last_move.pos) && t.layout.valid { hovered = hit_or_root(t, hit_test(&t.layout, last_move.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll)) }
 	st := t.page.style_state
@@ -1293,7 +1293,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		case .Mouse_Press:
 			if side_button_command(ev.button) != .None { continue }   // (the release acts, and a page has no such button to be told of)
 			if !inside || !t.layout.valid { continue }
-			if ui.ctx_menu_any_open() { continue }   // the press closes the menu (the toolkit's)
+			if ui.menu_any_open() { continue }   // the press closes the menu (the toolkit's)
 			local := ev.pos - wnd.page_rect.min + doc_scroll_vec(t)
 			pressed := hit_test(&t.layout, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll)
 			t.scroll_target = pressed
@@ -1910,7 +1910,7 @@ app_start :: proc(args: []string) -> ^App {
 	app_draw_init(app)
 	draw.set_partial_redraw(&app.dc, true)   // a frame that marks a region draws only that (a caret's toggle: frame()); others are whole
 	app_ui_init(app)
-	chrome_a11y_init()   // (what screen readers call the caption buttons: a11y_chrome.odin)
+	chrome_a11y_init(active_window(app).ui)   // (what screen readers call the caption buttons: a11y_chrome.odin)
 	page_render_init(app)
 	first_paint_init(app)
 	interaction_init(app)
@@ -2118,7 +2118,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	prefs_page.destroy(&app.settings_view)
 	host.shutdown_step("interaction_destroy")
 	interaction_destroy(app)
-	host.shutdown_step("ui.field_destroy")
+	host.shutdown_step("ui.line_edit_destroy")
 	address_destroy(&app.bare)   // (the windows' with their toolkit states: windows_destroy_ui)
 	host.shutdown_step("console_eval_destroy")
 	console_eval_destroy()

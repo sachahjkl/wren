@@ -15,7 +15,6 @@ package browser
 import "core:fmt"
 import "core:strings"
 import "toolkit:platform"
-import "toolkit:ui"
 import "wb:base"
 import "wb:extensions"
 import "wb:host"
@@ -265,7 +264,7 @@ ext_pick_folder :: proc(app: ^App, archive := false) {
 		delete(j.chosen); free(j)
 	})
 	if !started {
-		ui.toast(.Bad, "The folder dialog could not be opened")
+		announce(app, .Bad, "The folder dialog could not be opened")
 		free(job)
 		return
 	}

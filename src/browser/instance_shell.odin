@@ -26,7 +26,6 @@ import "core:os"
 import "core:strings"
 import "toolkit:instance"
 import "toolkit:platform"
-import "toolkit:ui"
 import "wb:config"
 import process "toolkit:process"
 import "wb:host"
@@ -166,7 +165,7 @@ instance_release :: proc() {
 instance_frame :: proc(app: ^App) {
 	if !inst.warn_pending { return }
 	inst.warn_pending = false
-	ui.toast(.Warn, "%s", inst.warning)
+	announce(app, .Warn, inst.warning)
 	if t := current_tab(app); t != nil { tab_log(t, .Warn, inst.warning) }
 }
 

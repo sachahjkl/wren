@@ -197,7 +197,7 @@ remote_start :: proc(app: ^App, requested: bool, arg_name: string) {
 remote_notice :: proc(app: ^App) {
 	r := &app.remote
 	if r.error == "" { return }
-	ui_toast_remote(r.error)
+	announce(app, .Warn, r.error)
 	if t := current_tab(app); t != nil { tab_log(t, .Warn, r.error) }
 	delete(r.error)
 	r.error = ""

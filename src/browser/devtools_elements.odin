@@ -88,8 +88,8 @@ Dev_Elements :: struct {
 	edit:      El_Edit_Kind,
 	edit_h:    base.Handle,
 	edit_attr: string,         // owned: the attribute being edited
-	field:     ui.Text_Field,
-	area:      ui.Text_Area,   // the markup of "edit as HTML"
+	field:     ui.Line_Edit,
+	area:      ui.Text_Edit,   // the markup of "edit as HTML"
 	focus_edit: bool,
 	edit_age:  int,
 	// search (Ctrl+F): what the text, a selector and an XPath find, in document order; found_at the current one
@@ -123,8 +123,8 @@ elements_destroy :: proc() {
 	delete(e.ids)
 	delete(e.expanded)
 	delete(e.edit_attr)
-	ui.field_destroy(&e.field)
-	ui.area_destroy(&e.area)
+	ui.line_edit_destroy(&e.field)
+	ui.text_edit_destroy(&e.area)
 	dt_filter_destroy(&e.search)
 	delete(e.found)
 	for c in e.crumbs { delete(c.label) }
@@ -533,7 +533,7 @@ tree_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	n := len(e.rows)
 	idx := row_index(e, e.selected)
 	if e.reveal && idx >= 0 { e.list.reveal, e.list.sel = idx, idx; e.reveal = false }
-	menu_key := ui.key_from_string(0, "###dt_el_menu")
+	menu_key := "###dt_el_menu"
 	ui.next({width = ui.fill(), height = ui.fill(), axis = .Y})
 	if ui.column(.Start, {}, "###dt_el_tree_col") {
 		editing_html := e.edit == .Html
@@ -583,7 +583,7 @@ tree_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 }
 
 @(private = "file")
-row_input :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, r: ^El_Row, k: int, sig: ui.Signal, rb: ^ui.Box, menu_key: ui.Key) {
+row_input :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, r: ^El_Row, k: int, sig: ui.Signal, rb: ^ui.Box, menu_key: string) {
 	x := sig.mouse.x - dt_px(6) - f32(r.depth) * dt_px(EL_INDENT)
 	if sig.pressed && r.kind != .Close {
 		e.selected = r.h
@@ -598,7 +598,7 @@ row_input :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, r: ^El_Row, k: int, sig:
 		e.menu_row = k
 		e.menu_has_span = false
 		if sp, ok := attr_at(r, sig.mouse.x - dt_px(6) - f32(r.depth) * dt_px(EL_INDENT) - dt_px(13)); ok { e.menu_span, e.menu_has_span = sp, true }
-		ui.ctx_menu_open(menu_key, ui.mouse_pos())
+		ui.menu_open(menu_key, ui.mouse_pos())
 	}
 	// dragging a node to another place
 	if sig.dragging && r.kind != .Close && r.kind != .Doctype && (math.abs(sig.drag_delta.y) > dt_px(5)) {
@@ -640,7 +640,7 @@ finish_drag :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	if parent == base.NIL_HANDLE { return }
 	// not into itself
 	for cur := parent; cur != base.NIL_HANDLE; { if cur == h { return }; cn := dom.get(d, cur); if cn == nil { break }; cur = cn.parent }
-	if why := page.dev_move_node(t.page, h, parent, before); why != "" { ui.toast(.Warn, "Elements: %s", why) } else { e.expanded[parent] = true; e.version += 1; e.selected = h; request_frames(app, 3) }
+	if why := page.dev_move_node(t.page, h, parent, before); why != "" { announce(app, .Warn, fmt.tprintf("Elements: %s", why)) } else { e.expanded[parent] = true; e.version += 1; e.selected = h; request_frames(app, 3) }
 }
 
 // The attribute under x (pixels from the start of the label).
@@ -668,7 +668,7 @@ begin_edit_at :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, r: ^El_Row, mouse_x:
 		n := dom.get(t.page.doc, r.h)
 		if n == nil { return }
 		e.edit, e.edit_h = .Text, r.h
-		ui.field_set(&e.field, strings.trim_space(n.text))
+		ui.line_edit_set(&e.field, strings.trim_space(n.text))
 	case .Open, .Inline:
 		if sp, ok := attr_at(r, x); ok {
 			delete(e.edit_attr)
@@ -677,7 +677,7 @@ begin_edit_at :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, r: ^El_Row, mouse_x:
 			// a click on the name edits the name, on the value (or the rest) edits the value
 			on_name := x < dt_w(app.dtm.mono, app.dtm.mono_fs, r.label[:sp.name_b])
 			e.edit, e.edit_h = on_name || sp.val_a < 0 ? .Attr_Name : .Attr_Value, r.h
-			if e.edit == .Attr_Name { ui.field_set(&e.field, name) } else { ui.field_set(&e.field, r.label[sp.val_a:sp.val_b]) }
+			if e.edit == .Attr_Name { ui.line_edit_set(&e.field, name) } else { ui.line_edit_set(&e.field, r.label[sp.val_a:sp.val_b]) }
 		} else {
 			begin_html_edit(app, t, e, r.h)
 			return
@@ -692,14 +692,14 @@ begin_edit_at :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, r: ^El_Row, mouse_x:
 begin_html_edit :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, h: base.Handle) {
 	if t.page == nil { return }
 	e.edit, e.edit_h = .Html, h
-	ui.area_set(&e.area, page.dev_outer_html(t.page, h))
+	ui.text_edit_set(&e.area, page.dev_outer_html(t.page, h))
 	e.focus_edit = true
 }
 
 @(private = "file")
 begin_add_attr :: proc(e: ^Dev_Elements, h: base.Handle) {
 	e.edit, e.edit_h = .Attr_New, h
-	ui.field_clear(&e.field)
+	ui.line_edit_clear(&e.field)
 	e.focus_edit = true
 	e.expanded[h] = e.expanded[h]
 }
@@ -711,7 +711,7 @@ edit_row :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, r: ^El_Row, k: int) {
 	if ui.row(.Center, {}, fmt.tprintf("###ele%d", u64(r.h))) {
 		ui.spacer(ui.px(dt_px(6) + f32(r.depth) * dt_px(EL_INDENT) + dt_px(13)))
 		ui.next({width = ui.fill(), height = ui.pct(1), radius = app.dtm.radius, font = app.dtm.mono, font_size = app.dtm.mono_fs, text_pad = dt_px(4)})
-		res := ui.line_edit("###dt_el_field", &e.field, e.edit == .Attr_New ? "name=\"value\"" : "")
+		res := ui.line_edit("###dt_el_field", &e.field, {placeholder = e.edit == .Attr_New ? "name=\"value\"" : ""})
 		if e.focus_edit { if res.box != nil { ui.set_focus(res.box.key) }; e.focus_edit = false }
 		if res.committed { commit_edit(app, t, e) }
 		if res.cancelled { e.edit = .None }
@@ -724,7 +724,7 @@ edit_row :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, r: ^El_Row, k: int) {
 commit_edit :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	defer { e.edit = .None; e.edit_age = 0; e.version += 1; request_frames(app, 3) }
 	if t.page == nil { return }
-	text := ui.field_string(&e.field)
+	text := ui.line_edit_string(&e.field)
 	switch e.edit {
 	case .Attr_Value: page.dev_set_attribute(t.page, e.edit_h, e.edit_attr, text)
 	case .Attr_Name:
@@ -771,7 +771,7 @@ html_editor :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 @(private = "file")
 apply_html :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	if t.page == nil { e.edit = .None; return }
-	if why := page.dev_set_outer_html(t.page, e.edit_h, ui.area_string(&e.area)); why != "" { ui.toast(.Warn, "Elements: %s", why); return }
+	if why := page.dev_set_outer_html(t.page, e.edit_h, ui.text_edit_string(&e.area)); why != "" { announce(app, .Warn, fmt.tprintf("Elements: %s", why)); return }
 	e.edit = .None
 	e.version += 1
 	request_frames(app, 3)
@@ -847,42 +847,42 @@ toggle_hidden :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, h: base.Handle) {
 // Menu
 
 @(private = "file")
-elements_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, key: ui.Key) {
-	if ui.ctx_menu(key, dt_px(270)) { elements_menu_items(app, t, e) }
+elements_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, key: string) {
+	if ui.menu(key, dt_px(270)) { elements_menu_items(app, t, e) }
 }
 
 @(private = "file")
 elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
-	if e.menu_row < 0 || e.menu_row >= len(e.rows) || t.page == nil { ui.ctx_menu_close(); return }
+	if e.menu_row < 0 || e.menu_row >= len(e.rows) || t.page == nil { ui.menu_close(); return }
 	r := e.rows[e.menu_row]
 	h := r.h
 	is_el := r.kind == .Open || r.kind == .Inline
-	if ui.menu_item("Add attribute###dt_em_add", "", enabled = is_el, icon = lucide.PLUS).clicked { begin_add_attr(e, h) }
-	if ui.menu_item(e.menu_has_span ? "Edit attribute###dt_em_attr" : "Edit text###dt_em_text", "", enabled = is_el || r.kind == .Text || r.kind == .Comment, icon = lucide.PENCIL).clicked {
+	if ui.menu_item("Add attribute###dt_em_add", "", disabled = !is_el, icon = lucide.PLUS).clicked { begin_add_attr(e, h) }
+	if ui.menu_item(e.menu_has_span ? "Edit attribute###dt_em_attr" : "Edit text###dt_em_text", "", disabled = !(is_el || r.kind == .Text || r.kind == .Comment), icon = lucide.PENCIL).clicked {
 		if e.menu_has_span {
 			sp := e.menu_span
 			delete(e.edit_attr)
 			e.edit_attr = strings.clone(r.label[sp.name_a:sp.name_b])
 			e.edit, e.edit_h = sp.val_a >= 0 ? .Attr_Value : .Attr_Name, h
-			ui.field_set(&e.field, sp.val_a >= 0 ? r.label[sp.val_a:sp.val_b] : e.edit_attr)
+			ui.line_edit_set(&e.field, sp.val_a >= 0 ? r.label[sp.val_a:sp.val_b] : e.edit_attr)
 			e.focus_edit = true
 		} else if r.kind == .Text || r.kind == .Comment { begin_edit_at(app, t, e, &r, 0, 0) }
 	}
-	if ui.menu_item("Edit as HTML###dt_em_html", "F2", enabled = is_el, icon = lucide.PENCIL).clicked { begin_html_edit(app, t, e, h) }
+	if ui.menu_item("Edit as HTML###dt_em_html", "F2", disabled = !is_el, icon = lucide.PENCIL).clicked { begin_html_edit(app, t, e, h) }
 	ui.menu_separator()
-	if ui.menu_item("Duplicate element###dt_em_dup", "Ctrl+D", enabled = is_el, icon = lucide.COPY).clicked { duplicate_node(app, t, e, h) }
-	if ui.menu_item("Delete element###dt_em_del", "Del", enabled = r.kind != .Close && r.kind != .Doctype, icon = lucide.TRASH_2).clicked { delete_node(app, t, e, h) }
-	if ui.menu_item("Hide element###dt_em_hide", "H", enabled = is_el, icon = lucide.EYE_OFF).clicked { toggle_hidden(app, t, e, h) }
+	if ui.menu_item("Duplicate element###dt_em_dup", "Ctrl+D", disabled = !is_el, icon = lucide.COPY).clicked { duplicate_node(app, t, e, h) }
+	if ui.menu_item("Delete element###dt_em_del", "Del", disabled = !(r.kind != .Close && r.kind != .Doctype), icon = lucide.TRASH_2).clicked { delete_node(app, t, e, h) }
+	if ui.menu_item("Hide element###dt_em_hide", "H", disabled = !is_el, icon = lucide.EYE_OFF).clicked { toggle_hidden(app, t, e, h) }
 	ui.menu_separator()
 	if ui.menu_submenu("Copy###dt_em_copy", icon = lucide.COPY) {
 		if ui.menu_item("Copy outerHTML###dt_em_c_outer", "Ctrl+C", icon = lucide.COPY).clicked { clip_set(page.dev_outer_html(t.page, h)) }
-		if ui.menu_item("Copy innerHTML###dt_em_c_inner", enabled = is_el, icon = lucide.COPY).clicked { clip_set(page.dev_inner_html(t.page, h)) }
+		if ui.menu_item("Copy innerHTML###dt_em_c_inner", disabled = !is_el, icon = lucide.COPY).clicked { clip_set(page.dev_inner_html(t.page, h)) }
 		if ui.menu_item("Copy element###dt_em_c_el", icon = lucide.COPY).clicked { clip_set(page.dev_outer_html(t.page, h)) }
 		ui.menu_separator()
-		if ui.menu_item("Copy selector###dt_em_c_sel", enabled = is_el, icon = lucide.COPY).clicked { clip_set(css_selector_of(t.page, h)) }
-		if ui.menu_item("Copy JS path###dt_em_c_js", enabled = is_el, icon = lucide.COPY).clicked { clip_set(fmt.tprintf("document.querySelector('%s')", css_selector_of(t.page, h))) }
-		if ui.menu_item("Copy XPath###dt_em_c_xp", enabled = is_el, icon = lucide.COPY).clicked { clip_set(xpath_of(t.page, h, false)) }
-		if ui.menu_item("Copy full XPath###dt_em_c_fxp", enabled = is_el, icon = lucide.COPY).clicked { clip_set(xpath_of(t.page, h, true)) }
+		if ui.menu_item("Copy selector###dt_em_c_sel", disabled = !is_el, icon = lucide.COPY).clicked { clip_set(css_selector_of(t.page, h)) }
+		if ui.menu_item("Copy JS path###dt_em_c_js", disabled = !is_el, icon = lucide.COPY).clicked { clip_set(fmt.tprintf("document.querySelector('%s')", css_selector_of(t.page, h))) }
+		if ui.menu_item("Copy XPath###dt_em_c_xp", disabled = !is_el, icon = lucide.COPY).clicked { clip_set(xpath_of(t.page, h, false)) }
+		if ui.menu_item("Copy full XPath###dt_em_c_fxp", disabled = !is_el, icon = lucide.COPY).clicked { clip_set(xpath_of(t.page, h, true)) }
 	}
 	if ui.menu_submenu("Force state###dt_em_state", icon = lucide.TEXT_CURSOR_INPUT) {
 		f := page.dev_forced(t.page)
@@ -900,25 +900,25 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			e.version += 1
 			request_frames(app, 3)
 		}
-		if ui.menu_item(":active###dt_em_s_a", checked = f.active, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 0) }
-		if ui.menu_item(":hover###dt_em_s_h", checked = f.hover, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 1) }
-		if ui.menu_item(":focus###dt_em_s_f", checked = f.focus, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 2) }
-		if ui.menu_item(":focus-within###dt_em_s_fw", checked = f.focus_within, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 3) }
-		if ui.menu_item(":visited###dt_em_s_v", checked = f.visited, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 4) }
+		if ui.menu_item(":active###dt_em_s_a", checked = f.active, disabled = !is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 0) }
+		if ui.menu_item(":hover###dt_em_s_h", checked = f.hover, disabled = !is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 1) }
+		if ui.menu_item(":focus###dt_em_s_f", checked = f.focus, disabled = !is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 2) }
+		if ui.menu_item(":focus-within###dt_em_s_fw", checked = f.focus_within, disabled = !is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 3) }
+		if ui.menu_item(":visited###dt_em_s_v", checked = f.visited, disabled = !is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 4) }
 		ui.menu_separator()
-		if ui.menu_item("Clear forced states###dt_em_s_clear", enabled = page.dev_forced(t.page).el != base.NIL_HANDLE, icon = lucide.TRASH_2).clicked {
+		if ui.menu_item("Clear forced states###dt_em_s_clear", disabled = page.dev_forced(t.page).el == base.NIL_HANDLE, icon = lucide.TRASH_2).clicked {
 			page.dev_force_state(t.page, base.NIL_HANDLE, false, false, false, false, false)
 			e.version += 1
 			request_frames(app, 3)
 		}
 	}
 	ui.menu_separator()
-	if ui.menu_item("Expand all underneath###dt_em_exp", enabled = r.expandable, icon = lucide.CHEVRON_DOWN).clicked { budget := DEV_ELEMENTS_TOGGLE_BUDGET; toggle_all(e, t.page.doc, h, true, &budget) }
-	if ui.menu_item("Collapse all underneath###dt_em_col", enabled = r.expandable, icon = lucide.CHEVRON_UP).clicked { budget := DEV_ELEMENTS_TOGGLE_BUDGET; toggle_all(e, t.page.doc, h, false, &budget) }
-	if ui.menu_item("Scroll into view###dt_em_scroll", enabled = is_el, icon = lucide.EYE).clicked { scroll_into_view(app, t, h) }
-	if ui.menu_item("Store as global variable###dt_em_store", enabled = r.kind != .Close && r.kind != .Doctype, icon = lucide.TERMINAL).clicked {
+	if ui.menu_item("Expand all underneath###dt_em_exp", disabled = !r.expandable, icon = lucide.CHEVRON_DOWN).clicked { budget := DEV_ELEMENTS_TOGGLE_BUDGET; toggle_all(e, t.page.doc, h, true, &budget) }
+	if ui.menu_item("Collapse all underneath###dt_em_col", disabled = !r.expandable, icon = lucide.CHEVRON_UP).clicked { budget := DEV_ELEMENTS_TOGGLE_BUDGET; toggle_all(e, t.page.doc, h, false, &budget) }
+	if ui.menu_item("Scroll into view###dt_em_scroll", disabled = !is_el, icon = lucide.EYE).clicked { scroll_into_view(app, t, h) }
+	if ui.menu_item("Store as global variable###dt_em_store", disabled = !(r.kind != .Close && r.kind != .Doctype), icon = lucide.TERMINAL).clicked {
 		t.conlog.evaluating = true
-		if page.dev_store_node(t.page, h) { ui.toast(.Info, "Stored as a global variable: see the Console") } else { ui.toast(.Warn, "This node is not in the document's own tree (a shadow tree or a detached node)") }
+		if page.dev_store_node(t.page, h) { announce(app, .Info, "Stored as a global variable: see the Console") } else { announce(app, .Warn, "This node is not in the document's own tree (a shadow tree or a detached node)") }
 		t.conlog.evaluating = false
 	}
 	if sp := e.menu_span; e.menu_has_span && sp.val_a >= 0 {

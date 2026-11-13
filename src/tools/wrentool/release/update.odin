@@ -14,6 +14,7 @@ import "core:path/filepath"
 import "core:strings"
 import "core:time"
 import "wb:tools/tooling"
+import signing "../../../../ext/gui_toolkit/src/signing"
 import update "../../../../ext/gui_toolkit/src/update"
 import wren_update "wb:update"
 
@@ -71,7 +72,7 @@ update_read_seed_file :: proc(path: string) -> (seed: [32]byte, ok: bool) {
 	for line in strings.split_lines(string(data), context.temp_allocator) {
 		l := strings.trim_space(line)
 		if l == "" || strings.has_prefix(l, "#") { continue }
-		s, good := update.seed_decode(l)
+		s, good := signing.key_decode(l)
 		if !good { fmt.eprintfln("%s is not an update private key file", path); return {}, false }
 		return s, true
 	}
@@ -85,7 +86,7 @@ update_seed_chosen :: proc(f: tooling.Flags) -> (seed: [32]byte, ok: bool) {
 	if p := tooling.flag(f, "-Private", ""); p != "" { return update_read_seed_file(p) }
 	text := env(UPDATE_KEY_ENV)
 	if text == "" { fmt.eprintfln("no update key: pass -Private FILE or set %s", UPDATE_KEY_ENV); return {}, false }
-	s, good := update.seed_decode(text)
+	s, good := signing.key_decode(text)
 	if !good { fmt.eprintfln("%s is not an update private key (32 bytes of base64url)", UPDATE_KEY_ENV); return {}, false }
 	return s, true
 }
@@ -100,8 +101,8 @@ update_keygen :: proc(args: []string) -> int {
 	if os.exists(path) { return fail(path, "exists already: a second key would orphan the releases signed with the first (delete it yourself if you mean it)") }
 	seed: [32]byte
 	crypto.rand_bytes(seed[:])
-	text := update.seed_encode(seed[:], context.temp_allocator)
-	pub, _ := update.public_key_of(seed[:], context.temp_allocator)
+	text := signing.key_encode(seed[:], context.temp_allocator)
+	pub, _ := signing.public_key_of(seed[:], context.temp_allocator)
 	body := fmt.tprintf("# Wren update signing key (Ed25519). SECRET: whoever has it can ship an update to every Wren.\n# Never commit it, never send it. Keep it in secrets/production.yaml (UPDATE_SIGNING_KEY) and in a password manager.\n%s\n", text)
 	if err := os.write_entire_file(path, body); err != nil { return fail("cannot write", path) }
 	fmt.printfln("private key written to %s", path)
@@ -116,7 +117,7 @@ update_pubkey :: proc(args: []string) -> int {
 	if !ok { return EXIT_USAGE }
 	seed, got := update_seed_chosen(f)
 	if !got { return 1 }
-	pub, _ := update.public_key_of(seed[:], context.temp_allocator)
+	pub, _ := signing.public_key_of(seed[:], context.temp_allocator)
 	fmt.println(pub)
 	return 0
 }
@@ -137,7 +138,7 @@ update_make_manifest :: proc(exe, version, platform: string) -> (m: update.Manif
 	if !update.version_valid(version) { fmt.eprintfln("%q is not an X.Y.Z version", version); return {}, nil, false }
 	data, err := os.read_entire_file(exe, context.temp_allocator)
 	if err != nil { fmt.eprintfln("cannot read %s", exe); return {}, nil, false }
-	m = update.manifest_of(wren_update.PRODUCT, data, version, platform, "", update_today(), context.temp_allocator)   // (Wren has no channels)
+	m = update.manifest_of(wren_update.PRODUCT, data, {version = version, platform = platform, published = update_today()}, context.temp_allocator)   // (Wren has no channels)
 	return m, update.manifest_bytes(wren_update.PRODUCT, m, context.temp_allocator), true
 }
 
@@ -150,7 +151,7 @@ update_manifest :: proc(args: []string) -> int {
 	m, bytes, good := update_make_manifest(exe, version, tooling.flag(f, "-Platform", update.PLATFORM_WINDOWS_X64))
 	if !good { return 1 }
 	// what a client will accept: size and name checked as it will check them
-	if _, err := update.verify(wren_update.PRODUCT, bytes, "x", m.platform, "", context.temp_allocator); err == .Too_Long { return fail("the manifest is too large") }
+	if _, err := update.verify(wren_update.PRODUCT, bytes, "x", {platform = m.platform}, context.temp_allocator); err == .Too_Long { return fail("the manifest is too large") }
 	if os.write_entire_file(out, bytes) != nil { return fail("cannot write", out) }
 	fmt.printfln("%s: %s, %d bytes, sha256 %s", out, m.file, m.size, m.sha256)
 	return 0
@@ -185,7 +186,7 @@ update_verify :: proc(args: []string) -> int {
 	if e1 != nil || e2 != nil { return fail("cannot read the manifest or its signature") }
 	product := wren_update.PRODUCT
 	product.public_key = tooling.flag(f, "-Public", product.public_key)
-	m, err := update.verify(product, manifest, string(sig), tooling.flag(f, "-Platform", update.PLATFORM_WINDOWS_X64), "", context.temp_allocator)
+	m, err := update.verify(product, manifest, string(sig), {platform = tooling.flag(f, "-Platform", update.PLATFORM_WINDOWS_X64)}, context.temp_allocator)
 	if err != .None { fmt.eprintfln("INVALID: %s", update.error_text(err)); return 1 }
 	fmt.printfln("VALID: Wren %s for %s, %s, %d bytes, sha256 %s, published %s", m.version, m.platform, m.file, m.size, m.sha256, m.published)
 	if cur := tooling.flag(f, "-Current", ""); cur != "" {
@@ -213,7 +214,7 @@ package_update_manifest :: proc(exe, version, platform, dist: string, require: b
 		fmt.printfln("update: %s is not set: no update manifest", UPDATE_KEY_ENV)
 		return true
 	}
-	seed, good := update.seed_decode(text)
+	seed, good := signing.key_decode(text)
 	if !good { fmt.eprintfln("update: %s is not an update private key", UPDATE_KEY_ENV); return false }
 	m, bytes, made := update_make_manifest(exe, version, platform)
 	if !made { return false }
@@ -221,7 +222,7 @@ package_update_manifest :: proc(exe, version, platform, dist: string, require: b
 	if !signed { fmt.eprintln("update: cannot sign with this key"); return false }
 	// the key built into Wren must verify it: otherwise no Wren accepts this release
 	built_in := wren_update.PRODUCT.public_key
-	pub, _ := update.public_key_of(seed[:], context.temp_allocator)
+	pub, _ := signing.public_key_of(seed[:], context.temp_allocator)
 	if built_in == "" {
 		if require { fmt.eprintln("update: src/update/product.odin has no key: no Wren could verify this release"); return false }
 		built_in = pub
@@ -229,7 +230,7 @@ package_update_manifest :: proc(exe, version, platform, dist: string, require: b
 	if built_in != pub { fmt.eprintfln("update: the key that signs (%s) is not the one built into Wren (%s): no Wren would accept this release", pub, built_in); return false }
 	product := wren_update.PRODUCT
 	product.public_key = built_in
-	if _, err := update.verify(product, bytes, sig, platform, "", context.temp_allocator); err != .None { fmt.eprintfln("update: the manifest made here does not verify: %s", update.error_text(err)); return false }
+	if _, err := update.verify(product, bytes, sig, {platform = platform}, context.temp_allocator); err != .None { fmt.eprintfln("update: the manifest made here does not verify: %s", update.error_text(err)); return false }
 	json_path := fmt.tprintf("%s/%s", dist, update.manifest_name(platform, "", context.temp_allocator))
 	sig_path := fmt.tprintf("%s.sig", json_path)
 	if os.write_entire_file(json_path, bytes) != nil || os.write_entire_file(sig_path, fmt.tprintf("%s\n", sig)) != nil { fmt.eprintln("update: cannot write the manifest"); return false }

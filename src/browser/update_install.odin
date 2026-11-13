@@ -18,7 +18,6 @@ package browser
 import "core:fmt"
 import "core:os"
 import "core:strings"
-import "toolkit:ui"
 import "wb:base"
 import "wb:config"
 import process "toolkit:process"
@@ -99,7 +98,7 @@ update_install_destroy :: proc(app: ^App) {
 update_fail :: proc(app: ^App, why: string) {
 	delete(app.upd.problem); app.upd.problem = strings.clone(why)
 	app.upd.phase = .Failed
-	if app.upd.forced || app.upd.install_asked { ui.toast(.Warn, "Update: %s", why) }
+	if app.upd.forced || app.upd.install_asked { announce(app, .Warn, fmt.tprintf("Update: %s", why)) }
 	request_frames(app, 3)
 }
 
@@ -170,16 +169,16 @@ update_verify_both :: proc(app: ^App) {
 	if !app.upd.got_manifest || !app.upd.got_sig { return }
 	product := wren_update.PRODUCT
 	product.public_key = update_public_key(app)
-	m, err := update.check_release(product, app.upd.man_bytes, app.upd.sig_text, update_platform(), "", APP_VERSION, app.upd.tag, require_signature = update_signature_required(app))
+	m, err := update.check_release(product, app.upd.man_bytes, app.upd.sig_text, {platform = update_platform(), current = APP_VERSION, announced = app.upd.tag}, require_signature = update_signature_required(app))
 	if err != .None { update_fail(app, update.error_text(err)); return }
 	update.manifest_destroy(&app.upd.manifest)
 	app.upd.manifest = m
 	app.upd.phase = .Ready
 	if app.upd.forced {
-		ui.toast(.Info, "%s v%s is available and was checked (see About Wren). About Wren has the button that installs it.", APP_NAME, m.version)
+		announce(app, .Info, fmt.tprintf("%s v%s is available and was checked (see About Wren). About Wren has the button that installs it.", APP_NAME, m.version))
 		tab_open(app, WREN_URL, origin = .User)
 	} else {
-		ui.toast(.Info, "%s v%s is available (signed). Menu > Install the update, or About Wren.", APP_NAME, m.version)
+		announce(app, .Info, fmt.tprintf("%s v%s is available (signed). Menu > Install the update, or About Wren.", APP_NAME, m.version))
 	}
 	request_frames(app, 3)
 }
@@ -189,13 +188,13 @@ update_verify_both :: proc(app: ^App) {
 
 // The command and the button: download the verified release, check it, and replace the program.
 update_install :: proc(app: ^App) {
-	if ok, why := update_install_allowed(app); !ok { ui.toast(.Warn, "%s", why); return }
+	if ok, why := update_install_allowed(app); !ok { announce(app, .Warn, why); return }
 	app.upd.install_asked = true
 	switch app.upd.phase {
-	case .Downloading: ui.toast(.Info, "Already downloading the update…"); return
-	case .Installed:   ui.toast(.Info, "Wren v%s is installed already: restart Wren to use it.", app.upd.installed); return
+	case .Downloading: announce(app, .Info, "Already downloading the update…"); return
+	case .Installed:   announce(app, .Info, fmt.tprintf("Wren v%s is installed already: restart Wren to use it.", app.upd.installed)); return
 	case .Idle, .Verifying, .Failed:
-		ui.toast(.Info, "No verified update is waiting: use \"Check for updates\" first.")
+		announce(app, .Info, "No verified update is waiting: use \"Check for updates\" first.")
 		return
 	case .Ready:
 	}
@@ -207,7 +206,7 @@ update_install :: proc(app: ^App) {
 		request = {url = url, mode = .Navigate, credentials = .Omit, redirect = .Follow, destination = .Empty, max_body = int(m.size)},
 		on_event = update_download_event, user = app, scope = app.process, collect = true,
 	})
-	ui.toast(.Info, "Downloading %s v%s (%d MB)…", APP_NAME, m.version, m.size / (1024 * 1024))
+	announce(app, .Info, fmt.tprintf("Downloading %s v%s (%d MB)…", APP_NAME, m.version, m.size / (1024 * 1024)))
 	request_frames(app, 3)
 }
 
@@ -224,7 +223,7 @@ update_download_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event)
 		if problem := update_apply(exe, app.upd.manifest, ev.data); problem != "" { update_fail(app, problem); return }
 		delete(app.upd.installed); app.upd.installed = strings.clone(app.upd.manifest.version)
 		app.upd.phase = .Installed
-		ui.toast(.Good, "%s v%s is installed. Restart Wren to use it.", APP_NAME, app.upd.installed)
+		announce(app, .Good, fmt.tprintf("%s v%s is installed. Restart Wren to use it.", APP_NAME, app.upd.installed))
 		request_frames(app, 3)
 	case .Failed:
 		update_fail(app, fmt.tprintf("could not download the update: %s", ev.detail))

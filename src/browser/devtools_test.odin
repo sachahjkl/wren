@@ -180,7 +180,7 @@ requests_are_logged_in_the_tab_they_run_in :: proc(t: ^testing.T) {
 @(private = "file")
 filter_of :: proc(text: string, regex := false, cased := false, invert := false) -> Dt_Filter {
 	f: Dt_Filter
-	ui.field_set(&f.field, text)
+	ui.line_edit_set(&f.field, text)
 	f.use_re, f.cased, f.invert = regex, cased, invert
 	dt_filter_prepare(&f)
 	return f

@@ -152,12 +152,12 @@ bookmarks_bar :: proc(app: ^App, t: ^Tab) {
 			switch {
 			case sig.clicked && b.folder:
 				v.bar.folder, v.bar.overflow = b.id, false
-				ui.ctx_menu_open_rect(ui.key_from_string(0, "###bmbar_folder_menu"), btn.rect)
+				ui.menu_open("###bmbar_folder_menu", btn.rect)
 			case sig.clicked:            open_k, open_new = k, .Ctrl in sig.mods
 			case sig.middle_clicked && !b.folder: open_k, open_new = k, true
 			case sig.right_clicked:
 				v.bar.item = b.id
-				ui.ctx_menu_open(ui.key_from_string(0, "###bmbar_item_menu"), ui.mouse_pos())
+				ui.menu_open("###bmbar_item_menu", ui.mouse_pos())
 			}
 			// dragged sideways: another place in the bar
 			if sig.dragging && len(items) > 1 {
@@ -175,11 +175,11 @@ bookmarks_bar :: proc(app: ^App, t: ^Tab) {
 			ui.next({fixed_x = room - more_w - pad * 0.5, fixed_y = math.round((h - math.round(em * 1.8)) * 0.5), width = ui.px(more_w), height = ui.px(math.round(em * 1.8)),
 				radius = em * CHROME_BUTTON_RADIUS, text_pad = 0})
 			if ui.tags("ghost_button") {
-				mb := ui.button("»###bmbar_more")
+				mb := ui.button("bmbar_more", "»")
 				tip(mb, i18n.tr("More bookmarks"))
 				if mb.clicked {
 					v.bar.folder, v.bar.overflow = app.bms.toolbar, true
-					ui.ctx_menu_open_rect(ui.key_from_string(0, "###bmbar_folder_menu"), mb.box.rect)
+					ui.menu_open("###bmbar_folder_menu", mb.box.rect)
 				}
 			}
 		}
@@ -211,7 +211,7 @@ bar_drag_slot :: proc(pos, pad, em: f32, widths: []f32, current: int) -> int {
 // tabs where no tab is, the free space of the title bar): show or hide the bar, a new folder in it, then the chrome's choices.
 bookmarks_bar_menu :: proc(app: ^App, pos: [2]f32) {
 	app.bview.bar.own_menu = true
-	ui.ctx_menu_open(ui.key_from_string(0, "###bmbar_own_menu"), pos)
+	ui.menu_open("###bmbar_own_menu", pos)
 }
 
 // A folder's items as a menu: its folders as submenus, its bookmarks to open; Open all at the end. `skip`: the items of
@@ -231,12 +231,12 @@ folder_menu_items :: proc(app: ^App, t: ^Tab, folder: u64, skip: int = 0) -> (do
 			}
 		} else if it := ui.menu_item(fmt.tprintf("%s###bmf_%d", title, b.id), icon = lucide.FOLDER); it.clicked {
 			bookmark_open(app, t, strings.clone(app.bms.items[i].url, context.temp_allocator), .Ctrl in it.mods)
-			ui.ctx_menu_close()
+			ui.menu_close()
 			return true
 		}
 	}
 	if n == 0 {
-		_ = ui.menu_item(fmt.tprintf("%s###bmf_empty_%d", i18n.tr("(empty)"), folder), enabled = false, icon = lucide.FOLDER)
+		_ = ui.menu_item(fmt.tprintf("%s###bmf_empty_%d", i18n.tr("(empty)"), folder), disabled = true, icon = lucide.FOLDER)
 		return false
 	}
 	links := 0
@@ -247,7 +247,7 @@ folder_menu_items :: proc(app: ^App, t: ^Tab, folder: u64, skip: int = 0) -> (do
 			urls := make([dynamic]string, context.temp_allocator)
 			for b in app.bms.items { if b.parent == folder && !b.folder { append(&urls, strings.clone(b.url, context.temp_allocator)) } }
 			for u in urls { tab_open(app, u, origin = .User) }
-			ui.ctx_menu_close()
+			ui.menu_close()
 			return true
 		}
 	}
@@ -259,8 +259,8 @@ bookmarks_bar_menus :: proc(app: ^App) {
 	v := &app.bview
 	t := current_tab(app)
 	if v.bar.folder != 0 {
-		key := ui.key_from_string(0, "###bmbar_folder_menu")
-		if ui.ctx_menu(key) {
+		key := "###bmbar_folder_menu"
+		if ui.menu(key) {
 			// (the » menu: the items the bar does not show)
 			_ = folder_menu_items(app, t, v.bar.folder, v.bar.overflow ? v.bar.fits : 0)
 		} else {
@@ -269,24 +269,24 @@ bookmarks_bar_menus :: proc(app: ^App) {
 	}
 	if v.bar.item != 0 {
 		if i := bookmark_index(app.bms.items[:], v.bar.item); i >= 0 {
-			if ui.ctx_menu(ui.key_from_string(0, "###bmbar_item_menu")) { bookmark_menu_items(app, t, i) } else { v.bar.item = 0 }
+			if ui.menu("###bmbar_item_menu") { bookmark_menu_items(app, t, i) } else { v.bar.item = 0 }
 		} else {
 			v.bar.item = 0
 		}
 	}
 	if v.bar.own_menu {
-		if ui.ctx_menu(ui.key_from_string(0, "###bmbar_own_menu")) {
+		if ui.menu("###bmbar_own_menu") {
 			if ui.menu_item(i18n.tr("Show the bookmarks bar"), "Ctrl+Shift+B", checked = bookmarks_bar_shown(app)).clicked {
 				bookmarks_bar_toggle(app)
-				ui.ctx_menu_close()
+				ui.menu_close()
 			}
 			if ui.menu_item(i18n.tr("New folder in the bar…"), icon = lucide.PLUS).clicked {
 				bookmark_folder_new(app, bookmarks_toolbar(app))
-				ui.ctx_menu_close()
+				ui.menu_close()
 			}
 			if ui.menu_item(i18n.tr("Bookmarks"), "Ctrl+Shift+O", icon = lucide.BOOKMARK).clicked {
 				open_bookmarks(app)
-				ui.ctx_menu_close()
+				ui.menu_close()
 			}
 			toolbar_menu_items(app, t)   // toolbar_menu.odin: the tabs, the address bar, the window's menu
 		} else {

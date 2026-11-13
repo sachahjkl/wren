@@ -21,6 +21,7 @@ import "wb:cookies"
 import "wb:fetch"
 import "wb:host"
 import "wb:httpcache"
+import "wb:i18n"
 import "wb:js"
 import "wb:page"
 import "wb:remote"
@@ -493,7 +494,7 @@ control_urlbar :: proc(app: ^App, allocator := context.temp_allocator) -> api.Ur
 	w := app.active
 	uv := urlbar_view(app)
 	address_sync(app, active_window(app))   // (a call may come before the next build)
-	bar := api.Urlbar{open = uv.open, text = strings.clone(ui.field_string(&active_window(app).address), allocator)}
+	bar := api.Urlbar{open = uv.open, text = strings.clone(ui.line_edit_string(&active_window(app).address), allocator)}
 	if b, ok := w.ui.boxes[window_own(app).address_key]; ok { bar.field = api_rect(b.rect) }
 	if !uv.open { return bar }
 	rows := make([]api.Urlbar_Row, len(uv.rows), allocator)
@@ -606,7 +607,7 @@ control_commands :: proc(app: ^App, allocator := context.temp_allocator) -> []ap
 	list := make([]api.Command, len(all), allocator)
 	for &cmd, i in all {
 		list[i] = {
-			name = strings.clone(cmd.name, allocator), title = strings.clone(cmd.label, allocator), category = strings.clone(cmd.group, allocator),
+			name = strings.clone(cmd.name, allocator), title = strings.clone(i18n.tr(cmd.label), allocator), category = strings.clone(cmd.group, allocator),
 			shortcut = strings.clone(ui.command_shortcut(cmd.spec), allocator), enabled = command_enabled(app, t, &cmd),
 		}
 	}
@@ -826,7 +827,7 @@ control_stats :: proc(app: ^App, allocator := context.temp_allocator) -> api.Sta
 		pid = int(current_pid()), frames_drawn = app.rates.frames, loop = loop_rates_stats(&app.rates, allocator), pending_ops = len(app.remote.ops), input_events = app.remote.inputs,
 		requests_in_flight = int(fetch.in_flight(&app.loader)), tabs = len(wnd.tabs), uptime_ms = process_uptime_ms(), frame_period_ms = wnd.pacer.period_ms,
 		frame_gate = {int(g.begun), int(g.nested), int(g.deferred), int(g.violations), strings.clone(g.last_violation, allocator)},
-		menu_open = ui.ctx_menu_any_open(), devtools = dev().visible, front_window = window_is_front(app),
+		menu_open = ui.menu_any_open(), devtools = dev().visible, front_window = window_is_front(app),
 		caret_blinking = fv.blink_timer != base.NIL_HANDLE, caret_shown = fv.blink_on, drop_target = platform.drop_target_enabled(wnd.win),
 		chrome_animating = ui.needs_frame(wnd.ui), backend = strings.clone(render.backend_name(), allocator),
 		prefs_net_applied = int(app.prefs_apply_counts[.Net]), bfcache = control_bfcache(app, allocator),

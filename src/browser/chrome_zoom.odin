@@ -42,7 +42,7 @@ pointer_on_chrome :: proc(app: ^App, pos: [2]f32) -> bool {
 
 // Takes what zooms the interface from the frame's events, and returns the others.
 chrome_zoom_events :: proc(app: ^App, events: []platform.Event) -> []platform.Event {
-	if ui.ctx_menu_any_open() { return events }
+	if ui.menu_any_open() { return events }
 	taken := false
 	out := make([dynamic]platform.Event, 0, len(events), context.temp_allocator)
 	for e in events {

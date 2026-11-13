@@ -74,7 +74,7 @@ autoscroll_page_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: b
 	if !app.autoscroll_cfg.enabled || !allowed || t.page == nil || !t.layout.valid { return false }
 	wnd := active_window(app)
 	if !draw.rect_contains(wnd.page_rect, ev.pos) { return false }
-	if ui.ctx_menu_any_open() { return false }
+	if ui.menu_any_open() { return false }
 	// a link opens a new tab instead (handled by the release path); do not autoscroll over it
 	if _, ok := anchor_href(t.page.doc, pressed); ok { return false }
 	// not while the pointer is in a text field or over a scroll bar (scrollbar_press ran first and returned)

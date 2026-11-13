@@ -131,7 +131,7 @@ fs_shell_build :: proc(app: ^App) {
 	em := ui.font_size()
 	open := true
 	answered, granted := false, false
-	if ui.modal("fs_permission", em * 30, &open) {
+	if ui.modal("fs_permission", &open, {width_em = 30}) {
 		if ui.dialog_header("fs_header", i18n.tr("Files"), {icon = req.write ? lucide.FOLDER_OPEN : lucide.FOLDER, icon_font = app.lucide}) {}
 		if ui.dialog_body("fs_body") {
 			what := req.write ? i18n.tr("edit") : i18n.tr("view")
@@ -139,9 +139,9 @@ fs_shell_build :: proc(app: ^App) {
 			if ui.tags("weak") { ui.paragraph(strings.concatenate({req.what, "###fs_where"}, ui.frame_allocator())) }
 		}
 		if ui.dialog_buttons("fs_buttons") {
-			if ui.button_icon("###fs_block", lucide.SHIELD, i18n.tr("Block"), intent = .Danger, width = ui.px(em * 8)).clicked { answered, granted = true, false }
+			if ui.button("fs_block", i18n.tr("Block"), lucide.SHIELD, {intent = .Danger, width = ui.px(em * 8)}).clicked { answered, granted = true, false }
 			ui.spacer(ui.px(em * 0.6))
-			if ui.button_icon("###fs_allow", lucide.CHECK, i18n.tr("Allow"), intent = .Success, width = ui.px(em * 8)).clicked { answered, granted = true, true }
+			if ui.button("fs_allow", i18n.tr("Allow"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { answered, granted = true, true }
 		}
 	}
 	if !open { answered, granted = true, false }   // Escape, a click outside: blocked

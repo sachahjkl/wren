@@ -284,7 +284,7 @@ blocker_button :: proc(app: ^App, t: ^Tab) {
 	if !app.bl.b.conf.first_run && state != .Off {
 		app.bl.b.conf.first_run = true
 		blocker.conf_save(&app.bl.b)
-		if app.bl.b.cfg.welcome_toast { ui.toast(.Info, i18n.tr("Content blocker is on: click the shield for its panel")) }
+		if app.bl.b.cfg.welcome_toast { announce(app, .Info, i18n.tr("Content blocker is on: click the shield for its panel"), in_window = true) }
 	}
 	blocker_theme()
 	d := ui.frame_new(Shield_Draw)
@@ -294,10 +294,10 @@ blocker_button :: proc(app: ^App, t: ^Tab) {
 	b := ui.custom("###blocker_icon", shield_draw, d, {.Clickable, .Focusable, .Draw_Background, .Draw_Hot_Effects})
 	ui.pop_tags()
 	sig := ui.signal(b)
-	key := ui.key_from_string(b.parent.key, "###blocker_panel")
-	if window_asked(app, .Blocker_Panel, b) && !ui.ctx_menu_is_open(key) { ui.ctx_menu_open_rect(key, toolbar_panel_rect(b.rect, ui.font_size() * PANEL_W_EM), b.key) }
+	key := fmt.tprintf("blocker_panel_%x", u64(b.parent.key))
+	if window_asked(app, .Blocker_Panel, b) && !ui.menu_is_open(key) { ui.menu_open(key, toolbar_panel_rect(b.rect, ui.font_size() * PANEL_W_EM), b.key, search = false) }
 	if sig.clicked {
-		if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else { ui.ctx_menu_open_rect(key, toolbar_panel_rect(b.rect, ui.font_size() * PANEL_W_EM), b.key) }
+		if ui.menu_is_open(key) { ui.menu_close() } else { ui.menu_open(key, toolbar_panel_rect(b.rect, ui.font_size() * PANEL_W_EM), b.key, search = false) }
 	}
 	tip_text: string
 	switch state {
@@ -307,7 +307,7 @@ blocker_button :: proc(app: ^App, t: ^Tab) {
 	case .Loading: tip_text = fmt.tprintf(i18n.tr("Content blocker: base list only, the filter lists are not loaded yet\n%d blocked on this page"), count)
 	case .Active: tip_text = fmt.tprintf(i18n.tr("this page, then all pages", "%d blocked on this page (%d in all)"), count, app.bl.b.totals.blocked)
 	}
-	if !ui.ctx_menu_is_open(key) { tip(sig, tip_text) }
+	if !ui.menu_is_open(key) { tip(sig, tip_text) }
 	// the popup is built where the button is, so its position follows the row
 	blocker_panel(app, t, key, state)
 }
@@ -447,7 +447,7 @@ matrix_view :: proc(app: ^App, t: ^Tab, ts: ^blocker.Tab_State, page_host, src: 
 					text := "·"
 					if blocked > 0 { text = fmt.tprintf("%d", blocked) } else if allowed > 0 { text = fmt.tprintf("%d", allowed) }
 					ui.next({width = ui.px(cell_w - 2), height = ui.px(ui.dense(em * 1.35)), radius = em * 0.25, bg = bg, font_size = em * 0.82, text_align = ui.Text_Align.Center})
-					sig := ui.button(fmt.aprintf("%s###mxc_%s_%d", text, r.host, ci, allocator = ui.frame_allocator()))
+					sig := ui.button(fmt.tprintf("mxc_%s_%d", r.host, ci), text)
 					if sig.clicked {
 						// this site's rule: none -> block -> allow -> none (shift: the same for every site)
 						scope_src := (sig.mods & {.Shift}) != {} || app.bl.panel_scope_global ? "*" : src
@@ -479,9 +479,9 @@ blocker_rules_changed :: proc(app: ^App, t: ^Tab) {
 	app.bl.reload_pending = true
 }
 
-blocker_panel :: proc(app: ^App, t: ^Tab, key: ui.Key, state: Shield_State) {
-	// (the deferred end of ctx_menu closes the popup at the end of the if statement: the whole panel is built inside it)
-	if ui.ctx_menu(key, ui.font_size() * PANEL_W_EM) { panel_body(app, t, state); return }
+blocker_panel :: proc(app: ^App, t: ^Tab, key: string, state: Shield_State) {
+	// (the deferred end of ui.menu closes the popup at the end of the if statement: the whole panel is built inside it)
+	if ui.menu(key, ui.font_size() * PANEL_W_EM) { panel_body(app, t, state); return }
 	if app.bl.reload_pending && t != nil { app.bl.reload_pending = false; reload(app, t) }
 }
 
@@ -507,7 +507,7 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 		ui.pop_tags()
 		psig := ui.signal(pb)
 		tip(psig, has_host ? (enabled_site ? i18n.tr("Turn the blocker off for this site (the page reloads)") : i18n.tr("Turn the blocker on for this site (the page reloads)")) : i18n.tr("Not applicable to this page"))
-		if psig.clicked && has_host { blocker_set_site_enabled(app, t, host, !enabled_site); ui.ctx_menu_close() }
+		if psig.clicked && has_host { blocker_set_site_enabled(app, t, host, !enabled_site); ui.menu_close() }
 		ui.spacer(ui.px(em * 0.6))
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		if ui.column(.Center) {
@@ -572,28 +572,28 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 			ui.spacer(ui.px(em * 0.6))
 			half := (w - em * 1.2) * 0.5
 			ui.next({width = ui.px(half), height = ui.pct(1)})
-			if ui.toggle("###sw_cos", i18n.tr("Element hiding"), &cosmetic).clicked { blocker.site_toggle(&app.bl.b, site_key, .No_Cosmetic, !cosmetic); blocker_apply_site(app, t) }
+			if ui.toggle("###sw_cos", i18n.tr("Element hiding"), &cosmetic) { blocker.site_toggle(&app.bl.b, site_key, .No_Cosmetic, !cosmetic); blocker_apply_site(app, t) }
 			ui.next({width = ui.px(half), height = ui.pct(1)})
-			if ui.toggle("###sw_scr", i18n.tr("Scriptlets"), &scriptlets).clicked { blocker.site_toggle(&app.bl.b, site_key, .No_Scriptlets, !scriptlets); blocker_apply_site(app, t) }
+			if ui.toggle("###sw_scr", i18n.tr("Scriptlets"), &scriptlets) { blocker.site_toggle(&app.bl.b, site_key, .No_Scriptlets, !scriptlets); blocker_apply_site(app, t) }
 		}
 		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 1.75))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.6))
 			third := (w - em * 1.2) * 0.5
 			ui.next({width = ui.px(third), height = ui.pct(1)})
-			if ui.toggle("###sw_fnt", i18n.tr("Block remote fonts"), &fonts).clicked {
+			if ui.toggle("###sw_fnt", i18n.tr("Block remote fonts"), &fonts) {
 				blocker.site_toggle(&app.bl.b, site_key, .Block_Fonts, fonts)
 				blocker.site_toggle(&app.bl.b, site_key, .Allow_Fonts, !fonts)
 				blocker_apply_site(app, t)
 			}
 			ui.next({width = ui.px(third), height = ui.pct(1)})
-			if ui.toggle("###sw_med", i18n.tr("Block large media"), &media).clicked { blocker.site_toggle(&app.bl.b, site_key, .Block_Media, media); blocker_apply_site(app, t) }
+			if ui.toggle("###sw_med", i18n.tr("Block large media"), &media) { blocker.site_toggle(&app.bl.b, site_key, .Block_Media, media); blocker_apply_site(app, t) }
 		}
 		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 1.75))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.6))
 			ui.next({width = ui.px((w - em * 1.2) * 0.5), height = ui.pct(1)})
-			if ui.toggle("###sw_hard", i18n.tr("Hard mode"), &hard).clicked {
+			if ui.toggle("###sw_hard", i18n.tr("Hard mode"), &hard) {
 				blocker.site_toggle(&app.bl.b, site_key, .Hard, hard)
 				blocker.site_toggle(&app.bl.b, site_key, .Soft, !hard)
 				blocker_apply_site(app, t)
@@ -625,14 +625,14 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.6))
 		if ui.disabled(!has_host || !enabled_site) {
-			if ui.button_icon("###tl_pick", lucide.SHIELD, i18n.tr("Pick element"), intent = .Danger, tip = i18n.tr("Aim at an element of the page and block it"), width = ui.fill()).clicked { blocker_picker_begin(app, t); ui.ctx_menu_close() }
+			if ui.button("###tl_pick", i18n.tr("Pick element"), lucide.SHIELD, {intent = .Danger, tip = i18n.tr("Aim at an element of the page and block it"), width = ui.fill()}).clicked { blocker_picker_begin(app, t); ui.menu_close() }
 		}
 		ui.spacer(ui.px(em * 0.4))
-		if ui.button_icon("###tl_log", lucide.SCROLL_TEXT, i18n.tr("Log"), intent = .Info, tip = i18n.tr("The request log"), width = ui.fill()).clicked { blocker_open_dashboard(app, "journal"); ui.ctx_menu_close() }
+		if ui.button("###tl_log", i18n.tr("Log"), lucide.SCROLL_TEXT, {intent = .Info, tip = i18n.tr("The request log"), width = ui.fill()}).clicked { blocker_open_dashboard(app, "journal"); ui.menu_close() }
 		ui.spacer(ui.px(em * 0.4))
-		if ui.button_icon("###tl_dash", lucide.LAYOUT_GRID, i18n.tr("Dashboard"), intent = .Info, tip = i18n.tr("Lists, rules, filters, statistics"), width = ui.fill()).clicked { blocker_open_dashboard(app); ui.ctx_menu_close() }
+		if ui.button("###tl_dash", i18n.tr("Dashboard"), lucide.LAYOUT_GRID, {intent = .Info, tip = i18n.tr("Lists, rules, filters, statistics"), width = ui.fill()}).clicked { blocker_open_dashboard(app); ui.menu_close() }
 		ui.spacer(ui.px(em * 0.4))
-		if ui.button_icon("###tl_reload", lucide.REFRESH_CW, i18n.tr("Reload"), tip = i18n.tr("Load the page again"), width = ui.fill()).clicked { if t != nil { reload(app, t) }; ui.ctx_menu_close() }
+		if ui.button("###tl_reload", i18n.tr("Reload"), lucide.REFRESH_CW, {tip = i18n.tr("Load the page again"), width = ui.fill()}).clicked { if t != nil { reload(app, t) }; ui.menu_close() }
 		ui.spacer(ui.px(em * 0.6))
 	}
 	ui.spacer(ui.px(em * 0.5))

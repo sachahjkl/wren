@@ -5,8 +5,8 @@ package browser
 //   * The cookies and the HSTS hosts (profile_stores_save) are copied on the loop thread and written by one job.
 // The text of a file is made on the loop thread (it reads the App), by its owner, only when what it holds changed.
 
+import "core:fmt"
 import "core:strings"
-import "toolkit:ui"
 import "wb:config"
 import "wb:cookies"
 import "wb:fetch"
@@ -19,8 +19,9 @@ profile_writer_init :: proc(app: ^App) {
 
 @(private = "file")
 profile_tell :: proc(user: rawptr, name: string) -> bool {
-	if !profile_can_tell((^App)(user)) { return false }
-	ui.toast(.Bad, "Could not save %s in the profile. Wren tries again.", name)
+	app := (^App)(user)
+	if !profile_can_tell(app) { return false }
+	announce(app, .Bad, fmt.tprintf("Could not save %s in the profile. Wren tries again.", name))
 	return true
 }
 
@@ -69,7 +70,7 @@ profile_prefs_save :: proc(app: ^App, path: string) {
 	host.profile_file_init(&w.prefs, &app.writer, path, flush = true)
 	if app.prefs.user_version == w.prefs_written { return }
 	w.prefs_written = app.prefs.user_version
-	text := config.export_own(&app.prefs, allocator = context.temp_allocator)
+	text := config.export(&app.prefs, .Own, allocator = context.temp_allocator)
 	crash_settings_keep(text)   // crash_report.odin: what a report says of the settings
 	host.profile_file_write(&w.prefs, text)
 }

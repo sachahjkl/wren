@@ -139,11 +139,11 @@ vault_fill_item :: proc(app: ^App, x: Vault_Target, item: string, fields: vault.
 	if !vault_usable(app) { return }
 	site, ok := vault.site_of(x.url)
 	if !ok || x.rule == .Never {
-		ui.toast(.Warn, "%s", i18n.tr("The Vault fills only web pages, and never a frame without an origin of its own."))
+		announce(app, .Warn, i18n.tr("The Vault fills only web pages, and never a frame without an origin of its own."))
 		return
 	}
 	if site.insecure && s.v.settings.insecure == .Never {
-		ui.toast(.Warn, "%s", i18n.tr("Not filled: this page is not secure (vault.fill.insecure)."))
+		announce(app, .Warn, i18n.tr("Not filled: this page is not secure (vault.fill.insecure)."))
 		return
 	}
 	if site.insecure || x.rule == .Confirm {
@@ -166,7 +166,7 @@ vault_fill_item :: proc(app: ^App, x: Vault_Target, item: string, fields: vault.
 vault_fill_send :: proc(app: ^App, x: Vault_Target, item: string, fields: vault.Fill_Fields) {
 	s := &app.vault
 	ticket := vault.Fill_Ticket{tab = x.tab.id, page = x.page, nav = x.nav, url = x.url, forms_id = x.f.id, field = x.field}
-	if !vault.vault_fill(&s.v, item, ticket, fields) { ui.toast(.Warn, "%s", i18n.tr("The Vault cannot fill now.")); return }
+	if !vault.vault_fill(&s.v, item, ticket, fields) { announce(app, .Warn, i18n.tr("The Vault cannot fill now.")); return }
 	// (what the code's fill after this one needs: vault_save.odin, vault_fill_applied)
 	r := vault.vault_row_find(&s.v, item, x.slot)
 	delete(s.fill_item)
@@ -359,14 +359,14 @@ vault_fill_shortcut :: proc(app: ^App) {
 		return
 	}
 	x, ok := vault_target(app)
-	if !ok { ui.toast(.Warn, "%s", i18n.tr("The Vault fills only web pages.")); return }
-	if x.rule == .Never { ui.toast(.Warn, "%s", i18n.tr("This frame has no origin of its own: the Vault does not fill it.")); return }
+	if !ok { announce(app, .Warn, i18n.tr("The Vault fills only web pages.")); return }
+	if x.rule == .Never { announce(app, .Warn, i18n.tr("This frame has no origin of its own: the Vault does not fill it.")); return }
 	rows, state, _ := vault.vault_rows(v, x.slot)
 	switch {
 	case state == .Asked || state == .Checking || state == .None:
-		ui.toast(.Info, "%s", i18n.tr("The Vault is still looking for this page's logins."))
+		announce(app, .Info, i18n.tr("The Vault is still looking for this page's logins."))
 	case state == .Failed || len(rows) == 0:
-		ui.toast(.Info, "%s", i18n.tr("No login of the Vault for this page."))
+		announce(app, .Info, i18n.tr("No login of the Vault for this page."))
 	case len(rows) == 1:
 		vault_fill_item(app, x, rows[0].id, vault_fields_for(app, x, &rows[0]))
 	case s.role != .None && s.role_field == x.field && s.role_forms == x.f.id:
@@ -763,7 +763,7 @@ vault_palette_version :: proc(user: rawptr, app: ^App) -> u64 {
 vault_palette_items :: proc(user: rawptr, app: ^App, out: ^[dynamic]Palette_Item) {
 	v := &app.vault.v
 	if !vault_usable(app) || v.state != .Unlocked { return }
-	mode, prefix, q := palette_parse_query(app, ui.field_string(&app.cpal.field))
+	mode, prefix, q := palette_parse_query(app, ui.line_edit_string(&app.cpal.field))
 	if mode != .Source || prefix != u8(VAULT_PALETTE_PREFIX) { return }
 	vault.vault_search(v, q)   // (nothing when this query is asked already)
 	rows, state, _ := vault.vault_rows(v, .Search)
@@ -819,7 +819,7 @@ vault_palette_activate :: proc(user: rawptr, app: ^App, key: string, new_tab: bo
 		x, has := vault_target(app)
 		// (checked again now: the focused document may have changed since the palette listed the act)
 		r := has ? vault.vault_row_find(v, item, x.slot) : nil
-		if r == nil { ui.toast(.Warn, "%s", i18n.tr("This login is not one of this page's: it is not filled.")); return }
+		if r == nil { announce(app, .Warn, i18n.tr("This login is not one of this page's: it is not filled.")); return }
 		vault_fill_item(app, x, item, vault_fields_for(app, x, r))
 	case "user": vault.vault_copy(v, item, .Username)
 	case "pass": vault.vault_copy(v, item, .Password)

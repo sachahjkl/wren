@@ -33,7 +33,7 @@ Dev_Application :: struct {
 	edit_col: int,             // 0 key, 1 value
 	edit_key: string,          // owned: the item being edited
 	edit_new: bool,
-	field:    ui.Text_Field,
+	field:    ui.Line_Edit,
 	focus_set: bool,
 	edit_age: int,
 	value_list: Dt_List,
@@ -47,7 +47,7 @@ application_destroy :: proc() {
 	dt_list_destroy(&a.list)
 	dt_list_destroy(&a.value_list)
 	dt_filter_destroy(&a.filter)
-	ui.field_destroy(&a.field)
+	ui.line_edit_destroy(&a.field)
 	delete(a.sel); delete(a.edit_key); delete(a.menu_key); delete(a.menu_value); delete(a.menu_dom); delete(a.menu_path); delete(a.menu_name)
 	a^ = {}
 }
@@ -198,7 +198,7 @@ app_table :: proc(app: ^App, t: ^Tab, a: ^Dev_Application) {
 			len(rows) == 0 ? "Items the page stores appear here. Use + to add one." : "Clear the filter to see every item.")
 		return
 	}
-	menu_key := ui.key_from_string(0, "###dt_app_menu")
+	menu_key := "###dt_app_menu"
 	split_h := app.dtm.row * DEV_APP_VALUE_ROWS / ui.scale()   // (CSS px)
 	ui.next({width = ui.fill(), height = ui.fill(), axis = .Y})
 	if ui.column(.Start, {}, "###dt_app_tbl") {
@@ -229,7 +229,7 @@ app_table :: proc(app: ^App, t: ^Tab, a: ^Dev_Application) {
 					delete(a.sel); a.sel = strings.clone(id); a.has_sel = true
 					delete(a.menu_key); delete(a.menu_value); delete(a.menu_dom); delete(a.menu_path); delete(a.menu_name)
 					a.menu_key, a.menu_value, a.menu_dom, a.menu_path, a.menu_name = strings.clone(id), strings.clone(r.value), strings.clone(r.domain), strings.clone(r.path), strings.clone(r.key)
-					ui.ctx_menu_open(menu_key, ui.mouse_pos())
+					ui.menu_open(menu_key, ui.mouse_pos())
 				}
 			}
 		}
@@ -246,7 +246,7 @@ app_table :: proc(app: ^App, t: ^Tab, a: ^Dev_Application) {
 		if ui.key_press(.Delete) && a.has_sel { delete_selected(app, t, a, rows) }
 		if ui.key_press(.C, {.Ctrl}) && a.has_sel { for r in rows { if row_id(r) == a.sel { clip_set(r.value) } } }
 	}
-	if ui.ctx_menu(menu_key, dt_px(220)) {
+	if ui.menu(menu_key, dt_px(220)) {
 		if ui.menu_item("Copy value###dt_ap_cv", icon = lucide.COPY).clicked { clip_set(a.menu_value) }
 		if ui.menu_item("Copy name###dt_ap_cn", icon = lucide.COPY).clicked { clip_set(a.menu_name) }
 		if ui.menu_item("Edit value###dt_ap_ev", icon = lucide.PENCIL).clicked { for r in rows { if row_id(r) == a.menu_key { begin_edit(a, r, 1) } } }
@@ -369,7 +369,7 @@ begin_edit :: proc(a: ^Dev_Application, r: App_Row, col: int) {
 	a.editing, a.edit_col, a.focus_set, a.edit_age, a.edit_new = true, col, true, 0, false
 	delete(a.edit_key)
 	a.edit_key = strings.clone(row_id(r))
-	ui.field_set(&a.field, col == 0 ? r.key : r.value)
+	ui.line_edit_set(&a.field, col == 0 ? r.key : r.value)
 }
 
 @(private = "file")
@@ -377,7 +377,7 @@ begin_new_item :: proc(a: ^Dev_Application) {
 	a.editing, a.edit_col, a.focus_set, a.edit_age, a.edit_new = true, 0, true, 0, true
 	delete(a.edit_key)
 	a.edit_key = strings.clone("")
-	ui.field_clear(&a.field)
+	ui.line_edit_clear(&a.field)
 }
 
 @(private = "file")
@@ -386,7 +386,7 @@ app_edit_row :: proc(app: ^App, t: ^Tab, a: ^Dev_Application, r: App_Row, widths
 	if ui.row(.Center, {}, "###dt_app_edit") {
 		if a.edit_col == 1 { ui.spacer(ui.px(widths[0])) }
 		ui.next({width = a.edit_col == 0 ? ui.px(widths[0]) : ui.fill(), height = ui.pct(1), radius = 0, font = app.dtm.mono, font_size = app.dtm.mono_fs, text_pad = dt_px(7)})
-		res := ui.line_edit("###dt_app_field", &a.field, a.edit_col == 0 ? "key" : "value")
+		res := ui.line_edit("###dt_app_field", &a.field, {placeholder = a.edit_col == 0 ? "key" : "value"})
 		if a.focus_set { if res.box != nil { ui.set_focus(res.box.key) }; a.focus_set = false }
 		a.edit_age += 1
 		if res.committed || (a.edit_age > 3 && !res.focused && ui.focus_key() != 0 && !res.pressed) { commit_app_edit(app, t, a, r) }
@@ -397,13 +397,13 @@ app_edit_row :: proc(app: ^App, t: ^Tab, a: ^Dev_Application, r: App_Row, widths
 @(private = "file")
 commit_app_edit :: proc(app: ^App, t: ^Tab, a: ^Dev_Application, r: App_Row) {
 	defer { a.editing = false; request_frames(app, 3) }
-	text := strings.clone(ui.field_string(&a.field), context.temp_allocator)
+	text := strings.clone(ui.line_edit_string(&a.field), context.temp_allocator)
 	if t.page == nil { return }
 	switch a.area {
 	case .Local, .Session:
 		sess := a.area == .Session
 		if a.edit_new {
-			if text != "" { page.dev_storage_set(t.page, sess, text, ""); delete(a.sel); a.sel = strings.clone(text); a.has_sel = true; a.editing = true; a.edit_new = false; a.edit_col = 1; delete(a.edit_key); a.edit_key = strings.clone(text); ui.field_clear(&a.field); a.focus_set = true; a.edit_age = 0 }
+			if text != "" { page.dev_storage_set(t.page, sess, text, ""); delete(a.sel); a.sel = strings.clone(text); a.has_sel = true; a.editing = true; a.edit_new = false; a.edit_col = 1; delete(a.edit_key); a.edit_key = strings.clone(text); ui.line_edit_clear(&a.field); a.focus_set = true; a.edit_age = 0 }
 			return
 		}
 		if a.edit_col == 1 { page.dev_storage_set(t.page, sess, r.key, text) } else if text != "" && text != r.key {

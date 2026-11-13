@@ -80,7 +80,7 @@ two_windows :: proc(t: ^testing.T) -> (app: ^App, a, b: ^Browser_Window) {
 free_windows :: proc(app: ^App, a, b: ^Browser_Window) {
 	for w in ([]^Browser_Window{a, b}) {
 		delete(w.ctx.tabs)
-		ui.field_destroy(&w.ctx.address)
+		ui.line_edit_destroy(&w.ctx.address)
 		free(w)
 	}
 	delete(app.windows)

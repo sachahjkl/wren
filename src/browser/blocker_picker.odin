@@ -31,7 +31,7 @@ Picker :: struct {
 	cands:    [dynamic]string,
 	level:    f32,
 	last_level: int,
-	field:    ui.Text_Field,
+	field:    ui.Line_Edit,
 	field_text: string,        // the selector the matches below were computed for
 	matches:  [dynamic]base.Handle,
 	valid:    bool,
@@ -59,7 +59,7 @@ picker_reset :: proc(app: ^App) {
 	if app.pick.preview != nil { picker_unpreview(current_tab(app)) }
 	for c in app.pick.cands { delete(c) }
 	delete(app.pick.cands); delete(app.pick.matches); delete(app.pick.field_text)
-	ui.field_destroy(&app.pick.field)
+	ui.line_edit_destroy(&app.pick.field)
 	app.pick = {}
 }
 
@@ -184,7 +184,7 @@ picker_choose :: proc(t: ^Tab, target: base.Handle) {
 	the_app.pick.picked, the_app.pick.stage = el, 1
 	// the most specific candidate that is not a positional path is the first proposal: the one that matches the fewest
 	// (and it is the last of the list)
-	if len(the_app.pick.cands) == 0 { ui.field_set(&the_app.pick.field, "") } else { ui.field_set(&the_app.pick.field, the_app.pick.cands[len(the_app.pick.cands) - 1]) }
+	if len(the_app.pick.cands) == 0 { ui.line_edit_set(&the_app.pick.field, "") } else { ui.line_edit_set(&the_app.pick.field, the_app.pick.cands[len(the_app.pick.cands) - 1]) }
 	the_app.pick.level = f32(max(len(the_app.pick.cands) - 1, 0))
 	the_app.pick.last_level = int(the_app.pick.level)
 	delete(the_app.pick.field_text); the_app.pick.field_text = ""
@@ -192,7 +192,7 @@ picker_choose :: proc(t: ^Tab, target: base.Handle) {
 
 @(private = "file")
 picker_matches :: proc(p: ^page.Page) {
-	sel := strings.trim_space(ui.field_string(&the_app.pick.field))
+	sel := strings.trim_space(ui.line_edit_string(&the_app.pick.field))
 	if sel == the_app.pick.field_text { return }
 	delete(the_app.pick.field_text); the_app.pick.field_text = strings.clone(sel)
 	clear(&the_app.pick.matches)
@@ -275,7 +275,7 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 			ui.next({width = ui.px(em * 7), height = ui.pct(1)})
 			if ui.tags("weak") { ui.label(tid(i18n.tr("Selector"), "pk_l")) }
 			ui.next({width = ui.fill(), height = ui.pct(1)})
-			res := ui.line_edit("###pk_sel", &app.pick.field, i18n.tr("CSS selector"))
+			res := ui.line_edit("###pk_sel", &app.pick.field, {placeholder = i18n.tr("CSS selector")})
 			_ = res
 			ui.spacer(ui.px(em * 0.6))
 			ui.next({width = ui.px(em * 9), height = ui.pct(1)})
@@ -295,20 +295,20 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 				ui.slider("###pk_slider", &app.pick.level, 0, f32(len(app.pick.cands) - 1), 1, "")
 				if app.pick.level != before {
 					idx := clamp(int(app.pick.level + 0.5), 0, len(app.pick.cands) - 1)
-					if idx != app.pick.last_level { app.pick.last_level = idx; ui.field_set(&app.pick.field, app.pick.cands[len(app.pick.cands) - 1 - idx]) }
+					if idx != app.pick.last_level { app.pick.last_level = idx; ui.line_edit_set(&app.pick.field, app.pick.cands[len(app.pick.cands) - 1 - idx]) }
 				}
 			} else { ui.spacer(ui.px(em * 14)) }
 			ui.spacer(ui.px(em * 0.6))
-			if ui.button_icon("###pk_prev", lucide.EYE, i18n.tr("Preview"), intent = .Info, width = ui.px(em * 6.5)).clicked { picker_preview(t) }
+			if ui.button("pk_prev", i18n.tr("Preview"), lucide.EYE, {intent = .Info, width = ui.px(em * 6.5)}).clicked { picker_preview(t) }
 			ui.spacer(ui.px(em * 0.4))
 			host, _ := blocker_page_host(t)
 			if ui.disabled(!app.pick.valid || len(app.pick.matches) == 0) {
-				if ui.button_icon("###pk_create", lucide.SHIELD, i18n.tr("Create"), intent = .Danger, width = ui.px(em * 6.5)).clicked { picker_create(app, t, blocker_site_key(host)) }
+				if ui.button("pk_create", i18n.tr("Create"), lucide.SHIELD, {intent = .Danger, width = ui.px(em * 6.5)}).clicked { picker_create(app, t, blocker_site_key(host)) }
 			}
 			ui.spacer(ui.px(em * 0.4))
-			if ui.button_icon("###pk_again", lucide.ROTATE_CCW, i18n.tr("Pick again"), width = ui.px(em * 7.5)).clicked { picker_unpreview(t); app.pick.stage = 0; app.pick.hover = base.NIL_HANDLE }
+			if ui.button("pk_again", i18n.tr("Pick again"), lucide.ROTATE_CCW, {width = ui.px(em * 7.5)}).clicked { picker_unpreview(t); app.pick.stage = 0; app.pick.hover = base.NIL_HANDLE }
 			ui.spacer(ui.px(em * 0.4))
-			if ui.button_icon("###pk_cancel", lucide.X, i18n.tr("Cancel"), intent = .Cancel, width = ui.px(em * 6)).clicked { blocker_picker_cancel(app); return }
+			if ui.button("pk_cancel", i18n.tr("Cancel"), lucide.X, {intent = .Cancel, width = ui.px(em * 6)}).clicked { blocker_picker_cancel(app); return }
 		}
 	}
 	if ui.key_press(.Escape) && ui.focus_key() == 0 { blocker_picker_cancel(app) }
@@ -317,14 +317,14 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 @(private = "file")
 picker_preview :: proc(t: ^Tab) {
 	picker_unpreview(t)
-	sel := strings.trim_space(ui.field_string(&the_app.pick.field))
+	sel := strings.trim_space(ui.line_edit_string(&the_app.pick.field))
 	if sel == "" || t.page == nil || t.page.engine == nil { return }
 	the_app.pick.preview = style.engine_add_injected_sheet(t.page.engine, fmt.tprintf("%s{{display:none!important}}", sel))
 }
 
 @(private = "file")
 picker_create :: proc(app: ^App, t: ^Tab, site: string) {
-	sel := strings.trim_space(ui.field_string(&app.pick.field))
+	sel := strings.trim_space(ui.line_edit_string(&app.pick.field))
 	if sel == "" { return }
 	picker_unpreview(t)
 	// it applies to the page right now, as the saved filter will on the next ones

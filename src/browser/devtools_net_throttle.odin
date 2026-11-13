@@ -134,37 +134,37 @@ net_blocked :: proc(user: rawptr, scope: ^base.Scope, url: string) -> bool {
 Net_Prof_Edit :: struct {
 	open:     bool,
 	orig_id:  string,    // owned: the profile being edited ("" = a new one)
-	name, down, up, latency, loss: ui.Text_Field,
+	name, down, up, latency, loss: ui.Line_Edit,
 	focus:    bool,
 	bad:      string,
 }
 
 net_prof_edit_destroy :: proc(e: ^Net_Prof_Edit) {
 	delete(e.orig_id)
-	ui.field_destroy(&e.name); ui.field_destroy(&e.down); ui.field_destroy(&e.up); ui.field_destroy(&e.latency); ui.field_destroy(&e.loss)
+	ui.line_edit_destroy(&e.name); ui.line_edit_destroy(&e.down); ui.line_edit_destroy(&e.up); ui.line_edit_destroy(&e.latency); ui.line_edit_destroy(&e.loss)
 	e^ = {}
 }
 
 net_prof_edit_begin :: proc(e: ^Net_Prof_Edit, p: Net_Profile, new_one: bool) {
 	delete(e.orig_id)
 	e.orig_id = new_one ? strings.clone("") : strings.clone(p.id)
-	ui.field_set(&e.name, new_one ? "My profile" : p.name)
-	ui.field_set(&e.down, fmt.tprintf("%g", new_one ? 1000 : p.down_kbps))
-	ui.field_set(&e.up, fmt.tprintf("%g", new_one ? 500 : p.up_kbps))
-	ui.field_set(&e.latency, fmt.tprintf("%g", new_one ? 100 : p.latency_ms))
-	ui.field_set(&e.loss, fmt.tprintf("%g", new_one ? 0 : p.loss_pct))
+	ui.line_edit_set(&e.name, new_one ? "My profile" : p.name)
+	ui.line_edit_set(&e.down, fmt.tprintf("%g", new_one ? 1000 : p.down_kbps))
+	ui.line_edit_set(&e.up, fmt.tprintf("%g", new_one ? 500 : p.up_kbps))
+	ui.line_edit_set(&e.latency, fmt.tprintf("%g", new_one ? 100 : p.latency_ms))
+	ui.line_edit_set(&e.loss, fmt.tprintf("%g", new_one ? 0 : p.loss_pct))
 	e.open, e.focus, e.bad = true, true, ""
 }
 
 @(private = "file")
-parse_field :: proc(f: ^ui.Text_Field) -> (v: f64, ok: bool) {
-	s := strings.trim_space(ui.field_string(f))
+parse_field :: proc(f: ^ui.Line_Edit) -> (v: f64, ok: bool) {
+	s := strings.trim_space(ui.line_edit_string(f))
 	if s == "" { return 0, true }
 	return strconv.parse_f64(s)
 }
 
 net_prof_edit_save :: proc(app: ^App, t: ^Tab, e: ^Net_Prof_Edit) -> bool {
-	name := strings.trim_space(ui.field_string(&e.name))
+	name := strings.trim_space(ui.line_edit_string(&e.name))
 	down, ok1 := parse_field(&e.down)
 	up, ok2 := parse_field(&e.up)
 	lat, ok3 := parse_field(&e.latency)
@@ -228,12 +228,12 @@ net_speed_menu :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 	}
 	ui.menu_separator()
 	if ui.menu_item("Add a custom profile\u2026###dt_th_add", icon = lucide.PLUS).clicked { net_prof_edit_begin(&v.prof, NET_BUILTIN[1], true) }
-	if ui.menu_item(cur.builtin ? "Edit the profile\u2026###dt_th_edit" : fmt.tprintf("Edit %s\u2026###dt_th_edit", cur.name), enabled = !cur.builtin, icon = lucide.PENCIL).clicked { net_prof_edit_begin(&v.prof, cur, false) }
-	if ui.menu_item(cur.builtin ? "Delete the profile###dt_th_del" : fmt.tprintf("Delete %s###dt_th_del", cur.name), enabled = !cur.builtin, icon = lucide.TRASH_2).clicked { net_profile_delete(app, t, cur.id) }
+	if ui.menu_item(cur.builtin ? "Edit the profile\u2026###dt_th_edit" : fmt.tprintf("Edit %s\u2026###dt_th_edit", cur.name), disabled = cur.builtin, icon = lucide.PENCIL).clicked { net_prof_edit_begin(&v.prof, cur, false) }
+	if ui.menu_item(cur.builtin ? "Delete the profile###dt_th_del" : fmt.tprintf("Delete %s###dt_th_del", cur.name), disabled = cur.builtin, icon = lucide.TRASH_2).clicked { net_profile_delete(app, t, cur.id) }
 }
 
 @(private = "file")
-field_row :: proc(label: string, id: string, f: ^ui.Text_Field, w: f32, hint: string) -> ui.Edit_Result {
+field_row :: proc(label: string, id: string, f: ^ui.Line_Edit, w: f32, hint: string) -> ui.Edit_Result {
 	lw := dt_w(the_app.dtm.ui_font, the_app.dtm.fs, label) + dt_px(8)
 	ui.next({width = ui.px(lw), height = ui.pct(1)})
 	ui.custom(fmt.tprintf("###%s_l", id), proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
@@ -241,7 +241,7 @@ field_row :: proc(label: string, id: string, f: ^ui.Text_Field, w: f32, hint: st
 		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x + dt_px(4), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, s)
 	}, new_clone(dt_frame_str(label), ui.frame_allocator()))
 	ui.next({width = ui.px(w), height = ui.px(the_app.dtm.btn - dt_px(4)), radius = the_app.dtm.radius, font = the_app.dtm.mono, font_size = the_app.dtm.mono_fs, text_pad = dt_px(4)})
-	return ui.line_edit(fmt.tprintf("###%s", id), f, hint)
+	return ui.line_edit(fmt.tprintf("###%s", id), f, {placeholder = hint})
 }
 
 // The editor: a bar under the toolbar with the five numbers of a profile, Save and Cancel.

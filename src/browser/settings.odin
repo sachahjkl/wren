@@ -161,10 +161,6 @@ standard_settings_watch :: proc(app: ^App, w: ^prefs_page.Standard_Watch, s: ^ui
 	targets: prefs_page.Standard_Targets
 	if s == app.windows[0].ui { targets = {renderer = &app.r, fonts = &app.fonts} }
 	prefs_page.standard_watch(w, &app.prefs, s, targets)
-	// standard_watch leaves a setting at its default alone, and Wren's defaults of these (register_all_prefs) are not the
-	// toolkit state's own: given here, until the toolkit applies a program's defaults itself
-	ui.set_scrollbar_autohide(s, config.bool_of(&app.prefs, "scrolling.autohide_scrollbars"))
-	ui.set_autoscroll_settings(s, autoscroll_settings_from_prefs(&app.prefs).cfg)
 }
 
 // The interface's scale: browser.ui.scale, else the display's of the window (`of`; the active one by default: window_chrome.odin,
@@ -211,6 +207,6 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 // What settings_from_prefs owns.
 settings_destroy :: proc(s: ^Settings) {
 	delete(s.homepage)
-	prefs_page.appearance_free(&s.look)
+	prefs_page.appearance_destroy(&s.look)
 	s.homepage = ""
 }

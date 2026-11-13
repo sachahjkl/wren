@@ -60,7 +60,7 @@ devtools_window_make :: proc(app: ^App) {
 	// (a headless browser has no window of the system: the panel's is drawn all the same, in the one offscreen target, as its second window's is)
 	on_frame := proc(user: rawptr) { devtools_window_loop_frame(the_app, int(uintptr(user))) }
 	w := app.headless ? platform.open_window_offscreen("Wren Developer Tools", {DEVTOOLS_WINDOW_W, DEVTOOLS_WINDOW_H}, user = rawptr(uintptr(owner.id)), on_frame = on_frame) : platform.open_window("Wren Developer Tools", {DEVTOOLS_WINDOW_W, DEVTOOLS_WINDOW_H}, user = rawptr(uintptr(owner.id)), on_frame = on_frame, transparent = fixed)
-	if w == nil { ui.toast(.Warn, "The window could not be opened"); return }
+	if w == nil { announce(app, .Warn, "The window could not be opened"); return }
 	// where it was when it last closed (physical screen pixels), fitted to a monitor that is there now (set_placement), before it
 	// is shown: a size of 0 means it was never saved, and the system places it at its default size next to the browser window
 	placed := devtools_window_restore_placement(app, w)
@@ -74,7 +74,7 @@ devtools_window_make :: proc(app: ^App) {
 	if !ok {
 		free(dw)
 		platform.destroy_window(w)
-		ui.toast(.Warn, "The developer tools window could not be drawn (its render surface could not be created)")
+		announce(app, .Warn, "The developer tools window could not be drawn (its render surface could not be created)")
 		return
 	}
 	dw.win, dw.latency, dw.size_seen, dw.owner = w, 1, w.size, owner.id

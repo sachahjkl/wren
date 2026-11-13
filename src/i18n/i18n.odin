@@ -14,3 +14,4 @@ tr :: proc{tr_text, tr_context, tr_count}
 tr_text :: ti18n.tr_text
 tr_context :: ti18n.tr_context
 tr_count :: ti18n.tr_count
+later :: ti18n.later

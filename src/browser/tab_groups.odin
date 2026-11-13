@@ -27,9 +27,9 @@ import "wb:i18n"
 
 TAB_GROUP_PREFS := [?]config.Def{
 	{name = "browser.tabs.restore_pinned", kind = .Bool, default = {b = true},
-		description = i18n.tr("Reopen the pinned tabs at start-up even when the session is not restored (browser.session.restore off). Needs browser.profile.persist.")},
+		description = i18n.later("Reopen the pinned tabs at start-up even when the session is not restored (browser.session.restore off). Needs browser.profile.persist.")},
 	{name = "browser.tabs.group_name_max", kind = .Int, default = {i = 64}, bounded = true, min = 1, max = 1024, unit = "characters",
-		description = i18n.tr("Longest name a tab group may have.")},
+		description = i18n.later("Longest name a tab group may have.")},
 }
 
 Group_Color :: enum u8 { Grey, Blue, Red, Yellow, Green, Pink, Purple, Cyan, Orange }
@@ -313,28 +313,28 @@ tab_menu_group_items :: proc(app: ^App, t: ^Tab) {
 	w, _ := window_of_tab(app, t)
 	if w == nil { return }
 	if ui.menu_item(t.muted ? i18n.tr("Unmute tab") : i18n.tr("Mute tab"), icon = t.muted ? lucide.VOLUME_2 : command_icon("tab.mute")).clicked { tab_set_muted(app, t, !t.muted) }   // tab_sound.odin
-	if ui.menu_item(t.pinned ? i18n.tr("Unpin tab") : i18n.tr("Pin tab"), icon = t.pinned ? lucide.PIN_OFF : command_icon("tab.pin")).clicked { tab_set_pinned(app, t, !t.pinned); ui.ctx_menu_close(); return }
-	if ui.menu_item(i18n.tr("Add tab to a new group"), icon = command_icon("tab.group_new")).clicked { _ = tab_group_new(app, t); ui.ctx_menu_close(); return }
+	if ui.menu_item(t.pinned ? i18n.tr("Unpin tab") : i18n.tr("Pin tab"), icon = t.pinned ? lucide.PIN_OFF : command_icon("tab.pin")).clicked { tab_set_pinned(app, t, !t.pinned); ui.menu_close(); return }
+	if ui.menu_item(i18n.tr("Add tab to a new group"), icon = command_icon("tab.group_new")).clicked { _ = tab_group_new(app, t); ui.menu_close(); return }
 	others := 0
 	for g in w.groups { if g.id != t.group { others += 1 } }
 	if others > 0 {
 		if ui.menu_submenu(fmt.tprintf("%s###add_to_group_sub", i18n.tr("Add tab to group")), icon = lucide.LAYERS_2) {
 			for g in w.groups {
 				if g.id == t.group { continue }
-				if ui.menu_item(fmt.tprintf("%s###grp_%d", group_label(g, window_tabs(app, w)[:]), g.id), icon = lucide.LAYERS_2).clicked { tab_group_add(app, t, g.id); ui.ctx_menu_close(); return }
+				if ui.menu_item(fmt.tprintf("%s###grp_%d", group_label(g, window_tabs(app, w)[:]), g.id), icon = lucide.LAYERS_2).clicked { tab_group_add(app, t, g.id); ui.menu_close(); return }
 			}
 		}
 	}
-	if t.group != 0 && ui.menu_item(i18n.tr("Remove from group"), icon = command_icon("tab.group_leave")).clicked { tab_group_leave(app, t); ui.ctx_menu_close(); return }
+	if t.group != 0 && ui.menu_item(i18n.tr("Remove from group"), icon = command_icon("tab.group_leave")).clicked { tab_group_leave(app, t); ui.menu_close(); return }
 }
 
 // A group header's menu: rename, colour, a new tab in it, ungroup, close.
 group_menu_items :: proc(app: ^App, id: u64) {
 	w := active_window(app)
 	gi := group_index(w.groups[:], id)
-	if gi < 0 { ui.ctx_menu_close(); return }
+	if gi < 0 { ui.menu_close(); return }
 	g := w.groups[gi]
-	if ui.menu_item(i18n.tr("Rename group"), icon = command_icon("tab.group_rename")).clicked { group_rename_begin(app, id); ui.ctx_menu_close(); return }
+	if ui.menu_item(i18n.tr("Rename group"), icon = command_icon("tab.group_rename")).clicked { group_rename_begin(app, id); ui.menu_close(); return }
 	if ui.menu_item(g.collapsed ? i18n.tr("Expand group") : i18n.tr("Collapse group"), icon = g.collapsed ? lucide.CHEVRON_DOWN : lucide.CHEVRON_UP).clicked { group_set_collapsed(app, w, id, !g.collapsed) }
 	if ui.menu_submenu(fmt.tprintf("%s###group_color_sub", i18n.tr("Colour")), icon = lucide.PALETTE) {
 		for c in Group_Color {
@@ -345,9 +345,9 @@ group_menu_items :: proc(app: ^App, id: u64) {
 	if ui.menu_item(i18n.tr("New tab in group"), icon = lucide.PLUS).clicked {
 		nt := tab_open_new(app)
 		tab_group_add(app, nt, id)
-		ui.ctx_menu_close()
+		ui.menu_close()
 		return
 	}
-	if ui.menu_item(i18n.tr("Ungroup"), icon = lucide.LAYERS_2).clicked { group_ungroup(app, w, id); ui.ctx_menu_close(); return }
-	if ui.menu_item(i18n.tr("Close group"), icon = lucide.X).clicked { group_close(app, w, id); ui.ctx_menu_close(); return }
+	if ui.menu_item(i18n.tr("Ungroup"), icon = lucide.LAYERS_2).clicked { group_ungroup(app, w, id); ui.menu_close(); return }
+	if ui.menu_item(i18n.tr("Close group"), icon = lucide.X).clicked { group_close(app, w, id); ui.menu_close(); return }
 }

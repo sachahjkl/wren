@@ -74,7 +74,7 @@ Dev_Styles :: struct {
 	edit_b, edit_d, edit_part: int,
 	editing:   bool,
 	focus_set: bool,
-	field_n, field_v: ui.Text_Field,
+	field_n, field_v: ui.Line_Edit,
 	field_age: int,
 	computed:  [dynamic][2]string,
 	listeners: [dynamic]Lst_Item,
@@ -108,8 +108,8 @@ styles_destroy :: proc(s: ^Dev_Styles) {
 	styles_reset(s)
 	dt_list_destroy(&s.list)
 	dt_filter_destroy(&s.filter)
-	ui.field_destroy(&s.field_n)
-	ui.field_destroy(&s.field_v)
+	ui.line_edit_destroy(&s.field_n)
+	ui.line_edit_destroy(&s.field_v)
 	delete(s.blocks)
 	for _, v in s.shadow { free_decls(v[:]); delete(v) }
 	delete(s.shadow)
@@ -517,7 +517,7 @@ styles_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		dt_empty("###dt_sty_none", .Style, e.selected == base.NIL_HANDLE ? "Select an element" : "No style rules match", e.selected == base.NIL_HANDLE ? "Choose a node in the tree to see its styles." : "Nothing styles this node yet: click + above to add a declaration to it.")
 		return
 	}
-	menu_key := ui.key_from_string(0, "###dt_sty_menu")
+	menu_key := "###dt_sty_menu"
 	if lst, ok := dt_list("###dt_sty_list", &s.list, len(rows), app.dtm.row, nil, ui.fill(), ui.fill()); ok {
 		for k in lst.first ..< lst.last {
 			r := rows[k]
@@ -545,7 +545,7 @@ styles_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			styles_row_input(app, t, e, s, r, blk, sig, menu_key)
 		}
 	}
-	if ui.ctx_menu(menu_key, dt_px(220)) {
+	if ui.menu(menu_key, dt_px(220)) {
 		if ui.menu_item("Copy declaration###dt_sm_decl", icon = lucide.COPY).clicked { clip_set(s.menu_text) }
 		if ui.menu_item("Copy all declarations###dt_sm_all", icon = lucide.COPY).clicked { clip_set(styles_all_text(s, s.edit_b)) }
 	}
@@ -564,7 +564,7 @@ styles_all_text :: proc(s: ^Dev_Styles, bi: int) -> string {
 }
 
 @(private = "file")
-styles_row_input :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, r: Sty_Row, blk: ^Sty_Block, sig: ui.Signal, menu_key: ui.Key) {
+styles_row_input :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, r: Sty_Row, blk: ^Sty_Block, sig: ui.Signal, menu_key: string) {
 	#partial switch r.kind {
 	case .Decl:
 		d := &blk.decls[r.d]
@@ -572,7 +572,7 @@ styles_row_input :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, r
 			delete(s.menu_text)
 			s.menu_text = strings.clone(fmt.tprintf("%s: %s;", d.name, d.value))
 			s.edit_b = r.b
-			ui.ctx_menu_open(menu_key, ui.mouse_pos())
+			ui.menu_open(menu_key, ui.mouse_pos())
 		}
 		if sig.clicked && !blk.inherited {
 			x := sig.mouse.x - dt_px(STY_DECL_X)
@@ -596,7 +596,7 @@ styles_row_input :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, r
 			begin_decl_edit(s, r.b, len(blk.decls) - 1, 0)
 		}
 	case .Head:
-		if sig.right_clicked { s.edit_b = r.b; delete(s.menu_text); s.menu_text = strings.clone(blk.selector); ui.ctx_menu_open(menu_key, ui.mouse_pos()) }
+		if sig.right_clicked { s.edit_b = r.b; delete(s.menu_text); s.menu_text = strings.clone(blk.selector); ui.menu_open(menu_key, ui.mouse_pos()) }
 	}
 }
 
@@ -606,8 +606,8 @@ begin_decl_edit :: proc(s: ^Dev_Styles, b, d, part: int) {
 	s.editing, s.edit_b, s.edit_d, s.edit_part, s.focus_set, s.field_age = true, b, d, part, true, 0
 	s.sug_on, s.sug_sel = false, 0
 	dc := blk.decls[d]
-	ui.field_set(&s.field_n, dc.name)
-	ui.field_set(&s.field_v, dc.important ? strings.concatenate({dc.value, " !important"}, context.temp_allocator) : dc.value)
+	ui.line_edit_set(&s.field_n, dc.name)
+	ui.line_edit_set(&s.field_v, dc.important ? strings.concatenate({dc.value, " !important"}, context.temp_allocator) : dc.value)
 	delete(s.was_name); delete(s.was_value)
 	s.was_name, s.was_value, s.was_important, s.was_new = strings.clone(dc.name), strings.clone(dc.value), dc.important, dc.name == "" && dc.value == ""
 }
@@ -624,13 +624,13 @@ decl_editor :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, bi, di
 		ui.spacer(ui.px(dt_px(STY_DECL_X + STY_SWITCH_W)))
 		// an open list of suggestions has Escape first (it closes)
 		if s.sug_on && ui.key_press(.Escape) { s.sug_on = false }
-		nw := max(dt_w(app.dtm.mono, app.dtm.mono_fs, ui.field_string(&s.field_n)) + dt_px(14), dt_px(46))
+		nw := max(dt_w(app.dtm.mono, app.dtm.mono_fs, ui.line_edit_string(&s.field_n)) + dt_px(14), dt_px(46))
 		ui.next({width = ui.px(nw), height = ui.pct(1), radius = app.dtm.radius, font = app.dtm.mono, font_size = app.dtm.mono_fs, text_pad = dt_px(3)})
-		rn := ui.line_edit("###dt_sty_fn", &s.field_n, "property")
+		rn := ui.line_edit("###dt_sty_fn", &s.field_n, {placeholder = "property"})
 		ui.next({width = ui.px(dt_px(10)), height = ui.pct(1)})
 		ui.custom("###dt_sty_colon", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) { dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, b.rect.min.x + dt_px(2), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, ":") }, nil)
 		ui.next({width = ui.fill(), height = ui.pct(1), radius = app.dtm.radius, font = app.dtm.mono, font_size = app.dtm.mono_fs, text_pad = dt_px(3)})
-		rv := ui.line_edit("###dt_sty_fv", &s.field_v, "value")
+		rv := ui.line_edit("###dt_sty_fv", &s.field_v, {placeholder = "value"})
 		if s.focus_set {
 			if s.edit_part == 0 { if rn.box != nil { ui.set_focus(rn.box.key) } } else if rv.box != nil { ui.set_focus(rv.box.key) }
 			s.focus_set = false
@@ -651,19 +651,19 @@ decl_editor :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, bi, di
 			}
 		}
 		// the value's numbers: keys and wheel
-		if ui.field_num_step(&s.field_v, rv.box) { rv.changed = true; s.sug_on = false }
+		if ui.line_edit_num_step(&s.field_v, rv.box) { rv.changed = true; s.sug_on = false }
 		// a pasted "name: value;" fills both
-		name := ui.field_string(&s.field_n)
+		name := ui.line_edit_string(&s.field_n)
 		if colon := strings.index_byte(name, ':'); colon > 0 && rn.changed {
 			val := strings.trim_space(strings.trim_suffix(strings.trim_space(name[colon + 1:]), ";"))
 			nm := strings.trim_space(name[:colon])
-			ui.field_set(&s.field_n, nm)
-			ui.field_set(&s.field_v, val)
+			ui.line_edit_set(&s.field_n, nm)
+			ui.line_edit_set(&s.field_v, val)
 			ui.set_focus(rv.box.key)
 		}
 		if rn.changed || rv.changed {
 			delete(d.name); delete(d.value)
-			d.name, d.value = strings.clone(strings.trim_space(ui.field_string(&s.field_n))), strings.clone(strings.trim_space(strings.trim_suffix(strings.trim_space(ui.field_string(&s.field_v)), ";")))
+			d.name, d.value = strings.clone(strings.trim_space(ui.line_edit_string(&s.field_n))), strings.clone(strings.trim_space(strings.trim_suffix(strings.trim_space(ui.line_edit_string(&s.field_v)), ";")))
 			if strings.has_suffix(d.value, "!important") { v := strings.clone(strings.trim_space(strings.trim_suffix(d.value, "!important"))); delete(d.value); d.value, d.important = v, true } else { d.important = false }
 			apply_block(app, t, s, bi)
 		}
@@ -674,10 +674,10 @@ decl_editor :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, bi, di
 			if di > 0 { finish_decl(s, bi, di); begin_decl_edit(s, bi, di - 1, 1) }
 		case rv.focused && ui.key_press(.Tab, {.Shift}):
 			ui.set_focus(rn.box.key)
-			ui.field_select_all(&s.field_n)
+			ui.line_edit_select_all(&s.field_n)
 		case rn.focused && (rn.committed || ui.key_press(.Tab)):   // (the value taken whole, as a key goes into it)
 			ui.set_focus(rv.box.key)
-			ui.field_select_all(&s.field_v)
+			ui.line_edit_select_all(&s.field_v)
 		case rv.committed || (rv.focused && ui.key_press(.Tab)):
 			has_name := d.name != ""
 			finish_decl(s, bi, di)
@@ -733,9 +733,9 @@ styles_view_of :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, view: Dev_Side) {
 			// bring in appear in the list below because styles_refresh reads the engine with the forced state (effective_state).
 			forced_on := e.selected != base.NIL_HANDLE && page.dev_forced(t.page).el == e.selected && page.dev_forced(t.page) != (page.Forced_State{el = e.selected})
 			hov := dt_menu_btn("###dt_sty_hov", .None, ":hov", tooltip = "Force the element's states (:hover, :active, :focus, :focus-within, :visited)", on = forced_on)
-			if ui.ctx_menu(hov, dt_px(220)) { hov_menu(app, t, e) }
+			if ui.menu(hov, dt_px(220)) { hov_menu(app, t, e) }
 			cls := dt_menu_btn("###dt_sty_cls", .None, ".cls", tooltip = "Toggle the classes of the element")
-			if ui.ctx_menu(cls, dt_px(220)) { class_menu(app, t, e) }
+			if ui.menu(cls, dt_px(220)) { class_menu(app, t, e) }
 			if dt_btn("###dt_sty_add", .Plus, tooltip = "New declaration for this element (element.style)", enabled = e.selected != base.NIL_HANDLE).clicked {
 				if len(s.blocks) > 0 && s.blocks[0].kind == .Inline {
 					append(&s.blocks[0].decls, Sty_Decl{name = strings.clone(""), value = strings.clone(""), enabled = true})
@@ -761,7 +761,7 @@ styles_view_of :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, view: Dev_Side) {
 @(private = "file")
 hov_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	ui.menu_heading("Force element state")
-	if t.page == nil || e.selected == base.NIL_HANDLE { ui.menu_item("Select an element###dt_hov_none", enabled = false, icon = lucide.TEXT_CURSOR_INPUT); return }
+	if t.page == nil || e.selected == base.NIL_HANDLE { ui.menu_item("Select an element###dt_hov_none", disabled = true, icon = lucide.TEXT_CURSOR_INPUT); return }
 	f := page.dev_forced(t.page)
 	if f.el != e.selected { f = {} }   // forced states belong to one element at a time
 	toggle :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, f: page.Forced_State, which: int) {
@@ -784,7 +784,7 @@ hov_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	if ui.menu_item(":focus-within###dt_hov_fw", checked = f.focus_within, keep_open = true).clicked { toggle(app, t, e, f, 3) }
 	if ui.menu_item(":visited###dt_hov_v", checked = f.visited, keep_open = true).clicked { toggle(app, t, e, f, 4) }
 	ui.menu_separator()
-	if ui.menu_item("Clear###dt_hov_clear", enabled = page.dev_forced(t.page).el != base.NIL_HANDLE, icon = lucide.TRASH_2).clicked {
+	if ui.menu_item("Clear###dt_hov_clear", disabled = page.dev_forced(t.page).el == base.NIL_HANDLE, icon = lucide.TRASH_2).clicked {
 		page.dev_force_state(t.page, base.NIL_HANDLE, false, false, false, false, false)
 		e.version += 1
 		e.side.rev += 1
@@ -797,7 +797,7 @@ hov_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 class_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	s := &e.side
 	ui.menu_heading("Classes of the element")
-	if t.page == nil || e.selected == base.NIL_HANDLE { ui.menu_item("Select an element###dt_cm_none", enabled = false, icon = lucide.TEXT_CURSOR_INPUT); return }
+	if t.page == nil || e.selected == base.NIL_HANDLE { ui.menu_item("Select an element###dt_cm_none", disabled = true, icon = lucide.TEXT_CURSOR_INPUT); return }
 	cur, _ := dom.get_attribute(t.page.doc, e.selected, "class")
 	active := strings.fields(cur, context.temp_allocator)
 	for c in active {
@@ -818,7 +818,7 @@ class_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			break
 		}
 	}
-	if len(active) == 0 && len(s.off_classes) == 0 { ui.menu_item("This element has no class###dt_cm_empty", enabled = false, icon = lucide.INFO) }
+	if len(active) == 0 && len(s.off_classes) == 0 { ui.menu_item("This element has no class###dt_cm_empty", disabled = true, icon = lucide.INFO) }
 }
 
 ////////////////////////////////

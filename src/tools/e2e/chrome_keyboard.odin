@@ -26,7 +26,7 @@ import "wb:browser"
 @(private = "file") MID_WINDOW :: [2]f32{300, 300}
 
 @(private = "file")
-field_text :: proc(w: ^Chrome_World) -> string { return ui.field_string(&w.wnd.address) }
+field_text :: proc(w: ^Chrome_World) -> string { return ui.line_edit_string(&w.wnd.address) }
 
 @(private = "file")
 make_home :: proc(w: ^Chrome_World, i: int) {
@@ -91,7 +91,7 @@ what_is_typed_stays_when_another_tab_closes :: proc(t: ^testing.T) {
 what_is_typed_stays_selected_as_a_whole_when_the_page_changes_its_address :: proc(t: ^testing.T) {
 	w := chrome_start(t, {tabs = {FIRST}})
 	type_in_field(w)
-	ui.field_select_all(&w.wnd.address)
+	ui.line_edit_select_all(&w.wnd.address)
 	browser.same_document_url(w.app, w.wnd.tabs[0], PUSHED_URL)
 	session.frames(w.s, 2)
 	testing.expect_value(t, field_text(w), TYPED)
@@ -119,7 +119,7 @@ an_address_that_changes_replaces_a_field_nobody_typed_in :: proc(t: ^testing.T) 
 	browser.same_document_url(w.app, w.wnd.tabs[0], FIRST_URL)
 	session.frames(w.s, 2)
 	testing.expect_value(t, field_text(w), FIRST_URL)
-	testing.expect(t, ui.field_has_selection(&w.wnd.address), "what came is selected")
+	testing.expect(t, ui.line_edit_has_selection(&w.wnd.address), "what came is selected")
 }
 
 @(test)
@@ -140,6 +140,6 @@ full_screen_shows_the_bars_a_command_asks_for :: proc(t: ^testing.T) {
 	session.frames(w.s, FULL_SCREEN_FRAMES)
 	chrome_command(w, "browser.main_menu")
 	session.frames(w.s, FULL_SCREEN_FRAMES)
-	testing.expect(t, ui.ctx_menu_any_open(), "Alt+F: the main menu is open")
+	testing.expect(t, ui.menu_any_open(), "Alt+F: the main menu is open")
 	platform.set_fullscreen(w.wnd.win, false)
 }

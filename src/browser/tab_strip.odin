@@ -261,7 +261,7 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 		if !classic {
 			ui.spacer(ui.px(em * 0.3))
 			ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.2)), radius = em * CHROME_BUTTON_RADIUS})
-			add = ui.icon_button("###newtab", lucide.PLUS)
+			add = ui.button("###newtab", icon = lucide.PLUS)
 		}
 		tip(add, i18n.tr("New tab (Ctrl+T)"))
 		if add.clicked { tab_open_new(app) }

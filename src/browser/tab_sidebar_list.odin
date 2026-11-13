@@ -609,14 +609,14 @@ sidebar_group_row :: proc(app: ^App, it: Side_Item, row_x, row_w, inset, open: f
 			defer ui.pop_parent()
 			if renaming {
 				ui.next({width = ui.fill(), height = ui.px(math.round(it.h * 0.85))})
-				res := ui.line_edit("###grp_name", &own.sidebar.rename_field, i18n.tr("Group name"))
+				res := ui.line_edit("###grp_name", &own.sidebar.rename_field, {placeholder = i18n.tr("Group name")})
 				if own.sidebar.renaming != 0 && !own.sidebar.rename_focused {
 					ui.set_focus(res.box.key)
-					ui.field_select_all(&own.sidebar.rename_field)
+					ui.line_edit_select_all(&own.sidebar.rename_field)
 				}
 				switch {
 				case res.committed, own.sidebar.rename_focused && !res.focused:
-					group_rename(app, wnd, g.id, ui.field_string(&own.sidebar.rename_field))
+					group_rename(app, wnd, g.id, ui.line_edit_string(&own.sidebar.rename_field))
 					own.sidebar.renaming, own.sidebar.rename_focused = 0, false
 				case res.cancelled:
 					own.sidebar.renaming, own.sidebar.rename_focused = 0, false
@@ -652,7 +652,7 @@ group_rename_begin :: proc(app: ^App, id: u64) {
 	if gi < 0 { return }
 	s := &wnd.own.sidebar
 	s.renaming, s.rename_focused = id, false
-	ui.field_set(&s.rename_field, wnd.groups[gi].name)
+	ui.line_edit_set(&s.rename_field, wnd.groups[gi].name)
 	if app.favs.cfg.position != .Top && app.favs.cfg.side_collapsed { set_pref_bool(app, "browser.tabs.sidebar_collapsed", false) }
 	request_frames(app, 2)
 }

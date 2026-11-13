@@ -594,7 +594,7 @@ Different from the plan, and why:
   moved to it, the geometry its scripts read. Frames and the popup use it; a side panel would too. The window's own tab
   page keeps `page_prepare` and `page_paint` (`page_frame.odin`): its first paint hold, history restore, the page
   thread and the chrome frames are a window tab's alone. The toolkit's `ui.popover` holds the view (a `ui.custom` box);
-  `ui.ctx_menu` was not used, as a menu takes every key of the window. The popup's input is taken before the page's
+  `ui.menu` was not used, as a menu takes every key of the window. The popup's input is taken before the page's
   (`ext_popup_events`), and the window's keyboard is lent to its document for each event, then given back. Not yet: a
   `<select>` list of the popup is drawn by the window's page paint, not in the panel; Wren's shortcuts (Ctrl+T)
   do not work while the popup is open.

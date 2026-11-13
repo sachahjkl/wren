@@ -37,7 +37,7 @@ confirm_ask :: proc(app: ^App, kind: Confirm_Kind, title, note, act: string) -> 
 	c := &app.confirm
 	c.open, c.kind = true, kind
 	c.title, c.note, c.act = strings.clone(title), strings.clone(note), strings.clone(act)
-	if ui.building() { ui.ctx_menu_close() }   // (the menu that asked)
+	if ui.building() { ui.menu_close() }   // (the menu that asked)
 	request_frames(app, 2)
 	return c
 }
@@ -75,7 +75,7 @@ download_delete_asked :: proc(app: ^App, d: ^Download) {
 history_delete_asked :: proc(app: ^App, from_ms, to_ms: i64, what: string) {
 	n := 0
 	for v in app.ghist.visits { if v.at_ms >= from_ms && v.at_ms <= to_ms { n += 1 } }
-	if n == 0 { ui.toast(.Info, "No visit to delete"); return }
+	if n == 0 { announce(app, .Info, "No visit to delete"); return }
 	c := confirm_ask(app, .History_Range, fmt.tprintf(i18n.tr("Delete the history of %s?"), what),
 		fmt.tprintf(n == 1 ? i18n.tr("%d visit is deleted, and the closed tabs of that time.") : i18n.tr("%d visits are deleted, and the closed tabs of that time."), n), i18n.tr("Delete"))
 	c.from_ms, c.to_ms = from_ms, to_ms

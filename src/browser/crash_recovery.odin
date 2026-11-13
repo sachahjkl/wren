@@ -26,7 +26,6 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "core:time"
-import "toolkit:ui"
 import "wb:base"
 import "wb:config"
 import "wb:fetch"
@@ -481,7 +480,7 @@ recovery_start_fresh :: proc(app: ^App) {
 recovery_show_details :: proc(app: ^App) {
 	path := app.recovery.report
 	if path == "" {
-		ui.toast(.Info, "%s", i18n.tr("No crash report was written: the process was ended from outside, or by the system."))
+		announce(app, .Info, i18n.tr("No crash report was written: the process was ended from outside, or by the system."))
 		return
 	}
 	tab_open(app, fetch.file_url_from_path(path, false, context.temp_allocator), origin = .User)

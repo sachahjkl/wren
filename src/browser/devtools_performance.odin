@@ -251,7 +251,7 @@ perf_export_work :: proc(data: rawptr) {
 perf_export_done :: proc(data: rawptr) {
 	j := (^Perf_Export)(data)
 	defer perf_export_free(j)
-	if j.why != "" { ui.toast(.Bad, "%s", j.why); return }
+	if j.why != "" { announce(j.app, .Bad, j.why); return }
 	announce(j.app, .Good, "Frames saved", j.dir)
 	shell_open_folder(j.dir)
 	request_frames(j.app, 2)

@@ -24,7 +24,7 @@ qr_build :: proc(app: ^App) {
 	em := ui.font_size()
 	open := true
 	close := false
-	if ui.modal("page_qr", em * (QR_SIDE_EM + 6), &open) {
+	if ui.modal("page_qr", &open, {width_em = QR_SIDE_EM + 6}) {
 		if ui.dialog_header("page_qr_header", i18n.tr("Scan to open this page"), {icon = lucide.QR_CODE, icon_font = app.lucide}) {}
 		// everything centred across the dialog: the code, its words, its buttons
 		ui.next({width = ui.fill(), height = ui.children_sum()})
@@ -38,9 +38,9 @@ qr_build :: proc(app: ^App) {
 			ui.spacer(ui.px(em * 0.8))
 			ui.next({width = ui.children_sum(), height = ui.children_sum()})
 			if ui.row(.Center, {}, "###page_qr_buttons") {
-				if ui.button_icon("###qr_copy", lucide.COPY, i18n.tr("Copy the address"), intent = .Primary, width = ui.px(em * 10)).clicked { clip_set(app.qr_url); announce(app, .Info, "Address copied") }
+				if ui.button("qr_copy", i18n.tr("Copy the address"), lucide.COPY, {intent = .Primary, width = ui.px(em * 10)}).clicked { clip_set(app.qr_url); announce(app, .Info, "Address copied") }
 				ui.spacer(ui.px(em * 0.6))
-				if ui.button_icon("###qr_close", lucide.X, i18n.tr("Close"), intent = .Cancel, width = ui.px(em * 6)).clicked { close = true }
+				if ui.button("qr_close", i18n.tr("Close"), lucide.X, {intent = .Cancel, width = ui.px(em * 6)}).clicked { close = true }
 			}
 			ui.spacer(ui.px(em * 0.8))
 		}

@@ -406,7 +406,7 @@ network_panel :: proc(app: ^App, t: ^Tab) {
 	split := f32(config_float(app, "browser.devtools.network.split"))
 	room_w := dev_width()
 	side := room_w >= dt_px(640)
-	menu_key := ui.key_from_string(0, "###dt_net_menu")
+	menu_key := "###dt_net_menu"
 	// the table keeps its place in the tree (and so its scroll) whether or not a request is open beside or under it
 	ui.next({width = ui.fill(), height = ui.fill()})
 	if side {
@@ -418,7 +418,7 @@ network_panel :: proc(app: ^App, t: ^Tab) {
 }
 
 @(private = "file")
-net_split_body :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, sel: ^Net_Entry, side: bool, split, room_w: f32, menu_key: ui.Key) {
+net_split_body :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, sel: ^Net_Entry, side: bool, split, room_w: f32, menu_key: string) {
 	if side {
 		ui.next({width = sel != nil ? ui.pct(split) : ui.fill(), height = ui.fill()})
 	} else {
@@ -493,12 +493,12 @@ net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		if dc.clicked { dev_toggle_pref(app, "browser.devtools.network.disable_cache") }
 		throttled := net_profile_active(prof)
 		tkey := dt_menu_btn("###dt_net_throttle", .Throttle, prof.name, tooltip = throttled ? fmt.tprintf("Network speed. Held to: %s", net_profile_text(prof)) : "Network speed", on = throttled, tone = throttled ? draw.Color{0.93, 0.62, 0.10, 1} : draw.Color{})
-		if ui.ctx_menu(tkey, dt_px(220)) { net_speed_menu(app, t, v) }
+		if ui.menu(tkey, dt_px(220)) { net_speed_menu(app, t, v) }
 		dt_vsep("###dt_nb2")
 		ek := dt_btn("###dt_net_export", .Download, tooltip = "Export the requests as HAR", enabled = len(t.net.entries) > 0)
 		if ek.clicked { net_export_har(app, t) }
 		skey := dt_menu_btn("###dt_net_gear", .Gear, tooltip = "Network settings", caret = false)
-		if ui.ctx_menu(skey, dt_px(260)) { network_settings_items(app, t) }
+		if ui.menu(skey, dt_px(260)) { network_settings_items(app, t) }
 		dt_gap(3)
 	}
 }
@@ -520,7 +520,7 @@ columns_menu :: proc(app: ^App, v: ^Dev_Network) {
 	for c in Net_Col {
 		on := false
 		for x in v.cols { if x.col == c { on = true } }
-		if ui.menu_item(fmt.tprintf("%s###dt_col_%d", NET_COL_TITLES[c], int(c)), checked = on, keep_open = true, enabled = c != .Name).clicked {
+		if ui.menu_item(fmt.tprintf("%s###dt_col_%d", NET_COL_TITLES[c], int(c)), checked = on, keep_open = true, disabled = c == .Name).clicked {
 			if on {
 				for x, i in v.cols { if x.col == c { ordered_remove(&v.cols, i); break } }
 			} else {
@@ -559,7 +559,7 @@ net_set_types :: proc(app: ^App, v: ^Dev_Network, mask: u32) {
 // The table
 
 @(private = "file")
-net_table :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, menu_key: ui.Key) {
+net_table :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, menu_key: string) {
 	avail := dev_width()
 	if v.has_sel { avail = avail * f32(config_float(app, "browser.devtools.network.split")) }
 	if avail <= 0 { avail = f32(active_window(app).win.size.x) }
@@ -620,7 +620,7 @@ net_table :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, menu_key: ui.Key) {
 			if sig.right_clicked {
 				v.has_sel, v.sel_id = true, e.id
 				v.menu_id = e.id
-				ui.ctx_menu_open(menu_key, ui.mouse_pos())
+				ui.menu_open(menu_key, ui.mouse_pos())
 			}
 			net_row_tip(sig, e)
 		}
@@ -726,7 +726,7 @@ net_row_tip :: proc(sig: ui.Signal, e: ^Net_Entry) {
 net_header :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 	ui.next({width = ui.fill(), height = ui.px(app.dtm.row + dt_px(2)), axis = .X, bg = app.dtc.bar, border = app.dtc.border})
 	cont := ui.build_box({.Draw_Background, .Draw_Side_Bottom}, "###dt_net_head")
-	cols_key := ui.key_from_string(0, "###dt_net_colmenu")
+	cols_key := "###dt_net_colmenu"
 	if ui.parent(cont) {
 		ui.next({width = ui.fill(), height = ui.fill(), cursor = .Arrow})
 		hb := ui.build_box({.Clickable}, "###dt_net_ht")
@@ -740,7 +740,7 @@ net_header :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 			if v.sort_on && v.sort_col == c { if v.sort_desc { v.sort_on = false } else { v.sort_desc = true } } else { v.sort_on, v.sort_col, v.sort_desc = true, c, false }
 			net_sort_save(app, v)
 		}
-		if sig.right_clicked { ui.ctx_menu_open(cols_key, ui.mouse_pos()) }
+		if sig.right_clicked { ui.menu_open(cols_key, ui.mouse_pos()) }
 		// the grips
 		for p, i in v.layout {
 			if i == len(v.layout) - 1 && p.col == .Waterfall { continue }
@@ -757,7 +757,7 @@ net_header :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 			if !gs.dragging && v.resizing == int(p.col) { v.resizing = -1; net_cols_save(app, v) }
 		}
 	}
-	if ui.ctx_menu(cols_key, dt_px(200)) { ui.menu_heading("Columns"); columns_menu(app, v) }
+	if ui.menu(cols_key, dt_px(200)) { ui.menu_heading("Columns"); columns_menu(app, v) }
 }
 
 @(private = "file")
@@ -815,14 +815,14 @@ net_summary :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 // The menu of a row
 
 @(private = "file")
-net_row_menu :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, key: ui.Key) {
-	if ui.ctx_menu(key, dt_px(270)) { net_row_menu_items(app, t, v) }
+net_row_menu :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, key: string) {
+	if ui.menu(key, dt_px(270)) { net_row_menu_items(app, t, v) }
 }
 
 @(private = "file")
 net_row_menu_items :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 	e := net_entry_of(&t.net, v.menu_id)
-	if e == nil { ui.ctx_menu_close(); return }
+	if e == nil { ui.menu_close(); return }
 	if ui.menu_item("Open in a new tab###dt_nm_open", icon = lucide.EXTERNAL_LINK).clicked { open_in_new_tab(app, strings.clone(e.url, context.temp_allocator), inspected_page(app)) }
 	if ui.menu_item("Copy link address###dt_nm_url", icon = lucide.COPY).clicked { clip_set(e.url) }
 	if ui.menu_submenu("Copy###dt_nm_copy", icon = lucide.COPY) {
@@ -833,31 +833,31 @@ net_row_menu_items :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		if ui.menu_item("Copy as PowerShell###dt_nm_c_ps", icon = lucide.COPY).clicked { clip_set(net_powershell(e)) }
 		if ui.menu_item("Copy as fetch###dt_nm_c_fetch", icon = lucide.COPY).clicked { clip_set(net_fetch_code(e)) }
 		ui.menu_separator()
-		if ui.menu_item("Copy request headers###dt_nm_c_rq", enabled = e.req_headers != "", icon = lucide.COPY).clicked { clip_set(e.req_headers) }
-		if ui.menu_item("Copy response headers###dt_nm_c_rs", enabled = e.res_headers != "", icon = lucide.COPY).clicked { clip_set(e.res_headers) }
-		if ui.menu_item("Copy response###dt_nm_c_body", enabled = len(e.body) > 0, icon = lucide.COPY).clicked { clip_set(string(e.body[:])) }
+		if ui.menu_item("Copy request headers###dt_nm_c_rq", disabled = e.req_headers == "", icon = lucide.COPY).clicked { clip_set(e.req_headers) }
+		if ui.menu_item("Copy response headers###dt_nm_c_rs", disabled = e.res_headers == "", icon = lucide.COPY).clicked { clip_set(e.res_headers) }
+		if ui.menu_item("Copy response###dt_nm_c_body", disabled = !(len(e.body) > 0), icon = lucide.COPY).clicked { clip_set(string(e.body[:])) }
 		ui.menu_separator()
-		if ui.menu_item("Copy all as cURL###dt_nm_c_all", enabled = len(v.rows) > 0, icon = lucide.COPY).clicked {
+		if ui.menu_item("Copy all as cURL###dt_nm_c_all", disabled = !(len(v.rows) > 0), icon = lucide.COPY).clicked {
 			b := strings.builder_make(context.temp_allocator)
 			for ri in v.rows { strings.write_string(&b, net_curl(&t.net.entries[ri])); strings.write_string(&b, "\n\n") }
 			clip_set(strings.to_string(b))
 		}
-		if ui.menu_item("Copy all as HAR###dt_nm_c_har", enabled = len(t.net.entries) > 0, icon = lucide.COPY).clicked { clip_set(net_har(t)) }
+		if ui.menu_item("Copy all as HAR###dt_nm_c_har", disabled = !(len(t.net.entries) > 0), icon = lucide.COPY).clicked { clip_set(net_har(t)) }
 	}
 	ui.menu_separator()
 	host_ := net_host_of(e.url)
-	if ui.menu_item("Block request URL###dt_nm_block", enabled = !strings.has_prefix(e.url, "data:"), icon = lucide.SHIELD).clicked { net_block(app, v, e.url) }
-	if ui.menu_item(fmt.tprintf("Block request domain  (%s)###dt_nm_blockd", host_), enabled = host_ != "", icon = lucide.SHIELD).clicked { net_block(app, v, strings.concatenate({"*://", host_, "/*"}, context.temp_allocator)) }
+	if ui.menu_item("Block request URL###dt_nm_block", disabled = strings.has_prefix(e.url, "data:"), icon = lucide.SHIELD).clicked { net_block(app, v, e.url) }
+	if ui.menu_item(fmt.tprintf("Block request domain  (%s)###dt_nm_blockd", host_), disabled = host_ == "", icon = lucide.SHIELD).clicked { net_block(app, v, strings.concatenate({"*://", host_, "/*"}, context.temp_allocator)) }
 	if len(v.blocked) > 0 {
 		if ui.menu_item(fmt.tprintf("Unblock all  (%d patterns)###dt_nm_unblock", len(v.blocked)), icon = lucide.SHIELD).clicked { for b in v.blocked { delete(b) }; clear(&v.blocked) }
 	}
 	ui.menu_separator()
 	replayable := e.type == .XHR && !e.is_ws && !e.is_sse && t.page != nil
-	if ui.menu_item("Replay XHR###dt_nm_replay", enabled = replayable, icon = lucide.REFRESH_CW).clicked {
-		if page.dev_run_script(t.page, net_fetch_code(e)) { ui.toast(.Info, "Replaying %s %s", e.method, net_name_of(e.url)) } else { ui.toast(.Warn, "The page cannot run the request (JavaScript is off for it)") }
+	if ui.menu_item("Replay XHR###dt_nm_replay", disabled = !replayable, icon = lucide.REFRESH_CW).clicked {
+		if page.dev_run_script(t.page, net_fetch_code(e)) { announce(app, .Info, fmt.tprintf("Replaying %s %s", e.method, net_name_of(e.url))) } else { announce(app, .Warn, "The page cannot run the request (JavaScript is off for it)") }
 	}
-	if ui.menu_item("Save response as\u2026###dt_nm_savebody", enabled = len(e.body) > 0, icon = lucide.SAVE).clicked { save_data_as(app, suggested_name(e.url, "response"), e.body[:]) }
-	if ui.menu_item("Save all as HAR\u2026###dt_nm_savehar", enabled = len(t.net.entries) > 0, icon = lucide.SAVE).clicked { net_export_har(app, t) }	ui.menu_separator()
+	if ui.menu_item("Save response as\u2026###dt_nm_savebody", disabled = !(len(e.body) > 0), icon = lucide.SAVE).clicked { save_data_as(app, suggested_name(e.url, "response"), e.body[:]) }
+	if ui.menu_item("Save all as HAR\u2026###dt_nm_savehar", disabled = !(len(t.net.entries) > 0), icon = lucide.SAVE).clicked { net_export_har(app, t) }	ui.menu_separator()
 	if ui.menu_item("Clear the log###dt_nm_clear", icon = lucide.TRASH_2).clicked { net_clear(&t.net); v.has_sel = false }
 }
 
@@ -865,7 +865,7 @@ net_row_menu_items :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 net_block :: proc(app: ^App, v: ^Dev_Network, pattern: string) {
 	for b in v.blocked { if b == pattern { return } }
 	append(&v.blocked, strings.clone(pattern))
-	ui.toast(.Info, "Blocking %s", pattern)
+	announce(app, .Info, fmt.tprintf("Blocking %s", pattern))
 }
 
 // `pattern` matches `s`: `*` stands for any run of characters.

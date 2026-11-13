@@ -62,7 +62,7 @@ chrome_address_bar_suggestions :: proc(t: ^testing.T) {
 
 	// the inline completion, each letter in a frame of its own (a text that grows at its end is completed, a text pasted over the field is not)
 	session.type_slowly(w.s, "gitl")
-	testing.expect_value(t, ui.field_string(&w.wnd.address), "gitlab.com/")
+	testing.expect_value(t, ui.line_edit_string(&w.wnd.address), "gitlab.com/")
 	testing.expect(t, listed(w, GITLAB), "the first row is what it completes to")
 
 	// Shift+Delete on the completed row: out of the list and out of the history

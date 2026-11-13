@@ -22,7 +22,6 @@ import "wb:page"
 import "wb:remote"
 import "wb:remote/api"
 
-ui_toast_remote :: proc(text: string) { ui.toast(.Warn, "%s", text) }
 ui_needs_frame :: proc(app: ^App) -> bool { return ui.needs_frame(active_window(app).ui) }
 render_capture_busy :: proc(app: ^App) -> bool { return render.capture_pending(&app.r) }
 

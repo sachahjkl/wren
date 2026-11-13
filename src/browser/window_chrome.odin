@@ -211,7 +211,7 @@ fullscreen_bars :: proc(app: ^App, t: ^Tab) {
 	} else {
 		// they stay while the pointer is over them, a menu of theirs is open or the address bar has the keyboard
 		over := m.y < fw.overlay.max.y + ui.font_size()
-		fw.revealed = asked || over || ui.ctx_menu_any_open() || (ui.focus_key() != 0 && ui.focus_key() == address_key(app))
+		fw.revealed = asked || over || ui.menu_any_open() || (ui.focus_key() != 0 && ui.focus_key() == address_key(app))
 	}
 	if !fw.revealed { fw.overlay = {}; return }
 	placed := fw.overlay != {}

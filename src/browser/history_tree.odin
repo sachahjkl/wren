@@ -386,7 +386,7 @@ history_tree_destroy :: proc() {
 history_tree_events :: proc(app: ^App, events: []platform.Event) -> []platform.Event {
 	clear(&app.tview.pending)
 	t := current_tab(app)
-	if t == nil || t.kind != .History || app.hview.mode != 1 || app.tview.built != active_window(app).ui.build_index || ui.ctx_menu_any_open() { return events }
+	if t == nil || t.kind != .History || app.hview.mode != 1 || app.tview.built != active_window(app).ui.build_index || ui.menu_any_open() { return events }
 	r := app.tview.view_rect
 	focus := ui.focus_key()
 	out := make([dynamic]platform.Event, 0, len(events), context.temp_allocator)
@@ -743,7 +743,7 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 		clear(&app.tview.pending)
 
 		// keyboard (the canvas has the focus)
-		if sig.focused && !ui.ctx_menu_any_open() {
+		if sig.focused && !ui.menu_any_open() {
 			step := app.tcfg.key_step * ui.scale()
 			move: [2]f32
 			if ui.key_press(.Left) { move.x -= step }
@@ -810,7 +810,7 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 		if sig.right_clicked {
 			hit := tree_hit(m, l, app.tview.cam, vc, em, mouse)
 			app.tview.menu_entry = hit >= 0 ? m.nodes[hit].id : 0
-			ui.ctx_menu_open(ui.key_from_string(0, "###h_tree_menu"), mouse)
+			ui.menu_open("###h_tree_menu", mouse)
 		}
 
 		// the glide after a drag, the animated moves, the layout transition
@@ -1011,24 +1011,24 @@ tree_controls :: proc(m: ^Tree_Model, l: Tree_Layout, extent, size: [2]f32, em: 
 			vc := size * 0.5 + the_app.tview.view_rect.min
 			ui.spacer(ui.px(pad))
 			ui.next({width = ui.px(em * 2), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
-			b := ui.button("\u2212###h_tree_zout")
+			b := ui.button("h_tree_zout", "\u2212")
 			tip(b, "Zoom out (Ctrl+Minus, Ctrl+wheel)")
 			if b.clicked { tree_zoom_by(1 / the_app.tcfg.zoom_step, vc, em, anims, now) }
 			ui.next({width = ui.px(em * 4), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
-			b = ui.button(fmt.tprintf("%d %%###h_tree_zpct", int(tree_target().zoom * 100 + 0.5)))
+			b = ui.button("h_tree_zpct", fmt.tprintf("%d %%", int(tree_target().zoom * 100 + 0.5)))
 			tip(b, "Actual size (Ctrl+0)")
 			if b.clicked { tree_zoom_by(1 / tree_target().zoom, vc, em, anims, now) }
 			ui.next({width = ui.px(em * 2), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
-			b = ui.button("+###h_tree_zin")
+			b = ui.button("h_tree_zin", "+")
 			tip(b, "Zoom in (Ctrl+Plus, Ctrl+wheel)")
 			if b.clicked { tree_zoom_by(the_app.tcfg.zoom_step, vc, em, anims, now) }
 			ui.spacer(ui.px(pad * 2))
 			ui.next({width = ui.text_size(em * 0.5), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
-			b = ui.button("Fit###h_tree_fit")
+			b = ui.button("h_tree_fit", "Fit")
 			tip(b, "Show the whole tree (F)")
 			if b.clicked { tree_fit(extent, size, em, anims, now) }
 			ui.next({width = ui.text_size(em * 0.5), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
-			b = ui.button("Current###h_tree_cur")
+			b = ui.button("h_tree_cur", "Current")
 			tip(b, "Center the current page of the tab (C)")
 			if b.clicked { tree_center_current(m, l, anims, now) }
 			ui.spacer(ui.px(pad))
@@ -1080,7 +1080,7 @@ tree_minimap :: proc(app: ^App, m: ^Tree_Model, l: Tree_Layout, extent, size: [2
 
 @(private = "file")
 tree_menu :: proc(app: ^App, t: ^Tab) {
-	if ui.ctx_menu(ui.key_from_string(0, "###h_tree_menu")) { tree_menu_items(app, t) }
+	if ui.menu("###h_tree_menu") { tree_menu_items(app, t) }
 }
 
 @(private = "file")
@@ -1093,43 +1093,43 @@ tree_menu_items :: proc(app: ^App, t: ^Tab) {
 	l := app.tview.layout
 	if app.tview.menu_entry != 0 {
 		e := page.session_find(&t.session, app.tview.menu_entry)
-		if e == nil { ui.ctx_menu_close(); return }
+		if e == nil { ui.menu_close(); return }
 		address := strings.clone(e.url, context.temp_allocator)
-		if ui.menu_item("Go to this page", enabled = e != page.session_current(&t.session), icon = lucide.EXTERNAL_LINK).clicked {
-			ui.ctx_menu_close()
+		if ui.menu_item("Go to this page", disabled = e == page.session_current(&t.session), icon = lucide.EXTERNAL_LINK).clicked {
+			ui.menu_close()
 			tab_reveal(app, t)
 			go_entry(app, t, e)
 			return
 		}
-		if ui.menu_item("Open in a new tab", "Middle click", icon = lucide.EXTERNAL_LINK).clicked { ui.ctx_menu_close(); open_in_new_tab(app, address, origin = .Replay); return }
-		if ui.menu_item("Copy address", icon = lucide.COPY).clicked { clip_set(address); ui.ctx_menu_close() }
+		if ui.menu_item("Open in a new tab", "Middle click", icon = lucide.EXTERNAL_LINK).clicked { ui.menu_close(); open_in_new_tab(app, address, origin = .Replay); return }
+		if ui.menu_item("Copy address", icon = lucide.COPY).clicked { clip_set(address); ui.menu_close() }
 		ui.menu_separator()
 		holds_current := false
 		for a := page.session_current(&t.session); a != nil; a = a.parent { if a == e { holds_current = true } }
-		if ui.menu_item("Forget this branch", enabled = !holds_current, icon = lucide.TRASH_2).clicked {
+		if ui.menu_item("Forget this branch", disabled = holds_current, icon = lucide.TRASH_2).clicked {
 			ids := page.session_forget(&t.session, e)
 			for id in ids { bfcache_forget(app, t, id) }
 			sync_history(app, t)
-			ui.ctx_menu_close()
+			ui.menu_close()
 		}
 		return
 	}
 	extent := tree_extent(l, m.rows, m.cols)
-	if ui.menu_item("Fit the whole tree", "F", icon = lucide.LAYOUT_GRID).clicked { tree_fit(extent, size, em, anims, now); ui.ctx_menu_close() }
-	if ui.menu_item("Center the current page", "C", icon = lucide.HOME).clicked { tree_center_current(m, l, anims, now); ui.ctx_menu_close() }
-	if ui.menu_item("Actual size", "Ctrl+0", icon = lucide.SEARCH).clicked { tree_zoom_by(1 / tree_target().zoom, app.tview.view_rect.min + size * 0.5, em, anims, now); ui.ctx_menu_close() }
+	if ui.menu_item("Fit the whole tree", "F", icon = lucide.LAYOUT_GRID).clicked { tree_fit(extent, size, em, anims, now); ui.menu_close() }
+	if ui.menu_item("Center the current page", "C", icon = lucide.HOME).clicked { tree_center_current(m, l, anims, now); ui.menu_close() }
+	if ui.menu_item("Actual size", "Ctrl+0", icon = lucide.SEARCH).clicked { tree_zoom_by(1 / tree_target().zoom, app.tview.view_rect.min + size * 0.5, em, anims, now); ui.menu_close() }
 	ui.menu_separator()
-	if ui.menu_item("Horizontal layout", "L", checked = app.tcfg.layout == .Horizontal).clicked { tree_set_layout(app, .Horizontal); ui.ctx_menu_close() }
-	if ui.menu_item("Vertical layout", "L", checked = app.tcfg.layout == .Vertical).clicked { tree_set_layout(app, .Vertical); ui.ctx_menu_close() }
+	if ui.menu_item("Horizontal layout", "L", checked = app.tcfg.layout == .Horizontal).clicked { tree_set_layout(app, .Horizontal); ui.menu_close() }
+	if ui.menu_item("Vertical layout", "L", checked = app.tcfg.layout == .Vertical).clicked { tree_set_layout(app, .Vertical); ui.menu_close() }
 	if ui.menu_item("Minimap", checked = app.tcfg.minimap).clicked {
 		if config.set_from_string(&app.prefs, "browser.history.tree_minimap", app.tcfg.minimap ? "false" : "true", .User) != .None { app.tcfg.minimap = !app.tcfg.minimap }
-		ui.ctx_menu_close()
+		ui.menu_close()
 	}
 }
 
 @(private = "file")
 tree_tooltip :: proc(app: ^App, t: ^Tab, m: ^Tree_Model, now: f64) {
-	if app.tview.hover == 0 || ui.ctx_menu_any_open() { return }
+	if app.tview.hover == 0 || ui.menu_any_open() { return }
 	waited := now - app.tview.hover_ms
 	if waited < app.tcfg.tooltip_ms {
 		active_window(app).ui.wake_ms = max(1, int(app.tcfg.tooltip_ms - waited) + 5)

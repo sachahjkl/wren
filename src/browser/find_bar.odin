@@ -29,7 +29,7 @@ Find_State :: struct {
 	said_closed: bool,                   // find_paint_item logged its matches painted with the bar closed (once)
 	open:       bool,
 	focus:      bool,                    // give the field the focus at the next build
-	field:      ui.Text_Field,
+	field:      ui.Line_Edit,
 	query:      string,                  // what the matches are for (owned)
 	page:       ^page.Page,
 	mutations:  u64,
@@ -47,7 +47,7 @@ Find_State :: struct {
 find_state :: proc(app: ^App) -> ^Find_State { return &window_own(app).find }
 
 find_destroy :: proc(fs: ^Find_State) {
-	ui.field_destroy(&fs.field)
+	ui.line_edit_destroy(&fs.field)
 	delete(fs.query)
 	delete(fs.matches)
 	for _, v in fs.spans { delete(v) }
@@ -70,9 +70,9 @@ find_open :: proc(app: ^App) {
 	// the selection (when short and on one line) is what to look for
 	if t := current_tab(app); t != nil && t.page != nil && page.selection_active(t.page) {
 		s := strings.trim_space(page.selection_text(t.page))
-		if s != "" && len(s) <= 200 && !strings.contains(s, "\n") { ui.field_set(&fs.field, s) }
+		if s != "" && len(s) <= 200 && !strings.contains(s, "\n") { ui.line_edit_set(&fs.field, s) }
 	}
-	ui.field_select_all(&fs.field)
+	ui.line_edit_select_all(&fs.field)
 }
 
 find_close :: proc(app: ^App) {
@@ -117,7 +117,7 @@ find_update :: proc(app: ^App, t: ^Tab) {
 	fs := find_state(app)
 	if t == nil || t.page == nil || t.kind != .Web { find_clear_matches(fs); fs.page = nil; return }
 	p := t.page
-	q := ui.field_string(&fs.field)
+	q := ui.line_edit_string(&fs.field)
 	styled_serial := p.styled != nil ? p.styled.serial : 0
 	same_query := q == fs.query && fs.case_sensitive == app.ix.find_case_sensitive
 	if same_query && fs.page == p && fs.mutations == p.doc.mutations && fs.styled == styled_serial { return }
@@ -200,7 +200,7 @@ find_bar :: proc(app: ^App, t: ^Tab) {
 		if ui.tags("weak") { ui.label("Find in page###find_lbl") }
 		ui.spacer(ui.px(em * 0.6))
 		ui.next({width = ui.px(em * 22), height = ui.px(ui.dense(em * 2))})
-		res := ui.line_edit("###find_field", &fs.field, "Text to find")
+		res := ui.line_edit("###find_field", &fs.field, {placeholder = "Text to find"})
 		if fs.focus {
 			fs.focus = false
 			if b := ui.prev_box("###find_field"); b != nil { ui.set_focus(b.key) }
@@ -212,7 +212,7 @@ find_bar :: proc(app: ^App, t: ^Tab) {
 		if res.committed { find_step(app, 1) }
 		ui.spacer(ui.px(em * 0.6))
 		count := "No results"
-		if ui.field_string(&fs.field) == "" { count = "" } else if len(fs.matches) > 0 {
+		if ui.line_edit_string(&fs.field) == "" { count = "" } else if len(fs.matches) > 0 {
 			count = fmt.tprintf("%d/%d%s", fs.active + 1, len(fs.matches), fs.truncated ? "+" : "")
 		}
 		ui.next({width = ui.px(em * 7), height = ui.px(ui.dense(em * 2))})

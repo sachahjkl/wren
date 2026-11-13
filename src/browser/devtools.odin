@@ -285,14 +285,14 @@ devtools_save :: proc(app: ^App) {
 set_pref_string :: proc(app: ^App, name, value: string) {
 	if config.value_string(&app.prefs, config.ref_of(&app.prefs, name)) == value { return }   // (a Float preference too: string_of asserts on one)
 	if err := config.set_from_string(&app.prefs, name, value, .User); err != .None {
-		ui.toast(.Warn, "%s: %s", name, config.set_error_text(err))
+		announce(app, .Warn, fmt.tprintf("%s: %s", name, config.set_error_text(err)))
 	}
 }
 
 // A preference of any kind from its text (what a menu of the panel sets).
 dev_set_pref :: proc(app: ^App, name: string, value: string) {
 	if err := config.set_from_string(&app.prefs, name, value, .User); err != .None {
-		ui.toast(.Warn, "%s: %s", name, config.set_error_text(err))
+		announce(app, .Warn, fmt.tprintf("%s: %s", name, config.set_error_text(err)))
 	}
 }
 
@@ -450,7 +450,7 @@ devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_
 devtools_events :: proc(app: ^App, events: []platform.Event, in_window := false) -> []platform.Event {
 	if !dev().visible && net_media_active(app) && app.net_media.owner == dev() { net_media_release(app) }
 	if devtools_detached() != in_window { return events }   // (the panel's rectangle is of the window it is in)
-	if !dev().visible || dev().rect.max.x <= dev().rect.min.x || ui.ctx_menu_any_open() { return events }
+	if !dev().visible || dev().rect.max.x <= dev().rect.min.x || ui.menu_any_open() { return events }
 	taken := false
 	out := make([dynamic]platform.Event, 0, len(events), context.temp_allocator)
 	for e in events {
@@ -662,7 +662,7 @@ config_float :: proc(app: ^App, name: string) -> f64 { return config.float_of(&a
 
 // A float preference set while a drag goes on (no toast on a refused value).
 set_pref_quiet :: proc(app: ^App, name: string, v: f32) {
-	_ = config.set_from_string(&app.prefs, name, fmt.tprintf("%.3f", v), .User)
+	_ = config.set_float(&app.prefs, name, f64(v))
 }
 
 _ :: page

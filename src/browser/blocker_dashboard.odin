@@ -39,19 +39,19 @@ DASH_NAMES := [Dash_Tab]string{
 
 Dash :: struct {
 	tab:         int,
-	my:          ui.Text_Area,
+	my:          ui.Text_Edit,
 	my_loaded:   bool,
 	my_dirty:    bool,
 	my_diag:     []string,
 	my_errors:   map[int]string,   // paragraph index (0-based) -> message, for the editor's underline and tooltip
 	my_valid, my_ignored: int,
 	my_checked:  string,
-	custom_url:  ui.Text_Field,
-	custom_name: ui.Text_Field,
-	wl_add:      ui.Text_Field,
-	rule_src, rule_dst: ui.Text_Field,
+	custom_url:  ui.Line_Edit,
+	custom_name: ui.Line_Edit,
+	wl_add:      ui.Line_Edit,
+	rule_src, rule_dst: ui.Line_Edit,
 	rule_type, rule_action: int,
-	log_search:  ui.Text_Field,
+	log_search:  ui.Line_Edit,
 	log_outcome: int,
 	log_type:    int,
 	log_list:    ui.Virtual_List,
@@ -71,9 +71,9 @@ Dash :: struct {
 
 
 dash_destroy :: proc() {
-	ui.area_destroy(&the_app.dash.my)
-	ui.field_destroy(&the_app.dash.custom_url); ui.field_destroy(&the_app.dash.custom_name); ui.field_destroy(&the_app.dash.wl_add)
-	ui.field_destroy(&the_app.dash.rule_src); ui.field_destroy(&the_app.dash.rule_dst); ui.field_destroy(&the_app.dash.log_search)
+	ui.text_edit_destroy(&the_app.dash.my)
+	ui.line_edit_destroy(&the_app.dash.custom_url); ui.line_edit_destroy(&the_app.dash.custom_name); ui.line_edit_destroy(&the_app.dash.wl_add)
+	ui.line_edit_destroy(&the_app.dash.rule_src); ui.line_edit_destroy(&the_app.dash.rule_dst); ui.line_edit_destroy(&the_app.dash.log_search)
 	ui.vlist_destroy(&the_app.dash.log_list)
 	delete(the_app.dash.my_diag); delete(the_app.dash.log_rows); delete(the_app.dash.log_ids); delete(the_app.dash.log_labels); delete(the_app.dash.log_sel)
 	delete(the_app.dash.log_query); delete(the_app.dash.status); delete(the_app.dash.my_checked)
@@ -124,7 +124,7 @@ pref_row :: proc(app: ^App, label, name, id: string) {
 	em := ui.font_size()
 	v := config.bool_of(&app.prefs, name)
 	ui.next({width = ui.px(em * 26), height = ui.px(ui.dense(em * 1.8))})
-	if ui.toggle(fmt.aprintf("###pt_%s", id, allocator = ui.frame_allocator()), label, &v).clicked {
+	if ui.toggle(fmt.tprintf("###pt_%s", id), label, &v) {
 		config.set_from_string(&app.prefs, name, v ? "true" : "false", .User)
 		blocker.touch(&app.bl.b)
 	}
@@ -238,7 +238,7 @@ tab_settings :: proc(app: ^App, t: ^Tab) {
 			ui.next({width = ui.px(em * 9), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			if ui.dropdown("###bs_interval", opts, &sel) { config.set_from_string(&app.prefs, "blocker.update.interval_hours", fmt.tprintf("%d", hours[sel]), .User) }
 			ui.spacer(ui.px(em * 0.8))
-			if ui.button_icon("###bs_update_now", lucide.REFRESH_CW, i18n.tr("Update now"), intent = .Primary, tip = i18n.tr("Ask every enabled list for a newer version now"), width = ui.px(em * 8)).clicked { blocker.updater_round(b, true) }
+			if ui.button("bs_update_now", i18n.tr("Update now"), lucide.REFRESH_CW, {intent = .Primary, tip = i18n.tr("Ask every enabled list for a newer version now"), width = ui.px(em * 8)}).clicked { blocker.updater_round(b, true) }
 			ui.spacer(ui.px(em * 0.8))
 			if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(b.upd.status != "" ? b.upd.status : (b.upd.last_round > 0 ? fmt.tprintf(i18n.tr("last check %s"), fmt_date(b.upd.last_round)) : i18n.tr("no check yet")), "bs_upd_st")) }
 		}
@@ -250,11 +250,11 @@ tab_settings :: proc(app: ^App, t: ^Tab) {
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.9))
-			if ui.button_icon("###bs_export", lucide.FOLDER_OUTPUT, i18n.tr("Export…"), tip = i18n.tr("Save the lists, rules, sites and filters as one file"), width = ui.px(em * 8)).clicked { dash_export(app) }
+			if ui.button("bs_export", i18n.tr("Export…"), lucide.FOLDER_OUTPUT, {tip = i18n.tr("Save the lists, rules, sites and filters as one file"), width = ui.px(em * 8)}).clicked { dash_export(app) }
 			ui.spacer(ui.px(em * 0.5))
-			if ui.button_icon("###bs_import", lucide.FOLDER_INPUT, i18n.tr("Import…"), tip = i18n.tr("Load a configuration file (replaces the lists chosen, rules, sites and filters)"), width = ui.px(em * 8)).clicked { dash_import(app) }
+			if ui.button("bs_import", i18n.tr("Import…"), lucide.FOLDER_INPUT, {tip = i18n.tr("Load a configuration file (replaces the lists chosen, rules, sites and filters)"), width = ui.px(em * 8)}).clicked { dash_import(app) }
 			ui.spacer(ui.px(em * 0.5))
-			if ui.button_icon("###bs_reset_stats", lucide.ROTATE_CCW, i18n.tr("Reset statistics"), intent = .Danger, width = ui.px(em * 10)).clicked { b.totals = {since = blocker.unix_ms() / 1000}; blocker.conf_save(b) }
+			if ui.button("bs_reset_stats", i18n.tr("Reset statistics"), lucide.ROTATE_CCW, {intent = .Danger, width = ui.px(em * 10)}).clicked { b.totals = {since = blocker.unix_ms() / 1000}; blocker.conf_save(b) }
 			ui.spacer(ui.px(em * 0.8))
 			if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(app.dash.status, "bs_conf_st")) }
 		}
@@ -289,9 +289,9 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
-		if ui.button_icon("###bl_update", lucide.REFRESH_CW, i18n.tr("Update now"), intent = .Primary, width = ui.px(em * 8)).clicked { blocker.updater_round(b, true) }
+		if ui.button("bl_update", i18n.tr("Update now"), lucide.REFRESH_CW, {intent = .Primary, width = ui.px(em * 8)}).clicked { blocker.updater_round(b, true) }
 		ui.spacer(ui.px(em * 0.5))
-		if ui.button_icon("###bl_apply", lucide.CHECK, i18n.tr("Apply"), intent = .Success, tip = i18n.tr("Rebuild the filter index from the lists switched on"), width = ui.px(em * 6)).clicked { blocker.rebuild(b) }
+		if ui.button("bl_apply", i18n.tr("Apply"), lucide.CHECK, {intent = .Success, tip = i18n.tr("Rebuild the filter index from the lists switched on"), width = ui.px(em * 6)}).clicked { blocker.rebuild(b) }
 		ui.spacer(ui.px(em * 0.8))
 		if ui.tags("weak") {
 			ui.next({width = ui.fill(), height = ui.pct(1)})
@@ -309,7 +309,7 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 				ui.spacer(ui.px(em * 0.9))
 				v := l.enabled
 				ui.next({width = ui.px(em * 25), height = ui.pct(1)})
-				if ui.checkbox(fmt.aprintf("###lc_%s", l.id, allocator = ui.frame_allocator()), l.title, &v).clicked {
+				if ui.checkbox(fmt.tprintf("###lc_%s", l.id), l.title, &v) {
 					l.enabled = v
 					blocker.conf_save(b)
 					if v { blocker.updater_round(b, false); blocker.rebuild(b) } else { blocker.rebuild(b) }
@@ -330,7 +330,7 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 				ui.next({width = ui.fill(), height = ui.pct(1), font_size = em * 0.85})
 				l_err := l.error != ""
 				if l_err { ui.label(fmt.aprintf("%s###le_%s", status, l.id, allocator = ui.frame_allocator())) } else if ui.tags("weak") { ui.label(fmt.aprintf("%s###le_%s", status, l.id, allocator = ui.frame_allocator())) }
-				if l.custom && ui.button_icon(strings.concatenate({"###", fmt.tprintf("lx_%s", l.id)}, ui.frame_allocator()), lucide.TRASH_2, i18n.tr("Remove"), intent = .Danger, width = ui.px(em * 6)).clicked {
+				if l.custom && ui.button(strings.concatenate({"###", fmt.tprintf("lx_%s", l.id)}, ui.frame_allocator()), i18n.tr("Remove"), lucide.TRASH_2, {intent = .Danger, width = ui.px(em * 6)}).clicked {
 					id := strings.clone(l.id, context.temp_allocator)
 					blocker.list_remove(b, id)
 					blocker.conf_save(b)
@@ -346,17 +346,17 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.9))
 			ui.next({width = ui.px(em * 12), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-			ui.line_edit("###bl_cname", &app.dash.custom_name, i18n.tr("Name (optional)"))
+			ui.line_edit("###bl_cname", &app.dash.custom_name, {placeholder = i18n.tr("Name (optional)")})
 			ui.spacer(ui.px(em * 0.5))
 			ui.next({width = ui.px(em * 36), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-			res := ui.line_edit("###bl_curl", &app.dash.custom_url, "https://example.org/filters.txt")
+			res := ui.line_edit("###bl_curl", &app.dash.custom_url, {placeholder = "https://example.org/filters.txt"})
 			ui.spacer(ui.px(em * 0.5))
-			url := strings.trim_space(ui.field_string(&app.dash.custom_url))
+			url := strings.trim_space(ui.line_edit_string(&app.dash.custom_url))
 			valid := strings.has_prefix(url, "https://") || strings.has_prefix(url, "http://")
 			if ui.disabled(!valid) {
-				if ui.button_icon("###bl_cadd", lucide.PLUS, i18n.tr("Add list"), intent = .Success, width = ui.px(em * 7)).clicked || (res.committed && valid) {
-					blocker.list_add_custom(b, strings.trim_space(ui.field_string(&app.dash.custom_name)), url)
-					ui.field_clear(&app.dash.custom_url); ui.field_clear(&app.dash.custom_name)
+				if ui.button("bl_cadd", i18n.tr("Add list"), lucide.PLUS, {intent = .Success, width = ui.px(em * 7)}).clicked || (res.committed && valid) {
+					blocker.list_add_custom(b, strings.trim_space(ui.line_edit_string(&app.dash.custom_name)), url)
+					ui.line_edit_clear(&app.dash.custom_url); ui.line_edit_clear(&app.dash.custom_name)
 					blocker.conf_save(b)
 					blocker.updater_round(b, false)
 				}
@@ -409,7 +409,7 @@ tab_my_filters :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	b := &app.bl.b
 	if !app.dash.my_loaded {
-		ui.area_set(&app.dash.my, b.conf.my_filters)
+		ui.text_edit_set(&app.dash.my, b.conf.my_filters)
 		app.dash.my_loaded, app.dash.my_dirty = true, false
 		diagnose(b.conf.my_filters)
 	}
@@ -417,14 +417,14 @@ tab_my_filters :: proc(app: ^App, t: ^Tab) {
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
 		if ui.disabled(!app.dash.my_dirty) {
-			if ui.button_icon("###mf_apply", lucide.CHECK, i18n.tr("Apply changes"), intent = .Success, tip = i18n.tr("Compile the filters into the index (Ctrl+S)"), width = ui.px(em * 10)).clicked { dash_apply_filters(app) }
+			if ui.button("mf_apply", i18n.tr("Apply changes"), lucide.CHECK, {intent = .Success, tip = i18n.tr("Compile the filters into the index (Ctrl+S)"), width = ui.px(em * 10)}).clicked { dash_apply_filters(app) }
 			ui.spacer(ui.px(em * 0.5))
-			if ui.button_icon("###mf_revert", lucide.UNDO_2, i18n.tr("Revert"), intent = .Cancel, width = ui.px(em * 6)).clicked { app.dash.my_loaded = false }
+			if ui.button("mf_revert", i18n.tr("Revert"), lucide.UNDO_2, {intent = .Cancel, width = ui.px(em * 6)}).clicked { app.dash.my_loaded = false }
 		}
 		ui.spacer(ui.px(em * 0.5))
-		if ui.button_icon("###mf_import", lucide.FOLDER_INPUT, i18n.tr("Import…"), tip = i18n.tr("Add the lines of a text file"), width = ui.px(em * 7)).clicked { dash_import_filters(app) }
+		if ui.button("mf_import", i18n.tr("Import…"), lucide.FOLDER_INPUT, {tip = i18n.tr("Add the lines of a text file"), width = ui.px(em * 7)}).clicked { dash_import_filters(app) }
 		ui.spacer(ui.px(em * 0.5))
-		if ui.button_icon("###mf_export", lucide.FOLDER_OUTPUT, i18n.tr("Export…"), tip = i18n.tr("Save these filters as a text file"), width = ui.px(em * 7)).clicked { dash_export_filters(app) }
+		if ui.button("mf_export", i18n.tr("Export…"), lucide.FOLDER_OUTPUT, {tip = i18n.tr("Save these filters as a text file"), width = ui.px(em * 7)}).clicked { dash_export_filters(app) }
 		ui.spacer(ui.px(em * 0.8))
 		if ui.tags("weak") {
 			ui.next({width = ui.fill(), height = ui.pct(1)})
@@ -433,10 +433,10 @@ tab_my_filters :: proc(app: ^App, t: ^Tab) {
 	}
 	ui.next({width = ui.fill(), height = ui.fill()})
 	hl := filter_highlight()
-	res := ui.text_edit("###mf_edit", &app.dash.my, i18n.tr("! One filter per line. Examples:\n||ads.example.com^\nexample.com##.banner\nexample.com##+js(set-constant, adsEnabled, false)\nexample.com##^script:has-text(ads)\n@@||example.com^$document"), line_numbers = true, highlight = &hl)
+	res := ui.text_edit("###mf_edit", &app.dash.my, {placeholder = i18n.tr("! One filter per line. Examples:\n||ads.example.com^\nexample.com##.banner\nexample.com##+js(set-constant, adsEnabled, false)\nexample.com##^script:has-text(ads)\n@@||example.com^$document"), line_numbers = true, highlight = &hl})
 	if res.changed {
 		app.dash.my_dirty = true
-		diagnose(ui.area_string(&app.dash.my))
+		diagnose(ui.text_edit_string(&app.dash.my))
 	}
 	// a tooltip over an invalid line: the engine's reason for dropping it
 	if res.hover_line >= 0 {
@@ -460,7 +460,7 @@ tab_my_filters :: proc(app: ^App, t: ^Tab) {
 dash_apply_filters :: proc(app: ^App) {
 	b := &app.bl.b
 	delete(b.conf.my_filters)
-	b.conf.my_filters = strings.clone(ui.area_string(&app.dash.my))
+	b.conf.my_filters = strings.clone(ui.text_edit_string(&app.dash.my))
 	app.dash.my_dirty = false
 	blocker.conf_save(b)
 	blocker.rebuild(b)
@@ -478,10 +478,10 @@ tab_my_rules :: proc(app: ^App, t: ^Tab) {
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
 		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-		ui.line_edit("###mr_src", &app.dash.rule_src, i18n.tr("site or *"))
+		ui.line_edit("###mr_src", &app.dash.rule_src, {placeholder = i18n.tr("site or *")})
 		ui.spacer(ui.px(em * 0.4))
 		ui.next({width = ui.px(em * 15), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-		ui.line_edit("###mr_dst", &app.dash.rule_dst, i18n.tr("destination host or *"))
+		ui.line_edit("###mr_dst", &app.dash.rule_dst, {placeholder = i18n.tr("destination host or *")})
 		ui.spacer(ui.px(em * 0.4))
 		names := make([]string, len(blocker.DYN_TYPE_NAMES), context.temp_allocator)
 		for n, i in blocker.DYN_TYPE_NAMES { names[i] = n }
@@ -491,18 +491,18 @@ tab_my_rules :: proc(app: ^App, t: ^Tab) {
 		ui.next({width = ui.px(em * 7), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		ui.dropdown("###mr_action", []string{i18n.tr("rule action", "block"), i18n.tr("rule action", "allow")}, &app.dash.rule_action)
 		ui.spacer(ui.px(em * 0.4))
-		src := base.ascii_lower(strings.trim_space(ui.field_string(&app.dash.rule_src)))
-		dst := base.ascii_lower(strings.trim_space(ui.field_string(&app.dash.rule_dst)))
+		src := base.ascii_lower(strings.trim_space(ui.line_edit_string(&app.dash.rule_src)))
+		dst := base.ascii_lower(strings.trim_space(ui.line_edit_string(&app.dash.rule_dst)))
 		if src == "" { src = "*" }
 		if ui.disabled(dst == "") {
-			if ui.button_icon("###mr_add", lucide.PLUS, i18n.tr("Add rule"), intent = .Success, width = ui.px(em * 7)).clicked {
+			if ui.button("mr_add", i18n.tr("Add rule"), lucide.PLUS, {intent = .Success, width = ui.px(em * 7)}).clicked {
 				blocker.dyn_set(&b.dyn, src, dst, blocker.Dyn_Type(app.dash.rule_type), app.dash.rule_action == 0 ? .Block : .Allow)
 				blocker_rules_saved()
-				ui.field_clear(&app.dash.rule_dst)
+				ui.line_edit_clear(&app.dash.rule_dst)
 			}
 		}
 		ui.spacer(ui.px(em * 0.5))
-		if ui.button_icon("###mr_clear", lucide.TRASH_2, i18n.tr("Remove all"), intent = .Danger, width = ui.px(em * 8)).clicked { blocker.dyn_clear(&b.dyn); blocker_rules_saved() }
+		if ui.button("mr_clear", i18n.tr("Remove all"), lucide.TRASH_2, {intent = .Danger, width = ui.px(em * 8)}).clicked { blocker.dyn_clear(&b.dyn); blocker_rules_saved() }
 	}
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5))})
 	if ui.row(.Center) {
@@ -555,15 +555,15 @@ tab_whitelist :: proc(app: ^App, t: ^Tab) {
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
 		ui.next({width = ui.px(em * 26), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-		res := ui.line_edit("###wl_add", &app.dash.wl_add, i18n.tr("example.org: a site where the blocker stays off"))
+		res := ui.line_edit("###wl_add", &app.dash.wl_add, {placeholder = i18n.tr("example.org: a site where the blocker stays off")})
 		ui.spacer(ui.px(em * 0.5))
-		host := base.ascii_lower(strings.trim_space(ui.field_string(&app.dash.wl_add)))
+		host := base.ascii_lower(strings.trim_space(ui.line_edit_string(&app.dash.wl_add)))
 		host = strings.trim_prefix(strings.trim_prefix(host, "https://"), "http://")
 		if i := strings.index_any(host, "/?#"); i >= 0 { host = host[:i] }
 		if ui.disabled(host == "") {
-			if ui.button_icon("###wl_btn", lucide.PLUS, i18n.tr("Add"), intent = .Success, width = ui.px(em * 5)).clicked || (res.committed && host != "") {
+			if ui.button("wl_btn", i18n.tr("Add"), lucide.PLUS, {intent = .Success, width = ui.px(em * 5)}).clicked || (res.committed && host != "") {
 				blocker.site_toggle(b, strings.clone(host, context.temp_allocator), .Off, true)
-				ui.field_clear(&app.dash.wl_add)
+				ui.line_edit_clear(&app.dash.wl_add)
 			}
 		}
 		ui.spacer(ui.px(em * 0.8))
@@ -676,7 +676,7 @@ tab_journal :: proc(app: ^App, t: ^Tab) {
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
 		ui.next({width = ui.px(em * 22), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-		ui.line_edit("###lg_search", &app.dash.log_search, i18n.tr("Search URL, rule or document"))
+		ui.line_edit("###lg_search", &app.dash.log_search, {placeholder = i18n.tr("Search URL, rule or document")})
 		ui.spacer(ui.px(em * 0.5))
 		outs := make([]string, len(blocker.Outcome) + 1, context.temp_allocator)
 		outs[0] = i18n.tr("all outcomes")
@@ -691,13 +691,13 @@ tab_journal :: proc(app: ^App, t: ^Tab) {
 		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		if ui.dropdown("###lg_type", types[:k], &app.dash.log_type) { app.dash.log_version = 0 }
 		ui.spacer(ui.px(em * 0.5))
-		if ui.button_icon("###lg_pause", app.dash.log_pause ? lucide.PLAY : lucide.PAUSE, app.dash.log_pause ? i18n.tr("Resume") : i18n.tr("Pause"), width = ui.px(em * 7)).clicked { app.dash.log_pause = !app.dash.log_pause; app.dash.log_version = 0 }
+		if ui.button("lg_pause", app.dash.log_pause ? i18n.tr("Resume") : i18n.tr("Pause"), app.dash.log_pause ? lucide.PLAY : lucide.PAUSE, {width = ui.px(em * 7)}).clicked { app.dash.log_pause = !app.dash.log_pause; app.dash.log_version = 0 }
 		ui.spacer(ui.px(em * 0.4))
-		if ui.button_icon("###lg_clear", lucide.TRASH_2, i18n.tr("Clear"), intent = .Danger, width = ui.px(em * 6)).clicked { blocker.journal_clear(&b.journal); app.dash.log_version = 0 }
+		if ui.button("lg_clear", i18n.tr("Clear"), lucide.TRASH_2, {intent = .Danger, width = ui.px(em * 6)}).clicked { blocker.journal_clear(&b.journal); app.dash.log_version = 0 }
 		ui.spacer(ui.px(em * 0.8))
 		if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(fmt.tprintf(i18n.tr("rows shown, rows in all", "%d shown of %d"), len(app.dash.log_rows), blocker.journal_len(&b.journal)), "lg_count")) }
 	}
-	log_model(b, strings.trim_space(ui.field_string(&app.dash.log_search)))
+	log_model(b, strings.trim_space(ui.line_edit_string(&app.dash.log_search)))
 	// header
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5))})
 	if ui.row(.Center) {
@@ -728,7 +728,7 @@ tab_journal :: proc(app: ^App, t: ^Tab) {
 			}
 			if row.right_clicked {
 				app.dash.log_menu = app.dash.log_rows[i]
-				ui.ctx_menu_open(ui.key_from_string(0, "###lg_menu"), ui.mouse_pos())
+				ui.menu_open("###lg_menu", ui.mouse_pos())
 			}
 		}
 		if len(app.dash.log_rows) == 0 {
@@ -741,7 +741,7 @@ tab_journal :: proc(app: ^App, t: ^Tab) {
 
 @(private = "file")
 journal_menu :: proc(app: ^App, t: ^Tab) {
-	if ui.ctx_menu(ui.key_from_string(0, "###lg_menu")) { journal_menu_items(app, t) }
+	if ui.menu("###lg_menu") { journal_menu_items(app, t) }
 }
 
 @(private = "file")
@@ -751,21 +751,21 @@ journal_menu_items :: proc(app: ^App, t: ^Tab) {
 	if e == nil { return }
 	host := adblock.url_host(e.url)
 	if ui.menu_item(i18n.tr("Copy the URL"), icon = lucide.COPY).clicked { clip_set(e.url) }
-	if ui.menu_item(i18n.tr("Copy the rule"), enabled = e.rule != "", icon = lucide.COPY).clicked { clip_set(e.rule) }
+	if ui.menu_item(i18n.tr("Copy the rule"), disabled = e.rule == "", icon = lucide.COPY).clicked { clip_set(e.rule) }
 	ui.menu_separator()
-	if ui.menu_item(fmt.tprintf(i18n.tr("Create an exception for %s"), host), enabled = host != "", icon = lucide.SHIELD).clicked {
+	if ui.menu_item(fmt.tprintf(i18n.tr("Create an exception for %s"), host), disabled = host == "", icon = lucide.SHIELD).clicked {
 		line := fmt.tprintf("@@||%s^%s", host, e.type == .Document ? "$document" : "")
 		dash_add_filter(app, line)
 	}
-	if ui.menu_item(i18n.tr("Create an exception for this URL only"), enabled = e.url != "", icon = lucide.SHIELD).clicked { dash_add_filter(app, fmt.tprintf("@@%s", e.url)) }
-	if ui.menu_item(fmt.tprintf(i18n.tr("Block %s on every site"), host), enabled = host != "", icon = lucide.SHIELD).clicked { dash_add_filter(app, fmt.tprintf("||%s^", host)) }
-	if ui.menu_item(fmt.tprintf(i18n.tr("Allow %s (dynamic rule, every site)"), host), enabled = host != "", icon = lucide.SHIELD).clicked {
+	if ui.menu_item(i18n.tr("Create an exception for this URL only"), disabled = e.url == "", icon = lucide.SHIELD).clicked { dash_add_filter(app, fmt.tprintf("@@%s", e.url)) }
+	if ui.menu_item(fmt.tprintf(i18n.tr("Block %s on every site"), host), disabled = host == "", icon = lucide.SHIELD).clicked { dash_add_filter(app, fmt.tprintf("||%s^", host)) }
+	if ui.menu_item(fmt.tprintf(i18n.tr("Allow %s (dynamic rule, every site)"), host), disabled = host == "", icon = lucide.SHIELD).clicked {
 		blocker.dyn_set(&b.dyn, "*", host, .All, .Allow)
 		blocker_rules_saved()
 		announce(app, .Good, fmt.tprintf(i18n.tr("Rule added: * %s * allow"), host))
 	}
 	ui.menu_separator()
-	if ui.menu_item(i18n.tr("Open the document"), enabled = e.doc != "", icon = lucide.EXTERNAL_LINK).clicked { tab_open(app, strings.clone(e.doc, context.temp_allocator), origin = .Replay) }
+	if ui.menu_item(i18n.tr("Open the document"), disabled = e.doc == "", icon = lucide.EXTERNAL_LINK).clicked { tab_open(app, strings.clone(e.doc, context.temp_allocator), origin = .Replay) }
 }
 
 dash_add_filter :: proc(app: ^App, line: string) {

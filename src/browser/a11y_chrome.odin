@@ -63,7 +63,7 @@ tab_list_a11y :: proc(b: ^ui.Box, vertical: bool) {
 	ui.a11y_set(b, {role = .Tab_List, name = i18n.tr("Tabs"), orientation = vertical ? ui.Axis.Y : ui.Axis.X})
 }
 
-// What the chrome's caption buttons are called (the toolkit's window_buttons).
-chrome_a11y_init :: proc() {
-	ui.set_window_button_names(i18n.tr("window", "Minimize"), i18n.tr("window", "Maximize"), i18n.tr("window", "Restore"), i18n.tr("window", "Close"))
+// What the chrome's caption buttons of the window of `s` are called (the toolkit's window_buttons).
+chrome_a11y_init :: proc(s: ^ui.State) {
+	ui.set_window_button_names(s, i18n.tr("window", "Minimize"), i18n.tr("window", "Maximize"), i18n.tr("window", "Restore"), i18n.tr("window", "Close"))
 }

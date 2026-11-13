@@ -1,6 +1,6 @@
 // Package config: the typed preference registry now lives in the toolkit (toolkit:config), a cross-application concern.
 // This is a thin alias so Wren's 129 callers keep writing `import "wb:config"` and `config.Prefs`, `config.register`,
-// `config.get_bool`, etc. unchanged. See toolkit:config for the whole picture (the registry, the layers, the atomic
+// `config.bool_of`, etc. unchanged. See toolkit:config for the whole picture (the registry, the layers, the atomic
 // save, the prefix observers; docs/config.md in the toolkit).
 //
 // The Wren-specific part — the `config.Def` tables each subsystem declares in its `settings.odin`, and the
@@ -37,10 +37,6 @@ entry :: tc.entry
 sorted_names :: tc.sorted_names
 
 // Reads
-get_bool :: tc.get_bool
-get_int :: tc.get_int
-get_float :: tc.get_float
-get_string :: tc.get_string
 bool_of :: tc.bool_of
 int_of :: tc.int_of
 float_of :: tc.float_of
@@ -55,6 +51,7 @@ parse_value :: tc.parse_value
 set_from_string :: tc.set_from_string
 set_bool :: tc.set_bool
 set_int :: tc.set_int
+set_float :: tc.set_float
 set_string :: tc.set_string
 reset :: tc.reset
 set_error_text :: tc.set_error_text
@@ -65,7 +62,8 @@ unwatch :: tc.unwatch
 
 // Layers: command line, profile file, policy file
 apply_args :: tc.apply_args
-export_own :: tc.export_own
+Export_Format :: tc.Export_Format
+export :: tc.export
 load_text :: tc.load_text
 write_user_file :: tc.write_user_file
 load_file :: tc.load_file

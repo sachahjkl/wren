@@ -23,13 +23,13 @@ ENGINES_ROW_H_EM :: 2.2
 
 Engines_Editor :: struct {
 	edit:          int,             // the engine being edited, index + 1; -1: a new one; 0: none
-	name, keyword, url: ui.Text_Field,
+	name, keyword, url: ui.Line_Edit,
 	error:         Engine_Error,
 	want_focus:    bool,
 }
 
 engines_editor_destroy :: proc(ed: ^Engines_Editor) {
-	ui.field_destroy(&ed.name); ui.field_destroy(&ed.keyword); ui.field_destroy(&ed.url)
+	ui.line_edit_destroy(&ed.name); ui.line_edit_destroy(&ed.keyword); ui.line_edit_destroy(&ed.url)
 	ed^ = {}
 }
 
@@ -63,17 +63,17 @@ engines_edit_start :: proc(app: ^App, ed: ^Engines_Editor, i: int) {
 	if i >= 0 && i < len(app.sengines.list) {
 		e := app.sengines.list[i]
 		ed.edit = i + 1
-		ui.field_set(&ed.name, e.name); ui.field_set(&ed.keyword, e.keyword); ui.field_set(&ed.url, e.url)
+		ui.line_edit_set(&ed.name, e.name); ui.line_edit_set(&ed.keyword, e.keyword); ui.line_edit_set(&ed.url, e.url)
 	} else {
 		ed.edit = -1
-		ui.field_set(&ed.name, ""); ui.field_set(&ed.keyword, ""); ui.field_set(&ed.url, "https://")
+		ui.line_edit_set(&ed.name, ""); ui.line_edit_set(&ed.keyword, ""); ui.line_edit_set(&ed.url, "https://")
 	}
 }
 
 // Save of the form: the engine changed or added, or the reason it is refused (the form stays).
 engines_edit_apply :: proc(app: ^App, ed: ^Engines_Editor) -> bool {
 	self := ed.edit > 0 ? ed.edit - 1 : -1
-	name, kw, url := ui.field_string(&ed.name), ui.field_string(&ed.keyword), ui.field_string(&ed.url)
+	name, kw, url := ui.line_edit_string(&ed.name), ui.line_edit_string(&ed.keyword), ui.line_edit_string(&ed.url)
 	ed.error = engine_validate(&app.sengines, self, name, kw, url)
 	if ed.error != .None { return false }
 	if self >= 0 { engines_update(&app.sengines, self, name, kw, url) } else { _ = engines_add(&app.sengines, name, kw, url) }
@@ -144,7 +144,7 @@ engines_row :: proc(app: ^App, v: ^Config_View, index: int) {
 						ui.next({width = ui.px(em * 9.5), height = ui.px(ui.dense(em * 1.5)), font_size = em * 0.85, radius = em * 0.75, text_align = .Center})
 						ui.build_box({.Draw_Text, .Draw_Background, .No_Text_Trunc}, fmt.tprintf("%s###ed_%d", i18n.tr("Default"), i))
 					}
-				} else if ui.button_icon(strings.concatenate({"###", fmt.tprintf("ed_%d", i)}, ui.frame_allocator()), lucide.STAR, i18n.tr("Make default"), intent = .Primary, width = ui.px(em * 9.5)).clicked {
+				} else if ui.button(strings.concatenate({"###", fmt.tprintf("ed_%d", i)}, ui.frame_allocator()), i18n.tr("Make default"), lucide.STAR, {intent = .Primary, width = ui.px(em * 9.5)}).clicked {
 					action, target = 1, i
 				}
 				ui.spacer(ui.px(em * 0.3))
@@ -153,13 +153,13 @@ engines_row :: proc(app: ^App, v: ^Config_View, index: int) {
 					ui.next({width = ui.px(em * 1.9), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM)), radius = em * CHROME_BUTTON_RADIUS})
 					clicked := false
 					if ui.disabled(!enabled) {
-						s := ui.icon_button(id, glyph)
+						s := ui.button(id, icon = glyph)
 						tip(s, tooltip)
 						clicked = s.clicked && enabled
 					}
 					return clicked
 				}
-				if ui.button_icon(strings.concatenate({"###", fmt.tprintf("ee_%d", i)}, ui.frame_allocator()), lucide.PENCIL, i18n.tr("Edit")).clicked { action, target = 2, i }
+				if ui.button(strings.concatenate({"###", fmt.tprintf("ee_%d", i)}, ui.frame_allocator()), i18n.tr("Edit"), lucide.PENCIL).clicked { action, target = 2, i }
 				if btn(fmt.tprintf("###eup_%d", i), lucide.CHEVRON_UP, i18n.tr("Move up"), i > 0) { action, target = 3, i }
 				if btn(fmt.tprintf("###edn_%d", i), lucide.CHEVRON_DOWN, i18n.tr("Move down"), i + 1 < len(app.sengines.list)) { action, target = 4, i }
 				if btn(fmt.tprintf("###erm_%d", i), lucide.X, i18n.tr("Remove"), len(app.sengines.list) > 1) { action, target = 5, i }
@@ -172,11 +172,11 @@ engines_row :: proc(app: ^App, v: ^Config_View, index: int) {
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
 		if ui.row(.Center, {}, "###eng_actions") {
 			// (the words keep their ###: the translations' keys)
-			if ui.button_icon("###eng_add", lucide.PLUS, i18n.tr("Add a search engine###eng_add"), intent = .Primary).clicked { engines_edit_start(app, ed, -1) }
+			if ui.button("eng_add", i18n.tr("Add a search engine"), lucide.PLUS, {intent = .Primary}).clicked { engines_edit_start(app, ed, -1) }
 			ui.spacer(ui.px(em * 0.6))
 			missing := engines_missing_builtins(&app.sengines)
 			label := missing > 0 ? fmt.tprintf(i18n.tr("Restore the built-in engines (%d)###eng_restore"), missing) : i18n.tr("Restore the built-in engines###eng_restore")
-			if ui.button_icon("###eng_restore", lucide.ARCHIVE_RESTORE, label, disabled = missing == 0).clicked && missing > 0 { engines_restore_builtins(&app.sengines); search_engines_changed(app) }
+			if ui.button("eng_restore", label, lucide.ARCHIVE_RESTORE, {disabled = missing == 0}).clicked && missing > 0 { engines_restore_builtins(&app.sengines); search_engines_changed(app) }
 		}
 		ui.spacer(ui.px(em * 0.55))
 		switch action {
@@ -203,7 +203,7 @@ engines_form :: proc(app: ^App, ed: ^Engines_Editor) {
 	if form {
 		ui.spacer(ui.px(em * 0.5))
 		committed, cancelled := false, false
-		field :: proc(id, label, placeholder: string, f: ^ui.Text_Field, w: ui.Size, focus: bool) -> ui.Edit_Result {
+		field :: proc(id, label, placeholder: string, f: ^ui.Line_Edit, w: ui.Size, focus: bool) -> ui.Edit_Result {
 			em := ui.font_size()
 			if ui.tags("weak") {
 				ui.next({width = ui.text_size(0), height = ui.pct(1), text_pad = 0})
@@ -212,8 +212,8 @@ engines_form :: proc(app: ^App, ed: ^Engines_Editor) {
 			ui.spacer(ui.px(em * 0.4))
 			ui.next({width = w, height = ui.px(ui.dense(em * 2))})
 			ui.a11y({name = strings.split_n(label, "###", 2, context.temp_allocator)[0]})
-			res := ui.line_edit(id, f, placeholder)
-			if focus { ui.set_focus(res.box.key); ui.field_select_all(f) }
+			res := ui.line_edit(id, f, {placeholder = placeholder})
+			if focus { ui.set_focus(res.box.key); ui.line_edit_select_all(f) }
 			return res
 		}
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * ENGINES_ROW_H_EM))})
@@ -252,9 +252,9 @@ engines_form :: proc(app: ^App, ed: ^Engines_Editor) {
 			ui.spacer(ui.px(em * 0.6))
 			// (the words keep their ###: the translations' keys)
 			adding := ed.edit < 0
-			if ui.button_icon("###ef_save", adding ? lucide.PLUS : lucide.SAVE, adding ? i18n.tr("Add###ef_save") : i18n.tr("Save###ef_save"), intent = .Success).clicked { committed = true }
+			if ui.button("ef_save", adding ? i18n.tr("Add") : i18n.tr("Save"), adding ? lucide.PLUS : lucide.SAVE, {intent = .Success}).clicked { committed = true }
 			ui.spacer(ui.px(em * 0.4))
-			if ui.button_icon("###ef_cancel", lucide.X, i18n.tr("Cancel###ef_cancel"), intent = .Cancel).clicked { cancelled = true }
+			if ui.button("ef_cancel", i18n.tr("Cancel"), lucide.X, {intent = .Cancel}).clicked { cancelled = true }
 		}
 		ui.spacer(ui.px(em * 0.5))
 		if cancelled { ed.edit, ed.error = 0, .None }

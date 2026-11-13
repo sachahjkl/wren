@@ -13,6 +13,7 @@ package browser
 // beside the executable), a copy of the Nix store, nor with WREN_DESKTOP_INTEGRATION=off in the environment. The command
 // "Setup…" (menu, palette) and `wren --setup` open it whatever the build.
 
+import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:strings"
@@ -109,12 +110,12 @@ setup_choice_write :: proc(app: ^App, choice: string) {
 
 // Opens the dialog (the command, --setup, the start).
 setup_open :: proc(app: ^App) {
-	if !desktop.supported() { ui.toast(.Info, "Setup is not available on this platform"); return }
+	if !desktop.supported() { announce(app, .Info, "Setup is not available on this platform"); return }
 	if app.stp.d.open { return }
 	delete(app.stp.file_types)
 	app.stp.file_types = strings.clone(config.string_of(&app.prefs, "browser.desktop_integration.file_types"))
 	if ui.building() {
-		ui.ctx_menu_close()
+		ui.menu_close()
 		if app.cpal.open { palette_close(app) }
 	}
 	setup.open(&app.stp.d, setup_config(app))
@@ -141,7 +142,7 @@ setup_build :: proc(app: ^App) {
 	case .Uninstalled:
 	case .Kept_Standalone:
 		setup_choice_write(app, setup.CHOICE_STANDALONE)
-		ui.toast(.Info, "%s runs standalone. Setup is in the menu if you change your mind.", APP_NAME)
+		announce(app, .Info, fmt.tprintf("%s runs standalone. Setup is in the menu if you change your mind.", APP_NAME))
 	case .Dismissed:
 		// (the profile's choice is read by the blocking pool: the dialog closes at once)
 		Dismiss_Job :: struct { app: ^App, upgrade: bool, saved: string }

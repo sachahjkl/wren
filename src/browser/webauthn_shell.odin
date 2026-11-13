@@ -47,7 +47,7 @@ webauthn_shell_destroy :: proc(app: ^App) {
 	passkey_choice_reset(app)
 	if q := webauthn.pin_question(); q.number != 0 { webauthn.pin_answer(q.number, "", false) }   // (a ceremony that waits for a PIN stops waiting)
 	if q := webauthn.choose_question(); q.number != 0 { webauthn.choose_answer(q.number, 0, false) }   // (and one that waits for an account)
-	ui.field_wipe(&app.key_pin.field)
+	ui.line_edit_wipe(&app.key_pin.field)
 	page.webauthn_shutdown(app.page_settings.authn.cancel_grace_ms)   // cancels what still waits and joins its threads, before the loop goes
 }
 
@@ -61,7 +61,7 @@ webauthn_chip :: proc(app: ^App, t: ^Tab) {
 	ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 1.8)), radius = em * CHROME_BUTTON_RADIUS})
 	if ui.tags("ghost_button") {
 		label := create ? "Creating a passkey" : "Passkey"
-		b := ui.button(fmt.aprintf("%s###webauthn_chip", label, allocator = ui.frame_allocator()))
+		b := ui.button("webauthn_chip", label)
 		what := create ? "create a passkey for" : "sign in with a passkey of"
 		tip(b, fmt.tprintf("This page asked to %s %s. Windows shows its dialog; click here to cancel the request.", what, rp_id))
 		if b.clicked { page.webauthn_cancel(t.page) }
@@ -72,7 +72,7 @@ webauthn_chip :: proc(app: ^App, t: ^Tab) {
 // The dialog of a security key's PIN (webauthn/pin.odin): open while a ceremony waits for it.
 Key_Pin_Dialog :: struct {
 	number: u64,             // the question it shows (0: none)
-	field:  ui.Text_Field,
+	field:  ui.Line_Edit,
 	reveal: bool,
 	focus:  bool,            // the field takes the focus in the next build (a question that opens)
 	size:   ui.Vec2,
@@ -89,7 +89,7 @@ webauthn_pin_build :: proc(app: ^App) {
 	q := webauthn.pin_question()
 	if q.number != d.number {
 		// (a new question, or the old one over: what was typed for another goes)
-		ui.field_wipe(&d.field)
+		ui.line_edit_wipe(&d.field)
 		d.number, d.reveal, d.focus = q.number, false, true
 	}
 	if q.number == 0 {
@@ -100,7 +100,7 @@ webauthn_pin_build :: proc(app: ^App) {
 	em := ui.font_size()
 	open := true
 	submit, cancel := false, false
-	if ui.modal_sized("key_pin", {em * 26, 0}, &d.size, &open, {em * 20, em * 11}) {
+	if ui.modal("key_pin", &open, {width_em = 26, min_width_em = 20, min_height_em = 11, size = &d.size}) {
 		if ui.dialog_header("kp_title", i18n.tr("Security key PIN"), {icon = lucide.USB, icon_font = app.lucide}) {}
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###kp_scroll") {
@@ -129,19 +129,19 @@ webauthn_pin_build :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###kp_buttons") {
 			ui.spacer(ui.fill())
-			if ui.button_icon("###kp_cancel", lucide.X, i18n.tr("Cancel"), intent = .Cancel, width = ui.px(em * 8)).clicked { cancel = true }
+			if ui.button("###kp_cancel", i18n.tr("Cancel"), lucide.X, {intent = .Cancel, width = ui.px(em * 8)}).clicked { cancel = true }
 			ui.spacer(ui.px(em * 0.5))
-			if ui.button_icon("###kp_ok", lucide.CHECK, i18n.tr("OK"), intent = .Success, width = ui.px(em * 8)).clicked { submit = true }
+			if ui.button("###kp_ok", i18n.tr("OK"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { submit = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))
 	}
-	if submit && strings.trim_space(ui.field_string(&d.field)) != "" {
-		webauthn.pin_answer(d.number, ui.field_string(&d.field), true)
-		ui.field_wipe(&d.field)
+	if submit && strings.trim_space(ui.line_edit_string(&d.field)) != "" {
+		webauthn.pin_answer(d.number, ui.line_edit_string(&d.field), true)
+		ui.line_edit_wipe(&d.field)
 	} else if cancel || !open {
 		webauthn.pin_answer(d.number, "", false)
-		ui.field_wipe(&d.field)
+		ui.line_edit_wipe(&d.field)
 	}
 }
 
@@ -160,7 +160,7 @@ webauthn_choose_build :: proc(app: ^App) -> bool {
 	open := true
 	cancel := false
 	chosen := -1
-	if ui.modal_sized("key_choose", {em * 26, 0}, &d.choose_size, &open, {em * 20, em * 12}) {
+	if ui.modal("key_choose", &open, {width_em = 26, min_width_em = 20, min_height_em = 12, size = &d.choose_size}) {
 		if ui.key_press(.Down) { d.choose_sel = min(d.choose_sel + 1, n - 1) }
 		if ui.key_press(.Up) { d.choose_sel = max(d.choose_sel - 1, 0) }
 		if ui.key_press(.Return) { chosen = d.choose_sel }
@@ -190,7 +190,7 @@ webauthn_choose_build :: proc(app: ^App) -> bool {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###kc_buttons") {
 			ui.spacer(ui.fill())
-			if ui.button_icon("###kc_cancel", lucide.X, i18n.tr("Cancel"), intent = .Cancel, width = ui.px(em * 8)).clicked { cancel = true }
+			if ui.button("###kc_cancel", i18n.tr("Cancel"), lucide.X, {intent = .Cancel, width = ui.px(em * 8)}).clicked { cancel = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))
@@ -213,7 +213,7 @@ webauthn_touch_build :: proc(app: ^App) {
 	em := ui.font_size()
 	open := true
 	cancel := false
-	if ui.modal_sized("key_touch", {em * 26, 0}, &d.touch_size, &open, {em * 20, em * 8}) {
+	if ui.modal("key_touch", &open, {width_em = 26, min_width_em = 20, min_height_em = 8, size = &d.touch_size}) {
 		if ui.dialog_header("kt_title", i18n.tr("Touch your security key"), {icon = lucide.USB, icon_font = app.lucide}) {}
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###kt_scroll") {
@@ -239,7 +239,7 @@ webauthn_touch_build :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###kt_buttons") {
 			ui.spacer(ui.fill())
-			if ui.button_icon("###kt_cancel", lucide.X, i18n.tr("Cancel"), intent = .Cancel, width = ui.px(em * 8)).clicked { cancel = true }
+			if ui.button("###kt_cancel", i18n.tr("Cancel"), lucide.X, {intent = .Cancel, width = ui.px(em * 8)}).clicked { cancel = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))

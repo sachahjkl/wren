@@ -370,13 +370,13 @@ dt_tip :: proc(sig: ui.Signal, text: string, shortcut := "") {
 	}
 }
 
-// A button that opens a menu below it: the caller builds the menu's items under `if ui.ctx_menu(key, width)`.
-dt_menu_btn :: proc(id: string, icon: Dt_Icon, label := "", tooltip := "", shortcut := "", badge := "", badge_col := draw.Color{}, on := false, caret := true, tone := draw.Color{}) -> ui.Key {
-	key := ui.key_from_u64(ui.key_from_string(ui.parent_box().key, id), 0xd0d0)
-	open := ui.ctx_menu_is_open(key)
+// A button that opens a menu below it: the caller builds the menu's items under `if ui.menu(key, width)`.
+dt_menu_btn :: proc(id: string, icon: Dt_Icon, label := "", tooltip := "", shortcut := "", badge := "", badge_col := draw.Color{}, on := false, caret := true, tone := draw.Color{}) -> string {
+	key := fmt.tprintf("%s_menu_%x", id, u64(ui.parent_box().key))
+	open := ui.menu_is_open(key)
 	sig := dt_btn(id, icon, label, open ? "" : tooltip, shortcut, on = on || open, badge = badge, badge_col = badge_col, caret = caret, tone = tone)
 	if sig.clicked {
-		if open { ui.ctx_menu_close() } else { ui.ctx_menu_open_rect(key, sig.box.rect, sig.box.key) }
+		if open { ui.menu_close() } else { ui.menu_open(key, sig.box.rect, sig.box.key) }
 	}
 	return key
 }
@@ -385,7 +385,7 @@ dt_menu_btn :: proc(id: string, icon: Dt_Icon, label := "", tooltip := "", short
 // The search / filter field
 
 Dt_Filter :: struct {
-	field:  ui.Text_Field,
+	field:  ui.Line_Edit,
 	use_re: bool,
 	cased:  bool,
 	invert: bool,
@@ -400,7 +400,7 @@ Dt_Filter :: struct {
 Dt_Term :: struct { text: string, neg: bool }   // owned
 
 dt_filter_destroy :: proc(f: ^Dt_Filter) {
-	ui.field_destroy(&f.field)
+	ui.line_edit_destroy(&f.field)
 	if f.re_ok { regex.destroy_regex(f.re) }
 	delete(f.re_src)
 	for t in f.terms { delete(t.text) }
@@ -408,14 +408,14 @@ dt_filter_destroy :: proc(f: ^Dt_Filter) {
 	f^ = {}
 }
 
-dt_filter_text :: proc(f: ^Dt_Filter) -> string { return strings.trim_space(ui.field_string(&f.field)) }
+dt_filter_text :: proc(f: ^Dt_Filter) -> string { return strings.trim_space(ui.line_edit_string(&f.field)) }
 
 dt_filter_active :: proc(f: ^Dt_Filter) -> bool { return dt_filter_text(f) != "" }
 
 // A stable value that changes when anything the matching depends on changed (to know when to filter again).
 dt_filter_serial :: proc(f: ^Dt_Filter) -> u64 {
 	h: u64 = 0xcbf29ce484222325
-	for c in transmute([]u8)ui.field_string(&f.field) { h = (h ~ u64(c)) * 0x100000001b3 }
+	for c in transmute([]u8)ui.line_edit_string(&f.field) { h = (h ~ u64(c)) * 0x100000001b3 }
 	h = (h ~ u64(f.use_re ? 1 : 0) ~ u64(f.cased ? 2 : 0) ~ u64(f.invert ? 4 : 0)) * 0x100000001b3
 	return h
 }
@@ -488,7 +488,7 @@ dt_search :: proc(id: string, f: ^Dt_Filter, placeholder: string, w: f32 = 0, fl
 		if fw > 0 { hint, _ = dt_fit(the_app.dtm.ui_font, the_app.dtm.fs, placeholder, max(fw - dt_px(24) - reserve - dt_px(4), 0)) }
 		if f.re_bad { ui.push_tags("bad") }
 		ui.next({width = ui.pct(1), height = ui.pct(1), radius = the_app.dtm.radius, text_pad = dt_px(24)})
-		res = ui.line_edit("###f", &f.field, hint)
+		res = ui.line_edit("###f", &f.field, {placeholder = hint})
 		if f.re_bad { ui.pop_tags() }
 		// the magnifier
 		ui.next({fixed_x = dt_px(5), fixed_y = (h - the_app.dtm.icon) * 0.5, width = ui.px(the_app.dtm.icon), height = ui.px(the_app.dtm.icon)})
@@ -525,7 +525,7 @@ dt_search :: proc(id: string, f: ^Dt_Filter, placeholder: string, w: f32 = 0, fl
 				d := ui.frame_new(Dt_Btn_Draw)
 				d.icon, d.hot, d.down = .Close, cs.hovering, cs.dragging
 				cb.custom, cb.custom_user = field_clear_draw, d
-				if cs.clicked { ui.field_clear(&f.field); res.changed = true }
+				if cs.clicked { ui.line_edit_clear(&f.field); res.changed = true }
 				dt_tip(cs, "Clear the filter")
 			}
 			dt_gap(4)
@@ -539,7 +539,7 @@ dt_find_here :: proc(p: Dev_Panel, res: ui.Edit_Result, f: ^Dt_Filter) {
 	d := dev()
 	if !d.find_asked || d.find != p || res.box == nil { return }
 	ui.set_focus(res.box.key)
-	ui.field_select_all(&f.field)
+	ui.line_edit_select_all(&f.field)
 	d.find_asked = false
 }
 

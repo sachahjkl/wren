@@ -300,9 +300,9 @@ dev_strip_end :: proc(user: rawptr, dk: ^ui.Dock, leaf: i32) {
 	if leaf != dev_corner_leaf(dk, true) { return }
 	app := (^App)(user)
 	skey := dt_menu_btn("###dt_settings", .Kebab, tooltip = "Customize and control the developer tools", caret = false)
-	if ui.ctx_menu(skey, dt_px(230)) { devtools_settings_menu(app, dev().frame_tab) }
+	if ui.menu(skey, dt_px(230)) { devtools_settings_menu(app, dev().frame_tab) }
 	dkey := dt_menu_btn("###dt_dock", DEV_DOCK_ICONS[dev().dock], tooltip = "Dock side", caret = false)
-	if ui.ctx_menu(dkey, dt_px(240)) {
+	if ui.menu(dkey, dt_px(240)) {
 		for d in Dev_Dock {
 			if ui.menu_item(fmt.tprintf("%s###dt_dock_%d", DEV_DOCK_TITLES[d], int(d)), cmd_key(app, DEV_DOCK_COMMANDS[d]), checked = dev().dock == d && !devtools_detached(), icon = "").clicked { if devtools_detached() { devtools_attach(app) }; devtools_set_dock(app, d) }
 		}

@@ -13,7 +13,7 @@ import "toolkit:ui"
 import "wb:page"
 
 Con_Eval :: struct {
-	field:   ui.Text_Field,
+	field:   ui.Line_Edit,
 	history: [dynamic]string,
 	cursor:  int,                   // position in history while walking it (len = the line being typed)
 	draft:   string,                // owned: what was being typed when the walk began
@@ -44,7 +44,7 @@ console_eval_row :: proc(app: ^App, t: ^Tab, row_h: f32) {
 			dt_icon(dc, .Prompt, draw.rect_center(b.rect), the_app.dtm.icon, the_app.dtc.accent, the_app.dtm.sc)
 		}, nil)
 		ui.next({width = ui.fill(), height = ui.pct(1), radius = 0, bg = draw.Color{}, border = draw.Color{}, font = app.dtm.mono, font_size = app.dtm.mono_fs, text_pad = 0})
-		var_res = ui.line_edit("###console_js", &c.field, "Run JavaScript in this page (Enter), Tab to complete")
+		var_res = ui.line_edit("###console_js", &c.field, {placeholder = "Run JavaScript in this page (Enter), Tab to complete"})
 		if var_res.box != nil { var_res.box.flags -= {.Draw_Focus_Ring} }
 		focused = var_res.focused
 		if c.open && focused { console_complete_popup(app, c, box) }   // (a child of the row: it floats above it)
@@ -57,13 +57,13 @@ console_eval_row :: proc(app: ^App, t: ^Tab, row_h: f32) {
 	}
 	if res.changed { console_eval_update(c) }
 	if res.committed {
-		source := strings.clone(strings.trim_space(ui.field_string(&c.field)), context.temp_allocator)
+		source := strings.clone(strings.trim_space(ui.line_edit_string(&c.field)), context.temp_allocator)
 		if source != "" {
 			tab_log(t, .Log, strings.concatenate({"> ", source}, context.temp_allocator))
 			if len(c.history) == 0 || c.history[len(c.history) - 1] != source { append(&c.history, strings.clone(source)) }
 			for len(c.history) > max(app.cfg.console_max_lines, 1) { delete(c.history[0]); ordered_remove(&c.history, 0) }
 			c.cursor = len(c.history)
-			ui.field_clear(&c.field)
+			ui.line_edit_clear(&c.field)
 			c.open = false
 			t.conlog.evaluating = true
 			page.js_console_eval(console_target(t), source)
@@ -71,7 +71,7 @@ console_eval_row :: proc(app: ^App, t: ^Tab, row_h: f32) {
 			request_frames(app, 3)
 		}
 	}
-	if res.cancelled { if c.open { c.open = false } else { ui.field_clear(&c.field); c.cursor = len(c.history) } }
+	if res.cancelled { if c.open { c.open = false } else { ui.line_edit_clear(&c.field); c.cursor = len(c.history) } }
 }
 
 // Up / Down: the completions when they are open, else the history. Tab / Right (at the end): accept.
@@ -85,19 +85,19 @@ console_eval_keys :: proc(app: ^App, t: ^Tab, c: ^Con_Eval) {
 	}
 	if ui.key_press(.Tab) && app.con_prefs.autocomplete { console_eval_update(c, force = true); return }
 	if ui.key_press(.Up) && c.cursor > 0 {
-		if c.cursor == len(c.history) { delete(c.draft); c.draft = strings.clone(ui.field_string(&c.field)) }
+		if c.cursor == len(c.history) { delete(c.draft); c.draft = strings.clone(ui.line_edit_string(&c.field)) }
 		c.cursor -= 1
-		ui.field_set(&c.field, c.history[c.cursor])
+		ui.line_edit_set(&c.field, c.history[c.cursor])
 	} else if ui.key_press(.Down) && c.cursor < len(c.history) {
 		c.cursor += 1
-		ui.field_set(&c.field, c.cursor < len(c.history) ? c.history[c.cursor] : c.draft)
+		ui.line_edit_set(&c.field, c.cursor < len(c.history) ? c.history[c.cursor] : c.draft)
 	}
 }
 
 // The word at the end of the text and what completes it.
 @(private = "file")
 console_eval_update :: proc(c: ^Con_Eval, force := false) {
-	text := ui.field_string(&c.field)
+	text := ui.line_edit_string(&c.field)
 	if c.field.cursor != len(text) || !(the_app.con_prefs.autocomplete || force) { c.open = false; return }
 	for it in c.items { delete(it) }
 	clear(&c.items)
@@ -129,11 +129,11 @@ is_ident_byte :: proc(b: u8) -> bool { return b == '_' || b == '$' || (b >= '0' 
 @(private = "file")
 console_accept :: proc(c: ^Con_Eval) {
 	if c.sel < 0 || c.sel >= len(c.items) { return }
-	text := ui.field_string(&c.field)
+	text := ui.line_edit_string(&c.field)
 	pick := c.items[c.sel]
 	base := text[:len(text) - len(c.word)]
 	next := strings.concatenate({base, pick}, context.temp_allocator)
-	ui.field_set(&c.field, next)
+	ui.line_edit_set(&c.field, next)
 	c.open = false
 }
 
@@ -185,7 +185,7 @@ comp_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 // Window closing.
 console_eval_destroy :: proc() {
 	c := &dev().con.eval
-	ui.field_destroy(&c.field)
+	ui.line_edit_destroy(&c.field)
 	for h in c.history { delete(h) }
 	delete(c.history)
 	for it in c.items { delete(it) }

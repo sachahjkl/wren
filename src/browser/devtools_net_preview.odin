@@ -511,7 +511,7 @@ font_face_selector :: proc(app: ^App, e: ^Net_Entry, pv: ^Preview_State) {
 		return
 	}
 	key := dt_menu_btn("###dt_pf_facemenu", .File_Font, fmt.tprintf("Face %d / %d", pv.font_index + 1, pv.font_faces), "Choose a face of the collection")
-	if ui.ctx_menu(key, ui.font_size() * 14) {
+	if ui.menu(key, ui.font_size() * 14) {
 		for i in 0 ..< pv.font_faces {
 			if ui.menu_item(fmt.tprintf("Face %d", i + 1), checked = i == pv.font_index).clicked {
 				font_select_face(app, pv, body, i)

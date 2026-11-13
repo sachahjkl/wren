@@ -9,7 +9,6 @@ package browser
 import draw "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
-import "toolkit:ui"
 import lay "wb:layout"
 import "wb:page"
 
@@ -104,7 +103,7 @@ fullscreen_set :: proc(top: ^page.Page, on: bool, navigation: page.Api_Fullscree
 		if t == nil || t.page != top || t.kind != .Web || id == 0 { return false }
 		if fs.shell.page_id == 0 {
 			fs.shell.window_was = platform.is_fullscreen(active_window(app).win)
-			if app.wchrome.cfg.fullscreen_hint { ui.toast(.Info, "Press Esc to exit full screen") }
+			if app.wchrome.cfg.fullscreen_hint { announce(app, .Info, "Press Esc to exit full screen", in_window = true) }
 		}
 		if fs.shell.page_id == 0 { fs.shell.scroll, fs.shell.scroll_x = t.scroll, t.layout.doc_scroll_x }
 		fs.shell.page_id, fs.shell.tab_id = id, t.id

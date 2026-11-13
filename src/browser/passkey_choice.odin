@@ -161,7 +161,7 @@ passkey_choice_build :: proc(app: ^App) {
 	open := true
 	cancel := false
 	chosen := -1
-	if ui.modal_sized("passkey_choice", {em * 28, 0}, &c.size, &open, {em * 20, em * 12}) {
+	if ui.modal("passkey_choice", &open, {width_em = 28, min_width_em = 20, min_height_em = 12, size = &c.size}) {
 		if !signing {
 			if ui.key_press(.Down) { c.sel = min(c.sel + 1, n - 1) }
 			if ui.key_press(.Up) { c.sel = max(c.sel - 1, 0) }
@@ -205,7 +205,7 @@ passkey_choice_build :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###pc_buttons") {
 			ui.spacer(ui.fill())
-			if ui.button_icon("###pc_cancel", lucide.X, i18n.tr("Cancel"), intent = .Cancel, width = ui.px(em * 8)).clicked { cancel = true }
+			if ui.button("pc_cancel", i18n.tr("Cancel"), lucide.X, {intent = .Cancel, width = ui.px(em * 8)}).clicked { cancel = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))

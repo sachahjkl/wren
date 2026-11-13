@@ -4,7 +4,7 @@ package browser
 // each, a click opens the toolkit's colour picker on it: the page follows each change, the colour keeps the format it was
 // written in, Escape takes the value back, Enter or a click elsewhere keeps it), and the suggestions of a field being edited
 // (property names; the keywords the engine takes for the property). The numbers of a value step from the keyboard and the
-// wheel in the field (the toolkit's field_num_step).
+// wheel in the field (the toolkit's line_edit_num_step).
 
 import "core:fmt"
 import "core:strings"
@@ -220,7 +220,7 @@ styles_pick_popover :: proc(app: ^App, t: ^Tab, s: ^Dev_Styles) {
 // keywords the engine takes for the property that start with the word at the caret. `word`: [lo, hi) of what a choice replaces.
 styles_suggestions :: proc(t: ^Tab, s: ^Dev_Styles, value: bool) -> (out: []string, lo, hi: int) {
 	f := value ? &s.field_v : &s.field_n
-	text := ui.field_string(f)
+	text := ui.line_edit_string(f)
 	hi = f.cursor
 	lo = hi
 	for lo > 0 && (sty_word(text[lo - 1])) { lo -= 1 }
@@ -229,7 +229,7 @@ styles_suggestions :: proc(t: ^Tab, s: ^Dev_Styles, value: bool) -> (out: []stri
 	if q == "" || (q[0] >= '0' && q[0] <= '9') || (q[0] == '-' && value) { return }
 	list := make([dynamic]string, context.temp_allocator)
 	if value {
-		prop := base.ascii_lower(strings.trim_space(ui.field_string(&s.field_n)))
+		prop := base.ascii_lower(strings.trim_space(ui.line_edit_string(&s.field_n)))
 		styles_keywords(t, s, prop)
 		for k in s.kw { if strings.has_prefix(k, q) && k != q { append(&list, k) } }
 	} else {
@@ -283,9 +283,9 @@ styles_suggest_list :: proc(s: ^Dev_Styles, items: []string, box: ^ui.Box) -> (c
 }
 
 // The suggestion `it` in place of [lo, hi) of the field.
-styles_suggest_take :: proc(f: ^ui.Text_Field, it: string, lo, hi: int) {
-	text := ui.field_string(f)
+styles_suggest_take :: proc(f: ^ui.Line_Edit, it: string, lo, hi: int) {
+	text := ui.line_edit_string(f)
 	v := strings.concatenate({text[:lo], it, text[hi:]}, context.temp_allocator)
-	ui.field_set(f, v)
+	ui.line_edit_set(f, v)
 	f.cursor, f.mark = lo + len(it), lo + len(it)
 }

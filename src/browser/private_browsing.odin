@@ -7,6 +7,7 @@ package browser
 // when it ends. It never hands its addresses to the user's Wren nor takes theirs (--no-single-instance). Its windows say
 // "Private" in their title and in the toolbar.
 
+import "core:fmt"
 import "core:os"
 import "core:strings"
 import "toolkit:ui"
@@ -41,9 +42,9 @@ private_prefs_apply :: proc(p: ^config.Prefs) {
 // Starts a private Wren (this program, --private): its own process and windows.
 private_window_open :: proc(app: ^App) {
 	exe := process.executable_path(context.temp_allocator)
-	if exe == "" { ui.toast(.Bad, "A private window could not be opened"); return }
+	if exe == "" { announce(app, .Bad, "A private window could not be opened"); return }
 	p, _, err := api.process_start({exe, "--private", "--no-single-instance"})
-	if err != "" { ui.toast(.Bad, "A private window could not be opened: %s", err); return }
+	if err != "" { announce(app, .Bad, fmt.tprintf("A private window could not be opened: %s", err)); return }
 	api.process_detach(&p)
 }
 

@@ -191,9 +191,9 @@ desktop_job_done :: proc(data: rawptr) {
 		what := job.kind == .Install ? "install" : "remove"
 		if job.result.error != .None {
 			app.dsk.failure = fmt.aprintf("Could not %s the desktop integration: %s (%s)", what, desktop.error_text(job.result.error), job.result.detail)
-			ui.toast(.Warn, "%s", app.dsk.failure)
+			announce(app, .Warn, app.dsk.failure)
 		} else if job.reason == .User {
-			ui.toast(.Info, job.kind == .Install ? "%s is integrated with the desktop (%s)" : "%s is no longer integrated with the desktop", APP_NAME, desktop.targets(browser = true))
+			announce(app, .Info, fmt.tprintf(job.kind == .Install ? "%s is integrated with the desktop (%s)" : "%s is no longer integrated with the desktop", APP_NAME, desktop.targets(browser = true)))
 		}
 		changed = true
 	}
@@ -332,14 +332,14 @@ desktop_config_buttons :: proc(app: ^App) {
 		// (the words keep their ###: the translations' keys)
 		if state == .Repair {
 			stale := app.dsk.status.stale_exe != ""
-			if ui.button_icon("###desktop_update", stale ? lucide.REFRESH_CW : lucide.WRENCH, stale ? i18n.tr("Update###desktop_update") : i18n.tr("Repair###desktop_update"), intent = .Success, disabled = busy).clicked { desktop_update(app) }
+			if ui.button("desktop_update", stale ? i18n.tr("Update") : i18n.tr("Repair"), stale ? lucide.REFRESH_CW : lucide.WRENCH, {intent = .Success, disabled = busy}).clicked { desktop_update(app) }
 			ui.spacer(ui.px(em * 0.4))
 		}
 		if desktop.has_default_apps_page() {
-			if ui.button_icon("###desktop_defaults", lucide.EXTERNAL_LINK, i18n.tr("Open default apps###desktop_defaults"), intent = .Info).clicked { desktop.open_default_apps() }
+			if ui.button("desktop_defaults", i18n.tr("Open default apps"), lucide.EXTERNAL_LINK, {intent = .Info}).clicked { desktop.open_default_apps() }
 			ui.spacer(ui.px(em * 0.4))
 		}
-		if ui.button_icon("###desktop_setup", lucide.SETTINGS, i18n.tr("Setup\u2026###desktop_setup")).clicked { setup_open(app) }
+		if ui.button("desktop_setup", i18n.tr("Setup\u2026"), lucide.SETTINGS).clicked { setup_open(app) }
 	}
 }
 
@@ -351,7 +351,7 @@ desktop_config_switch :: proc(app: ^App) -> bool {
 	flipped := false
 	if ui.disabled(desktop_config_busy()) {
 		ui.a11y({name = i18n.tr("Integrate with the desktop")})
-		if ui.toggle("###desktop_box", "", &checked).clicked { desktop_toggle(app); flipped = true }
+		if ui.toggle("###desktop_box", "", &checked) { desktop_toggle(app); flipped = true }
 	}
 	return flipped
 }

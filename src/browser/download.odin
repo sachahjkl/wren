@@ -388,7 +388,7 @@ download_pick_folder :: proc(app: ^App) {
 		j.app.dl_picking = false
 		if j.chosen != "" {
 			if err := config.set_from_string(&j.app.prefs, "browser.download.directory", j.chosen, .User); err != .None {
-				ui.toast(.Warn, "browser.download.directory: %s", config.set_error_text(err))
+				announce(j.app, .Warn, fmt.tprintf("browser.download.directory: %s", config.set_error_text(err)))
 			}
 		}
 		request_frames(j.app, 2)
@@ -398,7 +398,7 @@ download_pick_folder :: proc(app: ^App) {
 		delete(j.start); delete(j.chosen); free(j)
 	})
 	if !started {
-		ui.toast(.Bad, "The folder dialog could not be opened")
+		announce(app, .Bad, "The folder dialog could not be opened")
 		delete(job.start); free(job)
 		return
 	}
@@ -475,7 +475,7 @@ download_from_navigation :: proc(app: ^App, load: ^Doc_Load, task: base.Handle, 
 		download_to(d, .Failed, fmt.tprintf("cannot write in %s", d.dir))
 	} else {
 		window_ask(app, .Downloads_Panel)   // the button's drop-down shows it running (downloads_ui.odin)
-		if app.dls.cfg.button == "never" { ui.toast(.Info, "Downloading %s", d.name) }
+		if app.dls.cfg.button == "never" { announce(app, .Info, fmt.tprintf("Downloading %s", d.name)) }
 		if app.dls.cfg.ask { download_dialog_open(app, d) }
 	}
 	nav_cancel(app, load.tab, load, .Downloaded)   // `load` is gone after this
@@ -579,7 +579,7 @@ download_to :: proc(d: ^Download, to: Download_State, why := "") {
 		if to == .Failed {
 			delete(d.error)
 			d.error = strings.clone(why)
-			ui.toast(.Bad, "Download failed: %s", d.name)
+			announce(app, .Bad, fmt.tprintf("Download failed: %s", d.name))
 		}
 		download_temp_drop(d)
 		download_ended(d)
@@ -918,7 +918,7 @@ downloads_check_files :: proc(app: ^App) {
 }
 
 download_open_file :: proc(d: ^Download) {
-	if !download_file_present(d) { ui.toast(.Warn, "%s is no longer there", d.name); return }
+	if !download_file_present(d) { announce(d.app, .Warn, fmt.tprintf("%s is no longer there", d.name)); return }
 	ui.open(d.path)
 }
 
@@ -941,7 +941,7 @@ download_delete_file :: proc(app: ^App, d: ^Download) {
 		j := (^Delete_Job)(data)
 		defer drop(j)
 		app := j.app
-		if j.failed { ui.toast(.Bad, "Could not delete %s", filepath.base(j.path)); return }
+		if j.failed { announce(app, .Bad, fmt.tprintf("Could not delete %s", filepath.base(j.path))); return }
 		for d in app.dls.list { if d.id == j.id { d.missing, d.checked_ms = true, dl_now_ms() } }
 		announce(app, .Info, fmt.tprintf("Deleted %s", filepath.base(j.path)))
 		request_frames(app, 2)

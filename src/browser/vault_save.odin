@@ -33,7 +33,7 @@ VAULT_OFFER_W_EM :: f32(22)
 vault_save_destroy :: proc(app: ^App) {
 	s := &app.vault
 	vault.string_wipe(&s.gen_value)
-	ui.field_wipe(&s.gen_text)
+	ui.line_edit_wipe(&s.gen_text)
 	vault.string_wipe(&s.gen_filled)
 	delete(s.gen_options.separator)
 	delete(s.fill_item)
@@ -146,13 +146,13 @@ vault_offer_build :: proc(app: ^App) {
 					} else {
 						ui.next({width = ui.fill(), height = ui.children_sum()})
 						if ui.row(.Center, {}, "###vo_acts") {
-							if ui.button_icon("###vo_later", lucide.X, i18n.tr("Not now"), intent = .Cancel, width = ui.fill()).clicked { later = true }
+							if ui.button("###vo_later", i18n.tr("Not now"), lucide.X, {intent = .Cancel, width = ui.fill()}).clicked { later = true }
 							ui.spacer(ui.px(em * 0.4))
 							words := o.state == .Update ? i18n.tr("Update") : i18n.tr("Save")
-							if ui.button_icon("###vo_accept", lucide.SAVE, words, intent = .Success, width = ui.fill()).clicked { accept = true }
+							if ui.button("###vo_accept", words, lucide.SAVE, {intent = .Success, width = ui.fill()}).clicked { accept = true }
 						}
 						ui.spacer(ui.px(em * 0.4))
-						if ui.button_icon("###vo_never", lucide.SHIELD, i18n.tr("Never for this site"), width = ui.fill()).clicked { never = true }
+						if ui.button("###vo_never", i18n.tr("Never for this site"), lucide.SHIELD, {width = ui.fill()}).clicked { never = true }
 					}
 				}
 				ui.spacer(ui.px(em * 0.9))
@@ -162,7 +162,7 @@ vault_offer_build :: proc(app: ^App) {
 	}
 	switch {
 	case accept:
-		if !vault.vault_offer_accept(v) { ui.toast(.Warn, "%s", i18n.tr("The Vault cannot save now.")) }
+		if !vault.vault_offer_accept(v) { announce(app, .Warn, i18n.tr("The Vault cannot save now.")) }
 	case later:
 		vault.vault_offer_dismiss(v)
 	case never:
@@ -178,7 +178,7 @@ vault_offer_build :: proc(app: ^App) {
 vault_generate_for_field :: proc(app: ^App, x: Vault_Target) {
 	s := &app.vault
 	id := vault.vault_generate(&s.v, s.v.settings.generator)
-	if id == 0 { ui.toast(.Warn, "%s", i18n.tr("The Vault cannot generate a password now.")); return }
+	if id == 0 { announce(app, .Warn, i18n.tr("The Vault cannot generate a password now.")); return }
 	s.gen_request, s.gen_for_fill = id, true
 	s.gen_tab, s.gen_forms, s.gen_field = x.tab.id, x.f.id, x.field
 }
@@ -196,7 +196,7 @@ vault_generated_frame :: proc(app: ^App) {
 	if !s.gen_for_fill {
 		if s.gen_dialog {
 			vault.string_wipe(&s.gen_value)
-			ui.field_wipe(&s.gen_text)
+			ui.line_edit_wipe(&s.gen_text)
 			s.gen_value, value = value, ""
 		}
 		return
@@ -204,18 +204,18 @@ vault_generated_frame :: proc(app: ^App) {
 	s.gen_for_fill = false
 	x, has := vault_target(app)
 	if !has || x.tab.id != s.gen_tab || x.f.id != s.gen_forms {
-		ui.toast(.Warn, "%s", i18n.tr("Not filled: the page changed."))
+		announce(app, .Warn, i18n.tr("Not filled: the page changed."))
 		return
 	}
 	filled := false
 	fields := forms.new_password_fields(x.f, s.gen_field)
 	if len(fields) == 0 && forms.input_type(x.f, s.gen_field) == .Password { fields = []base.Handle{s.gen_field} }
 	for h in fields { if vault_field_shown(x.page, h) && forms.fill_field(x.f, h, value) { filled = true } }
-	if !filled { ui.toast(.Warn, "%s", i18n.tr("Not filled: the form has no new password field.")); return }
+	if !filled { announce(app, .Warn, i18n.tr("Not filled: the form has no new password field.")); return }
 	vault.string_wipe(&s.gen_filled)
 	s.gen_filled = strings.clone(value, base.process_allocator())
 	s.gen_filled_forms = x.f.id
-	ui.toast(.Info, "%s", i18n.tr("A new password was filled. Send the form, then save the login."))
+	announce(app, .Info, i18n.tr("A new password was filled. Send the form, then save the login."))
 }
 
 vault_generator_open :: proc(app: ^App) {
@@ -242,7 +242,7 @@ vault_generator_close :: proc(app: ^App) {
 	s := &app.vault
 	s.gen_dialog = false
 	vault.string_wipe(&s.gen_value)
-	ui.field_wipe(&s.gen_text)
+	ui.line_edit_wipe(&s.gen_text)
 	if !s.gen_for_fill { s.gen_request = 0 }
 	request_frames(app, 2)
 }
@@ -267,7 +267,7 @@ vault_generator_build :: proc(app: ^App) {
 	open := true
 	close, again, copy_it := false, false, false
 	o := &s.gen_options
-	if ui.modal_sized("vault_generator", {em * 28, 0}, &s.gen_size, &open, {em * 22, em * 14}) {
+	if ui.modal("vault_generator", &open, {width_em = 28, min_width_em = 22, min_height_em = 14, size = &s.gen_size}) {
 		if ui.dialog_header("vg_title", i18n.tr("Password generator"), {icon = lucide.DICES, icon_font = app.lucide}) {}
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###vg_scroll") {
@@ -313,15 +313,15 @@ vault_generator_build :: proc(app: ^App) {
 					ui.spacer(ui.px(em * 0.7))
 					// (the person asked to see it: the dialog is an empty box to captures and remote control; in a field read only,
 					// to select a part of it or copy it with the keys)
-					if ui.field_string(&s.gen_text) != s.gen_value { ui.field_set(&s.gen_text, s.gen_value) }
+					if ui.line_edit_string(&s.gen_text) != s.gen_value { ui.line_edit_set(&s.gen_text, s.gen_value) }
 					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-					_ = ui.line_edit("###vg_value", &s.gen_text, i18n.tr("Generating…"), read_only = true)
+					_ = ui.line_edit("###vg_value", &s.gen_text, {placeholder = i18n.tr("Generating…"), kind = .Read_Only})
 					ui.spacer(ui.px(em * 0.5))
 					ui.next({width = ui.fill(), height = ui.children_sum()})
 					if ui.row(.Center, {}, "###vg_value_acts") {
-						if ui.button_icon("###vg_again", lucide.REFRESH_CW, i18n.tr("Regenerate"), width = ui.fill()).clicked { again = true }
+						if ui.button("###vg_again", i18n.tr("Regenerate"), lucide.REFRESH_CW, {width = ui.fill()}).clicked { again = true }
 						ui.spacer(ui.px(em * 0.4))
-						if ui.button_icon("###vg_copy", lucide.COPY, i18n.tr("Copy"), intent = .Primary, width = ui.fill()).clicked { copy_it = true }
+						if ui.button("###vg_copy", i18n.tr("Copy"), lucide.COPY, {intent = .Primary, width = ui.fill()}).clicked { copy_it = true }
 					}
 					if s.v.message != "" {
 						ui.spacer(ui.px(em * 0.4))
@@ -336,7 +336,7 @@ vault_generator_build :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###vg_buttons") {
 			ui.spacer(ui.fill())
-			if ui.button_icon("###vg_close", lucide.X, i18n.tr("Close"), intent = .Cancel, width = ui.px(em * 8)).clicked { close = true }
+			if ui.button("###vg_close", i18n.tr("Close"), lucide.X, {intent = .Cancel, width = ui.px(em * 8)}).clicked { close = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))

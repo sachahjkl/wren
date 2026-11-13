@@ -426,7 +426,7 @@ console_panel :: proc(app: ^App, t: ^Tab) {
 	n := len(c.rows)
 	c.last_rows = n
 
-	menu_key := ui.key_from_string(0, "###dt_con_menu")
+	menu_key := "###dt_con_menu"
 	list_h := ui.Size{kind = .Percent, value = 1}
 	offs: []f32 = len(c.offs) == n + 1 && n > 0 ? c.offs[:] : nil
 	if n == 0 {
@@ -516,7 +516,7 @@ console_panel :: proc(app: ^App, t: ^Tab) {
 				c.menu_src = src
 				c.menu_file = strings.clone(src.file)   // (the row's own is of the frame's temporary memory)
 				c.menu_src.file = c.menu_file
-				ui.ctx_menu_open(menu_key, ui.mouse_pos())
+				ui.menu_open(menu_key, ui.mouse_pos())
 			}
 		}
 	}
@@ -569,41 +569,41 @@ console_keys :: proc(app: ^App, t: ^Tab, c: ^Dev_Console, n: int) {
 // The menus
 
 @(private = "file")
-console_row_menu :: proc(app: ^App, t: ^Tab, c: ^Dev_Console, key: ui.Key) {
-	if ui.ctx_menu(key, dt_px(260)) { console_row_menu_items(app, t, c) }
+console_row_menu :: proc(app: ^App, t: ^Tab, c: ^Dev_Console, key: string) {
+	if ui.menu(key, dt_px(260)) { console_row_menu_items(app, t, c) }
 }
 
 @(private = "file")
 console_row_menu_items :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 	sel := con_selected_count(c)
 	n := len(c.rows)
-	if ui.menu_item(sel > 1 ? fmt.tprintf("Copy %d messages###dt_con_copy", sel) : "Copy message###dt_con_copy", "Ctrl+C", icon = lucide.COPY, enabled = sel > 0).clicked {
+	if ui.menu_item(sel > 1 ? fmt.tprintf("Copy %d messages###dt_con_copy", sel) : "Copy message###dt_con_copy", "Ctrl+C", icon = lucide.COPY, disabled = !(sel > 0)).clicked {
 		clip_set(con_text(t, c, true, app.con_prefs.timestamps))
 	}
-	if ui.menu_item("Copy stack trace###dt_con_copy_stack", enabled = c.menu_src.line > 0 || row_has_stack(t, c), icon = lucide.COPY).clicked { clip_set(row_stack_text(t, c)) }
+	if ui.menu_item("Copy stack trace###dt_con_copy_stack", disabled = !(c.menu_src.line > 0 || row_has_stack(t, c)), icon = lucide.COPY).clicked { clip_set(row_stack_text(t, c)) }
 	ref, rpage := row_object(t, c)
-	if ui.menu_item("Copy object###dt_con_copy_obj", enabled = ref > 0 && rpage != nil, icon = lucide.COPY).clicked { page.dev_console_copy(rpage, ref); request_frames(app, 3) }
-	if ui.menu_item("Copy all messages shown###dt_con_copy_all", enabled = n > 0, icon = lucide.COPY).clicked { clip_set(con_text(t, c, false, app.con_prefs.timestamps)) }
+	if ui.menu_item("Copy object###dt_con_copy_obj", disabled = !(ref > 0 && rpage != nil), icon = lucide.COPY).clicked { page.dev_console_copy(rpage, ref); request_frames(app, 3) }
+	if ui.menu_item("Copy all messages shown###dt_con_copy_all", disabled = !(n > 0), icon = lucide.COPY).clicked { clip_set(con_text(t, c, false, app.con_prefs.timestamps)) }
 	ui.menu_separator()
-	if ui.menu_item("Store as global variable###dt_con_store", enabled = ref > 0 && rpage != nil, icon = lucide.TERMINAL).clicked {
+	if ui.menu_item("Store as global variable###dt_con_store", disabled = !(ref > 0 && rpage != nil), icon = lucide.TERMINAL).clicked {
 		t.conlog.evaluating = true
 		page.dev_console_store(rpage, ref)
 		t.conlog.evaluating = false
 		request_frames(app, 3)
 	}
-	if ui.menu_item("Select all###dt_con_all", "Ctrl+A", enabled = n > 0, icon = lucide.LIST_CHECKS).clicked { c.has_sel, c.sel_a, c.sel_b = true, c.rows[0].abs, c.rows[n - 1].abs }
+	if ui.menu_item("Select all###dt_con_all", "Ctrl+A", disabled = !(n > 0), icon = lucide.LIST_CHECKS).clicked { c.has_sel, c.sel_a, c.sel_b = true, c.rows[0].abs, c.rows[n - 1].abs }
 	ui.menu_separator()
 	row_text := row_message(t, c)
-	if ui.menu_item("Filter on this text###dt_con_filter_text", enabled = row_text != "", icon = lucide.FILTER).clicked {
-		ui.field_set(&c.filter.field, row_text)
+	if ui.menu_item("Filter on this text###dt_con_filter_text", disabled = row_text == "", icon = lucide.FILTER).clicked {
+		ui.line_edit_set(&c.filter.field, row_text)
 		c.list.sel = 0
 	}
-	if ui.menu_item(fmt.tprintf("Hide messages like this###dt_con_hide_like"), enabled = row_text != "", icon = lucide.EYE_OFF).clicked {
+	if ui.menu_item(fmt.tprintf("Hide messages like this###dt_con_hide_like"), disabled = row_text == "", icon = lucide.EYE_OFF).clicked {
 		cur := dt_filter_text(&c.filter)
 		next := strings.concatenate({cur, cur == "" ? "" : " ", "-", first_word(row_text)}, context.temp_allocator)
-		ui.field_set(&c.filter.field, next)
+		ui.line_edit_set(&c.filter.field, next)
 	}
-	if ui.menu_item(c.menu_src.line > 0 ? fmt.tprintf("Open %s:%d in a new tab###dt_con_src", c.menu_src.file, c.menu_src.line) : "Open the source###dt_con_src", enabled = c.menu_src.line > 0, icon = lucide.EXTERNAL_LINK).clicked {
+	if ui.menu_item(c.menu_src.line > 0 ? fmt.tprintf("Open %s:%d in a new tab###dt_con_src", c.menu_src.file, c.menu_src.line) : "Open the source###dt_con_src", disabled = !(c.menu_src.line > 0), icon = lucide.EXTERNAL_LINK).clicked {
 		console_open_source(app, t, c.menu_src)
 	}
 	ui.menu_separator()
@@ -717,7 +717,7 @@ console_toolbar :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 		for f, i in frames { if f.href == c.ctx { cur = i } }
 		if cur < 0 && c.ctx != "" { delete(c.ctx); c.ctx = "" }   // the frame is gone: the top document again
 		ckey := dt_menu_btn("###dt_con_ctx", .None, cur < 0 ? "top" : dev_line(frames[cur].href, 32), tooltip = "JavaScript context: where the expressions run", on = cur >= 0)
-		if ui.ctx_menu(ckey, dt_px(320)) {
+		if ui.menu(ckey, dt_px(320)) {
 			ui.menu_heading("JavaScript context")
 			if ui.menu_item("top###dt_ctx_top", checked = c.ctx == "").clicked { delete(c.ctx); c.ctx = ""; con_ctx_changed(app, c) }
 			for f, i in frames {
@@ -725,7 +725,7 @@ console_toolbar :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 					delete(c.ctx); c.ctx = strings.clone(f.href); con_ctx_changed(app, c)
 				}
 			}
-			if len(frames) == 0 { ui.menu_item("This page has no nested documents###dt_ctx_note", enabled = false, icon = lucide.INFO) }
+			if len(frames) == 0 { ui.menu_item("This page has no nested documents###dt_ctx_note", disabled = true, icon = lucide.INFO) }
 		}
 		dt_gap(3)
 		// the filter
@@ -742,7 +742,7 @@ console_toolbar :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 		level_chip(app, "###dt_lv_v", .Verbose, t.conlog.counts[.Debug], 1, app.dtc.faint, "Verbose")
 		// the levels menu
 		lkey := dt_menu_btn("###dt_con_levels", .None, levels_label(app), tooltip = "Log levels")
-		if ui.ctx_menu(lkey, dt_px(220)) {
+		if ui.menu(lkey, dt_px(220)) {
 			ui.menu_heading("Levels")
 			for lv in ([?]struct{ bit: u32, name: string, kind: Con_Kind }{{1, "Verbose", .Debug}, {2, "Info", .Log}, {4, "Warnings", .Warn}, {8, "Errors", .Error}}) {
 				n := lv.kind == .Log ? t.conlog.counts[.Log] + t.conlog.counts[.Info] : t.conlog.counts[lv.kind]
@@ -751,14 +751,14 @@ console_toolbar :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 				}
 			}
 			ui.menu_separator()
-			if ui.menu_item("Default levels###dt_lvm_def", enabled = app.con_prefs.levels != 0b1110, icon = lucide.FILTER).clicked { set_levels(app, 0b1110) }
-			if ui.menu_item("All levels###dt_lvm_all", enabled = app.con_prefs.levels != 0b1111, icon = lucide.FILTER).clicked { set_levels(app, 0b1111) }
+			if ui.menu_item("Default levels###dt_lvm_def", disabled = app.con_prefs.levels == 0b1110, icon = lucide.FILTER).clicked { set_levels(app, 0b1110) }
+			if ui.menu_item("All levels###dt_lvm_all", disabled = app.con_prefs.levels == 0b1111, icon = lucide.FILTER).clicked { set_levels(app, 0b1111) }
 		}
 		dt_vsep("###dt_cb1")
 		pk := dt_btn("###dt_con_pause", c.paused ? .Play : .Pause, tooltip = c.paused ? "Resume: show the messages that came" : "Pause: stop adding messages to the list", on = c.paused)
 		if pk.clicked { c.paused = !c.paused; c.stop = t.console_added }
 		skey := dt_menu_btn("###dt_con_gear", .Gear, tooltip = "Console settings", caret = false)
-		if ui.ctx_menu(skey, dt_px(230)) { console_settings_items(app, t) }
+		if ui.menu(skey, dt_px(230)) { console_settings_items(app, t) }
 		dt_gap(3)
 	}
 }

@@ -39,7 +39,7 @@ import "wb:config"
 import "wb:i18n"
 
 Row_State :: struct {
-	field:   ui.Text_Field,
+	field:   ui.Line_Edit,
 	synced:  string,     // the text the field was last synchronised with (owned)
 	error:   string,     // owned, shown under the row after a rejected edit
 	focused: bool,       // the editor had keyboard focus in the previous frame
@@ -71,7 +71,7 @@ Config_Cat :: struct {
 CONFIG_DESKTOP_ROW :: "browser.desktop_integration"
 
 Config_View :: struct {
-	search:        ui.Text_Field,
+	search:        ui.Line_Edit,
 	modified_only: bool,
 	category:      string,              // the category shown ("" = all), owned
 	show_keys:     bool,                // the keyboard help is shown
@@ -104,8 +104,8 @@ Config_View :: struct {
 }
 
 config_view_destroy :: proc(v: ^Config_View) {
-	ui.field_destroy(&v.search)
-	for k, r in v.rows { ui.field_destroy(&r.field); delete(r.synced); delete(r.error); free(r); delete(k) }
+	ui.line_edit_destroy(&v.search)
+	for k, r in v.rows { ui.line_edit_destroy(&r.field); delete(r.synced); delete(r.error); free(r); delete(k) }
 	delete(v.rows)
 	ui.vlist_destroy(&v.list)
 	ui.list_state_destroy(&v.cat_list)
@@ -323,7 +323,7 @@ config_set_category :: proc(v: ^Config_View, category: string) {
 // Builds the page. `prefs` is the registry; changes go through `config.set_from_string` so every observer runs.
 config_page :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs) {
 	with_desktop := desktop_available()
-	query := strings.to_lower(strings.trim_space(ui.field_string(&v.search)), context.temp_allocator)
+	query := strings.to_lower(strings.trim_space(ui.line_edit_string(&v.search)), context.temp_allocator)
 	if !v.started { v.started = true; v.list.sel = -1 }
 	if query != v.model_query { ui.list_select(&v.list.list, -1); ui.vlist_scroll_to(&v.list, 0) }   // another search: from the top
 	config_model(v, prefs, query, with_desktop)
@@ -392,8 +392,8 @@ config_header :: proc(v: ^Config_View) {
 		}
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 		ui.a11y({name = i18n.tr("Search the preferences"), shortcut = "Ctrl+F"})
-		sres := ui.line_edit("###cfg_search", &v.search, v.narrow ? i18n.tr("Search (Ctrl+F)") : i18n.tr("Search by title, name or description (Ctrl+F)"))
-		if v.focus_search { v.focus_search = false; ui.set_focus(sres.box.key); ui.field_select_all(&v.search) }
+		sres := ui.line_edit("###cfg_search", &v.search, {placeholder = v.narrow ? i18n.tr("Search (Ctrl+F)") : i18n.tr("Search by title, name or description (Ctrl+F)")})
+		if v.focus_search { v.focus_search = false; ui.set_focus(sres.box.key); ui.line_edit_select_all(&v.search) }
 		if sres.focused && (ui.key_press(.Down) || sres.committed) { v.focus_list = true }
 		ui.spacer(ui.px(em * 0.8))
 		ui.next({width = ui.px(em * 3.8 + ui.text_width(ui.top_style().font, em, i18n.tr("Modified only"))), height = ui.px(ui.dense(em * 2))})
@@ -401,7 +401,7 @@ config_header :: proc(v: ^Config_View) {
 		ui.spacer(ui.px(em * 0.4))
 		ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 1.8))})
 		if ui.tags(v.show_keys ? "selected" : "ghost_button") {
-			keys := ui.button(i18n.tr("Shortcuts###cfg_keys"))
+			keys := ui.button("cfg_keys", i18n.tr("Shortcuts"))
 			tip(keys, i18n.tr("Show the keyboard shortcuts of this page"))
 			if keys.clicked { v.show_keys = !v.show_keys }
 		}
@@ -525,7 +525,7 @@ config_list :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs) {
 				if ui.row(.Center) {
 					ui.spacer(ui.fill())
 					// (the words keep their ###: the translation's key)
-					if ui.button_icon("###cfg_all", lucide.LIST, i18n.tr("Show all categories###cfg_all"), intent = .Primary).clicked { config_set_category(v, "") }
+					if ui.button("cfg_all", i18n.tr("Show all categories"), lucide.LIST, {intent = .Primary}).clicked { config_set_category(v, "") }
 					ui.spacer(ui.fill())
 				}
 			}
@@ -715,7 +715,7 @@ config_row :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: config.R
 	name := e.def.name
 	st := row_for(v, name)
 	title := v.labels[index]
-	summary, more := config.summary_of(e.def.description)
+	summary, more := config.summary_of(i18n.tr(e.def.description))
 
 	row := ui.list_row(&v.list.list, index, title)
 	ui.push_parent(row.box)
@@ -807,7 +807,7 @@ config_row :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: config.R
 	if ui.column(.Center) {
 		ui.spacer(ui.px(em * 0.55))
 		ui.next({width = ui.px(em * 1.9), height = ui.px(ui.dense(em * 1.9)), radius = em * CHROME_BUTTON_RADIUS})
-		ds := ui.icon_button(fmt.tprintf("###x_%s", name), st.expanded ? lucide.CHEVRON_UP : lucide.CHEVRON_DOWN)
+		ds := ui.button(fmt.tprintf("###x_%s", name), icon = st.expanded ? lucide.CHEVRON_UP : lucide.CHEVRON_DOWN)
 		tip(ds, st.expanded ? i18n.tr("Hide the details (Left)") : i18n.tr("Show the details (Right)"))
 		if ds.clicked { toggle_details(v, name, !st.expanded) }
 	}
@@ -830,9 +830,10 @@ config_editor :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: confi
 			case .Bool:
 				val := e.value.b
 				ui.next({width = ui.px(em * 3.4), height = ui.px(ui.dense(em * 2))})
-				sig := ui.toggle(fmt.tprintf("%s###b", id), "", &val)
-				st.editor = sig.box.key
-				if sig.clicked { config_apply(v, prefs, st, name, val ? "true" : "false") }
+				toggle_id := fmt.tprintf("%s###b", id)
+				changed := ui.toggle(toggle_id, "", &val)
+				st.editor = ui.prev_box(toggle_id).key
+				if changed { config_apply(v, prefs, st, name, val ? "true" : "false") }
 				ui.spacer(ui.fill())
 			case .String:
 				// the default search engine: a choice of the list's names (its value is the engine's id)
@@ -855,14 +856,14 @@ config_editor :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: confi
 			case .Int, .Float:
 				current := config.value_string(prefs, r)
 				// keep the field in step with the registry unless the user is typing in it
-				if st.synced != current && !st.focused { ui.field_set(&st.field, current); delete(st.synced); st.synced = strings.clone(current) }
+				if st.synced != current && !st.focused { ui.line_edit_set(&st.field, current); delete(st.synced); st.synced = strings.clone(current) }
 				number := e.def.kind != .String
 				ui.next({width = number ? ui.px(em * 9) : ui.fill(), height = ui.px(ui.dense(em * 2))})
-				res := ui.line_edit(fmt.tprintf("%s###e", id), &st.field, "")
+				res := ui.line_edit(fmt.tprintf("%s###e", id), &st.field)
 				st.editor = res.box.key
-				if st.want_focus { st.want_focus = false; ui.set_focus(res.box.key); ui.field_select_all(&st.field) }
+				if st.want_focus { st.want_focus = false; ui.set_focus(res.box.key); ui.line_edit_select_all(&st.field) }
 				st.focused = res.focused
-				if res.committed { config_apply(v, prefs, st, name, ui.field_string(&st.field)); delete(st.synced); st.synced = ""; v.focus_list = true }
+				if res.committed { config_apply(v, prefs, st, name, ui.line_edit_string(&st.field)); delete(st.synced); st.synced = ""; v.focus_list = true }
 				if res.cancelled { delete(st.synced); st.synced = ""; if st.error != "" { v.serial += 1 }; delete(st.error); st.error = ""; v.focus_list = true }
 				if number {
 					ui.spacer(ui.px(em * 0.5))
@@ -877,7 +878,7 @@ config_editor :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: confi
 		ui.spacer(ui.px(em * 0.3))
 		if e.source == .User && !locked {
 			ui.next({width = ui.px(em * 2), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
-			rs := ui.icon_button(fmt.tprintf("###r_%s", name), lucide.ROTATE_CW)
+			rs := ui.button(fmt.tprintf("###r_%s", name), icon = lucide.ROTATE_CW)
 			tip(rs, i18n.tr("Reset to the default (Delete)"))
 			if rs.clicked { config_reset(v, prefs, st, name) }
 		} else {

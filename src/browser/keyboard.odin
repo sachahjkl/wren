@@ -73,7 +73,7 @@ keyboard_take :: proc(app: ^App, to := Keyboard_Owner.Page, frame: ^page.Page = 
 
 // A press a chrome frame sorts out, before the page's turn: the keys after it follow it. (A press that closes a menu gives nothing.)
 keyboard_press :: proc(app: ^App, over_page: bool) {
-	if !ui.ctx_menu_any_open() { keyboard_move(app, over_page ? .Page : .Chrome) }
+	if !ui.menu_any_open() { keyboard_move(app, over_page ? .Page : .Chrome) }
 }
 
 // A document came to the window (a load, the tab `t` shown): it has the keyboard, or gets it when the chrome's widget lets go. The address field keeps it:
@@ -107,7 +107,7 @@ keyboard_frame_closed :: proc(k: ^Keyboard, p: ^page.Page) {
 // open: the page reads its keys before the dialogs are built, and Tab or Enter typed in the dialog must not reach it.
 page_has_keyboard :: proc(app: ^App) -> bool {
 	o := keyboard_owner(app)
-	return (o == .Page || o == .Frame) && !ui.ctx_menu_any_open() && !ui.dialog_open() && !setup_captures(app)
+	return (o == .Page || o == .Frame) && !ui.menu_any_open() && !ui.dialog_open() && !setup_captures(app)
 }
 
 // The page's focus is a focus (its caret, its ring): the keyboard is there, or a widget has it from there.

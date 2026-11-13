@@ -4,8 +4,8 @@ package browser
 // notice and nothing else (page/js_print.odin: the call returns, it never throws). The notice is shown at most once
 // per browser.print.notice_interval_ms, so a page that calls print() in a loop cannot flood the window with them.
 
+import "core:fmt"
 import "core:time"
-import "toolkit:ui"
 import "wb:config"
 import "wb:page"
 
@@ -23,7 +23,7 @@ print_request :: proc(app: ^App) {
 	interval := f64(config.int_of(&app.prefs, "browser.print.notice_interval_ms"))
 	if app.print_last != {} && time.duration_milliseconds(time.tick_since(app.print_last)) < interval { return }
 	app.print_last = time.tick_now()
-	ui.toast(.Info, "Printing is not available in %s", APP_NAME)
+	announce(app, .Info, fmt.tprintf("Printing is not available in %s", APP_NAME))
 	request_frames(app, 2)
 }
 

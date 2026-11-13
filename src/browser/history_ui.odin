@@ -44,7 +44,7 @@ History_Row :: struct {
 
 History_View :: struct {
 	mode:        int,              // 0 browsing history, 1 tab history
-	search:      ui.Text_Field,
+	search:      ui.Line_Edit,
 	list:        ui.Virtual_List,
 	rows:        [dynamic]History_Row,
 	ids:         [dynamic]u64,
@@ -65,7 +65,7 @@ History_View :: struct {
 Nav_Press :: struct { key: ui.Key, at: time.Tick, opened: bool }
 
 history_ui_destroy :: proc() {
-	ui.field_destroy(&the_app.hview.search)
+	ui.line_edit_destroy(&the_app.hview.search)
 	ui.vlist_destroy(&the_app.hview.list)
 	history_rows_free()
 	delete(the_app.hview.rows); delete(the_app.hview.ids); delete(the_app.hview.labels); delete(the_app.hview.selectable)
@@ -133,11 +133,11 @@ nav_history_button :: proc(app: ^App, t: ^Tab, id, glyph, tooltip: string, enabl
 	ui.next({width = ui.px(em * 2.1), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
 	sig: ui.Signal
 	if ui.disabled(!enabled) {
-		sig = ui.icon_button(id, glyph)
+		sig = ui.button(id, icon = glyph)
 		tip(sig, tooltip)
 	}
 	if sig.box == nil { return }
-	key := ui.key_from_string(sig.box.parent.key, fmt.tprintf("%s_menu", id))
+	key := fmt.tprintf("%s_menu_%x", id, u64(sig.box.parent.key))
 	open := false
 	nav_press := &window_own(app).nav_press
 	if sig.pressed { nav_press^ = {key = sig.box.key, at = time.tick_now()} }
@@ -152,7 +152,7 @@ nav_history_button :: proc(app: ^App, t: ^Tab, id, glyph, tooltip: string, enabl
 	if sig.right_clicked && enabled { open = true }
 	if sig.clicked && enabled && !(nav_press.key == sig.box.key && nav_press.opened) { go_history(app, t, dir) }
 	if sig.released { nav_press.key = 0 }
-	if open && t != nil { ui.ctx_menu_open(key, {sig.box.rect.min.x, sig.box.rect.max.y + 4}, sig.box.key) }
+	if open && t != nil { ui.menu_open(key, ui.Vec2{sig.box.rect.min.x, sig.box.rect.max.y + 4}, sig.box.key) }
 	nav_history_menu(app, t, key, dir)
 }
 
@@ -186,9 +186,9 @@ safe_label :: proc(s: string, max_runes := SAFE_LABEL_MAX_RUNES) -> string {
 }
 
 @(private = "file")
-nav_history_menu :: proc(app: ^App, t: ^Tab, key: ui.Key, dir: int) {
+nav_history_menu :: proc(app: ^App, t: ^Tab, key: string, dir: int) {
 	if t == nil { return }
-	if ui.ctx_menu(key, ui.font_size() * 22) { nav_history_items(app, t, dir) }
+	if ui.menu(key, ui.font_size() * 22) { nav_history_items(app, t, dir) }
 }
 
 @(private = "file")
@@ -209,11 +209,11 @@ nav_history_items :: proc(app: ^App, t: ^Tab, dir: int) {
 			ui.custom(fmt.tprintf("###hmi_%d", e.id), entry_icon_draw, addr)
 			ui.pop_parent()
 		}
-		if sig.clicked { ui.ctx_menu_close(); go_entry(app, t, e); return }   // (an entry of the tab: go_history counts its frames' steps too)
+		if sig.clicked { ui.menu_close(); go_entry(app, t, e); return }   // (an entry of the tab: go_history counts its frames' steps too)
 	}
 	ui.menu_separator()
-	if ui.menu_item("Tab history tree", "", icon = lucide.GIT_FORK).clicked { ui.ctx_menu_close(); open_history(app, t, true); return }
-	if ui.menu_item("Show full history", "Ctrl+H", icon = lucide.HISTORY).clicked { ui.ctx_menu_close(); open_history(app, t, false); return }
+	if ui.menu_item("Tab history tree", "", icon = lucide.GIT_FORK).clicked { ui.menu_close(); open_history(app, t, true); return }
+	if ui.menu_item("Show full history", "Ctrl+H", icon = lucide.HISTORY).clicked { ui.menu_close(); open_history(app, t, false); return }
 }
 
 ////////////////////////////////
@@ -360,15 +360,15 @@ history_page :: proc(app: ^App, t: ^Tab) {
 browsing_toolbar :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-	res := ui.line_edit("###h_search", &app.hview.search, "Search history")
-	if app.hview.focus_search && res.box != nil { app.hview.focus_search = false; ui.set_focus(res.box.key); ui.field_select_all(&app.hview.search) }
+	res := ui.line_edit("###h_search", &app.hview.search, {placeholder = "Search history"})
+	if app.hview.focus_search && res.box != nil { app.hview.focus_search = false; ui.set_focus(res.box.key); ui.line_edit_select_all(&app.hview.search) }
 	if res.focused && ui.key_press(.Down) { ui.set_focus(app.hview.list.key); if app.hview.list.sel < 0 { ui.list_select(&app.hview.list.list, 1) } }
 	ui.spacer(ui.px(em * 0.6))
-	// (ui.button_icon's widget itself: the menu opens under the button's rectangle)
-	b := ui.button_icon("###h_delete", lucide.TRASH_2, "Delete\u2026", icon_font = app.lucide, intent = .Danger)
-	key := ui.key_from_string(b.box.parent.key, "###h_delete_menu")
-	if b.clicked { ui.ctx_menu_open_rect(key, b.box.rect, b.box.key) }
-	if ui.ctx_menu(key) {
+	// (ui.button's widget itself: the menu opens under the button's rectangle)
+	b := ui.button("###h_delete", "Delete\u2026", lucide.TRASH_2, {icon_font = app.lucide, intent = .Danger})
+	key := fmt.tprintf("h_delete_menu_%x", u64(b.box.parent.key))
+	if b.clicked { ui.menu_open(key, b.box.rect, b.box.key) }
+	if ui.menu(key) {
 		now := now_unix_ms()
 		// (confirm_shell.odin: asked first, with how many visits go)
 		if ui.menu_item("The last hour\u2026", icon = lucide.CALENDAR_CLOCK).clicked { history_delete_asked(app, now - 3_600_000, max(i64), "the last hour") }
@@ -394,7 +394,7 @@ visit_open :: proc(app: ^App, t: ^Tab, address: string, new_tab: bool) {
 @(private = "file")
 browsing_list :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
-	query := strings.trim_space(ui.field_string(&app.hview.search))
+	query := strings.trim_space(ui.line_edit_string(&app.hview.search))
 	if query != app.hview.model_query { ui.list_select(&app.hview.list.list, -1); ui.vlist_scroll_to(&app.hview.list, 0) }
 	history_model(app, query)
 	delete_id: u64
@@ -447,7 +447,7 @@ browsing_list :: proc(app: ^App, t: ^Tab) {
 				if row.middle_clicked { visit_open(app, t, vis.url, true); return }
 				if row.right_clicked {
 					app.hview.menu_visit = vis.id
-					ui.ctx_menu_open(ui.key_from_string(0, "###h_row_menu"), ui.mouse_pos())
+					ui.menu_open("###h_row_menu", ui.mouse_pos())
 				}
 			}
 		}
@@ -471,20 +471,20 @@ browsing_list :: proc(app: ^App, t: ^Tab) {
 
 @(private = "file")
 row_menu :: proc(app: ^App, t: ^Tab) {
-	if ui.ctx_menu(ui.key_from_string(0, "###h_row_menu")) { row_menu_items(app, t) }
+	if ui.menu("###h_row_menu") { row_menu_items(app, t) }
 }
 
 @(private = "file")
 row_menu_items :: proc(app: ^App, t: ^Tab) {
 	at := -1
 	for v, i in app.ghist.visits { if v.id == app.hview.menu_visit { at = i; break } }
-	if at < 0 { ui.ctx_menu_close(); return }
+	if at < 0 { ui.menu_close(); return }
 	address := strings.clone(app.ghist.visits[at].url, context.temp_allocator)
-	if ui.menu_item("Open", icon = lucide.EXTERNAL_LINK).clicked { ui.ctx_menu_close(); visit_open(app, t, address, false); return }
-	if ui.menu_item("Open in a new tab", icon = lucide.EXTERNAL_LINK).clicked { ui.ctx_menu_close(); visit_open(app, t, address, true); return }
-	if ui.menu_item("Copy address", icon = lucide.COPY).clicked { clip_set(address); ui.ctx_menu_close() }
+	if ui.menu_item("Open", icon = lucide.EXTERNAL_LINK).clicked { ui.menu_close(); visit_open(app, t, address, false); return }
+	if ui.menu_item("Open in a new tab", icon = lucide.EXTERNAL_LINK).clicked { ui.menu_close(); visit_open(app, t, address, true); return }
+	if ui.menu_item("Copy address", icon = lucide.COPY).clicked { clip_set(address); ui.menu_close() }
 	ui.menu_separator()
-	if ui.menu_item("Delete from history", icon = lucide.TRASH_2).clicked { ids := []u64{app.hview.menu_visit}; global_history_remove(app, ids); ui.ctx_menu_close() }
+	if ui.menu_item("Delete from history", icon = lucide.TRASH_2).clicked { ids := []u64{app.hview.menu_visit}; global_history_remove(app, ids); ui.menu_close() }
 	host_of :: proc(a: string) -> string {
 		s := a
 		if i := strings.index(s, "://"); i >= 0 { s = s[i + 3:] } else { return "" }
@@ -496,7 +496,7 @@ row_menu_items :: proc(app: ^App, t: ^Tab) {
 			ids := make([dynamic]u64, context.temp_allocator)
 			for v in app.ghist.visits { if host_of(v.url) == h { append(&ids, v.id) } }
 			global_history_remove(app, ids[:])
-			ui.ctx_menu_close()
+			ui.menu_close()
 		}
 	}
 }
