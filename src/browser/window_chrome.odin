@@ -4,8 +4,8 @@ package browser
 // left (the window title in its tooltip, the system menu on a click), the tabs, the new-tab button, free space that
 // drags the window, and the window buttons drawn by the browser (toolkit: ui.title_bar, ui.window_buttons; the platform
 // answers the system's hit tests, so Snap Layouts, Aero Snap and double-click to maximize work). The window title stays
-// set for the taskbar and Alt+Tab (hud.odin). browser.window.integrated_titlebar = false brings the title bar of Windows
-// back, at once. A right click on the free space opens the toolbar's menu (toolbar_menu.odin), whose last item is the
+// set for the taskbar and Alt+Tab (hud.odin). The standard window.system_title brings the title bar of the system back, at
+// once. A right click on the free space opens the toolbar's menu (toolbar_menu.odin), whose last item is the
 // system menu; the free space is never less than browser.window.min_drag_em, in every layout of the tabs.
 //
 // Full screen (F11): no frame, no title bar, no tabs nor address bar; they slide down over the page while the pointer
@@ -13,13 +13,12 @@ package browser
 
 import "toolkit:draw"
 import "toolkit:platform"
+import prefs_page "toolkit:prefs_page"
 import "toolkit:render"
 import "toolkit:ui"
 import "wb:config"
 
 WINDOW_PREFS := [?]config.Def{
-	{name = "browser.window.integrated_titlebar", kind = .Bool, default = {b = true},
-		description = "The row of tabs is the window's title bar, as in Edge and Chrome: the browser draws the minimize, maximize and close buttons and the free space next to the tabs drags the window. Off: the title bar of Windows above the tabs. Applies at once."},
 	{name = "browser.window.min_drag_em", kind = .Float, default = {f = 3}, bounded = true, min = 0, max = 40, unit = "em",
 		description = "Free space kept in the title bar between the tabs and the window buttons, to drag the window when there are many tabs (the tabs are cut off before it). With the tabs in a sidebar, the strip between the menu and the window buttons (in a narrow window, the buttons of the toolbar are hidden before it narrows). A right click on the free space of the title bar opens the toolbar's menu."},
 	{name = "browser.window.fullscreen_reveal", kind = .Bool, default = {b = true},
@@ -75,7 +74,7 @@ Window_Settings :: struct {
 window_settings_from_prefs :: proc(p: ^config.Prefs) -> Window_Settings {
 	return {
 		address_sizing = address_bar_sizing_of(config.string_of(p, "browser.address_bar.sizing_mode")),
-		integrated = config.bool_of(p, "browser.window.integrated_titlebar"),
+		integrated = !config.bool_of(p, prefs_page.SYSTEM_TITLE_PREF),
 		min_drag_em = f32(config.float_of(p, "browser.window.min_drag_em")),
 		reveal = config.bool_of(p, "browser.window.fullscreen_reveal"),
 		reveal_px = f32(config.int_of(p, "browser.window.fullscreen_reveal_px")),
@@ -94,6 +93,7 @@ Window_Chrome :: struct {
 	cfg:          Window_Settings,
 	watch:        int,
 	watch_bar:    int,           // browser.address_bar.* (Window_Settings has them too)
+	watch_title:  int,           // the standard window.* (window.system_title)
 	icon:         render.Texture,
 	icon_px:      int,           // size of `icon` (0: none made yet)
 	icon_failed:  int,           // a size the exe's icon could not be loaded at
@@ -105,12 +105,14 @@ Window_Chrome :: struct {
 window_chrome_init :: proc(app: ^App) {
 	app.wchrome.cfg = window_settings_from_prefs(&app.prefs)
 	platform.set_square_corners(active_window(app).win, app.wchrome.cfg.square_corners)
-	app.wchrome.watch = config.watch(&app.prefs, "browser.window.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	window_changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
 		app.wchrome.cfg = window_settings_from_prefs(p)
 		platform.set_square_corners(active_window(app).win, app.wchrome.cfg.square_corners)
 		request_frames(app, 2)
-	}, app)
+	}
+	app.wchrome.watch = config.watch(&app.prefs, "browser.window.", window_changed, app)
+	app.wchrome.watch_title = config.watch(&app.prefs, "window.", window_changed, app)
 	app.wchrome.watch_bar = config.watch(&app.prefs, "browser.address_bar.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
 		app.wchrome.cfg = window_settings_from_prefs(p)
@@ -121,11 +123,12 @@ window_chrome_init :: proc(app: ^App) {
 window_chrome_destroy :: proc(app: ^App) {
 	config.unwatch(&app.prefs, app.wchrome.watch)
 	config.unwatch(&app.prefs, app.wchrome.watch_bar)
+	config.unwatch(&app.prefs, app.wchrome.watch_title)
 	if app.wchrome.icon_px > 0 { render.destroy_texture(&app.r, app.wchrome.icon) }
 	app.wchrome = {}
 }
 
-// Before the frame's build: the title bar the preference asks for, smooth scrolling of the toolkit's lists like the page's.
+// Before the frame's build: the title bar the preference asks for.
 window_chrome_frame :: proc(app: ^App) {
 	wnd := active_window(app)
 	if !platform.is_fullscreen(wnd.win) && platform.is_integrated_title(wnd.win) != app.wchrome.cfg.integrated {
@@ -135,12 +138,6 @@ window_chrome_frame :: proc(app: ^App) {
 	// a right click on the free space of the title bar opens the toolbar's menu (toolbar_menu.odin), not the system's;
 	// the system's is an item of it. (A flag of the window: set on each, every frame, wherever the window was made.)
 	platform.set_caption_menu_app(wnd.win, true)
-	// about:config and the other lists of the chrome scroll along the page's curve (smooth_scroll.odin)
-	sc := app.smooth_cfg
-	curve: ui.Scroll_Curve = sc.curve == .Ease_Out ? .Ease_Out : .Impulse
-	dur := f32(sc.wheel_ms)
-	if !sc.enabled || (sc.reduced_motion && (app.page_settings.style.reduced_motion || !os_animations_enabled(app))) { dur = 0 }
-	ui.set_scroll_settings(wnd.ui, {curve = curve, impulse = f32(sc.impulse), duration_ms = dur})
 }
 
 toggle_fullscreen :: proc(app: ^App) {

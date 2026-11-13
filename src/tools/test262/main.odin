@@ -21,7 +21,6 @@
 // only: nothing stops the run.
 package test262
 
-import _ "wb:crashtrace"   // a crash prints its symbolized stack
 
 import "core:fmt"
 import "core:os"

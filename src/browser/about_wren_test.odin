@@ -6,8 +6,7 @@ import "core:testing"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
-import "wb:license"
-import "wb:url"
+import licence "toolkit:licence"
 import "wb:wasm"
 
 ////////////////////////////////
@@ -95,7 +94,7 @@ every_shipped_license_text_is_shown :: proc(t: ^testing.T) {
 // The page
 
 @(private = "file")
-test_page :: proc(theme: string, state: License_State = {}, notice: Wren_Notice = {}) -> Wren_Page {
+test_page :: proc(theme: string, state: licence.Status = {}, notice: Wren_Notice = {}) -> Wren_Page {
 	pal := ui.palette_of(strings.trim_suffix(theme, " light"), strings.has_suffix(theme, " light"))
 	return {palette = pal, state = state, notice = notice, support_url = SUPPORT_URL, profile_dir = `C:\Users\x\AppData\Roaming\Wren`}
 }
@@ -147,8 +146,8 @@ the_card_can_be_previewed_without_a_licence :: proc(t: ^testing.T) {
 @(test)
 about_page_with_a_license :: proc(t: ^testing.T) {
 	test_app(t)
-	lic := license.License{product = "wren", edition = "patron", name = "Zoé <b>Martin</b> & Co", email = "z@example.org", date = "2026-10-22", order = "WREN-0042"}
-	state := License_State{lic = lic, registered = true, stored = true}
+	lic := licence.Licence{product = "wren", edition = "patron", name = "Zoé <b>Martin</b> & Co", email = "z@example.org", date = "2026-10-22", order = "WREN-0042"}
+	state := licence.Status{licence = lic, registered = true, stored = true, covered = true}
 	html := wren_page_html(test_page("graphite", state))
 	for want in ([]string{"Registered to Zoé &lt;b&gt;Martin&lt;/b&gt; &amp; Co", "Patron license", "2026-10-22", "WREN-0042", "z@example.org", "Thank you", "Remove the license", "Replace the license"}) {
 		testing.expectf(t, strings.contains(html, want), "about:wren with a license lacks %q", want)
@@ -190,7 +189,7 @@ about_page_with_a_license :: proc(t: ^testing.T) {
 @(test)
 about_page_notices_and_rejected_store :: proc(t: ^testing.T) {
 	test_app(t)
-	state := License_State{stored = true, err = .Bad_Signature}
+	state := licence.Status{stored = true, err = .Bad_Signature}
 	html := wren_page_html(test_page("daylight", state, {"Nope <i>", true}))
 	testing.expect(t, strings.contains(html, "Unregistered"))
 	testing.expect(t, strings.contains(html, "The stored license was not accepted"))
@@ -265,193 +264,17 @@ addresses_of_the_about_pages :: proc(t: ^testing.T) {
 	commands_build(&r)
 	defer commands_destroy(&r)
 	i, found := r.index["browser.about"]
-	testing.expect(t, found && r.list[i].url == WREN_URL && r.list[i].title == "About Wren", "the command opens about:wren")
+	testing.expect(t, found && r.list[i].url == WREN_URL && r.list[i].label == "About Wren", "the command opens about:wren")
 	_, found = r.index["browser.about_licenses"]
 	testing.expect(t, found)
-}
-
-////////////////////////////////
-// Keeping the license
-
-@(private = "file")
-license_app :: proc(path: string, persist: bool) -> ^App {
-	app := app_make()
-	seed := license.DEV_SEED
-	pub, _ := license.public_key_of(seed[:], context.temp_allocator)
-	values := [2]string{strings.concatenate({"browser.license.public_key=", pub}, context.temp_allocator), strings.concatenate({"browser.license.path=", path}, context.temp_allocator)}
-	refused := app_prefs_init(app, values[:path != "" ? 2 : 1])
-	assert(refused == "")
-	app.cfg.persist_profile = persist
-	app.profile_dir = ""
-	return app
-}
-
-@(private = "file")
-license_app_free :: proc(app: ^App) { app_free(app) }
-
-@(private = "file")
-dev_license :: proc(name: string, seed: [32]byte = license.DEV_SEED) -> string {
-	seed := seed
-	text, ok := license.sign(seed[:], {edition = "supporter", name = name, email = "a@b.c", date = "2026-10-22", order = "T-1"}, context.temp_allocator)
-	assert(ok)
-	return text
-}
-
-@(test)
-the_licence_a_build_is_handed_out_with_is_put_in_once :: proc(t: ^testing.T) {
-	test_app(t)
-	_ = os.make_directory_all("build/tmp")
-	path := about_scratch("about_seed_test")
-	marker := strings.concatenate({path, ".seeded"}, context.temp_allocator)
-	_ = os.remove(path); _ = os.remove(marker)
-	defer { _ = os.remove(path); _ = os.remove(marker) }
-	app := license_app(path, true)
-	defer license_app_free(app)
-	given := dev_license("Pre-registered")
-
-	// the profile holds none: it is given the build's, and the marker says so
-	license_seed(app, given)
-	st := license_state(app)
-	testing.expect(t, st.registered && st.lic.name == "Pre-registered", "a pre-registered build shows its license")
-	testing.expect(t, os.exists(marker), "the license was put in once")
-
-	// the user removes it: it stays removed (the next start is a new call of license_seed)
-	license_remove(app)
-	license_seed(app, given)
-	testing.expect(t, !license_state(app).stored, "a removed license is not put back")
-
-	// the user registers another one: it is the profile's, and the build's does not replace it
-	mine := dev_license("Mine")
-	testing.expect_value(t, license_install(app, mine), license.Error.None)
-	license_seed(app, given)
-	testing.expect(t, license_state(app).lic.name == "Mine", "the license of the user is kept")
-
-	// a profile that holds a licence of its own (shared with another Wren) is not touched, and gets no marker
-	_ = os.remove(marker)
-	license_seed(app, given)
-	testing.expect(t, license_state(app).lic.name == "Mine" && !os.exists(marker), "a license already there is kept as it is")
-
-	// a text this build does not accept is put nowhere
-	_ = os.remove(path)
-	license_seed(app, dev_license("Elsewhere", license.OTHER_DEV_SEED))
-	testing.expect(t, !os.exists(path) && !os.exists(marker), "a license this build cannot check is not put in")
-	license_seed(app, "")
-	testing.expect(t, !os.exists(path), "no license in the build, nothing put in")
-}
-@(test)
-license_is_kept_checked_and_removed :: proc(t: ^testing.T) {
-	test_app(t)
-	_ = os.make_directory_all("build/tmp")
-	path := about_scratch("about_license_test")
-	_ = os.remove(path)
-	defer os.remove(path)
-	app := license_app(path, true)
-	defer license_app_free(app)
-
-	st := license_state(app)
-	testing.expect(t, !st.registered && !st.stored, "nothing is stored at first")
-
-	// a key of another pair is refused and writes nothing
-	other := dev_license("Other", license.OTHER_DEV_SEED)
-	testing.expect_value(t, license_install(app, other), license.Error.Bad_Signature)
-	testing.expect_value(t, license_install(app, "garbage"), license.Error.Bad_Format)
-	testing.expect(t, !os.exists(path), "a refused key is not kept")
-
-	// a good one, pasted wrapped, is kept in its canonical form
-	good := dev_license("Jeanne")
-	wrapped := strings.concatenate({good[:40], "\r\n  ", good[40:]}, context.temp_allocator)
-	testing.expect_value(t, license_install(app, wrapped), license.Error.None)
-	data, _ := os.read_entire_file(path, context.temp_allocator)
-	testing.expect_value(t, strings.trim_space(string(data)), good)
-	st = license_state(app)
-	testing.expect(t, st.registered && st.stored && st.lic.name == "Jeanne" && st.lic.order == "T-1", "the stored key is read back and checked")
-
-	// the file is the profile's: another pair's key in it is "stored, not accepted"
-	_ = os.write_entire_file(path, transmute([]byte)other)
-	st = license_state(app)
-	testing.expect(t, !st.registered && st.stored && st.err == .Bad_Signature, "a stored key that does not check out is not a registration")
-	_ = os.write_entire_file(path, transmute([]byte)string("not a license at all"))
-	st = license_state(app)
-	testing.expect(t, !st.registered && st.stored && st.err == .Bad_Format)
-
-	testing.expect_value(t, license_install(app, good), license.Error.None)
-	license_remove(app)
-	testing.expect(t, !os.exists(path), "removing deletes the file")
-	st = license_state(app)
-	testing.expect(t, !st.registered && !st.stored)
-
-	// a file too large to be a license is not read
-	big, _ := strings.repeat("A", license.MAX_TEXT + 10, context.temp_allocator)
-	_ = os.write_entire_file(path, transmute([]byte)big)
-	testing.expect(t, !license_state(app).stored, "an oversized file is ignored")
-}
-
-@(test)
-license_without_a_profile_stays_in_memory :: proc(t: ^testing.T) {
-	test_app(t)
-	app := license_app("", false)
-	defer license_app_free(app)
-	testing.expect_value(t, license_path(app), "")
-	testing.expect(t, !license_state(app).registered)
-	testing.expect_value(t, license_install(app, dev_license("Memoire")), license.Error.None)
-	testing.expect(t, license_state(app).registered && license_state(app).lic.name == "Memoire")
-	license_remove(app)
-	testing.expect(t, !license_state(app).stored)
-}
-
-@(test)
-license_file_open_and_form :: proc(t: ^testing.T) {
-	test_app(t)
-	_ = os.make_directory_all("build/tmp")
-	store := about_scratch("about_license_store")
-	src := about_scratch("about_license_src")
-	_ = os.remove(store)
-	defer os.remove(store)
-	defer os.remove(src)
-	app := license_app(store, true)
-	defer license_app_free(app)
-
-	// a file dropped on the window: a header of comments, the key wrapped
-	good := dev_license("Dropped")
-	text := strings.concatenate({"# Wren license\n# order T-1\n", good[:60], "\n", good[60:], "\n"}, context.temp_allocator)
-	_ = os.write_entire_file(src, transmute([]byte)text)
-	n := license_install_file(app, src)
-	testing.expect(t, !n.bad, n.text)
-	testing.expect(t, license_state(app).registered && license_state(app).lic.name == "Dropped")
-
-	_ = os.write_entire_file(src, transmute([]byte)string("nothing"))
-	n = license_install_file(app, src)
-	testing.expect(t, n.bad && n.text != "", "a file that is not a license says so")
-	testing.expect(t, license_state(app).lic.name == "Dropped", "and the license in use stays")
-	n = license_install_file(app, "build/tmp/does_not_exist.wrenlicense")
-	testing.expect(t, n.bad)
-
-	// the form: the query of about:wren?action=...
-	form :: proc(app: ^App, q: string) -> Wren_Notice {
-		sp := url.params_make(context.temp_allocator)
-		url.params_parse(&sp, q)
-		return wren_query(app, sp)
-	}
-	n = form(app, "action=register&key=")
-	testing.expect(t, n.bad, "an empty key is asked for")
-	n = form(app, "action=register&key=WREN1.aaaa.bbbb")
-	testing.expect(t, n.bad)
-	testing.expect(t, license_state(app).lic.name == "Dropped")
-	n = form(app, strings.concatenate({"action=register&key=", dev_license("Pasted")}, context.temp_allocator))   // (base64url and dots need no escaping)
-	testing.expect(t, !n.bad && n.text != "", "a good key is accepted")
-	testing.expect(t, license_state(app).lic.name == "Pasted")
-	n = form(app, "action=remove")
-	testing.expect(t, !n.bad)
-	testing.expect(t, !license_state(app).stored)
-	n = form(app, "choose=1")
-	testing.expect(t, n.text == "" && !n.bad, "choose=1 alone says nothing")
 }
 
 @(test)
 support_link_is_a_web_page :: proc(t: ^testing.T) {
 	test_app(t)
-	app := license_app("", false)
-	defer license_app_free(app)
+	app := app_make()
+	defer app_free(app)
+	assert(app_prefs_init(app) == "")
 	testing.expect_value(t, license_support_url(app), SUPPORT_URL)
 	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.license.support_url", "https://example.org/help", .User), config.Set_Error.None)
 	testing.expect_value(t, license_support_url(app), "https://example.org/help")
@@ -459,16 +282,4 @@ support_link_is_a_web_page :: proc(t: ^testing.T) {
 	testing.expect_value(t, license_support_url(app), SUPPORT_URL)
 	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.license.support_url", "file:///C:/x", .User), config.Set_Error.None)
 	testing.expect_value(t, license_support_url(app), SUPPORT_URL)
-	// the production key is empty until it is made: a release reads no licence; a development build still accepts the
-	// development pair's (wrentool license issue -dev), never another pair's
-	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.license.public_key", "", .User), config.Set_Error.None)
-	testing.expect_value(t, license_public_key(app), license.PRODUCTION_PUBLIC_KEY)
-	if license.PRODUCTION_PUBLIC_KEY == "" {
-		when IS_DEV_BUILD {
-			testing.expect_value(t, license_install(app, dev_license("x")), license.Error.None)
-			testing.expect_value(t, license_install(app, dev_license("y", license.OTHER_DEV_SEED)), license.Error.No_Public_Key)
-		} else {
-			testing.expect_value(t, license_install(app, dev_license("x")), license.Error.No_Public_Key)
-		}
-	}
 }

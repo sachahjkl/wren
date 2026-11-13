@@ -12,7 +12,7 @@ import "core:strings"
 import "core:sync"
 import "core:thread"
 import win "core:sys/windows"
-import "wb:crashtrace"
+import "wb:stacks"
 
 foreign import dbghelp "system:dbghelp.lib"
 foreign import kernel32_prof "system:Kernel32.lib"
@@ -136,12 +136,12 @@ prof_sampling_start :: proc(app: ^App) {
 }
 
 // The return addresses that lie in the executable (the system's frames between are skipped; the unwind uses the unwind tables the system knows, JIT code's
-// included). In the copy made while the thread was stopped, once it runs again (crashtrace.Stack_Copy: a walk in place ended the browser on cnn.com, code without tables
+// included). In the copy made while the thread was stopped, once it runs again (stacks.Stack_Copy: a walk in place ended the browser on cnn.com, code without tables
 // sends it through nonsense, and the lookup of the tables takes a lock the stopped thread may hold).
-callers_in_exe :: proc(stack: ^crashtrace.Stack_Copy, ctx: ^win.CONTEXT) -> (out: [SAMPLE_DEPTH]u64) {
+callers_in_exe :: proc(stack: ^stacks.Stack_Copy, ctx: ^win.CONTEXT) -> (out: [SAMPLE_DEPTH]u64) {
 	pcs: [SAMPLE_WALK_MOST]u64
 	n := 0
-	for pc in pcs[:crashtrace.stack_walk(stack, ctx, pcs[:])] {
+	for pc in pcs[:stacks.stack_walk(stack, ctx, pcs[:])] {
 		if pc < prof.exe_lo || pc >= prof.exe_hi { continue }
 		out[n] = pc
 		n += 1
@@ -161,16 +161,16 @@ sampler_proc :: proc(_: ^thread.Thread) {
 	sync.atomic_store(&sampler_tid, win.GetCurrentThreadId())   // (the other threads' sampler leaves it out)
 	timer := pacer_timer_create()
 	defer pacer_timer_destroy(timer)
-	stack: crashtrace.Stack_Copy
-	if prof.stacks { crashtrace.stack_copy_init(&stack) }
-	defer crashtrace.stack_copy_destroy(&stack)
+	stack: stacks.Stack_Copy
+	if prof.stacks { stacks.stack_copy_init(&stack) }
+	defer stacks.stack_copy_destroy(&stack)
 	for !sync.atomic_load(&prof.stop) {
 		sample_tick(timer)
 		if win.SuspendThread(sampler_target) == ~u32(0) { continue }
 		ctx: win.CONTEXT
 		ctx.ContextFlags = prof.stacks ? CONTEXT_FULL_AMD64 : CONTEXT_CONTROL_AMD64
 		got := win.GetThreadContext(sampler_target, &ctx)
-		if got && prof.stacks { crashtrace.stack_copy_take(&stack, ctx.Rsp) }
+		if got && prof.stacks { stacks.stack_copy_take(&stack, ctx.Rsp) }
 		phase := prof.clock.cur
 		win.ResumeThread(sampler_target)
 		if got && prof.n_samples < len(prof.samples) {
@@ -216,9 +216,9 @@ other_sampler_proc :: proc(_: ^thread.Thread) {
 	defer delete(list)
 	timer := pacer_timer_create()
 	defer pacer_timer_destroy(timer)
-	stack: crashtrace.Stack_Copy
-	crashtrace.stack_copy_init(&stack)
-	defer crashtrace.stack_copy_destroy(&stack)
+	stack: stacks.Stack_Copy
+	stacks.stack_copy_init(&stack)
+	defer stacks.stack_copy_destroy(&stack)
 	for !sync.atomic_load(&prof.stop) {
 		began := qpc()
 		clear(&followed)
@@ -255,7 +255,7 @@ other_sampler_proc :: proc(_: ^thread.Thread) {
 
 // A sample of a thread. False: it has left user code, or the process.
 @(private = "file")
-other_sample :: proc(tid: u32, handles: ^map[u32]win.HANDLE, stack: ^crashtrace.Stack_Copy) -> bool {
+other_sample :: proc(tid: u32, handles: ^map[u32]win.HANDLE, stack: ^stacks.Stack_Copy) -> bool {
 	h, known := handles[tid]
 	if !known {
 		h = win.OpenThread(THREAD_SAMPLED_RIGHTS, false, tid)
@@ -271,7 +271,7 @@ other_sample :: proc(tid: u32, handles: ^map[u32]win.HANDLE, stack: ^crashtrace.
 	ctx: win.CONTEXT
 	ctx.ContextFlags = CONTEXT_FULL_AMD64
 	got := win.GetThreadContext(h, &ctx)
-	if got { crashtrace.stack_copy_take(stack, ctx.Rsp) }
+	if got { stacks.stack_copy_take(stack, ctx.Rsp) }
 	win.ResumeThread(h)
 	if !got { return false }
 	rip := u64(ctx.Rip)

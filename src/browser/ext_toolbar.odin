@@ -245,7 +245,7 @@ ext_button_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		br := draw.Rect{{left, top}, {left + bw, top + bhh}}
 		draw.rect(dc, {{br.min.x - edge, br.min.y - edge}, {br.max.x + edge, br.max.y + edge}}, ui.color("background"), bhh * 0.5 + edge)
 		draw.rect(dc, br, d.badge_bg, bhh * 0.5)
-		draw.text(dc, d.app.ui_font, size, {math.round(br.min.x + (bw - tw) * 0.5), math.round(br.min.y + bhh * 0.5 + size * 0.36)}, draw.Color{1, 1, 1, 1}, d.badge)
+		draw.text(dc, d.app.ui_font, size, {math.round(br.min.x + (bw - tw) * 0.5), math.round(br.min.y + bhh * 0.5 + size * 0.36)}, ui.ink_on(d.badge_bg), d.badge)
 	}
 	if ui.focus_key() == b.key {
 		draw.rect(dc, {{r.min.x + 1, r.min.y + 1}, {r.max.x - 1, r.max.y - 1}}, d.focus, d.radius, max(2, ui.scale() * 1.5))

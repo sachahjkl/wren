@@ -7,7 +7,7 @@ import "core:strings"
 import "wb:tools/tooling"
 
 // Two layering rules of the product (docs/architecture.md, Layers; docs/portability.md, Rules), outside src/tools:
-//   * no import of wb:tools/*: a tool may use the product, never the reverse (what both need lives in src: crashtrace,
+//   * no import of wb:tools/*: a tool may use the product, never the reverse (what both need lives in src:
 //     stacks, testenv);
 //   * core:sys/windows only in a file named *_windows.odin: a neutral file that imports it compiles on Linux only as
 //     long as nobody calls what it declares, and the next caller breaks the Linux build.

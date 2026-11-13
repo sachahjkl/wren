@@ -72,10 +72,10 @@ TAB_PREFS := [?]config.Def{
 
 // The tabs' preferences make the Tabs category of about:config (their names stay browser.tabs.*).
 register_tab_prefs :: proc(p: ^config.Prefs) {
-	config.register(p, TAB_PREFS[:], "tabs")
-	config.register(p, SIDEBAR_PREFS[:], "tabs")   // tab_sidebar.odin
-	config.register(p, TAB_GROUP_PREFS[:], "tabs")   // tab_groups.odin
-	config.register(p, TAB_SOUND_PREFS[:], "tabs")   // tab_sound.odin
+	config.register(p, TAB_PREFS[:])
+	config.register(p, SIDEBAR_PREFS[:])   // tab_sidebar.odin
+	config.register(p, TAB_GROUP_PREFS[:])   // tab_groups.odin
+	config.register(p, TAB_SOUND_PREFS[:])   // tab_sound.odin
 }
 
 Tab_Settings :: struct {

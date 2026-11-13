@@ -21,6 +21,7 @@ import "core:slice"
 import "core:strings"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/deps"
+import toolbox "../../../../ext/gui_toolkit/src/toolbox"
 
 EXIT_USAGE :: 2
 ABOUT_FILE :: "src/browser/about.odin"
@@ -211,7 +212,7 @@ browser :: proc(o: Options) -> bool {
 	// frames wrong (crash reports, wren ctl stacks)
 	if !slice.contains(spec.flags, "-debug") { _ = os.remove(fmt.tprintf("%s.pdb", strings.trim_suffix(program, ".exe"))) }
 
-	// the linker's map becomes <exe>-<fingerprint>.map beside the exe (wrentool crash-symbolize reads them; Linux: the build id names the build)
+	// the linker's map becomes <exe>-<fingerprint>.map beside the exe (toolbox.crash_publish_symbols; wrentool crash-symbolize reads them; Linux: the build id names the build)
 	when ODIN_OS == .Windows {
 		named, ok := deps.publish_symbols(program, spec.store_symbols)
 		if !ok { return say_fail(o, fmt.tprintf("naming the symbols of %s failed: run  wrentool symbols -Publish %s", program, program)) }
@@ -238,12 +239,12 @@ common_flags :: proc(o: Options) -> []string {
 	when ODIN_OS == .Windows {
 		append(&f, fmt.tprintf("-resource:%s", VARIANTS[o.variant].release_channel ? "src/browser/wren.rc" : "src/browser/wren_dev.rc"))
 		// /MAP: the linker's map (every function's address) next to the exe, the symbols of a release, which has no PDB (it changes nothing in the exe)
-		append(&f, fmt.tprintf("-extra-linker-flags:/STACK:%d /MAP", STACK_BYTES))
+		append(&f, fmt.tprintf("-extra-linker-flags:/STACK:%d %s", STACK_BYTES, toolbox.CRASH_LINKER_FLAGS))
 	} else {
 		// --build-id: a crash report names the build (wrentool crash-symbolize); -z noexecstack: the stack not executable; threads,
 		// dlopen (openh264, libfido2, libva at run time), the maths of the Rust and C libraries, Opus and ALSA. (--no-as-needed keeps
 		// -lpthread when only the static archives refer to it.) The 64 MiB stack is the soft limit at run time (ulimit -s), not a link option.
-		append(&f, "-extra-linker-flags:-Wl,--build-id -Wl,-z,noexecstack -Wl,--no-as-needed -lpthread -ldl -lm -lopus -lasound", "-target:linux_amd64")
+		append(&f, "-extra-linker-flags:" + toolbox.CRASH_LINKER_FLAGS + " -Wl,-z,noexecstack -Wl,--no-as-needed -lpthread -ldl -lm -lopus -lasound", "-target:linux_amd64")
 	}
 	append(&f, fmt.tprintf("-define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=%d", TEMP_ALLOCATOR_BACKING_BYTES))
 	commit, date := source_commit()

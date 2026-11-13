@@ -17,7 +17,7 @@ package browser
 import "wb:config"
 
 TAB_TREE_PREFS := [?]config.Def{
-	{name = "browser.tabs.tree", kind = .Bool, default = {b = true}, category = "tabs",
+	{name = "browser.tabs.tree", kind = .Bool, default = {b = true},
 		description = "Tabs as a tree in the sidebar: a tab a page opens (a link in a new tab, window.open) is a child of the page's tab, shown under it, indented, and a tab with children can fold them away. Off: every new tab is at the end of the list, and the list is flat."},
 }
 

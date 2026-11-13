@@ -13,7 +13,6 @@ import "core:path/filepath"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:font"
-import "toolkit:platform"
 import "toolkit:render"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
@@ -179,7 +178,7 @@ dl_tile_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	c := draw.rect_center(r)
 	sq := draw.Rect{{math.round(c.x - s * 0.5), math.round(c.y - s * 0.5)}, {}}
 	sq.max = sq.min + {s, s}
-	col := d.bad ? ui.tuned(draw.Color{0.96, 0.42, 0.40, 1}) : d.color
+	col := d.bad ? ui.hue(.Red) : d.color
 	fade: f32 = d.dim ? 0.45 : 1
 	if d.icon != 0 {
 		draw.push_alpha(dc, fade)
@@ -342,17 +341,17 @@ dl_row :: proc(app: ^App, d: ^Download, w: f32, compact: bool) -> (act: Dl_Row_A
 		case running && d.state == .Receiving:
 			if compact {
 				if remove_cross(fmt.tprintf("###dlx_%d", d.id), true, em, "Cancel the download").clicked { act = .Cancel }
-			} else if icon_action_button(app, lucide.X, "Cancel", fmt.tprintf("dlc_%d", d.id), ui.px(em * 6), intent = .Cancel) { act = .Cancel }
+			} else if ui.button_icon(strings.concatenate({"###", fmt.tprintf("dlc_%d", d.id)}, ui.frame_allocator()), lucide.X, "Cancel", intent = .Cancel, width = ui.px(em * 6)).clicked { act = .Cancel }
 		case d.state == .Done && download_file_present(d):
 			if compact {
 				if dl_folder_button(fmt.tprintf("###dlf_%d", d.id), hot, em).clicked { act = .Reveal }
 			} else {
-				if icon_action_button(app, lucide.FILE, "Open", fmt.tprintf("dlo_%d", d.id), ui.px(em * 5.5), intent = .Success) { act = .Open }
+				if ui.button_icon(strings.concatenate({"###", fmt.tprintf("dlo_%d", d.id)}, ui.frame_allocator()), lucide.FILE, "Open", intent = .Success, width = ui.px(em * 5.5)).clicked { act = .Open }
 				ui.spacer(ui.px(em * 0.4))
-				if icon_action_button(app, lucide.FOLDER_OPEN, "Show in folder", fmt.tprintf("dlf_%d", d.id), ui.px(em * 8), intent = .Info) { act = .Reveal }
+				if ui.button_icon(strings.concatenate({"###", fmt.tprintf("dlf_%d", d.id)}, ui.frame_allocator()), lucide.FOLDER_OPEN, "Show in folder", intent = .Info, width = ui.px(em * 8)).clicked { act = .Reveal }
 			}
 		case download_finished(d):
-			if icon_action_button(app, d.state == .Done ? lucide.DOWNLOAD : lucide.REFRESH_CW, d.state == .Done ? "Download again" : "Try again", fmt.tprintf("dlr_%d", d.id), ui.px(em * (compact ? 9 : 9.5)), intent = .Primary) { act = .Retry }
+			if ui.button_icon(strings.concatenate({"###", fmt.tprintf("dlr_%d", d.id)}, ui.frame_allocator()), d.state == .Done ? lucide.DOWNLOAD : lucide.REFRESH_CW, d.state == .Done ? "Download again" : "Try again", intent = .Primary, width = ui.px(em * (compact ? 9 : 9.5))).clicked { act = .Retry }
 		}
 		if !compact && download_finished(d) {
 			ui.spacer(ui.px(em * 0.4))
@@ -449,7 +448,7 @@ dl_menu_items :: proc(app: ^App, d: ^Download) {
 				for h, i in app.dls.handlers {
 					label := h.default ? fmt.tprintf("%s (default)###dlh_%d", h.name, i) : fmt.tprintf("%s###dlh_%d", h.name, i)
 					if ui.menu_item(label, icon = lucide.EXTERNAL_LINK).clicked {
-						if !desktop.open_with(d.path, h.id) { ui.toast(.Bad, "%s could not open %s", h.name, filepath.base(d.path)) }
+						downloads_open_with(app, d.path, h.id, h.name)
 						ui.ctx_menu_close()
 						return
 					}
@@ -488,9 +487,9 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 				if res.box != nil { app.dview.search_key = res.box.key }
 				if app.dview.focus_search && res.box != nil { app.dview.focus_search = false; ui.set_focus(res.box.key); ui.field_select_all(&app.dview.search) }
 				ui.spacer(ui.px(em * 0.6))
-				if icon_action_button(app, lucide.TRASH_2, "Clear the list", "dl_clear", ui.px(em * 8.5), intent = .Danger, tip_text = "Takes the finished downloads off the list; the files stay where they are") { download_clear_finished(app); downloads_mark_seen(app) }
+				if ui.button_icon("###dl_clear", lucide.TRASH_2, "Clear the list", intent = .Danger, tip = "Takes the finished downloads off the list; the files stay where they are", width = ui.px(em * 8.5)).clicked { download_clear_finished(app); downloads_mark_seen(app) }
 				ui.spacer(ui.px(em * 0.4))
-				if icon_action_button(app, lucide.FOLDER_OPEN, "Open the folder", "dl_folder", ui.px(em * 9.5), intent = .Info) { platform_open_dir(download_dir(app)) }
+				if ui.button_icon("###dl_folder", lucide.FOLDER_OPEN, "Open the folder", intent = .Info, width = ui.px(em * 9.5)).clicked { platform_open_dir(download_dir(app)) }
 				ui.spacer(ui.fill())
 				active, _, _, speed := downloads_progress(app)
 				if ui.tags("weak") {
@@ -515,10 +514,10 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 					ui.next({width = ui.fill(), height = ui.pct(1)})
 					ui.label(fmt.tprintf("Saved in %s###dl_dir", safe_label(download_dir(app), 120)))
 				}
-				if icon_action_button(app, lucide.FOLDER_SEARCH, "Change\u2026", "dl_pick", ui.px(em * 7.5), intent = .Primary, tip_text = "Choose the folder the downloads go to (browser.download.directory)") { download_pick_folder(app) }
+				if ui.button_icon("###dl_pick", lucide.FOLDER_SEARCH, "Change\u2026", intent = .Primary, tip = "Choose the folder the downloads go to (browser.download.directory)", width = ui.px(em * 7.5)).clicked { download_pick_folder(app) }
 				if app.dls.cfg.dir != "" {
 					ui.spacer(ui.px(em * 0.4))
-					if icon_action_button(app, lucide.ROTATE_CCW, "Default", "dl_default", ui.px(em * 7.5), tip_text = "Back to the Downloads folder of Windows") { download_folder_default(app) }
+					if ui.button_icon("###dl_default", lucide.ROTATE_CCW, "Default", tip = "Back to the Downloads folder of Windows", width = ui.px(em * 7.5)).clicked { download_folder_default(app) }
 				}
 				ui.spacer(ui.px(em * 0.8))
 			}
@@ -533,7 +532,24 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 
 @(private = "file")
 platform_open_dir :: proc(dir: string) {
-	if dir != "" { platform.open_path(dir) }
+	if dir != "" { ui.open(dir) }
+}
+
+// Opens a download with the program the person chose, on the blocking pool (a launch can wait on the shell or D-Bus).
+@(private = "file")
+downloads_open_with :: proc(app: ^App, path, handler, name: string) {
+	Open_With_Job :: struct { app: ^App, path, handler, name: string, failed: bool }
+	j := new(Open_With_Job)
+	j^ = {app = app, path = strings.clone(path), handler = strings.clone(handler), name = strings.clone(name)}
+	drop :: proc(data: rawptr) { j := (^Open_With_Job)(data); delete(j.path); delete(j.handler); delete(j.name); free(j) }
+	host.run_blocking(&app.blocking, proc(data: rawptr) {
+		j := (^Open_With_Job)(data)
+		j.failed = !desktop.open_with(j.path, j.handler)
+	}, proc(data: rawptr) {
+		j := (^Open_With_Job)(data)
+		defer drop(j)
+		if j.failed { ui.toast(.Bad, "%s could not open %s", j.name, filepath.base(j.path)); request_frames(j.app, 2) }
+	}, j, drop)
 }
 
 @(private = "file")
@@ -751,7 +767,7 @@ downloads_panel_body :: proc(app: ^App) {
 		ui.spacer(ui.px(em * 0.9))
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		ui.label("Downloads###dlp_title")
-		if icon_action_button(app, lucide.LIST, "Show all", "dlp_all", ui.px(em * 8), intent = .Primary) { ui.ctx_menu_close(); open_downloads(app); return }
+		if ui.button_icon("###dlp_all", lucide.LIST, "Show all", intent = .Primary, width = ui.px(em * 8)).clicked { ui.ctx_menu_close(); open_downloads(app); return }
 		ui.spacer(ui.px(em * 0.6))
 	}
 	ui.hline(ui.px(w))
@@ -783,7 +799,7 @@ downloads_panel_body :: proc(app: ^App) {
 	ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.2))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
-		if icon_action_button(app, lucide.FOLDER_OPEN, "Open the folder", "dlp_folder", ui.px(em * 11), intent = .Info) { ui.ctx_menu_close(); platform_open_dir(download_dir(app)) }
+		if ui.button_icon("###dlp_folder", lucide.FOLDER_OPEN, "Open the folder", intent = .Info, width = ui.px(em * 11)).clicked { ui.ctx_menu_close(); platform_open_dir(download_dir(app)) }
 	}
 	ui.spacer(ui.px(em * 0.5))
 }

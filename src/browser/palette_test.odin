@@ -7,57 +7,6 @@ import "toolkit:ui"
 import "wb:base"
 import "wb:config"
 
-@(private = "file")
-score_of :: proc(q, hay: string) -> int {
-	s, _, ok := fuzzy_score(q, hay)
-	return ok ? s : -1
-}
-
-@(test)
-fuzzy_order :: proc(t: ^testing.T) {
-	test_app(t)
-	// consecutive characters beat scattered ones
-	testing.expect(t, score_of("rel", "Reload") > score_of("rel", "Reopen closed tab"))
-	// the start of the text beats the start of a later word, which beats the middle of one
-	testing.expect(t, score_of("re", "Reload") > score_of("re", "Hard reload"))
-	testing.expect(t, score_of("s", "Status bar") > score_of("s", "Close tab"))
-	// word starts: "fs" finds Full Screen's initials
-	testing.expect(t, score_of("fs", "Full screen") > score_of("fs", "Offset"))
-	// camelCase humps count as word starts
-	testing.expect(t, score_of("tb", "tabBar") > score_of("tb", "tablebar"))
-	// the case typed, when it agrees
-	testing.expect(t, score_of("Zoom", "Zoom in") > score_of("zoom", "Zoom in"))
-	// no match
-	testing.expect_value(t, score_of("xyz", "Reload"), -1)
-	testing.expect_value(t, score_of("ab", "b a"), -1)   // in order
-	// an empty query matches everything, with nothing highlighted
-	s, r, ok := fuzzy_score("", "Anything")
-	testing.expect(t, ok && s == 0 && len(r) == 0)
-}
-
-@(test)
-fuzzy_ranges :: proc(t: ^testing.T) {
-	test_app(t)
-	_, r, ok := fuzzy_score("zi", "Zoom in")
-	testing.expect(t, ok)
-	testing.expect_value(t, len(r), 2)
-	if len(r) == 2 {
-		testing.expect_value(t, r[0], ui.Fuzzy_Range{0, 1})
-		testing.expect_value(t, r[1], ui.Fuzzy_Range{5, 6})
-	}
-	// a run is one range; several words merge theirs
-	_, r2, _ := fuzzy_score("zoo in", "Zoom in")
-	testing.expect_value(t, len(r2), 2)
-	if len(r2) == 2 { testing.expect_value(t, r2[0], ui.Fuzzy_Range{0, 3}); testing.expect_value(t, r2[1], ui.Fuzzy_Range{5, 7}) }
-	// byte offsets of multi-byte text
-	_, r3, ok3 := fuzzy_score("é", "Thé vert")
-	testing.expect(t, ok3)
-	if len(r3) == 1 { testing.expect_value(t, r3[0], ui.Fuzzy_Range{2, 4}) }
-	// every word must match
-	_, _, ok4 := fuzzy_score("zoom nope", "Zoom in")
-	testing.expect(t, !ok4)
-}
-
 @(test)
 registry_well_formed :: proc(t: ^testing.T) {
 	test_app(t)
@@ -65,18 +14,18 @@ registry_well_formed :: proc(t: ^testing.T) {
 	commands_build(&r)
 	defer commands_destroy(&r)
 	testing.expect_value(t, len(r.index), len(r.list))   // no name twice (commands_build also asserts it)
-	seen := make(map[[2]u16]string, context.temp_allocator)
-	for s in RESERVED_SHORTCUTS { seen[{u16(s.key), u16(transmute(u8)s.mods)}] = "(reserved)" }
+	seen := make(map[ui.Chord]string, context.temp_allocator)
+	for s in RESERVED_SHORTCUTS { seen[s] = "(reserved)" }
 	for c in r.list {
-		testing.expectf(t, c.name != "" && c.title != "" && c.category != "" && c.run != nil, "command %q incomplete", c.name)
+		testing.expectf(t, c.name != "" && c.label != "" && c.group != "" && c.run != nil, "command %q incomplete", c.name)
 		testing.expectf(t, c.name == base.ascii_lower(c.name) && !strings.contains(c.name, " "), "command name %q: dotted, lower case", c.name)
-		for s in c.keys {
-			k := [2]u16{u16(s.key), u16(transmute(u8)s.mods)}
-			other, dup := seen[k]
-			testing.expectf(t, !dup, "%s of %s is also %s", shortcut_text(s), c.name, other)
-			seen[k] = c.name
-			if s.pref != "" { testing.expectf(t, strings.has_prefix(s.pref, "browser."), "shortcut pref %q", s.pref) }
+		for s in ([]ui.Chord{c.keys[0], c.keys[1], c.third_key}) {
+			if s.key == .None { continue }
+			other, dup := seen[s]
+			testing.expectf(t, !dup, "%s of %s is also %s", ui.chord_text(s), c.name, other)
+			seen[s] = c.name
 		}
+		if c.key_pref != "" { testing.expectf(t, strings.has_prefix(c.key_pref, "browser.") && c.keys[1].key != .None, "the key preference %q of %s", c.key_pref, c.name) }
 	}
 	// what the chrome's menu and the palette name
 	for name in ([]string{"tab.new", "tab.reopen_closed", "tab.close", "nav.back", "nav.forward", "nav.reload", "nav.home", "page.zoom_in",
@@ -85,10 +34,10 @@ registry_well_formed :: proc(t: ^testing.T) {
 		"browser.command_palette", "browser.settings", "view.theme.graphite", "view.theme.everforest"}) {
 		testing.expectf(t, name in r.index, "no command %q", name)
 	}
-	testing.expect_value(t, shortcut_text(r.list[r.index["tab.reopen_closed"]].keys[0]), "Ctrl+Shift+T")
-	testing.expect_value(t, shortcut_text(r.list[r.index["page.zoom_in"]].keys[0]), "Ctrl+Plus")
-	testing.expect_value(t, shortcut_text(r.list[r.index["nav.back"]].keys[0]), "Alt+Left")
-	testing.expect_value(t, shortcut_text(r.list[r.index["browser.command_palette"]].keys[0]), "Ctrl+Shift+P")
+	testing.expect_value(t, ui.command_shortcut(r.list[r.index["tab.reopen_closed"]].spec), "Ctrl+Shift+T")
+	testing.expect_value(t, ui.command_shortcut(r.list[r.index["page.zoom_in"]].spec), "Ctrl+=")
+	testing.expect_value(t, ui.command_shortcut(r.list[r.index["nav.back"]].spec), "Alt+Left")
+	testing.expect_value(t, ui.command_shortcut(r.list[r.index["browser.command_palette"]].spec), "Ctrl+Shift+P")
 }
 
 @(test)
@@ -135,10 +84,10 @@ query_prefixes :: proc(t: ^testing.T) {
 	palette_collect(app, ">theme everf")
 	testing.expect(t, len(app.cpal.rows) >= 1 && app.cpal.rows[0].kind == .Command && commands(app)[app.cpal.rows[0].index].name == "view.theme.everforest")
 
-	palette_collect(app, ":ui.theme")
+	palette_collect(app, ":appearance.theme")
 	testing.expect(t, len(app.cpal.rows) >= 1)
 	for r in app.cpal.rows { testing.expect(t, r.kind == .Pref) }
-	if len(app.cpal.rows) > 0 { testing.expect_value(t, app.cpal.rows[0].title, "browser.ui.theme") }
+	if len(app.cpal.rows) > 0 { testing.expect_value(t, app.cpal.rows[0].title, "appearance.theme") }
 
 	// no tabs: the tab prefix lists nothing, and never a command
 	palette_collect(app, "@")
@@ -175,7 +124,7 @@ usage_persistence :: proc(t: ^testing.T) {
 	usage_record(&u, "cmd:tab.new", now - 30 * day, 100, 14)
 	usage_record(&u, "cmd:tab.new", now - 30 * day, 100, 14)
 	usage_record(&u, "cmd:nav.reload", now, 100, 14)
-	usage_record(&u, "pref:browser.ui.theme", now - day, 100, 14)
+	usage_record(&u, "pref:appearance.theme", now - day, 100, 14)
 	// recency beats an old count
 	testing.expect(t, usage_weight(u.entries["cmd:nav.reload"], now, 14) > usage_weight(u.entries["cmd:tab.new"], now, 14))
 	testing.expect_value(t, u.entries["cmd:tab.new"].count, 2)

@@ -37,6 +37,7 @@ browser/compositor_test.odin compositor_test_lock test
 browser/console_eval.odin GLOBALS const  # a table
 browser/console_eval.odin MEMBERS const  # a table
 browser/crash_recovery.odin CRASH_PREFS const  # a table
+browser/crash_report.odin crash_settings process  # the preferences file as last written, for the crash handler of the process (one per process: gt:crash); n atomic, read without a lock or an allocation
 browser/date_display_other.odin MONTHS_ABBR const  # a table
 browser/demos.odin DEMOS const  # a table
 browser/demos.odin DEMOS_PREFS const  # a table
@@ -117,7 +118,6 @@ browser/newtab_art.odin ART_PREFS const  # a table
 browser/notification_shell.odin NOTIFICATION_PREFS const  # a table
 browser/os_settings.odin OS_SETTINGS_PREFS const  # a table
 browser/pacing.odin FRAME_PREFS const  # a table
-browser/page_autoscroll.odin AUTOSCROLL_PREFS const  # a table
 browser/page_cursor.odin CURSOR_PREFS const  # a table
 browser/page_thread.odin PAGE_THREAD_PREFS const  # a table
 browser/paint_effects.odin EFFECTS_PREFS const  # a table
@@ -144,8 +144,6 @@ browser/render_settings.odin RENDER_PREFS const  # a table
 browser/search_engines.odin BUILTIN_ENGINES const  # a table
 browser/session.odin SESSION_PREFS const  # a table
 browser/settings.odin PREFS const  # a table
-browser/settings.odin theme_choices.names const  # a table, made once (theme_choices.once)
-browser/settings.odin theme_choices.once process  # the sync.Once that makes theme_choices.names
 browser/settings_page.odin SETTINGS_PAGES const  # a table
 browser/setup.odin SETUP_PREFS const  # a table
 browser/shaders.odin CARD_FOIL_ARGS const  # a table

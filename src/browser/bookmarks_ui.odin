@@ -90,7 +90,7 @@ bookmark_star :: proc(app: ^App, t: ^Tab) {
 	if !bookmarkable(t) { return }
 	id, added := bookmark_page(app, t)
 	if id == 0 { return }
-	if added { ui.toast(.Info, "Bookmark added") }
+	if added { announce(app, .Info, "Bookmark added") }
 	bookmark_edit_open(app, id)
 }
 
@@ -169,7 +169,7 @@ bookmarks_dialog_build :: proc(app: ^App) {
 	save, remove, cancel := false, false, false
 	title := v.edit_folder ? (v.edit_id == 0 ? i18n.tr("New folder") : i18n.tr("Folder")) : i18n.tr("Bookmark")
 	if ui.modal("bookmark_edit", em * 28, &open) {
-		ui.dialog_header("bm_edit_heading", title, v.edit_folder ? lucide.FOLDER : lucide.BOOKMARK, app.lucide)
+		if ui.dialog_header("bm_edit_heading", title, {icon = v.edit_folder ? lucide.FOLDER : lucide.BOOKMARK, icon_font = app.lucide}) {}
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Start, {}, "###bm_edit_margins") {
 			ui.spacer(ui.px(em * 1.0))
@@ -191,11 +191,11 @@ bookmarks_dialog_build :: proc(app: ^App) {
 				ui.spacer(ui.px(em * 0.8))
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.row(.Center, {}, "###bm_edit_buttons") {
-					if v.edit_id != 0 && icon_action_button(app, lucide.TRASH_2, i18n.tr("Remove"), "bm_edit_remove", ui.px(em * 7), intent = .Danger) { remove = true }
+					if v.edit_id != 0 && ui.button_icon("###bm_edit_remove", lucide.TRASH_2, i18n.tr("Remove"), intent = .Danger, width = ui.px(em * 7)).clicked { remove = true }
 					ui.spacer(ui.fill())
-					if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "bm_edit_cancel", ui.px(em * 7), intent = .Cancel) { cancel = true }
+					if ui.button_icon("###bm_edit_cancel", lucide.X, i18n.tr("Cancel"), intent = .Cancel, width = ui.px(em * 7)).clicked { cancel = true }
 					ui.spacer(ui.px(em * 0.5))
-					if icon_action_button(app, lucide.SAVE, i18n.tr("Save"), "bm_edit_save", ui.px(em * 7), intent = .Success) { save = true }
+					if ui.button_icon("###bm_edit_save", lucide.SAVE, i18n.tr("Save"), intent = .Success, width = ui.px(em * 7)).clicked { save = true }
 				}
 				ui.spacer(ui.px(em * 0.8))
 			}
@@ -276,12 +276,12 @@ bookmarks_page :: proc(app: ^App, t: ^Tab) {
 				if v.focus_search && res.box != nil { v.focus_search = false; ui.set_focus(res.box.key); ui.field_select_all(&v.search) }
 				if res.focused && ui.key_press(.Down) { ui.set_focus(v.list.key); if v.list.sel < 0 { ui.list_select(&v.list.list, 0) } }
 				ui.spacer(ui.px(em * 0.6))
-				if icon_action_button(app, lucide.FOLDER_PLUS, i18n.tr("New folder"), "bm_new_folder", ui.px(em * 7.5), intent = .Primary) { bookmark_folder_new(app) }
+				if ui.button_icon("###bm_new_folder", lucide.FOLDER_PLUS, i18n.tr("New folder"), intent = .Primary, width = ui.px(em * 7.5)).clicked { bookmark_folder_new(app) }
 				ui.spacer(ui.px(em * 0.4))
-				ib := icon_action_button(app, lucide.FOLDER_INPUT, i18n.tr("Import…"), "bm_import", ui.px(em * 6.5))
+				ib := ui.button_icon("###bm_import", lucide.FOLDER_INPUT, i18n.tr("Import…"), width = ui.px(em * 6.5)).clicked
 				if ib { bookmarks_import_pick(app) }
 				ui.spacer(ui.px(em * 0.4))
-				if icon_action_button(app, lucide.FOLDER_OUTPUT, i18n.tr("Export…"), "bm_export", ui.px(em * 6.5)) { bookmarks_export_pick(app) }
+				if ui.button_icon("###bm_export", lucide.FOLDER_OUTPUT, i18n.tr("Export…"), width = ui.px(em * 6.5)).clicked { bookmarks_export_pick(app) }
 				ui.spacer(ui.fill())
 				if ui.tags("weak") {
 					n := 0
@@ -488,13 +488,13 @@ bookmarks_file_job :: proc(app: ^App, export: bool) {
 		if j.status != .Chosen { return }
 		if !j.ok { ui.toast(.Bad, j.export ? "The bookmarks could not be written to %s" : "%s could not be read", j.path); return }
 		if j.export {
-			ui.toast(.Info, "Bookmarks exported to %s", j.path)
+			announce(app, .Info, "Bookmarks exported", j.path)
 			return
 		}
 		added, ok := bookmarks_import(&app.bms.items, &app.bms.next_id, j.text, 0, now_ms(), &app.bms.toolbar)
 		if !ok { ui.toast(.Bad, "%s is not a bookmark file", j.path); return }
 		if added > 0 { bookmarks_changed(app) }
-		ui.toast(.Info, added == 1 ? "%d bookmark imported" : "%d bookmarks imported", added)
+		announce(app, .Info, fmt.tprintf(added == 1 ? "%d bookmark imported" : "%d bookmarks imported", added))
 	}, j, proc(data: rawptr) {   // (the browser ended before the answer was read)
 		j := (^File_Job)(data)
 		delete(j.test); delete(j.text); delete(j.path); free(j)

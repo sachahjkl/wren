@@ -71,7 +71,7 @@ Media Foundation, WASAPI, UI Automation and BCrypt.
 | ![Find in page](docs/screenshots/find.png) | ![Selection and its context menu](docs/screenshots/context-menu.png) |
 | **Find in page** (Ctrl+F) with a match count | **Text selection** and context menus |
 | ![The Daylight palette](docs/screenshots/daylight.png) | ![The developer tools](docs/screenshots/devtools.png) |
-| The **Daylight** palette of the interface (`browser.ui.theme`) | **Developer tools** (F12): document tree and styles, console, requests, storage |
+| The **Daylight** palette of the interface (`appearance.theme`) | **Developer tools** (F12): document tree and styles, console, requests, storage |
 | ![The command palette](docs/screenshots/command-palette.png) | ![about:wren](docs/screenshots/about-wren.png) |
 | The **command palette** (Ctrl+Shift+P) | **about:wren**: version, licence, signed updates |
 | ![The content blocker panel](docs/screenshots/content-blocker.png) | |
@@ -244,7 +244,7 @@ Useful command-line options: `--profile DIR` (another profile directory; the def
 
 Keys: Ctrl+T / Ctrl+W tabs, Ctrl+L address bar, Ctrl+F find, Ctrl+Plus / Minus / 0 zoom, Ctrl+U view source,
 Ctrl+B status bar, Ctrl+Shift+B frame statistics, F11 full screen. The tabs sit in the title bar
-(`browser.window.integrated_titlebar = false` brings back the Windows one).
+(`window.system_title = true` brings back the Windows one).
 
 ## Building from source
 

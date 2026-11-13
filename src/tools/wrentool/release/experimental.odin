@@ -108,7 +108,7 @@ run_experimental :: proc(args: []string) -> int {
 	exe := fmt.tprintf("%s/%s.exe", DIST, name)
 	if !os.exists(exe) { return fail(exe, "is not there (a build with another label? run without -NoBuild)") }
 	sha, _ := toolbox.sha256_file(exe)
-	fp, _ := deps.fingerprint_of(exe)
+	fp, _ := deps.build_id_of(exe)
 	symbols_from := fmt.tprintf("%s/symbols/%s-%s.map", DIST, name, fp)
 	if !os.exists(symbols_from) { return fail("the symbols of", name, "are not there:", symbols_from) }
 	symbols := fmt.tprintf("%s/%s-%s.map", EXPERIMENTAL_DIR, name, fp)

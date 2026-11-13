@@ -51,7 +51,7 @@ menu_of :: proc(pid: int) -> win.HWND {
 @(private = "file")
 rounds_with_the_tabs :: proc(t: ^testing.T, position: string) {
 	profile := e2e.temp_profile(t)
-	p := e2e.launch(t, {hidden = true, dpi = e2e.DPI_ONE, profile = profile, prefs = {"browser.window.integrated_titlebar=true", fmt.tprintf("browser.tabs.position=%s", position)}})
+	p := e2e.launch(t, {hidden = true, dpi = e2e.DPI_ONE, profile = profile, prefs = {"window.system_title=false", fmt.tprintf("browser.tabs.position=%s", position)}})
 	api.set_window(p.s, {size = WINDOW})
 	who, _ := api.ping(p.s)
 	api.wait_frames(p.s)

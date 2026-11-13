@@ -109,7 +109,7 @@ tab_drag_between_windows_modern :: proc(t: ^testing.T) { between_windows(t, "mod
 between_windows :: proc(t: ^testing.T, style: string) {
 	dir := e2e.temp_folder(t)
 	s := e2e.start(t, {size = DRAG_SIZE, url = titled_page(dir, "Alpha")})
-	e2e.pref_set(s, "browser.ui.animations", "off")
+	e2e.pref_set(s, "appearance.animations", "off")
 	e2e.pref_set(s, "browser.ui.chrome_style", style)
 	a := e2e.windows(s)[0].id
 	add_tabs(s, dir, {"Carried", "Charlie"})

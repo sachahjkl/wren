@@ -1,14 +1,14 @@
 package crashmodes
 
-// Makes the process die in one of the ways a Wren has died, to see which leave a crash report (crashtrace): the report goes to the folder
-// given as the second argument. Run by src\tools\e2e\crash_reports.odin and the @(test) of src/tools/wrentool/deps/symbols_test.odin (Windows), wrentool crash-e2e (Linux).
+// Makes the process die in one of the ways a Wren has died, to see which leave a crash report (gt:crash): the report goes to the folder
+// given as the second argument. Run by src\tools\e2e\crash_reports.odin wrentool crash-e2e (Linux).
 //   crashmodes <mode> <dir>     modes: access, assert, bounds, overflow, overflow_thread, heap (a double free), failfast, clean, exit, terminate, two_threads, pool, timer, window_procedure, wild_stack, freed_read, arena_read, double_free, freed_write, freed_number
 
 import "base:builtin"
 import "base:intrinsics"
 import "core:os"
 import "wb:base"
-import "wb:crashtrace"
+import crash "../../../ext/gui_toolkit/src/crash"
 import "wb:host"
 
 Record :: struct { value: ^int }
@@ -79,7 +79,7 @@ die :: proc(mode: string) {
 
 main :: proc() {
 	if len(os.args) < 3 { os.exit(2) }
-	crashtrace.set_report_dir(os.args[2], "crashmodes 1.0")
-	crashtrace.begin_session()
+	crash.install({program = "crashmodes", version = "1.0", report_dir = os.args[2], minidump = true})
+	crash.begin_session()
 	die(os.args[1])
 }

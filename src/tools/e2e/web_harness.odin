@@ -13,7 +13,6 @@
 // end a run that fails.
 package e2e_scenarios
 
-import _ "wb:crashtrace"   // a crash prints its symbolized stack
 
 import "core:fmt"
 import "core:os"

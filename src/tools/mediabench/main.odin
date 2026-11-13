@@ -4,7 +4,6 @@
 // -w x -h), and of a probe (headers only).
 package mediabench
 
-import _ "wb:crashtrace"   // a crash prints its symbolized stack
 
 import "core:fmt"
 import "core:os"

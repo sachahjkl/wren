@@ -42,13 +42,13 @@ drag_tab :: proc(w: ^Chrome_World, from, to: string, loc := #caller_location) {
 
 @(private = "file")
 sidebar_width :: proc(w: ^Chrome_World, loc := #caller_location) -> f32 {
-	r := session.get(w.s, SIDEBAR_BOX, loc).rect
+	r := session.get(w.s, SIDEBAR_BOX, loc = loc).rect
 	return r.max.x - r.min.x
 }
 
 @(test)
 chrome_sidebar_opens_and_closes_through_the_widths_between :: proc(t: ^testing.T) {
-	w := chrome_start(t, {tabs = TITLES, prefs = {LEFT, "browser.ui.animations=on"}})
+	w := chrome_start(t, {tabs = TITLES, prefs = {LEFT, "appearance.animations=on"}})
 	chrome_still(w)
 	opened := sidebar_width(w)
 	chrome_pref(w, "browser.tabs.sidebar_animation_ms", SLOW_ANIMATION_MS)

@@ -32,7 +32,7 @@ CLOSED_HEADER :: "wren-closed 1"
 @(private = "file") CLOSED_ITEM_FIELDS :: 7
 
 CLOSED_PREFS := [?]config.Def{
-	{name = "browser.tabs.closed_sessions_max", kind = .Int, default = {i = 3}, bounded = true, min = 0, max = 100, category = "tabs",
+	{name = "browser.tabs.closed_sessions_max", kind = .Int, default = {i = 3}, bounded = true, min = 0, max = 100,
 		description = "Earlier sessions kept among what Ctrl+Shift+T can reopen (they count in browser.tabs.closed_max)."},
 }
 

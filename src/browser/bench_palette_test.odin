@@ -3,7 +3,6 @@ package browser
 import "core:fmt"
 import "core:testing"
 import "core:time"
-import "toolkit:ui"
 
 // The palette's search, timed: the registry, every preference (the largest source of rows) and a source of 5000 pages.
 // Runs only with -define:BENCH_PALETTE=true:
@@ -34,18 +33,7 @@ bench_palette :: proc(t: ^testing.T) {
 		append(&pages, Palette_Item{title = fmt.aprintf("The title of page %d on site %d", i, i % 97), detail = u, key = u})
 	}
 	palette_add_source(app, {name = "Bench", prefix = '/', items = bench_pages, user = &pages})
-	// the matcher alone, over the source's titles
-	for q in ([]string{"page 42", "site title"}) {
-		fq := fuzzy_query_make(q)
-		s: Fuzzy_Scratch
-		defer fuzzy_scratch_destroy(&s)
-		out := make([dynamic]ui.Fuzzy_Range, context.temp_allocator)
-		start := time.tick_now()
-		hits := 0
-		for _ in 0 ..< 20 { for p in pages { clear(&out); if _, ok := fuzzy_match(&fq, p.title, &s, &out); ok { hits += 1 } } }
-		fmt.printf("fuzzy_match    %-14q %7.3f ms  %5d hits\n", q, time.duration_milliseconds(time.tick_since(start)) / 20, hits / 20)
-	}
-	for q in ([]string{"", ">", "rel", "zoom in", ">theme dayl", ":", ":palette", ":ui.theme", ":ft", "/", "/page 42", "/site title"}) {
+	for q in ([]string{"", ">", "rel", "zoom in", ">theme dayl", ":", ":palette", ":appearance.theme", ":ft", "/", "/page 42", "/site title"}) {
 		runs := 20
 		start := time.tick_now()
 		for _ in 0 ..< runs { palette_collect(app, q); free_all(context.temp_allocator) }

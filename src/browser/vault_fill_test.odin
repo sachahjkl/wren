@@ -6,6 +6,8 @@ package browser
 import "core:math"
 import "core:testing"
 import "toolkit:draw"
+import "toolkit:platform"
+import "toolkit:ui"
 import "wb:url"
 
 @(test)
@@ -13,13 +15,13 @@ vault_shortcut_texts :: proc(t: ^testing.T) {
 	s, ok := vault_shortcut_parse("Ctrl+Shift+L")
 	testing.expect(t, ok)
 	testing.expect_value(t, s, VAULT_FILL_DEFAULT)
-	testing.expect_value(t, shortcut_text(s), "Ctrl+Shift+L")
+	testing.expect_value(t, ui.chord_text(s), "Ctrl+Shift+L")
 	a, a_ok := vault_shortcut_parse(" alt + 7 ")
 	testing.expect(t, a_ok)
-	testing.expect_value(t, shortcut_text(a), "Alt+7")
+	testing.expect_value(t, ui.chord_text(a), "Alt+7")
 	f, f_ok := vault_shortcut_parse("F9")
 	testing.expect(t, f_ok)
-	testing.expect_value(t, shortcut_text(f), "F9")
+	testing.expect_value(t, ui.chord_text(f), "F9")
 	for bad in ([]string{"", "L", "Shift+L", "Ctrl+Hyper+L", "Ctrl+", "Ctrl+LL", "F13", "Ctrl+F0"}) {
 		_, b_ok := vault_shortcut_parse(bad)
 		testing.expect(t, !b_ok, bad)
@@ -32,13 +34,13 @@ vault_fill_command_follows_its_preference :: proc(t: ^testing.T) {
 	app := test_app(t)
 	c := command(app, "vault.fill")
 	testing.expect(t, c != nil)
-	testing.expect_value(t, command_shortcut_text(c), "Ctrl+Shift+L")
+	testing.expect_value(t, ui.command_shortcut(c.spec), "Ctrl+Shift+L")
 	app.vault.v.settings.shortcut = "Alt+K"
 	vault_shortcut_apply(app)
-	testing.expect_value(t, command_shortcut_text(c), "Alt+K")
+	testing.expect_value(t, ui.command_shortcut(c.spec), "Alt+K")
 	app.vault.v.settings.shortcut = "K"
 	vault_shortcut_apply(app)
-	testing.expect_value(t, len(c.keys), 0)
+	testing.expect_value(t, c.keys[0].key, platform.Key.None)
 	app.vault.v.settings.shortcut = "Ctrl+Shift+L"   // (the registry may outlive this test: as it was)
 	vault_shortcut_apply(app)
 	app.vault.v.settings.shortcut = ""

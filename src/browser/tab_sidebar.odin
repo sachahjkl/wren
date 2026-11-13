@@ -30,6 +30,7 @@ import "core:fmt"
 import "core:math"
 import "toolkit:draw"
 import "toolkit:platform"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:config"
 import "wb:i18n"
@@ -448,7 +449,7 @@ sidebar_header :: proc(app: ^App, pos: Tabs_Position, open, extent, closed: f32)
 	// the glyph alone, lit under the pointer as the toolbar's buttons (the toggle's size), in either style
 	add := proc(app: ^App, bw, bh, em: f32, at: [2]f32) {
 		ui.next({fixed_x = at.x, fixed_y = at.y, width = ui.px(bw), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
-		sig := ui.icon_button("###newtab", GLYPH_ADD)
+		sig := ui.icon_button("###newtab", lucide.PLUS)
 		tip(sig, i18n.tr("New tab (Ctrl+T)"))
 		if sig.clicked { tab_open_new(app) }
 	}

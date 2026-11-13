@@ -89,7 +89,7 @@ ART_PREFS := [?]config.Def{
 		description = "Longest wait between retries after repeated failures (browser.newtab.art.backoff_base_ms doubles up to here)."},
 }
 
-register_newtab_art_prefs :: proc(p: ^config.Prefs) { config.register(p, ART_PREFS[:], "newtab") }
+register_newtab_art_prefs :: proc(p: ^config.Prefs) { config.register(p, ART_PREFS[:]) }
 
 Art_Settings :: struct {
 	enabled:         bool,
@@ -834,6 +834,7 @@ art_reencoded :: proc(source: []byte, img: ^images.Image, quality: f32, allocato
 art_encode_work :: proc(data: rawptr) {
 	j := (^Art_Encode_Job)(data)
 	context.allocator = j.alloc
+	if !art_dir_make(j.dir) { return }   // (not ok: art_encode_done drops the candidate)
 	kept := j.blob.bytes
 	ext := art_ext(j.c.image_url)
 	w, h := j.item.width, j.item.height
@@ -906,6 +907,7 @@ art_scan :: proc(app: ^App) {
 art_scan_work :: proc(data: rawptr) {
 	j := (^Art_Scan_Job)(data)
 	context.allocator = j.alloc
+	if !art_dir_make(j.dir) { return }
 	entries, err := os.read_directory_by_path(j.dir, -1, context.temp_allocator)
 	if err != nil { return }
 	found := make([dynamic]^Art_Item, context.temp_allocator)
@@ -980,15 +982,16 @@ art_scan_done :: proc(data: rawptr) {
 ////////////////////////////////
 // The cache folder and its upkeep
 
-// <profile>/tmp/newtab-art: a stable, dedicated subfolder of the profile's temporary area.
+// <profile>/tmp/newtab-art: a stable, dedicated subfolder of the profile's temporary area. Only its name here: the jobs
+// that write or read it make it (art_dir_make, on the blocking pool).
 @(private = "file")
 art_ensure_dir :: proc() -> bool {
-	if the_app.art.dir != "" { return true }
-	base_dir := strings.concatenate({the_app.art.app.profile_dir, "/tmp/newtab-art"}, context.temp_allocator)
-	if os.make_directory_all(base_dir) != nil && !os.is_dir(base_dir) { return false }
-	the_app.art.dir = strings.clone(base_dir)
+	if the_app.art.dir == "" { the_app.art.dir = strings.concatenate({the_app.art.app.profile_dir, "/tmp/newtab-art"}) }
 	return true
 }
+
+@(private = "file")
+art_dir_make :: proc(dir: string) -> bool { return os.make_directory_all(dir) == nil || os.is_dir(dir) }
 
 @(private = "file")
 art_purge_over_cap :: proc() {
@@ -1051,10 +1054,23 @@ art_clear_cache :: proc() {
 	for s in the_app.art.recent { delete(s) }
 	clear(&the_app.art.recent)
 	if the_app.art.dir != "" {
-		// remove any stray files the folder still holds (a crash between the image and its metadata)
-		if entries, rerr := os.read_directory_by_path(the_app.art.dir, -1, context.temp_allocator); rerr == nil {
-			for e in entries { if e.type != .Directory { host.profile_remove(&the_app.writer, e.fullpath) } }
-		}
+		// remove any stray files the folder still holds (a crash between the image and its metadata): listed by the blocking
+		// pool, removed through the profile's writer
+		Art_Sweep :: struct { dir: string, files: [dynamic]string }
+		j := new(Art_Sweep)
+		j.dir = strings.clone(the_app.art.dir)
+		drop :: proc(data: rawptr) { j := (^Art_Sweep)(data); for f in j.files { delete(f) }; delete(j.files); delete(j.dir); free(j) }
+		host.run_blocking(&the_app.blocking, proc(data: rawptr) {
+			j := (^Art_Sweep)(data)
+			if entries, rerr := os.read_directory_by_path(j.dir, -1, context.temp_allocator); rerr == nil {
+				for e in entries { if e.type != .Directory { append(&j.files, strings.clone(e.fullpath)) } }
+			}
+			free_all(context.temp_allocator)
+		}, proc(data: rawptr) {
+			j := (^Art_Sweep)(data)
+			defer drop(j)
+			for f in j.files { host.profile_remove(&the_app.writer, f) }
+		}, j, drop)
 	}
 	if the_app.art.started { art_pump() }
 }

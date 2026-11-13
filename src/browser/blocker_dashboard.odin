@@ -238,7 +238,7 @@ tab_settings :: proc(app: ^App, t: ^Tab) {
 			ui.next({width = ui.px(em * 9), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			if ui.dropdown("###bs_interval", opts, &sel) { config.set_from_string(&app.prefs, "blocker.update.interval_hours", fmt.tprintf("%d", hours[sel]), .User) }
 			ui.spacer(ui.px(em * 0.8))
-			if icon_action_button(app, lucide.REFRESH_CW, i18n.tr("Update now"), "bs_update_now", ui.px(em * 8), intent = .Primary, tip_text = i18n.tr("Ask every enabled list for a newer version now")) { blocker.updater_round(b, true) }
+			if ui.button_icon("###bs_update_now", lucide.REFRESH_CW, i18n.tr("Update now"), intent = .Primary, tip = i18n.tr("Ask every enabled list for a newer version now"), width = ui.px(em * 8)).clicked { blocker.updater_round(b, true) }
 			ui.spacer(ui.px(em * 0.8))
 			if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(b.upd.status != "" ? b.upd.status : (b.upd.last_round > 0 ? fmt.tprintf(i18n.tr("last check %s"), fmt_date(b.upd.last_round)) : i18n.tr("no check yet")), "bs_upd_st")) }
 		}
@@ -250,11 +250,11 @@ tab_settings :: proc(app: ^App, t: ^Tab) {
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.9))
-			if icon_action_button(app, lucide.FOLDER_OUTPUT, i18n.tr("Export…"), "bs_export", ui.px(em * 8), tip_text = i18n.tr("Save the lists, rules, sites and filters as one file")) { dash_export(app) }
+			if ui.button_icon("###bs_export", lucide.FOLDER_OUTPUT, i18n.tr("Export…"), tip = i18n.tr("Save the lists, rules, sites and filters as one file"), width = ui.px(em * 8)).clicked { dash_export(app) }
 			ui.spacer(ui.px(em * 0.5))
-			if icon_action_button(app, lucide.FOLDER_INPUT, i18n.tr("Import…"), "bs_import", ui.px(em * 8), tip_text = i18n.tr("Load a configuration file (replaces the lists chosen, rules, sites and filters)")) { dash_import(app) }
+			if ui.button_icon("###bs_import", lucide.FOLDER_INPUT, i18n.tr("Import…"), tip = i18n.tr("Load a configuration file (replaces the lists chosen, rules, sites and filters)"), width = ui.px(em * 8)).clicked { dash_import(app) }
 			ui.spacer(ui.px(em * 0.5))
-			if icon_action_button(app, lucide.ROTATE_CCW, i18n.tr("Reset statistics"), "bs_reset_stats", ui.px(em * 10), intent = .Danger) { b.totals = {since = blocker.unix_ms() / 1000}; blocker.conf_save(b) }
+			if ui.button_icon("###bs_reset_stats", lucide.ROTATE_CCW, i18n.tr("Reset statistics"), intent = .Danger, width = ui.px(em * 10)).clicked { b.totals = {since = blocker.unix_ms() / 1000}; blocker.conf_save(b) }
 			ui.spacer(ui.px(em * 0.8))
 			if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(app.dash.status, "bs_conf_st")) }
 		}
@@ -289,9 +289,9 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
-		if icon_action_button(app, lucide.REFRESH_CW, i18n.tr("Update now"), "bl_update", ui.px(em * 8), intent = .Primary) { blocker.updater_round(b, true) }
+		if ui.button_icon("###bl_update", lucide.REFRESH_CW, i18n.tr("Update now"), intent = .Primary, width = ui.px(em * 8)).clicked { blocker.updater_round(b, true) }
 		ui.spacer(ui.px(em * 0.5))
-		if icon_action_button(app, lucide.CHECK, i18n.tr("Apply"), "bl_apply", ui.px(em * 6), intent = .Success, tip_text = i18n.tr("Rebuild the filter index from the lists switched on")) { blocker.rebuild(b) }
+		if ui.button_icon("###bl_apply", lucide.CHECK, i18n.tr("Apply"), intent = .Success, tip = i18n.tr("Rebuild the filter index from the lists switched on"), width = ui.px(em * 6)).clicked { blocker.rebuild(b) }
 		ui.spacer(ui.px(em * 0.8))
 		if ui.tags("weak") {
 			ui.next({width = ui.fill(), height = ui.pct(1)})
@@ -330,7 +330,7 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 				ui.next({width = ui.fill(), height = ui.pct(1), font_size = em * 0.85})
 				l_err := l.error != ""
 				if l_err { ui.label(fmt.aprintf("%s###le_%s", status, l.id, allocator = ui.frame_allocator())) } else if ui.tags("weak") { ui.label(fmt.aprintf("%s###le_%s", status, l.id, allocator = ui.frame_allocator())) }
-				if l.custom && icon_action_button(app, lucide.TRASH_2, i18n.tr("Remove"), fmt.tprintf("lx_%s", l.id), ui.px(em * 6), intent = .Danger) {
+				if l.custom && ui.button_icon(strings.concatenate({"###", fmt.tprintf("lx_%s", l.id)}, ui.frame_allocator()), lucide.TRASH_2, i18n.tr("Remove"), intent = .Danger, width = ui.px(em * 6)).clicked {
 					id := strings.clone(l.id, context.temp_allocator)
 					blocker.list_remove(b, id)
 					blocker.conf_save(b)
@@ -354,7 +354,7 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 			url := strings.trim_space(ui.field_string(&app.dash.custom_url))
 			valid := strings.has_prefix(url, "https://") || strings.has_prefix(url, "http://")
 			if ui.disabled(!valid) {
-				if icon_action_button(app, lucide.PLUS, i18n.tr("Add list"), "bl_cadd", ui.px(em * 7), intent = .Success) || (res.committed && valid) {
+				if ui.button_icon("###bl_cadd", lucide.PLUS, i18n.tr("Add list"), intent = .Success, width = ui.px(em * 7)).clicked || (res.committed && valid) {
 					blocker.list_add_custom(b, strings.trim_space(ui.field_string(&app.dash.custom_name)), url)
 					ui.field_clear(&app.dash.custom_url); ui.field_clear(&app.dash.custom_name)
 					blocker.conf_save(b)
@@ -417,14 +417,14 @@ tab_my_filters :: proc(app: ^App, t: ^Tab) {
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
 		if ui.disabled(!app.dash.my_dirty) {
-			if icon_action_button(app, lucide.CHECK, i18n.tr("Apply changes"), "mf_apply", ui.px(em * 10), intent = .Success, tip_text = i18n.tr("Compile the filters into the index (Ctrl+S)")) { dash_apply_filters(app) }
+			if ui.button_icon("###mf_apply", lucide.CHECK, i18n.tr("Apply changes"), intent = .Success, tip = i18n.tr("Compile the filters into the index (Ctrl+S)"), width = ui.px(em * 10)).clicked { dash_apply_filters(app) }
 			ui.spacer(ui.px(em * 0.5))
-			if icon_action_button(app, lucide.UNDO_2, i18n.tr("Revert"), "mf_revert", ui.px(em * 6), intent = .Cancel) { app.dash.my_loaded = false }
+			if ui.button_icon("###mf_revert", lucide.UNDO_2, i18n.tr("Revert"), intent = .Cancel, width = ui.px(em * 6)).clicked { app.dash.my_loaded = false }
 		}
 		ui.spacer(ui.px(em * 0.5))
-		if icon_action_button(app, lucide.FOLDER_INPUT, i18n.tr("Import…"), "mf_import", ui.px(em * 7), tip_text = i18n.tr("Add the lines of a text file")) { dash_import_filters(app) }
+		if ui.button_icon("###mf_import", lucide.FOLDER_INPUT, i18n.tr("Import…"), tip = i18n.tr("Add the lines of a text file"), width = ui.px(em * 7)).clicked { dash_import_filters(app) }
 		ui.spacer(ui.px(em * 0.5))
-		if icon_action_button(app, lucide.FOLDER_OUTPUT, i18n.tr("Export…"), "mf_export", ui.px(em * 7), tip_text = i18n.tr("Save these filters as a text file")) { dash_export_filters(app) }
+		if ui.button_icon("###mf_export", lucide.FOLDER_OUTPUT, i18n.tr("Export…"), tip = i18n.tr("Save these filters as a text file"), width = ui.px(em * 7)).clicked { dash_export_filters(app) }
 		ui.spacer(ui.px(em * 0.8))
 		if ui.tags("weak") {
 			ui.next({width = ui.fill(), height = ui.pct(1)})
@@ -464,7 +464,7 @@ dash_apply_filters :: proc(app: ^App) {
 	app.dash.my_dirty = false
 	blocker.conf_save(b)
 	blocker.rebuild(b)
-	ui.toast(.Good, i18n.tr("Filters applied"))
+	announce(app, .Good, i18n.tr("Filters applied"))
 }
 
 ////////////////////////////////
@@ -495,14 +495,14 @@ tab_my_rules :: proc(app: ^App, t: ^Tab) {
 		dst := base.ascii_lower(strings.trim_space(ui.field_string(&app.dash.rule_dst)))
 		if src == "" { src = "*" }
 		if ui.disabled(dst == "") {
-			if icon_action_button(app, lucide.PLUS, i18n.tr("Add rule"), "mr_add", ui.px(em * 7), intent = .Success) {
+			if ui.button_icon("###mr_add", lucide.PLUS, i18n.tr("Add rule"), intent = .Success, width = ui.px(em * 7)).clicked {
 				blocker.dyn_set(&b.dyn, src, dst, blocker.Dyn_Type(app.dash.rule_type), app.dash.rule_action == 0 ? .Block : .Allow)
 				blocker_rules_saved()
 				ui.field_clear(&app.dash.rule_dst)
 			}
 		}
 		ui.spacer(ui.px(em * 0.5))
-		if icon_action_button(app, lucide.TRASH_2, i18n.tr("Remove all"), "mr_clear", ui.px(em * 8), intent = .Danger) { blocker.dyn_clear(&b.dyn); blocker_rules_saved() }
+		if ui.button_icon("###mr_clear", lucide.TRASH_2, i18n.tr("Remove all"), intent = .Danger, width = ui.px(em * 8)).clicked { blocker.dyn_clear(&b.dyn); blocker_rules_saved() }
 	}
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5))})
 	if ui.row(.Center) {
@@ -561,7 +561,7 @@ tab_whitelist :: proc(app: ^App, t: ^Tab) {
 		host = strings.trim_prefix(strings.trim_prefix(host, "https://"), "http://")
 		if i := strings.index_any(host, "/?#"); i >= 0 { host = host[:i] }
 		if ui.disabled(host == "") {
-			if icon_action_button(app, lucide.PLUS, i18n.tr("Add"), "wl_btn", ui.px(em * 5), intent = .Success) || (res.committed && host != "") {
+			if ui.button_icon("###wl_btn", lucide.PLUS, i18n.tr("Add"), intent = .Success, width = ui.px(em * 5)).clicked || (res.committed && host != "") {
 				blocker.site_toggle(b, strings.clone(host, context.temp_allocator), .Off, true)
 				ui.field_clear(&app.dash.wl_add)
 			}
@@ -691,9 +691,9 @@ tab_journal :: proc(app: ^App, t: ^Tab) {
 		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		if ui.dropdown("###lg_type", types[:k], &app.dash.log_type) { app.dash.log_version = 0 }
 		ui.spacer(ui.px(em * 0.5))
-		if icon_action_button(app, app.dash.log_pause ? lucide.PLAY : lucide.PAUSE, app.dash.log_pause ? i18n.tr("Resume") : i18n.tr("Pause"), "lg_pause", ui.px(em * 7)) { app.dash.log_pause = !app.dash.log_pause; app.dash.log_version = 0 }
+		if ui.button_icon("###lg_pause", app.dash.log_pause ? lucide.PLAY : lucide.PAUSE, app.dash.log_pause ? i18n.tr("Resume") : i18n.tr("Pause"), width = ui.px(em * 7)).clicked { app.dash.log_pause = !app.dash.log_pause; app.dash.log_version = 0 }
 		ui.spacer(ui.px(em * 0.4))
-		if icon_action_button(app, lucide.TRASH_2, i18n.tr("Clear"), "lg_clear", ui.px(em * 6), intent = .Danger) { blocker.journal_clear(&b.journal); app.dash.log_version = 0 }
+		if ui.button_icon("###lg_clear", lucide.TRASH_2, i18n.tr("Clear"), intent = .Danger, width = ui.px(em * 6)).clicked { blocker.journal_clear(&b.journal); app.dash.log_version = 0 }
 		ui.spacer(ui.px(em * 0.8))
 		if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(fmt.tprintf(i18n.tr("rows shown, rows in all", "%d shown of %d"), len(app.dash.log_rows), blocker.journal_len(&b.journal)), "lg_count")) }
 	}
@@ -762,7 +762,7 @@ journal_menu_items :: proc(app: ^App, t: ^Tab) {
 	if ui.menu_item(fmt.tprintf(i18n.tr("Allow %s (dynamic rule, every site)"), host), enabled = host != "", icon = lucide.SHIELD).clicked {
 		blocker.dyn_set(&b.dyn, "*", host, .All, .Allow)
 		blocker_rules_saved()
-		ui.toast(.Good, i18n.tr("Rule added: * %s * allow"), host)
+		announce(app, .Good, fmt.tprintf(i18n.tr("Rule added: * %s * allow"), host))
 	}
 	ui.menu_separator()
 	if ui.menu_item(i18n.tr("Open the document"), enabled = e.doc != "", icon = lucide.EXTERNAL_LINK).clicked { tab_open(app, strings.clone(e.doc, context.temp_allocator), origin = .Replay) }
@@ -780,7 +780,7 @@ dash_add_filter :: proc(app: ^App, line: string) {
 	app.dash.my_loaded = false
 	blocker.conf_save(b)
 	blocker.rebuild(b)
-	ui.toast(.Good, i18n.tr("Filter added to My filters: %s"), line)
+	announce(app, .Good, fmt.tprintf(i18n.tr("Filter added to My filters: %s"), line))
 }
 
 ////////////////////////////////

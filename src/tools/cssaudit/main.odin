@@ -3,7 +3,6 @@
 //   cssaudit.exe sheet.css [more.css ...] [-all]      (-all: every entry, not only the 60 most frequent of each kind)
 package cssaudit
 
-import _ "wb:crashtrace"   // a crash prints its symbolized stack
 
 import "core:fmt"
 import "core:os"

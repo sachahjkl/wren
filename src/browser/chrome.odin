@@ -6,6 +6,7 @@ package browser
 import "core:fmt"
 import "core:math"
 import "core:strings"
+import "core:unicode/utf8"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
@@ -17,21 +18,6 @@ import "wb:cookies"
 import "wb:fetch"
 import "wb:i18n"
 import "wb:url"
-
-// Icon-font glyphs used by the chrome (the toolkit's icon font maps them to ASCII letters).
-GLYPH_BACK     :: "<"
-GLYPH_FORWARD  :: ">"
-GLYPH_RELOAD   :: "u"
-GLYPH_LOCK     :: "K"
-GLYPH_UNLOCK   :: "k"
-GLYPH_INFO     :: "i"
-GLYPH_FILE     :: "F"
-GLYPH_GEAR     :: "G"
-GLYPH_COOKIE   :: "E"
-GLYPH_COPY     :: "a"
-GLYPH_CLOSE    :: "x"
-GLYPH_ADD      :: "+"
-GLYPH_HOME     :: ""
 
 Tone :: enum u8 { Weak, Good, Warn, Bad }
 
@@ -54,39 +40,39 @@ Security :: struct {
 }
 
 security_of :: proc(t: ^Tab) -> Security {
-	if t == nil { return {GLYPH_INFO, "", .Weak, "", ""} }
-	if t.kind == .Config || t.kind == .Settings { return {GLYPH_GEAR, "Settings", .Weak, "Browser settings", "This page edits the preferences of the browser itself. It has no network connection."} }
-	if t.kind == .Blocker { return {GLYPH_GEAR, "Blocker", .Weak, "Content blocker", "This page shows and edits the content blocker of the browser. It has no network connection."} }
-	if t.kind == .Downloads { return {GLYPH_INFO, "Downloads", .Weak, "Downloads", "This page lists the files downloaded by the browser. It has no network connection."} }
-	if t.kind == .Bookmarks { return {GLYPH_INFO, "Bookmarks", .Weak, "Bookmarks", "This page lists the bookmarks of the browser. It has no network connection."} }
+	if t == nil { return {lucide.INFO, "", .Weak, "", ""} }
+	if t.kind == .Config || t.kind == .Settings { return {lucide.SETTINGS, "Settings", .Weak, "Browser settings", "This page edits the preferences of the browser itself. It has no network connection."} }
+	if t.kind == .Blocker { return {lucide.SETTINGS, "Blocker", .Weak, "Content blocker", "This page shows and edits the content blocker of the browser. It has no network connection."} }
+	if t.kind == .Downloads { return {lucide.INFO, "Downloads", .Weak, "Downloads", "This page lists the files downloaded by the browser. It has no network connection."} }
+	if t.kind == .Bookmarks { return {lucide.INFO, "Bookmarks", .Weak, "Bookmarks", "This page lists the bookmarks of the browser. It has no network connection."} }
 	if t.page == nil {
 		// no response yet: nothing is known about the connection, so claim nothing
-		if t.load != nil { return {GLYPH_INFO, "Loading", .Weak, "Loading", "The connection is being established."} }
-		return {GLYPH_INFO, "", .Weak, "", ""}
+		if t.load != nil { return {lucide.INFO, "Loading", .Weak, "Loading", "The connection is being established."} }
+		return {lucide.INFO, "", .Weak, "", ""}
 	}
 	if t.load != nil {
 		// an error page is a page of the browser at the address that failed: claim nothing of a connection that
 		// failed, except that a failed secure one is not secure
 		switch t.load.failed {
-		case .Tls: return {GLYPH_UNLOCK, "Not secure", .Bad, "Connection is not secure", "The secure connection failed: Windows did not accept the certificate or the encryption of this site. Nothing was sent to it."}
-		case .Other: return {GLYPH_INFO, "", .Weak, "", ""}
+		case .Tls: return {lucide.LOCK_OPEN, "Not secure", .Bad, "Connection is not secure", "The secure connection failed: Windows did not accept the certificate or the encryption of this site. Nothing was sent to it."}
+		case .Other: return {lucide.INFO, "", .Weak, "", ""}
 		case .None:
 		}
 	}
 	e := &t.page.env
 	switch {
 	case e.location.scheme == "about":
-		return {GLYPH_INFO, APP_NAME, .Weak, "Built-in page", fmt.tprintf("This page is part of %s. It has no network connection.", APP_NAME)}
+		return {lucide.INFO, APP_NAME, .Weak, "Built-in page", fmt.tprintf("This page is part of %s. It has no network connection.", APP_NAME)}
 	case e.location.scheme == "file":
-		return {GLYPH_FILE, "File", .Weak, "Local file", "Loaded from this computer. Scripts of the page can only read files in its own folder."}
+		return {lucide.FILE, "File", .Weak, "Local file", "Loaded from this computer. Scripts of the page can only read files in its own folder."}
 	case e.location.scheme == "https":
-		return {GLYPH_LOCK, "Secure", .Good, "Connection is secure", "Data exchanged with this site is encrypted with TLS and the certificate was accepted by Windows."}
+		return {lucide.LOCK, "Secure", .Good, "Connection is secure", "Data exchanged with this site is encrypted with TLS and the certificate was accepted by Windows."}
 	case e.secure_context && e.location.scheme == "http":
-		return {GLYPH_INFO, "Local", .Weak, "Local connection", "Not encrypted, but the data never leaves this computer."}
+		return {lucide.INFO, "Local", .Weak, "Local connection", "Not encrypted, but the data never leaves this computer."}
 	case e.location.scheme == "http":
-		return {GLYPH_UNLOCK, "Not secure", .Warn, "Connection is not secure", "Data exchanged with this site is not encrypted. Do not enter passwords or payment details."}
+		return {lucide.LOCK_OPEN, "Not secure", .Warn, "Connection is not secure", "Data exchanged with this site is not encrypted. Do not enter passwords or payment details."}
 	}
-	return {GLYPH_INFO, "Page", .Weak, "Page", ""}
+	return {lucide.INFO, "Page", .Weak, "Page", ""}
 }
 
 ////////////////////////////////
@@ -95,7 +81,7 @@ security_of :: proc(t: ^Tab) -> Security {
 // Tooltip after the pointer rested on `sig` for a moment.
 tip :: proc(sig: ui.Signal, text: string) {
 	chrome_tip_a11y(sig.box, text)   // (a glyph button's name for screen readers: a11y_chrome.odin)
-	if ui.hovered_for(sig, 0.45) {
+	if ui.hovered_for(sig) {
 		if ui.tooltip() {
 			em := ui.font_size()
 			ui.next({width = ui.text_size(em * 0.7), height = ui.px(ui.dense(em * 2))})
@@ -194,15 +180,15 @@ address_row :: proc(app: ^App, t: ^Tab) {
 
 // (a right click or a long press lists the entries that way: history_ui.odin)
 nav_back_button :: proc(app: ^App, t: ^Tab) {
-	nav_history_button(app, t, "###nav_back", GLYPH_BACK, i18n.tr("Back (Alt+Left); right click: history"), t != nil && t.hist > 0, -1)
+	nav_history_button(app, t, "###nav_back", lucide.ARROW_LEFT, i18n.tr("Back (Alt+Left); right click: history"), t != nil && t.hist > 0, -1)
 }
 
 nav_forward_button :: proc(app: ^App, t: ^Tab) {
-	nav_history_button(app, t, "###nav_forward", GLYPH_FORWARD, i18n.tr("Forward (Alt+Right); right click: history"), t != nil && t.hist + 1 < len(t.history), +1)
+	nav_history_button(app, t, "###nav_forward", lucide.ARROW_RIGHT, i18n.tr("Forward (Alt+Right); right click: history"), t != nil && t.hist + 1 < len(t.history), +1)
 }
 
 nav_reload_button :: proc(app: ^App, t: ^Tab) {
-	if nav_button("###nav_reload", GLYPH_RELOAD, i18n.tr("Reload (F5)"), t != nil && t.url != "") { reload(app, t) }
+	if nav_button("###nav_reload", lucide.ROTATE_CW, i18n.tr("Reload (F5)"), t != nil && t.url != "") { reload(app, t) }
 }
 
 // The address bar, `width` wide (ui.fill: what its row leaves it). The suggestions under it take its width and place
@@ -515,11 +501,17 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 	if b != nil { page_info_popup(app, t, sec, b) }
 }
 
+// The character of an icon (a Lucide glyph: one character, several bytes in UTF-8), for a glyph drawn by hand.
+icon_rune :: proc(glyph: string) -> rune {
+	r, _ := utf8.decode_rune_in_string(glyph)
+	return r
+}
+
 // Width of the ink of the chip's icon glyph at this text size (physical pixels).
 @(private = "file")
 chip_icon_ink :: proc(app: ^App, size: f32, glyph: string) -> f32 {
 	if glyph == "" { return 0 }
-	g := font.glyph(&app.fonts, app.icons, size, rune(glyph[0]))
+	g := font.glyph(&app.fonts, app.lucide, size, icon_rune(glyph))
 	return g.size.x > 0 ? g.size.x : g.advance
 }
 
@@ -548,9 +540,9 @@ chip_icon_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	baseline := math.round(cy + (m.ascent - m.descent) * 0.5)
 	cap := font.glyph(&app.fonts, app.ui_font, size, 'H')
 	mid := baseline + cap.offset.y + cap.size.y * 0.5
-	g := font.glyph(&app.fonts, app.icons, size, rune(chip_icon.glyph[0]))
+	g := font.glyph(&app.fonts, app.lucide, size, icon_rune(chip_icon.glyph))
 	pen := draw.Vec2{b.rect.min.x - g.offset.x, math.round(mid - (g.offset.y + g.size.y * 0.5))}
-	draw.text(dc, app.icons, size, pen, chip_icon.color, chip_icon.glyph)
+	draw.text(dc, app.lucide, size, pen, chip_icon.color, chip_icon.glyph)
 }
 
 // Greedy word wrap on character count (the popup uses a proportional font, so this is an estimate that errs short).
@@ -656,11 +648,11 @@ page_info_popup :: proc(app: ^App, t: ^Tab, sec: Security, chip: ^ui.Box) {
 		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.2))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.9))
-			if icon_action_button(app, lucide.COPY, "Copy address", "pi_copy", ui.px(em * 10), intent = .Primary) && t != nil { clip_set(t.url); ui.ctx_menu_close() }
+			if ui.button_icon("###pi_copy", lucide.COPY, "Copy address", intent = .Primary, width = ui.px(em * 10)).clicked && t != nil { clip_set(t.url); ui.ctx_menu_close() }
 			ui.spacer(ui.px(em * 0.5))
 			host := t != nil && t.page != nil ? t.page.env.location.host : ""
 			if ui.disabled(host == "") {
-				if icon_action_button(app, lucide.TRASH_2, "Clear site data", "pi_clear", ui.px(em * 10), intent = .Danger) {
+				if ui.button_icon("###pi_clear", lucide.TRASH_2, "Clear site data", intent = .Danger, width = ui.px(em * 10)).clicked {
 					// cookies, localStorage, sessionStorage, IndexedDB and the HTTP cache of the site (about:sites lists them)
 					tab_log(t, .Log, clear_site(app, host, CLEAR_ALL))
 					ui.ctx_menu_close()
@@ -747,7 +739,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 			menu_command(app, t, "view.tabs_sidebar_collapse")
 			menu_command(app, t, "view.chrome_style.classic")
 			menu_command(app, t, "view.chrome_style.modern")
-			menu_command(app, t, "view.chrome_style.machined")
+			menu_command(app, t, "view.finish.machined")
 		}
 		menu_command(app, t, "browser.session_restore")
 		menu_command(app, t, "browser.command_palette")
@@ -817,46 +809,6 @@ stop_loading :: proc(app: ^App, t: ^Tab) {
 // being pushed against it.
 toolbar_panel_rect :: proc(button: ui.Rect, width: f32) -> ui.Rect {
 	return {{button.max.x - width, button.min.y}, button.max}
-}
-
-// ui.button_icon with a Lucide glyph (Wren's other icons are its own font) and an id of its own. `width`: ui.fill()
-// shares the row (one across, or several side by side), px(...) a width of its own. `intent`: what the act means, its
-// colour the theme's (ui.Intent: Primary for a dialog's main act, Danger for one that removes). `tip_text`: a tooltip,
-// for an act whose words do not say all it does.
-icon_action_button :: proc(app: ^App, glyph, text, id: string, width: ui.Size, intent := ui.Intent.Neutral, disabled := false, tip_text := "") -> bool {
-	sig := ui.button_icon(strings.concatenate({"###", id}, ui.frame_allocator()), glyph, text, disabled = disabled, width = width, icon_font = app.lucide, intent = intent)
-	if tip_text != "" {
-		// (its words stay its name for a screen reader: the tip only describes it)
-		ui.a11y_set(sig.box, {role = .Button, name = strings.clone(text, ui.frame_allocator())})
-		tip(sig, tip_text)
-	}
-	return sig.clicked
-}
-
-// A square button showing one Lucide glyph; `tip` is its name for a screen reader and its tooltip (a row's actions:
-// four of them side by side, where texts do not fit).
-icon_square_button :: proc(app: ^App, glyph, tip, id: string, intent := ui.Intent.Neutral) -> bool {
-	em := ui.font_size()
-	side := ui.dense(em * 2.1)
-	clicked := false
-	if tag := ui.intent_tag(intent); tag != "" { ui.push_tags(tag) }
-	defer if ui.intent_tag(intent) != "" { ui.pop_tags() }
-	if ui.tags("button") {
-		ui.next({width = ui.px(side), height = ui.px(side), radius = em * 0.45, axis = .X})
-		b := ui.build_box({.Clickable, .Focusable, .Draw_Background, .Draw_Border, .Draw_Hot_Effects}, strings.concatenate({"###", id}, ui.frame_allocator()))
-		b.squish = ui.press_squish(b)
-		sig := ui.signal(b)
-		clicked = sig.clicked
-		ui.a11y_set(b, {role = .Button, name = tip})
-		if ui.parent(b) {
-			ui.next({width = ui.fill(), height = ui.pct(1), font = app.lucide, font_size = em * 1.05, text_pad = 0, text_align = .Center})
-			ui.build_box({.Draw_Text, .No_Text_Trunc}, strings.concatenate({glyph, "###", id, "_g"}, ui.frame_allocator()))
-		}
-		if sig.hovering {
-			if ui.tooltip() { ui.tooltip_text(tip) }
-		}
-	}
-	return clicked
 }
 
 // The tools' buttons between the address bar and the main menu, each followed by its gap: the toolbar's and the title

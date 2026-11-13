@@ -1,6 +1,6 @@
 package browser
 
-// The update check: once a day, when `browser.update.check_daily` is on (Setup's "Check for updates once per day"; off by
+// The update check: once a day, when `update.auto` is on (Setup's "Check for updates once per day"; off by
 // default, so no network request is made unless the user asked), one GET of GitHub's "latest release" of sachahjkl/wren
 // (browser.update.url), compared with APP_VERSION. Nothing is downloaded or installed: a notice says that a newer
 // version exists and where it is (the release page). The command "Check for updates" asks once, whatever the preference
@@ -21,6 +21,7 @@ import "toolkit:ui"
 import "wb:base"
 import "wb:config"
 import desktop "toolkit:desktop"
+import prefs_page "toolkit:prefs_page"
 import "wb:fetch"
 import "wb:host"
 import update "toolkit:update"
@@ -105,12 +106,12 @@ update_save :: proc(app: ^App) {
 // At start: the daily request, when it is due.
 update_startup :: proc(app: ^App, profile_explicit: bool) {
 	update_cleanup()   // update_install.odin: what an earlier update left (the old program), whatever the preferences say: local files only
-	if !config.bool_of(&app.prefs, "browser.update.check_daily") { return }
+	update_load(app)   // (here, before the first frame: the command "Check for updates" then reads nothing on the interface's thread)
+	if !config.bool_of(&app.prefs, prefs_page.UPDATE_AUTO_PREF) { return }
 	for name in ([]string{"WREN_DESKTOP_INTEGRATION", "WREN_UPDATE_CHECK"}) {
 		if v, ok := os.lookup_env(name, context.temp_allocator); ok && v == "off" { return }
 	}
 	if desktop_profile_is_disposable(app, profile_explicit) { return }
-	update_load(app)
 	if time.to_unix_seconds(time.now()) - app.upd.checked < UPDATE_EVERY_SECONDS && app.upd.checked != 0 { return }
 	update_request(app, false)
 }

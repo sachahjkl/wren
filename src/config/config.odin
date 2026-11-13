@@ -65,7 +65,8 @@ unwatch :: tc.unwatch
 
 // Layers: command line, profile file, policy file
 apply_args :: tc.apply_args
-serialize_user :: tc.serialize_user
+export_own :: tc.export_own
+load_text :: tc.load_text
 write_user_file :: tc.write_user_file
 load_file :: tc.load_file
 
@@ -76,6 +77,8 @@ restore :: tc.restore
 
 // Titles and search (titles.odin)
 title_of :: tc.title_of
-category_title :: tc.category_title
+path_of :: tc.path_of
+group_title :: tc.group_title
+title_register :: tc.title_register
 summary_of :: tc.summary_of
 matches :: tc.matches

@@ -16,7 +16,7 @@
 // summed by the source line that made them: ALLOC<TAB>kib<TAB>count<TAB>file:line, the largest 30.
 package jspage
 
-import "wb:crashtrace"   // a crash prints its symbolized stack
+import "wb:stacks"   // WREN_HANG_DUMP_MS: the interface thread's stack
 
 import "core:fmt"
 import "core:mem"
@@ -159,7 +159,7 @@ main :: proc() {
 		hang_thread = win.OpenThread(win.THREAD_SUSPEND_RESUME | win.THREAD_GET_CONTEXT, false, win.GetCurrentThreadId())
 		win.CreateThread(nil, 0, proc "system" (data: rawptr) -> win.DWORD {
 			context = testenv.context_of_process()
-			for { win.Sleep(win.DWORD(hang_ms)); crashtrace.dump_thread(hang_thread, "the interface thread") }
+			for { win.Sleep(win.DWORD(hang_ms)); stacks.dump_thread(hang_thread, "the interface thread") }
 		}, nil, 0, nil)
 	}
 	started = time.tick_now()

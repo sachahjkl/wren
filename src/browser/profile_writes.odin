@@ -69,7 +69,9 @@ profile_prefs_save :: proc(app: ^App, path: string) {
 	host.profile_file_init(&w.prefs, &app.writer, path, flush = true)
 	if app.prefs.user_version == w.prefs_written { return }
 	w.prefs_written = app.prefs.user_version
-	host.profile_file_write(&w.prefs, config.serialize_user(&app.prefs, context.temp_allocator))
+	text := config.export_own(&app.prefs, allocator = context.temp_allocator)
+	crash_settings_keep(text)   // crash_report.odin: what a report says of the settings
+	host.profile_file_write(&w.prefs, text)
 }
 
 @(private = "file")

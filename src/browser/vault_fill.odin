@@ -31,7 +31,7 @@ import "wb:page"
 import "wb:url"
 import "wb:vault"
 
-VAULT_FILL_DEFAULT :: Shortcut{key = .L, mods = {.Ctrl, .Shift}}
+VAULT_FILL_DEFAULT :: ui.Chord{key = .L, mods = {.Ctrl, .Shift}}
 VAULT_PALETTE_PREFIX :: '$'
 VAULT_DROPDOWN_W_EM :: f32(20)
 VAULT_DROPDOWN_ROWS :: 6
@@ -324,9 +324,9 @@ vault_copied :: proc(user: rawptr, what: vault.Copy_What, value: string, seconds
 	case .Email:    words = i18n.tr("Email copied.")
 	}
 	if secs > 0 && what != .Username && what != .Email {
-		ui.toast(.Info, "%s %s", words, fmt.tprintf(i18n.tr("The clipboard is cleared in %d s."), secs))
+		announce(app, .Info, words, fmt.tprintf(i18n.tr("The clipboard is cleared in %d s."), secs))
 	} else {
-		ui.toast(.Info, "%s", words)
+		announce(app, .Info, words)
 	}
 }
 
@@ -379,50 +379,24 @@ vault_fill_shortcut :: proc(app: ^App) {
 	}
 }
 
-// The fill shortcut from vault.fill.shortcut ("Ctrl+Shift+L"). Pure. ok = false for what is no shortcut: a key
-// without Ctrl or Alt (it would take a letter from the pages), an unknown key or modifier.
-vault_shortcut_parse :: proc(text: string) -> (s: Shortcut, ok: bool) {
-	t := strings.trim_space(text)
-	if t == "" { return {}, false }
-	parts := strings.split(t, "+", context.temp_allocator)
-	key_text := strings.trim_space(parts[len(parts) - 1])
-	for p in parts[:len(parts) - 1] {
-		switch base.ascii_lower(strings.trim_space(p), context.temp_allocator) {
-		case "ctrl", "control": s.mods += {.Ctrl}
-		case "alt":             s.mods += {.Alt}
-		case "shift":           s.mods += {.Shift}
-		case: return {}, false
-		}
-	}
-	k := base.ascii_lower(key_text, context.temp_allocator)
-	switch {
-	case len(k) == 1 && k[0] >= 'a' && k[0] <= 'z':
-		s.key = platform.Key(int(platform.Key.A) + int(k[0] - 'a'))
-	case len(k) == 1 && k[0] >= '0' && k[0] <= '9':
-		s.key = platform.Key(int(platform.Key.N0) + int(k[0] - '0'))
-	case len(k) >= 2 && len(k) <= 3 && k[0] == 'f':
-		n := 0
-		for c in k[1:] {
-			if c < '0' || c > '9' { return {}, false }
-			n = n * 10 + int(c - '0')
-		}
-		if n < 1 || n > 12 { return {}, false }
-		s.key = platform.Key(int(platform.Key.F1) + n - 1)
-		return s, true   // (a function key needs no modifier)
-	case:
-		return {}, false
-	}
-	return s, .Ctrl in s.mods || .Alt in s.mods
+// The fill shortcut from vault.fill.shortcut ("Ctrl+Shift+L", platform.hotkey_parse's text). Pure. ok = false for what
+// is no shortcut here: a key without Ctrl or Alt but a function key (it would take a letter from the pages), the logo key,
+// a key named by its character, an unknown key or modifier.
+vault_shortcut_parse :: proc(text: string) -> (s: ui.Chord, ok: bool) {
+	hk, _ := platform.hotkey_parse(text)
+	if hk.key == .None || hk.super || hk.char != 0 { return {}, false }
+	function := hk.key >= .F1 && hk.key <= .F12
+	if !function && .Ctrl not_in hk.mods && .Alt not_in hk.mods { return {}, false }
+	return {key = hk.key, mods = hk.mods}, true
 }
 
-// The command's shortcut follows vault.fill.shortcut (at start and when it changes). An invalid text: no shortcut.
+// The command's key follows vault.fill.shortcut (at start and when it changes). An invalid text: no key.
 vault_shortcut_apply :: proc(app: ^App) {
-	s := &app.vault
 	c := command(app, "vault.fill")
 	if c == nil { return }
-	sc, ok := vault_shortcut_parse(s.v.settings.shortcut)
-	s.fill_keys[0] = sc
-	c.keys = s.fill_keys[:ok ? 1 : 0]
+	sc, ok := vault_shortcut_parse(app.vault.v.settings.shortcut)
+	c.keys = {}
+	if ok { c.keys[0] = sc }
 }
 
 @(private = "file")
@@ -431,16 +405,14 @@ vault_enabled_cmd :: proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.
 // The Vault's commands (commands.odin calls this from commands_build).
 vault_commands_add :: proc(r: ^Command_Registry) {
 	add :: command_add
-	keys := make([]Shortcut, 1, base.arena_allocator(&r.arena))
-	keys[0] = VAULT_FILL_DEFAULT
-	add(r, {name = "vault.fill", title = "Fill the login from the Vault", category = "Vault", keywords = "password autofill bitwarden login",
-		keys = keys, guarded = true,
+	add(r, {name = "vault.fill", label = "Fill the login from the Vault", group = "Vault", tags = command_words(r, "password autofill bitwarden login"),
+		keys = {VAULT_FILL_DEFAULT, {}}, guarded = true,
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.vault.v.state != .Disabled && t != nil && t.kind == .Web },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { vault_fill_shortcut(app) }})
-	add(r, {name = "vault.search", title = "Search the Vault", category = "Vault", keywords = "password bitwarden login copy",
+	add(r, {name = "vault.search", label = "Search the Vault", group = "Vault", tags = command_words(r, "password bitwarden login copy"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.vault.v.state == .Unlocked },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { palette_show(app, "$ ") }})
-	add(r, {name = "vault.unlock", title = "Unlock the Vault", category = "Vault", keywords = "log in password bitwarden",
+	add(r, {name = "vault.unlock", label = "Unlock the Vault", group = "Vault", tags = command_words(r, "log in password bitwarden"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool {
 			#partial switch app.vault.v.state {
 			case .Logged_Out, .Locked, .Failed, .Need_Two_Factor, .Need_Device_Code: return true
@@ -448,13 +420,13 @@ vault_commands_add :: proc(r: ^Command_Registry) {
 			return false
 		},
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { vault_dialog_open(app) }})
-	add(r, {name = "vault.lock", title = "Lock the Vault", category = "Vault", keywords = "bitwarden",
+	add(r, {name = "vault.lock", label = "Lock the Vault", group = "Vault", tags = command_words(r, "bitwarden"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.vault.v.state == .Unlocked },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { vault.vault_lock(&app.vault.v) }})
-	add(r, {name = "vault.sync", title = "Sync the Vault", category = "Vault", keywords = "bitwarden refresh",
+	add(r, {name = "vault.sync", label = "Sync the Vault", group = "Vault", tags = command_words(r, "bitwarden refresh"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.vault.v.state == .Unlocked && !app.vault.v.syncing },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { vault.vault_sync(&app.vault.v) }})
-	add(r, {name = "vault.panel", title = "Open the Vault panel", category = "Vault", keywords = "bitwarden logins site",
+	add(r, {name = "vault.panel", label = "Open the Vault panel", group = "Vault", tags = command_words(r, "bitwarden logins site"),
 		enabled = vault_enabled_cmd,
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { app.vault.open_panel = true }})
 }

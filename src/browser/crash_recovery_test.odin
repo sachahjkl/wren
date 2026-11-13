@@ -279,26 +279,6 @@ backups_keep_the_newest :: proc(t: ^testing.T) {
 }
 
 @(test)
-crash_report_is_found :: proc(t: ^testing.T) {
-	test_app(t)
-	dir := scratch("reports")
-	defer base.remove_tree(dir)
-	testing.expect_value(t, crash_report_find(dir, 0), "")   // no folder
-	crashes := strings.concatenate({dir, "/crashes"}, context.temp_allocator)
-	_ = os.make_directory_all(crashes)
-	testing.expect_value(t, crash_report_find(dir, 0), "")
-	write_text(strings.concatenate({crashes, "/unclean exit 2026-10-25 10-00-00.txt"}, context.temp_allocator), "note")
-	write_text(strings.concatenate({crashes, "/crash 2026-10-25 10-00-00.dmp"}, context.temp_allocator), "dump")
-	write_text(strings.concatenate({crashes, "/session.txt"}, context.temp_allocator), "1\n2\n")
-	found := crash_report_find(dir, 0)
-	testing.expect(t, strings.contains(found, "unclean exit"), found)
-	write_text(strings.concatenate({crashes, "/crash 2026-10-25 10-00-00.txt"}, context.temp_allocator), "stack")
-	found = crash_report_find(dir, 0)
-	testing.expect(t, strings.has_suffix(found, "crash 2026-10-25 10-00-00.txt"), "the report with a stack comes before the note")
-	testing.expect_value(t, crash_report_find(dir, 140_000_000_000_000_000), "")   // (written before that process began: another crash's)
-}
-
-@(test)
 banner_path_is_shortened :: proc(t: ^testing.T) {
 	test_app(t)
 	testing.expect_value(t, path_tail("C:\\Users\\a\\AppData\\Roaming\\Wren\\crashed-session 1.txt", 2), "\u2026\\Wren\\crashed-session 1.txt")

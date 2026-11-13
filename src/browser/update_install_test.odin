@@ -178,7 +178,7 @@ only_a_release_may_install :: proc(t: ^testing.T) {
 @(test)
 the_download_address_is_one_the_person_may_set :: proc(t: ^testing.T) {
 	app := app_with_prefs(t)
-	set :: proc(app: ^App, v: string) { _ = config.set_from_string(&app.prefs, "browser.update.base_url", v, .User) }
+	set :: proc(app: ^App, v: string) { _ = config.set_from_string(&app.prefs, "update.base_url", v, .User) }
 	testing.expect_value(t, update_base_url(app), UPDATE_DOWNLOAD_BASE)
 	set(app, "https://mirror.example/wren/")
 	testing.expect_value(t, update_base_url(app), "https://mirror.example/wren/")

@@ -9,6 +9,7 @@ import "wb:base"
 import "wb:remote/api"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
+import toolbox "../../../../ext/gui_toolkit/src/toolbox"
 
 // The packaged executable end to end, as a user unpacks it: it starts, makes a window, runs script and draws a page; WebGL on the machine's driver, its GPU process lost and restored, and gone with a killed browser. It needs a
 // display (xvfb-run on a machine without one) and a Vulkan or GL driver.
@@ -144,7 +145,7 @@ run_crash_e2e :: proc(args: []string) -> int {
 		return EXIT_USAGE
 	}
 	_ = os.make_directory_all("build/linux")
-	if tooling.run({command = {tooling.odin_program(), "build", "src/tools/crashmodes", "-collection:wb=src", "-vet", "-debug", "-o:speed", "-out:" + CRASH_EXE, "-extra-linker-flags:-Wl,--build-id"}}) != 0 { fmt.eprintln("crashmodes did not build"); return 1 }
+	if tooling.run({command = {tooling.odin_program(), "build", "src/tools/crashmodes", "-collection:wb=src", "-vet", "-debug", "-o:speed", "-out:" + CRASH_EXE, "-extra-linker-flags:" + toolbox.CRASH_LINKER_FLAGS}}) != 0 { fmt.eprintln("crashmodes did not build"); return 1 }
 	failed := 0
 	for c in CRASH_CASES {
 		dir := fmt.tprintf("%s/wren-crash-%s", base.temp_dir(context.temp_allocator), base.unique_name(context.temp_allocator))
@@ -157,14 +158,14 @@ run_crash_e2e :: proc(args: []string) -> int {
 		report, unclean := "", ""
 		entries, _ := os.read_all_directory_by_path(dir, context.temp_allocator)
 		for e in entries {
-			if strings.has_prefix(e.name, "crash") && strings.has_suffix(e.name, ".txt") { report = e.fullpath }
-			if strings.has_prefix(e.name, "unclean") && strings.has_suffix(e.name, ".txt") { unclean = e.fullpath }
+			if strings.has_prefix(e.name, "crash-") && strings.has_suffix(e.name, ".txt") { report = e.fullpath }
+			if strings.has_prefix(e.name, "unclean-") && strings.has_suffix(e.name, ".txt") { unclean = e.fullpath }
 		}
 		text := ""
 		if report != "" { data, _ := os.read_entire_file(report, context.temp_allocator); text = string(data) }
 		good := false
 		switch c.wants {
-		case .Report: good = report != "" && (strings.has_prefix(text, "*** crash:") || strings.contains(text, "\n*** crash:")) && strings.contains(text, "end of the stack") && strings.contains(text, "crashmodes") && strings.contains(text, "\n  build crashmodes")
+		case .Report: good = report != "" && strings.has_prefix(text, "gt-crash-report:") && strings.contains(text, "\n[end]") && strings.contains(text, "\nprogram: crashmodes") && strings.contains(text, "\n  #00\t")
 		case .Unclean: good = unclean != "" && report == ""
 		}
 		if good {

@@ -14,15 +14,15 @@ export function fixture(name: string): string {
 	return readFileSync(join(here, "fixtures", name), "utf8");
 }
 
-// The development pair of src/license/dev_keys.odin, read from the Odin source so the two cannot drift apart.
-const devKeys = readFileSync(join(repoRoot, "src", "license", "dev_keys.odin"), "utf8");
+// The development pair of src/license/license.odin, read from the Odin source so the two cannot drift apart.
+const devKeys = readFileSync(join(repoRoot, "src", "license", "license.odin"), "utf8");
 
 function odinSeed(name: string): Uint8Array {
-	const line = devKeys.match(new RegExp(`^${name}\\s*:=\\s*\\[32\\]byte\\{(.*)\\}`, "m"));
-	if (!line) throw new Error(`${name} not found in dev_keys.odin`);
-	const chars = [...line[1].matchAll(/'(.)'/g)].map((m) => m[1].charCodeAt(0));
-	if (chars.length !== 32) throw new Error(`${name} is not 32 bytes`);
-	return Uint8Array.from(chars);
+	const line = devKeys.match(new RegExp(`^${name}\\s*::\\s*"([^"]+)"`, "m"));
+	if (!line) throw new Error(`${name} not found in license.odin`);
+	const bytes = Uint8Array.from(Buffer.from(line[1], "base64url"));
+	if (bytes.length !== 32) throw new Error(`${name} is not 32 bytes`);
+	return bytes;
 }
 
 export const DEV_SEED = odinSeed("DEV_SEED");

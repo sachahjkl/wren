@@ -45,11 +45,11 @@ crash_banner :: proc(app: ^App) {
 		primary := app.recovery.banner == .Twice ? i18n.tr("Restore tabs") : i18n.tr("Start fresh")
 		// (restoring brings the tabs back; starting fresh closes the ones restored)
 		restore := app.recovery.banner == .Twice
-		do_primary = icon_action_button(app, restore ? lucide.ARCHIVE_RESTORE : lucide.ROTATE_CCW, primary, "crash_primary", ui.px(em * 8.5), intent = restore ? ui.Intent.Success : ui.Intent.Warning)
+		do_primary = ui.button_icon("###crash_primary", restore ? lucide.ARCHIVE_RESTORE : lucide.ROTATE_CCW, primary, intent = restore ? ui.Intent.Success : ui.Intent.Warning, width = ui.px(em * 8.5)).clicked
 		ui.spacer(ui.px(em * 0.4))
-		do_details = icon_action_button(app, lucide.INFO, i18n.tr("Details"), "crash_details", ui.px(em * 6.5), intent = .Info)
+		do_details = ui.button_icon("###crash_details", lucide.INFO, i18n.tr("Details"), intent = .Info, width = ui.px(em * 6.5)).clicked
 		ui.spacer(ui.px(em * 0.4))
-		close = nav_button("###crash_close", GLYPH_CLOSE, i18n.tr("Dismiss"), true)
+		close = nav_button("###crash_close", lucide.X, i18n.tr("Dismiss"), true)
 		ui.spacer(ui.px(em * 0.6))
 	}
 	// (after the row is built: these open and close tabs)

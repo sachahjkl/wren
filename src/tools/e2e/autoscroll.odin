@@ -12,7 +12,7 @@ import "wb:e2e"
 
 @(private = "file") AUTOSCROLL_PAGE :: "/site/autoscroll.html"
 @(private = "file") AUTOSCROLL_SIZE :: [2]int{900, 700}
-@(private = "file") AUTOSCROLL_PREF :: "browser.scroll.autoscroll.enabled=true"
+@(private = "file") AUTOSCROLL_PREF :: "scrolling.autoscroll.enabled=true"
 @(private = "file") LEAST_SCROLL_RANGE :: 1000.0   // how tall the page is, beyond its window
 @(private = "file") AT_THE_TOP :: 1.0
 // Page points: the press, low on the page; the pointer held far below it, near the edge, just past the dead zone.

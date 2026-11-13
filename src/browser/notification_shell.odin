@@ -189,14 +189,14 @@ notification_shell_build :: proc(app: ^App) {
 	open := true
 	answered, granted := false, false
 	if ui.modal("note_permission", em * 30, &open) {
-		ui.dialog_header("note_header", i18n.tr("Notifications"), lucide.BELL, app.lucide)
+		if ui.dialog_header("note_header", i18n.tr("Notifications"), {icon = lucide.BELL, icon_font = app.lucide}) {}
 		if ui.dialog_body("note_body") {
-			dialog_line(fmt.tprintf(i18n.tr("%s wants to show notifications"), req.origin), "note_what")
+			ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s wants to show notifications"), req.origin), "###note_what"}, ui.frame_allocator()))
 		}
 		if ui.dialog_buttons("note_buttons") {
-			if icon_action_button(app, lucide.SHIELD, i18n.tr("Block"), "note_block", ui.px(em * 8), intent = .Danger) { answered, granted = true, false }
+			if ui.button_icon("###note_block", lucide.SHIELD, i18n.tr("Block"), intent = .Danger, width = ui.px(em * 8)).clicked { answered, granted = true, false }
 			ui.spacer(ui.px(em * 0.6))
-			if icon_action_button(app, lucide.CHECK, i18n.tr("Allow"), "note_allow", ui.px(em * 8), intent = .Success) { answered, granted = true, true }
+			if ui.button_icon("###note_allow", lucide.CHECK, i18n.tr("Allow"), intent = .Success, width = ui.px(em * 8)).clicked { answered, granted = true, true }
 		}
 	}
 	if !open { answered, granted = true, false }   // Escape, a click outside: blocked

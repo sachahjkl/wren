@@ -12,6 +12,7 @@ import "core:time"
 import "core:unicode"
 import "core:unicode/utf8"
 import "toolkit:draw"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
 import "wb:dom"
@@ -219,7 +220,7 @@ find_bar :: proc(app: ^App, t: ^Tab) {
 		if nav_button("###find_prev", "^", "Previous match (Shift+Enter)", len(fs.matches) > 0) { find_step(app, -1) }
 		if nav_button("###find_next", "v", "Next match (Enter)", len(fs.matches) > 0) { find_step(app, 1) }
 		ui.spacer(ui.fill())
-		if nav_button("###find_close", GLYPH_CLOSE, "Close (Escape)", true) || res.cancelled { find_close(app) }
+		if nav_button("###find_close", lucide.X, "Close (Escape)", true) || res.cancelled { find_close(app) }
 		ui.spacer(ui.px(em * 0.6))
 	}
 }

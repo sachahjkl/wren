@@ -6,7 +6,6 @@
 //   apiconformance.exe build\apiconformance.wasm
 package apiconformance
 
-import _ "wb:crashtrace"   // a crash prints its symbolized stack
 
 import "core:fmt"
 import "core:os"

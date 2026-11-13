@@ -16,6 +16,8 @@ import "core:strings"
 import "core:time"
 import "toolkit:draw"
 import "toolkit:ui"
+import "wb:base"
+import "wb:host"
 
 PERF_LONG_TASK_MS :: 50.0
 
@@ -188,18 +190,26 @@ perf_names := [Hud_Series]string{.Tasks = "Tasks", .Styles = "Style", .Layout = 
 // big, timeline.json: each frame's time, scroll, kind and difference from the one before) and trace.json (the phases of every
 // frame as Chrome trace events: it opens in the Performance tab of Chrome and in Perfetto).
 @(private = "file")
+Perf_Export :: struct {
+	app:   ^App,
+	dir:   string,     // owned
+	tl:    Timeline,   // the recorded pictures, taken from the remote timeline (the job frees them)
+	trace: string,     // trace.json's text (owned; "": none)
+	why:   string,     // what failed ("": nothing; base.process_allocator: made on the pool's thread)
+}
+
+@(private = "file")
 perf_export :: proc(app: ^App, p: ^Dev_Performance) {
-	tl := &app.remote.tl
 	timeline_end(app)
 	dt, _ := time.time_to_datetime(time.now())
-	dir := fmt.tprintf("%s/wren-timeline-%04d%02d%02d-%02d%02d%02d", download_dir(app), dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
-	if err := os.make_directory_all(dir); err != nil && !os.exists(dir) { ui.toast(.Bad, "Could not make %s", dir); return }
-	if len(tl.frames) > 0 {
-		if _, why := timeline_write(tl, dir, 6, false); why != "" { ui.toast(.Bad, "The pictures could not be written to %s", dir); return }
-	}
+	j := new(Perf_Export)
+	j.app = app
+	j.dir = fmt.aprintf("%s/wren-timeline-%04d%02d%02d-%02d%02d%02d", download_dir(app), dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+	// (the pictures go with the job: a new recording starts empty while they are written)
+	j.tl, app.remote.tl = app.remote.tl, {}
 	n := count_frames(p)
 	if n > 0 {
-		b := strings.builder_make(context.temp_allocator)
+		b := strings.builder_make()
 		strings.write_string(&b, `{"displayTimeUnit":"ms","traceEvents":[{"name":"process_name","ph":"M","pid":1,"args":{"name":"Wren"}},{"name":"thread_name","ph":"M","pid":1,"tid":1,"args":{"name":"Frames (CPU)"}},{"name":"thread_name","ph":"M","pid":1,"tid":2,"args":{"name":"GPU"}}`)
 		for i in 0 ..< n {
 			f := frame_at(p, i)
@@ -218,10 +228,41 @@ perf_export :: proc(app: ^App, p: ^Dev_Performance) {
 			}
 		}
 		strings.write_string(&b, "]}")
-		if os.write_entire_file(fmt.tprintf("%s/trace.json", dir), transmute([]byte)strings.to_string(b)) != nil { ui.toast(.Bad, "trace.json could not be written to %s", dir); return }
+		j.trace = strings.to_string(b)
 	}
-	ui.toast(.Good, "Frames saved to %s", dir)
-	shell_open_folder(dir)
+	// the folder, the pictures and trace.json are written by the blocking pool: a slow disk never holds the interface
+	host.run_blocking(&app.blocking, perf_export_work, perf_export_done, j, perf_export_free)
+}
+
+@(private = "file")
+perf_export_work :: proc(data: rawptr) {
+	j := (^Perf_Export)(data)
+	if err := os.make_directory_all(j.dir); err != nil && !os.exists(j.dir) { j.why = fmt.aprintf("Could not make %s", j.dir, allocator = base.process_allocator()); return }
+	if len(j.tl.frames) > 0 {
+		if _, why := timeline_write(&j.tl, j.dir, 6, false); why != "" { j.why = fmt.aprintf("The pictures could not be written to %s", j.dir, allocator = base.process_allocator()); return }
+	}
+	if j.trace != "" && os.write_entire_file(fmt.tprintf("%s/trace.json", j.dir), transmute([]byte)j.trace) != nil {
+		j.why = fmt.aprintf("trace.json could not be written to %s", j.dir, allocator = base.process_allocator())
+	}
+	free_all(context.temp_allocator)
+}
+
+@(private = "file")
+perf_export_done :: proc(data: rawptr) {
+	j := (^Perf_Export)(data)
+	defer perf_export_free(j)
+	if j.why != "" { ui.toast(.Bad, "%s", j.why); return }
+	announce(j.app, .Good, "Frames saved", j.dir)
+	shell_open_folder(j.dir)
+	request_frames(j.app, 2)
+}
+
+@(private = "file")
+perf_export_free :: proc(data: rawptr) {
+	j := (^Perf_Export)(data)
+	timeline_free(&j.tl)
+	delete(j.dir); delete(j.trace); delete(j.why, base.process_allocator())
+	free(j)
 }
 
 @(private = "file")

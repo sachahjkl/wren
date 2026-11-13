@@ -24,6 +24,7 @@ import "core:fmt"
 import "core:math"
 import "toolkit:draw"
 import "toolkit:platform"
+import prefs_page "toolkit:prefs_page"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
@@ -51,7 +52,7 @@ DEV_FLOAT_KEEP :: [2]f32{120, 60}
 // The first shortcut of a command, as a menu shows it ("" when it has none).
 cmd_key :: proc(app: ^App, name: string) -> string {
 	c := command(app, name)
-	return c == nil ? "" : command_shortcut_text(c)
+	return c == nil ? "" : ui.command_shortcut(c.spec)
 }
 
 DEV_DOCK_ICONS := [Dev_Dock]Dt_Icon{.Bottom = .Dock_Bottom, .Right = .Dock_Right, .Left = .Dock_Left, .Floating = .Float}
@@ -417,8 +418,11 @@ devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_
 		if abs((pb.rect.max.x - pb.rect.min.x) - dev().room.x) > 1.5 { dev().room_wrong += 1 }
 	}
 	dev().room = dev_room_of(place, fill)
-	ui.set_menu_item_height(dev().density == .Comfortable ? 2.1 : 1.85)   // dense menus for the panel's own (toolkit 0.19)
-	defer ui.set_menu_item_height(0)
+	// dense menus for the panel's own: the feel's item height for this build only (no set_feel: the platform's part stays)
+	st := ui.current_state()
+	menu_em := st.feel.menu_item_em
+	st.feel.menu_item_em = dev().density == .Comfortable ? 2.1 : 1.85
+	defer st.feel.menu_item_em = menu_em
 	if ui.style({font_size = app.dtm.fs, text_pad = dt_px(4)}) {
 		flags := ui.Box_Flags{.Draw_Background}
 		if floating { flags += {.Draw_Border, .Draw_Shadow} }
@@ -487,8 +491,8 @@ devtools_settings_menu :: proc(app: ^App, t: ^Tab) {
 	}
 	if ui.menu_submenu("Theme###dt_m_theme", icon = lucide.PALETTE) {
 		ui.menu_heading("The panel follows the browser's theme")
-		for th, i in ui.THEMES {
-			if ui.menu_item(fmt.tprintf("%s###dt_m_th%d", th.name, i), checked = base.ascii_equal_fold(app.cfg.ui_theme, th.name)).clicked { dev_set_pref(app, "browser.ui.theme", base.ascii_lower_clone(th.name, context.temp_allocator)) }
+		for th, i in app.themes_file.all {
+			if ui.menu_item(fmt.tprintf("%s###dt_m_th%d", th.name, i), checked = base.ascii_equal_fold(app.cfg.look.theme, th.name)).clicked { dev_set_pref(app, prefs_page.THEME_PREF, th.name) }
 		}
 	}
 	ui.menu_separator()

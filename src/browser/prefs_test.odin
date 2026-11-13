@@ -39,7 +39,7 @@ every_definition_is_valid :: proc(t: ^testing.T) {
 	}
 }
 
-// text.renderer picks Slug (atlas is the default); the tolerance is given in thousandths of an em.
+// appearance.text.renderer picks Slug (atlas is the default); the tolerance is given in thousandths of an em.
 @(test)
 text_renderer_preference_reaches_the_font_settings :: proc(t: ^testing.T) {
 	test_app(t)
@@ -48,17 +48,17 @@ text_renderer_preference_reaches_the_font_settings :: proc(t: ^testing.T) {
 	register_all_prefs(&p)
 	s := font_settings_from_prefs(&p)
 	testing.expect_value(t, s.text_renderer, font.Text_Renderer.Slug)   // the default
-	testing.expect_value(t, config.set_from_string(&p, "text.renderer", "atlas", .User), config.Set_Error.None)
+	testing.expect_value(t, config.set_from_string(&p, "appearance.text.renderer", "atlas", .User), config.Set_Error.None)
 	s = font_settings_from_prefs(&p)
 	testing.expect_value(t, s.text_renderer, font.Text_Renderer.Atlas)
-	testing.expect_value(t, config.set_from_string(&p, "text.renderer", "slug", .User), config.Set_Error.None)
-	testing.expect_value(t, config.set_from_string(&p, "text.slug.pages", "32", .User), config.Set_Error.None)
-	testing.expect_value(t, config.set_from_string(&p, "text.slug.tolerance", "1", .User), config.Set_Error.None)
+	testing.expect_value(t, config.set_from_string(&p, "appearance.text.renderer", "slug", .User), config.Set_Error.None)
+	testing.expect_value(t, config.set_from_string(&p, "appearance.text.slug_pages", "32", .User), config.Set_Error.None)
+	testing.expect_value(t, config.set_from_string(&p, "appearance.text.slug_tolerance", "1", .User), config.Set_Error.None)
 	s = font_settings_from_prefs(&p)
 	testing.expect_value(t, s.text_renderer, font.Text_Renderer.Slug)
 	testing.expect_value(t, s.slug_pages, 32)
 	testing.expect(t, abs(s.slug_tolerance - 0.001) < 1e-6)
-	testing.expect(t, config.set_from_string(&p, "text.renderer", "bitmap", .User) != config.Set_Error.None)   // not a choice
+	testing.expect(t, config.set_from_string(&p, "appearance.text.renderer", "bitmap", .User) != config.Set_Error.None)   // not a choice
 }
 
 // text.emoji picks the built-in emoji (the default) or the system's; the font is the one next to the executable unless a
@@ -74,7 +74,7 @@ emoji_preferences_reach_the_font_settings :: proc(t: ^testing.T) {
 	testing.expect_value(t, s.colr_samples, 8)
 	testing.expect_value(t, s.colr_cache_kb, 8192)
 	testing.expect_value(t, emoji_font_path(&p), EMOJI_BUILTIN)   // compiled in (build.bat fetches it before tests)
-	testing.expect_value(t, config.set_from_string(&p, "text.emoji.font", "D:\\fonts\\Twemoji.ttf", .User), config.Set_Error.None)
+	testing.expect_value(t, config.set_from_string(&p, "appearance.text.emoji_font", "D:\\fonts\\Twemoji.ttf", .User), config.Set_Error.None)
 	testing.expect_value(t, emoji_font_path(&p), "D:\\fonts\\Twemoji.ttf")
 	testing.expect_value(t, config.set_from_string(&p, "text.emoji", "system", .User), config.Set_Error.None)
 	testing.expect_value(t, config.set_from_string(&p, "text.emoji.raster_samples", "16", .User), config.Set_Error.None)
@@ -110,7 +110,6 @@ settings_round_trip_through_the_registry :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(fs.bad_ports_allowed), 2)   // the invalid entry is ignored
 
 	bs := settings_from_prefs(&p)
-	defer delete(bs.homepage)
-	defer delete(bs.ui_theme)
+	defer settings_destroy(&bs)
 	testing.expect_value(t, bs.homepage, "about:home")
 }

@@ -35,7 +35,6 @@ import "wb:wasm"
 
 // How much of a text resource a tab shows in its <pre>.
 SHOW_TEXT_MAX_BYTES :: 1 << 20
-import "wb:crashtrace"   // a crash leaves its symbolized stack and a minidump in <profile>\crashes
 
 DEBUG_INPUT :: #config(DEBUG_INPUT, false)
 
@@ -142,6 +141,7 @@ Navigable :: page.Navigable
 // active_window(app): .win, .ui (its toolkit state), .tabs, .current, .address, .page_rect, .frames_requested
 // (request_frames), .presented; window_own(app) for the chrome's state.
 App :: struct {
+	announcer:     ui.Announcer,             // messages.odin: what the browser says of an act it finished
 	rates:    Loop_Rates,   // loop_rates.odin: turns, sleeps, frames and why
 	r:        render.Renderer,
 	fonts:    font.State,
@@ -149,10 +149,10 @@ App :: struct {
 	dc:       draw.Context,
 	theme:    ui.Theme,
 	theme_shown: ui.Theme_Shown,   // what ui.theme_show applied last (chrome_frame_style)
+	themes_file: prefs_page.Themes_File,   // the toolkit's themes, then the user's own (themes.txt of the profile; app_ui_init)
 	chrome_pal:  ui.Palette,       // the palette of the theme shown (chrome_palette), kept from theme_show to theme_show
 	ui_font:  font.Font_Id,
-	icons:    font.Font_Id,
-	lucide:   font.Font_Id,   // the Lucide icons (toolkit:lucide): about:settings's pages
+	lucide:   font.Font_Id,   // the Lucide icons (toolkit:lucide): Wren's one icon set, every window's ui icon_font
 
 	loop:     host.Loop,
 	client:   net.Client,
@@ -305,12 +305,12 @@ App :: struct {
 	dtm:           Dt_Metrics,               // devtools_kit.odin: the developer tools' metrics
 	dtc:           Dt_Colors,                // ... and colours
 	shape_cache:   Shape_Cache,              // chrome_style.odin: the tabs' shapes (Classic_Colors.shapes)
-	license_mem:   License_Memory,           // license_shell.odin: the key, when the profile is not kept
+	licence:       Licence_Shell,            // license_shell.odin: the support licence's store and its last status
 	frame_log:     Frame_Log,                // frame_log.odin: when the frames were presented (a ring of FRAME_LOG_CAP)
 }
 
 // The preference watches of the App's subsystems (App.watches).
-Pref_Watch :: enum u8 { Render, First_Paint, Planes, Effects, Effects_Font, History_Tree, History, Devtools, Autoscroll, Chrome_Style, Interaction, Smooth_Scroll }
+Pref_Watch :: enum u8 { Render, First_Paint, Planes, Effects, Effects_Font, Effects_Text, Effects_Rendering, History_Tree, History, Devtools, Autoscroll, Chrome_Style, Interaction, Smooth_Scroll }
 
 // The App of this thread: the one whose loop it runs (app_start's thread), or whose page thread it is (page_thread.odin). What reaches
 // the App through it is code that does not take the App yet (a callback of the system, a hook of a package): a thread of its own sees nil.
@@ -1191,7 +1191,6 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	storage_access_shell_build(app)   // storage_access_shell.odin: a frame's storage access prompt
 	// notices go over the page, not over the title bar's window buttons
 	if pr := active_window(app).page_rect; pr.max.y > pr.min.y { ui.set_toast_area(pr) }
-	ui.toasts_build()
 	keyboard_follow(app)   // (what this build did to the focus: the paint asks who has the keyboard)
 }
 
@@ -1418,8 +1417,7 @@ apply_prefs :: proc(app: ^App, changed := "") {
 	app.page_settings.internal_address = is_builtin_href
 	for tab in tabs_all(app) { if tab.page != nil { page.configure_styles(tab.page) } }
 
-	delete(app.cfg.homepage)
-	delete(app.cfg.ui_theme)
+	settings_destroy(&app.cfg)
 	app.cfg = settings_from_prefs(&app.prefs)
 	memory_trim_settings(app, &app.prefs)   // memory_trim.odin
 	app.show_console = app.cfg.show_console
@@ -1436,17 +1434,13 @@ on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 ////////////////////////////////
 // Loop
 
-// The interface's theme as asked (browser.ui.theme, browser.ui.theme_mode).
-chrome_theme_choice :: proc(app: ^App) -> ui.Theme_Choice {
-	// (the machined style is the toolkit's machined finish: its widgets bevelled, its fields sunken; chrome_style.odin)
-	machined := machined_on(app)
-	return {name = app.cfg.ui_theme, mode = app.cfg.ui_theme_mode, finish = machined ? .Machined : .Flat, glow = machined && app.chrome_cfg.glow ? 1 : 0}
-}
+// The interface's theme as asked (the standard appearance.theme, mode, finish and glow).
+chrome_theme_choice :: proc(app: ^App) -> ui.Theme_Choice { return prefs_page.appearance_choice(app.cfg.look) }
 
 // The palette of the interface's theme, in the version its mode shows now (the first theme for a name that is none).
 chrome_palette :: proc(app: ^App) -> ui.Palette {
 	c := chrome_theme_choice(app)
-	def, _, ok := ui.theme_find(ui.THEMES[:], c.name)
+	def, _, ok := ui.theme_find(app.themes_file.all[:], c.name)
 	if !ok { def = ui.THEMES[0] }
 	return ui.theme_palette(def, ui.theme_wants_light(c.mode), c.finish)
 }
@@ -1455,14 +1449,16 @@ chrome_palette :: proc(app: ^App) -> ui.Palette {
 // changed), and the base style of its boxes: every frame, full or chrome only.
 chrome_frame_style :: proc(app: ^App) -> ui.Style {
 	wnd := active_window(app)
-	if ui.theme_show(&app.theme, ui.THEMES[:], chrome_theme_choice(app), &app.theme_shown, render.blend_space(&app.r)) { app.chrome_pal = chrome_palette(app) }
+	// (the user's themes, read again when their file changed: theme_show compares the theme's colours too, and shows them)
+	_ = prefs_page.themes_file_poll(&app.themes_file, wnd.ui)
+	if ui.theme_show(&app.theme, app.themes_file.all[:], chrome_theme_choice(app), &app.theme_shown, render.blend_space(&app.r)) { app.chrome_pal = chrome_palette(app) }
 	pal := app.chrome_pal
 	platform.set_dark_title(wnd.win, !app.theme_shown.light)
 	// the system's frame line is half transparent along the top of an integrated title bar: the palette's, opaque
 	platform.set_border_color(wnd.win, platform.is_integrated_title(wnd.win) ? Maybe(u32)(pal.border >> 8) : nil)
 	return ui.Style{
 		pref = {.X = ui.text_size(), .Y = ui.px(36)},
-		font = app.ui_font, font_size = app.cfg.ui_font_size, text_pad = 7,
+		font = app.ui_font, font_size = app.cfg.look.font_size, text_pad = 7,
 		cursor = .Arrow,
 	}
 }
@@ -1632,10 +1628,9 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	base_style := chrome_frame_style(app)
 	window_chrome_frame(app)   // window_chrome.odin
 	prof_begin(.Build_UI)
-	chrome_ui_apply(app, active_window(app).ui)
 	ui.begin_build(active_window(app).ui, {
 		window_size = size, events = events, dt = dt, animations = os_animations_enabled(app),
-		dpi_scale = ui_scale_of(app), base = base_style, clipboard_set = ui.window_clipboard_set,
+		dpi_scale = display_scale_of(app), base = base_style, clipboard_set = ui.window_clipboard_set,   // (the toolkit adds the zoom: appearance.zoom)
 		disable_zoom = true,   // Ctrl+Plus / Minus / 0 and Ctrl+wheel zoom the page (zoom.odin), not the chrome
 		window = active_window(app).win, frame_ms = wnd.pacer.frame_ms,   // the integrated title bar's regions; scroll animations on the vblank clock
 		inactive = !window_is_front(app),   // a window in the back shows no caret in its fields (windows.odin)
@@ -1781,7 +1776,7 @@ app_start :: proc(args: []string) -> ^App {
 	}
 	_ = os.make_directory_all(app.profile_dir)
 	net.user_agent_product = "Wren/" + APP_VERSION
-	crashtrace.set_report_dir(strings.concatenate({app.profile_dir, "/crashes"}, context.temp_allocator), fmt.tprintf("%s %s (%s %s)", APP_NAME, APP_VERSION, app_commit(), APP_COMMIT_DATE))
+	crash_report_install(app)   // crash_report.odin: a crash leaves its report and a minidump in <profile>/crashes
 	end_signal_install(app)   // (after the crash handler: these signals end the browser cleanly, its session saved)
 	_, _, prefs_file := profile_paths(app)
 	config.load_file(&app.prefs, prefs_file, .User)
@@ -1825,7 +1820,7 @@ app_start :: proc(args: []string) -> ^App {
 		if scale <= 0 { scale = 1 }
 		first_window = platform.open_window_offscreen(APP_NAME, {int(1280 * scale + 0.5), int(800 * scale + 0.5)}, dpi_scale = scale)
 	} else {
-		first_window = platform.open_window(APP_NAME, {1280, 800}, transparent = config.bool_of(&app.prefs, "browser.window.fixed_surface"), integrated_title = config.bool_of(&app.prefs, "browser.window.integrated_titlebar"))
+		first_window = platform.open_window(APP_NAME, {1280, 800}, transparent = config.bool_of(&app.prefs, "browser.window.fixed_surface"), integrated_title = !config.bool_of(&app.prefs, prefs_page.SYSTEM_TITLE_PREF))
 	}
 	if first_window == nil { fmt.eprintln("cannot open the window"); return nil }
 	window_adopt_primary(app, first_window)   // windows.odin: the window the App's per-window fields are about
@@ -1934,8 +1929,7 @@ app_start :: proc(args: []string) -> ^App {
 	pacer_init(app)
 	shell_frames_init(app)   // shell_frames.odin: chrome frames while a page holds the thread
 	smooth_init(app)
-	autoscroll_init(app)   // page_autoscroll.odin (syncs every window's toolkit regions)
-	autoscroll_toolkit_setup(app, active_window(app).ui)
+	autoscroll_init(app)   // page_autoscroll.odin
 	page_cursor_init(app)
 	app_interface_init(app)   // app_make.odin: the window's chrome, its style, the tabs' icons, the status bar, the developer tools, the address bar
 	art_init(app)   // newtab_art.odin: the artistic new tab (no network until the first art new tab is shown)

@@ -14,12 +14,14 @@ import "core:strings"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
+import prefs_page "toolkit:prefs_page"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
 import "wb:host"
 
 Dev_Window :: struct {
+	standard: prefs_page.Standard_Watch,   // the toolkit's standard settings on its interface (settings.odin)
 	win:    ^platform.Window,
 	surf:   render.Surface,
 	ui:     ui.State,
@@ -78,9 +80,9 @@ devtools_window_make :: proc(app: ^App) {
 	dw.win, dw.latency, dw.size_seen, dw.owner = w, 1, w.size, owner.id
 	platform.set_dark_title(w, chrome_palette(app).dark)
 	ui.init(&dw.ui, &app.fonts, &app.theme)
-	dw.ui.icon_font = app.icons
+	dw.ui.icon_font = app.lucide
 	dw.ui.menu_icon_font = app.lucide
-	autoscroll_toolkit_setup(app, &dw.ui)   // page_autoscroll.odin: middle-click autoscroll for the detached tools' regions
+	standard_settings_watch(app, &dw.standard, &dw.ui)
 	ui.use(active_window(app).ui)
 	d.win = dw
 	d.visible = true
@@ -101,6 +103,7 @@ devtools_attach :: proc(app: ^App) {
 	// so GetWindowPlacement still reads the rectangle it had.
 	if windows_shown(app) { devtools_window_save_placement(app, dw.win) }
 	d.win = nil
+	prefs_page.standard_unwatch(&dw.standard)
 	ui.destroy(&dw.ui)
 	ui.use(active_window(app).ui)
 	if !platform.is_offscreen(dw.win) { render.surface_destroy(&app.r, &dw.surf) }
@@ -261,10 +264,9 @@ devtools_window_frame :: proc(app: ^App) {
 	base_style := chrome_frame_style(app)
 	platform.frame_gate_stage(gate, .Building)
 	evs := devtools_events(app, events[:], true)
-	chrome_ui_apply(app, &dw.ui)
 	ui.begin_build(&dw.ui, {
 		window_size = size, events = evs, dt = pacer_of(app).dt, animations = os_animations_enabled(app),
-		dpi_scale = ui_scale_of(app, w), base = base_style, clipboard_set = ui.window_clipboard_set,
+		dpi_scale = display_scale_of(app, w), base = base_style, clipboard_set = ui.window_clipboard_set,
 		disable_zoom = true, window = w, frame_ms = pacer_of(app).frame_ms,
 		inactive = !window_is_front(app) && !w.active,   // (its caret: in the user's browser window's, or while it is the foreground window)
 	})

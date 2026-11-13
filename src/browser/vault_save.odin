@@ -33,7 +33,7 @@ VAULT_OFFER_W_EM :: f32(22)
 vault_save_destroy :: proc(app: ^App) {
 	s := &app.vault
 	vault.string_wipe(&s.gen_value)
-	secret_wipe(&s.gen_text)
+	ui.field_wipe(&s.gen_text)
 	vault.string_wipe(&s.gen_filled)
 	delete(s.gen_options.separator)
 	delete(s.fill_item)
@@ -136,23 +136,23 @@ vault_offer_build :: proc(app: ^App) {
 				ui.spacer(ui.px(em * 0.9))
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###vo_col") {
-					dialog_line(title, "vo_title")
+					ui.paragraph(strings.concatenate({title, "###vo_title"}, ui.frame_allocator()))
 					ui.spacer(ui.px(em * 0.3))
-					dialog_line(o.host, "vo_host", weak = true)
-					if o.username != "" { dialog_line(o.username, "vo_user", weak = true) }
+					if ui.tags("weak") { ui.paragraph(strings.concatenate({o.host, "###vo_host"}, ui.frame_allocator())) }
+					if o.username != "" { if ui.tags("weak") { ui.paragraph(strings.concatenate({o.username, "###vo_user"}, ui.frame_allocator())) } }
 					ui.spacer(ui.px(em * 0.6))
 					if o.state == .Saving {
-						dialog_line(i18n.tr("Saving…"), "vo_saving", weak = true)
+						if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("Saving…"), "###vo_saving"}, ui.frame_allocator())) }
 					} else {
 						ui.next({width = ui.fill(), height = ui.children_sum()})
 						if ui.row(.Center, {}, "###vo_acts") {
-							if icon_action_button(app, lucide.X, i18n.tr("Not now"), "vo_later", ui.fill(), intent = .Cancel) { later = true }
+							if ui.button_icon("###vo_later", lucide.X, i18n.tr("Not now"), intent = .Cancel, width = ui.fill()).clicked { later = true }
 							ui.spacer(ui.px(em * 0.4))
 							words := o.state == .Update ? i18n.tr("Update") : i18n.tr("Save")
-							if icon_action_button(app, lucide.SAVE, words, "vo_accept", ui.fill(), intent = .Success) { accept = true }
+							if ui.button_icon("###vo_accept", lucide.SAVE, words, intent = .Success, width = ui.fill()).clicked { accept = true }
 						}
 						ui.spacer(ui.px(em * 0.4))
-						if icon_action_button(app, lucide.SHIELD, i18n.tr("Never for this site"), "vo_never", ui.fill()) { never = true }
+						if ui.button_icon("###vo_never", lucide.SHIELD, i18n.tr("Never for this site"), width = ui.fill()).clicked { never = true }
 					}
 				}
 				ui.spacer(ui.px(em * 0.9))
@@ -196,7 +196,7 @@ vault_generated_frame :: proc(app: ^App) {
 	if !s.gen_for_fill {
 		if s.gen_dialog {
 			vault.string_wipe(&s.gen_value)
-			secret_wipe(&s.gen_text)
+			ui.field_wipe(&s.gen_text)
 			s.gen_value, value = value, ""
 		}
 		return
@@ -242,7 +242,7 @@ vault_generator_close :: proc(app: ^App) {
 	s := &app.vault
 	s.gen_dialog = false
 	vault.string_wipe(&s.gen_value)
-	secret_wipe(&s.gen_text)
+	ui.field_wipe(&s.gen_text)
 	if !s.gen_for_fill { s.gen_request = 0 }
 	request_frames(app, 2)
 }
@@ -267,13 +267,12 @@ vault_generator_build :: proc(app: ^App) {
 	open := true
 	close, again, copy_it := false, false, false
 	o := &s.gen_options
-	if ui.modal_sized("vault_generator", dialog_preferred(s.gen_body, em * 28, em * 21), &s.gen_size, &open, {em * 22, em * 14}) {
-		ui.dialog_header("vg_title", i18n.tr("Password generator"), lucide.DICES, app.lucide)
+	if ui.modal_sized("vault_generator", {em * 28, 0}, &s.gen_size, &open, {em * 22, em * 14}) {
+		if ui.dialog_header("vg_title", i18n.tr("Password generator"), {icon = lucide.DICES, icon_font = app.lucide}) {}
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###vg_scroll") {
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.row(.Start, {}, "###vg_margins") {
-				s.gen_body = ui.parent_box().key
 				ui.spacer(ui.px(em * 1.0))
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###vg_col") {
@@ -289,7 +288,7 @@ vault_generator_build :: proc(app: ^App) {
 							ui.next({width = ui.fill(), height = ui.text_size()})
 							ui.label(strings.concatenate({label, "###", id, "_label"}, ui.frame_allocator()))
 							ui.next({width = ui.px(em * 8), height = ui.px(ui.dense(em * 2))})
-							_ = ui.stepper(strings.concatenate({"###", id}, ui.frame_allocator()), value, lo, hi)
+							_ = ui.number(strings.concatenate({"###", id}, ui.frame_allocator()), value, lo = lo, hi = hi)
 						}
 					}
 					if o.passphrase {
@@ -320,13 +319,13 @@ vault_generator_build :: proc(app: ^App) {
 					ui.spacer(ui.px(em * 0.5))
 					ui.next({width = ui.fill(), height = ui.children_sum()})
 					if ui.row(.Center, {}, "###vg_value_acts") {
-						if icon_action_button(app, lucide.REFRESH_CW, i18n.tr("Regenerate"), "vg_again", ui.fill()) { again = true }
+						if ui.button_icon("###vg_again", lucide.REFRESH_CW, i18n.tr("Regenerate"), width = ui.fill()).clicked { again = true }
 						ui.spacer(ui.px(em * 0.4))
-						if icon_action_button(app, lucide.COPY, i18n.tr("Copy"), "vg_copy", ui.fill(), intent = .Primary) { copy_it = true }
+						if ui.button_icon("###vg_copy", lucide.COPY, i18n.tr("Copy"), intent = .Primary, width = ui.fill()).clicked { copy_it = true }
 					}
 					if s.v.message != "" {
 						ui.spacer(ui.px(em * 0.4))
-						dialog_line(s.v.message, "vg_message", weak = true)
+						if ui.tags("weak") { ui.paragraph(strings.concatenate({s.v.message, "###vg_message"}, ui.frame_allocator())) }
 					}
 					ui.spacer(ui.px(em * 0.4))
 				}
@@ -337,7 +336,7 @@ vault_generator_build :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###vg_buttons") {
 			ui.spacer(ui.fill())
-			if icon_action_button(app, lucide.X, i18n.tr("Close"), "vg_close", ui.px(em * 8), intent = .Cancel) { close = true }
+			if ui.button_icon("###vg_close", lucide.X, i18n.tr("Close"), intent = .Cancel, width = ui.px(em * 8)).clicked { close = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))

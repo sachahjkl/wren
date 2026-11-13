@@ -28,7 +28,6 @@ src/browser/global_history.odin q := strings.to_lower(  # user text: the history
 src/browser/global_history.odin v.low = strings.concatenate({strings.to_lower(v.url  # user text: the history's search (its lower-case copy)
 src/browser/http_cache_ui.odin !strings.contains(strings.to_lower(e.key  # user text: the cache page's filter
 src/browser/http_cache_ui.odin needle := strings.to_lower(filter  # user text: the cache page's filter
-src/browser/palette.odin return unicode.to_lower(r)  # user text: the command palette's fuzzy match
 src/browser/palette_test.odin for ch in strings.to_lower(r.title  # the palette's fuzzy match, as it matches
 src/browser/search_engines.odin return strings.to_upper(e.name[i:]  # display text: a search engine's initial
 src/browser/search_engines.odin strings.equal_fold(e.keyword, kw)  # user text: a search engine's keyword
@@ -43,7 +42,6 @@ src/browser/urlbar_index.odin low := strings.to_lower(rest, allocator)  # user t
 src/browser/urlbar_index.odin low := strings.to_lower(typed  # user text: the address bar's index
 src/browser/urlbar_index.odin low_title = strings.to_lower(v.title), visits  # user text: the address bar's index
 src/browser/urlbar_index.odin q := strings.to_lower(strings.trim_space(query)  # user text: the address bar's index
-src/crashtrace/crashtrace_test_windows.odin strings.has_suffix(strings.to_lower(dir  # a Windows folder's path, which the system compares without case: not a web name
 src/fetch/directory.odin html_text(&sb, strings.to_upper(ext  # display text: a folder listing's file type
 src/fetch/directory.odin strings.compare(strings.to_lower(ea  # display order of a folder's listing
 src/layout/build.odin case .Lowercase: out = unicode.to_lower(r)  # text-transform: Unicode by CSS Text

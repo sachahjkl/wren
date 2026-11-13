@@ -110,7 +110,7 @@ real_window_changes_monitor :: proc(t: ^testing.T) {
 real_window_drop_on_the_topmost :: proc(t: ^testing.T) {
 	dir := e2e.temp_folder(t)
 	page :: proc(dir, title: string) -> string { return e2e.file_page(dir, fmt.tprintf("%s.html", title), fmt.tprintf("<!doctype html><meta charset=utf-8><title>%s</title><body>%s", title, title)) }
-	s := e2e.start(t, {size = REAL_SIZE, hidden = true, url = page(dir, "Source"), prefs = {"browser.ui.animations=off"}})
+	s := e2e.start(t, {size = REAL_SIZE, hidden = true, url = page(dir, "Source"), prefs = {"appearance.animations=off"}})
 	a := e2e.windows(s)[0].id
 	for title in ([]string{"Carried", "Again"}) {
 		s.tab = e2e.new_tab(s, page(dir, title))

@@ -61,7 +61,7 @@ update_signature_required :: proc(app: ^App) -> bool {
 
 // Where the release files are: "<base>v<version>/<file>". A mirror or a test server sets it; anything but an address ending in / is the default.
 update_base_url :: proc(app: ^App) -> string {
-	b := config.string_of(&app.prefs, "browser.update.base_url")
+	b := config.string_of(&app.prefs, "update.base_url")
 	if b == "" || !strings.has_suffix(b, "/") || !(strings.has_prefix(b, "https://") || strings.has_prefix(b, "http://127.0.0.1") || strings.has_prefix(b, "http://localhost")) {
 		return UPDATE_DOWNLOAD_BASE
 	}

@@ -217,7 +217,7 @@ tab_info :: proc(t: ^Tab, p: Dev_Panel) -> (badges: [2]string, tones: [2]draw.Co
 	case .Console:
 		e, w := console_counts(t)
 		if e > 0 { badges[0], tones[0] = dt_frame_str(fmt.tprintf("%d", e)), the_app.dtc.bad }
-		if w > 0 { badges[1], tones[1] = dt_frame_str(fmt.tprintf("%d", w)), draw.Color{0.80, 0.55, 0.05, 1} }
+		if w > 0 { badges[1], tones[1] = dt_frame_str(fmt.tprintf("%d", w)), ui.hue(.Yellow) }
 	case .Network:
 		n := len(t.net.entries)
 		if n > 0 {

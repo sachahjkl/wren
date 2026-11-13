@@ -214,38 +214,12 @@ local_stamp :: proc() -> string {
 	return fmt.tprintf("%04d-%02d-%02d %02d-%02d-%02d", lt.year, lt.month, lt.day, lt.hour, lt.minute, lt.second)
 }
 
-// The newest report that the abnormal end left in <profile>\crashes (crashtrace): a crash with its stack, else the note of
-// a session that ended without one; only those written since `since` (the creation time of the process that ended, FILETIME;
-// 0: any). "" when there is none.
-crash_report_find :: proc(profile_dir: string, since: u64) -> string {
-	entries, err := os.read_directory_by_path(profile_file(profile_dir, "crashes"), -1, context.temp_allocator)
-	if err != nil { return "" }
-	since_ns := since > FILETIME_UNIX_EPOCH ? i64(since - FILETIME_UNIX_EPOCH) * 100 : 0
-	best: [2]string        // crash, unclean exit
-	best_ns: [2]i64
-	for e in entries {
-		if e.type == .Directory || !strings.has_suffix(e.name, ".txt") { continue }
-		which := -1
-		switch {
-		case strings.has_prefix(e.name, "crash "):         which = 0
-		case strings.has_prefix(e.name, "unclean exit "):  which = 1
-		}
-		if which < 0 { continue }
-		ns := time.to_unix_nanoseconds(e.modification_time)
-		if ns < since_ns || (best[which] != "" && ns <= best_ns[which]) { continue }
-		best[which], best_ns[which] = e.fullpath, ns
-	}
-	if best[0] != "" { return strings.clone(best[0], context.temp_allocator) }
-	return strings.clone(best[1], context.temp_allocator)
-}
-
-FILETIME_UNIX_EPOCH :: 116_444_736_000_000_000
 
 ////////////////////////////////
 // Processes
 
 // process_created (crash_recovery_<os>.odin): whether `pid` runs and when it began, as a FILETIME-scale value (100 ns
-// since 1601, what crash_report_find compares against a report's write time). 0 means the system would not say.
+// since 1601). 0 means the system would not say.
 
 // The process of a marker: running, and the same one (a process id the system gave to another program since is not it).
 marker_process_alive :: proc(pid: u32, created: u64) -> bool {
@@ -270,6 +244,7 @@ Recovery :: struct {
 	text:         string,           // the snapshot waiting for the tabs to open (owned)
 	backup:       string,           // the file the tabs of a twice-crashed session are in (owned)
 	last:         string,           // what recovery.txt holds (owned)
+	report:       string,           // the crash report the session before this one left, "" none (crash_report_begin; owned)
 	dirty:        bool,
 	inflight:     bool,             // a write of the snapshot is out
 	marking:      bool,             // the write of the stable marker is out
@@ -487,6 +462,7 @@ recovery_destroy :: proc() {
 	delete(the_app.recovery.text)
 	delete(the_app.recovery.backup)
 	delete(the_app.recovery.last)
+	delete(the_app.recovery.report)
 	profile_writes_destroy(&the_app.recovery.writes)
 	the_app.recovery = {}
 }
@@ -501,9 +477,9 @@ recovery_start_fresh :: proc(app: ^App) {
 	for _ in 0 ..< n { tab_close(app, 0) }
 }
 
-// "Details": the report the abnormal end left, in a tab of its own.
+// "Details": the report the abnormal end left (crash.last_report, read at the start: crash_report_begin), in a tab of its own.
 recovery_show_details :: proc(app: ^App) {
-	path := crash_report_find(app.profile_dir, app.recovery.prev.created)
+	path := app.recovery.report
 	if path == "" {
 		ui.toast(.Info, "%s", i18n.tr("No crash report was written: the process was ended from outside, or by the system."))
 		return
@@ -512,11 +488,29 @@ recovery_show_details :: proc(app: ^App) {
 }
 
 // "Restore tabs": the tabs a twice-crashed session left in its backup file are opened (the blank page this start opened makes way).
-recovery_restore_backup :: proc(app: ^App) -> bool {
+recovery_restore_backup :: proc(app: ^App) {
+	if app.recovery.backup == "" { return }
+	// (the file is read by the blocking pool: a slow disk never holds the interface)
+	Backup_Read :: struct { app: ^App, path, text: string, ok: bool }
+	j := new(Backup_Read)
+	j^ = {app = app, path = strings.clone(app.recovery.backup)}
+	drop :: proc(data: rawptr) { j := (^Backup_Read)(data); delete(j.path); delete(j.text); free(j) }
+	host.run_blocking(&app.blocking, proc(data: rawptr) {
+		j := (^Backup_Read)(data)
+		text, ok := read_bounded(j.path, SNAPSHOT_MAX_BYTES)
+		if ok { j.text, j.ok = strings.clone(text), true }
+		free_all(context.temp_allocator)
+	}, proc(data: rawptr) {
+		j := (^Backup_Read)(data)
+		defer drop(j)
+		if j.ok && j.path == j.app.recovery.backup { recovery_restore_text(j.app, j.text) }
+		request_frames(j.app, 2)
+	}, j, drop)
+}
+
+@(private = "file")
+recovery_restore_text :: proc(app: ^App, text: string) -> bool {
 	wnd := active_window(app)
-	if app.recovery.backup == "" { return false }
-	text, ok := read_bounded(app.recovery.backup, SNAPSHOT_MAX_BYTES)
-	if !ok { return false }
 	l := recovery_limits(app)
 	tabs, current, pok := session_parse_tabs(text, l.max_tabs, l.max_url_bytes, context.temp_allocator, l.max_entries)
 	if !pok || len(tabs) == 0 { return false }

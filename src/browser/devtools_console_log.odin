@@ -11,7 +11,6 @@ package browser
 import "core:fmt"
 import "core:strings"
 import "core:time"
-import "toolkit:ui"
 import "wb:config"
 import "wb:js"
 import "wb:page"
@@ -141,7 +140,7 @@ console_append :: proc(t: ^Tab, level: page.Log_Level, message: string) {
 			return
 		case strings.has_prefix(control, "\x01dtx:"):
 			clip_set(control[5:])   // "Copy object": the object as JSON
-			ui.toast(.Info, "Object copied (%s)", dt_size_text(i64(len(control) - 5)))
+			announce(the_app, .Info, fmt.tprintf("Object copied (%s)", dt_size_text(i64(len(control) - 5))))
 			return
 		}
 	}

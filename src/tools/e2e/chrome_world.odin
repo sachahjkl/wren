@@ -11,6 +11,7 @@ import "core:testing"
 import "core:time"
 import "toolkit:draw"
 import "toolkit:font"
+import lucide "toolkit:lucide"
 import "toolkit:platform"
 import "toolkit:render"
 import session "toolkit:testkit/session"
@@ -52,9 +53,8 @@ chrome_frame :: proc(user: rawptr) {
 	size := draw.Vec2{f32(wnd.win.size.x), f32(wnd.win.size.y)}
 	style := browser.chrome_frame_style(app)
 	browser.window_chrome_frame(app)
-	browser.chrome_ui_apply(app, wnd.ui)
 	ui.begin_build(wnd.ui, {
-		window_size = size, events = events, dt = FRAME_S, animations = true, dpi_scale = browser.ui_scale_of(app), base = style, disable_zoom = true,
+		window_size = size, events = events, dt = FRAME_S, animations = true, dpi_scale = browser.display_scale_of(app), base = style, disable_zoom = true,
 		window = wnd.win, inactive = false,
 	})
 	browser.build_ui(app)
@@ -90,7 +90,7 @@ chrome_start :: proc(t: ^testing.T, o := Chrome_Options{}, loc := #caller_locati
 	ok: bool
 	app.ui_font, ok = font.load_embedded(&app.fonts, font.FALLBACK_UI_DATA)
 	testing.expect(t, ok, "the interface's font", loc = loc)
-	app.icons, ok = font.load_embedded(&app.fonts, ui.ICON_FONT_DATA)
+	app.lucide, ok = font.load_embedded(&app.fonts, lucide.DATA)
 	testing.expect(t, ok, "the icons' font", loc = loc)
 	browser.app_ui_init(app)
 	browser.app_interface_init(app)

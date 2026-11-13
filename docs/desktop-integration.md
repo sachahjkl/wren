@@ -150,7 +150,7 @@ license) is `<folder>\data`, it never offers Setup by itself, and `--profile DIR
 
 ### Updates
 
-`browser.update.check_daily` (off: no request is made unless asked): one GET a day of GitHub's latest release
+`update.auto` (off: no request is made unless asked): one GET a day of GitHub's latest release
 (`browser.update.url`), compared with the running version, announced once per version; nothing is downloaded. The command
 **Check for updates** asks at once and opens the release page. State in `update.txt` in the profile. Never for disposable
 profiles or with `WREN_UPDATE_CHECK=off`.
@@ -209,7 +209,7 @@ it ("or open `about:wren` in Wren") and never tries to find out with a script.
 ## Preferences
 
 `browser.desktop_integration.on_first_run`, `.status_refresh_ms`, `.start_menu`, `.desktop_shortcut`, `.add_to_path`,
-`.register_browser` (also register as a browser, or only the menu entry), `.file_types`, `browser.update.check_daily`,
+`.register_browser` (also register as a browser, or only the menu entry), `.file_types`, `update.auto`,
 `browser.update.url`.
 
 ## Tests

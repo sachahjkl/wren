@@ -37,7 +37,7 @@ COMMAND_ICONS :: [?][2]string{
 	{"view.devtools_speed.", lucide.NETWORK}, {"view.devtools", lucide.WRENCH},
 	{"view.full_screen", lucide.MONITOR}, {"view.tabs_in_title_bar", lucide.APP_WINDOW},
 	{"view.tabs_position.", lucide.COLUMNS_2}, {"view.tabs_sidebar_collapse", lucide.PANEL_LEFT},
-	{"view.theme_mode.", lucide.SUN_MOON}, {"view.theme.", lucide.PALETTE}, {"view.chrome_style.", lucide.SLIDERS_HORIZONTAL},
+	{"view.theme_mode.", lucide.SUN_MOON}, {"view.theme.", lucide.PALETTE}, {"view.chrome_style.", lucide.SLIDERS_HORIZONTAL}, {"view.finish.", lucide.BRUSH},
 	{"view.bookmarks_bar", lucide.BOOKMARK},
 	{"browser.command_palette", lucide.COMMAND}, {"browser.main_menu", lucide.MENU}, {"browser.history_tree", lucide.GIT_FORK},
 	{"browser.history", lucide.HISTORY}, {"browser.downloads_folder", lucide.FOLDER_OPEN}, {"browser.downloads", lucide.DOWNLOAD},

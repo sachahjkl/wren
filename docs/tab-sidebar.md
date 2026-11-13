@@ -50,11 +50,11 @@ everything is placed from it, each thing straight from one end to the other:
 * the width handle is there only when the sidebar is open.
 
 The animation asks for its frames while it moves and stops once the width is within half a pixel of its end (none after).
-With `browser.ui.animations` off, or `system` and Windows' animation effects off, or a duration of 0, it changes at once.
+With `appearance.animations` off, or `system` and Windows' animation effects off, or a duration of 0, it changes at once.
 
 ### The toolbar in the title bar
 
-With an integrated title bar (`browser.window.integrated_titlebar`, the default) the toolbar *is* the title bar: one row,
+With an integrated title bar (`window.system_title` off, the default) the toolbar *is* the title bar: one row,
 as high as the row of tabs would be (never lower than the system's title bar), instead of a title bar holding only the icon
 and the window buttons above the toolbar (`sidebar_titlebar` in `tab_sidebar.odin`).
 

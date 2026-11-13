@@ -22,6 +22,7 @@ import "toolkit:ui"
 import "wb:config"
 import desktop "toolkit:desktop"
 import process "toolkit:process"
+import prefs_page "toolkit:prefs_page"
 import setup "toolkit:setup"
 import "wb:host"
 import wren_desktop "wb:desktop"
@@ -32,16 +33,12 @@ SETUP_CHOICE_FILE :: "setup.txt"
 Setup_Choice :: enum u8 { Add_To_Path, Register_Browser, Check_Daily }
 
 SETUP_PREFS := [?]config.Def{
-	{name = "browser.update.check_daily", kind = .Bool, default = {b = false},
-		description = "Once a day, ask GitHub's releases API (api.github.com/repos/sachahjkl/wren/releases/latest) whether a newer Wren exists and say so with a notice. Nothing is downloaded or installed by itself; no other data is sent than an ordinary request with Wren's user agent. Off by default: no network request is made until you tick \"Check for updates once a day\" in Setup. The command \"Check for updates\" asks once, whatever this says."},
 	{name = "browser.update.url", kind = .String, default = {s = "https://api.github.com/repos/sachahjkl/wren/releases/latest"},
 		description = "The address the update check reads (a JSON document with tag_name and html_url, as GitHub's \"latest release\" answers). For tests and mirrors."},
-	{name = "browser.update.base_url", kind = .String, default = {s = "https://github.com/sachahjkl/wren/releases/download/"},
-		description = "Where the files of a release are fetched from when you install an update: <this>v<version>/update-windows-x64.json (the signed manifest), its .sig and the program. An address ending in /, https (or http on this computer). A mirror or a test server sets it; the signature is checked whatever the address."},
 	{name = "browser.update.public_key", kind = .String, default = {s = ""},
 		description = "The key (base64url of 32 bytes) that a release's manifest must be signed with, instead of the one built into Wren. Empty: the built-in one. For trying releases made with another key (the tests); setting it widens whom you trust to update Wren."},
 	{name = "browser.update.require_signature", kind = .Bool, default = {b = true},
-		description = "Install an update only when its manifest carries a valid signature of the key above (the built-in one, or browser.update.public_key). Turn it off only for a channel of your own that does not sign: the file's length and SHA-256 are then checked against an unsigned manifest, which proves nothing about who made it. A channel is: browser.update.url (what announces a release), browser.update.base_url (where its files are), this and browser.update.public_key."},
+		description = "Install an update only when its manifest carries a valid signature of the key above (the built-in one, or browser.update.public_key). Turn it off only for a channel of your own that does not sign: the file's length and SHA-256 are then checked against an unsigned manifest, which proves nothing about who made it. A channel is: browser.update.url (what announces a release), update.base_url (where its files are), this and browser.update.public_key."},
 	{name = "browser.update.allow_development_build", kind = .Bool, default = {b = false},
 		description = "Let a development build install a release over itself. For the tests of the updater only: a development build is updated by hand."},
 }
@@ -66,7 +63,7 @@ setup_config :: proc(app: ^App) -> setup.Config {
 	p := &app.prefs
 	app.stp.choices[Setup_Choice.Add_To_Path] = {label = "Add Wren to PATH", on = config.bool_of(p, "browser.desktop_integration.add_to_path")}
 	app.stp.choices[Setup_Choice.Register_Browser] = {label = "Register as a browser", on = config.bool_of(p, "browser.desktop_integration.register_browser")}
-	app.stp.choices[Setup_Choice.Check_Daily] = {label = "Check for updates once per day", on = config.bool_of(p, "browser.update.check_daily")}
+	app.stp.choices[Setup_Choice.Check_Daily] = {label = "Check for updates once per day", on = config.bool_of(p, prefs_page.UPDATE_AUTO_PREF)}
 	return setup.Config{
 		identity = desktop_identity(), version = APP_VERSION, icons = desktop_icons(), choices = app.stp.choices[:],
 		prepare = setup_prepare, folder = true, square = true, user = app,
@@ -138,7 +135,7 @@ setup_build :: proc(app: ^App) {
 		if len(d.choices) == len(Setup_Choice) {
 			set_pref_bool(app, "browser.desktop_integration.add_to_path", d.choices[Setup_Choice.Add_To_Path])
 			set_pref_bool(app, "browser.desktop_integration.register_browser", d.choices[Setup_Choice.Register_Browser])
-			set_pref_bool(app, "browser.update.check_daily", d.choices[Setup_Choice.Check_Daily])
+			set_pref_bool(app, prefs_page.UPDATE_AUTO_PREF, d.choices[Setup_Choice.Check_Daily])
 		}
 		set_pref_bool(app, "browser.desktop_integration.desktop_shortcut", d.shortcut)
 	case .Uninstalled:
@@ -146,10 +143,21 @@ setup_build :: proc(app: ^App) {
 		setup_choice_write(app, setup.CHOICE_STANDALONE)
 		ui.toast(.Info, "%s runs standalone. Setup is in the menu if you change your mind.", APP_NAME)
 	case .Dismissed:
-		saved := setup_choice(app)
-		if setup.is_upgrade(d.facts, APP_VERSION) || (saved != setup.CHOICE_STANDALONE && saved != setup.CHOICE_INSTALLED) {
-			setup_choice_write(app, setup.choice_dismissed(APP_VERSION))
-		}
+		// (the profile's choice is read by the blocking pool: the dialog closes at once)
+		Dismiss_Job :: struct { app: ^App, upgrade: bool, saved: string }
+		j := new(Dismiss_Job)
+		j^ = {app = app, upgrade = setup.is_upgrade(d.facts, APP_VERSION)}
+		drop :: proc(data: rawptr) { j := (^Dismiss_Job)(data); delete(j.saved); free(j) }
+		host.run_blocking(&app.blocking, proc(data: rawptr) {
+			j := (^Dismiss_Job)(data)
+			j.saved = strings.clone(setup_choice(j.app))
+		}, proc(data: rawptr) {
+			j := (^Dismiss_Job)(data)
+			defer drop(j)
+			if j.upgrade || (j.saved != setup.CHOICE_STANDALONE && j.saved != setup.CHOICE_INSTALLED) {
+				setup_choice_write(j.app, setup.choice_dismissed(APP_VERSION))
+			}
+		}, j, drop)
 	case .Launched:
 		app.quitting = true   // (the installed copy runs now: this one ends)
 		platform.request_close(active_window(app).win)

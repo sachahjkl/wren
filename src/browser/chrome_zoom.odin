@@ -3,7 +3,9 @@ package browser
 // The zoom of the browser's own interface, independent of pages (zoom.odin): the tabs, the toolbar, the menus, the panels.
 // The wheel follows the pointer: Ctrl+wheel over the interface zooms it, over the page zooms the page, over the developer
 // tools sizes their text. The keys follow the keyboard: Ctrl+Plus, Minus and 0 zoom the interface while it has the keyboard
-// (the address bar, for one), and the page otherwise. It's kept in browser.ui.zoom, for every window.
+// (the address bar, for one), and the page otherwise. It is the standard appearance.zoom, for every window: the toolkit scales
+// each window's state by it (standard_watch, ui.set_zoom), and a step multiplies or divides it by the Feel's zoom_step
+// (the standard input.zoom_step).
 
 import "core:fmt"
 import "toolkit:draw"
@@ -11,30 +13,22 @@ import "toolkit:platform"
 import "toolkit:ui"
 import "wb:config"
 
-CHROME_ZOOM_DEFAULT :: 1.0
-CHROME_ZOOM_MIN :: 0.5
-CHROME_ZOOM_MAX :: 3.0
-@(private = "file") CHROME_ZOOM_STEP :: 0.1
+@(private = "file") CHROME_ZOOM_PREF :: "appearance.zoom"
 @(private = "file") CHROME_ZOOM_FRAMES :: 3   // a change of scale settles in a few frames (layout, then what follows its size)
 
-// Before a build of a window's interface: what its toolkit state follows of the preferences.
-chrome_ui_apply :: proc(app: ^App, s: ^ui.State) {
-	if "browser.ui.scrollbar_autohide" in app.prefs.index {
-		ui.set_scrollbar_autohide(s, config.bool_of(&app.prefs, "browser.ui.scrollbar_autohide"))
-	}
-}
-
 chrome_zoom_of :: proc(app: ^App) -> f32 {
-	if "browser.ui.zoom" not_in app.prefs.index { return CHROME_ZOOM_DEFAULT }   // (an App of a test, without preferences)
-	return f32(config.float_of(&app.prefs, "browser.ui.zoom"))
+	if CHROME_ZOOM_PREF not_in app.prefs.index { return 1 }   // (an App of a test, without preferences)
+	return f32(config.float_of(&app.prefs, CHROME_ZOOM_PREF))
 }
 
 // dir: 1 larger, -1 smaller, 0 back to 100 %.
 chrome_zoom_step :: proc(app: ^App, dir: int) {
 	now := chrome_zoom_of(app)
-	next := dir == 0 ? CHROME_ZOOM_DEFAULT : clamp(now + f32(dir) * CHROME_ZOOM_STEP, CHROME_ZOOM_MIN, CHROME_ZOOM_MAX)
+	step := ui.feel(active_window(app).ui).zoom_step
+	next: f32 = 1
+	if dir != 0 { next = clamp(dir > 0 ? now * step : now / step, ui.ZOOM_MIN, ui.ZOOM_MAX) }
 	if next == now { return }
-	dev_set_pref(app, "browser.ui.zoom", fmt.tprintf("%g", next))
+	dev_set_pref(app, CHROME_ZOOM_PREF, fmt.tprintf("%g", next))
 	request_frames(app, CHROME_ZOOM_FRAMES)
 }
 

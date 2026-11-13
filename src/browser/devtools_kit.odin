@@ -271,7 +271,7 @@ btn_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		pw := dt_w(the_app.dtm.ui_font, the_app.dtm.fs * 0.82, d.badge) + dt_px(6)
 		bh := the_app.dtm.fs * 1.12
 		draw.rect(dc, {{bx - pw, cy - bh * 0.5 - dt_px(5)}, {bx, cy + bh * 0.5 - dt_px(5)}}, d.badge_col, bh * 0.5)
-		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.82, bx - pw + dt_px(3), cy - dt_px(5), draw.Color{1, 1, 1, 1}, d.badge)
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.82, bx - pw + dt_px(3), cy - dt_px(5), ui.ink_on(d.badge_col), d.badge)
 	}
 	if d.caret {
 		dt_icon(dc, .Chevron_Down, {math.round(r.max.x - dt_px(4) - the_app.dtm.icon * 0.35), cy}, the_app.dtm.icon * 0.7, with_alpha(col, col.a * 0.8), the_app.dtm.sc)
@@ -352,7 +352,7 @@ dt_chip :: proc(id, label: string, on: bool, tooltip := "", count := "") -> ui.S
 // A compact tooltip: the name, and the shortcut in a weaker color.
 dt_tip :: proc(sig: ui.Signal, text: string, shortcut := "") {
 	chrome_tip_a11y(sig.box, text)   // (the name a screen reader reads: a11y_chrome.odin)
-	if ui.hovered_for(sig, 0.4) {
+	if ui.hovered_for(sig) {
 		if ui.tooltip() {
 			w := dt_w(the_app.dtm.ui_font, the_app.dtm.fs, text) + dt_px(14) + (shortcut != "" ? dt_w(the_app.dtm.ui_font, the_app.dtm.fs, shortcut) + dt_px(12) : 0)
 			ui.next({width = ui.px(math.round(w)), height = ui.px(dt_px(22)), axis = .X, cross = .Center})

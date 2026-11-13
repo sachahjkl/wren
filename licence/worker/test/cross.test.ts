@@ -1,5 +1,5 @@
 // The licences of the Worker against the real thing: the tool built from src/tools/license (the same package.license
-// that Wren itself uses), with the development pair of src/license/dev_keys.odin.
+// that Wren itself uses), with the development pair of src/license/license.odin.
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -49,26 +49,26 @@ test("the development pair is the one the Worker signs with (independently deriv
 test("a licence made by the Worker verifies with Wren's tool, as a key and as a .wrenlicense file", { skip }, async () => {
 	const made = await workerLicence(fixture("transaction.completed.json"), fixture("customer.json"));
 
-	const asKey = tool("verify", "-text", made.licence, "-dev");
+	const asKey = tool("licence", "verify", `-text:${made.licence}`, "-dev");
 	assert.equal(asKey.code, 0, asKey.out);
 	assert.match(asKey.out, /VALID: Supporter licence of Jeanne Dupont <jeanne@example\.org>, order WREN-EEP4-4CYR-EWP9, 2026-10-22/);
 
 	const file = join(tmp, "worker.wrenlicense");
 	writeFileSync(file, made.file);
-	const asFile = tool("verify", file, "-dev");
+	const asFile = tool("licence", "verify", file, "-dev");
 	assert.equal(asFile.code, 0, asFile.out);
 	assert.match(asFile.out, /VALID: Supporter licence of Jeanne Dupont/);
 
 	// the key pasted with its lines wrapped, as it arrives by e-mail
 	const wrapped = made.licence.match(/.{1,60}/g)!.join("\n  ");
-	assert.equal(tool("verify", "-text", wrapped, "-dev").code, 0);
+	assert.equal(tool("licence", "verify", `-text:${wrapped}`, "-dev").code, 0);
 });
 
 test("patron licences and names with accents verify too", { skip }, async () => {
 	const body = fixture("transaction.completed.json").replace("pri_01hsxyh9a1fnwv3xbg2zykm4sj", PRICE_PATRON);
 	const customer = JSON.stringify({ data: { name: "Zoé Müller-Åkesson 山田", email: "zoe@example.org" } });
 	const made = await workerLicence(body, customer);
-	const r = tool("verify", "-text", made.licence, "-dev");
+	const r = tool("licence", "verify", `-text:${made.licence}`, "-dev");
 	assert.equal(r.code, 0, r.out);
 	assert.match(r.out, /VALID: Patron licence of Zoé Müller-Åkesson 山田 <zoe@example\.org>/u);
 });
@@ -79,14 +79,14 @@ test("what Wren's tool rejects is rejected: altered, other key, production key",
 
 	const otherPayload = Buffer.from(payload, "base64url").toString().replace("supporter", "patron");
 	const altered = `${tag}.${Buffer.from(otherPayload).toString("base64url")}.${sig}`;
-	assert.notEqual(tool("verify", "-text", altered, "-dev").code, 0, "payload altered");
+	assert.notEqual(tool("licence", "verify", `-text:${altered}`, "-dev").code, 0, "payload altered");
 
 	const badSig = `${tag}.${payload}.${(sig[0] === "A" ? "B" : "A") + sig.slice(1)}`;
-	assert.notEqual(tool("verify", "-text", badSig, "-dev").code, 0, "signature altered");
+	assert.notEqual(tool("licence", "verify", `-text:${badSig}`, "-dev").code, 0, "signature altered");
 
-	assert.notEqual(tool("verify", "-text", made.licence, "-public", publicKeyOf(OTHER_DEV_SEED)).code, 0, "another public key");
-	assert.equal(tool("verify", "-text", made.licence, "-public", DEV_PUBLIC_KEY).code, 0, "the dev key given by hand");
-	assert.notEqual(tool("verify", "-text", made.licence).code, 0, "the production key (none yet, or not this one)");
+	assert.notEqual(tool("licence", "verify", `-text:${made.licence}`, `-public:${publicKeyOf(OTHER_DEV_SEED)}`).code, 0, "another public key");
+	assert.equal(tool("licence", "verify", `-text:${made.licence}`, `-public:${DEV_PUBLIC_KEY}`).code, 0, "the dev key given by hand");
+	assert.notEqual(tool("licence", "verify", `-text:${made.licence}`).code, 0, "the production key (none yet, or not this one)");
 });
 
 // (ASCII names only: on Windows the tool reads its command line in the ANSI code page, so an accent given as an argument
@@ -100,7 +100,7 @@ test("the Worker and Wren's tool sign the same fields into the very same text", 
 	];
 	for (const f of cases) {
 		const file = join(tmp, "issued.wrenlicense");
-		const r = tool("issue", "-dev", "-name", f.name, "-email", f.email, "-edition", f.edition, "-order", f.order, "-date", f.date, "-out", file);
+		const r = tool("licence", "issue", "-dev", `-name:${f.name}`, `-email:${f.email}`, `-edition:${f.edition}`, `-order:${f.order}`, `-date:${f.date}`, `-out:${file}`);
 		assert.equal(r.code, 0, r.out);
 		const theirs = normalize(readFileSync(file, "utf8"));
 		assert.equal(await signer.sign(f), theirs, `fields: ${JSON.stringify(f)}`);
@@ -108,7 +108,7 @@ test("the Worker and Wren's tool sign the same fields into the very same text", 
 });
 
 test("the tool's public key for the dev seed is the one the Worker checks against", { skip }, () => {
-	const r = tool("pubkey", "-dev");
+	const r = tool("licence", "pubkey", "-dev");
 	assert.equal(r.code, 0, r.out);
 	assert.equal(r.out.split(/\r?\n/)[0].trim(), DEV_PUBLIC_KEY);
 });

@@ -4,7 +4,7 @@
 src/base/memory.odin 3  # diagnostic: the memory report of the check build, written when the program ends
 src/base/spans.odin 1  # diagnostic: the span trace a developer asks for, written at exit
 src/blocker/page_hooks.odin 1  # diagnostic: WREN_BLOCKER_TRACE, a measuring log a developer asks for
-src/browser/blocker_files.odin 2  # the user's file, not the profile's: an export to the place the Save dialog gave, on the blocking pool
+src/browser/blocker_files.odin 1  # the user's file, not the profile's: an export to the place the Save dialog gave, on the blocking pool
 src/browser/blocker_measure.odin 1  # diagnostic: the measurement report of the lists, asked for on the command line
 src/browser/bookmarks.odin 1  # at start, before the first frame, with the read of the same file: an unreadable bookmarks file is kept aside as .bad
 src/browser/bookmarks_ui.odin 1  # the user's file, not the profile's: the bookmarks export to the place the Save dialog gave, on the blocking pool
@@ -18,7 +18,6 @@ src/browser/ext_shell.odin 1  # the extensions' folders (the extensions' own cha
 src/browser/first_paint.odin 1  # diagnostic: the first-paint log a developer asks for
 src/browser/global_history.odin 1  # at start, before the first frame, with the read of the same file: an unreadable history file is kept aside as .bad
 src/browser/http_cache_ui.odin 1  # diagnostic: the cache report a developer asks for
-src/browser/license_shell.odin 3  # not converted yet: license_state reads the file at each call and license_install answers at once; the key must be kept in memory first
 src/browser/main.odin 2  # diagnostic build/debug.log; a private Wren's throwaway profile removed after the last write of the exit
 src/browser/memcheck.odin 1  # diagnostic: the check build's memory report
 src/browser/memcheck_report_other.odin 2  # diagnostic: the check build's memory report
@@ -29,7 +28,6 @@ src/browser/remote_extras.odin 2  # wren ctl: captures to the path its client ga
 src/browser/remote_methods.odin 1  # wren ctl: a screenshot to the path its client gave
 src/browser/remote_timeline.odin 5  # wren ctl: a timeline to the folder its client gave
 src/browser/shell_latency.odin 1  # diagnostic: the --prof latency output, written at exit
-src/crashtrace/crashtrace_linux.odin 3  # the crash reporter: its session file at the start and the end of the process, and the report of the previous run
 src/extensions/archive.odin 2  # the extensions' folders (the extensions' own change): an archive unpacked by its install job
 src/host/shutdown.odin 1  # the log of the exit's steps, when one is asked for: the exit is the only work left
 src/httpcache/disk.odin 3  # the HTTP cache's own store: entries and index written by its own jobs, with its own recovery

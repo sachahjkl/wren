@@ -5,7 +5,7 @@ import "wb:host"
 import js_code "wb:js/image/code"
 import "wb:page"
 import "wb:wasm"
-import "wb:crashtrace"
+import crash "toolkit:crash"
 
 // What the Apps of a process share (docs/architecture.md, Where state lives): the Wasm engine and its host functions, the bytecode cache,
 // the image decoders, the layout threads, the decoded web fonts (page.process_shutdown), the crash session. The first App to start sets it
@@ -70,12 +70,12 @@ process_share_users :: proc() -> int {
 
 @(private = "file")
 process_setup :: proc(app: ^App) -> bool {
-	crashtrace.begin_session()   // (a session that ended without a report: crashes\unclean exit <date>.txt at this start)
-	host.shutdown_on_force = crashtrace.end_session   // (shutdown.log says what a watchdog ended, and the profile was saved first: no crash)
+	crash_report_begin(app)   // crash_report.odin (a session that ended without a report: crashes/unclean-<date>.txt at this start)
+	host.shutdown_on_force = crash.end_session   // (shutdown.log says what a watchdog ended, and the profile was saved first: no crash)
 	rs := wasm.runtime_settings_from_prefs(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")   // nothing on disk without a kept profile
 	wasm.configure(rs)
 	wasm.runtime_settings_destroy(&rs)
-	if !page.register_imports() { wasm.runtime_destroy(); crashtrace.end_session(); return false }
+	if !page.register_imports() { wasm.runtime_destroy(); crash_report_end(); return false }
 	wasm.shipped_set(js_code.CODE)
 	page.js_startup(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")
 	return true
@@ -84,5 +84,5 @@ process_setup :: proc(app: ^App) -> bool {
 @(private = "file")
 process_teardown :: proc() {
 	page.process_shutdown()   // the layout threads, the image decoders, the decoded web fonts, the bytecode cache, the Wasm engine
-	crashtrace.end_session()   // a clean end (a kill leaves the file: the next start reports it)
+	crash_report_end()   // a clean end (a kill leaves the file: the next start reports it)
 }

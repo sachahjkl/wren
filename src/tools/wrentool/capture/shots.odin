@@ -59,7 +59,7 @@ SHOTS := []Shot{
 	{name = "command-palette", url = "site:grid.html", actions = "key:Ctrl+Shift+P; type:dev"},
 	{name = "about-wren", url = "about:wren"},
 	{name = "content-blocker", url = "https://sacha.house/cv", actions = "key:Ctrl+Shift+P; type:blocker: open; key:Enter"},
-	{name = "daylight", url = "https://sacha.house/cv", prefs = {"browser.ui.theme=daylight"}},
+	{name = "daylight", url = "https://sacha.house/cv", prefs = {"appearance.theme=daylight"}},
 }
 
 HERO_PAGES := [][2]string{{"hero-css", "site:effects.html"}, {"hero-js", "site:js.html"}, {"hero-shadow", "site:shadow-dom.html"}, {"hero-config", "about:config"}}

@@ -23,7 +23,7 @@ import "wb:remote/api"
 @(private = "file") CHOICE_FILE :: "setup.txt"
 @(private = "file") UPDATE_FILE :: "update.txt"
 @(private = "file") FIRST_RUN_PREF :: "browser.desktop_integration.on_first_run=true"
-@(private = "file") UPDATE_ON_PREF :: "browser.update.check_daily=true"
+@(private = "file") UPDATE_ON_PREF :: "update.auto=true"
 // A release that is newer, as GitHub's API answers.
 @(private = "file") NEWER_RELEASE :: "browser.update.url=data:application/json,%7B%22tag_name%22%3A%22v99.0.0%22%2C%22html_url%22%3A%22https%3A%2F%2Fgithub.com%2Fsachahjkl%2Fwren%2Freleases%2Ftag%2Fv99.0.0%22%7D"
 @(private = "file") NEWER_STILL :: "browser.update.url=data:application/json,%7B%22tag_name%22%3A%22v100.0.0%22%7D"

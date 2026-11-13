@@ -186,7 +186,7 @@ cfg_hash :: proc(h: u64, s: string) -> u64 {
 // The desktop integration as the search sees it.
 @(private = "file")
 desktop_search_def :: proc() -> config.Def {
-	return {name = CONFIG_DESKTOP_ROW, category = "browser", kind = .Bool,   // title: "Desktop integration"
+	return {name = CONFIG_DESKTOP_ROW, kind = .Bool,   // title: "Desktop integration"
 		description = "Integrate the browser with the desktop: Start menu, default apps, default browser, Windows, Setup."}
 }
 
@@ -204,18 +204,18 @@ config_model :: proc(v: ^Config_View, prefs: ^config.Prefs, query: string, with_
 	clear(&v.labels)
 	v.shown, v.modified, v.desktop_row, v.engines_row = 0, 0, -1, -1
 
-	// by category, then name (a category is not always the name's first segment: "testing" gathers several)
+	// by category, then name
 	Item :: struct { cat, name: string, index: int }   // index -1: the desktop row, -2: the search engines' row
 	items := make([dynamic]Item, 0, len(prefs.entries) + 2, context.temp_allocator)
-	for e, i in prefs.entries { append(&items, Item{e.def.category, e.def.name, i}) }
+	for e, i in prefs.entries { append(&items, Item{config_category(e.def.name), e.def.name, i}) }
 	if with_desktop { append(&items, Item{"browser", "", -1}) }   // (first of its category)
-	if r := config.ref_of(prefs, SEARCH_ENGINE_PREF); r != config.NO_REF { append(&items, Item{config.entry(prefs, r).def.category, "", -2}) }
+	if config.ref_of(prefs, SEARCH_ENGINE_PREF) != config.NO_REF { append(&items, Item{config_category(SEARCH_ENGINE_PREF), "", -2}) }
 	slice.sort_by(items[:], proc(a, b: Item) -> bool { return a.cat != b.cat ? a.cat < b.cat : a.name < b.name })
 
 	// titles two preferences of a category share once their unit word is dropped: those keep it
 	same := make(map[string]int, len(items), context.temp_allocator)
 	for it in items {
-		if it.index >= 0 { same[strings.concatenate({it.cat, "\x00", config.title_of(prefs.entries[it.index].def)}, context.temp_allocator)] += 1 }
+		if it.index >= 0 { same[strings.concatenate({it.cat, "\x00", config_title(prefs.entries[it.index].def, it.cat)}, context.temp_allocator)] += 1 }
 	}
 
 	filtering := query != "" || v.modified_only
@@ -238,7 +238,7 @@ config_model :: proc(v: ^Config_View, prefs: ^config.Prefs, query: string, with_
 			def = it.index == -1 ? desktop_search_def() : engines_search_def()
 			if v.modified_only { continue }
 		}
-		if !config.matches(def, query) { continue }
+		if !config.matches(prefs, def, query) { continue }
 		if it.index >= 0 { c.shown += 1; v.shown += 1 }
 		if v.category != "" && it.cat != v.category { continue }
 		if v.category == "" && (header < 0 || it.cat != group) {
@@ -247,7 +247,7 @@ config_model :: proc(v: ^Config_View, prefs: ^config.Prefs, query: string, with_
 			header = len(v.model)
 			append(&v.model, Config_Row{kind = .Header, name = group, group = group})
 			append(&v.ids, cfg_hash(CFG_HASH_SEED, "\x00group:") ~ cfg_hash(0x84222325cbf29ce4, group))
-			append(&v.labels, config.category_title(group, context.allocator))
+			append(&v.labels, config_category_title(group, context.allocator))
 			append(&v.selectable, true)
 		}
 		if header >= 0 && it.index >= 0 { v.model[header].count += 1 }
@@ -256,7 +256,7 @@ config_model :: proc(v: ^Config_View, prefs: ^config.Prefs, query: string, with_
 			v.engines_row = len(v.model)
 			append(&v.model, Config_Row{kind = .Engines, name = CONFIG_ENGINES_ROW, group = it.cat})
 			append(&v.ids, 0)   // config_page: from the list and the editor's state, at every frame
-			append(&v.labels, config.title_of(def, context.allocator))
+			append(&v.labels, config_title(def, it.cat, context.allocator))
 			append(&v.selectable, true)
 			continue
 		}
@@ -264,7 +264,7 @@ config_model :: proc(v: ^Config_View, prefs: ^config.Prefs, query: string, with_
 			v.desktop_row = len(v.model)
 			append(&v.model, Config_Row{kind = .Desktop, name = CONFIG_DESKTOP_ROW, group = it.cat})
 			append(&v.ids, 0)   // config_page: from the row's note, at every frame
-			append(&v.labels, config.title_of(def, context.allocator))
+			append(&v.labels, config_title(def, it.cat, context.allocator))
 			append(&v.selectable, true)
 			continue
 		}
@@ -276,10 +276,38 @@ config_model :: proc(v: ^Config_View, prefs: ^config.Prefs, query: string, with_
 			if st.expanded { id = cfg_hash(id, "\x00open") }
 		}
 		append(&v.ids, id)
-		shared := same[strings.concatenate({it.cat, "\x00", config.title_of(def)}, context.temp_allocator)] > 1
-		append(&v.labels, config.title_of(def, context.allocator, keep_unit = shared))
+		shared := same[strings.concatenate({it.cat, "\x00", config_title(def, it.cat)}, context.temp_allocator)] > 1
+		append(&v.labels, config_title(def, it.cat, context.allocator, keep_unit = shared))
 		append(&v.selectable, true)
 	}
+}
+
+// The category of a preference in about:config: the subsystem its name says. Wren's own preferences are all under
+// "browser.", so theirs is the second segment ("browser.tabs.position" in "tabs"); a name of two segments stays in its first.
+@(private)
+config_category :: proc(name: string) -> string {
+	parts := config.path_of(name)
+	if len(parts) >= 2 && parts[0] == "browser" { return parts[1] }
+	if len(parts) >= 1 { return parts[0] }
+	return name
+}
+
+// The heading of a category ("devtools" -> "DevTools").
+@(private)
+config_category_title :: proc(category: string, allocator := context.temp_allocator) -> string {
+	return config.title_of({name = category, kind = .String}, allocator, keep_unit = true)
+}
+
+// A preference's title under its category: every segment after the category's, as one phrase ("browser.tabs.sidebar.width"
+// under Tabs reads "Sidebar width"), since about:config shows only the category as a heading, not the inner groups.
+@(private)
+config_title :: proc(def: config.Def, category: string, allocator := context.temp_allocator, keep_unit := false) -> string {
+	if def.title != "" { return strings.clone(def.title, allocator) }
+	rest := def.name
+	if i := strings.index(rest, strings.concatenate({category, "."}, context.temp_allocator)); i >= 0 { rest = rest[i + len(category) + 1:] }
+	flat := def
+	flat.name, _ = strings.replace_all(rest, ".", "_", context.temp_allocator)
+	return config.title_of(flat, allocator, keep_unit)
 }
 
 // Shows another category ("" = all): the list starts again from the top.
@@ -354,7 +382,7 @@ config_header :: proc(v: ^Config_View) {
 			items[0] = fmt.tprintf(i18n.tr("All (%d)"), v.shown)
 			sel := 0
 			for c, i in v.cats {
-				items[i + 1] = fmt.tprintf("%s (%d)", config.category_title(c.name), c.shown)
+				items[i + 1] = fmt.tprintf("%s (%d)", config_category_title(c.name), c.shown)
 				if c.name == v.category { sel = i + 1 }
 			}
 			ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * 2))})
@@ -412,7 +440,7 @@ config_sidebar :: proc(v: ^Config_View) {
 		if ui.list("###cfg_cats", &v.cat_list) {
 			ui.spacer(ui.px(em * 0.4))
 			cat_item(v, 0, i18n.tr("All"), v.shown, v.modified, false)
-			for c, i in v.cats { cat_item(v, i + 1, config.category_title(c.name), c.shown, c.modified, c.shown == 0) }
+			for c, i in v.cats { cat_item(v, i + 1, config_category_title(c.name), c.shown, c.modified, c.shown == 0) }
 			ui.spacer(ui.px(em * 0.4))
 		}
 	}
@@ -487,7 +515,7 @@ config_list :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs) {
 				if ui.style({text_align = .Center}) {
 					text := v.modified_only && v.model_query == "" ? i18n.tr("No preference is modified.###cfg_none") : i18n.tr("No preference matches.###cfg_none")
 					if v.category != "" && v.shown > 0 {
-						text = fmt.tprintf(i18n.tr("Nothing in %s; %d in the other categories.###cfg_none"), config.category_title(v.category), v.shown)
+						text = fmt.tprintf(i18n.tr("Nothing in %s; %d in the other categories.###cfg_none"), config_category_title(v.category), v.shown)
 					}
 					ui.label(text)
 				}
@@ -497,7 +525,7 @@ config_list :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs) {
 				if ui.row(.Center) {
 					ui.spacer(ui.fill())
 					// (the words keep their ###: the translation's key)
-					if icon_action_button(app, lucide.LIST, i18n.tr("Show all categories###cfg_all"), "cfg_all", {}, intent = .Primary) { config_set_category(v, "") }
+					if ui.button_icon("###cfg_all", lucide.LIST, i18n.tr("Show all categories###cfg_all"), intent = .Primary).clicked { config_set_category(v, "") }
 					ui.spacer(ui.fill())
 				}
 			}
@@ -535,7 +563,7 @@ group_header :: proc(v: ^Config_View, index: int, r: Config_Row) {
 	row := ui.list_row(&v.list.list, index, v.labels[index])
 	if ui.parent(row.box) {
 		ui.spacer(ui.px(em * 0.5))
-		if ui.tags("weak") { ui.icon(folded ? GLYPH_FORWARD : ui.ICON_DOWN, em * 1.4) }
+		if ui.tags("weak") { ui.icon(folded ? lucide.ARROW_RIGHT : lucide.CHEVRON_DOWN, em * 1.4) }
 		ui.spacer(ui.px(em * 0.2))
 		ui.next({width = ui.text_size(0), height = ui.pct(1), text_pad = 0, font_size = em * 1.08})
 		ui.label(fmt.tprintf("%s###grp_%s", v.labels[index], r.group))
@@ -725,7 +753,7 @@ config_row :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: config.R
 				kb.cursor = .Hand
 				ks := ui.signal(kb)
 				tip(ks, i18n.tr("Copy the name"))
-				if ks.clicked { clip_set(name); ui.toast(.Info, i18n.tr("Copied %s"), name) }
+				if ks.clicked { clip_set(name); announce(app, .Info, fmt.tprintf(i18n.tr("Copied %s"), name)) }
 				if e.source != .Default {
 					ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0, font_size = em * 0.84})
 					ui.label(fmt.tprintf("   \u00b7   %s###kd_%s", fmt.tprintf(i18n.tr("default %s"), shown_value(e.def, config.default_string(prefs, r))), name))
@@ -779,7 +807,7 @@ config_row :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: config.R
 	if ui.column(.Center) {
 		ui.spacer(ui.px(em * 0.55))
 		ui.next({width = ui.px(em * 1.9), height = ui.px(ui.dense(em * 1.9)), radius = em * CHROME_BUTTON_RADIUS})
-		ds := ui.icon_button(fmt.tprintf("###x_%s", name), st.expanded ? ui.ICON_UP : ui.ICON_DOWN)
+		ds := ui.icon_button(fmt.tprintf("###x_%s", name), st.expanded ? lucide.CHEVRON_UP : lucide.CHEVRON_DOWN)
 		tip(ds, st.expanded ? i18n.tr("Hide the details (Left)") : i18n.tr("Show the details (Right)"))
 		if ds.clicked { toggle_details(v, name, !st.expanded) }
 	}
@@ -849,7 +877,7 @@ config_editor :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: confi
 		ui.spacer(ui.px(em * 0.3))
 		if e.source == .User && !locked {
 			ui.next({width = ui.px(em * 2), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
-			rs := ui.icon_button(fmt.tprintf("###r_%s", name), GLYPH_RELOAD)
+			rs := ui.icon_button(fmt.tprintf("###r_%s", name), lucide.ROTATE_CW)
 			tip(rs, i18n.tr("Reset to the default (Delete)"))
 			if rs.clicked { config_reset(v, prefs, st, name) }
 		} else {

@@ -10,6 +10,7 @@ import "core:fmt"
 import "core:math"
 import "toolkit:draw"
 import "toolkit:render"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "core:strings"
 import "wb:base"
@@ -32,12 +33,12 @@ hud_series_colors :: proc() -> (c: [Hud_Series]draw.Color) {
 		return col
 	}
 	c[.Tasks] = themed("warn")
-	c[.Styles] = draw.hex(0xa78bfaff)
-	c[.Layout] = draw.hex(0xec6fc0ff)
+	c[.Styles] = ui.hue(.Purple)
+	c[.Layout] = ui.hue(.Rose)
 	c[.Paint] = themed("good")
 	c[.UI] = ui.color("accent")
 	c[.Submit] = themed("weak")
-	c[.GPU] = draw.hex(0x38bdf8ff)
+	c[.GPU] = ui.hue(.Cyan)
 	for k in Hud_Series { if v, ok := the_app.hud.cfg.colors[k].?; ok { c[k] = v } }
 	return
 }
@@ -609,7 +610,7 @@ frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 				what := n.frames > 0 ? fmt.tprintf("last %s s, %d frames", fmt_ms(f32(app.hud.cfg.window_ms / 1000), src.comma), n.frames) : "idle: no frames drawn lately"
 				ui.label(fmt.tprintf("Frame statistics, %s###fs_title", what))
 				ui.next({width = ui.px(em * 1.9), height = ui.px(em * 1.9), radius = em * CHROME_BUTTON_RADIUS})
-				close := ui.icon_button("###fs_close", GLYPH_CLOSE)
+				close := ui.icon_button("###fs_close", lucide.X)
 				tip(close, "Close (Ctrl+Shift+F)")
 				if close.clicked { app.hud.panel_open = false }
 				ui.spacer(ui.px(em * 0.4))

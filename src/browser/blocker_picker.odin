@@ -299,16 +299,16 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 				}
 			} else { ui.spacer(ui.px(em * 14)) }
 			ui.spacer(ui.px(em * 0.6))
-			if icon_action_button(app, lucide.EYE, i18n.tr("Preview"), "pk_prev", ui.px(em * 6.5), intent = .Info) { picker_preview(t) }
+			if ui.button_icon("###pk_prev", lucide.EYE, i18n.tr("Preview"), intent = .Info, width = ui.px(em * 6.5)).clicked { picker_preview(t) }
 			ui.spacer(ui.px(em * 0.4))
 			host, _ := blocker_page_host(t)
 			if ui.disabled(!app.pick.valid || len(app.pick.matches) == 0) {
-				if icon_action_button(app, lucide.SHIELD, i18n.tr("Create"), "pk_create", ui.px(em * 6.5), intent = .Danger) { picker_create(app, t, blocker_site_key(host)) }
+				if ui.button_icon("###pk_create", lucide.SHIELD, i18n.tr("Create"), intent = .Danger, width = ui.px(em * 6.5)).clicked { picker_create(app, t, blocker_site_key(host)) }
 			}
 			ui.spacer(ui.px(em * 0.4))
-			if icon_action_button(app, lucide.ROTATE_CCW, i18n.tr("Pick again"), "pk_again", ui.px(em * 7.5)) { picker_unpreview(t); app.pick.stage = 0; app.pick.hover = base.NIL_HANDLE }
+			if ui.button_icon("###pk_again", lucide.ROTATE_CCW, i18n.tr("Pick again"), width = ui.px(em * 7.5)).clicked { picker_unpreview(t); app.pick.stage = 0; app.pick.hover = base.NIL_HANDLE }
 			ui.spacer(ui.px(em * 0.4))
-			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "pk_cancel", ui.px(em * 6), intent = .Cancel) { blocker_picker_cancel(app); return }
+			if ui.button_icon("###pk_cancel", lucide.X, i18n.tr("Cancel"), intent = .Cancel, width = ui.px(em * 6)).clicked { blocker_picker_cancel(app); return }
 		}
 	}
 	if ui.key_press(.Escape) && ui.focus_key() == 0 { blocker_picker_cancel(app) }

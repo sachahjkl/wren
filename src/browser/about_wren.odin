@@ -8,6 +8,7 @@ import "toolkit:ui"
 import "wb:base"
 import "wb:i18n"
 import "wb:license"
+import licence "toolkit:licence"
 import "wb:page"
 import "wb:url"
 import "wb:wasm"
@@ -15,7 +16,7 @@ import "wb:wasm"
 ////////////////////////////////
 // about:wren (About Wren) and about:licenses (the third-party licenses in full).
 //
-// Two ordinary documents, made like the start page, in the colors of the interface's theme (browser.ui.theme) so they
+// Two ordinary documents, made like the start page, in the colors of the interface's theme (appearance.theme) so they
 // read as part of the browser: the logo of the channel, the version and build, "by Froment Software", the beta notice,
 // the licence line and the form to enter a key, the third-party list. They are documents rather than a chrome panel
 // because they need text that can be selected and copied (the commit, the key), links, a form with a text area and
@@ -38,7 +39,8 @@ is_wren_address :: proc(a: string) -> bool {
 // Everything the page shows that comes from the running program (so tests can build it without an App).
 Wren_Page :: struct {
 	palette:     ui.Palette,
-	state:       License_State,
+	state:       licence.Status,
+	checking:    bool,             // the store has not answered yet (its first read is under way)
 	notice:      Wren_Notice,
 	support_url: string,
 	profile_dir: string,
@@ -47,7 +49,7 @@ Wren_Page :: struct {
 }
 
 // What about:wren?card=sample shows on the card.
-SAMPLE_LICENSE :: license.License{product = "wren", edition = "supporter", name = "Sample Supporter", email = "sample@example.org", date = "2026-10-24", order = "WREN-SAMPLE"}
+SAMPLE_LICENSE :: licence.Licence{product = "wren", edition = "supporter", name = "Sample Supporter", email = "sample@example.org", date = "2026-10-24", order = "WREN-SAMPLE"}
 
 Wren_Notice :: struct {
 	text: string,
@@ -161,9 +163,9 @@ page_head :: proc(sb: ^strings.Builder, title: string, p: ui.Palette, extra_css 
 }
 
 // The licence as plain text for the clipboard: never the key itself. A field that is empty is left out.
-licence_details_text :: proc(lic: license.License) -> string {
+licence_details_text :: proc(lic: licence.Licence) -> string {
 	sb := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&sb, "Wren %s license\nRegistered to: %s", license.edition_title(lic.edition), lic.name)
+	fmt.sbprintf(&sb, "Wren %s license\nRegistered to: %s", licence.edition_title(license.WREN, lic.edition), lic.name)
 	if lic.email != "" { fmt.sbprintf(&sb, "\nEmail: %s", lic.email) }
 	if lic.date != "" { fmt.sbprintf(&sb, "\nIssued: %s", lic.date) }
 	if lic.order != "" { fmt.sbprintf(&sb, "\nOrder: %s", lic.order) }
@@ -190,7 +192,7 @@ COPY_BUTTON_STYLE :: `
 // no field is ever part of a script. navigator.clipboard.writeText is the engine's own; when it is refused the text appears in a
 // read-only field, selected, and the button says so.
 @(private = "file")
-copy_details_html :: proc(sb: ^strings.Builder, lic: license.License) {
+copy_details_html :: proc(sb: ^strings.Builder, lic: licence.Licence) {
 	// The three labels share one grid cell and the two icons another, so the button keeps the width of the longest label whatever it says;
 	// the state (data-state on the button) only decides which of them shows.
 	fmt.sbprintf(sb, "<p><button type=\"button\" id=\"copylic\" class=\"copy\" data-state=\"idle\" data-text=\"%s\"><span class=\"ics\" aria-hidden=\"true\">%s%s</span><span class=\"lbs\"><span class=\"l-idle\">%s</span><span class=\"l-done\" aria-live=\"polite\">%s</span><span class=\"l-fail\">%s</span></span></button></p>\n",
@@ -223,11 +225,13 @@ licence_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 	s := d.state
 	if s.registered {
 		strings.write_string(sb, "<p class=\"status\"><b>Registered to ")
-		esc(sb, s.lic.name)
-		fmt.sbprintf(sb, "</b> &middot; %s license</p>\n", escape_html(license.edition_title(s.lic.edition)))
-		license_card_html(sb, s.lic)
+		esc(sb, s.licence.name)
+		fmt.sbprintf(sb, "</b> &middot; %s license</p>\n", escape_html(licence.edition_title(license.WREN, s.licence.edition)))
+		license_card_html(sb, s.licence)
 		strings.write_string(sb, "<p>Thank you for supporting the development of Wren.</p>\n")
-		copy_details_html(sb, s.lic)
+		copy_details_html(sb, s.licence)
+	} else if d.checking {
+		strings.write_string(sb, "<p class=\"status weak\">Checking the license\u2026</p>\n")
 	} else {
 		strings.write_string(sb, "<p class=\"status weak\">Unregistered &mdash; free during the beta &middot; <a href=\"")
 		esc(sb, d.support_url)
@@ -239,7 +243,7 @@ licence_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 		if s.err != .None && s.stored {
 			// a licence is stored but does not check out (another key, a damaged file): said once, quietly
 			strings.write_string(sb, "<p class=\"weak\">The stored license was not accepted: ")
-			esc(sb, license.error_text(s.err))
+			esc(sb, license_error_text(s.err))
 			strings.write_string(sb, "</p>\n")
 		}
 	}
@@ -422,8 +426,9 @@ licenses_page_html :: proc(d: Wren_Page) -> string {
 
 wren_page_data :: proc(app: ^App, notice: Wren_Notice) -> Wren_Page {
 	pal := chrome_palette(app)
+	status, known := license_status(app)
 	return Wren_Page{
-		palette = pal, state = license_state(app), notice = notice,
+		palette = pal, state = status, checking = !known, notice = notice,
 		support_url = license_support_url(app), profile_dir = app.profile_dir, update = update_summary(app),
 	}
 }
@@ -467,7 +472,7 @@ show_wren_page :: proc(app: ^App, t: ^Tab, address: string, acts := false, notic
 	delete(t.url); t.url = strings.clone(shown)
 	delete(t.title); t.title = strings.clone(strings.has_prefix(shown, LICENSES_URL) ? "Licenses" : "About Wren")
 	set_status(t, shown)
-	if choose { license_choose_file(app, t) }
+	if choose { license_choose_file(app) }
 }
 
 // The form of the page: register a key, or remove the stored licence.
@@ -477,11 +482,11 @@ wren_query :: proc(app: ^App, sp: url.Search_Params) -> Wren_Notice {
 	case "register":
 		key, _ := url.params_get(sp, "key")
 		if strings.trim_space(key) == "" { return {"Paste a license key first.", true} }
-		if err := license_install(app, key); err != .None { return {license.error_text(err), true} }
-		return {"License accepted. Thank you for supporting Wren!", false}
+		license_install(app, key)   // (the store's answer builds this page again, with its words)
+		return {"Checking the license\u2026", false}
 	case "remove":
 		license_remove(app)
-		return {"The license was removed from this computer.", false}
+		return {"Removing the license\u2026", false}
 	case "check_update":
 		update_check_now(app)
 		return {"Asking GitHub whether a newer Wren exists. The answer is a notice; open this page again to see it.", false}

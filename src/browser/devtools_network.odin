@@ -703,7 +703,7 @@ net_type_color :: proc(t: Net_Type) -> draw.Color {
 
 @(private = "file")
 net_row_tip :: proc(sig: ui.Signal, e: ^Net_Entry) {
-	if ui.hovered_for(sig, 0.7) {
+	if ui.hovered_for(sig) {
 		if ui.tooltip_beside() {
 			text := e.failed ? fmt.tprintf("%s %s\n%s", e.method, e.url, e.error) : fmt.tprintf("%s %s", e.method, e.url)
 			w := min(dt_w(the_app.dtm.ui_font, the_app.dtm.fs, e.url) + dt_px(60), dt_px(620))

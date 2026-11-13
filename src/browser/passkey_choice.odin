@@ -33,7 +33,6 @@ Passkey_Choice :: struct {
 	rows:         [dynamic]vault.Passkey_Row, // owned: Choosing, the Vault's passkeys of the site
 	sel:          int,                        // the row Up, Down and Enter act on (the last one: the platform)
 	size:         ui.Vec2,
-	body:         ui.Key,
 }
 
 // Webauthn_Embedder.provider: true when the Vault is asked for the site's passkeys (the page's request is the shell's
@@ -162,28 +161,27 @@ passkey_choice_build :: proc(app: ^App) {
 	open := true
 	cancel := false
 	chosen := -1
-	if ui.modal_sized("passkey_choice", dialog_preferred(c.body, em * 28, em * 18), &c.size, &open, {em * 20, em * 12}) {
+	if ui.modal_sized("passkey_choice", {em * 28, 0}, &c.size, &open, {em * 20, em * 12}) {
 		if !signing {
 			if ui.key_press(.Down) { c.sel = min(c.sel + 1, n - 1) }
 			if ui.key_press(.Up) { c.sel = max(c.sel - 1, 0) }
 			if ui.key_press(.Return) { chosen = c.sel }
 		}
-		ui.dialog_header("pc_title", i18n.tr("Sign in with a passkey"), lucide.KEY_ROUND, app.lucide)
+		if ui.dialog_header("pc_title", i18n.tr("Sign in with a passkey"), {icon = lucide.KEY_ROUND, icon_font = app.lucide}) {}
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###pc_scroll") {
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.row(.Start, {}, "###pc_margins") {
-				c.body = ui.parent_box().key
 				ui.spacer(ui.px(em * 1.0))
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###pc_col") {
 					ui.spacer(ui.px(em * 0.9))
-					dialog_line(fmt.tprintf(i18n.tr("%s asks for a passkey. Use one of the Vault, or a security key or this device."), c.rp_id), "pc_hint", weak = true)
+					if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s asks for a passkey. Use one of the Vault, or a security key or this device."), c.rp_id), "###pc_hint"}, ui.frame_allocator())) }
 					ui.spacer(ui.px(em * 0.8))
 					if signing {
 						ui.next({width = ui.fill(), height = ui.children_sum()})
 						if ui.row(.Center, {}, "###pc_wait") {
-							busy_spinner(app, em * 1.3)
+							ui.spinner("###vd_spinner", em * 1.3)
 							ui.spacer(ui.px(em * 0.5))
 							ui.next({width = ui.fill(), height = ui.text_size()})
 							ui.label(strings.concatenate({i18n.tr("The Vault signs in with the passkey."), "###pc_wait_text"}, ui.frame_allocator()))
@@ -207,7 +205,7 @@ passkey_choice_build :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###pc_buttons") {
 			ui.spacer(ui.fill())
-			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "pc_cancel", ui.px(em * 8), intent = .Cancel) { cancel = true }
+			if ui.button_icon("###pc_cancel", lucide.X, i18n.tr("Cancel"), intent = .Cancel, width = ui.px(em * 8)).clicked { cancel = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))

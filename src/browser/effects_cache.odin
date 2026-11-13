@@ -535,7 +535,7 @@ fx_cache_backdrop :: proc(e: ^Effects, g: i32) -> (id, key: u64, anchor: draw.Ve
 }
 
 ////////////////////////////////
-// Preferences (paint.effects.cache.*, paint.effects.filter_precision)
+// Preferences (paint.effects.cache.*; the precision is the standard rendering.filter_precision)
 
 @(private)
 Fx_Settings :: struct {
@@ -559,8 +559,6 @@ FX_CACHE_PREFS := [?]config.Def{
 		description = "A kept effect result not shown for this long is let go."},
 	{name = "paint.effects.cache.text_shadows", kind = .Bool, default = {b = true},
 		description = "Keep blurred text shadows (text-shadow with a blur) from frame to frame too."},
-	{name = "paint.effects.filter_precision", kind = .String, default = {s = "8bit"},
-		description = "Storage of filter results: 8bit (sRGB-encoded 8 bits per channel, as browsers keep them: half the memory and bandwidth) or 16bit (half floats)."},
 }
 
 register_fx_cache_prefs :: proc(p: ^config.Prefs) { config.register(p, FX_CACHE_PREFS[:]) }
@@ -572,7 +570,7 @@ fx_settings_from_prefs :: proc(p: ^config.Prefs) -> Fx_Settings {
 		budget = int(config.int_of(p, "paint.effects.cache.memory_mb")) << 20,
 		whole_px = int(config.float_of(p, "paint.effects.cache.whole_layer_mpx") * 1e6),
 		idle_ms = config.float_of(p, "paint.effects.cache.idle_ms"),
-		precision = config.string_of(p, "paint.effects.filter_precision") == "16bit" ? .Half : .Unorm8,
+		precision = config.string_of(p, "rendering.filter_precision") == "half" ? .Half : .Unorm8,
 		text_shadows = config.bool_of(p, "paint.effects.cache.text_shadows"),
 	}
 }

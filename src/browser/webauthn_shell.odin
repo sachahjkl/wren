@@ -47,7 +47,7 @@ webauthn_shell_destroy :: proc(app: ^App) {
 	passkey_choice_reset(app)
 	if q := webauthn.pin_question(); q.number != 0 { webauthn.pin_answer(q.number, "", false) }   // (a ceremony that waits for a PIN stops waiting)
 	if q := webauthn.choose_question(); q.number != 0 { webauthn.choose_answer(q.number, 0, false) }   // (and one that waits for an account)
-	secret_wipe(&app.key_pin.field)
+	ui.field_wipe(&app.key_pin.field)
 	page.webauthn_shutdown(app.page_settings.authn.cancel_grace_ms)   // cancels what still waits and joins its threads, before the loop goes
 }
 
@@ -76,12 +76,9 @@ Key_Pin_Dialog :: struct {
 	reveal: bool,
 	focus:  bool,            // the field takes the focus in the next build (a question that opens)
 	size:   ui.Vec2,
-	body:   ui.Key,          // the box of what it says (dialog_preferred)
-	touch_body: ui.Key,      // the same for the wait for the touch
 	touch_size: ui.Vec2,
 	choose_number: u64,      // the account question it shows (0: none)
 	choose_sel:    int,      // the row Up, Down and Enter act on
-	choose_body:   ui.Key,
 	choose_size:   ui.Vec2,
 }
 
@@ -92,7 +89,7 @@ webauthn_pin_build :: proc(app: ^App) {
 	q := webauthn.pin_question()
 	if q.number != d.number {
 		// (a new question, or the old one over: what was typed for another goes)
-		secret_wipe(&d.field)
+		ui.field_wipe(&d.field)
 		d.number, d.reveal, d.focus = q.number, false, true
 	}
 	if q.number == 0 {
@@ -103,23 +100,22 @@ webauthn_pin_build :: proc(app: ^App) {
 	em := ui.font_size()
 	open := true
 	submit, cancel := false, false
-	if ui.modal_sized("key_pin", dialog_preferred(d.body, em * 26, em * 15), &d.size, &open, {em * 20, em * 11}) {
-		ui.dialog_header("kp_title", i18n.tr("Security key PIN"), lucide.USB, app.lucide)
+	if ui.modal_sized("key_pin", {em * 26, 0}, &d.size, &open, {em * 20, em * 11}) {
+		if ui.dialog_header("kp_title", i18n.tr("Security key PIN"), {icon = lucide.USB, icon_font = app.lucide}) {}
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###kp_scroll") {
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.row(.Start, {}, "###kp_margins") {
-				d.body = ui.parent_box().key
 				ui.spacer(ui.px(em * 1.0))
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###kp_col") {
 					ui.spacer(ui.px(em * 0.9))
-					dialog_line(fmt.tprintf(i18n.tr("%s asks for your security key. Type its PIN, then touch the key when it blinks."), q.rp_id), "kp_hint", weak = true)
+					if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s asks for your security key. Type its PIN, then touch the key when it blinks."), q.rp_id), "###kp_hint"}, ui.frame_allocator())) }
 					if q.wrong || (q.retries >= 0 && q.retries <= 3) {
 						ui.spacer(ui.px(em * 0.3))
 						words := q.wrong ? fmt.tprintf(i18n.tr("Wrong PIN. %d tries left before the key blocks."), q.retries) : fmt.tprintf(i18n.tr("%d tries left before the key blocks."), q.retries)
 						if q.retries < 0 { words = i18n.tr("Wrong PIN.") }
-						dialog_line(words, "kp_wrong")
+						ui.paragraph(strings.concatenate({words, "###kp_wrong"}, ui.frame_allocator()))
 					}
 					ui.spacer(ui.px(em * 0.8))
 					box := dialog_field("###kp_field", &d.field, i18n.tr("PIN"), true, &submit, &cancel, &d.reveal)
@@ -133,19 +129,19 @@ webauthn_pin_build :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###kp_buttons") {
 			ui.spacer(ui.fill())
-			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "kp_cancel", ui.px(em * 8), intent = .Cancel) { cancel = true }
+			if ui.button_icon("###kp_cancel", lucide.X, i18n.tr("Cancel"), intent = .Cancel, width = ui.px(em * 8)).clicked { cancel = true }
 			ui.spacer(ui.px(em * 0.5))
-			if icon_action_button(app, lucide.CHECK, i18n.tr("OK"), "kp_ok", ui.px(em * 8), intent = .Success) { submit = true }
+			if ui.button_icon("###kp_ok", lucide.CHECK, i18n.tr("OK"), intent = .Success, width = ui.px(em * 8)).clicked { submit = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))
 	}
 	if submit && strings.trim_space(ui.field_string(&d.field)) != "" {
 		webauthn.pin_answer(d.number, ui.field_string(&d.field), true)
-		secret_wipe(&d.field)
+		ui.field_wipe(&d.field)
 	} else if cancel || !open {
 		webauthn.pin_answer(d.number, "", false)
-		secret_wipe(&d.field)
+		ui.field_wipe(&d.field)
 	}
 }
 
@@ -164,21 +160,20 @@ webauthn_choose_build :: proc(app: ^App) -> bool {
 	open := true
 	cancel := false
 	chosen := -1
-	if ui.modal_sized("key_choose", dialog_preferred(d.choose_body, em * 26, em * 18), &d.choose_size, &open, {em * 20, em * 12}) {
+	if ui.modal_sized("key_choose", {em * 26, 0}, &d.choose_size, &open, {em * 20, em * 12}) {
 		if ui.key_press(.Down) { d.choose_sel = min(d.choose_sel + 1, n - 1) }
 		if ui.key_press(.Up) { d.choose_sel = max(d.choose_sel - 1, 0) }
 		if ui.key_press(.Return) { chosen = d.choose_sel }
-		ui.dialog_header("kc_title", i18n.tr("Choose an account"), lucide.USER, app.lucide)
+		if ui.dialog_header("kc_title", i18n.tr("Choose an account"), {icon = lucide.USER, icon_font = app.lucide}) {}
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###kc_scroll") {
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.row(.Start, {}, "###kc_margins") {
-				d.choose_body = ui.parent_box().key
 				ui.spacer(ui.px(em * 1.0))
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###kc_col") {
 					ui.spacer(ui.px(em * 0.9))
-					dialog_line(fmt.tprintf(i18n.tr("Your security key holds several passkeys of %s. Choose the one to sign in with."), q.rp_id), "kc_hint", weak = true)
+					if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("Your security key holds several passkeys of %s. Choose the one to sign in with."), q.rp_id), "###kc_hint"}, ui.frame_allocator())) }
 					ui.spacer(ui.px(em * 0.8))
 					for a, i in q.accounts {
 						title, detail := a.display_name, a.name
@@ -195,7 +190,7 @@ webauthn_choose_build :: proc(app: ^App) -> bool {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###kc_buttons") {
 			ui.spacer(ui.fill())
-			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "kc_cancel", ui.px(em * 8), intent = .Cancel) { cancel = true }
+			if ui.button_icon("###kc_cancel", lucide.X, i18n.tr("Cancel"), intent = .Cancel, width = ui.px(em * 8)).clicked { cancel = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))
@@ -218,13 +213,12 @@ webauthn_touch_build :: proc(app: ^App) {
 	em := ui.font_size()
 	open := true
 	cancel := false
-	if ui.modal_sized("key_touch", dialog_preferred(d.touch_body, em * 26, em * 10), &d.touch_size, &open, {em * 20, em * 8}) {
-		ui.dialog_header("kt_title", i18n.tr("Touch your security key"), lucide.USB, app.lucide)
+	if ui.modal_sized("key_touch", {em * 26, 0}, &d.touch_size, &open, {em * 20, em * 8}) {
+		if ui.dialog_header("kt_title", i18n.tr("Touch your security key"), {icon = lucide.USB, icon_font = app.lucide}) {}
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###kt_scroll") {
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.row(.Start, {}, "###kt_margins") {
-				d.touch_body = ui.parent_box().key
 				ui.spacer(ui.px(em * 1.0))
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###kt_col") {
@@ -232,9 +226,9 @@ webauthn_touch_build :: proc(app: ^App) {
 					// (the spinner says that the key waits; the title is the header's)
 					ui.next({width = ui.fill(), height = ui.children_sum()})
 					if ui.row(.Center, {}, "###kt_head") {
-						busy_spinner(app, em * 1.3)
+						ui.spinner("###vd_spinner", em * 1.3)
 						ui.spacer(ui.px(em * 0.5))
-						dialog_line(fmt.tprintf(i18n.tr("%s asks for your security key. Touch its button or its gold disc now: it blinks while it waits."), q.rp_id), "kt_hint", weak = true)
+						if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s asks for your security key. Touch its button or its gold disc now: it blinks while it waits."), q.rp_id), "###kt_hint"}, ui.frame_allocator())) }
 					}
 					ui.spacer(ui.px(em * 0.4))
 				}
@@ -245,7 +239,7 @@ webauthn_touch_build :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###kt_buttons") {
 			ui.spacer(ui.fill())
-			if icon_action_button(app, lucide.X, i18n.tr("Cancel"), "kt_cancel", ui.px(em * 8), intent = .Cancel) { cancel = true }
+			if ui.button_icon("###kt_cancel", lucide.X, i18n.tr("Cancel"), intent = .Cancel, width = ui.px(em * 8)).clicked { cancel = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))

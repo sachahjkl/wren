@@ -679,7 +679,7 @@ group_chip_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 
 // A tip beside the row: the title and, under it, the address.
 sidebar_tip :: proc(sig: ui.Signal, t: ^Tab) {
-	if !ui.hovered_for(sig, 0.45) { return }
+	if !ui.hovered_for(sig) { return }
 	if ui.tooltip_beside() {
 		em := ui.font_size()
 		ui.next({width = ui.text_size(em * 0.7), height = ui.px(ui.dense(em * 1.7))})

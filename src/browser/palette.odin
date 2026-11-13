@@ -14,11 +14,12 @@ package browser
 // runs are remembered (count and time, in palette_usage.txt of the profile): with nothing typed they come first, and
 // they rank higher among matches.
 //
-// Matching is fzf's kind of scoring: every character of each word of the query, in order, with bonuses for the start
-// of the text and of its words (and camelCase humps), runs of consecutive characters and the same case, and a cost for
-// the gaps; the best alignment is found by dynamic programming (fuzzy_score). Results are worked out again only when
-// what they depend on changes (the query, the tabs, the preferences, the commands' states): an open palette at rest
-// costs a caret blink, a closed one nothing.
+// Matching and ranking are the toolkit's palette's (ui.rank with ui.rank_palette, docs/commands.md of the toolkit): the
+// title holds what is typed whole or in pieces that begin its words, then a command's other words and its group, then the
+// same with a slip; a last text (a command's name, an address, a preference's description) finds a row when nothing
+// else does. The usage memory raises a hit (rank's bonus). Results are worked out again only when what they depend on
+// changes (the query, the tabs, the preferences, the commands' states): an open palette at rest costs a caret blink, a
+// closed one nothing.
 
 import "core:fmt"
 import "core:math"
@@ -27,8 +28,6 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "core:time"
-import "core:unicode"
-import "core:unicode/utf8"
 import "toolkit:draw"
 import lucide "toolkit:lucide"
 import "toolkit:platform"
@@ -63,7 +62,6 @@ PALETTE_PREFS := [?]config.Def{
 register_palette_prefs :: proc(p: ^config.Prefs) { config.register(p, PALETTE_PREFS[:]) }
 
 Palette_Settings :: struct {
-	ctrl_k:          bool,
 	width_em:        f32,
 	rows:            int,
 	max_results:     int,
@@ -77,7 +75,6 @@ Palette_Settings :: struct {
 
 palette_settings_from_prefs :: proc(p: ^config.Prefs) -> Palette_Settings {
 	return {
-		ctrl_k = config.bool_of(p, "browser.palette.ctrl_k"),
 		width_em = f32(config.float_of(p, "browser.palette.width_em")),
 		rows = int(config.int_of(p, "browser.palette.rows")),
 		max_results = int(config.int_of(p, "browser.palette.max_results")),
@@ -91,271 +88,6 @@ palette_settings_from_prefs :: proc(p: ^config.Prefs) -> Palette_Settings {
 }
 
 ////////////////////////////////
-// Fuzzy matching (pure: palette_test.odin)
-
-FUZZY_MATCH            :: 16
-FUZZY_GAP_START        :: -3
-FUZZY_GAP_EXTENSION    :: -1
-FUZZY_BONUS_START      :: 10   // start of the text
-FUZZY_BONUS_BOUNDARY   :: 8    // start of a word
-FUZZY_BONUS_CAMEL      :: 7    // a capital after a small letter, a digit after a letter
-FUZZY_BONUS_CONSECUTIVE :: 5
-FUZZY_FIRST_MULTIPLIER :: 2    // the query's first character counts its bonus twice
-FUZZY_BONUS_CASE       :: 1    // same case as typed (only when the word typed has a capital: smart case)
-FUZZY_MAX_TEXT         :: 512  // characters of a text that take part (the rest of a longer one is not searched)
-FUZZY_MAX_WORD         :: 64
-
-@(private = "file")
-NEG :: min(i32) / 2
-
-@(private = "file")
-Char_Class :: enum u8 { Other, Lower, Upper, Letter, Digit }   // (Letter: without case)
-
-@(private = "file")
-char_class :: proc(r: rune) -> Char_Class {
-	if r < 0x80 {
-		switch r {
-		case 'a' ..= 'z': return .Lower
-		case 'A' ..= 'Z': return .Upper
-		case '0' ..= '9': return .Digit
-		}
-		return .Other
-	}
-	switch {
-	case unicode.is_upper(r): return .Upper
-	case unicode.is_lower(r): return .Lower
-	case unicode.is_letter(r): return .Letter
-	case unicode.is_digit(r): return .Digit
-	}
-	return .Other
-}
-
-@(private = "file")
-fold :: proc(r: rune) -> rune {
-	if r < 0x80 { return r >= 'A' && r <= 'Z' ? r + 32 : r }
-	return unicode.to_lower(r)
-}
-
-Fuzzy_Word :: struct {
-	q, low: []rune,   // as typed, lower case
-	smart:  bool,     // it has a capital: the case counts
-}
-
-// A query read once for every text it is matched against: its space-separated words.
-Fuzzy_Query :: struct { words: []Fuzzy_Word }
-
-fuzzy_query_make :: proc(text: string, allocator := context.temp_allocator) -> Fuzzy_Query {
-	fields := strings.fields(text, context.temp_allocator)
-	words := make([]Fuzzy_Word, len(fields), allocator)
-	for f, wi in fields {
-		n := min(strings.rune_count(f), FUZZY_MAX_WORD)
-		w := Fuzzy_Word{q = make([]rune, n, allocator), low = make([]rune, n, allocator)}
-		i := 0
-		for r in f {
-			if i >= n { break }
-			w.q[i], w.low[i] = r, fold(r)
-			if unicode.is_upper(r) { w.smart = true }
-			i += 1
-		}
-		words[wi] = w
-	}
-	return {words}
-}
-
-// Buffers of the matcher, kept from one text to the next (a search goes through thousands).
-Fuzzy_Scratch :: struct {
-	hr, low:   [dynamic]rune,
-	off:       [dynamic]int,
-	bonus:     [dynamic]i32,
-	rows:      [dynamic]i32,   // two rows of scores and two of run bonuses
-	from:      [dynamic]i16,   // where the previous query character was (-1: none), per query character and position
-	part:      [dynamic]ui.Fuzzy_Range,
-}
-
-fuzzy_scratch_destroy :: proc(s: ^Fuzzy_Scratch) {
-	delete(s.hr); delete(s.low); delete(s.off); delete(s.bonus); delete(s.rows); delete(s.from); delete(s.part)
-	s^ = {}
-}
-
-// Is `w` a subsequence of `hay` at all (case-insensitively)? The cheap test that rejects most texts.
-@(private = "file")
-fuzzy_subsequence :: proc(w: ^Fuzzy_Word, hay: string) -> bool #no_bounds_check {
-	i := 0
-	n := len(w.low)
-	if n == 0 { return true }
-	for b := 0; b < len(hay); {
-		c := hay[b]
-		r: rune
-		if c < 0x80 { r = c >= 'A' && c <= 'Z' ? rune(c) + 32 : rune(c); b += 1 } else {
-			rr, size := utf8.decode_rune_in_string(hay[b:])
-			r = fold(rr)
-			b += size
-		}
-		if r == w.low[i] { i += 1; if i == n { return true } }
-	}
-	return false
-}
-
-// `low` (lower case) occurs in `hay`, case aside.
-contains_fold :: proc(hay: string, low: []rune) -> bool {
-	if len(low) == 0 { return true }
-	next_rune :: proc(s: string, b: int) -> (rune, int) {
-		c := s[b]
-		if c < 0x80 { return fold(rune(c)), 1 }
-		r, n := utf8.decode_rune_in_string(s[b:])
-		return fold(r), n
-	}
-	for start := 0; start < len(hay); {
-		r0, n0 := next_rune(hay, start)
-		if r0 == low[0] {
-			b := start + n0
-			k := 1
-			for k < len(low) && b < len(hay) {
-				r, n := next_rune(hay, b)
-				if r != low[k] { break }
-				b += n
-				k += 1
-			}
-			if k == len(low) { return true }
-		}
-		start += n0
-	}
-	return false
-}
-
-// Score of `fq` in `hay`: every word must match, their best alignments' scores add up; the matched characters' byte
-// ranges (sorted, merged) are appended to `out`. An empty query matches with score 0.
-fuzzy_match :: proc(fq: ^Fuzzy_Query, hay: string, s: ^Fuzzy_Scratch, out: ^[dynamic]ui.Fuzzy_Range) -> (score: int, ok: bool) #no_bounds_check {
-	if len(fq.words) == 0 { return 0, true }
-	for &w in fq.words { if !fuzzy_subsequence(&w, hay) { return 0, false } }
-	// the text, once: characters, their lower case, byte offsets, and the bonus of a match at each
-	cap_runes := min(len(hay), FUZZY_MAX_TEXT)   // (a byte at least per character)
-	resize(&s.hr, cap_runes); resize(&s.low, cap_runes); resize(&s.bonus, cap_runes); resize(&s.off, cap_runes + 1)
-	m := 0
-	end_byte := len(hay)
-	prev := Char_Class.Other
-	for b := 0; b < len(hay); {
-		if m >= FUZZY_MAX_TEXT { end_byte = b; break }
-		r := rune(hay[b])
-		size := 1
-		if r >= 0x80 { r, size = utf8.decode_rune_in_string(hay[b:]) }
-		cur := char_class(r)
-		bonus: i32
-		switch {
-		case cur == .Other:
-		case m == 0: bonus = FUZZY_BONUS_START
-		case prev == .Other: bonus = FUZZY_BONUS_BOUNDARY
-		case cur == .Upper && prev == .Lower: bonus = FUZZY_BONUS_CAMEL
-		case cur == .Digit && prev != .Digit: bonus = FUZZY_BONUS_CAMEL
-		}
-		s.hr[m], s.low[m], s.off[m], s.bonus[m] = r, fold(r), b, bonus
-		prev = cur
-		m += 1
-		b += size
-	}
-	s.off[m] = end_byte
-	clear(&s.part)
-	for &w in fq.words {
-		ws, wok := fuzzy_word(&w, m, s)
-		if !wok { return 0, false }
-		score += ws
-	}
-	// several words: their ranges sorted and merged
-	if len(fq.words) > 1 { slice.sort_by(s.part[:], proc(a, b: ui.Fuzzy_Range) -> bool { return a[0] < b[0] }) }
-	first := len(out)
-	for r in s.part {
-		if len(out) > first && r[0] <= out[len(out) - 1][1] { out[len(out) - 1][1] = max(out[len(out) - 1][1], r[1]) } else { append(out, r) }
-	}
-	return score, true
-}
-
-// The best alignment of one word in the prepared text (dynamic programming, like fzf's): its score, its characters'
-// ranges appended to s.part.
-@(private = "file")
-fuzzy_word :: proc(w: ^Fuzzy_Word, m: int, s: ^Fuzzy_Scratch) -> (score: int, ok: bool) #no_bounds_check {
-	n := len(w.q)
-	if n == 0 { return 0, true }
-	if m < n { return 0, false }
-	resize(&s.rows, 4 * m)
-	resize(&s.from, n * m)
-	prev_h, cur_h := s.rows[0:m], s.rows[m:2 * m]
-	prev_c, cur_c := s.rows[2 * m:3 * m], s.rows[3 * m:4 * m]
-	// nothing matches before the first occurrence of the first character or after the last one of the last
-	lo, hi := 0, m - 1
-	for lo < m && s.low[lo] != w.low[0] { lo += 1 }
-	for hi >= 0 && s.low[hi] != w.low[n - 1] { hi -= 1 }
-	if lo >= m || hi < 0 || lo + n - 1 > hi { return 0, false }
-	for j in 0 ..< m { prev_h[j], cur_h[j] = NEG, NEG }
-	for i in 0 ..< n {
-		for j in lo ..< lo + i { cur_h[j] = NEG }   // (left of this row's cells: two rows ago's values)
-		best_gap: i32 = NEG
-		best_k: i32 = -1
-		qc, ql := w.q[i], w.low[i]
-		case_letter := w.smart && unicode.is_letter(qc)
-		for j in lo + i ..= hi {
-			if i > 0 && j >= 2 {
-				// best predecessor at least one character back, gaps charged
-				ext := best_gap == NEG ? NEG : best_gap + FUZZY_GAP_EXTENSION
-				cand := prev_h[j - 2]
-				if cand != NEG { cand += FUZZY_GAP_START }
-				if cand != NEG && cand >= ext { best_gap, best_k = cand, i32(j - 2) } else { best_gap = ext }
-			}
-			cur_h[j] = NEG
-			s.from[i * m + j] = -1
-			if s.low[j] != ql { continue }
-			bj := s.bonus[j]
-			case_bonus: i32 = case_letter && qc == s.hr[j] ? FUZZY_BONUS_CASE : 0
-			if i == 0 {
-				cur_h[j] = FUZZY_MATCH + bj * FUZZY_FIRST_MULTIPLIER + case_bonus
-				cur_c[j] = bj
-				continue
-			}
-			s1, s2: i32 = NEG, NEG
-			c1: i32
-			if j >= 1 && prev_h[j - 1] != NEG {
-				c1 = max(prev_c[j - 1], FUZZY_BONUS_CONSECUTIVE, bj)
-				s1 = prev_h[j - 1] + FUZZY_MATCH + c1 + case_bonus
-			}
-			if best_gap != NEG { s2 = best_gap + FUZZY_MATCH + bj + case_bonus }
-			if s1 == NEG && s2 == NEG { continue }
-			if s1 >= s2 {
-				cur_h[j], cur_c[j], s.from[i * m + j] = s1, c1, i16(j - 1)
-			} else {
-				cur_h[j], cur_c[j], s.from[i * m + j] = s2, bj, i16(best_k)
-			}
-		}
-		prev_h, cur_h = cur_h, prev_h
-		prev_c, cur_c = cur_c, prev_c
-	}
-	best: i32 = NEG
-	end := -1
-	for j in lo + n - 1 ..= hi { if prev_h[j] > best { best, end = prev_h[j], j } }
-	if end < 0 { return 0, false }
-	// back to the matched characters (last to first), as byte ranges with runs merged
-	start := len(s.part)
-	j := end
-	for i := n - 1; i >= 0 && j >= 0; i -= 1 {
-		a, b := s.off[j], s.off[j + 1]
-		if len(s.part) > start && s.part[len(s.part) - 1][0] == b { s.part[len(s.part) - 1][0] = a } else { append(&s.part, ui.Fuzzy_Range{a, b}) }
-		j = int(s.from[i * m + j])
-	}
-	slice.reverse(s.part[start:])
-	return int(best), true
-}
-
-// fuzzy_match for one query and one text (the ranges allocated with `allocator`).
-fuzzy_score :: proc(query, hay: string, allocator := context.temp_allocator) -> (score: int, ranges: []ui.Fuzzy_Range, ok: bool) {
-	fq := fuzzy_query_make(query)
-	if len(fq.words) == 0 { return 0, nil, true }
-	s: Fuzzy_Scratch
-	defer fuzzy_scratch_destroy(&s)
-	out := make([dynamic]ui.Fuzzy_Range, allocator)
-	score, ok = fuzzy_match(&fq, hay, &s, &out)
-	if !ok { delete(out); return 0, nil, false }
-	return score, out[:], true
-}
-
-////////////////////////////////
 // What was chosen, and when (pure parts: palette_test.odin)
 
 PALETTE_USAGE_HEADER :: "wren-palette-usage 1"
@@ -363,7 +95,7 @@ PALETTE_USAGE_HEADER :: "wren-palette-usage 1"
 Usage_Entry :: struct { count: int, last_ms: i64 }
 
 Palette_Usage :: struct {
-	entries: map[string]Usage_Entry,   // owned keys: "cmd:tab.new", "pref:browser.ui.theme"
+	entries: map[string]Usage_Entry,   // owned keys: "cmd:tab.new", "pref:appearance.theme"
 	loaded:  bool,
 	version: u64,
 }
@@ -455,9 +187,21 @@ usage_load :: proc(app: ^App) {
 	if u.loaded { return }
 	u.loaded = true
 	if !app.cfg.persist_profile { return }
-	data, err := os.read_entire_file(usage_path(app), context.temp_allocator)
-	if err != nil { return }
-	_ = usage_parse(u, string(data), app.cpal.cfg.usage_max)
+	// read by the blocking pool (the palette opens at once; the order of its first results may change when it comes)
+	Usage_Read :: struct { app: ^App, path: string, data: []u8 }
+	j := new(Usage_Read)
+	j^ = {app = app, path = strings.clone(usage_path(app))}
+	drop :: proc(data: rawptr) { j := (^Usage_Read)(data); delete(j.path); delete(j.data); free(j) }
+	host.run_blocking(&app.blocking, proc(data: rawptr) {
+		j := (^Usage_Read)(data)
+		if bytes, err := os.read_entire_file(j.path, context.allocator); err == nil { j.data = bytes }
+	}, proc(data: rawptr) {
+		j := (^Usage_Read)(data)
+		defer drop(j)
+		if j.data == nil { return }
+		_ = usage_parse(&j.app.cpal.usage, string(j.data), j.app.cpal.cfg.usage_max)
+		request_frames(j.app, 2)
+	}, j, drop)
 }
 
 // Written as soon as it changes (a few hundred bytes), by the blocking pool (profile_writes.odin).
@@ -575,12 +319,11 @@ Palette_Row :: struct {
 	category: string,
 	glyph:    string,
 	site:     string,         // a source item's address whose site icon shows
-	score:    int,
+	tags:     []string,       // other words that find it (a command's; while collecting)
+	last:     string,         // a text that finds it when nothing else does (while collecting)
 	usage:    f64,
-	order:    int,
 	disabled: bool,
 	ranges:   []ui.Fuzzy_Range,
-	range_lo, range_hi: int,  // (while collecting: its ranges in app.cpal.pool)
 }
 
 Palette_State :: struct {
@@ -595,8 +338,7 @@ Palette_State :: struct {
 	rows:          [dynamic]Palette_Row,
 	arena:         base.Arena,   // the rows' strings and ranges
 	arena_ready:   bool,
-	pool:          [dynamic]ui.Fuzzy_Range,   // the candidates' highlighted ranges, while collecting
-	scratch:       Fuzzy_Scratch,
+	search:        ui.Fuzzy_Cache,   // the query and the candidates' texts folded, from one search to the next (ui.rank)
 	cache_text:    string,          // owned: the query the rows are for
 	cache_key:     u64,
 	cache_valid:   bool,
@@ -617,8 +359,7 @@ palette_open :: proc(app: ^App) -> bool { return app.cpal.open && app.active != 
 palette_destroy :: proc(app: ^App) {
 	ui.field_destroy(&app.cpal.field)
 	delete(app.cpal.rows)
-	delete(app.cpal.pool)
-	fuzzy_scratch_destroy(&app.cpal.scratch)
+	ui.fuzzy_cache_destroy(&app.cpal.search)
 	if app.cpal.arena_ready { base.arena_destroy(&app.cpal.arena) }
 	delete(app.cpal.cache_text)
 	usage_destroy(&app.cpal.usage)
@@ -709,67 +450,38 @@ palette_collect :: proc(app: ^App, text: string) {
 	palette_ready(app)
 	base.arena_free_all(&app.cpal.arena)
 	clear(&app.cpal.rows)
-	clear(&app.cpal.pool)
 	mode, prefix, q := palette_parse_query(app, text)
-	fq := fuzzy_query_make(q)
 	now := now_unix_ms()
 	t := current_tab(app)
-	order := 0
-	push :: proc(app: ^App, row: Palette_Row, order: ^int) {
-		r := row
-		r.order = order^
-		order^ += 1
-		append(&app.cpal.rows, r)
-	}
-	// match on the title (highlighted), else on the other words it is known by, for less
-	match :: proc(app: ^App, fq: ^Fuzzy_Query, title, other: string) -> (score: int, lo, hi: int, ok: bool) {
-		if len(fq.words) == 0 { return 0, 0, 0, true }
-		lo = len(app.cpal.pool)
-		score, ok = fuzzy_match(fq, title, &app.cpal.scratch, &app.cpal.pool)
-		if ok || other == "" { return score, lo, len(app.cpal.pool), ok }
-		// (strictly: each word typed as it is written there, else a long description matches almost anything)
-		for &w in fq.words { if !contains_fold(other, w.low) { return 0, 0, 0, false } }
-		s, ook := fuzzy_match(fq, other, &app.cpal.scratch, &app.cpal.pool)
-		resize(&app.cpal.pool, lo)   // (nothing of it is highlighted)
-		return s / 2, lo, lo, ook
-	}
+	cands := make([dynamic]Palette_Row, context.temp_allocator)
 
 	if mode == .All || mode == .Commands {
 		for &c, i in commands(app) {
 			if c.hidden { continue }
 			enabled := command_enabled(app, t, &c)
 			if !enabled && !app.cpal.cfg.show_disabled { continue }
-			s, lo, hi, ok := match(app, &fq, c.title, strings.concatenate({c.category, " ", c.keywords, " ", c.name}, context.temp_allocator))
-			if !ok { continue }
-			push(app, {kind = .Command, index = i, title = c.title, category = c.category, glyph = c.glyph, score = s, range_lo = lo, range_hi = hi,
-				usage = usage_of(app, strings.concatenate({"cmd:", c.name}, context.temp_allocator), now), disabled = !enabled}, &order)
+			append(&cands, Palette_Row{kind = .Command, index = i, title = c.label, category = c.group, glyph = c.icon, tags = c.tags, last = c.name,
+				usage = usage_of(app, strings.concatenate({"cmd:", c.name}, context.temp_allocator), now), disabled = !enabled})
 		}
 	}
 	if mode == .All || mode == .Tabs {
 		for tab in tabs_all(app) {
-			s, lo, hi, ok := match(app, &fq, tab.title, tab.url)
-			if !ok { continue }
-			push(app, {kind = .Tab, tab_id = tab.id, title = tab.title, detail = tab.url, category = "Tab", score = s, range_lo = lo, range_hi = hi}, &order)
+			append(&cands, Palette_Row{kind = .Tab, tab_id = tab.id, title = tab.title, detail = tab.url, category = "Tab", last = tab.url})
 		}
 	}
 	if mode == .Tabs || (mode == .All && q != "") {
 		closed := closed_items(app)
 		for i := len(closed) - 1; i >= 0; i -= 1 {
 			u := closed[i].address
-			title := closed_item_label(closed[i])
-			s, lo, hi, ok := match(app, &fq, title, u)
-			if !ok { continue }
-			push(app, {kind = .Closed_Tab, index = i, key = u, title = title, detail = u, category = "Closed tab", score = s, range_lo = lo, range_hi = hi}, &order)
+			append(&cands, Palette_Row{kind = .Closed_Tab, index = i, key = u, title = closed_item_label(closed[i]), detail = u, category = "Closed tab", last = u})
 		}
 	}
 	if mode == .Prefs {
 		for name in config.sorted_names(&app.prefs) {
 			r := config.ref_of(&app.prefs, name)
 			e := config.entry(&app.prefs, r)
-			s, lo, hi, ok := match(app, &fq, name, e.def.description)
-			if !ok { continue }
-			push(app, {kind = .Pref, ref = r, title = name, category = "Setting", score = s, range_lo = lo, range_hi = hi,
-				usage = usage_of(app, strings.concatenate({"pref:", name}, context.temp_allocator), now), disabled = e.source == .Policy}, &order)
+			append(&cands, Palette_Row{kind = .Pref, ref = r, title = name, category = "Setting", last = e.def.description,
+				usage = usage_of(app, strings.concatenate({"pref:", name}, context.temp_allocator), now), disabled = e.source == .Policy})
 		}
 	}
 	if mode == .Source || (mode == .All && q != "") {
@@ -780,56 +492,55 @@ palette_collect :: proc(app: ^App, text: string) {
 			src.items(src.user, app, &items)
 			for it, n in items {
 				if n >= app.cpal.cfg.source_max { break }
-				s, lo, hi, ok := match(app, &fq, it.title, it.detail)
-				if !ok { continue }
-				push(app, {kind = .Source, index = si, key = it.key, title = it.title, detail = it.detail,
-					category = src.name, glyph = it.glyph, site = it.site, score = s - 4, range_lo = lo, range_hi = hi}, &order)   // (pages after commands and tabs that match as well)
+				append(&cands, Palette_Row{kind = .Source, index = si, key = it.key, title = it.title, detail = it.detail,
+					category = src.name, glyph = it.glyph, site = it.site, last = it.detail})
 			}
 		}
 	}
 
-	// ranked on small keys (thousands of candidates from a source of pages: the rows are moved once, the kept ones)
-	Rank :: struct { disabled: bool, score: int, usage: f64, title_len, order, index: int }
-	ranks := make([]Rank, len(app.cpal.rows), context.temp_allocator)
-	for &r, i in app.cpal.rows {
-		// the score, raised a little by use (bounded: a good match still beats a frequent poor one)
-		if q != "" { r.score += int(min(r.usage * 6, 30)) }
-		ranks[i] = {r.disabled, r.score, r.usage, len(r.title), r.order, i}
-	}
-	if q != "" {
-		slice.sort_by(ranks, proc(x, y: Rank) -> bool {
-			if x.disabled != y.disabled { return !x.disabled }
-			if x.score != y.score { return x.score > y.score }
-			if x.title_len != y.title_len { return x.title_len < y.title_len }
-			return x.order < y.order
-		})
-	} else {
-		// nothing typed: what was used, most first, then the registry's (or the tabs') order
-		slice.sort_by(ranks, proc(x, y: Rank) -> bool {
-			if x.disabled != y.disabled { return !x.disabled }
-			if x.usage != y.usage { return x.usage > y.usage }
-			return x.order < y.order
-		})
-	}
-	kept := min(len(ranks), app.cpal.cfg.max_results)
-	sorted := make([]Palette_Row, kept, context.temp_allocator)
-	for k in 0 ..< kept { sorted[k] = app.cpal.rows[ranks[k].index] }
-	clear(&app.cpal.rows)
-	append(&app.cpal.rows, ..sorted)
+	typed := q != ""
+	hits := ui.rank(q, cands[:], palette_rank_entry, &typed, bonus = palette_rank_bonus, cache = &app.cpal.search)
+	// what can run before what cannot, each in the rank's order
+	order := make([dynamic]ui.Rank_Hit, 0, len(hits), context.temp_allocator)
+	for h in hits { if !cands[h.index].disabled { append(&order, h) } }
+	for h in hits { if cands[h.index].disabled { append(&order, h) } }
 	// what is kept outlives the frame
 	a := base.arena_allocator(&app.cpal.arena)
-	for &r in app.cpal.rows {
+	for h in order[:min(len(order), app.cpal.cfg.max_results)] {
+		r := cands[h.index]
 		r.title = strings.clone(r.title, a)
 		r.detail = strings.clone(r.detail, a)
 		r.key = strings.clone(r.key, a)
 		r.glyph = strings.clone(r.glyph, a)
 		r.site = strings.clone(r.site, a)
-		if r.range_hi > r.range_lo {
-			r.ranges = make([]ui.Fuzzy_Range, r.range_hi - r.range_lo, a)
-			copy(r.ranges, app.cpal.pool[r.range_lo:r.range_hi])
+		r.tags, r.last = nil, ""
+		if len(h.ranges) > 0 {
+			r.ranges = make([]ui.Fuzzy_Range, len(h.ranges), a)
+			copy(r.ranges, h.ranges)
 		}
+		append(&app.cpal.rows, r)
 	}
 }
+
+// A candidate as ui.rank reads it: a command is found by its group too, the other rows by their title and last text.
+@(private = "file")
+palette_rank_entry :: proc(r: ^Palette_Row, _: rawptr) -> ui.Rank_Entry {
+	return {label = r.title, group = r.kind == .Command ? r.category : "", tags = r.tags, last = r.last}
+}
+
+// What use adds to a hit (`user`: ^bool, something is typed): nothing typed, the usage orders the rows (the registry's or
+// the tabs' order between equals); typed, it raises a match a little (bounded: a good match still beats a frequent poor
+// one), and the pages of a source come after commands and tabs that match as well.
+@(private = "file")
+palette_rank_bonus :: proc(r: ^Palette_Row, user: rawptr) -> f64 {
+	if !(^bool)(user)^ { return r.usage }
+	behind: f64 = r.kind == .Source ? PALETTE_SOURCE_BEHIND : 0
+	return min(r.usage * PALETTE_USAGE_WEIGHT, PALETTE_USAGE_MOST) - behind
+}
+
+@(private = "file") PALETTE_USAGE_WEIGHT :: 6
+@(private = "file") PALETTE_USAGE_MOST :: 30
+@(private = "file") PALETTE_SOURCE_BEHIND :: 4
 
 @(private = "file")
 row_usable :: proc(app: ^App, i: int) -> bool { return i >= 0 && i < len(app.cpal.rows) && !app.cpal.rows[i].disabled }
@@ -939,10 +650,10 @@ palette_build :: proc(app: ^App) {
 	palette_ready(app)
 	em := ui.font_size()
 	win_w, win_h := f32(wnd.win.size.x), f32(wnd.win.size.y)
-	ctrl, cs := platform.Modifiers{.Ctrl}, platform.Modifiers{.Ctrl, .Shift}
+	ctrl := platform.Modifiers{.Ctrl}
 
-	// its own shortcut closes it; Tab stays in it
-	if ui.key_press(.P, cs) || (app.cpal.cfg.ctrl_k && ui.key_press(.K, ctrl)) { palette_close(app); return }
+	// its own command's keys close it; Tab stays in it
+	if c := command(app, "browser.command_palette"); c != nil && command_pressed(app, c) { palette_close(app); return }
 	for ui.key_press(.Tab) || ui.key_press(.Tab, {.Shift}) {}
 
 	// opening: a short fade and slide down (none when Windows turns animations off)
@@ -1051,7 +762,7 @@ palette_build :: proc(app: ^App) {
 				for i in app.cpal.first ..< min(app.cpal.first + vis, n) {
 					r := &app.cpal.rows[i]
 					cols[0] = max(cols[0], ui.text_width(font, em, r.category))
-					if r.kind == .Command { cols[1] = max(cols[1], ui.text_width(font, em, command_shortcut_text(&commands(app)[r.index]))) }
+					if r.kind == .Command { cols[1] = max(cols[1], ui.text_width(font, em, ui.command_shortcut(commands(app)[r.index].spec))) }
 				}
 				cols = {math.ceil(cols[0]) + 2, math.ceil(cols[1]) + 2}
 				for i in app.cpal.first ..< min(app.cpal.first + vis, n) {
@@ -1099,7 +810,7 @@ palette_row :: proc(app: ^App, t: ^Tab, i: int, w, rh, pad: f32, cols: [2]f32, m
 	case .Command:
 		c := &commands(app)[r.index]
 		if c.checked != nil { checked = c.checked(app, t, c) }
-		shortcut = command_shortcut_text(c)
+		shortcut = ui.command_shortcut(c.spec)
 		ident = u64(r.index)
 	case .Tab:
 		ident = r.tab_id
@@ -1152,7 +863,7 @@ palette_row :: proc(app: ^App, t: ^Tab, i: int, w, rh, pad: f32, cols: [2]f32, m
 					ui.next({width = ui.px(isz), height = ui.pct(1)})
 					if tab != nil { ui.custom("###ticon", tab_icon_draw, tab_icon_of(app, tab, f32(tab_icon_px(app)))) } else { ui.build_box({}, "###ticon") }
 				case checked:
-					if ui.tags("weak") { ui.icon(ui.ICON_CHECK, isz) }
+					if ui.tags("weak") { ui.icon(lucide.CHECK, isz) }
 				case glyph != "":
 					// (a command's icon is Lucide's, as in its menus: command_icons.odin)
 					if ui.tags("weak") {

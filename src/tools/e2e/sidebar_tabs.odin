@@ -41,7 +41,7 @@ select_tab :: proc(s: ^e2e.Session, title: string, loc := #caller_location) {
 // The window with its tabs on the left, five tabs: Alpha to Echo.
 @(private = "file")
 with_five_tabs :: proc(t: ^testing.T, dir: string, loc := #caller_location) -> ^e2e.Session {
-	s := e2e.start(t, {size = SIDEBAR_SIZE, prefs = {"browser.ui.animations=on"}, url = page_titled(dir, "Alpha")}, loc)
+	s := e2e.start(t, {size = SIDEBAR_SIZE, prefs = {"appearance.animations=on"}, url = page_titled(dir, "Alpha")}, loc)
 	// (set as the user does: one given on the command line would stay above what the test sets later)
 	e2e.pref_set(s, "browser.tabs.position", "left")
 	for n in ([]string{"Bravo", "Charlie", "Delta", "Echo"}) {

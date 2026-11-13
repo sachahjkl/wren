@@ -29,6 +29,7 @@ import "core:time"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
+import prefs_page "toolkit:prefs_page"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
@@ -49,6 +50,7 @@ Window_Ctx :: struct {
 }
 
 Browser_Window :: struct {
+	standard: prefs_page.Standard_Watch,   // the toolkit's standard settings on this window's interface (settings.odin)
 	id:      int,                 // unique for the process, never reused: `wren ctl --window`
 	win:     ^platform.Window,
 	surf:    render.Surface,      // the window's swap chain, when it is not the primary one
@@ -520,10 +522,10 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 	nw.user = bw
 	ui.init(bw.ui, &app.fonts, &app.theme)
 	chrome_a11y_init()   // (the caption buttons' names are each interface state's)
-	bw.ui.icon_font = app.icons
+	bw.ui.icon_font = app.lucide
 	bw.ui.menu_icon_font = app.lucide
 	bw.ui.mono_font = active_window(app).ui.mono_font
-	autoscroll_toolkit_setup(app, bw.ui)   // page_autoscroll.odin: middle-click autoscroll for this window's toolkit regions
+	standard_settings_watch(app, &bw.standard, bw.ui)
 	ui.use(active_window(app).ui)
 	bw.frames_requested = 4
 	devtools_view_init(app, &bw.own.devtools, false)   // devtools.odin: closed until asked for in this window (or a tab brings its own)
@@ -566,6 +568,7 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 	} else if !w.headless_shared {
 		render.surface_destroy(&app.r, &w.surf)
 	}
+	prefs_page.standard_unwatch(&w.standard)
 	ui.destroy(w.ui)
 	free(w.ui)
 	delete(w.title); delete(w.title_page); delete(w.title_url)
@@ -802,6 +805,7 @@ windows_forget_tabs :: proc(app: ^App) {
 windows_destroy_ui :: proc(app: ^App) {
 	for w in app.windows {
 		address_destroy(w)
+		prefs_page.standard_unwatch(&w.standard)
 		ui.destroy(w.ui)
 	}
 }

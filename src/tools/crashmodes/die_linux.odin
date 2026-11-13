@@ -3,7 +3,7 @@ package crashmodes
 import "base:intrinsics"
 import "core:sys/posix"
 import "core:time"
-import "wb:crashtrace"
+import crash "../../../ext/gui_toolkit/src/crash"
 
 foreign import libc "system:c"
 @(default_calling_convention = "c")
@@ -28,7 +28,7 @@ die_system :: proc(mode: string) {
 		abort()
 	case "clean":
 		time.sleep(500 * time.Millisecond)
-		crashtrace.end_session()
+		crash.end_session()
 	case "exit":
 		posix._exit(9)
 	}

@@ -13,8 +13,10 @@ import "wb:tools/tooling"
 // @(init) or @(fini) there, or a package-level variable whose initialiser calls something, runs at each start of wren.exe (an init of the
 // idb tests read the whole temporary folder there, 0.8 s, and left a folder in it). What a test needs is made inside the test (a
 // sync.Once when several share it). The declarations the compiler reads at the top level of a file, and in its `when` blocks.
+// Only the folders a program can import are scanned: Wren's packages and the toolkit's. A test package of its own (the toolkit's
+// tests/ folder) is built only by its test run, where its inits are the test's to make.
 
-TEST_INIT_DIRS :: [?]string{"src", "ext/gui_toolkit"}
+TEST_INIT_DIRS :: [?]string{"src", "ext/gui_toolkit/src"}
 TEST_FILE_SUFFIX :: "_test.odin"
 
 Test_Init :: struct { file: string, line: int, name, what: string }

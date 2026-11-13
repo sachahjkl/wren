@@ -21,7 +21,6 @@
 // Only the engine's own imports are provided (console, errors, time zone, clock): anything of the web API traps.
 package jsengine
 
-import _ "wb:crashtrace"   // a crash prints its symbolized stack
 
 import "core:fmt"
 import "core:os"

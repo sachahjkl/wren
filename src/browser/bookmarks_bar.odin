@@ -20,7 +20,7 @@ import "wb:config"
 import "wb:i18n"
 
 BOOKMARKS_BAR_PREFS := [?]config.Def{
-	{name = "browser.bookmarks.bar", kind = .Bool, default = {b = false}, category = "bookmarks",
+	{name = "browser.bookmarks.bar", kind = .Bool, default = {b = false},
 		description = "The bookmarks bar under the toolbar: what the bar's folder holds, its folders as menus (Ctrl+Shift+B; a right click on the toolbar)."},
 }
 

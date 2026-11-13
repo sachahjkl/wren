@@ -14,7 +14,7 @@ The code is under the PolyForm Strict License 1.0.0 ([LICENSE](../LICENSE)). A s
 
 A license is a statement signed offline with an **Ed25519** private key that only the maintainer has. Wren holds the
 matching public key and checks the signature on the user's computer, **without any network access**
-(`core:crypto/ed25519`, package `src/license`). No server is involved in checking. Issuing is either manual (the
+(`core:crypto/ed25519`: the toolkit's `gt:licence`; Wren's product is `license.WREN` in `src/license`). No server is involved in checking. Issuing is either manual (the
 maintainer signs a license with `wrentool license` and sends it) or automatic: licenses are sold through
 [Paddle](https://www.paddle.com) (the seller of record, who handles VAT), and a small Cloudflare Worker
 ([`licence/worker`](../licence/worker/), free plan) signs the license when Paddle reports a paid transaction, keeps it,
@@ -72,7 +72,7 @@ wrentool license keygen
 
 This writes the **private** key to `%USERPROFILE%\.wren-license\private.key` (outside the repository: `keygen` refuses a
 path inside a git work tree, and `.gitignore` keeps `.wren-license/`, `private.key` and `*.wrenlicense` out of git) and
-prints the public key and the line to paste in `src/license/public_key.odin`:
+prints the public key and the value of `PRODUCTION_PUBLIC_KEY` in `src/license/license.odin`:
 
 ```odin
 PRODUCTION_PUBLIC_KEY :: "…"
@@ -88,7 +88,7 @@ this build has no key to check it with.
 ### 2. Issue a license
 
 ```powershell
-wrentool license issue -name "Jeanne Dupont" -email jeanne@example.org -edition supporter -order WREN-0001
+wrentool license issue "-name:Jeanne Dupont" -email:jeanne@example.org -edition:supporter -order:WREN-0001
 ```
 
 `-edition` is `supporter` or `patron`; `-date` defaults to today; `-private FILE` uses another key. The tool verifies
@@ -100,7 +100,7 @@ against the built-in key; `-public KEY` against another).
 
 ### 3. Development key
 
-`-dev` uses a development pair that is public on purpose (`src/license/dev_keys.odin`: the tests and screenshots use
+`-dev` uses a development pair that is public on purpose (`DEV_SEED` in `src/license/license.odin`: the tests and screenshots use
 it). A license made with it is refused by a build that carries the production key. To try one in a build: 
 `wrentool license issue -dev …` and `--pref browser.license.public_key=<wrentool license pubkey -dev>`.
 
@@ -272,7 +272,7 @@ only logs the mail (add `"remote": true` to the binding to send for real, to a t
 ### 2. Keys
 
 ```powershell
-wrentool license keygen     # once; see "Make the key pair". Public key -> src/license/public_key.odin, rebuild Wren
+wrentool license keygen     # once; see "Make the key pair". Public key -> PRODUCTION_PUBLIC_KEY in src/license/license.odin, rebuild Wren
 wrentool license pubkey     # prints it again (LICENSE_PUBLIC_KEY)
 ```
 
@@ -349,7 +349,7 @@ what it would send.
    goes to `thanks/?txn=txn_…` and shows the key; the e-mail arrives with the file. Check the key:
 
    ```powershell
-   wrentool license verify -text "WREN1.…" -public <the public key>
+   wrentool license verify "-text:WREN1.…" -public:<the public key>
    ```
 
    and paste it in `about:wren`. If something is missing: *Developer tools → Notifications → the destination → Logs* shows
@@ -386,7 +386,7 @@ Set in `cloudflare.config.ts` / `wrangler.jsonc` (`vars`), not secret:
 |---|---|
 | `PADDLE_API_BASE` | `https://sandbox-api.paddle.com` or `https://api.paddle.com`: must match the webhook's environment |
 | `PRICE_SUPPORTER`, `PRICE_PATRON` | price ids, comma separated; the patron price wins when both are bought |
-| `LICENSE_PUBLIC_KEY` | the public key of `src/license/public_key.odin` |
+| `LICENSE_PUBLIC_KEY` | `PRODUCTION_PUBLIC_KEY` of `src/license/license.odin` |
 | `MAIL_FROM`, `MAIL_REPLY_TO` | sender (`Name <address>` or an address, on a domain onboarded in Email Service > Email Sending; empty: no mail) and optional reply address |
 | `ALLOWED_ORIGIN` | origins that may call `GET /licence` from a page, comma separated (`*` = any) |
 | `WEBHOOK_TOLERANCE_SECONDS` | how old a webhook may be (300) |
@@ -416,7 +416,7 @@ cover the webhook signature (valid, altered, wrong secret, too old, malformed, r
 Paddle Billing's format (`licence/worker/test/fixtures`), idempotency (a double webhook issues and mails once), the mail
 outcomes (a fake `EMAIL` binding: sent, skipped, a deferred mail that the retry alarm later sends, failed, the
 attachment, no second mail), the endpoints, `/resend`, and the cross-check: licenses made by
-the Worker with the development pair (`DEV_SEED` of `src/license/dev_keys.odin`, read from the Odin source) are verified
+the Worker with the development pair (`DEV_SEED` of `src/license/license.odin`, read from the Odin source) are verified
 by Wren's own tool (`license.exe verify -dev`) as a key and as a `.wrenlicense` file; altered ones and ones of another
 key are refused; and for the same fields the Worker and `license.exe issue -dev` produce the very same text.
 

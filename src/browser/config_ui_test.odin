@@ -31,7 +31,7 @@ config_model_groups_searches_and_filters :: proc(t: ^testing.T) {
 		{name = "blocker.badge.style", kind = .String, default = {s = "corner"}, choices = {"corner", "inside"}, description = "Where the count goes. More words."},
 		{name = "browser.homepage", kind = .String, default = {s = "about:home"}, description = "The page a new window opens."},
 		{name = "network.http.max_connections", kind = .Int, default = {i = 6}, bounded = true, min = 1, max = 64, description = "Connections per host."},
-		{name = "security.webauthn.testing.virtual_mode", kind = .String, default = {s = "accept"}, category = "testing", description = "A virtual authenticator."},
+		{name = "security.webauthn.testing.virtual_mode", kind = .String, default = {s = "accept"}, description = "A virtual authenticator."},
 	}
 	config.register(&p, defs[:])
 	v: Config_View
@@ -39,7 +39,7 @@ config_model_groups_searches_and_filters :: proc(t: ^testing.T) {
 
 	// everything, by category then name; the desktop row first in Browser
 	config_model(&v, &p, "", true)
-	testing.expect_value(t, kinds(&v), "#blocker blocker.badge.enabled blocker.badge.style #browser desktop browser.homepage #network network.http.max_connections #testing security.webauthn.testing.virtual_mode")
+	testing.expect_value(t, kinds(&v), "#blocker blocker.badge.enabled blocker.badge.style #browser desktop browser.homepage #network network.http.max_connections #security security.webauthn.testing.virtual_mode")
 	testing.expect_value(t, v.labels[1], "Badge")
 	testing.expect_value(t, v.labels[2], "Badge style")
 	testing.expect_value(t, v.labels[4], "Desktop integration")
@@ -81,7 +81,7 @@ config_model_groups_searches_and_filters :: proc(t: ^testing.T) {
 	// a folded group keeps its header; a search shows it unfolded
 	toggle_group(&v, "blocker", true)
 	config_model(&v, &p, "", false)
-	testing.expect_value(t, kinds(&v), "#blocker #browser browser.homepage #network network.http.max_connections #testing security.webauthn.testing.virtual_mode")
+	testing.expect_value(t, kinds(&v), "#blocker #browser browser.homepage #network network.http.max_connections #security security.webauthn.testing.virtual_mode")
 	config_model(&v, &p, "badge", false)
 	testing.expect_value(t, kinds(&v), "#blocker blocker.badge.enabled blocker.badge.style")
 	toggle_group(&v, "blocker", false)
@@ -107,7 +107,7 @@ tab_preferences_make_the_tabs_category :: proc(t: ^testing.T) {
 	v.category = strings.clone("tabs")
 	config_model(&v, &p, "", false)
 	n := 0
-	for e in p.entries { if strings.has_prefix(e.def.name, "browser.tabs.") { n += 1; testing.expect_value(t, e.def.category, "tabs") } }
+	for e in p.entries { if strings.has_prefix(e.def.name, "browser.tabs.") { n += 1; testing.expect_value(t, config_category(e.def.name), "tabs") } }
 	testing.expect(t, n >= 25)
 	rows := 0
 	for r in v.model { if r.kind == .Pref { rows += 1 } }
@@ -119,7 +119,7 @@ tab_preferences_make_the_tabs_category :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, found)
 	cat := false
-	for c in v.cats { if c.name == "tabs" { cat = true; testing.expect_value(t, config.category_title(c.name), "Tabs") } }
+	for c in v.cats { if c.name == "tabs" { cat = true; testing.expect_value(t, config_category_title(c.name), "Tabs") } }
 	testing.expect(t, cat)
 }
 

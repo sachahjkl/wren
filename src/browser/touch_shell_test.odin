@@ -9,7 +9,7 @@ import "wb:style"
 pref_writes_reach_their_subsystem_only :: proc(t: ^testing.T) {
 	test_app(t)
 	testing.expect_value(t, pref_groups_of("browser.tabs.sidebar_width"), Pref_Groups{})
-	testing.expect_value(t, pref_groups_of("browser.ui.theme"), Pref_Groups{})
+	testing.expect_value(t, pref_groups_of("appearance.theme"), Pref_Groups{})
 	testing.expect_value(t, pref_groups_of("network.timeout.connect_ms"), Pref_Groups{.Net})
 	testing.expect_value(t, pref_groups_of("network.cache.memory.max_bytes"), Pref_Groups{.Http_Cache})
 	testing.expect_value(t, pref_groups_of("browser.download.directory"), Pref_Groups{.Downloads})

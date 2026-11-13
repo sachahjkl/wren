@@ -571,7 +571,7 @@ download_to :: proc(d: ^Download, to: Download_State, why := "") {
 		}
 	case .Done:
 		d.size = d.received
-		ui.toast(.Good, "Saved %s", filepath.base(d.path))
+		announce(app, .Good, fmt.tprintf("Saved %s", filepath.base(d.path)))
 		notification_download(app, d)   // notification_shell.odin: told by the system when Wren is not in front
 		download_ended(d)
 	case .Failed, .Cancelled:
@@ -642,7 +642,18 @@ download_temp_drop :: proc(d: ^Download) {
 	clear(&d.pending)
 	shrink(&d.pending)
 	if d.handle != nil { os.close(d.handle); d.handle = nil }
-	if d.temp != "" { os.remove(d.temp); delete(d.temp); d.temp = "" }
+	if d.temp != "" { download_remove_file(d.app, d.temp); delete(d.temp); d.temp = "" }
+}
+
+// Removes a file of a download on the blocking pool: a slow disk or share never holds the interface. At the end of the
+// browser, when the pool is gone, on this thread.
+download_remove_file :: proc(app: ^App, path: string) {
+	if path == "" { return }
+	if !profile_pool_ready(app) { _ = os.remove(path); return }
+	s := new(string)
+	s^ = strings.clone(path)
+	drop :: proc(data: rawptr) { s := (^string)(data); delete(s^); free(s) }
+	host.run_blocking(&app.blocking, proc(data: rawptr) { _ = os.remove((^string)(data)^) }, drop, s, drop)
 }
 
 // The move of the temporary file to its place. The move can cross volumes (the Save dialog may put the file on another
@@ -809,7 +820,7 @@ downloads_prune :: proc(app: ^App) {
 download_free :: proc(d: ^Download) {
 	if d.scope != nil { base.scope_close(d.scope) }   // (nil once the process scope closed it; a running one is cancelled)
 	if d.handle != nil { os.close(d.handle) }
-	if d.state != .Done && d.temp != "" { os.remove(d.temp) }
+	if d.state != .Done && d.temp != "" { download_remove_file(d.app, d.temp) }
 	delete(d.url); delete(d.name); delete(d.dir); delete(d.temp); delete(d.path); delete(d.error)
 	delete(d.pending)
 	free(d)
@@ -908,23 +919,33 @@ downloads_check_files :: proc(app: ^App) {
 
 download_open_file :: proc(d: ^Download) {
 	if !download_file_present(d) { ui.toast(.Warn, "%s is no longer there", d.name); return }
-	platform.open_path(d.path)
+	ui.open(d.path)
 }
 
 download_reveal :: proc(d: ^Download) {
-	platform.reveal_in_folder(d.path)   // (the folder, when the file is gone)
+	ui.open(d.path, .Reveal)   // (the folder, when the file is gone)
 }
 
 // Deletes the saved file (it does not go to the recycle bin); the row stays, saying so.
 download_delete_file :: proc(app: ^App, d: ^Download) {
 	if d.state != .Done || d.path == "" { return }
-	if err := os.remove(d.path); err != nil && os.exists(d.path) {
-		ui.toast(.Bad, "Could not delete %s", d.name)
-		return
-	}
-	d.missing, d.checked_ms = true, dl_now_ms()
-	ui.toast(.Info, "Deleted %s", filepath.base(d.path))
-	request_frames(app, 2)
+	Delete_Job :: struct { app: ^App, id: u64, path: string, failed: bool }
+	j := new(Delete_Job)
+	j^ = {app = app, id = d.id, path = strings.clone(d.path)}
+	drop :: proc(data: rawptr) { j := (^Delete_Job)(data); delete(j.path); free(j) }
+	// (on the blocking pool: a file on a slow disk or a share; the row is found again by its id, it may have gone meanwhile)
+	host.run_blocking(&app.blocking, proc(data: rawptr) {
+		j := (^Delete_Job)(data)
+		if err := os.remove(j.path); err != nil && os.exists(j.path) { j.failed = true }
+	}, proc(data: rawptr) {
+		j := (^Delete_Job)(data)
+		defer drop(j)
+		app := j.app
+		if j.failed { ui.toast(.Bad, "Could not delete %s", filepath.base(j.path)); return }
+		for d in app.dls.list { if d.id == j.id { d.missing, d.checked_ms = true, dl_now_ms() } }
+		announce(app, .Info, fmt.tprintf("Deleted %s", filepath.base(j.path)))
+		request_frames(app, 2)
+	}, j, drop)
 }
 
 // The address again, in a new tab: the server answers with the file as before.

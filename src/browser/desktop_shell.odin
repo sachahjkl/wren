@@ -332,14 +332,14 @@ desktop_config_buttons :: proc(app: ^App) {
 		// (the words keep their ###: the translations' keys)
 		if state == .Repair {
 			stale := app.dsk.status.stale_exe != ""
-			if icon_action_button(app, stale ? lucide.REFRESH_CW : lucide.WRENCH, stale ? i18n.tr("Update###desktop_update") : i18n.tr("Repair###desktop_update"), "desktop_update", {}, intent = .Success, disabled = busy) { desktop_update(app) }
+			if ui.button_icon("###desktop_update", stale ? lucide.REFRESH_CW : lucide.WRENCH, stale ? i18n.tr("Update###desktop_update") : i18n.tr("Repair###desktop_update"), intent = .Success, disabled = busy).clicked { desktop_update(app) }
 			ui.spacer(ui.px(em * 0.4))
 		}
 		if desktop.has_default_apps_page() {
-			if icon_action_button(app, lucide.EXTERNAL_LINK, i18n.tr("Open default apps###desktop_defaults"), "desktop_defaults", {}, intent = .Info) { desktop.open_default_apps() }
+			if ui.button_icon("###desktop_defaults", lucide.EXTERNAL_LINK, i18n.tr("Open default apps###desktop_defaults"), intent = .Info).clicked { desktop.open_default_apps() }
 			ui.spacer(ui.px(em * 0.4))
 		}
-		if icon_action_button(app, lucide.SETTINGS, i18n.tr("Setup\u2026###desktop_setup"), "desktop_setup", {}) { setup_open(app) }
+		if ui.button_icon("###desktop_setup", lucide.SETTINGS, i18n.tr("Setup\u2026###desktop_setup")).clicked { setup_open(app) }
 	}
 }
 

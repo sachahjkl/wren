@@ -154,7 +154,7 @@ package_windows :: proc(f: tooling.Flags, version: string) -> int {
 	exe := fmt.tprintf("%s/%s.exe", DIST, name)
 	if os.copy_file(exe, "build/wren.exe") != nil { return fail("build/wren.exe cannot be copied") }
 	// the build's symbols go beside the package, never in what is published: CI keeps them as an artifact, crash-symbolize reads them
-	fp, _ := deps.fingerprint_of("build/wren.exe")
+	fp, _ := deps.build_id_of("build/wren.exe")
 	map_file := fmt.tprintf("build/wren-%s.map", fp)
 	if !os.exists(map_file) { return fail(map_file, "is missing: the symbols of build/wren.exe (wrentool build writes them; wrentool symbols -Publish build/wren.exe after a link of its own)") }
 	symbols := fmt.tprintf("%s/symbols/%s-%s.map", DIST, name, fp)
@@ -397,7 +397,7 @@ run_winget :: proc(args: []string) -> int {
 		if sha == "" { return fail("SHA256SUMS.txt does not mention", exe_name) }
 	}
 	sha = strings.to_upper(sha, context.temp_allocator)
-	if len(sha) != SHA256_HEX || !deps.is_hex(sha) { return fail("the SHA-256", sha, "is not 64 hex characters") }
+	if len(sha) != SHA256_HEX || !is_hex(sha) { return fail("the SHA-256", sha, "is not 64 hex characters") }
 	out := tooling.flag(f, "-Out", fmt.tprintf("build/winget/%s", version))
 	_ = os.make_directory_all(out)
 	write :: proc(out, name, text: string) {
@@ -504,4 +504,12 @@ run_notes :: proc(args: []string) -> int {
 	}
 	fmt.print(body)
 	return 0
+}
+
+// Whether `s` is hex digits, at least one.
+@(private = "file")
+is_hex :: proc(s: string) -> bool {
+	if s == "" { return false }
+	for c in transmute([]u8)s { if base.hex_value(c) < 0 { return false } }
+	return true
 }

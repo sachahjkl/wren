@@ -5,6 +5,7 @@ import "core:math"
 import "core:strings"
 import "wb:i18n"
 import "wb:license"
+import licence "toolkit:licence"
 
 ////////////////////////////////
 // The licence card of about:wren, shown when a licence is registered: a dark card with the supporter's name, edition,
@@ -403,13 +404,13 @@ flip_button_html :: proc(sb: ^strings.Builder) {
 }
 
 // The card of `lic` and the script that moves it. Every field is escaped.
-license_card_html :: proc(sb: ^strings.Builder, lic: license.License) {
+license_card_html :: proc(sb: ^strings.Builder, lic: licence.Licence) {
 	e :: proc(s: string) -> string { return escape_html(s) }
 	strings.write_string(sb, "<div class=\"cardbox\"><div class=\"lic\" id=\"lic\">")
 	card_walls_html(sb)
-	fmt.sbprintf(sb, "<div class=\"base\" data-engrave=\"%s\"></div>", e(card_engrave_fields(APP_NAME, license.edition_title(lic.edition), lic.name, lic.email, lic.date, lic.order)))
+	fmt.sbprintf(sb, "<div class=\"base\" data-engrave=\"%s\"></div>", e(card_engrave_fields(APP_NAME, licence.edition_title(license.WREN, lic.edition), lic.name, lic.email, lic.date, lic.order)))
 	fmt.sbprintf(sb, "<img class=\"logo\" src=\"%s\" alt=\"\">", app_logo_url())
-	fmt.sbprintf(sb, "<div class=\"face\"><div class=\"top\"><b>%s</b><span>%s</span></div>", APP_NAME, e(license.edition_title(lic.edition)))
+	fmt.sbprintf(sb, "<div class=\"face\"><div class=\"top\"><b>%s</b><span>%s</span></div>", APP_NAME, e(licence.edition_title(license.WREN, lic.edition)))
 	fmt.sbprintf(sb, "<div><div class=\"who\">%s</div>", e(lic.name))
 	if lic.email != "" { fmt.sbprintf(sb, "<div class=\"mail\">%s</div>", e(lic.email)) }
 	strings.write_string(sb, "</div><div class=\"meta\">")

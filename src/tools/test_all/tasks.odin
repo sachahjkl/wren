@@ -141,8 +141,8 @@ task_license_tool :: proc(t: ^Task_Run) -> bool {
 	ALTERED_AT :: 12
 	tool := exe("build/license")
 	_ = os.remove(LICENSE_FILE)
-	if task_exec(t, {tool, "issue", "-dev", "-name", "Test Name", "-email", "t@example.org", "-edition", "patron", "-order", "T-1", "-out", LICENSE_FILE}) != 0 { task_say(t, "issue failed"); return false }
-	text, code := tooling.capture({tool, "verify", LICENSE_FILE, "-dev"})
+	if task_exec(t, {tool, "licence", "issue", "-dev", "-name:Test Name", "-email:t@example.org", "-edition:patron", "-order:T-1", "-out:" + LICENSE_FILE}) != 0 { task_say(t, "issue failed"); return false }
+	text, code := tooling.capture({tool, "licence", "verify", LICENSE_FILE, "-dev"})
 	tooling.append_text(t.log, text)
 	if code != 0 || !strings.contains(text, VERDICT) { task_say(t, "verify failed"); return false }
 	data, err := os.read_entire_file(LICENSE_FILE, context.temp_allocator)
@@ -155,9 +155,9 @@ task_license_tool :: proc(t: ^Task_Run) -> bool {
 	if dot < 0 || dot + ALTERED_AT >= len(line) { task_say(t, "not a licence: %s", string(line)); return false }
 	at := dot + ALTERED_AT
 	line[at] = line[at] == 'A' ? 'B' : 'A'
-	if task_exec(t, {tool, "verify", "-text", string(line), "-dev"}) == 0 { task_say(t, "an altered licence verified"); return false }
-	if task_exec(t, {tool, "verify", LICENSE_FILE, "-public", OTHER_KEY}) == 0 { task_say(t, "a licence verified with another key"); return false }
-	if task_exec(t, {tool, "keygen", "-private", PRIVATE_KEY}) == 0 { task_say(t, "keygen wrote a private key inside the repository"); _ = os.remove(PRIVATE_KEY); return false }
+	if task_exec(t, {tool, "licence", "verify", strings.concatenate({"-text:", string(line)}, context.temp_allocator), "-dev"}) == 0 { task_say(t, "an altered licence verified"); return false }
+	if task_exec(t, {tool, "licence", "verify", LICENSE_FILE, "-public:" + OTHER_KEY}) == 0 { task_say(t, "a licence verified with another key"); return false }
+	if task_exec(t, {tool, "licence", "keygen", "-private:" + PRIVATE_KEY}) == 0 { task_say(t, "keygen wrote a private key inside the repository"); _ = os.remove(PRIVATE_KEY); return false }
 	return true
 }
 

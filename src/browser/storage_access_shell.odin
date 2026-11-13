@@ -5,6 +5,7 @@ package browser
 // "Block", one request at a time. browser.dialogs.test_answer answers for tests ("cancel": Block, anything else: Allow).
 
 import "core:fmt"
+import "core:strings"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:config"
@@ -42,16 +43,16 @@ storage_access_shell_build :: proc(app: ^App) {
 	open := true
 	answered, granted := false, false
 	if ui.modal("storage_access", em * 32, &open) {
-		ui.dialog_header("sa_header", i18n.tr("Cookies and site data"), lucide.COOKIE, app.lucide)
+		if ui.dialog_header("sa_header", i18n.tr("Cookies and site data"), {icon = lucide.COOKIE, icon_font = app.lucide}) {}
 		if ui.dialog_body("sa_body") {
-			dialog_line(fmt.tprintf(i18n.tr("%s wants to use its cookies and site data while you are on %s"), req.site, req.top), "sa_what")
+			ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s wants to use its cookies and site data while you are on %s"), req.site, req.top), "###sa_what"}, ui.frame_allocator()))
 			ui.spacer(ui.px(em * 0.4))
-			dialog_line(i18n.tr("Sign-in, payment and comment widgets may need it; it also lets the site recognise you across sites."), "sa_why", weak = true)
+			if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("Sign-in, payment and comment widgets may need it; it also lets the site recognise you across sites."), "###sa_why"}, ui.frame_allocator())) }
 		}
 		if ui.dialog_buttons("sa_buttons") {
-			if icon_action_button(app, lucide.SHIELD, i18n.tr("Block"), "sa_block", ui.px(em * 8), intent = .Danger) { answered, granted = true, false }
+			if ui.button_icon("###sa_block", lucide.SHIELD, i18n.tr("Block"), intent = .Danger, width = ui.px(em * 8)).clicked { answered, granted = true, false }
 			ui.spacer(ui.px(em * 0.6))
-			if icon_action_button(app, lucide.CHECK, i18n.tr("Allow"), "sa_allow", ui.px(em * 8), intent = .Success) { answered, granted = true, true }
+			if ui.button_icon("###sa_allow", lucide.CHECK, i18n.tr("Allow"), intent = .Success, width = ui.px(em * 8)).clicked { answered, granted = true, true }
 		}
 	}
 	if !open { answered, granted = true, false }   // Escape, a click outside: blocked

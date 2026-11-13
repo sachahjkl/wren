@@ -11,7 +11,7 @@ package browser
 //   * Vsync (default): the swap chain's latency object (at most one frame queued) releases each frame at a vblank. A
 //     target that divides the display's rate presents every n-th refresh (sync interval); any other lower target is
 //     timed by the browser (a high-resolution waitable timer) and shown at the next vblank.
-//   * Tearing (browser.frame.present_mode = tearing): frames are presented as soon as they are ready, which a variable
+//   * Tearing (the standard rendering.present = tearing): frames are presented as soon as they are ready, which a variable
 //     refresh display (G-Sync, FreeSync) shows at once; the browser times them at the target rate.
 // While waiting the window still takes its keyboard and mouse input (platform.wait_handle), time-stamped as it arrives:
 // the frame starts on the freshest input, and the time from an event to the vblank its frame showed at is measured
@@ -58,8 +58,6 @@ FRAME_PREFS := [?]config.Def{
 		description = "Most frames per second while something moves. auto: what the monitor shows. A number: that ceiling (with browser.frame.max_hz, the lower of the two). custom: the ceiling browser.frame.cap_custom_hz says. uncapped: as fast as they can be made, each shown at once, whatever the monitor and the other limits say; it costs power and may tear. Nothing moves: no frames, whatever this says."},
 	{name = "browser.frame.cap_custom_hz", kind = .Int, default = {i = 90}, bounded = true, min = 10, max = 1000, unit = "Hz",
 		description = "The ceiling of browser.frame.cap = custom."},
-	{name = "browser.frame.present_mode", kind = .String, default = {s = "vsync"}, choices = {"vsync", "tearing"},
-		description = "vsync: each frame waits for a refresh of the monitor (no tearing). tearing: frames are shown as soon as they are ready, for variable refresh monitors (G-Sync, FreeSync), which then refresh when a frame comes; the browser paces them at browser.frame.target_hz. Without the system's support for it, vsync."},
 	{name = "browser.frame.wait_timeout_ms", kind = .Int, default = {i = 100}, bounded = true, min = 1, max = 2000, unit = "ms",
 		description = "Longest wait for the screen to take the next frame (a monitor that stopped refreshing, a locked session)."},
 	{name = "browser.frame.swap_buffers", kind = .Int, default = {i = 3}, bounded = true, min = 2, max = 4, restart = true,
@@ -101,11 +99,12 @@ pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
 	s := Pacer_Settings{
 		max_hz = config.float_of(p, "browser.frame.max_hz"),
 
-		mode = config.string_of(p, "browser.frame.present_mode") == "tearing" ? .Tearing : .Vsync,
 		timeout_ms = int(config.int_of(p, "browser.frame.wait_timeout_ms")),
 		drag_probe = config.bool_of(p, "browser.frame.drag_probe"),
 		latency_probe = config.bool_of(p, "browser.frame.latency_probe") || os.get_env("WREN_LATENCY", context.temp_allocator) == "1",
 	}
+	// (the standard rendering.present; a registry of the frame's preferences alone, a test's, has it not)
+	if config.ref_of(p, "rendering.present") != config.NO_REF && config.string_of(p, "rendering.present") == "tearing" { s.mode = .Tearing }
 	s.target_hz = parse_target_hz(config.string_of(p, "browser.frame.target_hz"))
 	cap := config.string_of(p, "browser.frame.cap")
 	s.cap = cap
@@ -167,6 +166,7 @@ Pacer :: struct {
 Pacing :: struct {
 	cfg:   Pacer_Settings,
 	watch: int,
+	watch_present: int,   // the standard rendering.present
 	timer: rawptr,   // the timing of timed frames (a high-resolution waitable timer on Windows; none elsewhere)
 	waiting: bool,   // atomic: a frame waits for its slot on the timer and runs the loop's tasks as they come (pacer_slot_wait)
 }
@@ -193,19 +193,22 @@ pacer_init :: proc(app: ^App) {
 	app.pacing.cfg = pacer_settings_from_prefs(&app.prefs)
 	render.set_latency_probe(&app.r, app.pacing.cfg.latency_probe)
 	app.pacing.timer = pacer_timer_create()   // pacing_timer_<os>.odin: a high-resolution waitable timer on Windows, else none
-	app.pacing.watch = config.watch(&app.prefs, "browser.frame.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
 		app.pacing.cfg = pacer_settings_from_prefs(p)
 		render.set_latency_probe(&app.r, app.pacing.cfg.latency_probe)
 		for w in app.windows { w.pacer.display.serial = 0 }   // plan again, every window
 		active_window(app).pacer.display.serial = 0
 		request_frames(app, 2)
-	}, app)
+	}
+	app.pacing.watch = config.watch(&app.prefs, "browser.frame.", changed, app)
+	app.pacing.watch_present = config.watch(&app.prefs, "rendering.present", changed, app)
 	pacer_update(app)
 }
 
 pacer_destroy :: proc(app: ^App) {
 	config.unwatch(&app.prefs, app.pacing.watch)
+	config.unwatch(&app.prefs, app.pacing.watch_present)
 	pacer_timer_destroy(app.pacing.timer)
 	app.pacing = {}
 }

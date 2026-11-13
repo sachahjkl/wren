@@ -66,11 +66,11 @@ PREFS := [?]config.Def{
 		description = "Most entries of one list of the options (allowCredentials, excludeCredentials, pubKeyCredParams, hints)."},
 	{name = "security.webauthn.cancel_grace_ms", kind = .Int, default = {i = 3000}, bounded = true, min = 0, max = 600_000, unit = "ms",
 		description = "After a request is cancelled (the page's abort, its timeout, the page closing, the address bar's cancel), how long the system may take to give it back. Past it the page is answered anyway and the browser does not wait for it to exit."},
-	{name = "security.webauthn.testing.virtual_authenticator", kind = .Bool, default = {b = false}, category = "testing",
+	{name = "security.webauthn.testing.virtual_authenticator", kind = .Bool, default = {b = false},
 		description = "Automated tests only: replace the system's authenticators by a software one that keeps its keys in memory until the browser exits. Taken into account only when given on the command line (--pref), never from the profile, so that real passkeys cannot silently go to it."},
-	{name = "security.webauthn.testing.virtual_mode", kind = .String, default = {s = "accept"}, choices = {"accept", "decline", "no_credentials", "stuck"}, category = "testing",
+	{name = "security.webauthn.testing.virtual_mode", kind = .String, default = {s = "accept"}, choices = {"accept", "decline", "no_credentials", "stuck"},
 		description = "What the virtual authenticator's user does: accept, decline (NotAllowedError), have no credential for the site, or stuck: a dialog that ignores cancellation until virtual_delay_ms is over (tests security.webauthn.cancel_grace_ms)."},
-	{name = "security.webauthn.testing.virtual_delay_ms", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 600_000, unit = "ms", category = "testing",
+	{name = "security.webauthn.testing.virtual_delay_ms", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 600_000, unit = "ms",
 		description = "How long the virtual authenticator's user takes to answer (to test aborts and the lifetime timer)."},
 }
 

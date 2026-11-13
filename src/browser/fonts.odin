@@ -2,7 +2,6 @@ package browser
 
 import "core:strings"
 import "toolkit:font"
-import "toolkit:ui"
 import lucide "toolkit:lucide"
 import "wb:base"
 import "wb:host"
@@ -407,7 +406,7 @@ Font_Preload :: struct {
 load_ui_fonts :: proc(fp: ^Font_Preload) {
 	fp.ui_font, fp.ui_ok = font.load_system(fp.fonts, "Segoe UI")
 	if !fp.ui_ok { fp.ui_font, fp.ui_ok = font.load_embedded(fp.fonts, font.FALLBACK_UI_DATA) }
-	fp.icons, fp.icons_ok = font.load_embedded(fp.fonts, ui.ICON_FONT_DATA)
+	fp.icons, fp.icons_ok = font.load_embedded(fp.fonts, lucide.DATA)   // (Wren's one icon set: the chrome's, the menus', the pages')
 }
 
 fonts_preload_start :: proc(app: ^App) -> ^Font_Preload {
@@ -436,8 +435,7 @@ fonts_preload_start :: proc(app: ^App) -> ^Font_Preload {
 // Joins the thread (or does its work here if it could not start). The interface fonts go to `app`.
 fonts_preload_finish :: proc(app: ^App, fp: ^Font_Preload) -> (ok: bool) {
 	if fp.th != nil { host.thread_join(fp.th) } else { load_ui_fonts(fp) }
-	app.ui_font, app.icons = fp.ui_font, fp.icons
-	app.lucide, _ = font.load_embedded(fp.fonts, lucide.DATA)   // (about:settings's pages; nothing else needs it to start)
+	app.ui_font, app.lucide = fp.ui_font, fp.icons
 	return fp.ui_ok && fp.icons_ok
 }
 

@@ -20,73 +20,39 @@ import "wb:config"
 import "wb:forms"
 import "wb:page"
 
-// The top speed, reached far from the anchor: the two go together, so that the curve near the anchor is the same whatever the top.
+// Wren's top speed, reached far from the anchor: the two go together, so that the curve near the anchor is the same whatever
+// the top (the defaults Wren gives the standard scrolling.autoscroll.max_speed and full_dist: settings.odin).
 AUTOSCROLL_TOP_SPEED :: 23250
 AUTOSCROLL_FULL_DISTANCE :: 335
 
-AUTOSCROLL_PREFS := [?]config.Def{
-	{name = "browser.scroll.autoscroll.enabled", kind = .Bool, default = {b = true},
-		description = "A press of the middle mouse button (the wheel) on the page starts autoscroll: moving the pointer away from where it was pressed scrolls, the farther the faster. Press again, Escape or a wheel notch ends it."},
-	{name = "browser.scroll.autoscroll.max_speed", kind = .Float, default = {f = AUTOSCROLL_TOP_SPEED}, bounded = true, min = 100, max = 200000, unit = "px/s",
-		description = "The fastest autoscroll goes, in CSS pixels per second, reached when the pointer is 'full distance' past the dead zone."},
-	{name = "browser.scroll.autoscroll.dead_zone", kind = .Float, default = {f = 12}, bounded = true, min = 0, max = 200, unit = "px",
-		description = "No scrolling while the pointer is within this many pixels of the anchor (a still disc around it)."},
-	{name = "browser.scroll.autoscroll.full_distance", kind = .Float, default = {f = AUTOSCROLL_FULL_DISTANCE}, bounded = true, min = 20, max = 4000, unit = "px",
-		description = "How far past the dead zone the pointer must be for autoscroll to reach its top speed."},
-	{name = "browser.scroll.autoscroll.doubling_distance", kind = .Float, default = {f = 60}, bounded = true, min = 10, max = 4000, unit = "px",
-		description = "The speed grows geometrically with the distance from the anchor: it doubles for every this many pixels past the dead zone (speed = max * (2^(x/D) - 1) / (2^(F/D) - 1), x the distance past the dead zone, D this, F the full distance). Smaller: gentler near the anchor and steeper far out; much larger than the full distance: nearly linear."},
-	{name = "browser.scroll.autoscroll.mode", kind = .String, default = {s = "both"}, choices = {"both", "hold", "toggle"},
-		description = "both: a quick tap latches the mode on until the next click, and holding the button scrolls while it is down. hold: only while the button is held. toggle: a press latches it on until the next click."},
-}
-
-register_autoscroll_prefs :: proc(p: ^config.Prefs) { config.register(p, AUTOSCROLL_PREFS[:]) }
-
+// The page's autoscroll is the interface's: the standard scrolling.autoscroll.* (gui_toolkit docs/settings.md), which
+// standard_watch gives every window's toolkit state, so that about: pages, the chrome's lists and the developer tools
+// scroll with the middle button as the page does.
 Autoscroll_Settings_B :: struct {
 	enabled: bool,
 	cfg:     ui.Autoscroll_Settings,
 }
 
 autoscroll_settings_from_prefs :: proc(p: ^config.Prefs) -> Autoscroll_Settings_B {
-	mode := config.string_of(p, "browser.scroll.autoscroll.mode")
-	cfg := ui.DEFAULT_AUTOSCROLL
-	cfg.max_speed = f32(config.float_of(p, "browser.scroll.autoscroll.max_speed"))
-	cfg.dead_zone = f32(config.float_of(p, "browser.scroll.autoscroll.dead_zone"))
-	cfg.full_dist = f32(config.float_of(p, "browser.scroll.autoscroll.full_distance"))
-	cfg.doubling  = f32(config.float_of(p, "browser.scroll.autoscroll.doubling_distance"))
-	// "hold": no latching tap; "toggle": a press always latches (tap time unbounded); "both": the default tap test
-	switch mode {
-	case "hold":   cfg.toggle = false
-	case "toggle": cfg.toggle = true; cfg.tap_ms = 1e9; cfg.tap_slop = 1e9
-	case:          cfg.toggle = true
+	return {
+		enabled = config.bool_of(p, "scrolling.autoscroll.enabled"),
+		cfg = {
+			toggle = config.bool_of(p, "scrolling.autoscroll.toggle"),
+			dead_zone = f32(config.float_of(p, "scrolling.autoscroll.dead_zone")),
+			max_speed = f32(config.float_of(p, "scrolling.autoscroll.max_speed")),
+			full_dist = f32(config.float_of(p, "scrolling.autoscroll.full_dist")),
+			doubling = f32(config.float_of(p, "scrolling.autoscroll.doubling")),
+			tap_ms = f32(config.int_of(p, "scrolling.autoscroll.tap")),
+			tap_slop = f32(config.float_of(p, "scrolling.autoscroll.tap_slop")),
+		},
 	}
-	return {enabled = config.bool_of(p, "browser.scroll.autoscroll.enabled"), cfg = cfg}
 }
 
 autoscroll_init :: proc(app: ^App) {
 	app.autoscroll_cfg = autoscroll_settings_from_prefs(&app.prefs)
-	app.watches[.Autoscroll] = config.watch(&app.prefs, "browser.scroll.autoscroll.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		app := (^App)(user)
-		app.autoscroll_cfg = autoscroll_settings_from_prefs(p)
-		autoscroll_toolkit_sync_all((^App)(user))
+	app.watches[.Autoscroll] = config.watch(&app.prefs, "scrolling.autoscroll.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		(^App)(user).autoscroll_cfg = autoscroll_settings_from_prefs(p)
 	}, app)
-	autoscroll_toolkit_sync_all(app)
-}
-
-// Applies the enabled flag and the curve to one toolkit state, so its scroll regions (about: pages, the chrome's own
-// lists, the developer tools) autoscroll with the same settings as the page (ui/autoscroll_region.odin).
-autoscroll_toolkit_setup :: proc(app: ^App, st: ^ui.State) {
-	if st == nil { return }
-	ui.set_autoscroll_enabled(st, app.autoscroll_cfg.enabled)
-	ui.set_autoscroll_settings(st, app.autoscroll_cfg.cfg)
-}
-
-// Re-applies the settings to every window's toolkit state and its detached developer tools (a pref changed, or startup).
-autoscroll_toolkit_sync_all :: proc(app: ^App) {
-	for w in app.windows {
-		autoscroll_toolkit_setup(app, w.ui)
-		if dw := w.own.devtools.win; dw != nil { autoscroll_toolkit_setup(app, &dw.ui) }
-	}
-	autoscroll_toolkit_setup(app, app.bare.ui)
 }
 
 autoscroll_shutdown :: proc(app: ^App) { config.unwatch(&app.prefs, app.watches[.Autoscroll]) }

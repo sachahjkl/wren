@@ -4,7 +4,7 @@ import "base:intrinsics"
 import "core:sync"
 import "core:sys/windows"
 import "core:thread"
-import "wb:crashtrace"
+import crash "../../../ext/gui_toolkit/src/crash"
 
 foreign import kernel32 "system:Kernel32.lib"
 @(default_calling_convention = "system")
@@ -38,7 +38,7 @@ die_system :: proc(mode: string) {
 	case "clean":
 		// the next start finds (or not) the previous session: give its report thread the time to write
 		windows.Sleep(3000)
-		crashtrace.end_session()
+		crash.end_session()
 	case "exit":
 		windows.ExitProcess(9)
 	case "terminate":

@@ -2,36 +2,18 @@ package browser
 
 import "core:testing"
 import "toolkit:platform"
+import "toolkit:ui"
 
-// The smooth scrolling curve (smooth_scroll.odin): ends exactly on the target, never goes past it nor past the ends
-// of the scroller, notches add up without a stop, the speed carries over.
+// Smooth scrolling on the toolkit's curve (smooth_scroll.odin): never goes past the target nor past the ends of the
+// scroller, notches add up without a stop, the speed carries over.
 
 @(private = "file")
-CURVES := [?]Scroll_Curve{.Impulse, .Ease_Out}
-
-@(test)
-smooth_curve_shape :: proc(t: ^testing.T) {
-	test_app(t)
-	for c in CURVES {
-		for k in ([?]f64{0.5, 2, 5, 12, 30}) {
-			p0, _ := curve_eval(c, k, 0)
-			p1, d1 := curve_eval(c, k, 1)
-			testing.expectf(t, abs(p0) < 1e-12 && abs(p1 - 1) < 1e-12, "%v k=%v: ends %v %v", c, k, p0, p1)
-			testing.expectf(t, d1 >= 0 && d1 < 0.25 * curve_start_slope(c, k) + 1e-9, "%v k=%v: slows down to the end (%v)", c, k, d1)
-			prev := 0.0
-			for i in 1 ..= 1000 {
-				p, d := curve_eval(c, k, f64(i) / 1000)
-				testing.expectf(t, p >= prev - 1e-12 && p <= 1 + 1e-12 && d >= -1e-12, "%v k=%v: monotone, within 0..1", c, k)
-				prev = p
-			}
-		}
-	}
-}
+CURVES := [?]ui.Scroll_Curve{.Impulse, .Ease_Out}
 
 // One scroller at 180 Hz: `notches` wheel notches of `step` px, `gap_ms` apart, within 0..limit, as smooth_scroll_to
 // does it. Returns the positions of every frame and the end.
 @(private = "file")
-simulate :: proc(c: Scroll_Curve, start, step, limit: f64, notches: int, gap_ms, dur: f64, frames: int) -> (positions: [dynamic]f64, to: f64) {
+simulate :: proc(c: ui.Scroll_Curve, start, step, limit: f64, notches: int, gap_ms, dur: f64, frames: int) -> (positions: [dynamic]f64, to: f64) {
 	period := 1000.0 / 180
 	a: Axis_Anim
 	pos := start

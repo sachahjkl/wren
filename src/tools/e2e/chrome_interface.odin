@@ -16,8 +16,7 @@ import "wb:config"
 import "wb:page"
 
 @(private = "file") ZOOM_SIZE :: [2]int{1000, 600}
-@(private = "file") ZOOM_PREF :: "browser.ui.zoom"
-@(private = "file") KEY_STEP :: 0.1                                  // what Ctrl+Plus adds (chrome_zoom.odin)
+@(private = "file") ZOOM_PREF :: "appearance.zoom"
 @(private = "file") ZOOM_WITHIN :: 0.001
 @(private = "file") ON_THE_TOOLBAR :: [2]f32{300, 10}                // window pixels, near the top of the window
 @(private = "file") ON_THE_PAGE :: [2]f32{500, 400}
@@ -42,7 +41,8 @@ chrome_zoom_follows_the_keyboard_and_the_pointer :: proc(t: ^testing.T) {
 	session.click(w.s, "address")
 	session.key(w.s, .Equal, {.Ctrl}, repeat = 3)
 	chrome_still(w)
-	testing.expectf(t, abs(zoom_of(w) - (1 + 3 * KEY_STEP)) < ZOOM_WITHIN, "the keys zoom the interface while it has the keyboard: %v", zoom_of(w))
+	step := f64(ui.feel(w.wnd.ui).zoom_step)   // (what Ctrl+Plus multiplies the zoom by: chrome_zoom.odin)
+	testing.expectf(t, abs(zoom_of(w) - step * step * step) < ZOOM_WITHIN, "the keys zoom the interface while it has the keyboard: %v", zoom_of(w))
 	testing.expectf(t, page_height(w) < h0, "and it leaves the page less height: %v, was %v", page_height(w), h0)
 	session.key(w.s, .N0, {.Ctrl})
 	chrome_still(w)
@@ -119,7 +119,7 @@ chrome_open_menu_over_the_resize_band :: proc(t: ^testing.T) {
 }
 
 // The main menu in a window lower than it: as tall as the window, whole inside it, and scrolled; its rows are the toolkit's dense
-// ones (MENU_ITEM_EM of the interface's em); End brings its last item into view, out of it at first.
+// ones (the Feel's menu_item_em of the interface's em); End brings its last item into view, out of it at first.
 @(test)
 chrome_main_menu_scrolls_in_a_short_window :: proc(t: ^testing.T) {
 	SIZE :: [2]int{1280, 500}
@@ -131,7 +131,7 @@ chrome_main_menu_scrolls_in_a_short_window :: proc(t: ^testing.T) {
 	testing.expect(t, ok, "the menu is open")
 	testing.expectf(t, menu.min.y == 0 && menu.max.y == f32(SIZE.y), "as tall as the window: %v", menu)
 	row, _ := ui.menu_item_rect(0, sel)
-	testing.expect_value(t, row.max.y - row.min.y, math.round(w.app.cfg.ui_font_size * ui.MENU_ITEM_EM))
+	testing.expect_value(t, row.max.y - row.min.y, math.round(w.app.cfg.look.font_size * ui.feel(w.wnd.ui).menu_item_em))
 	shown :: proc(menu: ui.Rect, idx: int) -> bool {
 		r, ok := ui.menu_item_rect(0, idx)
 		return ok && r.min.y >= menu.min.y && r.max.y <= menu.max.y
@@ -156,9 +156,9 @@ chrome_themes_paint_from_their_palettes :: proc(t: ^testing.T) {
 		testing.expectf(t, known, "a theme of the interface: %s", th.name)
 		pal := ui.palette_of(th.name, th.mode == .Light)
 		name := fmt.tprintf("%s %v", th.name, th.mode)
-		delete(w.app.cfg.ui_theme)
-		w.app.cfg.ui_theme = strings.clone(th.name)   // (what a change of browser.ui.theme and browser.ui.theme_mode does)
-		w.app.cfg.ui_theme_mode = th.mode
+		delete(w.app.cfg.look.theme)
+		w.app.cfg.look.theme = strings.clone(th.name)   // (what a change of appearance.theme and appearance.mode does)
+		w.app.cfg.look.mode = th.mode
 		session.frames(w.s, THEME_SETTLES)
 		img := session.capture(w.s)
 		c := session.pixel(img, img.width / 2, img.height - STATUS_BAR_INSIDE)
@@ -178,7 +178,7 @@ chrome_themes_paint_from_their_palettes :: proc(t: ^testing.T) {
 chrome_history_tree_text_follows_the_zoom :: proc(t: ^testing.T) {
 	ENTRIES :: 3
 	SIZE_WITHIN :: 0.01   // of the size the zoom gives
-	w := chrome_start(t, {pixels = true, prefs = {"browser.ui.animations=on"}, tabs = {"history"}})
+	w := chrome_start(t, {pixels = true, prefs = {"appearance.animations=on"}, tabs = {"history"}})
 	app := w.app
 	app.tcfg = browser.tree_settings_from_prefs(&app.prefs)
 	tab := w.wnd.tabs[0]

@@ -6,11 +6,13 @@ package browser
 // jumping.
 //   * Notches and key repeats add up: the end moves on by the new distance and the animation goes on from where it is,
 //     at the speed it has (no stop and restart), so a fast wheel spin glides.
-//   * The curve (browser.scroll.smooth.curve): impulse (a strong push, then a long deceleration) or ease-out (cubic).
+//   * The curve, its strength and a notch's duration are the interface's (the standard scrolling.curve, scrolling.impulse,
+//     scrolling.duration; ui.scroll_curve_eval): impulse (a strong push, then a long deceleration) or ease-out (cubic).
 //     Both end exactly on the target, with zero speed, and never go past it nor past the scroller's ends.
 //   * High-resolution wheels and touchpads (deltas that are not whole notches) already come as a smooth stream: they
 //     move at once (browser.scroll.smooth.precise_wheel animates them too).
-//   * No animation when smooth scrolling is off, or the system asks for less motion (browser.scroll.smooth.reduced_motion).
+//   * No animation when smooth scrolling is off (scrolling.smooth), or when it follows the system and the system or the
+//     page's style asks for less motion.
 //   * Anything else that moves a scroller (find in page, focus, a script) wins: the animation of that scroller stops.
 // Scroll bars: dragging a thumb moves the scroller with the pointer, at once; a press in the track pages towards it; a
 // press on an arrow of a classic bar scrolls a line (browser.scroll.key_line_px), held it repeats.
@@ -21,53 +23,46 @@ import "toolkit:draw"
 
 _ :: fmt   // PACING_DEBUG only
 import "toolkit:platform"
+import "toolkit:ui"
 import "wb:base"
 import "wb:config"
 import lay "wb:layout"
 
 SCROLL_PREFS := [?]config.Def{
-	{name = "browser.scroll.smooth.enabled", kind = .Bool, default = {b = true},
-		description = "The wheel, the keyboard and clicks in scroll bars scroll the page with an animation drawn at every frame, instead of jumping."},
-	{name = "browser.scroll.smooth.curve", kind = .String, default = {s = "impulse"}, choices = {"impulse", "ease-out"},
-		description = "Shape of smooth scrolling. impulse: a strong start that slows down gradually (like Edge). ease-out: a cubic deceleration (like Chromium's programmatic smooth scrolling)."},
-	{name = "browser.scroll.smooth.impulse", kind = .Float, default = {f = 5}, bounded = true, min = 0.5, max = 30,
-		description = "Strength of the impulse curve: higher starts faster and decelerates longer."},
-	{name = "browser.scroll.smooth.wheel_ms", kind = .Float, default = {f = 180}, bounded = true, min = 0, max = 2000, unit = "ms",
-		description = "Duration of the animation of a wheel notch. Notches coming during it add up. 0 = no animation."},
 	{name = "browser.scroll.smooth.key_ms", kind = .Float, default = {f = 140}, bounded = true, min = 0, max = 2000, unit = "ms",
-		description = "Duration of the animation of an arrow key (repeats add up). 0 = no animation."},
+		description = "Duration of the animation of an arrow key (repeats add up). 0 = no animation. A wheel notch takes scrolling.duration."},
 	{name = "browser.scroll.smooth.page_ms", kind = .Float, default = {f = 260}, bounded = true, min = 0, max = 4000, unit = "ms",
 		description = "Duration of the animation of Page Up / Page Down / Space / Home / End, of a click in a scroll bar's track and of scroll-behavior: smooth. 0 = no animation."},
 	{name = "browser.scroll.smooth.precise_wheel", kind = .Bool, default = {b = false},
 		description = "Animate high-resolution wheels and touchpads too (deltas that are not whole notches). Off: they move at once, as their own stream of small steps is already smooth."},
-	{name = "browser.scroll.smooth.reduced_motion", kind = .Bool, default = {b = true},
-		description = "No smooth scrolling when the system asks for less motion (Windows: Settings > Accessibility > Visual effects > Animation effects off) or style.prefers_reduced_motion is on."},
 }
 
 register_scroll_prefs :: proc(p: ^config.Prefs) { config.register(p, SCROLL_PREFS[:]) }
 
-Scroll_Curve :: enum u8 { Impulse, Ease_Out }
-
 Smooth_Settings :: struct {
-	enabled:        bool,
-	curve:          Scroll_Curve,
+	mode:           ui.Smooth_Scroll,   // scrolling.smooth: as the animations (Follow), always or never
+	curve:          ui.Scroll_Curve,
 	impulse:        f64,
 	wheel_ms, key_ms, page_ms: f64,
 	precise_wheel:  bool,
-	reduced_motion: bool,
 }
 
+@(private = "file") SMOOTH_MODES :: [ui.Smooth_Scroll]string{.Follow = "follow", .On = "on", .Off = "off"}
+@(private = "file") SCROLL_CURVES :: [ui.Scroll_Curve]string{.Impulse = "impulse", .Ease_Out = "ease_out", .Exponential = "exponential"}
+
 smooth_settings_from_prefs :: proc(p: ^config.Prefs) -> Smooth_Settings {
-	return Smooth_Settings{
-		enabled = config.bool_of(p, "browser.scroll.smooth.enabled"),
-		curve = config.string_of(p, "browser.scroll.smooth.curve") == "ease-out" ? .Ease_Out : .Impulse,
-		impulse = config.float_of(p, "browser.scroll.smooth.impulse"),
-		wheel_ms = config.float_of(p, "browser.scroll.smooth.wheel_ms"),
+	s := Smooth_Settings{
+		impulse = config.float_of(p, "scrolling.impulse"),
+		wheel_ms = f64(config.int_of(p, "scrolling.duration")),
 		key_ms = config.float_of(p, "browser.scroll.smooth.key_ms"),
 		page_ms = config.float_of(p, "browser.scroll.smooth.page_ms"),
 		precise_wheel = config.bool_of(p, "browser.scroll.smooth.precise_wheel"),
-		reduced_motion = config.bool_of(p, "browser.scroll.smooth.reduced_motion"),
 	}
+	mode, curve := config.string_of(p, "scrolling.smooth"), config.string_of(p, "scrolling.curve")
+	modes, curves := SMOOTH_MODES, SCROLL_CURVES   // (the standard settings' choices, in the toolkit's enums' order)
+	for name, m in modes { if name == mode { s.mode = m } }
+	for name, c in curves { if name == curve { s.curve = c } }
+	return s
 }
 
 ////////////////////////////////
@@ -77,33 +72,14 @@ smooth_settings_from_prefs :: proc(p: ^config.Prefs) -> Smooth_Settings {
 Axis_Anim :: struct {
 	from, to:   f64,
 	start, dur: f64,
-	curve:      Scroll_Curve,
+	curve:      ui.Scroll_Curve,
 	k:          f64,    // Impulse: strength
 	active:     bool,
 }
 
-// Position along the curve (0..1) at `s` (0..1), and its slope.
-curve_eval :: proc(curve: Scroll_Curve, k, at: f64) -> (p, dp: f64) {
-	s := clamp(at, 0, 1)
-	switch curve {
-	case .Impulse:
-		// an exponential decay of the speed, less its value at the end so that the speed reaches 0 exactly there:
-		// f' ~ e^-ks - e^-k (k -> 0: the quadratic ease-out)
-		kk := max(k, 1e-2)
-		ek := math.exp(-kk)
-		den := 1 - ek * (1 + kk)
-		e := math.exp(-kk * s)
-		return (1 - e - kk * ek * s) / den, kk * (e - ek) / den
-	case .Ease_Out:
-		u := 1 - s
-		return 1 - u * u * u, 3 * u * u
-	}
-	return s, 1
-}
-
 // The slope a curve starts with (its speed at the start, in distances per duration).
-curve_start_slope :: proc(curve: Scroll_Curve, k: f64) -> f64 {
-	_, d := curve_eval(curve, k, 0)
+curve_start_slope :: proc(curve: ui.Scroll_Curve, k: f64) -> f64 {
+	_, d := ui.scroll_curve_eval(curve, k, 0)
 	return d
 }
 
@@ -112,14 +88,14 @@ axis_sample :: proc(a: ^Axis_Anim, now: f64) -> (pos, vel: f64, done: bool) {
 	if !a.active { return a.to, 0, true }
 	if a.dur <= 0 || now >= a.start + a.dur { return a.to, 0, true }
 	s := max(now - a.start, 0) / a.dur
-	p, dp := curve_eval(a.curve, a.k, s)
+	p, dp := ui.scroll_curve_eval(a.curve, a.k, s)
 	return a.from + (a.to - a.from) * p, (a.to - a.from) * dp / a.dur, false
 }
 
 // Starts (or continues) toward `to` from `pos` at speed `vel` (units per ms) at `now`, for `dur` ms. The curve keeps
 // the speed it is given when that is faster than its own start: the duration shortens so that the start slope matches
 // (a notch arriving near the end of a fast glide does not brake it), never past `to`.
-axis_retarget :: proc(a: ^Axis_Anim, pos, vel, to, now, dur: f64, curve: Scroll_Curve, k: f64) {
+axis_retarget :: proc(a: ^Axis_Anim, pos, vel, to, now, dur: f64, curve: ui.Scroll_Curve, k: f64) {
 	a.from, a.to, a.start, a.dur, a.curve, a.k, a.active = pos, to, now, dur, curve, k, true
 	dist := to - pos
 	if abs(dist) < 1e-6 || dur <= 0 { a.from, a.dur = to, 0; return }
@@ -181,7 +157,8 @@ AUTOSCROLL_MIN_RANGE :: 0.5
 
 smooth_init :: proc(app: ^App) {
 	app.smooth_cfg = smooth_settings_from_prefs(&app.prefs)
-	app.watches[.Smooth_Scroll] = config.watch(&app.prefs, "browser.scroll.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	// (browser.scroll.smooth.* and the standard scrolling.*: two prefixes, one watch of every change)
+	app.watches[.Smooth_Scroll] = config.watch(&app.prefs, "", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
 		app.smooth_cfg = smooth_settings_from_prefs(p)
 	}, app)
@@ -197,8 +174,11 @@ smooth_destroy :: proc(s: ^Smooth_Scroll) {
 // Animations wanted now (preferences, reduced motion).
 @(private = "file")
 smooth_allowed :: proc(app: ^App) -> bool {
-	if !app.smooth_cfg.enabled { return false }
-	if app.smooth_cfg.reduced_motion && (app.page_settings.style.reduced_motion || !os_animations_enabled(app)) { return false }
+	switch app.smooth_cfg.mode {
+	case .Off:    return false
+	case .On:
+	case .Follow: if app.page_settings.style.reduced_motion || !os_animations_enabled(app) { return false }
+	}
 	return true
 }
 

@@ -49,7 +49,14 @@ Context_Menu_State :: struct {
 	req:     Context_Request,   // asked for, opened by the next build
 	pending: bool,
 	open:    Context_Request,   // what the open menu is about
+	// a page field's Paste waits for the clipboard (ui.paste_request): its field, in the page it was asked in
+	paste_page:  ^page.Page,
+	paste_field: base.Handle,
 }
+
+// The keys a menu's paste is asked under: the clipboard answers in a later build, when the menu may be closed.
+@(private = "file") PASTE_GO_ID :: "###ctx_paste_go"
+@(private = "file") PASTE_PAGE_ID :: "###ctx_paste_page"
 
 CTX_MENU_ID :: "###page_context_menu"
 
@@ -203,6 +210,7 @@ short :: proc(s: string, n: int) -> string {
 context_menus_build :: proc(app: ^App) {
 	key := ui.key_from_string(0, CTX_MENU_ID)
 	cm := &window_own(app).ctx_menu
+	context_menu_pastes(app, cm)
 	if cm.pending {
 		cm.pending = false
 		request_free(&cm.open)
@@ -246,10 +254,9 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		if ui.menu_item("Copy", "Ctrl+C", icon = lucide.COPY, enabled = has_sel && !pw).clicked {
 			if page.dispatch_event(p, h, dom.Event{type = "copy", bubbles = true, cancelable = true}) { if s := forms.copy_text(f, h); s != "" { clip_set(s) } }
 		}
-		clip := clip_get()
-		if ui.menu_item("Paste", "Ctrl+V", icon = lucide.CLIPBOARD_PASTE, enabled = mutable && clip != "").clicked {
-			text := strings.clone(clip, context.temp_allocator)
-			if page.dispatch_event(p, h, dom.Event{type = "paste", bubbles = true, cancelable = true, data = text}) { forms.paste(f, h, text) }
+		if ui.menu_item("Paste", "Ctrl+V", icon = lucide.CLIPBOARD_PASTE, enabled = mutable).clicked {
+			cm := &window_own(app).ctx_menu
+			if ui.paste_request(ui.key_from_string(0, PASTE_PAGE_ID)) { cm.paste_page, cm.paste_field = p, h }
 		}
 		if ui.menu_item("Delete", "Del", icon = lucide.TRASH_2, enabled = mutable && has_sel).clicked { forms.edit(f, h, .Delete_Backward) }
 		ui.menu_separator()
@@ -367,20 +374,35 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 address_menu_items :: proc(app: ^App) {
 	f := &active_window(app).address
 	sel := ui.field_has_selection(f)
-	clip := clip_get()
 	if ui.menu_item("Undo", "Ctrl+Z", icon = lucide.UNDO_2, enabled = ui.field_can_undo(f)).clicked { ui.field_undo(f) }
 	if ui.menu_item("Redo", "Ctrl+Y", icon = lucide.REDO_2, enabled = ui.field_can_redo(f)).clicked { ui.field_redo(f) }
 	ui.menu_separator()
 	if ui.menu_item("Cut", "Ctrl+X", icon = lucide.SCISSORS, enabled = sel).clicked { ui.field_cut(f) }
 	if ui.menu_item("Copy", "Ctrl+C", icon = lucide.COPY, enabled = sel).clicked { ui.field_copy(f) }
-	if ui.menu_item("Paste", "Ctrl+V", icon = lucide.CLIPBOARD_PASTE, enabled = clip != "").clicked { ui.field_paste(address_key(app)) }
-	if ui.menu_item("Paste and go", icon = lucide.ARROW_RIGHT, enabled = strings.trim_space(clip) != "").clicked {
-		target := strings.clone(strings.trim_space(clip), context.temp_allocator)
-		if t := current_tab(app); t != nil { navigate(app, t, address_or_search(app, target), origin = .User) }
-	}
+	// (the clipboard is not read to enable them: it belongs to another program, which can be slow; an empty one does nothing)
+	if ui.menu_item("Paste", "Ctrl+V", icon = lucide.CLIPBOARD_PASTE).clicked { ui.field_paste(address_key(app)) }
+	if ui.menu_item("Paste and go", icon = lucide.ARROW_RIGHT).clicked { ui.paste_request(ui.key_from_string(0, PASTE_GO_ID)) }
 	if ui.menu_item("Delete", "Del", icon = lucide.TRASH_2, enabled = sel).clicked { ui.field_delete(f) }
 	ui.menu_separator()
 	if ui.menu_item("Select all", "Ctrl+A", icon = lucide.LIST_CHECKS, enabled = len(f.buf) > 0).clicked { ui.field_select_all(f) }
+}
+
+// The clipboard's answers to the menus' pastes, in the build they come: the address bar's Paste and go opens the text, a
+// page field's Paste goes to the field it was asked for while its page is still the tab's.
+@(private = "file")
+context_menu_pastes :: proc(app: ^App, cm: ^Context_Menu_State) {
+	if text, ok := ui.paste_answer(ui.key_from_string(0, PASTE_GO_ID)); ok {
+		target := strings.clone(strings.trim_space(text), context.temp_allocator)
+		if t := current_tab(app); t != nil && target != "" { navigate(app, t, address_or_search(app, target), origin = .User) }
+	}
+	if text, ok := ui.paste_answer(ui.key_from_string(0, PASTE_PAGE_ID)); ok {
+		p, h := cm.paste_page, cm.paste_field
+		cm.paste_page, cm.paste_field = nil, base.NIL_HANDLE
+		t := current_tab(app)
+		if t == nil || p == nil || t.page != p || p.formctl == nil || dom.get(p.doc, h) == nil || !forms.is_mutable(page.page_forms(p), h) { return }
+		data := strings.clone(text, context.temp_allocator)
+		if page.dispatch_event(p, h, dom.Event{type = "paste", bubbles = true, cancelable = true, data = data}) { forms.paste(page.page_forms(p), h, data) }
+	}
 }
 
 // What the address bar does with words that are not an address: a search.
@@ -575,7 +597,7 @@ save_dialog_done :: proc(data: rawptr) {
 			j.ok = os.write_entire_file(j.path, j.bytes) == nil
 		}, proc(data: rawptr) {
 			j := (^Save_Job)(data)
-			if j.ok { ui.toast(.Good, "Saved %s", filepath.base(j.path)) } else { ui.toast(.Bad, "Could not write %s", j.path) }
+			if j.ok { announce(j.app, .Good, fmt.tprintf("Saved %s", filepath.base(j.path))) } else { ui.toast(.Bad, "Could not write %s", j.path) }
 			request_frames(j.app, 3)
 			save_job_free(j)
 		}, job)
@@ -602,7 +624,7 @@ save_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			j.ok = os.write_entire_file(j.path, j.bytes) == nil
 		}, proc(data: rawptr) {
 			j := (^Save_Job)(data)
-			if j.ok { ui.toast(.Good, "Saved %s", filepath.base(j.path)) } else { ui.toast(.Bad, "Could not write %s", j.path) }
+			if j.ok { announce(j.app, .Good, fmt.tprintf("Saved %s", filepath.base(j.path))) } else { ui.toast(.Bad, "Could not write %s", j.path) }
 			request_frames(j.app, 3)
 			save_job_free(j)
 		}, job)

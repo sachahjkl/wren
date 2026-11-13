@@ -625,14 +625,14 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.6))
 		if ui.disabled(!has_host || !enabled_site) {
-			if icon_action_button(app, lucide.SHIELD, i18n.tr("Pick element"), "tl_pick", ui.fill(), intent = .Danger, tip_text = i18n.tr("Aim at an element of the page and block it")) { blocker_picker_begin(app, t); ui.ctx_menu_close() }
+			if ui.button_icon("###tl_pick", lucide.SHIELD, i18n.tr("Pick element"), intent = .Danger, tip = i18n.tr("Aim at an element of the page and block it"), width = ui.fill()).clicked { blocker_picker_begin(app, t); ui.ctx_menu_close() }
 		}
 		ui.spacer(ui.px(em * 0.4))
-		if icon_action_button(app, lucide.SCROLL_TEXT, i18n.tr("Log"), "tl_log", ui.fill(), intent = .Info, tip_text = i18n.tr("The request log")) { blocker_open_dashboard(app, "journal"); ui.ctx_menu_close() }
+		if ui.button_icon("###tl_log", lucide.SCROLL_TEXT, i18n.tr("Log"), intent = .Info, tip = i18n.tr("The request log"), width = ui.fill()).clicked { blocker_open_dashboard(app, "journal"); ui.ctx_menu_close() }
 		ui.spacer(ui.px(em * 0.4))
-		if icon_action_button(app, lucide.LAYOUT_GRID, i18n.tr("Dashboard"), "tl_dash", ui.fill(), intent = .Info, tip_text = i18n.tr("Lists, rules, filters, statistics")) { blocker_open_dashboard(app); ui.ctx_menu_close() }
+		if ui.button_icon("###tl_dash", lucide.LAYOUT_GRID, i18n.tr("Dashboard"), intent = .Info, tip = i18n.tr("Lists, rules, filters, statistics"), width = ui.fill()).clicked { blocker_open_dashboard(app); ui.ctx_menu_close() }
 		ui.spacer(ui.px(em * 0.4))
-		if icon_action_button(app, lucide.REFRESH_CW, i18n.tr("Reload"), "tl_reload", ui.fill(), tip_text = i18n.tr("Load the page again")) { if t != nil { reload(app, t) }; ui.ctx_menu_close() }
+		if ui.button_icon("###tl_reload", lucide.REFRESH_CW, i18n.tr("Reload"), tip = i18n.tr("Load the page again"), width = ui.fill()).clicked { if t != nil { reload(app, t) }; ui.ctx_menu_close() }
 		ui.spacer(ui.px(em * 0.6))
 	}
 	ui.spacer(ui.px(em * 0.5))

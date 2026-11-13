@@ -44,8 +44,6 @@ EFFECTS_PREFS := [?]config.Def{
 		description = "Draw CSS masks (mask-image and the other mask-* properties, -webkit-mask-*): an element is shown through the alpha or the luminance of its mask images and gradients (one offscreen layer per masked element). Off: masked elements are drawn unmasked (an icon drawn as a mask over a colored box shows as the box)."},
 	{name = "paint.effects.exact_shadows", kind = .Bool, default = {b = true},
 		description = "Blur text shadows with a true gaussian (one offscreen layer each). Off: a faded copy of the text (cheaper). Box shadows, outer and inset, are always exact (computed analytically by the shader)."},
-	{name = "paint.effects.blur_full_resolution_px", kind = .Float, default = {f = 8}, bounded = true, min = 2, max = 40, unit = "px",
-		description = "Standard deviation of a blur (filter, backdrop-filter, drop-shadow) above which it is computed on an image reduced by 2, 4, 8...: the cost per pixel stays bounded whatever the radius. Lower is faster and slightly softer."},
 }
 
 
@@ -64,7 +62,7 @@ effects_settings_from_prefs :: proc(p: ^config.Prefs) -> Effects_Settings {
 		clip_paths = config.bool_of(p, "paint.effects.clip_paths"),
 		masks = config.bool_of(p, "paint.effects.masks"),
 		exact_shadows = config.bool_of(p, "paint.effects.exact_shadows"),
-		blur_sigma_limit = f32(config.float_of(p, "paint.effects.blur_full_resolution_px")),
+		blur_sigma_limit = f32(config.float_of(p, "rendering.blur_sigma_limit")),   // (the standard setting: the interface's blurs are the same)
 	}
 }
 
@@ -75,15 +73,20 @@ effects_init :: proc(app: ^App) {
 	app.fx_settings = fx_settings_from_prefs(&app.prefs)
 	fx_settings_apply(app)
 	planes_init(app)
-	app.watches[.Effects] = config.watch(&app.prefs, "paint.effects.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 		a := (^App)(user)
 		a.effects_settings = effects_settings_from_prefs(p)
 		render.set_blur_sigma_limit(&a.r, a.effects_settings.blur_sigma_limit)
 		a.fx_settings = fx_settings_from_prefs(p)
 		fx_settings_apply(a)
-	}, app)
+	}
+	app.watches[.Effects] = config.watch(&app.prefs, "paint.effects.", changed, app)
+	app.watches[.Effects_Rendering] = config.watch(&app.prefs, "rendering.", changed, app)   // (the standard blur limit and filter precision)
 	// kept text shadows were rasterized with the text settings of their time
 	app.watches[.Effects_Font] = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		draw.layer_cache_clear(&(^App)(user).dc)
+	}, app)
+	app.watches[.Effects_Text] = config.watch(&app.prefs, "appearance.text.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		draw.layer_cache_clear(&(^App)(user).dc)
 	}, app)
 }

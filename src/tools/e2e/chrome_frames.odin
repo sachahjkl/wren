@@ -40,7 +40,8 @@ import "wb:e2e"
 @(private = "file") BOX_NOTCHES :: 10
 @(private = "file") SCROLL_FRAMES :: 40                  // what a wheel's smooth scroll takes, at most
 @(private = "file") IDLE_FRAMES :: 8
-@(private = "file") AUTOSCROLL_TAPS :: "browser.scroll.autoscroll.mode=toggle"   // (a tap latches, however long it takes: no time in the test)
+@(private = "file") AUTOSCROLL_TAP_MS :: "scrolling.autoscroll.tap=2000"       // (the longest a tap may be: a tap latches, whatever the test's pace)
+@(private = "file") AUTOSCROLL_TAP_SLOP :: "scrolling.autoscroll.tap_slop=50"
 @(private = "file") FAR_BELOW :: e2e.Point{100, 550}     // from AT: a session on scrolls fast
 @(private = "file") AUTOSCROLL_HELD_MS :: 100            // how long a session scrolls under a script
 @(private = "file") MARKER_REACH :: 12                   // around the anchor: the marker is drawn there
@@ -268,7 +269,7 @@ a_release_the_system_made_is_no_click :: proc(t: ^testing.T) {
 // Autoscroll by a tap of the middle button, the page tall and at its top: nothing moves it but a session still on.
 @(private = "file")
 autoscroll_page :: proc(t: ^testing.T, loc := #caller_location) -> ^e2e.Session {
-	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, url = "about:blank", software = true, prefs = {AUTOSCROLL_TAPS}}, loc)
+	s := e2e.start(t, {size = SIZE, dpi = e2e.DPI_ONE, url = "about:blank", software = true, prefs = {AUTOSCROLL_TAP_MS, AUTOSCROLL_TAP_SLOP}}, loc)
 	write_page(s, TALL_PAGE)
 	return s
 }

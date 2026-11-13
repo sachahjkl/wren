@@ -3,7 +3,7 @@ package browser
 
 // The process queries the crash-recovery markers use, off Windows (crash_recovery_windows.odin has the Windows ones).
 // Linux reads /proc: whether a pid runs (its directory exists) and when it began, converted to the same FILETIME scale
-// (100 ns since 1601) the shared crash_report_find compares against a report's write time, so the marker format and the
+// (100 ns since 1601) the markers compare, so the marker format and the
 // comparison stay identical to Windows. On a non-Linux POSIX system without /proc the start time is unknown (0), which
 // marker_process_alive treats as "do not use the creation time to tell a reused pid apart" — it still reports liveness.
 

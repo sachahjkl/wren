@@ -1,8 +1,9 @@
 package browser
 
+import "core:fmt"
 import "core:strings"
-import "core:sync"
 import "toolkit:platform"
+import prefs_page "toolkit:prefs_page"
 import "toolkit:ui"
 import "wb:base"
 import "wb:a11y"
@@ -31,16 +32,14 @@ Settings :: struct {
 	key_line_px:       f32,
 	key_page_fraction: f32,
 	homepage:          string,   // owned
-	ui_font_size:      f32,
 	ui_scale:          f32,      // 0 = the display's
-	ui_theme:         string,   // owned: the name of a theme of ui.THEMES (ASCII case ignored)
-	ui_theme_mode:    ui.Theme_Mode,   // its version shown: the system's, dark or light
+	look:              prefs_page.Appearance,   // the standard appearance.*: theme, mode, finish, glow, text size (owned: settings_destroy)
 	persist_profile:   bool,
 	layout_band_px:    f32,
 	blocking_threads:  int,
 	// read at every frame: kept here, read again on each change (apply_prefs), never looked up by name per frame
 	loaded:              bool,   // made from the preferences (an App of a test has none: its zero value)
-	partial_redraw:      bool,   // browser.ui.partial_redraw
+	partial_redraw:      bool,   // rendering.partial_redraw (a standard setting)
 	bookmarks_bar:       bool,   // browser.bookmarks.bar (bookmarks_bar.odin)
 	tabs_tree:           bool,   // browser.tabs.tree (tab_tree.odin, tab_sidebar_list.odin)
 	audio_indicator:     bool,   // browser.tabs.audio_indicator (tab_sound.odin)
@@ -71,18 +70,6 @@ PREFS := [?]config.Def{
 		description = "Distance of one arrow-key press when the page scrolls with the keyboard, in CSS pixels."},
 	{name = "browser.scroll.key_page_fraction", kind = .Float, default = {f = 0.875}, bounded = true, min = 0.1, max = 1,
 		description = "Page Up / Page Down / Space move by this share of the visible height (the rest stays visible for context)."},
-	{name = "browser.ui.theme", kind = .String, default = {s = "silver"},   // (choices: the toolkit's themes, theme_choices)
-		description = "Theme of the browser's own interface (tabs, address bar, menus, status bar): one of the toolkit's themes. Pages keep their own colors."},
-	{name = "browser.ui.theme_mode", kind = .String, default = {s = "system"}, choices = {"system", "dark", "light"},
-		description = "Which version of the theme the interface shows: the system's light or dark setting (and its changes), or always the dark or the light one. A theme with one version shows it whatever this says."},
-	{name = "browser.ui.partial_redraw", kind = .Bool, default = {b = true},
-		description = "Each frame of the interface draws again only where something changed (the toolkit compares what every box draws with the last frame); the page is drawn whole. Off: every frame is drawn whole. For comparisons and for a driver that shows stale pixels."},
-	{name = "browser.ui.font_size", kind = .Float, default = {f = 15}, bounded = true, min = 8, max = 48, unit = "px", restart = false,
-		description = "Font size of the browser's own interface (tabs, address bar, console)."},
-	{name = "browser.ui.scrollbar_autohide", kind = .Bool, default = {b = true},
-		description = "The scroll bars of the browser's own interface (the tab sidebar, the developer tools, the settings) show only while the pointer is over their box or one is held. Off: they always show. The scroll bars of pages don't change."},
-	{name = "browser.ui.zoom", kind = .Float, default = {f = CHROME_ZOOM_DEFAULT}, bounded = true, min = CHROME_ZOOM_MIN, max = CHROME_ZOOM_MAX,
-		description = "Zoom of the browser's own interface, independent of the zoom of pages. Ctrl+wheel with the pointer over the interface, Ctrl+Plus, Minus and 0 while it has the keyboard."},
 	{name = "browser.ui.scale", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 4,
 		description = "Scale of the browser's interface and of pages (1 = 96 dpi, 1.5 = 150 %, 2 = 200 %). 0 follows the display's scale setting of Windows (and its changes when the window moves to another display)."},
 	{name = "browser.threads.blocking", kind = .Int, default = {i = 4}, bounded = true, min = 1, max = 256, restart = true,
@@ -90,7 +77,6 @@ PREFS := [?]config.Def{
 }
 
 register_all_prefs :: proc(p: ^config.Prefs) {
-	for &d in PREFS { if d.name == "browser.ui.theme" { d.choices = theme_choices() } }
 	config.register(p, PREFS[:])
 	net.register_prefs(p)
 	fetch.register_prefs(p)
@@ -109,7 +95,6 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_web_face_prefs(p)   // web_font_faces.odin
 	register_frame_prefs(p)    // pacing.odin
 	register_scroll_prefs(p)   // smooth_scroll.odin
-	register_autoscroll_prefs(p)   // page_autoscroll.odin
 	register_cursor_prefs(p)   // page_cursor.odin
 	register_window_prefs(p)   // window_chrome.odin
 	register_chrome_prefs(p)   // chrome_style.odin
@@ -144,6 +129,42 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	remote.register_prefs(p)   // src/remote
 	_ = wasm.PREFS
 	_ = html.PREFS
+	// the toolkit's standard settings, every set, after Wren's own (appearance.text.renderer keeps Wren's default:
+	// font_settings.odin): the look, the text, scrolling, the input, the delays, the rendering, the updates and the session
+	// (gui_toolkit docs/settings.md). general.menu and general.autostart are not on about:settings: Wren's place on the desktop
+	// is its desktop integration (desktop_shell.odin, Setup), which installs and removes more than a menu entry and reads the
+	// system's state, not a preference.
+	d := STANDARD_DEFAULTS
+	// Wren's own defaults of other standard settings (read by standard_register alone: a String's value is a literal, which
+	// the registry keeps; a number's is parsed there)
+	values := [?]prefs_page.Standard_Value{
+		{"scrolling.autohide_scrollbars", "true"},
+		{"scrolling.autoscroll.max_speed", fmt.tprint(AUTOSCROLL_TOP_SPEED)},   // (the top speed and its distance go together: page_autoscroll.odin)
+		{"scrolling.autoscroll.full_dist", fmt.tprint(AUTOSCROLL_FULL_DISTANCE)},
+		{"rendering.partial_redraw", "true"},
+		{"rendering.filter_precision", "unorm8"},   // (8 bits as browsers keep filter results: half the memory)
+	}
+	d.values = values[:]
+	prefs_page.standard_register(p, prefs_page.STANDARD_ALL, d, base.permanent_allocator())   // (the registry keeps its descriptions)
+}
+
+// Wren's own defaults of the standard settings: the look it always had (the Silver theme, flat widgets under the classic
+// tabs, 15 px text, the integrated title bar) and no update check unless asked.
+STANDARD_DEFAULTS :: prefs_page.Standard_Defaults{
+	theme = "Silver", mode = "system", finish = "flat", font_size = 15, glow = 1,
+	menu = true, update_auto = false, update_base_url = UPDATE_DOWNLOAD_BASE, app_name = APP_NAME,
+}
+
+// The standard settings applied to a window's interface `s`, then each change as it comes (prefs_page.standard_watch); the
+// first window's also gives the text settings to the font state and the renderer, which every window shares.
+standard_settings_watch :: proc(app: ^App, w: ^prefs_page.Standard_Watch, s: ^ui.State) {
+	targets: prefs_page.Standard_Targets
+	if s == app.windows[0].ui { targets = {renderer = &app.r, fonts = &app.fonts} }
+	prefs_page.standard_watch(w, &app.prefs, s, targets)
+	// standard_watch leaves a setting at its default alone, and Wren's defaults of these (register_all_prefs) are not the
+	// toolkit state's own: given here, until the toolkit applies a program's defaults itself
+	ui.set_scrollbar_autohide(s, config.bool_of(&app.prefs, "scrolling.autohide_scrollbars"))
+	ui.set_autoscroll_settings(s, autoscroll_settings_from_prefs(&app.prefs).cfg)
 }
 
 // The interface's scale: browser.ui.scale, else the display's of the window (`of`; the active one by default: window_chrome.odin,
@@ -155,7 +176,8 @@ display_scale_of :: proc(app: ^App, of: ^platform.Window = nil) -> f32 {
 	return pw != nil && pw.dpi_scale > 0 ? pw.dpi_scale : 1
 }
 
-// The scale of the browser's own interface: the display's, times its zoom (browser.ui.zoom, chrome_zoom.odin).
+// The scale of the browser's own interface: the display's, times its zoom (appearance.zoom, chrome_zoom.odin), as the
+// toolkit scales the window's state (ui.scale).
 ui_scale_of :: proc(app: ^App, of: ^platform.Window = nil) -> f32 {
 	return display_scale_of(app, of) * chrome_zoom_of(app)
 }
@@ -170,15 +192,13 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		key_line_px = f32(config.float_of(p, "browser.scroll.key_line_px")),
 		key_page_fraction = f32(config.float_of(p, "browser.scroll.key_page_fraction")),
 		homepage = strings.clone(config.string_of(p, "browser.homepage")),
-		ui_font_size = f32(config.float_of(p, "browser.ui.font_size")),
-		ui_theme = strings.clone(config.string_of(p, "browser.ui.theme")),
-		ui_theme_mode = ui.theme_mode_of(config.string_of(p, "browser.ui.theme_mode")),
+		look = prefs_page.appearance_read(p),
 		ui_scale = f32(config.float_of(p, "browser.ui.scale")),
 		persist_profile = config.bool_of(p, "browser.profile.persist"),
 		layout_band_px = f32(config.float_of(p, "browser.layout.band_height_px")),
 		blocking_threads = int(config.int_of(p, "browser.threads.blocking")),
 		loaded = true,
-		partial_redraw = config.bool_of(p, "browser.ui.partial_redraw"),
+		partial_redraw = config.bool_of(p, "rendering.partial_redraw"),
 		bookmarks_bar = config.bool_of(p, "browser.bookmarks.bar"),
 		tabs_tree = config.bool_of(p, "browser.tabs.tree"),
 		audio_indicator = config.bool_of(p, "browser.tabs.audio_indicator"),
@@ -188,14 +208,9 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	}
 }
 
-// The values of browser.ui.theme: the names of the toolkit's themes, lower case (made once; the process keeps them).
-theme_choices :: proc() -> []string {
-	@(static) names: []string
-	@(static) once: sync.Once   // (every App registers its preferences: two may on their threads at once)
-	sync.once_do(&once, proc() {
-		// (kept until the process ends on purpose: never a leak)
-		names = make([]string, len(ui.THEMES), base.permanent_allocator())
-		for t, i in ui.THEMES { names[i] = base.ascii_lower_clone(t.name, base.permanent_allocator()) }
-	})
-	return names
+// What settings_from_prefs owns.
+settings_destroy :: proc(s: ^Settings) {
+	delete(s.homepage)
+	prefs_page.appearance_free(&s.look)
+	s.homepage = ""
 }

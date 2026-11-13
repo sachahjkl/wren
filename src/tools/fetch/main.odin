@@ -6,7 +6,6 @@
 // Requests are browser-initiated navigations (cookies on, redirects followed), the way the address bar behaves.
 package fetch_tool
 
-import _ "wb:crashtrace"   // a crash prints its symbolized stack
 
 import "core:fmt"
 import "core:os"

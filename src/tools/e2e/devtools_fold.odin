@@ -42,7 +42,7 @@ dark_at :: proc(s: ^e2e.Session, at: e2e.Point) -> (e2e.Color, bool) {
 devtools_side_stack_folds_to_a_themed_strip :: proc(t: ^testing.T) {
 	page := e2e.file_page(e2e.temp_folder(t), "static.html", FOLD_PAGE)
 	s := e2e.start(t, {pixels = true, size = FOLD_SIZE, dpi = e2e.DPI_ONE, url = page,
-		prefs = {"browser.devtools.visible=true", "browser.devtools.tab=elements", "browser.devtools.dock=right", "browser.ui.theme=midnight"}})
+		prefs = {"browser.devtools.visible=true", "browser.devtools.tab=elements", "browser.devtools.dock=right", "appearance.theme=Midnight"}})
 	e2e.a11y_capture(s)
 	e2e.wait_chrome_still(s)
 

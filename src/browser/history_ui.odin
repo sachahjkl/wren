@@ -364,7 +364,7 @@ browsing_toolbar :: proc(app: ^App, t: ^Tab) {
 	if app.hview.focus_search && res.box != nil { app.hview.focus_search = false; ui.set_focus(res.box.key); ui.field_select_all(&app.hview.search) }
 	if res.focused && ui.key_press(.Down) { ui.set_focus(app.hview.list.key); if app.hview.list.sel < 0 { ui.list_select(&app.hview.list.list, 1) } }
 	ui.spacer(ui.px(em * 0.6))
-	// (icon_action_button's widget itself: the menu opens under the button's rectangle)
+	// (ui.button_icon's widget itself: the menu opens under the button's rectangle)
 	b := ui.button_icon("###h_delete", lucide.TRASH_2, "Delete\u2026", icon_font = app.lucide, intent = .Danger)
 	key := ui.key_from_string(b.box.parent.key, "###h_delete_menu")
 	if b.clicked { ui.ctx_menu_open_rect(key, b.box.rect, b.box.key) }

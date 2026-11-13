@@ -19,11 +19,15 @@ package browser
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:font"
+import prefs_page "toolkit:prefs_page"
 import "toolkit:render"
 import "toolkit:ui"
 import "wb:config"
 import "wb:host"
 import "wb:page"
+
+// The user's own themes, in the profile beside the preferences (prefs_page.Themes_File).
+THEMES_FILE :: "themes.txt"
 
 App_Stage :: enum u8 { Prefs, Loop, Pools, Fonts, Window, Renderer, Ui, Interface }
 App_Stages :: bit_set[App_Stage; u8]
@@ -68,9 +72,7 @@ app_prefs_init :: proc(app: ^App, values: []string = nil) -> (refused: string) {
 
 @(private = "file")
 app_prefs_end :: proc(app: ^App) {
-	delete(app.cfg.homepage)
-	delete(app.cfg.ui_theme)
-	app.cfg.homepage, app.cfg.ui_theme = "", ""
+	settings_destroy(&app.cfg)
 	config.prefs_destroy(&app.prefs)
 	app.made -= {.Prefs}
 }
@@ -132,17 +134,22 @@ app_windows_end :: proc(app: ^App) {
 	app.made -= {.Window}
 }
 
-// The toolkit state of the first window (window_adopt_primary), with the fonts that App.ui_font and App.icons name.
+// The toolkit state of the first window (window_adopt_primary), with the fonts that App.ui_font and App.lucide name, and the
+// themes it shows: the toolkit's, then the user's own from themes.txt of a kept profile (read by a task at the first builds).
 app_ui_init :: proc(app: ^App) {
 	w := active_window(app)
 	ui.init(w.ui, &app.fonts, &app.theme)
-	w.ui.icon_font = app.icons
+	themes := app.cfg.persist_profile && app.profile_dir != "" ? strings.concatenate({app.profile_dir, "/", THEMES_FILE}, context.temp_allocator) : ""
+	prefs_page.themes_file_init(&app.themes_file, themes, ui.THEMES[:])
+	w.ui.icon_font = app.lucide
 	w.ui.menu_icon_font = app.lucide   // (the menus' icons are Lucide's: command_icons.odin)
+	standard_settings_watch(app, &w.standard, w.ui)
 	app.made += {.Ui}
 }
 
 app_ui_end :: proc(app: ^App) {
 	windows_destroy_ui(app)
+	prefs_page.themes_file_destroy(&app.themes_file)
 	ui.theme_destroy(&app.theme)
 	app.made -= {.Ui}
 }
@@ -191,6 +198,7 @@ app_free :: proc(app: ^App) {
 	if .Window in app.made { app_windows_end(app) }
 	if .Fonts in app.made { app_fonts_end(app) }
 	if .Pools in app.made { app_pools_end(app) }
+	licence_shell_destroy(app)   // license_shell.odin (after the pools: no job of its store runs any more)
 	if .Loop in app.made { app_loop_end(app) }
 	if .Prefs in app.made { app_prefs_end(app) }
 	delete(app.tab_ids)

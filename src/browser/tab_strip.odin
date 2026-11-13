@@ -18,6 +18,7 @@ import "core:strings"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:render"
+import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
 import "wb:i18n"
@@ -260,7 +261,7 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 		if !classic {
 			ui.spacer(ui.px(em * 0.3))
 			ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.2)), radius = em * CHROME_BUTTON_RADIUS})
-			add = ui.icon_button("###newtab", GLYPH_ADD)
+			add = ui.icon_button("###newtab", lucide.PLUS)
 		}
 		tip(add, i18n.tr("New tab (Ctrl+T)"))
 		if add.clicked { tab_open_new(app) }
@@ -544,12 +545,12 @@ tab_icon_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	case .File, .Gear:
 		// the glyph's ink centred in the icon's square and no larger than it (the icon font's document is taller than its em:
 		// at the size of the square it overflowed the row) (the pen is on the baseline: chrome.odin chip_icon_draw)
-		glyph := d.kind == .File ? GLYPH_FILE : GLYPH_GEAR
-		size := icon_glyph_fit(s, font.glyph(&app.fonts, app.icons, s, rune(glyph[0])).size)
-		g := font.glyph(&app.fonts, app.icons, size, rune(glyph[0]))
+		glyph := d.kind == .File ? lucide.FILE : lucide.SETTINGS
+		size := icon_glyph_fit(s, font.glyph(&app.fonts, app.lucide, s, icon_rune(glyph)).size)
+		g := font.glyph(&app.fonts, app.lucide, size, icon_rune(glyph))
 		w := g.size.x > 0 ? g.size.x : g.advance
 		pen := draw.Vec2{math.round(c.x - w * 0.5 - g.offset.x), math.round(c.y - (g.offset.y + g.size.y * 0.5))}
-		draw.text(dc, app.icons, size, pen, d.color, glyph)
+		draw.text(dc, app.lucide, size, pen, d.color, glyph)
 	case .Globe:
 		// a neutral globe: a ring, the equator and a meridian
 		lw := max(s * 0.09, 1)

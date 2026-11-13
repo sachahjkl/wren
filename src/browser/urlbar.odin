@@ -52,9 +52,9 @@ URLBAR_PREFS := [?]config.Def{
 		description = "Most bookmarks among the suggestions."},
 	{name = "browser.urlbar.suggest.tabs", kind = .Bool, default = {b = true},
 		description = "Suggest open tabs whose title or address matches (\"Switch to tab\")."},
-	{name = "browser.urlbar.suggest.search", kind = .Bool, default = {b = true}, category = "search",
+	{name = "browser.urlbar.suggest.search", kind = .Bool, default = {b = true},
 		description = "When the text looks like an address, also offer to search for it (with browser.search.engine)."},
-	{name = "browser.urlbar.suggest.engines", kind = .Bool, default = {b = true}, category = "search",
+	{name = "browser.urlbar.suggest.engines", kind = .Bool, default = {b = true},
 		description = "Below the suggestions, a badge per search engine (\"This time, search with\"): a click searches the text with it, whatever the default."},
 	{name = "browser.urlbar.autofill", kind = .Bool, default = {b = true},
 		description = "Typing the start of an address visited before completes it in the field (up to its host, or the next / of its path), the completed part selected: typing on replaces it, Backspace removes it."},
@@ -526,7 +526,7 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 		if app.ub.cfg.top_sites && !uv.key_focus { uv.zero, uv.idle = true, true; urlbar_refresh(app, .None) }
 	} else if app.ub.cfg.top_sites && !uv.open && ui.mouse_pressed() {
 		// a click on the field that has the keyboard already (after a new tab or Ctrl+L) opens the list
-		if b := ui.box_from_key(akey); b != nil && draw.rect_contains(b.rect, ui.mouse_pos()) { uv.zero, uv.idle = true, true; urlbar_refresh(app, .None) }
+		if ui.pointer_on(ui.box_from_key(akey)) { uv.zero, uv.idle = true, true; urlbar_refresh(app, .None) }
 	}
 	uv.key_focus = false
 	uv.focused = true

@@ -1,16 +1,17 @@
 # The look of the browser's own interface
 
 The tab bar, the tabs, the toolbar and the address field are drawn by the toolkit (not by a page). Two styles, chosen by a
-preference, and a palette on top of either (`browser.ui.theme`: Graphite, Daylight, Nord, ...).
+preference, and a palette on top of either (`appearance.theme`: Graphite, Daylight, Nord, ...).
 
 | Preference | Default | |
 |---|---|---|
-| `browser.ui.chrome_style` | `classic` | `modern`: flat, tabs are rounded pills. `classic`: Chrome of 2010-2015, see below. Applies at once. |
+| `browser.ui.chrome_style` | `classic` | `modern`: tabs are rounded pills. `classic`: Chrome of 2010-2015, see below. Applies at once. |
+| `appearance.finish` | `flat` | The toolkit's finish of every widget (machined, edged, flat, gradient, glass). With `machined`, the modern tabs are machined too: the current tab a bevelled part that rises under the pointer, carved grooves between tabs; `appearance.glow` sets the accent's halos. The classic shapes draw their own gradients whatever the finish. |
 | `browser.ui.classic_slope_deg` | 22 | Classic: how far the sides of a tab lean from the vertical (8 to 40). The larger, the more angular, the more the tabs overlap. |
 | `browser.ui.classic_gloss` | 1 | Classic: strength of the gradients and of the steps between the current tab, the other tabs and the tab bar (0 = flat colors, shapes and lines stay; 2 = more depth). |
 
 Change it in about:config, with `wren ctl pref set browser.ui.chrome_style modern`, from the command palette
-(`Appearance: classic tabs`, `Appearance: modern tabs`) or from the menu, View.
+(`Appearance: classic tabs`, `Appearance: modern tabs`, `Finish: machined`...) or from the menu, View.
 
 ## Classic
 

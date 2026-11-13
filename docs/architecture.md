@@ -33,7 +33,7 @@ feature list, see the [README](../README.md).
    every table (`src/browser/settings.odin`) and `src/browser/prefs_test.odin` checks that each one is well formed.
 9. **State lives with what owns it.** See below: what is one App's is not a global.
 10. **Layers point one way.** A tool (`src/tools`) may import the product; the product never imports `wb:tools/*`.
-    What both need is a package of `src`: crash reports (`src/crashtrace`), the stacks of another process
+    What both need is a package of `src`: the stacks of another process
     (`src/stacks`), the test environment (`src/testenv`). Only a `*_windows.odin` file imports `core:sys/windows`,
     and a neutral struct holds no Win32 type ([portability.md](portability.md)). A package links only what its
     users need: `URLPattern` is `src/urlpattern`, so the users of `src/url` (cookies, CSP, WebAuthn) do not link the

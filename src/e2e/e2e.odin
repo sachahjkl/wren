@@ -221,7 +221,7 @@ start :: proc(t: ^testing.T, o := Options{}, loc := #caller_location) -> ^Sessio
 	// (nothing of the machine's or the internet's in a test: the content blocker's lists stay where they are; no GPU process a test
 	// does not ask for, which every page's first paint would start ahead)
 	// (the dark version of the theme whatever the system says: the pictures and colours the scenarios check are its)
-	append(&args, "--pref", "blocker.update.enabled=false", "--pref", "blocker.welcome_toast=false", "--pref", "webgl.gpu_start_ahead=false", "--pref", "browser.ui.theme_mode=dark")
+	append(&args, "--pref", "blocker.update.enabled=false", "--pref", "blocker.welcome_toast=false", "--pref", "webgl.gpu_start_ahead=false", "--pref", "appearance.mode=dark")
 	for p in o.prefs { append(&args, "--pref", p) }
 	if !o.no_address { append(&args, "about:blank") }
 	{

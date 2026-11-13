@@ -606,8 +606,8 @@ control_commands :: proc(app: ^App, allocator := context.temp_allocator) -> []ap
 	list := make([]api.Command, len(all), allocator)
 	for &cmd, i in all {
 		list[i] = {
-			name = strings.clone(cmd.name, allocator), title = strings.clone(cmd.title, allocator), category = strings.clone(cmd.category, allocator),
-			shortcut = strings.clone(command_shortcut_text(&cmd), allocator), enabled = command_enabled(app, t, &cmd),
+			name = strings.clone(cmd.name, allocator), title = strings.clone(cmd.label, allocator), category = strings.clone(cmd.group, allocator),
+			shortcut = strings.clone(ui.command_shortcut(cmd.spec), allocator), enabled = command_enabled(app, t, &cmd),
 		}
 	}
 	return list
@@ -772,7 +772,7 @@ control_stats_all :: proc(app: ^App, allocator := context.temp_allocator) -> api
 	for count, kind in pacer.resize_event_kinds { if count > 0 { fmt.sbprintf(&causes, "ev.%v=%d ", kind, count) } }
 	st.resize_frame_causes = strings.clone(strings.trim_space(strings.to_string(causes)), allocator)
 	st.prefs_cache_applied, st.prefs_downloads_applied = int(app.prefs_apply_counts[.Http_Cache]), int(app.prefs_apply_counts[.Downloads])
-	ds := ui.damage_stats(active_window(app).ui)   // (the toolkit's automatic partial redraw, browser.ui.partial_redraw)
+	ds := ui.damage_stats(active_window(app).ui)   // (the toolkit's automatic partial redraw, rendering.partial_redraw)
 	st.ui_px_drawn, st.ui_px_window, st.ui_whole = ds.px_drawn, ds.px_window, fmt.aprint(ds.whole, allocator = allocator)
 	if t := current_tab(app); t != nil && t.page != nil { st.layout_items = len(t.layout.items) }
 	st.cpu_time_ms, st.cpu_user_ms, st.cpu_kernel_ms = process_cpu_ms()
