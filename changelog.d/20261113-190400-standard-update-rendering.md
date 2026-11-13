@@ -1,3 +1,0 @@
-type: Changed
-
-**Updates and rendering use the common settings' names**: the daily check for updates is `update.auto` (was `browser.update.check_daily`) and the address of the release files `update.base_url` (was `browser.update.base_url`); the presentation is `rendering.present`, the blur limit `rendering.blur_sigma_limit`, the precision of filter results `rendering.filter_precision` (`unorm8` or `half`) and the partial redraw `rendering.partial_redraw` (were `browser.frame.present_mode`, `paint.effects.blur_full_resolution_px`, `paint.effects.filter_precision` and `browser.ui.partial_redraw`).

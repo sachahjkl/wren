@@ -1,0 +1,8 @@
+type: Changed
+
+**Settings of the look, the text, the scrolling, the updates and the rendering renamed**: they now have the names that other programs of the same toolkit use. Values set under the old names are not carried over: set them again in about:settings or about:config.
+  - Look: `appearance.theme`, `appearance.mode`, `appearance.font_size`, `appearance.zoom`, `appearance.animations` and `window.system_title` (were `browser.ui.theme`, `theme_mode`, `font_size`, `zoom`, `animations` and `browser.window.integrated_titlebar`). A zoom step of the interface (Ctrl+wheel, Ctrl+=, Ctrl+-) multiplies the zoom by `input.zoom_step`.
+  - Text: `appearance.text.*` replaces `font.raster.*`, `font.atlas.*`, `font.color_glyphs*`, `font.fallback.system`, `font.shape_cache_words`, `text.renderer`, `text.slug.*` and `text.emoji.font`. A change applies at once.
+  - Scrolling: `scrolling.smooth` (follow the system, on, off), `scrolling.duration`, `scrolling.curve` and `scrolling.autoscroll.*` replace `browser.scroll.smooth.enabled`, `wheel_ms`, `curve`, `impulse`, `reduced_motion` and `browser.scroll.autoscroll.*`; the autoscroll `mode` is now `scrolling.autoscroll.toggle`. Pages, about: pages and the developer tools now scroll with these same settings. `scrolling.autohide_scrollbars` hides the scroll bars.
+  - Updates: `update.auto` and `update.base_url` (were `browser.update.check_daily` and `browser.update.base_url`).
+  - Rendering: `rendering.present`, `rendering.blur_sigma_limit`, `rendering.filter_precision` and `rendering.partial_redraw` (were `browser.frame.present_mode`, `paint.effects.blur_full_resolution_px`, `paint.effects.filter_precision` and `browser.ui.partial_redraw`).
