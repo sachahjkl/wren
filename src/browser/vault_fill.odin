@@ -395,8 +395,9 @@ vault_shortcut_apply :: proc(app: ^App) {
 	c := command(app, "vault.fill")
 	if c == nil { return }
 	sc, ok := vault_shortcut_parse(app.vault.v.settings.shortcut)
-	c.keys = {}
-	if ok { c.keys[0] = sc }
+	app.cmds.vault_fill_key[0] = sc
+	c.keys = ok ? app.cmds.vault_fill_key[:] : nil   // (the registry's memory: it outlives this call)
+	app.cmds.version += 1
 }
 
 @(private = "file")
@@ -406,7 +407,7 @@ vault_enabled_cmd :: proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.
 vault_commands_add :: proc(r: ^Command_Registry) {
 	add :: command_add
 	add(r, {name = "vault.fill", label = "Fill the login from the Vault", group = "Vault", tags = command_words(r, "password autofill bitwarden login"),
-		keys = {VAULT_FILL_DEFAULT, {}}, guarded = true,
+		keys = command_keys(r, VAULT_FILL_DEFAULT), guarded = true,
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.vault.v.state != .Disabled && t != nil && t.kind == .Web },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { vault_fill_shortcut(app) }})
 	add(r, {name = "vault.search", label = "Search the Vault", group = "Vault", tags = command_words(r, "password bitwarden login copy"),

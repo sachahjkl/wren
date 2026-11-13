@@ -6,7 +6,6 @@ package browser
 import "core:math"
 import "core:testing"
 import "toolkit:draw"
-import "toolkit:platform"
 import "toolkit:ui"
 import "wb:url"
 
@@ -40,7 +39,7 @@ vault_fill_command_follows_its_preference :: proc(t: ^testing.T) {
 	testing.expect_value(t, ui.command_shortcut(c.spec), "Alt+K")
 	app.vault.v.settings.shortcut = "K"
 	vault_shortcut_apply(app)
-	testing.expect_value(t, c.keys[0].key, platform.Key.None)
+	testing.expect_value(t, len(c.keys), 0)
 	app.vault.v.settings.shortcut = "Ctrl+Shift+L"   // (the registry may outlive this test: as it was)
 	vault_shortcut_apply(app)
 	app.vault.v.settings.shortcut = ""

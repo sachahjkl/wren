@@ -60,12 +60,12 @@ setup_captures :: proc(app: ^App) -> bool { return app.stp.d.open }
 
 // The dialog's Config: Wren's identity, version, icons and choices. Called on the interface thread; the dialog's thread
 // keeps a copy, whose strings and `user` (the App) outlive it.
-setup_config :: proc(app: ^App) -> setup.Config {
+setup_config :: proc(app: ^App) -> setup.Setup_Options {
 	p := &app.prefs
 	app.stp.choices[Setup_Choice.Add_To_Path] = {label = "Add Wren to PATH", on = config.bool_of(p, "browser.desktop_integration.add_to_path")}
 	app.stp.choices[Setup_Choice.Register_Browser] = {label = "Register as a browser", on = config.bool_of(p, "browser.desktop_integration.register_browser")}
 	app.stp.choices[Setup_Choice.Check_Daily] = {label = "Check for updates once per day", on = config.bool_of(p, prefs_page.UPDATE_AUTO_PREF)}
-	return setup.Config{
+	return setup.Setup_Options{
 		identity = desktop_identity(), version = APP_VERSION, icons = desktop_icons(), choices = app.stp.choices[:],
 		prepare = setup_prepare, folder = true, square = true, user = app,
 	}
@@ -73,7 +73,7 @@ setup_config :: proc(app: ^App) -> setup.Config {
 
 // Wren's part of the options, on whatever thread the dialog works on: nothing of the App but what it set before.
 @(private = "file")
-setup_prepare :: proc(o: ^desktop.Options, choices: []bool, user: rawptr) {
+setup_prepare :: proc(o: ^desktop.Integration_Options, choices: []bool, user: rawptr) {
 	app := (^App)(user)
 	o.start_menu = true
 	if len(choices) == len(Setup_Choice) {
@@ -197,7 +197,7 @@ portable_profile_dir :: proc() -> string {
 @(private = "file")
 Setup_Start_Job :: struct {
 	app:    ^App,
-	cfg:    setup.Config,
+	cfg:    setup.Setup_Options,
 	clean:  bool,   // the installed copy: the `.old` files of a replacement go
 	choice: string, // owned
 	wanted: bool,
@@ -225,7 +225,7 @@ setup_startup :: proc(app: ^App, profile_explicit: bool, force: bool) {
 	host.run_blocking(&app.blocking, proc(data: rawptr) {
 		j := (^Setup_Start_Job)(data)
 		if j.clean {
-			o := desktop.Options{identity = j.cfg.identity}
+			o := desktop.Integration_Options{identity = j.cfg.identity}
 			desktop.clean_old(&o, process.parent_dir(process.executable_path(context.temp_allocator)))
 		}
 		if j.wanted { j.wanted = setup.wanted(setup.facts(j.cfg), APP_VERSION, j.choice) }

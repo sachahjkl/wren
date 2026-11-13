@@ -11,7 +11,7 @@ import tk "../../ext/gui_toolkit/src/desktop"
 // The entry an installed Wren has on users' machines: the same text, so that it is still recognised and removed.
 @(test)
 desktop_entry_is_wrens :: proc(t: ^testing.T) {
-	o := tk.Options{identity = identity("Wren", "A small browser where WebAssembly runs everything.", dev = false), exe = "/home/u/bin/wren", register_browser = true, file_types = {".html", ".htm", "svg", ".webp"}}
+	o := tk.Integration_Options{identity = identity("Wren", "A small browser where WebAssembly runs everything.", dev = false), exe = "/home/u/bin/wren", register_browser = true, file_types = {".html", ".htm", "svg", ".webp"}}
 	want := `[Desktop Entry]
 Type=Application
 Version=1.0
@@ -57,7 +57,7 @@ identity_of_each_channel :: proc(t: ^testing.T) {
 	testing.expect_value(t, strings.join(dev.url_schemes, " ", context.temp_allocator), strings.join(link_scheme_names(DEV_LINK_PREFIX), " ", context.temp_allocator))
 	// both pass the toolkit's checks: install goes as far as the executable, which does not exist (nothing is written)
 	for id in ([]tk.Identity{release, dev}) {
-		o := tk.Options{identity = id, exe = "/no/such/wren"}
+		o := tk.Integration_Options{identity = id, exe = "/no/such/wren"}
 		testing.expectf(t, tk.install(&o).error == .No_Executable, "%s is a valid identity", id.name)
 	}
 }

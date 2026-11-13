@@ -69,7 +69,7 @@ env_lookup :: proc(name: string) -> string {
 }
 
 // The options of an integration of this program, from the preferences (and WREN_DESKTOP_* roots of the environment).
-desktop_options :: proc(app: ^App) -> desktop.Options {
+desktop_options :: proc(app: ^App) -> desktop.Integration_Options {
 	o := desktop.options_make(desktop_identity())
 	wren_desktop.options_apply_prefs(&o, &app.prefs)
 	o.icons = desktop_icons()
@@ -109,7 +109,7 @@ Desktop_Job :: struct {
 	app:    ^App,              // whose integration status it reports to
 	kind:   Desktop_Job_Kind,
 	reason: Desktop_Reason,
-	opts:   desktop.Options,   // owned copy
+	opts:   desktop.Integration_Options,   // owned copy
 	result: desktop.Result,    // the detail is cloned
 	status: desktop.Status,    // read after the change too
 }

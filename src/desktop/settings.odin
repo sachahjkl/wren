@@ -26,7 +26,7 @@ PREFS := [?]config.Def{
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
 
 // Takes what the preferences decide into `o` (the file types are in the temporary allocator).
-options_apply_prefs :: proc(o: ^tk.Options, p: ^config.Prefs) {
+options_apply_prefs :: proc(o: ^tk.Integration_Options, p: ^config.Prefs) {
 	o.register_browser = config.bool_of(p, "browser.desktop_integration.register_browser")
 	o.start_menu = config.bool_of(p, "browser.desktop_integration.start_menu")
 	o.desktop_shortcut = config.bool_of(p, "browser.desktop_integration.desktop_shortcut")

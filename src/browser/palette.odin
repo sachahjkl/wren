@@ -11,21 +11,18 @@ package browser
 //
 // Up / Down (wrapping), Page Up / Page Down move; Enter runs, Ctrl+Enter opens in a new tab what opens a page; Escape,
 // the shortcut again or a press outside close it, and the keyboard goes back to what had it. The commands the user
-// runs are remembered (count and time, in palette_usage.txt of the profile): with nothing typed they come first, and
-// they rank higher among matches.
+// runs are remembered (count and time: ui.Choice_Memory, in palette_choices.txt of the profile): with nothing typed they
+// come first, and they rank higher among matches.
 //
 // Matching and ranking are the toolkit's palette's (ui.rank with ui.rank_palette, docs/commands.md of the toolkit): the
 // title holds what is typed whole or in pieces that begin its words, then a command's other words and its group, then the
 // same with a slip; a last text (a command's name, an address, a preference's description) finds a row when nothing
-// else does. The usage memory raises a hit (rank's bonus). Results are worked out again only when what they depend on
+// else does. The memory of choices raises a hit (rank's bonus). Results are worked out again only when what they depend on
 // changes (the query, the tabs, the preferences, the commands' states): an open palette at rest costs a caret blink, a
 // closed one nothing.
 
 import "core:fmt"
 import "core:math"
-import "core:os"
-import "core:slice"
-import "core:strconv"
 import "core:strings"
 import "core:time"
 import "toolkit:draw"
@@ -34,7 +31,6 @@ import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
-import "wb:host"
 import "wb:i18n"
 
 PALETTE_PREFS := [?]config.Def{
@@ -49,7 +45,7 @@ PALETTE_PREFS := [?]config.Def{
 	{name = "browser.palette.show_disabled", kind = .Bool, default = {b = true},
 		description = "List the commands that cannot run right now (Back without history...), greyed after the others. Off: they are left out."},
 	{name = "browser.palette.remember", kind = .Bool, default = {b = true},
-		description = "Remember which commands and preferences are chosen in the command palette, and how recently, to list them first (kept in palette_usage.txt of the profile when browser.profile.persist is on)."},
+		description = "Remember which commands and preferences are chosen in the command palette, and how recently, to list them first (kept in palette_choices.txt of the profile when browser.profile.persist is on)."},
 	{name = "browser.palette.usage_max_entries", kind = .Int, default = {i = 500}, bounded = true, min = 10, max = 100_000, unit = "entries",
 		description = "Most choices the command palette remembers (the least used and oldest are forgotten first)."},
 	{name = "browser.palette.usage_half_life_days", kind = .Float, default = {f = 14}, bounded = true, min = 0.1, max = 3650, unit = "days",
@@ -89,143 +85,39 @@ palette_settings_from_prefs :: proc(p: ^config.Prefs) -> Palette_Settings {
 }
 
 ////////////////////////////////
-// What was chosen, and when (pure parts: palette_test.odin)
-
-PALETTE_USAGE_HEADER :: "wren-palette-usage 1"
-
-Usage_Entry :: struct { count: int, last_ms: i64 }
-
-Palette_Usage :: struct {
-	entries: map[string]Usage_Entry,   // owned keys: "cmd:tab.new", "pref:appearance.theme"
-	loaded:  bool,
-	version: u64,
-}
-
-usage_destroy :: proc(u: ^Palette_Usage) {
-	for k in u.entries { delete(k) }
-	delete(u.entries)
-	u^ = {}
-}
-
-// Weight of an entry: its count, halved every `half_life_days` since it was last chosen.
-usage_weight :: proc(e: Usage_Entry, now_ms: i64, half_life_days: f64) -> f64 {
-	if e.count <= 0 { return 0 }
-	age_days := max(f64(now_ms - e.last_ms), 0) / 86_400_000
-	return f64(e.count) * math.pow(0.5, age_days / max(half_life_days, 1e-3))
-}
-
-usage_record :: proc(u: ^Palette_Usage, key: string, now_ms: i64, max_entries: int, half_life_days: f64) {
-	if e, ok := &u.entries[key]; ok {
-		e.count += 1
-		e.last_ms = now_ms
-	} else {
-		u.entries[strings.clone(key)] = {1, now_ms}
-	}
-	// over the limit: the lightest go (the one just chosen is never the lightest... unless all weigh the same: then the
-	// oldest goes first)
-	for len(u.entries) > max(max_entries, 1) {
-		victim := ""
-		vw := max(f64)
-		vt := max(i64)
-		for k, e in u.entries {
-			if k == key { continue }
-			w := usage_weight(e, now_ms, half_life_days)
-			if w < vw || (w == vw && e.last_ms < vt) { victim, vw, vt = k, w, e.last_ms }
-		}
-		if victim == "" { break }
-		k, _ := delete_key(&u.entries, victim)
-		delete(k)
-	}
-	u.version += 1
-}
-
-usage_serialize :: proc(u: ^Palette_Usage, allocator := context.temp_allocator) -> string {
-	keys := make([dynamic]string, 0, len(u.entries), context.temp_allocator)
-	for k in u.entries { append(&keys, k) }
-	slice.sort(keys[:])   // a stable file: written only when it changes
-	sb := strings.builder_make(allocator)
-	strings.write_string(&sb, PALETTE_USAGE_HEADER)
-	strings.write_byte(&sb, '\n')
-	for k in keys {
-		e := u.entries[k]
-		fmt.sbprintf(&sb, "%d\t%d\t%s\n", e.count, e.last_ms, k)
-	}
-	return strings.to_string(sb)
-}
-
-// Reads a usage file into `u` (forgiving: malformed lines are skipped; not a usage file: nothing). False when it is not one.
-usage_parse :: proc(u: ^Palette_Usage, text: string, max_entries: int) -> bool {
-	rest := text
-	first := true
-	for raw in strings.split_lines_iterator(&rest) {
-		line := strings.trim_right(raw, "\r")
-		if first {
-			first = false
-			if strings.trim_space(line) != PALETTE_USAGE_HEADER { return false }
-			continue
-		}
-		if len(u.entries) >= max_entries { break }
-		parts := strings.split_n(line, "\t", 3, context.temp_allocator)
-		if len(parts) != 3 || parts[2] == "" || strings.contains_any(parts[2], "\x00") { continue }
-		count, cok := strconv.parse_int(parts[0])
-		last, lok := strconv.parse_i64(parts[1])
-		if !cok || !lok || count <= 0 { continue }
-		if parts[2] in u.entries { continue }
-		u.entries[strings.clone(parts[2])] = {count, last}
-	}
-	return !first
-}
+// What was chosen, and when: the toolkit's memory of choices (ui.Choice_Memory). A choice's key is "cmd:<name>" or
+// "pref:<name>".
 
 @(private = "file")
 now_unix_ms :: proc() -> i64 { return time.to_unix_nanoseconds(time.now()) / 1e6 }
 
 @(private = "file")
-usage_path :: proc(app: ^App) -> string { return strings.concatenate({app.profile_dir, "/palette_usage.txt"}, context.temp_allocator) }
-
-@(private = "file")
-usage_load :: proc(app: ^App) {
-	u := &app.cpal.usage
-	if u.loaded { return }
-	u.loaded = true
-	if !app.cfg.persist_profile { return }
-	// read by the blocking pool (the palette opens at once; the order of its first results may change when it comes)
-	Usage_Read :: struct { app: ^App, path: string, data: []u8 }
-	j := new(Usage_Read)
-	j^ = {app = app, path = strings.clone(usage_path(app))}
-	drop :: proc(data: rawptr) { j := (^Usage_Read)(data); delete(j.path); delete(j.data); free(j) }
-	host.run_blocking(&app.blocking, proc(data: rawptr) {
-		j := (^Usage_Read)(data)
-		if bytes, err := os.read_entire_file(j.path, context.allocator); err == nil { j.data = bytes }
-	}, proc(data: rawptr) {
-		j := (^Usage_Read)(data)
-		defer drop(j)
-		if j.data == nil { return }
-		_ = usage_parse(&j.app.cpal.usage, string(j.data), j.app.cpal.cfg.usage_max)
-		request_frames(j.app, 2)
-	}, j, drop)
+choice_options :: proc(cfg: Palette_Settings) -> ui.Choice_Memory_Options {
+	return {half_life_days = cfg.half_life_days, most = cfg.usage_max}
 }
 
-// Written as soon as it changes (a few hundred bytes), by the blocking pool (profile_writes.odin).
+// Opened at the palette's first showing: read on the toolkit's chores, merged at a next build of the window it opens in.
 @(private = "file")
-usage_save :: proc(app: ^App) {
-	if !app.cfg.persist_profile { return }
-	host.profile_file_init(&app.cpal.usage_file, &app.writer, usage_path(app))
-	host.profile_file_write(&app.cpal.usage_file, usage_serialize(&app.cpal.usage))
+choices_open :: proc(app: ^App) {
+	s := active_window(app).ui
+	if app.cpal.choices_opened || s == nil { return }   // (no window yet: the choices stay in memory until one opens it)
+	app.cpal.choices_opened = true
+	path := app.cfg.persist_profile ? strings.concatenate({app.profile_dir, "/palette_choices.txt"}, context.temp_allocator) : ""
+	ui.choice_memory_open(&app.cpal.choices, s, path, choice_options(app.cpal.cfg))
 }
 
 @(private = "file")
-usage_note :: proc(app: ^App, key: string) {
+choice_note :: proc(app: ^App, key: string) {
 	if !app.cpal.cfg.remember { return }
-	usage_load(app)
-	usage_record(&app.cpal.usage, key, now_unix_ms(), app.cpal.cfg.usage_max, app.cpal.cfg.half_life_days)
-	usage_save(app)
+	choices_open(app)
+	ui.choice_note(&app.cpal.choices, key)
 }
 
+// What a choice adds to a hit (`query`: what is typed); nothing while the palette remembers nothing.
 @(private = "file")
-usage_of :: proc(app: ^App, key: string, now_ms: i64) -> f64 {
-	if !app.cpal.cfg.remember { return 0 }
-	e, ok := app.cpal.usage.entries[key]
-	return ok ? usage_weight(e, now_ms, app.cpal.cfg.half_life_days) : 0
+choice_bonus :: proc(app: ^App, key, query: string, now_ms: i64) -> f64 {
+	if !app.cpal.cfg.remember || key == "" { return 0 }
+	return ui.choice_bonus(&app.cpal.choices, key, query, now_ms)
 }
 
 ////////////////////////////////
@@ -322,7 +214,7 @@ Palette_Row :: struct {
 	site:     string,         // a source item's address whose site icon shows
 	tags:     []string,       // other words that find it (a command's; while collecting)
 	last:     string,         // a text that finds it when nothing else does (while collecting)
-	usage:    f64,
+	choice:   string,         // its key in the memory of choices ("cmd:tab.new"; while collecting)
 	disabled: bool,
 	ranges:   []ui.Fuzzy_Range,
 }
@@ -347,8 +239,8 @@ Palette_State :: struct {
 	cfg:           Palette_Settings,
 	cfg_version:   u64,
 	cfg_ready:     bool,
-	usage:         Palette_Usage,
-	usage_file:    host.Profile_File,    // palette_usage.txt (profile_writes.odin)
+	choices:       ui.Choice_Memory,     // palette_choices.txt of the profile (written by the toolkit's own writer)
+	choices_opened: bool,
 	sources:       [dynamic]Palette_Source,
 	sources_ready: bool,
 }
@@ -363,8 +255,7 @@ palette_destroy :: proc(app: ^App) {
 	ui.fuzzy_cache_destroy(&app.cpal.search)
 	if app.cpal.arena_ready { base.arena_destroy(&app.cpal.arena) }
 	delete(app.cpal.cache_text)
-	usage_destroy(&app.cpal.usage)
-	host.profile_file_destroy(&app.cpal.usage_file)   // (written by profile_files_flush, before the loop ended)
+	ui.choice_memory_close(&app.cpal.choices)   // (writes what changed and waits for the disk: the end of the process)
 	delete(app.cpal.sources)
 	app.cpal = {}
 	commands_destroy(&app.cmds)
@@ -375,6 +266,8 @@ palette_ready :: proc(app: ^App) {
 	if !app.cpal.cfg_ready || app.cpal.cfg_version != app.prefs.version {
 		app.cpal.cfg = palette_settings_from_prefs(&app.prefs)
 		app.cpal.cfg_version, app.cpal.cfg_ready = app.prefs.version, true
+		// (the memory reads its options at each weight and trim: a preference changed applies from the next choice)
+		app.cpal.choices.options = choice_options(app.cpal.cfg)
 	}
 	if !app.cpal.arena_ready { _ = base.arena_init_growing(&app.cpal.arena); app.cpal.arena_ready = true }
 	if !app.cpal.sources_ready {
@@ -392,7 +285,7 @@ palette_toggle :: proc(app: ^App) {
 // Opens the palette (with `text` typed, a prefix for instance).
 palette_show :: proc(app: ^App, text := "") {
 	palette_ready(app)
-	usage_load(app)
+	choices_open(app)
 	ui.menu_close()
 	app.cpal.open = true
 	app.cpal.window = app.active != nil ? app.active.id : 0
@@ -436,7 +329,7 @@ results_key :: proc(app: ^App) -> u64 {
 	h: u64 = 0xcbf29ce484222325
 	h = mix(h, app.prefs.version)
 	h = mix(h, u64(active_window(app).current))
-	h = mix(h, app.cpal.usage.version)
+	h = mix(h, app.cpal.choices.version); h = mix(h, app.cmds.version)
 	h = mix(h, u64(len(closed_items(app))))
 	for t in tabs_all(app) { h = mix(h, t.id); h = fnv(h, t.title); h = fnv(h, t.url) }
 	t := current_tab(app)
@@ -445,7 +338,7 @@ results_key :: proc(app: ^App) -> u64 {
 	return h
 }
 
-// The rows for `text` (in app.cpal.rows, best first). Pure apart from the registry, the usage memory and the sources.
+// The rows for `text` (in app.cpal.rows, best first). Pure apart from the registry, the memory of choices and the sources.
 // The candidates keep the strings they come with (the frame's); only the rows kept are copied, into the palette's arena.
 palette_collect :: proc(app: ^App, text: string) {
 	palette_ready(app)
@@ -462,7 +355,7 @@ palette_collect :: proc(app: ^App, text: string) {
 			enabled := command_enabled(app, t, &c)
 			if !enabled && !app.cpal.cfg.show_disabled { continue }
 			append(&cands, Palette_Row{kind = .Command, index = i, title = i18n.tr(c.label), category = c.group, glyph = c.icon, tags = c.tags, last = c.name,
-				usage = usage_of(app, strings.concatenate({"cmd:", c.name}, context.temp_allocator), now), disabled = !enabled})
+				choice = strings.concatenate({"cmd:", c.name}, context.temp_allocator), disabled = !enabled})
 		}
 	}
 	if mode == .All || mode == .Tabs {
@@ -482,7 +375,7 @@ palette_collect :: proc(app: ^App, text: string) {
 			r := config.ref_of(&app.prefs, name)
 			e := config.entry(&app.prefs, r)
 			append(&cands, Palette_Row{kind = .Pref, ref = r, title = name, category = "Setting", last = i18n.tr(e.def.description),
-				usage = usage_of(app, strings.concatenate({"pref:", name}, context.temp_allocator), now), disabled = e.source == .Policy})
+				choice = strings.concatenate({"pref:", name}, context.temp_allocator), disabled = e.source == .Policy})
 		}
 	}
 	if mode == .Source || (mode == .All && q != "") {
@@ -499,8 +392,8 @@ palette_collect :: proc(app: ^App, text: string) {
 		}
 	}
 
-	typed := q != ""
-	hits := ui.rank(q, cands[:], palette_rank_entry, &typed, bonus = palette_rank_bonus, cache = &app.cpal.search)
+	bonus := Rank_Bonus{app = app, query = q, now_ms = now}
+	hits := ui.rank(q, cands[:], palette_rank_entry, &bonus, bonus = palette_rank_bonus, cache = &app.cpal.search)
 	// what can run before what cannot, each in the rank's order
 	order := make([dynamic]ui.Rank_Hit, 0, len(hits), context.temp_allocator)
 	for h in hits { if !cands[h.index].disabled { append(&order, h) } }
@@ -514,7 +407,7 @@ palette_collect :: proc(app: ^App, text: string) {
 		r.key = strings.clone(r.key, a)
 		r.glyph = strings.clone(r.glyph, a)
 		r.site = strings.clone(r.site, a)
-		r.tags, r.last = nil, ""
+		r.tags, r.last, r.choice = nil, "", ""
 		if len(h.ranges) > 0 {
 			r.ranges = make([]ui.Fuzzy_Range, len(h.ranges), a)
 			copy(r.ranges, h.ranges)
@@ -529,18 +422,20 @@ palette_rank_entry :: proc(r: ^Palette_Row, _: rawptr) -> ui.Rank_Entry {
 	return {label = r.title, group = r.kind == .Command ? r.category : "", tags = r.tags, last = r.last}
 }
 
-// What use adds to a hit (`user`: ^bool, something is typed): nothing typed, the usage orders the rows (the registry's or
-// the tabs' order between equals); typed, it raises a match a little (bounded: a good match still beats a frequent poor
-// one), and the pages of a source come after commands and tabs that match as well.
+// What a hit gets from the memory of choices (ui.choice_bonus): nothing typed, the weight orders the rows (the registry's
+// or the tabs' order between equals); typed, it raises a match a little (bounded: a good match still beats a frequent
+// poor one), and the pages of a source come after commands and tabs that match as well.
+@(private = "file")
+Rank_Bonus :: struct { app: ^App, query: string, now_ms: i64 }
+
 @(private = "file")
 palette_rank_bonus :: proc(r: ^Palette_Row, user: rawptr) -> f64 {
-	if !(^bool)(user)^ { return r.usage }
-	behind: f64 = r.kind == .Source ? PALETTE_SOURCE_BEHIND : 0
-	return min(r.usage * PALETTE_USAGE_WEIGHT, PALETTE_USAGE_MOST) - behind
+	b := (^Rank_Bonus)(user)
+	bonus := choice_bonus(b.app, r.choice, b.query, b.now_ms)
+	if b.query == "" { return bonus }
+	return bonus - (r.kind == .Source ? PALETTE_SOURCE_BEHIND : 0)
 }
 
-@(private = "file") PALETTE_USAGE_WEIGHT :: 6
-@(private = "file") PALETTE_USAGE_MOST :: 30
 @(private = "file") PALETTE_SOURCE_BEHIND :: 4
 
 @(private = "file")
@@ -581,7 +476,7 @@ palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
 		if !command_enabled(app, t, c) { return }
 		key := strings.concatenate({"cmd:", c.name}, context.temp_allocator)
 		palette_close(app)
-		usage_note(app, key)
+		choice_note(app, key)
 		if new_tab && c.url != "" { open_in_new_tab(app, c.url, origin = .User) } else { command_run(app, current_tab(app), c) }
 	case .Tab:
 		palette_close(app)
@@ -593,7 +488,7 @@ palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
 	case .Pref:
 		e := config.entry(&app.prefs, r.ref)
 		name := strings.clone(e.def.name, context.temp_allocator)
-		usage_note(app, strings.concatenate({"pref:", name}, context.temp_allocator))
+		choice_note(app, strings.concatenate({"pref:", name}, context.temp_allocator))
 		if e.def.kind == .Bool && !new_tab {
 			// toggled in place: the palette stays, showing the new value
 			set_pref_bool(app, name, !e.value.b)

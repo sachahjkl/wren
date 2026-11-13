@@ -19,13 +19,12 @@ registry_well_formed :: proc(t: ^testing.T) {
 	for c in r.list {
 		testing.expectf(t, c.name != "" && c.label != "" && c.group != "" && c.run != nil, "command %q incomplete", c.name)
 		testing.expectf(t, c.name == base.ascii_lower(c.name) && !strings.contains(c.name, " "), "command name %q: dotted, lower case", c.name)
-		for s in ([]ui.Chord{c.keys[0], c.keys[1], c.third_key}) {
+		for s in c.keys {
 			if s.key == .None { continue }
 			other, dup := seen[s]
 			testing.expectf(t, !dup, "%s of %s is also %s", ui.chord_text(s), c.name, other)
 			seen[s] = c.name
 		}
-		if c.key_pref != "" { testing.expectf(t, strings.has_prefix(c.key_pref, "browser.") && c.keys[1].key != .None, "the key preference %q of %s", c.key_pref, c.name) }
 	}
 	// what the chrome's menu and the palette name
 	for name in ([]string{"tab.new", "tab.reopen_closed", "tab.close", "nav.back", "nav.forward", "nav.reload", "nav.home", "page.zoom_in",
@@ -105,7 +104,7 @@ query_prefixes :: proc(t: ^testing.T) {
 
 	// a command used comes first when nothing is typed
 	now := time.to_unix_nanoseconds(time.now()) / 1e6
-	for _ in 0 ..< 3 { usage_record(&app.cpal.usage, "cmd:view.console", now, 100, 14) }
+	for _ in 0 ..< 3 { ui.choice_note(&app.cpal.choices, "cmd:view.console", now) }
 	palette_collect(app, "")
 	testing.expect(t, len(app.cpal.rows) > 0 && commands(app)[app.cpal.rows[0].index].name == "view.console")
 
@@ -114,41 +113,25 @@ query_prefixes :: proc(t: ^testing.T) {
 	testing.expect(t, m == .Source && q == "exa")
 }
 
+// The keys in effect follow the preferences: Ctrl+K leaves the palette's keys when browser.palette.ctrl_k is off, and
+// the change shows in the registry's version (what the palette's results depend on).
 @(test)
-usage_persistence :: proc(t: ^testing.T) {
-	test_app(t)
-	u: Palette_Usage
-	defer usage_destroy(&u)
-	day :: i64(86_400_000)
-	now := 1000 * day
-	usage_record(&u, "cmd:tab.new", now - 30 * day, 100, 14)
-	usage_record(&u, "cmd:tab.new", now - 30 * day, 100, 14)
-	usage_record(&u, "cmd:nav.reload", now, 100, 14)
-	usage_record(&u, "pref:appearance.theme", now - day, 100, 14)
-	// recency beats an old count
-	testing.expect(t, usage_weight(u.entries["cmd:nav.reload"], now, 14) > usage_weight(u.entries["cmd:tab.new"], now, 14))
-	testing.expect_value(t, u.entries["cmd:tab.new"].count, 2)
-
-	text := usage_serialize(&u)
-	v: Palette_Usage
-	defer usage_destroy(&v)
-	testing.expect(t, usage_parse(&v, text, 100))
-	testing.expect_value(t, len(v.entries), 3)
-	testing.expect_value(t, v.entries["cmd:tab.new"], Usage_Entry{2, now - 30 * day})
-	testing.expect_value(t, usage_serialize(&v), text)
-
-	// not a usage file; damaged lines are skipped
-	w: Palette_Usage
-	defer usage_destroy(&w)
-	testing.expect(t, !usage_parse(&w, "something else\n1\t2\tx\n", 100))
-	testing.expect(t, usage_parse(&w, PALETTE_USAGE_HEADER + "\nbad\n0\t5\tzero\nx\t1\tnan\n4\t7\tok\n", 100))
-	testing.expect_value(t, len(w.entries), 1)
-
-	// past the limit the lightest is forgotten
-	usage_record(&u, "cmd:new.one", now, 3, 14)
-	testing.expect_value(t, len(u.entries), 3)
-	testing.expect(t, "cmd:tab.new" not_in u.entries)
-	testing.expect(t, "cmd:new.one" in u.entries)
+command_keys_follow_preferences :: proc(t: ^testing.T) {
+	app := test_app(t)
+	config.set_from_string(&app.prefs, "browser.palette.ctrl_k", "true", .User)
+	c := command(app, "browser.command_palette")
+	testing.expect(t, c != nil)
+	testing.expect_value(t, len(c.keys), 2)
+	v := app.cmds.version
+	config.set_from_string(&app.prefs, "browser.palette.ctrl_k", "false", .User)
+	c = command(app, "browser.command_palette")
+	testing.expect_value(t, len(c.keys), 1)
+	testing.expect_value(t, ui.command_shortcut(c.spec), "Ctrl+Shift+P")
+	testing.expect(t, app.cmds.version != v)
+	config.set_from_string(&app.prefs, "browser.palette.ctrl_k", "true", .User)
+	testing.expect_value(t, len(command(app, "browser.command_palette").keys), 2)
+	// Zoom in has three keys: the + of a US keyboard is Shift+=
+	testing.expect_value(t, len(command(app, "page.zoom_in").keys), 3)
 }
 
 @(test)
