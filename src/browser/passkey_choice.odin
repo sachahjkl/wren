@@ -168,6 +168,7 @@ passkey_choice_build :: proc(app: ^App) {
 			if ui.key_press(.Up) { c.sel = max(c.sel - 1, 0) }
 			if ui.key_press(.Return) { chosen = c.sel }
 		}
+		ui.dialog_header("pc_title", i18n.tr("Sign in with a passkey"), lucide.KEY_ROUND, app.lucide)
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###pc_scroll") {
 			ui.next({width = ui.fill(), height = ui.children_sum()})
@@ -177,8 +178,6 @@ passkey_choice_build :: proc(app: ^App) {
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###pc_col") {
 					ui.spacer(ui.px(em * 0.9))
-					dialog_line(i18n.tr("Sign in with a passkey"), "pc_title")
-					ui.spacer(ui.px(em * 0.5))
 					dialog_line(fmt.tprintf(i18n.tr("%s asks for a passkey. Use one of the Vault, or a security key or this device."), c.rp_id), "pc_hint", weak = true)
 					ui.spacer(ui.px(em * 0.8))
 					if signing {
@@ -194,10 +193,10 @@ passkey_choice_build :: proc(app: ^App) {
 							title, detail := r.name, r.username
 							if title == "" { title, detail = r.username, "" }
 							if title == "" { title = i18n.tr("Passkey without a name") }
-							if passkey_choice_row(app, i, lucide.KEY_ROUND, title, detail, i == c.sel, em) { chosen = i }
+							if ui.choice_row(fmt.tprintf("pc_row_%d", i), i, &c.sel, title, detail, lucide.KEY_ROUND, app.lucide) { chosen = i }
 						}
 						last := len(c.rows)
-						if passkey_choice_row(app, last, lucide.USB, i18n.tr("Use a security key or this device"), "", last == c.sel, em) { chosen = last }
+						if ui.choice_row(fmt.tprintf("pc_row_%d", last), last, &c.sel, i18n.tr("Use a security key or this device"), "", lucide.USB, app.lucide) { chosen = last }
 					}
 					ui.spacer(ui.px(em * 0.4))
 				}
@@ -224,44 +223,4 @@ passkey_choice_build :: proc(app: ^App) {
 		passkey_choice_end_later(app, .Platform)
 		passkey_choice_reset(app)
 	}
-}
-
-// One row of the question: its icon (a key for the Vault's passkeys, a USB key for the platform), its title, its user
-// name under it in weak text. true: clicked.
-@(private = "file")
-passkey_choice_row :: proc(app: ^App, i: int, glyph, title, detail: string, selected: bool, em: f32) -> bool {
-	rh := detail != "" ? em * 3.2 : em * 2.2
-	ui.push_tags("menu_item")
-	if selected { ui.push_tags("selected") }
-	ui.next({width = ui.fill(), height = ui.px(rh), radius = em * CHROME_BUTTON_RADIUS, axis = .X})
-	item := ui.build_box({.Clickable, .Draw_Background, .Draw_Hot_Effects}, fmt.tprintf("###pc_row_%d", i))
-	if selected { ui.pop_tags() }
-	sig := ui.signal(item)
-	ui.a11y_set(item, {role = .List_Item, name = title, description = detail, selected = selected})
-	if ui.parent(item) {
-		ui.spacer(ui.px(em * 0.5))
-		ui.next({width = ui.px(em * 1.8), height = ui.fill()})
-		if ui.column(.Center, {}, fmt.tprintf("###pc_icon_%d", i)) {
-			ui.spacer(ui.fill())
-			vault_glyph(app, glyph, fmt.tprintf("pc_glyph_%d", i), em * 1.6)
-			ui.spacer(ui.fill())
-		}
-		ui.spacer(ui.px(em * 0.5))
-		ui.next({width = ui.fill(), height = ui.fill()})
-		if ui.column(.Start, {}, fmt.tprintf("###pc_text_%d", i)) {
-			// (each line its own height, the two centred in the row, as the account choice of a security key)
-			ui.spacer(ui.fill())
-			ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
-			ui.label(fmt.aprintf("%s###pc_t_%d", title, i, allocator = ui.frame_allocator()))
-			if detail != "" {
-				ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
-				ui.push_tags("weak")
-				ui.label(fmt.aprintf("%s###pc_d_%d", detail, i, allocator = ui.frame_allocator()))
-				ui.pop_tags()
-			}
-			ui.spacer(ui.fill())
-		}
-	}
-	ui.pop_tags()
-	return sig.clicked
 }

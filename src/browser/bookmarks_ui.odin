@@ -169,15 +169,13 @@ bookmarks_dialog_build :: proc(app: ^App) {
 	save, remove, cancel := false, false, false
 	title := v.edit_folder ? (v.edit_id == 0 ? i18n.tr("New folder") : i18n.tr("Folder")) : i18n.tr("Bookmark")
 	if ui.modal("bookmark_edit", em * 28, &open) {
+		ui.dialog_header("bm_edit_heading", title, v.edit_folder ? lucide.FOLDER : lucide.BOOKMARK, app.lucide)
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Start, {}, "###bm_edit_margins") {
 			ui.spacer(ui.px(em * 1.0))
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.column(.Start, {}, "###bm_edit_col") {
 				ui.spacer(ui.px(em * 0.8))
-				ui.next({width = ui.fill(), height = ui.text_size()})
-				ui.label(fmt.tprintf("%s###bm_edit_heading", title))
-				ui.spacer(ui.px(em * 0.6))
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 				tr := ui.line_edit("###bm_edit_title", &v.edit_title, i18n.tr("Name"))
 				if v.edit_focus && tr.box != nil { v.edit_focus = false; ui.set_focus(tr.box.key); ui.field_select_all(&v.edit_title) }

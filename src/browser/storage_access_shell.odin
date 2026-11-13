@@ -42,16 +42,17 @@ storage_access_shell_build :: proc(app: ^App) {
 	open := true
 	answered, granted := false, false
 	if ui.modal("storage_access", em * 32, &open) {
-		ui.spacer(ui.px(em * 0.8))
-		ui.label(fmt.tprintf(i18n.tr("%s wants to use its cookies and site data while you are on %s"), req.site, req.top))
-		ui.label(i18n.tr("Sign-in, payment and comment widgets may need it; it also lets the site recognise you across sites."))
-		ui.spacer(ui.px(em * 0.8))
-		if ui.row() {
-			if icon_action_button(app, lucide.CHECK, i18n.tr("Allow"), "sa_allow", ui.px(em * 8), intent = .Success) { answered, granted = true, true }
-			ui.spacer(ui.px(em * 0.6))
-			if icon_action_button(app, lucide.SHIELD, i18n.tr("Block"), "sa_block", ui.px(em * 8), intent = .Danger) { answered, granted = true, false }
+		ui.dialog_header("sa_header", i18n.tr("Cookies and site data"), lucide.COOKIE, app.lucide)
+		if ui.dialog_body("sa_body") {
+			dialog_line(fmt.tprintf(i18n.tr("%s wants to use its cookies and site data while you are on %s"), req.site, req.top), "sa_what")
+			ui.spacer(ui.px(em * 0.4))
+			dialog_line(i18n.tr("Sign-in, payment and comment widgets may need it; it also lets the site recognise you across sites."), "sa_why", weak = true)
 		}
-		ui.spacer(ui.px(em * 0.8))
+		if ui.dialog_buttons("sa_buttons") {
+			if icon_action_button(app, lucide.SHIELD, i18n.tr("Block"), "sa_block", ui.px(em * 8), intent = .Danger) { answered, granted = true, false }
+			ui.spacer(ui.px(em * 0.6))
+			if icon_action_button(app, lucide.CHECK, i18n.tr("Allow"), "sa_allow", ui.px(em * 8), intent = .Success) { answered, granted = true, true }
+		}
 	}
 	if !open { answered, granted = true, false }   // Escape, a click outside: blocked
 	if answered {

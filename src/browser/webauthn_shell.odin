@@ -104,6 +104,7 @@ webauthn_pin_build :: proc(app: ^App) {
 	open := true
 	submit, cancel := false, false
 	if ui.modal_sized("key_pin", dialog_preferred(d.body, em * 26, em * 15), &d.size, &open, {em * 20, em * 11}) {
+		ui.dialog_header("kp_title", i18n.tr("Security key PIN"), lucide.USB, app.lucide)
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###kp_scroll") {
 			ui.next({width = ui.fill(), height = ui.children_sum()})
@@ -113,8 +114,6 @@ webauthn_pin_build :: proc(app: ^App) {
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###kp_col") {
 					ui.spacer(ui.px(em * 0.9))
-					dialog_line(i18n.tr("Security key PIN"), "kp_title")
-					ui.spacer(ui.px(em * 0.5))
 					dialog_line(fmt.tprintf(i18n.tr("%s asks for your security key. Type its PIN, then touch the key when it blinks."), q.rp_id), "kp_hint", weak = true)
 					if q.wrong || (q.retries >= 0 && q.retries <= 3) {
 						ui.spacer(ui.px(em * 0.3))
@@ -169,6 +168,7 @@ webauthn_choose_build :: proc(app: ^App) -> bool {
 		if ui.key_press(.Down) { d.choose_sel = min(d.choose_sel + 1, n - 1) }
 		if ui.key_press(.Up) { d.choose_sel = max(d.choose_sel - 1, 0) }
 		if ui.key_press(.Return) { chosen = d.choose_sel }
+		ui.dialog_header("kc_title", i18n.tr("Choose an account"), lucide.USER, app.lucide)
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###kc_scroll") {
 			ui.next({width = ui.fill(), height = ui.children_sum()})
@@ -178,15 +178,13 @@ webauthn_choose_build :: proc(app: ^App) -> bool {
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###kc_col") {
 					ui.spacer(ui.px(em * 0.9))
-					dialog_line(i18n.tr("Choose an account"), "kc_title")
-					ui.spacer(ui.px(em * 0.5))
 					dialog_line(fmt.tprintf(i18n.tr("Your security key holds several passkeys of %s. Choose the one to sign in with."), q.rp_id), "kc_hint", weak = true)
 					ui.spacer(ui.px(em * 0.8))
 					for a, i in q.accounts {
 						title, detail := a.display_name, a.name
 						if title == "" { title, detail = a.name, "" }
 						if title == "" { title = i18n.tr("Account without a name") }
-						if webauthn_choose_row(i, title, detail, i == d.choose_sel, em) { chosen = i }
+						if ui.choice_row(fmt.tprintf("kc_row_%d", i), i, &d.choose_sel, title, detail, lucide.USER, app.lucide) { chosen = i }
 					}
 					ui.spacer(ui.px(em * 0.4))
 				}
@@ -210,34 +208,6 @@ webauthn_choose_build :: proc(app: ^App) -> bool {
 	return true
 }
 
-// One account of the choose dialog: its display name, its user name under it in weak text. true: clicked.
-@(private = "file")
-webauthn_choose_row :: proc(i: int, title, detail: string, selected: bool, em: f32) -> bool {
-	rh := detail != "" ? em * 3.2 : em * 2.2
-	ui.push_tags("menu_item")
-	if selected { ui.push_tags("selected") }
-	ui.next({width = ui.fill(), height = ui.px(rh), radius = em * CHROME_BUTTON_RADIUS, axis = .Y})
-	item := ui.build_box({.Clickable, .Draw_Background, .Draw_Hot_Effects}, fmt.tprintf("###kc_row_%d", i))
-	if selected { ui.pop_tags() }
-	sig := ui.signal(item)
-	ui.a11y_set(item, {role = .List_Item, name = title, description = detail, selected = selected})
-	if ui.parent(item) {
-		// (each line its own height, the two centred in the row, as the Vault's fill menu)
-		ui.spacer(ui.fill())
-		ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
-		ui.label(fmt.aprintf("%s###kc_t_%d", title, i, allocator = ui.frame_allocator()))
-		if detail != "" {
-			ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
-			ui.push_tags("weak")
-			ui.label(fmt.aprintf("%s###kc_d_%d", detail, i, allocator = ui.frame_allocator()))
-			ui.pop_tags()
-		}
-		ui.spacer(ui.fill())
-	}
-	ui.pop_tags()
-	return sig.clicked
-}
-
 // While the key waits for the person's touch (after its PIN, or at once): what to do, and a Cancel that stops the
 // ceremony.
 @(private = "file")
@@ -249,6 +219,7 @@ webauthn_touch_build :: proc(app: ^App) {
 	open := true
 	cancel := false
 	if ui.modal_sized("key_touch", dialog_preferred(d.touch_body, em * 26, em * 10), &d.touch_size, &open, {em * 20, em * 8}) {
+		ui.dialog_header("kt_title", i18n.tr("Touch your security key"), lucide.USB, app.lucide)
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###kt_scroll") {
 			ui.next({width = ui.fill(), height = ui.children_sum()})
@@ -258,15 +229,13 @@ webauthn_touch_build :: proc(app: ^App) {
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###kt_col") {
 					ui.spacer(ui.px(em * 0.9))
+					// (the spinner says that the key waits; the title is the header's)
 					ui.next({width = ui.fill(), height = ui.children_sum()})
 					if ui.row(.Center, {}, "###kt_head") {
 						busy_spinner(app, em * 1.3)
 						ui.spacer(ui.px(em * 0.5))
-						ui.next({width = ui.fill(), height = ui.text_size()})
-						ui.label(strings.concatenate({i18n.tr("Touch your security key"), "###kt_title"}, ui.frame_allocator()))
+						dialog_line(fmt.tprintf(i18n.tr("%s asks for your security key. Touch its button or its gold disc now: it blinks while it waits."), q.rp_id), "kt_hint", weak = true)
 					}
-					ui.spacer(ui.px(em * 0.5))
-					dialog_line(fmt.tprintf(i18n.tr("%s asks for your security key. Touch its button or its gold disc now: it blinks while it waits."), q.rp_id), "kt_hint", weak = true)
 					ui.spacer(ui.px(em * 0.4))
 				}
 				ui.spacer(ui.px(em * 1.0))

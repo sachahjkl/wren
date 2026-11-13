@@ -709,10 +709,13 @@ vault_first_field :: proc(email_known: bool, email_box, password_box: ^ui.Box) -
 
 // The size a dialog opens at (ui.modal_sized's `preferred`): `width`, and the height of what it says (`body`: its box,
 // as the last frame laid it out) and of its buttons under it; `fallback_h` before its first layout. Once the person
-// resized it, their size wins (ui.modal_sized).
+// resized it, their size wins (ui.modal_sized). Every such dialog has a header (ui.dialog_header) above its body: its
+// height is added, or the body's last lines would scroll out of sight.
 dialog_preferred :: proc(body: ui.Key, width, fallback_h: f32) -> draw.Vec2 {
-	if b := ui.box_from_key(body); b != nil && b.size.y > 0 { return {width, b.size.y + ui.font_size() * DIALOG_FOOT_EM} }
-	return {width, fallback_h}
+	em := ui.font_size()
+	head := ui.dense(em * ui.DIALOG_HEADER_EM)
+	if b := ui.box_from_key(body); b != nil && b.size.y > 0 { return {width, head + b.size.y + em * DIALOG_FOOT_EM} }
+	return {width, head + fallback_h}
 }
 
 dialog_line :: proc(text, id: string, weak := false) {
@@ -782,13 +785,13 @@ vault_login_build :: proc(app: ^App) {
 	unlock := !two_factor && !device && !waiting && vault.vault_has_account(v) && (v.state == .Locked || v.state == .Unlocking || v.state == .Failed)
 	use_pin := unlock && v.pin && !s.use_password
 	login := !two_factor && !device && !waiting && !unlock
-	title := i18n.tr("Log in to the Vault")
+	title, glyph := i18n.tr("Log in to the Vault"), lucide.LOCK_KEYHOLE
 	switch {
-	case two_factor: title = i18n.tr("Second step")
-	case device:     title = i18n.tr("A new device")
-	case approval:   title = i18n.tr("Approve on another device")
-	case passkey:    title = i18n.tr("Use your passkey")
-	case unlock:     title = i18n.tr("Unlock the Vault")
+	case two_factor: title, glyph = i18n.tr("Second step"), lucide.SHIELD
+	case device:     title, glyph = i18n.tr("A new device"), lucide.MAIL
+	case approval:   title, glyph = i18n.tr("Approve on another device"), lucide.SMARTPHONE
+	case passkey:    title, glyph = i18n.tr("Use your passkey"), lucide.KEY_ROUND
+	case unlock:     title, glyph = i18n.tr("Unlock the Vault"), lucide.LOCK
 	}
 	// (the address of a self-hosted server was typed: the login goes once the Vault took it)
 	if s.pending_submit && !busy {
@@ -796,6 +799,7 @@ vault_login_build :: proc(app: ^App) {
 		submit = true
 	}
 	if ui.modal_sized("vault_dialog", dialog_preferred(s.dialog_body, em * 32, em * 21), &s.dialog_size, &open, {em * 22, em * 12}) {
+		ui.dialog_header("vd_title", title, glyph, app.lucide)
 		// what the dialog says scrolls when the person makes it small; its buttons stay under it
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###vd_scroll") {
@@ -806,8 +810,6 @@ vault_login_build :: proc(app: ^App) {
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###vd_col") {
 					ui.spacer(ui.px(em * 0.8))
-					dialog_line(title, "vd_title")
-					ui.spacer(ui.px(em * 0.3))
 					first: ^ui.Box
 					if login {
 						// the server: Bitwarden's in the United States or in the European Union, or one's own
@@ -1018,6 +1020,7 @@ vault_pin_build :: proc(app: ^App) {
 	open := true
 	submit, cancel := false, false
 	if ui.modal_sized("vault_pin", dialog_preferred(s.pin_body, em * 26, em * 13.5), &s.pin_size, &open, {em * 20, em * 10}) {
+		ui.dialog_header("vpin_title", i18n.tr("Set a PIN"), lucide.KEYBOARD, app.lucide)
 		// (the same frame as the login dialog: what it says scrolls when made small, its buttons stay at its foot)
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###vpin_scroll") {
@@ -1028,8 +1031,6 @@ vault_pin_build :: proc(app: ^App) {
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###vpin_col") {
 					ui.spacer(ui.px(em * 0.9))
-					dialog_line(i18n.tr("Set a PIN"), "vpin_title")
-					ui.spacer(ui.px(em * 0.5))
 					dialog_line(i18n.tr("The PIN unlocks the Vault in this profile. After 5 wrong PINs, only the master password unlocks it."), "vpin_hint", weak = true)
 					ui.spacer(ui.px(em * 0.8))
 					box := dialog_field("###vpin_field", &s.pin, i18n.tr("PIN (4 characters or more)"), true, &submit, &cancel, &app.vault.reveal)

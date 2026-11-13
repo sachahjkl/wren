@@ -268,6 +268,7 @@ vault_generator_build :: proc(app: ^App) {
 	close, again, copy_it := false, false, false
 	o := &s.gen_options
 	if ui.modal_sized("vault_generator", dialog_preferred(s.gen_body, em * 28, em * 21), &s.gen_size, &open, {em * 22, em * 14}) {
+		ui.dialog_header("vg_title", i18n.tr("Password generator"), lucide.DICES, app.lucide)
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.scroll_y("###vg_scroll") {
 			ui.next({width = ui.fill(), height = ui.children_sum()})
@@ -277,8 +278,6 @@ vault_generator_build :: proc(app: ^App) {
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###vg_col") {
 					ui.spacer(ui.px(em * 0.9))
-					dialog_line(i18n.tr("Password generator"), "vg_title")
-					ui.spacer(ui.px(em * 0.5))
 					kind := o.passphrase ? 1 : 0
 					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 					if ui.segmented("###vg_kind", []string{i18n.tr("Password"), i18n.tr("Passphrase")}, &kind) { o.passphrase = kind == 1 }

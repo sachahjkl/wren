@@ -132,17 +132,17 @@ fs_shell_build :: proc(app: ^App) {
 	open := true
 	answered, granted := false, false
 	if ui.modal("fs_permission", em * 30, &open) {
-		ui.spacer(ui.px(em * 0.8))
-		what := req.write ? i18n.tr("edit") : i18n.tr("view")
-		ui.label(fmt.tprintf(i18n.tr("%s wants to %s files in"), req.origin, what))
-		ui.label(req.what)
-		ui.spacer(ui.px(em * 0.8))
-		if ui.row() {
-			if icon_action_button(app, lucide.CHECK, i18n.tr("Allow"), "fs_allow", ui.px(em * 8), intent = .Success) { answered, granted = true, true }
-			ui.spacer(ui.px(em * 0.6))
-			if icon_action_button(app, lucide.SHIELD, i18n.tr("Block"), "fs_block", ui.px(em * 8), intent = .Danger) { answered, granted = true, false }
+		ui.dialog_header("fs_header", i18n.tr("Files"), req.write ? lucide.FOLDER_OPEN : lucide.FOLDER, app.lucide)
+		if ui.dialog_body("fs_body") {
+			what := req.write ? i18n.tr("edit") : i18n.tr("view")
+			dialog_line(fmt.tprintf(i18n.tr("%s wants to %s files in"), req.origin, what), "fs_what")
+			dialog_line(req.what, "fs_where", weak = true)
 		}
-		ui.spacer(ui.px(em * 0.8))
+		if ui.dialog_buttons("fs_buttons") {
+			if icon_action_button(app, lucide.SHIELD, i18n.tr("Block"), "fs_block", ui.px(em * 8), intent = .Danger) { answered, granted = true, false }
+			ui.spacer(ui.px(em * 0.6))
+			if icon_action_button(app, lucide.CHECK, i18n.tr("Allow"), "fs_allow", ui.px(em * 8), intent = .Success) { answered, granted = true, true }
+		}
 	}
 	if !open { answered, granted = true, false }   // Escape, a click outside: blocked
 	if answered {
