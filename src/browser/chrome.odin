@@ -375,6 +375,8 @@ Chip_Segment :: struct {
 	// focused, the chip's own ring and glow in its tone (a secure page's green): the field's ring stays the focus colour
 	// and goes up the divider, the chip and the address read as two parts
 	tone:                  draw.Color,
+	backdrop:              draw.Color,   // the toolbar's colour: the field's blue glow is wiped by it beside the chip
+	focus:                 f32,          // the field's focus_t
 }
 Chip_Icon :: struct { glyph: string, color: draw.Color }
 
@@ -385,12 +387,12 @@ chip_segment_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	r := b.rect
 	toned := s.ring.a > 0 && s.tone.a > 0
 	if toned {
-		// the glow of the chip's ring, outside it (the field's glow, of the focus colour, is under it)
-		glow := CHIP_GLOW_PX * ui.scale()
-		g := s.tone
-		g.a = CHIP_GLOW_ALPHA * s.ring.a
-		draw.push_clip(dc, {{r.min.x - glow, r.min.y - glow}, {r.max.x, r.max.y + glow}})
-		draw.rect(dc, draw.rect_pad({r.min, {s.bar_right, r.max.y}}, glow), g, s.radius + glow, 0, glow)
+		// the chip's halo as the theme draws the field's (ui.focus_glow), of its tone; first the field's halo of the focus
+		// colour under it is wiped by the toolbar's colour, or the two add up
+		pad := 8 * ui.scale()
+		draw.push_clip(dc, {{r.min.x - pad, r.min.y - pad}, {r.max.x, r.max.y + pad}})
+		if s.backdrop.a > 0 { draw.rect(dc, draw.rect_pad(r, pad), s.backdrop) }
+		ui.focus_glow(dc, {r.min, {s.bar_right, r.max.y}}, {s.radius, s.radius, s.radius, s.radius}, s.tone, s.focus)
 		draw.pop_clip(dc)
 	}
 	// opaque: the field's text, scrolled to its end while edited, never shows through the chip
@@ -421,8 +423,6 @@ chip_segment_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	if toned { draw.rect(dc, {{r.max.x - s.ring_w, r.min.y}, {r.max.x, r.max.y}}, s.ring) }
 }
 
-@(private = "file") CHIP_GLOW_PX :: 6
-@(private = "file") CHIP_GLOW_ALPHA :: 0.6
 
 security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radius: f32 = 0, field: ^ui.Box = nil) {
 	em := ui.font_size()
@@ -465,7 +465,10 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 				chip_segment.ring = ui.color("focus border")
 				chip_segment.ring.a *= field.focus_t
 				chip_segment.ring_w = FOCUS_RING_WIDTH * ui.scale()
-				if sec.tone != .Weak && !classic_on(app) { chip_segment.tone, chip_segment.tone.a = var_tone, 1 }
+				if sec.tone != .Weak && !classic_on(app) {
+					chip_segment.tone, chip_segment.tone.a, chip_segment.focus = var_tone, 1, field.focus_t
+					if field.parent != nil { chip_segment.backdrop = ui.box_under(field.parent) }
+				}
 			}
 			ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(own.security_chip_width + inset), height = ui.px(height + 2 * inset)})
 		} else {
