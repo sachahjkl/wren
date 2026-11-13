@@ -419,8 +419,9 @@ chip_segment_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		}
 		draw.pop_clip(dc)
 	}
-	// the field's ring on its left edge: the address's part is framed whole in the focus colour
-	if toned { draw.rect(dc, {{r.max.x - s.ring_w, r.min.y}, {r.max.x, r.max.y}}, s.ring) }
+	// the field's ring on its left edge: the address's part is framed whole in the focus colour (a chip of no tone too:
+	// the grey divider broke the ring)
+	if s.ring.a > 0 { draw.rect(dc, {{r.max.x - s.ring_w, r.min.y}, {r.max.x, r.max.y}}, s.ring) }
 }
 
 
