@@ -39,6 +39,19 @@ registry_well_formed :: proc(t: ^testing.T) {
 	testing.expect_value(t, ui.command_shortcut(r.list[r.index["browser.command_palette"]].spec), "Ctrl+Shift+P")
 }
 
+// No command takes a key that types text: a page's field or the address bar has the keyboard most of the time, and such
+// a key would act instead of typing (the toolkit's rule, ui.command_typing_keys).
+@(test)
+no_command_key_types_text :: proc(t: ^testing.T) {
+	test_app(t)
+	r: Command_Registry
+	commands_build(&r)
+	defer commands_destroy(&r)
+	specs := make([]ui.Command, len(r.list), context.temp_allocator)
+	for c, i in r.list { specs[i] = c.spec }
+	for line in ui.command_typing_keys(specs) { testing.expectf(t, false, "a command's key types text: %s", line) }
+}
+
 @(test)
 query_prefixes :: proc(t: ^testing.T) {
 	page_render_test_lock()
