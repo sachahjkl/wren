@@ -9,8 +9,9 @@ package browser
 // id as its instance: it opens in the build of the window the person is in, and its answer is read in that window's
 // build. Window_View keeps where it is open and what for (window_view_follow, window_view_ended).
 //
-// No view opens in a window of the system's own here: no backend of windows is given to the Views
-// (ui.views_set_windows), so the toolkit offers floating and docked places only.
+// A view can go in a window of the system's own: Wren's backend of windows (views_external.odin) is the Views' one
+// (ui.views_set_windows). The developer tools are a view too: a panel at the bottom of their browser window at
+// first, an instance per browser window (devtools.odin).
 
 import "core:fmt"
 import "core:strings"
@@ -37,6 +38,7 @@ BOOKMARK_EDIT_VIEW   :: "bookmark_edit"
 CONFIRM_VIEW         :: "wren_confirm"
 VAULT_LOGOUT_VIEW    :: "vault_logout"
 VAULT_INSECURE_VIEW  :: "vault_insecure"
+DEVTOOLS_VIEW        :: "devtools"
 
 // The answer of a page's permission prompt (files, notifications, storage access).
 Permission_Answer :: enum u8 { Block, Allow }
@@ -49,11 +51,16 @@ views_start :: proc(app: ^App) {
 		path = strings.concatenate({app.profile_dir, "/", VIEWS_FILE}, context.temp_allocator)
 	}
 	ui.views_init(&app.views, {path = path})
+	ui.views_set_windows(&app.views, view_windows_backend(app))   // views_external.odin
 	views_register(app)
 }
 
-// After the last build: which views were open is written, the memory flushed.
-views_end :: proc(app: ^App) { ui.views_destroy(&app.views) }
+// After the last build: which views were open is written, the memory flushed, the views' windows closed.
+views_end :: proc(app: ^App) {
+	ui.views_destroy(&app.views)
+	delete(app.view_windows)
+	app.view_windows = nil
+}
 
 // Every view of Wren, once.
 views_register :: proc(app: ^App) {
@@ -79,6 +86,10 @@ views_register :: proc(app: ^App) {
 		width_em = 28, min_width_em = 22, min_height_em = 14, resizable = true})
 	ui.view_register(vs, QR_VIEW, qr_view, {title = i18n.later("Scan to open this page"), icon = lucide.QR_CODE, icon_font = f, width_em = QR_SIDE_EM + 6})
 	ui.view_register(vs, BOOKMARK_EDIT_VIEW, bookmark_edit_view, {title = i18n.later("Bookmark"), icon = lucide.BOOKMARK, icon_font = f, width_em = 28})
+	// (its window's first size is the detached window's of old: 1100 by 760 at 15 px)
+	ui.view_register(vs, DEVTOOLS_VIEW, devtools_view, {title = i18n.later("Developer tools"), icon = lucide.SQUARE_TERMINAL, icon_font = f,
+		home = .Panel, home_place = {edge = .Bottom}, extent_em = DEVTOOLS_EXTENT_EM, width_em = 73, height_em = 50,
+		min_width_em = 16, min_height_em = 6})
 }
 
 // A browser window's State builds the program's views.

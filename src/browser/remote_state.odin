@@ -217,8 +217,10 @@ chrome_reset :: proc(app: ^App) {
 	find_close(app)
 	if palette_open(app) { palette_close(app) }
 	if blocker_picker_active() { blocker_picker_cancel(app) }
-	if devtools_detached() { devtools_attach(app) }
-	if dev().visible { devtools_toggle(app) }
+	if dev().visible {
+		devtools_reattach(app)   // (where a test moved them is not the next test's)
+		devtools_toggle(app)
+	}
 	if platform.is_fullscreen(active_window(app).win) { toggle_fullscreen(app) }
 	downloads_cancel_all(app)
 }

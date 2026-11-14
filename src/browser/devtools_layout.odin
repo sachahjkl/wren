@@ -11,7 +11,7 @@ package browser
 //
 // The buttons of the panel as a whole (the element picker; settings, where the panel goes, close) are at the ends of the
 // top strips: the picker in the top left stack's, the others in the top right stack's (the close button last, after the
-// stack's own fold and menu buttons), whose empty part moves the panel when it floats over the page. `panel` (browser.devtools.tab) is the panel shown last.
+// stack's own fold and menu buttons). `panel` (browser.devtools.tab) is the panel shown last.
 
 import "core:fmt"
 import "core:math"
@@ -26,6 +26,8 @@ DEV_LAYOUT_PREF :: "browser.devtools.layout"
 DEV_LAYOUT_DEFAULT :: "dock1 [*console,elements,network,application,performance,memory]"
 // A drawer of old had this height when it had none of its own (CSS px).
 DEV_OLD_DRAWER_PX :: 200
+// ... and the panel its height, before the view's size was the toolkit's (CSS px).
+DEV_OLD_ROOM_PX :: 300
 
 dev_panel_name :: proc(user: rawptr, id: u32) -> string { return id < u32(len(Dev_Panel)) ? DEV_PANEL_NAMES[Dev_Panel(id)] : "" }
 
@@ -81,7 +83,7 @@ dev_layout_migrate :: proc(d: ^Devtools, p: ^config.Prefs) -> bool {
 	if split := d.layout.nodes[under].parent; split != ui.DOCK_NONE {
 		pane, _ := ui.pane_parse(config.user_text(p, "browser.devtools.drawer") or_else "")
 		h := pane.size[.Y] > 0 ? pane.size[.Y] : DEV_OLD_DRAWER_PX
-		room := f32(config.float_of(p, "browser.devtools.size"))
+		room := f32(DEV_OLD_ROOM_PX)
 		ui.dock_set_split(&d.layout, split, room > h ? 1 - h / room : d.layout.nodes[split].ratio, pane.collapsed)
 	}
 	dev_layout_complete(d)
@@ -126,7 +128,7 @@ devtools_drawer_toggle :: proc(app: ^App) {
 // (the Elements panel's own dock first), before the chrome's shortcuts take them for the browser's tabs.
 devtools_take_ctrl_tab :: proc(app: ^App) -> bool {
 	d := dev()
-	if !d.visible || devtools_detached() { return false }
+	if !d.visible || d.built_in != ui.current_state() { return false }   // (built in another window: its keys are that window's)
 	if ui.dock_take_ctrl_tab(&d.els.layout) || ui.dock_take_ctrl_tab(&d.layout) {
 		request_frames(app, 2)
 		return true
@@ -143,7 +145,7 @@ dev_dock :: proc(app: ^App, t: ^Tab) {
 		title = proc(user: rawptr, id: u32) -> string { return DEV_PANEL_TITLES[Dev_Panel(id)] },
 		tab = dev_tab_face,
 		closable = proc(user: rawptr, id: u32) -> bool { return false },   // (a panel goes elsewhere, not away)
-		strip_begin = dev_strip_begin, strip_end = dev_strip_end, strip_last = dev_strip_last, strip_space = dev_strip_space,
+		strip_begin = dev_strip_begin, strip_end = dev_strip_end, strip_last = dev_strip_last,
 		on_save = proc(user: rawptr, dk: ^ui.Dock) { devtools_save_layout((^App)(user)) },
 		user = app, size = room, tab_height = app.dtm.tab, handle = dt_px(5),
 	})
@@ -301,16 +303,15 @@ dev_strip_end :: proc(user: rawptr, dk: ^ui.Dock, leaf: i32) {
 	app := (^App)(user)
 	skey := dt_menu_btn("###dt_settings", .Kebab, tooltip = "Customize and control the developer tools", caret = false)
 	if ui.menu(skey, dt_px(230)) { devtools_settings_menu(app, dev().frame_tab) }
+	// (the view's own menu and the palette move it too; this one is where the developer tools always had it)
 	dkey := dt_menu_btn("###dt_dock", DEV_DOCK_ICONS[dev().dock], tooltip = "Dock side", caret = false)
 	if ui.menu(dkey, dt_px(240)) {
-		for d in Dev_Dock {
-			if ui.menu_item(fmt.tprintf("%s###dt_dock_%d", DEV_DOCK_TITLES[d], int(d)), cmd_key(app, DEV_DOCK_COMMANDS[d]), checked = dev().dock == d && !devtools_detached(), icon = "").clicked { if devtools_detached() { devtools_attach(app) }; devtools_set_dock(app, d) }
+		for d in DEV_DOCK_MENU {
+			if d == .Window { ui.menu_separator() }
+			if ui.menu_item(fmt.tprintf("%s###dt_dock_%d", DEV_DOCK_TITLES[d], int(d)), cmd_key(app, DEV_DOCK_COMMANDS[d]), checked = dev().dock == d, icon = "").clicked { devtools_set_dock(app, d) }
 		}
-		ui.menu_separator()
-		if devtools_detached() {
-			if ui.menu_item("Dock back into the browser window###dt_dock_win", cmd_key(app, "view.devtools_detach"), icon = lucide.PANEL_BOTTOM).clicked { devtools_attach(app) }
-		} else {
-			if ui.menu_item("Open in a separate window###dt_dock_win", cmd_key(app, "view.devtools_detach"), icon = lucide.APP_WINDOW).clicked { devtools_detach(app) }
+		if dev().dock == .Window {
+			if ui.menu_item("Dock back into the browser window###dt_dock_back", icon = lucide.PANEL_BOTTOM).clicked { devtools_reattach(app) }
 		}
 	}
 	dt_gap(2)
@@ -328,11 +329,3 @@ dev_strip_last :: proc(user: rawptr, dk: ^ui.Dock, leaf: i32) {
 	dt_gap(2)
 }
 
-// A floating panel over the page is moved by the empty part of its top right strip.
-@(private = "file")
-dev_strip_space :: proc(user: rawptr, dk: ^ui.Dock, leaf: i32, b: ^ui.Box) {
-	if dev().dock != .Floating || devtools_detached() || leaf != dev_corner_leaf(dk, true) { return }
-	b.flags += {.Clickable}
-	b.cursor = .Move
-	devtools_float_drag((^App)(user), ui.signal(b), .Move)
-}

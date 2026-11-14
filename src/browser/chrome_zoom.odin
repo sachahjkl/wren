@@ -36,7 +36,7 @@ chrome_zoom_step :: proc(app: ^App, dir: int) {
 @(private = "file")
 pointer_on_chrome :: proc(app: ^App, pos: [2]f32) -> bool {
 	if draw.rect_contains(active_window(app).page_rect, pos) { return false }
-	if dev().visible && draw.rect_contains(dev().rect, pos) { return false }
+	if dev().visible && dev().built_in == active_window(app).ui && draw.rect_contains(dev().rect, pos) { return false }
 	return true
 }
 

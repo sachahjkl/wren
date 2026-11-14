@@ -92,11 +92,13 @@ colour. The release puts it exactly there (<code>tab_move(..., slot = ...)</code
 injected pointer (<code>platform.Event.injected</code>: positions of the event, not the system's cursor), holds the drag on its way
 (<code>e2e.drag</code> with <code>hold</code>, <code>resume</code>; <code>wren ctl drag --hold</code>, <code>--resume</code>), reads the mark (<code>e2e.windows</code>: <code>dropping</code>,
 <code>drop_index</code>, <code>drop_mark</code>; <code>wren ctl windows --json</code>: <code>drop</code>) and captures it.</li>
-<li>Developer tools (<code>devtools.odin</code>, <code>devtools_window.odin</code>): each window has its own (<code>Window_Own.devtools</code>, read as <code>dev()</code>, the
-active window's), docked in it or in a window of their own, showing its current tab. F12 in one window opens them there only.
-A tab they show that moves to a window with none open takes them along (<code>devtools_follow_tab</code>: docked or in their window); a
-window that closes closes its developer tools' window. Where they sit, their tab and their size are saved from the window that
-changed them (<code>browser.devtools.*</code>) and are what a new window starts with; the text size and the density are every window's.
+<li>Developer tools (<code>devtools.odin</code>): each window has its own (<code>Window_Own.devtools</code>, read as <code>dev()</code>, the active window's), the
+toolkit's view <code>"devtools"</code> with the window's id as its instance, showing its current tab: docked at an edge of the window,
+floating over it, or in a window of their own (<code>views_external.odin</code>: Wren's backend of the views' windows, whose frames come
+after their browser window's). F12 in one window opens them there only. A tab they show that moves to a window with none
+open takes them along (<code>devtools_follow_tab</code>); a window that closes closes its developer tools' window. Where they sit is the
+views' memory (<code>views.txt</code>); their tab is saved from the window that changed it (<code>browser.devtools.*</code>) and is what a new window
+starts with; the text size and the density are every window's.
 The network log's bodies and the pages' console descriptions are kept while any window shows its developer tools; a speed
 limit or blocked addresses are those of the request's tab's window. A media preview of the Network tab plays in one window
 at a time.</li>

@@ -142,7 +142,8 @@ Navigable :: page.Navigable
 // (request_frames), .presented; window_own(app) for the chrome's state.
 App :: struct {
 	announcer:     ui.Announcer,             // messages.odin: what the browser says of an act it finished
-	views:         ui.Views,                 // views.odin: the dialogs of every window, and what is remembered of them
+	views:         ui.Views,                 // views.odin: the dialogs and panels of every window, and what is remembered of them
+	view_windows:  [dynamic]^View_Window,    // views_external.odin: the views in a window of their own, every browser window's
 	rates:    Loop_Rates,   // loop_rates.odin: turns, sleeps, frames and why
 	r:        render.Renderer,
 	fonts:    font.State,
@@ -1080,7 +1081,7 @@ scroll_to_fragment :: proc(app: ^App, t: ^Tab) {
 	page.scroll_to_fragment(t.page, animate = false)
 }
 
-// The page's own box (or the view of a built-in page): what fills the room the developer tools leave.
+// The page's own box (or the view of a built-in page): what fills the room the panels of the window leave.
 page_view :: proc(app: ^App, t: ^Tab) {
 	ui.next({width = ui.fill(), height = ui.fill()})
 	if t != nil && t.kind == .Config {
@@ -1104,41 +1105,17 @@ page_view :: proc(app: ^App, t: ^Tab) {
 	}
 }
 
-// What is under the toolbar (beside the sidebar when the tabs are in one): the crash banner, the find bar, the page and the
-// developer tools docked next to it.
-// `width`: the column's (physical px): the window's, less the tabs' sidebar beside it. The developer tools docked at the bottom
-// are laid out at it (they took the window's width beside a sidebar, and their right end was cut off).
-page_column :: proc(app: ^App, t: ^Tab, elem_fs: bool, width: f32) {
+// What is under the toolbar (beside the sidebar when the tabs are in one): the crash banner, the find bar, the page. (The
+// developer tools are a view: docked, the frame of views lays them out at an edge of the window: devtools.odin.)
+page_column :: proc(app: ^App, t: ^Tab, elem_fs: bool) {
 	if !elem_fs { bookmarks_bar(app, t); crash_banner(app); find_bar(app, t) }   // bookmarks_bar.odin, crash_banner.odin
-	// the page, and the developer tools docked next to it (devtools.odin): the page takes what the panel leaves
-	dock, dev_on := devtools_dock(app, t)
-	switch {
-	case dev_on && dock == .Right:
-		ui.next({width = ui.fill(), height = ui.fill()})
-		if ui.row(.Start, {}, "###page_and_devtools") {
-			page_view(app, t)
-			devtools_splitter(app, true)
-			devtools_panel(app, t, false, {width = ui.px(devtools_extent(app, true)), height = ui.fill()})
-		}
-	case dev_on && dock == .Left:
-		ui.next({width = ui.fill(), height = ui.fill()})
-		if ui.row(.Start, {}, "###devtools_and_page") {
-			devtools_panel(app, t, false, {width = ui.px(devtools_extent(app, true)), height = ui.fill()})
-			devtools_splitter(app, true)
-			page_view(app, t)
-		}
-	case dev_on && dock == .Bottom:
-		page_view(app, t)
-		devtools_splitter(app, false)
-		devtools_panel(app, t, false, {width = ui.fill(), height = ui.px(devtools_extent(app, false))}, fill = {width, 0})
-	case:
-		page_view(app, t)
-	}
+	page_view(app, t)
 }
 
 build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restored tab loads when it is first shown
 	chrome_shortcuts(app)
 	ext_watch(app)   // ext_window_api.odin: the extensions' view of the windows, tabs and input changes
+	devtools_view_follow(app)   // devtools.odin: the developer tools' view opens or closes before the frame of views settles it
 	t := current_tab(app)
 	// (the window's frame of views: its panels and floating views around the content; its dialogs come at the end of the build, over it: views.odin)
 	if ui.views_frame(&app.views) {
@@ -1168,18 +1145,17 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 					if ui.row(.Start, {}, "###sidebar_row") {
 						if pos == .Left { tab_sidebar(app, pos, side_now) }
 						ui.next({width = ui.fill(), height = ui.fill()})
-						if ui.column(.Start, {}, "###page_column") { page_column(app, t, elem_fs, f32(active_window(app).win.size.x) - side_now.extent) }
+						if ui.column(.Start, {}, "###page_column") { page_column(app, t, elem_fs) }
 						if pos == .Right { tab_sidebar(app, pos, side_now) }
 					}
 				} else {
 					window_own(app).sidebar.shown = false
-					page_column(app, t, elem_fs, f32(active_window(app).win.size.x))
+					page_column(app, t, elem_fs)
 				}
 				// status bar (status_bar.odin)
 				if !elem_fs { status_bar_build(app, t) }
 				fullscreen_bars(app, t)
-				link_bubble(app, t)   // status_bar.odin: where the link under the pointer goes, over the page's corner (under the floating developer tools)
-				devtools_floating(app, t)   // over the page when it is undocked
+				link_bubble(app, t)   // status_bar.odin: where the link under the pointer goes, over the page's corner
 			}
 		}
 	}
@@ -1594,7 +1570,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	events = forms_unconsumed_events(app, events)   // keys the page used do not reach the chrome
 	events = history_tree_events(app, events)   // the wheel and zoom keys of about:history's tree (history_tree.odin)
 	events = chrome_zoom_events(app, events)    // Ctrl+wheel and Ctrl +, -, 0 for the interface itself (chrome_zoom.odin)
-	events = devtools_events(app, events)       // Ctrl+wheel and Ctrl +, -, 0 over the developer tools: their text size (devtools.odin)
+	events = devtools_events(app, events, wnd.ui)   // Ctrl+wheel and Ctrl +, -, 0 over the developer tools: their text size (devtools.odin)
 	forms_shell_frame(app)
 	selection_shell_frame(app)
 	events = shell_after_input(app, events)   // (what is left is the chrome's: chrome frames from here on build with it)
@@ -1966,7 +1942,7 @@ app_start :: proc(args: []string) -> ^App {
 // false: it has been told to end (app_stop next).
 app_turn :: proc(app: ^App) -> bool {
 	end_signal_check(app)   // end_signal_<os>.odin: SIGTERM, SIGINT, SIGHUP close the browser as its last window would
-	if !windows_pass(app) { return false }   // windows.odin: a frame for each window that has a cause (devtools_window_tick for the front one)
+	if !windows_pass(app) { return false }   // windows.odin: a frame for each window that has a cause, then of its views' windows (views_external.odin)
 	memcheck_drive(app)   // memcheck.odin: the check build's script, if any
 	memory_trim_tick(app)   // memory_trim.odin
 	remote_after_frame(app)   // remote_shell.odin: the waits of remote commands

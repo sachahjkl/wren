@@ -1,7 +1,9 @@
 package browser
 
-// The developer tools: a native view of the chrome (not a page), docked under the page, at its right or its left, or
-// floating over it, with panels (Console, Elements, Network, Application, Performance, Memory) in the toolkit's dock
+// The developer tools: a native view of the chrome (not a page), the toolkit's view "devtools" (views.odin), an instance
+// per browser window: a panel at the bottom of the window at first, moved by the person to another edge, floated over the
+// page or put in a window of its own (views_external.odin) as every view is; the toolkit remembers where. Inside, the panels
+// (Console, Elements, Network, Application, Performance, Memory) are in the toolkit's dock
 // (ui.Dock, docs/docking.md of the toolkit): stacks of tabs the user drags to split, join, float and dock back, every target
 // also in a stack's menu; browser.devtools.layout keeps it (devtools_layout.odin). F12 / Ctrl+Shift+I open and
 // close it, Ctrl+Shift+J opens the Console, Ctrl+Shift+C picks an element of the page; "Inspect" in the page's context menu
@@ -10,18 +12,18 @@ package browser
 // devtools_console.odin, devtools_elements.odin, devtools_network.odin, devtools_application.odin, devtools_performance.odin
 // and devtools_memory.odin; the interface parts they share (icons, buttons, lists, the filter field) are in devtools_kit.odin and devtools_icons.odin.
 //
-// State and preferences: browser.devtools.* (visible, dock, tab, size, layout, font size, density, and what each panel keeps:
-// its filters, its columns, its panes). The panel takes room from the page (build_ui puts it next to the page's box, so
-// page_rect shrinks and the layout follows); floating, it is a box over the page that is moved by its top strip and
-// resized by its corner, and takes the pointer where it is (devtools_captures). Closed, it costs nothing: nothing is
-// built, and the loader's observer keeps only what the Network tab needs for the tabs that have requests.
+// State and preferences: browser.devtools.* (visible, tab, layout, font size, density, and what each panel keeps: its
+// filters, its columns, its panes). `visible` is the program's: each window's build makes the view follow it
+// (devtools_view_follow), and the person closing the view sets it false. Docked, the view takes room from the page (the
+// frame of views lays the page out beside it, so page_rect shrinks and the layout follows). Closed, it costs nothing:
+// nothing is built, and the loader's observer keeps only what the Network tab needs for the tabs that have requests.
 //
 // The panel reads what the shell owns (the tab's console lines, its request log); what it shows of the page's document is
 // copied while the page is not running (shell_nested: a chrome frame made while a script holds the thread reads nothing
 // of the page).
 
 import "core:fmt"
-import "core:math"
+import "core:strings"
 import "toolkit:draw"
 import "toolkit:platform"
 import prefs_page "toolkit:prefs_page"
@@ -29,25 +31,28 @@ import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
+import "wb:host"
+import "wb:i18n"
 import "wb:page"
 
-Dev_Dock :: enum u8 { Bottom, Right, Left, Floating }
+// Where the developer tools are: the view's presentation and, docked, its edge of the window (dev_dock_of). The view's
+// memory is the toolkit's; this is what the menus, the commands and wren ctl say of it.
+Dev_Dock :: enum u8 { Bottom, Right, Left, Top, Floating, Window }
 Dev_Panel :: enum u8 { Console, Elements, Network, Application, Performance, Memory }
 
-DEV_DOCK_NAMES := [Dev_Dock]string{.Bottom = "bottom", .Right = "right", .Left = "left", .Floating = "floating"}
+DEV_DOCK_NAMES := [Dev_Dock]string{.Bottom = "bottom", .Right = "right", .Left = "left", .Top = "top", .Floating = "floating", .Window = "window"}
 DEV_PANEL_NAMES := [Dev_Panel]string{.Console = "console", .Elements = "elements", .Network = "network", .Application = "application", .Performance = "performance", .Memory = "memory"}
 DEV_PANEL_TITLES := [Dev_Panel]string{.Console = "Console", .Elements = "Elements", .Network = "Network", .Application = "Application", .Performance = "Performance", .Memory = "Memory"}
 DEV_PANEL_ICONS := [Dev_Panel]Dt_Icon{.Console = .Tab_Console, .Elements = .Tab_Elements, .Network = .Tab_Network, .Application = .Tab_Application, .Performance = .Tab_Performance, .Memory = .Tab_Memory}
-DEV_DOCK_TITLES := [Dev_Dock]string{.Bottom = "Dock to bottom", .Right = "Dock to right", .Left = "Dock to left", .Floating = "Undock into a floating panel"}
-// The commands (commands.odin) that dock the panel: their shortcuts are shown in the menus.
-DEV_DOCK_COMMANDS := [Dev_Dock]string{.Bottom = "view.devtools_dock_bottom", .Right = "view.devtools_dock_right", .Left = "view.devtools_dock_left", .Floating = "view.devtools_dock_floating"}
+DEV_DOCK_TITLES := [Dev_Dock]string{.Bottom = "Dock to bottom", .Right = "Dock to right", .Left = "Dock to left", .Top = "Dock to top", .Floating = "Undock into a floating panel", .Window = "Open in a separate window"}
+// The commands (commands.odin) that move the view: their shortcuts are shown in the menus ("": none).
+DEV_DOCK_COMMANDS := [Dev_Dock]string{.Bottom = "view.devtools_dock_bottom", .Right = "view.devtools_dock_right", .Left = "view.devtools_dock_left", .Top = "", .Floating = "view.devtools_dock_floating", .Window = "view.devtools_detach"}
+// The places the panel's own menu offers (the toolkit's menu and palette offer every one).
+DEV_DOCK_MENU :: [?]Dev_Dock{.Bottom, .Right, .Left, .Floating, .Window}
+DEV_DOCK_EDGES :: [Dev_Dock]ui.View_Edge{.Bottom = .Bottom, .Right = .Right, .Left = .Left, .Top = .Top, .Floating = .Bottom, .Window = .Bottom}
 
-// The room of the docked panel (CSS px): from a header and a row to all the window but a strip of the page.
-DEV_DOCK_MIN_PX :: 40
-DEV_PAGE_MIN_PX :: 40
-// The floating panel's smallest size, and what of it stays in the window when it is moved (CSS px).
-DEV_FLOAT_MIN :: [2]f32{160, 80}
-DEV_FLOAT_KEEP :: [2]f32{120, 60}
+// The view's first height at the bottom, or width at a side (ems): 300 px at 15 px, the panel's size of old.
+DEVTOOLS_EXTENT_EM :: 20
 
 // The first shortcut of a command, as a menu shows it ("" when it has none).
 cmd_key :: proc(app: ^App, name: string) -> string {
@@ -55,36 +60,19 @@ cmd_key :: proc(app: ^App, name: string) -> string {
 	return c == nil ? "" : ui.command_shortcut(c.spec)
 }
 
-DEV_DOCK_ICONS := [Dev_Dock]Dt_Icon{.Bottom = .Dock_Bottom, .Right = .Dock_Right, .Left = .Dock_Left, .Floating = .Float}
+DEV_DOCK_ICONS := [Dev_Dock]Dt_Icon{.Bottom = .Dock_Bottom, .Right = .Dock_Right, .Left = .Dock_Left, .Top = .Dock_Bottom, .Floating = .Float, .Window = .Detach}
 
 DEVTOOLS_PREFS := [?]config.Def{
 	{name = "browser.devtools.visible", kind = .Bool, default = {b = false},
 		description = "Show the developer tools: a panel with the page's console, its document tree, its requests and its storage (F12, Ctrl+Shift+I)."},
-	{name = "browser.devtools.dock", kind = .String, default = {s = "bottom"}, choices = {"bottom", "right", "left", "floating"},
-		description = "Where the developer tools sit: under the page, at its right or its left, or in a panel over it that can be moved and resized."},
 	{name = "browser.devtools.tab", kind = .String, default = {s = "console"}, choices = {"console", "elements", "network", "application", "performance", "memory"},
 		description = "The tab of the developer tools that is shown."},
-	{name = "browser.devtools.size", kind = .Float, default = {f = 300}, bounded = true, min = DEV_DOCK_MIN_PX, max = 4000, unit = "px",
-		description = "Height of the developer tools when they sit under the page, width when they sit at its side (CSS pixels)."},
 	{name = "browser.devtools.layout", kind = .String, default = {s = DEV_LAYOUT_DEFAULT},
 		description = "Where the developer tools' panels are: their stacks of tabs (* before the one shown), the splits between them (x: side by side, y: one above the other, the first's share, f: the second folded) and the floating ones (@x,y,width,height), as one line. Drag a tab to change it; its stack's menu does it from the keyboard."},
 	{name = "browser.devtools.font_size", kind = .Float, default = {f = 12}, bounded = true, min = 8, max = 24, unit = "px",
 		description = "Size of the text of the developer tools (CSS pixels). Ctrl and the plus, minus or zero keys change it while the panel has the pointer."},
 	{name = "browser.devtools.density", kind = .String, default = {s = "compact"}, choices = {"compact", "comfortable"},
 		description = "How tightly the developer tools' rows and toolbars are spaced."},
-	// The detached window's outer rectangle on the screen, remembered between sessions like the browser window's (session.odin).
-	// A width or height of 0 means "not saved yet": the window opens at its default size and the system places it. The rectangle
-	// is in physical screen pixels (platform.Placement), fitted to a monitor that is there when it is restored (set_placement).
-	{name = "browser.devtools.window.x", kind = .Int, default = {i = 0}, bounded = true, min = -1_000_000, max = 1_000_000, unit = "px",
-		description = "Left edge of the detached developer tools window on the screen, in physical pixels (remembered between sessions)."},
-	{name = "browser.devtools.window.y", kind = .Int, default = {i = 0}, bounded = true, min = -1_000_000, max = 1_000_000, unit = "px",
-		description = "Top edge of the detached developer tools window on the screen, in physical pixels (remembered between sessions)."},
-	{name = "browser.devtools.window.width", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 100_000, unit = "px",
-		description = "Width of the detached developer tools window, in physical pixels (0: open at the default size)."},
-	{name = "browser.devtools.window.height", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 100_000, unit = "px",
-		description = "Height of the detached developer tools window, in physical pixels (0: open at the default size)."},
-	{name = "browser.devtools.window.maximized", kind = .Bool, default = {b = false},
-		description = "Whether the detached developer tools window was maximized when it last closed (restored maximized)."},
 }
 
 register_devtools_prefs :: proc(p: ^config.Prefs) {
@@ -94,28 +82,19 @@ register_devtools_prefs :: proc(p: ^config.Prefs) {
 	elements_register_prefs(p)
 }
 
-Dev_Drag :: enum u8 { None, Size, Move, Corner }
-
-// The developer tools of one browser window (Window_Own.devtools): docked in it or in a window of their own (`win`), they show
-// that window's current tab, go with a tab they show that moves to another window (tab_move), and close with their window.
+// The developer tools of one browser window (Window_Own.devtools): the view "devtools" whose instance is that window's
+// (views.odin), wherever the person put it; they show that window's current tab, go with a tab they show that moves to
+// another window (tab_move), and close with their window.
 Devtools :: struct {
-	visible:   bool,
-	dock:      Dev_Dock,
+	visible:   bool,               // the view is wanted open (devtools_view_follow)
+	dock:      Dev_Dock,           // where the view was built last (dev_dock_of), or was asked to go
 	panel:     Dev_Panel,
-	size:      f32,                // logical px: the height (bottom) or the width (side)
 	font_pt:   f32,
 	density:   Dt_Density,
-	float_pos: [2]f32,             // floating: from the window's top left, logical px
-	float_size: [2]f32,
-	float_set: bool,               // the floating panel has a place (else: made when first shown)
-	drag:      Dev_Drag,
-	drag_from: [2]f32,             // the size / place when the drag began
-	panel_rect: draw.Rect,         // where the floating panel was drawn last frame
-	rect:      draw.Rect,          // where the panel was drawn last frame, docked or not
+	rect:      draw.Rect,          // where the panel was drawn last frame, in the State it was built in
+	built_in:  ^ui.State,          // ... that State: the browser window's, or its view window's (only compared, never read)
 	room:      draw.Vec2,          // its size in the frame being built (dev_width, dev_height); 0: not known before layout
 	room_checks, room_wrong: int,  // frames whose room was compared with the layout's result, and those where it differed
-	win:       ^Dev_Window,        // detached: their own window (devtools_window.odin)
-	want_win:  bool,               // ... asked for, made after the frame that asked
 	picking:   bool,               // the element picker (Ctrl+Shift+C) is on: the page shows the element under the pointer
 	find:      Dev_Panel,          // Ctrl+F asked this panel to find (`find_asked`): its search field takes the keyboard (dt_find_here)
 	find_asked: bool,
@@ -150,8 +129,8 @@ devtools_init :: proc(app: ^App) {
 	app.loader.observer = {user = app, event = net_observe, block = net_blocked, throttle = net_link_for}   // devtools_net_model.odin, devtools_network.odin
 }
 
-// The developer tools of a window that opens: where they sit, their tab, their size and text from the preferences; shown only in
-// the first window (`shown`: the preference browser.devtools.visible), closed in the others until asked for there.
+// The developer tools of a window that opens: their tab and text from the preferences (where they sit is the view's memory);
+// shown only in the first window (`shown`: the preference browser.devtools.visible), closed in the others until asked for there.
 devtools_view_init :: proc(app: ^App, d: ^Devtools, shown: bool) {
 	p := &app.prefs
 	d.visible = shown && config.bool_of(p, "browser.devtools.visible")
@@ -160,15 +139,10 @@ devtools_view_init :: proc(app: ^App, d: ^Devtools, shown: bool) {
 
 @(private = "file")
 view_from_prefs :: proc(d: ^Devtools, p: ^config.Prefs, name: string) {
-	if name == "" || name == "browser.devtools.dock" {
-		dock := config.string_of(p, "browser.devtools.dock")
-		for n, x in DEV_DOCK_NAMES { if n == dock { d.dock = x } }
-	}
 	if name == "" || name == "browser.devtools.tab" {
 		panel := config.string_of(p, "browser.devtools.tab")
 		for n, x in DEV_PANEL_NAMES { if n == panel { d.panel = x } }
 	}
-	if (name == "" || name == "browser.devtools.size") && d.drag == .None { d.size = f32(config.float_of(p, "browser.devtools.size")) }
 	d.font_pt = f32(config.float_of(p, "browser.devtools.font_size"))
 	d.density = config.string_of(p, "browser.devtools.density") == "comfortable" ? .Comfortable : .Compact
 	// the layouts: every window's (the panels' places); the tab shown is of the window it was chosen in
@@ -182,9 +156,9 @@ dev_shows :: proc(d: ^Devtools, p: Dev_Panel) -> bool {
 	return d.visible && ui.dock_shown(&d.layout, u32(p))
 }
 
-// A preference of the developer tools changed (about:config, a menu of a panel, devtools_save). Where they sit, their tab, their
-// size and whether they are shown are of the window the user is in (the one that saved them); the text size, the density and
-// what the tabs keep are every window's.
+// A preference of the developer tools changed (about:config, a menu of a panel, devtools_save). Their tab and whether they are
+// shown are of the window the user is in (the one that saved them); the text size, the density and what the tabs keep are
+// every window's.
 devtools_pref_changed :: proc(app: ^App, name: string, p: ^config.Prefs) {
 	if name == "browser.devtools.visible" {
 		d := dev()
@@ -199,9 +173,9 @@ devtools_pref_changed :: proc(app: ^App, name: string, p: ^config.Prefs) {
 	for w in app.windows { window_request(app, w, 2) }
 }
 
-// The developer tools of the active window give up what they hold (their window closes, or the browser ends).
+// The developer tools of the active window give up what they hold (their window closes, or the browser ends). Their view
+// goes with the window's State (ui.destroy: a view whose owner went ends, its window of its own with it).
 devtools_view_destroy :: proc(app: ^App) {
-	devtools_window_destroy(app)
 	console_panel_destroy()
 	elements_destroy()
 	ui.dock_destroy(&dev().layout)
@@ -277,9 +251,7 @@ devtools_request_showing :: proc(app: ^App, t: ^Tab, panel: Dev_Panel) {
 // What the panel's own state asks of the preferences (they are what is saved, and what about:config shows).
 devtools_save :: proc(app: ^App) {
 	set_pref_bool(app, "browser.devtools.visible", dev().visible)
-	set_pref_string(app, "browser.devtools.dock", DEV_DOCK_NAMES[dev().dock])
 	set_pref_string(app, "browser.devtools.tab", DEV_PANEL_NAMES[dev().panel])
-	set_pref_string(app, "browser.devtools.size", fmt.tprintf("%d", int(dev().size)))
 }
 
 set_pref_string :: proc(app: ^App, name, value: string) {
@@ -300,10 +272,14 @@ dev_toggle_pref :: proc(app: ^App, name: string) {
 	dev_set_pref(app, name, config.bool_of(&app.prefs, name) ? "false" : "true")
 }
 
-devtools_toggle :: proc(app: ^App) {
-	dev().visible = !dev().visible
-	if !dev().visible { dev().picking = false }
-	set_pref_bool(app, "browser.devtools.visible", dev().visible)
+devtools_toggle :: proc(app: ^App) { devtools_set_visible(app, !dev().visible) }
+
+// The active window's developer tools wanted open or closed: its next build opens or closes the view (devtools_view_follow).
+devtools_set_visible :: proc(app: ^App, on: bool) {
+	d := dev()
+	d.visible = on
+	if !on { d.picking = false }
+	set_pref_bool(app, "browser.devtools.visible", on)
 	network_sync_observer(app)
 	console_arm_all(app)
 	request_frames(app, 3)
@@ -329,7 +305,8 @@ DEV_FIND_PANELS :: bit_set[Dev_Panel]{.Console, .Elements, .Network, .Applicatio
 // the pointer is over the developer tools). ok false: the keyboard is elsewhere.
 devtools_keyboard_panel :: proc() -> (Dev_Panel, bool) {
 	d := dev()
-	if !d.visible { return {}, false }
+	// (the keyboard of another window than the one they are built in is not theirs: their rect is that State's)
+	if !d.visible || d.built_in != ui.current_state() { return {}, false }
 	if leaf, _ := ui.dock_focus_leaf(&d.layout); leaf != ui.DOCK_NONE {
 		if a := d.layout.nodes[leaf].active; a < u32(len(Dev_Panel)) { return Dev_Panel(a), true }
 	}
@@ -360,13 +337,118 @@ devtools_toggle_panel :: proc(app: ^App, panel: Dev_Panel) {
 }
 
 
+////////////////////////////////
+// The view
+
+// The view's instance of the active window's developer tools.
+@(private = "file")
+devtools_instance :: proc(app: ^App) -> string { return window_view_instance(active_window(app).id) }
+
+// The active window's developer tools go to `dock` (opened there when they were closed): a presentation of the view, which
+// the toolkit remembers.
 devtools_set_dock :: proc(app: ^App, dock: Dev_Dock) {
+	w := active_window(app)
+	vs := &app.views
+	inst := devtools_instance(app)
+	if !dev().visible { devtools_set_visible(app, true) }
+	// (opened now, not at the next build: it moves at once; outside a build, its owner is named)
+	if !ui.view_is_open(vs, DEVTOOLS_VIEW, inst) { ui.view_open(vs, DEVTOOLS_VIEW, w, inst, w.ui) }
+	switch dock {
+	case .Bottom, .Right, .Left, .Top:
+		edges := DEV_DOCK_EDGES
+		ui.view_present(vs, DEVTOOLS_VIEW, .Panel, {edge = edges[dock]}, inst)
+	case .Floating: ui.view_present(vs, DEVTOOLS_VIEW, .Internal, {}, inst)
+	case .Window: ui.view_present(vs, DEVTOOLS_VIEW, .External, {}, inst)
+	}
 	dev().dock = dock
-	dev().visible = true
-	devtools_save(app)
-	network_sync_observer(app)
-	console_arm_all(app)
 	request_frames(app, 3)
+}
+
+// Back to their home: a panel at the bottom of the window.
+devtools_reattach :: proc(app: ^App) {
+	ui.view_reattach(&app.views, DEVTOOLS_VIEW, devtools_instance(app))
+	dev().dock = .Bottom
+	request_frames(app, 3)
+}
+
+// Where a presentation of the view puts the developer tools.
+dev_dock_of :: proc(p: ui.View_Presentation, place: ui.View_Place) -> Dev_Dock {
+	switch p {
+	case .Panel:
+		#partial switch place.edge {
+		case .Right: return .Right
+		case .Left:  return .Left
+		case .Top:   return .Top
+		}
+		return .Bottom
+	case .Dialog, .Internal: return .Floating
+	case .External: return .Window
+	}
+	return .Bottom
+}
+
+// In each build of a browser window, before its frame of views (build_ui): the view follows `visible` (a command, a
+// preference, a tab that brought its developer tools from another window), and `visible` follows the person closing the
+// view (its stack's close, Ctrl+W in it, its window's Close view).
+devtools_view_follow :: proc(app: ^App) {
+	w := active_window(app)
+	d := &w.own.devtools
+	vs := &app.views
+	inst := window_view_instance(w.id)
+	if _, ended := ui.view_ended(vs, DEVTOOLS_VIEW, inst); ended && d.visible { devtools_set_visible(app, false) }
+	open := ui.view_is_open(vs, DEVTOOLS_VIEW, inst)
+	if d.visible && !open {
+		ui.view_open(vs, DEVTOOLS_VIEW, w, inst)
+	} else if !d.visible && open {
+		ui.view_close(vs, DEVTOOLS_VIEW, inst)
+	}
+}
+
+// The view's build: the developer tools of `bw`, which is the active window here, as a panel of it (its build) or in a
+// window of its own (whose frames come after bw's, with bw active: views_external.odin).
+devtools_view :: proc(v: ^ui.View, bw: ^Browser_Window) {
+	app := the_app
+	if app == nil || active_window(app) != bw { return }
+	d := &bw.own.devtools
+	d.dock = dev_dock_of(v.presentation, v.place)
+	t := current_tab(app)
+	if v.presentation == .External { ui.view_title(v, devtools_window_title(app, bw)) }
+	if t == nil || t.kind != .Web {
+		// (a page of the browser's own has no document of the page's to show)
+		if ui.dialog_body("dt_none") {
+			if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("The developer tools show a web page."), "###dt_none_text"}, ui.frame_allocator())) }
+		}
+		return
+	}
+	devtools_panel(app, t, {width = ui.fill(), height = ui.fill()}, fill = ui.view_room(v))
+}
+
+// The title of the developer tools' window of `bw`: its current tab's.
+devtools_window_title :: proc(app: ^App, bw: ^Browser_Window) -> string {
+	return fmt.tprintf(i18n.tr("%s - Wren Developer Tools"), window_label(app, bw))
+}
+
+// The tab the developer tools of `src` were showing moved to `dest` (tab_move): they go with it when `dest` has none open
+// (`dest`'s, closed, take their place in `src`). When `dest` shows its own, each window keeps its own: those of `dest`
+// show the tab that came. Each window's next build makes its view follow (devtools_view_follow): it closes in `src` and
+// opens in `dest`, where the person last put the developer tools.
+devtools_follow_tab :: proc(app: ^App, src, dest: ^Browser_Window) {
+	a, b := &src.own.devtools, &dest.own.devtools
+	if src == dest || !a.visible || b.visible { return }
+	// a panel's timer names its window: stopped, the panel sets it again when it is built
+	for d in ([2]^Devtools{a, b}) {
+		if d.net.tick != base.NIL_HANDLE { host.clear_timer(&app.loop, d.net.tick); d.net.tick = base.NIL_HANDLE }
+		if d.mem.tick != base.NIL_HANDLE { host.clear_timer(&app.loop, d.mem.tick); d.mem.tick = base.NIL_HANDLE }
+	}
+	a^, b^ = b^, a^
+	if app.net_media.owner == a { app.net_media.owner = b } else if app.net_media.owner == b { app.net_media.owner = a }
+	window_request(app, src, 3)
+	window_request(app, dest, 3)
+}
+
+// The window of its own of `bw`'s developer tools (nil: they are in none).
+devtools_view_window :: proc(app: ^App, bw: ^Browser_Window) -> ^View_Window {
+	return view_window_of_state(app, ui.view_window_state(&app.views, DEVTOOLS_VIEW, window_view_instance(bw.id)))
 }
 
 // Ctrl+Shift+C: opens the Elements tab and starts (or stops) picking an element in the page.
@@ -381,12 +463,6 @@ devtools_zoom :: proc(app: ^App, step: f32) {
 	pt := step == 0 ? 12 : clamp(dev().font_pt + step, 8, 24)
 	dev_set_pref(app, "browser.devtools.font_size", fmt.tprintf("%g", pt))
 	request_frames(app, 2)
-}
-
-// Whether the panel is shown for `t` (a web page), and where.
-devtools_dock :: proc(app: ^App, t: ^Tab) -> (Dev_Dock, bool) {
-	if !dev().visible || t == nil || t.kind != .Web || platform.is_fullscreen(active_window(app).win) || devtools_detached() { return {}, false }
-	return dev().dock, true
 }
 
 ////////////////////////////////
@@ -409,8 +485,9 @@ dev_room_of :: proc(place: ui.Style_Mod, fill: draw.Vec2) -> draw.Vec2 {
 // The panel under the box `next` sized: the dock of its panels (devtools_layout.odin), the buttons of the panel as a whole at
 // the ends of its top strips. `fill`: the room a side that is not in pixels takes (the window's size where the panel fills it;
 // 0 where it is not known before layout).
-devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_Mod{}, fill := draw.Vec2{}) {
+devtools_panel :: proc(app: ^App, t: ^Tab, place := ui.Style_Mod{}, fill := draw.Vec2{}) {
 	dt_begin(app)
+	dev().built_in = ui.current_state()
 	// the check behind dev_width: what the last frame took for the panel's width is the width its layout gave the box (the
 	// box as it is now, before this build, is that layout's); counted for the tests (stats: devtoolsRoomWrong)
 	if pb := ui.box_from_key(ui.key_from_string(ui.parent_box().key, "###dt_panel")); pb != nil && dev().room.x > 0 && pb.rect.max.x > pb.rect.min.x {
@@ -424,13 +501,10 @@ devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_
 	st.feel.menu_item_em = dev().density == .Comfortable ? 2.1 : 1.85
 	defer st.feel.menu_item_em = menu_em
 	if ui.style({font_size = app.dtm.fs, text_pad = dt_px(4)}) {
-		flags := ui.Box_Flags{.Draw_Background}
-		if floating { flags += {.Draw_Border, .Draw_Shadow} }
 		mod := place
 		mod.axis, mod.radius = .Y, 0
-		if floating { mod.border = app.dtc.border }
 		ui.next(mod)
-		panel := ui.build_box(flags, "###dt_panel")
+		panel := ui.build_box({.Draw_Background}, "###dt_panel")
 		dev().rect = panel.rect
 		if ui.parent(panel) {
 			devtools_take_keys(app)
@@ -445,11 +519,11 @@ devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_
 }
 
 // The text size of the panel by Ctrl+wheel and Ctrl +, -, 0 while the pointer is over it: these events are the panel's
-// (the chrome's shortcuts would zoom the page, the toolkit's lists would scroll). Called by main.odin's frame with the
-// events of the frame; returns the others.
-devtools_events :: proc(app: ^App, events: []platform.Event, in_window := false) -> []platform.Event {
+// (the chrome's shortcuts would zoom the page, the toolkit's lists would scroll). Called with the events of a frame of the
+// State `s` (a browser window's, main.odin's frame; a view's window's, views_external.odin), before its build; returns the others.
+devtools_events :: proc(app: ^App, events: []platform.Event, s: ^ui.State) -> []platform.Event {
 	if !dev().visible && net_media_active(app) && app.net_media.owner == dev() { net_media_release(app) }
-	if devtools_detached() != in_window { return events }   // (the panel's rectangle is of the window it is in)
+	if dev().built_in != s { return events }   // (the panel's rectangle is of the State it was built in)
 	if !dev().visible || dev().rect.max.x <= dev().rect.min.x || ui.menu_any_open() { return events }
 	taken := false
 	out := make([dynamic]platform.Event, 0, len(events), context.temp_allocator)
@@ -512,127 +586,15 @@ devtools_settings_menu :: proc(app: ^App, t: ^Tab) {
 	if ui.menu_item("Close the developer tools###dt_m_close", "F12", icon = lucide.X).clicked { devtools_toggle(app) }
 }
 
-// Sizes, columns and panes as they came.
+// Where they are, sizes, columns and panes as they came.
 devtools_reset_layout :: proc(app: ^App) {
-	dev_set_pref(app, "browser.devtools.size", "300")
+	if dev().visible { devtools_reattach(app) }
 	dev_set_pref(app, "browser.devtools.layout", DEV_LAYOUT_DEFAULT)
 	dev_set_pref(app, "browser.devtools.font_size", "12")
 	dev_set_pref(app, "browser.devtools.density", "compact")
 	network_reset_layout(app)
 	elements_reset_layout(app)
 	request_frames(app, 2)
-}
-
-////////////////////////////////
-// Where it goes in the window
-
-// The docked panel as a pane of the toolkit (CSS px): from a header and a row (DEV_DOCK_MIN_PX) to all the room but a strip
-// of the page (DEV_PAGE_MIN_PX). The room is what the box it is built in had at the last layout (the window's at first).
-@(private = "file")
-dev_dock_opts :: proc(app: ^App, vertical: bool) -> ui.Pane_Options {
-	pb := ui.parent_box().rect
-	room := vertical ? pb.max.x - pb.min.x : pb.max.y - pb.min.y
-	if room <= 0 { room = vertical ? f32(active_window(app).win.size.x) : f32(active_window(app).win.size.y) }
-	return {side = dev().dock == .Left ? .Before : .After, total = room / ui.scale(), min_size = DEV_DOCK_MIN_PX, min_other = DEV_PAGE_MIN_PX,
-		thickness = dt_px(5), no_keyboard = true, title = "Developer tools"}
-}
-
-// The room the panel takes (physical px): its size, in the limits of dev_dock_opts.
-devtools_extent :: proc(app: ^App, vertical: bool) -> f32 {
-	axis: ui.Axis = vertical ? .X : .Y
-	p: ui.Pane
-	p.size[axis] = dev().size
-	return math.round(ui.pane_extent(&p, axis, dev_dock_opts(app, vertical)) * ui.scale())
-}
-
-// A bar between the page and the panel: dragging it resizes the panel (the toolkit's pane; the panel is after the bar
-// unless it is docked on the left). Not a Tab stop: the page's and the panel's focus order stay as they were.
-devtools_splitter :: proc(app: ^App, vertical: bool) {
-	axis: ui.Axis = vertical ? .X : .Y
-	p: ui.Pane
-	p.size[axis] = dev().size
-	r := ui.pane_split("###dt_split", axis, &p, dev_dock_opts(app, vertical))
-	if r.changed { dev().size = p.size[axis] }
-	if r.dragging {
-		dev().drag = .Size
-		request_frames(app, 2)
-	}
-	if !r.dragging && dev().drag == .Size {
-		dev().drag = .None
-		set_pref_string(app, "browser.devtools.size", fmt.tprintf("%d", int(dev().size)))
-	}
-}
-
-// Moving (the header) or resizing (the corner) of the floating panel.
-devtools_float_drag :: proc(app: ^App, sig: ui.Signal, what: Dev_Drag) {
-	sc := ui.scale()
-	if sig.pressed {
-		dev().drag = what
-		dev().drag_from = what == .Move ? dev().float_pos : dev().float_size
-	}
-	if sig.dragging && dev().drag == what {
-		d := sig.drag_delta / sc
-		win := [2]f32{f32(active_window(app).win.size.x), f32(active_window(app).win.size.y)} / sc
-		if what == .Move {
-			dev().float_pos = {clamp(dev().drag_from[0] + d.x, 0, math.max(win.x - DEV_FLOAT_KEEP.x, 0)), clamp(dev().drag_from[1] + d.y, 0, math.max(win.y - DEV_FLOAT_KEEP.y, 0))}
-		} else {
-			dev().float_size = {clamp(dev().drag_from[0] + d.x, DEV_FLOAT_MIN.x, math.max(win.x - dev().float_pos[0], DEV_FLOAT_MIN.x)), clamp(dev().drag_from[1] + d.y, DEV_FLOAT_MIN.y, math.max(win.y - dev().float_pos[1], DEV_FLOAT_MIN.y))}
-		}
-		request_frames(app, 2)
-	}
-	if !sig.dragging && dev().drag == what { dev().drag = .None }
-}
-
-// The floating panel, built last under the window's box so it is over the page. It has a place after the first time it is
-// shown: its lower right quarter of the window.
-devtools_floating :: proc(app: ^App, t: ^Tab) {
-	dock, on := devtools_dock(app, t)
-	if !on || dock != .Floating {
-		dev().panel_rect = {}
-		return
-	}
-	sc := ui.scale()
-	win := [2]f32{f32(active_window(app).win.size.x), f32(active_window(app).win.size.y)} / sc
-	if !dev().float_set {
-		dev().float_size = {math.max(win.x * 0.55, 360), math.max(win.y * 0.5, 240)}
-		dev().float_pos = {win.x - dev().float_size[0] - 24, win.y - dev().float_size[1] - 40}
-		dev().float_set = true
-	}
-	dev().float_size = {clamp(dev().float_size[0], DEV_FLOAT_MIN.x, math.max(win.x, DEV_FLOAT_MIN.x)), clamp(dev().float_size[1], DEV_FLOAT_MIN.y, math.max(win.y, DEV_FLOAT_MIN.y))}
-	dev().float_pos = {clamp(dev().float_pos[0], 0, math.max(win.x - dev().float_size[0], 0)), clamp(dev().float_pos[1], 0, math.max(win.y - dev().float_size[1], 0))}
-	devtools_panel(app, t, true, {width = ui.px(dev().float_size[0] * sc), height = ui.px(dev().float_size[1] * sc), fixed_x = dev().float_pos[0] * sc, fixed_y = dev().float_pos[1] * sc})
-	if b := ui.box_from_key(ui.key_from_string(ui.parent_box().key, "###dt_panel")); b != nil {
-		dev().panel_rect = b.rect
-		// the corner: a grip that resizes
-		g := math.round(ui.font_size() * 1.1)
-		ui.next({width = ui.px(g), height = ui.px(g), fixed_x = b.rect.max.x - b.rect.min.x - g, fixed_y = b.rect.max.y - b.rect.min.y - g, cursor = .Resize_NWSE})
-		gb := ui.build_box({.Clickable}, "###dt_corner")
-		gs := ui.signal(gb)
-		d := ui.frame_new(Dt_Btn_Draw)
-		d.hot = gs.hovering || dev().drag == .Corner
-		gb.custom, gb.custom_user = corner_grip_draw, d
-		devtools_float_drag(app, gs, .Corner)
-	}
-}
-
-@(private = "file")
-corner_grip_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-	d := (^Dt_Btn_Draw)(user)
-	r := b.rect
-	s := max(math.round(ui.scale()), 1)
-	col := d.hot ? the_app.dtc.accent : the_app.dtc.faint
-	for i in 0 ..< 3 {
-		for j in 0 ..= i {
-			x := r.max.x - 2 * s - f32(j) * 3 * s
-			y := r.max.y - 2 * s - f32(i - j) * 3 * s
-			draw.rect(dc, {{x - s, y - s}, {x, y}}, col)
-		}
-	}
-}
-
-// The floating panel takes the pointer where it is: the page under it gets nothing.
-devtools_captures :: proc(pos: draw.Vec2) -> bool {
-	return dev().visible && !devtools_detached() && dev().dock == .Floating && draw.rect_contains(dev().panel_rect, pos)
 }
 
 ////////////////////////////////

@@ -103,7 +103,7 @@ Window_Own :: struct {
 	page_prep:           Page_Prep,           // page_frame.odin: the page as prepared in the page phase, for its paint
 	page_painted:        Paint_Source,        // shell_frames.odin: what the page's last frame was painted from, besides its layout
 	a11y:                Page_A11y,           // a11y_page.odin: the accessibility trees of the page shown and its frames
-	devtools:            Devtools,            // devtools.odin: the window's developer tools, docked or in a window of their own (dev())
+	devtools:            Devtools,            // devtools.odin: the window's developer tools, wherever their view is (dev())
 	first_paint_timer:   base.Handle,         // first_paint.odin: a frame when a held or blocked first paint ends
 }
 
@@ -120,7 +120,7 @@ window_own :: proc(app: ^App) -> ^Window_Own { return &active_window(app).own }
 window_own_destroy :: proc(app: ^App, own: ^Window_Own) {
 	assert(own == window_own(app))
 	gesture_destroy(app, own)
-	devtools_view_destroy(app)   // devtools.odin: their window closes with this one
+	devtools_view_destroy(app)   // devtools.odin (their view, and its window, go with this window's State)
 	page_cursor_view_destroy(&own.cursor)
 	urlbar_view_destroy(&own.urlbar)
 	find_destroy(&own.find)
@@ -436,7 +436,7 @@ window_adopt_primary :: proc(app: ^App, w: ^platform.Window) -> ^Browser_Window 
 //     animation frames, styles and layout: shell_page_phase_end closes it), then the build, the drawing and the present;
 //   * a chrome frame (shell_frames.odin, kind Light): the chrome alone while a page holds the thread, made in a full
 //     frame's page phase (preemption) or in a chrome frame's poll; no Work;
-//   * a frame of the developer tools' window (devtools_window.odin, kind Light: none of the page's work).
+//   * a frame of a view's window of its own (views_external.odin, kind Light: none of the page's work).
 // A frame asked for from the window procedure (window_on_frame: WM_PAINT inside a loop of the system) is made only where
 // the gate admits it. A loop entered from a frame's poll (a press on the window's border, Alt+Space) makes its frames
 // there: they come before anything of the frame that polls. A loop entered during the build or the drawing
@@ -610,7 +610,7 @@ windows_pass :: proc(app: ^App) -> bool {
 	for w in app.windows { if w != front { append(&app.pass_order, w) } }
 	for _ in app.pass_order { append(&app.pass_causes, Frame_Causes{}) }
 	order, causes := app.pass_order[:], app.pass_causes[:]
-	any_cause := devtools_windows_busy(app)
+	any_cause := view_windows_busy(app)   // views_external.odin: a view in a window of its own has input, a wake or an animation
 	wake := 0
 	for w, i in order {
 		window_activate(app, w)
@@ -622,7 +622,7 @@ windows_pass :: proc(app: ^App) -> bool {
 	idled := false
 	app.rates.turns += 1
 	if !any_cause {
-		timeout := devtools_windows_timeout(app, wake)
+		timeout := view_windows_timeout(app, wake)
 		if t := host.next_timeout_ms(&app.loop); t >= 0 && (timeout <= 0 || t < timeout) { timeout = max(t, 1) }
 		prof_begin(.Idle)
 		platform.wait_event(order[0].win, memcheck_wake(memory_trim_wake(app, timeout)))
@@ -638,13 +638,14 @@ windows_pass :: proc(app: ^App) -> bool {
 			window_activate(app, w)
 			platform.poll_events(w.win, false)
 			for tab in w.tabs { if tab.page != nil { page.set_page_visible(tab.page, false) } }
-			devtools_window_tick(app)   // (its developer tools' window, when it has one, is not minimized with it)
+			view_windows_after(app, w, false)   // (its views' windows are not minimized with it: they build on their own input)
 			continue
 		}
 		window_activate(app, w)
+		before := w.ui.build_index
 		frame(app, idled || causes[i] == {}, causes[i])
 		window_activate(app, w)
-		devtools_window_tick(app)   // devtools_window.odin: this window's developer tools' window
+		view_windows_after(app, w, w.ui.build_index != before)   // views_external.odin: the windows of this window's views
 		if w.frames_requested > 0 { w.frames_requested -= 1 }
 		if w.frames_requested == 0 { w.errands = {} }
 	}

@@ -404,11 +404,11 @@ commands_build :: proc(r: ^Command_Registry) {
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().picking },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_pick(app) }})
 	add(r, {name = "view.devtools_dock_left", label = "Developer tools: dock at the left", group = "View", tags = command_words(r, "devtools panel position side"),
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().dock == .Left && !devtools_detached() },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { if devtools_detached() { devtools_attach(app) }; devtools_set_dock(app, .Left) }})
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().dock == .Left },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_set_dock(app, .Left) }})
 	add(r, {name = "view.devtools_detach", label = "Developer tools: open in a separate window", group = "View", tags = command_words(r, "devtools panel undock detach window second"),
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return devtools_detached() },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { if devtools_detached() { devtools_attach(app) } else { devtools_detach(app) } }})
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible && dev().dock == .Window },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { if dev().visible && dev().dock == .Window { devtools_reattach(app) } else { devtools_set_dock(app, .Window) } }})
 	add(r, {name = "view.devtools_larger", label = "Developer tools: larger text", group = "View", tags = command_words(r, "devtools zoom font size"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_zoom(app, 1) }})
 	add(r, {name = "view.devtools_smaller", label = "Developer tools: smaller text", group = "View", tags = command_words(r, "devtools zoom font size"),

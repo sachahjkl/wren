@@ -392,8 +392,11 @@ shell_page_moves :: proc(app: ^App) -> bool {
 window_frame :: proc(app: ^App) {
 	if !app.chrome_frames.nested {
 		app.pass_first = true   // (the system's loop holds the thread: this frame also runs the process's tasks)
+		wnd := active_window(app)
+		before := wnd.ui.build_index
 		frame(app)
-		devtools_window_tick(app)   // the panel's own window is drawn from here too: the system's loop holds the thread, and the main loop's call does not run
+		// (its views' windows are drawn from here too: the system's loop holds the thread, and the main loop's call does not run)
+		view_windows_after(app, wnd, wnd.ui.build_index != before)   // views_external.odin
 		return
 	}
 	pacer_inner_frame(app)   // (pacing.odin: a new size makes it a resize step)

@@ -413,11 +413,12 @@ control_windows :: proc(app: ^App, allocator := context.temp_allocator) -> []api
 			current_tab = cur != nil ? int(cur.id) : 0, left = outer[0], top = outer[1], width = w.win.size.x, height = w.win.size.y,
 			state = platform.is_fullscreen(w.win) ? "fullscreen" : platform.is_minimized(w.win) ? "minimized" : platform.is_maximized(w.win) ? "maximized" : "normal",
 			dpi_scale = f64(w.win.dpi_scale), client_left = co[0], client_top = co[1],
-			devtools = {visible = d.visible, dock = DEV_DOCK_NAMES[d.dock], panel = DEV_PANEL_NAMES[d.panel], detached = d.win != nil || d.want_win, has_window = d.win != nil},
+			devtools = {visible = d.visible, dock = DEV_DOCK_NAMES[d.dock], panel = DEV_PANEL_NAMES[d.panel], detached = d.visible && d.dock == .Window},
 		}
-		if d.win != nil {
-			list[i].devtools.hwnd = int(window_native_handle(d.win.win))
-			list[i].devtools.title = strings.clone(d.win.title, allocator)
+		if vw := devtools_view_window(app, w); vw != nil {   // (their view's window of its own: views_external.odin)
+			list[i].devtools.has_window = true
+			list[i].devtools.hwnd = int(window_native_handle(vw.win))
+			list[i].devtools.title = strings.clone(window_label(app, w), allocator)
 		}
 		// a tab carried over its tabs (tab_drag.odin): where it would go and where the mark is (client pixels, along the tabs)
 		if w.dropping {
@@ -481,12 +482,15 @@ control_devtools :: proc(app: ^App, panel, dock: string) -> string {
 	case "none", "close": if dev().visible { devtools_toggle(app) }
 	case: return "panel: console, elements, network or none"
 	}
-	if dock == "window" {   // a window of their own (devtools_window.odin)
-		devtools_detach(app)
-	} else if dock != "" {
-		for d in Dev_Dock { if DEV_DOCK_NAMES[d] == dock { if devtools_detached() { devtools_attach(app) }; devtools_set_dock(app, d) } }
+	if dock == "" { return "" }
+	// (a presentation of their view: "window" is a window of its own, views_external.odin)
+	for d in Dev_Dock {
+		if DEV_DOCK_NAMES[d] == dock {
+			devtools_set_dock(app, d)
+			return ""
+		}
 	}
-	return ""
+	return "dock: bottom, right, left, top, floating or window"
 }
 
 // The address bar of the active window as the last frame laid it out: its field, and the rows of its list while it is open.
@@ -840,7 +844,7 @@ control_stats :: proc(app: ^App, allocator := context.temp_allocator) -> api.Sta
 	st.group_name_focused = window_own(app).sidebar.rename_focused
 	st.devtools_room_checks, st.devtools_room_wrong = dev().room_checks, dev().room_wrong
 	if t := current_tab(app); t != nil && t.page != nil { st.nodes = int(t.page.doc.nodes.count) }
-	for w in app.windows { if w.own.devtools.win != nil { st.devtools_windows += 1 } }
+	for w in app.windows { if devtools_view_window(app, w) != nil { st.devtools_windows += 1 } }
 	control_stats_window(app, &st, allocator)
 	return st
 }

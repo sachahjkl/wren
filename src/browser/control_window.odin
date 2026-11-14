@@ -58,7 +58,7 @@ control_cursor :: proc(app: ^App, allocator := context.temp_allocator) -> api.Cu
 // The surface of the active window, and of its developer tools' window when they have one: what the window shows and of what size.
 control_surfaces :: proc(app: ^App) -> (window, panel: api.Surface) {
 	window = surface_of(app.r.fixed_surface, app.r.size, app.r.buffer_size, app.r.source_size)
-	if d := active_window(app).own.devtools.win; d != nil { panel = surface_of(d.surf.fixed_surface, d.surf.size, d.surf.buffer_size, d.surf.source_size) }
+	if vw := devtools_view_window(app, active_window(app)); vw != nil && vw.has_surf { panel = surface_of(vw.surf.fixed_surface, vw.surf.size, vw.surf.buffer_size, vw.surf.source_size) }
 	return
 }
 

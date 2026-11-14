@@ -47,11 +47,13 @@ window the user is in (the front one).
   injected pointer (`platform.Event.injected`: positions of the event, not the system's cursor), holds the drag on its way
   (`e2e.drag` with `hold`, `resume`; `wren ctl drag --hold`, `--resume`), reads the mark (`e2e.windows`: `dropping`,
   `drop_index`, `drop_mark`; `wren ctl windows --json`: `drop`) and captures it.
-* Developer tools (`devtools.odin`, `devtools_window.odin`): each window has its own (`Window_Own.devtools`, read as `dev()`, the
-  active window's), docked in it or in a window of their own, showing its current tab. F12 in one window opens them there only.
-  A tab they show that moves to a window with none open takes them along (`devtools_follow_tab`: docked or in their window); a
-  window that closes closes its developer tools' window. Where they sit, their tab and their size are saved from the window that
-  changed them (`browser.devtools.*`) and are what a new window starts with; the text size and the density are every window's.
+* Developer tools (`devtools.odin`): each window has its own (`Window_Own.devtools`, read as `dev()`, the active window's), the
+  toolkit's view `"devtools"` with the window's id as its instance, showing its current tab: docked at an edge of the window,
+  floating over it, or in a window of their own (`views_external.odin`: Wren's backend of the views' windows, whose frames come
+  after their browser window's). F12 in one window opens them there only. A tab they show that moves to a window with none
+  open takes them along (`devtools_follow_tab`); a window that closes closes its developer tools' window. Where they sit is the
+  views' memory (`views.txt`); their tab is saved from the window that changed it (`browser.devtools.*`) and is what a new window
+  starts with; the text size and the density are every window's.
   The network log's bodies and the pages' console descriptions are kept while any window shows its developer tools; a speed
   limit or blocked addresses are those of the request's tab's window. A media preview of the Network tab plays in one window
   at a time.
