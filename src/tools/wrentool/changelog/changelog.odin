@@ -32,6 +32,7 @@ import "core:time/datetime"
 import "core:time/timezone"
 import "core:unicode"
 import "wb:tools/tooling"
+import tkc "../../../../ext/gui_toolkit/src/changelog"
 
 SOURCE_VERSION_FILE :: "src/browser/about.odin"   // the sources say their version there,
 SOURCE_VERSION_NAME :: "APP_VERSION"              // as `APP_VERSION :: "x.y.z"`
@@ -764,6 +765,10 @@ command_check :: proc(t: ^Tool, release: string) -> int {
 	}
 	if len(c.entries) > 0 {
 		append(&t.warnings, fmt.aprintf("%d entries under '%s' in %s: write fragments instead (wrentool changelog -Migrate turns them into fragments)", len(c.entries), UNRELEASED, CHANGELOG_FILE))
+	}
+	// (the planned work beside the changelog, in the form every program's roadmap has: the toolkit's check)
+	if text, read := os.read_entire_file(join_path(t.root, tkc.ROADMAP_FILE), context.temp_allocator); read == nil {
+		for e in tkc.roadmap_errors(string(text)) { fail(t, "%s: %s", tkc.ROADMAP_FILE, e) }
 	}
 	last := ""
 	if c.first_release >= 0 { last, _ = heading_version(c.lines[c.first_release]) }

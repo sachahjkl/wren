@@ -61,3 +61,13 @@ Apply these to every task, before you write code:
 - Changelog: add one fragment in `changelog.d/` per change. Never edit `CHANGELOG.md` or `APP_VERSION`.
 - Comments and commit messages are in English. Comments say why.
 - `ext/gui_toolkit` points only to tagged commits that are pushed to its own repository.
+
+## Roadmap
+
+- `ROADMAP.md` at the root holds Wren's planned work: `# Roadmap`, then `## Now`, `## Next` and `## Later`, each a
+  list. No dates, no front matter, plain Markdown.
+- Each entry starts with a short bold summary, then one or two sentences on what it gives the user. Link the design
+  when one exists.
+- A work that touches several programs goes in gui_toolkit's roadmap, not here.
+- When a work is done, remove its entry in the same commit as its changelog fragment.
+- `wrentool changelog -Check` checks its form (the toolkit's `changelog.roadmap_errors`), with the changelog.
