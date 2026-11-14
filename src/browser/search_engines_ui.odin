@@ -254,7 +254,7 @@ engines_form :: proc(app: ^App, ed: ^Engines_Editor) {
 			adding := ed.edit < 0
 			if ui.button("ef_save", adding ? i18n.tr("Add") : i18n.tr("Save"), adding ? lucide.PLUS : lucide.SAVE, {intent = .Success}).clicked { committed = true }
 			ui.spacer(ui.px(em * 0.4))
-			if ui.button("ef_cancel", i18n.tr("Cancel"), lucide.X, {intent = .Cancel}).clicked { cancelled = true }
+			if ui.button("ef_cancel", i18n.tr("Cancel"), lucide.X).clicked { cancelled = true }
 		}
 		ui.spacer(ui.px(em * 0.5))
 		if cancelled { ed.edit, ed.error = 0, .None }

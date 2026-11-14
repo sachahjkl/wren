@@ -39,8 +39,14 @@ Settings :: struct {
 	totp_autofill: bool,    // a one-time-code field that comes after a fill of a login with a code gets the code
 	totp_copy:    bool,     // a fill of a login with a code copies the code
 	passkeys_offer: bool,   // a page's passkey request offers the unlocked vault's passkeys of the site
+	remember:     Remember_Unlock,   // the unlock kept in the system's keyring (vault.unlock.remember)
 	generator:    Generate_Options,   // the generator's defaults (its separator owned)
 }
+
+// How long the system's keyring keeps the vault's unlock (the helper's remember_unlock): not at all, until the computer
+// restarts, or across restarts.
+Remember_Unlock :: enum u8 { Never, Session, Always }
+REMEMBER_UNLOCK_NAMES := [Remember_Unlock]string{.Never = "never", .Session = "session", .Always = "always"}
 
 // What the generator makes (the helper's `generate`): a password of `length` characters of the classes that are on, or
 // a passphrase of `words` words.
@@ -71,6 +77,9 @@ PREFS := [?]config.Def{
 		description = "Where your account lives: Bitwarden's servers in the United States (us) or in the European Union (eu), or a server of your own (self, at vault.server.url)."},
 	{name = "vault.server.url", kind = .String, default = {s = ""},
 		description = "Base address of your own server, for vault.server.region self (it serves /identity and /api). Must be https, or http to this machine. A server with a certificate of a private authority needs that authority in the system's certificate store."},
+	{name = "vault.unlock.remember", kind = .String, default = {s = "never"}, choices = {"never", "session", "always"},
+		description = "Unlock the Vault without its password, from the system's keyring (GNOME Keyring, KWallet, Windows' Credential Manager): at the start of the browser, and at a click on Unlock. session: until the computer restarts; always: across restarts too; never: each unlock asks for the master password, a PIN or a passkey. Whoever can use your session can then open the Vault. The key is only ever in the keyring, never in a file.",
+		tags = {"keyring", "unlock", "password", "remember", "keychain"}},
 	{name = "vault.lock.idle_minutes", kind = .Int, default = {i = 15}, bounded = true, min = 0, max = 1440, unit = "min",
 		description = "Lock the Vault after this time without a key press or a click in the browser. 0: lock only on demand and when the browser exits."},
 	{name = "vault.sync.interval_minutes", kind = .Int, default = {i = 30}, bounded = true, min = 5, max = 1440, unit = "min",
@@ -147,6 +156,11 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.totp_autofill = config.bool_of(p, "vault.totp.autofill")
 	s.totp_copy = config.bool_of(p, "vault.totp.copy_on_fill")
 	s.passkeys_offer = config.bool_of(p, "vault.passkeys.offer")
+	switch config.string_of(p, "vault.unlock.remember") {
+	case "session": s.remember = .Session
+	case "always":  s.remember = .Always
+	case:           s.remember = .Never
+	}
 	g := &s.generator
 	g.passphrase = config.string_of(p, "vault.generator.kind") == "passphrase"
 	g.length = int(config.int_of(p, "vault.generator.length"))

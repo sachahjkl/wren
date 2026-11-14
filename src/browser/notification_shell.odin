@@ -195,7 +195,6 @@ notification_shell_build :: proc(app: ^App) {
 		}
 		if ui.dialog_buttons("note_buttons") {
 			if ui.button("note_block", i18n.tr("Block"), lucide.SHIELD, {intent = .Danger, width = ui.px(em * 8)}).clicked { answered, granted = true, false }
-			ui.spacer(ui.px(em * 0.6))
 			if ui.button("note_allow", i18n.tr("Allow"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { answered, granted = true, true }
 		}
 	}

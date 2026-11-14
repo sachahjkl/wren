@@ -140,7 +140,6 @@ fs_shell_build :: proc(app: ^App) {
 		}
 		if ui.dialog_buttons("fs_buttons") {
 			if ui.button("fs_block", i18n.tr("Block"), lucide.SHIELD, {intent = .Danger, width = ui.px(em * 8)}).clicked { answered, granted = true, false }
-			ui.spacer(ui.px(em * 0.6))
 			if ui.button("fs_allow", i18n.tr("Allow"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { answered, granted = true, true }
 		}
 	}

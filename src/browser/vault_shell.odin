@@ -59,6 +59,7 @@ Vault_Shell :: struct {
 	client_secret:  ui.Line_Edit,   // secret
 	server:         ui.Line_Edit,   // the address of a self-hosted server
 	logout_ask:     bool,            // the question before a logout is open
+	dialog_after_keyring: bool,      // an Unlock asked the keyring first: its refusal opens the unlock dialog
 	pin_dialog:     bool,            // the dialog that sets a PIN is open
 	pin:            ui.Line_Edit,   // secret
 	ask_open:       bool,            // the question before a fill on a plain http page or into a frame of another origin
@@ -415,6 +416,14 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 					ui.menu_close()
 					vault_generator_open(app)   // vault_save.odin
 				}
+				// (the keyring opens the Vault without its password, vault.unlock.remember: once, the next unlock asks it)
+				if vault.vault_unlock_remembered_now(v) {
+					ui.spacer(ui.px(em * 0.4))
+					if ui.button("###vp_forget_unlock", i18n.tr("Ask for the password next time"), lucide.KEY_ROUND, {width = ui.fill()}).clicked {
+						vault.vault_forget_unlock(v)
+						announce(app, .Info, i18n.tr("The next unlock of the Vault asks for its master password."))   // messages.odin
+					}
+				}
 				ui.spacer(ui.px(em * 0.4))
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.row(.Center, {}, "###vp_account") {
@@ -659,6 +668,12 @@ vault_field_shown :: proc(user: rawptr, h: base.Handle) -> bool {
 vault_dialog_open :: proc(app: ^App) {
 	s := &app.vault
 	if !vault_usable(app) { return }
+	// (the keyring keeps the unlock, vault.unlock.remember: it opens the Vault with no dialog; refused, the dialog opens
+	// then, vault_dialog_after_keyring)
+	if s.v.state == .Locked && vault.vault_unlock_remembered(&s.v) {
+		s.dialog_after_keyring = true
+		return
+	}
 	fields := vault_fields(s)
 	for f in fields {
 		if cap(f.buf) < VAULT_SECRET_RESERVE { ui.line_edit_wipe(f); reserve(&f.buf, VAULT_SECRET_RESERVE) }
@@ -717,6 +732,11 @@ dialog_field :: proc(id: string, f: ^ui.Line_Edit, placeholder: string, secret: 
 vault_dialogs_build :: proc(app: ^App) {
 	s := &app.vault
 	vault_passkey_frame(app)   // (a passkey the Vault waits for: its ceremony starts)
+	// (an Unlock tried the keyring first: unlocked, nothing to ask; refused, the dialog asks the password now)
+	if s.dialog_after_keyring && s.v.state != .Unlocking {
+		s.dialog_after_keyring = false
+		if s.v.state == .Locked && s.v.remember_refused { vault_dialog_open(app) }
+	}
 	if s.logout_ask {
 		answer := ui.confirm("vault_logout", &s.logout_ask, {title = i18n.tr("Log out of the Vault?"), note = i18n.tr("Wren forgets this account's keys and its logins. Your email stays for the next login."), act = i18n.tr("Log out")})
 		if answer == .Confirmed { vault.vault_logout(&s.v) }
@@ -937,7 +957,7 @@ vault_login_build :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###vd_buttons") {
 			ui.spacer(ui.fill())
-			if ui.button("###vd_cancel", i18n.tr("Cancel"), lucide.X, {intent = .Cancel, width = ui.px(em * 8)}).clicked { cancel = true }
+			if ui.button("###vd_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
 			ui.spacer(ui.px(em * 0.5))
 			if !busy && !waiting && ui.button("###vd_submit", login ? i18n.tr("Log in") : (unlock ? i18n.tr("Unlock") : i18n.tr("Continue")), login ? lucide.USER : (unlock ? lucide.LOCK : lucide.CHECK), {intent = .Success, width = ui.px(em * 8)}).clicked { submit = true }
 			ui.spacer(ui.px(em * 1.0))
@@ -1018,7 +1038,7 @@ vault_pin_build :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###vpin_buttons") {
 			ui.spacer(ui.fill())
-			if ui.button("###vpin_cancel", i18n.tr("Cancel"), lucide.X, {intent = .Cancel, width = ui.px(em * 8)}).clicked { cancel = true }
+			if ui.button("###vpin_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
 			ui.spacer(ui.px(em * 0.5))
 			if ui.button("###vpin_set", i18n.tr("Set"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { submit = true }
 			ui.spacer(ui.px(em * 1.0))

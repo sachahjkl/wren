@@ -146,7 +146,7 @@ vault_offer_build :: proc(app: ^App) {
 					} else {
 						ui.next({width = ui.fill(), height = ui.children_sum()})
 						if ui.row(.Center, {}, "###vo_acts") {
-							if ui.button("###vo_later", i18n.tr("Not now"), lucide.X, {intent = .Cancel, width = ui.fill()}).clicked { later = true }
+							if ui.button("###vo_later", i18n.tr("Not now"), lucide.X, {width = ui.fill()}).clicked { later = true }
 							ui.spacer(ui.px(em * 0.4))
 							words := o.state == .Update ? i18n.tr("Update") : i18n.tr("Save")
 							if ui.button("###vo_accept", words, lucide.SAVE, {intent = .Success, width = ui.fill()}).clicked { accept = true }
@@ -336,7 +336,7 @@ vault_generator_build :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###vg_buttons") {
 			ui.spacer(ui.fill())
-			if ui.button("###vg_close", i18n.tr("Close"), lucide.X, {intent = .Cancel, width = ui.px(em * 8)}).clicked { close = true }
+			if ui.button("###vg_close", i18n.tr("Close"), lucide.X, {width = ui.px(em * 8)}).clicked { close = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
 		ui.spacer(ui.px(em * 0.8))

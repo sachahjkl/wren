@@ -183,6 +183,11 @@ Vault :: struct {
 	message:        string,   // owned: what the dialog or the panel says about the last request (never a secret)
 	email:          string,   // owned: the remembered account
 	pin:            bool,     // a PIN can unlock the remembered account
+	// the unlock the system's keyring keeps (vault.unlock.remember): tried once a run at the start; refused (nothing kept,
+	// or forgotten by "Ask for the password") until the next unlock the person makes; the Unlock on its way is one
+	remember_tried:       bool,
+	remember_refused:     bool,
+	unlocking_remembered: bool,
 	helper:         string,   // owned: the helper's path ("" until located)
 	profile_dir:    string,   // owned: "" = nothing is written (browser.profile.persist off)
 	client_version: string,   // owned
@@ -307,6 +312,11 @@ vault_prefs_changed :: proc(v: ^Vault, prefs: ^config.Prefs) {
 		enable(v)
 	case v.state == .Unlocked && (old.idle_minutes != v.settings.idle_minutes || old.sync_minutes != v.settings.sync_minutes):
 		timers_start(v)
+	}
+	// (the keyring follows the setting at once: kept for the new duration, or forgotten)
+	if v.state == .Unlocked && old.remember != v.settings.remember {
+		v.remember_refused = false
+		remember_send(v, v.settings.remember)
 	}
 	if old.remember_email && !v.settings.remember_email && v.remembered != "" {
 		// (the person does not want it kept: it goes from memory and from the file now)
@@ -580,6 +590,47 @@ vault_unlock :: proc(v: ^Vault, secret: string, pin := false) -> bool {
 	clear_problem(v)
 	set_state(v, .Unlocking)
 	return true
+}
+
+// An unlock with what the system's keyring keeps (vault.unlock.remember), no password. False: not asked (the setting is
+// never, the profile keeps nothing, the keyring refused since the last unlock, or the Vault is not locked). A refusal is
+// quiet: the Vault stays Locked and `remember_refused` says it, for the shell to ask the password.
+vault_unlock_remembered :: proc(v: ^Vault) -> bool {
+	if v.settings.remember == .Never || v.profile_dir == "" || v.remember_refused { return false }
+	if (v.state != .Locked && v.state != .Failed) || v.email == "" { return false }
+	if !ensure_helper(v) { return false }
+	r: Request
+	request_begin(&r, next_id(v), .Unlock, 0)
+	request_bool(&r, "remembered", true)
+	if send(v, &r, .Unlock) == nil { return false }
+	clear_problem(v)
+	v.unlocking_remembered = true
+	set_state(v, .Unlocking)
+	return true
+}
+
+// "Ask for the password at the next unlock": the keyring forgets the unlock now; the next unlock with the master
+// password (or a PIN, a passkey) keeps it again while vault.unlock.remember says so. False: nothing to forget.
+vault_forget_unlock :: proc(v: ^Vault) -> bool {
+	if v.state != .Unlocked || v.settings.remember == .Never { return false }
+	remember_send(v, .Never)
+	v.remember_refused = true
+	changed(v)
+	return true
+}
+
+// Whether the keyring keeps the unlock as the setting asks (the Vault unlocked, the setting on, not forgotten since).
+vault_unlock_remembered_now :: proc(v: ^Vault) -> bool {
+	return v.state == .Unlocked && v.settings.remember != .Never && v.profile_dir != "" && !v.remember_refused
+}
+
+@(private)
+remember_send :: proc(v: ^Vault, mode: Remember_Unlock) {
+	if v.profile_dir == "" || v.t == nil { return }
+	r: Request
+	request_begin(&r, next_id(v), .Remember_Unlock, 0)
+	request_string(&r, "mode", REMEMBER_UNLOCK_NAMES[mode])
+	send(v, &r, .Remember_Unlock)
 }
 
 // Lock: the helper exits (docs/bitwarden.md 3.2). Also what a cancelled login does (vault_cancel says why).
@@ -1134,6 +1185,7 @@ close_helper :: proc(v: ^Vault) {
 	string_wipe(&v.passkey_options)
 	v.passkey_taken = false
 	v.hint_busy = false
+	v.unlocking_remembered = false
 	if v.t == nil { return }
 	v.t.close(v.t)
 	append(&v.closed, v.t)
@@ -1153,6 +1205,9 @@ lock_down :: proc(v: ^Vault) {
 became_unlocked :: proc(v: ^Vault) {
 	v.active_ns = host.now_ns(v.loop)
 	v.keepalive_ns = v.active_ns
+	// (an unlock the person made: the keyring keeps it again, as the setting says)
+	v.remember_refused = false
+	if v.settings.remember != .Never { remember_send(v, v.settings.remember) }
 	set_state(v, .Unlocked)
 	timers_start(v)
 }
@@ -1261,7 +1316,7 @@ request_timed_out :: proc(data: rawptr) {
 		// (the page's request goes on without the Vault, or fails: its caller decides; the helper is not stopped)
 		passkey_fail(&p, "timeout")
 	case .Hello, .Login, .Login_Api_Key, .Unlock, .Lock, .Logout, .Sync, .Pin_Set, .Pin_Clear, .Keepalive,
-	     .Password_Hint, .Device_Request, .Device_Poll, .Passkey_Options, .Login_Passkey:
+	     .Password_Hint, .Device_Request, .Device_Poll, .Passkey_Options, .Login_Passkey, .Remember_Unlock:
 		// (the helper answers in order: one that does not answer holds every later request)
 		fail(v, i18n.tr("The Vault helper did not answer in time. It was stopped."))
 	}
@@ -1506,6 +1561,15 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 		v.passkey_taken = false
 		set_state(v, .Passkey)
 	case .Unlock:
+		remembered := v.unlocking_remembered
+		v.unlocking_remembered = false
+		if !a.ok && remembered {
+			// (the keyring keeps nothing for this account now: quietly Locked, and the shell asks the password)
+			close_helper(v)
+			v.remember_refused = true
+			set_state(v, .Locked)
+			return
+		}
 		if !a.ok {
 			close_helper(v)
 			set_error(v, a.error)
@@ -1556,6 +1620,13 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 		v.pin = false
 		write_account(v)
 		set_message(v, i18n.tr("The PIN is removed."))
+	case .Remember_Unlock:
+		// (no keyring answers: the setting cannot be followed; the person learns why, the Vault stays as it is)
+		if !a.ok {
+			v.remember_refused = true
+			set_message(v, a.message != "" ? a.message : i18n.tr("The system's keyring cannot keep the unlock."))
+		}
+		changed(v)
 	case .Logins_For, .Search:
 		set := &v.sets[p.slot]
 		// (another document or query was asked meanwhile, or the rows were released)
@@ -1967,6 +2038,11 @@ setup_done :: proc(data: rawptr) {
 	}
 	if v.helper == "" { set_state(v, .Helper_Missing); return }
 	set_state(v, v.email != "" ? .Locked : .Logged_Out)
+	// (the browser starts: the unlock the keyring keeps opens the Vault now, once a run; a later lock asks again)
+	if v.state == .Locked && !v.remember_tried {
+		v.remember_tried = true
+		vault_unlock_remembered(v)
+	}
 }
 
 @(private)

@@ -419,7 +419,7 @@ tab_my_filters :: proc(app: ^App, t: ^Tab) {
 		if ui.disabled(!app.dash.my_dirty) {
 			if ui.button("mf_apply", i18n.tr("Apply changes"), lucide.CHECK, {intent = .Success, tip = i18n.tr("Compile the filters into the index (Ctrl+S)"), width = ui.px(em * 10)}).clicked { dash_apply_filters(app) }
 			ui.spacer(ui.px(em * 0.5))
-			if ui.button("mf_revert", i18n.tr("Revert"), lucide.UNDO_2, {intent = .Cancel, width = ui.px(em * 6)}).clicked { app.dash.my_loaded = false }
+			if ui.button("mf_revert", i18n.tr("Revert"), lucide.UNDO_2, {width = ui.px(em * 6)}).clicked { app.dash.my_loaded = false }
 		}
 		ui.spacer(ui.px(em * 0.5))
 		if ui.button("mf_import", i18n.tr("Import…"), lucide.FOLDER_INPUT, {tip = i18n.tr("Add the lines of a text file"), width = ui.px(em * 7)}).clicked { dash_import_filters(app) }

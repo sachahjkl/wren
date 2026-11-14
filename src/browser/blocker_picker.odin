@@ -308,7 +308,7 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 			ui.spacer(ui.px(em * 0.4))
 			if ui.button("pk_again", i18n.tr("Pick again"), lucide.ROTATE_CCW, {width = ui.px(em * 7.5)}).clicked { picker_unpreview(t); app.pick.stage = 0; app.pick.hover = base.NIL_HANDLE }
 			ui.spacer(ui.px(em * 0.4))
-			if ui.button("pk_cancel", i18n.tr("Cancel"), lucide.X, {intent = .Cancel, width = ui.px(em * 6)}).clicked { blocker_picker_cancel(app); return }
+			if ui.button("pk_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 6)}).clicked { blocker_picker_cancel(app); return }
 		}
 	}
 	if ui.key_press(.Escape) && ui.focus_key() == 0 { blocker_picker_cancel(app) }

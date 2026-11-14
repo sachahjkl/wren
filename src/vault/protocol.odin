@@ -17,6 +17,7 @@ FRAME_HEAD :: 4
 Op :: enum u8 {
 	Hello, Login, Login_Api_Key, Unlock, Lock, Logout, Sync, Pin_Set, Pin_Clear, Logins_For, Search, Fill, Totp, Keepalive,
 	Password_Hint, Device_Request, Device_Poll, Passkey_Options, Login_Passkey, Save, Generate, Passkeys_For, Passkey_Assert,
+	Remember_Unlock,
 }
 
 OP_NAMES := [Op]string{
@@ -25,6 +26,7 @@ OP_NAMES := [Op]string{
 	.Totp = "totp", .Keepalive = "keepalive", .Password_Hint = "password_hint", .Device_Request = "device_request",
 	.Device_Poll = "device_poll", .Passkey_Options = "passkey_options", .Login_Passkey = "login_passkey", .Save = "save",
 	.Generate = "generate", .Passkeys_For = "passkeys_for", .Passkey_Assert = "passkey_assert",
+	.Remember_Unlock = "remember_unlock",
 }
 
 // The second steps of a login that the Vault supports (the helper's provider names).

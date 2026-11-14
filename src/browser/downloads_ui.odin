@@ -341,7 +341,7 @@ dl_row :: proc(app: ^App, d: ^Download, w: f32, compact: bool) -> (act: Dl_Row_A
 		case running && d.state == .Receiving:
 			if compact {
 				if remove_cross(fmt.tprintf("###dlx_%d", d.id), true, em, "Cancel the download").clicked { act = .Cancel }
-			} else if ui.button(strings.concatenate({"###", fmt.tprintf("dlc_%d", d.id)}, ui.frame_allocator()), "Cancel", lucide.X, {intent = .Cancel, width = ui.px(em * 6)}).clicked { act = .Cancel }
+			} else if ui.button(strings.concatenate({"###", fmt.tprintf("dlc_%d", d.id)}, ui.frame_allocator()), "Cancel", lucide.X, {width = ui.px(em * 6)}).clicked { act = .Cancel }
 		case d.state == .Done && download_file_present(d):
 			if compact {
 				if dl_folder_button(fmt.tprintf("###dlf_%d", d.id), hot, em).clicked { act = .Reveal }

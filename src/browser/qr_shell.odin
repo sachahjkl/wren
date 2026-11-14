@@ -40,7 +40,7 @@ qr_build :: proc(app: ^App) {
 			if ui.row(.Center, {}, "###page_qr_buttons") {
 				if ui.button("qr_copy", i18n.tr("Copy the address"), lucide.COPY, {intent = .Primary, width = ui.px(em * 10)}).clicked { clip_set(app.qr_url); announce(app, .Info, "Address copied") }
 				ui.spacer(ui.px(em * 0.6))
-				if ui.button("qr_close", i18n.tr("Close"), lucide.X, {intent = .Cancel, width = ui.px(em * 6)}).clicked { close = true }
+				if ui.button("qr_close", i18n.tr("Close"), lucide.X, {width = ui.px(em * 6)}).clicked { close = true }
 			}
 			ui.spacer(ui.px(em * 0.8))
 		}

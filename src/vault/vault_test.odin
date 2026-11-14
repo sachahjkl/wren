@@ -80,6 +80,8 @@ fake_send :: proc(t: ^Transport, frame: []u8) {
 	if p, has := o["provider"].(json.String); has { append(&f.script.notes, strings.concatenate({"provider=", p})) }
 	if r, has := o["resend"].(json.Boolean); has && bool(r) { append(&f.script.notes, strings.clone("resend")) }
 	if k, has := o["keep_pin"].(json.Boolean); has && bool(k) { append(&f.script.notes, strings.clone("keep_pin")) }
+	if k, has := o["remembered"].(json.Boolean); has && bool(k) { append(&f.script.notes, strings.clone("remembered")) }
+	if m, has := o["mode"].(json.String); has { append(&f.script.notes, strings.concatenate({"mode=", m})) }
 	if idle, has := o["idle_seconds"].(json.Integer); has { f.script.hello_idle = i64(idle) }
 	if op == "search" {
 		off, _ := o["offset"].(json.Integer)
@@ -467,6 +469,63 @@ an_account_of_another_server_is_not_remembered :: proc(t: ^testing.T) {
 	set_pref(x, "vault.server.region", "us")   // (another server: the Vault starts again for it)
 	testing.expect_value(t, x.v.state, State.Locked)
 	testing.expect_value(t, x.v.email, "me@example.com")
+}
+
+// A remembered account and vault.unlock.remember on: the start unlocks it from the keyring, no password asked; an unlock
+// keeps it in the keyring as the setting says; "never" forgets it.
+@(test)
+the_keyring_unlocks_the_vault_at_the_start :: proc(t: ^testing.T) {
+	x := fx_make(enabled = false, profile = true)
+	defer fx_destroy(x)
+	dir := join_path({x.profile, "vault"})
+	_ = os.make_directory_all(dir)
+	_ = os.write_entire_file(join_path({dir, ACCOUNT_FILE}), transmute([]byte)account_text({email = "me@example.com", identity = US_IDENTITY_URL}))
+	answer(x, "hello", `"ok":true,"account":"locked","email":"me@example.com"`)
+	answer(x, "unlock", `"ok":true`)
+	answer(x, "remember_unlock", `"ok":true`)
+	answer(x, "sync", `"ok":true,"items":1,"last_sync":1`)
+	set_pref(x, "vault.unlock.remember", "session")
+	set_pref(x, "vault.enabled", "true")
+	testing.expect_value(t, x.v.state, State.Unlocked)
+	testing.expect(t, slice.contains(x.script.notes[:], "remembered"), "the keyring's unlock")
+	testing.expect_value(t, len(x.script.secrets), 0)   // (no password crossed)
+	testing.expect(t, slice.contains(x.script.notes[:], "mode=session"), "kept again for this boot")
+	testing.expect(t, vault_unlock_remembered_now(&x.v))
+	set_pref(x, "vault.unlock.remember", "never")
+	testing.expect(t, slice.contains(x.script.notes[:], "mode=never"), "forgotten with the setting")
+	testing.expect(t, !vault_unlock_remembered_now(&x.v))
+}
+
+// The keyring keeps nothing (another boot, a key rotated): the Vault stays Locked, quietly, and says it was refused so
+// that the shell asks the password; the start tries once a run; a password unlock keeps it again.
+@(test)
+a_refused_keyring_unlock_asks_the_password :: proc(t: ^testing.T) {
+	x := fx_make(enabled = false, profile = true)
+	defer fx_destroy(x)
+	dir := join_path({x.profile, "vault"})
+	_ = os.make_directory_all(dir)
+	_ = os.write_entire_file(join_path({dir, ACCOUNT_FILE}), transmute([]byte)account_text({email = "me@example.com", identity = US_IDENTITY_URL}))
+	answer(x, "hello", `"ok":true,"account":"locked","email":"me@example.com"`)
+	answer(x, "unlock", `"ok":false,"error":"not_remembered","message":"The system's keyring holds no unlock of this vault."`, `"ok":true`)
+	answer(x, "remember_unlock", `"ok":true`)
+	answer(x, "sync", `"ok":true,"items":1,"last_sync":1`)
+	set_pref(x, "vault.unlock.remember", "always")
+	set_pref(x, "vault.enabled", "true")
+	testing.expect_value(t, x.v.state, State.Locked)
+	testing.expect(t, x.v.remember_refused)
+	testing.expect_value(t, x.v.message, "")   // (quiet: nothing went wrong)
+	testing.expect(t, !vault_unlock_remembered(&x.v), "refused: not asked again before an unlock")
+	testing.expect(t, vault_unlock(&x.v, "master"))
+	settle(x)
+	testing.expect_value(t, x.v.state, State.Unlocked)
+	testing.expect(t, !x.v.remember_refused)
+	testing.expect(t, slice.contains(x.script.notes[:], "mode=always"), "kept again")
+	// "Ask for the password next time": forgotten, and the next lock's Unlock does not try the keyring
+	testing.expect(t, vault_forget_unlock(&x.v))
+	testing.expect(t, slice.contains(x.script.notes[:], "mode=never"))
+	vault_lock(&x.v)
+	settle(x)
+	testing.expect(t, !vault_unlock_remembered(&x.v))
 }
 
 @(test)

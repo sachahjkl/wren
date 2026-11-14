@@ -193,7 +193,7 @@ bookmarks_dialog_build :: proc(app: ^App) {
 				if ui.row(.Center, {}, "###bm_edit_buttons") {
 					if v.edit_id != 0 && ui.button("bm_edit_remove", i18n.tr("Remove"), lucide.TRASH_2, {intent = .Danger, width = ui.px(em * 7)}).clicked { remove = true }
 					ui.spacer(ui.fill())
-					if ui.button("bm_edit_cancel", i18n.tr("Cancel"), lucide.X, {intent = .Cancel, width = ui.px(em * 7)}).clicked { cancel = true }
+					if ui.button("bm_edit_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 7)}).clicked { cancel = true }
 					ui.spacer(ui.px(em * 0.5))
 					if ui.button("bm_edit_save", i18n.tr("Save"), lucide.SAVE, {intent = .Success, width = ui.px(em * 7)}).clicked { save = true }
 				}

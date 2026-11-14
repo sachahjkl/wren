@@ -32,7 +32,9 @@ FONT_PREFS := [?]config.Def{
 
 register_font_prefs :: proc(p: ^config.Prefs) { config.register(p, FONT_PREFS[:]) }
 
-font_settings_from_prefs :: proc(p: ^config.Prefs) -> font.Settings {
+// `current`: the font state's settings now. A value the toolkit works out itself stays as it put it there ("auto"
+// subpixel text: the system's stripes, which prefs_page reads once at the start, off the interface thread's frames).
+font_settings_from_prefs :: proc(p: ^config.Prefs, current := font.DEFAULT_SETTINGS) -> font.Settings {
 	s := font.DEFAULT_SETTINGS
 	if config.ref_of(p, "appearance.text.rendering") == config.NO_REF { return s }   // not registered (tests)
 	s.subpixel_steps = int(config.int_of(p, "appearance.text.subpixel_steps"))
@@ -45,12 +47,13 @@ font_settings_from_prefs :: proc(p: ^config.Prefs) -> font.Settings {
 	switch config.string_of(p, "appearance.text.grid_fit") {
 	case "enabled": s.grid_fit = .Enabled
 	case "disabled": s.grid_fit = .Disabled
-	case: s.grid_fit = .Default
+	case: s.grid_fit = .Auto
 	}
 	switch config.string_of(p, "appearance.text.subpixel") {
 	case "rgb": s.subpixel_text = .Rgb
 	case "bgr": s.subpixel_text = .Bgr
-	case: s.subpixel_text = .Off
+	case "off": s.subpixel_text = .Off
+	case: s.subpixel_text = current.subpixel_text   // auto
 	}
 	s.color_glyphs = config.bool_of(p, "appearance.text.color_emoji")
 	s.color_async = config.bool_of(p, "appearance.text.color_async")
@@ -133,7 +136,7 @@ font_settings_init :: proc(app: ^App) {
 font_prefs_changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 	a := (^App)(user)
 	old := a.fonts.settings
-	s := font_settings_from_prefs(p)
+	s := font_settings_from_prefs(p, old)
 	font.set_settings(&a.fonts, s)
 	if s.subpixel_steps != old.subpixel_steps || s.rendering != old.rendering || s.grid_fit != old.grid_fit || s.color_glyphs != old.color_glyphs {
 		font.clear_atlas(&a.fonts)
