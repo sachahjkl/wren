@@ -147,10 +147,10 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	prefs_page.standard_register(p, prefs_page.STANDARD_ALL, d, base.permanent_allocator())   // (the registry keeps its descriptions)
 }
 
-// Wren's own defaults of the standard settings: the look it always had (the Silver theme, flat widgets under the classic
-// tabs, 15 px text, the integrated title bar) and no update check unless asked.
+// Wren's own defaults of the standard settings: the Ember theme in the machined finish (under the modern tabs, which the
+// finish draws), 15 px text, the integrated title bar, and no update check unless asked.
 STANDARD_DEFAULTS :: prefs_page.Standard_Defaults{
-	theme = "Silver", mode = "system", finish = "flat", font_size = 15, glow = 1,
+	theme = "Ember", mode = "system", finish = "machined", font_size = 15, glow = 1,
 	menu = true, update_auto = false, update_base_url = UPDATE_DOWNLOAD_BASE, app_name = APP_NAME,
 }
 
