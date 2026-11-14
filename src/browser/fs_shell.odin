@@ -29,6 +29,7 @@ Pick_Job :: struct {
 
 Ask_State :: struct {
 	queue: [dynamic]^page.Fs_Ask,
+	view:  Window_View,   // the prompt of the head of the queue (views.odin)
 }
 
 
@@ -124,30 +125,32 @@ fs_shell_ask :: proc(user: rawptr, p: ^page.Page, req: ^page.Fs_Ask) {
 	request_frames(app, 2)
 }
 
-// The permission prompt over the page (the first request waiting), each frame while one waits.
+// Each frame of each window: the answer to the head of the queue goes to its page, then the prompt shows the head.
 fs_shell_build :: proc(app: ^App) {
-	if len(app.ask_state.queue) == 0 { return }
-	req := app.ask_state.queue[0]
-	em := ui.font_size()
-	open := true
-	answered, granted := false, false
-	if ui.modal("fs_permission", &open, {width_em = 30}) {
-		if ui.dialog_header("fs_header", i18n.tr("Files"), {icon = req.write ? lucide.FOLDER_OPEN : lucide.FOLDER, icon_font = app.lucide}) {}
-		if ui.dialog_body("fs_body") {
-			what := req.write ? i18n.tr("edit") : i18n.tr("view")
-			ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s wants to %s files in"), req.origin, what), "###fs_what"}, ui.frame_allocator()))
-			if ui.tags("weak") { ui.paragraph(strings.concatenate({req.what, "###fs_where"}, ui.frame_allocator())) }
-		}
-		if ui.dialog_buttons("fs_buttons") {
-			if ui.button("fs_block", i18n.tr("Block"), lucide.SHIELD, {intent = .Danger, width = ui.px(em * 8)}).clicked { answered, granted = true, false }
-			if ui.button("fs_allow", i18n.tr("Allow"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { answered, granted = true, true }
-		}
-	}
-	if !open { answered, granted = true, false }   // Escape, a click outside: blocked
-	if answered {
-		ordered_remove(&app.ask_state.queue, 0)
-		page.fs_ask_done(req, granted)
+	q := &app.ask_state
+	if code, key, ok := window_view_ended(app, &q.view, FS_VIEW); ok && len(q.queue) > 0 && key == u64(uintptr(q.queue[0])) {
+		req := q.queue[0]
+		ordered_remove(&q.queue, 0)
+		// (Escape, the close cross, a click outside: blocked)
+		page.fs_ask_done(req, code == int(Permission_Answer.Allow))
 		request_frames(app, 2)
+	}
+	head: ^page.Fs_Ask = len(q.queue) > 0 ? q.queue[0] : nil
+	window_view_follow(app, &q.view, FS_VIEW, head, u64(uintptr(head)))
+}
+
+// The permission prompt over the page (views.odin): "Allow" or "Block".
+fs_view :: proc(v: ^ui.View, req: ^page.Fs_Ask) {
+	em := ui.font_size()
+	ui.view_icon(v, req.write ? lucide.FOLDER_OPEN : lucide.FOLDER, the_app.lucide)
+	if ui.dialog_body("fs_body") {
+		what := req.write ? i18n.tr("edit") : i18n.tr("view")
+		ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s wants to %s files in"), req.origin, what), "###fs_what"}, ui.frame_allocator()))
+		if ui.tags("weak") { ui.paragraph(strings.concatenate({req.what, "###fs_where"}, ui.frame_allocator())) }
+	}
+	if ui.dialog_buttons("fs_buttons") {
+		if ui.button("fs_block", i18n.tr("Block"), lucide.SHIELD, {intent = .Danger, width = ui.px(em * 8)}).clicked { ui.view_end(v, int(Permission_Answer.Block)) }
+		if ui.button("fs_allow", i18n.tr("Allow"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { ui.view_end(v, int(Permission_Answer.Allow)) }
 	}
 }
 

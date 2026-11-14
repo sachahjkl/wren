@@ -32,7 +32,8 @@ Passkey_Choice :: struct {
 	hash:         string,                     // owned: base64url SHA-256 of the clientDataJSON the passkey signs
 	rows:         [dynamic]vault.Passkey_Row, // owned: Choosing, the Vault's passkeys of the site
 	sel:          int,                        // the row Up, Down and Enter act on (the last one: the platform)
-	size:         ui.Vec2,
+	picked:       Maybe(int),                 // the row the person chose in the view's last build (the last one: the platform)
+	view:         Window_View,                // where the question is shown (views.odin)
 }
 
 // Webauthn_Embedder.provider: true when the Vault is asked for the site's passkeys (the page's request is the shell's
@@ -78,7 +79,7 @@ passkey_choice_reset :: proc(app: ^App) {
 	vault.passkey_rows_free(&c.rows)
 	vault.string_wipe(&c.rp_id)
 	vault.string_wipe(&c.hash)
-	c.state, c.page_id, c.ticket, c.vault_ticket, c.sel = .None, 0, 0, 0, 0
+	c.state, c.page_id, c.ticket, c.vault_ticket, c.sel, c.picked = .None, 0, 0, 0, 0, nil
 }
 
 // The Vault's passkeys of the site came (or its failure): the question opens, or the platform takes the request.
@@ -144,81 +145,97 @@ passkey_choice_sign :: proc(app: ^App, i: int) {
 	c.vault_ticket, c.state = t, .Signing
 }
 
-// Each frame: the question while the Vault has passkeys of the asking site (built with the other passkey dialogs).
+// Each frame of each window (with the other passkey dialogs): what the person chose, then the question open while the
+// Vault has passkeys of the asking site (Choosing, and Signing with its spinner).
 passkey_choice_build :: proc(app: ^App) {
 	c := &app.passkey_choice
-	if c.state == .None { return }
-	if !page.webauthn_provider_waiting(c.page_id, c.ticket) {
+	if code, ticket, ok := window_view_ended(app, &c.view, PASSKEY_CHOICE_VIEW); ok && c.state != .None && ticket == c.ticket && code == ui.VIEW_CANCELLED {
+		// (Cancel, Escape, the close cross: as when the system's dialog is dismissed, NotAllowedError; a signature on its
+		// way is dropped)
+		passkey_choice_end_later(app, .Refuse)
+		passkey_choice_reset(app)
+	}
+	if c.state != .None && !page.webauthn_provider_waiting(c.page_id, c.ticket) {
 		// (the page ended its request, its timer ran out, or its tab closed: the question goes with it)
 		passkey_choice_reset(app)
-		return
 	}
-	if c.state == .Asking { return }   // (the Vault's rows have not come: nothing to ask yet)
+	if chosen, ok := c.picked.?; ok {
+		c.picked = nil
+		switch {
+		case c.state != .Choosing:
+		case chosen >= 0 && chosen < len(c.rows):
+			passkey_choice_sign(app, chosen)
+		case chosen == len(c.rows):
+			passkey_choice_end_later(app, .Platform)
+			passkey_choice_reset(app)
+		}
+	}
+	// (Asking: the Vault's rows have not come, nothing to ask yet)
+	shown := c.state == .Choosing || c.state == .Signing
+	window_view_follow(app, &c.view, PASSKEY_CHOICE_VIEW, app, shown ? c.ticket : 0)
+}
+
+// The question (views.odin): a row per passkey of the Vault, then the platform's; a choice is taken by
+// passkey_choice_build, the view stays open while the helper signs.
+passkey_choice_view :: proc(v: ^ui.View, app: ^App) {
+	c := &app.passkey_choice
+	if c.state != .Choosing && c.state != .Signing { return }   // (over: passkey_choice_build closes it)
 	n := len(c.rows) + 1               // the Vault's passkeys, then the platform's row
 	c.sel = clamp(c.sel, 0, n - 1)
 	signing := c.state == .Signing
 	em := ui.font_size()
-	open := true
 	cancel := false
 	chosen := -1
-	if ui.modal("passkey_choice", &open, {width_em = 28, min_width_em = 20, min_height_em = 12, size = &c.size}) {
-		if !signing {
-			if ui.key_press(.Down) { c.sel = min(c.sel + 1, n - 1) }
-			if ui.key_press(.Up) { c.sel = max(c.sel - 1, 0) }
-			if ui.key_press(.Return) { chosen = c.sel }
-		}
-		if ui.dialog_header("pc_title", i18n.tr("Sign in with a passkey"), {icon = lucide.KEY_ROUND, icon_font = app.lucide}) {}
-		ui.next({width = ui.fill(), height = ui.fill()})
-		if ui.scroll_y("###pc_scroll") {
-			ui.next({width = ui.fill(), height = ui.children_sum()})
-			if ui.row(.Start, {}, "###pc_margins") {
-				ui.spacer(ui.px(em * 1.0))
-				ui.next({width = ui.fill(), height = ui.children_sum()})
-				if ui.column(.Start, {}, "###pc_col") {
-					ui.spacer(ui.px(em * 0.9))
-					if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s asks for a passkey. Use one of the Vault, or a security key or this device."), c.rp_id), "###pc_hint"}, ui.frame_allocator())) }
-					ui.spacer(ui.px(em * 0.8))
-					if signing {
-						ui.next({width = ui.fill(), height = ui.children_sum()})
-						if ui.row(.Center, {}, "###pc_wait") {
-							ui.spinner("###vd_spinner", em * 1.3)
-							ui.spacer(ui.px(em * 0.5))
-							ui.next({width = ui.fill(), height = ui.text_size()})
-							ui.label(strings.concatenate({i18n.tr("The Vault signs in with the passkey."), "###pc_wait_text"}, ui.frame_allocator()))
-						}
-					} else {
-						for r, i in c.rows {
-							title, detail := r.name, r.username
-							if title == "" { title, detail = r.username, "" }
-							if title == "" { title = i18n.tr("Passkey without a name") }
-							if ui.choice_row(fmt.tprintf("pc_row_%d", i), i, &c.sel, title, detail, lucide.KEY_ROUND, app.lucide) { chosen = i }
-						}
-						last := len(c.rows)
-						if ui.choice_row(fmt.tprintf("pc_row_%d", last), last, &c.sel, i18n.tr("Use a security key or this device"), "", lucide.USB, app.lucide) { chosen = last }
-					}
-					ui.spacer(ui.px(em * 0.4))
-				}
-				ui.spacer(ui.px(em * 1.0))
-			}
-		}
-		ui.spacer(ui.px(em * 0.6))
+	if !signing {
+		if ui.key_press(.Down) { c.sel = min(c.sel + 1, n - 1) }
+		if ui.key_press(.Up) { c.sel = max(c.sel - 1, 0) }
+		if ui.key_press(.Return) { chosen = c.sel }
+	}
+	ui.next({width = ui.fill(), height = ui.fill()})
+	if ui.scroll_y("###pc_scroll") {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
-		if ui.row(.Center, {}, "###pc_buttons") {
-			ui.spacer(ui.fill())
-			if ui.button("pc_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
+		if ui.row(.Start, {}, "###pc_margins") {
+			ui.spacer(ui.px(em * 1.0))
+			ui.next({width = ui.fill(), height = ui.children_sum()})
+			if ui.column(.Start, {}, "###pc_col") {
+				ui.spacer(ui.px(em * 0.9))
+				if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s asks for a passkey. Use one of the Vault, or a security key or this device."), c.rp_id), "###pc_hint"}, ui.frame_allocator())) }
+				ui.spacer(ui.px(em * 0.8))
+				if signing {
+					ui.next({width = ui.fill(), height = ui.children_sum()})
+					if ui.row(.Center, {}, "###pc_wait") {
+						ui.spinner("###vd_spinner", em * 1.3)
+						ui.spacer(ui.px(em * 0.5))
+						ui.next({width = ui.fill(), height = ui.text_size()})
+						ui.label(strings.concatenate({i18n.tr("The Vault signs in with the passkey."), "###pc_wait_text"}, ui.frame_allocator()))
+					}
+				} else {
+					for r, i in c.rows {
+						title, detail := r.name, r.username
+						if title == "" { title, detail = r.username, "" }
+						if title == "" { title = i18n.tr("Passkey without a name") }
+						if ui.choice_row(fmt.tprintf("pc_row_%d", i), i, &c.sel, title, detail, lucide.KEY_ROUND, app.lucide) { chosen = i }
+					}
+					last := len(c.rows)
+					if ui.choice_row(fmt.tprintf("pc_row_%d", last), last, &c.sel, i18n.tr("Use a security key or this device"), "", lucide.USB, app.lucide) { chosen = last }
+				}
+				ui.spacer(ui.px(em * 0.4))
+			}
 			ui.spacer(ui.px(em * 1.0))
 		}
-		ui.spacer(ui.px(em * 0.8))
 	}
+	ui.spacer(ui.px(em * 0.6))
+	ui.next({width = ui.fill(), height = ui.children_sum()})
+	if ui.row(.Center, {}, "###pc_buttons") {
+		ui.spacer(ui.fill())
+		if ui.button("pc_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
+		ui.spacer(ui.px(em * 1.0))
+	}
+	ui.spacer(ui.px(em * 0.8))
 	switch {
-	case cancel || !open:
-		// (as when the system's dialog is dismissed: NotAllowedError; a signature on its way is dropped)
-		passkey_choice_end_later(app, .Refuse)
-		passkey_choice_reset(app)
-	case chosen >= 0 && chosen < len(c.rows):
-		passkey_choice_sign(app, chosen)
-	case chosen == len(c.rows):
-		passkey_choice_end_later(app, .Platform)
-		passkey_choice_reset(app)
+	case cancel: ui.view_end(v, ui.VIEW_CANCELLED)
+	case chosen >= 0 && !signing:
+		c.picked = chosen
+		request_frames(app, 2)   // (passkey_choice_build takes it in the next build)
 	}
 }

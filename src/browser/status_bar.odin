@@ -769,15 +769,18 @@ set_pref_int :: proc(app: ^App, name: string, v: int) {
 
 // The panel takes the clicks and the wheel that land on it (the page under it does not get them).
 hud_captures :: proc(app: ^App, pos: draw.Vec2) -> bool {
-	// (a dialog of the interface is open, the Vault's, a security key's, a question: its scrim covers the window, the page
-	// under it gets no press, no wheel; a click on the dialog went through to the page too)
-	if ui.dialog_open() { return true }
+	// (a dialog of the interface is open, the Vault's, a security key's, a question, the Setup: its scrim covers the
+	// window, the page under it gets no press, no wheel; a click on the dialog went through to the page too)
+	if ui.views_hold_keys(&app.views) { return true }
+	// (and a view floating over the page, a dialog the person detached: what lands on it is its own)
+	if s := active_window(app).ui; s != nil {
+		for r in ui.views_floating_rects(&app.views, s) { if draw.rect_contains(r, pos) { return true } }
+	}
 	if fullscreen_bars_capture(app, pos) { return true }   // and so do the bars of full screen (window_chrome.odin)
 	if devtools_captures(pos) { return true }   // the floating developer tools (devtools.odin)
 	if palette_captures(app, pos) { return true }   // and the command palette while it is open (palette.odin)
 	if vault_dropdown_captures(app, pos) { return true }   // and the Vault's list under a login field (vault_fill.odin)
 	if vault_offer_captures(app, pos) { return true }   // and the Vault's save offer (vault_save.odin)
-	if setup_captures(app) { return true }   // and the Setup dialog (setup.odin)
 	if urlbar_captures(app, pos) { return true }   // and the address bar's suggestions (urlbar.odin)
 	if ui.menu_at(pos) { return true }   // and the open menus: their wheel scrolls them, never the page or a frame under them
 	if !app.hud.panel_open { return false }

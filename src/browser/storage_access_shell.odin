@@ -35,29 +35,30 @@ storage_access_shell_ask :: proc(user: rawptr, p: ^page.Page, req: ^page.Storage
 	request_frames(app, 2)
 }
 
-// The prompt over the page (the first request waiting), each frame while one waits.
+// Each frame of each window: the answer to the first request waiting goes to its frame, then the prompt shows the next
+// one.
 storage_access_shell_build :: proc(app: ^App) {
-	if len(app.sa_queue) == 0 { return }
-	req := app.sa_queue[0]
-	em := ui.font_size()
-	open := true
-	answered, granted := false, false
-	if ui.modal("storage_access", &open, {width_em = 32}) {
-		if ui.dialog_header("sa_header", i18n.tr("Cookies and site data"), {icon = lucide.COOKIE, icon_font = app.lucide}) {}
-		if ui.dialog_body("sa_body") {
-			ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s wants to use its cookies and site data while you are on %s"), req.site, req.top), "###sa_what"}, ui.frame_allocator()))
-			ui.spacer(ui.px(em * 0.4))
-			if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("Sign-in, payment and comment widgets may need it; it also lets the site recognise you across sites."), "###sa_why"}, ui.frame_allocator())) }
-		}
-		if ui.dialog_buttons("sa_buttons") {
-			if ui.button("###sa_block", i18n.tr("Block"), lucide.SHIELD, {intent = .Danger, width = ui.px(em * 8)}).clicked { answered, granted = true, false }
-			if ui.button("###sa_allow", i18n.tr("Allow"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { answered, granted = true, true }
-		}
-	}
-	if !open { answered, granted = true, false }   // Escape, a click outside: blocked
-	if answered {
+	if code, key, ok := window_view_ended(app, &app.sa_view, STORAGE_ACCESS_VIEW); ok && len(app.sa_queue) > 0 && key == u64(uintptr(app.sa_queue[0])) {
+		req := app.sa_queue[0]
 		ordered_remove(&app.sa_queue, 0)
-		page.storage_access_done(req, granted)
+		// (Escape, the close cross, a click outside: blocked)
+		page.storage_access_done(req, code == int(Permission_Answer.Allow))
 		request_frames(app, 2)
+	}
+	head: ^page.Storage_Access_Ask = len(app.sa_queue) > 0 ? app.sa_queue[0] : nil
+	window_view_follow(app, &app.sa_view, STORAGE_ACCESS_VIEW, head, u64(uintptr(head)))
+}
+
+// The prompt over the page (views.odin): "Allow" or "Block".
+storage_access_view :: proc(v: ^ui.View, req: ^page.Storage_Access_Ask) {
+	em := ui.font_size()
+	if ui.dialog_body("sa_body") {
+		ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s wants to use its cookies and site data while you are on %s"), req.site, req.top), "###sa_what"}, ui.frame_allocator()))
+		ui.spacer(ui.px(em * 0.4))
+		if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("Sign-in, payment and comment widgets may need it; it also lets the site recognise you across sites."), "###sa_why"}, ui.frame_allocator())) }
+	}
+	if ui.dialog_buttons("sa_buttons") {
+		if ui.button("###sa_block", i18n.tr("Block"), lucide.SHIELD, {intent = .Danger, width = ui.px(em * 8)}).clicked { ui.view_end(v, int(Permission_Answer.Block)) }
+		if ui.button("###sa_allow", i18n.tr("Allow"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { ui.view_end(v, int(Permission_Answer.Allow)) }
 	}
 }

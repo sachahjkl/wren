@@ -157,6 +157,7 @@ vault_fill_item :: proc(app: ^App, x: Vault_Target, item: string, fields: vault.
 		delete(s.ask_origin)
 		s.ask_origin = strings.clone(url_host(x.url))
 		s.ask_open = true
+		s.ask_serial += 1
 		request_frames(app, 2)
 		return
 	}

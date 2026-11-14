@@ -69,180 +69,188 @@ webauthn_chip :: proc(app: ^App, t: ^Tab) {
 }
 
 
-// The dialog of a security key's PIN (webauthn/pin.odin): open while a ceremony waits for it.
+// The views of a security key's questions (webauthn/pin.odin): its PIN, the account to sign in with, the wait for its
+// touch. Each is open while a ceremony waits for it, one at a time: the account is chosen after the key's touch, the
+// touch waits after the PIN.
 Key_Pin_Dialog :: struct {
-	number: u64,             // the question it shows (0: none)
+	number: u64,             // the PIN question it shows (0: none)
 	field:  ui.Line_Edit,
 	reveal: bool,
 	focus:  bool,            // the field takes the focus in the next build (a question that opens)
-	size:   ui.Vec2,
-	touch_size: ui.Vec2,
+	pin_view:      Window_View,
 	choose_number: u64,      // the account question it shows (0: none)
 	choose_sel:    int,      // the row Up, Down and Enter act on
-	choose_size:   ui.Vec2,
+	choose_view:   Window_View,
+	touch_view:    Window_View,
+	touch_cancelled: u64,    // the wait the person gave up: its view stays closed until its ceremony ends it
 }
 
+// Each frame of each window: the answers to the key's questions, then the view of the question open.
 webauthn_pin_build :: proc(app: ^App) {
 	// (the Vault's passkeys or the platform: asked before a platform ceremony starts, so never with its PIN or touch)
 	passkey_choice_build(app)
 	d := &app.key_pin
+	if code, number, ok := window_view_ended(app, &d.pin_view, KEY_PIN_VIEW); ok {
+		// (OK with a PIN typed; anything else refuses: Cancel, Escape, the close cross)
+		if code != ui.VIEW_CANCELLED && strings.trim_space(ui.line_edit_string(&d.field)) != "" {
+			webauthn.pin_answer(number, ui.line_edit_string(&d.field), true)
+		} else {
+			webauthn.pin_answer(number, "", false)
+		}
+		ui.line_edit_wipe(&d.field)
+	}
+	if code, number, ok := window_view_ended(app, &d.choose_view, KEY_CHOOSE_VIEW); ok {
+		if code >= 0 { webauthn.choose_answer(number, code, true) } else { webauthn.choose_answer(number, 0, false) }
+	}
+	if _, number, ok := window_view_ended(app, &d.touch_view, KEY_TOUCH_VIEW); ok {
+		webauthn.touch_cancel(number)
+		d.touch_cancelled = number
+	}
 	q := webauthn.pin_question()
 	if q.number != d.number {
 		// (a new question, or the old one over: what was typed for another goes)
 		ui.line_edit_wipe(&d.field)
 		d.number, d.reveal, d.focus = q.number, false, true
 	}
-	if q.number == 0 {
-		// (one question at a time: the account is chosen after the key's touch, the touch waits after the PIN)
-		if !webauthn_choose_build(app) { webauthn_touch_build(app) }
-		return
-	}
+	cq := webauthn.choose_question()
+	if cq.number != d.choose_number { d.choose_number, d.choose_sel = cq.number, 0 }
+	tq := webauthn.touch_question()
+	pin_key := q.number
+	choose_key := pin_key == 0 ? cq.number : 0
+	touch_key: u64 = pin_key == 0 && choose_key == 0 && tq.number != d.touch_cancelled ? tq.number : 0
+	window_view_follow(app, &d.pin_view, KEY_PIN_VIEW, app, pin_key)
+	window_view_follow(app, &d.choose_view, KEY_CHOOSE_VIEW, app, choose_key)
+	window_view_follow(app, &d.touch_view, KEY_TOUCH_VIEW, app, touch_key)
+}
+
+// The key's PIN (views.odin): OK ends it with the PIN typed, in its field.
+key_pin_view :: proc(v: ^ui.View, app: ^App) {
+	d := &app.key_pin
+	q := webauthn.pin_question()
+	if q.number == 0 { return }   // (over: webauthn_pin_build closes it)
 	em := ui.font_size()
-	open := true
 	submit, cancel := false, false
-	if ui.modal("key_pin", &open, {width_em = 26, min_width_em = 20, min_height_em = 11, size = &d.size}) {
-		if ui.dialog_header("kp_title", i18n.tr("Security key PIN"), {icon = lucide.USB, icon_font = app.lucide}) {}
-		ui.next({width = ui.fill(), height = ui.fill()})
-		if ui.scroll_y("###kp_scroll") {
-			ui.next({width = ui.fill(), height = ui.children_sum()})
-			if ui.row(.Start, {}, "###kp_margins") {
-				ui.spacer(ui.px(em * 1.0))
-				ui.next({width = ui.fill(), height = ui.children_sum()})
-				if ui.column(.Start, {}, "###kp_col") {
-					ui.spacer(ui.px(em * 0.9))
-					if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s asks for your security key. Type its PIN, then touch the key when it blinks."), q.rp_id), "###kp_hint"}, ui.frame_allocator())) }
-					if q.wrong || (q.retries >= 0 && q.retries <= 3) {
-						ui.spacer(ui.px(em * 0.3))
-						words := q.wrong ? fmt.tprintf(i18n.tr("Wrong PIN. %d tries left before the key blocks."), q.retries) : fmt.tprintf(i18n.tr("%d tries left before the key blocks."), q.retries)
-						if q.retries < 0 { words = i18n.tr("Wrong PIN.") }
-						ui.paragraph(strings.concatenate({words, "###kp_wrong"}, ui.frame_allocator()))
-					}
-					ui.spacer(ui.px(em * 0.8))
-					box := dialog_field("###kp_field", &d.field, i18n.tr("PIN"), true, &submit, &cancel, &d.reveal)
-					if d.focus && box != nil { d.focus = false; ui.set_focus(box.key) }
-					ui.spacer(ui.px(em * 0.4))
-				}
-				ui.spacer(ui.px(em * 1.0))
-			}
-		}
-		ui.spacer(ui.px(em * 0.6))
+	ui.next({width = ui.fill(), height = ui.fill()})
+	if ui.scroll_y("###kp_scroll") {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
-		if ui.row(.Center, {}, "###kp_buttons") {
-			ui.spacer(ui.fill())
-			if ui.button("###kp_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
-			ui.spacer(ui.px(em * 0.5))
-			if ui.button("###kp_ok", i18n.tr("OK"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { submit = true }
+		if ui.row(.Start, {}, "###kp_margins") {
+			ui.spacer(ui.px(em * 1.0))
+			ui.next({width = ui.fill(), height = ui.children_sum()})
+			if ui.column(.Start, {}, "###kp_col") {
+				ui.spacer(ui.px(em * 0.9))
+				if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s asks for your security key. Type its PIN, then touch the key when it blinks."), q.rp_id), "###kp_hint"}, ui.frame_allocator())) }
+				if q.wrong || (q.retries >= 0 && q.retries <= 3) {
+					ui.spacer(ui.px(em * 0.3))
+					words := q.wrong ? fmt.tprintf(i18n.tr("Wrong PIN. %d tries left before the key blocks."), q.retries) : fmt.tprintf(i18n.tr("%d tries left before the key blocks."), q.retries)
+					if q.retries < 0 { words = i18n.tr("Wrong PIN.") }
+					ui.paragraph(strings.concatenate({words, "###kp_wrong"}, ui.frame_allocator()))
+				}
+				ui.spacer(ui.px(em * 0.8))
+				box := dialog_field("###kp_field", &d.field, i18n.tr("PIN"), true, &submit, &cancel, &d.reveal)
+				if d.focus && box != nil { d.focus = false; ui.set_focus(box.key) }
+				ui.spacer(ui.px(em * 0.4))
+			}
 			ui.spacer(ui.px(em * 1.0))
 		}
-		ui.spacer(ui.px(em * 0.8))
 	}
-	if submit && strings.trim_space(ui.line_edit_string(&d.field)) != "" {
-		webauthn.pin_answer(d.number, ui.line_edit_string(&d.field), true)
-		ui.line_edit_wipe(&d.field)
-	} else if cancel || !open {
-		webauthn.pin_answer(d.number, "", false)
-		ui.line_edit_wipe(&d.field)
+	ui.spacer(ui.px(em * 0.6))
+	ui.next({width = ui.fill(), height = ui.children_sum()})
+	if ui.row(.Center, {}, "###kp_buttons") {
+		ui.spacer(ui.fill())
+		if ui.button("###kp_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
+		ui.spacer(ui.px(em * 0.5))
+		if ui.button("###kp_ok", i18n.tr("OK"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { submit = true }
+		ui.spacer(ui.px(em * 1.0))
+	}
+	ui.spacer(ui.px(em * 0.8))
+	switch {
+	case submit && strings.trim_space(ui.line_edit_string(&d.field)) != "": ui.view_end(v, 0)
+	case cancel: ui.view_end(v, ui.VIEW_CANCELLED)
 	}
 }
 
 // The account to sign in with, when the key holds several passkeys of the site (webauthn/pin.odin's choose question):
-// one row per account, a click or Enter chooses, Up and Down move, Cancel refuses (the page gets NotAllowedError).
-// false: no such question is open.
-@(private = "file")
-webauthn_choose_build :: proc(app: ^App) -> bool {
+// one row per account, a click or Enter chooses (the answer is its index), Up and Down move, Cancel refuses (the page
+// gets NotAllowedError).
+key_choose_view :: proc(v: ^ui.View, app: ^App) {
 	d := &app.key_pin
 	q := webauthn.choose_question()
-	if q.number != d.choose_number { d.choose_number, d.choose_sel = q.number, 0 }
-	if q.number == 0 { return false }
+	if q.number == 0 { return }   // (over: webauthn_pin_build closes it)
 	n := len(q.accounts)
 	d.choose_sel = clamp(d.choose_sel, 0, max(n - 1, 0))
 	em := ui.font_size()
-	open := true
 	cancel := false
 	chosen := -1
-	if ui.modal("key_choose", &open, {width_em = 26, min_width_em = 20, min_height_em = 12, size = &d.choose_size}) {
-		if ui.key_press(.Down) { d.choose_sel = min(d.choose_sel + 1, n - 1) }
-		if ui.key_press(.Up) { d.choose_sel = max(d.choose_sel - 1, 0) }
-		if ui.key_press(.Return) { chosen = d.choose_sel }
-		if ui.dialog_header("kc_title", i18n.tr("Choose an account"), {icon = lucide.USER, icon_font = app.lucide}) {}
-		ui.next({width = ui.fill(), height = ui.fill()})
-		if ui.scroll_y("###kc_scroll") {
-			ui.next({width = ui.fill(), height = ui.children_sum()})
-			if ui.row(.Start, {}, "###kc_margins") {
-				ui.spacer(ui.px(em * 1.0))
-				ui.next({width = ui.fill(), height = ui.children_sum()})
-				if ui.column(.Start, {}, "###kc_col") {
-					ui.spacer(ui.px(em * 0.9))
-					if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("Your security key holds several passkeys of %s. Choose the one to sign in with."), q.rp_id), "###kc_hint"}, ui.frame_allocator())) }
-					ui.spacer(ui.px(em * 0.8))
-					for a, i in q.accounts {
-						title, detail := a.display_name, a.name
-						if title == "" { title, detail = a.name, "" }
-						if title == "" { title = i18n.tr("Account without a name") }
-						if ui.choice_row(fmt.tprintf("kc_row_%d", i), i, &d.choose_sel, title, detail, lucide.USER, app.lucide) { chosen = i }
-					}
-					ui.spacer(ui.px(em * 0.4))
-				}
-				ui.spacer(ui.px(em * 1.0))
-			}
-		}
-		ui.spacer(ui.px(em * 0.6))
+	if ui.key_press(.Down) { d.choose_sel = min(d.choose_sel + 1, n - 1) }
+	if ui.key_press(.Up) { d.choose_sel = max(d.choose_sel - 1, 0) }
+	if ui.key_press(.Return) { chosen = d.choose_sel }
+	ui.next({width = ui.fill(), height = ui.fill()})
+	if ui.scroll_y("###kc_scroll") {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
-		if ui.row(.Center, {}, "###kc_buttons") {
-			ui.spacer(ui.fill())
-			if ui.button("###kc_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
+		if ui.row(.Start, {}, "###kc_margins") {
+			ui.spacer(ui.px(em * 1.0))
+			ui.next({width = ui.fill(), height = ui.children_sum()})
+			if ui.column(.Start, {}, "###kc_col") {
+				ui.spacer(ui.px(em * 0.9))
+				if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("Your security key holds several passkeys of %s. Choose the one to sign in with."), q.rp_id), "###kc_hint"}, ui.frame_allocator())) }
+				ui.spacer(ui.px(em * 0.8))
+				for a, i in q.accounts {
+					title, detail := a.display_name, a.name
+					if title == "" { title, detail = a.name, "" }
+					if title == "" { title = i18n.tr("Account without a name") }
+					if ui.choice_row(fmt.tprintf("kc_row_%d", i), i, &d.choose_sel, title, detail, lucide.USER, app.lucide) { chosen = i }
+				}
+				ui.spacer(ui.px(em * 0.4))
+			}
 			ui.spacer(ui.px(em * 1.0))
 		}
-		ui.spacer(ui.px(em * 0.8))
 	}
-	if chosen >= 0 && chosen < n {
-		webauthn.choose_answer(q.number, chosen, true)
-	} else if cancel || !open {
-		webauthn.choose_answer(q.number, 0, false)
+	ui.spacer(ui.px(em * 0.6))
+	ui.next({width = ui.fill(), height = ui.children_sum()})
+	if ui.row(.Center, {}, "###kc_buttons") {
+		ui.spacer(ui.fill())
+		if ui.button("###kc_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
+		ui.spacer(ui.px(em * 1.0))
 	}
-	return true
+	ui.spacer(ui.px(em * 0.8))
+	switch {
+	case chosen >= 0 && chosen < n: ui.view_end(v, chosen)
+	case cancel: ui.view_end(v, ui.VIEW_CANCELLED)
+	}
 }
 
 // While the key waits for the person's touch (after its PIN, or at once): what to do, and a Cancel that stops the
 // ceremony.
-@(private = "file")
-webauthn_touch_build :: proc(app: ^App) {
-	d := &app.key_pin
+key_touch_view :: proc(v: ^ui.View, app: ^App) {
 	q := webauthn.touch_question()
-	if q.number == 0 { return }
+	if q.number == 0 { return }   // (over: webauthn_pin_build closes it)
 	em := ui.font_size()
-	open := true
-	cancel := false
-	if ui.modal("key_touch", &open, {width_em = 26, min_width_em = 20, min_height_em = 8, size = &d.touch_size}) {
-		if ui.dialog_header("kt_title", i18n.tr("Touch your security key"), {icon = lucide.USB, icon_font = app.lucide}) {}
-		ui.next({width = ui.fill(), height = ui.fill()})
-		if ui.scroll_y("###kt_scroll") {
-			ui.next({width = ui.fill(), height = ui.children_sum()})
-			if ui.row(.Start, {}, "###kt_margins") {
-				ui.spacer(ui.px(em * 1.0))
-				ui.next({width = ui.fill(), height = ui.children_sum()})
-				if ui.column(.Start, {}, "###kt_col") {
-					ui.spacer(ui.px(em * 0.9))
-					// (the spinner says that the key waits; the title is the header's)
-					ui.next({width = ui.fill(), height = ui.children_sum()})
-					if ui.row(.Center, {}, "###kt_head") {
-						ui.spinner("###vd_spinner", em * 1.3)
-						ui.spacer(ui.px(em * 0.5))
-						if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s asks for your security key. Touch its button or its gold disc now: it blinks while it waits."), q.rp_id), "###kt_hint"}, ui.frame_allocator())) }
-					}
-					ui.spacer(ui.px(em * 0.4))
-				}
-				ui.spacer(ui.px(em * 1.0))
-			}
-		}
-		ui.spacer(ui.px(em * 0.6))
+	ui.next({width = ui.fill(), height = ui.fill()})
+	if ui.scroll_y("###kt_scroll") {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
-		if ui.row(.Center, {}, "###kt_buttons") {
-			ui.spacer(ui.fill())
-			if ui.button("###kt_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
+		if ui.row(.Start, {}, "###kt_margins") {
+			ui.spacer(ui.px(em * 1.0))
+			ui.next({width = ui.fill(), height = ui.children_sum()})
+			if ui.column(.Start, {}, "###kt_col") {
+				ui.spacer(ui.px(em * 0.9))
+				// (the spinner says that the key waits; the title is the header's)
+				ui.next({width = ui.fill(), height = ui.children_sum()})
+				if ui.row(.Center, {}, "###kt_head") {
+					ui.spinner("###vd_spinner", em * 1.3)
+					ui.spacer(ui.px(em * 0.5))
+					if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s asks for your security key. Touch its button or its gold disc now: it blinks while it waits."), q.rp_id), "###kt_hint"}, ui.frame_allocator())) }
+				}
+				ui.spacer(ui.px(em * 0.4))
+			}
 			ui.spacer(ui.px(em * 1.0))
 		}
-		ui.spacer(ui.px(em * 0.8))
 	}
-	if cancel || !open { webauthn.touch_cancel(q.number) }
+	ui.spacer(ui.px(em * 0.6))
+	ui.next({width = ui.fill(), height = ui.children_sum()})
+	if ui.row(.Center, {}, "###kt_buttons") {
+		ui.spacer(ui.fill())
+		if ui.button("###kt_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { ui.view_end(v, ui.VIEW_CANCELLED) }
+		ui.spacer(ui.px(em * 1.0))
+	}
+	ui.spacer(ui.px(em * 0.8))
 }

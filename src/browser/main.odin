@@ -142,6 +142,7 @@ Navigable :: page.Navigable
 // (request_frames), .presented; window_own(app) for the chrome's state.
 App :: struct {
 	announcer:     ui.Announcer,             // messages.odin: what the browser says of an act it finished
+	views:         ui.Views,                 // views.odin: the dialogs of every window, and what is remembered of them
 	rates:    Loop_Rates,   // loop_rates.odin: turns, sleeps, frames and why
 	r:        render.Renderer,
 	fonts:    font.State,
@@ -268,9 +269,11 @@ App :: struct {
 	tcfg:          Tree_Settings,            // history_tree.odin
 	net_custom:    [dynamic]Net_Profile,     // devtools_net_throttle.odin: the profile's throttling profiles (owned strings)
 	sa_queue:      [dynamic]^page.Storage_Access_Ask,   // storage_access_shell.odin: the pages' storage access prompts
+	sa_view:       Window_View,              // storage_access_shell.odin: the prompt of the head of sa_queue
 	ask_state:     Ask_State,                // fs_shell.odin: a page's file system permission prompt
 	notes:         Notification_Shell,       // notification_shell.odin: the pages' system notifications
 	qr_url:        string,                   // qr_shell.odin: the address whose QR code is shown ("": none), owned
+	qr_view:       Window_View,              // qr_shell.odin: where it is shown
 	vault:         Vault_Shell,              // vault_shell.odin: the Vault (src/vault) and its surfaces
 	key_pin:       Key_Pin_Dialog,           // webauthn_shell.odin: the security key's PIN, asked while a ceremony runs
 	passkey_choice: Passkey_Choice,          // passkey_choice.odin: a page's passkey request, from the Vault or the platform
@@ -1137,54 +1140,58 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	chrome_shortcuts(app)
 	ext_watch(app)   // ext_window_api.odin: the extensions' view of the windows, tabs and input changes
 	t := current_tab(app)
-	if ui.style({width = ui.fill(), height = ui.fill()}) {
-		ui.next({axis = .Y})
-		root := ui.build_box({.Draw_Background}, "###window")
-		if ui.parent(root) {
-			// tab strip (the window's title bar when integrated: window_chrome.odin), navigation, security chip,
-			// address, menu; in full screen they come over the page on demand (fullscreen_bars)
-			// the tabs in a sidebar (tab_sidebar.odin): the toolbar is the title bar (integrated; else its own row under
-			// the system's), and the sidebar and the page share what is below it
-			side := tabs_in_sidebar(app)
-			// (an extension's popout window: its page only, no tab strip and no toolbar: ext_window_api.odin)
-			if !platform.is_fullscreen(active_window(app).win) && !ext_is_popout(app, active_window(app)) {
-				if side && platform.is_integrated_title(active_window(app).win) {
-					sidebar_titlebar(app, t)
-				} else {
-					if !side { tab_strip(app, platform.is_integrated_title(active_window(app).win)) }
-					toolbar_row(app, t)   // chrome_style.odin
+	// (the window's frame of views: its panels and floating views around the content; its dialogs come at the end of the build, over it: views.odin)
+	if ui.views_frame(&app.views) {
+		if ui.style({width = ui.fill(), height = ui.fill()}) {
+			ui.next({axis = .Y})
+			root := ui.build_box({.Draw_Background}, "###window")
+			if ui.parent(root) {
+				// tab strip (the window's title bar when integrated: window_chrome.odin), navigation, security chip,
+				// address, menu; in full screen they come over the page on demand (fullscreen_bars)
+				// the tabs in a sidebar (tab_sidebar.odin): the toolbar is the title bar (integrated; else its own row under
+				// the system's), and the sidebar and the page share what is below it
+				side := tabs_in_sidebar(app)
+				// (an extension's popout window: its page only, no tab strip and no toolbar: ext_window_api.odin)
+				if !platform.is_fullscreen(active_window(app).win) && !ext_is_popout(app, active_window(app)) {
+					if side && platform.is_integrated_title(active_window(app).win) {
+						sidebar_titlebar(app, t)
+					} else {
+						if !side { tab_strip(app, platform.is_integrated_title(active_window(app).win)) }
+						toolbar_row(app, t)   // chrome_style.odin
+					}
 				}
-			}
-			elem_fs := fullscreen_shell_active(app.active)   // a page's element in full screen: the page has the whole window
-			if side {
-				pos := app.favs.cfg.position
-				side_now := sidebar_extent_now(app, pos)
-				ui.next({width = ui.fill(), height = ui.fill()})
-				if ui.row(.Start, {}, "###sidebar_row") {
-					if pos == .Left { tab_sidebar(app, pos, side_now) }
+				elem_fs := fullscreen_shell_active(app.active)   // a page's element in full screen: the page has the whole window
+				if side {
+					pos := app.favs.cfg.position
+					side_now := sidebar_extent_now(app, pos)
 					ui.next({width = ui.fill(), height = ui.fill()})
-					if ui.column(.Start, {}, "###page_column") { page_column(app, t, elem_fs, f32(active_window(app).win.size.x) - side_now.extent) }
-					if pos == .Right { tab_sidebar(app, pos, side_now) }
+					if ui.row(.Start, {}, "###sidebar_row") {
+						if pos == .Left { tab_sidebar(app, pos, side_now) }
+						ui.next({width = ui.fill(), height = ui.fill()})
+						if ui.column(.Start, {}, "###page_column") { page_column(app, t, elem_fs, f32(active_window(app).win.size.x) - side_now.extent) }
+						if pos == .Right { tab_sidebar(app, pos, side_now) }
+					}
+				} else {
+					window_own(app).sidebar.shown = false
+					page_column(app, t, elem_fs, f32(active_window(app).win.size.x))
 				}
-			} else {
-				window_own(app).sidebar.shown = false
-				page_column(app, t, elem_fs, f32(active_window(app).win.size.x))
+				// status bar (status_bar.odin)
+				if !elem_fs { status_bar_build(app, t) }
+				fullscreen_bars(app, t)
+				link_bubble(app, t)   // status_bar.odin: where the link under the pointer goes, over the page's corner (under the floating developer tools)
+				devtools_floating(app, t)   // over the page when it is undocked
 			}
-			// status bar (status_bar.odin)
-			if !elem_fs { status_bar_build(app, t) }
-			fullscreen_bars(app, t)
-			link_bubble(app, t)   // status_bar.odin: where the link under the pointer goes, over the page's corner (under the floating developer tools)
-			devtools_floating(app, t)   // over the page when it is undocked
 		}
 	}
 	context_menus_build(app)
 	palette_build(app)   // palette.odin: the command palette, over everything else
+	// the dialogs: each opens, closes and takes its answer here; the toolkit builds them at the end of the build (views.odin)
 	setup_build(app)   // setup.odin: the Setup dialog (toolkit:setup; it also collects the work of its thread)
 	fs_shell_build(app)   // fs_shell.odin: a page's file permission prompt (nothing while none waits)
 	notification_shell_build(app)   // notification_shell.odin: a page's notification permission prompt
 	qr_build(app)   // qr_shell.odin: the QR code of the page's address
 	vault_dialogs_build(app)   // vault_shell.odin: the Vault's login / unlock dialog, the question before a fill
-	webauthn_pin_build(app)    // webauthn_shell.odin: a security key's PIN, its touch, its account: built last, on top of the dialog that asked (the Vault's passkey)
+	webauthn_pin_build(app)    // webauthn_shell.odin: a security key's PIN, its touch, its account: opened after the dialog that asked, on top of it (the Vault's passkey)
 	bookmarks_dialog_build(app)   // bookmarks_ui.odin: the dialog that names a bookmark
 	bookmarks_bar_menus(app)   // bookmarks_bar.odin: the bar's menus
 	confirm_build(app)   // confirm_shell.odin: a question before an act not taken back

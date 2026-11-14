@@ -50,13 +50,12 @@ Setup_State :: struct {
 	choices:    [len(Setup_Choice)]setup.Choice,   // the boxes' first values, from the preferences (setup_config; by Setup_Choice)
 	file_types: string,                       // browser.desktop_integration.file_types when the dialog opened (owned): read by its thread
 	deciding:   int,                          // the start's reading of the install, out on the blocking pool
+	asked:      bool,                         // setup_open: the next build of the window the person is in opens it
+	logo_px:    int,                          // the size of the window's icon the view shows as its logo (0: none)
 	at_primary, at_uninstall, at_secondary: draw.Rect,   // where the last frame put its buttons (control_setup_state)
 }
 
-setup_is_open :: proc(app: ^App) -> bool { return app.stp.d.open }
-
-// While it is open the dialog takes every press and wheel turn: the page under it gets none.
-setup_captures :: proc(app: ^App) -> bool { return app.stp.d.open }
+setup_is_open :: proc(app: ^App) -> bool { return app.stp.d.open || app.stp.asked }
 
 // The dialog's Config: Wren's identity, version, icons and choices. Called on the interface thread; the dialog's thread
 // keeps a copy, whose strings and `user` (the App) outlive it.
@@ -108,26 +107,41 @@ setup_choice_write :: proc(app: ^App, choice: string) {
 ////////////////////////////////
 // Opening, each frame, the end
 
-// Opens the dialog (the command, --setup, the start).
+// Opens the dialog (the command, --setup, the start): the view opens in the next build of the window the person is in
+// (setup_build), from a build or not.
 setup_open :: proc(app: ^App) {
 	if !desktop.supported() { announce(app, .Info, "Setup is not available on this platform"); return }
-	if app.stp.d.open { return }
+	if app.stp.d.open || app.stp.asked { return }
 	delete(app.stp.file_types)
 	app.stp.file_types = strings.clone(config.string_of(&app.prefs, "browser.desktop_integration.file_types"))
 	if ui.building() {
 		ui.menu_close()
 		if app.cpal.open { palette_close(app) }
 	}
-	setup.open(&app.stp.d, setup_config(app))
+	app.stp.asked = true
 	request_frames(app, 3)
 }
 
-// Each frame of the active window: the dialog (a modal while open), the work it collects, what its events leave.
+// The window's icon as the setup's logo (nil: none made yet).
+@(private = "file")
+setup_logo :: proc(app: ^App) -> Maybe(setup.Logo) {
+	if app.wchrome.icon_px <= 0 { return nil }
+	return setup.Logo{app.wchrome.icon, {f32(app.wchrome.icon_px), f32(app.wchrome.icon_px)}}
+}
+
+// Each frame of each window: the view opened when asked, its logo when the icon changes, the work it collects, what
+// its events leave.
 setup_build :: proc(app: ^App) {
-	logo: Maybe(setup.Logo)
-	if app.wchrome.icon_px > 0 { logo = setup.Logo{app.wchrome.icon, {f32(app.wchrome.icon_px), f32(app.wchrome.icon_px)}} }
 	d := &app.stp.d
-	ev := setup.dialog(d, setup_config(app), ui.font_size(), logo)
+	if app.stp.asked && window_is_front(app) {
+		app.stp.asked = false
+		app.stp.logo_px = app.wchrome.icon_px
+		setup.open(d, setup_config(app), setup_logo(app))
+	} else if d.open && app.wchrome.icon_px != app.stp.logo_px {
+		app.stp.logo_px = app.wchrome.icon_px
+		setup.set_logo(d, setup_logo(app))
+	}
+	ev := setup.update(d, setup_config(app))
 	switch ev {
 	case .None:
 	case .Installed:

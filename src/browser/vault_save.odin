@@ -45,21 +45,24 @@ vault_save_destroy :: proc(app: ^App) {
 // Each frame, from vault_dialogs_build. `usable` false (remote control): nothing of it shows.
 vault_save_frame :: proc(app: ^App, usable: bool) {
 	s := &app.vault
+	// (the generator closed by Close, Escape, its cross or a click outside)
+	if _, _, ok := window_view_ended(app, &s.gen_view, VAULT_GENERATOR_VIEW); ok && s.gen_dialog { vault_generator_close(app) }
 	if !usable {
 		s.offer_shown = false
 		if s.gen_dialog { vault_generator_close(app) }
-		return
+	} else {
+		if s.v.state != .Unlocked {
+			// (a lock zeroed the Vault's secrets: the shell's go too)
+			vault.string_wipe(&s.gen_filled)
+			totp_clear(s)
+			s.totp_copy_due, s.gen_for_fill, s.gen_request = false, false, 0
+			if s.gen_dialog { vault_generator_close(app) }
+		}
+		vault_generated_frame(app)
+		vault_totp_frame(app)
+		vault_offer_build(app)
 	}
-	if s.v.state != .Unlocked {
-		// (a lock zeroed the Vault's secrets: the shell's go too)
-		vault.string_wipe(&s.gen_filled)
-		totp_clear(s)
-		s.totp_copy_due, s.gen_for_fill, s.gen_request = false, false, 0
-	}
-	vault_generated_frame(app)
-	vault_totp_frame(app)
-	vault_offer_build(app)
-	vault_generator_build(app)
+	window_view_follow(app, &s.gen_view, VAULT_GENERATOR_VIEW, app, s.gen_dialog ? 1 : 0)
 }
 
 ////////////////////////////////
@@ -256,93 +259,88 @@ same_options :: proc(a, b: vault.Generate_Options) -> bool {
 		a.include_number == b.include_number
 }
 
-// The generator's dialog: a password or a passphrase, its length or its words, its classes; the value, made again on
-// each change, with Regenerate and Copy (the clipboard is cleared as for every copy of the Vault).
-@(private = "file")
-vault_generator_build :: proc(app: ^App) {
+// The generator's dialog (views.odin): a password or a passphrase, its length or its words, its classes; the value,
+// made again on each change, with Regenerate and Copy (the clipboard is cleared as for every copy of the Vault). Close
+// ends it (vault_save_frame closes it).
+vault_generator_view :: proc(view: ^ui.View, app: ^App) {
 	s := &app.vault
-	if !s.gen_dialog { return }
-	if s.v.state != .Unlocked { vault_generator_close(app); return }
+	if s.v.state != .Unlocked { return }   // (locked: vault_save_frame closes it)
 	em := ui.font_size()
-	open := true
 	close, again, copy_it := false, false, false
 	o := &s.gen_options
-	if ui.modal("vault_generator", &open, {width_em = 28, min_width_em = 22, min_height_em = 14, size = &s.gen_size}) {
-		if ui.dialog_header("vg_title", i18n.tr("Password generator"), {icon = lucide.DICES, icon_font = app.lucide}) {}
-		ui.next({width = ui.fill(), height = ui.fill()})
-		if ui.scroll_y("###vg_scroll") {
-			ui.next({width = ui.fill(), height = ui.children_sum()})
-			if ui.row(.Start, {}, "###vg_margins") {
-				ui.spacer(ui.px(em * 1.0))
-				ui.next({width = ui.fill(), height = ui.children_sum()})
-				if ui.column(.Start, {}, "###vg_col") {
-					ui.spacer(ui.px(em * 0.9))
-					kind := o.passphrase ? 1 : 0
-					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-					if ui.segmented("###vg_kind", []string{i18n.tr("Password"), i18n.tr("Passphrase")}, &kind) { o.passphrase = kind == 1 }
-					ui.spacer(ui.px(em * 0.5))
-					count_row :: proc(label, id: string, value: ^int, lo, hi: int) {
-						em := ui.font_size()
-						ui.next({width = ui.fill(), height = ui.children_sum()})
-						if ui.row(.Center, {}, strings.concatenate({"###", id, "_row"}, ui.frame_allocator())) {
-							ui.next({width = ui.fill(), height = ui.text_size()})
-							ui.label(strings.concatenate({label, "###", id, "_label"}, ui.frame_allocator()))
-							ui.next({width = ui.px(em * 8), height = ui.px(ui.dense(em * 2))})
-							_ = ui.number(strings.concatenate({"###", id}, ui.frame_allocator()), value, lo = lo, hi = hi)
-						}
-					}
-					if o.passphrase {
-						count_row(i18n.tr("Words"), "vg_words", &o.words, vault.GENERATE_WORDS_MIN, vault.GENERATE_WORDS_MAX)
-						ui.spacer(ui.px(em * 0.3))
-						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-						ui.checkbox("###vg_capitalize", i18n.tr("Capital first letters"), &o.capitalize)
-						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-						ui.checkbox("###vg_number", i18n.tr("A digit"), &o.include_number)
-					} else {
-						count_row(i18n.tr("Length"), "vg_length", &o.length, vault.GENERATE_LENGTH_MIN, vault.GENERATE_LENGTH_MAX)
-						ui.spacer(ui.px(em * 0.3))
-						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-						ui.checkbox("###vg_upper", i18n.tr("Capital letters (A-Z)"), &o.uppercase)
-						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-						ui.checkbox("###vg_lower", i18n.tr("Small letters (a-z)"), &o.lowercase)
-						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-						ui.checkbox("###vg_numbers", i18n.tr("Digits (0-9)"), &o.numbers)
-						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-						ui.checkbox("###vg_special", i18n.tr("Special characters (!@#$%^&*)"), &o.special)
-					}
-					ui.spacer(ui.px(em * 0.7))
-					// (the person asked to see it: the dialog is an empty box to captures and remote control; in a field read only,
-					// to select a part of it or copy it with the keys)
-					if ui.line_edit_string(&s.gen_text) != s.gen_value { ui.line_edit_set(&s.gen_text, s.gen_value) }
-					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-					_ = ui.line_edit("###vg_value", &s.gen_text, {placeholder = i18n.tr("Generating…"), kind = .Read_Only})
-					ui.spacer(ui.px(em * 0.5))
-					ui.next({width = ui.fill(), height = ui.children_sum()})
-					if ui.row(.Center, {}, "###vg_value_acts") {
-						if ui.button("###vg_again", i18n.tr("Regenerate"), lucide.REFRESH_CW, {width = ui.fill()}).clicked { again = true }
-						ui.spacer(ui.px(em * 0.4))
-						if ui.button("###vg_copy", i18n.tr("Copy"), lucide.COPY, {intent = .Primary, width = ui.fill()}).clicked { copy_it = true }
-					}
-					if s.v.message != "" {
-						ui.spacer(ui.px(em * 0.4))
-						if ui.tags("weak") { ui.paragraph(strings.concatenate({s.v.message, "###vg_message"}, ui.frame_allocator())) }
-					}
-					ui.spacer(ui.px(em * 0.4))
-				}
-				ui.spacer(ui.px(em * 1.0))
-			}
-		}
-		ui.spacer(ui.px(em * 0.6))
+	ui.next({width = ui.fill(), height = ui.fill()})
+	if ui.scroll_y("###vg_scroll") {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
-		if ui.row(.Center, {}, "###vg_buttons") {
-			ui.spacer(ui.fill())
-			if ui.button("###vg_close", i18n.tr("Close"), lucide.X, {width = ui.px(em * 8)}).clicked { close = true }
+		if ui.row(.Start, {}, "###vg_margins") {
+			ui.spacer(ui.px(em * 1.0))
+			ui.next({width = ui.fill(), height = ui.children_sum()})
+			if ui.column(.Start, {}, "###vg_col") {
+				ui.spacer(ui.px(em * 0.9))
+				kind := o.passphrase ? 1 : 0
+				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+				if ui.segmented("###vg_kind", []string{i18n.tr("Password"), i18n.tr("Passphrase")}, &kind) { o.passphrase = kind == 1 }
+				ui.spacer(ui.px(em * 0.5))
+				count_row :: proc(label, id: string, value: ^int, lo, hi: int) {
+					em := ui.font_size()
+					ui.next({width = ui.fill(), height = ui.children_sum()})
+					if ui.row(.Center, {}, strings.concatenate({"###", id, "_row"}, ui.frame_allocator())) {
+						ui.next({width = ui.fill(), height = ui.text_size()})
+						ui.label(strings.concatenate({label, "###", id, "_label"}, ui.frame_allocator()))
+						ui.next({width = ui.px(em * 8), height = ui.px(ui.dense(em * 2))})
+						_ = ui.number(strings.concatenate({"###", id}, ui.frame_allocator()), value, lo = lo, hi = hi)
+					}
+				}
+				if o.passphrase {
+					count_row(i18n.tr("Words"), "vg_words", &o.words, vault.GENERATE_WORDS_MIN, vault.GENERATE_WORDS_MAX)
+					ui.spacer(ui.px(em * 0.3))
+					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+					ui.checkbox("###vg_capitalize", i18n.tr("Capital first letters"), &o.capitalize)
+					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+					ui.checkbox("###vg_number", i18n.tr("A digit"), &o.include_number)
+				} else {
+					count_row(i18n.tr("Length"), "vg_length", &o.length, vault.GENERATE_LENGTH_MIN, vault.GENERATE_LENGTH_MAX)
+					ui.spacer(ui.px(em * 0.3))
+					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+					ui.checkbox("###vg_upper", i18n.tr("Capital letters (A-Z)"), &o.uppercase)
+					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+					ui.checkbox("###vg_lower", i18n.tr("Small letters (a-z)"), &o.lowercase)
+					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+					ui.checkbox("###vg_numbers", i18n.tr("Digits (0-9)"), &o.numbers)
+					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+					ui.checkbox("###vg_special", i18n.tr("Special characters (!@#$%^&*)"), &o.special)
+				}
+				ui.spacer(ui.px(em * 0.7))
+				// (the person asked to see it: the dialog is an empty box to captures and remote control; in a field read only,
+				// to select a part of it or copy it with the keys)
+				if ui.line_edit_string(&s.gen_text) != s.gen_value { ui.line_edit_set(&s.gen_text, s.gen_value) }
+				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+				_ = ui.line_edit("###vg_value", &s.gen_text, {placeholder = i18n.tr("Generating…"), kind = .Read_Only})
+				ui.spacer(ui.px(em * 0.5))
+				ui.next({width = ui.fill(), height = ui.children_sum()})
+				if ui.row(.Center, {}, "###vg_value_acts") {
+					if ui.button("###vg_again", i18n.tr("Regenerate"), lucide.REFRESH_CW, {width = ui.fill()}).clicked { again = true }
+					ui.spacer(ui.px(em * 0.4))
+					if ui.button("###vg_copy", i18n.tr("Copy"), lucide.COPY, {intent = .Primary, width = ui.fill()}).clicked { copy_it = true }
+				}
+				if s.v.message != "" {
+					ui.spacer(ui.px(em * 0.4))
+					if ui.tags("weak") { ui.paragraph(strings.concatenate({s.v.message, "###vg_message"}, ui.frame_allocator())) }
+				}
+				ui.spacer(ui.px(em * 0.4))
+			}
 			ui.spacer(ui.px(em * 1.0))
 		}
-		ui.spacer(ui.px(em * 0.8))
 	}
+	ui.spacer(ui.px(em * 0.6))
+	ui.next({width = ui.fill(), height = ui.children_sum()})
+	if ui.row(.Center, {}, "###vg_buttons") {
+		ui.spacer(ui.fill())
+		if ui.button("###vg_close", i18n.tr("Close"), lucide.X, {width = ui.px(em * 8)}).clicked { close = true }
+		ui.spacer(ui.px(em * 1.0))
+	}
+	ui.spacer(ui.px(em * 0.8))
 	if copy_it && s.gen_value != "" { vault_copied(app, .Password, s.gen_value, 0) }
-	if close || !open { vault_generator_close(app); return }
+	if close { ui.view_end(view, 0); return }
 	if again || (!same_options(s.gen_asked, s.gen_options) && s.gen_request == 0) { vault_generator_ask(app) }
 }
 

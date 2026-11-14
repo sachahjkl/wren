@@ -26,7 +26,7 @@ SETTINGS_PAGES := [?]Settings_Page_Def{
 		"appearance.zoom", "appearance.density", "appearance.rounding", "browser.ui.scale", "appearance.animations", "window.system_title",
 		"window.toast_position", "browser.status_bar.visible", "browser.bookmarks.bar"}},
 	{"scrolling", "Scrolling", lucide.MOUSE, {
-		"scrolling.smooth", "scrolling.duration", "scrolling.autohide_scrollbars", "scrolling.scrollbar_arrows",
+		"scrolling.smooth", "scrolling.duration", "scrolling.scrollbar_size", "scrolling.scrollbar_autohide", "scrolling.scrollbar_overlay",
 		"scrolling.autoscroll.enabled", "scrolling.autoscroll.toggle"}},
 	{"tabs", "Tabs", lucide.LAYERS_2, {
 		"browser.tabs.position", "browser.tabs.tree", "browser.tabs.sidebar_collapsed", "browser.tabs.close_window_with_last_tab", "browser.tabs.middle_click_close",

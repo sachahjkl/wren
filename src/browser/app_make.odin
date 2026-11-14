@@ -143,12 +143,15 @@ app_ui_init :: proc(app: ^App) {
 	prefs_page.themes_file_init(&app.themes_file, themes, ui.THEMES[:])
 	w.ui.icon_font = app.lucide
 	w.ui.menu_icon_font = app.lucide   // (the menus' icons are Lucide's: command_icons.odin)
+	views_start(app)   // views.odin: the program's views, before a window builds one
+	views_attach(app, w.ui)
 	standard_settings_watch(app, &w.standard, w.ui)
 	app.made += {.Ui}
 }
 
 app_ui_end :: proc(app: ^App) {
 	windows_destroy_ui(app)
+	views_end(app)   // (after the last build of every window)
 	prefs_page.themes_file_destroy(&app.themes_file)
 	ui.theme_destroy(&app.theme)
 	app.made -= {.Ui}

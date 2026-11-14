@@ -1,8 +1,9 @@
 package browser
 
-// The question before an act that is not taken back (gui_toolkit ui.confirm): a bookmark folder removed with what it
-// holds, a downloaded file deleted from the disk, the browsing history deleted. One question at a time: the act is named
-// here (Confirm_Kind and its target), asked from a menu or a key, and done when the user confirms it in a later frame.
+// The question before an act that is not taken back (gui_toolkit ui.confirm_open, a view of one window: views.odin): a
+// bookmark folder removed with what it holds, a downloaded file deleted from the disk, the browsing history deleted. One
+// question at a time: the act is named here (Confirm_Kind and its target), asked from a menu or a key, opened by the next
+// build of the window the person is in, and done when the person confirms it in a later frame.
 
 import "core:fmt"
 import "core:path/filepath"
@@ -13,7 +14,9 @@ import "wb:i18n"
 Confirm_Kind :: enum u8 { None, Bookmark_Folder, Download_File, History_Range }
 
 Pending_Confirm :: struct {
-	open:          bool,
+	open:          bool,          // asked, not answered yet
+	view:          Window_View,   // where the question is shown
+	serial:        u64,           // the question asked (its view's key: another question replaces it)
 	kind:          Confirm_Kind,
 	id:            u64,           // Bookmark_Folder: the folder; Download_File: the download
 	from_ms, to_ms: i64,          // History_Range
@@ -26,7 +29,8 @@ confirm_clear :: proc(c: ^Pending_Confirm) {
 	delete(c.title); delete(c.note); delete(c.act)
 	for l in c.lines { delete(l) }
 	delete(c.lines)
-	c^ = {}
+	// (where it is shown and the count of questions outlive it: the next question replaces the view)
+	c^ = {view = c.view, serial = c.serial}
 }
 
 confirm_destroy :: proc(app: ^App) { confirm_clear(&app.confirm) }
@@ -36,6 +40,7 @@ confirm_ask :: proc(app: ^App, kind: Confirm_Kind, title, note, act: string) -> 
 	confirm_clear(&app.confirm)
 	c := &app.confirm
 	c.open, c.kind = true, kind
+	c.serial += 1
 	c.title, c.note, c.act = strings.clone(title), strings.clone(note), strings.clone(act)
 	if ui.building() { ui.menu_close() }   // (the menu that asked)
 	request_frames(app, 2)
@@ -81,14 +86,18 @@ history_delete_asked :: proc(app: ^App, from_ms, to_ms: i64, what: string) {
 	c.from_ms, c.to_ms = from_ms, to_ms
 }
 
-// Each frame: the question while it is open, the act when it is confirmed.
+// Each frame of each window: the act when the question is confirmed, the question open while it is asked.
 confirm_build :: proc(app: ^App) {
 	c := &app.confirm
-	if !c.open && c.kind == .None { return }
-	answer := ui.confirm("wren_confirm", &c.open, {title = c.title, note = c.note, lines = c.lines[:], act = c.act})
+	answer := window_confirm_answer(app, &c.view, CONFIRM_VIEW)
+	if answer != .None && c.open { confirm_act(app, c, answer) }
+	window_confirm_follow(app, &c.view, CONFIRM_VIEW, {title = c.title, note = c.note, lines = c.lines[:], act = c.act}, c.open ? c.serial : 0)
+}
+
+@(private = "file")
+confirm_act :: proc(app: ^App, c: ^Pending_Confirm, answer: ui.Confirm_Answer) {
 	switch answer {
 	case .None:
-		if c.open { return }
 	case .Cancelled:
 	case .Confirmed:
 		switch c.kind {

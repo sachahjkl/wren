@@ -43,8 +43,7 @@ Vault_Shell :: struct {
 	watch:          int,    // the `vault.` preference watch
 	panel_was:      bool,   // the panel was open last frame (its rows are released when it closes)
 	dialog:         bool,   // the login / unlock dialog is open
-	dialog_size:    ui.Vec2, // the size the person gave the dialog (ui.modal_sized; {}: its own)
-	pin_size:       ui.Vec2, // the same for the PIN dialog
+	dialog_view:    Window_View,   // where it is shown (views.odin)
 	focus:          bool,   // the dialog's first field takes the keyboard next frame
 	api_key:        bool,   // the login dialog asks for the API key rather than the email
 	use_password:   bool,   // the unlock dialog asks for the master password though a PIN is set
@@ -59,10 +58,14 @@ Vault_Shell :: struct {
 	client_secret:  ui.Line_Edit,   // secret
 	server:         ui.Line_Edit,   // the address of a self-hosted server
 	logout_ask:     bool,            // the question before a logout is open
+	logout_view:    Window_View,
 	dialog_after_keyring: bool,      // an Unlock asked the keyring first: its refusal opens the unlock dialog
 	pin_dialog:     bool,            // the dialog that sets a PIN is open
+	pin_view:       Window_View,
 	pin:            ui.Line_Edit,   // secret
 	ask_open:       bool,            // the question before a fill on a plain http page or into a frame of another origin
+	ask_serial:     u64,             // the question asked (its view's key: another one replaces it)
+	ask_view:       Window_View,
 	ask_item:       string,          // owned: the row it is for
 	ask_tab:        u64,
 	ask_fields:     vault.Fill_Fields,
@@ -97,7 +100,7 @@ Vault_Shell :: struct {
 	offer_shown:    bool,
 	offer_rect:     draw.Rect,
 	gen_dialog:     bool,
-	gen_size:       ui.Vec2,
+	gen_view:       Window_View,
 	gen_options:    vault.Generate_Options,   // the dialog's (its separator owned)
 	gen_asked:      vault.Generate_Options,   // what the shown value was made with (separator not owned)
 	gen_value:      string,          // owned, a secret: the dialog's value
@@ -737,50 +740,94 @@ vault_dialogs_build :: proc(app: ^App) {
 		s.dialog_after_keyring = false
 		if s.v.state == .Locked && s.v.remember_refused { vault_dialog_open(app) }
 	}
-	if s.logout_ask {
-		answer := ui.confirm("vault_logout", &s.logout_ask, {title = i18n.tr("Log out of the Vault?"), note = i18n.tr("Wren forgets this account's keys and its logins. Your email stays for the next login."), act = i18n.tr("Log out")})
-		if answer == .Confirmed { vault.vault_logout(&s.v) }
+	// the answers of its views: what the person ended them with (each act in a view's build is done there)
+	if a := window_confirm_answer(app, &s.logout_view, VAULT_LOGOUT_VIEW); a != .None {
+		if a == .Confirmed && s.logout_ask { vault.vault_logout(&s.v) }
+		s.logout_ask = false
 	}
-	if !vault_usable(app) {
+	vault_insecure_answer(app)
+	if _, _, ok := window_view_ended(app, &s.pin_view, VAULT_PIN_VIEW); ok && s.pin_dialog { vault_pin_close(app) }
+	if s.pin_dialog && s.v.state != .Unlocked { vault_pin_close(app) }
+	vault_login_answer(app)
+	usable := vault_usable(app)
+	if !usable {
 		// (remote control came: nothing of the Vault stays on screen, nothing typed stays in memory)
 		if s.dialog { vault_dialog_close(app) }
 		if s.pin_dialog { vault_pin_close(app) }
 		if s.ask_open { s.ask_open = false; delete(s.ask_item); s.ask_item = "" }
+		s.logout_ask = false
 		vault_fill_frame(app)   // vault_fill.odin: releases the rows
 		vault_save_frame(app, false)   // vault_save.odin: the offer and the generator go
 		s.dd_shown = false
-		return
+	} else {
+		vault_fill_frame(app)   // vault_fill.odin: the rows of the focused documents, the dropdown's field
+		vault_dropdown_build(app)   // vault_fill.odin: the list under a focused login field
+		vault_save_frame(app, true)   // vault_save.odin: the save offer, the generator, the code after a login
 	}
-	vault_fill_frame(app)   // vault_fill.odin: the rows of the focused documents, the dropdown's field
-	vault_dropdown_build(app)   // vault_fill.odin: the list under a focused login field
-	vault_save_frame(app, true)   // vault_save.odin: the save offer, the generator, the code after a login
-	vault_insecure_build(app)
-	vault_pin_build(app)
-	vault_login_build(app)
+	// its views, open while they are asked for (none under remote control: what was asked is dropped above)
+	window_confirm_follow(app, &s.ask_view, VAULT_INSECURE_VIEW, vault_insecure_options(app), usable && s.ask_open ? s.ask_serial : 0)
+	window_view_follow(app, &s.pin_view, VAULT_PIN_VIEW, app, usable && s.pin_dialog ? 1 : 0)
+	window_view_follow(app, &s.dialog_view, VAULT_DIALOG_VIEW, app, usable && s.dialog ? 1 : 0)
+	window_confirm_follow(app, &s.logout_view, VAULT_LOGOUT_VIEW, {
+		title = i18n.tr("Log out of the Vault?"), note = i18n.tr("Wren forgets this account's keys and its logins. Your email stays for the next login."), act = i18n.tr("Log out"),
+	}, usable && s.logout_ask ? 1 : 0)
+}
+
+// What the login dialog shows, by the Vault's state.
+@(private = "file")
+Vault_Dialog_Mode :: struct {
+	busy, two_factor, device, approval, passkey, waiting, unlock, use_pin, login: bool,
 }
 
 @(private = "file")
-vault_login_build :: proc(app: ^App) {
-	s := &app.vault
-	if !s.dialog { return }
+vault_dialog_mode :: proc(s: ^Vault_Shell) -> (m: Vault_Dialog_Mode) {
 	v := &s.v
+	m.busy = v.state == .Logging_In || v.state == .Unlocking || v.state == .Locating
+	m.two_factor = v.state == .Need_Two_Factor
+	m.device = v.state == .Need_Device_Code
+	m.approval = v.state == .Waiting_Device   // another device of the account approves this login
+	m.passkey = v.state == .Passkey           // the passkey's prompt is the system's (vault_passkey.odin)
+	m.waiting = m.approval || m.passkey
+	m.unlock = !m.two_factor && !m.device && !m.waiting && vault.vault_has_account(v) && (v.state == .Locked || v.state == .Unlocking || v.state == .Failed)
+	m.use_pin = m.unlock && v.pin && !s.use_password
+	m.login = !m.two_factor && !m.device && !m.waiting && !m.unlock
+	return
+}
+
+// Each frame: the login dialog given up (Cancel, Escape, its cross, a click outside) drops what it waits for; it closes
+// by itself once done, or when there is nothing to log in to (the panel says why).
+@(private = "file")
+vault_login_answer :: proc(app: ^App) {
+	s := &app.vault
+	v := &s.v
+	if _, _, ok := window_view_ended(app, &s.dialog_view, VAULT_DIALOG_VIEW); ok && s.dialog {
+		m := vault_dialog_mode(s)
+		switch {
+		case m.waiting:
+			// (an approval or a passkey is given up: the Vault goes back to where the login started)
+			vault_passkey_cancel(app)
+			vault.vault_cancel(v)
+		case m.busy || m.two_factor || m.device:
+			vault.vault_lock(v)   // (a login on its way is dropped: its helper stops)
+		}
+		vault_dialog_close(app)
+	}
+	if !s.dialog { return }
 	#partial switch v.state {
 	case .Unlocked, .Disabled, .Helper_Missing:
-		vault_dialog_close(app)   // (done, or nothing to log in to: the panel says why)
-		return
+		vault_dialog_close(app)
 	}
+}
+
+// The login, unlock and approval dialog (views.odin): its title follows the Vault's state; Log in, Unlock and Continue
+// act here, in its window's build; Cancel ends it (vault_login_answer).
+vault_login_view :: proc(view: ^ui.View, app: ^App) {
+	s := &app.vault
+	v := &s.v
 	em := ui.font_size()
-	open := true
 	submit, cancel := false, false
-	busy := v.state == .Logging_In || v.state == .Unlocking || v.state == .Locating
-	two_factor := v.state == .Need_Two_Factor
-	device := v.state == .Need_Device_Code
-	approval := v.state == .Waiting_Device   // another device of the account approves this login
-	passkey := v.state == .Passkey           // the passkey's prompt is the system's (vault_passkey.odin)
-	waiting := approval || passkey
-	unlock := !two_factor && !device && !waiting && vault.vault_has_account(v) && (v.state == .Locked || v.state == .Unlocking || v.state == .Failed)
-	use_pin := unlock && v.pin && !s.use_password
-	login := !two_factor && !device && !waiting && !unlock
+	m := vault_dialog_mode(s)
+	busy, two_factor, device, approval, passkey, waiting, unlock, use_pin, login := m.busy, m.two_factor, m.device, m.approval, m.passkey, m.waiting, m.unlock, m.use_pin, m.login
 	title, glyph := i18n.tr("Log in to the Vault"), lucide.LOCK_KEYHOLE
 	switch {
 	case two_factor: title, glyph = i18n.tr("Second step"), lucide.SHIELD
@@ -789,195 +836,184 @@ vault_login_build :: proc(app: ^App) {
 	case passkey:    title, glyph = i18n.tr("Use your passkey"), lucide.KEY_ROUND
 	case unlock:     title, glyph = i18n.tr("Unlock the Vault"), lucide.LOCK
 	}
+	ui.view_title(view, title)
+	ui.view_icon(view, glyph, app.lucide)
 	// (the address of a self-hosted server was typed: the login goes once the Vault took it)
 	if s.pending_submit && !busy {
 		s.pending_submit = false
 		submit = true
 	}
-	if ui.modal("vault_dialog", &open, {width_em = 32, min_width_em = 22, min_height_em = 12, size = &s.dialog_size}) {
-		if ui.dialog_header("vd_title", title, {icon = glyph, icon_font = app.lucide}) {}
-		// what the dialog says scrolls when the person makes it small; its buttons stay under it
-		ui.next({width = ui.fill(), height = ui.fill()})
-		if ui.scroll_y("###vd_scroll") {
+	// what the dialog says scrolls when the person makes it small; its buttons stay under it
+	ui.next({width = ui.fill(), height = ui.fill()})
+	if ui.scroll_y("###vd_scroll") {
+		ui.next({width = ui.fill(), height = ui.children_sum()})
+		if ui.row(.Start, {}, "###vd_margins") {
+			ui.spacer(ui.px(em * 1.0))
 			ui.next({width = ui.fill(), height = ui.children_sum()})
-			if ui.row(.Start, {}, "###vd_margins") {
-				ui.spacer(ui.px(em * 1.0))
-				ui.next({width = ui.fill(), height = ui.children_sum()})
-				if ui.column(.Start, {}, "###vd_col") {
-					ui.spacer(ui.px(em * 0.8))
-					first: ^ui.Box
-					if login {
-						// the server: Bitwarden's in the United States or in the European Union, or one's own
-						ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-						region := int(v.settings.region)
-						labels := []string{i18n.tr("United States"), i18n.tr("Europe"), i18n.tr("Self-hosted")}
-						if ui.segmented("###vd_region", labels, &region) {
-							_ = config.set_from_string(&app.prefs, "vault.server.region", vault.REGION_NAMES[vault.Region(region)], .User)
-						}
-						if v.settings.region == .Self {
-							ui.spacer(ui.px(em * 0.3))
-							dialog_field("###vd_server", &s.server, i18n.tr("https://vault.example.org"), false, &submit, &cancel)
-							if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("A server with a certificate of a private authority needs that authority in the system's certificate store."), "###vd_server_ca"}, ui.frame_allocator())) }
-						}
-						ui.spacer(ui.px(em * 0.4))
-					} else {
-						identity, _ := vault.server_urls(v.settings)
-						if ui.tags("weak") { ui.paragraph(strings.concatenate({strings.concatenate({i18n.tr("Bitwarden® account on "), url_host(identity)}, ui.frame_allocator()), "###vd_server"}, ui.frame_allocator())) }
-						ui.spacer(ui.px(em * 0.6))
+			if ui.column(.Start, {}, "###vd_col") {
+				ui.spacer(ui.px(em * 0.8))
+				first: ^ui.Box
+				if login {
+					// the server: Bitwarden's in the United States or in the European Union, or one's own
+					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+					region := int(v.settings.region)
+					labels := []string{i18n.tr("United States"), i18n.tr("Europe"), i18n.tr("Self-hosted")}
+					if ui.segmented("###vd_region", labels, &region) {
+						_ = config.set_from_string(&app.prefs, "vault.server.region", vault.REGION_NAMES[vault.Region(region)], .User)
 					}
-					switch {
-					case two_factor:
-						hint := v.factor == .Email ? (v.email_sent ? i18n.tr("Type the code that was mailed to you.") : i18n.tr("Ask for a code by email, then type it.")) : i18n.tr("Type the code of your authenticator app.")
-						ui.paragraph(strings.concatenate({hint, "###vd_code_hint"}, ui.frame_allocator()))
+					if v.settings.region == .Self {
 						ui.spacer(ui.px(em * 0.3))
-						first = dialog_field("###vd_code", &s.code, i18n.tr("Code"), true, &submit, &cancel, &app.vault.reveal)
-						ui.spacer(ui.px(em * 0.3))
-						ui.next({width = ui.fill(), height = ui.children_sum()})
-						if ui.row(.Center, {}, "###vd_factor_actions") {
-							if .Email in v.factors && !busy {
-								words := v.factor == .Email && v.email_sent ? i18n.tr("Send the code again") : i18n.tr("Send a code by email")
-								if ui.button("###vd_send_email", words, lucide.SEND_HORIZONAL, {width = ui.fill()}).clicked { vault.vault_send_code(v) }
-								ui.spacer(ui.px(em * 0.5))
-							}
-							if .Authenticator in v.factors && v.factor != .Authenticator && !busy {
-								if ui.button("###vd_use_app", i18n.tr("Use the authenticator app"), lucide.HASH, {width = ui.fill()}).clicked { vault.vault_choose_factor(v, .Authenticator) }
-							}
-						}
-						ui.spacer(ui.px(em * 0.3))
-						ui.next({width = ui.fill(), height = ui.text_size()})
-						ui.checkbox("###vd_remember_2fa", i18n.tr("Remember me on this device"), &s.remember_2fa)
-					case approval:
-						ui.paragraph(strings.concatenate({i18n.tr("Open Bitwarden on a device where you are logged in and approve this login. Check that it shows this phrase:"), "###vd_approval_hint"}, ui.frame_allocator()))
-						ui.spacer(ui.px(em * 0.4))
-						ui.paragraph(strings.concatenate({v.fingerprint, "###vd_fingerprint"}, ui.frame_allocator()))
-					case passkey:
-						ui.paragraph(strings.concatenate({i18n.tr("Follow the prompt of your computer or security key to use your passkey."), "###vd_passkey_hint"}, ui.frame_allocator()))
-					case device:
-						ui.paragraph(strings.concatenate({i18n.tr("Your account does not know this device yet. Type the code that the server mailed to you."), "###vd_device_hint"}, ui.frame_allocator()))
-						ui.spacer(ui.px(em * 0.3))
-						first = dialog_field("###vd_device_code", &s.code, i18n.tr("Code"), true, &submit, &cancel, &app.vault.reveal)
-						ui.spacer(ui.px(em * 0.3))
-						if !busy && ui.button("###vd_send_device", i18n.tr("Send a new code"), lucide.SEND_HORIZONAL, {width = ui.fill()}).clicked { vault.vault_send_code(v) }
-					case unlock:
-						ui.paragraph(strings.concatenate({v.email, "###vd_email_shown"}, ui.frame_allocator()))
-						ui.spacer(ui.px(em * 0.6))
-						// (what the field takes stays said above it: a placeholder goes with the first character)
-						if ui.tags("weak") { ui.paragraph(strings.concatenate({use_pin ? i18n.tr("Your PIN") : i18n.tr("Your master password"), "###vd_secret_label"}, ui.frame_allocator())) }
-						ui.spacer(ui.px(em * 0.2))
-						first = dialog_field("###vd_password", &s.password, use_pin ? i18n.tr("PIN") : i18n.tr("Master password"), true, &submit, &cancel, &app.vault.reveal)
-						if !v.pin {
-							ui.spacer(ui.px(em * 0.3))
-							if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("No PIN is set: a new login removes it. Once unlocked, set one from the Vault panel."), "###vd_no_pin"}, ui.frame_allocator())) }
-						}
-						// the other ways in, side by side, sharing the row (one alone: across it)
-						if (v.passkey && !busy) || v.pin {
-							ui.spacer(ui.px(em * 0.5))
-							ui.next({width = ui.fill(), height = ui.children_sum()})
-							if ui.row(.Center, {}, "###vd_unlock_ways") {
-								if v.passkey && !busy {
-									if ui.button("###vd_unlock_passkey", i18n.tr("Unlock with a passkey"), lucide.KEY_ROUND, {width = ui.fill()}).clicked {
-										if why := vault_passkey_unsupported(app); why != "" { vault.vault_say(v, why) } else { vault.vault_passkey_begin(v, .Unlock, url_host(vault.web_vault_url(v.settings))) }
-									}
-									if v.pin { ui.spacer(ui.px(em * 0.4)) }
-								}
-								if v.pin {
-									if ui.button("###vd_pin_toggle", use_pin ? i18n.tr("Use the password") : i18n.tr("Use the PIN"), lucide.KEYBOARD, {width = ui.fill()}).clicked {
-										ui.line_edit_wipe(&s.password)
-										s.use_password = !s.use_password
-										s.focus = true
-									}
-								}
-							}
-						}
-					case s.api_key:
-						first = dialog_field("###vd_client_id", &s.client_id, i18n.tr("API key client_id (user.…)"), false, &submit, &cancel)
-						ui.spacer(ui.px(em * 0.4))
-						dialog_field("###vd_client_secret", &s.client_secret, i18n.tr("API key client_secret"), true, &submit, &cancel, &app.vault.reveal)
-						ui.spacer(ui.px(em * 0.4))
-						dialog_field("###vd_password", &s.password, i18n.tr("Master password"), true, &submit, &cancel, &app.vault.reveal)
-						ui.spacer(ui.px(em * 0.3))
-						if ui.button("###vd_mode", i18n.tr("Use the email and password"), lucide.USER, {width = ui.fill()}).clicked { s.api_key = false; s.focus = true }
-					case:
-						email_box := dialog_field("###vd_email", &s.email, i18n.tr("Email"), false, &submit, &cancel)
-						ui.spacer(ui.px(em * 0.4))
-						pass_box := dialog_field("###vd_password", &s.password, i18n.tr("Master password"), true, &submit, &cancel, &app.vault.reveal)
-						// (a remembered email: the keyboard goes where the next thing to type is, the password)
-						first = vault_first_field(ui.line_edit_string(&s.email) != "", email_box, pass_box)
-						ui.spacer(ui.px(em * 0.4))
-						if !busy {
-							ui.next({width = ui.fill(), height = ui.children_sum()})
-							if ui.row(.Start, {}, "###vd_other_ways") {
-								if ui.button("###vd_passkey", i18n.tr("Log in with a passkey"), lucide.KEY_ROUND, {width = ui.fill()}).clicked {
-									if why := vault_passkey_unsupported(app); why != "" { vault.vault_say(v, why) } else { vault.vault_passkey_begin(v, .Login, url_host(vault.web_vault_url(v.settings))) }
-								}
-								ui.spacer(ui.px(em * 0.4))
-								if ui.button("###vd_device", i18n.tr("Log in with a device"), lucide.SMARTPHONE, {width = ui.fill()}).clicked {
-									if !vault.vault_login_device(v, ui.line_edit_string(&s.email)) { vault.vault_say(v, i18n.tr("Type your email first.")) }
-								}
-							}
-							ui.spacer(ui.px(em * 0.3))
-							ui.next({width = ui.fill(), height = ui.children_sum()})
-							if ui.row(.Start, {}, "###vd_other_ways2") {
-								if ui.button("###vd_hint", i18n.tr("Get the password hint"), lucide.LIGHTBULB, {width = ui.fill()}).clicked {
-									if !vault.vault_password_hint(v, ui.line_edit_string(&s.email)) { vault.vault_say(v, i18n.tr("Type your email first.")) }
-								}
-								ui.spacer(ui.px(em * 0.4))
-								if ui.button("###vd_mode", i18n.tr("Use an API key instead"), lucide.TERMINAL, {width = ui.fill()}).clicked { s.api_key = true; s.focus = true }
-							}
-						}
-					}
-					if s.focus && first != nil { s.focus = false; ui.set_focus(first.key) }
-					if v.message != "" {
-						ui.spacer(ui.px(em * 0.4))
-						if ui.tags("weak") { ui.paragraph(strings.concatenate({v.message, "###vd_message"}, ui.frame_allocator())) }
-					}
-					// (what it waits for, in the body: its words wrap there; in the row of the buttons they were cut)
-					if busy || waiting {
-						words := i18n.tr("Logging in…")
-						switch {
-						case approval:              words = i18n.tr("Waiting for the approval…")
-						case passkey:               words = i18n.tr("Waiting for the passkey…")
-						case v.state == .Unlocking: words = i18n.tr("Unlocking…")
-						case v.state == .Locating:  words = i18n.tr("Starting…")
-						}
-						ui.spacer(ui.px(em * 0.6))
-						ui.next({width = ui.fill(), height = ui.children_sum()})
-						if ui.row(.Center, {}, "###vd_wait") {
-							ui.spinner("###vd_spinner", em * 1.3)
-							ui.spacer(ui.px(em * 0.5))
-							if ui.tags("weak") { ui.paragraph(strings.concatenate({words, "###vd_busy"}, ui.frame_allocator())) }
-						}
+						dialog_field("###vd_server", &s.server, i18n.tr("https://vault.example.org"), false, &submit, &cancel)
+						if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("A server with a certificate of a private authority needs that authority in the system's certificate store."), "###vd_server_ca"}, ui.frame_allocator())) }
 					}
 					ui.spacer(ui.px(em * 0.4))
+				} else {
+					identity, _ := vault.server_urls(v.settings)
+					if ui.tags("weak") { ui.paragraph(strings.concatenate({strings.concatenate({i18n.tr("Bitwarden® account on "), url_host(identity)}, ui.frame_allocator()), "###vd_server"}, ui.frame_allocator())) }
+					ui.spacer(ui.px(em * 0.6))
 				}
-				ui.spacer(ui.px(em * 1.0))
+				switch {
+				case two_factor:
+					hint := v.factor == .Email ? (v.email_sent ? i18n.tr("Type the code that was mailed to you.") : i18n.tr("Ask for a code by email, then type it.")) : i18n.tr("Type the code of your authenticator app.")
+					ui.paragraph(strings.concatenate({hint, "###vd_code_hint"}, ui.frame_allocator()))
+					ui.spacer(ui.px(em * 0.3))
+					first = dialog_field("###vd_code", &s.code, i18n.tr("Code"), true, &submit, &cancel, &app.vault.reveal)
+					ui.spacer(ui.px(em * 0.3))
+					ui.next({width = ui.fill(), height = ui.children_sum()})
+					if ui.row(.Center, {}, "###vd_factor_actions") {
+						if .Email in v.factors && !busy {
+							words := v.factor == .Email && v.email_sent ? i18n.tr("Send the code again") : i18n.tr("Send a code by email")
+							if ui.button("###vd_send_email", words, lucide.SEND_HORIZONAL, {width = ui.fill()}).clicked { vault.vault_send_code(v) }
+							ui.spacer(ui.px(em * 0.5))
+						}
+						if .Authenticator in v.factors && v.factor != .Authenticator && !busy {
+							if ui.button("###vd_use_app", i18n.tr("Use the authenticator app"), lucide.HASH, {width = ui.fill()}).clicked { vault.vault_choose_factor(v, .Authenticator) }
+						}
+					}
+					ui.spacer(ui.px(em * 0.3))
+					ui.next({width = ui.fill(), height = ui.text_size()})
+					ui.checkbox("###vd_remember_2fa", i18n.tr("Remember me on this device"), &s.remember_2fa)
+				case approval:
+					ui.paragraph(strings.concatenate({i18n.tr("Open Bitwarden on a device where you are logged in and approve this login. Check that it shows this phrase:"), "###vd_approval_hint"}, ui.frame_allocator()))
+					ui.spacer(ui.px(em * 0.4))
+					ui.paragraph(strings.concatenate({v.fingerprint, "###vd_fingerprint"}, ui.frame_allocator()))
+				case passkey:
+					ui.paragraph(strings.concatenate({i18n.tr("Follow the prompt of your computer or security key to use your passkey."), "###vd_passkey_hint"}, ui.frame_allocator()))
+				case device:
+					ui.paragraph(strings.concatenate({i18n.tr("Your account does not know this device yet. Type the code that the server mailed to you."), "###vd_device_hint"}, ui.frame_allocator()))
+					ui.spacer(ui.px(em * 0.3))
+					first = dialog_field("###vd_device_code", &s.code, i18n.tr("Code"), true, &submit, &cancel, &app.vault.reveal)
+					ui.spacer(ui.px(em * 0.3))
+					if !busy && ui.button("###vd_send_device", i18n.tr("Send a new code"), lucide.SEND_HORIZONAL, {width = ui.fill()}).clicked { vault.vault_send_code(v) }
+				case unlock:
+					ui.paragraph(strings.concatenate({v.email, "###vd_email_shown"}, ui.frame_allocator()))
+					ui.spacer(ui.px(em * 0.6))
+					// (what the field takes stays said above it: a placeholder goes with the first character)
+					if ui.tags("weak") { ui.paragraph(strings.concatenate({use_pin ? i18n.tr("Your PIN") : i18n.tr("Your master password"), "###vd_secret_label"}, ui.frame_allocator())) }
+					ui.spacer(ui.px(em * 0.2))
+					first = dialog_field("###vd_password", &s.password, use_pin ? i18n.tr("PIN") : i18n.tr("Master password"), true, &submit, &cancel, &app.vault.reveal)
+					if !v.pin {
+						ui.spacer(ui.px(em * 0.3))
+						if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("No PIN is set: a new login removes it. Once unlocked, set one from the Vault panel."), "###vd_no_pin"}, ui.frame_allocator())) }
+					}
+					// the other ways in, side by side, sharing the row (one alone: across it)
+					if (v.passkey && !busy) || v.pin {
+						ui.spacer(ui.px(em * 0.5))
+						ui.next({width = ui.fill(), height = ui.children_sum()})
+						if ui.row(.Center, {}, "###vd_unlock_ways") {
+							if v.passkey && !busy {
+								if ui.button("###vd_unlock_passkey", i18n.tr("Unlock with a passkey"), lucide.KEY_ROUND, {width = ui.fill()}).clicked {
+									if why := vault_passkey_unsupported(app); why != "" { vault.vault_say(v, why) } else { vault.vault_passkey_begin(v, .Unlock, url_host(vault.web_vault_url(v.settings))) }
+								}
+								if v.pin { ui.spacer(ui.px(em * 0.4)) }
+							}
+							if v.pin {
+								if ui.button("###vd_pin_toggle", use_pin ? i18n.tr("Use the password") : i18n.tr("Use the PIN"), lucide.KEYBOARD, {width = ui.fill()}).clicked {
+									ui.line_edit_wipe(&s.password)
+									s.use_password = !s.use_password
+									s.focus = true
+								}
+							}
+						}
+					}
+				case s.api_key:
+					first = dialog_field("###vd_client_id", &s.client_id, i18n.tr("API key client_id (user.…)"), false, &submit, &cancel)
+					ui.spacer(ui.px(em * 0.4))
+					dialog_field("###vd_client_secret", &s.client_secret, i18n.tr("API key client_secret"), true, &submit, &cancel, &app.vault.reveal)
+					ui.spacer(ui.px(em * 0.4))
+					dialog_field("###vd_password", &s.password, i18n.tr("Master password"), true, &submit, &cancel, &app.vault.reveal)
+					ui.spacer(ui.px(em * 0.3))
+					if ui.button("###vd_mode", i18n.tr("Use the email and password"), lucide.USER, {width = ui.fill()}).clicked { s.api_key = false; s.focus = true }
+				case:
+					email_box := dialog_field("###vd_email", &s.email, i18n.tr("Email"), false, &submit, &cancel)
+					ui.spacer(ui.px(em * 0.4))
+					pass_box := dialog_field("###vd_password", &s.password, i18n.tr("Master password"), true, &submit, &cancel, &app.vault.reveal)
+					// (a remembered email: the keyboard goes where the next thing to type is, the password)
+					first = vault_first_field(ui.line_edit_string(&s.email) != "", email_box, pass_box)
+					ui.spacer(ui.px(em * 0.4))
+					if !busy {
+						ui.next({width = ui.fill(), height = ui.children_sum()})
+						if ui.row(.Start, {}, "###vd_other_ways") {
+							if ui.button("###vd_passkey", i18n.tr("Log in with a passkey"), lucide.KEY_ROUND, {width = ui.fill()}).clicked {
+								if why := vault_passkey_unsupported(app); why != "" { vault.vault_say(v, why) } else { vault.vault_passkey_begin(v, .Login, url_host(vault.web_vault_url(v.settings))) }
+							}
+							ui.spacer(ui.px(em * 0.4))
+							if ui.button("###vd_device", i18n.tr("Log in with a device"), lucide.SMARTPHONE, {width = ui.fill()}).clicked {
+								if !vault.vault_login_device(v, ui.line_edit_string(&s.email)) { vault.vault_say(v, i18n.tr("Type your email first.")) }
+							}
+						}
+						ui.spacer(ui.px(em * 0.3))
+						ui.next({width = ui.fill(), height = ui.children_sum()})
+						if ui.row(.Start, {}, "###vd_other_ways2") {
+							if ui.button("###vd_hint", i18n.tr("Get the password hint"), lucide.LIGHTBULB, {width = ui.fill()}).clicked {
+								if !vault.vault_password_hint(v, ui.line_edit_string(&s.email)) { vault.vault_say(v, i18n.tr("Type your email first.")) }
+							}
+							ui.spacer(ui.px(em * 0.4))
+							if ui.button("###vd_mode", i18n.tr("Use an API key instead"), lucide.TERMINAL, {width = ui.fill()}).clicked { s.api_key = true; s.focus = true }
+						}
+					}
+				}
+				if s.focus && first != nil { s.focus = false; ui.set_focus(first.key) }
+				if v.message != "" {
+					ui.spacer(ui.px(em * 0.4))
+					if ui.tags("weak") { ui.paragraph(strings.concatenate({v.message, "###vd_message"}, ui.frame_allocator())) }
+				}
+				// (what it waits for, in the body: its words wrap there; in the row of the buttons they were cut)
+				if busy || waiting {
+					words := i18n.tr("Logging in…")
+					switch {
+					case approval:              words = i18n.tr("Waiting for the approval…")
+					case passkey:               words = i18n.tr("Waiting for the passkey…")
+					case v.state == .Unlocking: words = i18n.tr("Unlocking…")
+					case v.state == .Locating:  words = i18n.tr("Starting…")
+					}
+					ui.spacer(ui.px(em * 0.6))
+					ui.next({width = ui.fill(), height = ui.children_sum()})
+					if ui.row(.Center, {}, "###vd_wait") {
+						ui.spinner("###vd_spinner", em * 1.3)
+						ui.spacer(ui.px(em * 0.5))
+						if ui.tags("weak") { ui.paragraph(strings.concatenate({words, "###vd_busy"}, ui.frame_allocator())) }
+					}
+				}
+				ui.spacer(ui.px(em * 0.4))
 			}
-		}
-		ui.spacer(ui.px(em * 0.6))
-		ui.next({width = ui.fill(), height = ui.children_sum()})
-		if ui.row(.Center, {}, "###vd_buttons") {
-			ui.spacer(ui.fill())
-			if ui.button("###vd_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
-			ui.spacer(ui.px(em * 0.5))
-			if !busy && !waiting && ui.button("###vd_submit", login ? i18n.tr("Log in") : (unlock ? i18n.tr("Unlock") : i18n.tr("Continue")), login ? lucide.USER : (unlock ? lucide.LOCK : lucide.CHECK), {intent = .Success, width = ui.px(em * 8)}).clicked { submit = true }
 			ui.spacer(ui.px(em * 1.0))
 		}
-		ui.spacer(ui.px(em * 0.8))
 	}
+	ui.spacer(ui.px(em * 0.6))
+	ui.next({width = ui.fill(), height = ui.children_sum()})
+	if ui.row(.Center, {}, "###vd_buttons") {
+		ui.spacer(ui.fill())
+		if ui.button("###vd_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
+		ui.spacer(ui.px(em * 0.5))
+		if !busy && !waiting && ui.button("###vd_submit", login ? i18n.tr("Log in") : (unlock ? i18n.tr("Unlock") : i18n.tr("Continue")), login ? lucide.USER : (unlock ? lucide.LOCK : lucide.CHECK), {intent = .Success, width = ui.px(em * 8)}).clicked { submit = true }
+		ui.spacer(ui.px(em * 1.0))
+	}
+	ui.spacer(ui.px(em * 0.8))
 	if submit && !busy {
 		vault_login_submit(app, login, unlock, use_pin)
 	}
-	if cancel || !open {
-		switch {
-		case waiting:
-			// (an approval or a passkey is given up: the Vault goes back to where the login started)
-			vault_passkey_cancel(app)
-			vault.vault_cancel(v)
-		case busy || two_factor || device:
-			vault.vault_lock(v)   // (a login on its way is dropped: its helper stops)
-		}
-		vault_dialog_close(app)
-	}
+	if cancel { ui.view_end(view, ui.VIEW_CANCELLED) }
 }
 
 // What the dialog's Log in, Unlock or Continue does. The secret fields go once their frame has its copy.
@@ -1005,69 +1041,70 @@ vault_login_submit :: proc(app: ^App, login, unlock, use_pin: bool) {
 	ui.line_edit_wipe(&s.code)
 }
 
-// The dialog that sets a PIN (from the panel, unlocked).
-@(private = "file")
-vault_pin_build :: proc(app: ^App) {
+// The dialog that sets a PIN (from the panel, unlocked; views.odin). Set acts here; Cancel ends it, and
+// vault_dialogs_build closes it.
+vault_pin_view :: proc(view: ^ui.View, app: ^App) {
 	s := &app.vault
-	if !s.pin_dialog { return }
-	if s.v.state != .Unlocked { vault_pin_close(app); return }
+	if s.v.state != .Unlocked { return }   // (locked: vault_dialogs_build closes it)
 	em := ui.font_size()
-	open := true
 	submit, cancel := false, false
-	if ui.modal("vault_pin", &open, {width_em = 26, min_width_em = 20, min_height_em = 10, size = &s.pin_size}) {
-		if ui.dialog_header("vpin_title", i18n.tr("Set a PIN"), {icon = lucide.KEYBOARD, icon_font = app.lucide}) {}
-		// (the same frame as the login dialog: what it says scrolls when made small, its buttons stay at its foot)
-		ui.next({width = ui.fill(), height = ui.fill()})
-		if ui.scroll_y("###vpin_scroll") {
-			ui.next({width = ui.fill(), height = ui.children_sum()})
-			if ui.row(.Start, {}, "###vpin_margins") {
-				ui.spacer(ui.px(em * 1.0))
-				ui.next({width = ui.fill(), height = ui.children_sum()})
-				if ui.column(.Start, {}, "###vpin_col") {
-					ui.spacer(ui.px(em * 0.9))
-					if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("The PIN unlocks the Vault in this profile. After 5 wrong PINs, only the master password unlocks it."), "###vpin_hint"}, ui.frame_allocator())) }
-					ui.spacer(ui.px(em * 0.8))
-					box := dialog_field("###vpin_field", &s.pin, i18n.tr("PIN (4 characters or more)"), true, &submit, &cancel, &app.vault.reveal)
-					if s.focus && box != nil { s.focus = false; ui.set_focus(box.key) }
-					ui.spacer(ui.px(em * 0.4))
-				}
-				ui.spacer(ui.px(em * 1.0))
-			}
-		}
-		ui.spacer(ui.px(em * 0.6))
+	// (the same frame as the login dialog: what it says scrolls when made small, its buttons stay at its foot)
+	ui.next({width = ui.fill(), height = ui.fill()})
+	if ui.scroll_y("###vpin_scroll") {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
-		if ui.row(.Center, {}, "###vpin_buttons") {
-			ui.spacer(ui.fill())
-			if ui.button("###vpin_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
-			ui.spacer(ui.px(em * 0.5))
-			if ui.button("###vpin_set", i18n.tr("Set"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { submit = true }
+		if ui.row(.Start, {}, "###vpin_margins") {
+			ui.spacer(ui.px(em * 1.0))
+			ui.next({width = ui.fill(), height = ui.children_sum()})
+			if ui.column(.Start, {}, "###vpin_col") {
+				ui.spacer(ui.px(em * 0.9))
+				if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("The PIN unlocks the Vault in this profile. After 5 wrong PINs, only the master password unlocks it."), "###vpin_hint"}, ui.frame_allocator())) }
+				ui.spacer(ui.px(em * 0.8))
+				box := dialog_field("###vpin_field", &s.pin, i18n.tr("PIN (4 characters or more)"), true, &submit, &cancel, &app.vault.reveal)
+				if s.focus && box != nil { s.focus = false; ui.set_focus(box.key) }
+				ui.spacer(ui.px(em * 0.4))
+			}
 			ui.spacer(ui.px(em * 1.0))
 		}
-		ui.spacer(ui.px(em * 0.8))
 	}
+	ui.spacer(ui.px(em * 0.6))
+	ui.next({width = ui.fill(), height = ui.children_sum()})
+	if ui.row(.Center, {}, "###vpin_buttons") {
+		ui.spacer(ui.fill())
+		if ui.button("###vpin_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
+		ui.spacer(ui.px(em * 0.5))
+		if ui.button("###vpin_set", i18n.tr("Set"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { submit = true }
+		ui.spacer(ui.px(em * 1.0))
+	}
+	ui.spacer(ui.px(em * 0.8))
 	if submit {
 		sent := vault.vault_pin_set(&s.v, ui.line_edit_string(&s.pin))
 		ui.line_edit_wipe(&s.pin)
-		if sent { vault_pin_close(app) } else { announce(app, .Warn, i18n.tr("A PIN has 4 characters or more.")) }
+		if sent { ui.view_end(view, 0) } else { announce(app, .Warn, i18n.tr("A PIN has 4 characters or more.")) }
 		return
 	}
-	if cancel || !open { vault_pin_close(app) }
+	if cancel { ui.view_end(view, ui.VIEW_CANCELLED) }
 }
 
 // The question before a fill on a plain http page (docs/bitwarden.md 3.5, rule 5) or into a frame of another origin
 // than the tab's (rule 7): it names the document's host. A yes fills only the document it was asked for.
 @(private = "file")
-vault_insecure_build :: proc(app: ^App) {
+vault_insecure_options :: proc(app: ^App) -> ui.Confirm_Options {
 	s := &app.vault
-	if !s.ask_open { return }
+	if !s.ask_open { return {} }
 	parts := make([dynamic]string, 0, 4, context.temp_allocator)
 	if s.ask_frame { append(&parts, i18n.tr("This form is in a frame of another site than the tab's: "), s.ask_origin, ". ") }
 	if s.ask_insecure { append(&parts, i18n.tr("This page is not secure: what you fill can be read on the network. "), s.ask_origin) }
-	note := strings.concatenate(parts[:], ui.frame_allocator())
-	answer := ui.confirm("vault_insecure", &s.ask_open, {title = s.ask_frame ? i18n.tr("Fill this frame?") : i18n.tr("Fill this page?"), note = note, act = i18n.tr("Fill")})
+	note := strings.concatenate(parts[:], context.temp_allocator)
+	return {title = s.ask_frame ? i18n.tr("Fill this frame?") : i18n.tr("Fill this page?"), note = note, act = i18n.tr("Fill")}
+}
+
+@(private = "file")
+vault_insecure_answer :: proc(app: ^App) {
+	s := &app.vault
+	answer := window_confirm_answer(app, &s.ask_view, VAULT_INSECURE_VIEW)
+	if answer == .None || !s.ask_open { return }
 	switch answer {
 	case .None:
-		if s.ask_open { return }
 	case .Cancelled:
 	case .Confirmed:
 		// (the same document as when asked: the tab, the frame or not, the forms model)

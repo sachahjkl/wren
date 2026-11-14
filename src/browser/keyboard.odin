@@ -103,11 +103,15 @@ keyboard_frame_closed :: proc(k: ^Keyboard, p: ^page.Page) {
 	if k.frame == p { keyboard_to(k, k.owner == .Frame ? .Page : k.owner) }
 }
 
-// The keys are the page's now. A toolkit dialog (ui.modal: the Vault's login, a confirmation) holds them while it is
-// open: the page reads its keys before the dialogs are built, and Tab or Enter typed in the dialog must not reach it.
+// The keys are the page's now. A dialog of the toolkit's views (the Vault's login, a confirmation, the Setup: views.odin)
+// holds them while it is open: the page reads its keys before the dialogs are built, and Tab or Enter typed in the
+// dialog must not reach it. A view floating over the page holds them only while the focus is in it.
 page_has_keyboard :: proc(app: ^App) -> bool {
 	o := keyboard_owner(app)
-	return (o == .Page || o == .Frame) && !ui.menu_any_open() && !ui.dialog_open() && !setup_captures(app)
+	if o != .Page && o != .Frame { return false }
+	if ui.menu_any_open() || ui.views_hold_keys(&app.views) { return false }
+	_, _, in_view := ui.views_focus(&app.views)
+	return !in_view
 }
 
 // The page's focus is a focus (its caret, its ring): the keyboard is there, or a widget has it from there.

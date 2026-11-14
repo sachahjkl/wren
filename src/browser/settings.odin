@@ -138,7 +138,6 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	// Wren's own defaults of other standard settings (read by standard_register alone: a String's value is a literal, which
 	// the registry keeps; a number's is parsed there)
 	values := [?]prefs_page.Standard_Value{
-		{"scrolling.autohide_scrollbars", "true"},
 		{"scrolling.autoscroll.max_speed", fmt.tprint(AUTOSCROLL_TOP_SPEED)},   // (the top speed and its distance go together: page_autoscroll.odin)
 		{"scrolling.autoscroll.full_dist", fmt.tprint(AUTOSCROLL_FULL_DISTANCE)},
 		{"rendering.partial_redraw", "true"},

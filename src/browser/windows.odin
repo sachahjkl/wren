@@ -525,6 +525,7 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 	bw.ui.icon_font = app.lucide
 	bw.ui.menu_icon_font = app.lucide
 	bw.ui.mono_font = active_window(app).ui.mono_font
+	views_attach(app, bw.ui)   // views.odin: its dialogs are the program's views
 	standard_settings_watch(app, &bw.standard, bw.ui)
 	ui.use(active_window(app).ui)
 	bw.frames_requested = 4

@@ -44,6 +44,8 @@ Bookmarks_View :: struct {
 	edit_title:   ui.Line_Edit,
 	edit_url:     ui.Line_Edit,
 	edit_focus:   bool,
+	edit_serial:  u64,            // the opening of the dialog (its view's key: another opening replaces it)
+	edit_view:    Window_View,    // where the dialog is shown (views.odin)
 }
 
 bookmarks_ui_destroy :: proc(app: ^App) {
@@ -101,6 +103,7 @@ bookmark_edit_open :: proc(app: ^App, id: u64) {
 	b := app.bms.items[i]
 	v := &app.bview
 	v.edit_open, v.edit_id, v.edit_folder, v.edit_focus = true, id, b.folder, true
+	v.edit_serial += 1
 	ui.line_edit_set(&v.edit_title, b.title)
 	ui.line_edit_set(&v.edit_url, b.url)
 	request_frames(app, 2)
@@ -110,6 +113,7 @@ bookmark_edit_open :: proc(app: ^App, id: u64) {
 bookmark_folder_new :: proc(app: ^App, parent: u64 = 0) {
 	v := &app.bview
 	v.edit_open, v.edit_id, v.edit_folder, v.edit_focus, v.edit_parent = true, 0, true, true, parent
+	v.edit_serial += 1
 	ui.line_edit_set(&v.edit_title, i18n.tr("New folder"))
 	ui.line_edit_clear(&v.edit_url)
 	request_frames(app, 2)
@@ -158,49 +162,58 @@ bookmark_star_chip :: proc(app: ^App, t: ^Tab) {
 	}
 }
 
-// The dialog, each frame while it is open.
+// Each frame of each window: the dialog closed by Escape, its cross or a click outside is given up; it is open while it
+// is asked for and its bookmark is there.
 bookmarks_dialog_build :: proc(app: ^App) {
 	v := &app.bview
-	if !v.edit_open { return }
+	if _, key, ok := window_view_ended(app, &v.edit_view, BOOKMARK_EDIT_VIEW); ok && key == v.edit_serial {
+		v.edit_open = false
+		request_frames(app, 2)
+	}
+	if v.edit_open && v.edit_id != 0 && bookmark_index(app.bms.items[:], v.edit_id) < 0 { v.edit_open = false }   // (removed meanwhile)
+	window_view_follow(app, &v.edit_view, BOOKMARK_EDIT_VIEW, app, v.edit_open ? v.edit_serial : 0)
+}
+
+// The dialog that names a bookmark or a folder, moves its address or removes it (views.odin). Its acts are done here, in
+// its window's build.
+bookmark_edit_view :: proc(view: ^ui.View, app: ^App) {
+	v := &app.bview
 	i := bookmark_index(app.bms.items[:], v.edit_id)
-	if v.edit_id != 0 && i < 0 { v.edit_open = false; return }   // (removed meanwhile)
+	if v.edit_id != 0 && i < 0 { return }   // (removed meanwhile: bookmarks_dialog_build closes it)
 	em := ui.font_size()
-	open := true
 	save, remove, cancel := false, false, false
-	title := v.edit_folder ? (v.edit_id == 0 ? i18n.tr("New folder") : i18n.tr("Folder")) : i18n.tr("Bookmark")
-	if ui.modal("bookmark_edit", &open, {width_em = 28}) {
-		if ui.dialog_header("bm_edit_heading", title, {icon = v.edit_folder ? lucide.FOLDER : lucide.BOOKMARK, icon_font = app.lucide}) {}
+	ui.view_title(view, v.edit_folder ? (v.edit_id == 0 ? i18n.tr("New folder") : i18n.tr("Folder")) : i18n.tr("Bookmark"))
+	ui.view_icon(view, v.edit_folder ? lucide.FOLDER : lucide.BOOKMARK, app.lucide)
+	ui.next({width = ui.fill(), height = ui.children_sum()})
+	if ui.row(.Start, {}, "###bm_edit_margins") {
+		ui.spacer(ui.px(em * 1.0))
 		ui.next({width = ui.fill(), height = ui.children_sum()})
-		if ui.row(.Start, {}, "###bm_edit_margins") {
-			ui.spacer(ui.px(em * 1.0))
-			ui.next({width = ui.fill(), height = ui.children_sum()})
-			if ui.column(.Start, {}, "###bm_edit_col") {
-				ui.spacer(ui.px(em * 0.8))
+		if ui.column(.Start, {}, "###bm_edit_col") {
+			ui.spacer(ui.px(em * 0.8))
+			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+			tr := ui.line_edit("###bm_edit_title", &v.edit_title, {placeholder = i18n.tr("Name")})
+			if v.edit_focus && tr.box != nil { v.edit_focus = false; ui.set_focus(tr.box.key); ui.line_edit_select_all(&v.edit_title) }
+			if tr.committed { save = true }
+			if tr.cancelled { cancel = true }
+			if !v.edit_folder {
+				ui.spacer(ui.px(em * 0.5))
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-				tr := ui.line_edit("###bm_edit_title", &v.edit_title, {placeholder = i18n.tr("Name")})
-				if v.edit_focus && tr.box != nil { v.edit_focus = false; ui.set_focus(tr.box.key); ui.line_edit_select_all(&v.edit_title) }
-				if tr.committed { save = true }
-				if tr.cancelled { cancel = true }
-				if !v.edit_folder {
-					ui.spacer(ui.px(em * 0.5))
-					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-					ur := ui.line_edit("###bm_edit_url", &v.edit_url, {placeholder = i18n.tr("Address")})
-					if ur.committed { save = true }
-					if ur.cancelled { cancel = true }
-				}
-				ui.spacer(ui.px(em * 0.8))
-				ui.next({width = ui.fill(), height = ui.children_sum()})
-				if ui.row(.Center, {}, "###bm_edit_buttons") {
-					if v.edit_id != 0 && ui.button("bm_edit_remove", i18n.tr("Remove"), lucide.TRASH_2, {intent = .Danger, width = ui.px(em * 7)}).clicked { remove = true }
-					ui.spacer(ui.fill())
-					if ui.button("bm_edit_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 7)}).clicked { cancel = true }
-					ui.spacer(ui.px(em * 0.5))
-					if ui.button("bm_edit_save", i18n.tr("Save"), lucide.SAVE, {intent = .Success, width = ui.px(em * 7)}).clicked { save = true }
-				}
-				ui.spacer(ui.px(em * 0.8))
+				ur := ui.line_edit("###bm_edit_url", &v.edit_url, {placeholder = i18n.tr("Address")})
+				if ur.committed { save = true }
+				if ur.cancelled { cancel = true }
 			}
-			ui.spacer(ui.px(em * 1.0))
+			ui.spacer(ui.px(em * 0.8))
+			ui.next({width = ui.fill(), height = ui.children_sum()})
+			if ui.row(.Center, {}, "###bm_edit_buttons") {
+				if v.edit_id != 0 && ui.button("bm_edit_remove", i18n.tr("Remove"), lucide.TRASH_2, {intent = .Danger, width = ui.px(em * 7)}).clicked { remove = true }
+				ui.spacer(ui.fill())
+				if ui.button("bm_edit_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 7)}).clicked { cancel = true }
+				ui.spacer(ui.px(em * 0.5))
+				if ui.button("bm_edit_save", i18n.tr("Save"), lucide.SAVE, {intent = .Success, width = ui.px(em * 7)}).clicked { save = true }
+			}
+			ui.spacer(ui.px(em * 0.8))
 		}
+		ui.spacer(ui.px(em * 1.0))
 	}
 	switch {
 	case remove:
@@ -219,7 +232,11 @@ bookmarks_dialog_build :: proc(app: ^App) {
 		}
 		bookmarks_changed(app)
 	}
-	if !open || save || remove || cancel { v.edit_open = false; request_frames(app, 2) }
+	if save || remove || cancel {
+		v.edit_open = false
+		ui.view_end(view, 0)
+		request_frames(app, 2)
+	}
 }
 
 ////////////////////////////////

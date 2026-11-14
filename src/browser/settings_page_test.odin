@@ -39,7 +39,6 @@ standard_settings_have_wren_defaults :: proc(t: ^testing.T) {
 	testing.expect_value(t, config.bool_of(&p, "window.system_title"), false)
 	testing.expect_value(t, config.bool_of(&p, "update.auto"), false)
 	testing.expect_value(t, config.string_of(&p, "update.base_url"), UPDATE_DOWNLOAD_BASE)
-	testing.expect_value(t, config.bool_of(&p, "scrolling.autohide_scrollbars"), true)
 	testing.expect_value(t, config.float_of(&p, "scrolling.autoscroll.max_speed"), AUTOSCROLL_TOP_SPEED)
 	testing.expect_value(t, config.float_of(&p, "scrolling.autoscroll.full_dist"), AUTOSCROLL_FULL_DISTANCE)
 	testing.expect_value(t, config.bool_of(&p, "rendering.partial_redraw"), true)

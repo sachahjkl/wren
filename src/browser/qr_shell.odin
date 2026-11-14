@@ -18,36 +18,37 @@ qr_open :: proc(app: ^App, url: string) {
 	request_frames(app, 2)
 }
 
-// The dialog, each frame while it is open.
+// Each frame of each window: the dialog closed forgets its address; it is open while there is one (a new address
+// opens it again).
 qr_build :: proc(app: ^App) {
-	if app.qr_url == "" { return }
-	em := ui.font_size()
-	open := true
-	close := false
-	if ui.modal("page_qr", &open, {width_em = QR_SIDE_EM + 6}) {
-		if ui.dialog_header("page_qr_header", i18n.tr("Scan to open this page"), {icon = lucide.QR_CODE, icon_font = app.lucide}) {}
-		// everything centred across the dialog: the code, its words, its buttons
-		ui.next({width = ui.fill(), height = ui.children_sum()})
-		if ui.column(.Center, {}, "###page_qr_col") {
-			ui.spacer(ui.px(em * 0.8))
-			ui.qr_code("###page_qr_code", app.qr_url, em * QR_SIDE_EM)
-			ui.spacer(ui.px(em * 0.6))
-			ui.push_tags("weak")
-			ui.label(app.qr_url)
-			ui.pop_tags()
-			ui.spacer(ui.px(em * 0.8))
-			ui.next({width = ui.children_sum(), height = ui.children_sum()})
-			if ui.row(.Center, {}, "###page_qr_buttons") {
-				if ui.button("qr_copy", i18n.tr("Copy the address"), lucide.COPY, {intent = .Primary, width = ui.px(em * 10)}).clicked { clip_set(app.qr_url); announce(app, .Info, "Address copied") }
-				ui.spacer(ui.px(em * 0.6))
-				if ui.button("qr_close", i18n.tr("Close"), lucide.X, {width = ui.px(em * 6)}).clicked { close = true }
-			}
-			ui.spacer(ui.px(em * 0.8))
-		}
-	}
-	if !open || close {
+	if _, _, ok := window_view_ended(app, &app.qr_view, QR_VIEW); ok {
 		delete(app.qr_url)
 		app.qr_url = ""
 		request_frames(app, 2)
+	}
+	key: u64 = app.qr_url != "" ? u64(uintptr(raw_data(app.qr_url))) : 0
+	window_view_follow(app, &app.qr_view, QR_VIEW, app, key)
+}
+
+// The code, its address and its buttons (views.odin).
+qr_view :: proc(v: ^ui.View, app: ^App) {
+	em := ui.font_size()
+	// everything centred across the dialog: the code, its words, its buttons
+	ui.next({width = ui.fill(), height = ui.children_sum()})
+	if ui.column(.Center, {}, "###page_qr_col") {
+		ui.spacer(ui.px(em * 0.8))
+		ui.qr_code("###page_qr_code", app.qr_url, em * QR_SIDE_EM)
+		ui.spacer(ui.px(em * 0.6))
+		ui.push_tags("weak")
+		ui.label(app.qr_url)
+		ui.pop_tags()
+		ui.spacer(ui.px(em * 0.8))
+		ui.next({width = ui.children_sum(), height = ui.children_sum()})
+		if ui.row(.Center, {}, "###page_qr_buttons") {
+			if ui.button("qr_copy", i18n.tr("Copy the address"), lucide.COPY, {intent = .Primary, width = ui.px(em * 10)}).clicked { clip_set(app.qr_url); announce(app, .Info, "Address copied") }
+			ui.spacer(ui.px(em * 0.6))
+			if ui.button("qr_close", i18n.tr("Close"), lucide.X, {width = ui.px(em * 6)}).clicked { ui.view_end(v, 0) }
+		}
+		ui.spacer(ui.px(em * 0.8))
 	}
 }

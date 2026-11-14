@@ -50,6 +50,7 @@ Shown_Note :: struct {
 Notification_Shell :: struct {
 	decided: map[string]bool,      // owned origins: granted (true) or denied (false)
 	asks:    [dynamic]^page.Notification_Ask,
+	ask_view: Window_View,         // the prompt of the head of `asks` (views.odin)
 	shown:   map[u64]Shown_Note,   // by the page's id of it (window id << 32 | the toolkit's id)
 }
 
@@ -181,28 +182,29 @@ note_bring_up :: proc(app: ^App, id: u64) {
 	request_frames(app, 2)
 }
 
-// The prompt over the page (the first request waiting), each frame while one waits.
+// Each frame of each window: the answer to the first request waiting is decided, then the prompt shows the next one.
 notification_shell_build :: proc(app: ^App) {
-	if len(app.notes.asks) == 0 { return }
-	req := app.notes.asks[0]
-	em := ui.font_size()
-	open := true
-	answered, granted := false, false
-	if ui.modal("note_permission", &open, {width_em = 30}) {
-		if ui.dialog_header("note_header", i18n.tr("Notifications"), {icon = lucide.BELL, icon_font = app.lucide}) {}
-		if ui.dialog_body("note_body") {
-			ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s wants to show notifications"), req.origin), "###note_what"}, ui.frame_allocator()))
-		}
-		if ui.dialog_buttons("note_buttons") {
-			if ui.button("note_block", i18n.tr("Block"), lucide.SHIELD, {intent = .Danger, width = ui.px(em * 8)}).clicked { answered, granted = true, false }
-			if ui.button("note_allow", i18n.tr("Allow"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { answered, granted = true, true }
-		}
-	}
-	if !open { answered, granted = true, false }   // Escape, a click outside: blocked
-	if answered {
-		ordered_remove(&app.notes.asks, 0)
-		note_decide(app, req, granted)
+	s := &app.notes
+	if code, key, ok := window_view_ended(app, &s.ask_view, NOTIFICATION_VIEW); ok && len(s.asks) > 0 && key == u64(uintptr(s.asks[0])) {
+		req := s.asks[0]
+		ordered_remove(&s.asks, 0)
+		// (Escape, the close cross, a click outside: blocked)
+		note_decide(app, req, code == int(Permission_Answer.Allow))
 		request_frames(app, 2)
+	}
+	head: ^page.Notification_Ask = len(s.asks) > 0 ? s.asks[0] : nil
+	window_view_follow(app, &s.ask_view, NOTIFICATION_VIEW, head, u64(uintptr(head)))
+}
+
+// The prompt over the page (views.odin): "Allow" or "Block".
+notification_view :: proc(v: ^ui.View, req: ^page.Notification_Ask) {
+	em := ui.font_size()
+	if ui.dialog_body("note_body") {
+		ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s wants to show notifications"), req.origin), "###note_what"}, ui.frame_allocator()))
+	}
+	if ui.dialog_buttons("note_buttons") {
+		if ui.button("note_block", i18n.tr("Block"), lucide.SHIELD, {intent = .Danger, width = ui.px(em * 8)}).clicked { ui.view_end(v, int(Permission_Answer.Block)) }
+		if ui.button("note_allow", i18n.tr("Allow"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { ui.view_end(v, int(Permission_Answer.Allow)) }
 	}
 }
 
