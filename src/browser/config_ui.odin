@@ -286,9 +286,10 @@ config_model :: proc(v: ^Config_View, prefs: ^config.Prefs, query: string, with_
 // "browser.", so theirs is the second segment ("browser.tabs.position" in "tabs"); a name of two segments stays in its first.
 @(private)
 config_category :: proc(name: string) -> string {
-	parts := config.path_of(name)
-	if len(parts) >= 2 && parts[0] == "browser" { return parts[1] }
-	if len(parts) >= 1 { return parts[0] }
+	// (the name's segments; config.path_of gives the groups' paths, "browser" then "browser.tabs", not the segments)
+	parts := strings.split(name, ".", context.temp_allocator)
+	if len(parts) >= 3 && parts[0] == "browser" { return parts[1] }
+	if len(parts) >= 2 { return parts[0] }
 	return name
 }
 
