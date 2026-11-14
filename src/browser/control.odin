@@ -415,6 +415,7 @@ control_windows :: proc(app: ^App, allocator := context.temp_allocator) -> []api
 			dpi_scale = f64(w.win.dpi_scale), client_left = co[0], client_top = co[1],
 			devtools = {visible = d.visible, dock = DEV_DOCK_NAMES[d.dock], panel = DEV_PANEL_NAMES[d.panel], detached = d.visible && d.dock == .Window},
 		}
+		list[i].devtools.rect, list[i].devtools.handle = devtools_rects(w)
 		if vw := devtools_view_window(app, w); vw != nil {   // (their view's window of its own: views_external.odin)
 			list[i].devtools.has_window = true
 			list[i].devtools.hwnd = int(window_native_handle(vw.win))
@@ -464,6 +465,31 @@ control_ping :: proc() -> api.Ping { return {remote.PROTOCOL_VERSION, APP_VERSIO
 
 control_version :: proc() -> api.Version {
 	return {fmt.tprintf("Wren/%s", APP_VERSION), app_commit(), ui.VERSION, build_description(), remote.PROTOCOL_VERSION}
+}
+
+// Where the developer tools of `w` are in it, as its last frame laid them out (window pixels): the panel ({}: not in this
+// window, or closed), and docked, the handle of the view's zone that resizes it ({}: none). Their size is the toolkit's
+// view memory: a client of the remote control reads it here and drags the handle to change it.
+@(private = "file")
+devtools_rects :: proc(w: ^Browser_Window) -> (panel, handle: api.Rect) {
+	d := &w.own.devtools
+	if !d.visible || w.ui == nil || d.built_in != w.ui || d.rect.max.x <= d.rect.min.x { return }
+	panel = api_rect(d.rect)
+	if d.dock == .Floating || d.dock == .Window { return }
+	// (the toolkit names the handle of each zone by its edge: views_panels.odin, view_zone_handle)
+	edges := DEV_DOCK_EDGES
+	name := fmt.tprintf("view_handle_%v", edges[d.dock])
+	find :: proc(b: ^ui.Box, name: string) -> ^ui.Box {
+		for c := b.first; c != nil; c = c.next {
+			if c.name == name && c.rect.max.x > c.rect.min.x { return c }
+			if x := find(c, name); x != nil { return x }
+		}
+		return nil
+	}
+	if w.ui.root != nil {
+		if b := find(w.ui.root, name); b != nil { handle = api_rect(b.rect) }
+	}
+	return
 }
 
 // The active window becomes the one the user is in; `raise`: above the others (a headless window has no z-order; nothing takes the system's focus).

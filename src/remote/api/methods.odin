@@ -1168,6 +1168,10 @@ Devtools_State :: struct {
 	has_window:        bool,   // they have a window of their own right now (a headless Wren's has no window of the system: hwnd 0)
 	hwnd:              int,
 	dock, panel, title: string,
+	// as the window's last frame laid them out, in its pixels: the panel while it is in the window ({}: elsewhere), and
+	// docked, the handle of the view's zone that resizes it ({}: none). Their size is the toolkit's view memory, not a
+	// preference: a client reads it here and changes it by dragging the handle.
+	rect, handle:      Rect,
 }
 
 Window :: struct {
@@ -1194,12 +1198,14 @@ windows :: proc(s: ^Session, loc := #caller_location) -> (r: []Window, e: Error)
 		x, _ := item.(json.Object)
 		d, _ := remote.param_object(x, "devtools")
 		_, own := d["hwnd"]
+		dt_rect, _ := rect_of(d, "rect")
+		dt_handle, _ := rect_of(d, "handle")
 		drop, dropping := remote.param_object(x, "drop")
 		r[i] = {
 			id = i_of(x, "windowId"), tabs = i_of(x, "tabs"), current_tab = i_of(x, "currentTabId"), front = b_of(x, "front"), headless = b_of(x, "headless"), hwnd = i_of(x, "hwnd"),
 			left = i_of(x, "left"), top = i_of(x, "top"), width = i_of(x, "width"), height = i_of(x, "height"), client_left = i_of(x, "clientLeft"), client_top = i_of(x, "clientTop"),
 			state = s_of(x, "windowState"), dpi_scale = f_of(x, "dpiScale"),
-			devtools = {visible = b_of(d, "visible"), detached = b_of(d, "detached"), has_window = own, hwnd = i_of(d, "hwnd"), dock = s_of(d, "dock"), panel = s_of(d, "panel"), title = s_of(d, "title")},
+			devtools = {visible = b_of(d, "visible"), detached = b_of(d, "detached"), has_window = own, hwnd = i_of(d, "hwnd"), dock = s_of(d, "dock"), panel = s_of(d, "panel"), title = s_of(d, "title"), rect = dt_rect, handle = dt_handle},
 			dropping = dropping, drop_index = i_of(drop, "index"), drop_group = i_of(drop, "group"), drop_pinned = b_of(drop, "pinned"), drop_mark = f_of(drop, "mark"),
 		}
 	}

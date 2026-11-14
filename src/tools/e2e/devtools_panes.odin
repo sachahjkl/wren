@@ -8,7 +8,6 @@ package e2e_scenarios
 // (the drawer of old) resized and folded by its separator.
 
 import "core:fmt"
-import "core:strconv"
 import "core:strings"
 import "core:testing"
 import "toolkit:platform"
@@ -63,8 +62,9 @@ pref_has :: proc(s: ^e2e.Session, name, part: string, loc := #caller_location) -
 devtools_panels_docked_by_dragging_their_tabs :: proc(t: ^testing.T) {
 	page := e2e.file_page(e2e.temp_folder(t), "static.html", PANES_PAGE)
 	options := e2e.Options{size = PANES_SIZE, dpi = PANES_DPI, url = page, profile = e2e.temp_profile(t),
-		prefs = {"browser.devtools.visible=true", "browser.devtools.tab=elements", "browser.devtools.dock=bottom"}}
+		prefs = {"browser.devtools.visible=true", "browser.devtools.tab=elements"}}
 	s := e2e.start(t, options)
+	e2e.open_devtools(s, "elements", "bottom")   // (where they sit is the view's memory: the restart keeps it)
 	e2e.a11y_capture(s)
 	e2e.wait_chrome_still(s)
 
@@ -110,15 +110,18 @@ devtools_panels_docked_by_dragging_their_tabs :: proc(t: ^testing.T) {
 devtools_dock_and_drawer_resize :: proc(t: ^testing.T) {
 	page := e2e.file_page(e2e.temp_folder(t), "static.html", PANES_PAGE)
 	s := e2e.start(t, {size = PANES_SIZE, dpi = PANES_DPI, url = page,
-		prefs = {"browser.devtools.visible=true", "browser.devtools.tab=elements", "browser.devtools.dock=bottom"}})
+		prefs = {"browser.devtools.visible=true", "browser.devtools.tab=elements"}})
+	e2e.open_devtools(s, "elements", "bottom")
 	e2e.pref_set(s, "browser.devtools.layout", DRAWER_LAYOUT)   // (the user's, as a drag sets it: one of the command line would stay over it)
 	e2e.a11y_capture(s)
 	e2e.wait_chrome_still(s)
 
-	// the panel under the page: dragged up, it takes nearly the whole window
-	bar := entry(s, .Splitter, "Developer tools")
-	drag(s, middle(bar), {middle(bar).x, DOCK_TOP_Y})
-	size, _ := strconv.parse_f64(e2e.pref_get(s, "browser.devtools.size"))
+	// the panel under the page: its view's handle dragged up, it takes nearly the whole window
+	bar := e2e.devtools_state(s).handle
+	testing.expectf(t, bar.w > 0, "docked at the bottom, the view has a handle: %v", bar)
+	from := e2e.Point{bar.x + bar.w * 0.5, bar.y + bar.h * 0.5}
+	drag(s, from, {from.x, DOCK_TOP_Y})
+	size := e2e.devtools_state(s).rect.h
 	testing.expectf(t, size >= DOCK_AT_LEAST, "the panel is %v px tall: more than %d of the window's %d", size, DOCK_AT_LEAST, PANES_SIZE.y)
 	page_h := e2e.window_bounds(s).page_rect.h
 	testing.expectf(t, page_h > 0 && page_h < f64(PANES_SIZE.y - DOCK_AT_LEAST), "the page keeps a strip: %v px", page_h)

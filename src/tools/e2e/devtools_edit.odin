@@ -75,7 +75,8 @@ handle_of :: proc(s: ^e2e.Session, selector: string) -> base.Handle {
 start_elements :: proc(t: ^testing.T, loc := #caller_location) -> ^e2e.Session {
 	url := e2e.file_page(e2e.temp_folder(t), "edit.html", EDIT_PAGE)
 	s := e2e.start(t, {size = EDIT_SIZE, dpi = e2e.DPI_ONE, url = url,
-		prefs = {"browser.devtools.visible=true", "browser.devtools.tab=elements", "browser.devtools.dock=bottom"}}, loc)
+		prefs = {"browser.devtools.visible=true", "browser.devtools.tab=elements"}}, loc)
+	e2e.open_devtools(s, "elements", "bottom", loc)   // (where they sit is the view's memory, not a preference)
 	e2e.wait_chrome_still(s)
 	// the keyboard in the tree: a click on its first row
 	list := box_named(s, "dt_el_list")

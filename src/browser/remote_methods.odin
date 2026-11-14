@@ -418,6 +418,8 @@ m_windows :: proc(app: ^App) -> Reply {
 		j_key(&b, "devtools"); j_begin(&b)
 		j_bool(&b, "visible", d.visible); j_str(&b, "dock", d.dock); j_str(&b, "panel", d.panel)
 		j_bool(&b, "detached", d.detached)
+		if d.rect.w > 0 { j_rect(&b, "rect", d.rect) }
+		if d.handle.w > 0 { j_rect(&b, "handle", d.handle) }
 		if d.has_window {
 			j_int(&b, "hwnd", i64(d.hwnd)); j_str(&b, "title", d.title)
 			j_bool(&b, "window", true)

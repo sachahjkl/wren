@@ -1059,6 +1059,17 @@ open_devtools :: proc(s: ^Session, panel := "console", dock := "", loc := #calle
 	wait_frames(s, loc = loc)
 }
 
+// The developer tools of the window as its last frame laid them out: where they are, the panel's rectangle and, docked,
+// the handle that resizes them (window pixels).
+devtools_state :: proc(s: ^Session, loc := #caller_location) -> api.Devtools_State {
+	back := s.test.temp_allocator
+	context = s.ctx
+	enter(s, loc)
+	id := browser.active_window(s.app).id
+	for w in browser.control_windows(s.app, back) { if w.id == id { return w.devtools } }
+	return {}
+}
+
 ////////////////////////////////
 // The numbers
 

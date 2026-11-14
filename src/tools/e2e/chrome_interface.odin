@@ -61,22 +61,35 @@ chrome_zoom_follows_the_keyboard_and_the_pointer :: proc(t: ^testing.T) {
 	testing.expect_value(t, zoom_of(w), 1)   // over the page: the page's
 }
 
-// Docked, the developer tools' panel has the size the preference gives it, and the page's area shrinks by the same amount, at the side and at the bottom. (The panel once ignored its size:
-// it shared the room half and half with the page, whatever the splitter did.)
+// Docked, the developer tools' panel has the size the handle of its view's zone gives it, and the page's area shrinks by the same amount, at the side and at the bottom. (The panel once
+// ignored its size: it shared the room half and half with the page, whatever the splitter did.)
 @(private = "file")
 docked_panel_sizes :: proc(t: ^testing.T, dock: string, sizes: []int, along: int, loc := #caller_location) {
-	FIRST_SIZE :: 150
-	SIZE_PREF :: "browser.devtools.size"
 	SCALE :: f32(168.0 / 96)
-	SIZE_WITHIN :: 4 * SCALE      // the splitter, a rounding
-	w := chrome_start(t, {size = {1280, 800}, scale = SCALE, prefs = {"browser.devtools.visible=true", "browser.devtools.tab=console", fmt.tprintf("browser.devtools.dock=%s", dock), fmt.tprintf("%s=%d", SIZE_PREF, FIRST_SIZE)}}, loc)
+	SIZE_WITHIN :: 4 * SCALE      // the handle's grab, a rounding
+	w := chrome_start(t, {size = {1280, 800}, scale = SCALE, prefs = {"browser.devtools.visible=true", "browser.devtools.tab=console"}}, loc)
+	// (where they sit is the view's memory, not a preference: placed as wren ctl places them)
+	why := browser.control_devtools(w.app, "console", dock)
+	testing.expectf(t, why == "", "docked at the %s: %s", dock, why, loc = loc)
+	session.frames(w.s, 2)
 	chrome_still(w, loc)
 	room :: proc(w: ^Chrome_World, along: int) -> f32 { return w.wnd.page_rect.max[along] - w.wnd.page_rect.min[along] }
-	whole := room(w, along) + FIRST_SIZE * SCALE
+	panel :: proc(w: ^Chrome_World, along: int) -> f32 { r := w.wnd.own.devtools.rect; return r.max[along] - r.min[along] }
+	// (the toolkit names each zone's handle by its edge: views_panels.odin)
+	handle_name := fmt.tprintf("view_handle_%v", dock == "right" ? ui.View_Edge.Right : ui.View_Edge.Bottom)
+	testing.expectf(t, panel(w, along) > 0, "the panel is docked at the %s", dock, loc = loc)
+	whole := room(w, along) + panel(w, along)
 	for size in sizes {
-		chrome_pref(w, SIZE_PREF, fmt.tprintf("%d", size), loc)
+		handle := session.find(w.s, handle_name)
+		testing.expectf(t, handle != nil, "the zone's handle %s", handle_name, loc = loc)
+		if handle == nil { return }
+		from := (handle.rect.min + handle.rect.max) * 0.5
+		to := from
+		to[along] -= f32(size) * SCALE - panel(w, along)   // (the handle is on the page's side: towards it, the panel grows)
+		session.drag(w.s, from, to)
 		chrome_still(w, loc)
 		want := whole - f32(size) * SCALE
+		testing.expectf(t, abs(panel(w, along) - f32(size) * SCALE) <= SIZE_WITHIN, "a panel of %d: it has %v, not %v", size, panel(w, along), f32(size) * SCALE, loc = loc)
 		testing.expectf(t, abs(room(w, along) - want) <= SIZE_WITHIN, "a panel of %d: the page has %v, not %v", size, room(w, along), want, loc = loc)
 	}
 }

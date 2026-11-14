@@ -332,9 +332,7 @@ CADENCE_SIZE :: [2]int{1400, 900}
 CADENCE_DRAG_STEPS :: 90
 CADENCE_WARM_FRAMES :: 6
 CADENCE_AMPLITUDE :: 120.0
-CADENCE_DOCK_MARGIN :: 2.5
 CADENCE_SIDEBAR_WIDTH :: 240.0
-CADENCE_BAR_ABOVE :: 300.0
 CADENCE_HEIGHT_PART :: 0.6
 CADENCE_DRAG_SHARE :: 0.5
 CADENCE_AT_ONCE_SHARE :: 0.8
@@ -344,12 +342,13 @@ Cadence_Scenario :: struct {
 	name:    string,
 	prefs:   []string,
 	along_x: bool,
+	dock:    string,   // the developer tools docked there after the start, their view's handle dragged ("": none)
 }
 
 CADENCE_SCENARIOS := []Cadence_Scenario{
-	{"devtools_right", {"browser.devtools.visible=true", "browser.devtools.dock=right", "browser.devtools.size=300", "browser.devtools.tab=console"}, true},
-	{"devtools_bottom", {"browser.devtools.visible=true", "browser.devtools.dock=bottom", "browser.devtools.size=300", "browser.devtools.tab=console"}, false},
-	{"sidebar", {"browser.tabs.position=left"}, true},
+	{"devtools_right", {"browser.devtools.visible=true", "browser.devtools.tab=console"}, true, "right"},
+	{"devtools_bottom", {"browser.devtools.visible=true", "browser.devtools.tab=console"}, false, "bottom"},
+	{"sidebar", {"browser.tabs.position=left"}, true, ""},
 }
 
 // The cadence of the frames while a splitter is dragged, with the screen said to have a variable refresh rate. The rates are printed, never checked (nothing here is timed): the checks are that the frames of the
@@ -381,16 +380,24 @@ bench_cadence :: proc(o: ^Options) -> int {
 		defer stop(&w)
 		ses := &w.session
 		_ = api.wait_load(ses)
+		// (where the developer tools sit is their view's memory, not a preference: placed as wren ctl places them)
+		if s.dock != "" {
+			if api.open_devtools(ses, "console", s.dock) != .None { fmt.eprintln(api.last_failure().message); return 1 }
+		}
 		_ = api.wait_frames(ses, CADENCE_WARM_FRAMES)
-		width, height := f64(CADENCE_SIZE.x), f64(CADENCE_SIZE.y)
+		height := f64(CADENCE_SIZE.y)
 		from: api.Point
-		switch s.name {
-		case "devtools_right":
-			inner, _ := api.eval(ses, "innerWidth")
-			v, _ := strconv.parse_f64(inner)
-			from = {(v + CADENCE_DOCK_MARGIN) * scale, height * CADENCE_HEIGHT_PART}
-		case "devtools_bottom": from = {width / 2, height - CADENCE_BAR_ABOVE * scale}
-		case "sidebar": from = {CADENCE_SIDEBAR_WIDTH * scale - 2, height * CADENCE_HEIGHT_PART}
+		if s.dock != "" {
+			// the handle of the view's zone, as the windows report it (window pixels)
+			handle: api.Rect
+			if list, e := api.windows(ses); e == .None {
+				for x in list { if x.front { handle = x.devtools.handle } }
+			}
+			if handle.w <= 0 { fmt.eprintfln("%s: the developer tools have no handle", s.name); return 1 }
+			from = api.center(handle)
+			if s.along_x { from.y = height * CADENCE_HEIGHT_PART }
+		} else {
+			from = {CADENCE_SIDEBAR_WIDTH * scale - 2, height * CADENCE_HEIGHT_PART}
 		}
 		amplitude := CADENCE_AMPLITUDE * scale
 		to := s.along_x ? api.Point{from.x - amplitude, from.y} : api.Point{from.x, from.y - amplitude}
