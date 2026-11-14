@@ -5,6 +5,7 @@ import "core:fmt"
 import "core:path/filepath"
 import "core:strings"
 import win "core:sys/windows"
+import toolbox "../../../../ext/gui_toolkit/src/toolbox"
 
 // A program's PDB through DbgHelp: the function and the source line at an address.
 
@@ -68,7 +69,7 @@ pdb_name :: proc(s: ^Pdb_Session, address: u64) -> string {
 	displacement: u64
 	if !SymFromAddrW(s.handle, address, &displacement, &sym) { return "" }
 	wide, _ := win.utf16_to_utf8(sym.name[:sym.name_len], context.temp_allocator)
-	name, file := format_odin_symbol(wide)
+	name, file := toolbox.odin_symbol(wide)   // (named as the crash reports name it)
 	if file != "" { name = fmt.tprintf("%s  (%s)", name, file) }
 	line := Line_Info{size_of_struct = size_of(Line_Info)}
 	line_displacement: u32
