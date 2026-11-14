@@ -417,7 +417,7 @@ without an answer (X, Escape, a click outside) is <code>choice=dismissed</code> 
 folder with a file <code>wren.portable</code> next to <code>wren.exe</code>: its profile (preferences, cookies, history, session, crash reports,
 license) is <code>&lt;folder&gt;\data</code>, it never offers Setup by itself, and <code>--profile DIR</code> still wins.</p>
 <h3 id="updates"><a class="anchor" href="#updates" aria-hidden="true">#</a>Updates</h3>
-<p><code>browser.update.check_daily</code> (off: no request is made unless asked): one GET a day of GitHub's latest release
+<p><code>update.auto</code> (off: no request is made unless asked): one GET a day of GitHub's latest release
 (<code>browser.update.url</code>), compared with the running version, announced once per version; nothing is downloaded. The command
 <strong>Check for updates</strong> asks at once and opens the release page. State in <code>update.txt</code> in the profile. Never for disposable
 profiles or with <code>WREN_UPDATE_CHECK=off</code>.</p>
@@ -466,7 +466,7 @@ shell. A development build opens its own <code>wren-dev-</code> links and the re
 it ("or open <code>about:wren</code> in Wren") and never tries to find out with a script.</p>
 <h2 id="preferences"><a class="anchor" href="#preferences" aria-hidden="true">#</a>Preferences</h2>
 <p><code>browser.desktop_integration.on_first_run</code>, <code>.status_refresh_ms</code>, <code>.start_menu</code>, <code>.desktop_shortcut</code>, <code>.add_to_path</code>,
-<code>.register_browser</code> (also register as a browser, or only the menu entry), <code>.file_types</code>, <code>browser.update.check_daily</code>,
+<code>.register_browser</code> (also register as a browser, or only the menu entry), <code>.file_types</code>, <code>update.auto</code>,
 <code>browser.update.url</code>.</p>
 <h2 id="tests"><a class="anchor" href="#tests" aria-hidden="true">#</a>Tests</h2>
 <p>The toolkit's <code>odin test src/desktop</code> runs the backends and the installed copy on scratch folders and a scratch registry

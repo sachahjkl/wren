@@ -51,11 +51,11 @@ An event answers no request: `{"id": 0, "ok": true, "event": "<name>"}`.
 | op | Request fields | Answer fields |
 |---|---|---|
 | `hello` | `protocol` (5), `state_dir`, `identity_url`, `api_url`, `persist`, `device_name`, `client_version`, `idle_seconds` | `protocol`, `helper_version`, `account` (`none` or `locked`), `email`, `login` (`password` or `api_key`), `pin` (bool), `passkey` (bool: a passkey of the account unlocks) |
-| `login` | first step: `email`, `password`; second step: `email`, `code`, `provider`; a new code: `email`, `provider`, `resend` (true); `remember` (true): the server lets this device skip the second step next time | `result`: `ok`; or `need_two_factor` with `providers` and `email_sent`; or `need_device_code` |
-| `login_api_key` | `client_id`, `client_secret`, `password` (the master password) | `result` (`ok`), `email` |
+| `login` | first step: `email`, `password`; second step: `email`, `code`, `provider`; a new code: `email`, `provider`, `resend` (true); `remember` (true): the server lets this device skip the second step next time | `result`: `ok` with `pin` (bool: the account's PIN was kept); or `need_two_factor` with `providers` and `email_sent`; or `need_device_code` |
+| `login_api_key` | `client_id`, `client_secret`, `password` (the master password) | `result` (`ok`), `email`, `pin` |
 | `unlock` | `password`, `pin`, or `prf` and `credential_id` (a passkey) | none; `bad_pin` errors carry `tries_left` |
 | `lock` | none | none; the helper then exits |
-| `logout` | none | none; the helper forgets the account (state, tokens, PIN), then exits |
+| `logout` | `keep_pin` (bool, default false: the session ended without the person asking) | none; the helper forgets the account (state, tokens, PIN; with `keep_pin`, all but the PIN and the account's names), then exits |
 | `sync` | none | `items`, `last_sync` (Unix seconds) |
 | `pin_set` | `pin` (4 characters or more) | none |
 | `pin_clear` | none | none |

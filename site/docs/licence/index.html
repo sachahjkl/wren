@@ -289,7 +289,7 @@ line of <code>about:wren</code>:</p>
 <h2 id="how-it-works"><a class="anchor" href="#how-it-works" aria-hidden="true">#</a>How it works</h2>
 <p>A license is a statement signed offline with an <strong>Ed25519</strong> private key that only the maintainer has. Wren holds the
 matching public key and checks the signature on the user's computer, <strong>without any network access</strong>
-(<code>core:crypto/ed25519</code>, package <code>src/license</code>). No server is involved in checking. Issuing is either manual (the
+(<code>core:crypto/ed25519</code>: the toolkit's <code>gt:licence</code>; Wren's product is <code>license.WREN</code> in <code>src/license</code>). No server is involved in checking. Issuing is either manual (the
 maintainer signs a license with <code>wrentool license</code> and sends it) or automatic: licenses are sold through
 <a href="https://www.paddle.com" rel="noopener">Paddle</a> (the seller of record, who handles VAT), and a small Cloudflare Worker
 (<a href="https://github.com/sachahjkl/wren/tree/master/licence/worker"><code>licence/worker</code></a>, free plan) signs the license when Paddle reports a paid transaction, keeps it,
@@ -332,7 +332,7 @@ read licenses of another issuer), <code>browser.license.support_url</code> (the 
 <div class="code"><div class="file">PowerShell</div><pre><code>wrentool license keygen</code></pre></div>
 <p>This writes the <strong>private</strong> key to <code>%USERPROFILE%\.wren-license\private.key</code> (outside the repository: <code>keygen</code> refuses a
 path inside a git work tree, and <code>.gitignore</code> keeps <code>.wren-license/</code>, <code>private.key</code> and <code>*.wrenlicense</code> out of git) and
-prints the public key and the line to paste in <code>src/license/public_key.odin</code>:</p>
+prints the public key and the value of <code>PRODUCTION_PUBLIC_KEY</code> in <code>src/license/license.odin</code>:</p>
 <div class="code"><div class="file">Odin</div><pre><code>PRODUCTION_PUBLIC_KEY :: <span class="s">"…"</span></code></pre></div>
 <p>Rebuild Wren. <strong>Back up the private key outside this computer</strong> (a password manager): if it is lost, no new license can
 be issued for the builds that carry the public key, and if it leaks, anyone can issue licenses. <code>keygen</code> will not
@@ -340,14 +340,14 @@ overwrite an existing key without <code>-force</code>; a new key invalidates eve
 <p>Until the public key is set, builds read no license: <code>about:wren</code> stays on <em>Unregistered</em>, and pasting a key says that
 this build has no key to check it with.</p>
 <h3 id="2-issue-a-license"><a class="anchor" href="#2-issue-a-license" aria-hidden="true">#</a>2. Issue a license</h3>
-<div class="code"><div class="file">PowerShell</div><pre><code>wrentool license issue -name <span class="s">"Jeanne Dupont"</span> -email jeanne@example.org -edition supporter -order WREN-<span class="t">0001</span></code></pre></div>
+<div class="code"><div class="file">PowerShell</div><pre><code>wrentool license issue <span class="s">"-name:Jeanne Dupont"</span> -email:jeanne@example.org -edition:supporter -order:WREN-<span class="t">0001</span></code></pre></div>
 <p><code>-edition</code> is <code>supporter</code> or <code>patron</code>; <code>-date</code> defaults to today; <code>-private FILE</code> uses another key. The tool verifies
 what it signed, prints the key, and writes <code>%USERPROFILE%\.wren-license\issued\WREN-0001.wrenlicense</code> (<code>-out FILE</code> to
 choose). Send the file (or the key) to the buyer.</p>
 <p>Other commands: <code>wrentool license pubkey</code> (print the public key), <code>wrentool license verify FILE</code> (check a license
 against the built-in key; <code>-public KEY</code> against another).</p>
 <h3 id="3-development-key"><a class="anchor" href="#3-development-key" aria-hidden="true">#</a>3. Development key</h3>
-<p><code>-dev</code> uses a development pair that is public on purpose (<code>src/license/dev_keys.odin</code>: the tests and screenshots use
+<p><code>-dev</code> uses a development pair that is public on purpose (<code>DEV_SEED</code> in <code>src/license/license.odin</code>: the tests and screenshots use
 it). A license made with it is refused by a build that carries the production key. To try one in a build:
 <code>wrentool license issue -dev …</code> and <code>--pref browser.license.public_key=&lt;wrentool license pubkey -dev&gt;</code>.</p>
 <p>An experimental build (<code>wrentool experimental</code>, which builds with <code>WREN_ACCEPT_DEV_LICENSE_KEY=1</code>: <code>build.bat</code> passes <code>-define:WREN_ACCEPT_DEV_LICENSE_KEY=true</code>) accepts the licenses of this pair too, as a development build does, so that the demonstration license it is handed out with shows its card with no setting. A release never does.</p>
@@ -501,7 +501,7 @@ and <code>npx wrangler tail</code> shows <code>mail</code> (<code>state: sent</c
 <code>E_DAILY_LIMIT_EXCEEDED</code>, <code>E_INTERNAL_SERVER_ERROR</code>: the webhook answers 500 and Paddle delivers it again. <code>wrangler dev</code>
 only logs the mail (add <code>"remote": true</code> to the binding to send for real, to a test address).</p>
 <h3 id="2-keys"><a class="anchor" href="#2-keys" aria-hidden="true">#</a>2. Keys</h3>
-<div class="code"><div class="file">PowerShell</div><pre><code>wrentool license keygen     <span class="c"># once; see "Make the key pair". Public key -&gt; src/license/public_key.odin, rebuild Wren</span>
+<div class="code"><div class="file">PowerShell</div><pre><code>wrentool license keygen     <span class="c"># once; see "Make the key pair". Public key -&gt; PRODUCTION_PUBLIC_KEY in src/license/license.odin, rebuild Wren</span>
 wrentool license pubkey     <span class="c"># prints it again (LICENSE_PUBLIC_KEY)</span></code></pre></div>
 <p><code>LICENSE_PRIVATE_KEY</code> is the line of <code>%USERPROFILE%\.wren-license\private.key</code> that is not a <code>#</code> comment.</p>
 <h3 id="3-deploy-the-worker-sandbox-first"><a class="anchor" href="#3-deploy-the-worker-sandbox-first" aria-hidden="true">#</a>3. Deploy the Worker (sandbox first)</h3>
@@ -558,7 +558,7 @@ locally for the test (<code>python -m http.server 8765 --directory site</code>: 
 sandbox Worker lets call it).</li>
 <li><p><strong>Try it</strong>: press <em>Supporter</em>, pay with the test card <code>4242 4242 4242 4242</code>, any future expiry, CVC <code>100</code>. The browser
 goes to <code>thanks/?txn=txn_…</code> and shows the key; the e-mail arrives with the file. Check the key:</p>
-<div class="code"><div class="file">PowerShell</div><pre><code>wrentool license verify -text <span class="s">"WREN1.…"</span> -public &lt;the public key&gt;</code></pre></div>
+<div class="code"><div class="file">PowerShell</div><pre><code>wrentool license verify <span class="s">"-text:WREN1.…"</span> -public:&lt;the public key&gt;</code></pre></div>
 <p>and paste it in <code>about:wren</code>. If something is missing: <em>Developer tools → Notifications → the destination → Logs</em> shows
 what Paddle sent and got back (a <em>Replay</em> button redelivers it), and <code>npx wrangler tail --env sandbox</code> shows the
 Worker's side (<code>webhook_rejected</code> with the reason, <code>issued</code>, <code>mail</code>…).</p></li>
@@ -585,7 +585,7 @@ cf deploy --secrets-file secrets.env</code></pre></div>
 <tbody>
 <tr><td><code>PADDLE_API_BASE</code></td><td><code>https://sandbox-api.paddle.com</code> or <code>https://api.paddle.com</code>: must match the webhook's environment</td></tr>
 <tr><td><code>PRICE_SUPPORTER</code>, <code>PRICE_PATRON</code></td><td>price ids, comma separated; the patron price wins when both are bought</td></tr>
-<tr><td><code>LICENSE_PUBLIC_KEY</code></td><td>the public key of <code>src/license/public_key.odin</code></td></tr>
+<tr><td><code>LICENSE_PUBLIC_KEY</code></td><td><code>PRODUCTION_PUBLIC_KEY</code> of <code>src/license/license.odin</code></td></tr>
 <tr><td><code>MAIL_FROM</code>, <code>MAIL_REPLY_TO</code></td><td>sender (<code>Name &lt;address&gt;</code> or an address, on a domain onboarded in Email Service &gt; Email Sending; empty: no mail) and optional reply address</td></tr>
 <tr><td><code>ALLOWED_ORIGIN</code></td><td>origins that may call <code>GET /licence</code> from a page, comma separated (<code>*</code> = any)</td></tr>
 <tr><td><code>WEBHOOK_TOLERANCE_SECONDS</code></td><td>how old a webhook may be (300)</td></tr>
@@ -610,7 +610,7 @@ cover the webhook signature (valid, altered, wrong secret, too old, malformed, r
 Paddle Billing's format (<code>licence/worker/test/fixtures</code>), idempotency (a double webhook issues and mails once), the mail
 outcomes (a fake <code>EMAIL</code> binding: sent, skipped, a deferred mail that the retry alarm later sends, failed, the
 attachment, no second mail), the endpoints, <code>/resend</code>, and the cross-check: licenses made by
-the Worker with the development pair (<code>DEV_SEED</code> of <code>src/license/dev_keys.odin</code>, read from the Odin source) are verified
+the Worker with the development pair (<code>DEV_SEED</code> of <code>src/license/license.odin</code>, read from the Odin source) are verified
 by Wren's own tool (<code>license.exe verify -dev</code>) as a key and as a <code>.wrenlicense</code> file; altered ones and ones of another
 key are refused; and for the same fields the Worker and <code>license.exe issue -dev</code> produce the very same text.</p>
 <h3 id="losing-or-changing-the-key"><a class="anchor" href="#losing-or-changing-the-key" aria-hidden="true">#</a>Losing or changing the key</h3>

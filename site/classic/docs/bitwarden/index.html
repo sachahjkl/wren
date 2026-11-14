@@ -380,7 +380,11 @@ database and nothing is written.</p>
 This is the same level as Chromium without a keyring, and as <code>src/wasm/crypto_unix.odin</code>.</li>
 </ul>
 <p>A stolen token alone gives only encrypted data. The user key is never stored, except inside the PIN envelope.
-A PIN is weaker than the master password: the helper counts wrong PINs in its state and deletes the envelope after 5.</p>
+A PIN is weaker than the master password: the helper counts wrong PINs in its state and deletes the envelope after 5.
+The PIN itself is never stored, nor put in the system store: anyone with the session would open the vault with it.
+A new login of the same account on the same server keeps the PIN while the account's user key is the one the PIN seals
+(the helper compares a check of the key, <code>pin_check</code>). A logout the person asks for, another account or a key rotated in
+the web vault removes it. A session the server ended (<code>session_expired</code>) keeps it for the next login.</p>
 <p>Phase 0 must list exactly what the SDK writes to <code>state.sqlite</code> at the pinned revision, and update this table.</p>
 <p><code>logout</code> deletes the directory content and the system store entry.</p>
 <h3 id="35-phishing-resistance-of-fill"><a class="anchor" href="#35-phishing-resistance-of-fill" aria-hidden="true">#</a>3.5 Phishing resistance of fill</h3>

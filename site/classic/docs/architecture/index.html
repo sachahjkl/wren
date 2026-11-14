@@ -87,7 +87,7 @@ lower-case name, description, type, bounds, unit) and reads them through <code>s
 every table (<code>src/browser/settings.odin</code>) and <code>src/browser/prefs_test.odin</code> checks that each one is well formed.</li>
 <li><strong>State lives with what owns it.</strong> See below: what is one App's is not a global.</li>
 <li><strong>Layers point one way.</strong> A tool (<code>src/tools</code>) may import the product; the product never imports <code>wb:tools/*</code>.
-What both need is a package of <code>src</code>: crash reports (<code>src/crashtrace</code>), the stacks of another process
+What both need is a package of <code>src</code>: the stacks of another process
 (<code>src/stacks</code>), the test environment (<code>src/testenv</code>). Only a <code>*_windows.odin</code> file imports <code>core:sys/windows</code>,
 and a neutral struct holds no Win32 type (<a href="../../docs/portability/">portability.md</a>). A package links only what its
 users need: <code>URLPattern</code> is <code>src/urlpattern</code>, so the users of <code>src/url</code> (cookies, CSP, WebAuthn) do not link the

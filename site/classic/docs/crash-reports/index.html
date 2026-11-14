@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Crash reports and the symbols of a build · Wren docs</title>
-<meta name="description" content="Crash reports and the symbols of a build When Wren crashes, src/crashtrace writes &lt;profile&gt;\crashes\crash &lt;date&gt; &lt;time&gt;.txt (the faulting thread's stack) and a minidump b">
+<meta name="description" content="Crash reports and the symbols of a build When Wren crashes, the toolkit's gt:crash writes &lt;profile&gt;/crashes/crash-&lt;date&gt;-&lt;time&gt;-&lt;pid&gt;.txt and, on Windows, a minidump besi">
 <link rel="icon" type="image/png" sizes="32x32" href="../../../img/logo-32.png">
 <link rel="stylesheet" href="../../classic.css">
 </head>
@@ -41,77 +41,41 @@
 <h1 id="crash-reports-and-the-symbols-of-a-build"><a class="anchor" href="#crash-reports-and-the-symbols-of-a-build" aria-hidden="true">#</a>Crash reports and the symbols of a build</h1><nav class="doc-toc" aria-label="On this page">
 <p class="doc-toc-title">On this page</p>
 <ul>
-<li><a href="#what-a-report-says">What a report says</a></li>
 <li><a href="#the-symbols-of-a-build">The symbols of a build</a></li>
-<li><a href="#naming-the-frames-of-a-report">Naming the frames of a report</a></li>
-<li><a href="#tests">Tests</a></li>
+<li><a href="#other-stacks">Other stacks</a></li>
 </ul>
 </nav>
 
-<p>When Wren crashes, <code>src/crashtrace</code> writes <code>&lt;profile&gt;\crashes\crash &lt;date&gt; &lt;time&gt;.txt</code> (the faulting thread's
-stack) and a minidump beside it (<code>.dmp</code>). A program that ended itself with its session open (<code>ExitProcess</code> or <code>TerminateProcess</code>, whoever called them in the executable) leaves
-<code>exit &lt;date&gt;.txt</code> with the stack that asked for it. A session that ended with no chance to write one is reported at the next start as <code>unclean exit &lt;date&gt;.txt</code>, which says what is left to know: Windows'
-Application Error event of that process (a fail-fast), a restart of the machine, or a kill from outside. A crash that wrote its report leaves none, nor does a close ended by the shutdown watchdog
-(<code>shutdown.log</code> in the profile says what it waited for).</p>
-<p>What is written and when, for a report to survive what caused it:</p>
+<p>When Wren crashes, the toolkit's <code>gt:crash</code> writes <code>&lt;profile&gt;/crashes/crash-&lt;date&gt;-&lt;time&gt;-&lt;pid&gt;.txt</code> and, on Windows, a
+minidump beside it (<code>.dmp</code>). <code>src/browser/crash_report.odin</code> installs it at the start, with the profile's folder and the
+user's preferences file as the report's <code>[settings]</code>. The toolkit's <a href="https://github.com/sachahjkl/wren/blob/master/ext/gui_toolkit/docs/crash.md">crash.md</a> describes
+the report's format, its sections and what the handler does on each system.</p>
 <ul>
-<li>A stack overflow is handled on the thread that overflowed, so each thread keeps room for the handler. The main thread asks for it in <code>crashtrace</code>. Each thread of <code>host.thread_start</code> asks for it at its start (<code>src/host/thread_&lt;os&gt;.odin</code>): a stack guarantee of 64 KiB on Windows, an alternate signal stack on Linux. Without it, Windows dispatched the overflow on one page and the process could end with no report; Linux killed it at once. A thread of <code>core:thread</code> or of a library has no such room.</li>
-<li>Every faulting thread waits for the report. A second fault (the threads of a pass reading the same freed block) used to end the process under the writer.</li>
-<li>The filter runs only if the system's search for a handler walks the stack to the thread's start. On a stack it cannot follow (a return address written over, a jump through a bad pointer) it gives
-up and ends the process with no handler called. The vectored handler walks the stack the same way first, for every <code>0xC...</code> code, and reports when the walk stops short.</li>
-<li>The stack is walked in a copy (<code>crashtrace.Stack_Copy</code>): the walk of a damaged stack ends, it does not fault. The report's thread falling on something else ends that thread; what it wrote stays.</li>
-<li>The text comes first, addresses before names, the session file goes as soon as the cause is written, and the minidump comes last: DbgHelp allocates and takes locks that the crash may have left held.</li>
+<li>A program that ended itself with its session open (<code>ExitProcess</code> or <code>TerminateProcess</code>) leaves <code>exit-&lt;date&gt;.txt</code> with
+the stack that asked for it (Windows).</li>
+<li>A session that ended with no chance to write a report (a fail-fast, a kill, a power cut) is reported at the next start as
+<code>unclean-&lt;date&gt;.txt</code>.</li>
+<li>A close ended by the shutdown watchdog leaves no report: <code>host.shutdown_on_force</code> ends the session first, and
+<code>shutdown.log</code> in the profile says what it waited for.</li>
+<li>The next start keeps the newest report (<code>crash.last_report</code>). The crash recovery bar's Details button opens it in a tab.
+Nothing is sent anywhere.</li>
 </ul>
-<h2 id="what-a-report-says"><a class="anchor" href="#what-a-report-says" aria-hidden="true">#</a>What a report says</h2>
-<div class="code"><pre><code>Wren 0.4.0 (g6933902 2026-10-26)
-
-*** crash: exception (0xC000008C) at 0x7FF8A66B408A, thread 40736
-  build wren.exe 6ADF67692DFE000, base 0x7FF741D90000, size 0x2DFE000
-  #00 0x7FF8A66B408A RaiseException+0x8A  [KERNELBASE.dll+0xC408A]
-  #01 0x7FF741D98491 ?+0x0  [wren.exe+0x8491]
-  ...</code></pre></div>
-<ul>
-<li><code>build &lt;exe&gt; &lt;fingerprint&gt;</code>: the build that crashed. The fingerprint is the link time stamp and the image size of
-the exe's PE header (<code>%08X%X</code>, the key a symbol server uses for an executable): every link makes a new one, and
-signing does not change it. <code>base</code> is where the exe was loaded.</li>
-<li>Each frame: its address, what DbgHelp found in the process, and <code>[module+offset]</code>. A development, debug, check or
-profile build has its PDB beside it: the frames have names, files and lines. <strong>A release has no PDB</strong> (<code>-debug</code> would
-change the program: <code>ODIN_DEBUG</code>, the Direct3D debug layer, other code), so its own frames say <code>?</code> or the nearest
-export, which is wrong; the offsets are what counts.</li>
-<li><code>reading address 0xFFFFFFFFFFFFFFFF</code>: not -1. The system gives that for any address that is not canonical: the bytes of something else read as a pointer, most often a record freed and written over. The report adds <code>(not canonical)</code>, and in a build with freed memory poisoned <code>a pointer read from freed memory</code> (<a href="../../docs/testing/#freed-memory-made-loud">testing</a>).</li>
-</ul>
+<p>Each thread of <code>host.thread_start</code> keeps room for the handler of a stack overflow (<code>src/host/thread_&lt;os&gt;.odin</code>): a stack
+guarantee of 64 KiB on Windows, an alternate signal stack on Linux. A thread of <code>core:thread</code> or of a library has none.</p>
 <h2 id="the-symbols-of-a-build"><a class="anchor" href="#the-symbols-of-a-build" aria-hidden="true">#</a>The symbols of a build</h2>
-<p><code>build.bat</code> links every variant with <code>/MAP</code> (it changes nothing in the exe: the sections are byte for byte the same) and
-<code>wrentool symbols -Publish</code> renames the map <code>build\&lt;exe&gt;-&lt;fingerprint&gt;.map</code>; a release's is also kept in
-<code>build\symbols</code> (the 20 latest). The map lists every function with its address: Odin names a procedure <code>pkg::proc</code>, and a
-private one <code>pkg::[file.odin]::proc</code>, so a frame gets its function and, often, its file; there are no line numbers
-(those need the debug information of <code>-debug</code>).</p>
-<p>The map is never in what a user gets: <code>wrentool package</code> puts it in <code>build\dist\symbols\&lt;package&gt;-&lt;fingerprint&gt;.map</code>,
-the CI keeps it as an artifact (<code>wren-symbols-&lt;commit&gt;</code>; <code>wren-&lt;version&gt;-symbols</code> for a release, 90 days), and
-<code>wrentool experimental</code> leaves it beside the zip (and zipped in the <code>-Vault</code> folder).</p>
-<h2 id="naming-the-frames-of-a-report"><a class="anchor" href="#naming-the-frames-of-a-report" aria-hidden="true">#</a>Naming the frames of a report</h2>
-<div class="code"><pre><code>build\wrentool crash-symbolize "&lt;profile&gt;\crashes\crash 2026-10-26 15-47-09.txt" [-Symbols &lt;folder or .map&gt;] [-Exe &lt;exe with its PDB&gt;]</code></pre></div>
-<p>It reads the <code>build</code> line, finds <code>*-&lt;fingerprint&gt;.map</code> (in <code>-Symbols</code>, the report's folder, <code>build\</code>, <code>build\symbols</code>) and
-rewrites each frame inside the program as <code>function+0xoffset (file.odin)  [exe+0xoffset]</code>. A report from before the
-<code>build</code> line has only addresses: the minidump beside it gives the base and the fingerprint (its module list). Given a
-<code>.dmp</code> alone it names the exception's address. <code>-Symbols &lt;file.map&gt;</code> takes a map of another link, for instance the same
-commit rebuilt with the same flags: the tool warns that the time stamps differ, and the Odin frames are right as long
-as the code is the same. <code>-Exe</code> uses an exe and its PDB through DbgHelp instead (files and lines; a development build).</p>
-<p>The crash of 26/10 (an experimental build without the <code>build</code> line), named from its minidump and a rebuild of <code>6933902</code>
-with the same flags:</p>
-<div class="code"><pre><code>  #01 ... runtime.windows_trap_array_bounds+0x21  (procs_windows_amd64.odin)  [...exe+0x8491]
-  #02 ... runtime.bounds_trap+0x9
-  #03 ... runtime.bounds_check_error.handle_error-720+0x68
-  #04 ... ui.spacer+0x316
-  #05 ... browser.build_ui+0x3A8D
-  #06 ... browser.frame+0x7D12
-  #07 ... browser.main+0x15575</code></pre></div>
-<h2 id="tests"><a class="anchor" href="#tests" aria-hidden="true">#</a>Tests</h2>
-<p><code>src\tools\e2e\crash_reports.odin</code> (in <code>test_all</code>) makes <code>src/tools/crashmodes</code> die in each way and looks at what is left. The <code>@(test)</code> of <code>src/tools/wrentool/deps/symbols_test.odin</code> builds it as a release is
-built (no PDB, a map), makes it index out of range, and checks that the report has the <code>build</code> line and module offsets,
-that <code>wrentool crash-symbolize</code> names <code>crashmodes.index_out_of_range</code> under <code>main</code>, and that a report without the <code>build</code>
-line is named through its minidump. <code>src/crashtrace</code> has a unit test of the fingerprint (read in memory and from
-the file).</p>
+<p>A release has no PDB, so its own frames are module offsets. <code>wrentool build</code> links with <code>toolbox.CRASH_LINKER_FLAGS</code>
+(<code>/MAP</code> on Windows, <code>--build-id</code> on Linux). After each link on Windows, <code>toolbox.crash_publish_symbols</code> renames the map
+<code>&lt;exe stem&gt;-&lt;build&gt;.map</code>; a release build also copies it to <code>build/symbols</code>, which keeps the newest 20. A release package
+keeps its map beside the package, never in what is published.</p>
+<div class="code"><pre><code>wrentool crash-symbolize &lt;report.txt&gt; -Symbols &lt;the .map (Windows) or the executable (Linux)&gt;
+wrentool symbols -Build &lt;exe&gt;          the build id a report names
+wrentool symbolize -Exe &lt;exe&gt; &lt;offset&gt;  the function and line at an offset, from a -debug build's PDB</code></pre></div>
+<h2 id="other-stacks"><a class="anchor" href="#other-stacks" aria-hidden="true">#</a>Other stacks</h2>
+<ul>
+<li><code>wren ctl stacks &lt;pid&gt;</code> prints every thread of another process, named with its PDB (<code>src/stacks/stacks_windows.odin</code>).</li>
+<li>The sampling profiler and a tool's hang dump (<code>WREN_HANG_DUMP_MS</code>) walk a stopped thread of their own process in a copy of
+its stack (<code>src/stacks/stack_copy_windows.odin</code>): a damaged stack ends the walk, it does not fault.</li>
+</ul>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/crash-recovery/"><span>Previous</span><strong>Crash recovery</strong></a>
 <a class="doc-next" href="../../docs/testing/"><span>Next</span><strong>How the tests run, and how to go fast</strong></a>

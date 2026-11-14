@@ -49,17 +49,18 @@
 </nav>
 
 <p>The tab bar, the tabs, the toolbar and the address field are drawn by the toolkit (not by a page). Two styles, chosen by a
-preference, and a palette on top of either (<code>browser.ui.theme</code>: Graphite, Daylight, Nord, ...).</p>
+preference, and a palette on top of either (<code>appearance.theme</code>: Graphite, Daylight, Nord, ...).</p>
 <div class="table-box"><table>
 <thead><tr><th>Preference</th><th>Default</th><th></th></tr></thead>
 <tbody>
-<tr><td><code>browser.ui.chrome_style</code></td><td><code>classic</code></td><td><code>modern</code>: flat, tabs are rounded pills. <code>classic</code>: Chrome of 2010-2015, see below. Applies at once.</td></tr>
+<tr><td><code>browser.ui.chrome_style</code></td><td><code>classic</code></td><td><code>modern</code>: tabs are rounded pills. <code>classic</code>: Chrome of 2010-2015, see below. Applies at once.</td></tr>
+<tr><td><code>appearance.finish</code></td><td><code>flat</code></td><td>The toolkit's finish of every widget (machined, edged, flat, gradient, glass). With <code>machined</code>, the modern tabs are machined too: the current tab a bevelled part that rises under the pointer, carved grooves between tabs; <code>appearance.glow</code> sets the accent's halos. The classic shapes draw their own gradients whatever the finish.</td></tr>
 <tr><td><code>browser.ui.classic_slope_deg</code></td><td>22</td><td>Classic: how far the sides of a tab lean from the vertical (8 to 40). The larger, the more angular, the more the tabs overlap.</td></tr>
 <tr><td><code>browser.ui.classic_gloss</code></td><td>1</td><td>Classic: strength of the gradients and of the steps between the current tab, the other tabs and the tab bar (0 = flat colors, shapes and lines stay; 2 = more depth).</td></tr>
 </tbody>
 </table></div>
 <p>Change it in about:config, with <code>wren ctl pref set browser.ui.chrome_style modern</code>, from the command palette
-(<code>Appearance: classic tabs</code>, <code>Appearance: modern tabs</code>) or from the menu, View.</p>
+(<code>Appearance: classic tabs</code>, <code>Appearance: modern tabs</code>, <code>Finish: machined</code>...) or from the menu, View.</p>
 <h2 id="classic"><a class="anchor" href="#classic" aria-hidden="true">#</a>Classic</h2>
 <ul>
 <li><strong>Tabs</strong> are trapezoids: sloped sides, rounded shoulders, and at each foot a <em>concave</em> curve that flares out and joins the

@@ -51,7 +51,7 @@
 <p>Wren can install a new release itself. It never does so without you pressing "Install the update" in About Wren (or running the command of that name), and it only installs a program that Froment Software signed.</p>
 <h2 id="how-it-works"><a class="anchor" href="#how-it-works" aria-hidden="true">#</a>How it works</h2>
 <ol>
-<li><strong>Check.</strong> "Check for updates" (or the daily check, off by default: <code>browser.update.check_daily</code>) asks GitHub for the latest release.</li>
+<li><strong>Check.</strong> "Check for updates" (or the daily check, off by default: <code>update.auto</code>) asks GitHub for the latest release.</li>
 <li><strong>Verify.</strong> For a newer release, Wren fetches <code>update-windows-x64.json</code> and <code>update-windows-x64.json.sig</code>. It checks, in this order: the Ed25519 signature with the update key built into Wren; that the manifest is for this platform; that its version is the one announced; that it is strictly newer than this program (no downgrade).</li>
 <li><strong>Install.</strong> The program is downloaded to memory; its length, then its SHA-256, must be the signed ones. It is written beside the program (<code>wren.exe.update</code>), read back and compared again; then the running file is renamed to <code>wren.exe.old</code> and the new one renamed in. If any step fails, the old program stays as it was.</li>
 <li><strong>Restart.</strong> The new version runs at the next start; the <code>.old</code> file is deleted then.</li>
@@ -68,7 +68,7 @@
 <thead><tr><th>Setting</th><th>Meaning</th><th>Default</th></tr></thead>
 <tbody>
 <tr><td><code>browser.update.url</code></td><td>What announces a release (a JSON document with <code>tag_name</code> and <code>html_url</code>, as GitHub's "latest release" answers)</td><td>the GitHub API of this repository</td></tr>
-<tr><td><code>browser.update.base_url</code></td><td>Where the files are: <code>&lt;base&gt;v&lt;version&gt;/update-windows-x64.json</code>, its <code>.sig</code> and the program. <code>https://</code> (or <code>http://127.0.0.1</code>/<code>localhost</code>), ending in <code>/</code></td><td>the GitHub releases of this repository</td></tr>
+<tr><td><code>update.base_url</code></td><td>Where the files are: <code>&lt;base&gt;v&lt;version&gt;/update-windows-x64.json</code>, its <code>.sig</code> and the program. <code>https://</code> (or <code>http://127.0.0.1</code>/<code>localhost</code>), ending in <code>/</code></td><td>the GitHub releases of this repository</td></tr>
 <tr><td><code>browser.update.public_key</code></td><td>The key (base64url, 32 bytes) the manifest must be signed with</td><td>empty: the key built into Wren</td></tr>
 <tr><td><code>browser.update.require_signature</code></td><td>Refuse a manifest that is not validly signed</td><td>on</td></tr>
 </tbody>
@@ -79,7 +79,7 @@
 <li>The checks and the placement are the toolkit's update package (<code>ext/gui_toolkit/src/update</code>, its <code>docs/update.md</code>); <code>src/update/product.odin</code> is what Wren is to it (name, signing context, key).</li>
 <li>The private key is <code>UPDATE_SIGNING_KEY</code> in <code>secrets/production.yaml</code> and the GitHub secret <code>WREN_UPDATE_SIGNING_KEY</code>. The public key is <code>PRODUCT.public_key</code> in <code>src/update/product.odin</code>.</li>
 <li><code>wrentool update keygen</code>, <code>pubkey</code>, <code>manifest</code>, <code>sign</code>, <code>verify</code>. The release workflow runs <code>wrentool package -RequireUpdateManifest</code> and publishes both files.</li>
-<li>Preferences for tests: <code>browser.update.base_url</code>, <code>browser.update.public_key</code>, <code>browser.update.allow_development_build</code>.</li>
+<li>Preferences for tests: <code>update.base_url</code>, <code>browser.update.public_key</code>, <code>browser.update.allow_development_build</code>.</li>
 </ul>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/test-review/"><span>Previous</span><strong>Review of the test system</strong></a>

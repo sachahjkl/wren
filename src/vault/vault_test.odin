@@ -7,6 +7,7 @@ package vault
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:testing"
 import "core:time"
@@ -78,6 +79,7 @@ fake_send :: proc(t: ^Transport, frame: []u8) {
 	}
 	if p, has := o["provider"].(json.String); has { append(&f.script.notes, strings.concatenate({"provider=", p})) }
 	if r, has := o["resend"].(json.Boolean); has && bool(r) { append(&f.script.notes, strings.clone("resend")) }
+	if k, has := o["keep_pin"].(json.Boolean); has && bool(k) { append(&f.script.notes, strings.clone("keep_pin")) }
 	if idle, has := o["idle_seconds"].(json.Integer); has { f.script.hello_idle = i64(idle) }
 	if op == "search" {
 		off, _ := o["offset"].(json.Integer)
@@ -816,7 +818,8 @@ the_helper_locking_itself_is_a_lock_not_a_failure :: proc(t: ^testing.T) {
 }
 
 // The server refused the session and the helper could not renew it: the account is logged out (only a new login opens
-// one), its message kept for the login.
+// one), its message kept for the login; the person did not ask for it, so the helper keeps the PIN, and the next login
+// of the account has it again.
 @(test)
 a_session_the_server_ended_logs_out :: proc(t: ^testing.T) {
 	x := unlocked_fx(t)
@@ -827,6 +830,25 @@ a_session_the_server_ended_logs_out :: proc(t: ^testing.T) {
 	testing.expect_value(t, x.v.state, State.Logged_Out)
 	testing.expect_value(t, x.v.message, "The server ended this session. Log in again with the master password.")
 	testing.expect_value(t, last_op(x), "logout")
+	testing.expect(t, slice.contains(x.script.notes[:], "keep_pin"), "the PIN is kept")
+	answer(x, "hello", `"ok":true,"account":"none","email":""`)
+	answer(x, "login", `"ok":true,"result":"ok","pin":true`)
+	testing.expect(t, vault_login(&x.v, "me@example.com", "master"))
+	settle(x)
+	testing.expect_value(t, x.v.state, State.Unlocked)
+	testing.expect(t, x.v.pin, "the login has the PIN again")
+}
+
+// A logout the person asks for removes the PIN with the account.
+@(test)
+a_logout_asked_for_removes_the_pin :: proc(t: ^testing.T) {
+	x := unlocked_fx(t)
+	defer fx_destroy(x)
+	testing.expect(t, vault_logout(&x.v))
+	settle(x)
+	testing.expect_value(t, last_op(x), "logout")
+	testing.expect(t, !slice.contains(x.script.notes[:], "keep_pin"))
+	testing.expect(t, !x.v.pin)
 }
 
 @(test)

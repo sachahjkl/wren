@@ -312,6 +312,10 @@ System store for tokens (phase 2), with the Rust crate `keyring`:
 
 A stolen token alone gives only encrypted data. The user key is never stored, except inside the PIN envelope.
 A PIN is weaker than the master password: the helper counts wrong PINs in its state and deletes the envelope after 5.
+The PIN itself is never stored, nor put in the system store: anyone with the session would open the vault with it.
+A new login of the same account on the same server keeps the PIN while the account's user key is the one the PIN seals
+(the helper compares a check of the key, `pin_check`). A logout the person asks for, another account or a key rotated in
+the web vault removes it. A session the server ended (`session_expired`) keeps it for the next login.
 
 Phase 0 must list exactly what the SDK writes to `state.sqlite` at the pinned revision, and update this table.
 

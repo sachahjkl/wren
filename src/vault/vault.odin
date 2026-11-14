@@ -594,8 +594,9 @@ vault_lock :: proc(v: ^Vault) {
 }
 
 // Logout: the helper forgets the account here (its state, its tokens in the system store, the PIN) and exits; the account
-// file goes. A helper is started for that when none runs.
-vault_logout :: proc(v: ^Vault) -> bool {
+// file goes. A helper is started for that when none runs. `keep_pin`: the session ended without the person asking (the
+// server refused it): the helper keeps the PIN for the next login of the same account, which then needs no new PIN.
+vault_logout :: proc(v: ^Vault, keep_pin := false) -> bool {
 	#partial switch v.state {
 	case .Disabled, .Locating, .Helper_Missing: return false
 	}
@@ -603,6 +604,7 @@ vault_logout :: proc(v: ^Vault) -> bool {
 	if ensure_helper(v) {
 		r: Request
 		request_begin(&r, next_id(v), .Logout, 0)
+		if keep_pin { request_bool(&r, "keep_pin", true) }
 		if frame, ok := request_end(&r); ok { v.t.send(v.t, frame) }
 	}
 	close_helper(v)   // (it reads what is queued, the logout included, then its input ends)
@@ -1481,7 +1483,7 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 			string_wipe(&v.remembered)
 			v.remembered = strings.clone(v.email, base.process_allocator())
 		}
-		v.pin = false   // (a new login starts without a PIN)
+		v.pin = a.pin   // (a login of the account that had a PIN keeps it, when its vault key was not changed)
 		v.passkey = a.passkey   // (the login's sync says whether a passkey of the account unlocks it)
 		write_account(v)
 		became_unlocked(v)
@@ -1530,8 +1532,9 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 		changed(v)
 		if !a.ok && a.error == "session_expired" {
 			// (the server refuses the session and its token cannot be renewed: only a new login opens one; the vault's
-			// copy would go stale while it stays open, so the account is logged out, its email remembered for the login)
-			vault_logout(v)
+			// copy would go stale while it stays open, so the account is logged out, its email remembered for the login;
+			// the person did not ask for it: its PIN stays for that login)
+			vault_logout(v, keep_pin = true)
 			set_message(v, a.message != "" ? a.message : i18n.tr("The server ended this session. Log in again with the master password."))
 			return
 		}

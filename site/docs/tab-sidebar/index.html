@@ -321,9 +321,9 @@ the row while it widens;</li>
 <li>the width handle is there only when the sidebar is open.</li>
 </ul>
 <p>The animation asks for its frames while it moves and stops once the width is within half a pixel of its end (none after).
-With <code>browser.ui.animations</code> off, or <code>system</code> and Windows' animation effects off, or a duration of 0, it changes at once.</p>
+With <code>appearance.animations</code> off, or <code>system</code> and Windows' animation effects off, or a duration of 0, it changes at once.</p>
 <h3 id="the-toolbar-in-the-title-bar"><a class="anchor" href="#the-toolbar-in-the-title-bar" aria-hidden="true">#</a>The toolbar in the title bar</h3>
-<p>With an integrated title bar (<code>browser.window.integrated_titlebar</code>, the default) the toolbar <em>is</em> the title bar: one row,
+<p>With an integrated title bar (<code>window.system_title</code> off, the default) the toolbar <em>is</em> the title bar: one row,
 as high as the row of tabs would be (never lower than the system's title bar), instead of a title bar holding only the icon
 and the window buttons above the toolbar (<code>sidebar_titlebar</code> in <code>tab_sidebar.odin</code>).</p>
 <ul>
