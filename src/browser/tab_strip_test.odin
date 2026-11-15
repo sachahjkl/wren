@@ -13,20 +13,6 @@ tab_widths_share_the_strip :: proc(t: ^testing.T) {
 	testing.expect_value(t, tab_width(100, 3, 300, 240), 240)   // a minimum above the maximum: the maximum
 }
 
-// The strip's scroll stays in range and shows the current tab when it changes, without moving otherwise.
-@(test)
-strip_scroll_follows_the_current_tab :: proc(t: ^testing.T) {
-	test_app(t)
-	// 30 tabs of 60 px in 600 px: up to 1200 px of scroll
-	testing.expect_value(t, strip_offset(0, 30, 60, 600, 29, true), 1200)    // the last tab: scrolled to the end
-	testing.expect_value(t, strip_offset(1200, 30, 60, 600, 0, true), 0)     // the first: back to the start
-	testing.expect_value(t, strip_offset(300, 30, 60, 600, 7, true), 300)    // already visible: no move
-	testing.expect_value(t, strip_offset(300, 30, 60, 600, 29, false), 300)  // not following: stays
-	testing.expect_value(t, strip_offset(5000, 30, 60, 600, 0, false), 1200) // clamped
-	testing.expect_value(t, strip_offset(80, 5, 60, 600, 4, true), 0)        // everything fits: no scroll
-	testing.expect_value(t, strip_offset(0, 30, 60, 600, 12, true), 180)     // tab 12 (720..780) brought to the right edge
-}
-
 // A dragged tab belongs to the slot its middle is over.
 @(test)
 dragged_tab_slots :: proc(t: ^testing.T) {
