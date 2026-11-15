@@ -719,18 +719,6 @@ vault_first_field :: proc(email_known: bool, email_box, password_box: ^ui.Box) -
 	return email_known && password_box != nil ? password_box : email_box
 }
 
-// One text field of the dialogs; Enter submits, Escape cancels.
-dialog_field :: proc(id: string, f: ^ui.Line_Edit, placeholder: string, secret: bool, submit, cancel: ^bool, reveal: ^bool = nil) -> ^ui.Box {
-	em := ui.font_size()
-	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-	// (a secret field has the eye that shows its text: the person chose to see it; the Vault's surfaces are empty boxes
-	// to captures and remote control, vault_shell_activity)
-	r := ui.line_edit(id, f, {placeholder = placeholder, kind = secret ? ui.Line_Edit_Kind.Secret : .Plain, reveal = secret ? reveal : nil, own_menu = secret})
-	if r.committed { submit^ = true }
-	if r.cancelled { cancel^ = true }
-	return r.box
-}
-
 vault_dialogs_build :: proc(app: ^App) {
 	s := &app.vault
 	vault_passkey_frame(app)   // (a passkey the Vault waits for: its ceremony starts)
@@ -837,6 +825,10 @@ vault_login_view :: proc(view: ^ui.View, app: ^App) {
 	}
 	ui.view_title(view, title)
 	ui.view_icon(view, glyph, app.lucide)
+	// Its fields: Enter submits, Escape cancels. A secret has the eye that shows its text (the person chose to see it)
+	// and no edit menu (own_menu, none built: nothing to copy it out); the Vault's surfaces are empty boxes to captures
+	// and remote control (vault_shell_activity).
+	field_h := ui.px(ui.dense(em * 2))
 	// (the address of a self-hosted server was typed: the login goes once the Vault took it)
 	if s.pending_submit && !busy {
 		s.pending_submit = false
@@ -862,7 +854,9 @@ vault_login_view :: proc(view: ^ui.View, app: ^App) {
 					}
 					if v.settings.region == .Self {
 						ui.spacer(ui.px(em * 0.3))
-						dialog_field("###vd_server", &s.server, i18n.tr("https://vault.example.org"), false, &submit, &cancel)
+						ui.next({width = ui.fill(), height = field_h})
+						r := ui.line_edit("###vd_server", &s.server, {placeholder = i18n.tr("https://vault.example.org")})
+						submit, cancel = submit || r.committed, cancel || r.cancelled
 						if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("A server with a certificate of a private authority needs that authority in the system's certificate store."), "###vd_server_ca"}, ui.frame_allocator())) }
 					}
 					ui.spacer(ui.px(em * 0.4))
@@ -876,7 +870,9 @@ vault_login_view :: proc(view: ^ui.View, app: ^App) {
 					hint := v.factor == .Email ? (v.email_sent ? i18n.tr("Type the code that was mailed to you.") : i18n.tr("Ask for a code by email, then type it.")) : i18n.tr("Type the code of your authenticator app.")
 					ui.paragraph(strings.concatenate({hint, "###vd_code_hint"}, ui.frame_allocator()))
 					ui.spacer(ui.px(em * 0.3))
-					first = dialog_field("###vd_code", &s.code, i18n.tr("Code"), true, &submit, &cancel, &app.vault.reveal)
+					ui.next({width = ui.fill(), height = field_h})
+					r := ui.line_edit("###vd_code", &s.code, {placeholder = i18n.tr("Code"), kind = .Secret, reveal = &s.reveal, own_menu = true})
+					submit, cancel, first = submit || r.committed, cancel || r.cancelled, r.box
 					ui.spacer(ui.px(em * 0.3))
 					ui.next({width = ui.fill(), height = ui.children_sum()})
 					if ui.row(.Center, {}, "###vd_factor_actions") {
@@ -901,7 +897,9 @@ vault_login_view :: proc(view: ^ui.View, app: ^App) {
 				case device:
 					ui.paragraph(strings.concatenate({i18n.tr("Your account does not know this device yet. Type the code that the server mailed to you."), "###vd_device_hint"}, ui.frame_allocator()))
 					ui.spacer(ui.px(em * 0.3))
-					first = dialog_field("###vd_device_code", &s.code, i18n.tr("Code"), true, &submit, &cancel, &app.vault.reveal)
+					ui.next({width = ui.fill(), height = field_h})
+					r := ui.line_edit("###vd_device_code", &s.code, {placeholder = i18n.tr("Code"), kind = .Secret, reveal = &s.reveal, own_menu = true})
+					submit, cancel, first = submit || r.committed, cancel || r.cancelled, r.box
 					ui.spacer(ui.px(em * 0.3))
 					if !busy && ui.button("###vd_send_device", i18n.tr("Send a new code"), lucide.SEND_HORIZONAL, {width = ui.fill()}).clicked { vault.vault_send_code(v) }
 				case unlock:
@@ -910,7 +908,9 @@ vault_login_view :: proc(view: ^ui.View, app: ^App) {
 					// (what the field takes stays said above it: a placeholder goes with the first character)
 					if ui.tags("weak") { ui.paragraph(strings.concatenate({use_pin ? i18n.tr("Your PIN") : i18n.tr("Your master password"), "###vd_secret_label"}, ui.frame_allocator())) }
 					ui.spacer(ui.px(em * 0.2))
-					first = dialog_field("###vd_password", &s.password, use_pin ? i18n.tr("PIN") : i18n.tr("Master password"), true, &submit, &cancel, &app.vault.reveal)
+					ui.next({width = ui.fill(), height = field_h})
+					r := ui.line_edit("###vd_password", &s.password, {placeholder = use_pin ? i18n.tr("PIN") : i18n.tr("Master password"), kind = .Secret, reveal = &s.reveal, own_menu = true})
+					submit, cancel, first = submit || r.committed, cancel || r.cancelled, r.box
 					if !v.pin {
 						ui.spacer(ui.px(em * 0.3))
 						if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("No PIN is set: a new login removes it. Once unlocked, set one from the Vault panel."), "###vd_no_pin"}, ui.frame_allocator())) }
@@ -936,19 +936,29 @@ vault_login_view :: proc(view: ^ui.View, app: ^App) {
 						}
 					}
 				case s.api_key:
-					first = dialog_field("###vd_client_id", &s.client_id, i18n.tr("API key client_id (user.…)"), false, &submit, &cancel)
+					ui.next({width = ui.fill(), height = field_h})
+					id_r := ui.line_edit("###vd_client_id", &s.client_id, {placeholder = i18n.tr("API key client_id (user.…)")})
 					ui.spacer(ui.px(em * 0.4))
-					dialog_field("###vd_client_secret", &s.client_secret, i18n.tr("API key client_secret"), true, &submit, &cancel, &app.vault.reveal)
+					ui.next({width = ui.fill(), height = field_h})
+					secret_r := ui.line_edit("###vd_client_secret", &s.client_secret, {placeholder = i18n.tr("API key client_secret"), kind = .Secret, reveal = &s.reveal, own_menu = true})
 					ui.spacer(ui.px(em * 0.4))
-					dialog_field("###vd_password", &s.password, i18n.tr("Master password"), true, &submit, &cancel, &app.vault.reveal)
+					ui.next({width = ui.fill(), height = field_h})
+					pass_r := ui.line_edit("###vd_password", &s.password, {placeholder = i18n.tr("Master password"), kind = .Secret, reveal = &s.reveal, own_menu = true})
+					submit = submit || id_r.committed || secret_r.committed || pass_r.committed
+					cancel = cancel || id_r.cancelled || secret_r.cancelled || pass_r.cancelled
+					first = id_r.box
 					ui.spacer(ui.px(em * 0.3))
 					if ui.button("###vd_mode", i18n.tr("Use the email and password"), lucide.USER, {width = ui.fill()}).clicked { s.api_key = false; s.focus = true }
 				case:
-					email_box := dialog_field("###vd_email", &s.email, i18n.tr("Email"), false, &submit, &cancel)
+					ui.next({width = ui.fill(), height = field_h})
+					email_r := ui.line_edit("###vd_email", &s.email, {placeholder = i18n.tr("Email")})
 					ui.spacer(ui.px(em * 0.4))
-					pass_box := dialog_field("###vd_password", &s.password, i18n.tr("Master password"), true, &submit, &cancel, &app.vault.reveal)
+					ui.next({width = ui.fill(), height = field_h})
+					pass_r := ui.line_edit("###vd_password", &s.password, {placeholder = i18n.tr("Master password"), kind = .Secret, reveal = &s.reveal, own_menu = true})
+					submit = submit || email_r.committed || pass_r.committed
+					cancel = cancel || email_r.cancelled || pass_r.cancelled
 					// (a remembered email: the keyboard goes where the next thing to type is, the password)
-					first = vault_first_field(ui.line_edit_string(&s.email) != "", email_box, pass_box)
+					first = vault_first_field(ui.line_edit_string(&s.email) != "", email_r.box, pass_r.box)
 					ui.spacer(ui.px(em * 0.4))
 					if !busy {
 						ui.next({width = ui.fill(), height = ui.children_sum()})
@@ -1058,8 +1068,11 @@ vault_pin_view :: proc(view: ^ui.View, app: ^App) {
 				ui.spacer(ui.px(em * 0.9))
 				if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("The PIN unlocks the Vault in this profile. After 5 wrong PINs, only the master password unlocks it."), "###vpin_hint"}, ui.frame_allocator())) }
 				ui.spacer(ui.px(em * 0.8))
-				box := dialog_field("###vpin_field", &s.pin, i18n.tr("PIN (4 characters or more)"), true, &submit, &cancel, &app.vault.reveal)
-				if s.focus && box != nil { s.focus = false; ui.set_focus(box.key) }
+				// (Enter sets, Escape cancels; a secret: the eye, no edit menu)
+				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+				r := ui.line_edit("###vpin_field", &s.pin, {placeholder = i18n.tr("PIN (4 characters or more)"), kind = .Secret, reveal = &s.reveal, own_menu = true})
+				submit, cancel = r.committed, r.cancelled
+				if s.focus && r.box != nil { s.focus = false; ui.set_focus(r.box.key) }
 				ui.spacer(ui.px(em * 0.4))
 			}
 			ui.spacer(ui.px(em * 1.0))

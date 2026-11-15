@@ -146,8 +146,11 @@ key_pin_view :: proc(v: ^ui.View, app: ^App) {
 					ui.paragraph(strings.concatenate({words, "###kp_wrong"}, ui.frame_allocator()))
 				}
 				ui.spacer(ui.px(em * 0.8))
-				box := dialog_field("###kp_field", &d.field, i18n.tr("PIN"), true, &submit, &cancel, &d.reveal)
-				if d.focus && box != nil { d.focus = false; ui.set_focus(box.key) }
+				// (Enter answers, Escape cancels; a secret: the eye, no edit menu)
+				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+				r := ui.line_edit("###kp_field", &d.field, {placeholder = i18n.tr("PIN"), kind = .Secret, reveal = &d.reveal, own_menu = true})
+				submit, cancel = r.committed, r.cancelled
+				if d.focus && r.box != nil { d.focus = false; ui.set_focus(r.box.key) }
 				ui.spacer(ui.px(em * 0.4))
 			}
 			ui.spacer(ui.px(em * 1.0))
