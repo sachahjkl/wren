@@ -3,8 +3,8 @@ package browser
 // Frame pacing: the rate frames are made at while something moves, and the clock they show.
 //
 // The target rate is the refresh rate of the monitor the window is on (platform.display_info: the exact rate of the
-// display path, e.g. 179.98 Hz, read again when the window changes monitor or the mode changes), or browser.frame.target_hz,
-// capped by browser.frame.max_hz. Its period is the frame budget everything is measured against (status bar, title,
+// display path, e.g. 179.98 Hz, read again when the window changes monitor or the mode changes), or the rate the standard
+// rendering.frame_rate names. Its period is the frame budget everything is measured against (status bar, title,
 // profiler): 5.56 ms at 180 Hz.
 //
 // How frames are paced:
@@ -42,22 +42,17 @@ PACER_LIVE_HZ_PERIOD_NS :: 100_000_000
 PACING_DEBUG :: #config(PACING_DEBUG, false)
 _ :: fmt   // PACING_DEBUG only
 
-// What browser.frame.cap says that is not a rate.
-FRAME_CAP_AUTO :: "auto"
-FRAME_CAP_CUSTOM :: "custom"
-FRAME_CAP_UNCAPPED :: "uncapped"
+// The frame rate is the toolkit's standard rendering.frame_rate (Settings › Rendering, the same in every program): "screen"
+// (the monitor's rate), a rate (30, 60, 120, 240) or "uncapped". Wren's pacer is its own (one per browser window, with
+// its timed slots and its page phase), so it reads the setting itself rather than through Standard_Targets.pacer.
+FRAME_RATE_PREF :: "rendering.frame_rate"
+FRAME_RATE_SCREEN :: "screen"
+FRAME_RATE_UNCAPPED :: "uncapped"
+FRAME_RATE_CHOICES :: [?]string{FRAME_RATE_SCREEN, "30", "60", "120", "240", FRAME_RATE_UNCAPPED}
 
 FRAME_PREFS := [?]config.Def{
-	{name = "browser.frame.target_hz", kind = .String, default = {s = "auto"},
-		description = "Frames per second while something moves (nothing moves: no frames). auto = the refresh rate of the monitor the window is on (followed when the window moves to another monitor or the display mode changes). A number of hertz (10 to 1000) paces frames at that rate instead, e.g. to see how pages behave at 60 or 120 Hz on a faster monitor: a whole divisor of the monitor's rate shows every n-th refresh, another rate is timed by the browser. The frame budget (status bar, profiler) follows it."},
 	{name = "browser.frame.variable_refresh", kind = .String, default = {s = "auto"}, choices = {"auto", "on", "off"},
-		description = "A screen with a variable or dynamic refresh rate (G-Sync, FreeSync, Windows 11's dynamic refresh rate, which rests at 60 Hz and goes up to 180 Hz while something moves) reports the rate it rests at, not the one it shows frames at. auto: when the monitor offers modes above the rate it reports, frames aim for the highest (browser.frame.target_hz = auto) and are timed by the browser, never faster, whatever the input rate (a mouse at 1000 Hz makes a frame per period, not per move). on: the same for a screen that reports its top rate but varies it (G-Sync without a dynamic rate). off: the rate the system reports. Reported as `variableRefresh`, `hz`, `hzMax` and `hzNow` in `wren ctl stats`."},
-	{name = "browser.frame.max_hz", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 1000, unit = "Hz",
-		description = "Most frames per second whatever the monitor (0 = no limit), e.g. 60 to save power on a 180 Hz monitor."},
-	{name = "browser.frame.cap", kind = .String, default = {s = FRAME_CAP_AUTO}, choices = {FRAME_CAP_AUTO, "60", "120", "240", FRAME_CAP_CUSTOM, FRAME_CAP_UNCAPPED},
-		description = "Most frames per second while something moves. auto: what the monitor shows. A number: that ceiling (with browser.frame.max_hz, the lower of the two). custom: the ceiling browser.frame.cap_custom_hz says. uncapped: as fast as they can be made, each shown at once, whatever the monitor and the other limits say; it costs power and may tear. Nothing moves: no frames, whatever this says."},
-	{name = "browser.frame.cap_custom_hz", kind = .Int, default = {i = 90}, bounded = true, min = 10, max = 1000, unit = "Hz",
-		description = "The ceiling of browser.frame.cap = custom."},
+		description = "A screen with a variable or dynamic refresh rate (G-Sync, FreeSync, Windows 11's dynamic refresh rate, which rests at 60 Hz and goes up to 180 Hz while something moves) reports the rate it rests at, not the one it shows frames at. auto: when the monitor offers modes above the rate it reports, frames aim for the highest (rendering.frame_rate = screen) and are timed by the browser, never faster, whatever the input rate (a mouse at 1000 Hz makes a frame per period, not per move). on: the same for a screen that reports its top rate but varies it (G-Sync without a dynamic rate). off: the rate the system reports. Reported as `variableRefresh`, `hz`, `hzMax` and `hzNow` in `wren ctl stats`."},
 	{name = "browser.frame.wait_timeout_ms", kind = .Int, default = {i = 100}, bounded = true, min = 1, max = 2000, unit = "ms",
 		description = "Longest wait for the screen to take the next frame (a monitor that stopped refreshing, a locked session)."},
 	{name = "browser.frame.swap_buffers", kind = .Int, default = {i = 3}, bounded = true, min = 2, max = 4, restart = true,
@@ -84,9 +79,8 @@ RETIRED_FRAME_PREFS :: [?]string{
 register_frame_prefs :: proc(p: ^config.Prefs) { config.register(p, FRAME_PREFS[:]) }
 
 Pacer_Settings :: struct {
-	target_hz:  f64,                   // 0 = the display's
-	max_hz:     f64,                   // 0 = none (browser.frame.max_hz and browser.frame.cap)
-	cap:        string,                // browser.frame.cap as it is written (the preference's own)
+	target_hz:  f64,                   // 0 = the display's (rendering.frame_rate)
+	rate:       string,                // rendering.frame_rate as it is written (the commands' check marks)
 	uncapped:   bool,
 	mode:       render.Present_Mode,
 	timeout_ms: int,
@@ -97,20 +91,17 @@ Pacer_Settings :: struct {
 
 pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
 	s := Pacer_Settings{
-		max_hz = config.float_of(p, "browser.frame.max_hz"),
-
 		timeout_ms = int(config.int_of(p, "browser.frame.wait_timeout_ms")),
 		drag_probe = config.bool_of(p, "browser.frame.drag_probe"),
 		latency_probe = config.bool_of(p, "browser.frame.latency_probe") || os.get_env("WREN_LATENCY", context.temp_allocator) == "1",
 	}
 	// (the standard rendering.present; a registry of the frame's preferences alone, a test's, has it not)
 	if config.ref_of(p, "rendering.present") != config.NO_REF && config.string_of(p, "rendering.present") == "tearing" { s.mode = .Tearing }
-	s.target_hz = parse_target_hz(config.string_of(p, "browser.frame.target_hz"))
-	cap := config.string_of(p, "browser.frame.cap")
-	s.cap = cap
-	s.uncapped = cap == FRAME_CAP_UNCAPPED
-	hz := cap == FRAME_CAP_CUSTOM ? f64(config.int_of(p, "browser.frame.cap_custom_hz")) : parse_target_hz(cap)
-	if hz > 0 { s.max_hz = s.max_hz > 0 ? min(s.max_hz, hz) : hz }
+	// (the standard set registers it; a registry of the frame's preferences alone, a test's, has it not: the screen's rate)
+	s.rate = FRAME_RATE_SCREEN
+	if config.ref_of(p, FRAME_RATE_PREF) != config.NO_REF { s.rate = config.string_of(p, FRAME_RATE_PREF) }
+	s.uncapped = s.rate == FRAME_RATE_UNCAPPED
+	s.target_hz = parse_target_hz(s.rate)
 	switch config.string_of(p, "browser.frame.variable_refresh") {
 	case "on":  s.variable = .On
 	case "off": s.variable = .Off
@@ -167,6 +158,7 @@ Pacing :: struct {
 	cfg:   Pacer_Settings,
 	watch: int,
 	watch_present: int,   // the standard rendering.present
+	watch_rate:    int,   // the standard rendering.frame_rate
 	timer: rawptr,   // the timing of timed frames (a high-resolution waitable timer on Windows; none elsewhere)
 	waiting: bool,   // atomic: a frame waits for its slot on the timer and runs the loop's tasks as they come (pacer_slot_wait)
 }
@@ -203,19 +195,21 @@ pacer_init :: proc(app: ^App) {
 	}
 	app.pacing.watch = config.watch(&app.prefs, "browser.frame.", changed, app)
 	app.pacing.watch_present = config.watch(&app.prefs, "rendering.present", changed, app)
+	app.pacing.watch_rate = config.watch(&app.prefs, FRAME_RATE_PREF, changed, app)
 	pacer_update(app)
 }
 
 pacer_destroy :: proc(app: ^App) {
 	config.unwatch(&app.prefs, app.pacing.watch)
 	config.unwatch(&app.prefs, app.pacing.watch_present)
+	config.unwatch(&app.prefs, app.pacing.watch_rate)
 	pacer_timer_destroy(app.pacing.timer)
 	app.pacing = {}
 }
 
 // The model's choices from the preferences (`tearing`: asked for and supported).
 pacer_choices :: proc(cfg: Pacer_Settings, tearing: bool) -> platform.Cadence_Choices {
-	return {target_hz = cfg.target_hz, max_hz = cfg.max_hz, variable = cfg.variable, tearing = tearing}
+	return {target_hz = cfg.target_hz, variable = cfg.variable, tearing = tearing}
 }
 
 // The monitor's rate and the preferences, turned into a plan: once per frame (cheap unless something changed).

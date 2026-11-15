@@ -25,7 +25,7 @@ COMMAND_ICONS :: [?][2]string{
 	{"page.info", lucide.INFO}, {"page.javascript_site", lucide.CODE},
 	{"view.status_bar", lucide.PANEL_BOTTOM}, {"view.smooth_scrolling", lucide.ARROW_UP_DOWN},
 	{"view.autoscroll", lucide.ARROW_UP_DOWN}, {"view.frame_statistics", lucide.GAUGE}, {"view.title_statistics", lucide.GAUGE},
-	{"view.frame_cap.", lucide.GAUGE}, {"view.console", lucide.SQUARE_TERMINAL},
+	{"view.frame_rate.", lucide.GAUGE}, {"view.console", lucide.SQUARE_TERMINAL},
 	{"view.devtools_elements", lucide.CODE}, {"view.devtools_network", lucide.NETWORK},
 	{"view.devtools_dock_bottom", lucide.PANEL_BOTTOM}, {"view.devtools_dock_right", lucide.PANEL_RIGHT},
 	{"view.devtools_dock_left", lucide.PANEL_LEFT}, {"view.devtools_dock_floating", lucide.APP_WINDOW},

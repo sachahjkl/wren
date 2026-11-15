@@ -39,6 +39,25 @@ pacing_target_rate_preference :: proc(t: ^testing.T) {
 	testing.expect_value(t, parse_target_hz("-3"), 0)
 }
 
+// The frame rate is the toolkit's standard rendering.frame_rate: the screen's rate by default, a rate it names, or uncapped.
+@(test)
+the_frame_rate_is_the_standard_setting :: proc(t: ^testing.T) {
+	test_app(t)
+	p := config.prefs_make()
+	defer config.prefs_destroy(&p)
+	register_all_prefs(&p)
+	s := pacer_settings_from_prefs(&p)
+	testing.expect(t, s.rate == FRAME_RATE_SCREEN && s.target_hz == 0 && !s.uncapped)
+	testing.expect_value(t, config.set_from_string(&p, FRAME_RATE_PREF, "60", .User), config.Set_Error.None)
+	s = pacer_settings_from_prefs(&p)
+	testing.expect(t, s.rate == "60" && s.target_hz == 60 && !s.uncapped)
+	testing.expect_value(t, config.set_from_string(&p, FRAME_RATE_PREF, FRAME_RATE_UNCAPPED, .User), config.Set_Error.None)
+	testing.expect(t, pacer_settings_from_prefs(&p).uncapped)
+	for gone in ([]string{"browser.frame.target_hz", "browser.frame.max_hz", "browser.frame.cap", "browser.frame.cap_custom_hz"}) {
+		testing.expectf(t, config.ref_of(&p, gone) == config.NO_REF, "%s is gone", gone)
+	}
+}
+
 // The preferences the model replaced are read without error (a profile that set them keeps working) and change nothing; the
 // ones that are real choices reach the model.
 @(test)
@@ -54,10 +73,8 @@ retired_frame_preferences_are_ignored :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, pacer_settings_from_prefs(&p) == before, "nothing changes")
 	testing.expect_value(t, config.set_from_string(&p, "browser.frame.variable_refresh", "off", .User), config.Set_Error.None)
-	testing.expect_value(t, config.set_from_string(&p, "browser.frame.target_hz", "120", .User), config.Set_Error.None)
-	testing.expect_value(t, config.set_from_string(&p, "browser.frame.max_hz", "100", .User), config.Set_Error.None)
 	c := pacer_choices(pacer_settings_from_prefs(&p), true)
-	testing.expect(t, c.variable == .Off && c.target_hz == 120 && c.max_hz == 100 && c.tearing)
+	testing.expect(t, c.variable == .Off && c.target_hz == 0 && c.tearing, "no standard set: the screen's rate")
 	plan := platform.cadence_plan({hz = 60.001, max_hz = 180}, pacer_choices(before, false))
 	testing.expect(t, plan.variable && plan.hz == 180 && plan.timed, "the defaults: a dynamic refresh screen at its top rate")
 }

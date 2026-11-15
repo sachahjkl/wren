@@ -13,7 +13,7 @@ import "wb:tools/tooling"
 
 // The browser on real pages with real input, through the channel. Needs the profile build: each scenario's report (per-phase statistics, CPU, sampling profile) is written by the browser at its
 // end in build/perf/<scenario><tag>.txt and .csv (one row per frame). The table has what the channel says of each. -Url u -Action a: a scenario of your own.
-// -Pref browser.frame.target_hz=60 -Tag _60 simulates another rate; -Pref canvas.gpu.enabled=false -Tag _sw the software rasterizer.
+// -Pref rendering.frame_rate=60 -Tag _60 simulates another rate; -Pref canvas.gpu.enabled=false -Tag _sw the software rasterizer.
 // Frame pacing against a real refresh needs a window: -Shown, on its own desktop.
 
 PERF_DIR :: "build/perf"   // (about:demos links its pages from there)
@@ -63,7 +63,7 @@ FULL_LAYOUT := []string{"layout.incremental.enabled=false"}
 FULL_STYLE := []string{"style.incremental.enabled=false"}
 NO_COMPOSITOR := []string{"render.compositor.enabled=false"}
 NO_JS := []string{"javascript.enabled=false"}
-AT_180 := []string{"browser.frame.target_hz=180"}
+AT_240 := []string{"rendering.frame_rate=240"}   // (a fast screen, as a window of no monitor has none: the highest rate the standard setting names)
 AUTOPLAY := []string{"media.autoplay.policy=allow-all", "browser.profile.persist=false"}
 NOT_PERSISTED := []string{"browser.profile.persist=false"}
 
@@ -96,10 +96,10 @@ SCENARIOS := []Scenario{
 	{"mutation", "site:mutation.html", .Idle, nil}, {"mutation_full", "site:mutation.html", .Idle, FULL_LAYOUT}, {"mutation_fullstyle", "site:mutation.html", .Idle, FULL_STYLE},
 	{"mutation_class", "site:mutation_class.html", .Idle, nil}, {"mutation_class_fullstyle", "site:mutation_class.html", .Idle, FULL_STYLE},
 	// pages driven by their scripts at 180 Hz
-	{"js_anim1000", "jsb:anim1000.html", .Idle, AT_180}, {"js_nodes10k", "jsb:nodes10k.html", .Idle, AT_180}, {"js_qsa", "jsb:qsa_loop.html", .Idle, AT_180}, {"js_shadow1000", "jsb:shadow1000.html", .Idle, AT_180},
-	{"js_canvas_anim", "jsb:canvas_anim.html?mode=anim", .Idle, AT_180}, {"js_canvas_big", "jsb:canvas_anim.html?mode=big", .Idle, AT_180}, {"js_canvas_idle", "jsb:canvas_anim.html?mode=idle", .Idle, nil},
-	{"js_canvas_particles", "jsb:canvas_bench.html?mode=particles", .Idle, AT_180}, {"js_canvas_paths", "jsb:canvas_bench.html?mode=paths", .Idle, AT_180}, {"js_canvas_text", "jsb:canvas_bench.html?mode=text", .Idle, AT_180},
-	{"js_canvas_gradients", "jsb:canvas_bench.html?mode=gradients", .Idle, AT_180}, {"js_canvas_game", "jsb:canvas_bench.html?mode=game", .Idle, AT_180}, {"js_canvas_trivial", "jsb:canvas_bench.html?mode=trivial", .Idle, AT_180},
+	{"js_anim1000", "jsb:anim1000.html", .Idle, AT_240}, {"js_nodes10k", "jsb:nodes10k.html", .Idle, AT_240}, {"js_qsa", "jsb:qsa_loop.html", .Idle, AT_240}, {"js_shadow1000", "jsb:shadow1000.html", .Idle, AT_240},
+	{"js_canvas_anim", "jsb:canvas_anim.html?mode=anim", .Idle, AT_240}, {"js_canvas_big", "jsb:canvas_anim.html?mode=big", .Idle, AT_240}, {"js_canvas_idle", "jsb:canvas_anim.html?mode=idle", .Idle, nil},
+	{"js_canvas_particles", "jsb:canvas_bench.html?mode=particles", .Idle, AT_240}, {"js_canvas_paths", "jsb:canvas_bench.html?mode=paths", .Idle, AT_240}, {"js_canvas_text", "jsb:canvas_bench.html?mode=text", .Idle, AT_240},
+	{"js_canvas_gradients", "jsb:canvas_bench.html?mode=gradients", .Idle, AT_240}, {"js_canvas_game", "jsb:canvas_bench.html?mode=game", .Idle, AT_240}, {"js_canvas_trivial", "jsb:canvas_bench.html?mode=trivial", .Idle, AT_240},
 	// without script: pages must cost what they cost before the engine existed
 	{"nojs_p10k_load", "gen:p10k", .Load, NO_JS}, {"nojs_p10k_scroll", "gen:p10k", .Scroll, NO_JS}, {"nojs_anim", "site:animations.html", .Idle, NO_JS},
 	// a paused video must not make the browser draw; a playing one draws at its picture rate

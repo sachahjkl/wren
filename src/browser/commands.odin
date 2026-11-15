@@ -325,12 +325,12 @@ commands_build :: proc(r: ^Command_Registry) {
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { js_toggle_site(app, t) }})
 
 	// --- view
-	// the frame rate (pacing.odin): the choices of browser.frame.cap, in their order
-	cap_titles := [?][2]string{{FRAME_CAP_AUTO, i18n.later("Frame rate: auto")}, {"60", i18n.later("Frame rate: 60")}, {"120", i18n.later("Frame rate: 120")}, {"240", i18n.later("Frame rate: 240")}, {FRAME_CAP_CUSTOM, i18n.later("Frame rate: custom (browser.frame.cap_custom_hz)")}, {FRAME_CAP_UNCAPPED, i18n.later("Frame rate: uncapped")}}
-	for x in cap_titles {
-		add(r, {name = fmt.aprintf("view.frame_cap.%s", x[0], allocator = a), label = x[1], group = "View", arg = x[0], tags = command_words(r, "fps limit cap uncapped unlimited vsync frames per second"),
-			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.pacing.cfg.cap == c.arg },
-			run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_string(app, "browser.frame.cap", c.arg) }})
+	// the frame rate (pacing.odin): the choices of the standard rendering.frame_rate, in their order
+	rate_titles := [?][2]string{{FRAME_RATE_SCREEN, i18n.later("Frame rate: screen")}, {"30", i18n.later("Frame rate: 30")}, {"60", i18n.later("Frame rate: 60")}, {"120", i18n.later("Frame rate: 120")}, {"240", i18n.later("Frame rate: 240")}, {FRAME_RATE_UNCAPPED, i18n.later("Frame rate: uncapped")}}
+	for x in rate_titles {
+		add(r, {name = fmt.aprintf("view.frame_rate.%s", x[0], allocator = a), label = x[1], group = "View", arg = x[0], tags = command_words(r, "fps limit cap uncapped unlimited vsync frames per second"),
+			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.pacing.cfg.rate == c.arg },
+			run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_string(app, FRAME_RATE_PREF, c.arg) }})
 	}
 	add(r, {name = "view.status_bar", label = "Status bar", group = "View", keys = command_keys(r, {key = .B, mods = ctrl}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.hud.cfg.bar_visible },

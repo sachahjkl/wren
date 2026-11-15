@@ -51,7 +51,7 @@ HUD_PREFS := [?]config.Def{
 	{name = "browser.status_bar.graph.width_em", kind = .Float, default = {f = 9}, bounded = true, min = 2, max = 80, unit = "em",
 		description = "Width of the status bar's graph, in multiples of the interface's font size."},
 	{name = "browser.status_bar.graph.budget_ms", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 1000, unit = "ms",
-		description = "The time a frame may take: the dashed line of the graph, and what the panel counts frames over. 0 = the frame period of browser.frame.target_hz (the monitor's refresh rate: 5.56 ms at 180 Hz, 16.7 ms at 60 Hz)."},
+		description = "The time a frame may take: the dashed line of the graph, and what the panel counts frames over. 0 = the frame period of rendering.frame_rate (the monitor's refresh rate by default: 5.56 ms at 180 Hz, 16.7 ms at 60 Hz)."},
 	{name = "browser.status_bar.graph.budget_line", kind = .Bool, default = {b = true},
 		description = "Draw the budget as a dashed line across the graph."},
 	{name = "browser.status_bar.graph.scale_ms", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 10_000, unit = "ms",

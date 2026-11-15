@@ -47,7 +47,7 @@ WEB_PREFS := [?]config.Def{
 	{name = "timers.idle_max_deadline_ms", kind = .Float, default = {f = 50}, bounded = true, min = 1, max = 10_000, unit = "ms",
 		description = "Longest idle period given to requestIdleCallback callbacks (the specification's 50 ms)."},
 	{name = "timers.frame_budget_ms", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 1000, unit = "ms",
-		description = "Expected time between two rendered frames: an idle period never runs into the next animation frame of a page that requested one. 0 = the frame period of the browser (browser.frame.target_hz: 5.6 ms on a 180 Hz monitor)."},
+		description = "Expected time between two rendered frames: an idle period never runs into the next animation frame of a page that requested one. 0 = the frame period of the browser (rendering.frame_rate: 5.6 ms on a 180 Hz monitor)."},
 	{name = "timers.max_animation_callbacks", kind = .Int, default = {i = 100_000}, bounded = true, min = 1, max = 100_000_000,
 		description = "Most requestAnimationFrame callbacks one page may have waiting. Past it, requests fail."},
 	{name = "timers.max_idle_callbacks", kind = .Int, default = {i = 100_000}, bounded = true, min = 1, max = 100_000_000,

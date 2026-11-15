@@ -13,7 +13,6 @@ import "toolkit:platform"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
-import "wb:config"
 import "wb:cookies"
 import "wb:fetch"
 import "wb:i18n"
@@ -720,13 +719,9 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 			menu_command(app, t, "view.status_bar")
 			menu_command(app, t, "view.smooth_scrolling")
 			menu_command(app, t, "view.frame_statistics")
-			if ui.menu_submenu("Frame rate###frame_cap_sub", icon = lucide.GAUGE) {
-				menu_command(app, t, "view.frame_cap.auto")
-				menu_command(app, t, "view.frame_cap.60")
-				menu_command(app, t, "view.frame_cap.120")
-				menu_command(app, t, "view.frame_cap.240")
-				menu_command(app, t, "view.frame_cap.custom", title = fmt.tprintf("Frame rate: custom (%d)", int(config.int_of(&app.prefs, "browser.frame.cap_custom_hz"))))
-				menu_command(app, t, "view.frame_cap.uncapped")
+			if ui.menu_submenu("Frame rate###frame_rate_sub", icon = lucide.GAUGE) {
+				rates := FRAME_RATE_CHOICES
+				for rate in rates { menu_command(app, t, fmt.tprintf("view.frame_rate.%s", rate)) }
 			}
 			menu_command(app, t, "view.title_statistics")
 			menu_command(app, t, "view.devtools")

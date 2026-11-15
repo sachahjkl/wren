@@ -53,7 +53,7 @@ SETTINGS_PAGES := [?]Settings_Page_Def{
 		"appearance.text.page_size", "appearance.text.word_cache", "appearance.text.slug_pages"}},
 	// (the standard Rendering set, and the pacer's ceiling of frames per second, which is Wren's)
 	{"rendering", "Rendering", lucide.GAUGE, {
-		"rendering.present", "browser.frame.cap", "browser.frame.cap_custom_hz", "rendering.partial_redraw", "rendering.blur_sigma_limit",
+		"rendering.present", "rendering.frame_rate", "rendering.partial_redraw", "rendering.blur_sigma_limit",
 		"rendering.filter_precision"}},
 	{"system", "System", lucide.MONITOR, {"general.messages", "update.auto", "browser.session.crash_recovery"}},
 }
