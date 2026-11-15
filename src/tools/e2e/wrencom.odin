@@ -18,9 +18,8 @@ import "wb:remote/api"
 @(private = "file") EXIT_USAGE :: 4
 @(private = "file") EXIT_NOT_RUNNABLE :: 126
 @(private = "file") EXIT_NOT_FOUND :: 127
-// `--desktop-integration=status`.
-@(private = "file") STATUS_ABSENT :: 1
-@(private = "file") STATUS_TO_REPAIR :: 2
+// `--status` (the toolkit's setup.status_code).
+@(private = "file") STATUS_NOT_INSTALLED :: 1
 @(private = "file") HELP_WORDS :: "drives a running Wren"
 @(private = "file") UNKNOWN_WORDS :: "unknown command"
 @(private = "file") NOT_THE_LAUNCHER :: "somebody else's program"
@@ -69,9 +68,9 @@ a_console_command_gives_its_output_and_its_exit_code :: proc(t: ^testing.T) {
 	nobody := e2e.run(t, {com, "ctl", "ping", "--remote", fmt.tprintf("nosuchwren-%s", e2e.unique())}, start)
 	testing.expect_value(t, nobody.code, EXIT_NO_SERVER)
 
-	// the integration's flag is a console command as well
-	status := e2e.run(t, {com, "--desktop-integration=status"}, start)
-	testing.expectf(t, status.code == STATUS_ABSENT && strings.contains(status.out, "absent"), "it waits, prints, code 1: %d, %q", status.code, status.out)
+	// the install's commands are console commands as well
+	status := e2e.run(t, {com, "--status"}, start)
+	testing.expectf(t, status.code == STATUS_NOT_INSTALLED && strings.contains(status.out, "not installed"), "it waits, prints, code 1: %d, %q", status.code, status.out)
 }
 
 @(test)
@@ -81,33 +80,36 @@ setup_writes_the_launcher_with_the_path_entry_and_takes_it_away :: proc(t: ^test
 	_ = os.make_directory_all(bare)
 	exe := fmt.tprintf("%s/wren.exe", bare)
 	testing.expect_value(t, os.copy_file(exe, e2e.wren_exe()), nil)
-	com := fmt.tprintf("%s/wren.com", bare)
 	profile := fmt.tprintf("%s/profile", root)
-	start := api.Start_Options{env = desktop_scratch(t, root).env}
-	integration :: proc(t: ^testing.T, exe, profile, mode: string, with_path: bool, start: api.Start_Options) -> e2e.Run {
-		return e2e.run(t, {exe, "--profile", profile, "--pref", fmt.tprintf("browser.desktop_integration.add_to_path=%v", with_path), fmt.tprintf("--desktop-integration=%s", mode)}, start)
+	scratch := desktop_scratch(t, root)
+	start := api.Start_Options{env = scratch.env}
+	// (--install copies this program into the scratch install folder: wren.com goes beside that copy)
+	com := fmt.tprintf("%s/wren.com", scratch.install)
+	command :: proc(t: ^testing.T, exe, profile, command: string, with_path: bool, start: api.Start_Options) -> e2e.Run {
+		return e2e.run(t, {exe, "--profile", profile, "--pref", fmt.tprintf("browser.desktop_integration.add_to_path=%v", with_path), command}, start)
 	}
 
-	r := integration(t, exe, profile, "install", false, start)
+	r := command(t, exe, profile, "--install", false, start)
 	testing.expectf(t, r.code == 0 && !os.exists(com), "without the PATH option: no wren.com: %d, %s", r.code, r.out)
-	r = integration(t, exe, profile, "install", true, start)
-	testing.expectf(t, r.code == 0 && os.exists(com), "with the PATH option: wren.com is written beside wren.exe: %d, %s", r.code, r.out)
+	r = command(t, exe, profile, "--install", true, start)
+	testing.expectf(t, r.code == 0 && os.exists(com), "with the PATH option: wren.com is written beside the installed wren.exe: %d, %s", r.code, r.out)
 	testing.expect_value(t, e2e.read_text(com), e2e.read_text(e2e.build_path("wren", ".com")))
-	r = integration(t, exe, profile, "status", true, start)
-	testing.expectf(t, r.code == 0 && strings.has_prefix(r.out, "installed"), "the status is complete with it: %d, %s", r.code, r.out)
+	r = command(t, exe, profile, "--status", true, start)
+	testing.expectf(t, r.code == 0 && strings.contains(r.out, "on the PATH: yes"), "the status says it is on the PATH: %d, %s", r.code, r.out)
 	os.remove(com)
-	r = integration(t, exe, profile, "status", true, start)
-	testing.expectf(t, r.code == STATUS_TO_REPAIR && strings.contains(r.out, "to repair"), "the status says to repair without it: %d, %s", r.code, r.out)
-	integration(t, exe, profile, "install", true, start)
+	command(t, exe, profile, "--install", true, start)
 	testing.expect(t, os.exists(com), "installing again puts it back")
-	integration(t, exe, profile, "install", false, start)
+	command(t, exe, profile, "--install", false, start)
 	testing.expect(t, !os.exists(com), "the PATH option unticked: wren.com goes")
-	integration(t, exe, profile, "install", true, start)
-	integration(t, exe, profile, "remove", true, start)
-	testing.expect(t, !os.exists(com), "removing the integration: wren.com goes")
+	r = command(t, exe, profile, "--status", false, start)
+	testing.expectf(t, strings.contains(r.out, "on the PATH: no"), "the status says it is off the PATH: %d, %s", r.code, r.out)
+	command(t, exe, profile, "--install", true, start)
+	r = command(t, exe, profile, "--uninstall", true, start)
+	testing.expectf(t, r.code == 0 && !os.exists(com), "the uninstall: wren.com goes: %d, %s", r.code, r.out)
+	_ = os.make_directory_all(scratch.install)
 	e2e.write_text(com, NOT_THE_LAUNCHER)
-	integration(t, exe, profile, "install", true, start)
-	integration(t, exe, profile, "remove", true, start)
+	command(t, exe, profile, "--install", true, start)
+	command(t, exe, profile, "--uninstall", true, start)
 	testing.expect_value(t, e2e.read_text(com), NOT_THE_LAUNCHER)
 }
 

@@ -168,17 +168,22 @@ window reads the box's state at once.
 
 ## Command line
 
-`wren --desktop-integration=install|remove|status|uninstall`, without a window. Exit codes: install and remove 0 done /
-1 failed; status 0 installed / 1 absent / 2 to repair / 3 unreadable. The program is a Windows GUI program: to get the
-exit code, run it with `Start-Process -Wait -PassThru` (or `start /wait`); its output goes to a redirected standard
-output, else to the parent's console. It applies the preferences below (what the last Setup chose).
+The install's command line is the one every program of the toolkit has (`setup.command_of` and `setup.command_run`,
+`ext/gui_toolkit/docs/setup.md`):
 
-`wren --uninstall [--purge]` is the shorthand for `--desktop-integration=uninstall`: it removes the whole installed copy
-silently — the integration (shortcuts, the browser registration), the PATH entry, the Settings > Apps record and the
-files Setup placed — and keeps the user's profile unless `--purge` is given (which also deletes the profile: preferences,
-history, cookies, session, crash reports, license). Exit codes: 0 done, 1 failed, 5 done but some files are in use and are
-removed when the running copy closes (the one being uninstalled is the one running). `remove` takes away only the
-integration; `uninstall` takes away the installed copy. `--install` is the shorthand for `--desktop-integration=install`.
+| Command | Does |
+|---|---|
+| `wren --install` | installs this copy, as Setup's Install button: the program in the install folder, the menu entry, the Settings > Apps record and Wren's parts (the PATH, the browser registration) as the preferences below say. No window. |
+| `wren --uninstall [--purge]` | removes the installed copy: the integration, the PATH entry, the record and the files Setup placed. The profile stays unless `--purge` is given, which also deletes it (preferences, history, cookies, session, crash reports, license). No window. |
+| `wren --status` | says the install's state, a fact per line (the program, its version, the menu entry, the PATH...). No window. |
+| `wren --setup` | starts Wren with the Setup dialog open (Settings > Apps' Uninstall runs it). |
+
+Exit codes: 0 done (`--status`: installed), 1 failed (`--status`: not installed), 2 to repair (`--status`). An uninstall
+of the copy that runs leaves its files to a helper that deletes them when it ends: still 0. A failed `--purge` is 1. The
+program is a Windows GUI program: to get the exit code, run it with `Start-Process -Wait -PassThru` (or `start /wait`),
+or through `wren.com` (docs/console-launcher.md); its output goes to a redirected standard output, else to the parent's
+console. It applies the preferences below (what the last Setup chose). To take away the integration and keep the
+program, untick the box in `about:config` or use Setup.
 
 ## Links that open in Wren
 

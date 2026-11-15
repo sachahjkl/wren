@@ -21,8 +21,8 @@ import "wb:canvas2d"
 import "wb:base"
 import "wb:config"
 import "wb:cookies"
-import desktop "toolkit:desktop"
 import process "toolkit:process"
+import setup "toolkit:setup"
 import wren_desktop "wb:desktop"
 import "wb:dom"
 import "wb:fetch"
@@ -1729,9 +1729,9 @@ app_start :: proc(args: []string) -> ^App {
 	if link_err != .None { process.console_write(fmt.tprintf("refused: %s\n", wren_desktop.link_error_text(link_err))); os.exit(wren_desktop.LINK_REFUSED_EXIT) }
 	profile_override, a1 := extract_flag(linked[:], "--profile")
 	policy_file, a2 := extract_flag(a1[:], "--policy")
-	purge_requested, a2b := extract_switch(a2[:], "--purge")   // with --uninstall: also delete the profile (desktop_shell.odin)
-	cli_mode, a3, cli_bad := desktop.parse_cli(desktop_identity(), a2b[:])   // --desktop-integration=install|remove|status|uninstall, --uninstall (desktop_shell.odin)
-	setup_requested, a4 := extract_switch(a3[:], "--setup")   // opens the Setup dialog (setup.odin)
+	purge_requested, a3 := extract_switch(a2[:], "--purge")   // with --uninstall: also delete the profile (desktop_shell.odin)
+	command, a4 := setup.command_of(a3[:])   // --install, --uninstall, --status: no window (desktop_shell.odin); --setup opens the Setup dialog (setup.odin)
+	setup_requested := command == .Setup
 	new_window, a5 := extract_switch(a4[:], "--new-window")   // a window of its own, not a tab of the Wren that runs (instance_shell.odin)
 	no_single, a6 := extract_switch(a5[:], "--no-single-instance")
 	remote_asked, remote_name, a7 := extract_remote(a6[:])   // --remote[=name]: the remote control channel (remote_shell.odin)
@@ -1771,7 +1771,6 @@ app_start :: proc(args: []string) -> ^App {
 	app_prefs_register(app)   // (and a private Wren's own values)
 	app_settings_read(app)
 	prof_mark(.Prefs)
-	if cli_bad != "" { process.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove, status or uninstall)\n", cli_bad)); program_log_flush(); os.exit(2) }
 	// `ctl` as an address is nearly always `wren ctl ...` meant for the remote control client that did not run as such (an option before it:
 	// `ctl` is only the first argument; or a wren.exe from before the client existed): it would open https://ctl, and in the user's Wren, not here
 	if len(rest) > 0 && is_info_word(rest[0]) {
@@ -1779,7 +1778,7 @@ app_start :: proc(args: []string) -> ^App {
 		program_log_flush()
 		os.exit(2)
 	}
-	if cli_mode != .None { code := desktop_cli(app, cli_mode, purge_requested); program_log_flush(); os.exit(code) }   // no window: a script's call
+	if setup.command_alone(command) { code := desktop_command(app, command, purge_requested); program_log_flush(); os.exit(code) }   // no window: a script's call
 	host.phase("instance_early")
 	instance_early(app, rest[:], setup_requested, new_window || no_single, remote_asked || headless_mode || hidden_mode || cdp_have_port)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists

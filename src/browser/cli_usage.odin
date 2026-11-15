@@ -2,6 +2,7 @@ package browser
 
 import "core:fmt"
 import "core:strings"
+import setup "toolkit:setup"
 import "wb:i18n"
 
 ////////////////////////////////
@@ -62,13 +63,14 @@ cli_usage_text :: proc() -> string {
 	row(&sb, "--policy <file>", i18n.tr("a policy file (settings an administrator fixes)"))
 	row(&sb, "--pref name=value", i18n.tr("sets a preference for this run (about:config lists them)"))
 	row(&sb, "--open-url <link>", i18n.tr("opens a wren-https:, wren-http: or wren-about:wren link (the last argument)"))
-	row(&sb, "--setup", i18n.tr("opens the Setup dialog"))
 	row(&sb, "--remote[=name]", i18n.tr("opens the remote control channel (wren ctl)"))
 	row(&sb, "--hidden", i18n.tr("windows are made and never shown (`wren ctl start`; needs a desktop session)"))
 	row(&sb, "--headless", i18n.tr("no window at all (it renders all the same); runs without a desktop session"))
 	row(&sb, "--remote-debugging-port[=N]", i18n.tr("CDP / WebDriver BiDi on 127.0.0.1 (Puppeteer, Playwright; see docs/cdp.md)"))
-	row(&sb, "--desktop-integration=<mode>", i18n.tr("install, remove, status or uninstall: the file types, the menu entry, the PATH"))
-	row(&sb, "--uninstall [--purge]", i18n.tr("removes the installed copy silently (--purge also deletes the profile)"))
+	// (the install's command line is every program's: the toolkit's words)
+	fmt.sbprintf(&sb, "\n%s\n", i18n.tr("Installation"))
+	for o in setup.COMMAND_OPTIONS { row(&sb, fmt.tprintf("--%s", o.name), o.help) }
+	row(&sb, "--uninstall --purge", i18n.tr("also deletes the profile (settings, history, cookies, session)"))
 	fmt.sbprintf(&sb, "\n%s\n", i18n.tr("A file or a host named ctl, help or version is written ./ctl, ./help, ./version."))
 	return strings.to_string(sb)
 }

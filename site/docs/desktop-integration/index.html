@@ -431,16 +431,23 @@ nothing reads the disk on a timer; without one (a platform without a watcher, or
 profile, <code>WREN_DESKTOP_INTEGRATION=off</code>) <code>browser.desktop_integration.status_refresh_ms</code> is the period. Coming back to the
 window reads the box's state at once.</p>
 <h2 id="command-line"><a class="anchor" href="#command-line" aria-hidden="true">#</a>Command line</h2>
-<p><code>wren --desktop-integration=install|remove|status|uninstall</code>, without a window. Exit codes: install and remove 0 done /
-1 failed; status 0 installed / 1 absent / 2 to repair / 3 unreadable. The program is a Windows GUI program: to get the
-exit code, run it with <code>Start-Process -Wait -PassThru</code> (or <code>start /wait</code>); its output goes to a redirected standard
-output, else to the parent's console. It applies the preferences below (what the last Setup chose).</p>
-<p><code>wren --uninstall [--purge]</code> is the shorthand for <code>--desktop-integration=uninstall</code>: it removes the whole installed copy
-silently — the integration (shortcuts, the browser registration), the PATH entry, the Settings &gt; Apps record and the
-files Setup placed — and keeps the user's profile unless <code>--purge</code> is given (which also deletes the profile: preferences,
-history, cookies, session, crash reports, license). Exit codes: 0 done, 1 failed, 5 done but some files are in use and are
-removed when the running copy closes (the one being uninstalled is the one running). <code>remove</code> takes away only the
-integration; <code>uninstall</code> takes away the installed copy. <code>--install</code> is the shorthand for <code>--desktop-integration=install</code>.</p>
+<p>The install's command line is the one every program of the toolkit has (<code>setup.command_of</code> and <code>setup.command_run</code>,
+<code>ext/gui_toolkit/docs/setup.md</code>):</p>
+<div class="table-box"><table>
+<thead><tr><th>Command</th><th>Does</th></tr></thead>
+<tbody>
+<tr><td><code>wren --install</code></td><td>installs this copy, as Setup's Install button: the program in the install folder, the menu entry, the Settings &gt; Apps record and Wren's parts (the PATH, the browser registration) as the preferences below say. No window.</td></tr>
+<tr><td><code>wren --uninstall [--purge]</code></td><td>removes the installed copy: the integration, the PATH entry, the record and the files Setup placed. The profile stays unless <code>--purge</code> is given, which also deletes it (preferences, history, cookies, session, crash reports, license). No window.</td></tr>
+<tr><td><code>wren --status</code></td><td>says the install's state, a fact per line (the program, its version, the menu entry, the PATH...). No window.</td></tr>
+<tr><td><code>wren --setup</code></td><td>starts Wren with the Setup dialog open (Settings &gt; Apps' Uninstall runs it).</td></tr>
+</tbody>
+</table></div>
+<p>Exit codes: 0 done (<code>--status</code>: installed), 1 failed (<code>--status</code>: not installed), 2 to repair (<code>--status</code>). An uninstall
+of the copy that runs leaves its files to a helper that deletes them when it ends: still 0. A failed <code>--purge</code> is 1. The
+program is a Windows GUI program: to get the exit code, run it with <code>Start-Process -Wait -PassThru</code> (or <code>start /wait</code>),
+or through <code>wren.com</code> (docs/console-launcher.md); its output goes to a redirected standard output, else to the parent's
+console. It applies the preferences below (what the last Setup chose). To take away the integration and keep the
+program, untick the box in <code>about:config</code> or use Setup.</p>
 <h2 id="links-that-open-in-wren"><a class="anchor" href="#links-that-open-in-wren" aria-hidden="true">#</a>Links that open in Wren</h2>
 <p>A web page cannot link to <code>about:wren</code> (browsers block <code>about:</code> links), and an <code>https:</code> link opens in the user's default
 browser. A link whose scheme is one of Wren's opens in Wren: the address is the link without its <code>wren-</code> prefix.</p>

@@ -35,9 +35,10 @@ ctl_help_and_version_are_the_words_that_are_not_addresses :: proc(t: ^testing.T)
 the_usage_names_every_option_and_the_version_the_build :: proc(t: ^testing.T) {
 	test_app(t)
 	usage := cli_usage_text()
-	for s in ([]string{"wren ctl", "wren version", "wren help", "--new-window", "--no-single-instance", "--profile", "--policy", "--pref", "--open-url", "--setup", "--remote", "--headless", "--desktop-integration", "./ctl"}) {
+	for s in ([]string{"wren ctl", "wren version", "wren help", "--new-window", "--no-single-instance", "--profile", "--policy", "--pref", "--open-url", "--remote", "--headless", "--install", "--uninstall", "--status", "--setup", "--purge", "./ctl"}) {
 		testing.expectf(t, strings.contains(usage, s), "the usage does not mention %q", s)
 	}
+	testing.expect(t, !strings.contains(usage, "--desktop-integration"), "the integration's own flag is gone: --install and --uninstall do it")
 	ver := cli_version_text()
 	testing.expect(t, strings.has_prefix(ver, APP_NAME), "the version starts with the name")
 	testing.expect(t, strings.contains(ver, APP_VERSION), "the version has the version")

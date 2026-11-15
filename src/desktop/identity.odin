@@ -14,7 +14,6 @@ MANIFEST_HEADER :: "# Written by Wren Setup: the files it placed in this folder.
 // Said by every message of the console launcher (src/tools/wrencom/plan.odin, MARK), so that a file of the same name made
 // by something else is told from it. Keep the two equal.
 LAUNCHER_MARK   :: "(Wren console launcher)"
-CLI_FLAG        :: "--desktop-integration"
 // The roots of the tests and of a dry run: WREN_DESKTOP_MENU_DIR, WREN_DESKTOP_BIN_DIR... (tk.ROOT_NAMES).
 ENV_PREFIX      :: "WREN_DESKTOP_"
 // The development build's prefix of links (the release's is LINK_PREFIX, links.odin).
@@ -51,7 +50,7 @@ identity :: proc($app_name: string, description: string, dev: bool) -> tk.Identi
 		vendor = "Froment Software", exe_name = "wren.exe",
 		entry_marker = ENTRY_MARKER, registry_mark = REGISTRY_MARK, vendor_key = VENDOR_KEY,
 		manifest_name = MANIFEST_NAME, manifest_header = MANIFEST_HEADER, launcher_mark = LAUNCHER_MARK,
-		cli_flag = CLI_FLAG, env_prefix = ENV_PREFIX, url_schemes = RELEASE_SCHEMES[:], url_flag = LINK_FLAG,
+		env_prefix = ENV_PREFIX, url_schemes = RELEASE_SCHEMES[:], url_flag = LINK_FLAG,
 		uninstall_arguments = "--setup",   // (the Setup dialog, whose Uninstall button does the work)
 		generic_name = "Web Browser", categories = "Network;WebBrowser;", keywords = "Internet;WWW;Browser;Web;WebAssembly;",
 		nix_runtime_name = "wren-runtime", nixos_libraries = NIXOS_LIBRARIES[:],

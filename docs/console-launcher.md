@@ -21,7 +21,7 @@ The launcher starts `wren.exe` with the same arguments and decides from them (`d
 |---|---|
 | `ctl ...` as the **first** argument | waits, ends with `wren.exe`'s exit code |
 | `version` or `help` as the **first** argument; `--version`, `-V`, `--help`, `-h`, `-?` anywhere | waits, same: `wren version` prints the version and the build, `wren help` the usage (`browser/cli_usage.odin`) |
-| `--desktop-integration[=...]` anywhere | waits, same |
+| `--install`, `--uninstall`, `--status` anywhere | waits, same (`--setup` opens a window: it lets go) |
 | `--cli` anywhere (it is the launcher's: `wren.exe` does not see it) | waits whatever the rest is |
 | anything else (an address, `--new-window`, `--setup`, `--profile ...`) | lets go and returns 0 |
 
@@ -42,9 +42,9 @@ from Wren, so they are not in the `i18n` catalogue.
 - `wrentool build` (`build.bat`) compiles it to `build\wren.com` (`-subsystem:console`, before the browser).
 - `wren.exe` embeds it (`#load`, `src/browser/console_launcher_windows.odin`): the release stays one file.
 - **Setup writes it** beside the installed `wren.exe` when "Add Wren to PATH" is ticked and **removes it** when it is
-  unticked, when the integration is removed (`--desktop-integration=remove`) and when Wren is uninstalled or the installation is
+  unticked, when the integration is removed (the box in `about:config`) and when Wren is uninstalled (`--uninstall`) or the installation is
   moved (the toolkit's `ext/gui_toolkit/src/desktop/launcher.odin`, with Wren's mark from `src/desktop/identity.odin`). It is never written anywhere else, and never without the PATH entry that makes it
-  reachable. `--desktop-integration=install` does the same for a copy that is not installed.
+  reachable. `--install` does the same without a window.
 - It carries a mark (`(Wren console launcher)` in every message): a `wren.com` without it is another program's, and is
   neither replaced nor deleted. An installation that has the PATH entry but no `wren.com` (older Setup) is shown as "to
   repair" and **Repair** writes it.
@@ -58,6 +58,6 @@ from Wren, so they are not in the `i18n` catalogue.
 - The toolkit's `odin test src/desktop` (in `ext/gui_toolkit`): Setup's side (written with the PATH option, replaced by a new version, removed with it, never
   over another program's file, removed with the install folder).
 - `src\tools\e2e\wrencom.odin` (a step of `test_all`): the launcher and `wren.exe` copied into a scratch folder; `ctl help`,
-  an unknown command, what `> file`, `2>`, `2>&1` and `|` hand over to it, its exit code, `--desktop-integration=status`, the integration
-  writing and removing `wren.com`, the refusals, an interface start that returns at once, `--cli`, and the death of the child
+  an unknown command, what `> file`, `2>`, `2>&1` and `|` hand over to it, its exit code, `--status`, `--install` and `--uninstall`
+  writing and removing `wren.com` beside the installed copy, the refusals, an interface start that returns at once, `--cli`, and the death of the child
   with the launcher.

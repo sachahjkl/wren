@@ -11,7 +11,8 @@ package browser
 //     program was moved, or updated into another folder): "Update" makes them run this one. Its "Setup..." button opens the
 //     Setup dialog (setup.odin), where the same things are done together with installing the program;
 //   * the same two commands in the palette;
-//   * `--desktop-integration=install|remove|status`, without a window (an uninstall script, the tests).
+//   * `--install`, `--uninstall [--purge]`, `--status`, without a window (an uninstall script, the tests): the toolkit's
+//     setup.command_run, as in every program.
 //
 // What used to be here (the silent integration of the first run, the line under the address bar that offered to update it)
 // is the Setup dialog now: setup.odin decides when it opens by itself, and the toolkit's setup package draws it (and
@@ -32,6 +33,7 @@ import "wb:base"
 import "wb:config"
 import desktop "toolkit:desktop"
 import process "toolkit:process"
+import setup "toolkit:setup"
 import wren_desktop "wb:desktop"
 import "wb:host"
 import "wb:i18n"
@@ -78,25 +80,33 @@ desktop_options :: proc(app: ^App) -> desktop.Integration_Options {
 	return o
 }
 
-// `--desktop-integration=...`, `--uninstall [--purge]`: runs it without a window and returns the exit code.
-// With `--purge` on an uninstall the profile folder is deleted too (preferences, history, cookies, session, crashes,
-// licence); without it the profile is kept, so a reinstall finds everything as it was.
-desktop_cli :: proc(app: ^App, mode: desktop.Cli_Mode, purge := false) -> int {
-	o := desktop_options(app)
-	code := desktop.cli_run(mode, &o, process.console_write)
-	if mode == .Uninstall && purge && (code == 0 || code == desktop.CLI_UNINSTALL_LATER) {
-		// delete the profile after the files (the profile is the browser's, not the desktop package's concern). A profile
-		// given with --profile or a portable one is still removed when asked for, since --purge is an explicit request.
-		if app.profile_dir != "" && os.is_dir(app.profile_dir) {
-			if base.remove_tree(app.profile_dir) {
-				process.console_write(fmt.tprintf("profile deleted: %s\n", app.profile_dir))
-			} else {
-				process.console_write(fmt.tprintf("the profile could not be fully deleted: %s\n", app.profile_dir))
-				if code == 0 { code = 1 }
-			}
-		}
-	}
+// `--install`, `--uninstall [--purge]`, `--status` (setup.command_alone): runs it without a window and returns the exit code.
+desktop_command :: proc(app: ^App, command: setup.Command, purge := false) -> int {
+	// (setup_prepare reads the file types from here: the dialog's setup_open sets them, and no dialog opens here)
+	delete(app.stp.file_types)
+	app.stp.file_types = strings.clone(config.string_of(&app.prefs, "browser.desktop_integration.file_types"))
+	code := setup.command_run(command, setup_config(app), process.console_write)
+	if command == .Uninstall && purge && code == setup.COMMAND_DONE { code = desktop_profile_purge(app) }
 	return code
+}
+
+// `--purge`: the profile folder goes too (preferences, history, cookies, session, crashes, licence); without it the
+// profile is kept, so a reinstall finds everything as it was. After the program's files: the profile is the browser's,
+// not the setup package's concern. A profile given with --profile or a portable one is removed too: --purge is an
+// explicit request.
+@(private = "file")
+desktop_profile_purge :: proc(app: ^App) -> int {
+	if app.profile_dir == "" || !os.is_dir(app.profile_dir) { return setup.COMMAND_DONE }
+	// (the log is open in the profile, <profile>/logs/wren.log: closed first, or Windows keeps the folder; this context's
+	// logger goes with it)
+	context.logger = {}
+	program_log_close()
+	if !base.remove_tree(app.profile_dir) {
+		process.console_write(fmt.tprintf("the profile could not be fully deleted: %s\n", app.profile_dir))
+		return setup.COMMAND_FAILED
+	}
+	process.console_write(fmt.tprintf("profile deleted: %s\n", app.profile_dir))
+	return setup.COMMAND_DONE
 }
 
 ////////////////////////////////

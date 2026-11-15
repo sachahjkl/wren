@@ -63,7 +63,7 @@ wren https://example.org/           :: the window opens, the prompt comes back a
 <tbody>
 <tr><td><code>ctl ...</code> as the <strong>first</strong> argument</td><td>waits, ends with <code>wren.exe</code>'s exit code</td></tr>
 <tr><td><code>version</code> or <code>help</code> as the <strong>first</strong> argument; <code>--version</code>, <code>-V</code>, <code>--help</code>, <code>-h</code>, <code>-?</code> anywhere</td><td>waits, same: <code>wren version</code> prints the version and the build, <code>wren help</code> the usage (<code>browser/cli_usage.odin</code>)</td></tr>
-<tr><td><code>--desktop-integration[=...]</code> anywhere</td><td>waits, same</td></tr>
+<tr><td><code>--install</code>, <code>--uninstall</code>, <code>--status</code> anywhere</td><td>waits, same (<code>--setup</code> opens a window: it lets go)</td></tr>
 <tr><td><code>--cli</code> anywhere (it is the launcher's: <code>wren.exe</code> does not see it)</td><td>waits whatever the rest is</td></tr>
 <tr><td>anything else (an address, <code>--new-window</code>, <code>--setup</code>, <code>--profile ...</code>)</td><td>lets go and returns 0</td></tr>
 </tbody>
@@ -82,9 +82,9 @@ from Wren, so they are not in the <code>i18n</code> catalogue.</p>
 <li><code>wrentool build</code> (<code>build.bat</code>) compiles it to <code>build\wren.com</code> (<code>-subsystem:console</code>, before the browser).</li>
 <li><code>wren.exe</code> embeds it (<code>#load</code>, <code>src/browser/console_launcher_windows.odin</code>): the release stays one file.</li>
 <li><strong>Setup writes it</strong> beside the installed <code>wren.exe</code> when "Add Wren to PATH" is ticked and <strong>removes it</strong> when it is
-unticked, when the integration is removed (<code>--desktop-integration=remove</code>) and when Wren is uninstalled or the installation is
+unticked, when the integration is removed (the box in <code>about:config</code>) and when Wren is uninstalled (<code>--uninstall</code>) or the installation is
 moved (the toolkit's <code>ext/gui_toolkit/src/desktop/launcher.odin</code>, with Wren's mark from <code>src/desktop/identity.odin</code>). It is never written anywhere else, and never without the PATH entry that makes it
-reachable. <code>--desktop-integration=install</code> does the same for a copy that is not installed.</li>
+reachable. <code>--install</code> does the same without a window.</li>
 <li>It carries a mark (<code>(Wren console launcher)</code> in every message): a <code>wren.com</code> without it is another program's, and is
 neither replaced nor deleted. An installation that has the PATH entry but no <code>wren.com</code> (older Setup) is shown as "to
 repair" and <strong>Repair</strong> writes it.</li>
@@ -98,8 +98,8 @@ the quoting of the command line (read back by <code>CommandLineToArgvW</code>).<
 <li>The toolkit's <code>odin test src/desktop</code> (in <code>ext/gui_toolkit</code>): Setup's side (written with the PATH option, replaced by a new version, removed with it, never
 over another program's file, removed with the install folder).</li>
 <li><code>src\tools\e2e\wrencom.odin</code> (a step of <code>test_all</code>): the launcher and <code>wren.exe</code> copied into a scratch folder; <code>ctl help</code>,
-an unknown command, what <code>&gt; file</code>, <code>2&gt;</code>, <code>2&gt;&amp;1</code> and <code>|</code> hand over to it, its exit code, <code>--desktop-integration=status</code>, the integration
-writing and removing <code>wren.com</code>, the refusals, an interface start that returns at once, <code>--cli</code>, and the death of the child
+an unknown command, what <code>&gt; file</code>, <code>2&gt;</code>, <code>2&gt;&amp;1</code> and <code>|</code> hand over to it, its exit code, <code>--status</code>, <code>--install</code> and <code>--uninstall</code>
+writing and removing <code>wren.com</code> beside the installed copy, the refusals, an interface start that returns at once, <code>--cli</code>, and the death of the child
 with the launcher.</li>
 </ul>
 <nav class="doc-seq" aria-label="Previous and next page">

@@ -6,7 +6,7 @@ package wrencom
 // console of its own, cannot hand a script its output or its exit code. wren.com sits beside it: cmd and PowerShell
 // find `wren.com` before `wren.exe` when someone types `wren`, so the launcher is what runs. It starts wren.exe with
 // the same arguments, and
-//   * for a console command (`wren ctl ...`, `--desktop-integration`, or anything given `--cli`) waits for it, hands it
+//   * for a console command (`wren ctl ...`, `--install`, `--uninstall`, `--status`, or anything given `--cli`) waits for it, hands it
 //     its own standard input, output and error (so `> file`, `| more` and `2>&1` work) and ends with its exit code;
 //   * for anything else (an address, an option of the window) lets go of it and gives the prompt back, as a program with
 //     a window should.
@@ -31,14 +31,14 @@ Plan :: struct {
 // `--cli` anywhere makes the launcher wait whatever the rest is; it is the launcher's, wren.exe never sees it.
 CLI_FLAG :: "--cli"
 
-// The console commands of wren.exe, as it reads them (browser/main.odin): `ctl` as the first argument, and the flag of
-// the integration (`--desktop-integration=install|remove|status`, or the flag and its value as two arguments), which
-// main.odin looks for anywhere in the line.
+// The console commands of wren.exe, as it reads them (browser/main.odin): `ctl` as the first argument, and the install's
+// commands without a window (`--install`, `--uninstall`, `--status`: the toolkit's setup.command_of), which main.odin
+// looks for anywhere in the line. (`--setup` opens a window: it detaches.)
 console_command :: proc(args: []string) -> bool {
 	if len(args) > 0 && (args[0] == "ctl" || args[0] == "help" || args[0] == "version") { return true }
 	for a in args {
-		if a == "--desktop-integration" || strings.has_prefix(a, "--desktop-integration=") { return true }
-		// the version and the usage (browser/cli_usage.odin): flags that can stand anywhere, like the integration's
+		if a == "--install" || a == "--uninstall" || a == "--status" { return true }
+		// the version and the usage (browser/cli_usage.odin): flags that can stand anywhere, like the install's
 		if a == "--version" || a == "-V" || a == "--help" || a == "-h" || a == "-?" { return true }
 	}
 	return false
