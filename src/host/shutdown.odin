@@ -10,10 +10,11 @@ package host
 //
 // The watchdog wakes every 200 ms. After `warn_ms` it writes, once a second, the current step, how long it lasts, what
 // thread_join waits for, and every thread still running. After `force_ms` it writes that it ends the process and calls
-// ends the process at once (ExitProcess, exit_group): the last resort (what the profile keeps is saved before the teardown starts). The text goes to stderr
-// and to `log_path` (rewritten as a whole, so the file holds the last slow shutdown only: a fast one writes nothing).
+// ends the process at once (ExitProcess, exit_group): the last resort (what the profile keeps is saved before the teardown starts). The text goes to the program's log
+// (context.logger: core:log) and to `log_path` (rewritten as a whole, so the file holds the last slow shutdown only: a fast one writes nothing).
 
 import "core:fmt"
+import "core:log"
 import "core:os"
 import "core:strings"
 import "core:sync"
@@ -85,7 +86,7 @@ fixed_copy :: proc(dst: []u8, s: string) -> int {
 	return n
 }
 
-// `log_path` "" = stderr only. force_ms 0 = never force the exit. Call from the thread that tears down.
+// `log_path` "" = the program's log only. force_ms 0 = never force the exit. Call from the thread that tears down.
 shutdown_begin :: proc(log_path: string, warn_ms := SHUTDOWN_WARN_MS, force_ms := SHUTDOWN_FORCE_MS, tick := SHUTDOWN_WATCHDOG_TICK) {
 	if sync.atomic_add(&sd_users, 1) > 0 { return }
 	sd.active, sd.stop = true, false
@@ -136,7 +137,7 @@ shutdown_end :: proc() {
 	step_finished()
 	sync.mutex_unlock(&sd.mu)
 	if int(elapsed) >= sd.warn_ms {
-		shutdown_line(fmt.tprintf("shutdown: finished after %.1f s", elapsed / 1000))
+		shutdown_line(fmt.tprintf("shutdown: finished after %.1f s", elapsed / 1000), .Info)
 	}
 	if int(elapsed) >= SLOW_SUMMARY_MS {
 		// the three steps that took longest, longest first
@@ -151,7 +152,7 @@ shutdown_end :: proc() {
 			d := &sd.done[order[i]]
 			fmt.sbprintf(&b, "%s %q %.0f ms", i > 0 ? "," : "", string(d.name[:d.len]), d.ms)
 		}
-		shutdown_line(strings.to_string(b))
+		shutdown_line(strings.to_string(b), .Info)
 	}
 	delete(sd.log_path)
 	strings.builder_destroy(&sd.log)
@@ -171,8 +172,8 @@ shutdown_joining :: proc(name: string) {
 }
 
 @(private = "file")
-shutdown_line :: proc(line: string) {
-	fmt.eprintln(line)
+shutdown_line :: proc(line: string, level := log.Level.Warning) {
+	log.log(level, line)
 	if sd.log_path == "" { return }
 	strings.write_string(&sd.log, line)
 	strings.write_byte(&sd.log, '\n')
@@ -204,10 +205,10 @@ shutdown_watchdog :: proc(_: rawptr) {
 				stacks_path := strings.concatenate({sd.log_path, SHUTDOWN_STACKS_SUFFIX}, context.temp_allocator)
 				shutdown_line(fmt.tprintf("shutdown: what the threads are doing: %s", stacks_path))
 				shutdown_read_stacks(shutdown_stacks_program, stacks_path, SHUTDOWN_STACKS_WAIT_MS)
-				// (on stderr too, not only in the file: a test's profile goes with the test, what it leaves is its log)
-				if data, err := os.read_entire_file(stacks_path, context.temp_allocator); err == nil { fmt.eprintln(string(data)) } else { shutdown_line("shutdown: the stacks were not read in time") }
+				// (in the program's log too, not only in the file: a test's profile goes with the test, what it leaves is its log)
+				if data, err := os.read_entire_file(stacks_path, context.temp_allocator); err == nil { log.warnf("shutdown: the threads' stacks:\n%s", string(data)) } else { shutdown_line("shutdown: the stacks were not read in time") }
 			}
-			shutdown_line(fmt.tprintf("shutdown: still in step %q after %d ms: ending the process (the profile was saved before the teardown)", step, sd.force_ms))
+			shutdown_line(fmt.tprintf("shutdown: still in step %q after %d ms: ending the process (the profile was saved before the teardown)", step, sd.force_ms), .Error)
 			if shutdown_on_force != nil { shutdown_on_force() }
 			shutdown_force_exit()
 		}

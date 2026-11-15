@@ -18,7 +18,7 @@ src/browser/ext_shell.odin 1  # the extensions' folders (the extensions' own cha
 src/browser/first_paint.odin 1  # diagnostic: the first-paint log a developer asks for
 src/browser/global_history.odin 1  # at start, before the first frame, with the read of the same file: an unreadable history file is kept aside as .bad
 src/browser/http_cache_ui.odin 1  # diagnostic: the cache report a developer asks for
-src/browser/main.odin 2  # diagnostic build/debug.log; a private Wren's throwaway profile removed after the last write of the exit
+src/browser/main.odin 1  # a private Wren's throwaway profile removed after the last write of the exit
 src/browser/memcheck.odin 1  # diagnostic: the check build's memory report
 src/browser/memcheck_report_other.odin 2  # diagnostic: the check build's memory report
 src/browser/memcheck_report_windows.odin 2  # diagnostic: the check build's memory report

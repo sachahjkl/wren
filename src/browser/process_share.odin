@@ -71,7 +71,7 @@ process_share_users :: proc() -> int {
 @(private = "file")
 process_setup :: proc(app: ^App) -> bool {
 	crash_report_begin(app)   // crash_report.odin (a session that ended without a report: crashes/unclean-<date>.txt at this start)
-	host.shutdown_on_force = crash.end_session   // (shutdown.log says what a watchdog ended, and the profile was saved first: no crash)
+	host.shutdown_on_force = shutdown_forced   // (shutdown.log says what a watchdog ended, and the profile was saved first: no crash)
 	rs := wasm.runtime_settings_from_prefs(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")   // nothing on disk without a kept profile
 	wasm.configure(rs)
 	wasm.runtime_settings_destroy(&rs)
@@ -79,6 +79,13 @@ process_setup :: proc(app: ^App) -> bool {
 	wasm.shipped_set(js_code.CODE)
 	page.js_startup(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")
 	return true
+}
+
+// The watchdog ends the process at once after this: the session ends clean, and the log has the watchdog's last lines in its file.
+@(private = "file")
+shutdown_forced :: proc() {
+	crash.end_session()
+	program_log_flush()   // program_log.odin
 }
 
 @(private = "file")

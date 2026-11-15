@@ -113,6 +113,7 @@ browser/main.odin the_app thread  # the App of this thread (its loop's, its page
 browser/measure_test.odin MEASURE_TEXTS test
 browser/memcheck.odin driver process  # the check build's script (one per process)
 browser/memory_trim.odin MEMORY_PREFS const  # a table
+browser/program_log.odin program_log_lock process  # the log is the process's (gt:log, one file): the first App installs it under this lock
 browser/newtab_art.odin ART_COMMONS_CATEGORIES const  # a table
 browser/newtab_art.odin ART_PREFS const  # a table
 browser/notification_shell.odin NOTIFICATION_PREFS const  # a table

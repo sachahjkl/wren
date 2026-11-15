@@ -6,6 +6,7 @@
 package browser
 
 import "core:fmt"
+import "core:log"
 import "core:os"
 import "core:strings"
 import "core:sync"
@@ -38,13 +39,8 @@ SHOW_TEXT_MAX_BYTES :: 1 << 20
 
 DEBUG_INPUT :: #config(DEBUG_INPUT, false)
 
-debug_log :: proc(s: string) {
-	f, err := os.open("build/debug.log", {.Write, .Create, .Append}, os.Permissions_Default_File)
-	if err != nil { return }
-	defer os.close(f)
-	os.write_string(f, s)
-	os.write_string(f, "\n")
-}
+// (DEBUG_INPUT's lines: in the program's log, whose thread writes them, not a file opened by the interface thread per event)
+debug_log :: proc(s: string) { log.debug(s) }
 
 Script_State :: enum u8 { Pending, Ready, Failed, Done }
 
@@ -1698,10 +1694,14 @@ main :: proc() {
 	prof_mark(.Main)
 	// (UTF-8 from the UTF-16 command line: os.args is the C runtime's ANSI)
 	app := app_start(process.command_line_args(base.permanent_allocator()))
-	if app == nil { return }
+	// (app_start installed the process's log: this context, made before, is given it too)
+	if logger, ok := base.process_logger(); ok { context.logger = logger }
+	if app == nil { context.logger = {}; program_log_close(); return }
 	host.shutdown_stacks_program = process.executable_path(base.permanent_allocator())   // (`wren ctl stacks`: a teardown that hangs says where)
 	for app_turn(app) {}
 	app_stop(app, process_ends = true)
+	context.logger = {}
+	program_log_close()   // program_log.odin: after the last line of the teardown
 	host.process_end(remote_exit_code)   // (at once: unloading the system's libraries takes longer than the whole teardown, and leaves nothing done)
 }
 
@@ -1748,6 +1748,9 @@ app_start :: proc(args: []string) -> ^App {
 	portable_dir := profile_override == "" ? portable_profile_dir() : ""   // a copy with wren.portable beside it keeps its profile beside it (setup.odin)
 	app.portable = portable_dir != ""
 	app.profile_dir = strings.clone(profile_override != "" ? profile_override : (app.portable ? portable_dir : (cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/", APP_NAME}, context.temp_allocator))))
+	// program_log.odin: <profile>/logs/wren.log, the user's profile even for a private Wren (its own goes at its end)
+	logger, has_log := program_log_install(app.profile_dir)
+	if has_log { context.logger = logger }
 	if private_mode {
 		// a profile of its own in the temporary folder, with the user's settings copied in (private_browsing.odin)
 		if dir := private_profile_make(app.profile_dir); dir != "" {
@@ -1759,7 +1762,7 @@ app_start :: proc(args: []string) -> ^App {
 	}
 	_ = os.make_directory_all(app.profile_dir)
 	net.user_agent_product = "Wren/" + APP_VERSION
-	crash_report_install(app)   // crash_report.odin: a crash leaves its report and a minidump in <profile>/crashes
+	crash_report_install(app, logger.data)   // crash_report.odin: a crash leaves its report and a minidump in <profile>/crashes, with the log's last lines
 	end_signal_install(app)   // (after the crash handler: these signals end the browser cleanly, its session saved)
 	_, _, prefs_file := profile_paths(app)
 	config.load_file(&app.prefs, prefs_file, .User)
@@ -1768,14 +1771,15 @@ app_start :: proc(args: []string) -> ^App {
 	app_prefs_register(app)   // (and a private Wren's own values)
 	app_settings_read(app)
 	prof_mark(.Prefs)
-	if cli_bad != "" { process.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove, status or uninstall)\n", cli_bad)); os.exit(2) }
+	if cli_bad != "" { process.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove, status or uninstall)\n", cli_bad)); program_log_flush(); os.exit(2) }
 	// `ctl` as an address is nearly always `wren ctl ...` meant for the remote control client that did not run as such (an option before it:
 	// `ctl` is only the first argument; or a wren.exe from before the client existed): it would open https://ctl, and in the user's Wren, not here
 	if len(rest) > 0 && is_info_word(rest[0]) {
 		process.console_write(fmt.tprintf("`%s` is a command only as the first argument (wren ctl <command>, wren help, wren version). To open a file or host named %s, write ./%s\n", rest[0], rest[0], rest[0]))
+		program_log_flush()
 		os.exit(2)
 	}
-	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode, purge_requested)) }   // no window: a script's call
+	if cli_mode != .None { code := desktop_cli(app, cli_mode, purge_requested); program_log_flush(); os.exit(code) }   // no window: a script's call
 	host.phase("instance_early")
 	instance_early(app, rest[:], setup_requested, new_window || no_single, remote_asked || headless_mode || hidden_mode || cdp_have_port)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists
@@ -1805,7 +1809,7 @@ app_start :: proc(args: []string) -> ^App {
 	} else {
 		first_window = platform.open_window(APP_NAME, {1280, 800}, transparent = config.bool_of(&app.prefs, "browser.window.fixed_surface"), integrated_title = !config.bool_of(&app.prefs, prefs_page.SYSTEM_TITLE_PREF))
 	}
-	if first_window == nil { fmt.eprintln("cannot open the window"); return nil }
+	if first_window == nil { log.error("cannot open the window"); return nil }
 	window_adopt_primary(app, first_window)   // windows.odin: the window the App's per-window fields are about
 	prof_mark(.Window)
 
@@ -1815,7 +1819,7 @@ app_start :: proc(args: []string) -> ^App {
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	appearance_init(app)   // before any settings are derived: `system` colors, auto color scheme
 	ns := net.settings_from_prefs(&app.prefs)
-	if !net.client_init(&app.client, &app.loop, ns) { fmt.eprintln("network init failed"); return nil }
+	if !net.client_init(&app.client, &app.loop, ns) { log.error("network init failed"); return nil }
 	net.settings_destroy(&ns)
 	app_pools_init(app, app.cfg.blocking_threads)
 	host.dialogs_init(&app.dialogs, &app.loop)
@@ -1828,7 +1832,7 @@ app_start :: proc(args: []string) -> ^App {
 	app.page_settings = page.settings_from_prefs(&app.prefs)
 	app.page_settings.internal_address = is_builtin_href
 	host.phase("script runtime")
-	if !process_share_join(app) { fmt.eprintln("wasm runtime init failed"); return nil }   // process_share.odin: the Wasm engine, the bytecode cache... (the first App sets them up)
+	if !process_share_join(app) { log.error("wasm runtime init failed"); return nil }   // process_share.odin: the Wasm engine, the bytecode cache... (the first App sets them up)
 	app.process = base.scope_make("process")
 	app.config_view.rows = make(map[string]^Row_State)
 	history_settings_init(app)   // history_settings.odin: before the first tab
@@ -1873,9 +1877,9 @@ app_start :: proc(args: []string) -> ^App {
 	if headless_mode {
 		// no window: the renderer draws into an offscreen target of the window's size. Captures read it (render.capture_*,
 		// on both backends). It resizes with the window (window_resize_offscreen).
-		if !render.init_offscreen(&app.r, active_window(app).win.size, warp = headless_software) { fonts_preload_finish(app, preload); fmt.eprintln("offscreen renderer init failed"); return nil }
+		if !render.init_offscreen(&app.r, active_window(app).win.size, warp = headless_software) { fonts_preload_finish(app, preload); log.error("offscreen renderer init failed"); return nil }
 	} else {
-		if !render.init_window(&app.r, active_window(app).win, active_window(app).win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return nil }
+		if !render.init_window(&app.r, active_window(app).win, active_window(app).win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); log.error("renderer init failed"); return nil }
 	}
 	fixed_size: [2]int
 	if !headless_mode { fixed_size = fixed_surface_size(app, active_window(app).win) }
@@ -1887,7 +1891,7 @@ app_start :: proc(args: []string) -> ^App {
 	render.set_teardown_wait(&app.r, int(config.int_of(&app.prefs, "browser.shell.shutdown_surface_wait_ms")))   // (see the preference: the compositor may be slow to let go of the surface)
 	prof_mark(.Renderer)
 	host.phase("fonts finish")
-	if !fonts_preload_finish(app, preload) { fmt.eprintln("cannot load the UI or icon font"); return nil }
+	if !fonts_preload_finish(app, preload) { log.error("cannot load the UI or icon font"); return nil }
 	prof_mark(.UI_Fonts)
 	host.phase("draw, ui, page render, shells")
 	app_draw_init(app)

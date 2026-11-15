@@ -28,12 +28,38 @@ TRACK_MEMORY :: #config(WREN_TRACK_MEMORY, false)
 
 @(private) HEAP :: runtime.Allocator{runtime.heap_allocator_proc, nil}
 
-// The context of code that has none of its own: the process heap, or the tracker of a check build.
+// The context of code that has none of its own: the process heap, or the tracker of a check build, and the process's log.
 process_context :: #force_inline proc "contextless" () -> runtime.Context {
 	c := runtime.default_context()
 	when TRACK_MEMORY { c.allocator = runtime.Allocator{tracker_proc, &tracker} }
 	when POISON_MEMORY { c.temp_allocator = poison_temp_allocator() }
+	if sync.atomic_load_explicit(&process_logger_on, .Acquire) { c.logger = process_logger_value }
 	return c
+}
+
+// The process's log (the program installs it once, gt:log): every context process_context makes logs there, so a thread or a
+// callback started from one does too. Before it is set and after it is cleared, the runtime's default logger (it drops the line).
+// (A flag, not a lock: process_context runs on every Wasm host call. The value is written while the flag is off and never
+// changes while it is on.)
+@(private = "file") process_logger_value: runtime.Logger
+@(private = "file") process_logger_on: bool
+
+// Sets the process's log, once, before it is read: a second call while one is set is ignored.
+process_logger_set :: proc "contextless" (logger: runtime.Logger) {
+	if sync.atomic_load(&process_logger_on) { return }
+	process_logger_value = logger
+	sync.atomic_store_explicit(&process_logger_on, true, .Release)
+}
+
+// Clears the process's log, before it is closed: the contexts made from then on drop their lines.
+process_logger_clear :: proc "contextless" () {
+	sync.atomic_store(&process_logger_on, false)
+}
+
+// The process's log, and whether one is set.
+process_logger :: proc "contextless" () -> (runtime.Logger, bool) {
+	if !sync.atomic_load_explicit(&process_logger_on, .Acquire) { return {}, false }
+	return process_logger_value, true
 }
 
 process_allocator :: #force_inline proc "contextless" () -> runtime.Allocator {

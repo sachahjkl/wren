@@ -126,7 +126,7 @@ instance_early :: proc(app: ^App, rest: []string, setup, new_window, driven: boo
 	message := encode_message({setup = setup, addresses = addresses[:], token = platform.activation_token_from_env(context.temp_allocator)})
 	outcome, owner := instance.acquire({name = instance_name(app), identity = exe, wait_ms = INSTANCE_ACQUIRE_WAIT_MS}, message)
 	switch outcome {
-	case .Forwarded:       os.exit(0)
+	case .Forwarded:       program_log_flush(); os.exit(0)   // (program_log.odin: what this start logged is in the file)
 	case .First:           inst.owner, inst.mine = owner, true
 	case .Other_Instance:  // another executable owns the profile: this one opens its own window
 	case .Unresponsive:

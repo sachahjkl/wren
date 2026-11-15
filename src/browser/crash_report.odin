@@ -8,6 +8,7 @@ package browser
 import "core:strings"
 import "core:sync"
 import crash "toolkit:crash"
+import tk_log "toolkit:log"
 
 // What the [settings] section of a report can hold: the user's preferences file, cut there.
 @(private = "file") CRASH_SETTINGS_BYTES :: 16 * 1024
@@ -20,13 +21,17 @@ crash_settings: struct {
 	n:   int,   // (atomic)
 }
 
-// The handler, once for the process, with the profile's folder: before anything that can crash.
-crash_report_install :: proc(app: ^App) {
+// The handler, once for the process, with the profile's folder: before anything that can crash. A report ends with the last lines
+// of the log (program_log.odin; `log_data` its runtime.Logger's data, nil: none), the ones its thread had not written yet included.
+crash_report_install :: proc(app: ^App, log_data: rawptr) {
+	tail: crash.Source
+	if log_data != nil { tail = {tk_log.tail, log_data} }
 	_ = crash.install({
 		program = APP_NAME, version = APP_VERSION, commit = app_commit(),
 		report_dir = strings.concatenate({app.profile_dir, "/crashes"}, context.temp_allocator),
 		minidump = true,   // (Windows: WinDbg reads what the text cannot say)
 		settings = {crash_settings_text, nil},
+		log_tail = tail,
 	})
 }
 
