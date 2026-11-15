@@ -3,7 +3,7 @@
 ## Now
 
 - **A passkey sign-in with two accounts on one security key no longer freezes.** Signing in to Bitwarden with a key that holds two of its passkeys froze the browser once, in the passkey's thread; the stacks of a hang are being caught to find where it waits.
-- **The Windows checks of the CI pass again.** An animation below the fold drew one frame at rest (`frames_at_rest`), and the extension install prompt does not show in the Windows end-to-end run.
+- **The Windows checks of the CI pass again.** Since the move to the toolkit's views and palette, on Windows only: the about:wren card's shaders need their blobs compiled again (`odin run ext/gui_toolkit/tools/shaders -- app card_foil src/browser/shaders/card_foil.wgsl src/browser/shaders`); the compositor and effects caches differ by rounding (worst 2); a page at rest draws one frame (`frames_at_rest`); the developer tools' colour picker gives the wrong colour; their window of its own outlives its window (`window_state`); a test reads a setting with the wrong kind (`config.value_of`); `planted_program` waits for a report; the extensions and `webauthn_exclude_credentials` failed already before.
 
 ## Next
 
