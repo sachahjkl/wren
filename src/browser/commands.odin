@@ -34,7 +34,6 @@ Command :: struct {
 	hidden:      bool,             // not offered by the palette (its own shortcut, for instance)
 	guarded:     bool,             // its keys act (and take the key) only while it is enabled
 	chrome_only: bool,             // acts on the chrome alone (the address bar, which tab is shown): done at once in a chrome frame too, under a busy page
-	built_keys:  []ui.Chord,       // the keys the registry gives it; `keys` are the ones in effect, derived from them and the preferences
 }
 
 Command_Registry :: struct {
@@ -42,9 +41,7 @@ Command_Registry :: struct {
 	index:         map[string]int,
 	arena:         base.Arena,       // generated names and labels, the tags and the keys of the commands
 	built:         bool,
-	version:       u64,              // counts the changes of the keys in effect (the palette's results depend on them)
-	prefs_version: u64,              // the preferences' version the keys in effect were derived from
-	prefs_applied: bool,
+	version:       u64,              // counts the changes of the keys in effect (the palette's table is made again: palette.odin)
 	vault_fill_key: [1]ui.Chord,     // the key of vault.fill from its preference (vault_fill.odin): `keys` points here
 }
 
@@ -60,24 +57,9 @@ command :: proc(app: ^App, name: string) -> ^Command {
 	return nil
 }
 
-// Every reader takes the keys from `Command.keys`: a preference that turns a key off changes that table once, when the
-// preferences change, not a check at each press.
 @(private = "file")
 commands_ready :: proc(app: ^App) {
-	r := &app.cmds
-	if !r.built { commands_build(r) }
-	if r.prefs_applied && r.prefs_version == app.prefs.version { return }
-	CTRL_K :: "browser.palette.ctrl_k"
-	// (not registered yet, as in a test that reads a shortcut: the registry's keys, and derived again once it is,
-	// since registering does not change the preferences' version)
-	if config.ref_of(&app.prefs, CTRL_K) == config.NO_REF { return }
-	r.prefs_applied, r.prefs_version = true, app.prefs.version
-	if i, ok := r.index["browser.command_palette"]; ok {
-		c := &r.list[i]
-		keys := c.built_keys
-		if !config.bool_of(&app.prefs, CTRL_K) { keys = keys[:1] }   // Ctrl+K off: Ctrl+Shift+P stays
-		if len(keys) != len(c.keys) { c.keys = keys; r.version += 1 }
-	}
+	if !app.cmds.built { commands_build(&app.cmds) }
 }
 
 commands_destroy :: proc(r: ^Command_Registry) {
@@ -173,7 +155,6 @@ command_add :: proc(r: ^Command_Registry, c: Command) {
 	r.index[c.name] = len(r.list)
 	c := c
 	c.icon = command_icon(c.name)
-	c.built_keys = c.keys
 	append(&r.list, c)
 }
 
@@ -478,8 +459,6 @@ commands_build :: proc(r: ^Command_Registry) {
 	}
 
 	// --- browser
-	add(r, {name = "browser.command_palette", label = "Command palette…", group = "Browser", keys = command_keys(r, {key = .P, mods = cs}, {key = .K, mods = ctrl}),
-		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { palette_toggle(app) }})
 	add(r, {name = "browser.main_menu", label = "Open the main menu", group = "Browser", keys = command_keys(r, {key = .F, mods = alt}, {key = .E, mods = alt}),
 		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Main_Menu) }})
 	add(r, {name = "browser.history", label = "History", group = "Browser", tags = command_words(r, "about:history visited pages past"), url = HISTORY_URL, keys = command_keys(r, {key = .H, mods = ctrl}),

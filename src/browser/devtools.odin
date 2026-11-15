@@ -576,7 +576,8 @@ devtools_settings_menu :: proc(app: ^App, t: ^Tab) {
 	}
 	ui.menu_separator()
 	if ui.menu_item("Select an element in the page###dt_m_pick", cmd_key(app, "view.devtools_pick"), icon = lucide.TEXT_CURSOR_INPUT).clicked { devtools_pick(app) }
-	if ui.menu_item("Open the command palette###dt_m_palette", "Ctrl+Shift+P", icon = lucide.COMMAND).clicked { palette_toggle(app) }
+	pc := ui.palette_command()   // (the toolkit's: its keys and its icon)
+	if ui.menu_item("Open the command palette###dt_m_palette", ui.command_shortcut(pc), icon = pc.icon).clicked { palette_toggle(app) }
 	// the drawer: the Console in a stack of its own under the others (Escape shows and hides it)
 	if devtools_drawer_split(dev()) == ui.DOCK_NONE {
 		if ui.menu_item("Show the Console under the other panels###dt_m_con_drawer", "Esc", icon = lucide.EYE).clicked { devtools_drawer_toggle(app) }

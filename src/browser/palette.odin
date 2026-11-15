@@ -1,804 +1,601 @@
 package browser
 
-// The command palette (Ctrl+Shift+P, Ctrl+K, Menu > Command palette): a field over the top of the window and the
-// results of what is typed in it, as in VS Code. It searches, fuzzily, every source at once or one of them by prefix:
+// The command palette (Ctrl+K, Ctrl+Shift+P, Menu > Command palette): the toolkit's (ui.Command_Palette), the same in
+// every program of the family (ext/gui_toolkit/docs/palette.md). Each window has its own: the toolkit opens a palette
+// over the window it is built in, and its `@` lists that window's tabs. Wren gives it its sources:
 //
-//     (nothing)  commands, open tabs, and the pluggable sources that take part in a plain search (history...)
-//     >          commands of the registry (commands.odin): the keyboard shortcuts and the main menu run the same ones
-//     @          open tabs, then recently closed ones
-//     :          preferences (about:config): a boolean one toggles at once, the others open about:config on it
-//     /          pages: the pluggable sources with that prefix (palette_add_source), the history of the open tabs
+//     >  the registry's commands (commands.odin), as the toolkit's table; the views' moves are the toolkit's
+//     @  the window's tabs, then the recently closed ones
+//     /  the pages: the bookmarks, then the visited pages (global_history.odin); Ctrl+Enter opens one in a new tab
+//     :  the preferences (about:config): a switch flips and the palette stays, another opens about:config on it
+//     $  the Vault's items (vault_fill.odin): only while it is unlocked, never under remote control
 //
-// Up / Down (wrapping), Page Up / Page Down move; Enter runs, Ctrl+Enter opens in a new tab what opens a page; Escape,
-// the shortcut again or a press outside close it, and the keyboard goes back to what had it. The commands the user
-// runs are remembered (count and time: ui.Choice_Memory, in palette_choices.txt of the profile): with nothing typed they
-// come first, and they rank higher among matches.
-//
-// Matching and ranking are the toolkit's palette's (ui.rank with ui.rank_palette, docs/commands.md of the toolkit): the
-// title holds what is typed whole or in pieces that begin its words, then a command's other words and its group, then the
-// same with a slip; a last text (a command's name, an address, a preference's description) finds a row when nothing
-// else does. The memory of choices raises a hit (rank's bonus). Results are worked out again only when what they depend on
-// changes (the query, the tabs, the preferences, the commands' states): an open palette at rest costs a caret blink, a
-// closed one nothing.
+// A source's answer is made on a chore (Palette_Job) from lines the source copied on the interface's thread when its
+// data changed (its version), never at each frame. The toolkit ranks on its chores, owns the palette's keys and
+// remembers the choices (palette_choices.txt of the profile; a private Wren keeps none). A choice of Wren's sources is
+// done in palette_frame, at the top of the next build.
 
 import "core:fmt"
-import "core:math"
+import "core:slice"
+import "core:strconv"
 import "core:strings"
-import "core:time"
-import "toolkit:draw"
 import lucide "toolkit:lucide"
-import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
 import "wb:i18n"
+import "wb:vault"
 
-PALETTE_PREFS := [?]config.Def{
-	{name = "browser.palette.ctrl_k", kind = .Bool, default = {b = true},
-		description = "Ctrl+K opens the command palette too (Ctrl+Shift+P always does). A page that handles Ctrl+K itself and cancels the key keeps it."},
-	{name = "browser.palette.width_em", kind = .Float, default = {f = 40}, bounded = true, min = 20, max = 160, unit = "em",
-		description = "Width of the command palette, in multiples of the interface's font size (never wider than the window)."},
-	{name = "browser.palette.rows", kind = .Int, default = {i = 12}, bounded = true, min = 3, max = 60, unit = "rows",
-		description = "Results the command palette shows at once (the list scrolls past them)."},
-	{name = "browser.palette.max_results", kind = .Int, default = {i = 300}, bounded = true, min = 10, max = 100_000, unit = "results",
-		description = "Most results the command palette lists, best first."},
-	{name = "browser.palette.show_disabled", kind = .Bool, default = {b = true},
-		description = "List the commands that cannot run right now (Back without history...), greyed after the others. Off: they are left out."},
-	{name = "browser.palette.remember", kind = .Bool, default = {b = true},
-		description = "Remember which commands and preferences are chosen in the command palette, and how recently, to list them first (kept in palette_choices.txt of the profile when browser.profile.persist is on)."},
-	{name = "browser.palette.usage_max_entries", kind = .Int, default = {i = 500}, bounded = true, min = 10, max = 100_000, unit = "entries",
-		description = "Most choices the command palette remembers (the least used and oldest are forgotten first)."},
-	{name = "browser.palette.usage_half_life_days", kind = .Float, default = {f = 14}, bounded = true, min = 0.1, max = 3650, unit = "days",
-		description = "How fast a remembered choice counts less: its weight halves every this many days without being chosen again."},
-	{name = "browser.palette.open_ms", kind = .Int, default = {i = 110}, bounded = true, min = 0, max = 1000, unit = "ms",
-		description = "Duration of the command palette's opening (a short fade and slide; 0 = none, and none when Windows turns animations off)."},
-	{name = "browser.palette.source_max_items", kind = .Int, default = {i = 5000}, bounded = true, min = 0, max = 1_000_000, unit = "items",
-		description = "Most items the command palette takes from each source of pages (history...) for one search."},
+// The registry's commands as the toolkit's table: one for the windows' palettes, made again when the registry's keys
+// change (Command_Registry.version).
+Palette_Table :: struct {
+	arena:    base.Arena,
+	ready:    bool,
+	table:    []ui.Command,   // the commands the palette lists (the hidden ones left out), in the registry's order
+	names:    []string,       // each one's name: its id, and its key in the usage memory ("command:<name>")
+	rows:     []int,          // each one's index in the registry
+	gated:    []int,          // the table's commands that have a condition (`enabled`)
+	registry: u64,            // the registry's version it was made from
+	version:  u64,            // counts the makes
 }
 
-register_palette_prefs :: proc(p: ^config.Prefs) { config.register(p, PALETTE_PREFS[:]) }
+// A window's palette and Wren's sources in it. In Window_Own: it does not move while the palette holds the sources.
+Window_Palette :: struct {
+	pal:      ui.Command_Palette,
+	app:      ^App,
+	tabs:     ui.Palette_Source,   // @
+	pages:    ui.Palette_Source,   // /
+	settings: ui.Palette_Source,   // :
+	vault:    ui.Palette_Source,   // $
+	started:  bool,
+	open:     bool,                // its view was open at the last build of its window
 
-Palette_Settings :: struct {
-	width_em:        f32,
-	rows:            int,
-	max_results:     int,
-	show_disabled:   bool,
-	remember:        bool,
-	usage_max:       int,
-	half_life_days:  f64,
-	open_ms:         f64,
-	source_max:      int,
-}
+	disabled: [dynamic]bool,       // by the table's index: what cannot act now
+	table:    u64,                 // the table's version `disabled` is for
+	version:  u64,                 // of the table and of `disabled`, as the palette compares them
 
-palette_settings_from_prefs :: proc(p: ^config.Prefs) -> Palette_Settings {
-	return {
-		width_em = f32(config.float_of(p, "browser.palette.width_em")),
-		rows = int(config.int_of(p, "browser.palette.rows")),
-		max_results = int(config.int_of(p, "browser.palette.max_results")),
-		show_disabled = config.bool_of(p, "browser.palette.show_disabled"),
-		remember = config.bool_of(p, "browser.palette.remember"),
-		usage_max = int(config.int_of(p, "browser.palette.usage_max_entries")),
-		half_life_days = config.float_of(p, "browser.palette.usage_half_life_days"),
-		open_ms = f64(config.int_of(p, "browser.palette.open_ms")),
-		source_max = int(config.int_of(p, "browser.palette.source_max_items")),
-	}
+	tabs_seen:   u64,              // the tabs' and the closed tabs' fingerprint at the last look
+	prefs_seen:  u64,              // the preferences' version at the last look
+	prefs_count: int,              // and how many were registered
+	flipped:     bool,             // the palette flipped a switch since: its own change does not read the settings again
+	vault_seen:  u64,              // the Vault's state at the last look
+
+	// asked from outside a build (a command's key, a menu of another window, the remote control): done at the next one
+	due, due_close: bool,
+	due_typed:      string,        // (owned) what the field starts with
+
+	// the Vault's question in flight: the helper searches, the answer is made when its rows came (vault_poll)
+	vault_q:      ui.Palette_Question,
+	vault_asking: bool,
+	vault_query:  string,          // (owned) what it was asked for
 }
 
 ////////////////////////////////
-// What was chosen, and when: the toolkit's memory of choices (ui.Choice_Memory). A choice's key is "cmd:<name>" or
-// "pref:<name>".
+// What the rest of the browser calls
 
-@(private = "file")
-now_unix_ms :: proc() -> i64 { return time.to_unix_nanoseconds(time.now()) / 1e6 }
-
-@(private = "file")
-choice_options :: proc(cfg: Palette_Settings) -> ui.Choice_Memory_Options {
-	return {half_life_days = cfg.half_life_days, most = cfg.usage_max}
-}
-
-// Opened at the palette's first showing: read on the toolkit's chores, merged at a next build of the window it opens in.
-@(private = "file")
-choices_open :: proc(app: ^App) {
-	s := active_window(app).ui
-	if app.cpal.choices_opened || s == nil { return }   // (no window yet: the choices stay in memory until one opens it)
-	app.cpal.choices_opened = true
-	path := app.cfg.persist_profile ? strings.concatenate({app.profile_dir, "/palette_choices.txt"}, context.temp_allocator) : ""
-	ui.choice_memory_open(&app.cpal.choices, s, path, choice_options(app.cpal.cfg))
-}
-
-@(private = "file")
-choice_note :: proc(app: ^App, key: string) {
-	if !app.cpal.cfg.remember { return }
-	choices_open(app)
-	ui.choice_note(&app.cpal.choices, key)
-}
-
-// What a choice adds to a hit (`query`: what is typed); nothing while the palette remembers nothing.
-@(private = "file")
-choice_bonus :: proc(app: ^App, key, query: string, now_ms: i64) -> f64 {
-	if !app.cpal.cfg.remember || key == "" { return 0 }
-	return ui.choice_bonus(&app.cpal.choices, key, query, now_ms)
-}
-
-////////////////////////////////
-// Sources of pages (history, bookmarks...): plugged in by whoever has them
-
-// One page a source offers. The strings need only last until `items` returns (the palette copies what it keeps).
-Palette_Item :: struct {
-	title:  string,
-	detail: string,   // shown weak after the title (its address)
-	key:    string,   // given back to `activate`
-	glyph:  string,
-	site:   string,   // an address whose site icon the row shows ("": its glyph)
-}
-
-Palette_Source :: struct {
-	name:       string,   // the rows' category ("History", "Bookmarks"); unique
-	prefix:     u8,       // the query prefix that searches it alone ('/' for pages; 0: none)
-	in_default: bool,     // it takes part in a search without prefix (once something is typed)
-	items:      proc(user: rawptr, app: ^App, out: ^[dynamic]Palette_Item),
-	activate:   proc(user: rawptr, app: ^App, key: string, new_tab: bool),
-	version:    proc(user: rawptr, app: ^App) -> u64,   // changes when its items do (nil: they are read for every search)
-	user:       rawptr,
-}
-
-// Adds (or replaces, by name) a source. The name must outlive the palette (a literal).
-palette_add_source :: proc(app: ^App, s: Palette_Source) {
-	for &x in app.cpal.sources { if x.name == s.name { x = s; app.cpal.cache_valid = false; return } }
-	append(&app.cpal.sources, s)
-	app.cpal.cache_valid = false
-}
-
-palette_remove_source :: proc(app: ^App, name: string) {
-	for x, i in app.cpal.sources { if x.name == name { ordered_remove(&app.cpal.sources, i); app.cpal.cache_valid = false; return } }
-}
-
-// The built-in source of pages: what the open tabs visited (each tab's session history).
-@(private = "file")
-tab_history_items :: proc(user: rawptr, app: ^App, out: ^[dynamic]Palette_Item) {
-	seen := make(map[string]bool, 64, context.temp_allocator)
-	for t in tabs_all(app) {
-		for i := len(t.history) - 1; i >= 0; i -= 1 {
-			u := t.history[i]
-			if u == "" || u in seen { continue }
-			seen[u] = true
-			append(out, Palette_Item{title = default_tab_title(u), detail = u, key = u, site = u})
-		}
-	}
-}
-
-@(private = "file")
-tab_history_activate :: proc(user: rawptr, app: ^App, key: string, new_tab: bool) {
-	t := current_tab(app)
-	if new_tab || t == nil { open_in_new_tab(app, key, origin = .User) } else { navigate(app, t, strings.clone(key, context.temp_allocator), origin = .User) }
-}
-
-@(private = "file")
-tab_history_version :: proc(user: rawptr, app: ^App) -> u64 {
-	h: u64 = 0xcbf29ce484222325
-	for t in tabs_all(app) { h = (h ~ t.id) * 0x100000001b3; h = (h ~ u64(len(t.history))) * 0x100000001b3; h = (h ~ u64(t.hist)) * 0x100000001b3 }
-	return h
-}
-
-////////////////////////////////
-// Results
-
-Palette_Mode :: enum u8 { All, Commands, Tabs, Prefs, Source }
-
-// What the query asks for: its prefix's mode (Source: `prefix`, the character) and the words after it.
-palette_parse_query :: proc(app: ^App, text: string) -> (mode: Palette_Mode, prefix: u8, query: string) {
-	s := strings.trim_left_space(text)
-	if len(s) == 0 { return .All, 0, "" }
-	switch s[0] {
-	case '>': return .Commands, 0, strings.trim_space(s[1:])
-	case '@': return .Tabs, 0, strings.trim_space(s[1:])
-	case ':': return .Prefs, 0, strings.trim_space(s[1:])
-	case '/', '#', '!', '*', '%', '&', '$', '~', '^':
-		for src in app.cpal.sources { if src.prefix == s[0] { return .Source, s[0], strings.trim_space(s[1:]) } }
-	}
-	return .All, 0, strings.trim_space(s)
-}
-
-Palette_Kind :: enum u8 { Command, Tab, Closed_Tab, Pref, Source }
-
-Palette_Row :: struct {
-	kind:     Palette_Kind,
-	index:    int,            // command index, source index, closed tab index
-	tab_id:   u64,
-	ref:      config.Ref,
-	key:      string,         // a source item's key, a closed tab's address
-	title:    string,
-	detail:   string,
-	category: string,
-	glyph:    string,
-	site:     string,         // a source item's address whose site icon shows
-	tags:     []string,       // other words that find it (a command's; while collecting)
-	last:     string,         // a text that finds it when nothing else does (while collecting)
-	choice:   string,         // its key in the memory of choices ("cmd:tab.new"; while collecting)
-	disabled: bool,
-	ranges:   []ui.Fuzzy_Range,
-}
-
-Palette_State :: struct {
-	open:          bool,
-	window:        int,             // the window it is open in (Browser_Window.id)
-	field:         ui.Line_Edit,
-	opened:        time.Tick,
-	focus_pending: bool,
-	saved_focus:   ui.Key,
-	sel, first:    int,
-	scroll_acc:    f32,
-	rows:          [dynamic]Palette_Row,
-	arena:         base.Arena,   // the rows' strings and ranges
-	arena_ready:   bool,
-	search:        ui.Fuzzy_Cache,   // the query and the candidates' texts folded, from one search to the next (ui.rank)
-	cache_text:    string,          // owned: the query the rows are for
-	cache_key:     u64,
-	cache_valid:   bool,
-	last_mouse:    [2]f32,
-	cfg:           Palette_Settings,
-	cfg_version:   u64,
-	cfg_ready:     bool,
-	choices:       ui.Choice_Memory,     // palette_choices.txt of the profile (written by the toolkit's own writer)
-	choices_opened: bool,
-	sources:       [dynamic]Palette_Source,
-	sources_ready: bool,
-}
-
-
-// (The palette belongs to the window it was opened in: the others show nothing of it.)
-palette_open :: proc(app: ^App) -> bool { return app.cpal.open && app.active != nil && app.cpal.window == app.active.id }
-
-palette_destroy :: proc(app: ^App) {
-	ui.line_edit_destroy(&app.cpal.field)
-	delete(app.cpal.rows)
-	ui.fuzzy_cache_destroy(&app.cpal.search)
-	if app.cpal.arena_ready { base.arena_destroy(&app.cpal.arena) }
-	delete(app.cpal.cache_text)
-	ui.choice_memory_close(&app.cpal.choices)   // (writes what changed and waits for the disk: the end of the process)
-	delete(app.cpal.sources)
-	app.cpal = {}
-	commands_destroy(&app.cmds)
-}
-
-@(private = "file")
-palette_ready :: proc(app: ^App) {
-	if !app.cpal.cfg_ready || app.cpal.cfg_version != app.prefs.version {
-		app.cpal.cfg = palette_settings_from_prefs(&app.prefs)
-		app.cpal.cfg_version, app.cpal.cfg_ready = app.prefs.version, true
-		// (the memory reads its options at each weight and trim: a preference changed applies from the next choice)
-		app.cpal.choices.options = choice_options(app.cpal.cfg)
-	}
-	if !app.cpal.arena_ready { _ = base.arena_init_growing(&app.cpal.arena); app.cpal.arena_ready = true }
-	if !app.cpal.sources_ready {
-		app.cpal.sources_ready = true
-		palette_add_source(app, {name = "Visited", prefix = '/', in_default = true, items = tab_history_items, activate = tab_history_activate, version = tab_history_version})
-		palette_add_source(app, bookmarks_palette_source())   // bookmarks_ui.odin
-		palette_add_source(app, vault_palette_source())   // vault_fill.odin: "$" searches the Vault (nothing while it is locked or off)
-	}
-}
-
-palette_toggle :: proc(app: ^App) {
-	if app.cpal.open { palette_close(app) } else { palette_show(app) }
-}
-
-// Opens the palette (with `text` typed, a prefix for instance).
-palette_show :: proc(app: ^App, text := "") {
-	palette_ready(app)
-	choices_open(app)
-	ui.menu_close()
-	app.cpal.open = true
-	app.cpal.window = app.active != nil ? app.active.id : 0
-	ui.line_edit_set(&app.cpal.field, text)
-	app.cpal.sel, app.cpal.first, app.cpal.scroll_acc = 0, 0, 0
-	app.cpal.cache_valid = false
-	app.cpal.saved_focus = ui.focus_key()
-	app.cpal.focus_pending = true
-	app.cpal.opened = time.tick_now()
-	app.cpal.last_mouse = ui.mouse_pos()
-	request_frames(app, 3)
-}
-
-// Closes it; the keyboard goes back to what had it (when that is still there).
-palette_close :: proc(app: ^App) {
-	if !app.cpal.open { return }
-	app.cpal.open = false
-	k := app.cpal.saved_focus
-	ui.set_focus(k != 0 && ui.box_from_key(k) != nil ? k : 0)
-	clear(&app.cpal.rows)
-	app.cpal.cache_valid = false
+// Opens the palette of the active window at its next build, `typed` in its field ("$ ": the Vault).
+palette_show :: proc(app: ^App, typed := "") {
+	wp := &window_own(app).palette
+	delete(wp.due_typed)
+	wp.due, wp.due_close, wp.due_typed = true, false, strings.clone(typed)
 	request_frames(app, 2)
 }
 
-// While it is open the palette takes every press and wheel turn: the page under it gets none (hud_captures).
-palette_captures :: proc(app: ^App, pos: draw.Vec2) -> bool { return palette_open(app) }
-
-@(private = "file")
-fnv :: proc(h: u64, s: string) -> u64 {
-	h := h
-	for c in transmute([]u8)s { h = (h ~ u64(c)) * 0x100000001b3 }
-	return h
+// Closes the palette of every window at its next build (the Setup dialog opens, the remote control resets).
+palette_hide :: proc(app: ^App) {
+	hide :: proc(wp: ^Window_Palette) { wp.due, wp.due_close = false, wp.open }
+	hide(&app.bare.own.palette)
+	for w in app.windows { hide(&w.own.palette) }
+	request_frames(app, 2)
 }
 
-@(private = "file")
-mix :: proc(h, v: u64) -> u64 { return (h ~ v) * 0x100000001b3 }
-
-// What the rows depend on besides the query: when it is the same, last frame's rows are still right.
-@(private = "file")
-results_key :: proc(app: ^App) -> u64 {
-	h: u64 = 0xcbf29ce484222325
-	h = mix(h, app.prefs.version)
-	h = mix(h, u64(active_window(app).current))
-	h = mix(h, app.cpal.choices.version); h = mix(h, app.cmds.version)
-	h = mix(h, u64(len(closed_items(app))))
-	for t in tabs_all(app) { h = mix(h, t.id); h = fnv(h, t.title); h = fnv(h, t.url) }
-	t := current_tab(app)
-	for &c, i in commands(app) { if command_enabled(app, t, &c) { h = mix(h, u64(i) + 1) } }
-	for s in app.cpal.sources { h = fnv(h, s.name); if s.version != nil { h = mix(h, s.version(s.user, app)) } else { h = mix(h, u64(ui.now_ms())) } }
-	return h
-}
-
-// The rows for `text` (in app.cpal.rows, best first). Pure apart from the registry, the memory of choices and the sources.
-// The candidates keep the strings they come with (the frame's); only the rows kept are copied, into the palette's arena.
-palette_collect :: proc(app: ^App, text: string) {
-	palette_ready(app)
-	base.arena_free_all(&app.cpal.arena)
-	clear(&app.cpal.rows)
-	mode, prefix, q := palette_parse_query(app, text)
-	now := now_unix_ms()
-	t := current_tab(app)
-	cands := make([dynamic]Palette_Row, context.temp_allocator)
-
-	if mode == .All || mode == .Commands {
-		for &c, i in commands(app) {
-			if c.hidden { continue }
-			enabled := command_enabled(app, t, &c)
-			if !enabled && !app.cpal.cfg.show_disabled { continue }
-			append(&cands, Palette_Row{kind = .Command, index = i, title = i18n.tr(c.label), category = c.group, glyph = c.icon, tags = c.tags, last = c.name,
-				choice = strings.concatenate({"cmd:", c.name}, context.temp_allocator), disabled = !enabled})
-		}
-	}
-	if mode == .All || mode == .Tabs {
-		for tab in tabs_all(app) {
-			append(&cands, Palette_Row{kind = .Tab, tab_id = tab.id, title = tab.title, detail = tab.url, category = "Tab", last = tab.url})
-		}
-	}
-	if mode == .Tabs || (mode == .All && q != "") {
-		closed := closed_items(app)
-		for i := len(closed) - 1; i >= 0; i -= 1 {
-			u := closed[i].address
-			append(&cands, Palette_Row{kind = .Closed_Tab, index = i, key = u, title = closed_item_label(closed[i]), detail = u, category = "Closed tab", last = u})
-		}
-	}
-	if mode == .Prefs {
-		for name in config.sorted_names(&app.prefs) {
-			r := config.ref_of(&app.prefs, name)
-			e := config.entry(&app.prefs, r)
-			append(&cands, Palette_Row{kind = .Pref, ref = r, title = name, category = "Setting", last = i18n.tr(e.def.description),
-				choice = strings.concatenate({"pref:", name}, context.temp_allocator), disabled = e.source == .Policy})
-		}
-	}
-	if mode == .Source || (mode == .All && q != "") {
-		for src, si in app.cpal.sources {
-			if mode == .Source ? src.prefix != prefix : !src.in_default { continue }
-			if src.items == nil { continue }
-			items := make([dynamic]Palette_Item, context.temp_allocator)
-			src.items(src.user, app, &items)
-			for it, n in items {
-				if n >= app.cpal.cfg.source_max { break }
-				append(&cands, Palette_Row{kind = .Source, index = si, key = it.key, title = it.title, detail = it.detail,
-					category = src.name, glyph = it.glyph, site = it.site, last = it.detail})
-			}
-		}
-	}
-
-	bonus := Rank_Bonus{app = app, query = q, now_ms = now}
-	hits := ui.rank(q, cands[:], palette_rank_entry, &bonus, bonus = palette_rank_bonus, cache = &app.cpal.search)
-	// what can run before what cannot, each in the rank's order
-	order := make([dynamic]ui.Rank_Hit, 0, len(hits), context.temp_allocator)
-	for h in hits { if !cands[h.index].disabled { append(&order, h) } }
-	for h in hits { if cands[h.index].disabled { append(&order, h) } }
-	// what is kept outlives the frame
-	a := base.arena_allocator(&app.cpal.arena)
-	for h in order[:min(len(order), app.cpal.cfg.max_results)] {
-		r := cands[h.index]
-		r.title = strings.clone(r.title, a)
-		r.detail = strings.clone(r.detail, a)
-		r.key = strings.clone(r.key, a)
-		r.glyph = strings.clone(r.glyph, a)
-		r.site = strings.clone(r.site, a)
-		r.tags, r.last, r.choice = nil, "", ""
-		if len(h.ranges) > 0 {
-			r.ranges = make([]ui.Fuzzy_Range, len(h.ranges), a)
-			copy(r.ranges, h.ranges)
-		}
-		append(&app.cpal.rows, r)
+// Opens or closes the active window's palette (a menu's line).
+palette_toggle :: proc(app: ^App) {
+	wp := &window_own(app).palette
+	if wp.open {
+		wp.due, wp.due_close = false, true
+		request_frames(app, 2)
+	} else {
+		palette_show(app)
 	}
 }
 
-// A candidate as ui.rank reads it: a command is found by its group too, the other rows by their title and last text.
-@(private = "file")
-palette_rank_entry :: proc(r: ^Palette_Row, _: rawptr) -> ui.Rank_Entry {
-	return {label = r.title, group = r.kind == .Command ? r.category : "", tags = r.tags, last = r.last}
+// Whether the active window's palette is open: it has the keyboard (chrome_shortcuts, the built-in pages' typing).
+palette_shown_here :: proc(app: ^App) -> bool { return window_own(app).palette.open }
+
+// Whether a window's palette is open: the Vault's search rows stay while one is (vault_fill_frame).
+palette_shown :: proc(app: ^App) -> bool {
+	if app.bare.own.palette.open { return true }
+	for w in app.windows { if w.own.palette.open { return true } }
+	return false
 }
 
-// What a hit gets from the memory of choices (ui.choice_bonus): nothing typed, the weight orders the rows (the registry's
-// or the tabs' order between equals); typed, it raises a match a little (bounded: a good match still beats a frequent
-// poor one), and the pages of a source come after commands and tabs that match as well.
-@(private = "file")
-Rank_Bonus :: struct { app: ^App, query: string, now_ms: i64 }
-
-@(private = "file")
-palette_rank_bonus :: proc(r: ^Palette_Row, user: rawptr) -> f64 {
-	b := (^Rank_Bonus)(user)
-	bonus := choice_bonus(b.app, r.choice, b.query, b.now_ms)
-	if b.query == "" { return bonus }
-	return bonus - (r.kind == .Source ? PALETTE_SOURCE_BEHIND : 0)
+// At the top of each build of a window (main.odin build_ui): the sources started, what was asked from outside a
+// build, the palette's keys, the versions of what the sources list, the commands, the choice.
+palette_frame :: proc(app: ^App) {
+	wp := &window_own(app).palette
+	palette_start(app, wp)
+	if wp.due_close {
+		wp.due_close = false
+		ui.palette_close(&wp.pal)
+	}
+	if wp.due {
+		wp.due = false
+		ui.palette_open(&wp.pal, wp.due_typed)
+		delete(wp.due_typed)
+		wp.due_typed = ""
+	}
+	// (the Setup dialog keeps the window's keys: setup.odin)
+	if !setup_is_open(app) { _ = ui.palette_keys(&wp.pal) }
+	open := ui.palette_is_open(&wp.pal)
+	// (opened: the tabs as they are now; their titles are not followed at each frame while it is open)
+	if open && !wp.open { wp.tabs.version += 1 }
+	if !open && wp.open { vault_question_end(wp) }
+	wp.open = open
+	if open {
+		palette_versions(app, wp)
+		vault_poll(app, wp)
+	}
+	palette_commands_give(app, wp)
+	if c, ok := ui.palette_chosen(&wp.pal); ok { palette_run(app, wp, c) }
 }
 
-@(private = "file") PALETTE_SOURCE_BEHIND :: 4
+// Before the window's toolkit state goes (window_own_destroy, the browser's end): a question still held is ended, and
+// the last palette writes the usage memory.
+palette_window_destroy :: proc(wp: ^Window_Palette) {
+	vault_question_end(wp)
+	ui.palette_destroy(&wp.pal)
+	delete(wp.disabled)
+	delete(wp.due_typed)
+	delete(wp.vault_query)
+	wp^ = {}
+}
 
-@(private = "file")
-row_usable :: proc(app: ^App, i: int) -> bool { return i >= 0 && i < len(app.cpal.rows) && !app.cpal.rows[i].disabled }
+palette_table_destroy :: proc(pt: ^Palette_Table) {
+	if pt.ready { base.arena_destroy(&pt.arena) }
+	pt^ = {}
+}
 
-// The next usable row from `from` by `dir` (±1 wraps; a page stops at the ends).
+////////////////////////////////
+// The sources
+
+// Once per window: the usage memory (shared by the windows: one file), the commands and Wren's sources.
+palette_start :: proc(app: ^App, wp: ^Window_Palette) {
+	if wp.started { return }
+	wp.started, wp.app = true, app
+	// (a window without a toolkit state, a test's: the memory stays in memory)
+	if s := active_window(app).ui; s != nil {
+		path := ""
+		if app.cfg.persist_profile && !app.private { path = strings.concatenate({app.profile_dir, "/palette_choices.txt"}, context.temp_allocator) }
+		ui.palette_memory_open(&wp.pal, s, path)
+	}
+	palette_commands_give(app, wp)   // (first: the commands come before Wren's sources)
+	// (the tabs' ids and the pages' addresses change from one run to the next, and the pages are the history's to keep:
+	// the usage memory keeps the commands and the settings only)
+	wp.tabs = {
+		name = "tab", title = i18n.later("Tabs"), prefix = .Go_To, plain = true, enter = i18n.later("Switch"),
+		read = tabs_source_read, mark = tabs_source_mark, user = wp,
+	}
+	wp.pages = {
+		name = "page", title = i18n.later("Pages"), prefix = .Paths, plain = true, enter = i18n.later("Open"),
+		alternates = {ctrl = i18n.later("Open in a new tab")}, read = pages_source_read, user = wp,
+	}
+	wp.settings = {
+		name = "setting", title = i18n.later("Settings"), prefix = .Settings, plain = true, remember = true, enter = i18n.later("Change"),
+		read = settings_source_read, mark = settings_source_mark, user = wp,
+	}
+	// (the helper searches the words typed: asked again at each query)
+	wp.vault = {
+		name = "vault", title = i18n.later("Vault"), prefix = .Secrets, searches = true, enter = i18n.later("Choose"),
+		read = vault_source_read, user = wp,
+	}
+	ui.palette_add(&wp.pal, &wp.tabs)
+	ui.palette_add(&wp.pal, &wp.pages)
+	ui.palette_add(&wp.pal, &wp.settings)
+	ui.palette_add(&wp.pal, &wp.vault)
+}
+
+// While the palette is open: each source's version follows what it lists, by counters that cost nothing to read.
 @(private = "file")
-palette_step :: proc(app: ^App, dir: int, page := false) {
-	n := len(app.cpal.rows)
-	if n == 0 { return }
-	if !page {
-		i := app.cpal.sel
-		for _ in 0 ..< n {
-			i = (i + dir + n) %% n
-			if row_usable(app, i) { app.cpal.sel = i; return }
-		}
+palette_versions :: proc(app: ^App, wp: ^Window_Palette) {
+	mix :: proc(h, v: u64) -> u64 { return (h ~ v) * 0x100000001b3 }
+	w := active_window(app)
+	h := u64(0xcbf29ce484222325)
+	h = mix(h, u64(len(w.tabs)))
+	h = mix(h, u64(w.current))
+	h = mix(h, app.recovery.writes.session_serial)
+	h = mix(h, u64(len(app.closed.items)))
+	if h != wp.tabs_seen { wp.tabs_seen, wp.tabs.version = h, wp.tabs.version + 1 }
+	// (each serial only grows: their sum moves when either does)
+	wp.pages.version = app.ghist.serial + app.bms.serial + 1
+	// (a value changes the version, registering a preference does not)
+	if app.prefs.version != wp.prefs_seen || len(app.prefs.entries) != wp.prefs_count {
+		count_changed := len(app.prefs.entries) != wp.prefs_count
+		wp.prefs_seen, wp.prefs_count = app.prefs.version, len(app.prefs.entries)
+		// (a switch the palette flipped shows by its mark: the list is not ranked again)
+		if wp.flipped && !count_changed { wp.flipped = false } else { wp.settings.version += 1 }
+	}
+	v := &app.vault.v
+	vh := mix(u64(v.state) | (vault_usable(app) ? u64(1) << 8 : 0), v.sets[.Page].gen)
+	vh = mix(vh, v.sets[.Frame].gen)
+	if vh != wp.vault_seen { wp.vault_seen, wp.vault.version = vh, wp.vault.version + 1 }
+}
+
+// A choice of Wren's: a command, a tab, a page, a setting, a Vault's act (the toolkit's own sources acted already).
+@(private = "file")
+palette_run :: proc(app: ^App, wp: ^Window_Palette, c: ui.Palette_Choice) {
+	if _, is := ui.palette_chosen_command(&wp.pal, c); is {
+		// (by its name: the table may have been made again since it was ranked)
+		cmd := command(app, c.id)
+		if cmd == nil { return }
+		if .Ctrl in c.mods && cmd.url != "" { open_in_new_tab(app, cmd.url, origin = .User) } else { command_run(app, current_tab(app), cmd) }
 		return
 	}
-	target := clamp(app.cpal.sel + dir, 0, n - 1)
-	for i := target; i >= 0 && i < n; i += dir > 0 ? 1 : -1 { if row_usable(app, i) { app.cpal.sel = i; return } }
-	for i := target; i >= 0 && i < n; i -= dir > 0 ? 1 : -1 { if row_usable(app, i) { app.cpal.sel = i; return } }
-}
-
-@(private = "file")
-first_usable :: proc(app: ^App) -> int {
-	for i in 0 ..< len(app.cpal.rows) { if row_usable(app, i) { return i } }
-	return 0
-}
-
-// Runs row `i`. `new_tab`: what opens a page opens it in a new tab.
-palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
-	if !row_usable(app, i) { return }
-	r := app.cpal.rows[i]
-	t := current_tab(app)
-	switch r.kind {
-	case .Command:
-		c := &commands(app)[r.index]
-		if !command_enabled(app, t, c) { return }
-		key := strings.concatenate({"cmd:", c.name}, context.temp_allocator)
-		palette_close(app)
-		choice_note(app, key)
-		if new_tab && c.url != "" { open_in_new_tab(app, c.url, origin = .User) } else { command_run(app, current_tab(app), c) }
-	case .Tab:
-		palette_close(app)
-		if x := tab_by_id(app, r.tab_id); x != nil { tab_reveal(app, x) }
-	case .Closed_Tab:
-		address := strings.clone(r.key, context.temp_allocator)
-		palette_close(app)
-		reopen_closed_address(app, address)
-	case .Pref:
-		e := config.entry(&app.prefs, r.ref)
-		name := strings.clone(e.def.name, context.temp_allocator)
-		choice_note(app, strings.concatenate({"pref:", name}, context.temp_allocator))
-		if e.def.kind == .Bool && !new_tab {
-			// toggled in place: the palette stays, showing the new value
-			set_pref_bool(app, name, !e.value.b)
-			app.cpal.cache_valid = false
-			return
+	id := strings.clone(c.id, context.temp_allocator)   // (the palette's until its next choice)
+	if c.source == &wp.tabs {
+		if strings.has_prefix(id, "t:") {
+			if n, ok := strconv.parse_u64(id[2:]); ok {
+				if x := tab_find(app, n); x != nil { tab_reveal(app, x) }
+			}
+		} else if strings.has_prefix(id, "c:") {
+			reopen_closed_address(app, id[2:])
 		}
-		palette_close(app)
-		dest := t
-		if new_tab || dest == nil { dest = tab_open(app, "about:config", origin = .User) } else { navigate(app, dest, "about:config", origin = .User) }
-		ui.line_edit_set(&app.config_view.search, name)
-		app.config_view.focus_list = true
-	case .Source:
-		if r.index < 0 || r.index >= len(app.cpal.sources) { return }
-		src := app.cpal.sources[r.index]
-		key := strings.clone(r.key, context.temp_allocator)
-		palette_close(app)
-		if src.activate != nil { src.activate(src.user, app, key, new_tab) }
+	} else if c.source == &wp.pages {
+		t := current_tab(app)
+		if .Ctrl in c.mods || t == nil { open_in_new_tab(app, id, origin = .User) } else { navigate(app, t, id, origin = .User) }
+	} else if c.source == &wp.settings {
+		settings_choose(app, wp, id)
+	} else if c.source == &wp.vault {
+		vault_palette_activate(app, id, .Ctrl in c.mods)   // vault_fill.odin
 	}
 	request_frames(app, 2)
 }
 
 ////////////////////////////////
-// Building
+// `>` The commands
 
-PALETTE_PLACEHOLDER :: "Search commands, tabs and pages   (> commands  @ tabs  : settings  / pages)"
-
-@(private = "file")
-Thumb_Draw :: struct { first, visible, total: int, color: draw.Color }
-
-@(private = "file")
-thumb_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-	d := (^Thumb_Draw)(user)
-	if d.total <= d.visible { return }
-	r := b.rect
-	h := r.max.y - r.min.y
-	w := max(math.round(3 * ui.scale()), 2)
-	th := max(h * f32(d.visible) / f32(d.total), w * 4)
-	y := r.min.y + (h - th) * f32(d.first) / f32(max(d.total - d.visible, 1))
-	x := r.max.x - w - max(math.round(2 * ui.scale()), 1)
-	draw.rect(dc, {{x, y}, {x + w, y + th}}, d.color, w * 0.5)
+// The table, made again when the registry's keys changed.
+palette_table :: proc(app: ^App) -> ^Palette_Table {
+	pt := &app.pal
+	list := commands(app)
+	if pt.ready && pt.registry == app.cmds.version { return pt }
+	if pt.ready { base.arena_free_all(&pt.arena) } else { _ = base.arena_init_growing(&pt.arena); pt.ready = true }
+	a := base.arena_allocator(&pt.arena)
+	n := 0
+	for c in list { if !c.hidden { n += 1 } }
+	table := make([]ui.Command, n, a)
+	names := make([]string, n, a)
+	rows := make([]int, n, a)
+	gated := make([dynamic]int, 0, n, a)
+	k := 0
+	for c, i in list {
+		if c.hidden { continue }
+		// (a command with a state on or off is a switch: its row has the mark, and choosing it keeps the palette)
+		table[k] = c.spec
+		table[k].toggle = c.checked != nil
+		names[k], rows[k] = c.name, i
+		if c.enabled != nil { append(&gated, k) }
+		k += 1
+	}
+	pt.table, pt.names, pt.rows, pt.gated = table, names, rows, gated[:]
+	pt.registry = app.cmds.version
+	pt.version += 1
+	return pt
 }
 
-// The id text of a label: what is shown, kept clear of the toolkit's "###" (the rest of the id).
+// The commands source given its table, compared by the version: what can act is read at a build while the palette is
+// open, for the commands that have a condition only.
 @(private = "file")
-label_id :: proc(text, suffix: string) -> string {
-	s := text
-	if strings.contains(s, "###") { s, _ = strings.replace_all(s, "###", "# # #", context.temp_allocator) }
-	return fmt.aprintf("%s###%s", s, suffix, allocator = ui.frame_allocator())
+palette_commands_give :: proc(app: ^App, wp: ^Window_Palette) {
+	pt := palette_table(app)
+	changed := false
+	if wp.table != pt.version || len(wp.disabled) != len(pt.table) {
+		wp.table = pt.version
+		resize(&wp.disabled, len(pt.table))
+		slice.fill(wp.disabled[:], false)
+		changed = true
+	}
+	if wp.open || changed {
+		t := current_tab(app)
+		list := commands(app)
+		for k in pt.gated {
+			off := !command_enabled(app, t, &list[pt.rows[k]])
+			if wp.disabled[k] != off { wp.disabled[k], changed = off, true }
+		}
+	}
+	if changed { wp.version += 1 }
+	ui.palette_commands(&wp.pal, pt.table, wp.disabled[:], {names = pt.names, version = wp.version, checked = command_checked, user = app})
 }
 
-// Builds the palette over the window (after the chrome, the page and the menus). Nothing when it is closed.
-palette_build :: proc(app: ^App) {
-	wnd := active_window(app)
-	if !palette_open(app) { return }
-	palette_ready(app)
-	em := ui.font_size()
-	win_w, win_h := f32(wnd.win.size.x), f32(wnd.win.size.y)
-	ctrl := platform.Modifiers{.Ctrl}
+// Whether the switch at `index` of the table is on now: read for the rows in view, at each build.
+@(private = "file")
+command_checked :: proc(user: rawptr, index: int) -> bool {
+	app := (^App)(user)
+	pt := &app.pal
+	if index < 0 || index >= len(pt.rows) { return false }
+	list := commands(app)
+	c := &list[pt.rows[index]]
+	return c.checked != nil && c.checked(app, current_tab(app), c)
+}
 
-	// its own command's keys close it; Tab stays in it
-	if c := command(app, "browser.command_palette"); c != nil && command_pressed(app, c) { palette_close(app); return }
-	for ui.key_press(.Tab) || ui.key_press(.Tab, {.Shift}) {}
+////////////////////////////////
+// `@` The tabs
 
-	// opening: a short fade and slide down (none when Windows turns animations off)
-	k: f32 = 1
-	if app.cpal.cfg.open_ms > 0 && os_animations_enabled(app) {
-		k = f32(clamp(time.duration_milliseconds(time.tick_since(app.cpal.opened)) / app.cpal.cfg.open_ms, 0, 1))
-		if k < 1 { request_frames(app, 2) }
+// The window's tabs, then the closed ones, the most recent first: "t:<tab id>", "c:<address>".
+@(private = "file")
+tabs_source_read :: proc(p: ^ui.Command_Palette, src: ^ui.Palette_Source, q: ui.Palette_Question) {
+	wp := (^Window_Palette)(src.user)
+	app := wp.app
+	w := active_window(app)
+	closed := closed_items(app)
+	job := palette_job_new(q, len(w.tabs) + len(closed))
+	job.unique = true   // (two closed tabs of one address: one row)
+	open_group := palette_job_text(job, i18n.tr("Open tabs"))
+	closed_group := palette_job_text(job, i18n.tr("Closed tabs"))
+	for x in w.tabs {
+		palette_line_add(job, {id = fmt.tprintf("t:%d", x.id), title = x.title, detail = x.url, last = x.url, group = open_group, icon = lucide.APP_WINDOW})
 	}
-	ease := 1 - (1 - k) * (1 - k) * (1 - k)
+	for i := len(closed) - 1; i >= 0; i -= 1 {
+		it := closed[i]
+		palette_line_add(job, {id = fmt.tprintf("c:%s", it.address), title = closed_item_label(it), detail = it.address, last = it.address,
+			group = closed_group, icon = lucide.ROTATE_CCW})
+	}
+	palette_job_send(p, job)
+}
 
-	// a press anywhere else closes it (the scrim is invisible: the chrome stays as it is)
-	ui.next({fixed_x = 0, fixed_y = 0, fixed_w = win_w, fixed_h = win_h, bg = draw.Color{}})
-	scrim := ui.build_box({.Clickable}, "###palette_scrim")
-	scrim.cursor = .Arrow
-	if s := ui.signal(scrim); s.pressed || s.right_clicked || s.middle_clicked { palette_close(app); return }
+// The tab shown.
+@(private = "file")
+tabs_source_mark :: proc(src: ^ui.Palette_Source, id: string) -> bool {
+	t := current_tab((^Window_Palette)(src.user).app)
+	return t != nil && id == fmt.tprintf("t:%d", t.id)
+}
 
-	w := math.round(min(app.cpal.cfg.width_em * em, win_w - em * 2))
-	x := math.round((win_w - w) * 0.5)
-	// over the address row, as VS Code's over its title bar
-	y := em * 0.5
-	if b := ui.box_from_key(address_key(app)); b != nil && !platform.is_fullscreen(wnd.win) { y = b.rect.min.y - em * 0.15 }
-	y = math.round(y - (1 - ease) * em * 0.6)
-	rh := ui.dense(em * 2.1)
-	pad := math.round(em * 0.4)
-	mouse_moved := ui.mouse_pos() != app.cpal.last_mouse
-	app.cpal.last_mouse = ui.mouse_pos()
+////////////////////////////////
+// `/` The pages
 
-	if ui.tags("floating") {
-		ui.next({fixed_x = x, fixed_y = y, width = ui.px(w), height = ui.children_sum(), axis = .Y, radius = em * 0.5, transparency = 1 - ease})
-		panel := ui.build_box({.Clickable, .Draw_Background, .Draw_Border, .Draw_Shadow, .Clip}, "###palette")
-		panel.cursor = .Arrow
-		_ = ui.signal(panel)
-		if ui.parent(panel) {
-			ui.spacer(ui.px(pad))
-			res: ui.Edit_Result
-			ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.2))})
-			if ui.row(.Center) {
-				ui.spacer(ui.px(pad))
-				ui.next({width = ui.fill(), height = ui.pct(1), radius = em * CHROME_BUTTON_RADIUS})
-				res = ui.line_edit("###palette_field", &app.cpal.field, {placeholder = PALETTE_PLACEHOLDER})
-				ui.spacer(ui.px(pad))
-			}
-			if app.cpal.focus_pending && res.box != nil { app.cpal.focus_pending = false; ui.set_focus(res.box.key) }
-			if res.cancelled { palette_close(app); return }
+// The bookmarks, then the visited pages, the newest first, one row per address (a bookmark's wins). Their copy is the
+// work of a change of the history or the bookmarks, not of a frame.
+@(private = "file")
+pages_source_read :: proc(p: ^ui.Command_Palette, src: ^ui.Palette_Source, q: ui.Palette_Question) {
+	app := (^Window_Palette)(src.user).app
+	marks := app.bms.items[:]
+	visits := app.ghist.visits[:]
+	job := palette_job_new(q, len(marks) + len(visits))
+	job.unique = true
+	marks_group := palette_job_text(job, i18n.tr("Bookmarks"))
+	visits_group := palette_job_text(job, i18n.tr("History"))
+	for b in marks {
+		if b.folder || b.url == "" { continue }
+		palette_line_add(job, {id = b.url, title = b.title, detail = b.url, last = b.url, group = marks_group, icon = lucide.BOOKMARK})
+	}
+	for i := len(visits) - 1; i >= 0; i -= 1 {
+		v := visits[i]
+		palette_line_add(job, {id = v.url, title = v.title, detail = v.url, last = v.url, group = visits_group, icon = lucide.GLOBE})
+	}
+	palette_job_send(p, job)
+}
 
-			// the rows, again only when something they depend on changed
-			text := ui.line_edit_string(&app.cpal.field)
-			key := results_key(app)
-			if !app.cpal.cache_valid || key != app.cpal.cache_key || text != app.cpal.cache_text {
-				query_changed := text != app.cpal.cache_text || !app.cpal.cache_valid
-				palette_collect(app, text)
-				app.cpal.cache_key, app.cpal.cache_valid = key, true
-				if query_changed {
-					delete(app.cpal.cache_text)
-					app.cpal.cache_text = strings.clone(text)
-					app.cpal.sel, app.cpal.first = first_usable(app), 0
-				}
-			}
-			n := len(app.cpal.rows)
-			app.cpal.sel = clamp(app.cpal.sel, 0, max(n - 1, 0))
-			if row_usable(app, app.cpal.sel) == false && n > 0 { app.cpal.sel = first_usable(app) }
-			vis := min(max(app.cpal.cfg.rows, 1), n)
+////////////////////////////////
+// `:` The settings
 
-			// keyboard
-			if ui.key_press(.Down) { palette_step(app, +1) }
-			if ui.key_press(.Up) { palette_step(app, -1) }
-			if ui.key_press(.Page_Down) { palette_step(app, max(vis - 1, 1), page = true) }
-			if ui.key_press(.Page_Up) { palette_step(app, -max(vis - 1, 1), page = true) }
-			run, run_new := res.committed, ui.key_press(.Return, ctrl)
-
-			ui.spacer(ui.px(pad * 0.75))
-			ui.hline(ui.px(w))
-			ui.spacer(ui.px(pad * 0.5))
-
-			// the list: the visible rows only, scrolled by the wheel and to keep the selected one in view
-			ui.next({width = ui.px(w), height = ui.px(f32(max(vis, 1)) * rh), axis = .Y})
-			list := ui.build_box({.Scroll_Self, .Clip}, "###palette_list")
-			if s := ui.signal(list); s.scrolled.y != 0 {
-				app.cpal.scroll_acc += s.scrolled.y * 3
-				step := int(app.cpal.scroll_acc)
-				app.cpal.scroll_acc -= f32(step)
-				app.cpal.first += step
-				mouse_moved = false   // the rows move under the pointer: that is no choice
-			} else {
-				// keep the selection in view (a wheel turn scrolls freely)
-				if app.cpal.sel < app.cpal.first { app.cpal.first = app.cpal.sel }
-				if app.cpal.sel >= app.cpal.first + vis { app.cpal.first = app.cpal.sel - vis + 1 }
-			}
-			app.cpal.first = clamp(app.cpal.first, 0, max(n - vis, 0))
-			thumb := ui.frame_new(Thumb_Draw)
-			thumb^ = {app.cpal.first, vis, n, ui.color("border")}
-			list.custom, list.custom_user = thumb_draw, thumb
-			clicked, clicked_new := -1, false
-			if ui.parent(list) {
-				if n == 0 {
-					ui.next({width = ui.px(w), height = ui.px(rh)})
-					if ui.row(.Center) {
-						ui.spacer(ui.px(pad + em * 0.6))
-						if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label("No results###palette_none") }
-					}
-				}
-				t := current_tab(app)
-				// the category and shortcut columns: as wide as their widest visible entry, so they line up
-				cols: [2]f32
-				font := ui.top_style().font
-				for i in app.cpal.first ..< min(app.cpal.first + vis, n) {
-					r := &app.cpal.rows[i]
-					cols[0] = max(cols[0], ui.text_width(font, em, r.category))
-					if r.kind == .Command { cols[1] = max(cols[1], ui.text_width(font, em, ui.command_shortcut(commands(app)[r.index].spec))) }
-				}
-				cols = {math.ceil(cols[0]) + 2, math.ceil(cols[1]) + 2}
-				for i in app.cpal.first ..< min(app.cpal.first + vis, n) {
-					if c, nc := palette_row(app, t, i, w, rh, pad, cols, mouse_moved); c { clicked, clicked_new = i, nc }
-				}
-			}
-
-			// the keys of the footer
-			ui.spacer(ui.px(pad * 0.5))
-			ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 1.7))})
-			if ui.row(.Center) {
-				ui.spacer(ui.px(pad + em * 0.4))
-				if ui.tags("weak") {
-					if ui.style({font_size = math.round(em * 0.86)}) {
-						ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
-						// nothing typed: what the prefixes search (the field's placeholder is not shown while it has the caret)
-						ui.label(text == "" ? "Type to search, or start with   >  commands    @  tabs    :  settings    /  pages###palette_keys" : "Enter: run   Ctrl+Enter: in a new tab   Up / Down: move   Esc: close###palette_keys")
-						ui.next({width = ui.text_size(0), height = ui.pct(1), text_pad = 0})
-						ui.label(fmt.aprintf("%d result%s###palette_count", n, n == 1 ? "" : "s", allocator = ui.frame_allocator()))
-					}
-				}
-				ui.spacer(ui.px(pad + em * 0.4))
-			}
-			ui.spacer(ui.px(pad * 0.5))
-
-			if clicked >= 0 { palette_execute(app, clicked, clicked_new); return }
-			if run_new { palette_execute(app, app.cpal.sel, true); return }
-			if run { palette_execute(app, app.cpal.sel, false); return }
+// Every preference about:config shows, by its name: its value after it, its description and its title to find it by.
+@(private = "file")
+settings_source_read :: proc(p: ^ui.Command_Palette, src: ^ui.Palette_Source, q: ui.Palette_Question) {
+	app := (^Window_Palette)(src.user).app
+	prefs := &app.prefs
+	job := palette_job_new(q, len(prefs.entries))
+	job.sort = true
+	modified := i18n.tr("(modified)")
+	locked := i18n.tr("(locked)")
+	for e, i in prefs.entries {
+		d := e.def
+		if d.hidden { continue }
+		state := ""
+		switch e.source {
+		case .Default:
+		case .Policy:               state = locked
+		case .User, .Command_Line:  state = modified
 		}
+		detail := state
+		if d.kind != .Bool {
+			value := config.value_string(prefs, config.Ref(i))
+			if value == "" { value = i18n.tr("(empty)") }
+			detail = state != "" ? fmt.tprintf("%s  %s", value, state) : value
+		}
+		tags := make([]string, len(d.tags) + 1, context.temp_allocator)
+		tags[0] = config.title_of(d)
+		copy(tags[1:], d.tags)
+		palette_line_add(job, {
+			id = d.name, title = d.name, detail = detail, last = i18n.tr(d.description), tags = tags,
+			icon = d.kind == .Bool ? lucide.TOGGLE_RIGHT : lucide.SLIDERS_HORIZONTAL,
+			disabled = e.source == .Policy, stays = d.kind == .Bool,
+		})
+	}
+	palette_job_send(p, job)
+}
+
+// A switch on.
+@(private = "file")
+settings_source_mark :: proc(src: ^ui.Palette_Source, id: string) -> bool {
+	app := (^Window_Palette)(src.user).app
+	r := config.ref_of(&app.prefs, id)
+	if r == config.NO_REF { return false }
+	e := config.entry(&app.prefs, r)
+	return e.def.kind == .Bool && e.value.b
+}
+
+// A switch flips (the palette stays, its mark shows the new state); another setting opens about:config on it.
+@(private = "file")
+settings_choose :: proc(app: ^App, wp: ^Window_Palette, name: string) {
+	r := config.ref_of(&app.prefs, name)
+	if r == config.NO_REF { return }
+	e := config.entry(&app.prefs, r)
+	if e.def.kind == .Bool {
+		wp.flipped = true
+		set_pref_bool(app, name, !e.value.b)
+		return
+	}
+	t := current_tab(app)
+	if t == nil { t = tab_open(app, "about:config", origin = .User) } else { navigate(app, t, "about:config", origin = .User) }
+	ui.line_edit_set(&app.config_view.search, name)
+	app.config_view.focus_list = true
+}
+
+////////////////////////////////
+// `$` The Vault
+
+// The helper searches the words typed (off the interface's thread); the answer is made once its rows came
+// (vault_poll). Nothing while the Vault is locked, off, or under remote control.
+@(private = "file")
+vault_source_read :: proc(p: ^ui.Command_Palette, src: ^ui.Palette_Source, q: ui.Palette_Question) {
+	wp := (^Window_Palette)(src.user)
+	app := wp.app
+	v := &app.vault.v
+	vault_question_end(wp)   // (an older query's)
+	if !vault_usable(app) || v.state != .Unlocked {
+		none: ui.Palette_Answer
+		_ = ui.palette_answer(q, &none)
+		return
+	}
+	delete(wp.vault_query)
+	wp.vault_q, wp.vault_asking, wp.vault_query = q, true, strings.clone(q.query)
+	vault.vault_search(v, wp.vault_query)   // (nothing when this query is asked already)
+	vault_poll(app, wp)
+}
+
+// At each build while the palette is open: the question in flight is answered once the helper's rows for its query came.
+@(private = "file")
+vault_poll :: proc(app: ^App, wp: ^Window_Palette) {
+	if !wp.vault_asking { return }
+	v := &app.vault.v
+	if !vault_usable(app) || v.state != .Unlocked {
+		wp.vault_asking = false
+		none: ui.Palette_Answer
+		_ = ui.palette_answer(wp.vault_q, &none)
+		return
+	}
+	rows, state, key := vault.vault_rows(v, .Search)
+	if key != wp.vault_query { return }   // (the panel searches the same set meanwhile: the palette waits)
+	#partial switch state {
+	case .Ready:
+		wp.vault_asking = false
+		job := palette_job_new(wp.vault_q, len(rows) * 4)
+		vault_palette_lines(app, job, rows)   // vault_fill.odin
+		palette_job_send(&wp.pal, job)
+	case .Failed:
+		wp.vault_asking = false
+		_ = ui.palette_answer_error(wp.vault_q, i18n.tr("the Vault did not answer"))
 	}
 }
 
-// One result row. True when it was clicked (`new_tab`: with Ctrl).
+// The Vault's question in flight, given up (a newer query, the palette closed or gone).
 @(private = "file")
-palette_row :: proc(app: ^App, t: ^Tab, i: int, w, rh, pad: f32, cols: [2]f32, mouse_moved: bool) -> (clicked, new_tab: bool) {
-	r := &app.cpal.rows[i]
-	em := ui.font_size()
-	selected := i == app.cpal.sel
-	checked := false
-	shortcut := ""
-	state := ""
-	glyph := r.glyph
-	ident: u64
-	switch r.kind {
-	case .Command:
-		c := &commands(app)[r.index]
-		if c.checked != nil { checked = c.checked(app, t, c) }
-		shortcut = ui.command_shortcut(c.spec)
-		ident = u64(r.index)
-	case .Tab:
-		ident = r.tab_id
-		if x := tab_by_id(app, r.tab_id); x != nil && x == current_tab(app) { state = "current" }
-	case .Closed_Tab:
-		ident = u64(r.index)
-	case .Pref:
-		e := config.entry(&app.prefs, r.ref)
-		v := config.value_string(&app.prefs, r.ref)
-		if e.def.kind == .Bool { checked = e.value.b; state = e.value.b ? "on" : "off" } else { state = v == "" ? "(empty)" : v }
-		if strings.rune_count(state) > 24 {
-			cut, n := 0, 0
-			for _, b in state { if n == 23 { cut = b; break }; n += 1 }
-			state = strings.concatenate({state[:cut], "…"}, context.temp_allocator)
-		}
-		if e.source != .Default { state = strings.concatenate({state, (e.source == .Policy) ? "  (locked)" : "  (modified)"}, context.temp_allocator) }
-		ident = u64(r.ref)
-	case .Source:
-		ident = fnv(u64(r.index), r.key)
-	}
-	id := fmt.tprintf("###pr_%d_%x", int(r.kind), ident)
+vault_question_end :: proc(wp: ^Window_Palette) {
+	if !wp.vault_asking { return }
+	wp.vault_asking = false
+	ui.palette_question_drop(wp.vault_q)
+}
 
-	ui.next({width = ui.px(w), height = ui.px(rh), axis = .X, cross = .Center})
-	outer := ui.build_box({}, fmt.tprintf("###prow_%d_%x", int(r.kind), ident))
-	sig: ui.Signal
-	if ui.parent(outer) {
-		ui.spacer(ui.px(pad))
-		if ui.disabled(r.disabled) {
-			ui.push_tags("menu_item")
-			if selected { ui.push_tags("selected") }
-			mod := ui.Style_Mod{width = ui.fill(), height = ui.pct(1), radius = em * CHROME_BUTTON_RADIUS, axis = .X, cross = .Center}
-			if !selected { mod.border = draw.Color{} }   // (a border all the time: the same layout selected or not)
-			ui.next(mod)
-			item := ui.build_box({.Clickable, .Draw_Background, .Draw_Border, .Draw_Hot_Effects}, id)
-			if selected { ui.pop_tags() }
-			sig = ui.signal(item)
-			if ui.parent(item) {
-				ui.spacer(ui.px(em * 0.45))
-				isz := em * 1.5
-				// (a page's site icon, its globe until it comes; a closed tab's key is its address)
-				site := r.kind == .Closed_Tab ? r.key : r.site
-				site_tex, site_ok := favicon_of_url(app, site)
-				if site != "" && !site_ok && glyph == "" { glyph = lucide.GLOBE }
-				switch {
-				case site_ok:
-					favicon_box(site_tex, "###pal_site", isz)
-				case r.kind == .Tab:
-					tab: ^Tab
-					tab = tab_by_id(app, r.tab_id)
-					ui.next({width = ui.px(isz), height = ui.pct(1)})
-					if tab != nil { ui.custom("###ticon", tab_icon_draw, tab_icon_of(app, tab, f32(tab_icon_px(app)))) } else { ui.build_box({}, "###ticon") }
-				case checked:
-					if ui.tags("weak") { ui.icon(lucide.CHECK, isz) }
-				case glyph != "":
-					// (a command's icon is Lucide's, as in its menus: command_icons.odin)
-					if ui.tags("weak") {
-						ui.next({width = ui.px(isz), height = ui.pct(1), font = app.lucide, text_align = .Center})
-						ui.build_box({.Draw_Text, .No_Text_Trunc}, strings.concatenate({glyph, "###pal_glyph"}, ui.frame_allocator()))
-					}
-				case:
-					ui.spacer(ui.px(isz))
-				}
-				ui.spacer(ui.px(em * 0.4))
-				ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
-				ui.label_fuzzy(label_id(r.title, "t"), r.ranges)
-				if ui.tags("weak") {
-					font := ui.top_style().font
-					if r.detail != "" && r.detail != r.title {
-						dw := min(ui.text_width(font, em, r.detail) + em * 0.8, w * 0.38)
-						ui.next({width = ui.px(dw), height = ui.pct(1), text_pad = em * 0.4})
-						ui.label(label_id(r.detail, "d"))
-					}
-					if state != "" {
-						ui.next({width = ui.text_size(em * 0.2), height = ui.pct(1)})
-						ui.label(label_id(state, "s"))
-					}
-					ui.spacer(ui.px(em * 0.6))
-					ui.next({width = ui.px(cols[0]), height = ui.pct(1), text_pad = 0, text_align = .Right})
-					ui.label(label_id(r.category, "c"))
-					if cols[1] > 2 {
-						ui.spacer(ui.px(em * 1.2))
-						ui.next({width = ui.px(cols[1]), height = ui.pct(1), text_pad = 0, text_align = .Right})
-						ui.label(label_id(shortcut, "k"))
-					}
-				}
-				ui.spacer(ui.px(em * 0.6))
-			}
-			ui.pop_tags()
-		}
-		ui.spacer(ui.px(pad))
+////////////////////////////////
+// An answer made on a chore
+
+// What an item is made from, copied on the interface's thread (the data it comes from changes there). `group` and
+// `icon` are constants or the job's (palette_job_text): they are not copied for each line.
+Palette_Line :: struct {
+	id, title, detail, last: string,
+	group, icon:             string,
+	tags:                    []string,
+	disabled, stays:         bool,
+}
+
+// A question, the lines copied for it and the answer the chore makes of them, in the answer's arena.
+Palette_Job :: struct {
+	q:      ui.Palette_Question,
+	answer: ui.Palette_Answer,
+	lines:  [dynamic]Palette_Line,   // in the answer's arena
+	unique: bool,                    // the first line of each id only (a page visited many times)
+	sort:   bool,                    // the items by their title
+}
+
+palette_job_new :: proc(q: ui.Palette_Question, lines: int) -> ^Palette_Job {
+	job := new(Palette_Job, base.process_allocator())
+	job.q = q
+	job.lines = make([dynamic]Palette_Line, 0, lines, ui.palette_answer_allocator(&job.answer))
+	return job
+}
+
+// A text that many lines share (a group), copied once into the answer.
+palette_job_text :: proc(job: ^Palette_Job, s: string) -> string { return strings.clone(s, ui.palette_answer_allocator(&job.answer)) }
+
+// A line, its texts copied into the answer (an address said three times is copied once).
+palette_line_add :: proc(job: ^Palette_Job, line: Palette_Line) {
+	al := ui.palette_answer_allocator(&job.answer)
+	l := line
+	l.id = strings.clone(line.id, al)
+	l.title = strings.clone(line.title, al)
+	l.detail = line.detail == line.id ? l.id : strings.clone(line.detail, al)
+	l.last = line.last == line.id ? l.id : line.last == line.detail ? l.detail : strings.clone(line.last, al)
+	if len(line.tags) > 0 {
+		l.tags = make([]string, len(line.tags), al)
+		for t, i in line.tags { l.tags[i] = strings.clone(t, al) }
 	}
-	if sig.hovering && mouse_moved && !r.disabled { app.cpal.sel = i }
-	if sig.clicked && !r.disabled { return true, .Ctrl in sig.mods }
-	return false, false
+	append(&job.lines, l)
+}
+
+// The items made on a chore; the window's palette takes the answer at its next build.
+palette_job_send :: proc(p: ^ui.Command_Palette, job: ^Palette_Job) {
+	if p.owner == nil {   // (never opened over a window: a test's palette)
+		palette_job_work(job)
+		palette_job_done(job, 0)
+		return
+	}
+	ui.task(p.owner, palette_job_work, palette_job_done, job, palette_job_lost)
+}
+
+// (on a chore) The items, in the answer's arena; a page without a title is named by its address. (A test calls it.)
+palette_job_work :: proc(data: rawptr) {
+	job := (^Palette_Job)(data)
+	al := ui.palette_answer_allocator(&job.answer)
+	items := make([dynamic]ui.Palette_Item, 0, len(job.lines), al)
+	seen: map[string]struct{}
+	if job.unique { seen = make(map[string]struct{}, len(job.lines), base.process_allocator()) }
+	defer if job.unique { delete(seen) }
+	for l in job.lines {
+		if job.unique {
+			if l.id in seen { continue }
+			seen[l.id] = {}
+		}
+		append(&items, ui.Palette_Item{
+			id = l.id, title = l.title != "" ? l.title : address_words(l.detail), detail = l.detail, icon = l.icon, group = l.group,
+			tags = l.tags, last = l.last, disabled = l.disabled, stays = l.stays,
+		})
+	}
+	if job.sort { slice.sort_by(items[:], proc(a, b: ui.Palette_Item) -> bool { return a.title < b.title }) }
+	job.answer.items = items[:]
+}
+
+// (on the interface's thread) The palette takes the arena whole, or drops it (a newer question).
+@(private = "file")
+palette_job_done :: proc(data: rawptr, _: u64) {
+	job := (^Palette_Job)(data)
+	_ = ui.palette_answer(job.q, &job.answer)
+	free(job, base.process_allocator())
+}
+
+// The window went before the answer came: the question ends with none (from any thread).
+@(private = "file")
+palette_job_lost :: proc(data: rawptr) {
+	job := (^Palette_Job)(data)
+	ui.palette_answer_free(&job.answer)
+	ui.palette_question_drop(job.q)
+	free(job, base.process_allocator())
+}
+
+// What a page without a title is called: its address without its scheme and its root's "/" (a slice of it: a chore
+// makes no copy).
+address_words :: proc(address: string) -> string {
+	s := address
+	if i := strings.index(s, "://"); i >= 0 { s = s[i + 3:] }
+	if strings.count(s, "/") == 1 && strings.has_suffix(s, "/") { s = s[:len(s) - 1] }
+	return s
 }

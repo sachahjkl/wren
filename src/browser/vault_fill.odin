@@ -32,7 +32,6 @@ import "wb:url"
 import "wb:vault"
 
 VAULT_FILL_DEFAULT :: ui.Chord{key = .L, mods = {.Ctrl, .Shift}}
-VAULT_PALETTE_PREFIX :: '$'
 VAULT_DROPDOWN_W_EM :: f32(20)
 VAULT_DROPDOWN_ROWS :: 6
 
@@ -100,7 +99,7 @@ vault_fill_frame :: proc(app: ^App) {
 			release_if_kept(v, .Frame)
 		}
 		// (the Search set is the palette's or the panel's: it goes when neither shows it)
-		if !palette_open(app) && !s.searching { release_if_kept(v, .Search) }
+		if !palette_shown(app) && !s.searching { release_if_kept(v, .Search) }
 		// (the cards while a card field has the focus, the identities while an address field has it: the helper lists
 		// only that kind, page by page)
 		if ok && s.fill_kind != .None && s.role_forms == x.f.id && s.role_field == x.field {
@@ -743,59 +742,35 @@ dropdown_row :: proc(app: ^App, i: int, title, detail, glyph: string, tex: rende
 ////////////////////////////////
 // The palette's Vault search ("$")
 
-// The palette's source: the logins that hold the words typed after "$". The helper searches (off the interface thread);
-// the palette lists what it answered: names and user names, never a password. Each login gives its acts: fill (only
-// when it is also a login of the focused document: rule 10), copy the user name, the password, the code, open its site.
-vault_palette_source :: proc() -> Palette_Source {
-	return {name = "Vault", prefix = u8(VAULT_PALETTE_PREFIX), in_default = false, items = vault_palette_items, activate = vault_palette_activate,
-		version = vault_palette_version}
-}
-
-@(private = "file")
-vault_palette_version :: proc(user: rawptr, app: ^App) -> u64 {
+// The lines of the palette's source (palette.odin, `$`) for the rows the helper found for the words typed: names and
+// user names, never a password. Each login gives its acts: fill (only when it is also a login of the focused
+// document: rule 10), copy the user name, the password, the code, open its site. One page of rows (vault.SEARCH_PAGE):
+// a copy bounded by it.
+vault_palette_lines :: proc(app: ^App, job: ^Palette_Job, rows: []vault.Row) {
 	v := &app.vault.v
-	h := u64(v.state) | (vault_usable(app) ? 1 << 8 : 0)
-	for slot in vault.Row_Slot {
-		h = (h ~ (v.sets[slot].gen << 4 | u64(v.sets[slot].state))) * 0x100000001b3
-	}
-	return h
-}
-
-@(private = "file")
-vault_palette_items :: proc(user: rawptr, app: ^App, out: ^[dynamic]Palette_Item) {
-	v := &app.vault.v
-	if !vault_usable(app) || v.state != .Unlocked { return }
-	mode, prefix, q := palette_parse_query(app, ui.line_edit_string(&app.cpal.field))
-	if mode != .Source || prefix != u8(VAULT_PALETTE_PREFIX) { return }
-	vault.vault_search(v, q)   // (nothing when this query is asked already)
-	rows, state, _ := vault.vault_rows(v, .Search)
-	if state != .Ready { return }
 	x, has_target := vault_target(app)
+	add :: proc(job: ^Palette_Job, title, name, detail, act, id, icon: string) {
+		palette_line_add(job, {id = fmt.tprintf("%s:%s", act, id), title = fmt.tprintf(title, name), detail = detail, icon = icon})
+	}
 	for r in rows {
 		name := r.name != "" ? r.name : r.uri
 		switch r.kind {
 		case .Card:
-			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the card number: %s"), name), detail = r.username, key = fmt.tprintf("number:%s", r.id)})
-			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the security code: %s"), name), detail = r.username, key = fmt.tprintf("code:%s", r.id)})
+			add(job, i18n.tr("Copy the card number: %s"), name, r.username, "number", r.id, lucide.CREDIT_CARD)
+			add(job, i18n.tr("Copy the security code: %s"), name, r.username, "code", r.id, lucide.CREDIT_CARD)
 			continue
 		case .Identity:
-			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the email: %s"), name), detail = r.username, key = fmt.tprintf("email:%s", r.id)})
+			add(job, i18n.tr("Copy the email: %s"), name, r.username, "email", r.id, lucide.MAIL)
 			continue
 		case .Login:
 		}
 		if has_target && x.rule != .Never && vault.vault_row_find(v, r.id, x.slot) != nil {
-			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Fill: %s"), name), detail = r.username, key = fmt.tprintf("fill:%s", r.id), site = r.uri})
+			add(job, i18n.tr("Fill: %s"), name, r.username, "fill", r.id, lucide.KEY_ROUND)
 		}
-		if r.username != "" {
-			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the user name: %s"), name), detail = r.username, key = fmt.tprintf("user:%s", r.id), site = r.uri})
-		}
-		append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the password: %s"), name), detail = r.username, key = fmt.tprintf("pass:%s", r.id), site = r.uri})
-		if r.has_totp {
-			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Copy the code: %s"), name), detail = r.username, key = fmt.tprintf("totp:%s", r.id), site = r.uri})
-		}
-		if _, web := vault.site_of(r.uri); web {
-			append(out, Palette_Item{title = fmt.tprintf(i18n.tr("Open the site: %s"), name), detail = url_host(r.uri), key = fmt.tprintf("open:%s", r.id), site = r.uri})
-		}
+		if r.username != "" { add(job, i18n.tr("Copy the user name: %s"), name, r.username, "user", r.id, lucide.USER) }
+		add(job, i18n.tr("Copy the password: %s"), name, r.username, "pass", r.id, lucide.COPY)
+		if r.has_totp { add(job, i18n.tr("Copy the code: %s"), name, r.username, "totp", r.id, lucide.COPY) }
+		if _, web := vault.site_of(r.uri); web { add(job, i18n.tr("Open the site: %s"), name, url_host(r.uri), "open", r.id, lucide.EXTERNAL_LINK) }
 	}
 }
 
@@ -810,8 +785,8 @@ vault_palette_key :: proc(key: string) -> (act, item: string, ok: bool) {
 	return "", "", false
 }
 
-@(private = "file")
-vault_palette_activate :: proc(user: rawptr, app: ^App, key: string, new_tab: bool) {
+// A line of the palette chosen (palette.odin): its act on its item. `new_tab`: Ctrl+Enter, a site opens in a new tab.
+vault_palette_activate :: proc(app: ^App, key: string, new_tab: bool) {
 	v := &app.vault.v
 	if !vault_usable(app) { return }
 	act, item, ok := vault_palette_key(key)

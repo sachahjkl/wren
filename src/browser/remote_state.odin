@@ -215,7 +215,7 @@ remote_cancel_ops :: proc(why: string) -> int {
 // command palette, the element picker, full screen, downloads in progress.
 chrome_reset :: proc(app: ^App) {
 	find_close(app)
-	if palette_open(app) { palette_close(app) }
+	palette_hide(app)   // (every window's, at its next build)
 	if blocker_picker_active() { blocker_picker_cancel(app) }
 	if dev().visible {
 		devtools_reattach(app)   // (where a test moved them is not the next test's)

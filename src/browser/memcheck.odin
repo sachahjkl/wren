@@ -9,7 +9,8 @@ package browser
 // commands run one after the other on the UI thread, between frames (src\tools\e2e\memcheck.odin, src\tools\endurance):
 //
 //     open <url>          a new tab showing <url>            go <url>       the current tab navigates
-//     command <name>      a command of the registry (commands.odin: tab.close, nav.back, browser.command_palette...)
+//     command <name>      a command of the registry (commands.odin: tab.close, nav.back, browser.history...)
+//     palette [text]      opens the command palette, `text` typed in it (palette.odin)
 //     load                waits until the current tab has loaded (at most WREN_MEMCHECK_LOAD_MS, 30 s by default)
 //     wait <ms>           frames go on meanwhile             frames <n>     waits for n frames
 //     idle <ms>           nothing keeps the loop turning meanwhile: it sleeps as when left alone (memory_trim.odin trims)
@@ -100,7 +101,7 @@ process_counters :: proc() -> (c: Process_Counters) {
 // The script driver (check builds)
 
 @(private = "file")
-Step_Kind :: enum u8 { Open, Go, Command, Load, Wait, Idle, Frames, Stats, Snapshot, Vmmap, Trim, Quit }
+Step_Kind :: enum u8 { Open, Go, Command, Palette, Load, Wait, Idle, Frames, Stats, Snapshot, Vmmap, Trim, Quit }
 
 @(private = "file")
 Step :: struct {
@@ -175,6 +176,7 @@ driver_parse :: proc(lines: []string, i: ^int, times: int) {
 			case "open":    append(&driver.steps, Step{kind = .Open, arg = rest})
 			case "go":      append(&driver.steps, Step{kind = .Go, arg = rest})
 			case "command": append(&driver.steps, Step{kind = .Command, arg = rest})
+			case "palette": append(&driver.steps, Step{kind = .Palette, arg = rest})
 			case "load":    append(&driver.steps, Step{kind = .Load})
 			case "wait":    n, _ := strconv.parse_int(rest); append(&driver.steps, Step{kind = .Wait, n = n})
 			case "frames":  n, _ := strconv.parse_int(rest); append(&driver.steps, Step{kind = .Frames, n = n})
@@ -209,7 +211,7 @@ driver_step :: proc(app: ^App) {
 				driver.idling = false
 			case .Frames: driver.frames -= 1; if driver.frames > 0 { return }
 			case .Load: if tab_busy(t) && time.tick_diff(driver.deadline, time.tick_now()) < 0 { return }
-			case .Open, .Go, .Command, .Stats, .Snapshot, .Vmmap, .Trim, .Quit:
+			case .Open, .Go, .Command, .Palette, .Stats, .Snapshot, .Vmmap, .Trim, .Quit:
 			}
 			driver.waiting = false
 			driver.next += 1
@@ -222,6 +224,8 @@ driver_step :: proc(app: ^App) {
 			if t != nil { navigate(app, t, s.arg, origin = .User) }
 		case .Command:
 			if c := command(app, s.arg); c != nil { command_run(app, t, c) }
+		case .Palette:
+			palette_show(app, s.arg)   // (opened at the next build; the toolkit's command is no command of the registry)
 		case .Load:
 			driver.waiting, driver.deadline = true, time.tick_add(time.tick_now(), time.Duration(driver.load_ms * f64(time.Millisecond)))
 			return

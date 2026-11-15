@@ -726,8 +726,8 @@ fill, copy user name, copy password, copy TOTP code, open the site. Footer: sync
 (<code>Painted</code>). Drawn in the overlay pass, as the select list is. Keyboard: Down opens, Enter fills, Escape closes.
 When locked, it shows one row: "Unlock the vault".</li>
 <li><strong>Address bar chip</strong>: shown when the active tab has matches. A click opens the panel.</li>
-<li><strong>Palette source</strong>: a <code>Palette_Source</code> with its own prefix. It asks the helper for rows when the palette opens in
-that mode, and releases them on close. Commands: lock, unlock, sync, open the panel, generate a password.</li>
+<li><strong>Palette source</strong>: a source of the toolkit's palette under its Secrets prefix (<code>$</code>). It asks the helper for rows
+when that prefix is typed, and releases them on close. Commands: lock, unlock, sync, open the panel, generate a password.</li>
 <li><strong>Save and update offer</strong>: under the toolbar's Vault button (4.10). It never steals focus. Actions: save, update,
 never for this site, not now.</li>
 <li><strong>Settings section</strong>: account (email, server, log out), lock, fill, save, clipboard, the license and source link of
@@ -1062,10 +1062,13 @@ when the focus, the document's tree or its attributes change. On a one-time-code
 code and fills the code. Locked: one row, "Unlock the Vault".</li>
 <li>Chip (<code>vault_chip</code>, in <code>address_chips</code>): the number of the tab's logins (a click opens the panel); locked, on a
 login field, "Vault locked" (a click opens the unlock dialog).</li>
-<li>Palette: the source "Vault", prefix <code>$</code>, not in the plain search. <code>items</code> asks the helper (<code>vault_search</code>, once per
-query: the helper searches, off the interface thread) and lists, per login, its acts: "Fill" (only when the item is
-a checked row of the focused document: rule 10), copy the user name, the password or the code, open the site. The
-palette lists the first page (100 rows) and its own fuzzy match runs on those.</li>
+<li>Palette: the source "Vault" of the toolkit's palette (<code>src/browser/palette.odin</code>), its Secrets prefix <code>$</code>: never in
+the plain search, never in the usage memory, no detail shown. It searches: at each query its <code>read</code> asks the helper
+(<code>vault_search</code>; the helper searches, off the interface thread) and keeps the question; the answer is made when the
+rows of that query came (<code>vault_poll</code>, at each build while the palette is open), its items on a chore. Locked, off,
+or under remote control (<code>vault_usable</code>): an empty answer. Per login it lists its acts (<code>vault_palette_lines</code>):
+"Fill" (only when the item is a checked row of the focused document: rule 10), copy the user name, the password or
+the code, open the site. The palette lists the first page (100 rows) and its own matcher ranks those.</li>
 <li>Per-site list: the panel's rows have Copy user name, Copy password and Copy code. A copy is a <code>fill</code> (or <code>totp</code>)
 request whose answer goes to the <code>copy</code> hook, never to a page. The clipboard is cleared after
 <code>vault.clipboard.clear_seconds</code> if it still holds the value: Wren keeps only its hash and length.</li>

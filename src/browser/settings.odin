@@ -114,7 +114,6 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_crash_prefs(p)   // crash_recovery.odin
 	register_history_prefs(p)   // history_settings.odin
 	register_app_command_prefs(p)   // app_commands.odin
-	register_palette_prefs(p)   // palette.odin
 	register_urlbar_prefs(p)   // urlbar.odin
 	register_shell_frame_prefs(p)   // shell_frames.odin
 	register_shell_shown_prefs(p)   // shell_shown.odin

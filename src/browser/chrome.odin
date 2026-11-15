@@ -742,7 +742,9 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 			menu_command(app, t, "view.finish.machined")
 		}
 		menu_command(app, t, "browser.session_restore")
-		menu_command(app, t, "browser.command_palette")
+		// (the toolkit's command: the registry has no line for it)
+		pc := ui.palette_command()
+		if ui.menu_item(i18n.tr(pc.label), ui.command_shortcut(pc), icon = pc.icon).clicked { palette_toggle(app) }
 		menu_command(app, t, "browser.settings")
 		menu_command(app, t, "browser.setup")
 		menu_command(app, t, "browser.check_updates")
@@ -762,8 +764,9 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 // The keys the page did not use (forms_shell.odin routes them to the page first; the browser's own shortcuts are never
 // the page's: route_key lets them through).
 chrome_shortcuts :: proc(app: ^App) {
-	// the open command palette has the keyboard (palette.odin), and so has the Setup dialog (setup.odin)
-	if palette_open(app) || setup_is_open(app) { return }
+	// the open command palette has the keyboard (palette.odin: its own keys are read before, in palette_frame), and so
+	// has the Setup dialog (setup.odin)
+	if palette_shown_here(app) || setup_is_open(app) { return }
 	t := current_tab(app)
 	n := len(active_window(app).tabs)
 	ctrl := platform.Modifiers{.Ctrl}

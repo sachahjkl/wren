@@ -2,10 +2,8 @@ package browser
 
 import "core:strings"
 import "core:testing"
-import "core:time"
 import "toolkit:ui"
 import "wb:base"
-import "wb:config"
 
 @(test)
 registry_well_formed :: proc(t: ^testing.T) {
@@ -16,6 +14,8 @@ registry_well_formed :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(r.index), len(r.list))   // no name twice (commands_build also asserts it)
 	seen := make(map[ui.Chord]string, context.temp_allocator)
 	for s in RESERVED_SHORTCUTS { seen[s] = "(reserved)" }
+	// (Ctrl+K and Ctrl+Shift+P are the toolkit's palette's, in every program: the registry has no line for them)
+	for s in ui.palette_command().keys { seen[s] = "the command palette" }
 	for c in r.list {
 		testing.expectf(t, c.name != "" && c.label != "" && c.group != "" && c.run != nil, "command %q incomplete", c.name)
 		testing.expectf(t, c.name == base.ascii_lower(c.name) && !strings.contains(c.name, " "), "command name %q: dotted, lower case", c.name)
@@ -30,13 +30,14 @@ registry_well_formed :: proc(t: ^testing.T) {
 	for name in ([]string{"tab.new", "tab.reopen_closed", "tab.close", "nav.back", "nav.forward", "nav.reload", "nav.home", "page.zoom_in",
 		"page.zoom_out", "page.zoom_reset", "page.find", "page.save", "page.view_source", "page.print", "view.status_bar",
 		"view.frame_statistics", "view.title_statistics", "view.console", "view.full_screen", "view.tabs_in_title_bar",
-		"browser.command_palette", "browser.settings", "view.theme.graphite", "view.theme.everforest"}) {
+		"browser.settings", "view.theme.graphite", "view.theme.everforest"}) {
 		testing.expectf(t, name in r.index, "no command %q", name)
 	}
 	testing.expect_value(t, ui.command_shortcut(r.list[r.index["tab.reopen_closed"]].spec), "Ctrl+Shift+T")
 	testing.expect_value(t, ui.command_shortcut(r.list[r.index["page.zoom_in"]].spec), "Ctrl+=")
 	testing.expect_value(t, ui.command_shortcut(r.list[r.index["nav.back"]].spec), "Alt+Left")
-	testing.expect_value(t, ui.command_shortcut(r.list[r.index["browser.command_palette"]].spec), "Ctrl+Shift+P")
+	// Zoom in has three keys: the + of a US keyboard is Shift+=
+	testing.expect_value(t, len(r.list[r.index["page.zoom_in"]].keys), 3)
 }
 
 // No command takes a key that types text: a page's field or the address bar has the keyboard most of the time, and such
@@ -52,99 +53,96 @@ no_command_key_types_text :: proc(t: ^testing.T) {
 	for line in ui.command_typing_keys(specs) { testing.expectf(t, false, "a command's key types text: %s", line) }
 }
 
+// The palette's table is the registry's: every command but the hidden ones, by name, a switch where the command has a
+// state; its keys follow the preferences (vault.fill.shortcut), and the table is made again when they change.
 @(test)
-query_prefixes :: proc(t: ^testing.T) {
+palette_table_follows_the_registry :: proc(t: ^testing.T) {
+	app := test_app(t)
+	pt := palette_table(app)
+	list := commands(app)
+	testing.expect_value(t, len(pt.table), len(pt.names))
+	testing.expect_value(t, len(pt.table), len(pt.rows))
+	for c, k in pt.table {
+		cmd := &list[pt.rows[k]]
+		testing.expectf(t, !cmd.hidden, "%s is hidden, and listed", cmd.name)
+		testing.expect_value(t, pt.names[k], cmd.name)
+		testing.expectf(t, c.toggle == (cmd.checked != nil), "%s: a switch is a command with a state", cmd.name)
+	}
+	main_menu := command(app, "browser.main_menu")
+	testing.expect(t, main_menu != nil && main_menu.hidden)
+	for name in pt.names { testing.expect(t, name != "browser.main_menu") }
+
+	fill := -1
+	for name, k in pt.names { if name == "vault.fill" { fill = k } }
+	testing.expect(t, fill >= 0)
+	if fill < 0 { return }
+	made := pt.version
+	app.vault.v.settings.shortcut = "Alt+K"
+	vault_shortcut_apply(app)
+	pt = palette_table(app)
+	testing.expect(t, pt.version != made)
+	testing.expect_value(t, ui.command_shortcut(pt.table[fill]), "Alt+K")
+	app.vault.v.settings.shortcut = "Ctrl+Shift+L"   // (as it was)
+	vault_shortcut_apply(app)
+	app.vault.v.settings.shortcut = ""
+}
+
+// Each prefix of Wren's palette and its source, as the toolkit's table names them (ui.palette_prefixes): the same
+// characters mean the same things in every program.
+@(test)
+palette_prefixes_of_wren :: proc(t: ^testing.T) {
+	// (the preferences registered: the commands' conditions read them when the palette is given its table)
 	page_render_test_lock()
 	defer page_render_test_unlock()
 	app := app_make()
 	defer app_free(app)
 	app_prefs_init(app)
-	defer palette_destroy(app)
-
-	m, _, q := palette_parse_query(app, "  >rel ")
-	testing.expect(t, m == .Commands && q == "rel")
-	m, _, q = palette_parse_query(app, "@doc")
-	testing.expect(t, m == .Tabs && q == "doc")
-	m, _, q = palette_parse_query(app, ":theme")
-	testing.expect(t, m == .Prefs && q == "theme")
-	m, _, q = palette_parse_query(app, "reload")
-	testing.expect(t, m == .All && q == "reload")
-
-	palette_collect(app, ">zoom")
-	testing.expect(t, len(app.cpal.rows) >= 3)
-	for r in app.cpal.rows { testing.expect(t, r.kind == .Command) }
-
-	// the other words a command is known by match whole, not scattered ("rel" is not in "...palette light")
-	// (no tab here: Reload cannot run, so it comes first of those that cannot)
-	first_named :: proc(app: ^App, prefix: string) -> int {
-		for r, i in app.cpal.rows { if strings.has_prefix(commands(app)[r.index].name, prefix) { return i } }
-		return -1
-	}
-	palette_collect(app, ">rel")
-	first_off := len(app.cpal.rows)
-	for r, i in app.cpal.rows { if r.disabled { first_off = min(first_off, i) } }
-	testing.expect_value(t, first_named(app, "nav.reload"), first_off)
-	for r in app.cpal.rows {   // a theme shows only when its title holds r, e, l in this order, never through its keywords
-		if !strings.has_prefix(r.title, "Theme") { continue }
-		want, hit := "rel", 0
-		for ch in strings.to_lower(r.title, context.temp_allocator) { if hit < len(want) && ch == rune(want[hit]) { hit += 1 } }
-		testing.expectf(t, hit == len(want), "%q matches rel", r.title)
-	}
-	palette_collect(app, ">refresh")   // a keyword of Reload
-	testing.expect(t, len(app.cpal.rows) >= 1 && first_named(app, "nav.reload") >= 0)
-
-	palette_collect(app, ">theme everf")
-	testing.expect(t, len(app.cpal.rows) >= 1 && app.cpal.rows[0].kind == .Command && commands(app)[app.cpal.rows[0].index].name == "view.theme.everforest")
-
-	palette_collect(app, ":appearance.theme")
-	testing.expect(t, len(app.cpal.rows) >= 1)
-	for r in app.cpal.rows { testing.expect(t, r.kind == .Pref) }
-	if len(app.cpal.rows) > 0 { testing.expect_value(t, app.cpal.rows[0].title, "appearance.theme") }
-
-	// no tabs: the tab prefix lists nothing, and never a command
-	palette_collect(app, "@")
-	testing.expect_value(t, len(app.cpal.rows), 0)
-
-	// what cannot run comes last (Back without history), or not at all
-	palette_collect(app, ">")
-	last_enabled := -1
-	first_disabled := len(app.cpal.rows)
-	for r, i in app.cpal.rows { if r.disabled { first_disabled = min(first_disabled, i) } else { last_enabled = i } }
-	testing.expect(t, last_enabled < first_disabled)
-	config.set_from_string(&app.prefs, "browser.palette.show_disabled", "false", .User)
-	palette_collect(app, ">")
-	for r in app.cpal.rows { testing.expect(t, !r.disabled) }
-
-	// a command used comes first when nothing is typed
-	now := time.to_unix_nanoseconds(time.now()) / 1e6
-	for _ in 0 ..< 3 { ui.choice_note(&app.cpal.choices, "cmd:view.console", now) }
-	palette_collect(app, "")
-	testing.expect(t, len(app.cpal.rows) > 0 && commands(app)[app.cpal.rows[0].index].name == "view.console")
-
-	// a pluggable source answers its prefix
-	m, _, q = palette_parse_query(app, "/exa")
-	testing.expect(t, m == .Source && q == "exa")
+	wp := &window_own(app).palette
+	palette_start(app, wp)
+	want := []string{"> Commands", "@ Tabs", "/ Pages", ": Settings", "$ Vault"}
+	got := ui.palette_prefixes(&wp.pal)
+	testing.expect_value(t, len(got), len(want))
+	for w, i in want { if i < len(got) { testing.expect_value(t, got[i], w) } }
+	// (the Vault's items are never in the plain search, nor in the usage memory)
+	testing.expect(t, !wp.vault.plain && !wp.vault.remember)
 }
 
-// The keys in effect follow the preferences: Ctrl+K leaves the palette's keys when browser.palette.ctrl_k is off, and
-// the change shows in the registry's version (what the palette's results depend on).
+// What a chore makes of a source's lines: one item per id (the first: a bookmark before the visits of its page), a
+// page without a title named by its address, the settings in the order of their names.
 @(test)
-command_keys_follow_preferences :: proc(t: ^testing.T) {
-	app := test_app(t)
-	config.set_from_string(&app.prefs, "browser.palette.ctrl_k", "true", .User)
-	c := command(app, "browser.command_palette")
-	testing.expect(t, c != nil)
-	testing.expect_value(t, len(c.keys), 2)
-	v := app.cmds.version
-	config.set_from_string(&app.prefs, "browser.palette.ctrl_k", "false", .User)
-	c = command(app, "browser.command_palette")
-	testing.expect_value(t, len(c.keys), 1)
-	testing.expect_value(t, ui.command_shortcut(c.spec), "Ctrl+Shift+P")
-	testing.expect(t, app.cmds.version != v)
-	config.set_from_string(&app.prefs, "browser.palette.ctrl_k", "true", .User)
-	testing.expect_value(t, len(command(app, "browser.command_palette").keys), 2)
-	// Zoom in has three keys: the + of a US keyboard is Shift+=
-	testing.expect_value(t, len(command(app, "page.zoom_in").keys), 3)
+palette_job_items :: proc(t: ^testing.T) {
+	test_app(t)
+	pages := palette_job_new({}, 4)
+	palette_line_add(pages, {id = "https://a.example/", title = "A bookmark", detail = "https://a.example/", group = "Bookmarks"})
+	palette_line_add(pages, {id = "https://b.example/doc", detail = "https://b.example/doc", group = "History"})
+	palette_line_add(pages, {id = "https://a.example/", title = "A visit", detail = "https://a.example/", group = "History"})
+	pages.unique = true
+	palette_job_work(pages)
+	items := pages.answer.items
+	testing.expect_value(t, len(items), 2)
+	if len(items) == 2 {
+		testing.expect_value(t, items[0].title, "A bookmark")
+		testing.expect_value(t, items[0].group, "Bookmarks")
+		testing.expect_value(t, items[1].title, "b.example/doc")
+	}
+	ui.palette_answer_free(&pages.answer)
+	free(pages, base.process_allocator())
+
+	settings := palette_job_new({}, 3)
+	for name in ([]string{"view.zoom", "appearance.theme", "browser.tabs.max"}) { palette_line_add(settings, {id = name, title = name}) }
+	settings.sort = true
+	palette_job_work(settings)
+	testing.expect_value(t, len(settings.answer.items), 3)
+	if len(settings.answer.items) == 3 {
+		testing.expect_value(t, settings.answer.items[0].id, "appearance.theme")
+		testing.expect_value(t, settings.answer.items[2].id, "view.zoom")
+	}
+	ui.palette_answer_free(&settings.answer)
+	free(settings, base.process_allocator())
+
+	testing.expect_value(t, address_words("https://example.com/"), "example.com")
+	testing.expect_value(t, address_words("http://example.com/a/b"), "example.com/a/b")
+	testing.expect_value(t, address_words("about:blank"), "about:blank")
 }
 
 @(test)

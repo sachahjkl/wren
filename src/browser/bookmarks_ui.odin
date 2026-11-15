@@ -523,25 +523,7 @@ bookmarks_file_job :: proc(app: ^App, export: bool) {
 	}
 }
 
-////////////////////////////////
-// The palette
-
-@(private = "file")
-palette_bookmark_items :: proc(user: rawptr, app: ^App, out: ^[dynamic]Palette_Item) {
-	for b in app.bms.items { if !b.folder { append(out, Palette_Item{title = b.title, detail = b.url, key = b.url, site = b.url}) } }
-}
-
-@(private = "file")
-palette_bookmark_activate :: proc(user: rawptr, app: ^App, key: string, new_tab: bool) {
-	bookmark_open(app, current_tab(app), key, new_tab)
-}
-
-bookmarks_palette_source :: proc() -> Palette_Source {
-	return {name = "Bookmarks", prefix = '*', in_default = true, items = palette_bookmark_items, activate = palette_bookmark_activate,
-		version = proc(user: rawptr, app: ^App) -> u64 { return app.bms.serial }}
-}
-
 // Whether what is typed on a built-in page can go to its search field: no menu, dialog or palette takes it.
 builtin_page_types :: proc(app: ^App) -> bool {
-	return !ui.menu_any_open() && !app.bview.edit_open && !app.cpal.open && !setup_is_open(app) && app.qr_url == ""
+	return !ui.menu_any_open() && !app.bview.edit_open && !palette_shown_here(app) && !setup_is_open(app) && app.qr_url == ""
 }

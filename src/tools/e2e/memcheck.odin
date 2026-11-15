@@ -46,7 +46,13 @@ command tab.close
 command tab.close
 command tab.reopen_closed
 load
-command browser.command_palette
+palette
+frames 10
+palette @
+frames 10
+palette /
+frames 10
+palette :
 frames 10
 command browser.history
 wait 500

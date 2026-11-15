@@ -179,6 +179,8 @@ app_interface_end :: proc(app: ^App) {
 	favicons_destroy(app)
 	window_chrome_destroy(app)
 	chrome_style_destroy(app)
+	palette_window_destroy(&window_own(app).palette)   // palette.odin (its table points into the registry)
+	palette_table_destroy(&app.pal)
 	commands_destroy(&app.cmds)
 	app.made -= {.Interface}
 }
@@ -195,7 +197,10 @@ app_free :: proc(app: ^App) {
 		}
 	}
 	if .Interface in app.made { app_interface_end(app) }
-	commands_destroy(&app.cmds)   // (built at first use, whatever the stages: a test that reads a shortcut builds it)
+	// (made at first use, whatever the stages: a test that reads a shortcut builds them; palette.odin)
+	palette_window_destroy(&app.bare.own.palette)
+	palette_table_destroy(&app.pal)
+	commands_destroy(&app.cmds)
 	if .Ui in app.made { app_ui_end(app) }
 	if .Renderer in app.made { app_renderer_end(app) }
 	if .Window in app.made { app_windows_end(app) }

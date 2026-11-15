@@ -212,7 +212,7 @@ App :: struct {
 	sengines:      Search_Engines,           // search_engines.odin: the profile's search engines
 	hcfg:          History_Settings,         // history_settings.odin
 	upd:           Update_State,             // update_check.odin: the daily check
-	cpal:          Palette_State,            // palette.odin: the command palette
+	pal:           Palette_Table,            // palette.odin: the commands the windows' palettes list (each window has its palette: Window_Own)
 	stp:           Setup_State,              // setup.odin: the Setup dialog (toolkit:setup)
 	wchrome:       Window_Chrome,            // window_chrome.odin: its preferences, the program's icon, the system menu asked for
 	tsh:           Touch_Shell,              // touch_shell.odin: touch input and its preferences
@@ -1113,6 +1113,7 @@ page_column :: proc(app: ^App, t: ^Tab, elem_fs: bool) {
 }
 
 build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restored tab loads when it is first shown
+	palette_frame(app)   // palette.odin: the command palette's keys and choice, before the chrome's shortcuts
 	chrome_shortcuts(app)
 	ext_watch(app)   // ext_window_api.odin: the extensions' view of the windows, tabs and input changes
 	devtools_view_follow(app)   // devtools.odin: the developer tools' view opens or closes before the frame of views settles it
@@ -1160,7 +1161,6 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 		}
 	}
 	context_menus_build(app)
-	palette_build(app)   // palette.odin: the command palette, over everything else
 	// the dialogs: each opens, closes and takes its answer here; the toolkit builds them at the end of the build (views.odin)
 	setup_build(app)   // setup.odin: the Setup dialog (toolkit:setup; it also collects the work of its thread)
 	fs_shell_build(app)   // fs_shell.odin: a page's file permission prompt (nothing while none waits)
@@ -2109,7 +2109,9 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	session_destroy(app)
 	recovery_destroy()
 	host.shutdown_step("palette_destroy")
-	palette_destroy(app)   // palette.odin (and the command registry)
+	palette_window_destroy(&window_own(app).palette)   // palette.odin: the front window's (the others' went with their window)
+	palette_table_destroy(&app.pal)
+	commands_destroy(&app.cmds)
 	host.shutdown_step("ui.destroy")
 	app_ui_end(app)   // (the windows' toolkit states, the theme)
 	host.shutdown_step("render.destroy")

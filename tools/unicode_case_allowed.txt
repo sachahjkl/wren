@@ -28,7 +28,6 @@ src/browser/global_history.odin q := strings.to_lower(  # user text: the history
 src/browser/global_history.odin v.low = strings.concatenate({strings.to_lower(v.url  # user text: the history's search (its lower-case copy)
 src/browser/http_cache_ui.odin !strings.contains(strings.to_lower(e.key  # user text: the cache page's filter
 src/browser/http_cache_ui.odin needle := strings.to_lower(filter  # user text: the cache page's filter
-src/browser/palette_test.odin for ch in strings.to_lower(r.title  # the palette's fuzzy match, as it matches
 src/browser/search_engines.odin return strings.to_upper(e.name[i:]  # display text: a search engine's initial
 src/browser/search_engines.odin strings.equal_fold(e.keyword, kw)  # user text: a search engine's keyword
 src/browser/search_engines.odin strings.equal_fold(e.name, n)  # user text: a search engine's name

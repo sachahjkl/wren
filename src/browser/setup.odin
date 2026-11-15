@@ -116,7 +116,7 @@ setup_open :: proc(app: ^App) {
 	app.stp.file_types = strings.clone(config.string_of(&app.prefs, "browser.desktop_integration.file_types"))
 	if ui.building() {
 		ui.menu_close()
-		if app.cpal.open { palette_close(app) }
+		palette_hide(app)
 	}
 	app.stp.asked = true
 	request_frames(app, 3)

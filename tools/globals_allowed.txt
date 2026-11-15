@@ -126,7 +126,6 @@ browser/paint_planes.odin PLANE_PREFS const  # a table
 browser/paint_planes.odin plane_mem thread  # the scale each plane was rasterized at, of the thread that paints
 browser/paint_planes.odin planes_culled thread  # planes not painted (what the tests count), of the thread that paints
 browser/paint_srgb_test.odin png_tex thread  # a test's texture
-browser/palette.odin PALETTE_PREFS const  # a table
 browser/print.odin PRINT_PREFS const  # a table
 browser/process_share.odin process_share process  # what the Apps of the process share, counted: one atomic word (the Apps that use it, or busy)
 browser/prof.odin PHASE_NAMES const  # the phases' names in the spans

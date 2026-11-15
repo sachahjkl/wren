@@ -1,7 +1,7 @@
 # Closed tabs and sessions
 
 `Ctrl+Shift+T` brings back the last thing closed, one at a time, each with what it had. The menus name what comes next: *Reopen closed
-tab*, *Reopen closed window*, *Restore previous session*. The command palette lists them too. Code: `src/browser/closed_tabs.odin`,
+tab*, *Reopen closed window*, *Restore previous session*. The command palette lists them too, after the window's tabs (`@`). Code: `src/browser/closed_tabs.odin`,
 `src/browser/session.odin`.
 
 | What | Comes back with |

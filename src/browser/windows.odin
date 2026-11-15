@@ -104,6 +104,7 @@ Window_Own :: struct {
 	page_painted:        Paint_Source,        // shell_frames.odin: what the page's last frame was painted from, besides its layout
 	a11y:                Page_A11y,           // a11y_page.odin: the accessibility trees of the page shown and its frames
 	devtools:            Devtools,            // devtools.odin: the window's developer tools, wherever their view is (dev())
+	palette:             Window_Palette,      // palette.odin: the window's command palette and Wren's sources in it
 	first_paint_timer:   base.Handle,         // first_paint.odin: a frame when a held or blocked first paint ends
 }
 
@@ -119,6 +120,7 @@ window_own :: proc(app: ^App) -> ^Window_Own { return &active_window(app).own }
 // window is the active one (its developer tools are read as dev()).
 window_own_destroy :: proc(app: ^App, own: ^Window_Own) {
 	assert(own == window_own(app))
+	palette_window_destroy(&own.palette)   // palette.odin (before its toolkit state goes)
 	gesture_destroy(app, own)
 	devtools_view_destroy(app)   // devtools.odin (their view, and its window, go with this window's State)
 	page_cursor_view_destroy(&own.cursor)

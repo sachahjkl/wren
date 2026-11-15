@@ -777,7 +777,6 @@ hud_captures :: proc(app: ^App, pos: draw.Vec2) -> bool {
 		for r in ui.views_floating_rects(&app.views, s) { if draw.rect_contains(r, pos) { return true } }
 	}
 	if fullscreen_bars_capture(app, pos) { return true }   // and so do the bars of full screen (window_chrome.odin)
-	if palette_captures(app, pos) { return true }   // and the command palette while it is open (palette.odin)
 	if vault_dropdown_captures(app, pos) { return true }   // and the Vault's list under a login field (vault_fill.odin)
 	if vault_offer_captures(app, pos) { return true }   // and the Vault's save offer (vault_save.odin)
 	if urlbar_captures(app, pos) { return true }   // and the address bar's suggestions (urlbar.odin)
