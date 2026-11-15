@@ -277,7 +277,6 @@ vault_button :: proc(app: ^App, t: ^Tab) {
 	sig := ui.signal(b)
 	app.vault.button_rect = b.rect
 	key := fmt.tprintf("vault_panel_%x", u64(b.parent.key))
-	panel_at := toolbar_panel_rect(b.rect, em * VAULT_PANEL_W_EM)
 	// (logged out or locked, what there is to do is the login or the unlock: the dialog opens at once, no panel to read
 	// "Log in" in first)
 	to_dialog := vault_icon_opens_dialog(v.state)
@@ -285,7 +284,7 @@ vault_button :: proc(app: ^App, t: ^Tab) {
 		switch {
 		case to_dialog:                  vault_dialog_open(app)
 		case ui.menu_is_open(key):   ui.menu_close()
-		case:                            ui.menu_open(key, panel_at, b.key, search = false)
+		case:                            ui.menu_open(key, b.rect, b.key, search = false, align = .End)
 		}
 	}
 	// (the fill shortcut or a command asked for the panel)
@@ -294,7 +293,7 @@ vault_button :: proc(app: ^App, t: ^Tab) {
 		switch {
 		case !vault_usable(app):
 		case to_dialog:                  vault_dialog_open(app)
-		case !ui.menu_is_open(key):  ui.menu_open(key, panel_at, b.key, search = false)
+		case !ui.menu_is_open(key):  ui.menu_open(key, b.rect, b.key, search = false, align = .End)
 		}
 	}
 	open := ui.menu_is_open(key)

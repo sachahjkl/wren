@@ -122,11 +122,11 @@ vault_offer_build :: proc(app: ^App) {
 	if r.max.x <= r.min.x { return }   // (no button laid out: no place for it)
 	em := ui.font_size()
 	w := em * VAULT_OFFER_W_EM
-	at := toolbar_panel_rect(r, w)
 	title := o.state == .Update ? i18n.tr("Update the password of this login?") : i18n.tr("Save this login in the Vault?")
 	accept, later, never := false, false, false
 	if ui.tags("floating") {
-		ui.next({fixed_x = at.min.x, fixed_y = r.max.y + em * 0.3, width = ui.px(w), height = ui.children_sum(), axis = .Y, radius = em * 0.5})
+		// (its right edge on the button's, as the toolbar's menus: the toolbar's margin stays between it and the window's edge)
+		ui.next({fixed_x = r.max.x - w, fixed_y = r.max.y + em * 0.3, width = ui.px(w), height = ui.children_sum(), axis = .Y, radius = em * 0.5})
 		panel := ui.build_box({.Clickable, .Draw_Background, .Draw_Border, .Draw_Shadow, .Clip}, "###vault_offer")
 		panel.cursor = .Arrow
 		_ = ui.signal(panel)

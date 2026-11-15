@@ -88,11 +88,3 @@ vault_dialog_starts_where_the_next_thing_is_typed :: proc(t: ^testing.T) {
 	testing.expect(t, vault_first_field(true, &email, &password) == &password)
 }
 
-// A toolbar panel ends on its button's right edge (the toolbar's margin stays between it and the window's edge).
-@(test)
-toolbar_panels_end_under_their_button :: proc(t: ^testing.T) {
-	r := toolbar_panel_rect({{900, 40}, {930, 70}}, 300)
-	testing.expect_value(t, r.min.x, f32(630))
-	testing.expect_value(t, r.max.x, f32(930))
-	testing.expect_value(t, r.max.y, f32(70))
-}

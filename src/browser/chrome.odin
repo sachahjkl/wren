@@ -807,13 +807,6 @@ stop_loading :: proc(app: ^App, t: ^Tab) {
 	request_frames(app, 2)
 }
 
-// Where a toolbar button's panel opens (ui.menu_open): under the button, its right edge on the button's right
-// edge, so a panel of a button at the end of the toolbar keeps the toolbar's margin from the window's edge instead of
-// being pushed against it.
-toolbar_panel_rect :: proc(button: ui.Rect, width: f32) -> ui.Rect {
-	return {{button.max.x - width, button.min.y}, button.max}
-}
-
 // The tools' buttons between the address bar and the main menu, each followed by its gap: the toolbar's and the title
 // bar's of a sidebar (tab_sidebar.odin) are this one list; a button added here is in both.
 toolbar_tools :: proc(app: ^App, t: ^Tab) {

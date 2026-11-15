@@ -731,9 +731,9 @@ downloads_button :: proc(app: ^App, t: ^Tab) {
 	sig := ui.signal(b)
 	key := fmt.tprintf("downloads_panel_%x", u64(b.parent.key))
 	// a download began: the drop-down opens under the button, once the button has a place (the frame it first shows, it has none)
-	if window_asked(app, .Downloads_Panel, b) && !ui.menu_is_open(key) { ui.menu_open(key, toolbar_panel_rect(b.rect, ui.font_size() * DL_PANEL_W_EM), b.key, search = false) }
+	if window_asked(app, .Downloads_Panel, b) && !ui.menu_is_open(key) { ui.menu_open(key, b.rect, b.key, search = false, align = .End) }
 	if sig.clicked {
-		if ui.menu_is_open(key) { ui.menu_close() } else { ui.menu_open(key, toolbar_panel_rect(b.rect, ui.font_size() * DL_PANEL_W_EM), b.key, search = false) }
+		if ui.menu_is_open(key) { ui.menu_close() } else { ui.menu_open(key, b.rect, b.key, search = false, align = .End) }
 	}
 	open := ui.menu_is_open(key)
 	app.dview.popup_open = open

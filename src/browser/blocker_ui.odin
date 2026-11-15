@@ -295,9 +295,9 @@ blocker_button :: proc(app: ^App, t: ^Tab) {
 	ui.pop_tags()
 	sig := ui.signal(b)
 	key := fmt.tprintf("blocker_panel_%x", u64(b.parent.key))
-	if window_asked(app, .Blocker_Panel, b) && !ui.menu_is_open(key) { ui.menu_open(key, toolbar_panel_rect(b.rect, ui.font_size() * PANEL_W_EM), b.key, search = false) }
+	if window_asked(app, .Blocker_Panel, b) && !ui.menu_is_open(key) { ui.menu_open(key, b.rect, b.key, search = false, align = .End) }
 	if sig.clicked {
-		if ui.menu_is_open(key) { ui.menu_close() } else { ui.menu_open(key, toolbar_panel_rect(b.rect, ui.font_size() * PANEL_W_EM), b.key, search = false) }
+		if ui.menu_is_open(key) { ui.menu_close() } else { ui.menu_open(key, b.rect, b.key, search = false, align = .End) }
 	}
 	tip_text: string
 	switch state {
