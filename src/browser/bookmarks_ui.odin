@@ -19,9 +19,9 @@ import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
 import lucide "toolkit:lucide"
-import "wb:config"
+import config "toolkit:config"
 import "wb:host"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 
 BOOKMARKS_URL :: "about:bookmarks"
 

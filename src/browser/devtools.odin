@@ -30,9 +30,9 @@ import prefs_page "toolkit:prefs_page"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
-import "wb:config"
+import config "toolkit:config"
 import "wb:host"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 import "wb:page"
 
 // Where the developer tools are: the view's presentation and, docked, its edge of the window (dev_dock_of). The view's

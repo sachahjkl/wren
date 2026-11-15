@@ -1,7 +1,7 @@
 package browser
 
 import "core:testing"
-import "wb:config"
+import config "toolkit:config"
 
 // Every preference about:settings lists is registered and on one page only; the pages are each other's. The categories of
 // the registry stay about:config's: a page lists its preferences by name.

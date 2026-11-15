@@ -19,7 +19,7 @@ import "core:strings"
 import "core:unicode/utf8"
 import "wb:base"
 import "wb:host"
-import "wb:config"
+import config "toolkit:config"
 import "wb:url"
 
 Search_Engine :: struct {

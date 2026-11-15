@@ -12,7 +12,7 @@ import "core:strings"
 import "core:testing"
 import "core:time"
 import "wb:base"
-import "wb:config"
+import config "toolkit:config"
 import "wb:host"
 
 @(private = "file")

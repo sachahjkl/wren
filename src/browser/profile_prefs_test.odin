@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:testing"
-import "wb:config"
+import config "toolkit:config"
 
 // prefs.txt is written only when the user's layer changed since its last text: the autosave of an idle browser writes
 // nothing, a change is written once, and the text has what the user set.

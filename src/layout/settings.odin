@@ -1,6 +1,6 @@
 package layout
 
-import "wb:config"
+import config "toolkit:config"
 import "wb:css"
 
 // What a user or an administrator may want to tune about page layout (about:config, `layout.*`). The engine reads a plain

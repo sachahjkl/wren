@@ -26,7 +26,7 @@ import "core:os"
 import "core:strings"
 import "toolkit:instance"
 import "toolkit:platform"
-import "wb:config"
+import config "toolkit:config"
 import process "toolkit:process"
 import "wb:host"
 

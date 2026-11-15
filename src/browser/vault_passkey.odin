@@ -9,7 +9,7 @@ package browser
 import "base:runtime"
 import "wb:base"
 import "wb:host"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 import "wb:url"
 import "wb:vault"
 import "wb:webauthn"

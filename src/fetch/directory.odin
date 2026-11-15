@@ -3,7 +3,7 @@ package fetch
 import "core:fmt"
 import "core:slice"
 import "core:strings"
-import "wb:config"
+import config "toolkit:config"
 import "wb:url"
 
 ////////////////////////////////

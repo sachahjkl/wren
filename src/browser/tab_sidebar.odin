@@ -32,8 +32,8 @@ import "toolkit:draw"
 import "toolkit:platform"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
-import "wb:config"
-import "wb:i18n"
+import config "toolkit:config"
+import i18n "toolkit:i18n"
 
 SIDEBAR_MIN_CSS :: 120   // (browser.tabs.sidebar_width's bounds)
 SIDEBAR_MAX_CSS :: 640

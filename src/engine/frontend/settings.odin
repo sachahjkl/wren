@@ -6,7 +6,7 @@ package frontend
 // against hostile input: a page cannot make the parser recurse without bound or allocate a huge AST, because the
 // parser charges a nesting level per recursion and stops at the cap.
 
-import "wb:config"
+import config "toolkit:config"
 
 DEFAULT_MAX_NESTING :: 2000
 DEFAULT_MAX_SOURCE_BYTES :: 64 << 20 // 64 MiB

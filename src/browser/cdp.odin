@@ -20,7 +20,7 @@ import "core:encoding/json"
 import "core:fmt"
 import "core:strconv"
 import "core:strings"
-import "wb:config"
+import config "toolkit:config"
 import "wb:host"
 import "wb:remote"
 

@@ -28,7 +28,7 @@ import "toolkit:font"
 import "toolkit:platform"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
-import "wb:config"
+import config "toolkit:config"
 import "wb:page"
 
 // A pan by keyboard takes at most this long, whatever browser.history.tree_transition_ms says.

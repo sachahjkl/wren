@@ -1,6 +1,6 @@
 package idb
 
-import "wb:config"
+import config "toolkit:config"
 
 // IndexedDB knobs (about:config, `indexeddb.*`). The data model (databases, object stores, indexes, key order) is the
 // specification's and is not configurable; limits, durability and the life of the in-memory copy are.

@@ -3,7 +3,7 @@ package browser
 import "core:os"
 import "core:strings"
 import "core:testing"
-import "wb:config"
+import config "toolkit:config"
 
 // The search engines (search_engines.odin): the list, the addresses, the keywords, the editing rules, the profile's
 // file and the migration of a profile of before the list.

@@ -1,7 +1,7 @@
 package vault
 
 import "core:strings"
-import "wb:config"
+import config "toolkit:config"
 
 // The Vault's preferences (about:config, `vault.*`). Off by default: with vault.enabled off there is no button, no helper
 // process and no network call.

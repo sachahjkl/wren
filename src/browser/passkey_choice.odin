@@ -17,7 +17,7 @@ import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
 import "wb:host"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 import "wb:page"
 import "wb:vault"
 

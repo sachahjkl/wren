@@ -12,7 +12,7 @@ import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
 import "wb:browser"
-import "wb:config"
+import config "toolkit:config"
 import "wb:page"
 
 @(private = "file") ZOOM_SIZE :: [2]int{1000, 600}

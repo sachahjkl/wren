@@ -2,7 +2,7 @@ package browser
 
 import "core:strings"
 import "toolkit:font"
-import "wb:config"
+import config "toolkit:config"
 import "wb:host"
 import "wb:style"
 

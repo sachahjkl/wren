@@ -6,7 +6,7 @@ package ucd
 // so about:config and the differential tooling can display which Unicode release the engine was built against,
 // and registers it the same way every other package does. Freestanding builds skip it (no preference registry).
 
-import "wb:config"
+import config "toolkit:config"
 
 PREFS := [?]config.Def{
 	{name = "unicode.version", kind = .String, default = {s = UNICODE_VERSION},

@@ -1,6 +1,6 @@
 package page
 
-import "wb:config"
+import config "toolkit:config"
 import "wb:host"
 import "wb:wasm"
 

@@ -12,9 +12,9 @@ package browser
 import "core:math"
 import "toolkit:draw"
 import "toolkit:ui"
-import "wb:config"
+import config "toolkit:config"
 import "wb:host"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 import "wb:media"
 import "wb:page"
 

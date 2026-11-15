@@ -16,7 +16,7 @@ import "core:strings"
 import "toolkit:draw"
 import "toolkit:ui"
 import lucide "toolkit:lucide"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 
 ////////////////////////////////
 // Layout (pure: tab_sidebar_test.odin)

@@ -1,6 +1,6 @@
 package extensions
 
-import "wb:config"
+import config "toolkit:config"
 
 // The preferences of browser extensions (docs/extensions.md, section 3.11 rule 13). Every limit has a reason: a hostile
 // package, the cost of matching per document, Chrome's own numbers where an extension counts on them.

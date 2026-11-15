@@ -10,7 +10,7 @@ import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:adblock"
 import "wb:blocker"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 
 // The graph of a page's blocked requests: the bars it draws, and the shortest span they cover.
 BLOCKER_GRAPH_BINS :: 48

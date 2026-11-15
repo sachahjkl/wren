@@ -1,7 +1,7 @@
 package browser
 
 import "toolkit:render"
-import "wb:config"
+import config "toolkit:config"
 
 ////////////////////////////////
 // How the window's colors are mixed: the blend space of the renderer and the text's coverage correction are the toolkit's

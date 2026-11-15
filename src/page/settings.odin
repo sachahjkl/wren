@@ -1,7 +1,7 @@
 package page
 
 import "wb:canvas2d"
-import "wb:config"
+import config "toolkit:config"
 import "wb:fetch"
 import "wb:forms"
 import "wb:html"

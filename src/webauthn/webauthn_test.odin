@@ -8,7 +8,7 @@ import "core:testing"
 import "core:thread"
 import "core:time"
 import "wb:base"
-import "wb:config"
+import config "toolkit:config"
 import "wb:url"
 
 // A waiting operation, once cancelled, must have returned within the deadline.

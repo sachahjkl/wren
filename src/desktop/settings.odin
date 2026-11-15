@@ -2,7 +2,7 @@ package wren_desktop
 
 import "core:strings"
 import tk "../../ext/gui_toolkit/src/desktop"
-import "wb:config"
+import config "toolkit:config"
 
 // Preferences of the integration itself. The shell's own policy (when to integrate, whether to offer an update) is in
 // src/browser/desktop_shell.odin: it depends on the build's channel, which this package does not know.

@@ -1,7 +1,7 @@
 package browser
 
 import "core:testing"
-import "wb:config"
+import config "toolkit:config"
 
 @(test)
 single_instance_applies_by_default_and_gives_way_to_the_escapes :: proc(t: ^testing.T) {

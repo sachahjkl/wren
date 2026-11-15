@@ -11,7 +11,7 @@ package browser
 import "core:os"
 import "core:strings"
 import "wb:base"
-import "wb:config"
+import config "toolkit:config"
 import "wb:extensions"
 import "wb:host"
 import "wb:page"

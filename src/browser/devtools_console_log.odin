@@ -11,7 +11,7 @@ package browser
 import "core:fmt"
 import "core:strings"
 import "core:time"
-import "wb:config"
+import config "toolkit:config"
 import "wb:js"
 import "wb:page"
 

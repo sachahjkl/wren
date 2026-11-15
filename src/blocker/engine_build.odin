@@ -10,7 +10,7 @@ import "wb:adblock"
 import "wb:base"
 import "wb:fetch"
 import "wb:host"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 
 // The engine of the lists. A job runs on a thread of its own: at start-up it maps the compiled index the profile keeps (17 to 34
 // ms for the default lists) and compiles the lists only when that index is not theirs; later it compiles what changed. It reads the lists,

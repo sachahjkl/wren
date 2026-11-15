@@ -2,7 +2,7 @@ package webauthn
 
 import "core:strings"
 import "wb:base"
-import "wb:config"
+import config "toolkit:config"
 
 // Everything about passkeys a user or an administrator may want to decide (about:config, `security.webauthn.*`).
 // Pages get a plain copy (page.Settings.webauthn), rebuilt when a preference changes.

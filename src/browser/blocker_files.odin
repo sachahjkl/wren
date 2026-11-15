@@ -7,7 +7,7 @@ import "core:strings"
 import "toolkit:platform"
 import "wb:blocker"
 import "wb:host"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 
 // A configuration or filter file chosen in the dashboard that is bigger than this is refused.
 BLOCKER_IMPORT_MAX_BYTES :: 64 << 20

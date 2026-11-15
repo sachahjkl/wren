@@ -8,8 +8,8 @@ import "core:fmt"
 import "core:strings"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
-import "wb:config"
-import "wb:i18n"
+import config "toolkit:config"
+import i18n "toolkit:i18n"
 import "wb:page"
 
 

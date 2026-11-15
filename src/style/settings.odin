@@ -1,7 +1,7 @@
 package style
 
 import "core:strings"
-import "wb:config"
+import config "toolkit:config"
 import "wb:css"
 
 // Everything about styling that a user, a developer or an administrator may want to change (about:config, `style.*`,

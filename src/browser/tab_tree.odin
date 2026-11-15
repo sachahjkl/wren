@@ -14,7 +14,7 @@ package browser
 //
 // The procedures on a window's tabs are pure: tab_tree_test.odin.
 
-import "wb:config"
+import config "toolkit:config"
 
 TAB_TREE_PREFS := [?]config.Def{
 	{name = "browser.tabs.tree", kind = .Bool, default = {b = true},

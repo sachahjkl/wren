@@ -32,7 +32,7 @@ import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
-import "wb:config"
+import config "toolkit:config"
 import "wb:host"
 
 // How often the compositor's live rate is read during a run of frames.

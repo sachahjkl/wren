@@ -23,9 +23,9 @@ import "core:strings"
 import "toolkit:platform"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
-import "wb:config"
+import config "toolkit:config"
 import "wb:host"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 import "wb:page"
 
 NOTIFICATION_PREFS := [?]config.Def{

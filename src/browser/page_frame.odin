@@ -10,7 +10,7 @@ package browser
 
 import "core:fmt"
 import "toolkit:draw"
-import "wb:config"
+import config "toolkit:config"
 import "wb:css"
 import lay "wb:layout"
 import "wb:page"

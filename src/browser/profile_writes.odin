@@ -7,7 +7,7 @@ package browser
 
 import "core:fmt"
 import "core:strings"
-import "wb:config"
+import config "toolkit:config"
 import "wb:cookies"
 import "wb:fetch"
 import "wb:host"

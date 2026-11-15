@@ -3,7 +3,7 @@ package browser
 import "core:fmt"
 import "core:math"
 import "core:strings"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 import "wb:license"
 import licence "toolkit:licence"
 

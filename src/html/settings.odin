@@ -1,7 +1,7 @@
 package html
 
 import "core:strings"
-import "wb:config"
+import config "toolkit:config"
 
 Options :: struct {
 	max_nodes:          int,

@@ -1,6 +1,6 @@
 package page
 
-import "wb:config"
+import config "toolkit:config"
 
 // Preferences of script loading and of the event loop's JavaScript side (js_load*.odin, js_workers.odin).
 Js_Load_Settings :: struct {

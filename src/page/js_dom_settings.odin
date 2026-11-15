@@ -1,6 +1,6 @@
 package page
 
-import "wb:config"
+import config "toolkit:config"
 import "wb:dom"
 
 // Limits of the DOM as JavaScript reaches it (preferences `javascript.dom.*`).

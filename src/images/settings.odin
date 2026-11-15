@@ -1,6 +1,6 @@
 package images
 
-import "wb:config"
+import config "toolkit:config"
 
 // Preferences of images (about:config `images.*`): the limits of decoding and how pages load, keep and show images.
 // The page package reads them into its Settings; the shell's texture cache reads `images.gpu.*`.

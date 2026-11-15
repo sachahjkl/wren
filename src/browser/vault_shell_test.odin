@@ -2,7 +2,7 @@ package browser
 
 import "core:testing"
 import "toolkit:ui"
-import "wb:config"
+import config "toolkit:config"
 import "wb:host"
 import "wb:vault"
 

@@ -11,7 +11,7 @@ import "core:fmt"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
-import "wb:config"
+import config "toolkit:config"
 
 @(private = "file") CHROME_ZOOM_PREF :: "appearance.zoom"
 @(private = "file") CHROME_ZOOM_FRAMES :: 3   // a change of scale settles in a few frames (layout, then what follows its size)

@@ -9,7 +9,7 @@ import "core:fmt"
 import "core:strings"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 
 // The last `n` parts of a path after an ellipsis, so that it fits the bar: "...\Wren\crashed-session 2026-10-25 13-49-23.txt"
 // (the bar's Details button and the tab.restore_crashed command know the whole path).

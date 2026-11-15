@@ -5,7 +5,7 @@ package webgl
 // src/page/bindings_webgl.odin.
 
 import "core:strings"
-import "wb:config"
+import config "toolkit:config"
 
 when ODIN_OS == .Windows {
 	foreign import wren_native {

@@ -1,7 +1,7 @@
 package forms
 
 import "core:strings"
-import "wb:config"
+import config "toolkit:config"
 
 // Everything about form controls a user or an administrator may want to change (about:config, `forms.*`).
 

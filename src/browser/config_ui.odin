@@ -35,8 +35,8 @@ import "core:strings"
 import "toolkit:draw"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
-import "wb:config"
-import "wb:i18n"
+import config "toolkit:config"
+import i18n "toolkit:i18n"
 
 Row_State :: struct {
 	field:   ui.Line_Edit,

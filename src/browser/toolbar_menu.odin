@@ -12,7 +12,7 @@ package browser
 import "toolkit:platform"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 
 // Once per build: a right click on the free space of the title bar opens the toolbar's menu where it came. Called by
 // the part of the chrome that every layout builds once: address_row, or sidebar_titlebar when the toolbar is the title bar.

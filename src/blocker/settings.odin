@@ -1,7 +1,7 @@
 package blocker
 
-import "wb:config"
-import "wb:i18n"
+import config "toolkit:config"
+import i18n "toolkit:i18n"
 
 // Everything the content blocker lets a user or administrator tune (about:config: `blocker.*`). Per-site choices, lists,
 // rules and filters are not preferences: they live in the blocker's own configuration file (config_file.odin), which the

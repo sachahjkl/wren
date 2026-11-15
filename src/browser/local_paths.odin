@@ -1,6 +1,6 @@
 package browser
 
-import "wb:config"
+import config "toolkit:config"
 import "wb:fetch"
 
 ////////////////////////////////

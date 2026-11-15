@@ -1,6 +1,6 @@
 package cookies
 
-import "wb:config"
+import config "toolkit:config"
 
 // Cookie policy knobs (about:config, `cookies.*`). The storage model itself (what a cookie *is*, matching, SameSite
 // semantics) is the specification's and is not configurable; limits, lifetimes and defaults are.

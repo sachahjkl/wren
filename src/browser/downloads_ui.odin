@@ -18,9 +18,9 @@ import lucide "toolkit:lucide"
 import "toolkit:ui"
 import desktop "toolkit:desktop"
 import "wb:base"
-import "wb:config"
+import config "toolkit:config"
 import "wb:host"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 
 // Periods of the animations of a download of unknown size: the sweep of its bar, and the turn of its ring.
 DOWNLOAD_SWEEP_PERIOD_MS :: 1500

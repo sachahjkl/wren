@@ -3,7 +3,7 @@ package media
 // Preferences of media playback (about:config, media.*). The page layer keeps a Settings in its page Settings; the
 // player reads its part when it is made.
 
-import "wb:config"
+import config "toolkit:config"
 
 Autoplay_Policy :: enum u8 { Allow_Muted, Allow_All, Block }
 

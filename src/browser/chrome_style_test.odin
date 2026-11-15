@@ -6,7 +6,7 @@ import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
-import "wb:config"
+import config "toolkit:config"
 
 @(private = "file")
 metrics :: proc(w: f32 = 200) -> Tab_Metrics {

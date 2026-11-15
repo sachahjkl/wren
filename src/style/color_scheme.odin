@@ -4,7 +4,7 @@ import "core:math"
 import "core:strings"
 import "core:sync"
 import "wb:base"
-import "wb:config"
+import config "toolkit:config"
 import "wb:css"
 import "wb:dom"
 

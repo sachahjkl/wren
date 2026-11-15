@@ -16,7 +16,7 @@ package page
 
 import "core:strings"
 import "wb:base"
-import "wb:config"
+import config "toolkit:config"
 import "wb:css"
 import "wb:dom"
 import "wb:host"

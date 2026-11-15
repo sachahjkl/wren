@@ -15,7 +15,7 @@ import "toolkit:ui"
 import "wb:base"
 import "wb:cookies"
 import "wb:fetch"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 import "wb:url"
 
 Tone :: enum u8 { Weak, Good, Warn, Bad }

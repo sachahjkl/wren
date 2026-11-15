@@ -17,7 +17,7 @@ import "core:fmt"
 import "core:strings"
 import "wb:base"
 import "wb:fetch"
-import "wb:i18n"
+import i18n "toolkit:i18n"
 import "wb:page"
 import "wb:url"
 
