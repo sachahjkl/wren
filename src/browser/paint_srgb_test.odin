@@ -121,7 +121,7 @@ srgb_painting_matches_browsers :: proc(t: ^testing.T) {
 	defer free(f)
 	if !pf_open(f, PAINT_PAGE) { testing.fail_now(t, "no D3D11 device (WARP) or font") }
 	defer pf_close(f)
-	testing.expect(t, render.blend_space(&f.r) == .Srgb, "render.blend_space defaults to srgb")
+	testing.expect(t, render.blend_space(&f.r) == .Srgb, "appearance.text.blend_space is srgb by Wren's default")
 	testing.expect(t, render.text_rendering(&f.r) == render.TEXT_RENDERING_SRGB, "text: Chromium's gamma 1.2 and contrast 1")
 
 	// a translucent PNG pixel rgba(255, 0, 0, 128) drawn like images_shell draws decoded images
@@ -159,8 +159,8 @@ srgb_painting_matches_browsers :: proc(t: ^testing.T) {
 	// the translucent PNG over white: (255, 127, 127) as in Chromium
 	testing.expectf(t, pnear(ppx(img, 243, 20), 255, 127, 127, 1), "PNG rgba(255,0,0,128) on white: %v", ppx(img, 243, 20))
 
-	// render.blend_space = linear: the physically linear result (188)
-	testing.expect(t, config.set_from_string(&f.prefs, "render.blend_space", "linear", .User) == nil)
+	// appearance.text.blend_space = linear: the physically linear result (188)
+	testing.expect(t, config.set_from_string(&f.prefs, "appearance.text.blend_space", "linear", .User) == nil)
 	s := render_settings_from_prefs(&f.prefs)
 	testing.expect(t, s.space == .Linear)
 	render.set_blend_space(&f.r, s.space)

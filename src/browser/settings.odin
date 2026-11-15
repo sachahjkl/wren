@@ -128,11 +128,10 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	remote.register_prefs(p)   // src/remote
 	_ = wasm.PREFS
 	_ = html.PREFS
-	// the toolkit's standard settings, every set, after Wren's own (appearance.text.renderer keeps Wren's default:
-	// font_settings.odin): the look, the text, scrolling, the input, the delays, the rendering, the updates and the session
-	// (gui_toolkit docs/settings.md). general.menu and general.autostart are not on about:settings: Wren's place on the desktop
-	// is its desktop integration (desktop_shell.odin, Setup), which installs and removes more than a menu entry and reads the
-	// system's state, not a preference.
+	// the toolkit's standard settings, every set: the look, the text, scrolling, the input, the delays, the rendering, the
+	// updates and the session (gui_toolkit docs/settings.md), applied by standard_watch. general.menu and general.autostart are
+	// not on about:settings: Wren's place on the desktop is its desktop integration (desktop_shell.odin, Setup), which installs
+	// and removes more than a menu entry and reads the system's state, not a preference.
 	d := STANDARD_DEFAULTS
 	// Wren's own defaults of other standard settings (read by standard_register alone: a String's value is a literal, which
 	// the registry keeps; a number's is parsed there)
@@ -141,6 +140,15 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 		{"scrolling.autoscroll.full_dist", fmt.tprint(AUTOSCROLL_FULL_DISTANCE)},
 		{"rendering.partial_redraw", "true"},
 		{"rendering.filter_precision", "unorm8"},   // (8 bits as browsers keep filter results: half the memory)
+		// text drawn from its outlines: sharp at any page zoom, rotation or transform (registered on Windows alone: elsewhere
+		// Slug is the only renderer)
+		{"appearance.text.renderer", "slug"},
+		// colours mixed on sRGB values, as every web browser does (50 % black over white is 128; linear light gives 188), and
+		// text corrected as Chromium on Windows (render.TEXT_RENDERING_SRGB): render_settings.odin
+		{"appearance.text.blend_space", "srgb"},
+		{"appearance.text.curve", "srgb"},
+		{"appearance.text.contrast", "1"},
+		{"appearance.text.coverage_exponent", "1"},
 	}
 	d.values = values[:]
 	prefs_page.standard_register(p, prefs_page.STANDARD_ALL, d, base.permanent_allocator())   // (the registry keeps its descriptions)

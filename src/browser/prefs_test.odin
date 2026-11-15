@@ -3,6 +3,7 @@ package browser
 import "core:strings"
 import "core:testing"
 import "toolkit:font"
+import "toolkit:render"
 import "wb:base"
 import "wb:config"
 import "wb:fetch"
@@ -39,51 +40,34 @@ every_definition_is_valid :: proc(t: ^testing.T) {
 	}
 }
 
-// appearance.text.renderer picks Slug (atlas is the default); the tolerance is given in thousandths of an em.
+// A renderer made apart (a test's) starts as the App's: from the standard settings, at Wren's defaults (sRGB mixing and
+// Chromium's text correction: settings_page_test.odin checks the defaults themselves).
 @(test)
-text_renderer_preference_reaches_the_font_settings :: proc(t: ^testing.T) {
+render_settings_read_the_standard_text_settings :: proc(t: ^testing.T) {
 	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)
-	s := font_settings_from_prefs(&p)
-	testing.expect_value(t, s.text_renderer, font.Text_Renderer.Slug)   // the default
-	testing.expect_value(t, config.set_from_string(&p, "appearance.text.renderer", "atlas", .User), config.Set_Error.None)
-	s = font_settings_from_prefs(&p)
-	testing.expect_value(t, s.text_renderer, font.Text_Renderer.Atlas)
-	testing.expect_value(t, config.set_from_string(&p, "appearance.text.renderer", "slug", .User), config.Set_Error.None)
-	testing.expect_value(t, config.set_from_string(&p, "appearance.text.slug_pages", "32", .User), config.Set_Error.None)
-	testing.expect_value(t, config.set_from_string(&p, "appearance.text.slug_tolerance", "1", .User), config.Set_Error.None)
-	s = font_settings_from_prefs(&p)
-	testing.expect_value(t, s.text_renderer, font.Text_Renderer.Slug)
-	testing.expect_value(t, s.slug_pages, 32)
-	testing.expect(t, abs(s.slug_tolerance - 0.001) < 1e-6)
-	testing.expect(t, config.set_from_string(&p, "appearance.text.renderer", "bitmap", .User) != config.Set_Error.None)   // not a choice
+	s := render_settings_from_prefs(&p)
+	testing.expect_value(t, s.space, render.Blend_Space.Srgb)
+	testing.expect(t, s.text == render.TEXT_RENDERING_SRGB, "text: Chromium's gamma 1.2 and contrast 1")
+	testing.expect_value(t, config.set_from_string(&p, "appearance.text.blend_space", "linear", .User), config.Set_Error.None)
+	testing.expect_value(t, render_settings_from_prefs(&p).space, render.Blend_Space.Linear)
 }
 
-// text.emoji picks the built-in emoji (the default) or the system's; the font is the one next to the executable unless a
-// path is given.
+// The emoji are the compiled-in font's, drawn by Wren's COLR interpreter, unless appearance.text.emoji_font names a file.
 @(test)
-emoji_preferences_reach_the_font_settings :: proc(t: ^testing.T) {
+emoji_font_reaches_the_font_settings :: proc(t: ^testing.T) {
 	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)
-	s := font_settings_from_prefs(&p)
+	s := font_settings_start(&p)
 	testing.expect_value(t, s.color_engine, font.Color_Engine.Builtin)
-	testing.expect_value(t, s.colr_samples, 8)
-	testing.expect_value(t, s.colr_cache_kb, 8192)
 	testing.expect_value(t, emoji_font_path(&p), EMOJI_BUILTIN)   // compiled in (build.bat fetches it before tests)
 	testing.expect_value(t, config.set_from_string(&p, "appearance.text.emoji_font", "D:\\fonts\\Twemoji.ttf", .User), config.Set_Error.None)
 	testing.expect_value(t, emoji_font_path(&p), "D:\\fonts\\Twemoji.ttf")
-	testing.expect_value(t, config.set_from_string(&p, "text.emoji", "system", .User), config.Set_Error.None)
-	testing.expect_value(t, config.set_from_string(&p, "text.emoji.raster_samples", "16", .User), config.Set_Error.None)
-	s = font_settings_from_prefs(&p)
-	testing.expect_value(t, s.color_engine, font.Color_Engine.System)
-	testing.expect_value(t, s.colr_samples, 16)
-	testing.expect_value(t, emoji_font_path(&p), "")   // system emoji: no font file
-	testing.expect(t, config.set_from_string(&p, "text.emoji", "twemoji", .User) != config.Set_Error.None)   // not a choice
-	testing.expect(t, config.set_from_string(&p, "text.emoji.raster_samples", "0", .User) != config.Set_Error.None)   // out of bounds
+	testing.expect_value(t, font_settings_start(&p).color_engine, font.Color_Engine.Builtin)
 }
 
 @(test)

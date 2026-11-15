@@ -56,9 +56,15 @@ page_render_init :: proc(app: ^App) {
 	app.page_render.watch_font = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		page_fonts_forget(&the_app.page_render.fonts)
 	}, app)
-	// (the text settings are the toolkit's: standard_watch gives them to the font state, the pages' faces are found again)
+	// (the text settings are the toolkit's: standard_watch gives them to the font state, the pages' faces are found again; the
+	// system's fallback changes what text measures, so the pages are laid out again)
 	app.page_render.watch_text = config.watch(&app.prefs, "appearance.text.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		page_fonts_forget(&the_app.page_render.fonts)
+		a := (^App)(user)
+		if name == "appearance.text.system_fallback" {
+			for w in a.windows { for t in w.tabs { t.layout.valid = false } }
+		}
+		request_frames(a, 2)
 	}, app)
 }
 

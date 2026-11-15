@@ -163,7 +163,7 @@ Everything below exists in the code today and is covered by the tests of [`src/t
   `clip-path`, box shadows (exact gaussian, in the shader), gradients of every kind, `mask-image` and
   `-webkit-mask-*`, `background-clip: text`.
 - Colors blended on sRGB values as browsers do (with Chromium's text contrast settings), gamma-correct where it should.
-- Text on **Fontations, HarfRust and ICU4X**, the same on every machine (`text.backend`; DirectWrite stays selectable):
+- Text on **Fontations, HarfRust and ICU4X**, the same on every machine (a build with `WREN_TEXT=dwrite` uses DirectWrite instead):
   per-character font fallback, OpenType shaping, bidi, synthetic italics, color emoji and color fonts in every format
   (COLRv1, sbix, CBDT, OT-SVG, rasterized off the UI thread).
 - Images decoded off the UI thread by a built-in Rust library, the same on every system: PNG, JPEG, GIF, BMP, ICO, TIFF,
@@ -528,6 +528,6 @@ on:
 - [Slug](https://github.com/EricLengyel/Slug) by Eric Lengyel (MIT; the patent is in the public domain): the shaders and the
   algorithm of the optional `text.renderer = slug` (glyphs drawn from their outlines on the GPU), through gui_toolkit.
 
-- [Noto Color Emoji](https://github.com/googlefonts/noto-emoji) (COLR v1, Google; SIL OFL 1.1), the built-in emoji font (`text.emoji = builtin`), compiled into `wren.exe`; and Unicode's `emoji-data.txt` (Unicode License v3), which tells emoji characters from the others.
+- [Noto Color Emoji](https://github.com/googlefonts/noto-emoji) (COLR v1, Google; SIL OFL 1.1), the built-in emoji font (unless `appearance.text.emoji_font` names another), compiled into `wren.exe`; and Unicode's `emoji-data.txt` (Unicode License v3), which tells emoji characters from the others.
 Fonts used by the demo pages and tests come with their licenses next to them (`examples/site/fonts`,
 `native/media/tests/fonts`). [THIRD_PARTY.md](THIRD_PARTY.md) lists every component linked into `wren.exe`.

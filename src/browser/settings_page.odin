@@ -7,9 +7,9 @@ package browser
 //
 // A page lists its preferences by name (prefs_page.Page_Info.names): the categories of the registry stay about:config's. The
 // theme is chosen on cards in its own colours, the user's own themes (themes.txt of the profile) after the toolkit's; the
-// default search engine is a choice among the profile's engines. The toolkit's standard settings that Wren does not use as
-// they are (general.menu and general.autostart: the desktop integration is Setup's; rendering.max_frame_latency: the
-// pacer's) are left to about:config.
+// default search engine is a choice among the profile's engines. The text and the rendering are the toolkit's standard
+// settings, which standard_watch applies. The standard settings that Wren does not use as they are (general.menu and
+// general.autostart: the desktop integration is Setup's; rendering.max_frame_latency: the pacer's) are left to about:config.
 
 import "toolkit:ui"
 import lucide "toolkit:lucide"
@@ -42,6 +42,19 @@ SETTINGS_PAGES := [?]Settings_Page_Def{
 		"vault.fill.insecure", "vault.fill.dropdown", "vault.fill.shortcut", "vault.clipboard.clear_seconds", "vault.helper.path"}},
 	{"downloads", "Downloads", lucide.DOWNLOAD, {"browser.download.ask", "browser.download.directory"}},
 	{"media", "Media", lucide.PLAY, {"media.autoplay.policy"}},
+	// (the toolkit's standard Text set; the renderer and DirectWrite's mode are registered on Windows alone, and a page skips
+	// what is not registered)
+	{"text", "Text and fonts", lucide.TYPE, {
+		"appearance.text.ui_font", "appearance.text.mono_font", "appearance.text.prose_font", "appearance.text.emoji_font",
+		"appearance.text.system_fallback", "appearance.text.color_emoji", "appearance.text.subpixel", "appearance.text.gamma",
+		"appearance.text.contrast", "appearance.text.coverage_exponent", "appearance.text.curve", "appearance.text.blend_space",
+		"appearance.text.subpixel_steps", "appearance.text.grid_fit", "appearance.text.renderer", "appearance.text.rendering",
+		"appearance.text.slug_tolerance", "appearance.text.color_async", "appearance.text.atlas_pages", "appearance.text.color_pages",
+		"appearance.text.page_size", "appearance.text.word_cache", "appearance.text.slug_pages"}},
+	// (the standard Rendering set, and the pacer's ceiling of frames per second, which is Wren's)
+	{"rendering", "Rendering", lucide.GAUGE, {
+		"rendering.present", "browser.frame.cap", "browser.frame.cap_custom_hz", "rendering.partial_redraw", "rendering.blur_sigma_limit",
+		"rendering.filter_precision"}},
 	{"system", "System", lucide.MONITOR, {"general.messages", "update.auto", "browser.session.crash_recovery"}},
 }
 

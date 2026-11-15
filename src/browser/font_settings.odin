@@ -11,20 +11,11 @@ import "wb:style"
 // and the shaped-word cache, plus the generic families the style settings do not map. The whole window shares one font
 // state (chrome and pages).
 
-// The text settings every program has are the toolkit's (prefs_page's Text set: appearance.text.*, standard_watch applies their
-// changes). These are Wren's own: the text backend, its emoji engine, the families pages ask for by a generic name. Wren
-// registers appearance.text.renderer before the toolkit's set, for its own default (Slug): the toolkit's is the atlas.
+// The text settings are the toolkit's (prefs_page's Text set: appearance.text.*), applied to the font state by standard_watch,
+// at the start and at each change; Wren's own defaults of them are in settings.odin (register_all_prefs: Slug). The text backend is
+// the build's (WREN_TEXT), and the emoji are the compiled-in font's unless appearance.text.emoji_font names another. Wren's own
+// settings here are about web content: the families pages ask for by a generic name.
 FONT_PREFS := [?]config.Def{
-	{name = "appearance.text.renderer", kind = .String, default = {s = "slug"}, choices = {"atlas", "slug"},
-		description = "How glyphs reach the screen. atlas: bitmaps rasterized by DirectWrite (hinted, cached per size and subpixel position). slug: the Slug algorithm (Eric Lengyel) draws each glyph from its outline curves on the GPU, with no bitmaps: sharp at any page zoom, rotation or transform, and exact subpixel positions. Color glyphs (emoji) always use the atlas."},
-	{name = "text.backend", kind = .String, default = {s = "default"}, choices = {"default", "dwrite", "native"}, restart = true,
-		description = "Who shapes text, finds line breaks and bidi levels and reads the fonts. native: Fontations, HarfRust and ICU4X (the same code on every platform; what Wren builds use). dwrite: DirectWrite (Windows). default: what the build chose (native, unless it was built with WREN_TEXT=dwrite, which has only DirectWrite). The system's fonts and their fallback always come from Windows."},
-	{name = "text.emoji", kind = .String, default = {s = "builtin"}, choices = {"builtin", "system"},
-		description = "Where emoji come from. builtin: Noto Color Emoji (COLR v1, SIL OFL), compiled into wren.exe and drawn by Wren's own COLR interpreter: the same emoji, sharp and vector, on every platform, replacing the system's emoji font even when a page names it. system: the emoji font of Windows (Segoe UI Emoji) drawn by Direct2D, as before."},
-	{name = "text.emoji.raster_samples", kind = .Int, default = {i = 8}, bounded = true, min = 1, max = 64,
-		description = "Built-in emoji: vertical samples per pixel row when a color glyph's shapes are drawn (horizontal coverage is exact). 8 matches Chrome's emoji to within a third of a percent; more is slower and not visibly better."},
-	{name = "text.emoji.outline_cache", kind = .Int, default = {i = 8192}, bounded = true, min = 64, max = 1048576, unit = "KiB",
-		description = "Built-in emoji: outlines of the emoji font's glyphs kept for drawing at other sizes (page zoom, device scale). Over this size they are all dropped and read again as needed."},
 	{name = "font.family.emoji", kind = .String, default = {s = style.FONT_EMOJI}, description = "Font used for the generic family `emoji`."},
 	{name = "font.family.math", kind = .String, default = {s = style.FONT_MATH}, description = "Font used for the generic family `math`."},
 	{name = "font.family.fangsong", kind = .String, default = {s = "FangSong"}, description = "Font used for the generic family `fangsong`."},
@@ -32,46 +23,13 @@ FONT_PREFS := [?]config.Def{
 
 register_font_prefs :: proc(p: ^config.Prefs) { config.register(p, FONT_PREFS[:]) }
 
-// `current`: the font state's settings now. A value the toolkit works out itself stays as it put it there ("auto"
-// subpixel text: the system's stripes, which prefs_page reads once at the start, off the interface thread's frames).
-font_settings_from_prefs :: proc(p: ^config.Prefs, current := font.DEFAULT_SETTINGS) -> font.Settings {
+// The font state's settings at its start: the toolkit's defaults, the page size of the atlas (appearance.text.page_size, which
+// font.init alone reads: standard_watch leaves it to the program) and the emoji engine of the emoji font (emoji_source_apply).
+// Every other text setting reaches the font state through standard_watch, once the first window's interface exists.
+font_settings_start :: proc(p: ^config.Prefs) -> font.Settings {
 	s := font.DEFAULT_SETTINGS
-	if config.ref_of(p, "appearance.text.rendering") == config.NO_REF { return s }   // not registered (tests)
-	s.subpixel_steps = int(config.int_of(p, "appearance.text.subpixel_steps"))
-	switch config.string_of(p, "appearance.text.rendering") {
-	case "natural": s.rendering = .Natural
-	case "gdi_classic": s.rendering = .Gdi_Classic
-	case "aliased": s.rendering = .Aliased
-	case: s.rendering = .Natural_Symmetric
-	}
-	switch config.string_of(p, "appearance.text.grid_fit") {
-	case "enabled": s.grid_fit = .Enabled
-	case "disabled": s.grid_fit = .Disabled
-	case: s.grid_fit = .Auto
-	}
-	switch config.string_of(p, "appearance.text.subpixel") {
-	case "rgb": s.subpixel_text = .Rgb
-	case "bgr": s.subpixel_text = .Bgr
-	case "off": s.subpixel_text = .Off
-	case: s.subpixel_text = current.subpixel_text   // auto
-	}
-	s.color_glyphs = config.bool_of(p, "appearance.text.color_emoji")
-	s.color_async = config.bool_of(p, "appearance.text.color_async")
-	s.system_fallback = config.bool_of(p, "appearance.text.system_fallback")
-	s.page_size = int(config.int_of(p, "appearance.text.page_size"))
-	s.max_gray_pages = int(config.int_of(p, "appearance.text.atlas_pages"))
-	s.max_color_pages = int(config.int_of(p, "appearance.text.color_pages"))
-	s.word_cache = int(config.int_of(p, "appearance.text.word_cache"))
-	s.text_renderer = config.string_of(p, "appearance.text.renderer") == "slug" ? .Slug : .Atlas
-	s.slug_pages = int(config.int_of(p, "appearance.text.slug_pages"))
-	s.slug_tolerance = f32(config.float_of(p, "appearance.text.slug_tolerance")) / 1000
-	s.color_engine = config.string_of(p, "text.emoji") == "builtin" ? .Builtin : .System
-	s.colr_samples = int(config.int_of(p, "text.emoji.raster_samples"))
-	s.colr_cache_kb = int(config.int_of(p, "text.emoji.outline_cache"))
-	switch config.string_of(p, "text.backend") {
-	case "dwrite": s.backend = .Dwrite
-	case "native": s.backend = .Native   // init falls back to the build's backend when it is not linked
-	}
+	if config.ref_of(p, "appearance.text.page_size") != config.NO_REF { s.page_size = int(config.int_of(p, "appearance.text.page_size")) }
+	s.color_engine = emoji_font_path(p) != "" ? .Builtin : .System
 	return s
 }
 
@@ -85,23 +43,23 @@ when #exists(EMOJI_FILE) {
 	@(private = "file") emoji_builtin: []byte
 }
 
-// What text.emoji = builtin draws from: the font file appearance.text.emoji_font names, else EMOJI_BUILTIN (the compiled-in font);
-// "" when emoji come from the system.
+// What Wren's COLR interpreter draws emoji from: the font file appearance.text.emoji_font names, else EMOJI_BUILTIN (the
+// compiled-in font); "" when there is neither, and emoji come from the system's font.
 EMOJI_BUILTIN :: "<built-in>"
 emoji_font_path :: proc(p: ^config.Prefs, allocator := context.temp_allocator) -> string {
-	if config.ref_of(p, "text.emoji") == config.NO_REF || config.string_of(p, "text.emoji") != "builtin" { return "" }
 	if config.ref_of(p, "appearance.text.emoji_font") != config.NO_REF {
 		if own := strings.trim_space(config.string_of(p, "appearance.text.emoji_font")); own != "" { return strings.clone(own, allocator) }
 	}
 	return len(emoji_builtin) > 0 ? EMOJI_BUILTIN : ""
 }
 
-// Hands the emoji font to the font state, or takes it away. Returns true when what the font state draws emoji from changed.
+// Hands the emoji font to the font state, with the engine that draws it: Wren's COLR interpreter for a font of its own, the
+// system's (Direct2D on Windows) when there is none. At the start only: appearance.text.emoji_font takes effect at the next
+// one (Def.restart).
 @(private)
-emoji_source_apply :: proc(app: ^App) -> bool {
+emoji_source_apply :: proc(app: ^App) {
 	want := emoji_font_path(&app.prefs)
-	if want != "" && want != EMOJI_BUILTIN && !is_file(want) { want = "" }   // missing: the system's emoji font, as with text.emoji = system
-	if want == app.emoji_applied { return false }
+	if want != "" && want != EMOJI_BUILTIN && !is_file(want) { want = "" }   // missing: the system's emoji font
 	if app.emoji_applied != EMOJI_BUILTIN { delete(app.emoji_applied) }
 	switch want {
 	case "":
@@ -114,12 +72,15 @@ emoji_source_apply :: proc(app: ^App) -> bool {
 		app.emoji_applied = strings.clone(want)
 		font.set_emoji_source(&app.fonts, app.emoji_applied)
 	}
-	return true
+	engine := want != "" ? font.Color_Engine.Builtin : .System
+	if app.fonts.settings.color_engine != engine {
+		s := app.fonts.settings
+		s.color_engine = engine
+		font.set_settings(&app.fonts, s)
+	}
 }
 
-
-// Follows the preferences: glyph bitmaps are made again with new rendering settings, layouts again when what text
-// measures may change (the system fallback), the generic families are resolved again.
+// The generic families are resolved again when their preferences change; the emoji font is handed to the font state.
 font_settings_init :: proc(app: ^App) {
 	font_generics_apply(app)
 	emoji_source_apply(app)   // the face loads when the first emoji needs it, not now
@@ -128,26 +89,11 @@ font_settings_init :: proc(app: ^App) {
 		a := (^App)(user)
 		host.post(&a.loop, proc(data: rawptr) { app := (^App)(data); request_frames(app, 2) }, a, .Input)
 	}, app)
-	app.font_watch = config.watch(&app.prefs, "font.", font_prefs_changed, app)
-	app.text_watch = config.watch(&app.prefs, "text.", font_prefs_changed, app)
-}
-
-@(private)
-font_prefs_changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
-	a := (^App)(user)
-	old := a.fonts.settings
-	s := font_settings_from_prefs(p, old)
-	font.set_settings(&a.fonts, s)
-	if s.subpixel_steps != old.subpixel_steps || s.rendering != old.rendering || s.grid_fit != old.grid_fit || s.color_glyphs != old.color_glyphs {
-		font.clear_atlas(&a.fonts)
-	}
-	emoji_changed := emoji_source_apply(a) || s.color_engine != old.color_engine
-	if s.system_fallback != old.system_fallback || emoji_changed {
-		font.clear_word_cache(&a.fonts)
-		for t in active_window(a).tabs { t.layout.valid = false }
-	}
-	font_generics_apply(a)
-	request_frames(a, 2)
+	app.font_watch = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		a := (^App)(user)
+		font_generics_apply(a)
+		request_frames(a, 2)
+	}, app)
 }
 
 @(private)

@@ -104,9 +104,10 @@ app_pools_end :: proc(app: ^App) {
 	app.made -= {.Pools}
 }
 
-// The font state, at the preferences' font settings (its fonts are loaded by the caller: the browser on a thread, a test embedded ones).
+// The font state, at its start settings (font_settings.odin; standard_watch gives it the text settings once the first window's
+// interface exists). Its fonts are loaded by the caller: the browser on a thread, a test embedded ones.
 app_fonts_init :: proc(app: ^App) {
-	font.init(&app.fonts, font_settings_from_prefs(&app.prefs))
+	font.init(&app.fonts, font_settings_start(&app.prefs))
 	app.made += {.Fonts}
 }
 

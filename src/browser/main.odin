@@ -260,7 +260,7 @@ App :: struct {
 	frame_views:   map[^page.Page]^Page_View,    // frames_shell.odin: the views of the frames (iframes) of the pages
 	paint_stack:   [dynamic]^page.Page,      // frames_shell.odin: the documents being painted, innermost last
 	os_anim:       Os_Anim,                  // os_settings.odin
-	font_watch, text_watch: int,             // font_settings.odin: the preference watches
+	font_watch:    int,                      // font_settings.odin: the generic families' preference watch
 	look_watch:    Look_Watch,               // appearance_windows.odin: the system's colours, read and watched
 	con_prefs:     Con_Prefs,                // devtools_console_log.odin
 	tcfg:          Tree_Settings,            // history_tree.odin
