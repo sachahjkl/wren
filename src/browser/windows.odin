@@ -32,7 +32,7 @@ import "toolkit:render"
 import prefs_page "toolkit:prefs_page"
 import "toolkit:ui"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:host"
 import "wb:page"
 

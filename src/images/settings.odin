@@ -1,6 +1,6 @@
 package images
 
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 // Preferences of images (about:config `images.*`): the limits of decoding and how pages load, keep and show images.
 // The page package reads them into its Settings; the shell's texture cache reads `images.gpu.*`.

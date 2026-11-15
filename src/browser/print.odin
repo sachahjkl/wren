@@ -6,7 +6,7 @@ package browser
 
 import "core:fmt"
 import "core:time"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:page"
 
 PRINT_PREFS := [?]config.Def{

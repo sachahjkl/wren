@@ -19,7 +19,7 @@ package page
 import "core:strings"
 import "core:unicode/utf8"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:dom"
 import "wb:fetch"
 import "wb:host"

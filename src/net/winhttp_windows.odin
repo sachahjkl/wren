@@ -9,7 +9,7 @@ import win "core:sys/windows"
 foreign import winhttp "system:winhttp.lib"
 foreign import ws2_32 "system:ws2_32.lib"
 
-Status_Callback :: #type proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.DWORD, info: rawptr, info_len: win.DWORD)
+Status_Callback :: #type proc "system" (h: HINTERNET, ctx: uintptr, status: u32, info: rawptr, info_len: u32)
 
 Async_Result :: struct {
 	result: win.DWORD_PTR,
@@ -81,7 +81,8 @@ foreign ws2_32 {
 foreign winhttp {
 	WinHttpOpen :: proc(agent: win.LPCWSTR, access_type: win.DWORD, proxy, bypass: win.LPCWSTR, flags: win.DWORD) -> HINTERNET ---
 	WinHttpCloseHandle :: proc(h: HINTERNET) -> win.BOOL ---
-	WinHttpSetStatusCallback :: proc(h: HINTERNET, cb: Status_Callback, flags: win.DWORD, reserved: win.DWORD_PTR) -> Status_Callback ---
+	// (the toolkit's http declares it too: one foreign name takes one signature, the toolkit's)
+	WinHttpSetStatusCallback :: proc(h: HINTERNET, cb: Status_Callback, flags: u32, reserved: uintptr) -> uintptr ---
 	WinHttpSetTimeouts :: proc(h: HINTERNET, resolve, connect, send, receive: i32) -> win.BOOL ---
 	WinHttpSetOption :: proc(h: HINTERNET, option: win.DWORD, buffer: rawptr, length: win.DWORD) -> win.BOOL ---
 	WinHttpQueryOption :: proc(h: HINTERNET, option: win.DWORD, buffer: rawptr, length: ^win.DWORD) -> win.BOOL ---

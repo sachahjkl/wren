@@ -22,8 +22,8 @@ import "core:strings"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
-import config "toolkit:config"
-import i18n "toolkit:i18n"
+import config "../../ext/gui_toolkit/src/config"
+import i18n "../../ext/gui_toolkit/src/i18n"
 import "wb:vault"
 
 // The registry's commands as the toolkit's table: one for the windows' palettes, made again when the registry's keys
@@ -32,7 +32,6 @@ Palette_Table :: struct {
 	arena:    base.Arena,
 	ready:    bool,
 	table:    []ui.Command,   // the commands the palette lists (the hidden ones left out), in the registry's order
-	names:    []string,       // each one's name: its id, and its key in the usage memory ("command:<name>")
 	rows:     []int,          // each one's index in the registry
 	gated:    []int,          // the table's commands that have a condition (`enabled`)
 	registry: u64,            // the registry's version it was made from
@@ -264,7 +263,6 @@ palette_table :: proc(app: ^App) -> ^Palette_Table {
 	n := 0
 	for c in list { if !c.hidden { n += 1 } }
 	table := make([]ui.Command, n, a)
-	names := make([]string, n, a)
 	rows := make([]int, n, a)
 	gated := make([dynamic]int, 0, n, a)
 	k := 0
@@ -273,11 +271,11 @@ palette_table :: proc(app: ^App) -> ^Palette_Table {
 		// (a command with a state on or off is a switch: its row has the mark, and choosing it keeps the palette)
 		table[k] = c.spec
 		table[k].toggle = c.checked != nil
-		names[k], rows[k] = c.name, i
+		rows[k] = i
 		if c.enabled != nil { append(&gated, k) }
 		k += 1
 	}
-	pt.table, pt.names, pt.rows, pt.gated = table, names, rows, gated[:]
+	pt.table, pt.rows, pt.gated = table, rows, gated[:]
 	pt.registry = app.cmds.version
 	pt.version += 1
 	return pt
@@ -304,7 +302,7 @@ palette_commands_give :: proc(app: ^App, wp: ^Window_Palette) {
 		}
 	}
 	if changed { wp.version += 1 }
-	ui.palette_commands(&wp.pal, pt.table, wp.disabled[:], {names = pt.names, version = wp.version, checked = command_checked, user = app})
+	ui.palette_commands(&wp.pal, pt.table, wp.disabled[:], {version = wp.version, checked = command_checked, user = app})
 }
 
 // Whether the switch at `index` of the table is on now: read for the rows in view, at each build.

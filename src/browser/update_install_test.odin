@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:testing"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import update "toolkit:update"
 import wren_update "wb:update"
 

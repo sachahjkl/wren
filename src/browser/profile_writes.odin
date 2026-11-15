@@ -7,7 +7,7 @@ package browser
 
 import "core:fmt"
 import "core:strings"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:cookies"
 import "wb:fetch"
 import "wb:host"

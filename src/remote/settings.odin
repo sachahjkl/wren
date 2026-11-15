@@ -1,6 +1,6 @@
 package remote
 
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 // The remote control channel's preferences (about:config, `browser.remote.*`). The channel itself is off unless
 // `browser.remote.enabled`, `--remote[=name]` or WREN_REMOTE=<name> asks for it; nothing of it exists in a process that

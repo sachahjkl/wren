@@ -1,7 +1,7 @@
 package vault
 
 import "core:strings"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 // The Vault's preferences (about:config, `vault.*`). Off by default: with vault.enabled off there is no button, no helper
 // process and no network call.

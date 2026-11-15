@@ -1,6 +1,6 @@
 package page
 
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:dom"
 
 // Limits of the DOM as JavaScript reaches it (preferences `javascript.dom.*`).

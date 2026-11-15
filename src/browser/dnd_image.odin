@@ -22,7 +22,7 @@ import "wb:dom"
 import "wb:host"
 import lay "wb:layout"
 import "wb:page"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 DND_IMAGE_PREFS := [?]config.Def{
 	{name = "browser.dnd.image_opacity", kind = .Float, default = {f = 0.7}, bounded = true, min = 0, max = 1,

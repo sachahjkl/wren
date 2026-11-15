@@ -26,7 +26,7 @@ import "wb:base"
 import "wb:dom"
 import "wb:forms"
 import "wb:host"
-import i18n "toolkit:i18n"
+import i18n "../../ext/gui_toolkit/src/i18n"
 import "wb:page"
 import "wb:url"
 import "wb:vault"
@@ -406,14 +406,14 @@ vault_enabled_cmd :: proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.
 // The Vault's commands (commands.odin calls this from commands_build).
 vault_commands_add :: proc(r: ^Command_Registry) {
 	add :: command_add
-	add(r, {name = "vault.fill", label = "Fill the login from the Vault", group = "Vault", tags = command_words(r, "password autofill bitwarden login"),
+	add(r, {id = "vault.fill", label = "Fill the login from the Vault", group = "Vault", tags = command_words(r, "password autofill bitwarden login"),
 		keys = command_keys(r, VAULT_FILL_DEFAULT), guarded = true,
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.vault.v.state != .Disabled && t != nil && t.kind == .Web },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { vault_fill_shortcut(app) }})
-	add(r, {name = "vault.search", label = "Search the Vault", group = "Vault", tags = command_words(r, "password bitwarden login copy"),
+	add(r, {id = "vault.search", label = "Search the Vault", group = "Vault", tags = command_words(r, "password bitwarden login copy"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.vault.v.state == .Unlocked },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { palette_show(app, "$ ") }})
-	add(r, {name = "vault.unlock", label = "Unlock the Vault", group = "Vault", tags = command_words(r, "log in password bitwarden"),
+	add(r, {id = "vault.unlock", label = "Unlock the Vault", group = "Vault", tags = command_words(r, "log in password bitwarden"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool {
 			#partial switch app.vault.v.state {
 			case .Logged_Out, .Locked, .Failed, .Need_Two_Factor, .Need_Device_Code: return true
@@ -421,13 +421,13 @@ vault_commands_add :: proc(r: ^Command_Registry) {
 			return false
 		},
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { vault_dialog_open(app) }})
-	add(r, {name = "vault.lock", label = "Lock the Vault", group = "Vault", tags = command_words(r, "bitwarden"),
+	add(r, {id = "vault.lock", label = "Lock the Vault", group = "Vault", tags = command_words(r, "bitwarden"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.vault.v.state == .Unlocked },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { vault.vault_lock(&app.vault.v) }})
-	add(r, {name = "vault.sync", label = "Sync the Vault", group = "Vault", tags = command_words(r, "bitwarden refresh"),
+	add(r, {id = "vault.sync", label = "Sync the Vault", group = "Vault", tags = command_words(r, "bitwarden refresh"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.vault.v.state == .Unlocked && !app.vault.v.syncing },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { vault.vault_sync(&app.vault.v) }})
-	add(r, {name = "vault.panel", label = "Open the Vault panel", group = "Vault", tags = command_words(r, "bitwarden logins site"),
+	add(r, {id = "vault.panel", label = "Open the Vault panel", group = "Vault", tags = command_words(r, "bitwarden logins site"),
 		enabled = vault_enabled_cmd,
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { app.vault.open_panel = true }})
 }

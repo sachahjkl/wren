@@ -2,7 +2,7 @@ package wasm
 
 import "core:path/filepath"
 import "core:strings"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 // Two levels of settings:
 //   * Options: per instance (a page's modules, a worker's module), read for every new page (page.Settings.wasm).

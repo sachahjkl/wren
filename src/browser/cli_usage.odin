@@ -3,7 +3,7 @@ package browser
 import "core:fmt"
 import "core:strings"
 import setup "toolkit:setup"
-import i18n "toolkit:i18n"
+import i18n "../../ext/gui_toolkit/src/i18n"
 
 ////////////////////////////////
 // What `wren --version` and `wren --help` say. They are answered before anything is set up (no profile, no window), like

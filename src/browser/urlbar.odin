@@ -33,9 +33,9 @@ import "core:time"
 import "toolkit:draw"
 import "toolkit:render"
 import "toolkit:ui"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:host"
-import i18n "toolkit:i18n"
+import i18n "../../ext/gui_toolkit/src/i18n"
 
 URLBAR_PREFS := [?]config.Def{
 	{name = "browser.urlbar.enabled", kind = .Bool, default = {b = true},

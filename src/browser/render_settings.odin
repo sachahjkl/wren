@@ -1,7 +1,7 @@
 package browser
 
 import "toolkit:render"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 ////////////////////////////////
 // How the window's colors are mixed: the blend space of the renderer and the text's coverage correction are the toolkit's

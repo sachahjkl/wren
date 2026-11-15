@@ -1,7 +1,7 @@
 package browser
 
 import "core:testing"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 // Every preference about:settings lists is registered and on one page only; the pages are each other's. The categories of
 // the registry stay about:config's: a page lists its preferences by name.

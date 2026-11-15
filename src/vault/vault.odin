@@ -24,9 +24,9 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:host"
-import i18n "toolkit:i18n"
+import i18n "../../ext/gui_toolkit/src/i18n"
 
 State :: enum u8 {
 	Disabled,          // vault.enabled is off: nothing runs

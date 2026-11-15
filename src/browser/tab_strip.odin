@@ -22,7 +22,7 @@ import "toolkit:render"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
-import i18n "toolkit:i18n"
+import i18n "../../ext/gui_toolkit/src/i18n"
 
 // A window's row (or sidebar) of tabs from frame to frame (Window_Own.strip).
 Tab_Strip :: struct {

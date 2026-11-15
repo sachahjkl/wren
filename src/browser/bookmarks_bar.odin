@@ -16,8 +16,8 @@ import "toolkit:draw"
 import "toolkit:render"
 import "toolkit:ui"
 import lucide "toolkit:lucide"
-import config "toolkit:config"
-import i18n "toolkit:i18n"
+import config "../../ext/gui_toolkit/src/config"
+import i18n "../../ext/gui_toolkit/src/i18n"
 
 BOOKMARKS_BAR_PREFS := [?]config.Def{
 	{name = "browser.bookmarks.bar", kind = .Bool, default = {b = false},

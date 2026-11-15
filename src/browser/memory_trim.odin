@@ -16,7 +16,7 @@ package browser
 // slower frame.
 
 import "core:sync"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 // A page gone: the trim that follows, once what it started has ended, and at most this often when pages go one after the other.
 TRIM_AFTER_PAGE_MS :: 1000

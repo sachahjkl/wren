@@ -5,7 +5,7 @@ package js
 
 import "core:strings"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 Settings :: struct {
 	enabled:              bool,

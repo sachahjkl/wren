@@ -6,7 +6,7 @@ import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
 import "toolkit:ui"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 @(test)
 tabs_position_names :: proc(t: ^testing.T) {

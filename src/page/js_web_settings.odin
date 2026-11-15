@@ -4,7 +4,7 @@ package page
 // register_prefs; copied into Settings.js_web by settings_from_prefs.
 
 import "core:strings"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 Js_Web_Settings :: struct {
 	platform:             string,   // owned

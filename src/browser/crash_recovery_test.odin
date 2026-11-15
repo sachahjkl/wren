@@ -4,7 +4,7 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:page"
 
 @(private = "file")

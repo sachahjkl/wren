@@ -17,7 +17,7 @@ import "toolkit:render"
 import session "toolkit:testkit/session"
 import "toolkit:ui"
 import "wb:browser"
-import config "toolkit:config"
+import config "../../../ext/gui_toolkit/src/config"
 import "wb:remote/api"
 
 @(private = "file") CHROME_SIZE :: [2]int{1100, 700}

@@ -3,7 +3,7 @@ package browser
 import "core:math/rand"
 import "core:testing"
 import "toolkit:platform"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 // The browser's side of the cadence model (pacing.odin): the budget, the preferences and their retirement, and the
 // decisions of the toolkit's model (platform/pacing.odin, tested there with simulated screens) against those the browser

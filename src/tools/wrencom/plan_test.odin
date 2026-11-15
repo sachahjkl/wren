@@ -50,6 +50,7 @@ ctl_is_a_command_only_first :: proc(t: ^testing.T) {
 @(test)
 install_commands_wait :: proc(t: ^testing.T) {
 	expect_plan(t, {"--status"}, .Wait, {"--status"})
+	expect_plan(t, {"--quit"}, .Wait, {"--quit"})
 	expect_plan(t, {"--install"}, .Wait, {"--install"})
 	expect_plan(t, {"--profile", "p", "--uninstall", "--purge"}, .Wait, {"--profile", "p", "--uninstall", "--purge"})
 	expect_plan(t, {"--installs"}, .Detach, {"--installs"})

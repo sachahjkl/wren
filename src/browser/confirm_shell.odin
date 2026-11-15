@@ -9,7 +9,7 @@ import "core:fmt"
 import "core:path/filepath"
 import "core:strings"
 import "toolkit:ui"
-import i18n "toolkit:i18n"
+import i18n "../../ext/gui_toolkit/src/i18n"
 
 Confirm_Kind :: enum u8 { None, Bookmark_Folder, Download_File, History_Range }
 

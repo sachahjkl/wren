@@ -37,7 +37,7 @@ CLI_FLAG :: "--cli"
 console_command :: proc(args: []string) -> bool {
 	if len(args) > 0 && (args[0] == "ctl" || args[0] == "help" || args[0] == "version") { return true }
 	for a in args {
-		if a == "--install" || a == "--uninstall" || a == "--status" { return true }
+		if a == "--install" || a == "--uninstall" || a == "--status" || a == "--quit" { return true }
 		// the version and the usage (browser/cli_usage.odin): flags that can stand anywhere, like the install's
 		if a == "--version" || a == "-V" || a == "--help" || a == "-h" || a == "-?" { return true }
 	}

@@ -3,7 +3,7 @@ package style
 import "core:math"
 import "core:testing"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:css"
 import "wb:dom"
 import "wb:html"

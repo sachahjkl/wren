@@ -3,7 +3,7 @@ package page
 // Preferences of the platform web APIs (timers, crypto, Web Storage, history, performance, URL). Registered by
 // register_prefs; copied into Settings.web by settings_from_prefs.
 
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 Web_Settings :: struct {
 	timer_nesting_threshold: int,

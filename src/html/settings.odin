@@ -1,7 +1,7 @@
 package html
 
 import "core:strings"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 Options :: struct {
 	max_nodes:          int,

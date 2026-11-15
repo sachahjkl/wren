@@ -2,7 +2,7 @@ package browser
 
 import "core:strings"
 import "core:testing"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 // about:config's model: the rows and the category counts for a search, the filters and the folded groups.
 

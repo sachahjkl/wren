@@ -167,7 +167,7 @@ query_wide :: proc(h: HINTERNET, level: win.DWORD) -> string {
 }
 
 @(private)
-status_callback :: proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.DWORD, info: rawptr, info_len: win.DWORD) {
+status_callback :: proc "system" (h: HINTERNET, ctx: uintptr, status: u32, info: rawptr, info_len: u32) {
 	if ctx == 0 { return }
 	context = base.process_context()
 	job := (^Job)(uintptr(ctx))

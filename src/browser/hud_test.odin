@@ -2,7 +2,7 @@ package browser
 
 import "core:testing"
 import "toolkit:ui"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 @(private = "file")
 values_full :: proc() -> (v: [Title_Field]string) {

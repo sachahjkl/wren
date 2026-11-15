@@ -3,7 +3,7 @@ package browser
 import "core:math"
 import "toolkit:draw"
 import "toolkit:render"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import lay "wb:layout"
 import "wb:style"
 

@@ -5,7 +5,7 @@ import "core:testing"
 import "toolkit:font"
 import "toolkit:render"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:fetch"
 import "wb:net"
 

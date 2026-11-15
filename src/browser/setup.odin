@@ -20,7 +20,7 @@ import "core:strings"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import desktop "toolkit:desktop"
 import process "toolkit:process"
 import prefs_page "toolkit:prefs_page"
@@ -67,6 +67,7 @@ setup_config :: proc(app: ^App) -> setup.Setup_Options {
 	return setup.Setup_Options{
 		identity = desktop_identity(), version = APP_VERSION, icons = desktop_icons(), choices = app.stp.choices[:],
 		prepare = setup_prepare, folder = true, square = true, user = app,
+		running = instance_running, quit = instance_quit,   // instance_shell.odin: the Wren that runs on this profile
 	}
 }
 

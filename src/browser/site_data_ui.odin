@@ -6,7 +6,7 @@ import "core:strings"
 import "wb:base"
 import "wb:cookies"
 import "wb:httpcache"
-import i18n "toolkit:i18n"
+import i18n "../../ext/gui_toolkit/src/i18n"
 import "wb:page"
 import "wb:url"
 

@@ -5,6 +5,7 @@
 // whatever the modules fetch afterwards. The profile (cookies, HSTS) is loaded at start-up and saved as it changes.
 package browser
 
+import cli "toolkit:cli"
 import "core:fmt"
 import "core:log"
 import "core:os"
@@ -19,7 +20,7 @@ import "toolkit:ui"
 import prefs_page "toolkit:prefs_page"
 import "wb:canvas2d"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:cookies"
 import process "toolkit:process"
 import setup "toolkit:setup"
@@ -1778,7 +1779,7 @@ app_start :: proc(args: []string) -> ^App {
 		program_log_flush()
 		os.exit(2)
 	}
-	if setup.command_alone(command) { code := desktop_command(app, command, purge_requested); program_log_flush(); os.exit(code) }   // no window: a script's call
+	if setup.command_alone(command) { code := desktop_command(app, command, purge_requested); program_log_flush(); cli.exit(code) }   // no window: a script's call
 	host.phase("instance_early")
 	instance_early(app, rest[:], setup_requested, new_window || no_single, remote_asked || headless_mode || hidden_mode || cdp_have_port)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists

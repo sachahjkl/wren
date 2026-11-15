@@ -5,7 +5,7 @@ import "core:strings"
 import "core:testing"
 import "toolkit:ui"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import licence "toolkit:licence"
 import "wb:wasm"
 

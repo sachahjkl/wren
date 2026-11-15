@@ -22,11 +22,12 @@ package browser
 //
 // Nothing runs per frame: the first one's window only wakes when a second start sends it something.
 
+import "wb:base"
 import "core:os"
 import "core:strings"
 import "toolkit:instance"
 import "toolkit:platform"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import process "toolkit:process"
 import "wb:host"
 
@@ -91,6 +92,23 @@ Instance_State :: struct {
 	warning:      string,     // the owner did not answer (a static text): said once the interface exists
 	warn_pending: bool,
 	accepted:     [dynamic]^Instance_Open,   // the second starts told that it is done, not opened yet: instance_end opens what the loop did not
+	asked:        string,     // the profile's instance name that --status and --quit ask (instance_running, instance_quit); permanent memory
+}
+
+// The install's questions to the Wren that runs on this profile (setup.Setup_Options.running and quit: --status, --quit),
+// with the messages every program's instance takes (instance.MESSAGE_PING, MESSAGE_QUIT). `app` names the profile.
+instance_ask_of :: proc(app: ^App) {
+	inst.asked = strings.clone(instance_name(app), base.permanent_allocator())
+}
+
+instance_running :: proc() -> bool { return instance_ask(instance.MESSAGE_PING) }
+instance_quit :: proc() -> bool { return instance_ask(instance.MESSAGE_QUIT) }
+
+@(private = "file")
+instance_ask :: proc(message: string) -> bool {
+	if inst.asked == "" { return false }
+	o := instance.Instance_Options{name = inst.asked, identity = process.executable_path(), wait_ms = INSTANCE_ACQUIRE_WAIT_MS}
+	return instance.send(o, transmute([]u8)message) == .Forwarded
 }
 
 @(private = "file") inst: Instance_State
@@ -181,6 +199,17 @@ Instance_Open :: struct {
 @(private = "file")
 instance_handler :: proc(user: rawptr, message: []byte) {
 	app := (^App)(user)   // (instance_begin: the App whose window takes the addresses)
+	switch string(message) {
+	case instance.MESSAGE_PING: return   // (the answer alone says that Wren runs: --status)
+	case instance.MESSAGE_QUIT:
+		// (an installer's --quit: Wren ends as its last window closing does, its session saved, on the loop's next turn)
+		host.post(&app.loop, proc(data: rawptr) {
+			app := (^App)(data)
+			app.quitting = true
+			platform.request_close(active_window(app).win)
+		}, app)
+		return
+	}
 	m, ok := decode_message(message)
 	if !ok { return }
 	instance_accept(app, m)

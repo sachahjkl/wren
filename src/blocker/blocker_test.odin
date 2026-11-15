@@ -4,7 +4,7 @@ import "core:strings"
 import "core:testing"
 import "wb:adblock"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:fetch"
 
 @(private = "file")

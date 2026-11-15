@@ -14,8 +14,8 @@ import "toolkit:platform"
 import prefs_page "toolkit:prefs_page"
 import "toolkit:ui"
 import "wb:base"
-import config "toolkit:config"
-import i18n "toolkit:i18n"
+import config "../../ext/gui_toolkit/src/config"
+import i18n "../../ext/gui_toolkit/src/i18n"
 import "wb:page"
 
 Command_Proc :: proc(app: ^App, t: ^Tab, c: ^Command)
@@ -25,7 +25,6 @@ Command_Test :: proc(app: ^App, t: ^Tab, c: ^Command) -> bool
 // handling read) with what only the browser has: its stable name, its condition and its action.
 Command :: struct {
 	using spec:  ui.Command,
-	name:        string,           // stable identity: "tab.new"
 	url:         string,           // the command opens this page: Ctrl+Enter in the palette opens it in a new tab
 	arg:         string,           // parameter of a generated command (the theme's name)
 	enabled:     Command_Test,     // nil: always
@@ -76,7 +75,7 @@ command_enabled :: proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return c.enab
 command_run :: proc(app: ^App, t: ^Tab, c: ^Command) -> bool {
 	if c == nil || c.run == nil || !command_enabled(app, t, c) { return false }
 	// during a chrome frame (shell_frames.odin) once the page holding the thread is done, but what acts on the chrome alone
-	if shell_nested() && !c.chrome_only { shell_defer({kind = .Command, tab = t != nil ? t.id : 0, text = strings.clone(c.name)}); return true }
+	if shell_nested() && !c.chrome_only { shell_defer({kind = .Command, tab = t != nil ? t.id : 0, text = strings.clone(c.id)}); return true }
 	c.run(app, t, c)
 	request_frames(app, 2)
 	return true
@@ -151,10 +150,10 @@ tab_host :: proc(t: ^Tab) -> string {
 
 // Registers a command: its name is new, its icon comes from command_icons.odin.
 command_add :: proc(r: ^Command_Registry, c: Command) {
-	assert(c.name not_in r.index, "commands: duplicate name")
-	r.index[c.name] = len(r.list)
+	assert(c.id not_in r.index, "commands: duplicate name")
+	r.index[c.id] = len(r.list)
 	c := c
-	c.icon = command_icon(c.name)
+	c.icon = command_icon(c.id)
 	append(&r.list, c)
 }
 
@@ -169,68 +168,68 @@ commands_build :: proc(r: ^Command_Registry) {
 	ctrl, cs, alt, shift := platform.Modifiers{.Ctrl}, platform.Modifiers{.Ctrl, .Shift}, platform.Modifiers{.Alt}, platform.Modifiers{.Shift}
 
 	// --- tabs
-	add(r, {name = "tab.new", label = "New tab", group = "Tabs", keys = command_keys(r, {key = .T, mods = ctrl}),
+	add(r, {id = "tab.new", label = "New tab", group = "Tabs", keys = command_keys(r, {key = .T, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_open_new(app) }})
-	add(r, {name = "tab.reopen_closed", label = "Reopen closed tab", group = "Tabs", tags = command_words(r, "undo close restore"), keys = command_keys(r, {key = .T, mods = cs}),
+	add(r, {id = "tab.reopen_closed", label = "Reopen closed tab", group = "Tabs", tags = command_words(r, "undo close restore"), keys = command_keys(r, {key = .T, mods = cs}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(closed_items(app)) > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { reopen_closed_tab(app) }})
-	add(r, {name = "tab.close", label = "Close tab", group = "Tabs", keys = command_keys(r, {key = .W, mods = ctrl}, {key = .F4, mods = ctrl}),
+	add(r, {id = "tab.close", label = "Close tab", group = "Tabs", keys = command_keys(r, {key = .W, mods = ctrl}, {key = .F4, mods = ctrl}),
 		// (the tab it is given: the current one from its shortcut, the one right-clicked from the tab's menu)
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_close_by_user(app, t) }})
-	add(r, {name = "tab.close_others", label = "Close other tabs", group = "Tabs",
+	add(r, {id = "tab.close_others", label = "Close other tabs", group = "Tabs",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(active_window(app).tabs) > 1 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			w := active_window(app)
 			for x, i in w.tabs { if x == t { close_other_tabs(app, i); return } }
 		}})
-	add(r, {name = "tab.duplicate", label = "Duplicate tab", group = "Tabs", tags = command_words(r, "copy clone"),
+	add(r, {id = "tab.duplicate", label = "Duplicate tab", group = "Tabs", tags = command_words(r, "copy clone"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.url != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_in_new_tab(app, t.url, origin = .Replay) }})
-	add(r, {name = "tab.next", label = "Next tab", group = "Tabs", tags = command_words(r, "switch"), keys = command_keys(r, {key = .Tab, mods = ctrl}, {key = .Page_Down, mods = ctrl}),
+	add(r, {id = "tab.next", label = "Next tab", group = "Tabs", tags = command_words(r, "switch"), keys = command_keys(r, {key = .Tab, mods = ctrl}, {key = .Page_Down, mods = ctrl}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(active_window(app).tabs) > 1 },
 		chrome_only = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { n := len(active_window(app).tabs); if n > 0 { tab_select(app, (active_window(app).current + 1) % n) } }})
-	add(r, {name = "tab.previous", label = "Previous tab", group = "Tabs", tags = command_words(r, "switch"), keys = command_keys(r, {key = .Tab, mods = cs}, {key = .Page_Up, mods = ctrl}),
+	add(r, {id = "tab.previous", label = "Previous tab", group = "Tabs", tags = command_words(r, "switch"), keys = command_keys(r, {key = .Tab, mods = cs}, {key = .Page_Up, mods = ctrl}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(active_window(app).tabs) > 1 },
 		chrome_only = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { n := len(active_window(app).tabs); if n > 0 { tab_select(app, (active_window(app).current + n - 1) % n) } }})
-	add(r, {name = "tab.move_right", label = "Move tab right", group = "Tabs", keys = command_keys(r, {key = .Page_Down, mods = cs}),
+	add(r, {id = "tab.move_right", label = "Move tab right", group = "Tabs", keys = command_keys(r, {key = .Page_Down, mods = cs}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return active_window(app).current + 1 < len(active_window(app).tabs) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_move_current(app, +1) }})
-	add(r, {name = "tab.move_left", label = "Move tab left", group = "Tabs", keys = command_keys(r, {key = .Page_Up, mods = cs}),
+	add(r, {id = "tab.move_left", label = "Move tab left", group = "Tabs", keys = command_keys(r, {key = .Page_Up, mods = cs}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return active_window(app).current > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_move_current(app, -1) }})
-	add(r, {name = "tab.move_to_new_window", label = "Move tab to a new window", group = "Tabs", tags = command_words(r, "detach pop out separate window"),
+	add(r, {id = "tab.move_to_new_window", label = "Move tab to a new window", group = "Tabs", tags = command_words(r, "detach pop out separate window"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool {
 			w, _ := window_of_tab(app, t)
 			return w != nil && len(window_tabs(app, w)) > 1
 		},
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_detach(app, t) }})
 	// pinned tabs and groups (tab_groups.odin)
-	add(r, {name = "tab.pin", label = i18n.later("Pin or unpin tab"), group = "Tabs", tags = command_words(r, "pinned app tab sticky keep"),
+	add(r, {id = "tab.pin", label = i18n.later("Pin or unpin tab"), group = "Tabs", tags = command_words(r, "pinned app tab sticky keep"),
 		enabled = has_tab, checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.pinned },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_set_pinned(app, t, !t.pinned) }})
-	add(r, {name = "tab.mute", label = i18n.later("Mute or unmute tab"), group = "Tabs", tags = command_words(r, "sound audio silence speaker volume"),
+	add(r, {id = "tab.mute", label = i18n.later("Mute or unmute tab"), group = "Tabs", tags = command_words(r, "sound audio silence speaker volume"),
 		enabled = has_tab, checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.muted },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_set_muted(app, t, !t.muted) }})
-	add(r, {name = "tab.fold", label = i18n.later("Fold or show the tabs this tab opened"), group = "Tabs", tags = command_words(r, "tree children collapse expand fold"),
+	add(r, {id = "tab.fold", label = i18n.later("Fold or show the tabs this tab opened"), group = "Tabs", tags = command_words(r, "tree children collapse expand fold"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && tab_tree_has_children(app, t) },
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.fold },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_tree_toggle(app, t) }})
-	add(r, {name = "tab.group_new", label = i18n.later("Add tab to a new group"), group = "Tabs", tags = command_words(r, "group tabs together organize"),
+	add(r, {id = "tab.group_new", label = i18n.later("Add tab to a new group"), group = "Tabs", tags = command_words(r, "group tabs together organize"),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { _ = tab_group_new(app, t) }})
-	add(r, {name = "tab.group_leave", label = i18n.later("Remove tab from its group"), group = "Tabs", tags = command_words(r, "ungroup group"),
+	add(r, {id = "tab.group_leave", label = i18n.later("Remove tab from its group"), group = "Tabs", tags = command_words(r, "ungroup group"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.group != 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_group_leave(app, t) }})
-	add(r, {name = "tab.group_collapse", label = i18n.later("Collapse or expand the tab's group"), group = "Tabs", tags = command_words(r, "group fold hide"),
+	add(r, {id = "tab.group_collapse", label = i18n.later("Collapse or expand the tab's group"), group = "Tabs", tags = command_words(r, "group fold hide"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.group != 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			w, _ := window_of_tab(app, t)
 			if gi := group_index(w.groups[:], t.group); gi >= 0 { group_set_collapsed(app, w, t.group, !w.groups[gi].collapsed) }
 		}})
-	add(r, {name = "tab.group_rename", label = i18n.later("Rename the tab's group"), group = "Tabs", tags = command_words(r, "group name title"),
+	add(r, {id = "tab.group_rename", label = i18n.later("Rename the tab's group"), group = "Tabs", tags = command_words(r, "group name title"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.group != 0 && app.favs.cfg.position != .Top },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { group_rename_begin(app, t.group) }})
 	for gc in Group_Color {
-		add(r, {name = fmt.aprintf("tab.group_color.%s", GROUP_COLOR_NAMES[gc], allocator = a), label = fmt.aprintf("%s: %s", i18n.tr("Tab group colour"), GROUP_COLOR_NAMES[gc], allocator = a),
+		add(r, {id = fmt.aprintf("tab.group_color.%s", GROUP_COLOR_NAMES[gc], allocator = a), label = fmt.aprintf("%s: %s", i18n.tr("Tab group colour"), GROUP_COLOR_NAMES[gc], allocator = a),
 			group = "Tabs", tags = command_words(r, "group colour color"), arg = GROUP_COLOR_NAMES[gc],
 			enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.group != 0 },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) {
@@ -238,88 +237,88 @@ commands_build :: proc(r: ^Command_Registry) {
 				if col, ok := group_color_of(c.arg); ok { group_set_color(app, w, t.group, col) }
 			}})
 	}
-	add(r, {name = "window.new", label = "New window", group = "Window", tags = command_words(r, "open another"), keys = command_keys(r, {key = .N, mods = ctrl}),
+	add(r, {id = "window.new", label = "New window", group = "Window", tags = command_words(r, "open another"), keys = command_keys(r, {key = .N, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { window_new(app) }})
-	add(r, {name = "window.new_private", label = i18n.later("New private window"), group = "Window", tags = command_words(r, "incognito private browsing inprivate"),
+	add(r, {id = "window.new_private", label = i18n.later("New private window"), group = "Window", tags = command_words(r, "incognito private browsing inprivate"),
 		keys = command_keys(r, {key = .N, mods = cs}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { private_window_open(app) }})
-	add(r, {name = "browser.session_restore", label = i18n.later("Restore tabs at start-up"), group = "Tabs", tags = command_words(r, "session reopen previous startup"),
+	add(r, {id = "browser.session_restore", label = i18n.later("Restore tabs at start-up"), group = "Tabs", tags = command_words(r, "session reopen previous startup"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return config.bool_of(&app.prefs, "browser.session.restore") },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.session.restore", !config.bool_of(&app.prefs, "browser.session.restore")) }})
-	add(r, {name = "tab.restore_crashed", label = "Restore the tabs of the session that crashed", group = "Tabs", tags = command_words(r, "crash recovery reopen saved"),
+	add(r, {id = "tab.restore_crashed", label = "Restore the tabs of the session that crashed", group = "Tabs", tags = command_words(r, "crash recovery reopen saved"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.recovery.backup != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { recovery_restore_backup(app) }})
 
 	// --- navigation
-	add(r, {name = "nav.back", label = "Back", group = "Navigation", tags = command_words(r, "history previous page"), keys = command_keys(r, {key = .Left, mods = alt}),
+	add(r, {id = "nav.back", label = "Back", group = "Navigation", tags = command_words(r, "history previous page"), keys = command_keys(r, {key = .Left, mods = alt}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.hist > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { go_history(app, t, -1) }})
-	add(r, {name = "nav.forward", label = "Forward", group = "Navigation", tags = command_words(r, "history next page"), keys = command_keys(r, {key = .Right, mods = alt}),
+	add(r, {id = "nav.forward", label = "Forward", group = "Navigation", tags = command_words(r, "history next page"), keys = command_keys(r, {key = .Right, mods = alt}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.hist + 1 < len(t.history) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { go_history(app, t, +1) }})
-	add(r, {name = "nav.reload", label = "Reload", group = "Navigation", tags = command_words(r, "refresh"), keys = command_keys(r, {key = .F5}, {key = .R, mods = ctrl}),
+	add(r, {id = "nav.reload", label = "Reload", group = "Navigation", tags = command_words(r, "refresh"), keys = command_keys(r, {key = .F5}, {key = .R, mods = ctrl}),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			if t.page != nil && page.navigation_user_reload(t.page) { return }   // the page's navigate listener took it
 			reload(app, t)
 		}})
 	// the document and everything it loads from the network (cache mode reload); F5 only revalidates the document
-	add(r, {name = "nav.reload_bypass_cache", label = "Reload without the cache", group = "Navigation", tags = command_words(r, "hard refresh force"),
+	add(r, {id = "nav.reload_bypass_cache", label = "Reload without the cache", group = "Navigation", tags = command_words(r, "hard refresh force"),
 		keys = command_keys(r, {key = .F5, mods = ctrl}, {key = .R, mods = cs}),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			if t.page != nil && page.navigation_user_reload(t.page) { return }
 			reload(app, t, bypass_cache = true)
 		}})
-	add(r, {name = "nav.stop", label = "Stop loading", group = "Navigation", tags = command_words(r, "cancel abort"),
+	add(r, {id = "nav.stop", label = "Stop loading", group = "Navigation", tags = command_words(r, "cancel abort"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.load != nil && t.load.task != base.NIL_HANDLE },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { stop_loading(app, t) }})
-	add(r, {name = "nav.home", label = "Home", group = "Navigation", tags = command_words(r, "start page homepage"), keys = command_keys(r, {key = .Home, mods = alt}),
+	add(r, {id = "nav.home", label = "Home", group = "Navigation", tags = command_words(r, "start page homepage"), keys = command_keys(r, {key = .Home, mods = alt}),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, app.cfg.homepage, origin = .User) }})
-	add(r, {name = "nav.focus_address", label = "Focus the address bar", group = "Navigation", tags = command_words(r, "location url edit"), keys = command_keys(r, {key = .L, mods = ctrl}, {key = .D, mods = alt}),
+	add(r, {id = "nav.focus_address", label = "Focus the address bar", group = "Navigation", tags = command_words(r, "location url edit"), keys = command_keys(r, {key = .L, mods = ctrl}, {key = .D, mods = alt}),
 		chrome_only = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Address_Focus) }})
-	add(r, {name = "nav.focus_toggle", label = "Address bar or page", group = "Navigation", tags = command_words(r, "focus switch keyboard"), keys = command_keys(r, {key = .F6}, {key = .F6, mods = shift}),
+	add(r, {id = "nav.focus_toggle", label = "Address bar or page", group = "Navigation", tags = command_words(r, "focus switch keyboard"), keys = command_keys(r, {key = .F6}, {key = .F6, mods = shift}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			if keyboard_owner(app) == .Chrome_Field { forms_focus_from_chrome(app, t, 1) } else { window_ask(app, .Address_Focus) }
 		}})
 
 	// --- the interface's own zoom (chrome_zoom.odin)
-	add(r, {name = "view.chrome_zoom_in", label = "Zoom the interface in", group = "View", tags = command_words(r, "bigger larger chrome ui toolbar"),
+	add(r, {id = "view.chrome_zoom_in", label = "Zoom the interface in", group = "View", tags = command_words(r, "bigger larger chrome ui toolbar"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { chrome_zoom_step(app, 1) }})
-	add(r, {name = "view.chrome_zoom_out", label = "Zoom the interface out", group = "View", tags = command_words(r, "smaller chrome ui toolbar"),
+	add(r, {id = "view.chrome_zoom_out", label = "Zoom the interface out", group = "View", tags = command_words(r, "smaller chrome ui toolbar"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { chrome_zoom_step(app, -1) }})
-	add(r, {name = "view.chrome_zoom_reset", label = "Interface at actual size", group = "View", tags = command_words(r, "zoom reset 100 chrome ui toolbar"),
+	add(r, {id = "view.chrome_zoom_reset", label = "Interface at actual size", group = "View", tags = command_words(r, "zoom reset 100 chrome ui toolbar"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { chrome_zoom_step(app, 0) }})
 
 	// --- page
-	add(r, {name = "page.zoom_in", label = "Zoom in", group = "Page", tags = command_words(r, "bigger larger magnify"),
-		keys = command_keys(r, {key = .Equal, mods = ctrl}, {key = .Num_Add, mods = ctrl}, {key = .Equal, mods = cs}),
+	add(r, {id = "page.zoom_in", label = "Zoom in", group = "Page", tags = command_words(r, "bigger larger magnify"),
+		keys = command_keys(r, ..ui.ZOOM_IN_KEYS[:]),   // (the toolkit's: Ctrl++ on an AZERTY keyboard too)
 		enabled = web_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { zoom_step(app, t, 1) }})
-	add(r, {name = "page.zoom_out", label = "Zoom out", group = "Page", tags = command_words(r, "smaller"), keys = command_keys(r, {key = .Minus, mods = ctrl}, {key = .Num_Subtract, mods = ctrl}),
+	add(r, {id = "page.zoom_out", label = "Zoom out", group = "Page", tags = command_words(r, "smaller"), keys = command_keys(r, ..ui.ZOOM_OUT_KEYS[:]),
 		enabled = web_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { zoom_step(app, t, -1) }})
-	add(r, {name = "page.zoom_reset", label = "Actual size", group = "Page", tags = command_words(r, "zoom reset 100"), keys = command_keys(r, {key = .N0, mods = ctrl}),
+	add(r, {id = "page.zoom_reset", label = "Actual size", group = "Page", tags = command_words(r, "zoom reset 100"), keys = command_keys(r, ..ui.ZOOM_RESET_KEYS[:]),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.kind == .Web && zoom_percent(t) != 100 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { zoom_set(app, t, 1) }})
-	add(r, {name = "page.find", label = "Find in page…", group = "Page", tags = command_words(r, "search text"), keys = command_keys(r, {key = .F, mods = ctrl}, {key = .F3}),
+	add(r, {id = "page.find", label = "Find in page…", group = "Page", tags = command_words(r, "search text"), keys = command_keys(r, {key = .F, mods = ctrl}, {key = .F3}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && (t.kind == .Web || t.kind == .Config || t.kind == .History) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			if t.kind == .Config { app.config_view.focus_search = true } else if t.kind == .History { app.hview.focus_search = true } else if fs := find_state(app); fs.open { fs.focus = true } else { find_open(app) }
 		}})
-	add(r, {name = "page.save", label = "Save page as…", group = "Page", tags = command_words(r, "download file"), keys = command_keys(r, {key = .S, mods = ctrl}),
+	add(r, {id = "page.save", label = "Save page as…", group = "Page", tags = command_words(r, "download file"), keys = command_keys(r, {key = .S, mods = ctrl}),
 		enabled = web_page, run = proc(app: ^App, t: ^Tab, c: ^Command) { save_page(app, t) }})
-	add(r, {name = "page.view_source", label = "View page source", group = "Page", tags = command_words(r, "html code"), keys = command_keys(r, {key = .U, mods = ctrl}),
+	add(r, {id = "page.view_source", label = "View page source", group = "Page", tags = command_words(r, "html code"), keys = command_keys(r, {key = .U, mods = ctrl}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.kind == .Web && !strings.has_prefix(t.url, VIEW_SOURCE) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { view_source(app, t) }})
 	// printing is not available (print.odin): the shortcut says so
-	add(r, {name = "page.print", label = "Print…", group = "Page", keys = command_keys(r, {key = .P, mods = ctrl}),
+	add(r, {id = "page.print", label = "Print…", group = "Page", keys = command_keys(r, {key = .P, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { print_request(app) }})
-	add(r, {name = "page.copy_address", label = "Copy the page's address", group = "Page", tags = command_words(r, "url link clipboard"),
+	add(r, {id = "page.copy_address", label = "Copy the page's address", group = "Page", tags = command_words(r, "url link clipboard"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.url != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { clip_set(t.url); announce(app, .Info, "Address copied") }})
-	add(r, {name = "page.qr_code", label = "QR code of the page's address", group = "Page", tags = command_words(r, "share phone scan camera url link mobile"),
+	add(r, {id = "page.qr_code", label = "QR code of the page's address", group = "Page", tags = command_words(r, "share phone scan camera url link mobile"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.kind == .Web && t.url != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { qr_open(app, t.url) }})
-	add(r, {name = "page.info", label = "Page information", group = "Page", tags = command_words(r, "security certificate cookies connection"),
+	add(r, {id = "page.info", label = "Page information", group = "Page", tags = command_words(r, "security certificate cookies connection"),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Page_Info) }})
-	add(r, {name = "page.javascript_site", label = "JavaScript on this site", group = "Page", tags = command_words(r, "script js enable disable block allow"),
+	add(r, {id = "page.javascript_site", label = "JavaScript on this site", group = "Page", tags = command_words(r, "script js enable disable block allow"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return tab_host(t) != "" },
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return js_on_for(&app.prefs, tab_host(t)) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { js_toggle_site(app, t) }})
@@ -328,106 +327,106 @@ commands_build :: proc(r: ^Command_Registry) {
 	// the frame rate (pacing.odin): the choices of the standard rendering.frame_rate, in their order
 	rate_titles := [?][2]string{{FRAME_RATE_SCREEN, i18n.later("Frame rate: screen")}, {"30", i18n.later("Frame rate: 30")}, {"60", i18n.later("Frame rate: 60")}, {"120", i18n.later("Frame rate: 120")}, {"240", i18n.later("Frame rate: 240")}, {FRAME_RATE_UNCAPPED, i18n.later("Frame rate: uncapped")}}
 	for x in rate_titles {
-		add(r, {name = fmt.aprintf("view.frame_rate.%s", x[0], allocator = a), label = x[1], group = "View", arg = x[0], tags = command_words(r, "fps limit cap uncapped unlimited vsync frames per second"),
+		add(r, {id = fmt.aprintf("view.frame_rate.%s", x[0], allocator = a), label = x[1], group = "View", arg = x[0], tags = command_words(r, "fps limit cap uncapped unlimited vsync frames per second"),
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.pacing.cfg.rate == c.arg },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_string(app, FRAME_RATE_PREF, c.arg) }})
 	}
-	add(r, {name = "view.status_bar", label = "Status bar", group = "View", keys = command_keys(r, {key = .B, mods = ctrl}),
+	add(r, {id = "view.status_bar", label = "Status bar", group = "View", keys = command_keys(r, {key = .B, mods = ctrl}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.hud.cfg.bar_visible },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_status_bar(app) }})
 	// (off, or back to following the system's animations: the standard scrolling.smooth)
-	add(r, {name = "view.smooth_scrolling", label = "Smooth scrolling", group = "View", tags = command_words(r, "animated scroll wheel motion scrolling.smooth"),
+	add(r, {id = "view.smooth_scrolling", label = "Smooth scrolling", group = "View", tags = command_words(r, "animated scroll wheel motion scrolling.smooth"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.smooth_cfg.mode != .Off },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_string(app, "scrolling.smooth", app.smooth_cfg.mode == .Off ? "follow" : "off") }})
-	add(r, {name = "view.autoscroll", label = "Autoscroll (middle-click)", group = "View", tags = command_words(r, "middle button wheel drag pan speed scrolling.autoscroll.enabled"),
+	add(r, {id = "view.autoscroll", label = "Autoscroll (middle-click)", group = "View", tags = command_words(r, "middle button wheel drag pan speed scrolling.autoscroll.enabled"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.autoscroll_cfg.enabled },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "scrolling.autoscroll.enabled", !app.autoscroll_cfg.enabled) }})
-	add(r, {name = "view.frame_statistics", label = "Frame statistics", group = "View", tags = command_words(r, "fps performance hud timing"), keys = command_keys(r, {key = .F, mods = cs}),
+	add(r, {id = "view.frame_statistics", label = "Frame statistics", group = "View", tags = command_words(r, "fps performance hud timing"), keys = command_keys(r, {key = .F, mods = cs}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.hud.panel_open },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_frame_stats(app) }})
-	add(r, {name = "view.title_statistics", label = "Statistics in the title", group = "View", tags = command_words(r, "fps"),
+	add(r, {id = "view.title_statistics", label = "Statistics in the title", group = "View", tags = command_words(r, "fps"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.hud.cfg.title_stats },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.title.stats", !app.hud.cfg.title_stats) }})
-	add(r, {name = "view.devtools", label = "Developer tools", group = "View", tags = command_words(r, "inspect console elements network dom debug f12"),
+	add(r, {id = "view.devtools", label = "Developer tools", group = "View", tags = command_words(r, "inspect console elements network dom debug f12"),
 		keys = command_keys(r, {key = .F12}, {key = .I, mods = cs}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_toggle(app) }})
-	add(r, {name = "view.console", label = "Console", group = "View", tags = command_words(r, "log javascript eval devtools"),
+	add(r, {id = "view.console", label = "Console", group = "View", tags = command_words(r, "log javascript eval devtools"),
 		keys = command_keys(r, {key = .J, mods = cs}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev_shows(dev(), .Console) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_toggle_panel(app, .Console) }})
-	add(r, {name = "view.devtools_elements", label = "Developer tools: Elements", group = "View", tags = command_words(r, "inspect dom document tree html"),
+	add(r, {id = "view.devtools_elements", label = "Developer tools: Elements", group = "View", tags = command_words(r, "inspect dom document tree html"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev_shows(dev(), .Elements) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Elements) }})
-	add(r, {name = "view.devtools_network", label = "Developer tools: Network", group = "View", tags = command_words(r, "requests http fetch log"),
+	add(r, {id = "view.devtools_network", label = "Developer tools: Network", group = "View", tags = command_words(r, "requests http fetch log"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev_shows(dev(), .Network) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Network) }})
-	add(r, {name = "view.devtools_dock_bottom", label = "Developer tools: dock at the bottom", group = "View", tags = command_words(r, "devtools panel position"),
+	add(r, {id = "view.devtools_dock_bottom", label = "Developer tools: dock at the bottom", group = "View", tags = command_words(r, "devtools panel position"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().dock == .Bottom },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_set_dock(app, .Bottom) }})
-	add(r, {name = "view.devtools_dock_right", label = "Developer tools: dock at the right", group = "View", tags = command_words(r, "devtools panel position side"),
+	add(r, {id = "view.devtools_dock_right", label = "Developer tools: dock at the right", group = "View", tags = command_words(r, "devtools panel position side"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().dock == .Right },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_set_dock(app, .Right) }})
-	add(r, {name = "view.devtools_dock_floating", label = "Developer tools: undock into a floating panel", group = "View", tags = command_words(r, "devtools panel position window"),
+	add(r, {id = "view.devtools_dock_floating", label = "Developer tools: undock into a floating panel", group = "View", tags = command_words(r, "devtools panel position window"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().dock == .Floating },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_set_dock(app, .Floating) }})
-	add(r, {name = "view.devtools_application", label = "Developer tools: Application", group = "View", tags = command_words(r, "storage cookies local session cache manifest"),
+	add(r, {id = "view.devtools_application", label = "Developer tools: Application", group = "View", tags = command_words(r, "storage cookies local session cache manifest"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev_shows(dev(), .Application) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Application) }})
-	add(r, {name = "view.devtools_performance", label = "Developer tools: Performance", group = "View", tags = command_words(r, "frames timing fps cpu gpu profile"),
+	add(r, {id = "view.devtools_performance", label = "Developer tools: Performance", group = "View", tags = command_words(r, "frames timing fps cpu gpu profile"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev_shows(dev(), .Performance) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Performance) }})
-	add(r, {name = "view.devtools_memory", label = "Developer tools: Memory", group = "View", tags = command_words(r, "heap allocation leak usage"),
+	add(r, {id = "view.devtools_memory", label = "Developer tools: Memory", group = "View", tags = command_words(r, "heap allocation leak usage"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev_shows(dev(), .Memory) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Memory) }})
-	add(r, {name = "view.devtools_pick", label = "Developer tools: select an element in the page", group = "View", tags = command_words(r, "inspect picker element select eyedropper"),
+	add(r, {id = "view.devtools_pick", label = "Developer tools: select an element in the page", group = "View", tags = command_words(r, "inspect picker element select eyedropper"),
 		keys = command_keys(r, {key = .C, mods = cs}), enabled = has_tab,
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().picking },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_pick(app) }})
-	add(r, {name = "view.devtools_dock_left", label = "Developer tools: dock at the left", group = "View", tags = command_words(r, "devtools panel position side"),
+	add(r, {id = "view.devtools_dock_left", label = "Developer tools: dock at the left", group = "View", tags = command_words(r, "devtools panel position side"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().dock == .Left },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_set_dock(app, .Left) }})
-	add(r, {name = "view.devtools_detach", label = "Developer tools: open in a separate window", group = "View", tags = command_words(r, "devtools panel undock detach window second"),
+	add(r, {id = "view.devtools_detach", label = "Developer tools: open in a separate window", group = "View", tags = command_words(r, "devtools panel undock detach window second"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible && dev().dock == .Window },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { if dev().visible && dev().dock == .Window { devtools_reattach(app) } else { devtools_set_dock(app, .Window) } }})
-	add(r, {name = "view.devtools_larger", label = "Developer tools: larger text", group = "View", tags = command_words(r, "devtools zoom font size"),
+	add(r, {id = "view.devtools_larger", label = "Developer tools: larger text", group = "View", tags = command_words(r, "devtools zoom font size"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_zoom(app, 1) }})
-	add(r, {name = "view.devtools_smaller", label = "Developer tools: smaller text", group = "View", tags = command_words(r, "devtools zoom font size"),
+	add(r, {id = "view.devtools_smaller", label = "Developer tools: smaller text", group = "View", tags = command_words(r, "devtools zoom font size"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_zoom(app, -1) }})
-	add(r, {name = "view.devtools_reset_layout", label = "Developer tools: reset the layout", group = "View", tags = command_words(r, "devtools sizes columns panes default"),
+	add(r, {id = "view.devtools_reset_layout", label = "Developer tools: reset the layout", group = "View", tags = command_words(r, "devtools sizes columns panes default"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_reset_layout(app) }})
-	add(r, {name = "view.devtools_clear_console", label = "Developer tools: clear the console", group = "View", tags = command_words(r, "devtools log messages empty"),
+	add(r, {id = "view.devtools_clear_console", label = "Developer tools: clear the console", group = "View", tags = command_words(r, "devtools log messages empty"),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { console_clear(app, t) }})
-	add(r, {name = "view.devtools_clear_network", label = "Developer tools: clear the network log", group = "View", tags = command_words(r, "devtools requests empty"),
+	add(r, {id = "view.devtools_clear_network", label = "Developer tools: clear the network log", group = "View", tags = command_words(r, "devtools requests empty"),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { net_clear(&t.net); dev().net.has_sel = false }})
 	for p in NET_BUILTIN {
-		add(r, {name = fmt.aprintf("view.devtools_speed.%s", p.id, allocator = a), label = fmt.aprintf("Developer tools: network speed: %s", p.name, allocator = a), group = "View",
+		add(r, {id = fmt.aprintf("view.devtools_speed.%s", p.id, allocator = a), label = fmt.aprintf("Developer tools: network speed: %s", p.name, allocator = a), group = "View",
 			tags = command_words(r, "devtools throttle throttling network speed slow offline 3g bandwidth latency"), arg = p.id, enabled = has_tab,
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return net_profile_of(app, t).id == c.arg },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) { net_profile_set(app, t, c.arg) }})
 	}
-	add(r, {name = "view.full_screen", label = "Full screen", group = "View", tags = command_words(r, "fullscreen kiosk"), keys = command_keys(r, {key = .F11}),
+	add(r, {id = "view.full_screen", label = "Full screen", group = "View", tags = command_words(r, "fullscreen kiosk"), keys = command_keys(r, {key = .F11}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return platform.is_fullscreen(active_window(app).win) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_fullscreen(app) }})
-	add(r, {name = "view.tabs_in_title_bar", label = "Tabs in the title bar", group = "View", tags = command_words(r, "integrated titlebar window"),
+	add(r, {id = "view.tabs_in_title_bar", label = "Tabs in the title bar", group = "View", tags = command_words(r, "integrated titlebar window"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.wchrome.cfg.integrated },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, prefs_page.SYSTEM_TITLE_PREF, app.wchrome.cfg.integrated) }})
 	// the tabs along the top or in a sidebar (tab_sidebar.odin)
 	pos_titles := [Tabs_Position]string{.Top = i18n.later("Tabs: at the top"), .Left = i18n.later("Tabs: in a sidebar at the left"), .Right = i18n.later("Tabs: in a sidebar at the right")}
 	for pos in Tabs_Position {
-		add(r, {name = fmt.aprintf("view.tabs_position.%s", TABS_POSITION_NAMES[pos], allocator = a), label = pos_titles[pos], group = "View", arg = TABS_POSITION_NAMES[pos],
+		add(r, {id = fmt.aprintf("view.tabs_position.%s", TABS_POSITION_NAMES[pos], allocator = a), label = pos_titles[pos], group = "View", arg = TABS_POSITION_NAMES[pos],
 			tags = command_words(r, "tabs sidebar vertical side bar position left right top row horizontal layout"),
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return TABS_POSITION_NAMES[app.favs.cfg.position] == c.arg },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) { tabs_set_position(app, tabs_position_of(c.arg)) }})
 	}
-	add(r, {name = "view.tabs_sidebar_collapse", label = i18n.later("Tab sidebar: icons only"), group = "View", tags = command_words(r, "tabs sidebar vertical collapse narrow compact titles"),
+	add(r, {id = "view.tabs_sidebar_collapse", label = i18n.later("Tab sidebar: icons only"), group = "View", tags = command_words(r, "tabs sidebar vertical collapse narrow compact titles"),
 		keys = command_keys(r, {key = .Comma, mods = cs}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.favs.cfg.position != .Top },
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.favs.cfg.side_collapsed },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tabs_toggle_collapsed(app) }})
 	for th in ui.THEMES {
 		slug, _ := strings.replace_all(base.ascii_lower(th.name, context.temp_allocator), " ", "_", a)
-		add(r, {name = fmt.aprintf("view.theme.%s", slug, allocator = a), label = fmt.aprintf("Theme: %s", th.name, allocator = a), group = "View",
+		add(r, {id = fmt.aprintf("view.theme.%s", slug, allocator = a), label = fmt.aprintf("Theme: %s", th.name, allocator = a), group = "View",
 			tags = command_words(r, "colors appearance palette"), arg = th.name,
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return base.ascii_equal_fold(app.cfg.look.theme, c.arg) },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_string(app, prefs_page.THEME_PREF, c.arg) }})
@@ -435,7 +434,7 @@ commands_build :: proc(r: ^Command_Registry) {
 
 	for mode in ui.Theme_Mode {
 		name := ui.THEME_MODE_NAMES[mode]
-		add(r, {name = fmt.aprintf("view.theme_mode.%s", name, allocator = a), label = fmt.aprintf("Theme version: %s", name, allocator = a), group = "View",
+		add(r, {id = fmt.aprintf("view.theme_mode.%s", name, allocator = a), label = fmt.aprintf("Theme version: %s", name, allocator = a), group = "View",
 			tags = command_words(r, "colors appearance dark light system mode"), arg = name,
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return ui.THEME_MODE_NAMES[app.cfg.look.mode] == c.arg },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_string(app, prefs_page.MODE_PREF, c.arg) }})
@@ -443,7 +442,7 @@ commands_build :: proc(r: ^Command_Registry) {
 
 	for style in Chrome_Style {
 		titles := [Chrome_Style]string{.Classic = i18n.later("Appearance: classic tabs"), .Modern = i18n.later("Appearance: modern tabs")}
-		add(r, {name = fmt.aprintf("view.chrome_style.%s", CHROME_STYLE_NAMES[style], allocator = a), group = "View", arg = CHROME_STYLE_NAMES[style],
+		add(r, {id = fmt.aprintf("view.chrome_style.%s", CHROME_STYLE_NAMES[style], allocator = a), group = "View", arg = CHROME_STYLE_NAMES[style],
 			label = titles[style],
 			tags = command_words(r, "chrome tabs style look trapezoid sloped angular gradient pill appearance interface"),
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return CHROME_STYLE_NAMES[app.chrome_cfg.style] == c.arg },
@@ -452,96 +451,96 @@ commands_build :: proc(r: ^Command_Registry) {
 	// the finish of the interface's widgets (the standard appearance.finish): machined bevels the modern tabs too
 	for finish in ui.Finish {
 		name := ui.FINISH_NAMES[finish]
-		add(r, {name = fmt.aprintf("view.finish.%s", name, allocator = a), label = fmt.aprintf("%s: %s", i18n.tr("Finish"), name, allocator = a), group = "View", arg = name,
+		add(r, {id = fmt.aprintf("view.finish.%s", name, allocator = a), label = fmt.aprintf("%s: %s", i18n.tr("Finish"), name, allocator = a), group = "View", arg = name,
 			tags = command_words(r, "appearance look style machined bevel metal edged flat gradient glass interface"),
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return ui.FINISH_NAMES[app.cfg.look.finish] == c.arg },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_string(app, prefs_page.FINISH_PREF, c.arg) }})
 	}
 
 	// --- browser
-	add(r, {name = "browser.main_menu", label = "Open the main menu", group = "Browser", keys = command_keys(r, {key = .F, mods = alt}, {key = .E, mods = alt}),
+	add(r, {id = "browser.main_menu", label = "Open the main menu", group = "Browser", keys = command_keys(r, {key = .F, mods = alt}, {key = .E, mods = alt}),
 		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Main_Menu) }})
-	add(r, {name = "browser.history", label = "History", group = "Browser", tags = command_words(r, "about:history visited pages past"), url = HISTORY_URL, keys = command_keys(r, {key = .H, mods = ctrl}),
+	add(r, {id = "browser.history", label = "History", group = "Browser", tags = command_words(r, "about:history visited pages past"), url = HISTORY_URL, keys = command_keys(r, {key = .H, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_history(app, t, false) }})
-	add(r, {name = "browser.bookmarks", label = i18n.later("Bookmarks"), group = "Browser", tags = command_words(r, "about:bookmarks favorites saved pages folders"), url = BOOKMARKS_URL, keys = command_keys(r, {key = .O, mods = cs}),
+	add(r, {id = "browser.bookmarks", label = i18n.later("Bookmarks"), group = "Browser", tags = command_words(r, "about:bookmarks favorites saved pages folders"), url = BOOKMARKS_URL, keys = command_keys(r, {key = .O, mods = cs}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_bookmarks(app) }})
-	add(r, {name = "bookmark.page", label = i18n.later("Bookmark this page"), group = "Page", tags = command_words(r, "star favorite save keep"), keys = command_keys(r, {key = .D, mods = ctrl}),
+	add(r, {id = "bookmark.page", label = i18n.later("Bookmark this page"), group = "Page", tags = command_words(r, "star favorite save keep"), keys = command_keys(r, {key = .D, mods = ctrl}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return bookmarkable(t) },
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && bookmark_of_url(app.bms.items[:], t.url) >= 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { bookmark_star(app, t) }})
-	add(r, {name = "view.bookmarks_bar", label = i18n.later("Show the bookmarks bar"), group = "View", tags = command_words(r, "favorites toolbar bookmarks bar"),
+	add(r, {id = "view.bookmarks_bar", label = i18n.later("Show the bookmarks bar"), group = "View", tags = command_words(r, "favorites toolbar bookmarks bar"),
 		keys = command_keys(r, {key = .B, mods = cs}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return bookmarks_bar_shown(app) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { bookmarks_bar_toggle(app) }})
-	add(r, {name = "bookmarks.import", label = i18n.later("Import bookmarks…"), group = "Browser", tags = command_words(r, "html netscape chrome firefox edge favorites"),
+	add(r, {id = "bookmarks.import", label = i18n.later("Import bookmarks…"), group = "Browser", tags = command_words(r, "html netscape chrome firefox edge favorites"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { bookmarks_import_pick(app) }})
-	add(r, {name = "bookmarks.export", label = i18n.later("Export bookmarks…"), group = "Browser", tags = command_words(r, "html netscape backup save favorites"),
+	add(r, {id = "bookmarks.export", label = i18n.later("Export bookmarks…"), group = "Browser", tags = command_words(r, "html netscape backup save favorites"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { bookmarks_export_pick(app) }})
-	add(r, {name = "browser.downloads", label = "Downloads", group = "Browser", tags = command_words(r, "about:downloads files saved folder progress"), url = DOWNLOADS_URL, keys = command_keys(r, {key = .J, mods = ctrl}),
+	add(r, {id = "browser.downloads", label = "Downloads", group = "Browser", tags = command_words(r, "about:downloads files saved folder progress"), url = DOWNLOADS_URL, keys = command_keys(r, {key = .J, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_downloads(app) }})
-	add(r, {name = "browser.history_tree", label = "Tab history tree", group = "Browser", tags = command_words(r, "branches back forward graph session"),
+	add(r, {id = "browser.history_tree", label = "Tab history tree", group = "Browser", tags = command_words(r, "branches back forward graph session"),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { open_history(app, t, true) }})
-	add(r, {name = "browser.settings", label = "Settings", group = "Browser", tags = command_words(r, "about:settings preferences options"), url = SETTINGS_URL,
+	add(r, {id = "browser.settings", label = "Settings", group = "Browser", tags = command_words(r, "about:settings preferences options"), url = SETTINGS_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, SETTINGS_URL, origin = .User) }})
-	add(r, {name = "browser.setup", label = "Setup\u2026", group = "Browser", tags = command_words(r, "install uninstall installer shortcut start menu path update repair standalone portable manage this installation"),
+	add(r, {id = "browser.setup", label = "Setup\u2026", group = "Browser", tags = command_words(r, "install uninstall installer shortcut start menu path update repair standalone portable manage this installation"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_available() },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { setup_open(app) }})
 	// the content blocker (blocker_shell.odin, blocker_ui.odin)
 	blocker_on := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.bl.started && app.bl.b.cfg.enabled }
 	web_http := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { _, ok := blocker_page_host(t); return ok && app.bl.started }
-	add(r, {name = "blocker.panel", label = i18n.later("Blocker: open the panel"), group = "Blocker", tags = command_words(r, "ads adblock shield tracker matrix"),
+	add(r, {id = "blocker.panel", label = i18n.later("Blocker: open the panel"), group = "Blocker", tags = command_words(r, "ads adblock shield tracker matrix"),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_ask(app, .Blocker_Panel); request_frames(app, 3) }})
-	add(r, {name = "blocker.picker", label = i18n.later("Blocker: block an element\u2026"), group = "Blocker", tags = command_words(r, "ads element picker zapper hide"),
+	add(r, {id = "blocker.picker", label = i18n.later("Blocker: block an element\u2026"), group = "Blocker", tags = command_words(r, "ads element picker zapper hide"),
 		keys = command_keys(r, {key = .K, mods = cs}), enabled = web_http, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_picker_begin(app, t) }})
-	add(r, {name = "blocker.dashboard", label = i18n.later("Blocker: dashboard"), group = "Blocker", tags = command_words(r, "lists filters rules whitelist statistics"), url = "about:blocker",
+	add(r, {id = "blocker.dashboard", label = i18n.later("Blocker: dashboard"), group = "Blocker", tags = command_words(r, "lists filters rules whitelist statistics"), url = "about:blocker",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_open_dashboard(app) }})
-	add(r, {name = "blocker.journal", label = i18n.later("Blocker: request log"), group = "Blocker", tags = command_words(r, "logger journal requests blocked"), url = "about:blocker#journal",
+	add(r, {id = "blocker.journal", label = i18n.later("Blocker: request log"), group = "Blocker", tags = command_words(r, "logger journal requests blocked"), url = "about:blocker#journal",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_open_dashboard(app, "journal") }})
-	add(r, {name = "blocker.filters", label = i18n.later("Blocker: my filters"), group = "Blocker", tags = command_words(r, "custom rules editor"), url = "about:blocker#filters",
+	add(r, {id = "blocker.filters", label = i18n.later("Blocker: my filters"), group = "Blocker", tags = command_words(r, "custom rules editor"), url = "about:blocker#filters",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_open_dashboard(app, "filters") }})
-	add(r, {name = "blocker.site", label = i18n.later("Blocker: switch off / on for this site"), group = "Blocker", tags = command_words(r, "whitelist broken site disable allow"),
+	add(r, {id = "blocker.site", label = i18n.later("Blocker: switch off / on for this site"), group = "Blocker", tags = command_words(r, "whitelist broken site disable allow"),
 		enabled = web_http, run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			if host, ok := blocker_page_host(t); ok { blocker_set_site_enabled(app, t, host, !blocker_site_enabled(host)) }
 		}})
-	add(r, {name = "blocker.update", label = i18n.later("Blocker: update the filter lists now"), group = "Blocker", tags = command_words(r, "download refresh easylist"),
+	add(r, {id = "blocker.update", label = i18n.later("Blocker: update the filter lists now"), group = "Blocker", tags = command_words(r, "download refresh easylist"),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_update_now() }})
-	add(r, {name = "blocker.toggle", label = i18n.later("Blocker: on"), group = "Blocker", tags = command_words(r, "ads adblock enable disable"),
+	add(r, {id = "blocker.toggle", label = i18n.later("Blocker: on"), group = "Blocker", tags = command_words(r, "ads adblock enable disable"),
 		checked = blocker_on, run = proc(app: ^App, t: ^Tab, c: ^Command) {
 			config.set_from_string(&app.prefs, "blocker.enabled", app.bl.b.cfg.enabled ? "false" : "true", .User)
 			if t != nil && t.kind == .Web { reload(app, t) }
 		}})
-	add(r, {name = "browser.check_updates", label = "Check for updates", group = "Browser", tags = command_words(r, "update upgrade new version release github latest"),
+	add(r, {id = "browser.check_updates", label = "Check for updates", group = "Browser", tags = command_words(r, "update upgrade new version release github latest"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { update_check_now(app) }})
-	add(r, {name = "browser.install_update", label = "Install the update", group = "Browser", tags = command_words(r, "update upgrade install new version signed release"),
+	add(r, {id = "browser.install_update", label = "Install the update", group = "Browser", tags = command_words(r, "update upgrade install new version signed release"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return update_install_ready(app) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { update_install(app) }})
-	add(r, {name = "browser.desktop_integration", label = "Integrate Wren with the desktop", group = "Browser", tags = command_words(r, "start menu shortcut default apps browser application menu desktop entry install uninstall"),
+	add(r, {id = "browser.desktop_integration", label = "Integrate Wren with the desktop", group = "Browser", tags = command_words(r, "start menu shortcut default apps browser application menu desktop entry install uninstall"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_available() },
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_checked(app) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { desktop_command_toggle(app) }})
-	add(r, {name = "browser.default_apps", label = "Open the default apps settings", group = "Browser", tags = command_words(r, "default browser windows settings choose"),
+	add(r, {id = "browser.default_apps", label = "Open the default apps settings", group = "Browser", tags = command_words(r, "default browser windows settings choose"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_has_default_apps() },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { desktop_open_default_apps() }})
-	add(r, {name = "browser.demos", label = "Demos", group = "Browser", tags = command_words(r, "about:demos examples"), url = DEMOS_URL,
+	add(r, {id = "browser.demos", label = "Demos", group = "Browser", tags = command_words(r, "about:demos examples"), url = DEMOS_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, DEMOS_URL, origin = .User) }})
-	add(r, {name = "browser.about_pages", label = "Built-in pages", group = "Browser", tags = command_words(r, "about:about list"), url = ABOUT_URL,
+	add(r, {id = "browser.about_pages", label = "Built-in pages", group = "Browser", tags = command_words(r, "about:about list"), url = ABOUT_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, ABOUT_URL, origin = .User) }})
-	add(r, {name = "browser.about", label = "About Wren", group = "Browser", tags = command_words(r, "about:wren version build info license license registered support credits third-party"), url = WREN_URL,
+	add(r, {id = "browser.about", label = "About Wren", group = "Browser", tags = command_words(r, "about:wren version build info license license registered support credits third-party"), url = WREN_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_open(app, WREN_URL, origin = .User) }})
-	add(r, {name = "browser.about_licenses", label = "Third-party licenses", group = "Browser", tags = command_words(r, "about:licenses credits slug open source notices"), url = LICENSES_URL,
+	add(r, {id = "browser.about_licenses", label = "Third-party licenses", group = "Browser", tags = command_words(r, "about:licenses credits slug open source notices"), url = LICENSES_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, LICENSES_URL, origin = .User) }})
-	add(r, {name = "browser.about_cache", label = "HTTP cache", group = "Browser", tags = command_words(r, "about:cache stored responses statistics"), url = CACHE_URL,
+	add(r, {id = "browser.about_cache", label = "HTTP cache", group = "Browser", tags = command_words(r, "about:cache stored responses statistics"), url = CACHE_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, CACHE_URL, origin = .User) }})
-	add(r, {name = "browser.about_sites", label = "Site data", group = "Browser", tags = command_words(r, "about:sites cookies local storage indexeddb clear site data cache forget"), url = SITES_URL,
+	add(r, {id = "browser.about_sites", label = "Site data", group = "Browser", tags = command_words(r, "about:sites cookies local storage indexeddb clear site data cache forget"), url = SITES_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, SITES_URL, origin = .User) }})
-	add(r, {name = "browser.clear_cache", label = "Clear the cache", group = "Browser", tags = command_words(r, "http cache empty delete purge stored responses"),
+	add(r, {id = "browser.clear_cache", label = "Clear the cache", group = "Browser", tags = command_words(r, "http cache empty delete purge stored responses"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { http_cache_clear(app) }})
-	add(r, {name = "browser.javascript", label = "JavaScript", group = "Browser", tags = command_words(r, "script js enable disable everywhere global"),
+	add(r, {id = "browser.javascript", label = "JavaScript", group = "Browser", tags = command_words(r, "script js enable disable everywhere global"),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return config.bool_of(&app.prefs, "javascript.enabled") },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "javascript.enabled", !config.bool_of(&app.prefs, "javascript.enabled")) }})
-	add(r, {name = "browser.downloads_folder", label = "Open the downloads folder", group = "Browser", tags = command_words(r, "explorer files"),
+	add(r, {id = "browser.downloads_folder", label = "Open the downloads folder", group = "Browser", tags = command_words(r, "explorer files"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { shell_open_folder(download_dir(app)) }})
-	add(r, {name = "browser.profile_folder", label = "Open the profile folder", group = "Browser", tags = command_words(r, "explorer files cookies prefs data"),
+	add(r, {id = "browser.profile_folder", label = "Open the profile folder", group = "Browser", tags = command_words(r, "explorer files cookies prefs data"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { shell_open_folder(app.profile_dir) }})
 	vault_commands_add(r)   // vault_fill.odin: fill, lock, unlock, sync, the panel, the search
 }

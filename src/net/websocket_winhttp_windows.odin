@@ -72,7 +72,7 @@ winhttp_ws_handshake :: proc(m: ^Ws_Manager, s: ^Socket) -> u32 {
 	s.hrequest = WinHttpOpenRequest(s.hconnect, cstring16(raw_data(get)), cstring16(raw_data(job.target_w)), nil, nil, nil, flags)
 	if s.hrequest == nil { return u32(win.GetLastError()) }
 	// our own callback before the context: the session's would read the job as an HTTP Job
-	if transmute(uintptr)WinHttpSetStatusCallback(s.hrequest, ws_status_callback, WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS, 0) == WINHTTP_INVALID_STATUS_CALLBACK {
+	if WinHttpSetStatusCallback(s.hrequest, ws_status_callback, WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS, 0) == WINHTTP_INVALID_STATUS_CALLBACK {
 		return ERROR_START_FAILED
 	}
 	ctx := win.DWORD_PTR(uintptr(job))
@@ -182,7 +182,7 @@ ws_query_close :: proc(hws: HINTERNET) -> (code: u16, reason: string) {
 }
 
 @(private)
-ws_status_callback :: proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.DWORD, info: rawptr, info_len: win.DWORD) {
+ws_status_callback :: proc "system" (h: HINTERNET, ctx: uintptr, status: u32, info: rawptr, info_len: u32) {
 	if ctx == 0 { return }
 	context = base.process_context()
 	job := (^Ws_Job)(uintptr(ctx))

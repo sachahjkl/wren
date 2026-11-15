@@ -1,6 +1,6 @@
 package canvas2d
 
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 // Preferences of the 2D canvas (about:config `canvas.*`): what a page may ask of it, and how it draws. The page package
 // reads them into its Settings.

@@ -21,6 +21,7 @@ package browser
 // The disk is read and written by jobs of the blocking pool (COM and the registry are fast, but not the interface
 // thread's business); the box shows "working" meanwhile.
 
+import cli "toolkit:cli"
 import "core:fmt"
 import "core:os"
 import "core:strings"
@@ -30,13 +31,13 @@ import lucide "toolkit:lucide"
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import desktop "toolkit:desktop"
 import process "toolkit:process"
 import setup "toolkit:setup"
 import wren_desktop "wb:desktop"
 import "wb:host"
-import i18n "toolkit:i18n"
+import i18n "../../ext/gui_toolkit/src/i18n"
 
 DESKTOP_PREFS := [?]config.Def{
 	{name = "browser.desktop_integration.on_first_run", kind = .Bool, default = {b = APP_CHANNEL == .Release},
@@ -81,12 +82,13 @@ desktop_options :: proc(app: ^App) -> desktop.Integration_Options {
 }
 
 // `--install`, `--uninstall [--purge]`, `--status` (setup.command_alone): runs it without a window and returns the exit code.
-desktop_command :: proc(app: ^App, command: setup.Command, purge := false) -> int {
+desktop_command :: proc(app: ^App, command: setup.Command, purge := false) -> cli.Exit {
 	// (setup_prepare reads the file types from here: the dialog's setup_open sets them, and no dialog opens here)
 	delete(app.stp.file_types)
 	app.stp.file_types = strings.clone(config.string_of(&app.prefs, "browser.desktop_integration.file_types"))
+	instance_ask_of(app)   // (--status and --quit ask the Wren of this profile)
 	code := setup.command_run(command, setup_config(app), process.console_write)
-	if command == .Uninstall && purge && code == setup.COMMAND_DONE { code = desktop_profile_purge(app) }
+	if command == .Uninstall && purge && code == .Done { code = desktop_profile_purge(app) }
 	return code
 }
 
@@ -95,18 +97,18 @@ desktop_command :: proc(app: ^App, command: setup.Command, purge := false) -> in
 // not the setup package's concern. A profile given with --profile or a portable one is removed too: --purge is an
 // explicit request.
 @(private = "file")
-desktop_profile_purge :: proc(app: ^App) -> int {
-	if app.profile_dir == "" || !os.is_dir(app.profile_dir) { return setup.COMMAND_DONE }
+desktop_profile_purge :: proc(app: ^App) -> cli.Exit {
+	if app.profile_dir == "" || !os.is_dir(app.profile_dir) { return .Done }
 	// (the log is open in the profile, <profile>/logs/wren.log: closed first, or Windows keeps the folder; this context's
 	// logger goes with it)
 	context.logger = {}
 	program_log_close()
 	if !base.remove_tree(app.profile_dir) {
 		process.console_write(fmt.tprintf("the profile could not be fully deleted: %s\n", app.profile_dir))
-		return setup.COMMAND_FAILED
+		return .Failed
 	}
 	process.console_write(fmt.tprintf("profile deleted: %s\n", app.profile_dir))
-	return setup.COMMAND_DONE
+	return .Done
 }
 
 ////////////////////////////////

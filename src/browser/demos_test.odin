@@ -3,7 +3,7 @@ package browser
 import "core:os"
 import "core:strings"
 import "core:testing"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 // about:demos lists every page of examples\site (run from the repository root, as the test suite does), its links
 // point where they should, and folder paths become file: URLs.

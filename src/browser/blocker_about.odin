@@ -2,7 +2,7 @@ package browser
 
 import "core:fmt"
 import "toolkit:ui"
-import i18n "toolkit:i18n"
+import i18n "../../ext/gui_toolkit/src/i18n"
 
 // The About tab of about:blocker: how the blocker works, the filter syntax it understands, and where its tools are. Each
 // sentence is a row of its own (a translation reorders and resizes sentences, not rows).

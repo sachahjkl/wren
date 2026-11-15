@@ -17,13 +17,13 @@ registry_well_formed :: proc(t: ^testing.T) {
 	// (Ctrl+K and Ctrl+Shift+P are the toolkit's palette's, in every program: the registry has no line for them)
 	for s in ui.palette_command().keys { seen[s] = "the command palette" }
 	for c in r.list {
-		testing.expectf(t, c.name != "" && c.label != "" && c.group != "" && c.run != nil, "command %q incomplete", c.name)
-		testing.expectf(t, c.name == base.ascii_lower(c.name) && !strings.contains(c.name, " "), "command name %q: dotted, lower case", c.name)
+		testing.expectf(t, c.id != "" && c.label != "" && c.group != "" && c.run != nil, "command %q incomplete", c.id)
+		testing.expectf(t, c.id == base.ascii_lower(c.id) && !strings.contains(c.id, " "), "command name %q: dotted, lower case", c.id)
 		for s in c.keys {
 			if s.key == .None { continue }
 			other, dup := seen[s]
-			testing.expectf(t, !dup, "%s of %s is also %s", ui.chord_text(s), c.name, other)
-			seen[s] = c.name
+			testing.expectf(t, !dup, "%s of %s is also %s", ui.chord_text(s), c.id, other)
+			seen[s] = c.id
 		}
 	}
 	// what the chrome's menu and the palette name
@@ -60,20 +60,19 @@ palette_table_follows_the_registry :: proc(t: ^testing.T) {
 	app := test_app(t)
 	pt := palette_table(app)
 	list := commands(app)
-	testing.expect_value(t, len(pt.table), len(pt.names))
 	testing.expect_value(t, len(pt.table), len(pt.rows))
 	for c, k in pt.table {
 		cmd := &list[pt.rows[k]]
-		testing.expectf(t, !cmd.hidden, "%s is hidden, and listed", cmd.name)
-		testing.expect_value(t, pt.names[k], cmd.name)
-		testing.expectf(t, c.toggle == (cmd.checked != nil), "%s: a switch is a command with a state", cmd.name)
+		testing.expectf(t, !cmd.hidden, "%s is hidden, and listed", cmd.id)
+		testing.expect_value(t, c.id, cmd.id)
+		testing.expectf(t, c.toggle == (cmd.checked != nil), "%s: a switch is a command with a state", cmd.id)
 	}
 	main_menu := command(app, "browser.main_menu")
 	testing.expect(t, main_menu != nil && main_menu.hidden)
-	for name in pt.names { testing.expect(t, name != "browser.main_menu") }
+	for c in pt.table { testing.expect(t, c.id != "browser.main_menu") }
 
 	fill := -1
-	for name, k in pt.names { if name == "vault.fill" { fill = k } }
+	for c, k in pt.table { if c.id == "vault.fill" { fill = k } }
 	testing.expect(t, fill >= 0)
 	if fill < 0 { return }
 	made := pt.version

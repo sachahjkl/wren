@@ -14,7 +14,7 @@ import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "core:strings"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:cookies"
 import "wb:fetch"
 import lay "wb:layout"
@@ -456,12 +456,12 @@ graph_tooltip :: proc(app: ^App, index: int, colors: [Hud_Series]draw.Color) {
 			v := s.v[k]
 			value := fmt_ms(v, c)
 			if k == .GPU && v <= 0 { value = "--" }
-			ui.stat_row(fmt.tprintf("tt_%d", int(k)), HUD_SERIES_NAMES[k], value, w, swatch_color = colors[k])
+			ui.stat_row(fmt.tprintf("tt_%d", int(k)), HUD_SERIES_NAMES[k], value, {width = ui.px(w), swatch = colors[k]})
 		}
 		total := ui.sample_total(s, CPU_SERIES)
 		bad, warn := hud_bad(app), hud_warn(app)
 		tone := bad > 0 && total > bad ? "bad" : warn > 0 && total > warn ? "warn" : ""
-		ui.stat_row("tt_cpu", "CPU total", fmt.tprintf("%s ms", fmt_ms(total, c)), w, tone = tone)
+		ui.stat_row("tt_cpu", "CPU total", fmt.tprintf("%s ms", fmt_ms(total, c)), {width = ui.px(w), tone = tone})
 		// the three rows are always there ("--" when the frame had none): a row that came and went as the pointer crossed the bars of a
 		// graph where some frames restyle and others do not made the tooltip jump in height under it
 		restyle, lay_pass, wasm := "--", "--", "--"
@@ -470,9 +470,9 @@ graph_tooltip :: proc(app: ^App, index: int, colors: [Hud_Series]draw.Color) {
 			if d.lay_pass != .None { lay_pass = pass_name(d.lay_pass) }
 			if d.wasm_calls > 0 { wasm = fmt.tprintf("%s ms, %d calls", fmt_ms(d.wasm_ms, c), d.wasm_calls) }
 		}
-		ui.stat_row("tt_rs", "Restyle", restyle, w, mono = false)
-		ui.stat_row("tt_lp", "Layout pass", lay_pass, w, mono = false)
-		ui.stat_row("tt_wasm", "WebAssembly", wasm, w)
+		ui.stat_row("tt_rs", "Restyle", restyle, {width = ui.px(w), proportional = true})
+		ui.stat_row("tt_lp", "Layout pass", lay_pass, {width = ui.px(w), proportional = true})
+		ui.stat_row("tt_wasm", "WebAssembly", wasm, {width = ui.px(w)})
 		ui.spacer(ui.px(em * 0.3))
 	}
 }
@@ -636,7 +636,7 @@ frame_stats_columns :: proc(src: ^Panel_Source, layout: [][]Panel_Section, col, 
 				for s in sections {
 					for l in panel_lines(src, s) {
 						if l.heading { ui.stat_heading(l.id, l.label, col); continue }
-						ui.stat_row(l.id, l.label, l.value, col, mono = l.mono, swatch_color = l.swatch, tone = l.tone)
+						ui.stat_row(l.id, l.label, l.value, {width = ui.px(col), proportional = !l.mono, swatch = l.swatch, tone = l.tone})
 					}
 				}
 			}

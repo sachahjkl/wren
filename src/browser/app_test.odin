@@ -1,7 +1,7 @@
 package browser
 
 import "core:testing"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 // The App of a test with no App of its own: made by the browser's own stages (app_make.odin) up to its loop, the thread's (the_app,
 // its Pages bound), freed with the test. What the code reaches without an App (the painting, the hooks) is this one.

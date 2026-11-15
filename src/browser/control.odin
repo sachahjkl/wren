@@ -16,12 +16,12 @@ import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:cookies"
 import "wb:fetch"
 import "wb:host"
 import "wb:httpcache"
-import i18n "toolkit:i18n"
+import i18n "../../ext/gui_toolkit/src/i18n"
 import "wb:js"
 import "wb:page"
 import "wb:remote"
@@ -637,7 +637,7 @@ control_commands :: proc(app: ^App, allocator := context.temp_allocator) -> []ap
 	list := make([]api.Command, len(all), allocator)
 	for &cmd, i in all {
 		list[i] = {
-			name = strings.clone(cmd.name, allocator), title = strings.clone(i18n.tr(cmd.label), allocator), category = strings.clone(cmd.group, allocator),
+			name = strings.clone(cmd.id, allocator), title = strings.clone(i18n.tr(cmd.label), allocator), category = strings.clone(cmd.group, allocator),
 			shortcut = strings.clone(ui.command_shortcut(cmd.spec), allocator), enabled = command_enabled(app, t, &cmd),
 		}
 	}

@@ -5,7 +5,7 @@ import "core:slice"
 import "core:strings"
 import "wb:adblock"
 import "wb:fetch"
-import i18n "toolkit:i18n"
+import i18n "../../ext/gui_toolkit/src/i18n"
 
 // Dynamic rules: the matrix of the panel. A rule says what to do with the requests that a source (a site, or `*` for all)
 // makes to a destination (a host and its subdomains, or `*`) of a kind. They are evaluated before the filter lists and

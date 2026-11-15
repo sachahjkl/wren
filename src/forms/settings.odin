@@ -1,7 +1,7 @@
 package forms
 
 import "core:strings"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 // Everything about form controls a user or an administrator may want to change (about:config, `forms.*`).
 

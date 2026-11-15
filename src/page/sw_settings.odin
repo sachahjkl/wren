@@ -1,6 +1,6 @@
 package page
 
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 // Service workers, shared workers, the Cache API and the origin private file system (preferences `service_workers.*`,
 // `shared_workers.*`, `caches.*`, `opfs.*`).

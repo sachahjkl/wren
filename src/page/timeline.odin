@@ -25,7 +25,7 @@ package page
 import "core:encoding/json"
 import "core:strings"
 import "wb:base"
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 import "wb:dom"
 import "wb:fetch"
 import "wb:host"

@@ -1,6 +1,6 @@
 package page
 
-import config "toolkit:config"
+import config "../../ext/gui_toolkit/src/config"
 
 // Nested browsing contexts (preferences `frames.*`, frames.odin).
 Frame_Settings :: struct {
