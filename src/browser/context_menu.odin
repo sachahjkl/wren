@@ -391,16 +391,16 @@ address_menu_items :: proc(app: ^App) {
 // page field's Paste goes to the field it was asked for while its page is still the tab's.
 @(private = "file")
 context_menu_pastes :: proc(app: ^App, cm: ^Context_Menu_State) {
-	if text, ok := ui.paste_answer(ui.key_from_string(0, PASTE_GO_ID)); ok {
-		target := strings.clone(strings.trim_space(text), context.temp_allocator)
+	if a, ok := ui.paste_answer(ui.key_from_string(0, PASTE_GO_ID)); ok {
+		target := strings.clone(strings.trim_space(a.text), context.temp_allocator)
 		if t := current_tab(app); t != nil && target != "" { navigate(app, t, address_or_search(app, target), origin = .User) }
 	}
-	if text, ok := ui.paste_answer(ui.key_from_string(0, PASTE_PAGE_ID)); ok {
+	if a, ok := ui.paste_answer(ui.key_from_string(0, PASTE_PAGE_ID)); ok {
 		p, h := cm.paste_page, cm.paste_field
 		cm.paste_page, cm.paste_field = nil, base.NIL_HANDLE
 		t := current_tab(app)
 		if t == nil || p == nil || t.page != p || p.formctl == nil || dom.get(p.doc, h) == nil || !forms.is_mutable(page.page_forms(p), h) { return }
-		data := strings.clone(text, context.temp_allocator)
+		data := strings.clone(a.text, context.temp_allocator)
 		if page.dispatch_event(p, h, dom.Event{type = "paste", bubbles = true, cancelable = true, data = data}) { forms.paste(page.page_forms(p), h, data) }
 	}
 }
