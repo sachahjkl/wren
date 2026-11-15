@@ -1,5 +1,6 @@
 package fetch
 
+import timefmt "toolkit:timefmt"
 import "core:fmt"
 import "core:slice"
 import "core:strings"
@@ -286,15 +287,6 @@ html_text :: proc(sb: ^strings.Builder, s: string) {
 	}
 }
 
-// "0 B", "512 B", "1.4 KB", "3.2 MB" (powers of 1024, as Explorer counts).
-size_text :: proc(n: i64, allocator := context.temp_allocator) -> string {
-	if n < 1024 { return fmt.aprintf("%d B", n, allocator = allocator) }
-	units := [?]string{"KB", "MB", "GB", "TB", "PB"}
-	v := f64(n) / 1024
-	u := 0
-	for v >= 1024 && u + 1 < len(units) { v /= 1024; u += 1 }
-	return v < 10 ? fmt.aprintf("%.1f %s", v, units[u], allocator = allocator) : fmt.aprintf("%.0f %s", v, units[u], allocator = allocator)
-}
 
 
 @(private)
@@ -375,7 +367,7 @@ directory_listing_html :: proc(path: string, l: ^Dir_Listing, sort: Listing_Sort
 		strings.write_string(&sb, "</a>")
 		if e.link { strings.write_string(&sb, " <span class=\"link\">(link)</span>") }
 		strings.write_string(&sb, "</td><td class=\"num\">")
-		if !e.folder { strings.write_string(&sb, size_text(e.size)) }
+		if !e.folder { strings.write_string(&sb, timefmt.size(e.size)) }
 		strings.write_string(&sb, "</td><td class=\"date\">")
 		strings.write_string(&sb, local_time_text(e.modified))
 		strings.write_string(&sb, "</td><td class=\"date\">")

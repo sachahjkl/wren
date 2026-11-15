@@ -86,10 +86,6 @@ listing_links_and_redirects :: proc(t: ^testing.T) {
 	testing.expect(t, so == .Name && !desc, "no query: the preferences")
 	so, desc = listing_order("sort=bogus&order=asc", &s)
 	testing.expect(t, so == .Name && !desc)
-
-	testing.expect_value(t, size_text(0), "0 B")
-	testing.expect_value(t, size_text(1536), "1.5 KB")
-	testing.expect_value(t, size_text(200 << 20), "200 MB")
 }
 
 @(test)

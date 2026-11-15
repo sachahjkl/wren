@@ -7,6 +7,7 @@ package browser
 // instead while the size is not announced. The button carries the same progress as a ring around its arrow, and a dot when
 // something ended that has not been looked at.
 
+import timefmt "toolkit:timefmt"
 import "core:fmt"
 import "core:math"
 import "core:path/filepath"
@@ -85,17 +86,6 @@ dl_host :: proc(url: string) -> string {
 	return s
 }
 
-// "8 s", "1 min 20 s", "2 h 5 min".
-@(private = "file")
-dl_duration :: proc(secs: f64) -> string {
-	s := int(math.ceil(secs))
-	switch {
-	case s < 60:   return fmt.tprintf("%d s", max(s, 1))
-	case s < SECONDS_PER_HOUR: return fmt.tprintf("%d min %d s", s / SECONDS_PER_MINUTE, s % SECONDS_PER_MINUTE)
-	}
-	return fmt.tprintf("%d h %d min", s / SECONDS_PER_HOUR, (s % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE)
-}
-
 @(private = "file")
 dl_speed_of :: proc(d: ^Download) -> f64 {
 	if d.state != .Receiving || dl_now_ms() - d.sample_ms > DOWNLOAD_STALLED_MS { return 0 }   // (nothing came for a while: stalled)
@@ -109,18 +99,18 @@ dl_status :: proc(d: ^Download) -> string {
 		if .Dialog in d.out { return "Choose where to save it\u2026" }
 		sp := dl_speed_of(d)
 		if d.total > 0 {
-			s := fmt.tprintf("%s of %s", human_bytes(d.received), human_bytes(d.total))
-			if sp > 0 { s = fmt.tprintf("%s \u00b7 %s/s \u00b7 %s left", s, human_bytes(i64(sp)), dl_duration(f64(d.total - d.received) / sp)) }
+			s := fmt.tprintf("%s of %s", timefmt.size(d.received), timefmt.size(d.total))
+			if sp > 0 { s = fmt.tprintf("%s \u00b7 %s/s \u00b7 %s left", s, timefmt.size(i64(sp)), timefmt.duration(f64(d.total - d.received) / sp * 1000)) }
 			return s
 		}
-		return sp > 0 ? fmt.tprintf("%s \u00b7 %s/s", human_bytes(d.received), human_bytes(i64(sp))) : human_bytes(d.received)
+		return sp > 0 ? fmt.tprintf("%s \u00b7 %s/s", timefmt.size(d.received), timefmt.size(i64(sp))) : timefmt.size(d.received)
 	case .Awaiting_Path: return "Choose where to save it\u2026"
 	case .Flushing, .Moving: return "Finishing\u2026"
 	case .Done:
 		if !download_file_present(d) { return "Deleted or moved" }
 		parts := make([dynamic]string, context.temp_allocator)
 		if h := dl_host(d.url); h != "" { append(&parts, h) }
-		append(&parts, human_bytes(d.size))
+		append(&parts, timefmt.size(d.size))
 		lt := local_time(d.done_ms)
 		append(&parts, fmt.tprintf("%02d:%02d", lt.hour, lt.minute))
 		return strings.join(parts[:], " \u00b7 ", context.temp_allocator)
@@ -495,7 +485,7 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 				if ui.tags("weak") {
 					ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 2))})
 					summary := fmt.tprintf(len(app.dls.list) == 1 ? "%d download" : "%d downloads", len(app.dls.list))
-					if active > 0 { summary = fmt.tprintf("%d in progress%s", active, speed > 0 ? fmt.tprintf(" \u00b7 %s/s", human_bytes(i64(speed))) : "") }
+					if active > 0 { summary = fmt.tprintf("%d in progress%s", active, speed > 0 ? fmt.tprintf(" \u00b7 %s/s", timefmt.size(i64(speed))) : "") }
 					ui.label(fmt.tprintf("%s###dl_count", summary))
 				}
 				ui.spacer(ui.px(em * 0.8))
@@ -741,7 +731,7 @@ downloads_button :: proc(app: ^App, t: ^Tab) {
 	if !open {
 		text := "Downloads (Ctrl+J)"
 		if active > 0 {
-			text = known ? fmt.tprintf("%d downloading, %d %%%s", active, int(frac * 100), speed > 0 ? fmt.tprintf(" \u00b7 %s/s", human_bytes(i64(speed))) : "") : fmt.tprintf("%d downloading", active)
+			text = known ? fmt.tprintf("%d downloading, %d %%%s", active, int(frac * 100), speed > 0 ? fmt.tprintf(" \u00b7 %s/s", timefmt.size(i64(speed))) : "") : fmt.tprintf("%d downloading", active)
 		}
 		tip(sig, text)
 	}

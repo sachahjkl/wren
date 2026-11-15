@@ -1064,15 +1064,6 @@ downloads_session_started :: proc(app: ^App) -> bool {
 	return false
 }
 
-human_bytes :: proc(n: i64) -> string {
-	switch {
-	case n >= 1 << 30: return fmt.tprintf("%.1f GB", f64(n) / f64(1 << 30))
-	case n >= 1 << 20: return fmt.tprintf("%.1f MB", f64(n) / f64(1 << 20))
-	case n >= 1 << 10: return fmt.tprintf("%.0f kB", f64(n) / f64(1 << 10))
-	}
-	return fmt.tprintf("%d B", n)
-}
-
 downloads_init :: proc(app: ^App) {
 	download_cfg(app)
 	downloads_load(app)

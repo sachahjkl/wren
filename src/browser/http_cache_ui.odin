@@ -1,5 +1,6 @@
 package browser
 
+import timefmt "toolkit:timefmt"
 import "core:fmt"
 import "core:os"
 import "core:strings"
@@ -106,7 +107,7 @@ cache_prof_leave :: proc(t: ^Tab) {
 cache_requests_tip :: proc(t: ^Tab) -> string {
 	if t == nil || t.page == nil { return "Requests of this tab" }
 	c := t.page.env.counts
-	return fmt.tprintf("Requests of this tab (the Network tab's list), %d of them in flight. Subresources of this page: %d from the network (%s), %d from the cache, %d revalidated (304)", t.net.pending, c.network, size_text(c.network_bytes), c.cache, c.revalidated)
+	return fmt.tprintf("Requests of this tab (the Network tab's list), %d of them in flight. Subresources of this page: %d from the network (%s), %d from the cache, %d revalidated (304)", t.net.pending, c.network, timefmt.size(c.network_bytes), c.cache, c.revalidated)
 }
 
 is_cache_address :: proc(a: string) -> bool { return a == CACHE_URL || strings.has_prefix(a, CACHE_URL + "?") }
@@ -148,26 +149,6 @@ CACHE_PAGE_STYLE :: `
 `
 
 @(private = "file")
-size_text :: proc(n: i64) -> string {
-	switch {
-	case n >= 1 << 30: return fmt.tprintf("%.1f GiB", f64(n) / f64(1 << 30))
-	case n >= 1 << 20: return fmt.tprintf("%.1f MiB", f64(n) / f64(1 << 20))
-	case n >= 1 << 10: return fmt.tprintf("%.1f KiB", f64(n) / f64(1 << 10))
-	}
-	return fmt.tprintf("%d B", n)
-}
-
-@(private = "file")
-duration_text :: proc(s: i64) -> string {
-	switch {
-	case s >= 2 * SECONDS_PER_DAY: return fmt.tprintf("%d days", s / SECONDS_PER_DAY)
-	case s >= 2 * SECONDS_PER_HOUR: return fmt.tprintf("%d h", s / SECONDS_PER_HOUR)
-	case s >= 120: return fmt.tprintf("%d min", s / SECONDS_PER_MINUTE)
-	}
-	return fmt.tprintf("%d s", s)
-}
-
-@(private = "file")
 query_param :: proc(query, name: string) -> string {
 	sp := url.params_make(context.temp_allocator)
 	url.params_parse(&sp, query)
@@ -196,14 +177,14 @@ cache_page_html :: proc(app: ^App, filter: string, cleared: bool) -> string {
 		where_, c.settings.enabled ? "" : "<b>The cache is off</b> (<code>network.cache.enabled</code>). ", cleared ? "<b>The cache was cleared.</b>" : "")
 	strings.write_string(&sb, "<div class=\"stats\">")
 	stat_box(&sb, fmt.tprintf("%d", s.entries), "entries")
-	stat_box(&sb, size_text(s.disk_bytes), fmt.tprintf("on disk (of %s)", size_text(c.settings.disk_max_bytes)))
-	stat_box(&sb, size_text(s.resident_bytes), fmt.tprintf("in memory, %d entries (of %s)", s.resident, size_text(c.settings.memory_max_bytes)))
+	stat_box(&sb, timefmt.size(s.disk_bytes), fmt.tprintf("on disk (of %s)", timefmt.size(c.settings.disk_max_bytes)))
+	stat_box(&sb, timefmt.size(s.resident_bytes), fmt.tprintf("in memory, %d entries (of %s)", s.resident, timefmt.size(c.settings.memory_max_bytes)))
 	stat_box(&sb, fmt.tprintf("%d", s.stats.hits), "served from the cache")
 	stat_box(&sb, fmt.tprintf("%d", s.stats.revalidated), "revalidated (304)")
 	stat_box(&sb, fmt.tprintf("%d", s.stats.misses), "fetched")
 	stat_box(&sb, fmt.tprintf("%d", s.stats.stored), "stored")
 	stat_box(&sb, fmt.tprintf("%d", s.stats.evicted), "evicted")
-	stat_box(&sb, size_text(s.stats.bytes_served), "bytes served from the cache")
+	stat_box(&sb, timefmt.size(s.stats.bytes_served), "bytes served from the cache")
 	if s.stats.disk_failures > 0 { stat_box(&sb, fmt.tprintf("%d", s.stats.disk_failures), "damaged files dropped") }
 	if !s.ready { stat_box(&sb, "loading", "the index") }
 	strings.write_string(&sb, "</div>\n")
@@ -229,8 +210,8 @@ cache_page_html :: proc(app: ^App, filter: string, cleared: bool) -> string {
 		h, mi, sec := time.clock(used)
 		where_e := e.resident ? (e.disk == .Stored ? "memory + disk" : (e.disk == .Writing ? "memory, writing" : "memory")) : "disk"
 		fmt.sbprintf(&sb, "<tr><td class=\"url\">%s<div class=\"part\">%s</div></td><td>%d</td><td>%s</td><td class=\"%s\">%s</td><td>%04d-%02d-%02d %02d:%02d:%02d UTC</td><td>%s</td></tr>\n",
-			escape_html(e.url), escape_html(part), e.status, size_text(e.body_size), fresh ? "fresh" : "stale",
-			fresh ? duration_text(e.fresh_until - now) : "stale", y, int(mo), d, h, mi, sec, where_e)
+			escape_html(e.url), escape_html(part), e.status, timefmt.size(e.body_size), fresh ? "fresh" : "stale",
+			fresh ? timefmt.duration(f64(e.fresh_until - now) * 1000) : "stale", y, int(mo), d, h, mi, sec, where_e)
 	}
 	strings.write_string(&sb, "</table>\n")
 	if matching > shown { fmt.sbprintf(&sb, "<p class=\"note\">%d more entries are not listed: filter to find them.</p>\n", matching - shown) }
