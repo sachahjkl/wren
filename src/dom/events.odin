@@ -30,6 +30,7 @@ Event :: struct {
 	// is then not trusted, and its timeStamp (0: the time of the dispatch)
 	engine_id:       i64,
 	engine_realm:    u64,       // the page whose realm made it: its address means nothing to another realm's listeners
+	engine_owner:    u32,       // ... and its instance there: an isolated world shares the page, not the memory
 	untrusted:       bool,
 	time_stamp:      f64,
 	// UI Events details the shell may give (zero: unknown, derived from the fields above where UI Events allows)

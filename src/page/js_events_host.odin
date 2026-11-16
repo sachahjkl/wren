@@ -11,7 +11,7 @@ EventTarget_dispatchEngineEvent :: proc(c: ^Call, target: u64, type: string, ini
 	p := c.page
 	ev := dom.Event{
 		type = type, bubbles = .Bubbles in init, cancelable = .Cancelable in init, composed = .Composed in init,
-		engine_id = engine_id, engine_realm = page_id(c.caller), untrusted = true, time_stamp = time_stamp,
+		engine_id = engine_id, engine_realm = page_id(c.caller), engine_owner = c.owner, untrusted = true, time_stamp = time_stamp,
 	}
 	if p.jsdom != nil {
 		p.jsdom.shadow.last_target = target
@@ -50,9 +50,12 @@ EventTarget_dispatchEngineEvent :: proc(c: ^Call, target: u64, type: string, ini
 	return ok, .None
 }
 
-// (0 for the listeners of another realm than the one that made it: to them it is an event of the browser's)
+// (0 for the listeners of another realm than the one that made it: to them it is an event of the browser's. A realm is
+// a page and an instance of it: an isolated world of content scripts is another instance on the same page, and the
+// identifier, an address in the maker's memory, written to in another's, broke the cells there)
 Event_engineId :: proc(c: ^Call, event: Api_Event) -> i64 {
-	return event.data.engine_realm == page_id(c.caller) ? event.data.engine_id : 0
+	if event.data.engine_realm != page_id(c.caller) || event.data.engine_owner != c.owner { return 0 }
+	return event.data.engine_id
 }
 
 Event_isLive :: proc(c: ^Call, event: u64) -> bool { return base.pool_get(&c.page.dp.events, H(event)) != nil }
