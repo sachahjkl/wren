@@ -82,6 +82,7 @@ chrome_start :: proc(t: ^testing.T, o := Chrome_Options{}, loc := #caller_locati
 	refused := browser.app_prefs_init(app, o.prefs)
 	testing.expectf(t, refused == "", "the preference %s", refused, loc = loc)
 	browser.app_settings_read(app)
+	app.favs.disk.offline = true   // (no network stack around it: a row's icon asked from its site waits, as in the unit tests)
 	browser.app_loop_init(app)
 	browser.frame_gate_init()
 	browser.app_fonts_init(app)
