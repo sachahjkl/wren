@@ -25,7 +25,18 @@ Bfcache_Blocker :: enum u8 {
 	Request_In_Flight,    // a fetch, a script, a stylesheet, a font still loading
 	Loading,              // the load event has not fired yet
 	Unloaded,             // its unload ran, for a navigation that came to nothing: it stays a document, not one to keep (HTML "salvageable")
+	Content_Scripts,      // an extension's content scripts run in it or in one of its frames (ext_worlds.odin)
 	Closed,
+}
+
+// Whether an extension's content scripts run in `p` or in a document of its frames. Such a document is not kept: their
+// contexts, ports and owed answers go with the document the extension saw the tab leave, as when it is unloaded.
+@(private = "file")
+has_content_scripts :: proc(p: ^Page) -> bool {
+	if len(p.worlds) > 0 { return true }
+	if p.frames == nil { return false }
+	for n in p.frames.children { if n.page != nil && !n.page.closed && has_content_scripts(n.page) { return true } }
+	return false
 }
 
 Bfcache_Blockers :: bit_set[Bfcache_Blocker]
@@ -54,6 +65,7 @@ bfcache_blockers :: proc(p: ^Page) -> Bfcache_Blockers {
 	for l in p.import_loads { if l.task != base.NIL_HANDLE { out += {.Request_In_Flight} } }
 	for _, f in p.fonts.faces { if f.state == .Queued || f.state == .Loading { out += {.Request_In_Flight} } }
 	if webauthn_busy(p) { out += {.Request_In_Flight} }   // a passkey dialog is open for it
+	if has_content_scripts(p) { out += {.Content_Scripts} }
 	if s := p.scripts; s != nil {
 		for f in s.fetches { if f.task != base.NIL_HANDLE { out += {.Request_In_Flight} } }
 		if s.phase >= .Parsing && s.phase < .Complete { out += {.Loading} }

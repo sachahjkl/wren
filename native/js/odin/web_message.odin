@@ -508,6 +508,8 @@ origin_matches :: proc(ctx: ^wj.Context, to: wj.Str, own: string, own_ok: bool, 
 wjr_Window_postMessage :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	context = m4_context()
 	if argc < 1 { return wj.wj_throw_arity(ctx, "postMessage", 1, argc) }
+	// (a document's window: the browser fires it in every realm of the document, the page's and its isolated worlds)
+	if r, ok := frames_post_to_self(ctx, argc, argv); ok { return r }
 	second := wj.arg(argc, argv, 1)
 	target_origin, transfer := wj.UNDEFINED, wj.UNDEFINED
 	defer free_values(ctx, target_origin, transfer)

@@ -826,7 +826,20 @@ wp_delete :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, prop: wj.Atom) -> i32 
 @(private = "file")
 wp_postmessage_call :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
 	context = m4_context()
-	id := Navigable(data_handle(data))
+	return post_message_to(ctx, Navigable(data_handle(data)), argc, argv)
+}
+
+// window.postMessage on the realm's own window, when the realm has the frames imports: through the browser, which fires
+// the message in the page's realm and in each isolated world of the document (src/page/ext_worlds.odin). False: no
+// frames here (the engine alone, a worker), the caller delivers it itself.
+frames_post_to_self :: proc(ctx: ^wj.Context, argc: i32, argv: [^]wj.JSValue) -> (result: wj.JSValue, ok: bool) {
+	id := self_id()
+	if id == 0 { return wj.UNDEFINED, false }
+	return post_message_to(ctx, id, argc, argv), true
+}
+
+@(private = "file")
+post_message_to :: proc(ctx: ^wj.Context, id: Navigable, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if argc < 1 { return wj.JS_ThrowTypeError(ctx, "Failed to execute 'postMessage' on 'Window': 1 argument required, but only 0 present.") }
 	message := argv[0]
 	target_origin := wj.arg(argc, argv, 1)
