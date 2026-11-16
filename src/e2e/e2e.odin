@@ -566,7 +566,8 @@ wait_at_rest :: proc(s: ^Session, moving_ok := false, deadline: time.Duration = 
 			if time.tick_diff(time.tick_now(), end) <= 0 { failed(s, fmt.tprintf("%v passed and %d timers of the loop are still to run", deadline, len(due)), loc) }
 			rest_turns(s, 1, loc)
 		}
-		quiet := moving_ok ? !one_shot_due(s, moving_ok) : s.app.rates.frames == frames
+		// (the status bar's settle arms itself again as it runs while the last frame is recent: armed, it may still draw)
+		quiet := moving_ok ? !one_shot_due(s, moving_ok) : s.app.rates.frames == frames && s.app.hud.settle == base.NIL_HANDLE
 		if quiet && !frame_wanted(s, moving_ok) { return }
 		if time.tick_diff(time.tick_now(), end) <= 0 { failed(s, fmt.tprintf("%v passed and the browser still draws, %d frames", deadline, s.app.rates.frames), loc) }
 	}
