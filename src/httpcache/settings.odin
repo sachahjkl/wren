@@ -1,7 +1,7 @@
 package httpcache
 
 import "core:strings"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 // The HTTP cache's preferences (about:config: `network.cache.*`).
 

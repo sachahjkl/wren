@@ -3,7 +3,7 @@ package crashmodes
 import "base:intrinsics"
 import "core:sys/posix"
 import "core:time"
-import crash "../../../ext/gui_toolkit/src/crash"
+import crash "toolkit:crash"
 
 foreign import libc "system:c"
 @(default_calling_convention = "c")

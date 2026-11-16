@@ -4,7 +4,7 @@
 // list of declared functions, their arguments and whether they raise); this prototype emits the docs and the
 // function inventory, which is what the design note points at.
 //
-//   odin run native/js/odin_abi/apidoc -collection:wb=src -out:build/apidoc.exe -- native/js/odin_abi/api_decl docs/api
+//   odin run native/js/odin_abi/apidoc -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/apidoc.exe -- native/js/odin_abi/api_decl docs/api
 package apidoc
 
 import "core:fmt"

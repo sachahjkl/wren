@@ -4,7 +4,7 @@ package page
 // bindings_webcodecs*.odin). Memory a page's codecs may hold is charged in p.held against page.max_fetch_bytes like any
 // other buffer; these bounds cap a single frame and the decode queue so a hostile page cannot exhaust memory.
 
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 Webcodecs_Settings :: struct {
 	enabled:          bool,

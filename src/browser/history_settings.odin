@@ -4,7 +4,7 @@ package browser
 // back/forward cache (bfcache.odin), the global history of visits (global_history.odin) and its views
 // (history_ui.odin). The session history's own sizes are page.Web_Settings (history.max_entries, history.tree.max_nodes).
 
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import "wb:page"
 
 HISTORY_PREFS := [?]config.Def{

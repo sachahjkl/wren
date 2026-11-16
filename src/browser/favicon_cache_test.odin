@@ -5,7 +5,7 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 import "wb:base"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 // One site, one key: the origin of an address, its file's name in the favicons folder.
 @(test)

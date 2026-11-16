@@ -4,7 +4,7 @@
 // carries on users' machines: changing one leaves those files and keys behind, unrecognised.
 package wren_desktop
 
-import tk "../../ext/gui_toolkit/src/desktop"
+import tk "toolkit:desktop"
 
 ENTRY_MARKER    :: "X-Wren-Integration"
 REGISTRY_MARK   :: "WrenIntegration"

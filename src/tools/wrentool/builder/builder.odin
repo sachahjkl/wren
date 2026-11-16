@@ -21,7 +21,7 @@ import "core:slice"
 import "core:strings"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/deps"
-import toolbox "../../../../ext/gui_toolkit/src/toolbox"
+import toolbox "toolkit:toolbox"
 
 EXIT_USAGE :: 2
 ABOUT_FILE :: "src/browser/about.odin"
@@ -144,7 +144,7 @@ usage :: proc() {
 	fmt.println("  WREN_TOOLKIT=path     another gui_toolkit checkout instead of ext\\gui_toolkit")
 	fmt.println("  WREN_ANY_ODIN=1       build with another Odin than odin.version says")
 	fmt.println("  WREN_VERSION_LABEL=l  a label after the version number (experimental-2026-10-24)")
-	fmt.println("\nthen: build\\wren.exe [URL]   tests: odin run src/tools/test_all -collection:wb=src -keep-executable -out:build/test_all.exe -- -Quick")
+	fmt.println("\nthen: build\\wren.exe [URL]   tests: odin run src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -keep-executable -out:build/test_all.exe -- -Quick")
 }
 
 // The program of a variant (build/wren.exe, build/wren_prof_wgpu.exe...).
@@ -167,7 +167,7 @@ dependencies :: proc(o: Options) -> bool {
 all_dependencies :: proc(o: Options) -> bool {
 	if !dependencies(o) { return false }
 	tooling.raise_stack()
-	return tooling.build_js_engine({odin_flags = o.js_odin_flags, log = o.log}) || say_fail(o, "building the JavaScript engine failed: run  odin run src/tools/buildjs -collection:wb=src -out:build/buildjs")
+	return tooling.build_js_engine({odin_flags = o.js_odin_flags, log = o.log}) || say_fail(o, "building the JavaScript engine failed: run  odin run src/tools/buildjs -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/buildjs")
 }
 
 browser :: proc(o: Options) -> bool {
@@ -187,7 +187,7 @@ browser :: proc(o: Options) -> bool {
 	// wren.exe), the console launcher (build\wren.com, embedded in wren.exe)
 	if !bindgen(o) { return false }
 	tooling.raise_stack()
-	if !tooling.build_js_engine({odin_flags = o.js_odin_flags, log = o.log, odin_opt = spec.js_opt, out = spec.js_dir != "" ? fmt.tprintf("build/%s", spec.js_dir) : ""}) { return say_fail(o, "building the JavaScript engine failed: run  odin run src/tools/buildjs -collection:wb=src -out:build/buildjs.exe") }
+	if !tooling.build_js_engine({odin_flags = o.js_odin_flags, log = o.log, odin_opt = spec.js_opt, out = spec.js_dir != "" ? fmt.tprintf("build/%s", spec.js_dir) : ""}) { return say_fail(o, "building the JavaScript engine failed: run  odin run src/tools/buildjs -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/buildjs.exe") }
 	when ODIN_OS == .Windows { if !launcher(o.log) { return false } }
 
 	// 4. Common flags; the version resource of wren.exe (publisher, product, File version) takes its numbers from APP_VERSION

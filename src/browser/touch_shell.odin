@@ -16,7 +16,7 @@ package browser
 import "core:time"
 import "toolkit:platform"
 import "wb:base"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import "wb:dom"
 import "wb:js"
 import "wb:page"

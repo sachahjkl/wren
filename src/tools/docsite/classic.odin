@@ -14,7 +14,7 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 import "wb:base"
-import tk_site "../../../ext/gui_toolkit/src/site"
+import tk_site "toolkit:site"
 
 CLASSIC_DIR          :: "site/classic"
 CLASSIC_HOME         :: "site/classic/index.html"

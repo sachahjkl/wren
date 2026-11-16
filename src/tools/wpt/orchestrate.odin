@@ -9,7 +9,7 @@ import "core:strings"
 import "core:time"
 import "wb:testserver"
 import "wb:tools/tooling"
-import toolbox "../../../ext/gui_toolkit/src/toolbox"
+import toolbox "toolkit:toolbox"
 
 // What a run of the suite is around the tests: the pinned checkout (a partial sparse clone of WPT_COMMIT: the measured folders and the shared ones, verified file by file against wpt/MANIFEST.txt),
 // the test server in this process (src/testserver: its WPT origin, on the block of ports it found free), the run, the second chance of what regressed. Outputs in build/wpt: report.md (pass rates per folder),

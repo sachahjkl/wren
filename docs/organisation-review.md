@@ -395,7 +395,7 @@ Evidence:
 - Flags have two forms: `-Urls`, `-List`, `-Exe` in `wrentool` and `test_all`
   (`src/tools/wrentool/capture/sweep.odin:86-96`), and `--profile`, `--policy` in `wren`
   (`src/browser/main.odin:1741-1745`).
-- `test_all` is started with a long command (`odin run src/tools/test_all -collection:wb=src -out:build/test_all
+- `test_all` is started with a long command (`odin run src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/test_all
   -keep-executable`). It imports `wb:tools/wrentool/builder`.
 - Versions are pinned in many places. Odin: 4 workflow files, `flake.nix:52`, `odin.version`, `README.md:256`,
   `CONTRIBUTING.md:76`. Rust 1.99.1: 3 workflow files and 4 cache keys. Wasmtime 49.0.3:

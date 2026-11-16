@@ -5,7 +5,7 @@ package license
 // signing context and extension: the licences already sold verify as before. It unlocks nothing; about:wren says who the
 // supporter is. No network is used.
 
-import licence "../../ext/gui_toolkit/src/licence"
+import licence "toolkit:licence"
 
 // The public key licences are checked with (base64url of the Ed25519 public key): the half of the pair that cannot sign.
 // browser.license.public_key replaces it at run time (a test, a fork that sells its own).

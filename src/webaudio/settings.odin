@@ -13,7 +13,7 @@
 // used by the page's thread and its render thread: everything goes through Graph.mu, held for at most a quantum.
 package webaudio
 
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 // The size of a render quantum, in frames (the specification's default, the only one here).
 RENDER_QUANTUM :: 128

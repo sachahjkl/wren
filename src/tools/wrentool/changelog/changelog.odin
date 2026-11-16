@@ -32,7 +32,7 @@ import "core:time/datetime"
 import "core:time/timezone"
 import "core:unicode"
 import "wb:tools/tooling"
-import tkc "../../../../ext/gui_toolkit/src/changelog"
+import tkc "toolkit:changelog"
 
 SOURCE_VERSION_FILE :: "src/browser/about.odin"   // the sources say their version there,
 SOURCE_VERSION_NAME :: "APP_VERSION"              // as `APP_VERSION :: "x.y.z"`

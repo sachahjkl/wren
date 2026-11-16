@@ -12,7 +12,7 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
-import process "../../../ext/gui_toolkit/src/process"
+import process "toolkit:process"
 import "wb:remote"
 import "wb:remote/api"
 

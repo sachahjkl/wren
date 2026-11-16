@@ -27,10 +27,10 @@ import "core:strconv"
 import "core:strings"
 import "core:time"
 import "wb:base"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import "wb:fetch"
 import "wb:host"
-import i18n "../../ext/gui_toolkit/src/i18n"
+import i18n "toolkit:i18n"
 
 CRASH_PREFS := [?]config.Def{
 	{name = "browser.session.crash_recovery", kind = .Bool, default = {b = true},

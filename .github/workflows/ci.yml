@@ -49,7 +49,7 @@ jobs:
         if: matrix.group != 'check'
         run: |
           New-Item -ItemType Directory -Force build | Out-Null
-          odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe
+          odin build src/tools/wrentool -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/wrentool.exe
           if ($LASTEXITCODE) { exit 1 }
 
       # A few seconds: every fragment of changelog.d is well formed and none was already released (CONTRIBUTING.md); then the tool's own tests.
@@ -58,7 +58,7 @@ jobs:
         run: |
           build/wrentool changelog -Check
           if ($LASTEXITCODE) { exit 1 }
-          odin test src/tools/wrentool/changelog -collection:wb=src -vet -out:build/changelog_test.exe
+          odin test src/tools/wrentool/changelog -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -vet -out:build/changelog_test.exe
           if ($LASTEXITCODE) { exit 1 }
 
       # The build takes one to two minutes here (dependencies from the caches). A build that runs for 20 minutes is a defect (a local
@@ -99,7 +99,7 @@ jobs:
         env:
           WREN_CI_CACHE: ${{ github.event_name == 'pull_request' && '-Cache' || '' }}
         run: |
-          odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all.exe || exit /b 1
+          odin build src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -vet -out:build/test_all.exe || exit /b 1
           build\test_all.exe -CI -NoAsan -Group ${{ matrix.group }} -Except "^test262" -RunTimeoutSec 2400 %WREN_CI_CACHE%
 
       - name: Durations of this run
@@ -188,7 +188,7 @@ jobs:
         run: |
           $sw = [Diagnostics.Stopwatch]::StartNew()
           New-Item -ItemType Directory -Force build | Out-Null
-          odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe
+          odin build src/tools/wrentool -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/wrentool.exe
           if ($LASTEXITCODE) { exit 1 }
           build/wrentool build
           $code = $LASTEXITCODE
@@ -199,7 +199,7 @@ jobs:
         shell: cmd
         timeout-minutes: 35
         run: |
-          odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all.exe || exit /b 1
+          odin build src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -vet -out:build/test_all.exe || exit /b 1
           build\test_all.exe -CI -Only "AddressSanitizer" -RunTimeoutSec 1800
 
       - uses: actions/upload-artifact@v4
@@ -233,15 +233,15 @@ jobs:
         timeout-minutes: 20
         run: |
           New-Item -ItemType Directory -Force build | Out-Null
-          odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe
+          odin build src/tools/wrentool -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/wrentool.exe
           build/wrentool deps -Profile quick
-          odin run src/tools/buildjs -collection:wb=src -out:build/buildjs.exe
+          odin run src/tools/buildjs -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/buildjs.exe
 
       - name: test262 (src\tools\test_all -CI -Only "^test262")
         shell: cmd
         timeout-minutes: 30
         run: |
-          odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all.exe || exit /b 1
+          odin build src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -vet -out:build/test_all.exe || exit /b 1
           build\test_all.exe -CI -NoAsan -Only "^test262" -RunTimeoutSec 1560
 
       - uses: actions/upload-artifact@v4
@@ -293,7 +293,7 @@ jobs:
         timeout-minutes: 25
         run: |
           mkdir -p build
-          odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all
+          odin build src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -vet -out:build/test_all
           build/test_all -CI -RunTimeoutSec 1320
 
       - name: Durations of this run

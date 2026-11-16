@@ -27,7 +27,7 @@ import "core:os"
 import "core:strings"
 import "toolkit:instance"
 import "toolkit:platform"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import process "toolkit:process"
 import "wb:host"
 

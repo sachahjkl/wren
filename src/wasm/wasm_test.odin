@@ -16,7 +16,7 @@ import "core:testing"
 import "core:thread"
 import "core:time"
 import "wb:base"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import "wb:testenv"
 
 // preemption: the call's deadline, the tick of the hook, what the hook takes in its first calls.

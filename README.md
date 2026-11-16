@@ -305,7 +305,7 @@ build\testserver.exe
 ## Tests
 
 ```powershell
-odin build src/tools/test_all -collection:wb=src -out:build/test_all.exe
+odin build src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/test_all.exe
 build\test_all.exe -Quick   # every suite but the long network stress
 build\test_all.exe          # everything
 build\test_all.exe -CI      # what continuous integration runs (see below)

@@ -1,7 +1,7 @@
 package browser
 
 import "core:strings"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 // Preferences of the interactions with the page and the chrome: selection, find in page, context menus, page zoom,
 // search, closed tabs (about:config: browser.selection.*, browser.find.*, browser.contextmenu.*, browser.zoom.*,

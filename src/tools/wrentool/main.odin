@@ -1,5 +1,5 @@
 // wrentool: the project's scripts, one program. A table of subcommands; what drives a Wren does it through the typed API (src/remote/api), what needs another program calls it (cargo, magick, ffmpeg, signtool...).
-//   odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe
+//   odin build src/tools/wrentool -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/wrentool.exe
 //   build\wrentool help
 // It compiles without any of the libraries it fetches: `wrentool build` (build.bat runs it) fetches and builds them, then the browser. What needs a desktop or real input is behind an explicit flag: it never runs by default.
 package wrentool

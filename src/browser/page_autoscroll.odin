@@ -16,7 +16,7 @@ import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import "wb:forms"
 import "wb:page"
 

@@ -3,7 +3,7 @@ package browser
 import "core:os"
 import "core:strings"
 import "core:testing"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import wren_desktop "wb:desktop"
 
 _ :: wren_desktop.LAUNCHER_MARK   // (Linux uses nothing of it: the import stays, as -vet counts)

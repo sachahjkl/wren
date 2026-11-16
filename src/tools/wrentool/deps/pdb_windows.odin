@@ -5,7 +5,7 @@ import "core:fmt"
 import "core:path/filepath"
 import "core:strings"
 import win "core:sys/windows"
-import toolbox "../../../../ext/gui_toolkit/src/toolbox"
+import toolbox "toolkit:toolbox"
 
 // A program's PDB through DbgHelp: the function and the source line at an address.
 

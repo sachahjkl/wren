@@ -8,7 +8,7 @@ package browser
 // holds the pure mapping, the preference and the command runner all backends share.
 
 import "toolkit:platform"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 APP_COMMAND_PREFS := [?]config.Def{
 	{name = "browser.mouse.back_forward_buttons", kind = .Bool, default = {b = true},

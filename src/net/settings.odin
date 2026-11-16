@@ -1,7 +1,7 @@
 package wren_net
 
 import "core:strings"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 // Everything about the transport that a user or administrator may reasonably tune. The values live in the preference
 // registry (about:config, `network.*`); the client works from a plain copy so the WinHTTP threads can read it without

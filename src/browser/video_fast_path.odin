@@ -28,7 +28,7 @@ import "core:fmt"
 import "toolkit:draw"
 import "toolkit:render"
 import "wb:base"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import "wb:page"
 
 Video_Fast_Mode :: enum u8 { Auto, Off, Verify }

@@ -7,7 +7,7 @@ package browser
 import "core:strings"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
-import i18n "../../ext/gui_toolkit/src/i18n"
+import i18n "toolkit:i18n"
 
 QR_SIDE_EM :: 16   // the code's side
 

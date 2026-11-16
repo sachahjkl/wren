@@ -2,7 +2,7 @@ package fetch
 
 import "core:strconv"
 import "core:strings"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 // Policy knobs of the fetch layer (about:config: `network.*`, `privacy.*`, `security.*`). What the Fetch Standard
 // *requires* (CORS rules, the forbidden header list, cookie semantics) is not configurable; limits, defaults, and the

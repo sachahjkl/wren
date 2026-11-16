@@ -14,8 +14,8 @@ import "toolkit:platform"
 import prefs_page "toolkit:prefs_page"
 import "toolkit:ui"
 import "wb:base"
-import config "../../ext/gui_toolkit/src/config"
-import i18n "../../ext/gui_toolkit/src/i18n"
+import config "toolkit:config"
+import i18n "toolkit:i18n"
 import "wb:page"
 
 Command_Proc :: proc(app: ^App, t: ^Tab, c: ^Command)

@@ -6,7 +6,7 @@ ask for less of it while you work, which tools tell you where the time goes, and
 Its first run on a checkout, and whenever you want it built again:
 
 ```
-odin run src/tools/test_all -collection:wb=src -keep-executable -out:build/test_all.exe -- -Quick
+odin run src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -keep-executable -out:build/test_all.exe -- -Quick
 ```
 
 After that `build\test_all.exe` (`build/test_all` on Linux) is the program: a compile less, and no second process waiting for it.
@@ -77,7 +77,7 @@ A run that fails for one cause fails in minutes, not in the job's limit:
 A unit test has no limit of its own (`core:testing` has none for every test of a program, and `testing.set_fail_timeout` ends a test's thread where it stands): the step's limit is its bound, and every unit step is built with `-define:ODIN_TEST_LOG_STATE_CHANGES=true`, so that the log of a step killed at its limit names the test that was running. A test that talks to the test server starts it in its own process, on a block of ports of its own ([below](#the-test-server)), so several worktrees test side by side. `-Perf` and `-Ui` add the steps that depend on the machine's speed or on a desktop
 ([CONTRIBUTING](../CONTRIBUTING.md)); a full run adds the check build, the AddressSanitizer unit tests (one step per package, three at a time), the whole of WPT and test262, the network stress.
 
-On Linux `build/test_all` (`odin run src/tools/test_all -collection:wb=src -out:build/test_all -keep-executable`) runs `odin check` for every portable package and their unit tests (`steps_linux.odin`, [portability](portability.md)). It also type-checks for Windows what a Windows build compiles (`check (Windows): src/browser`, `src/desktop`, `src/e2e`, `src/tools/e2e`), under an Odin root of its own (`build/odin-windows-check`: links to the real one, and an empty `wgpu_native.lib` for the vendor's check): an error only Windows sees fails there, before the CI.
+On Linux `build/test_all` (`odin run src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/test_all -keep-executable`) runs `odin check` for every portable package and their unit tests (`steps_linux.odin`, [portability](portability.md)). It also type-checks for Windows what a Windows build compiles (`check (Windows): src/browser`, `src/desktop`, `src/e2e`, `src/tools/e2e`), under an Odin root of its own (`build/odin-windows-check`: links to the real one, and an empty `wgpu_native.lib` for the vendor's check): an error only Windows sees fails there, before the CI.
 
 Two steps never write one product. `build\native` and the generated web API have one writer, the step of the dependencies (`.Native`): the browser's build finds them up to date. So the test program (`build\e2e_test.exe`) and WPT's runner do not wait for the browser's build: after a change of the browser the two compile side by side.
 
@@ -128,7 +128,7 @@ their own. A release ignores the variable. `-NoCache` turns this off too.
 A run of WPT spent 58 % of its time on tests that time out (1300 of 8800, 50 of them for 60 s): a test expected to time out
 waits for what will not come, and the page of a test that can do nothing more is given a second to prove it.
 
-`src/tools/wpt` is the whole of a run: it fetches the pinned checkout and verifies it, starts the test server in its own process, runs the tests, compares them with `wpt\expectations`, gives what regressed its second chance. `build\wpt.exe -quick`, `-only <prefix>`, `-update`, `-reftests`, `-fetch`, `-update-manifest` (top of `src/tools/wpt/main.odin`). test_all's step builds it; by hand `odin build src/tools/wpt -collection:wb=src -vet -o:speed -use-separate-modules -out:build/wpt.exe`. `src/tools/test262` is the same for test262: `build\test262.exe [-quick] [-update] [-jit ...]`.
+`src/tools/wpt` is the whole of a run: it fetches the pinned checkout and verifies it, starts the test server in its own process, runs the tests, compares them with `wpt\expectations`, gives what regressed its second chance. `build\wpt.exe -quick`, `-only <prefix>`, `-update`, `-reftests`, `-fetch`, `-update-manifest` (top of `src/tools/wpt/main.odin`). test_all's step builds it; by hand `odin build src/tools/wpt -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -vet -o:speed -use-separate-modules -out:build/wpt.exe`. `src/tools/test262` is the same for test262: `build\test262.exe [-quick] [-update] [-jit ...]`.
 
 With `-quick`, and `-fast-timeouts` for a whole run:
 
@@ -370,7 +370,7 @@ No tool holds a lock, and agents share this machine: a load starts when at most 
 
 ## Tools beside the tests
 
-Anything with a window runs on the desktop of its own that `src/tools/test_all` makes, or through `build\wrentool desktop <program> [arguments]`; no tool takes the person's focus or holds a lock. `build\wrentool help` lists the other commands, by family: deps (`fetch`, `build`, `symbols`, `crash-symbolize`), `bench` (opt-in measures: `perf`, `shell`, `js`, `idle`, `webgl`, `blocker`, `sidebar`, `startup`, `cadence`), `capture` / `shots` / `compare` (headless pictures, Wren against Edge), `gen` (generated data and fixtures), `docs`, and the release helpers (`package`, `sign`, `winget`, `notes`, `experimental`, `smoke`). A fresh checkout builds it with `odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe`.
+Anything with a window runs on the desktop of its own that `src/tools/test_all` makes, or through `build\wrentool desktop <program> [arguments]`; no tool takes the person's focus or holds a lock. `build\wrentool help` lists the other commands, by family: deps (`fetch`, `build`, `symbols`, `crash-symbolize`), `bench` (opt-in measures: `perf`, `shell`, `js`, `idle`, `webgl`, `blocker`, `sidebar`, `startup`, `cadence`), `capture` / `shots` / `compare` (headless pictures, Wren against Edge), `gen` (generated data and fixtures), `docs`, and the release helpers (`package`, `sign`, `winget`, `notes`, `experimental`, `smoke`). A fresh checkout builds it with `odin build src/tools/wrentool -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/wrentool.exe`.
 
 ## Debugging the tests' time
 

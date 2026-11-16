@@ -16,7 +16,7 @@ import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 // A view's window: its State (the toolkit builds the view in it: ui.views_window_build), its platform window, its
 // swap chain, and the browser window it belongs to.

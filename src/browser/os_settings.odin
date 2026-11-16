@@ -2,7 +2,7 @@ package browser
 
 import "core:time"
 import "toolkit:platform"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 // Windows settings the shell follows every frame, asked again only now and then. SystemParametersInfo costs a few
 // microseconds at rest but waits on the window manager while the window is being resized or moved: up to 2-3 ms per

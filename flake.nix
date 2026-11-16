@@ -202,7 +202,7 @@
 
       buildPhase = ''
         runHook preBuild
-        odin run src/tools/wrentool -collection:wb=src -out:build/wrentool -- build release
+        odin run src/tools/wrentool -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/wrentool -- build release
         runHook postBuild
       '';
 

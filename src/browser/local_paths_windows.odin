@@ -8,7 +8,7 @@ package browser
 import "core:strings"
 import win "core:sys/windows"
 import "toolkit:platform"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import "wb:fetch"
 import "wb:host"
 import "toolkit:instance"

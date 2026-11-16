@@ -22,8 +22,8 @@ import "core:strings"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
 import "wb:base"
-import config "../../ext/gui_toolkit/src/config"
-import i18n "../../ext/gui_toolkit/src/i18n"
+import config "toolkit:config"
+import i18n "toolkit:i18n"
 import "wb:vault"
 
 // The registry's commands as the toolkit's table: one for the windows' palettes, made again when the registry's keys

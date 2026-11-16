@@ -25,7 +25,7 @@ jobs:
       - uses: ./.github/actions/setup
       - name: The JavaScript engine's image
         run: |
-          odin run src/tools/buildjs -collection:wb=src -out:build/buildjs.exe
+          odin run src/tools/buildjs -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/buildjs.exe
           if ($LASTEXITCODE) { exit 1 }
       - uses: actions/upload-artifact@v4
         with:
@@ -84,7 +84,7 @@ jobs:
       - name: Native libraries
         run: |
           mkdir -p build
-          odin build src/tools/wrentool -collection:wb=src -out:build/wrentool
+          odin build src/tools/wrentool -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/wrentool
           build/wrentool fetch wasmtime
           build/wrentool fetch wgpu
           CC=clang build/wrentool build lexbor

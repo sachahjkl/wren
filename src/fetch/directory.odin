@@ -4,7 +4,7 @@ import timefmt "toolkit:timefmt"
 import "core:fmt"
 import "core:slice"
 import "core:strings"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import "wb:url"
 
 ////////////////////////////////

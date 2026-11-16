@@ -27,7 +27,7 @@ import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 // The rates of ui.anim for chrome items (halvings per second): to the selected look, and to the hovered one.
 CHROME_ANIM_SELECT_RATE :: 34

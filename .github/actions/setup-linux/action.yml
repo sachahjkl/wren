@@ -77,10 +77,10 @@ runs:
       shell: bash
       run: |
         mkdir -p build
-        odin build src/tools/wrentool -collection:wb=src -out:build/wrentool
+        odin build src/tools/wrentool -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/wrentool
         build/wrentool fetch wasmtime
         build/wrentool fetch wgpu
         CC=clang build/wrentool build lexbor
         build/wrentool build native -Profile quick -Features text,a11y
         # the JavaScript engine (build.sh deps): its pre-initialization needs the 64 MiB stack, its linker is lld's wasm-ld
-        ( ulimit -s 65536 && odin run src/tools/buildjs -collection:wb=src -out:build/buildjs )
+        ( ulimit -s 65536 && odin run src/tools/buildjs -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/buildjs )

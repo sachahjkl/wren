@@ -16,7 +16,7 @@ import "toolkit:platform"
 import prefs_page "toolkit:prefs_page"
 import "toolkit:render"
 import "toolkit:ui"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 WINDOW_PREFS := [?]config.Def{
 	{name = "browser.window.min_drag_em", kind = .Float, default = {f = 3}, bounded = true, min = 0, max = 40, value_kind = .Length, unit = .Em,

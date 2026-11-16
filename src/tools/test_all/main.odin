@@ -1,5 +1,5 @@
 // test_all: every test of the project, step by step (docs/testing.md). On Windows it all happens on a desktop of its own (desktop_windows.odin).
-//   odin run src/tools/test_all -collection:wb=src -keep-executable -out:build/test_all.exe -- -Quick
+//   odin run src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -keep-executable -out:build/test_all.exe -- -Quick
 //   build/test_all -Quick [-CI] [-Ui] [-Perf] [-NoCache] [-Cache] [-NoAsan] [-Jobs n] [-LightJobs n] [-StepTimeoutSec n] [-RunTimeoutSec n] [-Group check|shell|other]
 //                  [-Only regex] [-Except regex] [-Failed] [-Changed] [-Base commit] [-List] [-Profile] [-Odin path]
 //   build/test_all -ProfileReport base | -ProfileCompare a b    the tables of runs that were profiled (build/prof)

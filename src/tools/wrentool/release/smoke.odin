@@ -9,7 +9,7 @@ import "wb:base"
 import "wb:remote/api"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
-import toolbox "../../../../ext/gui_toolkit/src/toolbox"
+import toolbox "toolkit:toolbox"
 
 // The packaged executable end to end, as a user unpacks it: it starts, makes a window, runs script and draws a page; WebGL on the machine's driver, its GPU process lost and restored, and gone with a killed browser. It needs a
 // display (xvfb-run on a machine without one) and a Vulkan or GL driver.
@@ -145,7 +145,7 @@ run_crash_e2e :: proc(args: []string) -> int {
 		return EXIT_USAGE
 	}
 	_ = os.make_directory_all("build/linux")
-	if tooling.run({command = {tooling.odin_program(), "build", "src/tools/crashmodes", "-collection:wb=src", "-vet", "-debug", "-o:speed", "-out:" + CRASH_EXE, "-extra-linker-flags:" + toolbox.CRASH_LINKER_FLAGS}}) != 0 { fmt.eprintln("crashmodes did not build"); return 1 }
+	if tooling.run({command = {tooling.odin_program(), "build", "src/tools/crashmodes", "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit/src", "-vet", "-debug", "-o:speed", "-out:" + CRASH_EXE, "-extra-linker-flags:" + toolbox.CRASH_LINKER_FLAGS}}) != 0 { fmt.eprintln("crashmodes did not build"); return 1 }
 	failed := 0
 	for c in CRASH_CASES {
 		dir := fmt.tprintf("%s/wren-crash-%s", base.temp_dir(context.temp_allocator), base.unique_name(context.temp_allocator))

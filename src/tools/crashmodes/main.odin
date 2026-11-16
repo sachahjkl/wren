@@ -8,7 +8,7 @@ import "base:builtin"
 import "base:intrinsics"
 import "core:os"
 import "wb:base"
-import crash "../../../ext/gui_toolkit/src/crash"
+import crash "toolkit:crash"
 import "wb:host"
 
 Record :: struct { value: ^int }

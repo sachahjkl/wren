@@ -5,7 +5,7 @@ import "core:os"
 import "core:path/filepath"
 import "core:slice"
 import "core:strings"
-import toolbox "../../../ext/gui_toolkit/src/toolbox"
+import toolbox "toolkit:toolbox"
 
 // Wren's JavaScript engine: the Odin engine (src/engine/jsrt, through the QuickJS C API of src/engine/jscapi) and the browser's bindings (native/js/odin, with the generated
 // native/js/odin/bindings_gen.odin), compiled to WebAssembly, then pre-initialized: the engine, its intrinsics and the bindings set up once, at build time, and stored in the module's

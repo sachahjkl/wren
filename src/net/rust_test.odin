@@ -1,7 +1,7 @@
 package wren_net
 
 import "core:testing"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 @(test)
 rust_abi_matches :: proc(t: ^testing.T) {

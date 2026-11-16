@@ -13,7 +13,7 @@ package licensetool
 import "core:os"
 import "core:path/filepath"
 import "wb:license"
-import toolbox "../../../ext/gui_toolkit/src/toolbox"
+import toolbox "toolkit:toolbox"
 
 main :: proc() {
 	tool := toolbox.Licence_Tool{

@@ -19,7 +19,7 @@ import "wb:tools/wrentool/builder"
 import "wb:tools/wrentool/changelog"
 import "wb:tools/wrentool/deps"
 import "wb:tools/wrentool/gen"
-import toolbox "../../../../ext/gui_toolkit/src/toolbox"
+import toolbox "toolkit:toolbox"
 
 EXIT_USAGE :: 2
 DIST :: "build/dist"

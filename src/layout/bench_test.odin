@@ -11,7 +11,7 @@ import "wb:html"
 import "wb:style"
 
 // Timing of each pass on the page wrentool bench perf generates (build\perf\p10k.html). Opt-in:
-//   set WREN_LAYOUT_BENCH=1 & odin test src/layout -collection:wb=src -o:speed -define:ODIN_TEST_NAMES=layout.bench_passes
+//   set WREN_LAYOUT_BENCH=1 & odin test src/layout -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -o:speed -define:ODIN_TEST_NAMES=layout.bench_passes
 // (WREN_LAYOUT_BENCH_PAGE=p50k for the larger page.) Full passes, then incremental ones: width steps of a resize,
 // height only, a text changed in one paragraph, a style restyle comparison.
 @(test)

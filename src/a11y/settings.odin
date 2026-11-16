@@ -1,6 +1,6 @@
 package a11y
 
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 // The accessibility tree of pages (about:config, `accessibility.page.*`). The chrome's own tree is the toolkit's.
 

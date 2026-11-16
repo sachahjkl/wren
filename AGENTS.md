@@ -17,7 +17,7 @@ Windows:
 Linux (`nix develop` first):
 
 - `./build.sh deps` fetches and builds the native libraries and the JavaScript engine image.
-- `odin run src/tools/test_all -collection:wb=src -out:build/test_all -keep-executable` runs `odin check` for Linux and the unit tests of every portable package.
+- `odin run src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/test_all -keep-executable` runs `odin check` for Linux and the unit tests of every portable package.
 - `./build.sh` links `build/wren`. `./build.sh check` links the build that tracks memory.
 
 `build.bat` and `./build.sh` are shortcuts of `wrentool build`: the same variants on both systems.

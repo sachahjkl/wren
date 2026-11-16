@@ -23,7 +23,7 @@ package page
 
 import "core:strings"
 import "wb:base"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import "wb:dom"
 
 Fullscreen_Settings :: struct {

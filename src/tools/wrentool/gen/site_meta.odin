@@ -9,7 +9,7 @@ package gen
 
 import "core:fmt"
 import "core:strings"
-import tk_site "../../../../ext/gui_toolkit/src/site"
+import tk_site "toolkit:site"
 
 @(private = "file")
 version_anchor :: proc(version: string) -> string {

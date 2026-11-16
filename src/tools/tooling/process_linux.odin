@@ -7,7 +7,7 @@ import "core:time"
 import "core:os"
 import "core:sys/linux"
 import "core:sys/posix"
-import toolbox "../../../ext/gui_toolkit/src/toolbox"
+import toolbox "toolkit:toolbox"
 
 // A process in a process group of its own: what it starts stays in the group unless it asks otherwise, and a signal to the group stops the tree. Its CPU is
 // what wait4 reports: its own and that of the children it waited for.

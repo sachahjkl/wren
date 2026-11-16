@@ -9,8 +9,8 @@ import "toolkit:ui"
 import "wb:adblock"
 import "wb:base"
 import "wb:blocker"
-import config "../../ext/gui_toolkit/src/config"
-import i18n "../../ext/gui_toolkit/src/i18n"
+import config "toolkit:config"
+import i18n "toolkit:i18n"
 
 // about:blocker: the content blocker's dashboard. A native view like about:config and about:history (not a web page: it
 // edits the blocker of the browser itself and has no document, origin or scripts). Dense and compact like a tool:

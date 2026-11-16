@@ -38,7 +38,7 @@ jobs:
           if ("v$v" -ne $tag) { throw "tag $tag does not match APP_VERSION $v (src/browser/about.odin)" }
           # the CHANGELOG was assembled for this version (wrentool changelog -Assemble -Version): its section, no fragment left
           New-Item -ItemType Directory -Force build | Out-Null
-          odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe
+          odin build src/tools/wrentool -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/wrentool.exe
           if ($LASTEXITCODE) { throw 'wrentool did not build' }
           build/wrentool changelog -Check -Release $v
           if ($LASTEXITCODE) { throw "CHANGELOG.md is not ready for $v" }
@@ -54,7 +54,7 @@ jobs:
       - name: The release exe end to end (src\tools\e2e\remote_channel.odin, remote_state.odin, on build\wren.exe)
         shell: cmd
         run: |
-          odin build src/tools/test_all -collection:wb=src -vet -out:build/test_all.exe || exit /b 1
+          odin build src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -vet -out:build/test_all.exe || exit /b 1
           build\test_all.exe -CI -NoAsan -Only "remote_channel|remote_state"
       # The signed manifest an installed Wren updates itself from (src/update, docs/updates.md): the key is the repository secret
       # WREN_UPDATE_SIGNING_KEY (its public half is PRODUCT.public_key in src/update/product.odin). -RequireUpdateManifest: a release that no Wren could

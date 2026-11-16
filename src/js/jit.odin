@@ -4,7 +4,7 @@ package js
 // compiles (Cranelift) and attaches to the engine's instance (wasm.attach_function). WebAssembly stays the only
 // execution engine: the code made at run time is a Wasm module in the same sandbox as the engine.
 
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import "wb:wasm"
 
 Jit_Settings :: struct {

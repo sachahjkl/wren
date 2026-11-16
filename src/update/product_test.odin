@@ -1,7 +1,7 @@
 package wren_update
 
 import "core:testing"
-import signing "../../ext/gui_toolkit/src/signing"
+import signing "toolkit:signing"
 
 @(test)
 the_update_key_is_a_key :: proc(t: ^testing.T) {

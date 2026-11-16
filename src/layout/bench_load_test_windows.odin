@@ -16,7 +16,7 @@ import "wb:html"
 import "wb:style"
 
 // Full passes on a fresh layout (a page load) and on a reused one, on the pages wrentool bench perf generates. Opt-in:
-//   set WREN_LOADBENCH=1 & odin test src/layout -collection:wb=src -o:speed -define:ODIN_TEST_TRACK_MEMORY=false
+//   set WREN_LOADBENCH=1 & odin test src/layout -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -o:speed -define:ODIN_TEST_TRACK_MEMORY=false
 //       -define:ODIN_TEST_NAMES=layout.bench_load
 // WREN_LOADBENCH_PAGES=p10k,p50k (default), WREN_LOADBENCH_ROUNDS (7). With WREN_LOADBENCH_SAMPLE=<seconds> (build with
 // -debug for symbols), passes on the largest page are repeated that long under a sampling profiler that walks the stack of

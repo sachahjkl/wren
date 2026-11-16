@@ -31,13 +31,13 @@ import lucide "toolkit:lucide"
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import desktop "toolkit:desktop"
 import process "toolkit:process"
 import setup "toolkit:setup"
 import wren_desktop "wb:desktop"
 import "wb:host"
-import i18n "../../ext/gui_toolkit/src/i18n"
+import i18n "toolkit:i18n"
 
 DESKTOP_PREFS := [?]config.Def{
 	{name = "browser.desktop_integration.on_first_run", kind = .Bool, default = {b = APP_CHANNEL == .Release},

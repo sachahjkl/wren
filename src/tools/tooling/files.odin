@@ -6,7 +6,7 @@ import "core:path/filepath"
 import "core:slice"
 import "core:strings"
 import "core:time"
-import toolbox "../../../ext/gui_toolkit/src/toolbox"
+import toolbox "toolkit:toolbox"
 
 EXE_SUFFIX :: ".exe" when ODIN_OS == .Windows else ""
 // What programs that run Wasm are linked with: 64 MiB of thread stack (twice wasm.wasmtime.max_stack_bytes, for a call nested in a call). On Linux, `ulimit -s` of test_all.

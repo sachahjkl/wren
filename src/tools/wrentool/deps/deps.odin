@@ -12,7 +12,7 @@ import "core:slice"
 import "core:strings"
 import "wb:base"
 import "wb:tools/tooling"
-import toolbox "../../../../ext/gui_toolkit/src/toolbox"
+import toolbox "toolkit:toolbox"
 
 TEMP_DIR :: "build/tmp"
 LOG_DIR :: "build/logs"

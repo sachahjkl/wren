@@ -335,13 +335,13 @@ thread priorities and `instance` have a Linux-only file to extend.
 
 ## Slice 9 (2026-11-07): the browser with its scripts, real pages and the end-to-end scenarios on Linux
 
-A Linux machine (Xvfb, the software Vulkan adapter, an HTTPS proxy of the environment) with nothing but `./build.sh deps`, the tests (`odin run src/tools/test_all -collection:wb=src -out:build/test_all -keep-executable`) and `./build.sh`.
+A Linux machine (Xvfb, the software Vulkan adapter, an HTTPS proxy of the environment) with nothing but `./build.sh deps`, the tests (`odin run src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/test_all -keep-executable`) and `./build.sh`.
 
 **What ran before without saying so.** `build/js/wren_js.wasm` was the empty stub `test_all` leaves for `odin check`, and `./build.sh`
 linked it: a browser that ran no script (the CI's Linux sweep too). `./build.sh deps` builds the engine now and `wren` refuses the stub.
 
 **What runs.**
-- The tests (`odin run src/tools/test_all -collection:wb=src -out:build/test_all -keep-executable`): 78 steps pass (with the engine, the tests that need it run).
+- The tests (`odin run src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/test_all -keep-executable`): 78 steps pass (with the engine, the tests that need it run).
 - `wrentool sweep` on the 74 pages of `tools/site_compare_list*.txt` (scroll, developer tools, a link, back, reload, a tab, close),
   scripts on: **74 pass, no crash, no hang**.
 - The portable end-to-end scenarios of `src/tools/e2e` (those without `#+build windows`), built as `test_all` builds them for Windows

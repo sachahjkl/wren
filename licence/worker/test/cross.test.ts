@@ -18,7 +18,7 @@ function licenceTool(): string | null {
 	if (named) return existsSync(named) ? named : null;
 	const out = join(repoRoot, "build", "license_worker_test.exe");
 	mkdirSync(join(repoRoot, "build"), { recursive: true });
-	const built = spawnSync("odin", ["build", "src/tools/license", "-collection:wb=src", "-vet", `-out:${out}`], { cwd: repoRoot, encoding: "utf8" });
+	const built = spawnSync("odin", ["build", "src/tools/license", "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit/src", "-vet", `-out:${out}`], { cwd: repoRoot, encoding: "utf8" });
 	return built.status === 0 && existsSync(out) ? out : null;
 }
 

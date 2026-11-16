@@ -19,7 +19,7 @@ import "core:strings"
 import "toolkit:draw"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 DEV_LAYOUT_PREF :: "browser.devtools.layout"
 // All the panels in one stack, the Console shown: the panel as it came.

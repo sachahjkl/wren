@@ -22,7 +22,7 @@ import "toolkit:font"
 import prefs_page "toolkit:prefs_page"
 import "toolkit:render"
 import "toolkit:ui"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import "wb:host"
 import "wb:page"
 

@@ -5,7 +5,7 @@ import "core:strings"
 import "core:sync"
 import "core:time"
 import win "core:sys/windows"
-import toolbox "../../../ext/gui_toolkit/src/toolbox"
+import toolbox "toolkit:toolbox"
 
 // A process in a job object of its own: everything it starts stays in it (no walk of parents to stop a tree, and the tree's CPU is the job's accounting,
 // nothing sampled), and when the job's last handle closes, whatever is left dies: a run that is killed leaves nothing behind.

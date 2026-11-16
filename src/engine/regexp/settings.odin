@@ -6,7 +6,7 @@ package regexp
 // The limits guard against pathological patterns: an attacker-controlled page cannot make an exec run or recurse
 // without bound, because the VM charges a step per dispatch and caps its backtrack stack.
 
-import config "../../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 
 // What the preferences of the limits may be set to.
 LIMIT_PREF_MIN :: 1000

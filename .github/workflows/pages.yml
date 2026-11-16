@@ -47,7 +47,7 @@ jobs:
           echo "$ODIN_SHA256  $RUNNER_TEMP/odin.tar.gz" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/odin" && tar -xzf "$RUNNER_TEMP/odin.tar.gz" -C "$RUNNER_TEMP/odin"
           dirname "$(find "$RUNNER_TEMP/odin" -maxdepth 3 -name odin -type f | head -1)" >> "$GITHUB_PATH"
-      - run: mkdir -p build && odin run src/tools/wrentool -collection:wb=src -out:build/wrentool -- site_meta site _site
+      - run: mkdir -p build && odin run src/tools/wrentool -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/wrentool -- site_meta site _site
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site

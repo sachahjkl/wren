@@ -13,7 +13,7 @@ import "wb:tools/wrentool/bench"
 import "wb:tools/wrentool/builder"
 import "wb:tools/wrentool/changelog"
 import "wb:tools/wrentool/deps"
-import toolbox "../../../../ext/gui_toolkit/src/toolbox"
+import toolbox "toolkit:toolbox"
 
 // An experimental build of Wren, ready to hand out: a release build (the amber one) with a label, the development licence key accepted, a demonstration licence inside (wrentool build: WREN_EMBEDDED_LICENSE)
 // unless -NoEmbed, notes made from what the next version brings (changelog.d), a zip, and the link of its upload to buzzheavier (anonymous: the link lives a few days) unless -NoUpload.

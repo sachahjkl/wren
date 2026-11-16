@@ -3,7 +3,7 @@ package fetch
 import "core:os"
 import "core:strings"
 import "core:testing"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import "wb:url"
 
 @(private = "file")

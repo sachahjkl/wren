@@ -2,7 +2,7 @@ package browser
 
 import "core:strings"
 import "toolkit:ui"
-import i18n "../../ext/gui_toolkit/src/i18n"
+import i18n "toolkit:i18n"
 
 // Accessibility of the chrome (the toolkit's ui.a11y, docs/accessibility.md): what the boxes of the tab strip, the
 // sidebar, the address bar and the buttons are to a screen reader. The widgets of the toolkit say most of it; this file

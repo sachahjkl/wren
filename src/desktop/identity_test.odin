@@ -6,7 +6,7 @@ package wren_desktop
 import "core:os"
 import "core:strings"
 import "core:testing"
-import tk "../../ext/gui_toolkit/src/desktop"
+import tk "toolkit:desktop"
 
 // The entry an installed Wren has on users' machines: the same text, so that it is still recognised and removed.
 @(test)

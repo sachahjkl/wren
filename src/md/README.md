@@ -17,8 +17,9 @@ Wasm, run by Wasmtime. The window, the widgets, the settings, the install and th
   [architecture](../../docs/architecture.md) (the design rules and the security model),
   [portability](../../docs/portability.md), [testing](../../docs/testing.md), and one file per feature.
   A new design goes in this folder.
-- **The packages of the JavaScript engine and of `wasm` build without the `toolkit` collection.** They import the
-  toolkit's `config` and `i18n` by relative path.
+- **Every package imports the toolkit through the `toolkit` collection**, never by a relative path. So every build of
+  Wren, of its tools and of its tests passes `-collection:toolkit=ext/gui_toolkit/src` beside `-collection:wb=src`. The
+  toolkit's own tests name it `gt`.
 
 ## File Index
 

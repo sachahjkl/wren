@@ -14,8 +14,8 @@ import "toolkit:ui"
 import lucide "toolkit:lucide"
 import process "toolkit:process"
 import "wb:base"
-import config "../../ext/gui_toolkit/src/config"
-import i18n "../../ext/gui_toolkit/src/i18n"
+import config "toolkit:config"
+import i18n "toolkit:i18n"
 import api "wb:remote/api"
 
 // What a private Wren copies from the user's profile: how they set the browser up, not what they did with it.

@@ -21,7 +21,7 @@ import "core:fmt"
 import "core:math"
 import "core:os"
 import "wb:tools/tooling"
-import paint "../../../../ext/gui_toolkit/src/paint"
+import paint "toolkit:paint"
 
 // Drawn at LOGO_UNITS * LOGO_SUPERSAMPLE in LOGO_UNITS-unit coordinates, then scaled down.
 LOGO_SUPERSAMPLE :: 4

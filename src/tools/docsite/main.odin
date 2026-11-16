@@ -13,7 +13,7 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 import "wb:base"
-import tk_site "../../../ext/gui_toolkit/src/site"
+import tk_site "toolkit:site"
 
 DOCS_DIR  :: "docs"
 OUT_DIR   :: "site/docs"

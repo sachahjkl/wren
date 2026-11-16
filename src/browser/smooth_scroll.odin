@@ -25,7 +25,7 @@ _ :: fmt   // PACING_DEBUG only
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import lay "wb:layout"
 
 SCROLL_PREFS := [?]config.Def{

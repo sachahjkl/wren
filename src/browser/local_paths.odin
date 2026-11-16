@@ -1,6 +1,6 @@
 package browser
 
-import config "../../ext/gui_toolkit/src/config"
+import config "toolkit:config"
 import "wb:fetch"
 
 ////////////////////////////////

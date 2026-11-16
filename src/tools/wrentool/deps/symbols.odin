@@ -6,7 +6,7 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "wb:tools/tooling"
-import toolbox "../../../../ext/gui_toolkit/src/toolbox"
+import toolbox "toolkit:toolbox"
 
 // The symbols of a build, through the toolkit's crash tools (gt:crash writes the reports; toolbox names their frames).
 // A release has no PDB, so a crash report of a release names no function of Wren. Windows: the link's map (toolbox.CRASH_LINKER_FLAGS)

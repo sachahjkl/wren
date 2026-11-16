@@ -3,7 +3,7 @@
 ## Before a pull request
 
 - Build with `build.bat` (it builds with `-vet`), and `build.bat profile` for the profiling build.
-- Run `odin run src/tools/test_all -collection:wb=src -keep-executable -out:build/test_all.exe -- -Quick` (then `build\test_all.exe -Quick`): every step must say PASS, or CACHED (it passed with exactly these
+- Run `odin run src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -keep-executable -out:build/test_all.exe -- -Quick` (then `build\test_all.exe -Quick`): every step must say PASS, or CACHED (it passed with exactly these
   inputs; `-NoCache` runs everything). CI runs the same suite with `-CI` on `windows-2025` ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
   While you work: `-Changed`, `-Only <pattern>`, `-Failed`. How the tests run and how to go fast: [docs/testing.md](docs/testing.md).
 - Several runs at once on one machine (worktrees) are fine: `test_all` takes no lock. Each test program starts the test
@@ -111,7 +111,7 @@ fragments (`wrentool changelog -Assemble`).
 ## Tools
 
 Everything the project runs besides the compiler is one Odin program, `src/tools/wrentool`. A fresh checkout builds it with
-`odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe` (`build.bat` builds its own and runs `wrentool build`); `build\wrentool help` lists the
+`odin build src/tools/wrentool -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/wrentool.exe` (`build.bat` builds its own and runs `wrentool build`); `build\wrentool help` lists the
 commands, by family:
 
 - build: `build [dev|quick|debug|profile|check|release|bench]`, the browser (`build help`: the variants and the environment). While a feature is written, `build quick` is the fastest to remake (buildwren_quick.exe, nothing optimised, the engine at `-o:minimal` in buildjs_quick: about 5 s after a change of the browser, 12 s more after one of the engine, against 18 s and 107 s for `dev`); it is never what a bench or a test measures, which `dev` and `release` are;

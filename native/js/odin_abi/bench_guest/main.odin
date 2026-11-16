@@ -2,7 +2,7 @@
 // would ship) in tight loops, so the host runner (../bench) can time 1 M calls over a real Wasmtime instance and
 // compare the cost against the current wr_* scalar ABI (the wasmbench numbers). Built with:
 //   odin build native/js/odin_abi/bench_guest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator \
-//     -collection:wb=src -out:build/abi_bench.wasm -o:size
+//     -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/abi_bench.wasm -o:size
 package bench_guest
 
 import "base:runtime"
