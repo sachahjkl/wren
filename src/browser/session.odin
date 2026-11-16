@@ -52,9 +52,9 @@ SESSION_PREFS := [?]config.Def{
 		description = "Most tabs a restored session reopens."},
 	{name = "browser.session.max_windows", kind = .Int, default = {i = 32}, bounded = true, min = 1, max = 256,
 		description = "Most windows a restored session reopens (their tabs count against browser.session.max_tabs)."},
-	{name = "browser.session.max_url_bytes", kind = .Int, default = {i = 16 << 10}, bounded = true, min = 256, max = 2 << 20, bytes = true, unit = "bytes",
+	{name = "browser.session.max_url_bytes", kind = .Int, default = {i = 16 << 10}, bounded = true, min = 256, max = 2 << 20, value_kind = .Size,
 		description = "Longest address a session file may hold for a tab or an entry (longer ones, data: URLs for instance, are not saved)."},
-	{name = "browser.session.max_state_bytes", kind = .Int, default = {i = 64 << 10}, bounded = true, min = 0, max = 16 << 20, bytes = true, unit = "bytes",
+	{name = "browser.session.max_state_bytes", kind = .Int, default = {i = 64 << 10}, bounded = true, min = 0, max = 16 << 20, value_kind = .Size,
 		description = "Largest history.state of an entry the session file keeps (a larger one is restored as null)."},
 }
 

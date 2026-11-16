@@ -27,7 +27,7 @@ import config "../../ext/gui_toolkit/src/config"
 DND_IMAGE_PREFS := [?]config.Def{
 	{name = "browser.dnd.image_opacity", kind = .Float, default = {f = 0.7}, bounded = true, min = 0, max = 1,
 		description = "Opacity of the picture of a dragged element that follows the pointer (the ghost; a picture the page gave with setDragImage is shown as it is). 0 hides it."},
-	{name = "browser.dnd.image_max_px", kind = .Int, default = {i = 480}, bounded = true, min = 16, max = 4096, unit = "px",
+	{name = "browser.dnd.image_max_px", kind = .Int, default = {i = 480}, bounded = true, min = 16, max = 4096, value_kind = .Length,
 		description = "Largest width or height of the drag picture, in device pixels: a larger element or image is scaled down to fit (Windows draws large drag pictures badly)."},
 }
 

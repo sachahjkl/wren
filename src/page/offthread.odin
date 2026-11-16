@@ -37,17 +37,17 @@ Thread_Settings :: struct {
 THREAD_PREFS := [?]config.Def{
 	{name = "page.threads.parse_html", kind = .Bool, default = {b = true},
 		description = "Decode and parse HTML documents on a background thread, so the window stays responsive while a large page loads. Off: on the interface thread (same result)."},
-	{name = "page.threads.parse_html_min_bytes", kind = .Int, default = {i = 16 << 10}, bounded = true, min = 0, max = 1 << 40, bytes = true, unit = "bytes",
+	{name = "page.threads.parse_html_min_bytes", kind = .Int, default = {i = 16 << 10}, bounded = true, min = 0, max = 1 << 40, value_kind = .Size,
 		description = "Documents smaller than this are parsed on the interface thread: handing them to another thread would cost more than it saves."},
 	{name = "page.threads.parse_css", kind = .Bool, default = {b = true},
 		description = "Parse stylesheets loaded with <link> and @import on a background thread. Off: on the interface thread (same result)."},
-	{name = "page.threads.parse_css_min_bytes", kind = .Int, default = {i = 4 << 10}, bounded = true, min = 0, max = 1 << 40, bytes = true, unit = "bytes",
+	{name = "page.threads.parse_css_min_bytes", kind = .Int, default = {i = 4 << 10}, bounded = true, min = 0, max = 1 << 40, value_kind = .Size,
 		description = "Loaded stylesheets smaller than this are parsed on the interface thread."},
-	{name = "page.threads.inline_style_min_bytes", kind = .Int, default = {i = 4 << 10}, bounded = true, min = 0, max = 1 << 40, bytes = true, unit = "bytes",
+	{name = "page.threads.inline_style_min_bytes", kind = .Int, default = {i = 4 << 10}, bounded = true, min = 0, max = 1 << 40, value_kind = .Size,
 		description = "<style> elements at least this large are parsed together with their document on the background thread (when page.threads.parse_html applies). Style elements added later by scripts are always parsed at once, as the specification requires."},
 	{name = "page.threads.style", kind = .Int, default = {i = -1}, bounded = true, min = -1, max = 256,
 		description = "Threads that compute the styles of a large document together with the interface thread (the result is the same as on one thread). -1 = one less than the logical processors, at most 7; 0 = only the interface thread."},
-	{name = "page.threads.style_min_nodes", kind = .Int, default = {i = 400}, bounded = true, min = 0, max = 1 << 40, unit = "nodes",
+	{name = "page.threads.style_min_nodes", kind = .Int, default = {i = 400}, bounded = true, min = 0, max = 1 << 40,
 		description = "Documents with fewer nodes get their full style pass on the interface thread alone: sharing the work out would cost more than it saves (incremental restyles follow style.incremental.parallel_min). A style pass costs 25 to 50 microseconds per element on a page that uses many custom properties (Tailwind): at 1 800 elements it is 90 ms on one thread and 20 ms shared out, so the limit is low."},
 }
 

@@ -9,7 +9,7 @@ import config "../../ext/gui_toolkit/src/config"
 // frame, more than the layout of a large page gets at 180 Hz.
 
 OS_SETTINGS_PREFS := [?]config.Def{
-	{name = "browser.ui.os_settings_refresh_ms", kind = .Int, default = {i = 500}, bounded = true, min = 0, max = 60_000, unit = "ms",
+	{name = "browser.ui.os_settings_refresh_ms", kind = .Int, default = {i = 500}, bounded = true, min = 0, max = 60_000, value_kind = .Duration,
 		description = "How often the browser asks Windows again for the settings it follows on every frame (Settings > Accessibility > Visual effects > Animation effects). A change shows up within this delay. 0 = asked at every frame (slow while the window is being resized)."},
 }
 

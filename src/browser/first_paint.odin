@@ -77,7 +77,7 @@ First_Paint_Settings :: struct {
 FIRST_PAINT_PREFS := [?]config.Def{
 	{name = "browser.paint_holding.enabled", kind = .Bool, default = {b = true},
 		description = "Keep showing the current page while the next one loads, until the next one can paint (its stylesheets and fonts are there), instead of a blank page. Off: the page is cleared as soon as a navigation starts."},
-	{name = "browser.paint_holding.timeout_ms", kind = .Float, default = {f = 1000}, bounded = true, min = 0, max = 60_000, unit = "ms",
+	{name = "browser.paint_holding.timeout_ms", kind = .Float, default = {f = 1000}, bounded = true, min = 0, max = 60_000, value_kind = .Duration,
 		description = "Once the next document has arrived, how long the previous page may stay on screen while it is not ready to paint; then its background color shows until it is. (Chromium: up to about a second.)"},
 	{name = "browser.paint_holding.cross_origin", kind = .Bool, default = {b = true},
 		description = "Hold the previous page also when the next one is on another origin. Off: only same-origin navigations keep it (the page of another site is never shown under the next one's address)."},

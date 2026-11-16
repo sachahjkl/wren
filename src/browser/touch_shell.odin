@@ -23,15 +23,15 @@ import "wb:page"
 import "wb:style"
 
 TOUCH_PREFS := [?]config.Def{
-	{name = "browser.touch.pan_slop_px", kind = .Float, default = {f = 10}, bounded = true, min = 1, max = 200, unit = "px",
+	{name = "browser.touch.pan_slop_px", kind = .Float, default = {f = 10}, bounded = true, min = 1, max = 200, value_kind = .Length,
 		description = "How far a finger moves (CSS pixels) before the touch is a pan that scrolls rather than a tap or a long press."},
-	{name = "browser.touch.long_press_ms", kind = .Int, default = {i = 500}, bounded = true, min = 0, max = 10_000, unit = "ms",
+	{name = "browser.touch.long_press_ms", kind = .Int, default = {i = 500}, bounded = true, min = 0, max = 10_000, value_kind = .Duration,
 		description = "A finger held still this long opens the context menu (0: never)."},
 	{name = "browser.touch.fling", kind = .Bool, default = {b = true},
 		description = "A pan released while the finger still moves glides on, slowing down."},
-	{name = "browser.touch.fling_friction", kind = .Float, default = {f = 4}, bounded = true, min = 0.5, max = 100, unit = "1/s",
+	{name = "browser.touch.fling_friction", kind = .Float, default = {f = 4}, bounded = true, min = 0.5, max = 100, value_kind = .Rate,
 		description = "How fast a fling slows down: its speed falls by e every 1/friction seconds (larger: a shorter glide)."},
-	{name = "browser.touch.fling_min_speed", kind = .Float, default = {f = 150}, bounded = true, min = 0, max = 100_000, unit = "px/s",
+	{name = "browser.touch.fling_min_speed", kind = .Float, default = {f = 150}, bounded = true, min = 0, max = 100_000, value_kind = .Rate, unit = .Pixel_Per_Second,
 		description = "Slower than this when the finger leaves, a pan just stops."},
 	{name = "browser.touch.pinch_step", kind = .Float, default = {f = 1.15}, bounded = true, min = 1.01, max = 4,
 		description = "How much two fingers must spread (or close) for the page to zoom one step, as one notch of Ctrl+wheel."},

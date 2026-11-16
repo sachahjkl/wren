@@ -22,23 +22,23 @@ js_dom_limits :: proc(s: Js_Dom_Settings) -> dom.Limits {
 }
 
 JS_DOM_PREFS := [?]config.Def{
-	{name = "javascript.dom.max_fragment_nodes", kind = .Int, default = {i = 1_000_000}, bounded = true, min = 1_000, max = 100_000_000, unit = "nodes",
+	{name = "javascript.dom.max_fragment_nodes", kind = .Int, default = {i = 1_000_000}, bounded = true, min = 1_000, max = 100_000_000,
 		description = "Most nodes one HTML fragment parse (innerHTML, outerHTML, insertAdjacentHTML, setHTMLUnsafe, Document.parseHTMLUnsafe) may create. The rest of the markup is dropped (with a warning in the console), so a script cannot exhaust memory in one call."},
-	{name = "javascript.dom.selector_cache_entries", kind = .Int, default = {i = 128}, bounded = true, min = 0, max = 100_000, unit = "selector lists",
+	{name = "javascript.dom.selector_cache_entries", kind = .Int, default = {i = 128}, bounded = true, min = 0, max = 100_000,
 		description = "Parsed selector lists kept per page for querySelector, querySelectorAll, matches and closest: a selector used again (in a loop) is not parsed again. 0 parses every time."},
-	{name = "javascript.dom.max_mutation_records", kind = .Int, default = {i = 1_000_000}, bounded = true, min = 100, max = 1 << 30, unit = "records",
+	{name = "javascript.dom.max_mutation_records", kind = .Int, default = {i = 1_000_000}, bounded = true, min = 100, max = 1 << 30,
 		description = "Most records one MutationObserver may have waiting for delivery. Past it the oldest are dropped (during a delivery, the newest), with a warning in the console: a page that mutates without ever yielding cannot grow the queue without bound."},
-	{name = "javascript.dom.max_client_rects", kind = .Int, default = {i = 100_000}, bounded = true, min = 1, max = 10_000_000, unit = "rectangles",
+	{name = "javascript.dom.max_client_rects", kind = .Int, default = {i = 100_000}, bounded = true, min = 1, max = 10_000_000,
 		description = "Most rectangles Range.getClientRects returns (and Range.getBoundingClientRect unites). An element has at most one."},
-	{name = "javascript.dom.style_cache_entries", kind = .Int, default = {i = 4096}, bounded = true, min = 0, max = 100_000, unit = "style attributes",
+	{name = "javascript.dom.style_cache_entries", kind = .Int, default = {i = 4096}, bounded = true, min = 0, max = 100_000,
 		description = "Parsed style attributes, and validated style.setProperty values, kept per page for element.style (each): reading or changing a declaration in a loop does not parse again. Enough for the elements a script animates (each element's current text is one entry: fewer, and an animation of more elements parses every attribute again). 0 parses every time."},
-	{name = "javascript.dom.max_resize_passes", kind = .Int, default = {i = 4}, bounded = true, min = 1, max = 100, unit = "passes",
+	{name = "javascript.dom.max_resize_passes", kind = .Int, default = {i = 4}, bounded = true, min = 1, max = 100,
 		description = "Times one rendering update delivers ResizeObserver entries again for what the callbacks changed (Resize Observer: the loop of \"gather active observations\"). What is still changing after that waits for the next frame, as browsers do (\"ResizeObserver loop completed with undelivered notifications\"), so a callback that always resizes its target cannot stall the page."},
-	{name = "javascript.dom.max_nodes", kind = .Int, default = {i = 4_000_000}, bounded = true, min = 10_000, max = 1 << 30, unit = "nodes",
+	{name = "javascript.dom.max_nodes", kind = .Int, default = {i = 4_000_000}, bounded = true, min = 10_000, max = 1 << 30,
 		description = "Most nodes one document may hold (in its tree or not). Past it, inserting a new node fails with QuotaExceededError, so a script that loops creating nodes cannot exhaust the browser's memory (a node takes about 200 bytes). The largest real pages have about 100,000."},
-	{name = "javascript.dom.max_bytes", kind = .Int, default = {i = 1 << 30}, bounded = true, min = 1 << 20, max = 1 << 40, bytes = true, unit = "bytes",
+	{name = "javascript.dom.max_bytes", kind = .Int, default = {i = 1 << 30}, bounded = true, min = 1 << 20, max = 1 << 40, value_kind = .Size,
 		description = "Most bytes of text, element names and attributes one document's nodes may hold. Past it, a write that adds bytes (text, attribute values, textContent) fails with QuotaExceededError."},
-	{name = "javascript.dom.max_listeners_per_target", kind = .Int, default = {i = 20_000}, bounded = true, min = 100, max = 10_000_000, unit = "listeners",
+	{name = "javascript.dom.max_listeners_per_target", kind = .Int, default = {i = 20_000}, bounded = true, min = 100, max = 10_000_000,
 		description = "Most event listeners one target (an element, the document, the Window, any other EventTarget) may have. Past it, addEventListener fails with QuotaExceededError. Each addition compares with the target's listeners, so this also bounds the time one takes."},
 }
 

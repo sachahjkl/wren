@@ -39,17 +39,17 @@ Settings :: struct {
 WEBAUDIO_PREFS := [?]config.Def{
 	{name = "webaudio.enabled", kind = .Bool, default = {b = true},
 		description = "The Web Audio API (AudioContext and its nodes). Off: the interfaces read as undefined, what a script tests for."},
-	{name = "webaudio.latency_ms", kind = .Float, default = {f = 30}, bounded = true, min = 5, max = 1000, unit = "ms",
+	{name = "webaudio.latency_ms", kind = .Float, default = {f = 30}, bounded = true, min = 5, max = 1000, value_kind = .Duration,
 		description = "Audio a running AudioContext keeps queued ahead of the device for latencyHint \"interactive\" (\"balanced\" is twice that, \"playback\" four times). Lower answers sooner and may crackle on a busy machine."},
-	{name = "webaudio.sample_rate", kind = .Float, default = {f = 48000}, bounded = true, min = MIN_SAMPLE_RATE, max = MAX_SAMPLE_RATE, unit = "Hz",
+	{name = "webaudio.sample_rate", kind = .Float, default = {f = 48000}, bounded = true, min = MIN_SAMPLE_RATE, max = MAX_SAMPLE_RATE, value_kind = .Rate,
 		description = "The sample rate of an AudioContext that does not ask for one (the audio engine converts it to the device's)."},
-	{name = "webaudio.max_buffer_mb", kind = .Int, default = {i = 1024}, bounded = true, min = 1, max = 1 << 20, unit = "MB",
+	{name = "webaudio.max_buffer_mb", kind = .Int, default = {i = 1024}, bounded = true, min = 1, max = 1 << 20, value_kind = .Size, unit = .Mebibyte,
 		description = "Largest AudioBuffer or OfflineAudioContext rendering (all channels). Past it, creation fails with NotSupportedError."},
 	{name = "webaudio.max_contexts", kind = .Int, default = {i = 64}, bounded = true, min = 1, max = 4096,
 		description = "Most AudioContexts a page may have open at once (each running one has a thread and an audio stream). Past it, new AudioContext() fails with NotSupportedError."},
-	{name = "webaudio.worklet_stall_ms", kind = .Int, default = {i = 5000}, bounded = true, min = 100, max = 600000, unit = "ms",
+	{name = "webaudio.worklet_stall_ms", kind = .Int, default = {i = 5000}, bounded = true, min = 100, max = 600000, value_kind = .Duration,
 		description = "How long an AudioWorklet's realm may leave the render thread without an answer (a process() that never returns) before it is stopped and its nodes fire processorerror. A quantum it misses meanwhile is silence."},
-	{name = "webaudio.max_convolver_seconds", kind = .Float, default = {f = MAX_CONVOLVER_SECONDS}, bounded = true, min = 0.1, max = 600, unit = "s",
+	{name = "webaudio.max_convolver_seconds", kind = .Float, default = {f = MAX_CONVOLVER_SECONDS}, bounded = true, min = 0.1, max = 600, value_kind = .Duration, unit = .Second,
 		description = "Longest part of a ConvolverNode's impulse response that is used; the rest of a longer one is cut. The memory and the work of the convolver grow with it."},
 }
 

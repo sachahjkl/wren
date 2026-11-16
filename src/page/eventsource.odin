@@ -32,17 +32,17 @@ Eventsource_Settings :: struct {
 }
 
 EVENTSOURCE_PREFS := [?]config.Def{
-	{name = "eventsource.default_retry_ms", kind = .Int, default = {i = 3000}, bounded = true, min = 0, max = 3_600_000, unit = "ms",
+	{name = "eventsource.default_retry_ms", kind = .Int, default = {i = 3000}, bounded = true, min = 0, max = 3_600_000, value_kind = .Duration,
 		description = "Reconnection time of an EventSource until the server sends a retry: field."},
-	{name = "eventsource.min_retry_ms", kind = .Int, default = {i = 250}, bounded = true, min = 0, max = 3_600_000, unit = "ms",
+	{name = "eventsource.min_retry_ms", kind = .Int, default = {i = 250}, bounded = true, min = 0, max = 3_600_000, value_kind = .Duration,
 		description = "Shortest wait before reconnecting, whatever the server asks: a stream that ends at once cannot hammer the server."},
-	{name = "eventsource.max_retry_ms", kind = .Int, default = {i = 300_000}, bounded = true, min = 0, max = 86_400_000, unit = "ms",
+	{name = "eventsource.max_retry_ms", kind = .Int, default = {i = 300_000}, bounded = true, min = 0, max = 86_400_000, value_kind = .Duration,
 		description = "Longest wait before reconnecting (caps the server's retry: field and the back-off)."},
 	{name = "eventsource.backoff_factor", kind = .Float, default = {f = 2}, bounded = true, min = 1, max = 16,
 		description = "Each consecutive failed reconnection multiplies the wait by this factor (1 = no back-off). A successful connection resets it."},
 	{name = "eventsource.max_reconnect_attempts", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 1_000_000,
 		description = "Consecutive reconnections without success before the EventSource gives up (readyState CLOSED). 0 = never gives up."},
-	{name = "eventsource.max_event_bytes", kind = .Int, default = {i = 16 << 20}, bounded = true, min = 1024, max = 1 << 30, bytes = true, unit = "bytes",
+	{name = "eventsource.max_event_bytes", kind = .Int, default = {i = 16 << 20}, bounded = true, min = 1024, max = 1 << 30, value_kind = .Size,
 		description = "Largest event (data of one event, or one line of the stream). A stream exceeding it fails the EventSource."},
 }
 

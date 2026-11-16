@@ -39,13 +39,13 @@ PLANE_PREFS := [?]config.Def{
 		description = "Most texture reads per pixel along the long axis of a plane seen at a slant (anisotropic filtering of the projected layer). 1: plain bilinear."},
 	{name = "paint.planes.mipmaps", kind = .Bool, default = {b = true},
 		description = "Give the layer of a plane its mip levels (rebuilt when it is rasterized), so that a plane that perspective makes smaller than its layer is filtered instead of aliased. Costs a third more GPU memory per layer."},
-	{name = "paint.planes.layer_mb", kind = .Int, default = {i = 96}, bounded = true, min = 4, max = 4096, unit = "MB",
+	{name = "paint.planes.layer_mb", kind = .Int, default = {i = 96}, bounded = true, min = 4, max = 4096, value_kind = .Size, unit = .Mebibyte,
 		description = "GPU memory one plane's layer may use. A plane that would need more at the scale its projection asks for is rasterized for the part of it that shows, and then at a lower scale if that is still too much."},
 	{name = "paint.planes.motion_tolerance", kind = .Float, default = {f = 2}, bounded = true, min = 1, max = 16,
 		description = "While a plane moves (an animation, a drag) its layer keeps the scale it has, so that it is not rasterized again at every frame, until the scale it needs is this many times larger (the plane then looks that much softer). It is rasterized again at the right scale a moment after it stops."},
 	{name = "paint.planes.detach_children", kind = .Bool, default = {b = true},
 		description = "Composite a flat 3D-transformed child of a plain 3D-transformed element on its own, projected once with its parent, instead of drawing it into the parent's layer: animating the child then does not rasterize the parent again every frame, and the child is resampled once. Off: the child is drawn into the parent's layer."},
-	{name = "paint.planes.settle_ms", kind = .Float, default = {f = 120}, bounded = true, min = 0, max = 5000, unit = "ms",
+	{name = "paint.planes.settle_ms", kind = .Float, default = {f = 120}, bounded = true, min = 0, max = 5000, value_kind = .Duration,
 		description = "How long after a plane stopped moving it is rasterized again at the scale it needs, when it kept a smaller one while moving."},
 }
 

@@ -10,7 +10,7 @@ package browser
 //     command line or a policy sets it or when it takes effect at the next start;
 //   * its dotted name in small (a click copies it), and the default beside it while the value differs from it;
 //   * the first sentence of its description (config.summary_of); the rest and the facts (default, range, allowed values,
-//     K / M / G, restart) are behind the row's details fold (the chevron, or Right / Left);
+//     the suffixes a size or a time takes, restart) are behind the row's details fold (the chevron, or Right / Left);
 //   * the editor in a fixed column: a switch, a choice, a field with its unit; the reset button beside it.
 //
 // The desktop integration is a row of the Browser category (desktop_shell.odin fills it in); the search engines' list
@@ -140,30 +140,29 @@ source_label :: proc(e: ^config.Entry) -> string {
 	return ""
 }
 
+// The value as the details write it: a string's empty value reads "(empty)", a number carries its unit ("4 MiB").
 @(private = "file")
-number_text :: proc(v: f64, kind: config.Kind) -> string {
-	if kind == .Int { return fmt.tprintf("%d", i64(v)) }
-	return fmt.tprintf("%g", v)
+shown_value :: proc(d: config.Def, v: config.Value) -> string {
+	if d.kind == .String && v.s == "" { return i18n.tr("(empty)") }
+	return config.shown_text(d, v)
 }
 
-// The value as the details write it: a string's empty value reads "(empty)", a number carries its unit.
+// "4 KiB to 64 MiB": a number's bounds as its values are shown.
 @(private = "file")
-shown_value :: proc(d: config.Def, text: string) -> string {
-	if d.kind == .String && text == "" { return i18n.tr("(empty)") }
-	if (d.kind == .Int || d.kind == .Float) && d.unit != "" { return strings.concatenate({text, " ", d.unit}, context.temp_allocator) }
-	return text
+range_text :: proc(d: config.Def) -> string {
+	return fmt.tprintf(i18n.tr("%s to %s"), shown_value(d, {i = i64(d.min), f = d.min}), shown_value(d, {i = i64(d.max), f = d.max}))
 }
 
-// The facts of the details: "Default 30000 ms  ·  0 to 3600000 ms  ·  takes effect at the next start".
+// The facts of the details: "Default 30000 ms  ·  0 ms to 3600000 ms  ·  a time: 300 ms, 1.5 s, 2 min, 1 d".
 @(private)
 facts_line :: proc(prefs: ^config.Prefs, r: config.Ref, e: ^config.Entry) -> string {
 	d := e.def
 	parts := make([dynamic]string, context.temp_allocator)
-	append(&parts, fmt.tprintf(i18n.tr("Default %s"), shown_value(d, config.default_string(prefs, r))))
-	unit := d.unit != "" ? strings.concatenate({" ", d.unit}, context.temp_allocator) : ""
-	if d.bounded { append(&parts, fmt.tprintf(i18n.tr("%s to %s%s"), number_text(d.min, d.kind), number_text(d.max, d.kind), unit)) }
+	append(&parts, fmt.tprintf(i18n.tr("Default %s"), shown_value(d, d.default)))
+	if d.bounded { append(&parts, range_text(d)) }
 	if len(d.choices) > 0 { append(&parts, strings.concatenate({i18n.tr("one of "), strings.join(d.choices, ", ", context.temp_allocator)}, context.temp_allocator)) }
-	if d.bytes { append(&parts, i18n.tr("K / M / G accepted")) }
+	// a size or a time takes its unit's suffixes ("4 MiB", "1.5 s"): say so, with examples
+	if config.is_measure(d.value_kind) && config.value_hint(d) != "" { append(&parts, config.value_hint(d)) }
 	if d.restart { append(&parts, i18n.tr("takes effect at the next start")) }
 	switch e.source {
 	case .Command_Line: append(&parts, i18n.tr("set on the command line for this run"))
@@ -643,9 +642,9 @@ config_apply :: proc(v: ^Config_View, prefs: ^config.Prefs, st: ^Row_State, name
 	msg := config.set_error_text(err)
 	if r := config.ref_of(prefs, name); r != config.NO_REF {
 		d := config.entry(prefs, r).def
-		unit := d.unit != "" ? strings.concatenate({" ", d.unit}, context.temp_allocator) : ""
 		#partial switch err {
-		case .Out_Of_Range: if d.bounded { msg = fmt.tprintf("%s: %s to %s%s", msg, number_text(d.min, d.kind), number_text(d.max, d.kind), unit) }
+		case .Out_Of_Range: if d.bounded { msg = fmt.tprintf("%s: %s", msg, range_text(d)) }
+		case .Bad_Type: if hint := config.value_hint(d); hint != "" { msg = fmt.tprintf("%s: %s", msg, hint) }
 		case .Not_A_Choice: msg = fmt.tprintf("%s: %s", msg, strings.join(d.choices, ", ", context.temp_allocator))
 		}
 	}
@@ -757,7 +756,7 @@ config_row :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: config.R
 				if ks.clicked { clip_set(name); announce(app, .Info, fmt.tprintf(i18n.tr("Copied %s"), name)) }
 				if e.source != .Default {
 					ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0, font_size = em * 0.84})
-					ui.label(fmt.tprintf("   \u00b7   %s###kd_%s", fmt.tprintf(i18n.tr("default %s"), shown_value(e.def, config.default_string(prefs, r))), name))
+					ui.label(fmt.tprintf("   \u00b7   %s###kd_%s", fmt.tprintf(i18n.tr("default %s"), shown_value(e.def, e.def.default)), name))
 				}
 			}
 		}
@@ -870,7 +869,7 @@ config_editor :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: confi
 					ui.spacer(ui.px(em * 0.5))
 					if ui.tags("weak") {
 						ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0, font_size = em * 0.9})
-						ui.label(fmt.tprintf("%s###u_%s", e.def.unit, name))
+						ui.label(fmt.tprintf("%s###u_%s", config.unit_symbol(e.def), name))
 					}
 				}
 			}

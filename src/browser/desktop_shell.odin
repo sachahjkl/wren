@@ -42,7 +42,7 @@ import i18n "../../ext/gui_toolkit/src/i18n"
 DESKTOP_PREFS := [?]config.Def{
 	{name = "browser.desktop_integration.on_first_run", kind = .Bool, default = {b = APP_CHANNEL == .Release},
 		description = "At the start of a copy of Wren that is not the installed one, open the Setup dialog (install, replace the installed copy, repair, or \"Use standalone\" to carry on as it is: the answer is remembered in the profile). It also opens when the installed copy needs repair. Only the release build does by default; development builds, profiles given with --profile, profiles in the temporary folder and portable copies (a wren.portable file beside wren.exe) never do. Closing the dialog without answering asks again after the next update. The command \"Setup...\" and `wren.exe --setup` open it whatever this says."},
-	{name = "browser.desktop_integration.status_refresh_ms", kind = .Int, default = {i = 30000}, bounded = true, min = 0, max = 60_000, unit = "ms",
+	{name = "browser.desktop_integration.status_refresh_ms", kind = .Int, default = {i = 30000}, bounded = true, min = 0, max = 60_000, value_kind = .Duration,
 		description = "Longest time about:config shows the state of the desktop integration read from the disk before reading it again. Coming back to the window reads it at once (the integration is changed elsewhere), and while the system watcher runs (it tells Wren when the registry keys or the Start menu shortcut change) nothing is read on a timer; this is the period when no watcher runs (a profile of its own, a platform without one). 0 = at every frame."},
 }
 

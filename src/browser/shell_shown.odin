@@ -58,7 +58,7 @@ Shown_Layout :: struct {
 }
 
 SHELL_SHOWN_PREFS := [?]config.Def{
-	{name = "browser.shell.shown_layout_max_ms", kind = .Float, default = {f = 4}, bounded = true, min = 0, max = 100, unit = "ms",
+	{name = "browser.shell.shown_layout_max_ms", kind = .Float, default = {f = 4}, bounded = true, min = 0, max = 100, value_kind = .Duration,
 		description = "While a page keeps the interface thread busy, its animations of layout properties (width, height, font-size...) go on when a whole layout of the page takes less than this: it is made in each interface frame, on a copy, without touching what scripts read. 0: they wait for the page."},
 }
 

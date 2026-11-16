@@ -52,7 +52,7 @@ CONSOLE_PREFS := [?]config.Def{
 		description = "Show the result of the expression being typed in the console without running anything that changes the page."},
 	{name = "browser.devtools.console.context_only", kind = .Bool, default = {b = false},
 		description = "Show only the messages of the JavaScript context chosen in the console's selector (the top document, or one of its nested documents)."},
-	{name = "browser.devtools.console.max_payload_kb", kind = .Int, default = {i = 256}, bounded = true, min = 8, max = 65536, unit = "kB",
+	{name = "browser.devtools.console.max_payload_kb", kind = .Int, default = {i = 256}, bounded = true, min = 8, max = 65536, value_kind = .Size, unit = .Kibibyte,
 		description = "The most a console message may keep of the objects it was given (their structure, for the tree under the message); messages with more keep their text only."},
 }
 

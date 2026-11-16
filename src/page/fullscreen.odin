@@ -37,7 +37,7 @@ FULLSCREEN_PREFS := [?]config.Def{
 		description = "The Fullscreen API: a page's element (a video player) can fill the screen (element.requestFullscreen). Off: document.fullscreenEnabled is false and every request fails with a TypeError and a fullscreenerror event."},
 	{name = "fullscreen.require_user_activation", kind = .Bool, default = {b = true},
 		description = "A request for full screen needs a recent click or key press in the document, as in other browsers. Off only to test pages that go fullscreen by themselves."},
-	{name = "fullscreen.user_activation_ms", kind = .Int, default = {i = 5000}, bounded = true, min = 100, max = 600_000, unit = "ms",
+	{name = "fullscreen.user_activation_ms", kind = .Int, default = {i = 5000}, bounded = true, min = 100, max = 600_000, value_kind = .Duration,
 		description = "How long after a click or key press a page may still ask for full screen."},
 }
 

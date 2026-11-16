@@ -17,9 +17,9 @@ Webcodecs_Settings :: struct {
 WEBCODECS_PREFS := [?]config.Def{
 	{name = "webcodecs.enabled", kind = .Bool, default = {b = true},
 		description = "WebCodecs: VideoFrame, ImageDecoder, VideoDecoder, AudioDecoder and the encoders. Off hides the interfaces."},
-	{name = "webcodecs.max_frame_bytes", kind = .Int, default = {i = 256 << 20}, bounded = true, min = 1 << 20, max = 1 << 32, bytes = true, unit = "bytes",
+	{name = "webcodecs.max_frame_bytes", kind = .Int, default = {i = 256 << 20}, bounded = true, min = 1 << 20, max = 1 << 32, value_kind = .Size,
 		description = "Most bytes the pixels (or samples) of a single VideoFrame or AudioData may take. A frame larger than this is refused."},
-	{name = "webcodecs.max_dimension", kind = .Int, default = {i = 16384}, bounded = true, min = 16, max = 65536, unit = "px",
+	{name = "webcodecs.max_dimension", kind = .Int, default = {i = 16384}, bounded = true, min = 16, max = 65536, value_kind = .Length,
 		description = "The largest width or height of a VideoFrame."},
 	{name = "webcodecs.max_decode_queue", kind = .Int, default = {i = 256}, bounded = true, min = 1, max = 100000,
 		description = "Most encoded chunks a VideoDecoder or AudioDecoder may have queued (decodeQueueSize) before decode() is refused."},

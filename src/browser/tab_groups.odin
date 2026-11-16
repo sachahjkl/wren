@@ -28,7 +28,7 @@ import i18n "../../ext/gui_toolkit/src/i18n"
 TAB_GROUP_PREFS := [?]config.Def{
 	{name = "browser.tabs.restore_pinned", kind = .Bool, default = {b = true},
 		description = i18n.later("Reopen the pinned tabs at start-up even when the session is not restored (browser.session.restore off). Needs browser.profile.persist.")},
-	{name = "browser.tabs.group_name_max", kind = .Int, default = {i = 64}, bounded = true, min = 1, max = 1024, unit = "characters",
+	{name = "browser.tabs.group_name_max", kind = .Int, default = {i = 64}, bounded = true, min = 1, max = 1024,
 		description = i18n.later("Longest name a tab group may have.")},
 }
 

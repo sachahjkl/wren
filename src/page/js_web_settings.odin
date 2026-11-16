@@ -23,7 +23,7 @@ JS_WEB_PREFS := [?]config.Def{
 		description = "What navigator.vendor says (Chromium-based browsers say \"Google Inc.\", Firefox nothing)."},
 	{name = "navigator.hardware_concurrency", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 1024,
 		description = "What navigator.hardwareConcurrency says, the number of threads scripts may plan for. 0 = the machine's logical processors; a fixed value hides it (fingerprinting)."},
-	{name = "navigator.beacon_max_bytes", kind = .Int, default = {i = 64 << 10}, bounded = true, min = 0, max = 1 << 30, bytes = true, unit = "bytes",
+	{name = "navigator.beacon_max_bytes", kind = .Int, default = {i = 64 << 10}, bounded = true, min = 0, max = 1 << 30, value_kind = .Size,
 		description = "Largest body navigator.sendBeacon accepts (browsers allow 64 KiB). Larger beacons are refused (sendBeacon returns false)."},
 	{name = "navigator.clipboard_write", kind = .Bool, default = {b = true},
 		description = "navigator.clipboard.writeText and write put text on the system clipboard, from a focused page or after a click or key press in it. Off: they reject with NotAllowedError."},

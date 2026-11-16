@@ -69,7 +69,7 @@ DEVTOOLS_PREFS := [?]config.Def{
 		description = "The tab of the developer tools that is shown."},
 	{name = "browser.devtools.layout", kind = .String, default = {s = DEV_LAYOUT_DEFAULT},
 		description = "Where the developer tools' panels are: their stacks of tabs (* before the one shown), the splits between them (x: side by side, y: one above the other, the first's share, f: the second folded) and the floating ones (@x,y,width,height), as one line. Drag a tab to change it; its stack's menu does it from the keyboard."},
-	{name = "browser.devtools.font_size", kind = .Float, default = {f = 12}, bounded = true, min = 8, max = 24, unit = "px",
+	{name = "browser.devtools.font_size", kind = .Float, default = {f = 12}, bounded = true, min = 8, max = 24, value_kind = .Length,
 		description = "Size of the text of the developer tools (CSS pixels). Ctrl and the plus, minus or zero keys change it while the panel has the pointer."},
 	{name = "browser.devtools.density", kind = .String, default = {s = "compact"}, choices = {"compact", "comfortable"},
 		description = "How tightly the developer tools' rows and toolbars are spaced."},

@@ -121,9 +121,9 @@ Net_Ref :: struct {
 NETWORK_PREFS := [?]config.Def{
 	{name = "browser.devtools.network.max_entries", kind = .Int, default = {i = 10000}, bounded = true, min = 100, max = 1000000,
 		description = "The most requests the Network tab keeps per tab; the oldest go first."},
-	{name = "browser.devtools.network.max_body_kb", kind = .Int, default = {i = 8192}, bounded = true, min = 0, max = 2097152, unit = "kB",
+	{name = "browser.devtools.network.max_body_kb", kind = .Int, default = {i = 8192}, bounded = true, min = 0, max = 2097152, value_kind = .Size, unit = .Kibibyte,
 		description = "The most of one response the Network tab keeps for its Preview and Response views (0: no bodies are kept)."},
-	{name = "browser.devtools.network.max_body_mb", kind = .Int, default = {i = 256}, bounded = true, min = 1, max = 16384, unit = "MB",
+	{name = "browser.devtools.network.max_body_mb", kind = .Int, default = {i = 256}, bounded = true, min = 1, max = 16384, value_kind = .Size, unit = .Mebibyte,
 		description = "The most the Network tab keeps of the bodies of one tab in all; the oldest bodies are freed first. Closing the tab frees them all."},
 	{name = "browser.devtools.network.keep_media", kind = .Bool, default = {b = true},
 		description = "Keep the bodies of audio and video responses, up to the limit of one body (for the player of the Preview tab)."},

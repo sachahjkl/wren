@@ -63,13 +63,13 @@ TIMELINE_PREFS := [?]config.Def{
 		description = "How many Resource Timing entries a document keeps (performance.getEntriesByType(\"resource\"), setResourceTimingBufferSize changes it): its scripts, styles, images, fonts and frames. Past it the oldest go. 0: none are recorded."},
 	{name = "performance.event_timing_entries", kind = .Int, default = {i = 150}, bounded = true, min = 0, max = 100_000,
 		description = "How many Event Timing entries (slow input events, PerformanceObserver type \"event\") a document keeps. 0: none are recorded."},
-	{name = "performance.event_timing_min_ms", kind = .Float, default = {f = 16}, bounded = true, min = 0, max = 10_000, unit = "ms",
+	{name = "performance.event_timing_min_ms", kind = .Float, default = {f = 16}, bounded = true, min = 0, max = 10_000, value_kind = .Duration,
 		description = "An input event whose listeners took at least this long (rounded up to 8 ms) is recorded as an Event Timing entry; an observer asks for its own threshold (durationThreshold, 104 ms by default). The first input is recorded whatever it took."},
 	{name = "performance.long_task_entries", kind = .Int, default = {i = 200}, bounded = true, min = 0, max = 100_000,
 		description = "How many Long Tasks entries (a task of a page's scripts that took 50 ms or more, PerformanceObserver type \"longtask\") a document keeps for its observers. 0: none are recorded (tasks are not timed)."},
 	{name = "performance.long_animation_frame_entries", kind = .Int, default = {i = 200}, bounded = true, min = 0, max = 100_000,
 		description = "How many Long Animation Frames entries (a frame or task of the page that took 50 ms or more, PerformanceObserver type \"long-animation-frame\", PerformanceLongAnimationFrameTiming) a document keeps for its observers. 0: none are recorded (frames are not timed)."},
-	{name = "performance.long_animation_frame_script_min_ms", kind = .Float, default = {f = 5}, bounded = true, min = 0, max = 1000, unit = "ms",
+	{name = "performance.long_animation_frame_script_min_ms", kind = .Float, default = {f = 5}, bounded = true, min = 0, max = 1000, value_kind = .Duration,
 		description = "A script invocation inside a long animation frame that took at least this long (the specification's 5 ms) becomes a PerformanceScriptTiming in the entry's scripts list; shorter ones are not reported, to keep the list small. 0: every invocation of the frame is reported."},
 	// Largest Contentful Paint, Layout Instability and Element Timing: the spec keeps at most 150 of each; 0 turns a kind off.
 	{name = "performance.largest_contentful_paint_entries", kind = .Int, default = {i = 150}, bounded = true, min = 0, max = 100_000,
@@ -80,9 +80,9 @@ TIMELINE_PREFS := [?]config.Def{
 		description = "How many Element Timing entries (PerformanceObserver type \"element\", PerformanceElementTiming) a document keeps: one per element with an elementtiming attribute when it is first painted. 0: element timing is not measured."},
 	{name = "performance.visibility_state_entries", kind = .Int, default = {i = 50}, bounded = true, min = 0, max = 100_000,
 		description = "How many visibility-state entries (PerformanceObserver type \"visibility-state\", VisibilityStateEntry) a document keeps: one each time the page becomes visible or hidden. 0: visibility-state changes are not recorded."},
-	{name = "performance.largest_contentful_paint_min_bpp", kind = .Float, default = {f = 0.05}, bounded = true, min = 0, max = 100, unit = "bpp",
+	{name = "performance.largest_contentful_paint_min_bpp", kind = .Float, default = {f = 0.05}, bounded = true, min = 0, max = 100,
 		description = "An image whose displayed bits-per-pixel (encoded bytes * 8 / displayed area) is below this is too low-entropy to be a Largest Contentful Paint candidate (the specification's 0.05), so background and spacer images do not win. 0: images are never excluded for low entropy."},
-	{name = "performance.layout_shift_recent_input_ms", kind = .Float, default = {f = 500}, bounded = true, min = 0, max = 60_000, unit = "ms",
+	{name = "performance.layout_shift_recent_input_ms", kind = .Float, default = {f = 500}, bounded = true, min = 0, max = 60_000, value_kind = .Duration,
 		description = "A layout shift within this long after a discrete user input (a click or a key) is marked hadRecentInput and does not count against the page (the specification's 500 ms). 0: every shift counts."},
 }
 

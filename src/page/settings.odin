@@ -50,7 +50,7 @@ Settings :: struct {
 }
 
 PREFS := [?]config.Def{
-	{name = "page.max_fetch_bytes", kind = .Int, default = {i = 1 << 30}, bounded = true, min = 1 << 20, max = 1 << 40, bytes = true, unit = "bytes",
+	{name = "page.max_fetch_bytes", kind = .Int, default = {i = 1 << 30}, bounded = true, min = 1 << 20, max = 1 << 40, value_kind = .Size,
 		description = "Most bytes one page's scripts may keep alive in browser memory (fetch bodies, buffers, messages). Past it, further data is refused."},
 	{name = "page.max_microtasks_per_checkpoint", kind = .Int, default = {i = 100_000}, bounded = true, min = 100, max = 100_000_000,
 		description = "Microtasks (promise reactions, queueMicrotask) run in one go. A page that keeps queueing more is cut there and resumes on the next turn of the event loop, so it cannot freeze the browser."},

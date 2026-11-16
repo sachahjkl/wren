@@ -35,9 +35,9 @@ import i18n "../../ext/gui_toolkit/src/i18n"
 CRASH_PREFS := [?]config.Def{
 	{name = "browser.session.crash_recovery", kind = .Bool, default = {b = true},
 		description = "After the browser ended abnormally (a crash, a kill, a power cut) reopen the tabs that were open, and say so in a bar under the toolbar. The tabs are written to recovery.txt in the profile a few seconds after each change and removed when the browser closes normally. If the start that restores them ends before browser.session.crash_stable_ms, the next one opens a blank page and keeps the tabs in a file instead (a page that crashes the browser cannot start it in a loop). Needs browser.profile.persist."},
-	{name = "browser.session.crash_snapshot_ms", kind = .Int, default = {i = 3000}, bounded = true, min = 500, max = 600_000, unit = "ms",
+	{name = "browser.session.crash_snapshot_ms", kind = .Int, default = {i = 3000}, bounded = true, min = 500, max = 600_000, value_kind = .Duration,
 		description = "How long after a change (a page loaded, a tab opened, closed or moved) the tabs are written for crash recovery. Changes in between share one write."},
-	{name = "browser.session.crash_stable_ms", kind = .Int, default = {i = 30_000}, bounded = true, min = 1000, max = 3_600_000, unit = "ms",
+	{name = "browser.session.crash_stable_ms", kind = .Int, default = {i = 30_000}, bounded = true, min = 1000, max = 3_600_000, value_kind = .Duration,
 		description = "How long a start that restored the tabs of a crashed session must run before it counts as stable. One that ends sooner makes the next start open a blank page instead of the tabs."},
 	{name = "browser.session.crash_backups", kind = .Int, default = {i = 5}, bounded = true, min = 1, max = 1000,
 		description = "How many crashed-session files of the profile are kept (the tabs of a session that crashed again while it was restored, with the date in the name); older ones are deleted."},

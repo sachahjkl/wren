@@ -23,7 +23,7 @@ TRIM_AFTER_PAGE_MS :: 1000
 TRIM_PAGE_GAP_MS :: 10_000
 
 MEMORY_PREFS := [?]config.Def{
-	{name = "browser.memory.trim_idle_ms", kind = .Int, default = {i = 5000}, bounded = true, min = 0, max = 3_600_000, unit = "ms",
+	{name = "browser.memory.trim_idle_ms", kind = .Int, default = {i = 5000}, bounded = true, min = 0, max = 3_600_000, value_kind = .Duration,
 		description = "How long the browser must be idle (nothing drawn, nothing asked for) before it gives memory back to the system: the renderer's layer targets and the graphics driver's pools, the free blocks of the heaps. The next frame after that remakes its layer targets, so it is a little slower. 0 = never."},
 }
 

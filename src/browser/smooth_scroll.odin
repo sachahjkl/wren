@@ -29,9 +29,9 @@ import config "../../ext/gui_toolkit/src/config"
 import lay "wb:layout"
 
 SCROLL_PREFS := [?]config.Def{
-	{name = "browser.scroll.smooth.key_ms", kind = .Float, default = {f = 140}, bounded = true, min = 0, max = 2000, unit = "ms",
+	{name = "browser.scroll.smooth.key_ms", kind = .Float, default = {f = 140}, bounded = true, min = 0, max = 2000, value_kind = .Duration,
 		description = "Duration of the animation of an arrow key (repeats add up). 0 = no animation. A wheel notch takes scrolling.duration."},
-	{name = "browser.scroll.smooth.page_ms", kind = .Float, default = {f = 260}, bounded = true, min = 0, max = 4000, unit = "ms",
+	{name = "browser.scroll.smooth.page_ms", kind = .Float, default = {f = 260}, bounded = true, min = 0, max = 4000, value_kind = .Duration,
 		description = "Duration of the animation of Page Up / Page Down / Space / Home / End, of a click in a scroll bar's track and of scroll-behavior: smooth. 0 = no animation."},
 	{name = "browser.scroll.smooth.precise_wheel", kind = .Bool, default = {b = false},
 		description = "Animate high-resolution wheels and touchpads too (deltas that are not whole notches). Off: they move at once, as their own stream of small steps is already smooth."},

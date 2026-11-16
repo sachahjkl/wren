@@ -20,7 +20,7 @@ PREFS := [?]config.Def{
 		description = "Update a page's accessibility tree node by node from the changes of its document. Off, any change builds the whole tree again (only the differences are sent)."},
 	{name = "accessibility.page.verify", kind = .Bool, default = {b = false},
 		description = "Compare every node-by-node update of a page's accessibility tree with a whole tree and log a difference (slow; for debugging)."},
-	{name = "accessibility.page.max_nodes", kind = .Int, default = {i = 50_000}, bounded = true, min = 100, max = 10_000_000, unit = "nodes",
+	{name = "accessibility.page.max_nodes", kind = .Int, default = {i = 50_000}, bounded = true, min = 100, max = 10_000_000,
 		description = "Most nodes of one document's accessibility tree; what comes after is left out."},
 	{name = "accessibility.page.interval_ms", kind = .Int, default = {i = 100}, bounded = true, min = 0, max = 2000,
 		description = "Least time between two updates of a page's accessibility tree. A page that changes every frame costs less with a longer one; a request of a screen reader is always answered at once."},

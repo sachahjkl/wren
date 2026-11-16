@@ -30,13 +30,13 @@ import "wb:style"
 COMPOSITOR_PREFS := [?]config.Def{
 	{name = "render.compositor.enabled", kind = .Bool, default = {b = true},
 		description = "Keep the page's drawing on the GPU (retained pictures) and replay it each frame: scrolling and transform, opacity or filter animations cost almost nothing. Off: every item is drawn again each frame (the same pixels)."},
-	{name = "render.compositor.chunk_items", kind = .Int, default = {i = 512}, bounded = true, min = 16, max = 65536, unit = "items",
+	{name = "render.compositor.chunk_items", kind = .Int, default = {i = 512}, bounded = true, min = 16, max = 65536,
 		description = "Most display items recorded into one picture. Smaller: finer culling and re-recording, more draw calls."},
 	{name = "render.compositor.max_chunks", kind = .Int, default = {i = 4096}, bounded = true, min = 16, max = 1_000_000,
 		description = "Most pictures per page. Past it pictures hold more items; if effect groups alone need more, the page is drawn directly."},
-	{name = "render.compositor.settle_ms", kind = .Float, default = {f = 50}, bounded = true, min = 0, max = 10_000, unit = "ms",
+	{name = "render.compositor.settle_ms", kind = .Float, default = {f = 50}, bounded = true, min = 0, max = 10_000, value_kind = .Duration,
 		description = "After layout passes on nearby frames (a window resize, an animation of a layout property), the page is drawn directly until this long passed without one (whatever the frame rate); then what changed is recorded. 0: record after every layout pass."},
-	{name = "render.compositor.memory_mb", kind = .Int, default = {i = 256}, bounded = true, min = 8, max = 16384, unit = "MB",
+	{name = "render.compositor.memory_mb", kind = .Int, default = {i = 256}, bounded = true, min = 8, max = 16384, value_kind = .Size, unit = .Mebibyte,
 		description = "GPU memory the retained pictures may use before the ones not drawn recently are evicted (they are uploaded again from their recording when they come back into view)."},
 }
 
@@ -154,7 +154,7 @@ composite_forget :: proc(l: ^Layout) {
 
 @(private)
 picture_free :: proc(c: ^Comp, p: ^draw.Picture) {
-	if c.dc != nil { draw.picture_destroy(c.dc, p) }
+	if c.dc != nil { draw.picture_destroy(p) }
 	free(p)
 }
 
@@ -489,7 +489,7 @@ rebuild :: proc(c: ^Comp, l: ^Layout) {
 	}
 	for &oc in c.chunks {
 		if oc.pic != nil {
-			draw.picture_release(c.dc, oc.pic)
+			draw.picture_release(oc.pic)
 			append(&c.pool, oc.pic)
 			oc.pic = nil
 		}

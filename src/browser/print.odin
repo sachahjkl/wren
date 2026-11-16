@@ -12,7 +12,7 @@ import "wb:page"
 PRINT_PREFS := [?]config.Def{
 	{name = "browser.print.notice", kind = .Bool, default = {b = true},
 		description = "Say that printing is not available when Ctrl+P is pressed or a page calls window.print(). Off: nothing at all happens."},
-	{name = "browser.print.notice_interval_ms", kind = .Int, default = {i = 5000}, bounded = true, min = 0, max = 3_600_000, unit = "ms",
+	{name = "browser.print.notice_interval_ms", kind = .Int, default = {i = 5000}, bounded = true, min = 0, max = 3_600_000, value_kind = .Duration,
 		description = "Shortest time between two such notices."},
 }
 

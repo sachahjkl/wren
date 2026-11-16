@@ -24,7 +24,7 @@ Render_Settings :: struct {
 RENDER_PREFS := [?]config.Def{
 	{name = "render.gradients.dither", kind = .Bool, default = {b = true},
 		description = "Add noise of one 8-bit level to CSS gradients so that slow color ramps show no bands (as Chromium's Skia does). Off: exact colors, possible banding."},
-	{name = "render.swap_chain.resize_slack_px", kind = .Int, default = {i = render.DEFAULT_RESIZE_SLACK}, bounded = true, min = 0, max = 2048, unit = "px",
+	{name = "render.swap_chain.resize_slack_px", kind = .Int, default = {i = render.DEFAULT_RESIZE_SLACK}, bounded = true, min = 0, max = 2048, value_kind = .Length,
 		description = "Room the window's frame buffers keep to grow, per axis. Resizing the window within it only changes the region shown (no reallocation, which costs 1.5 to 3.5 ms a step); the buffers are reallocated once per this many pixels crossed, and made smaller when they hold more than twice the pixels shown. 0: buffers of the exact window size, reallocated at every step."},
 }
 

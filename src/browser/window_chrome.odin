@@ -19,11 +19,11 @@ import "toolkit:ui"
 import config "../../ext/gui_toolkit/src/config"
 
 WINDOW_PREFS := [?]config.Def{
-	{name = "browser.window.min_drag_em", kind = .Float, default = {f = 3}, bounded = true, min = 0, max = 40, unit = "em",
+	{name = "browser.window.min_drag_em", kind = .Float, default = {f = 3}, bounded = true, min = 0, max = 40, value_kind = .Length, unit = .Em,
 		description = "Free space kept in the title bar between the tabs and the window buttons, to drag the window when there are many tabs (the tabs are cut off before it). With the tabs in a sidebar, the strip between the menu and the window buttons (in a narrow window, the buttons of the toolbar are hidden before it narrows). A right click on the free space of the title bar opens the toolbar's menu."},
 	{name = "browser.window.fullscreen_reveal", kind = .Bool, default = {b = true},
 		description = "In full screen (F11), the tabs and the address bar slide down over the page while the pointer is at the top edge of the screen."},
-	{name = "browser.window.fullscreen_reveal_px", kind = .Int, default = {i = 3}, bounded = true, min = 1, max = 200, unit = "px",
+	{name = "browser.window.fullscreen_reveal_px", kind = .Int, default = {i = 3}, bounded = true, min = 1, max = 200, value_kind = .Length,
 		description = "Height of the strip along the top of the screen that brings the tabs and the address bar back in full screen."},
 	{name = "browser.window.fullscreen_hint", kind = .Bool, default = {b = true},
 		description = "A notice \"Press Esc to exit full screen\" when a page puts an element (a video) in full screen."},

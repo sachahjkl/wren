@@ -25,17 +25,17 @@ import "wb:base"
 PAGE_THREAD_PREFS := [?]config.Def{
 	{name = "browser.shell.page_thread", kind = .Bool, default = {b = true},
 		description = "Run long layout passes of a page on a thread of their own, so the browser draws its interface meanwhile (tabs, address bar, menus, scrolling, resizing). Off: on the interface thread, which waits for them."},
-	{name = "browser.shell.page_thread_min_ms", kind = .Float, default = {f = 3}, bounded = true, min = 0, max = 1000, unit = "ms",
+	{name = "browser.shell.page_thread_min_ms", kind = .Float, default = {f = 3}, bounded = true, min = 0, max = 1000, value_kind = .Duration,
 		description = "A page's layout goes to the page thread (browser.shell.page_thread) when its last pass took at least this long (or none was measured yet). Shorter passes stay on the interface thread: handing them over costs more than it saves."},
 	{name = "browser.shell.resize_anchored", kind = .Bool, default = {b = true},
 		description = "While the window is resized, a page whose layout is long (browser.shell.page_thread_min_ms) shows its last layout anchored at the top left for a frame, and is laid out at the new size in the next one (on the page thread, the interface drawing meanwhile). Off: it is laid out at once, in the frame that shows the new size."},
-	{name = "browser.shell.shutdown_warn_ms", kind = .Int, default = {i = 2000}, bounded = true, min = 500, max = 600000, unit = "ms",
+	{name = "browser.shell.shutdown_warn_ms", kind = .Int, default = {i = 2000}, bounded = true, min = 500, max = 600000, value_kind = .Duration,
 		description = "When closing the window takes longer than this, the browser logs once a second what the shutdown waits for (the step, the thread, the threads still running) to the standard error and to shutdown.log in the profile."},
-	{name = "browser.shell.shutdown_force_ms", kind = .Int, default = {i = 10000}, bounded = true, min = 0, max = 600000, unit = "ms",
+	{name = "browser.shell.shutdown_force_ms", kind = .Int, default = {i = 10000}, bounded = true, min = 0, max = 600000, value_kind = .Duration,
 		description = "When closing the window takes longer than this, the process is ended (after logging what it waited for): a thread that never answers cannot keep a closed window on screen. 0: never forced."},
-	{name = "browser.shell.shutdown_surface_wait_ms", kind = .Int, default = {i = 250}, bounded = true, min = 0, max = 600000, unit = "ms",
+	{name = "browser.shell.shutdown_surface_wait_ms", kind = .Int, default = {i = 250}, bounded = true, min = 0, max = 600000, value_kind = .Duration,
 		description = "While the browser closes, how long it waits for the window's swap chain to be released. The release waits for the system's compositor, which on a machine whose cores are all busy can take seconds: past this the release goes on by itself and the browser carries on closing. 0: wait as long as it takes."},
-	{name = "browser.shell.page_thread_stack_mb", kind = .Int, default = {i = 32}, bounded = true, min = 1, max = 1024, unit = "MB", restart = true,
+	{name = "browser.shell.page_thread_stack_mb", kind = .Int, default = {i = 32}, bounded = true, min = 1, max = 1024, value_kind = .Size, unit = .Mebibyte, restart = true,
 		description = "Stack of the page thread: a deeply nested document recurses that deep in layout."},
 }
 
