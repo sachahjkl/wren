@@ -171,7 +171,12 @@ STANDARD_DEFAULTS :: prefs_page.Standard_Defaults{
 // first window's also gives the text settings to the font state and the renderer, which every window shares.
 standard_settings_watch :: proc(app: ^App, w: ^prefs_page.Standard_Watch, s: ^ui.State) {
 	targets: prefs_page.Standard_Targets
-	if s == app.windows[0].ui { targets = {renderer = &app.r, fonts = &app.fonts} }
+	if s == app.windows[0].ui {
+		targets.fonts = &app.fonts
+		// (a renderer not made yet has no device: a change of its blend space would rebuild targets on nothing, which Direct3D
+		// does not survive; a test's interface without pixels has none)
+		if .Renderer in app.made { targets.renderer = &app.r }
+	}
 	prefs_page.standard_watch(w, &app.prefs, s, targets)
 }
 

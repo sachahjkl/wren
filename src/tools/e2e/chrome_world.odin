@@ -92,12 +92,13 @@ chrome_start :: proc(t: ^testing.T, o := Chrome_Options{}, loc := #caller_locati
 	testing.expect(t, ok, "the interface's font", loc = loc)
 	app.lucide, ok = font.load_embedded(&app.fonts, lucide.DATA)
 	testing.expect(t, ok, "the icons' font", loc = loc)
-	browser.app_ui_init(app)
-	browser.app_interface_init(app)
+	// (the renderer before the interface, as main makes them: the standard settings reach it from app_ui_init)
 	if o.pixels {
 		testing.expect(t, render.init_offscreen(&app.r, win.size, warp = true), "an offscreen renderer", loc = loc)
 		browser.app_draw_init(app)
 	}
+	browser.app_ui_init(app)
+	browser.app_interface_init(app)
 	titles := o.tabs
 	if len(titles) == 0 { titles = {"blank"} }
 	for title in titles {
