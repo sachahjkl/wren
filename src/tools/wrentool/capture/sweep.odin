@@ -9,6 +9,7 @@ import "core:path/filepath"
 import "core:strings"
 import "core:time"
 import "wb:base"
+import crash "toolkit:crash"
 import "wb:remote/api"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
@@ -378,7 +379,7 @@ sweep_close :: proc(r: ^Sweep_Run, v: ^Sweep_Visit) {
 	v.exit_code, forced = api.finish(&r.wren.session, &r.wren.launched, true)
 	v.ms[.Close] = int(time.duration_milliseconds(time.tick_since(at)))
 	r.running = false
-	session_left := os.exists(fmt.tprintf("%s/crashes/session.txt", r.profile))
+	session_left := crash_session_left(fmt.tprintf("%s/crashes", r.profile))
 	switch {
 	case forced:           v.verdict, v.note = .Hang, "it had to be killed at the close"
 	case v.exit_code != 0: v.verdict, v.note = .Crash, strings.clone(fmt.tprintf("exit %d at the close", v.exit_code))
@@ -392,7 +393,7 @@ sweep_close :: proc(r: ^Sweep_Run, v: ^Sweep_Visit) {
 sweep_leftovers :: proc(r: ^Sweep_Run, v: ^Sweep_Visit) {
 	if infos, err := os.read_all_directory_by_path(fmt.tprintf("%s/crashes", r.profile), context.temp_allocator); err == nil {
 		for fi in infos {
-			if !strings.has_suffix(fi.name, ".txt") || fi.name == "session.txt" { continue }
+			if !crash_report_name(fi.name) { continue }   // (a session that runs and clean-end.txt are no report)
 			if v.verdict == .Passed { v.verdict = .Crash }
 			if data, re := os.read_entire_file(fi.fullpath, context.temp_allocator); re == nil { _ = os.write_entire_file(fmt.tprintf("%s/%s.%s", r.out, v.slug, fi.name), data) }
 		}
@@ -428,4 +429,23 @@ sweep_alarms :: proc(path: string) -> string {
 		if count == SWEEP_ALARM_LINES { break }
 	}
 	return strings.to_string(b)
+}
+
+// A file of the crash folder that a visit keeps: every text but the toolkit's own bookkeeping, a session that runs
+// (session-<pid>.txt) and the time of the last clean end (clean-end.txt).
+@(private = "file")
+crash_report_name :: proc(name: string) -> bool {
+	if !strings.has_suffix(name, crash.REPORT_EXTENSION) || name == crash.CLEAN_END_FILE { return false }
+	return !strings.has_prefix(name, crash.SESSION_PREFIX)
+}
+
+// A session file left in the crash folder: the process ended without its end_session (a watchdog's exit).
+@(private = "file")
+crash_session_left :: proc(dir: string) -> bool {
+	infos, err := os.read_all_directory_by_path(dir, context.temp_allocator)
+	if err != nil { return false }
+	for fi in infos {
+		if strings.has_prefix(fi.name, crash.SESSION_PREFIX) && strings.has_suffix(fi.name, crash.REPORT_EXTENSION) { return true }
+	}
+	return false
 }

@@ -12,6 +12,7 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 import "wb:e2e"
+import crash "toolkit:crash"
 
 @(private = "file")
 Mode :: struct { name, cause: string }
@@ -37,7 +38,7 @@ each_way_of_dying_leaves_a_report_with_its_cause_and_a_minidump :: proc(t: ^test
 	}
 	for m, i in MODES {
 		code := e2e.program_wait(programs[i])
-		testing.expectf(t, !os.exists(fmt.tprintf("%s/session.txt", dirs[i])), "%s: the report ends the session, the next start reports it no second time", m.name)
+		testing.expectf(t, len(e2e.files_with_prefix(dirs[i], crash.SESSION_PREFIX, crash.REPORT_EXTENSION)) == 0, "%s: the report ends the session, the next start reports it no second time", m.name)
 		reports := e2e.files_with_prefix(dirs[i], "crash-", ".txt")
 		dumps := e2e.files_with_prefix(dirs[i], "crash-", ".dmp")
 		text := len(reports) == 1 ? e2e.read_text(reports[0]) : ""
@@ -54,7 +55,7 @@ an_end_of_its_own_leaves_a_report_with_the_stack_that_asked_for_it :: proc(t: ^t
 		dir := fmt.tprintf("%s/%s", root, mode)
 		_ = os.make_directory_all(dir)
 		e2e.program_wait(e2e.program(t, {exe, mode, dir}))
-		testing.expectf(t, !os.exists(fmt.tprintf("%s/session.txt", dir)), "%s: the report ends the session", mode)
+		testing.expectf(t, len(e2e.files_with_prefix(dir, crash.SESSION_PREFIX, crash.REPORT_EXTENSION)) == 0, "%s: the report ends the session", mode)
 		reports := e2e.files_with_prefix(dir, "exit-", ".txt")
 		text := len(reports) == 1 ? e2e.read_text(reports[0]) : ""
 		testing.expectf(t, strings.contains(text, "ended itself") && strings.contains(text, "code: 0x00000009") && strings.contains(text, "die"), "%s: who asked for it: %d report(s): %s", mode, len(reports), text)
@@ -104,15 +105,14 @@ a_freed_number_faults_on_pages_of_their_own :: proc(t: ^testing.T) {
 a_fail_fast_is_reported_by_the_next_start_once :: proc(t: ^testing.T) {
 	dir := e2e.temp_folder(t)
 	exe := e2e.build_path("crashmodes", ".exe")
-	session := fmt.tprintf("%s/session.txt", dir)
 	e2e.program_wait(e2e.program(t, {exe, "failfast", dir}))
 	testing.expect_value(t, len(e2e.files_with_prefix(dir, "crash-")), 0)
-	testing.expect(t, os.exists(session), "nothing runs in the process: a session file is left")
+	testing.expect(t, len(e2e.files_with_prefix(dir, crash.SESSION_PREFIX, crash.REPORT_EXTENSION)) == 1, "nothing runs in the process: a session file is left")
 	e2e.program_wait(e2e.program(t, {exe, "clean", dir}))
 	reports := e2e.files_with_prefix(dir, "unclean-", ".txt")
 	testing.expect_value(t, len(reports), 1)
 	if len(reports) == 1 { testing.expect(t, strings.contains(e2e.read_text(reports[0]), "ended without a report"), "the next start reports the session") }
-	testing.expect(t, !os.exists(session), "a clean end removes the session file")
+	testing.expect(t, len(e2e.files_with_prefix(dir, crash.SESSION_PREFIX, crash.REPORT_EXTENSION)) == 0, "a clean end removes the session file")
 	e2e.program_wait(e2e.program(t, {exe, "clean", dir}))
 	testing.expect_value(t, len(e2e.files_with_prefix(dir, "unclean-", ".txt")), 1)
 }

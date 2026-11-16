@@ -60,6 +60,7 @@ app_with_prefs :: proc(t: ^testing.T) -> ^App {
 	app.prefs = config.prefs_make()
 	testing.cleanup(t, proc(p: rawptr) { config.prefs_destroy(&(^App)(p).prefs) }, app)
 	register_desktop_shell_prefs(&app.prefs)
+	register_standard_prefs(&app.prefs)
 	return app
 }
 

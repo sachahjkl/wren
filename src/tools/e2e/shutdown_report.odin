@@ -43,5 +43,5 @@ a_teardown_that_hangs_says_where_on_its_standard_error :: proc(t: ^testing.T) {
 	for said in ([]string{HANG_STEP, HANG_THREAD, "ending the process", "teardown_that_hangs", "thread_join"}) {
 		testing.expectf(t, strings.contains(r.err, said), "it says %q: %s", said, r.err)
 	}
-	testing.expect(t, !os.exists(fmt.tprintf("%s/session.txt", folder)), "the watchdog ended it on purpose: the next start has no unclean exit to report")
+	testing.expect(t, len(e2e.files_with_prefix(folder, crash.SESSION_PREFIX, crash.REPORT_EXTENSION)) == 0, "the watchdog ended it on purpose: the next start has no unclean exit to report")
 }

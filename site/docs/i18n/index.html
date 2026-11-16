@@ -5,10 +5,52 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Translating Wren: how the texts are written · Wren docs</title>
-<meta name="description" content="Translating Wren: how the texts are written Every text the user reads goes through the i18n package (src/i18n), so that a language can be added without going through the ">
+<meta name="description" content="Translating Wren: how the texts are written Every text the user reads goes through the toolkit's i18n package (import i18n &quot;toolkit:i18n&quot;), so that a language can be adde">
 <link rel="icon" type="image/png" sizes="32x32" href="../../img/logo-32.png">
 <link rel="stylesheet" href="../../style.css">
 <link rel="stylesheet" href="../../docs/docs.css">
+<style>
+:root {
+  --gt-sb-track: var(--bg2, var(--surface, #161616));
+  --gt-sb-line: var(--line, var(--line-2, #3a3a3a));
+  --gt-sb-weak: var(--weak, var(--muted, #8a8a8a));
+  --gt-sb-text: var(--text, #e6e6e6);
+  --gt-sb-accent: var(--accent, #6f9cf0);
+  --gt-sb-edge: color-mix(in srgb, var(--gt-sb-track), var(--gt-sb-line));
+}
+@supports (-moz-appearance: none) {
+  html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--gt-sb-line) 76%, var(--gt-sb-weak)) var(--gt-sb-edge); }
+}
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-corner { background: var(--gt-sb-edge); }
+::-webkit-scrollbar-track:vertical { background: linear-gradient(to right, var(--gt-sb-edge), var(--gt-sb-line), var(--gt-sb-edge)); }
+::-webkit-scrollbar-track:horizontal { background: linear-gradient(to bottom, var(--gt-sb-edge), var(--gt-sb-line), var(--gt-sb-edge)); }
+::-webkit-scrollbar-thumb {
+  border: 1px solid color-mix(in srgb, var(--gt-sb-line) 60%, var(--gt-sb-weak)); border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); min-height: 20px; min-width: 20px;
+}
+::-webkit-scrollbar-thumb:vertical { background: linear-gradient(to right,
+  color-mix(in srgb, var(--gt-sb-line) 70%, var(--gt-sb-weak)), color-mix(in srgb, var(--gt-sb-line) 76%, var(--gt-sb-weak)) 45%,
+  color-mix(in srgb, var(--gt-sb-line) 82%, var(--gt-sb-weak)) 55%, color-mix(in srgb, var(--gt-sb-line) 88%, var(--gt-sb-weak))); }
+::-webkit-scrollbar-thumb:horizontal { background: linear-gradient(to bottom,
+  color-mix(in srgb, var(--gt-sb-line) 70%, var(--gt-sb-weak)), color-mix(in srgb, var(--gt-sb-line) 76%, var(--gt-sb-weak)) 45%,
+  color-mix(in srgb, var(--gt-sb-line) 82%, var(--gt-sb-weak)) 55%, color-mix(in srgb, var(--gt-sb-line) 88%, var(--gt-sb-weak))); }
+::-webkit-scrollbar-thumb:hover { border-color: var(--gt-sb-accent); background: linear-gradient(to right,
+  color-mix(in srgb, var(--gt-sb-track) 55%, var(--gt-sb-accent)), color-mix(in srgb, var(--gt-sb-track) 62%, var(--gt-sb-accent)) 45%,
+  color-mix(in srgb, var(--gt-sb-track) 69%, var(--gt-sb-accent)) 55%, color-mix(in srgb, var(--gt-sb-track) 76%, var(--gt-sb-accent))); }
+::-webkit-scrollbar-thumb:active { border-color: var(--gt-sb-accent); background: linear-gradient(to right,
+  color-mix(in srgb, var(--gt-sb-track) 42%, var(--gt-sb-accent)), color-mix(in srgb, var(--gt-sb-track) 50%, var(--gt-sb-accent)) 45%,
+  color-mix(in srgb, var(--gt-sb-track) 58%, var(--gt-sb-accent)) 55%, color-mix(in srgb, var(--gt-sb-track) 66%, var(--gt-sb-accent))); }
+/* the arrow buttons: a triangle of the weak text, the accent's under the pointer */
+::-webkit-scrollbar-button:single-button { display: block; width: 9px; height: 9px; background-color: var(--gt-sb-edge);
+  background-repeat: no-repeat; background-position: center; background-size: 5px 3px; }
+::-webkit-scrollbar-button:single-button:vertical:decrement { background-image: conic-gradient(from 135deg at 50% 0, color-mix(in srgb, var(--gt-sb-weak) 70%, var(--gt-sb-text)) 90deg, transparent 0); }
+::-webkit-scrollbar-button:single-button:vertical:increment { background-image: conic-gradient(from -45deg at 50% 100%, color-mix(in srgb, var(--gt-sb-weak) 70%, var(--gt-sb-text)) 90deg, transparent 0); }
+::-webkit-scrollbar-button:single-button:horizontal:decrement { background-size: 3px 5px; background-image: conic-gradient(from 45deg at 0 50%, color-mix(in srgb, var(--gt-sb-weak) 70%, var(--gt-sb-text)) 90deg, transparent 0); }
+::-webkit-scrollbar-button:single-button:horizontal:increment { background-size: 3px 5px; background-image: conic-gradient(from 225deg at 100% 50%, color-mix(in srgb, var(--gt-sb-weak) 70%, var(--gt-sb-text)) 90deg, transparent 0); }
+::-webkit-scrollbar-button:single-button:hover { background-color: color-mix(in srgb, var(--gt-sb-track) 72%, var(--gt-sb-accent)); }
+::-webkit-scrollbar-button:single-button:active { background-color: color-mix(in srgb, var(--gt-sb-track) 60%, var(--gt-sb-accent)); }
+</style>
 </head>
 <body class="docs">
 <a class="skip" href="#doc-main">Skip to content</a>
@@ -277,7 +319,7 @@
 <li aria-current="page">Translating Wren: how the texts are written</li>
 </ol></nav>
 <h1 id="translating-wren-how-the-texts-are-written"><a class="anchor" href="#translating-wren-how-the-texts-are-written" aria-hidden="true">#</a>Translating Wren: how the texts are written</h1>
-<p>Every text the user reads goes through the <code>i18n</code> package (<code>src/i18n</code>), so that a language can be added without going through
+<p>Every text the user reads goes through the toolkit's <code>i18n</code> package (<code>import i18n "toolkit:i18n"</code>), so that a language can be added without going through
 the code again. Today English is the only language and <code>tr</code> returns its argument: writing the texts the right way now is what
 makes the translation cheap later. The plan and the open questions are in the maintainer's notes ("Internationalisation").</p>
 <div class="code"><div class="file">Odin</div><pre><code><span class="k">import</span> <span class="s">"wb:i18n"</span>

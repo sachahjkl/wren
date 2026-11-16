@@ -128,6 +128,12 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	remote.register_prefs(p)   // src/remote
 	_ = wasm.PREFS
 	_ = html.PREFS
+	register_standard_prefs(p)
+}
+
+// The toolkit's standard settings with Wren's defaults: a part of register_all_prefs that a test of the updates or of the
+// desktop integration registers too (update.auto and update.base_url are among them).
+register_standard_prefs :: proc(p: ^config.Prefs) {
 	// the toolkit's standard settings, every set: the look, the text, scrolling, the input, the delays, the rendering, the
 	// updates and the session (gui_toolkit docs/settings.md), applied by standard_watch. general.menu and general.autostart are
 	// not on about:settings: Wren's place on the desktop is its desktop integration (desktop_shell.odin, Setup), which installs
