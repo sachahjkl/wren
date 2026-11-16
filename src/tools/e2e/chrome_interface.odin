@@ -100,7 +100,7 @@ chrome_docked_panel_has_its_size_at_the_side :: proc(t: ^testing.T) { docked_pan
 @(test)
 chrome_docked_panel_has_its_size_at_the_bottom :: proc(t: ^testing.T) { docked_panel_sizes(t, "bottom", {135, 210, 115}, 1) }
 
-// The main menu that reaches the window's edge: where it is drawn, the window answers the system's hit test (WM_NCHITTEST) with "client", not a resize band: the band's diagonal cursor
+// The main menu that reaches the window's top edge: where it is drawn, the window answers the system's hit test (WM_NCHITTEST) with "client", not a resize band: the band's diagonal cursor
 // showed over the menu, and the pointer's moves never reached it, so the lit row stayed where the pointer had been. Beside the menu, the band is still there. (The window procedure's
 // own answer on a real window: real_window.odin.)
 @(test)
@@ -126,9 +126,14 @@ chrome_open_menu_over_the_resize_band :: proc(t: ^testing.T) {
 	session.frames(w.s, 2)
 	testing.expect(t, ui.menu_any_open(), "the menu is open")
 	chrome_still(w)
-	testing.expect_value(t, hit(w, corner), platform.Hit.Client)       // the open menu over the band and its corner is the browser's
+	// (the menu ends at its button's right end; the window's buttons beyond it keep the corner)
+	menu, _, open := ui.menu_rect(0)
+	testing.expect(t, open && menu.min.y <= IN_THE_TOP_BAND && menu.min.x < band.x && band.x < menu.max.x, "the menu reaches the top band, under the point tested")
+	menu_end := [2]f32{menu.max.x - FROM_THE_RIGHT_END, IN_THE_TOP_BAND}
+	testing.expect_value(t, hit(w, menu_end), platform.Hit.Client)     // the open menu over the band is the browser's, to its end
 	testing.expect_value(t, hit(w, band), platform.Hit.Client)
 	testing.expect_value(t, hit(w, beside), platform.Hit.Top)          // beside the menu the band still resizes
+	testing.expect_value(t, hit(w, corner), platform.Hit.Top_Right)    // and the window's corner, past the menu, too
 }
 
 // The main menu in a window lower than it: as tall as the window, whole inside it, and scrolled; its rows are the toolkit's dense
