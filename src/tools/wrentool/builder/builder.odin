@@ -296,7 +296,7 @@ odin_matches :: proc(o: Options) -> bool {
 bindgen :: proc(o: Options) -> bool {
 	exe := fmt.tprintf("build/bindgen_%d_%d%s", os.get_pid(), rand.uint32(), tooling.EXE_SUFFIX)
 	defer _ = os.remove(exe)
-	return tooling.run({command = {tooling.odin_program(), "run", "src/tools/bindgen", "-collection:wb=src", "-vet", SEPARATE_MODULES, fmt.tprintf("-out:%s", exe)}, log = o.log}) == 0
+	return tooling.run({command = {tooling.odin_program(), "run", "src/tools/bindgen", "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit/src", "-vet", SEPARATE_MODULES, fmt.tprintf("-out:%s", exe)}, log = o.log}) == 0
 }
 
 // build/wren.com, the console launcher (src\tools\wrencom, core library only): cmd and PowerShell prefer it to wren.exe when `wren` is typed; wren.exe embeds it (src\browser\console_launcher.odin)

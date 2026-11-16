@@ -110,6 +110,8 @@ POISON :: "-define:WREN_POISON_MEMORY=true"
 SWEEP_CHECK_MS :: "60000"
 ONE_THREAD :: "-define:ODIN_TEST_THREADS=1"
 TOOLKIT :: "-collection:toolkit=ext/gui_toolkit/src"
+// (the toolkit's own tests name it gt:, as its tk tool does)
+GT :: "-collection:gt=ext/gui_toolkit/src"
 WB :: "-collection:wb=src"
 GUEST_FLAGS :: []string{"-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-collection:wren=sdk/odin", "-o:size"}
 // (WREN_SHIPPED_CODE: the engine's machine code in the program, src/js/image/code: with every block on pages of its own, a compile of the image is minutes, past the limits of a test under load.)
@@ -159,7 +161,7 @@ odin_build :: proc(pkg, out: string, flags: []string = nil) -> Command {
 }
 
 tool_build :: proc(pkg, out: string) -> Command {
-	return odin_build(pkg, out, join({"-use-separate-modules", WB, "-vet"}, tooling.STACK_FLAGS))
+	return odin_build(pkg, out, join({"-use-separate-modules", WB, TOOLKIT, "-vet"}, tooling.STACK_FLAGS))
 }
 
 guest :: proc(pkg, out: string) -> Action { return odin_build(pkg, out, GUEST_FLAGS) }
@@ -248,7 +250,7 @@ unit :: proc(t: ^[dynamic]Step, name, pkg, out: string, flags: []string = nil, m
 
 // A group of the toolkit's test suites, or a single one: each suite must say that it passed.
 toolkit_suite :: proc(suite, out: string, flags: []string = nil) -> Action {
-	return Command{argv = join({"odin", "test", fmt.aprintf("ext/gui_toolkit/tests/%s", suite), "-use-separate-modules", MEM_CHECK, NAMES_RUNNING, "-vet"}, flags, {out_flag(out)}), pkg = fmt.aprintf("ext/gui_toolkit/tests/%s", suite), rule = .Says_Successful}
+	return Command{argv = join({"odin", "test", fmt.aprintf("ext/gui_toolkit/tests/%s", suite), "-use-separate-modules", GT, MEM_CHECK, NAMES_RUNNING, "-vet"}, flags, {out_flag(out)}), pkg = fmt.aprintf("ext/gui_toolkit/tests/%s", suite), rule = .Says_Successful}
 }
 
 build_table :: proc(cfg: ^Config) -> []Step {
@@ -260,10 +262,10 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	long_run := cfg.ci || !cfg.quick   // -CI and full runs: the check build, the sanitizer
 
 	append(&t, Step{name = "CHANGELOG fragments (wrentool changelog -Check: changelog.d well formed, nothing already released) and the tool's tests",
-		actions = slice_of(tool_build("src/tools/wrentool", exe("build/wrentool_step")), Command{argv = strs(exe("build/wrentool_step"), "changelog", "-Check")}, odin_test("src/tools/wrentool/changelog", exe("build/changelog_test"), strs(WB), false)), marks = {.No_CI}, inputs = .Everything})   // (the CI's workflow runs exactly this as its first step, and fails at once)
+		actions = slice_of(tool_build("src/tools/wrentool", exe("build/wrentool_step")), Command{argv = strs(exe("build/wrentool_step"), "changelog", "-Check")}, odin_test("src/tools/wrentool/changelog", exe("build/changelog_test"), strs(WB, TOOLKIT), false)), marks = {.No_CI}, inputs = .Everything})   // (the CI's workflow runs exactly this as its first step, and fails at once)
 	// The documentation site is generated from docs/*.md (src/tools/docsite), and the classic presentation of the site from it and the site's pages: site/docs and site/classic must be up to date (deterministic, like wrentool changelog -Check) and every internal link and anchor must resolve.
 	append(&t, Step{name = "documentation site up to date and links intact (src\\tools\\docsite -check: site\\docs matches docs\\*.md, site\\classic the site's pages, zero dead internal links or anchors)",
-		actions = slice_of(odin_build("src/tools/docsite", exe("build/docsite"), {WB, "-vet"}), Command{argv = strs(exe("build/docsite"), "-check")}, odin_test("src/tools/docsite", exe("build/docsite_test"), strs(WB), false)), inputs = .Everything})
+		actions = slice_of(odin_build("src/tools/docsite", exe("build/docsite"), {WB, TOOLKIT, "-vet"}), Command{argv = strs(exe("build/docsite"), "-check")}, odin_test("src/tools/docsite", exe("build/docsite_test"), strs(WB, TOOLKIT), false)), inputs = .Everything})
 	// What every build below embeds (nothing to do when up to date).
 	// (and the generated web API: the browser's build and the test program's compile both read it, so one step writes it before either)
 	append(&t, Step{name = "the dependencies of the dev build and the generated web API (wrentool build's steps 2 and 3; nothing to do when up to date)", actions = slice_of(Task{"the dependencies", task_dependencies, ""}), marks = {.No_Result}, makes = {.Native}, limit = dependencies_limit(cfg)})
@@ -287,8 +289,8 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	unit(&t, "unit tests of the style passes and of layout on poisoned memory: layout", "src/layout", exe("build/layout_poison_test"), {TOOLKIT, WB, POISON})
 	// (the Tracy and ETW variants type-checked, not linked: their library is fetched only for the builds that ask for it)
 	append(&t, Step{name = "the external profilers (src\\trace: zones paired on every path, TraceLogging's bytes, the provider's GUID in tools\\wren.wprp and tools\\wren_regions.xml; the Tracy and ETW builds of src\\trace and src\\wasm type-check)",
-		actions = slice_of(odin_test("src/trace", exe("build/trace_test"), strs(WB)), Command{argv = strs("odin", "check", "src/trace", WB, "-vet", "-no-entry-point", "-define:WREN_TRACY=true", "-define:WREN_ETW=true"), pkg = "src/trace"},
-			Command{argv = strs("odin", "check", "src/wasm", WB, "-vet", "-no-entry-point", "-define:WREN_TRACY=true"), pkg = "src/wasm"}), marks = {.Light}})
+		actions = slice_of(odin_test("src/trace", exe("build/trace_test"), strs(WB, TOOLKIT)), Command{argv = strs("odin", "check", "src/trace", WB, TOOLKIT, "-vet", "-no-entry-point", "-define:WREN_TRACY=true", "-define:WREN_ETW=true"), pkg = "src/trace"},
+			Command{argv = strs("odin", "check", "src/wasm", WB, TOOLKIT, "-vet", "-no-entry-point", "-define:WREN_TRACY=true"), pkg = "src/wasm"}), marks = {.Light}})
 	append(&t, Step{name = "the default build links no external profiler (src\\tools\\test_all\\profilers_absent.odin: build\\wren.exe imports none of ETW's writing functions and holds no Tracy client)", actions = slice_of(Task{"the profilers' absence", task_profilers_absent, ""}), needs = {.Browser}, marks = {.Light}, inputs = .Tree})
 	unit(&t, "unit tests: regexp (src\\engine\\regexp, the ECMAScript regular expressions of URLPattern)", "src/engine/regexp", exe("build/regexp_test"), {TOOLKIT, WB})
 	append(&t, Step{name = "unit tests: the headless host (src\\tools\\headless: the windows of the WPT runner's pages, their back/forward cache; against the test server)",
@@ -296,10 +298,10 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "the engine's C API natively (src\\engine\\jsrt\\judge\\capi_test.odin: judge capi, the calls the glue makes: references, classes, opaque data in the object's block, cycles, the GC epilogue, strings read in place, promises, modules)",
 		actions = slice_of(tool_build("src/engine/jsrt/judge", exe("build/judge")), Command{argv = strs(exe("build/judge"), "capi")}), needs = COMMON_NEEDS})
 	// (the pipe server is one per process, so its tests run one at a time; the client's tests link the image encoder)
-	unit(&t, "unit tests: remote (protocol, pipe server: requests, answers, limits, vanishing clients, stopping with clients connected)", "src/remote", exe("build/remote_test"), {ONE_THREAD, WB})
-	unit(&t, "unit tests: measure (src\\tools\\wrentool\\measure: settled, visually ready, the noise floor, what counts as a gain)", "src/tools/wrentool/measure", exe("build/measure_test"), {WB})
-	unit(&t, "unit tests: remote api (the channel and the processes of wb:remote/api: a call through the channel and back, a process told again by its creation time)", "src/remote/api", exe("build/remote_api_test"), {ONE_THREAD, WB})
-	unit(&t, "unit tests: remote client (wren ctl: options, help, picture diff)", "src/remote/client", exe("build/remote_client_test"), {ONE_THREAD, WB})
+	unit(&t, "unit tests: remote (protocol, pipe server: requests, answers, limits, vanishing clients, stopping with clients connected)", "src/remote", exe("build/remote_test"), {ONE_THREAD, WB, TOOLKIT})
+	unit(&t, "unit tests: measure (src\\tools\\wrentool\\measure: settled, visually ready, the noise floor, what counts as a gain)", "src/tools/wrentool/measure", exe("build/measure_test"), {WB, TOOLKIT})
+	unit(&t, "unit tests: remote api (the channel and the processes of wb:remote/api: a call through the channel and back, a process told again by its creation time)", "src/remote/api", exe("build/remote_api_test"), {ONE_THREAD, WB, TOOLKIT})
+	unit(&t, "unit tests: remote client (wren ctl: options, help, picture diff)", "src/remote/client", exe("build/remote_client_test"), {ONE_THREAD, WB, TOOLKIT})
 
 	e2e_step(&t, "a frame held through a navigation stands while its page makes style passes (src\\tools\\e2e\\held_styles.odin: what crashed in background_has_url; freed memory poisoned)", "held_styles")
 	e2e_step(&t, "a font on its way holds its text and not the page (src\\tools\\e2e\\font_first_paint.odin)", "font_first_paint")
@@ -344,7 +346,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	e2e_step(&t, "editing in the developer tools (src\\tools\\e2e\\devtools_edit.odin: Ctrl+F in Elements finds a text, a selector and an XPath and moves through the matches, Escape shows and hides the Console drawer, the close button last in its strip, a colour picked keeps its format, Up / Shift+Up / Alt+Up / Ctrl+Up step a length and the layout follows; no window at all)", "devtools_edit")
 	e2e_step(&t, "a side stack of the developer tools folded (src\\tools\\e2e\\devtools_fold.odin: the Styles stack folded by the button of its strip, the strip dark like the panel at rest and under the pointer, its tooltip the size of its text inside the window, a click on it brings the stack back; no window at all)", "devtools_fold")
 	e2e_step(&t, "the address bar's suggestions end to end (src\\tools\\e2e\\urlbar.odin: the inline completion and Enter, Shift+Delete and the cross of a row against the profile's history, Down and Escape, a new tab focused without the list and a click that lists; no window at all)", "urlbar")
-	unit(&t, "the result cache and the scheduler of this program (src\\tools\\test_all: what a step depends on, against the compiler's import graph; a change of an input and of nothing else changes a key; a result needs the program it built; the states of a run)", "src/tools/test_all", exe("build/test_all_test"), {WB, ONE_THREAD})
+	unit(&t, "the result cache and the scheduler of this program (src\\tools\\test_all: what a step depends on, against the compiler's import graph; a change of an input and of nothing else changes a key; a result needs the program it built; the states of a run)", "src/tools/test_all", exe("build/test_all_test"), {WB, TOOLKIT, ONE_THREAD})
 	lint_steps(&t)   // (the same on Linux: steps_linux.odin)
 	e2e_step(&t, "the frame gate end to end (src\\tools\\e2e\\frame_gate.odin, a real window that nobody sees: the system's drag of a page drag, the page's context menu, a long script preempted by chrome frames; under them a loop of the system paints: a chrome frame, never a full one, deferred where no frame may begin)", "frame_gate")
 	e2e_step(&t, "tab sidebar resized by its handle (src\\tools\\e2e\\sidebar_resize.odin: the edge where the pointer is in every frame, the page at its area's width, the width written on release; an injected pointer, no window at all)", "sidebar_resize")
@@ -381,20 +383,20 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	e2e_step(&t, "one Wren per profile (src\\tools\\e2e\\instance.odin: a second start hands its addresses over and ends with code 0; another profile, another executable, --new-window, a first one that does not answer keep their own; hidden windows)", "instance", browser = true, each_test = true)
 	e2e_step(&t, "Setup (src\\tools\\e2e\\setup.odin: the real dialog, registry and files against throwaway roots: install, uninstall of the running copy, standalone, the automatic opening and its exceptions, the daily update check)", "setup", browser = true)   // (on a runner the running copy was not out of the way once: cause not found; it runs here)
 	append(&t, Step{name = "crash reports (src\\tools\\e2e\\crash_reports.odin: src/tools/crashmodes dies by an access violation, an assertion, a stack overflow, a corrupted heap, a fail-fast: each leaves a report with a stack and a minidump, or the session file the next start turns into an unclean-exit report)",
-		actions = slice_of(odin_build("src/tools/crashmodes", "build/crashmodes.exe", {WB, "-debug", "-vet"}), odin_build("src/tools/crashmodes", "build/crashmodes_poison.exe", {WB, "-debug", "-vet", POISON}), e2e_run("crash_reports")), needs = COMMON_NEEDS + {.E2E, .Test_Server}, inputs = .Tree})
+		actions = slice_of(odin_build("src/tools/crashmodes", "build/crashmodes.exe", {WB, TOOLKIT, "-debug", "-vet"}), odin_build("src/tools/crashmodes", "build/crashmodes_poison.exe", {WB, TOOLKIT, "-debug", "-vet", POISON}), e2e_run("crash_reports")), needs = COMMON_NEEDS + {.E2E, .Test_Server}, inputs = .Tree})
 	e2e_step(&t, "the system menu of the Wren icon (src\\tools\\e2e\\system_menu.odin: a click opens it, a frame is made in its loop, a key closes it, tabs on top and in a sidebar; the menu was opened during the build and its frames were built inside it, the crash of the 2026-10-26 experimental build; a hidden window)", "system_menu", browser = true)
 	e2e_step(&t, "who chose an address (src\\tools\\e2e\\nav_trust.odin: a page asking by script for about:sites?clear=..., a file or a share is refused and F5, Back and Forward never obey it; the same addresses typed by the person, and the links of about:sites, still work)", "nav_trust", weight = 20)
 	e2e_step(&t, "about:config end to end (src\\tools\\e2e\\config.odin: search, a switch, a number, a value out of range, a choice, reset, details, a category by type-ahead, all from the keyboard; no window at all)", "config")
 	e2e_step(&t, "search engines end to end (src\\tools\\e2e\\search.odin: a profile of before the list keeps its choice, the default, keywords, Ctrl+Down in the suggestions, an engine added in about:config and written to the profile; engines on the test server, no window at all)", "search")
 
-	unit(&t, "unit tests: wasm", "src/wasm", exe("build/wasm_test"), {WB, ONE_THREAD})
+	unit(&t, "unit tests: wasm", "src/wasm", exe("build/wasm_test"), {WB, TOOLKIT, ONE_THREAD})
 	unit(&t, "unit tests: WPT reference tests (links and fuzzy annotations as WPT reads them, comparison, PNG, the rasteriser from markup to pixels)", "src/tools/wpt/reftest", exe("build/wpt_reftest_test"), {TOOLKIT, WB})
-	unit(&t, "unit tests: bindgen (description language, determinism)", "src/tools/bindgen/idl", exe("build/bindgen_test"), {WB})
-	unit(&t, "unit tests: wrentool threadtime (whose work the window thread did, by its spans; when it settled)", "src/tools/wrentool/threadtime", exe("build/wrentool_threadtime_test"), {WB})
+	unit(&t, "unit tests: bindgen (description language, determinism)", "src/tools/bindgen/idl", exe("build/bindgen_test"), {WB, TOOLKIT})
+	unit(&t, "unit tests: wrentool threadtime (whose work the window thread did, by its spans; when it settled)", "src/tools/wrentool/threadtime", exe("build/wrentool_threadtime_test"), {WB, TOOLKIT})
 	append(&t, Step{name = "process allocators: no runtime.default_context / heap_allocator / default_allocator outside src\\base\\memory.odin (base.process_context, process_allocator, permanent_allocator: what the check builds track; a line that must not use the tracker says why after // memcheck:)",
 		actions = slice_of(Task{"the allocators", task_process_allocators, ""}), inputs = .Tree})
 	// (its own exe: the browser's build, which a parallel step may run, runs bindgen too)
-	append(&t, Step{name = "generated web API up to date (bindgen -check)", actions = slice_of(Command{argv = join({"odin", "run", "src/tools/bindgen", WB, "-vet", out_flag(exe("build/bindgen_check"))}, tooling.STACK_FLAGS, {"--", "-check"}), pkg = "src/tools/bindgen"}), inputs = .Everything})
+	append(&t, Step{name = "generated web API up to date (bindgen -check)", actions = slice_of(Command{argv = join({"odin", "run", "src/tools/bindgen", WB, TOOLKIT, "-vet", out_flag(exe("build/bindgen_check"))}, tooling.STACK_FLAGS, {"--", "-check"}), pkg = "src/tools/bindgen"}), inputs = .Everything})
 	// test262 in three steps (their names begin with "test262": the CI runs them as a job of their own). What both runs read, made once: the suite, the test image of the engine (its own build of
 	// the glue, beside the browser's engine and not after it) and the runner. Then the interpreter's run and the JIT's side by side: each writes its own error file.
 	test262_quick := cfg.quick ? strs("-quick") : nil
@@ -425,7 +427,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "web API conformance (generated cases: bounds, UTF-8, handles, enums, capacity)",
 		actions = slice_of(
 			odin_build("examples/apiconformance", "build/apiconformance.wasm", {"-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-o:size"}),
-			odin_build("src/tools/apiconformance", exe("build/apiconformance"), join({"-use-separate-modules", WB, "-vet", TRACK}, tooling.STACK_FLAGS)),
+			odin_build("src/tools/apiconformance", exe("build/apiconformance"), join({"-use-separate-modules", WB, TOOLKIT, "-vet", TRACK}, tooling.STACK_FLAGS)),
 			Command{argv = strs(exe("build/apiconformance"), "build/apiconformance.wasm")},
 		), needs = COMMON_NEEDS})
 
@@ -463,7 +465,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "licence Worker (licence\\worker, no network: Paddle-Signature checks, transaction.completed, idempotency, KV, mail, and licences made with the development pair verified by Wren's own tool; SKIP when neither node 22.18+ nor bun is installed)",
 		actions = slice_of(tool_build("src/tools/license", exe("build/license_worker")), Task{"its tests", task_license_worker, ""}), needs = COMMON_NEEDS, inputs = .Everything})
 	web_step(&t, "file: folders end-to-end test (index file, listing, redirect to /, errors, who may open what; no server)", "file")
-	unit(&t, "unit tests: test host (what fails a section of the web tests: what it declared did not run, a skip the machine does not confirm)", "src/tools/testhost", exe("build/testhost_test"), {WB})
+	unit(&t, "unit tests: test host (what fails a section of the web tests: what it declared did not run, a skip the machine does not confirm)", "src/tools/testhost", exe("build/testhost_test"), {WB, TOOLKIT})
 	web_step(&t, "DOM for JavaScript end-to-end test (src\\tools\\e2e\\web_jsdom.odin: tree, elements, markup, selectors, CSSOM, geometry, UI events, MutationObserver, traversal, ranges, leaks, micro-benchmarks; no server)", "jsdom")
 	web_step(&t, "history end-to-end test (src\\tools\\e2e\\web_history.odin: the tree as pages see it, scrollRestoration, pageshow / pagehide persisted, back/forward cache freezing, persisted form state; no server)", "history")
 	web_step(&t, "Web Authentication end-to-end test (src\\tools\\e2e\\web_webauthn.odin: create then get from JavaScript on the virtual authenticator, signature checked; activation, RP ID, aborts, timer, mediation, JSON forms, secure context; no server)", "webauthn")
@@ -514,7 +516,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 
 	if long_run {
 		append(&t, Step{name = "the names of a release's crash frames (src\\tools\\wrentool\\deps\\symbols_test.odin: the report of a build with no PDB gives its fingerprint and offsets, wrentool crash-symbolize names them from the map, or through the minidump)",
-			actions = slice_of(odin_test("src/tools/wrentool/deps", exe("build/wrentool_deps_test"), strs(WB), false)), inputs = .Tree})
+			actions = slice_of(odin_test("src/tools/wrentool/deps", exe("build/wrentool_deps_test"), strs(WB, TOOLKIT), false)), inputs = .Tree})
 		e2e_step(&t, "tab sidebar features that need a page or a profile (src\\tools\\e2e\\sidebar_tabs.odin, no window at all: the sound of a tab, what comes back at the next start)", "sidebar_tabs")
 		e2e_step(&t, "what Ctrl+Shift+T brings back and the option that reopens the session (src\\tools\\e2e\\closed_tabs.odin, no window at all: a tab with its history, a window, the session before)", "closed_tabs")
 		// (frames counted against the screen's refresh: on a loaded CI runner one frame in two came late; a measure with a real pointer, not a test of a tool: run with -Ui)

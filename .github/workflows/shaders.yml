@@ -1,0 +1,36 @@
+# The Direct3D blob of Wren's pixel shader (src/browser/shaders): its compiler (naga, then D3DCompile) runs on Windows
+# only, so a change of the shader's source or of the toolkit's rect.wgsl and app.wgsl is compiled here. The blob and its
+# hash come back as an artifact, to commit (shaders_test.odin says when they are stale).
+name: Shaders
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: ./.github/actions/setup
+
+      - name: Compile the pixel shader
+        run: |
+          odin run ext/gui_toolkit/tools/shaders -- app card_foil src/browser/shaders/card_foil.wgsl src/browser/shaders
+          if ($LASTEXITCODE) { exit 1 }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shaders
+          path: |
+            src/browser/shaders/card_foil.dxbc
+            src/browser/shaders/card_foil.sha256

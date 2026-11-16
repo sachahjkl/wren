@@ -138,7 +138,7 @@ run_text :: proc(command: []string, limit := time.Duration(RUN_LIMIT)) -> (text:
 build_tool :: proc(name: string) -> (exe: string, ok: bool) {
 	exe = fmt.tprintf("build/%s%s", name, tooling.EXE_SUFFIX)
 	cmd := make([dynamic]string, context.temp_allocator)
-	append(&cmd, tooling.odin_program(), "build", fmt.tprintf("src/tools/%s", name), "-collection:wb=src", "-vet", "-o:speed", fmt.tprintf("-out:%s", exe))
+	append(&cmd, tooling.odin_program(), "build", fmt.tprintf("src/tools/%s", name), "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit/src", "-vet", "-o:speed", fmt.tprintf("-out:%s", exe))
 	append(&cmd, ..tooling.STACK_FLAGS)
 	return exe, tooling.build_if_stale(exe, name, cmd[:])
 }

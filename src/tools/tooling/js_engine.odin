@@ -133,7 +133,7 @@ js_stamp :: proc(o: Js_Options) -> string {
 build_jsengine_tool :: proc(o: Js_Options) -> (exe: string, ok: bool) {
 	exe = fmt.tprintf("%s/jsengine%s", o.out, EXE_SUFFIX)
 	build := make([dynamic]string, context.temp_allocator)
-	append(&build, odin_program(), "build", "src/tools/jsengine", "-collection:wb=src", "-vet", fmt.tprintf("-out:%s", exe), "-o:speed")
+	append(&build, odin_program(), "build", "src/tools/jsengine", "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit/src", "-vet", fmt.tprintf("-out:%s", exe), "-o:speed")
 	append(&build, ..STACK_FLAGS)
 	if run({command = build[:], log = o.log}) != 0 { say(o.log, "building src/tools/jsengine failed\n"); return "", false }
 	return exe, true
