@@ -8,6 +8,7 @@
 
 ## Next
 
+- **Fuzz testing of what reads untrusted input.** The JavaScript engine, its bytecode reader and the parsers of HTML, CSS, URLs and images run on input that pages control: fuzzers find the crashes and the memory corruptions before a page does.
 - **One page embedding, the browser without its shell.** A page's embedding is built in 5 places and the navigation algorithm exists twice: one `embed` package holds both ([docs/organisation-review.md](docs/organisation-review.md), section 1).
 - **`src/browser` cut into packages.** It is one package of 235 files, its App has about 170 fields and `the_app` is used 1092 times: 8 packages, the leaves first (section 2).
 - **Preferences read one way.** They are read 3 ways today: one settings struct and one watch per group (section 4).
