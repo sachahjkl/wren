@@ -11,6 +11,7 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 import "wb:e2e"
+import crash "toolkit:crash"
 
 @(private = "file") PLANTED_SOURCE :: `package main
 import "core:os"
@@ -33,7 +34,7 @@ a_program_of_the_working_folder_never_runs_in_place_of_the_systems :: proc(t: ^t
 	e2e.kill(e2e.launch(t, {profile = profile}))
 	next := e2e.launch(t, {profile = profile, start = {cwd = trap}})
 	crashes := fmt.tprintf("%s/crashes", profile)
-	e2e.wait_for(t, crashes, proc(dir: string) -> bool { return len(e2e.files_with_prefix(dir, "unclean exit")) > 0 }, "the report of the session that ended without one")
+	e2e.wait_for(t, crashes, proc(dir: string) -> bool { return len(e2e.files_with_prefix(dir, crash.UNCLEAN_PREFIX + "-", crash.REPORT_EXTENSION)) > 0 }, "the report of the session that ended without one")
 	testing.expect(t, !os.exists(marker), "the wevtutil.exe of the working folder did not run")
 	e2e.quit(next)
 }

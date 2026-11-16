@@ -140,6 +140,9 @@ a_first_wren_that_does_not_answer_does_not_hold_the_second :: proc(t: ^testing.T
 	e2e.quit(a)
 }
 
+// The class of the toolkit's windows (platform_win32.odin, WINDOW_CLASS_NAME).
+@(private = "file") TOOLKIT_WINDOW_CLASS :: "gui_toolkit_window"
+
 // Does the process have a window of its own, shown or not? (A start that hands over ends before it makes one.)
 @(private = "file")
 has_a_window :: proc(pid: int) -> bool {
@@ -149,8 +152,15 @@ has_a_window :: proc(pid: int) -> bool {
 		f := (^Find)(rawptr(uintptr(l)))
 		owner: win.DWORD
 		win.GetWindowThreadProcessId(h, &owner)
-		if owner == f.pid { f.found = true; return false }
-		return true
+		if owner != f.pid { return true }
+		// (a program window, of the toolkit's class: every process also has the crash package's hidden window, from the start)
+		class: [64]u16
+		n := int(win.GetClassNameW(h, &class[0], len(class)))
+		if n != len(TOOLKIT_WINDOW_CLASS) { return true }
+		want := TOOLKIT_WINDOW_CLASS
+		for i in 0 ..< n { if class[i] != u16(want[i]) { return true } }   // (ASCII: no context here to convert)
+		f.found = true
+		return false
 	}, win.LPARAM(uintptr(&f)))
 	return f.found
 }

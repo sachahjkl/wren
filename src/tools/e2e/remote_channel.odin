@@ -114,7 +114,8 @@ what_a_client_reads_over_the_channel :: proc(t: ^testing.T) {
 	profile := e2e.temp_profile(t)
 	p := e2e.launch(t, {profile = profile})
 	s := p.s
-	testing.expect(t, os.exists(fmt.tprintf("%s/remote.json", profile)), "remote.json is written in the profile")
+	// (the profile's writer writes it on its own thread: the channel answers before it is there)
+	e2e.wait_file(t, fmt.tprintf("%s/remote.json", profile))
 	who, _ := api.ping(s)
 	testing.expect_value(t, who.pid, p.wren.pid)
 	api.navigate(s, e2e.url(server, FIXTURE))
