@@ -58,9 +58,20 @@ Apply these to every task, before you write code:
   `base.Arena`. Tests fail on a leak.
 - Tests wait for a condition with a bound, never for a fixed delay. Tests that measure time are opt-in (`-Perf`).
   Tests that drive real windows are opt-in (`.Ui_Only`, `-Ui`).
-- Changelog: add one fragment in `changelog.d/` per change. Never edit `CHANGELOG.md` or `APP_VERSION`.
 - Comments and commit messages are in English. Comments say why.
 - `ext/gui_toolkit` points only to tagged commits that are pushed to its own repository.
+
+## Changelog
+
+- Each change that a user can see is one fragment in `changelog.d/`, in the same commit as the change.
+  `changelog.d/README.md` gives the format. Never edit `CHANGELOG.md` or `APP_VERSION`: the release writes them.
+- `wrentool changelog -Check` checks the fragments and `CHANGELOG.md`.
+
+## Intent
+
+- The intent of Wren's modules and features is in `src/md` (<https://srcmd.org>). Read `src/md/README.md` first.
+- Change the intent first, then the code and the tests, in the same commit. A new design goes in `src/md`, with its
+  line in the file index. The designs written before `src/md` are in `docs/`.
 
 ## Roadmap
 
