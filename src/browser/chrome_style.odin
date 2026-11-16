@@ -37,7 +37,7 @@ CHROME_PREFS := [?]config.Def{
 	{name = "browser.ui.chrome_style", kind = .String, default = {s = "modern"}, choices = {"modern", "classic"},
 		description = "The shape of the tabs and the toolbar. modern: tabs are rounded pills, drawn in the finish of the interface (appearance.finish: with machined, the current tab is a bevelled part and grooves part the tabs). classic: tabs are trapezoids with sloped sides, rounded shoulders and a concave foot, the current tab is attached to the toolbar (one gradient, no line between them), the others are darker and overlap behind it, with gradients and light and dark hairlines; with the tabs in a sidebar (browser.tabs.position), the current tab is a panel with rounded outer corners that flows into the page's side, the others lie flat on the bar, engraved apart. Each one follows appearance.theme: the classic colors are derived from the palette, light or dark. Applies at once."},
 	{name = "browser.ui.classic_slope_deg", kind = .Float, default = {f = 22}, bounded = true, min = 8, max = 40,
-		description = "Classic style: how far the sides of a tab lean from the vertical (Chrome of 2010-2015: about 17). The larger, the more angular the tabs and the more they overlap."},
+		description = "Classic style: how far the sides of a tab lean from the vertical, in degrees (Chrome of 2010-2015: about 17). The larger, the more angular the tabs and the more they overlap."},
 	{name = "browser.ui.classic_gloss", kind = .Float, default = {f = 1}, bounded = true, min = 0, max = 2,
 		description = "Classic style: strength of the gradients and of the difference between the current tab, the other tabs and the tab bar. 0: flat colors (the shapes and lines stay), 1: the usual look, 2: more depth."},
 }

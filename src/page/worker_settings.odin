@@ -38,7 +38,7 @@ WORKER_PREFS := [?]config.Def{
 	{name = "workers.thread_priority", kind = .String, default = {s = "below_normal"}, choices = {"normal", "below_normal", "lowest"},
 		description = "Scheduling priority of worker threads. below_normal: below the interface thread, so that the window stays responsive even when workers keep every core busy, and level with other programs. lowest: behind other programs too, which gives a worker almost nothing while they keep every core busy."},
 	{name = "workers.max_memory_pages", kind = .Int, default = {i = 16384}, bounded = true, min = 1, max = 65536,
-		description = "Most linear memory a worker's module may grow to (16384 = 1 GiB). A smaller maximum declared by the module itself still applies."},
+		description = "Most linear memory a worker's module may grow to in pages of 64 KiB (16384 = 1 GiB). A smaller maximum declared by the module itself still applies."},
 	{name = "workers.instruction_budget", kind = .Int, default = {i = 50_000_000}, bounded = true, min = -1, max = 1 << 40,
 		description = "Instructions a worker may run in one task (a message, a timer, a callback) when wasm.wasmtime.fuel is on. A task that exceeds it is stopped and reported as an error; the worker stays usable. -1 = unlimited; values above 2147483647 count as 2147483647."},
 	{name = "workers.max_call_ms", kind = .Int, default = {i = -1}, bounded = true, min = -1, max = 3_600_000,

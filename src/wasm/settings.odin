@@ -16,7 +16,7 @@ PREFS := [?]config.Def{
 	{name = "wasm.max_call_ms", kind = .Int, default = {i = 1000}, bounded = true, min = -1, max = 3_600_000,
 		description = "Wall-clock time one call from the browser into a module (an event, a timer, a callback, with everything it calls back) may take. Past it the call traps, the page stays responsive and the module stays usable. -1 or 0 = unlimited. For the JavaScript engine of a page, a positive value is raised to at least twice javascript.slow_script_ms. In milliseconds."},
 	{name = "wasm.max_memory_pages", kind = .Int, default = {i = 16384}, bounded = true, min = 1, max = 65536,
-		description = "Most linear memory a module may grow to (16384 = 1 GiB). A smaller maximum declared by the module itself still applies."},
+		description = "Most linear memory a module may grow to in pages of 64 KiB (16384 = 1 GiB). A smaller maximum declared by the module itself still applies."},
 	{name = "wasm.max_table_elements", kind = .Int, default = {i = 1 << 20}, bounded = true, min = -1, max = 1 << 32,
 		description = "Most elements one table of a module may hold (wasmtime). Growing past it fails as if out of memory. -1 = unlimited."},
 	{name = "wasm.max_tables", kind = .Int, default = {i = 16}, bounded = true, min = 1, max = 100_000,
