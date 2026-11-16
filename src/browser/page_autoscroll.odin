@@ -149,8 +149,10 @@ autoscroll_tick :: proc(app: ^App, t: ^Tab) -> bool {
 	// (the pointer leaving the window is a Mouse_Leave, which ends the session; mouse_valid is not polled here, as the chrome's
 	// toolkit state may briefly report it false right after an injected press)
 	if !t.layout.valid { gesture_cancel(app); return false }
-	pos := wnd.ui.mouse   // the window's toolkit state tracks the pointer in window pixels (same events as the page)
-	ui.autoscroll_point(&ps.auto, pos)
+	// the window's toolkit state tracks the pointer in window pixels (same events as the page). Before it has seen one (a
+	// press with no move before it, routed to the page before the state reads it) its position is no pointer's: fed, it
+	// would count as a move and the tap would not latch
+	if wnd.ui.mouse_valid { ui.autoscroll_point(&ps.auto, wnd.ui.mouse) }
 	vel := ui.autoscroll_velocity(&ps.auto, app.autoscroll_cfg.cfg)   // CSS px / s
 	scale := max(page_scale(app), 0.01)
 	if vel != {} {
@@ -175,7 +177,7 @@ autoscroll_chrome_frame :: proc(app: ^App) {
 	t := current_tab(app)
 	if g.owner != .Autoscroll || t == nil || t != g.tab || t.page != g.top { return }
 	ps := &g.autoscroll
-	ui.autoscroll_point(&ps.auto, active_window(app).ui.mouse)
+	if st := active_window(app).ui; st.mouse_valid { ui.autoscroll_point(&ps.auto, st.mouse) }   // (autoscroll_tick)
 	vel := ui.autoscroll_velocity(&ps.auto, app.autoscroll_cfg.cfg)
 	if vel == {} { return }
 	shell_chain_by(app, t, ps.is_doc ? base.NIL_HANDLE : ps.node, autoscroll_frame_delta(vel, frame_seconds(app), max(page_scale(app), 0.01)))

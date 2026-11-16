@@ -88,6 +88,7 @@ register_devtools_prefs :: proc(p: ^config.Prefs) {
 Devtools :: struct {
 	visible:   bool,               // the view is wanted open (devtools_view_follow)
 	dock:      Dev_Dock,           // where the view was built last (dev_dock_of), or was asked to go
+	brought:   bool,               // a tab brought them from another window: the view opens at `dock` (devtools_view_follow)
 	panel:     Dev_Panel,
 	font_pt:   f32,
 	density:   Dt_Density,
@@ -353,6 +354,13 @@ devtools_set_dock :: proc(app: ^App, dock: Dev_Dock) {
 	if !dev().visible { devtools_set_visible(app, true) }
 	// (opened now, not at the next build: it moves at once; outside a build, its owner is named)
 	if !ui.view_is_open(vs, DEVTOOLS_VIEW, inst) { ui.view_open(vs, DEVTOOLS_VIEW, w, inst, w.ui) }
+	devtools_present(vs, inst, dock)
+	dev().dock = dock
+	request_frames(app, 3)
+}
+
+@(private = "file")
+devtools_present :: proc(vs: ^ui.Views, inst: string, dock: Dev_Dock) {
 	switch dock {
 	case .Bottom, .Right, .Left, .Top:
 		edges := DEV_DOCK_EDGES
@@ -360,8 +368,6 @@ devtools_set_dock :: proc(app: ^App, dock: Dev_Dock) {
 	case .Floating: ui.view_present(vs, DEVTOOLS_VIEW, .Internal, {}, inst)
 	case .Window: ui.view_present(vs, DEVTOOLS_VIEW, .External, {}, inst)
 	}
-	dev().dock = dock
-	request_frames(app, 3)
 }
 
 // Back to their home: a panel at the bottom of the window.
@@ -399,6 +405,10 @@ devtools_view_follow :: proc(app: ^App) {
 	open := ui.view_is_open(vs, DEVTOOLS_VIEW, inst)
 	if d.visible && !open {
 		ui.view_open(vs, DEVTOOLS_VIEW, w, inst)
+		// (brought by a tab: where they were in the other window. Otherwise the toolkit opens the view where the person
+		// last had it)
+		if d.brought { devtools_present(vs, inst, d.dock) }
+		d.brought = false
 	} else if !d.visible && open {
 		ui.view_close(vs, DEVTOOLS_VIEW, inst)
 	}
@@ -441,6 +451,7 @@ devtools_follow_tab :: proc(app: ^App, src, dest: ^Browser_Window) {
 		if d.mem.tick != base.NIL_HANDLE { host.clear_timer(&app.loop, d.mem.tick); d.mem.tick = base.NIL_HANDLE }
 	}
 	a^, b^ = b^, a^
+	b.brought = true
 	if app.net_media.owner == a { app.net_media.owner = b } else if app.net_media.owner == b { app.net_media.owner = a }
 	window_request(app, src, 3)
 	window_request(app, dest, 3)
