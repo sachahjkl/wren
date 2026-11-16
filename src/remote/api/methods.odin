@@ -489,14 +489,14 @@ hover :: proc(s: ^Session, at: Point, space := Space.Page, loc := #caller_locati
 	return e
 }
 
-// The wheel, at a point of the page: `notches` positive goes down (one is 100 px).
-scroll :: proc(s: ^Session, notches: f64, at := Point{SCROLL_X, SCROLL_Y}, loc := #caller_location) -> Error {
+// The wheel, at a point of the page (or of the window: `space`): `notches` positive goes down (one is 100 px).
+scroll :: proc(s: ^Session, notches: f64, at := Point{SCROLL_X, SCROLL_Y}, space := Space.Page, loc := #caller_location) -> Error {
 	p := params(loc)
 	p_str(&p, "type", "mouseWheel")
 	p_num(&p, "x", at.x)
 	p_num(&p, "y", at.y)
 	p_num(&p, "notches", notches)
-	p_str(&p, "space", "page")
+	p_str(&p, "space", SPACE_NAMES[space])
 	_, e := request(s, "Input.dispatchMouseEvent", &p)
 	return e
 }

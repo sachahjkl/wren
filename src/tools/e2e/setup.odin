@@ -84,6 +84,16 @@ setup_still :: proc(s: ^api.Session) -> api.Setup_State {
 @(private = "file")
 click_button :: proc(s: ^api.Session, r: api.Rect) { api.click_at(s, api.center(r), .Window) }
 
+// Uninstall is at the end of what the dialog says, which scrolls when it is taller than the dialog: the wheel over it,
+// above the footer's buttons, brings it into view. (A box's rectangle is laid out whether it shows or not.)
+@(private = "file")
+uninstall_in_view :: proc(s: ^api.Session, st: api.Setup_State) -> api.Setup_State {
+	OVER_THE_TEXT :: 60   // px above the footer's main button: the scrolling part
+	SCROLL_NOTCHES :: 20  // more than the dialog says
+	api.scroll(s, SCROLL_NOTCHES, {f64(st.primary.x) + f64(st.primary.w) / 2, f64(st.primary.y) - OVER_THE_TEXT}, .Window)
+	return setup_still(s)
+}
+
 // Is the dialog shown by a start that has settled? (The jobs of the start are counted before its channel answers: nothing more can open it.)
 @(private = "file")
 opened_by_itself :: proc(t: ^testing.T, o: e2e.Process_Options) -> bool {
@@ -123,6 +133,7 @@ install_uninstall_standalone :: proc(t: ^testing.T) {
 	options.exe = installed
 	p = e2e.launch(t, options)
 	st = setup_ready(p.s)
+	st = uninstall_in_view(p.s, st)
 	click_button(p.s, st.uninstall)
 	// (what it asks takes more lines: the button goes down)
 	st = setup_still(p.s)
