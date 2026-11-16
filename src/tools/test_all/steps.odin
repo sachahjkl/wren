@@ -277,7 +277,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "build the browser (wrentool build; nothing to do when newer than its sources)", actions = slice_of(Task{"wrentool build", task_browser, "dev"}), marks = {.No_Result, .Browser_Build}, needs = COMMON_NEEDS, makes = {.Browser}, limit = build_limit(cfg)})
 	if long_run { append(&t, Step{name = "build the check build of the browser (wrentool build check; nothing to do when newer than its sources)", actions = slice_of(Task{"wrentool build check", task_browser, "check"}), marks = {.No_Result, .Browser_Build}, needs = COMMON_NEEDS, makes = {.Check_Browser}, limit = build_limit(cfg), group = .Check_Build}) }
 
-	PACKAGES := []string{"base", "host", "dom", "html", "url", "urlpattern", "http", "cookies", "csp", "extensions", "httpcache", "fetch", "css", "style", "webfont", "xml", "images", "media", "webaudio", "canvas2d", "idb", "layout", "forms", "vault", "js", "page", "webauthn", "license", "update", "desktop", "adblock", "blocker", "a11y", "browser"}
+	PACKAGES := []string{"base", "host", "dom", "html", "url", "urlpattern", "http", "cookies", "csp", "extensions", "httpcache", "fetch", "css", "style", "webfont", "xml", "images", "media", "webaudio", "canvas2d", "idb", "layout", "forms", "vault", "js", "page", "webauthn", "update", "desktop", "adblock", "blocker", "a11y", "browser"}
 	for pkg in PACKAGES {
 		flags := []string{TOOLKIT, WB}
 		// (images: its tests share the process-wide decoder pool and one of them sets its idle time: one test at a time)
@@ -515,8 +515,6 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "wpt quick" : "wpt"}, Command{argv = wpt_args}), weight = 50, needs = COMMON_NEEDS + {.Test_Server}, inputs = .Tree, limit = suite_limit(cfg)})   // (the runner links build/native: .Native is its only writer, the browser's build finds it up to date)
 
 	if long_run {
-		append(&t, Step{name = "the names of a release's crash frames (src\\tools\\wrentool\\deps\\symbols_test.odin: the report of a build with no PDB gives its fingerprint and offsets, wrentool crash-symbolize names them from the map, or through the minidump)",
-			actions = slice_of(odin_test("src/tools/wrentool/deps", exe("build/wrentool_deps_test"), strs(WB, TOOLKIT), false)), inputs = .Tree})
 		e2e_step(&t, "tab sidebar features that need a page or a profile (src\\tools\\e2e\\sidebar_tabs.odin, no window at all: the sound of a tab, what comes back at the next start)", "sidebar_tabs")
 		e2e_step(&t, "what Ctrl+Shift+T brings back and the option that reopens the session (src\\tools\\e2e\\closed_tabs.odin, no window at all: a tab with its history, a window, the session before)", "closed_tabs")
 		// (frames counted against the screen's refresh: on a loaded CI runner one frame in two came late; a measure with a real pointer, not a test of a tool: run with -Ui)

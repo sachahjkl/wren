@@ -415,7 +415,7 @@ check, the portability check, test262, a trace recording and a desktop (<code>ge
 <li>Flags have two forms: <code>-Urls</code>, <code>-List</code>, <code>-Exe</code> in <code>wrentool</code> and <code>test_all</code>
 (<code>src/tools/wrentool/capture/sweep.odin:86-96</code>), and <code>--profile</code>, <code>--policy</code> in <code>wren</code>
 (<code>src/browser/main.odin:1741-1745</code>).</li>
-<li><code>test_all</code> is started with a long command (<code>odin run src/tools/test_all -collection:wb=src -out:build/test_all
+<li><code>test_all</code> is started with a long command (<code>odin run src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/test_all
 -keep-executable</code>). It imports <code>wb:tools/wrentool/builder</code>.</li>
 <li>Versions are pinned in many places. Odin: 4 workflow files, <code>flake.nix:52</code>, <code>odin.version</code>, <code>README.md:256</code>,
 <code>CONTRIBUTING.md:76</code>. Rust 1.99.1: 3 workflow files and 4 cache keys. Wasmtime 49.0.3:
