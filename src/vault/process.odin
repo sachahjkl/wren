@@ -93,7 +93,7 @@ process_reader :: proc(data: rawptr) {
 	process: os.Process
 	start_err: os.Error = err1 != nil ? err1 : err2
 	if start_err == nil {
-		process, start_err = os.process_start({command = {p.path}, stdin = in_r, stdout = out_w, stderr = nil})
+		process, start_err = helper_start(p.path, in_r, out_w)   // helper_start_<os>.odin
 	}
 	// (the child has its ends now; ours of them go, so that its exit closes our read end)
 	if in_r != nil { _ = os.close(in_r) }
