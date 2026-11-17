@@ -135,7 +135,7 @@ compiles; 0 when it failed (the ticket is then forgotten).</p>
 <p>Host: <code>Engine_jitPoll :: proc(c: ^Call, ticket: i32) -&gt; i32</code></p>
 <h3 id="engine-stackmove"><a class="anchor" href="#engine-stackmove" aria-hidden="true">#</a><code>Engine_stackMove</code></h3>
 <div class="code"><pre><code>u32 Engine_stackMove(u32 sp)</code></pre></div>
-<p>The engine's stack in linear memory (src/engine/jsrt/stack.odin): moves its stack pointer to <code>sp</code>, a block of the
+<p>The engine's stack in linear memory (ext/gui_toolkit/src/js/stack.odin): moves its stack pointer to <code>sp</code>, a block of the
 engine's heap past the end of the stack it was linked with, and returns where it was. 0 from any other module.</p>
 <p>Host: <code>Engine_stackMove :: proc(c: ^Call, sp: u32) -&gt; u32</code></p>
 <h3 id="engine-nativestacklow"><a class="anchor" href="#engine-nativestacklow" aria-hidden="true">#</a><code>Engine_nativeStackLow</code></h3>
@@ -397,14 +397,6 @@ wrappers of one tree alive together.</p>
 <li><a href="../../../docs/README/">Writing documentation</a></li>
 <li><a href="../../../docs/bitwarden/">Vault: a native client for Bitwarden accounts</a></li>
 <li><a href="../../../docs/closed-tabs/">Closed tabs and sessions</a></li>
-<li><a href="../../../docs/engine/bigint/">bigint: arbitrary-precision integers for the JavaScript engine</a></li>
-<li><a href="../../../docs/engine/datetime/">datetime (package jsdate): the JavaScript engine's Date</a></li>
-<li><a href="../../../docs/engine/frontend/">Moteur JavaScript — front-end E1 (src/engine/frontend)</a></li>
-<li><a href="../../../docs/engine/jit/">The JIT (src/engine/jsrt/jit.odin)</a></li>
-<li><a href="../../../docs/engine/numconv/">numconv: float64 ↔ string for the JavaScript engine</a></li>
-<li><a href="../../../docs/engine/regexp/">engine/regexp</a></li>
-<li><a href="../../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
-<li><a href="../../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../../docs/extensions/">Browser extensions</a></li>
 <li><a href="../../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
 <li><a href="../../../docs/js/jscapi/">The QuickJS C API on the Odin runtime (src/jscapi)</a></li>

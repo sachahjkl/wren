@@ -1128,8 +1128,8 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	if ui.views_frame(&app.views) {
 		if ui.style({width = ui.fill(), height = ui.fill()}) {
 			ui.next({axis = .Y})
-			// (.Fits_Width: its width is what the frame of views leaves beside the docked panels; with the least of its
-			// tab strip and toolbar it would push a docked panel out of the window: least-width.md of the toolkit)
+			// (.Fits_Width: its width is what the frame of views leaves beside the docked panels, a share; with the least
+			// of its tab strip and toolbar it would keep the page at the window's width: least-width.md of the toolkit)
 			root := ui.build_box({.Draw_Background, .Fits_Width}, "###window")
 			if ui.parent(root) {
 				// tab strip (the window's title bar when integrated: window_chrome.odin), navigation, security chip,

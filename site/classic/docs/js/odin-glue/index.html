@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Writing Wren's JavaScript glue in Odin · Wren docs</title>
-<meta name="description" content="Writing Wren's JavaScript glue in Odin Wren's JavaScript engine is the Odin engine (src/engine/jsrt, through the QuickJS C API of src/jscapi) compiled to one WebAssembly ">
+<meta name="description" content="Writing Wren's JavaScript glue in Odin Wren's JavaScript engine is the Odin engine (ext/gui_toolkit/src/js, through the QuickJS C API of src/jscapi) compiled to one WebAs">
 <link rel="icon" type="image/png" sizes="32x32" href="../../../../img/logo-32.png">
 <link rel="stylesheet" href="../../../classic.css">
 </head>
@@ -53,7 +53,7 @@
 </ul>
 </nav>
 
-<p>Wren's JavaScript engine is the Odin engine (<code>src/engine/jsrt</code>, through the QuickJS C API of <code>src/jscapi</code>) compiled
+<p>Wren's JavaScript engine is the Odin engine (<code>ext/gui_toolkit/src/js</code>, through the QuickJS C API of <code>src/jscapi</code>) compiled
 to one WebAssembly module (<code>build/js/wren_js.wasm</code>), run by Wasmtime. Around the engine sits the <em>glue</em>: the code that
 implements the web platform's objects as native functions of that API and wires them to the browser's <code>wr_*</code> imports. All
 of it is Odin (<code>native/js/odin/</code>; the binding tables are generated into <code>bindings_gen.odin</code>). No C of ours is compiled any
@@ -96,7 +96,7 @@ in <code>wj/</code>. A domain of the glue calls another domain unqualified, neve
 <p>The WebAssembly JavaScript API (a page's own modules) is hand-written: <a href="../../../docs/js/webassembly-api/">webassembly-api.md</a>.</p>
 <h2 id="the-engine-wj-jsrt"><a class="anchor" href="#the-engine-wj-jsrt" aria-hidden="true">#</a>The engine (<code>WJ_JSRT</code>)</h2>
 <p><code>wj.WJ_JSRT</code> is a constant (<code>true</code>): the layer sits on the Odin runtime. <code>wj/backend_jsrt.odin</code> aliases the names of the
-QuickJS C API to the procedures of <code>src/jscapi</code> (the API implemented on <code>src/engine/jsrt</code>). The API types
+QuickJS C API to the procedures of <code>src/jscapi</code> (the API implemented on <code>ext/gui_toolkit/src/js</code>). The API types
 (<code>Context</code>, <code>Native</code>, <code>Class_Def</code>, ...) are defined once in <code>jscapi/types.odin</code> and aliased in <code>wj</code>.
 <code>-define:JSCAPI_EXPORT=true</code> also exports the API under its C names, which a few <code>foreign</code> declarations of <code>wj/</code> resolve to.
 Details and contracts: <a href="../../../docs/js/jscapi/">jscapi.md</a>.</p>
@@ -173,10 +173,10 @@ are gone with the C, and <code>engine.odin</code> still asserts the layout on th
 so a change of a mirrored struct stops the build.</p>
 <h2 id="building"><a class="anchor" href="#building" aria-hidden="true">#</a>Building</h2>
 <ul>
-<li><code>src/tools/buildjs</code> compiles <code>native/js/odin</code> (the glue, with the engine of <code>src/engine</code>) to one wasm32 object (<code>odin
+<li><code>src/tools/buildjs</code> compiles <code>native/js/odin</code> (the glue, with the engine of <code>ext/gui_toolkit/src/js</code>) to one wasm32 object (<code>odin
 build -build-mode:obj -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -o:size</code>) and links it with
 the <code>wasm-ld</code> of Odin's <code>bin</code> folder (<code>--no-entry --gc-sections</code>). There is no C library: <code>wj/libc.odin</code> has<code>malloc</code>/<code>free</code> (base:runtime's emmalloc over <code>memory.grow</code>), the string functions, <code>strtod</code>, an Odin <code>snprintf</code> over <code>any</code> values and <code>ldexp</code>;
-<code>sin</code>, <code>cos</code> and <code>pow</code> are imports of the host (module <code>libm</code>, <code>src/wasm/wasi.odin</code>); <code>exp</code> is fdlibm's, in <code>src/engine/jsrt/b_number.odin</code>. A symbol that is declared <code>foreign</code> and not defined is silently an import <code>env.*</code> of the module: check the imports of <code>wren_js_raw.wasm</code> after a change (only <code>wasi_snapshot_preview1.{clock_time_get,random_get}</code>, <code>libm.*</code> and the <code>wr_*</code> modules are legitimate).</li>
+<code>sin</code>, <code>cos</code> and <code>pow</code> are imports of the host (module <code>libm</code>, <code>src/wasm/wasi.odin</code>); <code>exp</code> is fdlibm's, in <code>ext/gui_toolkit/src/js/b_number.odin</code>. A symbol that is declared <code>foreign</code> and not defined is silently an import <code>env.*</code> of the module: check the imports of <code>wren_js_raw.wasm</code> after a change (only <code>wasi_snapshot_preview1.{clock_time_get,random_get}</code>, <code>libm.*</code> and the <code>wr_*</code> modules are legitimate).</li>
 <li><code>build.bat</code> runs bindgen first, so <code>wr_imports.odin</code> is always current.</li>
 </ul>
 <h2 id="testing-a-ported-domain"><a class="anchor" href="#testing-a-ported-domain" aria-hidden="true">#</a>Testing a ported domain</h2>
@@ -407,14 +407,6 @@ different before any port).</p>
 <li><a href="../../../docs/README/">Writing documentation</a></li>
 <li><a href="../../../docs/bitwarden/">Vault: a native client for Bitwarden accounts</a></li>
 <li><a href="../../../docs/closed-tabs/">Closed tabs and sessions</a></li>
-<li><a href="../../../docs/engine/bigint/">bigint: arbitrary-precision integers for the JavaScript engine</a></li>
-<li><a href="../../../docs/engine/datetime/">datetime (package jsdate): the JavaScript engine's Date</a></li>
-<li><a href="../../../docs/engine/frontend/">Moteur JavaScript — front-end E1 (src/engine/frontend)</a></li>
-<li><a href="../../../docs/engine/jit/">The JIT (src/engine/jsrt/jit.odin)</a></li>
-<li><a href="../../../docs/engine/numconv/">numconv: float64 ↔ string for the JavaScript engine</a></li>
-<li><a href="../../../docs/engine/regexp/">engine/regexp</a></li>
-<li><a href="../../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
-<li><a href="../../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../../docs/extensions/">Browser extensions</a></li>
 <li><a href="../../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
 <li><a href="../../../docs/js/jscapi/">The QuickJS C API on the Odin runtime (src/jscapi)</a></li>
