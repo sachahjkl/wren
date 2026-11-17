@@ -114,7 +114,8 @@ blocking_worker :: proc(data: rawptr) {
 		sync.mutex_unlock(&p.mu)
 		job.work(job.data)
 		free_all(context.temp_allocator)   // this thread's own (thread_start): nothing outlives a job
-		post(p.loop, job.done, job.data)
+		// (no done: the work freed its own data, so a job that ends as the loop ends leaves nothing behind)
+		if job.done != nil { post(p.loop, job.done, job.data) }
 		sync.mutex_lock(&p.mu)
 		p.running -= 1
 		if p.running == 0 && blocking_waiting(p) == 0 { sync.cond_broadcast(&p.idle) }

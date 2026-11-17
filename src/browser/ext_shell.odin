@@ -315,20 +315,20 @@ ext_reload :: proc(app: ^App, id: string) {
 	ext_load(app, e.path, .Reload, ext_packed_id(e))
 }
 
-// Removes a folder the browser made (a packed extension's unpacked files) off the loop thread.
+// Removes a folder the browser made (a packed extension's unpacked files) off the loop thread. The work frees its path
+// itself, with no answer on the loop: a removal still going when the browser ends (a large folder on Windows) had its
+// answer posted to a loop that no longer ran, and the path leaked.
 @(private = "file")
 ext_remove_folder :: proc(app: ^App, path: string) {
 	if path == "" { return }
+	drop :: proc(data: rawptr) {
+		p := (^string)(data)
+		delete(p^, base.process_allocator()); free(p, base.process_allocator())   // (freed on whichever thread: the process's memory)
+	}
 	host.run_blocking(&app.blocking, proc(data: rawptr) {
-		p := (^string)(data)
-		_ = os.remove_all(p^)
-	}, proc(data: rawptr) {
-		p := (^string)(data)
-		delete(p^); free(p)
-	}, new_clone(strings.clone(path)), proc(data: rawptr) {
-		p := (^string)(data)
-		delete(p^); free(p)
-	})
+		_ = os.remove_all((^string)(data)^)
+		drop(data)
+	}, nil, new_clone(strings.clone(path, base.process_allocator()), base.process_allocator()), drop)
 }
 
 ext_remove :: proc(app: ^App, id: string) {
