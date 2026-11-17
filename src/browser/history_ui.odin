@@ -329,13 +329,13 @@ history_page :: proc(app: ^App, t: ^Tab) {
 		ui.next({axis = .Y})
 		root := ui.build_box({.Draw_Background}, "###history_page")
 		if ui.parent(root) {
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.SPACE_2)   // (the page's top: no role names it)
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.4))})
 			if ui.row(.Center) {
-				ui.spacer(ui.px(em * 0.8))
+				ui.space(ui.PAGE_MARGIN)
 				ui.next({width = ui.text_size(0), height = ui.px(ui.dense(em * 2))})
 				ui.label("History###h_title")
-				ui.spacer(ui.px(em * 1.0))
+				ui.space(ui.ITEM_GAP)
 				ui.next({width = ui.px(em * 20), height = ui.px(ui.dense(em * 2))})
 				labels := []string{"Browsing history", "Tab history"}
 				if ui.segmented("###h_mode", labels, &app.hview.mode) {
@@ -345,11 +345,11 @@ history_page :: proc(app: ^App, t: ^Tab) {
 					page.session_replace(&t.session, a, set_state = false)
 					sync_history(app, t)
 				}
-				ui.spacer(ui.px(em * 1.0))
+				ui.space(ui.ITEM_GAP)
 				if app.hview.mode == 0 { browsing_toolbar(app, t) } else { tree_toolbar(app, t) }
-				ui.spacer(ui.px(em * 0.8))
+				ui.space(ui.PAGE_MARGIN)
 			}
-			ui.spacer(ui.px(em * 0.3))
+			ui.space(ui.LINE_GAP)
 			ui.next({width = ui.fill(), height = ui.fill()})
 			if app.hview.mode == 0 { browsing_list(app, t) } else { tree_view(app, t) }
 		}
@@ -363,7 +363,7 @@ browsing_toolbar :: proc(app: ^App, t: ^Tab) {
 	res := ui.line_edit("###h_search", &app.hview.search, {placeholder = "Search history"})
 	if app.hview.focus_search && res.box != nil { app.hview.focus_search = false; ui.set_focus(res.box.key); ui.line_edit_select_all(&app.hview.search) }
 	if res.focused && ui.key_press(.Down) { ui.set_focus(app.hview.list.key); if app.hview.list.sel < 0 { ui.list_select(&app.hview.list.list, 1) } }
-	ui.spacer(ui.px(em * 0.6))
+	ui.space(ui.CONTROL_GAP)
 	// (ui.button's widget itself: the menu opens under the button's rectangle)
 	b := ui.button("###h_delete", "Delete\u2026", lucide.TRASH_2, {icon_font = app.lucide, intent = .Danger})
 	key := fmt.tprintf("h_delete_menu_%x", u64(b.box.parent.key))
@@ -377,7 +377,7 @@ browsing_toolbar :: proc(app: ^App, t: ^Tab) {
 		ui.menu_separator()
 		if ui.menu_item("Everything\u2026", icon = lucide.CALENDAR_CLOCK).clicked { history_delete_asked(app, min(i64), max(i64), "every day") }
 	}
-	ui.spacer(ui.px(em * 0.4))
+	ui.space(ui.CONTROL_GAP)
 	if ui.tags("weak") {
 		ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 2))})
 		state := app.hcfg.global ? fmt.tprintf("%d visits", len(app.ghist.visits)) : "not recording (history.global.enabled)"
@@ -406,7 +406,7 @@ browsing_list :: proc(app: ^App, t: ^Tab) {
 				ui.next({height = ui.px(ui.dense(em * 2.4))})
 				row := ui.list_row(&app.hview.list.list, i, "", false)
 				if ui.parent(row.box) {
-					ui.spacer(ui.px(em * 0.8))
+					ui.space(ui.PAGE_MARGIN)
 					if ui.tags("weak") {
 						ui.next({width = ui.fill(), height = ui.pct(1)})
 						ui.label(fmt.tprintf("%s###hd_%d", r.day, i))
@@ -419,14 +419,14 @@ browsing_list :: proc(app: ^App, t: ^Tab) {
 				row := ui.list_row(&app.hview.list.list, i, app.hview.labels[i])
 				row_hot := ui.hot_within(row.box.key) || (app.hview.list.sel == i && app.hview.list.focused)
 				if ui.parent(row.box) {
-					ui.spacer(ui.px(em * 0.6))
+					ui.space(ui.PAGE_MARGIN)
 					ui.next({width = ui.px(em * 1.6), height = ui.pct(1)})
 					if vis.icon != "" {
 						addr := ui.frame_new(string)
 						addr^ = strings.clone(vis.icon, ui.frame_allocator())
 						ui.custom(fmt.tprintf("###hi_%d", vis.id), entry_icon_draw, addr)
 					} else { ui.spacer(ui.px(em * 1.6)) }
-					ui.spacer(ui.px(em * 0.4))
+					ui.space(ui.ICON_GAP)
 					lt := local_time(vis.at_ms)
 					if ui.tags("weak") {
 						ui.next({width = ui.px(em * 3.6), height = ui.pct(1)})
@@ -434,14 +434,14 @@ browsing_list :: proc(app: ^App, t: ^Tab) {
 					}
 					ui.next({width = ui.pct(0.45), height = ui.pct(1)})
 					ui.label(fmt.tprintf("%s###hn_%d", safe_label(vis.title != "" ? vis.title : default_tab_title(vis.url), 120), vis.id))
-					ui.spacer(ui.px(em * 0.8))
+					ui.space(ui.ITEM_GAP)
 					if ui.tags("weak") {
 						ui.next({width = ui.fill(), height = ui.pct(1)})
 						ui.label(fmt.tprintf("%s###hu_%d", safe_label(vis.url, 160), vis.id))
 					}
 					// the cross: shown on the row under the pointer (or the active one), red under the pointer itself
 					if remove_cross(fmt.tprintf("###hx_%d", vis.id), row_hot, em, "Remove this visit").clicked { delete_id = vis.id }
-					ui.spacer(ui.px(em * 0.5))
+					ui.space(ui.PAGE_MARGIN)
 				}
 				if row.clicked { visit_open(app, t, vis.url, .Ctrl in row.mods); return }
 				if row.middle_clicked { visit_open(app, t, vis.url, true); return }
@@ -518,10 +518,10 @@ tree_toolbar :: proc(app: ^App, t: ^Tab) {
 		ui.next({width = ui.text_size(em * 0.3), height = ui.px(ui.dense(em * 2))})
 		ui.label("Tab###h_tab_lbl")
 	}
-	ui.spacer(ui.px(em * 0.4))
+	ui.space(ui.CONTROL_GAP)
 	ui.next({width = ui.px(em * 13), height = ui.px(ui.dense(em * 2))})
 	if ui.dropdown("###h_tab", names[:], &sel) && sel < len(all) { app.hview.tree_tab = all[sel].id }
-	ui.spacer(ui.px(em * 1.0))
+	ui.space(ui.ITEM_GAP)
 	history_tree_toolbar(app)   // history_tree.odin: the layout switch
 	ui.spacer(ui.fill())
 	tt := tab_by_id(app, app.hview.tree_tab)

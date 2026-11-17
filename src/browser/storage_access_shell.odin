@@ -54,7 +54,7 @@ storage_access_view :: proc(v: ^ui.View, req: ^page.Storage_Access_Ask) {
 	em := ui.font_size()
 	if ui.dialog_body("sa_body") {
 		ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s wants to use its cookies and site data while you are on %s"), req.site, req.top), "###sa_what"}, ui.frame_allocator()))
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.LINE_GAP)
 		if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("Sign-in, payment and comment widgets may need it; it also lets the site recognise you across sites."), "###sa_why"}, ui.frame_allocator())) }
 	}
 	if ui.dialog_buttons("sa_buttons") {

@@ -30,6 +30,7 @@ package browser
 // Enter back from the search field) moves between the search and the list.
 
 import "core:fmt"
+import "core:math"
 import "core:slice"
 import "core:strings"
 import "toolkit:draw"
@@ -342,7 +343,7 @@ config_page :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs) {
 	list_w := page_w - (v.narrow ? 0 : em * SIDEBAR_EM)
 	v.stacked = page_w > 0 && list_w < em * STACK_BELOW_EM
 	v.editor_w = em * (v.narrow ? EDITOR_NARROW_EM : EDITOR_EM)
-	text_room := list_w - em * (LEAD_EM + 1.0 + 2.4 + 0.6 + 1.2) - (v.stacked ? 0 : v.editor_w)
+	text_room := list_w - em * (LEAD_EM + ui.ITEM_GAP + 2.4 + 0.6 + 1.2) - (v.stacked ? 0 : v.editor_w)
 	v.text_w = page_w > 0 && text_room > em * TEXT_MAX_EM ? em * TEXT_MAX_EM : 0
 
 	if ui.style({width = ui.fill(), height = ui.fill()}) {
@@ -368,14 +369,14 @@ config_page :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs) {
 @(private = "file")
 config_header :: proc(v: ^Config_View) {
 	em := ui.font_size()
-	ui.spacer(ui.px(em * 0.6))
+	ui.space(ui.SPACE_2)   // (the header's top: no role names it)
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.4))})
 	if ui.row(.Center, {}, "###cfg_head") {
-		ui.spacer(ui.px(em * 1.0))
+		ui.space(ui.PAGE_MARGIN)
 		if !v.narrow {   // (narrow: the tab says it)
 			ui.next({width = ui.text_size(0), height = ui.pct(1), font_size = em * 1.25, text_pad = 0})
 			ui.label(i18n.tr("Configuration###cfg_title"))
-			ui.spacer(ui.px(em * 1.2))
+			ui.space(ui.ITEM_GAP)
 		} else {
 			// no room for the sidebar: its categories as a choice
 			items := make([]string, len(v.cats) + 1, context.temp_allocator)
@@ -388,38 +389,38 @@ config_header :: proc(v: ^Config_View) {
 			ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * 2))})
 			ui.a11y({name = i18n.tr("Category")})
 			if ui.dropdown("###cfg_cat_choice", items, &sel) { config_set_category(v, sel == 0 ? "" : v.cats[sel - 1].name) }
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.CONTROL_GAP)
 		}
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 		ui.a11y({name = i18n.tr("Search the preferences"), shortcut = "Ctrl+F"})
 		sres := ui.line_edit("###cfg_search", &v.search, {placeholder = v.narrow ? i18n.tr("Search (Ctrl+F)") : i18n.tr("Search by title, name or description (Ctrl+F)")})
 		if v.focus_search { v.focus_search = false; ui.set_focus(sres.box.key); ui.line_edit_select_all(&v.search) }
 		if sres.focused && (ui.key_press(.Down) || sres.committed) { v.focus_list = true }
-		ui.spacer(ui.px(em * 0.8))
+		ui.space(ui.CONTROL_GAP)
 		ui.next({width = ui.px(em * 3.8 + ui.text_width(ui.top_style().font, em, i18n.tr("Modified only"))), height = ui.px(ui.dense(em * 2))})
 		ui.checkbox("###cfg_modified", i18n.tr("Modified only"), &v.modified_only)
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.CONTROL_GAP)
 		ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 1.8))})
 		if ui.tags(v.show_keys ? "selected" : "ghost_button") {
 			keys := ui.button("cfg_keys", i18n.tr("Shortcuts"))
 			tip(keys, i18n.tr("Show the keyboard shortcuts of this page"))
 			if keys.clicked { v.show_keys = !v.show_keys }
 		}
-		ui.spacer(ui.px(em * 1.0))
+		ui.space(ui.PAGE_MARGIN)
 	}
 	if v.show_keys {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Start, {}, "###cfg_help_row") {
-			ui.spacer(ui.px(em * 1.0))
+			ui.space(ui.PAGE_MARGIN)
 			if ui.tags("weak") {
 				ui.next({width = ui.fill(), text_pad = 0, font_size = em * 0.9})
 				ui.paragraph(i18n.tr("Up / Down, Page Up / Down: move  \u00b7  Enter: edit, fold  \u00b7  Right / Left: details, fold (Ctrl: every group)  \u00b7  Escape: back to the list  \u00b7  Delete: reset  \u00b7  letters: jump to a title  \u00b7  Ctrl+F: search###cfg_help"))
 			}
-			ui.spacer(ui.px(em * 1.0))
+			ui.space(ui.PAGE_MARGIN)
 		}
-		ui.spacer(ui.px(em * 0.3))
+		ui.space(ui.LINE_GAP)
 	}
-	ui.spacer(ui.px(em * 0.5))
+	ui.space(ui.SPACE_2)   // (the header's bottom, as its top)
 }
 
 // The categories: "All", then each one, with its count for the search (and the modified ones in the accent's colour).
@@ -438,10 +439,11 @@ config_sidebar :: proc(v: ^Config_View) {
 		ui.next({width = ui.fill(), height = ui.fill()})
 		ui.a11y({name = i18n.tr("Categories")})
 		if ui.list("###cfg_cats", &v.cat_list) {
-			ui.spacer(ui.px(em * 0.4))
+			// (the sidebar's insets are bare steps: no role names them, spacing.md)
+			ui.space(ui.SPACE_2)
 			cat_item(v, 0, i18n.tr("All"), v.shown, v.modified, false)
 			for c, i in v.cats { cat_item(v, i + 1, config_category_title(c.name), c.shown, c.modified, c.shown == 0) }
-			ui.spacer(ui.px(em * 0.4))
+			ui.space(ui.SPACE_2)
 		}
 	}
 	if v.cat_list.changed && v.cat_list.sel >= 0 {
@@ -462,7 +464,7 @@ cat_item :: proc(v: ^Config_View, i: int, title: string, shown, modified: int, e
 	ui.next({width = ui.px(em * (SIDEBAR_EM - SIDEBAR_MARGIN_EM - SIDEBAR_GUTTER_EM)), height = ui.px(ui.dense(em * 2)), radius = em * 0.35, cross = .Center})
 	row := ui.list_row(&v.cat_list, i, title)
 	if ui.parent(row.box) {
-		ui.spacer(ui.px(em * 0.8))
+		ui.space(ui.SPACE_3)
 		label := fmt.tprintf("%s###cn_%d", title, i)
 		ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
 		if empty { if ui.tags("weak") { ui.label(label) } } else { ui.label(label) }
@@ -473,12 +475,12 @@ cat_item :: proc(v: ^Config_View, i: int, title: string, shown, modified: int, e
 		} else {
 			ui.spacer(ui.px(em * CAT_PILL_EM))
 		}
-		ui.spacer(ui.px(em * 0.3))
+		ui.space(ui.SPACE_1)
 		if ui.tags("weak") {
 			ui.next({width = ui.px(em * CAT_COUNT_EM), height = ui.pct(1), text_pad = 0, font_size = em * 0.85, text_align = .Right})
 			ui.label(fmt.tprintf("%d###cc_%d", shown, i))
 		}
-		ui.spacer(ui.px(em * 0.6))
+		ui.space(ui.SPACE_2)
 	}
 }
 
@@ -564,10 +566,10 @@ group_header :: proc(v: ^Config_View, index: int, r: Config_Row) {
 	if ui.parent(row.box) {
 		ui.spacer(ui.px(em * 0.5))
 		if ui.tags("weak") { ui.icon(folded ? lucide.ARROW_RIGHT : lucide.CHEVRON_DOWN, em * 1.4) }
-		ui.spacer(ui.px(em * 0.2))
+		ui.space(ui.ICON_GAP)
 		ui.next({width = ui.text_size(0), height = ui.pct(1), text_pad = 0, font_size = em * 1.08})
 		ui.label(fmt.tprintf("%s###grp_%s", v.labels[index], r.group))
-		ui.spacer(ui.px(em * 0.6))
+		ui.space(ui.CONTROL_GAP)
 		if ui.tags("weak") {
 			ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0, font_size = em * 0.85})
 			ui.label(fmt.tprintf("%d###grpn_%s", r.count, r.group))
@@ -673,7 +675,7 @@ dot_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 @(private = "file")
 pill :: proc(text, tag, id: string) {
 	em := ui.font_size()
-	ui.spacer(ui.px(em * 0.5))
+	ui.space(ui.ICON_GAP)
 	if ui.tags(tag) {
 		ui.next({width = ui.text_size(em * 0.35), height = ui.px(ui.dense(em * 1.25)), font_size = em * 0.78, radius = em * 0.62})
 		ui.build_box({.Draw_Text, .Draw_Border, .No_Text_Trunc}, fmt.tprintf("%s###%s", text, id))
@@ -723,7 +725,8 @@ config_row :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: config.R
 	// the modified dot, in its own column so the titles line up
 	ui.next({width = ui.px(em * LEAD_EM), height = ui.children_sum()})
 	if ui.column(.Center) {
-		ui.spacer(ui.px(em * 0.55 + ui.dense(em * 1.6) * 0.5 - em * 0.22))
+		// (the dot centred on the title's line: the text column's ROW_PAD, then half that line)
+		ui.spacer(ui.px(math.round(em * ui.ROW_PAD) + ui.dense(em * 1.6) * 0.5 - em * 0.22))
 		if e.source != .Default {
 			c := ui.frame_new(draw.Color)
 			if e.source == .User { c^ = ui.color("accent") } else if ui.tags("warn") { c^ = ui.color("text") }
@@ -733,7 +736,7 @@ config_row :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: config.R
 	}
 	ui.next({width = v.text_w > 0 ? ui.px(v.text_w) : ui.fill(), height = ui.children_sum()})
 	if ui.column() {
-		ui.spacer(ui.px(em * 0.55))
+		ui.space(ui.ROW_PAD)
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.6))})
 		if ui.row(.Center) {
 			ui.next({width = ui.text_size(0), height = ui.pct(1), text_pad = 0})
@@ -766,11 +769,11 @@ config_row :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: config.R
 				ui.paragraph(fmt.tprintf("%s###d_%s", summary, name))
 			}
 			if st.expanded {
-				ui.spacer(ui.px(em * 0.3))
+				ui.space(ui.LINE_GAP)
 				if more != "" {
 					ui.next({width = ui.fill(), text_pad = 0})
 					ui.paragraph(fmt.tprintf("%s###m_%s", more, name))
-					ui.spacer(ui.px(em * 0.25))
+					ui.space(ui.LINE_GAP)
 				}
 				ui.next({width = ui.fill(), text_pad = 0, font_size = em * 0.88})
 				ui.paragraph(fmt.tprintf("%s###f_%s", facts_line(prefs, r, e), name))
@@ -778,7 +781,7 @@ config_row :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: config.R
 		}
 		if v.stacked {
 			// a narrow list: the editor under the text
-			ui.spacer(ui.px(em * 0.35))
+			ui.space(ui.LINE_GAP)
 			ui.tab_stops(index == v.list.sel)
 			config_editor(app, v, prefs, r, e, st, title)
 		}
@@ -788,24 +791,24 @@ config_row :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: config.R
 				ui.paragraph(fmt.tprintf("%s###err_%s", st.error, name))
 			}
 		}
-		ui.spacer(ui.px(em * 0.55))
+		ui.space(ui.ROW_PAD)
 	}
-	ui.spacer(ui.px(em * 1.0))
+	ui.space(ui.ITEM_GAP)   // (text_room counts it)
 
 	// the editor column (Tab stops of the active row only: the list is one Tab stop)
 	ui.tab_stops(index == v.list.sel)   // (deferred: popped at the end of the row)
 	if !v.stacked {
 		ui.next({width = ui.px(v.editor_w), height = ui.children_sum()})
 		if ui.column() {
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.ROW_PAD)
 			config_editor(app, v, prefs, r, e, st, title)
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.ROW_PAD)
 		}
 	}
 	// the details fold
 	ui.next({width = ui.px(em * 2.4), height = ui.children_sum()})
 	if ui.column(.Center) {
-		ui.spacer(ui.px(em * 0.55))
+		ui.space(ui.ROW_PAD)
 		ui.next({width = ui.px(em * 1.9), height = ui.px(ui.dense(em * 1.9)), radius = em * CHROME_BUTTON_RADIUS})
 		ds := ui.button(fmt.tprintf("###x_%s", name), icon = st.expanded ? lucide.CHEVRON_UP : lucide.CHEVRON_DOWN)
 		tip(ds, st.expanded ? i18n.tr("Hide the details (Left)") : i18n.tr("Show the details (Right)"))
@@ -866,7 +869,7 @@ config_editor :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: confi
 				if res.committed { config_apply(v, prefs, st, name, ui.line_edit_string(&st.field)); delete(st.synced); st.synced = ""; v.focus_list = true }
 				if res.cancelled { delete(st.synced); st.synced = ""; if st.error != "" { v.serial += 1 }; delete(st.error); st.error = ""; v.focus_list = true }
 				if number {
-					ui.spacer(ui.px(em * 0.5))
+					ui.space(ui.CONTROL_GAP)
 					if ui.tags("weak") {
 						ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0, font_size = em * 0.9})
 						ui.label(fmt.tprintf("%s###u_%s", config.unit_symbol(e.def), name))
@@ -875,7 +878,7 @@ config_editor :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: confi
 			}
 		}
 		// reset: its room is kept when hidden, so the editors line up
-		ui.spacer(ui.px(em * 0.3))
+		ui.space(ui.CONTROL_GAP)
 		if e.source == .User && !locked {
 			ui.next({width = ui.px(em * 2), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
 			rs := ui.button(fmt.tprintf("###r_%s", name), icon = lucide.ROTATE_CW)
@@ -897,7 +900,7 @@ desktop_row :: proc(app: ^App, v: ^Config_View, index: int) {
 	ui.spacer(ui.px(em * LEAD_EM))
 	ui.next({width = v.text_w > 0 ? ui.px(v.text_w) : ui.fill(), height = ui.children_sum()})
 	if ui.column() {
-		ui.spacer(ui.px(em * 0.55))
+		ui.space(ui.ROW_PAD)
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.6))})
 		if ui.row(.Center) {
 			ui.next({width = ui.text_size(0), height = ui.pct(1), text_pad = 0})
@@ -919,17 +922,17 @@ desktop_row :: proc(app: ^App, v: ^Config_View, index: int) {
 			ui.next({width = ui.fill(), text_pad = 0})
 			ui.paragraph(fmt.aprintf("%s###desktop_note", note, allocator = ui.frame_allocator()))
 		}
-		ui.spacer(ui.px(em * 0.3))
+		ui.space(ui.LINE_GAP)
 		ui.tab_stops(index == v.list.sel)
 		desktop_config_buttons(app)
-		ui.spacer(ui.px(em * 0.55))
+		ui.space(ui.ROW_PAD)
 	}
-	ui.spacer(ui.px(em * 1.0))
+	ui.space(ui.ITEM_GAP)
 	if v.stacked { return }
 	ui.next({width = ui.px(v.editor_w), height = ui.children_sum()})
 	ui.tab_stops(index == v.list.sel)
 	if ui.column() {
-		ui.spacer(ui.px(em * 0.5))
+		ui.space(ui.ROW_PAD)
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.1))})
 		if ui.row(.Center) { desktop_config_switch(app) }
 	}

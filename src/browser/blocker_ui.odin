@@ -508,7 +508,7 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 		psig := ui.signal(pb)
 		tip(psig, has_host ? (enabled_site ? i18n.tr("Turn the blocker off for this site (the page reloads)") : i18n.tr("Turn the blocker on for this site (the page reloads)")) : i18n.tr("Not applicable to this page"))
 		if psig.clicked && has_host { blocker_set_site_enabled(app, t, host, !enabled_site); ui.menu_close() }
-		ui.spacer(ui.px(em * 0.6))
+		ui.space(ui.ICON_GAP)
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		if ui.column(.Center) {
 			ui.next({width = ui.pct(1), height = ui.px(ui.dense(em * 1.5)), font_size = em * 1.1})
@@ -556,7 +556,7 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 			ui.custom("###bl_graph", graph_draw, g)
 		}
 	}
-	ui.spacer(ui.px(em * 0.3))
+	ui.space(ui.LINE_GAP)
 	ui.hline(ui.px(w))
 
 	// the site's switches
@@ -620,18 +620,18 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 	}
 
 	// the tools
-	ui.spacer(ui.px(em * 0.3))
+	ui.space(ui.LINE_GAP)
 	ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.2))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.6))
 		if ui.disabled(!has_host || !enabled_site) {
 			if ui.button("###tl_pick", i18n.tr("Pick element"), lucide.SHIELD, {intent = .Danger, tip = i18n.tr("Aim at an element of the page and block it"), width = ui.fill()}).clicked { blocker_picker_begin(app, t); ui.menu_close() }
 		}
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.CONTROL_GAP)
 		if ui.button("###tl_log", i18n.tr("Log"), lucide.SCROLL_TEXT, {intent = .Info, tip = i18n.tr("The request log"), width = ui.fill()}).clicked { blocker_open_dashboard(app, "journal"); ui.menu_close() }
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.CONTROL_GAP)
 		if ui.button("###tl_dash", i18n.tr("Dashboard"), lucide.LAYOUT_GRID, {intent = .Info, tip = i18n.tr("Lists, rules, filters, statistics"), width = ui.fill()}).clicked { blocker_open_dashboard(app); ui.menu_close() }
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.CONTROL_GAP)
 		if ui.button("###tl_reload", i18n.tr("Reload"), lucide.REFRESH_CW, {tip = i18n.tr("Load the page again"), width = ui.fill()}).clicked { if t != nil { reload(app, t) }; ui.menu_close() }
 		ui.spacer(ui.px(em * 0.6))
 	}

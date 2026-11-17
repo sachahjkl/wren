@@ -148,7 +148,7 @@ bookmark_star_chip :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	on := bookmark_of_url(app.bms.items[:], t.url) >= 0
 	s := math.round(ui.dense(em * 1.8))
-	ui.spacer(ui.px(em * 0.2))
+	ui.space(ui.TOOL_GAP)
 	ui.next({width = ui.px(s), height = ui.px(s), radius = em * CHROME_BUTTON_RADIUS})
 	if ui.tags("ghost_button") {
 		b := ui.build_box({.Clickable, .Draw_Background, .Draw_Hot_Effects}, "###bookmark_star")
@@ -184,36 +184,28 @@ bookmark_edit_view :: proc(view: ^ui.View, app: ^App) {
 	save, remove, cancel := false, false, false
 	ui.view_title(view, v.edit_folder ? (v.edit_id == 0 ? i18n.tr("New folder") : i18n.tr("Folder")) : i18n.tr("Bookmark"))
 	ui.view_icon(view, v.edit_folder ? lucide.FOLDER : lucide.BOOKMARK, app.lucide)
-	ui.next({width = ui.fill(), height = ui.children_sum()})
-	if ui.row(.Start, {}, "###bm_edit_margins") {
-		ui.spacer(ui.px(em * 1.0))
-		ui.next({width = ui.fill(), height = ui.children_sum()})
-		if ui.column(.Start, {}, "###bm_edit_col") {
-			ui.spacer(ui.px(em * 0.8))
+	if ui.dialog_body("bm_edit_body") {
+		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+		tr := ui.line_edit("###bm_edit_title", &v.edit_title, {placeholder = i18n.tr("Name")})
+		if v.edit_focus && tr.box != nil { v.edit_focus = false; ui.set_focus(tr.box.key); ui.line_edit_select_all(&v.edit_title) }
+		if tr.committed { save = true }
+		if tr.cancelled { cancel = true }
+		if !v.edit_folder {
+			ui.space(ui.LINE_GAP)
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-			tr := ui.line_edit("###bm_edit_title", &v.edit_title, {placeholder = i18n.tr("Name")})
-			if v.edit_focus && tr.box != nil { v.edit_focus = false; ui.set_focus(tr.box.key); ui.line_edit_select_all(&v.edit_title) }
-			if tr.committed { save = true }
-			if tr.cancelled { cancel = true }
-			if !v.edit_folder {
-				ui.spacer(ui.px(em * 0.5))
-				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-				ur := ui.line_edit("###bm_edit_url", &v.edit_url, {placeholder = i18n.tr("Address")})
-				if ur.committed { save = true }
-				if ur.cancelled { cancel = true }
-			}
-			ui.spacer(ui.px(em * 0.8))
-			ui.next({width = ui.fill(), height = ui.children_sum()})
-			if ui.row(.Center, {}, "###bm_edit_buttons") {
-				if v.edit_id != 0 && ui.button("bm_edit_remove", i18n.tr("Remove"), lucide.TRASH_2, {intent = .Danger, width = ui.px(em * 7)}).clicked { remove = true }
-				ui.spacer(ui.fill())
-				if ui.button("bm_edit_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 7)}).clicked { cancel = true }
-				ui.spacer(ui.px(em * 0.5))
-				if ui.button("bm_edit_save", i18n.tr("Save"), lucide.SAVE, {intent = .Success, width = ui.px(em * 7)}).clicked { save = true }
-			}
-			ui.spacer(ui.px(em * 0.8))
+			ur := ui.line_edit("###bm_edit_url", &v.edit_url, {placeholder = i18n.tr("Address")})
+			if ur.committed { save = true }
+			if ur.cancelled { cancel = true }
 		}
-		ui.spacer(ui.px(em * 1.0))
+		ui.space(ui.ITEM_GAP)
+		ui.next({width = ui.fill(), height = ui.children_sum()})
+		if ui.row(.Center, {}, "###bm_edit_buttons") {
+			if v.edit_id != 0 && ui.button("bm_edit_remove", i18n.tr("Remove"), lucide.TRASH_2, {intent = .Danger, width = ui.px(em * 7)}).clicked { remove = true }
+			ui.spacer(ui.fill())
+			if ui.button("bm_edit_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 7)}).clicked { cancel = true }
+			ui.space(ui.CONTROL_GAP)
+			if ui.button("bm_edit_save", i18n.tr("Save"), lucide.SAVE, {intent = .Success, width = ui.px(em * 7)}).clicked { save = true }
+		}
 	}
 	switch {
 	case remove:
@@ -279,25 +271,25 @@ bookmarks_page :: proc(app: ^App, t: ^Tab) {
 		ui.next({axis = .Y})
 		root := ui.build_box({.Draw_Background}, "###bookmarks_page")
 		if ui.parent(root) {
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.SPACE_2)   // (the page's top: no role names it)
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.4))})
 			if ui.row(.Center) {
-				ui.spacer(ui.px(em * 0.8))
+				ui.space(ui.PAGE_MARGIN)
 				ui.next({width = ui.text_size(0), height = ui.px(ui.dense(em * 2))})
 				ui.label(fmt.tprintf("%s###bm_title", i18n.tr("Bookmarks")))
-				ui.spacer(ui.px(em * 1.0))
+				ui.space(ui.ITEM_GAP)
 				ui.next({width = ui.px(em * 22), height = ui.px(ui.dense(em * 2))})
 				if builtin_page_types(app) { _ = ui.type_to_field(v.search_key) }   // (just start typing to search)
 				res := ui.line_edit("###bm_search", &v.search, {placeholder = i18n.tr("Search bookmarks")})
 				if res.box != nil { v.search_key = res.box.key }
 				if v.focus_search && res.box != nil { v.focus_search = false; ui.set_focus(res.box.key); ui.line_edit_select_all(&v.search) }
 				if res.focused && ui.key_press(.Down) { ui.set_focus(v.list.key); if v.list.sel < 0 { ui.list_select(&v.list.list, 0) } }
-				ui.spacer(ui.px(em * 0.6))
+				ui.space(ui.CONTROL_GAP)
 				if ui.button("bm_new_folder", i18n.tr("New folder"), lucide.FOLDER_PLUS, {intent = .Primary, width = ui.px(em * 7.5)}).clicked { bookmark_folder_new(app) }
-				ui.spacer(ui.px(em * 0.4))
+				ui.space(ui.CONTROL_GAP)
 				ib := ui.button("bm_import", i18n.tr("Import…"), lucide.FOLDER_INPUT, {width = ui.px(em * 6.5)}).clicked
 				if ib { bookmarks_import_pick(app) }
-				ui.spacer(ui.px(em * 0.4))
+				ui.space(ui.CONTROL_GAP)
 				if ui.button("bm_export", i18n.tr("Export…"), lucide.FOLDER_OUTPUT, {width = ui.px(em * 6.5)}).clicked { bookmarks_export_pick(app) }
 				ui.spacer(ui.fill())
 				if ui.tags("weak") {
@@ -306,9 +298,9 @@ bookmarks_page :: proc(app: ^App, t: ^Tab) {
 					ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 2))})
 					ui.label(fmt.tprintf(n == 1 ? "%d bookmark###bm_count" : "%d bookmarks###bm_count", n))
 				}
-				ui.spacer(ui.px(em * 0.8))
+				ui.space(ui.PAGE_MARGIN)
 			}
-			ui.spacer(ui.px(em * 0.4))
+			ui.space(ui.LINE_GAP)
 			ui.next({width = ui.fill(), height = ui.fill()})
 			bookmarks_list(app, t, menu_key)
 		}
@@ -340,7 +332,8 @@ bookmarks_list :: proc(app: ^App, t: ^Tab, menu_key: string) {
 			ui.next({height = ui.px(ui.dense(em * 2.2)), cursor = .Hand})
 			row := ui.list_row(&v.list.list, k, labels[k])
 			if ui.parent(row.box) {
-				ui.spacer(ui.px(em * (0.6 + 1.4 * f32(r.depth))))
+				ui.space(ui.PAGE_MARGIN)
+				if r.depth > 0 { ui.spacer(ui.px(em * 1.4 * f32(r.depth))) }   // (the folder's depth: an indent, not a gap)
 				ui.next({width = ui.px(em * 1.2), height = ui.pct(1), font = app.lucide, font_size = em * 0.9, text_pad = 0})
 				if ui.tags("weak") { ui.label(fmt.tprintf("%s###bmc_%d", b.folder ? (v.open[b.id] ? lucide.CHEVRON_DOWN : lucide.CHEVRON_RIGHT) : "", b.id)) }
 				if tex, has := favicon_of_url(app, b.url); has && !b.folder {
@@ -349,17 +342,17 @@ bookmarks_list :: proc(app: ^App, t: ^Tab, menu_key: string) {
 					ui.next({width = ui.px(em * 1.6), height = ui.pct(1), font = app.lucide, font_size = em * 1.05, text_pad = 0})
 					ui.label(fmt.tprintf("%s###bmi_%d", b.folder ? lucide.FOLDER : lucide.GLOBE, b.id))
 				}
-				ui.spacer(ui.px(em * 0.3))
+				ui.space(ui.ICON_GAP)
 				ui.next({width = b.folder ? ui.fill() : ui.pct(0.4), height = ui.pct(1)})
 				ui.label(fmt.tprintf("%s###bmn_%d", safe_label(b.title, 120), b.id))
 				if !b.folder {
-					ui.spacer(ui.px(em * 0.8))
+					ui.space(ui.ITEM_GAP)
 					if ui.tags("weak") {
 						ui.next({width = ui.fill(), height = ui.pct(1)})
 						ui.label(fmt.tprintf("%s###bmu_%d", safe_label(b.url, 160), b.id))
 					}
 				}
-				ui.spacer(ui.px(em * 0.5))
+				ui.space(ui.PAGE_MARGIN)
 			}
 			if row.clicked {
 				if b.folder { v.open[b.id] = !v.open[b.id]; request_frames(app, 2) } else { open_at, new_tab = r.index, .Ctrl in row.mods }

@@ -168,7 +168,7 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 		plus_w := new_w + extra * 0.5
 		plus_pull: f32
 		if classic { _, _, _, plus_pull = classic_plus_metrics(&cg, em, dpi, plus_w) }
-		plus_room := classic ? plus_w - plus_pull : new_w + em * 0.3
+		plus_room := classic ? plus_w - plus_pull : new_w + math.round(em * ui.TOOL_GAP)   // (the gap before "+": ui.space rounds it)
 		fixed := lead + plus_room + buttons + (integrated ? app.wchrome.cfg.min_drag_em * em : em * 0.4) + extra
 		avail := max(f32(active_window(app).win.size.x) - fixed, em * 4)
 		n := len(wnd.tabs)
@@ -236,12 +236,12 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 			room := ui.build_box({}, "###newtab_room")
 			if ui.parent(room) { add = classic_new_tab_button(app, &cg, cc, h, plus_w, -plus_pull) }
 		} else if machined_on(app) {
-			ui.spacer(ui.px(em * 0.3))
+			ui.space(ui.TOOL_GAP)
 			ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.2)), radius = em * CHROME_BUTTON_RADIUS})
 			add = ui.button("###newtab", icon = lucide.PLUS)
 		} else {
 			// (centred on the tabs, not on the row: below the same room above)
-			ui.spacer(ui.px(em * 0.3))
+			ui.space(ui.TOOL_GAP)
 			ui.next({width = ui.px(new_w), height = ui.pct(1), axis = .Y, cross = .Center})
 			if ui.parent(ui.build_box({}, "###newtab_column")) {
 				ui.spacer(ui.px(math.round(em * TAB_TOP_ROOM_EM)))
@@ -520,7 +520,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
 		speaker := tab_speaker(app, t)
 		if t.pinned { tab_speaker_badge(speaker, {pad + isz * 0.45, math.round((b.size.y - isz) * 0.5 + isz * 0.45)}, math.round(isz * 0.8), "###speaker_badge") }
-		ui.spacer(ui.px(math.round(em * 0.5)))
+		ui.space(ui.ICON_GAP)
 		title := t.pinned ? "" : t.title
 		if strings.contains(title, "###") { title, _ = strings.replace_all(title, "###", "# # #", context.temp_allocator) }
 		if classic {

@@ -198,7 +198,7 @@ find_bar :: proc(app: ^App, t: ^Tab) {
 		ui.spacer(ui.px(em * 0.6))
 		ui.next({width = ui.text_size(0), height = ui.px(ui.dense(em * 2))})
 		if ui.tags("weak") { ui.label("Find in page###find_lbl") }
-		ui.spacer(ui.px(em * 0.6))
+		ui.space(ui.CONTROL_GAP)
 		ui.next({width = ui.px(em * 22), height = ui.px(ui.dense(em * 2))})
 		res := ui.line_edit("###find_field", &fs.field, {placeholder = "Text to find"})
 		if fs.focus {
@@ -210,7 +210,7 @@ find_bar :: proc(app: ^App, t: ^Tab) {
 			if ui.key_press(.F3) { find_step(app, 1) }
 		}
 		if res.committed { find_step(app, 1) }
-		ui.spacer(ui.px(em * 0.6))
+		ui.space(ui.CONTROL_GAP)
 		count := "No results"
 		if ui.line_edit_string(&fs.field) == "" { count = "" } else if len(fs.matches) > 0 {
 			count = fmt.tprintf("%d/%d%s", fs.active + 1, len(fs.matches), fs.truncated ? "+" : "")

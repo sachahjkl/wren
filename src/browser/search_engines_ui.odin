@@ -109,7 +109,7 @@ engines_row :: proc(app: ^App, v: ^Config_View, index: int) {
 	ui.spacer(ui.px(em * 1.6))   // (LEAD_EM: the titles line up)
 	ui.next({width = ui.fill(), height = ui.children_sum()})
 	if ui.column() {
-		ui.spacer(ui.px(em * 0.55))
+		ui.space(ui.ROW_PAD)
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.6))})
 		if ui.row(.Center) {
 			ui.next({width = ui.text_size(0), height = ui.pct(1), text_pad = 0})
@@ -119,7 +119,7 @@ engines_row :: proc(app: ^App, v: ^Config_View, index: int) {
 			ui.next({width = ui.fill(), text_pad = 0})
 			ui.paragraph(i18n.tr("Words typed in the address bar that are not an address go to the default engine; a keyword first (\"@g cats\") picks another, and so does Ctrl+Up / Down in the suggestions. The context menu searches selected text with the default.###engines_help"))
 		}
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.LINE_GAP)
 		ui.tab_stops(index == v.list.sel)
 		def := search_default_index(app)
 		action, target := 0, -1   // 1 default, 2 edit, 3 up, 4 down, 5 remove
@@ -127,17 +127,17 @@ engines_row :: proc(app: ^App, v: ^Config_View, index: int) {
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * ENGINES_ROW_H_EM))})
 			if ui.row(.Center, {}, fmt.tprintf("###eng_%d", i)) {
 				engine_badge(fmt.tprintf("###eb_%d", i), e, math.round(em * 1.5))
-				ui.spacer(ui.px(em * 0.6))
+				ui.space(ui.ICON_GAP)
 				ui.next({width = ui.px(em * 9), height = ui.pct(1), text_pad = 0, flags = {.Clip}})
 				ui.label(fmt.tprintf("%s###en_%d", e.name, i))
 				if ui.tags("weak") {
 					ui.next({width = ui.px(em * 4), height = ui.pct(1), text_pad = 0, font = ui.mono_font(), font_size = em * 0.88, flags = {.Clip}})
 					ui.label(fmt.tprintf("%s###ek_%d", e.keyword != "" ? e.keyword : "\u2014", i))
-					ui.spacer(ui.px(em * 0.4))
+					ui.space(ui.CONTROL_GAP)
 					ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0, font_size = em * 0.88, flags = {.Clip}})
 					ui.label(fmt.tprintf("%s###eu_%d", e.url, i))
 				}
-				ui.spacer(ui.px(em * 0.5))
+				ui.space(ui.CONTROL_GAP)
 				// the default: a pill; the others: a button to make it so (as wide, so the buttons line up)
 				if i == def {
 					if ui.tags("selected") {
@@ -147,7 +147,7 @@ engines_row :: proc(app: ^App, v: ^Config_View, index: int) {
 				} else if ui.button(strings.concatenate({"###", fmt.tprintf("ed_%d", i)}, ui.frame_allocator()), i18n.tr("Make default"), lucide.STAR, {intent = .Primary, width = ui.px(em * 9.5)}).clicked {
 					action, target = 1, i
 				}
-				ui.spacer(ui.px(em * 0.3))
+				ui.space(ui.CONTROL_GAP)
 				btn :: proc(id, glyph, tooltip: string, enabled := true) -> bool {
 					em := ui.font_size()
 					ui.next({width = ui.px(em * 1.9), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM)), radius = em * CHROME_BUTTON_RADIUS})
@@ -163,22 +163,22 @@ engines_row :: proc(app: ^App, v: ^Config_View, index: int) {
 				if btn(fmt.tprintf("###eup_%d", i), lucide.CHEVRON_UP, i18n.tr("Move up"), i > 0) { action, target = 3, i }
 				if btn(fmt.tprintf("###edn_%d", i), lucide.CHEVRON_DOWN, i18n.tr("Move down"), i + 1 < len(app.sengines.list)) { action, target = 4, i }
 				if btn(fmt.tprintf("###erm_%d", i), lucide.X, i18n.tr("Remove"), len(app.sengines.list) > 1) { action, target = 5, i }
-				ui.spacer(ui.px(em * 0.6))
+				ui.space(ui.CONTROL_GAP)
 			}
 			if ed.edit == i + 1 { engines_form(app, ed) }
 		}
 		if ed.edit < 0 { engines_form(app, ed) }
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.LINE_GAP)
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
 		if ui.row(.Center, {}, "###eng_actions") {
 			// (the words keep their ###: the translations' keys)
 			if ui.button("eng_add", i18n.tr("Add a search engine"), lucide.PLUS, {intent = .Primary}).clicked { engines_edit_start(app, ed, -1) }
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.CONTROL_GAP)
 			missing := engines_missing_builtins(&app.sengines)
 			label := missing > 0 ? fmt.tprintf(i18n.tr("Restore the built-in engines (%d)###eng_restore"), missing) : i18n.tr("Restore the built-in engines###eng_restore")
 			if ui.button("eng_restore", label, lucide.ARCHIVE_RESTORE, {disabled = missing == 0}).clicked && missing > 0 { engines_restore_builtins(&app.sengines); search_engines_changed(app) }
 		}
-		ui.spacer(ui.px(em * 0.55))
+		ui.space(ui.ROW_PAD)
 		switch action {
 		case 1: search_set_default(app, target)
 		case 2: engines_edit_start(app, ed, target)
@@ -189,7 +189,7 @@ engines_row :: proc(app: ^App, v: ^Config_View, index: int) {
 			search_engines_changed(app)
 		}
 	}
-	ui.spacer(ui.px(em * 1.0))
+	ui.space(ui.ITEM_GAP)
 }
 
 // The form of an engine being edited or added.
@@ -201,7 +201,7 @@ engines_form :: proc(app: ^App, ed: ^Engines_Editor) {
 	form := ui.column(.Start, {.Draw_Background, .Draw_Border}, "###eng_form")
 	ui.pop_tags()
 	if form {
-		ui.spacer(ui.px(em * 0.5))
+		ui.space(ui.CARD_PAD)
 		committed, cancelled := false, false
 		field :: proc(id, label, placeholder: string, f: ^ui.Line_Edit, w: ui.Size, focus: bool) -> ui.Edit_Result {
 			em := ui.font_size()
@@ -209,7 +209,7 @@ engines_form :: proc(app: ^App, ed: ^Engines_Editor) {
 				ui.next({width = ui.text_size(0), height = ui.pct(1), text_pad = 0})
 				ui.label(label)
 			}
-			ui.spacer(ui.px(em * 0.4))
+			ui.space(ui.CONTROL_GAP)
 			ui.next({width = w, height = ui.px(ui.dense(em * 2))})
 			ui.a11y({name = strings.split_n(label, "###", 2, context.temp_allocator)[0]})
 			res := ui.line_edit(id, f, {placeholder = placeholder})
@@ -218,45 +218,45 @@ engines_form :: proc(app: ^App, ed: ^Engines_Editor) {
 		}
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * ENGINES_ROW_H_EM))})
 		if ui.row(.Center, {}, "###eng_f1") {
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.CARD_PAD)
 			r1 := field("###ef_name", i18n.tr("Name###efl_name"), i18n.tr("Example"), &ed.name, ui.px(em * 12), ed.want_focus)
-			ui.spacer(ui.px(em * 1.0))
+			ui.space(ui.ITEM_GAP)
 			r2 := field("###ef_kw", i18n.tr("Keyword###efl_kw"), "@x", &ed.keyword, ui.px(em * 6), false)
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.CARD_PAD)
 			committed = r1.committed || r2.committed
 			cancelled = r1.cancelled || r2.cancelled
 		}
 		ed.want_focus = false
-		ui.spacer(ui.px(em * 0.3))
+		ui.space(ui.LINE_GAP)
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * ENGINES_ROW_H_EM))})
 		if ui.row(.Center, {}, "###eng_f2") {
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.CARD_PAD)
 			r3 := field("###ef_url", i18n.tr("Address###efl_url"), "https://example.com/search?q=%s", &ed.url, ui.fill(), false)
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.CARD_PAD)
 			committed ||= r3.committed
 			cancelled ||= r3.cancelled
 		}
 		if ed.error != .None {
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.row(.Start, {}, "###eng_ferr") {
-				ui.spacer(ui.px(em * 0.6))
+				ui.space(ui.CARD_PAD)
 				if ui.tags("bad") {
 					ui.next({width = ui.fill(), text_pad = 0})
 					ui.paragraph(fmt.tprintf("%s###ef_err", i18n.tr(engine_error_text(ed.error))))
 				}
 			}
 		}
-		ui.spacer(ui.px(em * 0.3))
+		ui.space(ui.LINE_GAP)
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * ENGINES_ROW_H_EM))})
 		if ui.row(.Center, {}, "###eng_f3") {
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.CARD_PAD)
 			// (the words keep their ###: the translations' keys)
 			adding := ed.edit < 0
 			if ui.button("ef_save", adding ? i18n.tr("Add") : i18n.tr("Save"), adding ? lucide.PLUS : lucide.SAVE, {intent = .Success}).clicked { committed = true }
-			ui.spacer(ui.px(em * 0.4))
+			ui.space(ui.CONTROL_GAP)
 			if ui.button("ef_cancel", i18n.tr("Cancel"), lucide.X).clicked { cancelled = true }
 		}
-		ui.spacer(ui.px(em * 0.5))
+		ui.space(ui.CARD_PAD)
 		if cancelled { ed.edit, ed.error = 0, .None }
 		else if committed { _ = engines_edit_apply(app, ed) }
 	}
@@ -275,12 +275,12 @@ urlbar_engine_row :: proc(app: ^App, uv: ^Urlbar_View, w, h, pad: f32) -> int {
 			ui.next({width = ui.text_size(0), height = ui.pct(1), text_pad = 0, font_size = em * 0.9})
 			ui.label(i18n.tr("This time, search with:###ub_sw"))
 		}
-		ui.spacer(ui.px(em * 0.6))
+		ui.space(ui.CONTROL_GAP)
 		for e, i in app.sengines.list {
 			s := engine_badge(fmt.tprintf("###ube_%d", i), e, math.round(em * 1.5), clickable = true, selected = i == cur)
 			tip(s, e.keyword != "" ? fmt.tprintf("%s  (%s)", e.name, e.keyword) : e.name)
 			if s.clicked { picked = i }
-			ui.spacer(ui.px(em * 0.35))
+			ui.space(ui.TOOL_GAP)
 		}
 	}
 	return picked

@@ -112,7 +112,7 @@ section :: proc(text, id: string) {
 	em := ui.font_size()
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.0))})
 	if ui.row(.End) {
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.PAGE_MARGIN)
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5)), font_size = em * 0.95})
 		if ui.tags("weak") { ui.label(fmt.aprintf("%s###sec_%s", strings.to_upper(text, context.temp_allocator), id, allocator = ui.frame_allocator())) }
 	}
@@ -123,10 +123,16 @@ section :: proc(text, id: string) {
 pref_row :: proc(app: ^App, label, name, id: string) {
 	em := ui.font_size()
 	v := config.bool_of(&app.prefs, name)
-	ui.next({width = ui.px(em * 26), height = ui.px(ui.dense(em * 1.8))})
-	if ui.toggle(fmt.tprintf("###pt_%s", id), label, &v) {
-		config.set_from_string(&app.prefs, name, v ? "true" : "false", .User)
-		blocker.touch(&app.bl.b)
+	// (between the page's margins as the other rows, its words across the row: a fixed width cut the longer ones)
+	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.8))})
+	if ui.row(.Center, {}, fmt.tprintf("###pr_%s", id)) {
+		ui.space(ui.PAGE_MARGIN)
+		ui.next({width = ui.fill(), height = ui.pct(1)})
+		if ui.toggle(fmt.tprintf("###pt_%s", id), label, &v) {
+			config.set_from_string(&app.prefs, name, v ? "true" : "false", .User)
+			blocker.touch(&app.bl.b)
+		}
+		ui.space(ui.PAGE_MARGIN)
 	}
 }
 
@@ -159,24 +165,25 @@ blocker_page :: proc(app: ^App, t: ^Tab) {
 		ui.next({axis = .Y})
 		root := ui.build_box({.Draw_Background}, "###blocker_page")
 		if ui.parent(root) {
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.SPACE_2)   // (the page's top: no role names it)
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 			if ui.row(.Center) {
-				ui.spacer(ui.px(em * 0.8))
+				ui.space(ui.PAGE_MARGIN)
 				ui.next({width = ui.text_size(0), height = ui.px(ui.dense(em * 2))})
 				ui.label(tid(i18n.tr("Content blocker"), "bd_title"))
-				ui.spacer(ui.px(em * 1.2))
+				ui.space(ui.ITEM_GAP)
 				state, count, rules := blocker_shield(app, t)
 				_ = state; _ = count
 				if ui.tags("weak") {
 					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 					ui.label(tid(fmt.tprintf(i18n.tr("state, filter count, total blocked", "%s · %d filters · %d blocked in all"), b.cfg.enabled ? i18n.tr("blocker state", "on") : i18n.tr("blocker state", "off"), rules, b.totals.blocked), "bd_sub"))
 				}
-				ui.spacer(ui.px(em * 0.8))
+				ui.space(ui.PAGE_MARGIN)
 			}
 			labels := []string{i18n.tr("Settings"), i18n.tr("Filter lists"), i18n.tr("My filters"), i18n.tr("My rules"), i18n.tr("Whitelist"), i18n.tr("Journal"), i18n.tr("Statistics"), i18n.tr("About")}
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
 			if ui.row(.Start, {}, "###bd_tabs_row") {
+				ui.space(ui.PAGE_MARGIN)   // (the tabs between the page's margins, under its title)
 				if ui.tabs("###bd_tabs", labels, nil, &app.dash.tab) {
 					a := fmt.tprintf("about:blocker#%s", DASH_NAMES[Dash_Tab(app.dash.tab)])
 					delete(t.url); t.url = strings.clone(a)
@@ -221,14 +228,14 @@ tab_settings :: proc(app: ^App, t: ^Tab) {
 		pref_row(app, i18n.tr("Block remote web fonts"), "blocker.remote_fonts", "fonts")
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.8))})
 		if ui.row(.Center) {
-			ui.spacer(ui.px(em * 0.9))
+			ui.space(ui.PAGE_MARGIN)
 			if ui.tags("weak") { cell(i18n.tr("Large media are blocked on sites that ask for it above"), "bs_lm_l", em * 28, true); cell(fmt.tprintf("%d KB (blocker.large_media_kb)", b.cfg.large_media_kb), "bs_lm_v", em * 14) }
 		}
 		section(i18n.tr("Updates"), "app.upd")
 		pref_row(app, i18n.tr("Download and update the filter lists in the background"), "blocker.update.enabled", "app.upd")
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.1))})
 		if ui.row(.Center) {
-			ui.spacer(ui.px(em * 0.9))
+			ui.space(ui.PAGE_MARGIN)
 			ui.next({width = ui.px(em * 14), height = ui.pct(1)})
 			if ui.tags("weak") { ui.label(tid(i18n.tr("Check the lists every"), "bs_int_l")) }
 			opts := []string{fmt.tprintf(i18n.tr(1, "%d hour", "%d hours"), 1), fmt.tprintf(i18n.tr(6, "%d hour", "%d hours"), 6), fmt.tprintf(i18n.tr(12, "%d hour", "%d hours"), 12), fmt.tprintf(i18n.tr(1, "%d day", "%d days"), 1), fmt.tprintf(i18n.tr(3, "%d day", "%d days"), 3), fmt.tprintf(i18n.tr(7, "%d day", "%d days"), 7), fmt.tprintf(i18n.tr(30, "%d day", "%d days"), 30)}
@@ -237,9 +244,9 @@ tab_settings :: proc(app: ^App, t: ^Tab) {
 			for h, i in hours { if h == b.cfg.update_hours { sel = i } }
 			ui.next({width = ui.px(em * 9), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			if ui.dropdown("###bs_interval", opts, &sel) { config.set_from_string(&app.prefs, "blocker.update.interval_hours", fmt.tprintf("%d", hours[sel]), .User) }
-			ui.spacer(ui.px(em * 0.8))
+			ui.space(ui.CONTROL_GAP)
 			if ui.button("bs_update_now", i18n.tr("Update now"), lucide.REFRESH_CW, {intent = .Primary, tip = i18n.tr("Ask every enabled list for a newer version now"), width = ui.px(em * 8)}).clicked { blocker.updater_round(b, true) }
-			ui.spacer(ui.px(em * 0.8))
+			ui.space(ui.CONTROL_GAP)
 			if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(b.upd.status != "" ? b.upd.status : (b.upd.last_round > 0 ? fmt.tprintf(i18n.tr("last check %s"), fmt_date(b.upd.last_round)) : i18n.tr("no check yet")), "bs_upd_st")) }
 		}
 		section(i18n.tr("Display"), "disp")
@@ -249,18 +256,18 @@ tab_settings :: proc(app: ^App, t: ^Tab) {
 		section(i18n.tr("Configuration"), "conf")
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
 		if ui.row(.Center) {
-			ui.spacer(ui.px(em * 0.9))
+			ui.space(ui.PAGE_MARGIN)
 			if ui.button("bs_export", i18n.tr("Export…"), lucide.FOLDER_OUTPUT, {tip = i18n.tr("Save the lists, rules, sites and filters as one file"), width = ui.px(em * 8)}).clicked { dash_export(app) }
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.CONTROL_GAP)
 			if ui.button("bs_import", i18n.tr("Import…"), lucide.FOLDER_INPUT, {tip = i18n.tr("Load a configuration file (replaces the lists chosen, rules, sites and filters)"), width = ui.px(em * 8)}).clicked { dash_import(app) }
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.CONTROL_GAP)
 			if ui.button("bs_reset_stats", i18n.tr("Reset statistics"), lucide.ROTATE_CCW, {intent = .Danger, width = ui.px(em * 10)}).clicked { b.totals = {since = blocker.unix_ms() / 1000}; blocker.conf_save(b) }
-			ui.spacer(ui.px(em * 0.8))
+			ui.space(ui.CONTROL_GAP)
 			if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(app.dash.status, "bs_conf_st")) }
 		}
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 		if ui.row(.Center) {
-			ui.spacer(ui.px(em * 0.9))
+			ui.space(ui.PAGE_MARGIN)
 			if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(i18n.tr("More preferences: about:config, search blocker."), "bs_more")) }
 		}
 	}
@@ -288,11 +295,11 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 	// toolbar
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.PAGE_MARGIN)
 		if ui.button("bl_update", i18n.tr("Update now"), lucide.REFRESH_CW, {intent = .Primary, width = ui.px(em * 8)}).clicked { blocker.updater_round(b, true) }
-		ui.spacer(ui.px(em * 0.5))
+		ui.space(ui.CONTROL_GAP)
 		if ui.button("bl_apply", i18n.tr("Apply"), lucide.CHECK, {intent = .Success, tip = i18n.tr("Rebuild the filter index from the lists switched on"), width = ui.px(em * 6)}).clicked { blocker.rebuild(b) }
-		ui.spacer(ui.px(em * 0.8))
+		ui.space(ui.CONTROL_GAP)
 		if ui.tags("weak") {
 			ui.next({width = ui.fill(), height = ui.pct(1)})
 			ui.label(tid(fmt.tprintf(i18n.tr("status, filters in force, build time", "%s · %d filters in force · built in %.0f ms"), b.upd.status != "" ? b.upd.status : i18n.tr("up to date"), b.engine != nil ? b.engine.rules : 0, b.upd.last_compile_ms), "bl_status"))
@@ -306,7 +313,7 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 			if l.group != group { continue }
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.0))})
 			if ui.row(.Center) {
-				ui.spacer(ui.px(em * 0.9))
+				ui.space(ui.PAGE_MARGIN)
 				v := l.enabled
 				ui.next({width = ui.px(em * 25), height = ui.pct(1)})
 				if ui.checkbox(fmt.tprintf("###lc_%s", l.id), l.title, &v) {
@@ -326,7 +333,7 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 				case l.enabled && l.size == 0: status = i18n.tr("not downloaded yet")
 				case l.invalid > 0: status = fmt.tprintf(i18n.tr(int(l.invalid), "%d line not understood", "%d lines not understood"), l.invalid)
 				}
-				ui.spacer(ui.px(em * 0.8))
+				ui.space(ui.ITEM_GAP)
 				ui.next({width = ui.fill(), height = ui.pct(1), font_size = em * 0.85})
 				l_err := l.error != ""
 				if l_err { ui.label(fmt.aprintf("%s###le_%s", status, l.id, allocator = ui.frame_allocator())) } else if ui.tags("weak") { ui.label(fmt.aprintf("%s###le_%s", status, l.id, allocator = ui.frame_allocator())) }
@@ -337,20 +344,20 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 					blocker.rebuild(b)
 					break
 				}
-				ui.spacer(ui.px(em * 0.6))
+				ui.space(ui.PAGE_MARGIN)
 			}
 		}
 		}
 		section(i18n.tr("Custom list"), "custom")
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
 		if ui.row(.Center) {
-			ui.spacer(ui.px(em * 0.9))
+			ui.space(ui.PAGE_MARGIN)
 			ui.next({width = ui.px(em * 12), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			ui.line_edit("###bl_cname", &app.dash.custom_name, {placeholder = i18n.tr("Name (optional)")})
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.CONTROL_GAP)
 			ui.next({width = ui.px(em * 36), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			res := ui.line_edit("###bl_curl", &app.dash.custom_url, {placeholder = "https://example.org/filters.txt"})
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.CONTROL_GAP)
 			url := strings.trim_space(ui.line_edit_string(&app.dash.custom_url))
 			valid := strings.has_prefix(url, "https://") || strings.has_prefix(url, "http://")
 			if ui.disabled(!valid) {
@@ -364,7 +371,7 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 		}
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 		if ui.row(.Center) {
-			ui.spacer(ui.px(em * 0.9))
+			ui.space(ui.PAGE_MARGIN)
 			if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(i18n.tr("A list is downloaded from its address, checked, and kept in the profile. Nothing is sent about you."), "bl_note")) }
 		}
 	}
@@ -415,17 +422,17 @@ tab_my_filters :: proc(app: ^App, t: ^Tab) {
 	}
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.PAGE_MARGIN)
 		if ui.disabled(!app.dash.my_dirty) {
 			if ui.button("mf_apply", i18n.tr("Apply changes"), lucide.CHECK, {intent = .Success, tip = i18n.tr("Compile the filters into the index (Ctrl+S)"), width = ui.px(em * 10)}).clicked { dash_apply_filters(app) }
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.CONTROL_GAP)
 			if ui.button("mf_revert", i18n.tr("Revert"), lucide.UNDO_2, {width = ui.px(em * 6)}).clicked { app.dash.my_loaded = false }
 		}
-		ui.spacer(ui.px(em * 0.5))
+		ui.space(ui.CONTROL_GAP)
 		if ui.button("mf_import", i18n.tr("Import…"), lucide.FOLDER_INPUT, {tip = i18n.tr("Add the lines of a text file"), width = ui.px(em * 7)}).clicked { dash_import_filters(app) }
-		ui.spacer(ui.px(em * 0.5))
+		ui.space(ui.CONTROL_GAP)
 		if ui.button("mf_export", i18n.tr("Export…"), lucide.FOLDER_OUTPUT, {tip = i18n.tr("Save these filters as a text file"), width = ui.px(em * 7)}).clicked { dash_export_filters(app) }
-		ui.spacer(ui.px(em * 0.8))
+		ui.space(ui.CONTROL_GAP)
 		if ui.tags("weak") {
 			ui.next({width = ui.fill(), height = ui.pct(1)})
 			ui.label(tid(app.dash.my_dirty ? fmt.tprintf(i18n.tr("filters, lines not understood", "%d filters, %d lines not understood · changes not applied"), app.dash.my_valid, app.dash.my_ignored) : fmt.tprintf(i18n.tr("filters, lines not understood", "%d filters, %d lines not understood"), app.dash.my_valid, app.dash.my_ignored), "mf_status"))
@@ -476,21 +483,21 @@ tab_my_rules :: proc(app: ^App, t: ^Tab) {
 	b := &app.bl.b
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.PAGE_MARGIN)
 		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		ui.line_edit("###mr_src", &app.dash.rule_src, {placeholder = i18n.tr("site or *")})
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.CONTROL_GAP)
 		ui.next({width = ui.px(em * 15), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		ui.line_edit("###mr_dst", &app.dash.rule_dst, {placeholder = i18n.tr("destination host or *")})
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.CONTROL_GAP)
 		names := make([]string, len(blocker.DYN_TYPE_NAMES), context.temp_allocator)
 		for n, i in blocker.DYN_TYPE_NAMES { names[i] = n }
 		ui.next({width = ui.px(em * 8.5), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		ui.dropdown("###mr_type", names, &app.dash.rule_type)
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.CONTROL_GAP)
 		ui.next({width = ui.px(em * 7), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		ui.dropdown("###mr_action", []string{i18n.tr("rule action", "block"), i18n.tr("rule action", "allow")}, &app.dash.rule_action)
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.CONTROL_GAP)
 		src := base.ascii_lower(strings.trim_space(ui.line_edit_string(&app.dash.rule_src)))
 		dst := base.ascii_lower(strings.trim_space(ui.line_edit_string(&app.dash.rule_dst)))
 		if src == "" { src = "*" }
@@ -501,12 +508,12 @@ tab_my_rules :: proc(app: ^App, t: ^Tab) {
 				ui.line_edit_clear(&app.dash.rule_dst)
 			}
 		}
-		ui.spacer(ui.px(em * 0.5))
+		ui.space(ui.CONTROL_GAP)
 		if ui.button("mr_clear", i18n.tr("Remove all"), lucide.TRASH_2, {intent = .Danger, width = ui.px(em * 8)}).clicked { blocker.dyn_clear(&b.dyn); blocker_rules_saved() }
 	}
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5))})
 	if ui.row(.Center) {
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.PAGE_MARGIN)
 		if ui.tags("weak") {
 			cell(i18n.tr("source"), "mrh_s", em * 11); cell(i18n.tr("destination"), "mrh_d", em * 15); cell(i18n.tr("kind"), "mrh_t", em * 8.5); cell(i18n.tr("action"), "mrh_a", em * 7)
 		}
@@ -519,7 +526,7 @@ tab_my_rules :: proc(app: ^App, t: ^Tab) {
 		for r, i in rules {
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			if ui.row(.Center) {
-				ui.spacer(ui.px(em * 0.9))
+				ui.space(ui.PAGE_MARGIN)
 				cell(r.src, fmt.tprintf("mrs_%d", i), em * 11)
 				cell(r.dst, fmt.tprintf("mrd_%d", i), em * 15)
 				cell(blocker.DYN_TYPE_NAMES[r.type], fmt.tprintf("mrt_%d", i), em * 8.5)
@@ -553,10 +560,10 @@ tab_whitelist :: proc(app: ^App, t: ^Tab) {
 	b := &app.bl.b
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.PAGE_MARGIN)
 		ui.next({width = ui.px(em * 26), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		res := ui.line_edit("###wl_add", &app.dash.wl_add, {placeholder = i18n.tr("example.org: a site where the blocker stays off")})
-		ui.spacer(ui.px(em * 0.5))
+		ui.space(ui.CONTROL_GAP)
 		host := base.ascii_lower(strings.trim_space(ui.line_edit_string(&app.dash.wl_add)))
 		host = strings.trim_prefix(strings.trim_prefix(host, "https://"), "http://")
 		if i := strings.index_any(host, "/?#"); i >= 0 { host = host[:i] }
@@ -566,7 +573,7 @@ tab_whitelist :: proc(app: ^App, t: ^Tab) {
 				ui.line_edit_clear(&app.dash.wl_add)
 			}
 		}
-		ui.spacer(ui.px(em * 0.8))
+		ui.space(ui.CONTROL_GAP)
 		if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(i18n.tr("A site here is not filtered at all (subdomains too)."), "wl_note")) }
 	}
 	ui.next({width = ui.fill(), height = ui.fill()})
@@ -581,7 +588,7 @@ tab_whitelist :: proc(app: ^App, t: ^Tab) {
 			any = true
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			if ui.row(.Center) {
-				ui.spacer(ui.px(em * 0.9))
+				ui.space(ui.PAGE_MARGIN)
 				cell(h, fmt.tprintf("wlh_%d", i), em * 24)
 				flags := make([dynamic]string, context.temp_allocator)
 				for fl in blocker.Site_Flag { if fl in f { append(&flags, blocker.SITE_FLAG_NAMES[fl]) } }
@@ -674,34 +681,34 @@ tab_journal :: proc(app: ^App, t: ^Tab) {
 	b := &app.bl.b
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.PAGE_MARGIN)
 		ui.next({width = ui.px(em * 22), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		ui.line_edit("###lg_search", &app.dash.log_search, {placeholder = i18n.tr("Search URL, rule or document")})
-		ui.spacer(ui.px(em * 0.5))
+		ui.space(ui.CONTROL_GAP)
 		outs := make([]string, len(blocker.Outcome) + 1, context.temp_allocator)
 		outs[0] = i18n.tr("all outcomes")
 		for o in blocker.Outcome { outs[int(o) + 1] = outcome_name(o) }
 		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		if ui.dropdown("###lg_outcome", outs, &app.dash.log_outcome) { app.dash.log_version = 0 }
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.CONTROL_GAP)
 		types := make([]string, 22, context.temp_allocator)
 		types[0] = i18n.tr("all types")
 		k := 1
 		for r in adblock.Resource { if r <= .Webrtc { types[k] = adblock.resource_name(r); k += 1 } }
 		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		if ui.dropdown("###lg_type", types[:k], &app.dash.log_type) { app.dash.log_version = 0 }
-		ui.spacer(ui.px(em * 0.5))
+		ui.space(ui.CONTROL_GAP)
 		if ui.button("lg_pause", app.dash.log_pause ? i18n.tr("Resume") : i18n.tr("Pause"), app.dash.log_pause ? lucide.PLAY : lucide.PAUSE, {width = ui.px(em * 7)}).clicked { app.dash.log_pause = !app.dash.log_pause; app.dash.log_version = 0 }
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.CONTROL_GAP)
 		if ui.button("lg_clear", i18n.tr("Clear"), lucide.TRASH_2, {intent = .Danger, width = ui.px(em * 6)}).clicked { blocker.journal_clear(&b.journal); app.dash.log_version = 0 }
-		ui.spacer(ui.px(em * 0.8))
+		ui.space(ui.CONTROL_GAP)
 		if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(fmt.tprintf(i18n.tr("rows shown, rows in all", "%d shown of %d"), len(app.dash.log_rows), blocker.journal_len(&b.journal)), "lg_count")) }
 	}
 	log_model(b, strings.trim_space(ui.line_edit_string(&app.dash.log_search)))
 	// header
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5))})
 	if ui.row(.Center) {
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.PAGE_MARGIN)
 		if ui.tags("weak") {
 			cell(i18n.tr("time"), "lgh_t", em * 6.5); cell(i18n.tr("type"), "lgh_y", em * 6.5); cell(i18n.tr("outcome"), "lgh_o", em * 8.5); cell(i18n.tr("URL"), "lgh_u", em * 38); cell(i18n.tr("document"), "lgh_d", em * 13); cell(i18n.tr("rule"), "lgh_r", em * 20)
 		}
@@ -715,7 +722,7 @@ tab_journal :: proc(app: ^App, t: ^Tab) {
 			ui.next({height = ui.px(ui.dense(em * 1.75))})
 			row := ui.list_row(&app.dash.log_list.list, i, app.dash.log_labels[i])
 			if ui.parent(row.box) {
-				ui.spacer(ui.px(em * 0.9))
+				ui.space(ui.PAGE_MARGIN)
 				lt := local_time(e.time)
 				cell(fmt.tprintf("%02d:%02d:%02d", lt.hour, lt.minute, lt.second), fmt.tprintf("lgt_%d", i), em * 6.5, true)
 				cell(adblock.resource_name(e.type), fmt.tprintf("lgy_%d", i), em * 6.5, true)
@@ -791,7 +798,7 @@ stat_line :: proc(label, value, id: string) {
 	em := ui.font_size()
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.7))})
 	if ui.row(.Center) {
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.PAGE_MARGIN)
 		cell(label, fmt.tprintf("stl_%s", id), em * 26, true)
 		cell(value, fmt.tprintf("stv_%s", id), em * 40)
 	}

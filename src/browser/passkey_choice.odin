@@ -195,17 +195,17 @@ passkey_choice_view :: proc(v: ^ui.View, app: ^App) {
 	if ui.scroll_y("###pc_scroll") {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Start, {}, "###pc_margins") {
-			ui.spacer(ui.px(em * 1.0))
+			ui.space(ui.CARD_PAD)
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.column(.Start, {}, "###pc_col") {
 				ui.spacer(ui.px(em * 0.9))
 				if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s asks for a passkey. Use one of the Vault, or a security key or this device."), c.rp_id), "###pc_hint"}, ui.frame_allocator())) }
-				ui.spacer(ui.px(em * 0.8))
+				ui.space(ui.LINE_GAP)
 				if signing {
 					ui.next({width = ui.fill(), height = ui.children_sum()})
 					if ui.row(.Center, {}, "###pc_wait") {
 						ui.spinner("###vd_spinner", em * 1.3)
-						ui.spacer(ui.px(em * 0.5))
+						ui.space(ui.ICON_GAP)
 						ui.next({width = ui.fill(), height = ui.text_size()})
 						ui.label(strings.concatenate({i18n.tr("The Vault signs in with the passkey."), "###pc_wait_text"}, ui.frame_allocator()))
 					}
@@ -219,17 +219,17 @@ passkey_choice_view :: proc(v: ^ui.View, app: ^App) {
 					last := len(c.rows)
 					if ui.choice_row(fmt.tprintf("pc_row_%d", last), last, &c.sel, i18n.tr("Use a security key or this device"), "", lucide.USB, app.lucide) { chosen = last }
 				}
-				ui.spacer(ui.px(em * 0.4))
+				ui.space(ui.LINE_GAP)
 			}
-			ui.spacer(ui.px(em * 1.0))
+			ui.space(ui.CARD_PAD)
 		}
 	}
-	ui.spacer(ui.px(em * 0.6))
+	ui.space(ui.ITEM_GAP)
 	ui.next({width = ui.fill(), height = ui.children_sum()})
 	if ui.row(.Center, {}, "###pc_buttons") {
 		ui.spacer(ui.fill())
 		if ui.button("pc_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
-		ui.spacer(ui.px(em * 1.0))
+		ui.space(ui.CARD_PAD)
 	}
 	ui.spacer(ui.px(em * 0.8))
 	switch {

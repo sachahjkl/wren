@@ -57,7 +57,7 @@ webauthn_chip :: proc(app: ^App, t: ^Tab) {
 	pending, create, rp_id := page.webauthn_pending(t.page)
 	if !pending { return }
 	em := ui.font_size()
-	ui.spacer(ui.px(em * 0.3))
+	ui.space(ui.TOOL_GAP)
 	ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 1.8)), radius = em * CHROME_BUTTON_RADIUS})
 	if ui.tags("ghost_button") {
 		label := create ? "Creating a passkey" : "Passkey"
@@ -132,40 +132,31 @@ key_pin_view :: proc(v: ^ui.View, app: ^App) {
 	submit, cancel := false, false
 	ui.next({width = ui.fill(), height = ui.fill()})
 	if ui.scroll_y("###kp_scroll") {
-		ui.next({width = ui.fill(), height = ui.children_sum()})
-		if ui.row(.Start, {}, "###kp_margins") {
-			ui.spacer(ui.px(em * 1.0))
-			ui.next({width = ui.fill(), height = ui.children_sum()})
-			if ui.column(.Start, {}, "###kp_col") {
-				ui.spacer(ui.px(em * 0.9))
-				if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s asks for your security key. Type its PIN, then touch the key when it blinks."), q.rp_id), "###kp_hint"}, ui.frame_allocator())) }
-				if q.wrong || (q.retries >= 0 && q.retries <= 3) {
-					ui.spacer(ui.px(em * 0.3))
-					words := q.wrong ? fmt.tprintf(i18n.tr("Wrong PIN. %d tries left before the key blocks."), q.retries) : fmt.tprintf(i18n.tr("%d tries left before the key blocks."), q.retries)
-					if q.retries < 0 { words = i18n.tr("Wrong PIN.") }
-					ui.paragraph(strings.concatenate({words, "###kp_wrong"}, ui.frame_allocator()))
-				}
-				ui.spacer(ui.px(em * 0.8))
-				// (Enter answers, Escape cancels; a secret: the eye, no edit menu)
-				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-				r := ui.line_edit("###kp_field", &d.field, {placeholder = i18n.tr("PIN"), kind = .Secret, reveal = &d.reveal, own_menu = true})
-				submit, cancel = r.committed, r.cancelled
-				if d.focus && r.box != nil { d.focus = false; ui.set_focus(r.box.key) }
-				ui.spacer(ui.px(em * 0.4))
+		if ui.dialog_body("kp_body") {
+			if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s asks for your security key. Type its PIN, then touch the key when it blinks."), q.rp_id), "###kp_hint"}, ui.frame_allocator())) }
+			if q.wrong || (q.retries >= 0 && q.retries <= 3) {
+				ui.space(ui.LINE_GAP)
+				words := q.wrong ? fmt.tprintf(i18n.tr("Wrong PIN. %d tries left before the key blocks."), q.retries) : fmt.tprintf(i18n.tr("%d tries left before the key blocks."), q.retries)
+				if q.retries < 0 { words = i18n.tr("Wrong PIN.") }
+				ui.paragraph(strings.concatenate({words, "###kp_wrong"}, ui.frame_allocator()))
 			}
-			ui.spacer(ui.px(em * 1.0))
+			ui.space(ui.LINE_GAP)
+			// (Enter answers, Escape cancels; a secret: the eye, no edit menu)
+			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+			r := ui.line_edit("###kp_field", &d.field, {placeholder = i18n.tr("PIN"), kind = .Secret, reveal = &d.reveal, own_menu = true})
+			submit, cancel = r.committed, r.cancelled
+			if d.focus && r.box != nil { d.focus = false; ui.set_focus(r.box.key) }
 		}
 	}
-	ui.spacer(ui.px(em * 0.6))
 	ui.next({width = ui.fill(), height = ui.children_sum()})
 	if ui.row(.Center, {}, "###kp_buttons") {
 		ui.spacer(ui.fill())
 		if ui.button("###kp_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
-		ui.spacer(ui.px(em * 0.5))
+		ui.space(ui.CONTROL_GAP)
 		if ui.button("###kp_ok", i18n.tr("OK"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { submit = true }
-		ui.spacer(ui.px(em * 1.0))
+		ui.space(ui.CARD_PAD)
 	}
-	ui.spacer(ui.px(em * 0.8))
+	ui.space(ui.CARD_PAD)
 	switch {
 	case submit && strings.trim_space(ui.line_edit_string(&d.field)) != "": ui.view_end(v, 0)
 	case cancel: ui.view_end(v, ui.VIEW_CANCELLED)
@@ -189,33 +180,24 @@ key_choose_view :: proc(v: ^ui.View, app: ^App) {
 	if ui.key_press(.Return) { chosen = d.choose_sel }
 	ui.next({width = ui.fill(), height = ui.fill()})
 	if ui.scroll_y("###kc_scroll") {
-		ui.next({width = ui.fill(), height = ui.children_sum()})
-		if ui.row(.Start, {}, "###kc_margins") {
-			ui.spacer(ui.px(em * 1.0))
-			ui.next({width = ui.fill(), height = ui.children_sum()})
-			if ui.column(.Start, {}, "###kc_col") {
-				ui.spacer(ui.px(em * 0.9))
-				if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("Your security key holds several passkeys of %s. Choose the one to sign in with."), q.rp_id), "###kc_hint"}, ui.frame_allocator())) }
-				ui.spacer(ui.px(em * 0.8))
-				for a, i in q.accounts {
-					title, detail := a.display_name, a.name
-					if title == "" { title, detail = a.name, "" }
-					if title == "" { title = i18n.tr("Account without a name") }
-					if ui.choice_row(fmt.tprintf("kc_row_%d", i), i, &d.choose_sel, title, detail, lucide.USER, app.lucide) { chosen = i }
-				}
-				ui.spacer(ui.px(em * 0.4))
+		if ui.dialog_body("kc_body") {
+			if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("Your security key holds several passkeys of %s. Choose the one to sign in with."), q.rp_id), "###kc_hint"}, ui.frame_allocator())) }
+			ui.space(ui.LINE_GAP)
+			for a, i in q.accounts {
+				title, detail := a.display_name, a.name
+				if title == "" { title, detail = a.name, "" }
+				if title == "" { title = i18n.tr("Account without a name") }
+				if ui.choice_row(fmt.tprintf("kc_row_%d", i), i, &d.choose_sel, title, detail, lucide.USER, app.lucide) { chosen = i }
 			}
-			ui.spacer(ui.px(em * 1.0))
 		}
 	}
-	ui.spacer(ui.px(em * 0.6))
 	ui.next({width = ui.fill(), height = ui.children_sum()})
 	if ui.row(.Center, {}, "###kc_buttons") {
 		ui.spacer(ui.fill())
 		if ui.button("###kc_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
-		ui.spacer(ui.px(em * 1.0))
+		ui.space(ui.CARD_PAD)
 	}
-	ui.spacer(ui.px(em * 0.8))
+	ui.space(ui.CARD_PAD)
 	switch {
 	case chosen >= 0 && chosen < n: ui.view_end(v, chosen)
 	case cancel: ui.view_end(v, ui.VIEW_CANCELLED)
@@ -230,30 +212,21 @@ key_touch_view :: proc(v: ^ui.View, app: ^App) {
 	em := ui.font_size()
 	ui.next({width = ui.fill(), height = ui.fill()})
 	if ui.scroll_y("###kt_scroll") {
-		ui.next({width = ui.fill(), height = ui.children_sum()})
-		if ui.row(.Start, {}, "###kt_margins") {
-			ui.spacer(ui.px(em * 1.0))
+		if ui.dialog_body("kt_body") {
+			// (the spinner says that the key waits; the title is the header's)
 			ui.next({width = ui.fill(), height = ui.children_sum()})
-			if ui.column(.Start, {}, "###kt_col") {
-				ui.spacer(ui.px(em * 0.9))
-				// (the spinner says that the key waits; the title is the header's)
-				ui.next({width = ui.fill(), height = ui.children_sum()})
-				if ui.row(.Center, {}, "###kt_head") {
-					ui.spinner("###vd_spinner", em * 1.3)
-					ui.spacer(ui.px(em * 0.5))
-					if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s asks for your security key. Touch its button or its gold disc now: it blinks while it waits."), q.rp_id), "###kt_hint"}, ui.frame_allocator())) }
-				}
-				ui.spacer(ui.px(em * 0.4))
+			if ui.row(.Center, {}, "###kt_head") {
+				ui.spinner("###vd_spinner", em * 1.3)
+				ui.space(ui.ICON_GAP)
+				if ui.tags("weak") { ui.paragraph(strings.concatenate({fmt.tprintf(i18n.tr("%s asks for your security key. Touch its button or its gold disc now: it blinks while it waits."), q.rp_id), "###kt_hint"}, ui.frame_allocator())) }
 			}
-			ui.spacer(ui.px(em * 1.0))
 		}
 	}
-	ui.spacer(ui.px(em * 0.6))
 	ui.next({width = ui.fill(), height = ui.children_sum()})
 	if ui.row(.Center, {}, "###kt_buttons") {
 		ui.spacer(ui.fill())
 		if ui.button("###kt_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { ui.view_end(v, ui.VIEW_CANCELLED) }
-		ui.spacer(ui.px(em * 1.0))
+		ui.space(ui.CARD_PAD)
 	}
-	ui.spacer(ui.px(em * 0.8))
+	ui.space(ui.CARD_PAD)
 }

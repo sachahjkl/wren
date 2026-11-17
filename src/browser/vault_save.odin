@@ -133,34 +133,34 @@ vault_offer_build :: proc(app: ^App) {
 		ui.a11y_set(panel, {name = title})
 		s.offer_shown, s.offer_rect = true, panel.rect
 		if ui.parent(panel) {
-			ui.spacer(ui.px(em * 0.7))
+			ui.space(ui.CARD_PAD)
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.row(.Start, {}, "###vo_margins") {
-				ui.spacer(ui.px(em * 0.9))
+				ui.space(ui.CARD_PAD)
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.column(.Start, {}, "###vo_col") {
 					ui.paragraph(strings.concatenate({title, "###vo_title"}, ui.frame_allocator()))
-					ui.spacer(ui.px(em * 0.3))
+					ui.space(ui.LINE_GAP)
 					if ui.tags("weak") { ui.paragraph(strings.concatenate({o.host, "###vo_host"}, ui.frame_allocator())) }
 					if o.username != "" { if ui.tags("weak") { ui.paragraph(strings.concatenate({o.username, "###vo_user"}, ui.frame_allocator())) } }
-					ui.spacer(ui.px(em * 0.6))
+					ui.space(ui.LINE_GAP)
 					if o.state == .Saving {
 						if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("Saving…"), "###vo_saving"}, ui.frame_allocator())) }
 					} else {
 						ui.next({width = ui.fill(), height = ui.children_sum()})
 						if ui.row(.Center, {}, "###vo_acts") {
 							if ui.button("###vo_later", i18n.tr("Not now"), lucide.X, {width = ui.fill()}).clicked { later = true }
-							ui.spacer(ui.px(em * 0.4))
+							ui.space(ui.CONTROL_GAP)
 							words := o.state == .Update ? i18n.tr("Update") : i18n.tr("Save")
 							if ui.button("###vo_accept", words, lucide.SAVE, {intent = .Success, width = ui.fill()}).clicked { accept = true }
 						}
-						ui.spacer(ui.px(em * 0.4))
+						ui.space(ui.CONTROL_GAP)
 						if ui.button("###vo_never", i18n.tr("Never for this site"), lucide.SHIELD, {width = ui.fill()}).clicked { never = true }
 					}
 				}
-				ui.spacer(ui.px(em * 0.9))
+				ui.space(ui.CARD_PAD)
 			}
-			ui.spacer(ui.px(em * 0.7))
+			ui.space(ui.CARD_PAD)
 		}
 	}
 	switch {
@@ -272,14 +272,14 @@ vault_generator_view :: proc(view: ^ui.View, app: ^App) {
 	if ui.scroll_y("###vg_scroll") {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Start, {}, "###vg_margins") {
-			ui.spacer(ui.px(em * 1.0))
+			ui.space(ui.CARD_PAD)
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.column(.Start, {}, "###vg_col") {
 				ui.spacer(ui.px(em * 0.9))
 				kind := o.passphrase ? 1 : 0
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 				if ui.segmented("###vg_kind", []string{i18n.tr("Password"), i18n.tr("Passphrase")}, &kind) { o.passphrase = kind == 1 }
-				ui.spacer(ui.px(em * 0.5))
+				ui.space(ui.LINE_GAP)
 				count_row :: proc(label, id: string, value: ^int, lo, hi: int) {
 					em := ui.font_size()
 					ui.next({width = ui.fill(), height = ui.children_sum()})
@@ -292,14 +292,14 @@ vault_generator_view :: proc(view: ^ui.View, app: ^App) {
 				}
 				if o.passphrase {
 					count_row(i18n.tr("Words"), "vg_words", &o.words, vault.GENERATE_WORDS_MIN, vault.GENERATE_WORDS_MAX)
-					ui.spacer(ui.px(em * 0.3))
+					ui.space(ui.LINE_GAP)
 					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 					ui.checkbox("###vg_capitalize", i18n.tr("Capital first letters"), &o.capitalize)
 					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 					ui.checkbox("###vg_number", i18n.tr("A digit"), &o.include_number)
 				} else {
 					count_row(i18n.tr("Length"), "vg_length", &o.length, vault.GENERATE_LENGTH_MIN, vault.GENERATE_LENGTH_MAX)
-					ui.spacer(ui.px(em * 0.3))
+					ui.space(ui.LINE_GAP)
 					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 					ui.checkbox("###vg_upper", i18n.tr("Capital letters (A-Z)"), &o.uppercase)
 					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
@@ -309,34 +309,34 @@ vault_generator_view :: proc(view: ^ui.View, app: ^App) {
 					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 					ui.checkbox("###vg_special", i18n.tr("Special characters (!@#$%^&*)"), &o.special)
 				}
-				ui.spacer(ui.px(em * 0.7))
+				ui.space(ui.ITEM_GAP)
 				// (the person asked to see it: the dialog is an empty box to captures and remote control; in a field read only,
 				// to select a part of it or copy it with the keys)
 				if ui.line_edit_string(&s.gen_text) != s.gen_value { ui.line_edit_set(&s.gen_text, s.gen_value) }
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 				_ = ui.line_edit("###vg_value", &s.gen_text, {placeholder = i18n.tr("Generating…"), kind = .Read_Only})
-				ui.spacer(ui.px(em * 0.5))
+				ui.space(ui.LINE_GAP)
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.row(.Center, {}, "###vg_value_acts") {
 					if ui.button("###vg_again", i18n.tr("Regenerate"), lucide.REFRESH_CW, {width = ui.fill()}).clicked { again = true }
-					ui.spacer(ui.px(em * 0.4))
+					ui.space(ui.CONTROL_GAP)
 					if ui.button("###vg_copy", i18n.tr("Copy"), lucide.COPY, {intent = .Primary, width = ui.fill()}).clicked { copy_it = true }
 				}
 				if s.v.message != "" {
-					ui.spacer(ui.px(em * 0.4))
+					ui.space(ui.LINE_GAP)
 					if ui.tags("weak") { ui.paragraph(strings.concatenate({s.v.message, "###vg_message"}, ui.frame_allocator())) }
 				}
-				ui.spacer(ui.px(em * 0.4))
+				ui.space(ui.LINE_GAP)
 			}
-			ui.spacer(ui.px(em * 1.0))
+			ui.space(ui.CARD_PAD)
 		}
 	}
-	ui.spacer(ui.px(em * 0.6))
+	ui.space(ui.ITEM_GAP)
 	ui.next({width = ui.fill(), height = ui.children_sum()})
 	if ui.row(.Center, {}, "###vg_buttons") {
 		ui.spacer(ui.fill())
 		if ui.button("###vg_close", i18n.tr("Close"), lucide.X, {width = ui.px(em * 8)}).clicked { close = true }
-		ui.spacer(ui.px(em * 1.0))
+		ui.space(ui.CARD_PAD)
 	}
 	ui.spacer(ui.px(em * 0.8))
 	if copy_it && s.gen_value != "" { vault_copied(app, .Password, s.gen_value, 0) }

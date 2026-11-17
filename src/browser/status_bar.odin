@@ -411,7 +411,7 @@ status_right :: proc(app: ^App) -> (graph_box: ^ui.Box) {
 	c := app.hud.cfg.comma
 	if remote_indicator() {
 		tip(ui.status_item(fmt.tprintf("%s###sb_remote", remote_indicator_text()), tone = "warn"), remote_indicator_tip())
-		ui.spacer(ui.px(em * 0.3))
+		ui.space(ui.TOOL_GAP)
 	}
 	for m in app.hud.cfg.metrics {
 		switch m {
@@ -428,7 +428,7 @@ status_right :: proc(app: ^App) -> (graph_box: ^ui.Box) {
 			graph_box = res.box
 			if res.clicked { app.hud.panel_open = !app.hud.panel_open }
 			if res.hovered >= 0 { graph_tooltip(app, res.hovered, colors) } else { tip(res.sig, "Time of the recent frames by phase: click for details (Ctrl+Shift+F)") }
-			ui.spacer(ui.px(em * 0.3))
+			ui.space(ui.TOOL_GAP)
 		case .Fps:
 			tip(ui.status_item(fmt.tprintf("%.0f fps###sb_fps", n.fps), mono = true), fmt.tprintf("Frames drawn per second (last %.0f ms). Nothing changes: no frames. The screen this window is on: %s Hz%s (frames aim for %s Hz).", app.hud.cfg.window_ms, fmt_hz(pacer.display.hz, c), pacer.display.max_hz > pacer.display.hz * 1.05 ? fmt.tprintf(", up to %s Hz%s", fmt_hz(pacer.display.max_hz, c), pacer.variable ? ": variable refresh, frames timed by the browser" : "") : "", fmt_hz(pacer.hz, c)))
 		case .Cpu:

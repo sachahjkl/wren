@@ -254,7 +254,7 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 		// a hint
 		ui.next({fixed_x = area.min.x + em * 0.8, fixed_y = area.min.y + em * 0.8, width = ui.px(em * 30), height = ui.px(ui.dense(em * 2.2)), radius = em * 0.4})
 		if ui.row(.Center, {.Draw_Background, .Draw_Border}, "###bl_pick_hint") {
-			ui.spacer(ui.px(em * 0.7))
+			ui.space(ui.INNER_PAD)
 			ui.next({width = ui.fill(), height = ui.pct(1)})
 			ui.label(tid(i18n.tr("Click the element to block · Esc: cancel"), "bl_pick_hint_l"))
 		}
@@ -268,25 +268,25 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 	w := min(draw.rect_size(area).x - em * 2, em * 60)
 	ui.next({fixed_x = area.min.x + (draw.rect_size(area).x - w) * 0.5, fixed_y = area.max.y - bar_h - em * 1.0, width = ui.px(w), height = ui.px(bar_h), radius = em * 0.5})
 	if ui.column(.Start, {.Draw_Background, .Draw_Border}, "###bl_pick_bar") {
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.INNER_PAD)
 		ui.next({width = ui.pct(1), height = ui.px(ui.dense(em * 2))})
 		if ui.row(.Center) {
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.INNER_PAD)
 			ui.next({width = ui.px(em * 7), height = ui.pct(1)})
 			if ui.tags("weak") { ui.label(tid(i18n.tr("Selector"), "pk_l")) }
 			ui.next({width = ui.fill(), height = ui.pct(1)})
 			res := ui.line_edit("###pk_sel", &app.pick.field, {placeholder = i18n.tr("CSS selector")})
 			_ = res
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.CONTROL_GAP)
 			ui.next({width = ui.px(em * 9), height = ui.pct(1)})
 			count := len(app.pick.matches)
 			label := tid(app.pick.valid ? fmt.tprintf(i18n.tr(count, "%d element", "%d elements"), count) : i18n.tr("invalid selector"), "pk_n")
 			if ui.tags("weak") { ui.label(label) }
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.INNER_PAD)
 		}
 		ui.next({width = ui.pct(1), height = ui.px(ui.dense(em * 2.2))})   // (the height of its action buttons)
 		if ui.row(.Center) {
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.INNER_PAD)
 			ui.next({width = ui.px(em * 7), height = ui.pct(1)})
 			if ui.tags("weak") { ui.label(tid(i18n.tr("Precision"), "pk_pl")) }
 			if len(app.pick.cands) > 1 {
@@ -298,16 +298,16 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 					if idx != app.pick.last_level { app.pick.last_level = idx; ui.line_edit_set(&app.pick.field, app.pick.cands[len(app.pick.cands) - 1 - idx]) }
 				}
 			} else { ui.spacer(ui.px(em * 14)) }
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.CONTROL_GAP)
 			if ui.button("pk_prev", i18n.tr("Preview"), lucide.EYE, {intent = .Info, width = ui.px(em * 6.5)}).clicked { picker_preview(t) }
-			ui.spacer(ui.px(em * 0.4))
+			ui.space(ui.CONTROL_GAP)
 			host, _ := blocker_page_host(t)
 			if ui.disabled(!app.pick.valid || len(app.pick.matches) == 0) {
 				if ui.button("pk_create", i18n.tr("Create"), lucide.SHIELD, {intent = .Danger, width = ui.px(em * 6.5)}).clicked { picker_create(app, t, blocker_site_key(host)) }
 			}
-			ui.spacer(ui.px(em * 0.4))
+			ui.space(ui.CONTROL_GAP)
 			if ui.button("pk_again", i18n.tr("Pick again"), lucide.ROTATE_CCW, {width = ui.px(em * 7.5)}).clicked { picker_unpreview(t); app.pick.stage = 0; app.pick.hover = base.NIL_HANDLE }
-			ui.spacer(ui.px(em * 0.4))
+			ui.space(ui.CONTROL_GAP)
 			if ui.button("pk_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 6)}).clicked { blocker_picker_cancel(app); return }
 		}
 	}

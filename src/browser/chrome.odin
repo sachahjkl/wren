@@ -153,13 +153,13 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	nav_back_button(app, t)
 	nav_forward_button(app, t)
 	nav_reload_button(app, t)
-	ui.spacer(ui.px(em * 0.4))
+	ui.space(ui.CONTROL_GAP)
 	if (app.wchrome.cfg.address_sizing == .Full_Width) {
 		address_bar(app, t, ui.fill())
 	} else {
 		// centred in the window, whose width the row has (the toolbar spans it in every layout, full screen too); what
 		// follows the bar is as wide as last frame (its chips come and go: one frame late, as in sidebar_titlebar)
-		lead := em * (0.5 + 3 * NAV_BUTTON_EM + 0.4)
+		lead := em * (0.5 + 3 * NAV_BUTTON_EM) + math.round(em * ui.CONTROL_GAP)   // (ui.space rounds its gap)
 		trail: f32
 		if end := ui.prev_box("###toolbar_end"); end != nil { trail = end.rect.max.x - end.rect.min.x }
 		before, width := address_bar_span(f32(active_window(app).win.size.x), lead, trail, ADDRESS_BAR_MAX_EM * em)
@@ -170,7 +170,7 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	ui.next({width = ui.children_sum(), height = ui.pct(1), axis = .X, cross = .Center})
 	if ui.parent(ui.build_box({}, "###toolbar_end")) {
 		address_chips(app, t)
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.CONTROL_GAP)
 		toolbar_tools(app, t)
 		main_menu_button(app, t)
 		ui.spacer(ui.px(em * 0.5))
@@ -483,7 +483,7 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 			ink := chip_icon_ink(app, ui.font_size(), sec.glyph)
 			ui.next({width = ui.px(ink), height = ui.pct(1)})
 			ui.custom("###sec_icon", chip_icon_draw, app)
-			ui.spacer(ui.px(em * 0.4))
+			ui.space(ui.ICON_GAP)
 			ui.next({width = ui.text_size(0), height = ui.pct(1), text_pad = 0})
 			ui.label(fmt.aprintf("%s###sec_label", sec.label, allocator = ui.frame_allocator()))
 		}
@@ -522,7 +522,7 @@ security_chip_measure :: proc(app: ^App, t: ^Tab) -> f32 {
 	sec := security_of(t)
 	if sec.label == "" { return 0 }
 	em := ui.font_size()
-	return em * (0.5 + 0.4 + 0.65) + chip_icon_ink(app, em, sec.glyph) + ui.text_width(ui.top_style().font, em, sec.label)
+	return em * (0.5 + 0.65) + math.round(em * ui.ICON_GAP) + chip_icon_ink(app, em, sec.glyph) + ui.text_width(ui.top_style().font, em, sec.label)
 }
 
 // The icon font's metrics are not the text font's: centring both boxes by their own metrics leaves the glyph off the
@@ -565,14 +565,14 @@ info_row :: proc(label, value, id: string, width: f32) {
 	em := ui.font_size()
 	ui.next({width = ui.px(width), height = ui.px(ui.dense(em * 1.7))})
 	if ui.row(.Center) {
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.CARD_PAD)
 		if ui.tags("weak") {
 			ui.next({width = ui.px(em * 8.5), height = ui.pct(1)})
 			ui.label(fmt.aprintf("%s###il_%s", label, id, allocator = ui.frame_allocator()))
 		}
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		ui.label(fmt.aprintf("%s###iv_%s", value, id, allocator = ui.frame_allocator()))
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.CARD_PAD)
 	}
 }
 
@@ -588,10 +588,10 @@ page_info_popup :: proc(app: ^App, t: ^Tab, sec: Security, chip: ^ui.Box) {
 	w := em * 25
 	if ui.menu(key, w) {
 		// header: what the connection is, in the tone of the chip
-		ui.spacer(ui.px(em * 0.5))
+		ui.space(ui.LINE_GAP)
 		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.4))})
 		if ui.row(.Center) {
-			ui.spacer(ui.px(em * 0.9))
+			ui.space(ui.CARD_PAD)
 			if ui.tags(tone_tag(sec.tone)) {
 				fg: Maybe(draw.Color)
 				if sec.tone != .Weak { fg = ui.color("text") }
@@ -604,8 +604,8 @@ page_info_popup :: proc(app: ^App, t: ^Tab, sec: Security, chip: ^ui.Box) {
 			lines := wrap_text(sec.detail, 44)
 			ui.next({width = ui.px(w), height = ui.px(ui.dense(em * (1.55 * f32(len(lines)) + 0.3)))})
 			if ui.row(.Start) {
-				ui.spacer(ui.px(em * 0.9))
-				ui.next({width = ui.px(w - em * 1.8), height = ui.pct(1)})
+				ui.space(ui.CARD_PAD)
+				ui.next({width = ui.px(w - 2 * math.round(em * ui.CARD_PAD)), height = ui.pct(1)})
 				if ui.column() {
 					if ui.tags("weak") {
 						for line, i in lines {
@@ -617,7 +617,7 @@ page_info_popup :: proc(app: ^App, t: ^Tab, sec: Security, chip: ^ui.Box) {
 			}
 		}
 		ui.hline(ui.px(w))
-		ui.spacer(ui.px(em * 0.3))
+		ui.space(ui.LINE_GAP)
 
 		if t != nil && t.page != nil {
 			p := t.page
@@ -641,14 +641,14 @@ page_info_popup :: proc(app: ^App, t: ^Tab, sec: Security, chip: ^ui.Box) {
 			info_row("Page size", fmt.tprintf("%d DOM nodes", p.doc.nodes.count), "dom", w)
 		}
 
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.LINE_GAP)
 		ui.hline(ui.px(w))
-		ui.spacer(ui.px(em * 0.5))
+		ui.space(ui.LINE_GAP)
 		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.2))})
 		if ui.row(.Center) {
-			ui.spacer(ui.px(em * 0.9))
+			ui.space(ui.CARD_PAD)
 			if ui.button("###pi_copy", "Copy address", lucide.COPY, {intent = .Primary, width = ui.px(em * 10)}).clicked && t != nil { clip_set(t.url); ui.menu_close() }
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.CONTROL_GAP)
 			host := t != nil && t.page != nil ? t.page.env.location.host : ""
 			if ui.disabled(host == "") {
 				if ui.button("###pi_clear", "Clear site data", lucide.TRASH_2, {intent = .Danger, width = ui.px(em * 10)}).clicked {
@@ -658,7 +658,7 @@ page_info_popup :: proc(app: ^App, t: ^Tab, sec: Security, chip: ^ui.Box) {
 				}
 			}
 		}
-		ui.spacer(ui.px(em * 0.6))
+		ui.space(ui.LINE_GAP)
 	}
 }
 

@@ -15,7 +15,7 @@ sentence :: proc(text, id: string, i: int, font_scale: f32 = 1) {
 	em := ui.font_size()
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.6))})
 	if ui.row(.Center) {
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.PAGE_MARGIN)
 		ui.next({width = ui.fill(), height = ui.pct(1), font_size = em * font_scale})
 		ui.label(fmt.aprintf("%s###%s%d", text, id, i, allocator = ui.frame_allocator()))
 	}
@@ -53,12 +53,14 @@ tab_about :: proc(app: ^App, t: ^Tab) {
 		for r, i in rows {
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.35))})
 			if ui.row(.Center) {
-				ui.spacer(ui.px(em * 0.9))
+				ui.space(ui.PAGE_MARGIN)
 				cell(r.meaning, fmt.tprintf("ab2m_%d", i), em * 100, true)
 			}
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5))})
 			if ui.row(.Center) {
-				ui.spacer(ui.px(em * 1.6))
+				// (the syntax sits indented under its meaning: the page's edge, then one more step)
+				ui.space(ui.PAGE_MARGIN)
+				ui.space(ui.ITEM_GAP)
 				cell(r.syntax, fmt.tprintf("ab2s_%d", i), em * 100)
 			}
 		}

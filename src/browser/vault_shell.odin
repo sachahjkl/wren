@@ -388,7 +388,8 @@ vault_state_words :: proc(v: ^vault.Vault) -> string {
 @(private = "file")
 panel_line :: proc(text: string, id: string, weak := false) {
 	em := ui.font_size()
-	ui.next({width = ui.px(em * (VAULT_PANEL_W_EM - 1.8)), height = ui.text_size()})
+	// (a fixed width: the wrap needs it; the panel's width less its two CARD_PAD sides)
+	ui.next({width = ui.px(em * (VAULT_PANEL_W_EM - 2 * ui.CARD_PAD)), height = ui.text_size()})
 	if weak { ui.push_tags("weak") }
 	// (a sync's or a search's failure says the server's reason: long, it goes on to more lines, never cut)
 	ui.build_box({.Draw_Text, .Text_Wrap, .No_Text_Trunc}, strings.concatenate({text, "###", id}, ui.frame_allocator()))
@@ -405,16 +406,16 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 		ui.spacer(ui.px(em * 4))
 		return
 	}
-	ui.spacer(ui.px(em * 0.5))
+	ui.space(ui.CARD_PAD)
 	ui.next({width = ui.px(w), height = ui.children_sum()})
 	if ui.row(.Start, {}, "###vp_margin") {
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.CARD_PAD)
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.column(.Start, {}, "###vp_col") {
 			panel_line(vault_state_words(v), "vp_state")
 			if v.message != "" { panel_line(v.message, "vp_message", weak = true) }
 			if v.email != "" { panel_line(v.email, "vp_email", weak = true) }
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.LINE_GAP)
 			switch v.state {
 			case .Disabled, .Locating, .Logging_In, .Unlocking:
 			case .Helper_Missing:
@@ -435,7 +436,7 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 						vault_dialog_open(app)
 					}
 					if vault.vault_has_account(v) && v.state != .Need_Two_Factor && v.state != .Need_Device_Code {
-						ui.spacer(ui.px(em * 0.4))
+						ui.space(ui.CONTROL_GAP)
 						if ui.button("###vp_logout", i18n.tr("Log out"), lucide.LOG_OUT, {intent = .Danger, width = ui.fill()}).clicked {
 							ui.menu_close()
 							app.vault.logout_ask = true
@@ -445,39 +446,39 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 			case .Unlocked:
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 				_ = ui.line_edit("###vp_search", &app.vault.query, {placeholder = i18n.tr("Search the Vault"), clearable = true})
-				ui.spacer(ui.px(em * 0.5))
+				ui.space(ui.LINE_GAP)
 				if q := strings.trim_space(ui.line_edit_string(&app.vault.query)); q != "" {
 					vault_search_rows(app, q)
 				} else {
 					vault_rows(app, t)
 				}
-				ui.spacer(ui.px(em * 0.5))
+				ui.space(ui.LINE_GAP)
 				ui.hline(ui.fill())
-				ui.spacer(ui.px(em * 0.6))
+				ui.space(ui.LINE_GAP)
 				// (two buttons a row, each half of it: the same widths, the same edges as the list)
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.row(.Center, {}, "###vp_actions") {
 					if ui.button("###vp_sync", v.syncing ? i18n.tr("Syncing…") : i18n.tr("Sync"), lucide.REFRESH_CW, {width = ui.fill()}).clicked { vault.vault_sync(v) }
-					ui.spacer(ui.px(em * 0.4))
+					ui.space(ui.CONTROL_GAP)
 					if ui.button("###vp_lock", i18n.tr("Lock"), lucide.LOCK, {width = ui.fill()}).clicked {
 						ui.menu_close()
 						vault.vault_lock(v)
 					}
 				}
-				ui.spacer(ui.px(em * 0.4))
+				ui.space(ui.CONTROL_GAP)
 				if ui.button("###vp_generator", i18n.tr("Generator…"), lucide.DICES, {width = ui.fill()}).clicked {
 					ui.menu_close()
 					vault_generator_open(app)   // vault_save.odin
 				}
 				// (the keyring opens the Vault without its password, vault.unlock.remember: once, the next unlock asks it)
 				if vault.vault_unlock_remembered_now(v) {
-					ui.spacer(ui.px(em * 0.4))
+					ui.space(ui.CONTROL_GAP)
 					if ui.button("###vp_forget_unlock", i18n.tr("Ask for the password next time"), lucide.KEY_ROUND, {width = ui.fill()}).clicked {
 						vault.vault_forget_unlock(v)
 						announce(app, .Info, i18n.tr("The next unlock of the Vault asks for its master password."))   // messages.odin
 					}
 				}
-				ui.spacer(ui.px(em * 0.4))
+				ui.space(ui.CONTROL_GAP)
 				ui.next({width = ui.fill(), height = ui.children_sum()})
 				if ui.row(.Center, {}, "###vp_account") {
 					if vault.vault_can_pin(v) {
@@ -487,7 +488,7 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 							ui.menu_close()
 							vault_pin_open(app)
 						}
-						ui.spacer(ui.px(em * 0.4))
+						ui.space(ui.CONTROL_GAP)
 					}
 					if ui.button("###vp_logout_open", i18n.tr("Log out"), lucide.LOG_OUT, {intent = .Danger, width = ui.fill()}).clicked {
 						ui.menu_close()
@@ -495,9 +496,9 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 					}
 				}
 			}
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.CARD_PAD)
 		}
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.CARD_PAD)
 	}
 }
 
@@ -544,7 +545,7 @@ vault_search_rows :: proc(app: ^App, query: string) {
 	case:
 		total := vault.vault_search_total(v)
 		panel_line(total == 1 ? i18n.tr("1 item") : fmt.tprintf(i18n.tr("%d items"), total), "vp_search_count", weak = true)
-		ui.spacer(ui.px(ui.font_size() * 0.3))
+		ui.space(ui.LINE_GAP)
 		vault_row_list(app, rows, "vs", paged = true)
 	}
 }
@@ -623,7 +624,7 @@ vault_row_item :: proc(app: ^App, r: vault.Row, prefix: string, i: int, rh, gutt
 		} else {
 			vault_glyph(app, vault_kind_glyph(r.kind), pid(prefix, "kind", i), em * 1.6)
 		}
-		ui.spacer(ui.px(em * 0.3))
+		ui.space(ui.ICON_GAP)
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.column(.Start, {}, strings.concatenate({"###", pid(prefix, "text", i)}, ui.frame_allocator())) {
 			ui.next({width = ui.fill(), height = ui.px(em * 1.35)})
@@ -635,7 +636,7 @@ vault_row_item :: proc(app: ^App, r: vault.Row, prefix: string, i: int, rh, gutt
 				ui.pop_tags()
 			}
 		}
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.CONTROL_GAP)
 		// the copies: a click of the user, the value goes to the clipboard when it comes (vault_copied)
 		id := strings.clone(r.id, context.temp_allocator)   // (the rows may change with a copy's answer)
 		square := ui.Style_Mod{width = ui.px(ui.dense(em * 2.1)), height = ui.px(ui.dense(em * 2.1))}   // (four side by side, where words do not fit)
@@ -644,17 +645,17 @@ vault_row_item :: proc(app: ^App, r: vault.Row, prefix: string, i: int, rh, gutt
 			if r.has_totp {
 				ui.next(square)
 				if ui.button(pid(prefix, "copy_totp", i), icon = lucide.HASH, o = {tip = i18n.tr("Copy the code"), face = .Raised}).clicked { vault.vault_copy(v, id, .Totp) }
-				ui.spacer(ui.px(em * 0.3))
+				ui.space(ui.TOOL_GAP)
 			}
 			if r.username != "" {
 				ui.next(square)
 				if ui.button(pid(prefix, "copy_user", i), icon = lucide.USER, o = {tip = i18n.tr("Copy the user name"), face = .Raised}).clicked { vault.vault_copy(v, id, .Username) }
-				ui.spacer(ui.px(em * 0.3))
+				ui.space(ui.TOOL_GAP)
 			}
 			ui.next(square)
 			if ui.button(pid(prefix, "copy_pass", i), icon = lucide.COPY, o = {tip = i18n.tr("Copy the password"), face = .Raised}).clicked { vault.vault_copy(v, id, .Password) }
 			if vault.vault_row_find(v, id, .Page) != nil {
-				ui.spacer(ui.px(em * 0.3))
+				ui.space(ui.TOOL_GAP)
 				ui.next(square)
 				if ui.button(pid(prefix, "fill", i), icon = lucide.TEXT_CURSOR_INPUT, o = {tip = i18n.tr("Fill this page"), face = .Raised, intent = .Primary}).clicked {
 					ui.menu_close()
@@ -665,7 +666,7 @@ vault_row_item :: proc(app: ^App, r: vault.Row, prefix: string, i: int, rh, gutt
 		case .Card:
 			ui.next(square)
 			if ui.button(pid(prefix, "copy_code", i), icon = lucide.LOCK_KEYHOLE, o = {tip = i18n.tr("Copy the security code"), face = .Raised}).clicked { vault.vault_copy(v, id, .Code) }
-			ui.spacer(ui.px(em * 0.3))
+			ui.space(ui.TOOL_GAP)
 			ui.next(square)
 			if ui.button(pid(prefix, "copy_number", i), icon = lucide.COPY, o = {tip = i18n.tr("Copy the number"), face = .Raised}).clicked { vault.vault_copy(v, id, .Number) }
 		case .Identity:
@@ -1113,30 +1114,30 @@ vault_pin_view :: proc(view: ^ui.View, app: ^App) {
 	if ui.scroll_y("###vpin_scroll") {
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Start, {}, "###vpin_margins") {
-			ui.spacer(ui.px(em * 1.0))
+			ui.space(ui.CARD_PAD)
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.column(.Start, {}, "###vpin_col") {
 				ui.spacer(ui.px(em * 0.9))
 				if ui.tags("weak") { ui.paragraph(strings.concatenate({i18n.tr("The PIN unlocks the Vault in this profile. After 5 wrong PINs, only the master password unlocks it."), "###vpin_hint"}, ui.frame_allocator())) }
-				ui.spacer(ui.px(em * 0.8))
+				ui.space(ui.LINE_GAP)
 				// (Enter sets, Escape cancels; a secret: the eye, no edit menu)
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 				r := ui.line_edit("###vpin_field", &s.pin, {placeholder = i18n.tr("PIN (4 characters or more)"), kind = .Secret, reveal = &s.reveal, own_menu = true})
 				submit, cancel = r.committed, r.cancelled
 				if s.focus && r.box != nil { s.focus = false; ui.set_focus(r.box.key) }
-				ui.spacer(ui.px(em * 0.4))
+				ui.space(ui.LINE_GAP)
 			}
-			ui.spacer(ui.px(em * 1.0))
+			ui.space(ui.CARD_PAD)
 		}
 	}
-	ui.spacer(ui.px(em * 0.6))
+	ui.space(ui.ITEM_GAP)
 	ui.next({width = ui.fill(), height = ui.children_sum()})
 	if ui.row(.Center, {}, "###vpin_buttons") {
 		ui.spacer(ui.fill())
 		if ui.button("###vpin_cancel", i18n.tr("Cancel"), lucide.X, {width = ui.px(em * 8)}).clicked { cancel = true }
-		ui.spacer(ui.px(em * 0.5))
+		ui.space(ui.CONTROL_GAP)
 		if ui.button("###vpin_set", i18n.tr("Set"), lucide.CHECK, {intent = .Success, width = ui.px(em * 8)}).clicked { submit = true }
-		ui.spacer(ui.px(em * 1.0))
+		ui.space(ui.CARD_PAD)
 	}
 	ui.spacer(ui.px(em * 0.8))
 	if submit {

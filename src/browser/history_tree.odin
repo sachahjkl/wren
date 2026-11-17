@@ -984,7 +984,6 @@ tree_hit :: proc(m: ^Tree_Model, l: Tree_Layout, cam: Tree_Camera, vc: [2]f32, e
 tree_controls :: proc(m: ^Tree_Model, l: Tree_Layout, extent, size: [2]f32, em: f32, anims: bool, now: f64) {
 	h := ui.dense(em * 2.2)
 	bh := ui.dense(em * 1.7)
-	pad := em * 0.25
 	ui.next({fixed_x = em * 0.8, fixed_y = max(size.y - h - em * 0.8, 0), width = ui.children_sum(), height = ui.px(h), axis = .X, cross = .Center, radius = em * CHROME_BUTTON_RADIUS})
 	if ui.tags("card") {
 		bar := ui.build_box({.Draw_Background, .Draw_Border}, "###h_tree_controls")
@@ -992,7 +991,7 @@ tree_controls :: proc(m: ^Tree_Model, l: Tree_Layout, extent, size: [2]f32, em: 
 		if bar.rect.max.x > bar.rect.min.x { the_app.tview.controls = {bar.rect.min - the_app.tview.view_rect.min, bar.rect.max - the_app.tview.view_rect.min} }
 		if ui.parent(bar) {
 			vc := size * 0.5 + the_app.tview.view_rect.min
-			ui.spacer(ui.px(pad))
+			ui.space(ui.TOOL_GAP)
 			ui.next({width = ui.px(em * 2), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
 			b := ui.button("h_tree_zout", "\u2212")
 			tip(b, "Zoom out (Ctrl+Minus, Ctrl+wheel)")
@@ -1005,7 +1004,7 @@ tree_controls :: proc(m: ^Tree_Model, l: Tree_Layout, extent, size: [2]f32, em: 
 			b = ui.button("h_tree_zin", "+")
 			tip(b, "Zoom in (Ctrl+Plus, Ctrl+wheel)")
 			if b.clicked { tree_zoom_by(the_app.tcfg.zoom_step, vc, em, anims, now) }
-			ui.spacer(ui.px(pad * 2))
+			ui.space(ui.CONTROL_GAP)   // (the zoom's buttons, then the view's)
 			ui.next({width = ui.text_size(em * 0.5), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
 			b = ui.button("h_tree_fit", "Fit")
 			tip(b, "Show the whole tree (F)")
@@ -1014,7 +1013,7 @@ tree_controls :: proc(m: ^Tree_Model, l: Tree_Layout, extent, size: [2]f32, em: 
 			b = ui.button("h_tree_cur", "Current")
 			tip(b, "Center the current page of the tab (C)")
 			if b.clicked { tree_center_current(m, l, anims, now) }
-			ui.spacer(ui.px(pad))
+			ui.space(ui.TOOL_GAP)
 		}
 	}
 }

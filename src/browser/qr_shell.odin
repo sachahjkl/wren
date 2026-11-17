@@ -38,15 +38,15 @@ qr_view :: proc(v: ^ui.View, app: ^App) {
 	if ui.column(.Center, {}, "###page_qr_col") {
 		ui.spacer(ui.px(em * 0.8))
 		ui.qr_code("###page_qr_code", app.qr_url, em * QR_SIDE_EM)
-		ui.spacer(ui.px(em * 0.6))
+		ui.space(ui.LINE_GAP)
 		ui.push_tags("weak")
 		ui.label(app.qr_url)
 		ui.pop_tags()
-		ui.spacer(ui.px(em * 0.8))
+		ui.space(ui.ITEM_GAP)
 		ui.next({width = ui.children_sum(), height = ui.children_sum()})
 		if ui.row(.Center, {}, "###page_qr_buttons") {
 			if ui.button("qr_copy", i18n.tr("Copy the address"), lucide.COPY, {intent = .Primary, width = ui.px(em * 10)}).clicked { clip_set(app.qr_url); announce(app, .Info, "Address copied") }
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.CONTROL_GAP)
 			if ui.button("qr_close", i18n.tr("Close"), lucide.X, {width = ui.px(em * 6)}).clicked { ui.view_end(v, 0) }
 		}
 		ui.spacer(ui.px(em * 0.8))

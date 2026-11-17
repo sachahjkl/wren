@@ -302,9 +302,9 @@ dl_row :: proc(app: ^App, d: ^Download, w: f32, compact: bool) -> (act: Dl_Row_A
 	sig := ui.signal(row)
 	hot := ui.hot_within(row.key)
 	if ui.parent(row) {
-		ui.spacer(ui.px(em * 0.7))
+		ui.space(ui.INNER_PAD)
 		dl_tile(app, d, em * (compact ? 2.3 : 3.0))
-		ui.spacer(ui.px(em * 0.8))
+		ui.space(ui.ICON_GAP)
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		if ui.column() {
 			ui.spacer(ui.fill())
@@ -321,12 +321,12 @@ dl_row :: proc(app: ^App, d: ^Download, w: f32, compact: bool) -> (act: Dl_Row_A
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.35)), font_size = em * 0.86})
 			if ui.tags("weak") { ui.label(fmt.tprintf("%s###dls_%d", dl_status(d), d.id)) }
 			if running {
-				ui.spacer(ui.px(em * 0.45))
+				ui.space(ui.LINE_GAP)
 				dl_bar(app, d, em * (compact ? 0.45 : 0.6))
 			}
 			ui.spacer(ui.fill())
 		}
-		ui.spacer(ui.px(em * 0.6))
+		ui.space(ui.CONTROL_GAP)
 		switch {
 		case running && d.state == .Receiving:
 			if compact {
@@ -337,14 +337,14 @@ dl_row :: proc(app: ^App, d: ^Download, w: f32, compact: bool) -> (act: Dl_Row_A
 				if dl_folder_button(fmt.tprintf("###dlf_%d", d.id), hot, em).clicked { act = .Reveal }
 			} else {
 				if ui.button(strings.concatenate({"###", fmt.tprintf("dlo_%d", d.id)}, ui.frame_allocator()), "Open", lucide.FILE, {intent = .Success, width = ui.px(em * 5.5)}).clicked { act = .Open }
-				ui.spacer(ui.px(em * 0.4))
+				ui.space(ui.CONTROL_GAP)
 				if ui.button(strings.concatenate({"###", fmt.tprintf("dlf_%d", d.id)}, ui.frame_allocator()), "Show in folder", lucide.FOLDER_OPEN, {intent = .Info, width = ui.px(em * 8)}).clicked { act = .Reveal }
 			}
 		case download_finished(d):
 			if ui.button(strings.concatenate({"###", fmt.tprintf("dlr_%d", d.id)}, ui.frame_allocator()), d.state == .Done ? "Download again" : "Try again", d.state == .Done ? lucide.DOWNLOAD : lucide.REFRESH_CW, {intent = .Primary, width = ui.px(em * (compact ? 9 : 9.5))}).clicked { act = .Retry }
 		}
 		if !compact && download_finished(d) {
-			ui.spacer(ui.px(em * 0.4))
+			ui.space(ui.CONTROL_GAP)
 			ui.next({width = ui.px(em * 2.2), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
 			if ui.tags("ghost_button") {
 				mb := ui.button(fmt.tprintf("dlm_%d", d.id), "\u22ef")
@@ -353,7 +353,7 @@ dl_row :: proc(app: ^App, d: ^Download, w: f32, compact: bool) -> (act: Dl_Row_A
 				if mb.clicked { act = .Menu }
 			}
 		}
-		ui.spacer(ui.px(em * 0.7))
+		ui.space(ui.INNER_PAD)
 	}
 	if act == .None {
 		switch {
@@ -464,21 +464,21 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 		ui.next({axis = .Y})
 		root := ui.build_box({.Draw_Background}, "###downloads_page")
 		if ui.parent(root) {
-			ui.spacer(ui.px(em * 0.6))
+			ui.space(ui.SPACE_2)   // (the page's top: no role names it)
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.4))})
 			if ui.row(.Center) {
-				ui.spacer(ui.px(em * 0.8))
+				ui.space(ui.PAGE_MARGIN)
 				ui.next({width = ui.text_size(0), height = ui.px(ui.dense(em * 2))})
 				ui.label("Downloads###dl_title")
-				ui.spacer(ui.px(em * 1.0))
+				ui.space(ui.ITEM_GAP)
 				ui.next({width = ui.px(em * 22), height = ui.px(ui.dense(em * 2))})
 				if builtin_page_types(app) { _ = ui.type_to_field(app.dview.search_key) }   // (just start typing to search)
 				res := ui.line_edit("###dl_search", &app.dview.search, {placeholder = "Search downloads"})
 				if res.box != nil { app.dview.search_key = res.box.key }
 				if app.dview.focus_search && res.box != nil { app.dview.focus_search = false; ui.set_focus(res.box.key); ui.line_edit_select_all(&app.dview.search) }
-				ui.spacer(ui.px(em * 0.6))
+				ui.space(ui.CONTROL_GAP)
 				if ui.button("###dl_clear", "Clear the list", lucide.TRASH_2, {intent = .Danger, tip = "Takes the finished downloads off the list; the files stay where they are", width = ui.px(em * 8.5)}).clicked { download_clear_finished(app); downloads_mark_seen(app) }
-				ui.spacer(ui.px(em * 0.4))
+				ui.space(ui.CONTROL_GAP)
 				if ui.button("###dl_folder", "Open the folder", lucide.FOLDER_OPEN, {intent = .Info, width = ui.px(em * 9.5)}).clicked { platform_open_dir(download_dir(app)) }
 				ui.spacer(ui.fill())
 				active, _, _, speed := downloads_progress(app)
@@ -488,30 +488,30 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 					if active > 0 { summary = fmt.tprintf("%d in progress%s", active, speed > 0 ? fmt.tprintf(" \u00b7 %s/s", timefmt.size(i64(speed))) : "") }
 					ui.label(fmt.tprintf("%s###dl_count", summary))
 				}
-				ui.spacer(ui.px(em * 0.8))
+				ui.space(ui.PAGE_MARGIN)
 			}
 			// where they go: the folder, and whether the Save dialog asks each time
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
 			if ui.row(.Center) {
-				ui.spacer(ui.px(em * 0.8))
+				ui.space(ui.PAGE_MARGIN)
 				ask := app.dls.cfg.ask
 				ui.next({width = ui.px(em * 21), height = ui.px(ui.dense(em * 1.8))})
 				if ui.toggle("###dl_ask", "Ask where to save each file", &ask) {
 					_ = config.set_from_string(&app.prefs, "browser.download.ask", ask ? "true" : "false", .User)
 				}
-				ui.spacer(ui.px(em * 0.6))
+				ui.space(ui.CONTROL_GAP)
 				if ui.tags("weak") {
 					ui.next({width = ui.fill(), height = ui.pct(1)})
 					ui.label(fmt.tprintf("Saved in %s###dl_dir", safe_label(download_dir(app), 120)))
 				}
 				if ui.button("###dl_pick", "Change\u2026", lucide.FOLDER_SEARCH, {intent = .Primary, tip = "Choose the folder the downloads go to (browser.download.directory)", width = ui.px(em * 7.5)}).clicked { download_pick_folder(app) }
 				if app.dls.cfg.dir != "" {
-					ui.spacer(ui.px(em * 0.4))
+					ui.space(ui.CONTROL_GAP)
 					if ui.button("###dl_default", "Default", lucide.ROTATE_CCW, {tip = "Back to the Downloads folder of Windows", width = ui.px(em * 7.5)}).clicked { download_folder_default(app) }
 				}
-				ui.spacer(ui.px(em * 0.8))
+				ui.space(ui.PAGE_MARGIN)
 			}
-			ui.spacer(ui.px(em * 0.2))
+			ui.space(ui.LINE_GAP)
 			ui.next({width = ui.fill(), height = ui.fill()})
 			if ui.scroll_y("###dl_scroll") { downloads_list(app, menu_key) }
 		}
@@ -558,13 +558,13 @@ downloads_list :: proc(app: ^App, menu_key: string) {
 		shown += 1
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center) {
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.PAGE_MARGIN)
 			act, at := dl_row(app, d, -1, false)
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.PAGE_MARGIN)
 			dl_do(app, d, act, at, menu_key, false)
 			if act != .None && act != .Menu { break }
 		}
-		ui.spacer(ui.px(em * 0.2))
+		ui.space(ui.SPACE_1)   // (two rows of the list, lit apart: no role names it)
 	}
 	// then the finished ones, by day
 	now := dl_now_ms()
@@ -581,7 +581,7 @@ downloads_list :: proc(app: ^App, menu_key: string) {
 			last_day = key
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.6))})
 			if ui.row(.Center) {
-				ui.spacer(ui.px(em * 1.0))
+				ui.space(ui.PAGE_MARGIN)
 				if ui.tags("weak") {
 					ui.next({width = ui.fill(), height = ui.pct(1)})
 					ui.label(fmt.tprintf("%s###dld_%d", day_heading(lt, today, yesterday), key))
@@ -591,13 +591,13 @@ downloads_list :: proc(app: ^App, menu_key: string) {
 		shown += 1
 		ui.next({width = ui.fill(), height = ui.children_sum()})
 		if ui.row(.Center) {
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.PAGE_MARGIN)
 			act, at := dl_row(app, d, -1, false)
-			ui.spacer(ui.px(em * 0.5))
+			ui.space(ui.PAGE_MARGIN)
 			dl_do(app, d, act, at, menu_key, false)
 			if act != .None && act != .Menu { break }
 		}
-		ui.spacer(ui.px(em * 0.2))
+		ui.space(ui.SPACE_1)
 	}
 	if shown == 0 {
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 5))})
@@ -751,17 +751,17 @@ downloads_panel_body :: proc(app: ^App) {
 	em := ui.font_size()
 	w := em * DL_PANEL_W_EM
 	downloads_mark_seen(app)
-	ui.spacer(ui.px(em * 0.4))
+	ui.space(ui.LINE_GAP)
 	ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.4))})
 	if ui.row(.Center) {
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.CARD_PAD)
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		ui.label("Downloads###dlp_title")
 		if ui.button("###dlp_all", "Show all", lucide.LIST, {intent = .Primary, width = ui.px(em * 8)}).clicked { ui.menu_close(); open_downloads(app); return }
-		ui.spacer(ui.px(em * 0.6))
+		ui.space(ui.CARD_PAD)
 	}
 	ui.hline(ui.px(w))
-	ui.spacer(ui.px(em * 0.3))
+	ui.space(ui.LINE_GAP)
 	// a row's menu opens over the drop-down, which stays open behind it
 	menu_key := "###dlp_row_menu"
 	n := 0
@@ -783,13 +783,13 @@ downloads_panel_body :: proc(app: ^App) {
 		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 4))})
 		if ui.tags("weak") { if ui.style({text_align = .Center}) { ui.label("No download yet.###dlp_none") } }
 	}
-	ui.spacer(ui.px(em * 0.3))
+	ui.space(ui.LINE_GAP)
 	ui.hline(ui.px(w))
-	ui.spacer(ui.px(em * 0.4))
+	ui.space(ui.LINE_GAP)
 	ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.2))})
 	if ui.row(.Center) {
-		ui.spacer(ui.px(em * 0.9))
+		ui.space(ui.CARD_PAD)
 		if ui.button("###dlp_folder", "Open the folder", lucide.FOLDER_OPEN, {intent = .Info, width = ui.px(em * 11)}).clicked { ui.menu_close(); platform_open_dir(download_dir(app)) }
 	}
-	ui.spacer(ui.px(em * 0.5))
+	ui.space(ui.LINE_GAP)
 }

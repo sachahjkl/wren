@@ -350,11 +350,11 @@ desktop_config_buttons :: proc(app: ^App) {
 		if state == .Repair {
 			stale := app.dsk.status.stale_exe != ""
 			if ui.button("desktop_update", stale ? i18n.tr("Update") : i18n.tr("Repair"), stale ? lucide.REFRESH_CW : lucide.WRENCH, {intent = .Success, disabled = busy}).clicked { desktop_update(app) }
-			ui.spacer(ui.px(em * 0.4))
+			ui.space(ui.CONTROL_GAP)
 		}
 		if desktop.has_default_apps_page() {
 			if ui.button("desktop_defaults", i18n.tr("Open default apps"), lucide.EXTERNAL_LINK, {intent = .Info}).clicked { desktop.open_default_apps() }
-			ui.spacer(ui.px(em * 0.4))
+			ui.space(ui.CONTROL_GAP)
 		}
 		if ui.button("desktop_setup", i18n.tr("Setup\u2026"), lucide.SETTINGS).clicked { setup_open(app) }
 	}

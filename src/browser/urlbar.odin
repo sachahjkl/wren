@@ -757,14 +757,14 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 					}
 					ui.next({width = ui.px(em * 1.5), height = ui.pct(1)})
 					ui.custom("###ubi", row_icon_draw, icon)
-					ui.spacer(ui.px(em * 0.5))
+					ui.space(ui.ICON_GAP)
 					// the title, then the address: as wide as they are, the address cut first (then the title) when
 					// the row is too narrow for both
 					title = safe_label(title, 90)
 					detail = safe_label(detail, 120)
 					font := ui.top_style().font
 					sep := "\u2002\u2014\u2002"
-					fixed := em * (0.5 + 1.5 + 0.5 + 0.6) + (hint != "" ? ui.text_width(font, em, hint) : 0) + (r.kind == .History ? math.round(em * 1.6) + em * 0.3 : 0)
+					fixed := em * (0.5 + 1.5) + math.round(em * ui.ICON_GAP) + math.round(em * ui.CONTROL_GAP) + (hint != "" ? ui.text_width(font, em, hint) : 0) + (r.kind == .History ? math.round(em * 1.6) + em * 0.3 : 0)
 					avail := max(w - 2 * pad - fixed - em, 0)
 					tw := ui.text_width(font, em, title) + 1
 					sw := detail != "" ? ui.text_width(font, em, sep) : 0
@@ -791,7 +791,7 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 							ui.next({width = ui.text_size(0), height = ui.pct(1), text_pad = 0})
 							ui.label(fmt.aprintf("%s###ubh", hint, allocator = ui.frame_allocator()))
 						}
-						ui.spacer(ui.px(em * 0.6))
+						ui.space(ui.CONTROL_GAP)
 					}
 					if r.kind == .History {
 						if remove_cross("###ubx", hot || chosen, em).clicked { remove_at = i }

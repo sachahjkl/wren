@@ -52,16 +52,16 @@ private_window_open :: proc(app: ^App) {
 private_badge :: proc(app: ^App) {
 	if !app.private { return }
 	em := ui.font_size()
-	ui.spacer(ui.px(em * 0.4))
+	ui.space(ui.CONTROL_GAP)
 	ui.push_tags("accent_text")
 	ui.next({width = ui.children_sum(), height = ui.pct(1)})
 	if ui.row(.Center, {}, "###private_badge") {
 		ui.next({width = ui.text_size(), height = ui.pct(1), font = app.lucide, font_size = em * 1.05})
 		ui.label(lucide.HAT_GLASSES)
-		ui.spacer(ui.px(em * 0.3))
+		ui.space(ui.ICON_GAP)
 		ui.next({width = ui.text_size(), height = ui.pct(1)})
 		ui.label(i18n.tr("Private"))
-		ui.spacer(ui.px(em * 0.4))
+		ui.space(ui.CONTROL_GAP)
 	}
 	ui.pop_tags()
 }

@@ -718,7 +718,7 @@ dropdown_row :: proc(app: ^App, i: int, title, detail, glyph: string, tex: rende
 			} else {
 				vault_glyph(app, glyph, fmt.aprintf("vdd_ic_%d", i, allocator = ui.frame_allocator()), em * 1.6)
 			}
-			ui.spacer(ui.px(em * 0.4))
+			ui.space(ui.ICON_GAP)
 			// (each line its own height, the two centred in the row: a label's text_size is a row's, two did not fit)
 			ui.next({width = ui.fill(), height = ui.children_sum()})
 			if ui.column(.Start, {}, fmt.aprintf("###vdd_text_%d", i, allocator = ui.frame_allocator())) {
