@@ -25,15 +25,15 @@ site_meta :: proc() -> tk_site.Meta {
 	ld := LD_FIELDS
 	fields := make([][2]string, len(ld), context.temp_allocator)
 	copy(fields, ld[:])
-	return {
-		url = "https://wren.froment.software/", name = "Wren", repository = "https://github.com/sachahjkl/wren",
-		tagline = "A browser where WebAssembly runs everything, JavaScript included", changes = "CHANGELOG.md",
-		card = "img/card.png", logo = "img/logo.png", logo_file = "site/img/logo.png", theme = "#121212", accent = "#f39a2e",
-		author = "Sacha Froment", author_url = "https://froment.software", publisher = "Froment Software",
-		ld_type = "SoftwareApplication", ld_fields = fields, root_domain = true, ico = "assets/wren.ico",
-		card_title = "Wren", card_size = 190, card_logo = 150, card_font = `"Segoe UI Variable Display", "Segoe UI", sans-serif`,
-		changelog_page = "changelog/", version_anchor = version_anchor,
-	}
+	// (the vendor's fields are the toolkit's, the same in every program's site)
+	m := tk_site.meta_default("Wren", "https://wren.froment.software/", "https://github.com/sachahjkl/wren",
+		"A browser where WebAssembly runs everything, JavaScript included", "#121212", "#f39a2e", card = "img/card.png")
+	m.ld_fields, m.ico = fields, "assets/wren.ico"
+	m.root_domain = true   // (its own domain answers for /robots.txt and /favicon.ico)
+	m.licence = ""         // (PolyForm Strict, not the default MIT: Wren's own pages say it)
+	m.card_title, m.card_size, m.card_logo, m.card_font = "Wren", 190, 150, `"Segoe UI Variable Display", "Segoe UI", sans-serif`
+	m.changelog_page, m.version_anchor = "changelog/", version_anchor
+	return m
 }
 
 run_site_meta :: proc(args: []string) -> int {

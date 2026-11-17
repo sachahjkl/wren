@@ -11,7 +11,7 @@ import tk "toolkit:desktop"
 // The entry an installed Wren has on users' machines: the same text, so that it is still recognised and removed.
 @(test)
 desktop_entry_is_wrens :: proc(t: ^testing.T) {
-	o := tk.Integration_Options{identity = identity("Wren", "A small browser where WebAssembly runs everything.", dev = false), exe = "/home/u/bin/wren", register_browser = true, file_types = {".html", ".htm", "svg", ".webp"}}
+	o := tk.Integration_Options{identity = identity("Wren", "A small browser where WebAssembly runs everything.", dev = false, allocator = context.temp_allocator), exe = "/home/u/bin/wren", register_browser = true, file_types = {".html", ".htm", "svg", ".webp"}}
 	want := `[Desktop Entry]
 Type=Application
 Version=1.0
@@ -46,10 +46,20 @@ Exec=/home/u/bin/wren --private
 
 @(test)
 identity_of_each_channel :: proc(t: ^testing.T) {
-	release := identity("Wren", "", dev = false)
-	dev := identity("Wren", "", dev = true)
+	release := identity("Wren", "", dev = false, allocator = context.temp_allocator)
+	dev := identity("Wren", "", dev = true, allocator = context.temp_allocator)
 	testing.expect_value(t, release.name, "Wren")
+	testing.expect_value(t, release.key, "Wren")
 	testing.expect_value(t, release.aumid, "FromentSoftware.Wren")
+	// the marks installed copies carry: both channels keep them
+	for id in ([]tk.Identity{release, dev}) {
+		testing.expect_value(t, id.vendor, "Froment Software")
+		testing.expect_value(t, id.vendor_key, VENDOR_KEY)
+		testing.expect_value(t, id.entry_marker, "X-Wren-Integration")
+		testing.expect_value(t, id.registry_mark, "WrenIntegration")
+		testing.expect_value(t, id.manifest_name, "wren_install.txt")
+		testing.expect_value(t, id.env_prefix, "WREN_DESKTOP_")
+	}
 	testing.expect_value(t, strings.join(release.url_schemes, " ", context.temp_allocator), strings.join(link_scheme_names(LINK_PREFIX), " ", context.temp_allocator))
 	testing.expect_value(t, dev.name, "Wren Dev")
 	testing.expect_value(t, dev.key, "WrenDev")

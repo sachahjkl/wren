@@ -45,6 +45,8 @@ browser/desktop_icons_other.odin desktop_icon_count process  # how many of deskt
 browser/desktop_icons_other.odin desktop_icon_list process  # the icons of the theme, made once (sync.Once) and only read after
 browser/desktop_icons_other.odin desktop_icon_once process  # the sync.Once of desktop_icon_list
 browser/desktop_shell.odin DESKTOP_PREFS const  # a table
+browser/desktop_shell.odin desktop_identity_once process  # sync.Once: the identity is made once per process (desktop.identity_of allocates)
+browser/desktop_shell.odin desktop_identity_value const  # written once under desktop_identity_once, then only read
 browser/devtools.odin DEVTOOLS_PREFS const  # a table
 browser/devtools.odin DEV_DOCK_COMMANDS const  # a table
 browser/devtools.odin DEV_DOCK_ICONS const  # a table

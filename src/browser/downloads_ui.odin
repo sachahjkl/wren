@@ -100,10 +100,10 @@ dl_status :: proc(d: ^Download) -> string {
 		sp := dl_speed_of(d)
 		if d.total > 0 {
 			s := fmt.tprintf("%s of %s", timefmt.size(d.received), timefmt.size(d.total))
-			if sp > 0 { s = fmt.tprintf("%s \u00b7 %s/s \u00b7 %s left", s, timefmt.size(i64(sp)), timefmt.duration(f64(d.total - d.received) / sp * 1000)) }
+			if sp > 0 { s = fmt.tprintf("%s \u00b7 %s \u00b7 %s left", s, timefmt.rate(sp), timefmt.duration(f64(d.total - d.received) / sp * 1000)) }
 			return s
 		}
-		return sp > 0 ? fmt.tprintf("%s \u00b7 %s/s", timefmt.size(d.received), timefmt.size(i64(sp))) : timefmt.size(d.received)
+		return sp > 0 ? fmt.tprintf("%s \u00b7 %s", timefmt.size(d.received), timefmt.rate(sp)) : timefmt.size(d.received)
 	case .Awaiting_Path: return "Choose where to save it\u2026"
 	case .Flushing, .Moving: return "Finishing\u2026"
 	case .Done:

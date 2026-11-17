@@ -15,6 +15,7 @@ import "core:unicode/utf8"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
+import "toolkit:timefmt"
 import "toolkit:ui"
 import "wb:base"
 
@@ -714,15 +715,9 @@ dt_empty :: proc(id: string, icon: Dt_Icon, title, hint: string) {
 ////////////////////////////////
 // Text for the clipboard and for messages
 
-// "1.5 kB" the way the panel writes sizes (powers of 1000, as the network panels of other browsers do).
-dt_size_text :: proc(n: i64) -> string {
-	switch {
-	case n < BYTES_PER_KB_DECIMAL: return fmt.tprintf("%d B", n)
-	case n < BYTES_PER_MB_DECIMAL: return fmt.tprintf("%.1f kB", f64(n) / BYTES_PER_KB_DECIMAL)
-	case n < 1_000_000_000: return fmt.tprintf("%.2f MB", f64(n) / BYTES_PER_MB_DECIMAL)
-	}
-	return fmt.tprintf("%.2f GB", f64(n) / 1_000_000_000)
-}
+// "1.5 kB" the way the panel writes sizes (powers of 1000, as the network panels of other browsers do): one place for the
+// panel's many columns and messages.
+dt_size_text :: proc(n: i64) -> string { return timefmt.size(n, {decimal = true}) }
 
 dt_ms_text :: proc(ms: f32) -> string {
 	switch {

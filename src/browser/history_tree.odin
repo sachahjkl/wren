@@ -22,7 +22,6 @@ import "core:fmt"
 import "core:math"
 import "core:strings"
 import "core:time"
-import "core:unicode/utf8"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
@@ -461,23 +460,6 @@ node_pos :: proc(d: ^Tree_Draw, n: Tree_Node) -> [2]f32 {
 @(private = "file")
 snap :: proc(r: draw.Rect) -> draw.Rect { return {{math.round(r.min.x), math.round(r.min.y)}, {math.round(r.max.x), math.round(r.max.y)}} }
 
-// `s` shortened with an ellipsis to fit `avail` pixels.
-fit_text :: proc(fonts: ^font.State, id: font.Font_Id, size: f32, s: string, avail: f32) -> string {
-	if avail <= 0 { return "" }
-	if font.text_width(fonts, id, size, s) <= avail { return s }
-	ell := "\u2026"
-	x := font.text_width(fonts, id, size, ell)
-	end := 0
-	for r, i in s {
-		w := font.glyph(fonts, id, size, r).advance
-		if x + w > avail { break }
-		x += w
-		end = i + utf8.rune_size(r)
-	}
-	if end == 0 { return "" }
-	return strings.concatenate({s[:end], ell}, context.temp_allocator)
-}
-
 // Text laid out at `size` with its pen at `pos`, drawn `k` times larger around it.
 @(private = "file")
 scaled_text :: proc(dc: ^draw.Context, face: font.Font_Id, size, k: f32, pos: [2]f32, color: draw.Color, s: string) {
@@ -582,14 +564,15 @@ tree_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		if detail == .Icon { if fade { draw.pop_alpha(dc) }; continue }
 		tx := x + icon + 0.4 * s
 		avail := r.max.x - 0.45 * s - tx
-		title := fit_text(d.fonts, d.face, fs, entry_label(e), avail / k1)
+		// (ui.elide measures with the drawing window's ui fonts: draw_tree made that state current, and it is app.fonts, as d.fonts)
+		title := ui.elide(d.face, fs, entry_label(e), avail / k1)
 		if detail == .Title {
 			scaled_text(dc, d.face, fs, k1, {math.round(tx), math.round(cy + (m1.ascent - m1.descent) * 0.5)}, col.text, title)
 		} else {
 			top := r.min.y + (h - (m1.line_height + m2.line_height)) * 0.5
 			scaled_text(dc, d.face, fs, k1, {math.round(tx), math.round(top + m1.ascent)}, col.text, title)
 			lt := local_time(e.visited_ms != 0 ? e.visited_ms : e.created_ms)
-			sub := fit_text(d.fonts, d.face, fs2, fmt.tprintf("%02d:%02d  \u00b7  %s", lt.hour, lt.minute, address_host(e.url)), avail / k2)
+			sub := ui.elide(d.face, fs2, fmt.tprintf("%02d:%02d  \u00b7  %s", lt.hour, lt.minute, address_host(e.url)), avail / k2)
 			scaled_text(dc, d.face, fs2, k2, {math.round(tx), math.round(top + m1.line_height + m2.ascent)}, col.sub, sub)
 		}
 		if fade { draw.pop_alpha(dc) }

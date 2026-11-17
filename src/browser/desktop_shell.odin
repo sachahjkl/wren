@@ -53,8 +53,16 @@ register_desktop_shell_prefs :: proc(p: ^config.Prefs) {
 }
 
 // What Wren is called on the desktop (src/desktop/identity.odin). A development build has its own entries (name, keys,
-// AppUserModelID, link schemes), so it never takes over those of the release.
-desktop_identity :: proc() -> desktop.Identity { return wren_desktop.identity(APP_NAME, APP_TAGLINE, IS_DEV_BUILD) }
+// AppUserModelID, link schemes), so it never takes over those of the release. Made once and kept for the process: its
+// strings are allocated, and the Setup dialog's thread and the options' copies share them.
+desktop_identity :: proc() -> desktop.Identity {
+	sync.once_do(&desktop_identity_once, proc() {
+		desktop_identity_value = wren_desktop.identity(APP_NAME, APP_TAGLINE, IS_DEV_BUILD, base.permanent_allocator())
+	})
+	return desktop_identity_value
+}
+@(private = "file") desktop_identity_value: desktop.Identity
+@(private = "file") desktop_identity_once: sync.Once
 
 // The prefix of the links this build registers (links.odin).
 desktop_link_prefix :: proc() -> string { return wren_desktop.link_prefix(IS_DEV_BUILD) }

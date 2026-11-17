@@ -1,5 +1,7 @@
 package media
 
+import tkbase "toolkit:base"
+
 // Big-endian readers over a byte slice, with bounds checks that give zeros instead of panics: container parsers read
 // untrusted data, a short box is "malformed", never a crash.
 
@@ -10,10 +12,7 @@ b8 :: #force_inline proc "contextless" (b: []u8, o: int) -> u8 {
 }
 
 @(private)
-be16 :: #force_inline proc "contextless" (b: []u8, o: int) -> u32 {
-	if o < 0 || o + 2 > len(b) { return 0 }
-	return u32(b[o]) << 8 | u32(b[o + 1])
-}
+be16 :: #force_inline proc "contextless" (b: []u8, o: int) -> u32 { return u32(tkbase.read_be16(b, o)) }
 
 @(private)
 be24 :: #force_inline proc "contextless" (b: []u8, o: int) -> u32 {
@@ -22,10 +21,7 @@ be24 :: #force_inline proc "contextless" (b: []u8, o: int) -> u32 {
 }
 
 @(private)
-be32 :: #force_inline proc "contextless" (b: []u8, o: int) -> u32 {
-	if o < 0 || o + 4 > len(b) { return 0 }
-	return u32(b[o]) << 24 | u32(b[o + 1]) << 16 | u32(b[o + 2]) << 8 | u32(b[o + 3])
-}
+be32 :: #force_inline proc "contextless" (b: []u8, o: int) -> u32 { return u32(tkbase.read_be32(b, o)) }
 
 @(private)
 be64 :: #force_inline proc "contextless" (b: []u8, o: int) -> u64 {

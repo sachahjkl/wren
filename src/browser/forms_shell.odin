@@ -473,6 +473,24 @@ line_height_px :: proc(cs: ^style.Computed, size, scale: f32) -> f32 {
 	return 0
 }
 
+// `s` shortened with an ellipsis to fit `avail` pixels. (Not ui.elide: it reads the current ui state, and a field is
+// painted from the page's painting, which also runs outside a window's draw_tree: the compositor's layers, the drag image.)
+fit_text :: proc(fonts: ^font.State, id: font.Font_Id, size: f32, s: string, avail: f32) -> string {
+	if avail <= 0 { return "" }
+	if font.text_width(fonts, id, size, s) <= avail { return s }
+	ell := "…"
+	x := font.text_width(fonts, id, size, ell)
+	end := 0
+	for r, i in s {
+		w := font.glyph(fonts, id, size, r).advance
+		if x + w > avail { break }
+		x += w
+		end = i + utf8.rune_size(r)
+	}
+	if end == 0 { return "" }
+	return strings.concatenate({s[:end], ell}, context.temp_allocator)
+}
+
 // The field's placeholder as its ::placeholder style says (style/ua.odin: grey unless the page says otherwise): its
 // color and opacity, its font, its alignment; a single line centered in the field as the value's.
 @(private = "file")

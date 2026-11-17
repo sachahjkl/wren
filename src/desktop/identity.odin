@@ -4,18 +4,17 @@
 // carries on users' machines: changing one leaves those files and keys behind, unrecognised.
 package wren_desktop
 
+import "core:strings"
 import tk "toolkit:desktop"
 
-ENTRY_MARKER    :: "X-Wren-Integration"
-REGISTRY_MARK   :: "WrenIntegration"
+VENDOR          :: "Froment Software"
+// tk.identity_of derives the same key from VENDOR (identity_of_each_channel checks it): the profile's folder
+// (src/browser/profile_folder.odin, APP_FOLDER) is a constant, so it cannot read the identity's.
 VENDOR_KEY      :: "FromentSoftware"
-MANIFEST_NAME   :: "wren_install.txt"
 MANIFEST_HEADER :: "# Written by Wren Setup: the files it placed in this folder. Uninstalling removes exactly these."
 // Said by every message of the console launcher (src/tools/wrencom/plan.odin, MARK), so that a file of the same name made
 // by something else is told from it. Keep the two equal.
 LAUNCHER_MARK   :: "(Wren console launcher)"
-// The roots of the tests and of a dry run: WREN_DESKTOP_MENU_DIR, WREN_DESKTOP_BIN_DIR... (tk.ROOT_NAMES).
-ENV_PREFIX      :: "WREN_DESKTOP_"
 // The development build's prefix of links (the release's is LINK_PREFIX, links.odin).
 DEV_LINK_PREFIX :: "wren-dev-"
 
@@ -41,25 +40,33 @@ DESKTOP_ACTIONS := [?]tk.Desktop_Action{
 	{id = "new-private-window", name = "New Private Window", arguments = "--private"},
 }
 
-// What Wren is called on the desktop (`app_name` is a constant: the identity's strings are the program's, shared by every copy
-// of the options). A development build has its own entries (name, keys, AppUserModelID, link schemes),
-// so it never takes over those of the release.
-identity :: proc($app_name: string, description: string, dev: bool) -> tk.Identity {
-	id := tk.Identity{
-		name = app_name, key = app_name, slug = "wren", aumid = "FromentSoftware.Wren", description = description,
-		vendor = "Froment Software", exe_name = "wren.exe",
-		entry_marker = ENTRY_MARKER, registry_mark = REGISTRY_MARK, vendor_key = VENDOR_KEY,
-		manifest_name = MANIFEST_NAME, manifest_header = MANIFEST_HEADER, launcher_mark = LAUNCHER_MARK,
-		env_prefix = ENV_PREFIX, url_schemes = RELEASE_SCHEMES[:], url_flag = LINK_FLAG,
-		uninstall_arguments = "--setup",   // (the Setup dialog, whose Uninstall button does the work)
-		generic_name = "Web Browser", categories = "Network;WebBrowser;", keywords = "Internet;WWW;Browser;Web;WebAssembly;",
-		nix_runtime_name = "wren-runtime", nixos_libraries = NIXOS_LIBRARIES[:],
-		watch_thread_name = "wren-desktop-watch", cleanup_name = "wren_cleanup", scratch_roots = SCRATCH_ROOTS[:],
-		actions = DESKTOP_ACTIONS[:],
-	}
+// What Wren is called on the desktop. The strings are allocated in `allocator`, for as long as the identity is used (the
+// options' copies share them): the program makes it once and keeps it (src/browser/desktop_shell.odin, desktop_identity).
+// A development build has its own entries (name, keys, AppUserModelID, link schemes), so it never takes over those of the
+// release; its marks (X-Wren-Integration, WrenIntegration, wren_install.txt, WREN_DESKTOP_) are the release's, as installed
+// copies already carry them.
+identity :: proc(app_name: string, description: string, dev: bool, allocator := context.allocator) -> tk.Identity {
+	id := tk.identity_of(VENDOR, app_name, "wren", allocator)
+	id.aumid = "FromentSoftware.Wren"
+	id.exe_name = "wren.exe"
+	id.description = description
+	id.manifest_header = MANIFEST_HEADER
+	id.launcher_mark = LAUNCHER_MARK
+	id.url_schemes = RELEASE_SCHEMES[:]
+	id.url_flag = LINK_FLAG
+	id.uninstall_arguments = "--setup"   // (the Setup dialog, whose Uninstall button does the work)
+	id.generic_name = "Web Browser"
+	id.categories = "Network;WebBrowser;"
+	id.keywords = "Internet;WWW;Browser;Web;WebAssembly;"
+	id.nix_runtime_name = "wren-runtime"
+	id.nixos_libraries = NIXOS_LIBRARIES[:]
+	id.watch_thread_name = "wren-desktop-watch"
+	id.cleanup_name = "wren_cleanup"
+	id.scratch_roots = SCRATCH_ROOTS[:]
+	id.actions = DESKTOP_ACTIONS[:]
 	if dev {
-		id.name = app_name + " Dev"
-		id.key = app_name + "Dev"
+		id.name = strings.concatenate({app_name, " Dev"}, allocator)
+		id.key = strings.concatenate({id.key, "Dev"}, allocator)
 		id.slug = "wren-dev"
 		id.aumid = "FromentSoftware.Wren.Dev"
 		id.url_schemes = DEV_SCHEMES[:]

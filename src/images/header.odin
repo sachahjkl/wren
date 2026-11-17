@@ -4,10 +4,9 @@ package images
 // before any decoder allocates for it) and whether the file is complete. WIC decodes a PNG or GIF cut short without
 // complaint (the missing rows come out transparent); a browser that got a truncated file should show it as broken.
 
-@(private = "file")
-be16 :: #force_inline proc(b: []byte, at: int) -> int { return int(b[at]) << 8 | int(b[at + 1]) }
-@(private = "file")
-be32 :: #force_inline proc(b: []byte, at: int) -> int { return int(b[at]) << 24 | int(b[at + 1]) << 16 | int(b[at + 2]) << 8 | int(b[at + 3]) }
+// (the toolkit's base; Wren's own is wb:base)
+import tkbase "toolkit:base"
+
 @(private = "file")
 le16 :: #force_inline proc(b: []byte, at: int) -> int { return int(b[at]) | int(b[at + 1]) << 8 }
 @(private = "file")
@@ -20,7 +19,7 @@ le32 :: #force_inline proc(b: []byte, at: int) -> int { return int(b[at]) | int(
 header_size :: proc(data: []byte, f: Format) -> (w, h: int, ok: bool) {
 	#partial switch f {
 	case .Png:
-		if len(data) >= 24 && string(data[12:16]) == "IHDR" { return be32(data, 16), be32(data, 20), true }
+		if len(data) >= 24 && string(data[12:16]) == "IHDR" { return tkbase.read_be32(data, 16), tkbase.read_be32(data, 20), true }
 	case .Gif:
 		if len(data) >= 10 { return le16(data, 6), le16(data, 8), true }
 	case .Bmp:
@@ -37,9 +36,9 @@ header_size :: proc(data: []byte, f: Format) -> (w, h: int, ok: bool) {
 			m := data[at + 1]
 			if m == 0xFF { at += 1; continue }
 			if m == 0xD8 || m == 0x01 || (m >= 0xD0 && m <= 0xD7) { at += 2; continue }
-			n := be16(data, at + 2)
+			n := tkbase.read_be16(data, at + 2)
 			if (m >= 0xC0 && m <= 0xCF) && m != 0xC4 && m != 0xC8 && m != 0xCC {
-				return be16(data, at + 7), be16(data, at + 5), true
+				return tkbase.read_be16(data, at + 7), tkbase.read_be16(data, at + 5), true
 			}
 			if n < 2 { return 0, 0, false }
 			at += 2 + n
@@ -67,7 +66,7 @@ looks_complete :: proc(data: []byte, f: Format) -> bool {
 		// walk the chunks: each is length, type, data, CRC
 		at := 8
 		for at + 12 <= len(data) {
-			n := be32(data, at)
+			n := tkbase.read_be32(data, at)
 			if n < 0 || n > len(data) { return false }
 			if string(data[at + 4:at + 8]) == "IEND" { return true }
 			at += 12 + n

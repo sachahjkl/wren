@@ -25,6 +25,7 @@ import "core:time"
 import "toolkit:platform"
 import "toolkit:ui"
 import desktop "toolkit:desktop"
+import "toolkit:fsx"
 import "wb:base"
 import config "toolkit:config"
 import "wb:fetch"
@@ -434,12 +435,6 @@ download_dir :: proc(app: ^App) -> string {
 	return app.profile_dir
 }
 
-@(private = "file")
-path_join :: proc(dir, name: string, allocator := context.temp_allocator) -> string {
-	if dir == "" || strings.has_suffix(dir, "\\") || strings.has_suffix(dir, "/") { return strings.concatenate({dir, name}, allocator) }
-	return strings.concatenate({dir, filepath.SEPARATOR_STRING, name}, allocator)
-}
-
 // The navigation `load` got an answer to save rather than show (`task` is its request, `r` the answer).
 download_from_navigation :: proc(app: ^App, load: ^Doc_Load, task: base.Handle, r: ^fetch.Response, disposition: string) {
 	if app.dls.cfg.suffix == "" { download_cfg(app) }
@@ -486,7 +481,7 @@ download_from_navigation :: proc(app: ^App, load: ^Doc_Load, task: base.Handle, 
 download_open_temp :: proc(app: ^App, d: ^Download) -> bool {
 	for i in 0 ..< 1000 {
 		base_name := i == 0 ? d.name : fmt.tprintf("%s (%d)", d.name, i)
-		path := path_join(d.dir, strings.concatenate({base_name, app.dls.cfg.suffix}, context.temp_allocator))
+		path := fsx.path_join(d.dir, strings.concatenate({base_name, app.dls.cfg.suffix}, context.temp_allocator))
 		// O_EXCL: the open fails when the name is taken (CREATE_NEW), so a name free when it opens stays this download's.
 		// A taken name is tried again under the next number; any other failure (an unwritable folder) stops at once, which
 		// os.exists distinguishes without inspecting a platform-specific error code.
@@ -671,9 +666,9 @@ Move_Job :: struct {
 download_move_work :: proc(data: rawptr) {
 	j := (^Move_Job)(data)
 	if j.path == "" {
-		taken :: proc(name: string, user: rawptr) -> bool { return os.exists(path_join((^string)(user)^, name)) }
+		taken :: proc(name: string, user: rawptr) -> bool { return os.exists(fsx.path_join((^string)(user)^, name)) }
 		delete(j.path)
-		j.path = path_join(j.dir, unique_file_name(j.name, taken, &j.dir), context.allocator)
+		j.path = fsx.path_join(j.dir, unique_file_name(j.name, taken, &j.dir), allocator = context.allocator)
 	}
 	if ok, why := download_move(j.temp, j.path); !ok { j.error = fmt.aprintf("cannot move it to %s (%s)", j.path, why) }
 }
@@ -1006,7 +1001,7 @@ download_state_of_code :: proc(code: int) -> (Download_State, bool) {
 @(private = "file")
 downloads_path :: proc(app: ^App) -> string {
 	if app.profile_dir == "" { return "" }
-	return path_join(app.profile_dir, DOWNLOADS_FILE)
+	return fsx.path_join(app.profile_dir, DOWNLOADS_FILE)
 }
 
 @(private = "file")

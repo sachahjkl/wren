@@ -22,6 +22,7 @@ import "core:math"
 import "core:os"
 import "wb:tools/tooling"
 import paint "toolkit:paint"
+import toolbox "toolkit:toolbox"
 
 // Drawn at LOGO_UNITS * LOGO_SUPERSAMPLE in LOGO_UNITS-unit coordinates, then scaled down.
 LOGO_SUPERSAMPLE :: 4
@@ -32,8 +33,6 @@ LOGO_ICO_SIZES :: [?]int{16, 24, 32, 48, 64, 128, 256}
 LOGO_ICO_PNG_FROM :: 64
 // The wing's curve, cut in lines that stray this far from it (in units).
 WING_FLATNESS :: 0.35
-// Scaled down in steps of at most this factor, so the bicubic filter stays clean down to 16 px.
-LOGO_SHRINK_STEP :: 4
 
 Logo_Variant :: struct {
 	name:                                    string,
@@ -247,17 +246,6 @@ draw_layer :: proc(v: Logo_Variant, detail: int, what: Logo_Layer) -> paint.Canv
 	return c
 }
 
-// A layer scaled down to `size` in steps of at most LOGO_SHRINK_STEP; `big` is destroyed.
-shrink :: proc(big: paint.Canvas, size: int) -> paint.Canvas {
-	cur := big
-	for cur.width > size {
-		next := paint.resize(cur, max(size, cur.width / LOGO_SHRINK_STEP), max(size, cur.width / LOGO_SHRINK_STEP))
-		paint.canvas_destroy(&cur)
-		cur = next
-	}
-	return cur
-}
-
 // .NET's Math.Round and PowerShell's [int]: a half goes to the even neighbour (the grid's lines are where the old script put them).
 round_even :: proc(x: f32) -> int {
 	f := math.floor(x)
@@ -333,11 +321,11 @@ over :: proc(dst: ^paint.Canvas, src: paint.Canvas) {
 
 // The logo at `size` x `size`.
 logo_render :: proc(v: Logo_Variant, size, detail: int) -> paint.Canvas {
-	if !v.layered { return shrink(draw_layer(v, detail, .All), size) }
-	b := shrink(draw_layer(v, detail, .Fill), size)
+	if !v.layered { return toolbox.logo_shrink(draw_layer(v, detail, .All), size) }
+	b := toolbox.logo_shrink(draw_layer(v, detail, .Fill), size)
 	draw_grid(&b, v, size, detail)
-	over(&b, shrink(draw_layer(v, detail, .Edge), size))
-	over(&b, shrink(draw_layer(v, detail, .Bird), size))
+	over(&b, toolbox.logo_shrink(draw_layer(v, detail, .Edge), size))
+	over(&b, toolbox.logo_shrink(draw_layer(v, detail, .Bird), size))
 	return b
 }
 

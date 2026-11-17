@@ -9,6 +9,7 @@ package webfont
 import "base:runtime"
 import "core:compress/deflate"
 import "core:slice"
+import tkbase "toolkit:base"
 
 when ODIN_OS == .Windows {
 	foreign import wren_native {
@@ -60,9 +61,9 @@ Error :: enum u8 {
 }
 
 @(private)
-be16 :: #force_inline proc(b: []byte, at: int) -> u32 { return u32(b[at]) << 8 | u32(b[at + 1]) }
+be16 :: #force_inline proc(b: []byte, at: int) -> u32 { return u32(tkbase.read_be16(b, at)) }
 @(private)
-be32 :: #force_inline proc(b: []byte, at: int) -> u32 { return u32(b[at]) << 24 | u32(b[at + 1]) << 16 | u32(b[at + 2]) << 8 | u32(b[at + 3]) }
+be32 :: #force_inline proc(b: []byte, at: int) -> u32 { return u32(tkbase.read_be32(b, at)) }
 @(private)
 put16 :: #force_inline proc(b: []byte, at: int, v: u32) { b[at], b[at + 1] = u8(v >> 8), u8(v) }
 @(private)
