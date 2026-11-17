@@ -82,7 +82,7 @@ The setup job of the Vault (on the blocking pool, `src/vault`) decides where the
 | Build | Where | Checked |
 |---|---|---|
 | development (`IS_DEV_BUILD`) | `<exe dir>/vault/wren-vault`, else beside | no: the developer's own build |
-| in the Nix store | beside (the package's `bin/`) | no: the package manager's |
+| in the Nix store | beside (`libexec/wren/`: `bin/wren` is a wrapper; the flake fetches the pinned program by `vault.version`) | no: the package manager's |
 | release | beside `wren(.exe)` | its size and SHA-256 must be the pin's |
 
 In a release, a helper that is missing or not the pinned one makes the state `Installing`: the shell downloads

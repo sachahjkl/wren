@@ -93,6 +93,25 @@
       sha256 = "95a4d90c071005a98d03eab348beaa6b07e16eb00d1dcdb9f8348f75eb97ec5a";
     };
 
+    # wren-vault, the Vault's helper: a separate program (GPL-3.0) that this Wren pins in vault.version, its version and
+    # the SHA-256 of its Linux program, read from that file so the package and `wrentool vault pin` agree. It goes beside
+    # the browser's executable, where the Vault looks in the Nix store (src/md/features/vault-helper-delivery.md).
+    vaultPin = let
+      lines = lib.splitString "\n" (builtins.readFile ./vault.version);
+      words = key: lib.filter (w: w != "") (lib.splitString " " (lib.findFirst (lib.hasPrefix "${key} ") "" lines));
+    in {
+      version = lib.elemAt (words "version") 1;
+      sha256 = lib.elemAt (words "linux-x64") 2;
+    };
+    vaultHelper = pkgs.fetchurl {
+      url = "https://github.com/sachahjkl/wren-vault/releases/download/v${vaultPin.version}/wren-vault-${vaultPin.version}-linux-x64";
+      inherit (vaultPin) sha256;
+    };
+    vaultLicense = pkgs.fetchurl {
+      url = "https://raw.githubusercontent.com/sachahjkl/wren-vault/v${vaultPin.version}/LICENSE";
+      hash = "sha256-OXLcl0T2SZ8Pmy2/dmlvKuetivmyPd5m1q+Gyd+zaYY=";
+    };
+
     # APP_VERSION of src/browser/about.odin
     version = let
       line = lib.findFirst (lib.hasPrefix "APP_VERSION ::") "" (lib.splitString "\n" (builtins.readFile ./src/browser/about.odin));
@@ -166,7 +185,8 @@
         pkgs.makeWrapper
         pkgs.copyDesktopItems
       ];
-      buildInputs = [pkgs.alsa-lib pkgs.libopus pkgs.fontconfig pkgs.stdenv.cc.cc.lib];
+      # (dbus: wren-vault's Secret Service store links it)
+      buildInputs = [pkgs.alsa-lib pkgs.libopus pkgs.fontconfig pkgs.stdenv.cc.cc.lib pkgs.dbus.lib];
       # the libraries it opens with dlopen go in its RUNPATH; the GPU driver is the system's (/run/opengl-driver)
       runtimeDependencies = runtimeLibs;
       desktopItems = [desktopItem];
@@ -218,6 +238,11 @@
           install -Dm644 "$icon" "$out/share/icons/hicolor/''${size}x''${size}/apps/wren.png"
         done
         install -Dm644 -t "$out/share/doc/wren" LICENSE THIRD_PARTY.md
+        # wren-vault beside the executable (autoPatchelfHook gives it the store's libraries), its licence and where its
+        # source is, as the tar.gz carries them
+        install -Dm755 ${vaultHelper} "$out/libexec/wren/wren-vault"
+        install -Dm644 ${vaultLicense} "$out/share/doc/wren/wren-vault-LICENSE.txt"
+        echo "wren-vault ${vaultPin.version}, a separate program under the GNU GPL version 3 only. Its source: https://github.com/sachahjkl/wren-vault/tree/v${vaultPin.version}" > "$out/share/doc/wren/wren-vault-SOURCE.txt"
         runHook postInstall
       '';
 
