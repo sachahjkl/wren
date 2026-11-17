@@ -170,7 +170,11 @@
         root = ./.;
         fileset = lib.fileset.difference ./. (lib.fileset.unions (map lib.fileset.maybeMissing [./site ./wpt ./.github ./build]));
       };
-      cargoDeps = pkgs.rustPlatform.importCargoLock {lockFile = ./native/Cargo.lock;};
+      cargoDeps = pkgs.rustPlatform.importCargoLock {
+        lockFile = ./native/Cargo.lock;
+        # (rav1d from its fork's branch: native/Cargo.toml, [patch.crates-io])
+        outputHashes."rav1d-1.1.0" = "sha256-QAe6cprdwbaWWBkPRXPKRwa0Kt1Zdamr4hGnlXtC1OA=";
+      };
 
       nativeBuildInputs = [
         odin

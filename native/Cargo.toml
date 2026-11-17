@@ -37,3 +37,10 @@ incremental = false
 [profile.quick]
 inherits = "release"
 lto = false
+
+# rav1d 1.1.0 as published, with two changes (branch wren-1.1.0 of the fork): upstream's fix of an unwrap on a decode
+# error (memorysafety/rav1d#1497, not in a release yet), and its dav1d_* entry points as "C-unwind". A panic in an
+# "extern \"C\"" function cannot unwind and aborts the process, past every catch_unwind of ours: a broken AVIF picture
+# ended the browser (found by wrentool fuzz). Back to crates.io once a release carries both.
+[patch.crates-io]
+rav1d = { git = "https://github.com/sachahjkl/rav1d", rev = "e67cb16394bc26c7cea3e1689f1e9dfab176f440" }

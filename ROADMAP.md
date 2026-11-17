@@ -2,9 +2,6 @@
 
 ## Now
 
-- **A broken AVIF image no longer ends the browser.** The fuzzer found a picture on which rav1d 1.1.0 panics inside its
-  C functions (`decode.rs:4997`, an `unwrap` on `None`): a panic there cannot unwind to Wren's `catch_unwind`, and the
-  process aborts. rav1d needs its `dav1d_*` entry points as `"C-unwind"`, and that `unwrap` checked, in a patched copy.
 - **A passkey sign-in with two accounts on one security key no longer freezes.** Signing in to Bitwarden with a key that holds two of its passkeys froze the browser once, in the passkey's thread; the stacks of a hang are being caught to find where it waits.
 
 ## Next
