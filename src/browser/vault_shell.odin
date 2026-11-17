@@ -749,7 +749,7 @@ vault_dialog_close :: proc(app: ^App) {
 	request_frames(app, 2)
 }
 
-@(private = "file")
+// The dialog that sets a PIN (the panel's "Set a PIN…"; the demo state vault.pin_set, demo_states.odin).
 vault_pin_open :: proc(app: ^App) {
 	s := &app.vault
 	if !vault_usable(app) { return }

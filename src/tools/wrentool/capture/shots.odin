@@ -10,6 +10,7 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "core:time"
+import cdp "toolkit:cdp"
 import "wb:remote/api"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
@@ -27,11 +28,17 @@ HERO_SETTLE_FRAMES :: 6
 // What a page may take to settle; a capture is taken at that point even so (a real site's advertising never stops).
 PAGE_LIMIT :: 40 * time.Second
 AFTER_ACTION_FRAMES :: 3
+// The toolkit's interface endpoint of a Wren whose shot enters a demo state (src/md/features/demo-states.md): its own
+// port, apart from the CDP of the pages.
+SHOT_DEVTOOLS_PORT :: 9339
+SHOT_DEVTOOLS_LIMIT :: 10 * time.Second
 
 Shot :: struct {
 	name, url: string,
 	actions:   string,
 	prefs:     []string,
+	demo:      string,   // a demo state of the interface, entered over the toolkit's endpoint after the page rests ("": none)
+	click:     string,   // then the box of that name clicked over the same endpoint ("vault_icon": the Vault's panel)
 }
 
 SITE :: "site:"
@@ -60,6 +67,8 @@ SHOTS := []Shot{
 	{name = "about-wren", url = "about:wren"},
 	{name = "content-blocker", url = "https://sacha.house/cv", actions = "key:Ctrl+Shift+P; type:blocker: open; key:Enter"},
 	{name = "daylight", url = "https://sacha.house/cv", prefs = {"appearance.theme=daylight"}},
+	{name = "vault", url = "https://example.org/", demo = "vault.unlocked", click = "vault_icon"},
+	{name = "vault-unlock-pin", url = "https://example.org/", demo = "vault.pin"},
 }
 
 HERO_PAGES := [][2]string{{"hero-css", "site:effects.html"}, {"hero-js", "site:js.html"}, {"hero-shadow", "site:shadow-dom.html"}, {"hero-config", "about:config"}}
@@ -154,8 +163,14 @@ run_shots :: proc(args: []string) -> int {
 		append(&prefs, ..s.prefs)
 		// (about:demos names where its pages come from: the server's name too, not the path of a checkout)
 		if site_base != "" { append(&prefs, fmt.tprintf("browser.demos.path=%s", site_base)) }
-		if !bench.start(&w, {exe = exe, size = size, dpi = SHOT_DPI, prefs = prefs[:], url = address(s.url)}) { return 1 }
-		good := at_rest(&w.session) && run_actions(&w.session, s.actions) && take(&w.session, png)
+		env := make([dynamic]string, context.temp_allocator)
+		if s.demo != "" {
+			// (the Vault shows nothing while a remote channel drives Wren, and this one takes the picture)
+			append(&prefs, "vault.test.remote=true")
+			append(&env, fmt.tprintf("TOOLKIT_DEVTOOLS=%d", SHOT_DEVTOOLS_PORT))
+		}
+		if !bench.start(&w, {exe = exe, size = size, dpi = SHOT_DPI, prefs = prefs[:], env = env[:], url = address(s.url)}) { return 1 }
+		good := at_rest(&w.session) && enter_demo(s) && run_actions(&w.session, s.actions) && take(&w.session, png)
 		bench.stop(&w)
 		fmt.printfln("%s %s", good ? "shot" : "MISSING", s.name)
 		if !good { missing += 1; continue }
@@ -168,6 +183,19 @@ run_shots :: proc(args: []string) -> int {
 		if !hero_shots(exe, size, convert) { return 1 }
 	}
 	return missing > 0 ? 1 : 0
+}
+
+// The shot's demo state over the toolkit's endpoint, then its click, until the window rests. A build without the
+// endpoint (no -debug: a release) has none to connect to.
+enter_demo :: proc(s: Shot) -> bool {
+	if s.demo == "" { return true }
+	c, ok, _ := cdp.connect_wait(SHOT_DEVTOOLS_PORT, SHOT_DEVTOOLS_LIMIT)
+	if !ok { fmt.eprintfln("%s: no interface endpoint on port %d (a build without -debug has none)", s.name, SHOT_DEVTOOLS_PORT); return false }
+	defer cdp.close(&c)
+	if !cdp.demo_state(&c, s.demo) { return false }   // (the client said why)
+	if s.click != "" && !cdp.click_name(&c, s.click) { return false }
+	_, _ = cdp.wait_idle(&c, SHOT_DEVTOOLS_LIMIT)
+	return true
 }
 
 magick :: proc(args: []string) -> bool {

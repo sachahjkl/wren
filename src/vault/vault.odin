@@ -243,6 +243,8 @@ Vault :: struct {
 	next_offer:     u64,
 	generated:      string,                // owned, a secret: the last generated value, until the shell takes it
 	generated_id:   u64,                   // the request it answers
+	demo:           bool,                  // made-up items in memory, for pictures (demo.odin): no helper, no file, until the end
+	demo_items:     []Demo_Item,           // demo: the caller's constants
 }
 
 // One file of the profile that jobs write or remove, one job at a time: the pool's workers run in any order, and a
@@ -350,6 +352,8 @@ vault_prefs_changed :: proc(v: ^Vault, prefs: ^config.Prefs) {
 
 @(private)
 enable :: proc(v: ^Vault) {
+	// (a demo locates no helper and downloads none: its account is made up, demo.odin)
+	if v.demo { set_state(v, .Locked); return }
 	set_state(v, .Locating)
 	v.setup_gen += 1
 	identity, _ := server_urls(v.settings)
@@ -765,6 +769,11 @@ vault_ask_rows :: proc(v: ^Vault, address: string, slot := Row_Slot.Page) {
 		changed(v)
 		return
 	}
+	if v.demo {
+		demo_logins(v, set, site)   // demo.odin
+		changed(v)
+		return
+	}
 	r: Request
 	request_begin(&r, next_id(v), .Logins_For, len(site.url) + len(site.host) + len(site.domain))
 	request_string(&r, "url", site.url)
@@ -791,6 +800,11 @@ vault_search :: proc(v: ^Vault, query: string, slot := Row_Slot.Search, kinds :=
 	set_reset(v, slot, keep_rows = true)
 	set.key = strings.clone(query, base.process_allocator())
 	set.kinds, set.limit = kinds, clamp(limit, 1, SEARCH_PAGE_MAX)
+	if v.demo {
+		demo_search(v, set)   // demo.odin
+		changed(v)
+		return
+	}
 	set.state = .Asked
 	if !search_send(v, slot, 0) { set.state = .Failed }
 	changed(v)
@@ -1178,6 +1192,7 @@ rows_refresh :: proc(v: ^Vault) {
 
 @(private)
 ensure_helper :: proc(v: ^Vault) -> bool {
+	if v.demo { return false }   // (a demo's account is made up: no helper ever holds it, demo.odin)
 	if v.t != nil { return true }
 	if v.helper == "" {
 		set_state(v, .Helper_Missing)
@@ -2155,6 +2170,12 @@ write_never :: proc(v: ^Vault) {
 // One job on a file at a time (File_Queue). Takes `text` (owned).
 @(private)
 file_job :: proc(v: ^Vault, q: ^File_Queue, name, text: string, remove: bool) {
+	if v.demo {
+		// (a demo's account, a logout or a never-save of it, must not replace the person's files: demo.odin)
+		dropped := text
+		string_wipe(&dropped)
+		return
+	}
 	if q.busy {
 		string_wipe(&q.next)
 		q.next, q.queued, q.next_remove = text, true, remove

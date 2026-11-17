@@ -23,6 +23,7 @@ Wasm, run by Wasmtime. The window, the widgets, the settings, the install and th
 
 ## File Index
 
+- [features/demo-states.md](features/demo-states.md): the toolkit's interface endpoint in Wren (`TOOLKIT_DEVTOOLS`) and its demo states: the Vault unlocked, locked, asking its PIN, a licence registered, each in memory only.
 - [features/js-engine.md](features/js-engine.md): why the JavaScript engine is the toolkit's `gt:js`, and what Wren keeps around it (Wasmtime, glue, bindings, the Wasm test262).
 - [features/keys.md](features/keys.md): how Wren connects the toolkit's keymap, and the command that opens a page in a new tab.
 - [features/licence.md](features/licence.md): Wren's licence as the toolkit's Licence page and card, what Wren gives it, and the HTML card with its CSS shaders that it replaces.

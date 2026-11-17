@@ -18,6 +18,7 @@ import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
 import prefs_page "toolkit:prefs_page"
+import ui_devtools "toolkit:devtools"
 import "wb:canvas2d"
 import "wb:base"
 import config "toolkit:config"
@@ -286,6 +287,7 @@ App :: struct {
 	recovery:      Recovery,                 // crash_recovery.odin: the profile's marker and snapshot
 	pt:            Page_Thread,              // page_thread.odin
 	remote:        Remote,                   // remote_shell.odin: the remote control channel
+	ui_cdp:        ^ui_devtools.Server,      // ui_cdp.odin: the toolkit's endpoint for the interface (TOOLKIT_DEVTOOLS; nil: off)
 	bl:            Bl_Shell,                 // blocker_shell.odin: the content blocker
 	ext:           Ext_Shell,                // ext_shell.odin: browser extensions (their registry is app.pages.extensions)
 	dash:          Dash,                     // blocker_dashboard.odin
@@ -1507,6 +1509,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	pacer_wait(app, idled)   // pacing.odin: the frame's time slot, then the swap chain (input is taken meanwhile)
 	prof_end(.Wait)
 	prof_begin(.Events)
+	ui_cdp_frame(app, wnd)   // ui_cdp.odin: the toolkit's endpoint, when TOOLKIT_DEVTOOLS is set: its input goes into this poll
 	events := platform.poll_events(active_window(app).win, false)
 	tab_scale_follow(app, current_tab(app))   // zoom.odin: the window changed monitor, or the tab came from a window of another scale
 	platform.frame_gate_stage(gate, .Work)   // the page phase (chrome frames may be made in it: shell_frames.odin)
@@ -1947,6 +1950,7 @@ app_start :: proc(args: []string) -> ^App {
 	clipboard_js_init(app)   // clipboard_win.odin: navigator.clipboard
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
+	ui_cdp_start(app)   // ui_cdp.odin: the toolkit's endpoint for the interface and its demo states, when TOOLKIT_DEVTOOLS is set
 	host.phase("first windows")
 	app.last_tick = time.tick_now()
 	active_window(app).frames_requested = 4
@@ -1981,6 +1985,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_begin(strings.concatenate({app.profile_dir, "/shutdown.log"}, context.temp_allocator), int(config.int_of(&app.prefs, "browser.shell.shutdown_warn_ms")), int(config.int_of(&app.prefs, "browser.shell.shutdown_force_ms")))   // shutdown.odin (host): names what the teardown waits for
 	host.shutdown_step("remote_stop")
 	cdp_stop(app)      // cdp.odin: the CDP / BiDi WebSocket server and its clients
+	ui_cdp_stop(app)   // ui_cdp.odin: the toolkit's endpoint for the interface
 	remote_stop(app)   // remote_shell.odin: the pipe and its clients
 	host.shutdown_step("instance_end")
 	instance_end(app)   // instance_shell.odin: later starts are told to wait, then the profile is free

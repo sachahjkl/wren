@@ -541,6 +541,7 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 // here: the loop ends and the browser's own shutdown closes it.
 window_close :: proc(app: ^App, w: ^Browser_Window) {
 	if w == nil || len(app.windows) <= 1 { return }
+	ui_cdp_window_closing(app, w)   // ui_cdp.odin: the toolkit's endpoint of this window ends before its State
 	was_front := app.front == w
 	// its tabs go with it (made active: what a tab's end reads is its window's), then what it owns
 	window_activate(app, w)

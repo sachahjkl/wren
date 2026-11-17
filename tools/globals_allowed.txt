@@ -37,6 +37,7 @@ browser/console_eval.odin MEMBERS const  # a table
 browser/crash_recovery.odin CRASH_PREFS const  # a table
 browser/crash_report.odin crash_settings process  # the preferences file as last written, for the crash handler of the process (one per process: gt:crash); n atomic, read without a lock or an allocation
 browser/date_display_other.odin MONTHS_ABBR const  # a table
+browser/demo_states.odin DEMO_VAULT_ITEMS const  # a table (the made-up items the Vault's demo keeps a slice of)
 browser/demos.odin DEMOS const  # a table
 browser/demos.odin DEMOS_PREFS const  # a table
 browser/demos.odin DEMO_THEME_TITLES const  # a table
