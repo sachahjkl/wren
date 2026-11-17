@@ -1,4 +1,4 @@
-// Functions and programs with many variables: the compiler looks their names up in a table (src/engine/frontend/js_emit.odin,
+// Functions and programs with many variables: the compiler looks their names up in a table (ext/gui_toolkit/src/js/frontend/js_emit.odin,
 // NAME_INDEX_MIN_ENTRIES); what a name means must not depend on how many there are.
 
 const MANY = 300;
