@@ -349,9 +349,9 @@ copy_as_cURL_fetch_and_PowerShell :: proc(t: ^testing.T) {
 sizes_and_times_are_written_for_a_person :: proc(t: ^testing.T) {
 	test_app(t)
 	testing.expect_value(t, dt_size_text(999), "999 B")
-	testing.expect_value(t, dt_size_text(1500), "1.5 kB")
-	testing.expect_value(t, dt_size_text(2_500_000), "2.5 MB")
-	testing.expect_value(t, dt_size_text(13_400_000), "13 MB")
+	testing.expect_value(t, dt_size_text(1500), "1.5\u00a0kB")
+	testing.expect_value(t, dt_size_text(2_500_000), "2.5\u00a0MB")
+	testing.expect_value(t, dt_size_text(13_400_000), "13\u00a0MB")
 	testing.expect_value(t, dt_ms_text(0.5), "0.50 ms")
 	testing.expect_value(t, dt_ms_text(12.34), "12 ms")
 	testing.expect_value(t, dt_ms_text(1500), "1.50 s")
