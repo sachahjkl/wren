@@ -96,7 +96,7 @@ Everything below exists in the code today and is covered by the tests of [`src/t
 - Dedicated **workers**: a module on a thread of its own with its own store, messages and transferable buffers.
 
 **JavaScript, inside WebAssembly** ([`native/js`](native/js/README.md))
-- **An engine written in Odin** (`src/engine`: parser, bytecode interpreter, a JIT for hot code, ES2023 and later;
+- **An engine written in Odin** (the toolkit's `gt:js`, in `ext/gui_toolkit/src/js`: parser, bytecode interpreter, a JIT for hot code, ES2023 and later;
   99.92 % of the test262 tests it runs pass), compiled to a WebAssembly module linked by Odin's own `wasm-ld` (no C
   compiler, no C library) and pre-initialized at build time: the interfaces and prototypes of the web platform are
   already built in the image (5.8 MiB, embedded in `wren.exe`), so a new realm starts in about 1.3 ms.

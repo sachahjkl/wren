@@ -20,8 +20,8 @@ import "core:math/rand"
 import "core:strings"
 import "core:time"
 import "core:unicode/utf8"
-import rx "wb:engine/regexp"
-import ucd "wb:engine/unicode"
+import rx "toolkit:js/regexp"
+import ucd "toolkit:js/unicode"
 
 foreign import cref "../../../build/cref/shim.lib"
 

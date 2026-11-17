@@ -3,7 +3,7 @@ package jscapi
 // Properties, calls, evaluation, JSON, prototypes.
 
 import "core:mem"
-import js "wb:engine/jsrt"
+import js "toolkit:js"
 
 @(private)
 obj_arg :: #force_inline proc "contextless" (v: JSValue) -> (^js.Object, bool) {

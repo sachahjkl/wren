@@ -14,7 +14,7 @@ web-platform-tests `wasm/jsapi` (`wpt/expectations`).
 | the description | `api/webassembly.widl` (generates `wj.wr_WebAssembly_*` and the host table) |
 | the browser side | `src/page/webassembly.odin` (calls) over `src/wasm/user_module.odin` and `user_store.odin` (Wasmtime) |
 | the realm side | `native/js/odin/web_wasm.odin` (the natives, the conversions of values) and `web_wasm.js` (the objects) |
-| the bytes of a memory | `Buffer_Host` in `src/engine/jsrt` (`b_typed.odin`, `object.odin`), `JS_NewArrayBufferHost` in `jscapi` |
+| the bytes of a memory | `Buffer_Host` in `ext/gui_toolkit/src/js` (`b_typed.odin`, `object.odin`), `JS_NewArrayBufferHost` in `jscapi` |
 | the tests | `examples/jsweb/webassembly.js` (`jsweb_webassembly`), `src/wasm/wasm_test.odin`, `src/csp/csp_test.odin`, `src/tools/e2e/web_jsload.odin` (the policy) |
 
 `web_wasm.js` is the one exception to the rule of `native/js/odin/prelude.odin` (no JavaScript in the realm): it is not in

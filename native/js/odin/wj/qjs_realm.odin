@@ -334,7 +334,7 @@ wj_report_pending :: proc "c" (ctx: ^Context) {
 }
 
 // ---- the stack of JavaScript ----
-// The engine bounds recursion from its outermost entry and moves to other stacks past that (src/engine/jsrt/stack.odin).
+// The engine bounds recursion from its outermost entry and moves to other stacks past that (ext/gui_toolkit/src/js/stack.odin).
 // Every entry from the browser calls wj_stack_enter: one nested in a call of the engine (a listener calling dispatchEvent,
 // a getter that runs script...) has the browser's frames under it on the machine's stack.
 

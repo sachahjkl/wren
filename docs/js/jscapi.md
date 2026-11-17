@@ -2,7 +2,7 @@
 
 Wren's glue (`native/js/odin`, package `wj` and the domains above it) is written against the QuickJS‑ng
 C API: `JSValue` words, `JS_DupValue`/`JS_FreeValue`, classes with an opaque pointer and a finalizer,
-`JS_NewCFunction2`, `JS_Call`… `jscapi` implements that API on `src/engine/jsrt`, so the glue runs on the
+`JS_NewCFunction2`, `JS_Call`… `jscapi` implements that API on `ext/gui_toolkit/src/js`, so the glue runs on the
 Odin engine **without touching a domain file**. It is the only engine now (`WJ_JSRT :: true`, `wj/backend.odin`): the
 QuickJS-ng C engine is gone since 0.6.0.
 
@@ -11,7 +11,7 @@ domain files (web_url.odin, dom_core.odin, …)        unchanged
    wj.JS_Call, wj.JS_NewObject …                     the layer's names
        wj/backend_jsrt.odin                          aliases of src/jscapi
            src/jscapi (167 procedures, "c")         the QuickJS contracts
-               src/engine/jsrt                       the engine
+               ext/gui_toolkit/src/js                       the engine
 ```
 
 The API types (`Context`, `Runtime`, `Class_Def`, `Native`, `Property_Descriptor`, …) are defined once, in
@@ -98,7 +98,7 @@ The API itself is tested natively by `jscapi_check` (61 checks); the glue runs o
 7. **`JS_ComputeMemoryUsage`** fills the totals only (`malloc_size`, counts).
 8. **Class `call` hooks** (callable platform objects) are not supported.
 9. **Performance**: each API call enters/leaves the host bracket and copies the Odin context (the engine's own speed
-    is in [runtime.md](../engine/runtime.md)).
+    is in [runtime.md](https://github.com/sachahjkl/gui_toolkit/blob/master/src/md/js/runtime.md)).
 10. **Memory**: a tracing heap holds garbage until the next collection (1.6× QuickJS on allocation‑heavy
     scripts); `JS_SetGCGrowth` says when the next collection comes (`javascript.gc_heap_growth_percent`,
     `javascript.gc_min_growth_bytes`).

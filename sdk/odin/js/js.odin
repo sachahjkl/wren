@@ -143,7 +143,7 @@ Engine_jitPoll :: proc "contextless" (ticket: i32) -> i32 {
 	return _Engine_jitPoll(ticket)
 }
 
-// The engine's stack in linear memory (src/engine/jsrt/stack.odin): moves its stack pointer to `sp`, a block of the
+// The engine's stack in linear memory (ext/gui_toolkit/src/js/stack.odin): moves its stack pointer to `sp`, a block of the
 // engine's heap past the end of the stack it was linked with, and returns where it was. 0 from any other module.
 Engine_stackMove :: proc "contextless" (sp: u32) -> u32 {
 	return _Engine_stackMove(sp)

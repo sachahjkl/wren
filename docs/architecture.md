@@ -135,11 +135,13 @@ function, `html.wasm_scripts`, if it ever changes.)
 
 ## JavaScript
 
-JavaScript is one more Wasm guest, not a second engine beside Wasm. The engine is written in Odin (`src/engine`): a
-front-end that compiles source to QuickJS-ng 0.17 bytecode, the interpreter (`jsrt`, with a hot loop of its own and a loop
-JIT that compiles hot loops and hot functions to Wasm at run time: numbers, properties guarded by shapes, small callees
-inlined, compiled functions called directly, natives and getters called, objects and strings made;
-[engine/jit.md](engine/jit.md)), and the numeric, Unicode, regexp and date libraries. `jscapi` gives it
+JavaScript is one more Wasm guest, not a second engine beside Wasm. The engine is the toolkit's `gt:js`
+(`ext/gui_toolkit/src/js`, package `jsrt`, written in Odin; its intent is in the toolkit's
+[`src/md/js`](https://github.com/sachahjkl/gui_toolkit/blob/master/src/md/js/README.md)): a front-end that compiles
+source to QuickJS-ng 0.17 bytecode, the interpreter (with a hot loop of its own and a loop JIT that compiles hot loops
+and hot functions to Wasm at run time; [jit.md](https://github.com/sachahjkl/gui_toolkit/blob/master/src/md/js/jit.md)),
+and the numeric, Unicode, regexp and date libraries. Wren runs it compiled to Wasm inside Wasmtime, with its own glue
+and bindings ([`src/md/features/js-engine.md`](../src/md/features/js-engine.md)). Wren's `src/jscapi` gives the engine
 the QuickJS C API, which the glue (`native/js/odin`, all Odin) is written against; the web platform's objects are
 hand-written members plus bindings generated from the Web IDL of webref (`src/tools/bindgen`, package `jsgen`, into
 `native/js/odin/bindings_gen.odin`). `src\tools\buildjs` compiles it all to one wasm32 module (Odin, linked by Odin's own `wasm-ld` (on Linux, lld's), no C library:

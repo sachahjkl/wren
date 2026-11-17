@@ -1,6 +1,6 @@
 # Writing Wren's JavaScript glue in Odin
 
-Wren's JavaScript engine is the Odin engine (`src/engine/jsrt`, through the QuickJS C API of `src/jscapi`) compiled
+Wren's JavaScript engine is the Odin engine (`ext/gui_toolkit/src/js`, through the QuickJS C API of `src/jscapi`) compiled
 to one WebAssembly module (`build/js/wren_js.wasm`), run by Wasmtime. Around the engine sits the *glue*: the code that
 implements the web platform's objects as native functions of that API and wires them to the browser's `wr_*` imports. All
 of it is Odin (`native/js/odin/`; the binding tables are generated into `bindings_gen.odin`). No C of ours is compiled any
@@ -52,7 +52,7 @@ The WebAssembly JavaScript API (a page's own modules) is hand-written: [webassem
 ## The engine (`WJ_JSRT`)
 
 `wj.WJ_JSRT` is a constant (`true`): the layer sits on the Odin runtime. `wj/backend_jsrt.odin` aliases the names of the
-QuickJS C API to the procedures of `src/jscapi` (the API implemented on `src/engine/jsrt`). The API types
+QuickJS C API to the procedures of `src/jscapi` (the API implemented on `ext/gui_toolkit/src/js`). The API types
 (`Context`, `Native`, `Class_Def`, ...) are defined once in `jscapi/types.odin` and aliased in `wj`.
 `-define:JSCAPI_EXPORT=true` also exports the API under its C names, which a few `foreign` declarations of `wj/` resolve to.
 Details and contracts: [jscapi.md](jscapi.md).
@@ -136,10 +136,10 @@ so a change of a mirrored struct stops the build.
 
 ## Building
 
-* `src/tools/buildjs` compiles `native/js/odin` (the glue, with the engine of `src/engine`) to one wasm32 object (`odin
+* `src/tools/buildjs` compiles `native/js/odin` (the glue, with the engine of `ext/gui_toolkit/src/js`) to one wasm32 object (`odin
   build -build-mode:obj -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -o:size`) and links it with
   the `wasm-ld` of Odin's `bin` folder (`--no-entry --gc-sections`). There is no C library: `wj/libc.odin` has`malloc`/`free` (base:runtime's emmalloc over `memory.grow`), the string functions, `strtod`, an Odin `snprintf` over `any` values and `ldexp`;
-  `sin`, `cos` and `pow` are imports of the host (module `libm`, `src/wasm/wasi.odin`); `exp` is fdlibm's, in `src/engine/jsrt/b_number.odin`. A symbol that is declared `foreign` and not defined is silently an import `env.*` of the module: check the imports of `wren_js_raw.wasm` after a change (only `wasi_snapshot_preview1.{clock_time_get,random_get}`, `libm.*` and the `wr_*` modules are legitimate).
+  `sin`, `cos` and `pow` are imports of the host (module `libm`, `src/wasm/wasi.odin`); `exp` is fdlibm's, in `ext/gui_toolkit/src/js/b_number.odin`. A symbol that is declared `foreign` and not defined is silently an import `env.*` of the module: check the imports of `wren_js_raw.wasm` after a change (only `wasi_snapshot_preview1.{clock_time_get,random_get}`, `libm.*` and the `wr_*` modules are legitimate).
 * `build.bat` runs bindgen first, so `wr_imports.odin` is always current.
 
 ## Testing a ported domain

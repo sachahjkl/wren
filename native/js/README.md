@@ -1,8 +1,9 @@
 # native/js: the JavaScript glue
 
-JavaScript runs inside WebAssembly like everything else. The engine is Odin (`src/engine`, see `docs/engine/`): a front-end
-that compiles source to QuickJS-ng 0.17 bytecode, the interpreter `jsrt` (with a loop JIT), and `jscapi`, which gives it the
-QuickJS C API. This folder is the *glue* written against that API: the web platform's objects, as native functions wired
+JavaScript runs inside WebAssembly like everything else. The engine is the toolkit's `gt:js`, in Odin
+(`ext/gui_toolkit/src/js`, its intent in the toolkit's [`src/md/js`](https://github.com/sachahjkl/gui_toolkit/blob/master/src/md/js/README.md)):
+a front-end that compiles source to QuickJS-ng 0.17 bytecode and the interpreter `jsrt` (with a loop JIT). Wren's
+`src/jscapi` gives it the QuickJS C API. This folder is the *glue* written against that API: the web platform's objects, as native functions wired
 to the browser's `wr_*` imports. All of it is Odin; no C of ours is compiled.
 
 ```
@@ -31,6 +32,7 @@ Where to read more:
 
 - how the glue is written, where a helper goes, how to add a domain: [`docs/js/odin-glue.md`](../../docs/js/odin-glue.md);
 - the comptime ABI between members and `wr_*` imports: [`docs/js/odin-abi.md`](../../docs/js/odin-abi.md);
-- the engine: [`docs/engine/runtime.md`](../../docs/engine/runtime.md), [`jscapi.md`](../../docs/js/jscapi.md),
-  [`frontend.md`](../../docs/engine/frontend.md);
+- the engine: the toolkit's [`runtime.md`](https://github.com/sachahjkl/gui_toolkit/blob/master/src/md/js/runtime.md) and
+  [`frontend.md`](https://github.com/sachahjkl/gui_toolkit/blob/master/src/md/js/frontend.md); Wren's C API on it:
+  [`jscapi.md`](../../docs/js/jscapi.md);
 - what is implemented: [`docs/js/coverage.md`](../../docs/js/coverage.md).

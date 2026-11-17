@@ -1,11 +1,11 @@
-// jit.odin: the loop JIT of the Odin engine (src/engine/jsrt/jit.odin) seen from the browser: the same exports the C
+// jit.odin: the loop JIT of the Odin engine (ext/gui_toolkit/src/js/jit.odin) seen from the browser: the same exports the C
 // engine's JIT has (wj_jit_configure, wj_jit_stat), so src/js/jit.odin and the host's Engine_jitCompile / Engine_jitPoll
 // serve both. Only the Odin engine has it; with QuickJS these names come from native/js/jit/wjit.h.
 package odin_glue
 
 import "base:runtime"
 import "../odin/wj"
-import jsrt "wb:engine/jsrt"
+import jsrt "toolkit:js"
 
 // (the imports are used in both backends: an import cannot sit in a `when`)
 _jit_import :: jsrt.JIT_MAX_LOOPS
@@ -41,7 +41,7 @@ when wj.WJ_JSRT {
 		jsrt.jit_cfg.trace = on != 0
 	}
 
-	// The stack past the one the module was linked with (src/engine/jsrt/stack.odin): its limit, from what wasm-ld made of
+	// The stack past the one the module was linked with (ext/gui_toolkit/src/js/stack.odin): its limit, from what wasm-ld made of
 	// -z stack-size, and the host's hands on the stack pointer.
 	foreign {
 		__stack_low: u8

@@ -1,10 +1,10 @@
 // Package gen: what is made from something else and committed, or read by a person: tables, fixtures, the documentation site, lists.
-//   wrentool gen psl | unicode [-Force] | idna | media-fixtures | video-fixtures | perf-media [-Force] | rust-crates [-Check]
+//   wrentool gen psl | idna | media-fixtures | video-fixtures | perf-media [-Force] | rust-crates [-Check]
 //   wrentool docs [-Check] [-NoBuild] [-ChartUpdate]
 //   wrentool license keygen|pubkey|issue|verify ...         (src/tools/license)
 //   wrentool i18n [-Missing] [-Json out.json]
 //   wrentool portability [-Target t] [-Only a,b] [-Csv f] [-Expect file]
-//   wrentool engine test262 [-Filter d] [-Stride n] [-Jobs n] [-NoBuild] | rx-diff [-Seed n] [-Fuzz n] [-NoC]
+//   wrentool engine rx-diff [-Seed n] [-Fuzz n] [-NoC]
 //   wrentool desktop <program> [arguments]                  a command on a Windows desktop of its own
 //   wrentool trace start | stop [-Out file.etl] | cancel   a WPR recording with Wren's profile (trace.odin)
 package gen
@@ -22,11 +22,10 @@ import "wb:tools/tooling"
 EXIT_USAGE :: 2
 
 run_gen :: proc(args: []string) -> int {
-	if len(args) == 0 { fmt.eprintln("wrentool gen psl | unicode | idna | media-fixtures | video-fixtures | perf-media | rust-crates"); return EXIT_USAGE }
+	if len(args) == 0 { fmt.eprintln("wrentool gen psl | idna | media-fixtures | video-fixtures | perf-media | rust-crates"); return EXIT_USAGE }
 	rest := args[1:]
 	switch args[0] {
 	case "psl": return gen_psl()
-	case "unicode": return gen_unicode(rest)
 	case "idna": return gen_idna(rest)
 	case "media-fixtures": return gen_media_fixtures()
 	case "video-fixtures": return gen_video_fixtures()
@@ -50,48 +49,6 @@ gen_psl :: proc() -> int {
 	for line in strings.split_lines(string(data), context.temp_allocator) {
 		if strings.has_prefix(line, "// VERSION") { fmt.printfln("updated: %s", strings.trim_right(line, "\r")); break }
 	}
-	return 0
-}
-
-////////////////////////////////
-// The Unicode tables
-
-UNICODE_VERSION :: "17.0.0"
-UNICODE_BASE :: "https://www.unicode.org/Public/" + UNICODE_VERSION
-UNICODE_CACHE :: "build/ucd/" + UNICODE_VERSION
-UNICODE_TABLES :: "src/engine/unicode/tables_generated.odin"
-UNICODE_GEN :: "build/unicode_gen" + tooling.EXE_SUFFIX
-// A file of the Character Database: where it is under the version's folder, where it is cached, its pinned digest. A download whose hash does not match is deleted: the tables are reproducible from the authoritative source.
-Ucd_File :: struct { url, cached, sha: string }
-UCD_FILES := []Ucd_File{
-	{"ucd/UnicodeData.txt", "UnicodeData.txt", "2e1efc1dcb59c575eedf5ccae60f95229f706ee6d031835247d843c11d96470c"},
-	{"ucd/DerivedCoreProperties.txt", "DerivedCoreProperties.txt", "24c7fed1195c482faaefd5c1e7eb821c5ee1fb6de07ecdbaa64b56a99da22c08"},
-	{"ucd/PropList.txt", "PropList.txt", "130dcddcaadaf071008bdfce1e7743e04fdfbc910886f017d9f9ac931d8c64dd"},
-	{"ucd/Scripts.txt", "Scripts.txt", "9f5e50d3abaee7d6ce09480f325c706f485ae3240912527e651954d2d6b035bf"},
-	{"ucd/ScriptExtensions.txt", "ScriptExtensions.txt", "ec2107e58825a1586acee8e0911ce18260394ac8b87e535ca325f1ccbeb06bc6"},
-	{"ucd/CaseFolding.txt", "CaseFolding.txt", "ff8d8fefbf123574205085d6714c36149eb946d717a0c585c27f0f4ef58c4183"},
-	{"ucd/SpecialCasing.txt", "SpecialCasing.txt", "efc25faf19de21b92c1194c111c932e03d2a5eaf18194e33f1156e96de4c9588"},
-	{"ucd/DerivedNormalizationProps.txt", "DerivedNormalizationProps.txt", "71fd6a206a2c0cdd41feb6b7f656aa31091db45e9cedc926985d718397f9e488"},
-	{"ucd/extracted/DerivedGeneralCategory.txt", "extracted/DerivedGeneralCategory.txt", "d62e5bab70ca74f099343f71224fa051cb1fdd61a1ab45c0488c44cfc0b6102e"},
-	{"ucd/extracted/DerivedJoiningType.txt", "extracted/DerivedJoiningType.txt", "f39ebe974825d6736aee15582250307aa532b2cfab3caf3f86bd23fddc9c5c4d"},
-	{"ucd/extracted/DerivedBidiClass.txt", "extracted/DerivedBidiClass.txt", "4867b4b7f0731ed1bfcd34cc6251211ff1542541fce0734b6fbda139ee80b3a4"},
-	{"ucd/emoji/emoji-data.txt", "emoji/emoji-data.txt", "2cb2bb9455cda83e8481541ecf5b6dfda66a3bb89efa3fa7c5297eccf607b72b"},
-	{"emoji/emoji-sequences.txt", "emoji-seq/emoji-sequences.txt", "12cc8267dc33cbd11ed32bcf6fc5dc2ad9c7a77bae1bdfba2f41b1b9b3ead8dd"},
-	{"emoji/emoji-zwj-sequences.txt", "emoji-seq/emoji-zwj-sequences.txt", "5b25441daed2322b068c5e70cda522946a4f0274df864445a1965a92e5fc5cad"},
-}
-
-gen_unicode :: proc(args: []string) -> int {
-	f, ok := tooling.parse_flags(args, "-Force")
-	if !ok { return EXIT_USAGE }
-	for u in UCD_FILES {
-		path := fmt.tprintf("%s/%s", UNICODE_CACHE, u.cached)
-		if tooling.flag_has(f, "-Force") { _ = os.remove(path) }
-		if !tooling.download_pinned(fmt.tprintf("%s/%s", UNICODE_BASE, u.url), path, u.sha) { return 1 }
-	}
-	_ = os.write_entire_file(fmt.tprintf("%s/VERSION", UNICODE_CACHE), UNICODE_VERSION)   // (the generator stamps it into the output)
-	if tooling.run({command = {tooling.odin_program(), "build", "src/engine/unicode/gen", "-out:" + UNICODE_GEN, "-o:speed"}}) != 0 { return 1 }
-	if tooling.run({command = {UNICODE_GEN, UNICODE_CACHE, UNICODE_TABLES}}) != 0 { return 1 }
-	fmt.printfln("wrote %s", UNICODE_TABLES)
 	return 0
 }
 
@@ -520,11 +477,9 @@ run_portability :: proc(args: []string) -> int {
 }
 
 ////////////////////////////////
-// The engines' own tools
+// The engine's regexp against QuickJS-ng's C
+// (the engine's other tools are the toolkit's: from ext/gui_toolkit, `odin run tools/tk -- gen_js_unicode` and `js_test262`)
 
-JUDGE_EXE :: "build/jsrt_judge" + tooling.EXE_SUFFIX
-JUDGE_STACK :: "-extra-linker-flags:/STACK:67108864"   // the judge lets the engine use 48 MiB of it (deep recursion tests)
-TEST262_RUN :: "build/test262/run"
 RXDIFF_DIR :: "build/cref"
 RXDIFF_STACK :: "-extra-linker-flags:/STACK:268435456"
 RXDIFF_SEED :: 12345
@@ -533,30 +488,14 @@ RXDIFF_QJS :: "build/js/src/quickjs-0.17.0"
 RXDIFF_FILES := []string{"libregexp.c", "libregexp.h", "libregexp-opcode.h", "libunicode.c", "libunicode.h", "libunicode-table.h", "cutils.h"}
 
 run_engine :: proc(args: []string) -> int {
-	if len(args) == 0 { fmt.eprintln("wrentool engine test262 [-Filter d] [-Stride n] [-Jobs n] [-NoBuild] | rx-diff [-Seed n] [-Fuzz n] [-NoC]"); return EXIT_USAGE }
-	switch args[0] {
-	case "test262": return engine_test262(args[1:])
-	case "rx-diff": return engine_rx_diff(args[1:])
+	if len(args) == 0 || args[0] != "rx-diff" {
+		fmt.eprintln("wrentool engine rx-diff [-Seed n] [-Fuzz n] [-NoC] (test262 and the Unicode tables: from ext/gui_toolkit, odin run tools/tk -- js_test262 | gen_js_unicode)")
+		return EXIT_USAGE
 	}
-	fmt.eprintfln("no engine tool %s", args[0])
-	return EXIT_USAGE
+	return engine_rx_diff(args[1:])
 }
 
-// test262 on the Odin JavaScript engine, judged against QuickJS-ng's results (docs/engine/runtime.md): build/test262/jsrt_errors.txt, build/test262/jsrt_table.md.
-@(private)
-engine_test262 :: proc(args: []string) -> int {
-	f, ok := tooling.parse_flags(args, "-Filter= -Stride= -Jobs= -NoBuild")
-	if !ok { return EXIT_USAGE }
-	if !os.exists(fmt.tprintf("%s/test262.conf", TEST262_RUN)) { fmt.eprintln("test262 not found: run build/test262 first (build/test262/run)"); return 1 }
-	if !tooling.flag_has(f, "-NoBuild") && tooling.run({command = {tooling.odin_program(), "build", "src/engine/jsrt/judge", "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit/src", "-out:" + JUDGE_EXE, "-o:speed", JUDGE_STACK}}) != 0 { return 1 }
-	cmd := make([dynamic]string, context.temp_allocator)
-	append(&cmd, JUDGE_EXE, "test262", "-dir", TEST262_RUN, "-stride", tooling.flag(f, "-Stride", "1"))
-	if tooling.flag_has(f, "-Filter") { append(&cmd, "-filter", tooling.flag(f, "-Filter")) }
-	if tooling.flag_has(f, "-Jobs") { append(&cmd, "-j", tooling.flag(f, "-Jobs")) }
-	return tooling.run({command = cmd[:]})
-}
-
-// The Odin regexp and Unicode engine against QuickJS-ng's C over thousands of inputs, and a speed comparison (docs/engine/regexp.md). -NoC: the Odin side's own fuzz. Needs zig for the C reference library.
+// The Odin regexp and Unicode engine (toolkit:js/regexp, toolkit:js/unicode) against QuickJS-ng's C over thousands of inputs, and a speed comparison (https://github.com/sachahjkl/gui_toolkit/blob/master/src/md/js/regexp.md). -NoC: the Odin side's own fuzz. Needs zig for the C reference library.
 @(private)
 engine_rx_diff :: proc(args: []string) -> int {
 	f, ok := tooling.parse_flags(args, "-Seed= -Fuzz= -NoC")

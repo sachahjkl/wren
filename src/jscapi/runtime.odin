@@ -3,8 +3,8 @@ package jscapi
 // JSRuntime / JSContext life cycle, the host hooks, jobs, classes and native functions.
 
 import "base:runtime"
-import jsdate "wb:engine/datetime"
-import js "wb:engine/jsrt"
+import jsdate "toolkit:js/datetime"
+import js "toolkit:js"
 
 // The clock and the local time zone come from the host (the wasm module has neither): the wall clock in
 // milliseconds since the epoch, and the offset of the local time from UTC in minutes at an instant.

@@ -1,6 +1,6 @@
 package js
 
-// The engine's JIT (src/engine/jsrt/jit.odin): hot functions compiled from their bytecode to WebAssembly, which the browser
+// The engine's JIT (ext/gui_toolkit/src/js/jit.odin): hot functions compiled from their bytecode to WebAssembly, which the browser
 // compiles (Cranelift) and attaches to the engine's instance (wasm.attach_function). WebAssembly stays the only
 // execution engine: the code made at run time is a Wasm module in the same sandbox as the engine.
 
@@ -89,7 +89,7 @@ jit_poll :: proc(inst: ^wasm.Instance, ticket: i32) -> i32 {
 	return i32(index)
 }
 
-// The engine's own counters (src/engine/jsrt/jit.odin, jit_stat), for measurements.
+// The engine's own counters (ext/gui_toolkit/src/js/jit.odin, jit_stat), for measurements.
 Jit_Stats :: struct {
 	compiled, failed, refused, module_bytes, bytecode_bytes, compile_ms_engine: f64,
 	entries, exits_return, exits_exception, exits_deopt, steps, pending, osr_entries: f64,

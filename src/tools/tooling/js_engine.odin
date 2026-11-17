@@ -7,19 +7,18 @@ import "core:slice"
 import "core:strings"
 import toolbox "toolkit:toolbox"
 
-// Wren's JavaScript engine: the Odin engine (src/engine/jsrt, through the QuickJS C API of src/jscapi) and the browser's bindings (native/js/odin, with the generated
+// Wren's JavaScript engine: the Odin engine (ext/gui_toolkit/src/js, through the QuickJS C API of src/jscapi) and the browser's bindings (native/js/odin, with the generated
 // native/js/odin/bindings_gen.odin), compiled to WebAssembly, then pre-initialized: the engine, its intrinsics and the bindings set up once, at build time, and stored in the module's
 // memory image, so that a realm starts from that image instead of running the engine's start-up code. Outputs, in <out>: wren_js_raw.wasm, the engine as compiled (a WASI reactor);
 // wren_js.wasm, the pre-initialized module the browser embeds (src/js/engine.odin); wren_js.code, its machine code, which the program embeds as well (not the test image's). The linker is the wasm-ld that ships with Odin (on Linux, the system's lld on the PATH). Nothing happens when <out>/STAMP matches the hash of
 // every input (the glue, the engine and the host package that pre-initializes it).
 
-// Not used to build anything: test262's configuration, and the reference wrentool bench js measures against, are QuickJS-ng's release source (src/browser/about_wren_test.odin and
-// wrentool bench js read these two lines).
+// Not used to build anything: the QuickJS-ng release that wrentool bench js measures against, the one whose bytecode the engine runs (src/browser/about_wren_test.odin reads this line).
+// test262's configuration comes from the same release, pinned by the toolkit (toolbox.TEST262_QJS_VERSION).
 QJS_VERSION :: "0.17.0"
-QJS_SHA256 :: "559bc4c420475e55c7ab4510adbc562f55d7524d75e8e89d79ce4bb02f5687d9"
 
 // The stack in linear memory, first in it (--stack-first: running past its end is a trap, not a write over the engine's data). Every page of it is committed for each realm, touched or not: a
-// recursion that runs past it goes on in the engine's heap (src/engine/jsrt/stack.odin, for which the host moves the stack pointer: the export). The engine's limit comes from what the linker made of this.
+// recursion that runs past it goes on in the engine's heap (ext/gui_toolkit/src/js/stack.odin, for which the host moves the stack pointer: the export). The engine's limit comes from what the linker made of this.
 WASM_STACK_BYTES :: 2 << 20
 JS_OUT_DEFAULT :: "build/js"
 JS_CODE_NAME :: "wren_js.code"   // the machine code of wren_js.wasm, which the program ships (src/wasm/shipped.odin, src/js/image/code)
@@ -51,8 +50,8 @@ collect_inputs :: proc(dir: string, recursive: bool, suffixes: []string, out: ^[
 	}
 }
 
-// The packages the glue compiles, followed through their imports (relative and wb:, not the compiler's own) from GLUE_PACKAGE: their sources, tests aside, and what they
-// #load. Not the folders beside them that nothing imports (the engine's judges and generators, the ABI's benches and checks): a change there builds nothing again.
+// The packages the glue compiles, followed through their imports (relative, wb: and toolkit:, which holds the engine; not the compiler's own) from GLUE_PACKAGE: their sources, tests
+// aside, and what they #load. Not the folders beside them that nothing imports (the ABI's benches and checks, the toolkit's judges and generators): a change there builds nothing again.
 GLUE_PACKAGE :: "native/js/odin"
 WB_COLLECTION :: "src"
 TOOLKIT_COLLECTION :: "ext/gui_toolkit/src"

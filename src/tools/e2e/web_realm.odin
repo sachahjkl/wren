@@ -457,7 +457,7 @@ wrenTest.check(depth > 0, "recursion through the browser (dispatchEvent from a l
 }
 
 // Filling the heap to its limit must not be a race with the limits of time (the call stopped before the heap is full): they are far.
-// A large allocation past the limit is refused with a RangeError the script can catch (mem_may_grow, src/engine/jsrt/gc.odin);
+// A large allocation past the limit is refused with a RangeError the script can catch (mem_may_grow, ext/gui_toolkit/src/js/gc.odin);
 // running out of memory elsewhere cannot be caught. Either way the next script runs.
 @(test)
 js_hostile_out_of_memory :: proc(t: ^testing.T) {

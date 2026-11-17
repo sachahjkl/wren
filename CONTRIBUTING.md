@@ -75,8 +75,8 @@
 
 Odin is pinned to the `dev-2026-11a` release (`.github/actions/setup/action.yml`: tag and SHA-256 of the archive). To
 move to another one, change both there and in the README, and build and test locally first. Wasmtime, NASM,
-Lexbor, the Rust crates, webref's Web IDL, test262 and web-platform-tests are pinned in their scripts,
-submodules, `native/Cargo.lock`, `native/js/webref/VERSION` and `wpt/MANIFEST.txt`. `src\tools\wpt` runs testharness tests,
+Lexbor, the Rust crates, webref's Web IDL, test262 and web-platform-tests are pinned in their scripts (test262 in the
+toolkit's `toolbox.test262_fetch`, for its runner and Wren's), submodules, `native/Cargo.lock`, `native/js/webref/VERSION` and `wpt/MANIFEST.txt`. `src\tools\wpt` runs testharness tests,
 and the reference tests of the folders that have them, counted apart ([docs/conformance.md](docs/conformance.md#reference-tests)).
 
 ## Making a release
@@ -121,8 +121,10 @@ commands, by family:
 - threadtime: whose work the window thread did in a load, from the files of `WREN_SPANS` (`waterfall -AfterMs n` gives the page the time to settle): by origin and class, up to the first contentful paint, the largest and settled; the frames begun and their own work by phase, their waits apart;
 - replay: `record`, `run`, `lists`: a load served again from what a site served, seeded, to prove a change of a percent ([the bench](docs/testing.md#the-replay-bench));
 - sweep: real pages visited headless as a person does (`-List tools/site_compare_list.txt`, `-Shard i -Shards n`, `-OneProcess`): crashes, hangs, unclean ends, the time of each step, in `build/sweep/summary_<shard>.tsv`;
-- gen: `gen psl|unicode|media-fixtures|video-fixtures|perf-media|rust-crates`; `logo [-Variant amber|dev|violet|amber-plain] [-Out folder] [-Single]` (the committed logos and icons, drawn by the toolkit's paint package);
-- docs and checks: `docs` (the documentation site), `license`, `i18n`, `portability`, `engine test262|rx-diff`, `changelog`;
+- gen: `gen psl|idna|media-fixtures|video-fixtures|perf-media|rust-crates`; `logo [-Variant amber|dev|violet|amber-plain] [-Out folder] [-Single]` (the committed logos and icons, drawn by the toolkit's paint package);
+- docs and checks: `docs` (the documentation site), `license`, `i18n`, `portability`, `engine rx-diff`, `changelog`;
+- the JavaScript engine is the toolkit's (`ext/gui_toolkit/src/js`): its Unicode tables and its native test262 are
+  toolkit commands. Run them from `ext/gui_toolkit`: `odin run tools/tk -- gen_js_unicode` and `odin run tools/tk -- js_test262`;
 - release helpers: `package`, `sign`, `winget`, `notes`, `experimental`, `smoke`, `crash-e2e`;
 - `desktop <program> [arguments]`: a command on a Windows desktop of its own.
 

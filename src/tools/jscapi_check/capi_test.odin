@@ -13,7 +13,7 @@ import "core:mem"
 import "core:mem/tlsf"
 import "core:strings"
 import capi "wb:jscapi"
-import js "wb:engine/jsrt"
+import js "toolkit:js"
 
 @(private = "file") checks, fails: int
 @(private = "file") finalized, freed_buffers: int

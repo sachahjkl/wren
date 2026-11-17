@@ -502,13 +502,13 @@ The script stage of nodes10k, measured first (the table in section 2), then the 
    prologue placed every wrapper (a reference taken and dropped on each, the browser walking every wrapper's ancestors
    through a hash table) and the trial deletion counted them all. A wrapper with no listener, no [SameObject] value, no
    data of the engine, no own property, its interface's prototype, extensible, and never a WeakMap / WeakSet key, a
-   WeakRef or FinalizationRegistry target (`OBJ_HELD_WEAKLY` in `src/engine/jsrt`, `JS_IsUntouched`) can go when no
+   WeakRef or FinalizationRegistry target (`OBJ_HELD_WEAKLY` in `ext/gui_toolkit/src/js`, `JS_IsUntouched`) can go when no
    script holds it, connected or not, and be made again, the same, when a script reaches its node: nothing tells the two
    apart. It joins a group only when its tree is detached and has a group (holding any wrapper of a detached tree must
    keep the others), and new wrappers start in none (only a collection frees, and its prologue places them). The
    prologue crosses for the other wrappers alone, and for the plain ones only when some detached tree has a group.
    Test: `js_plain_wrappers_go_the_others_stay_the_same` (web_realm.odin).
-2. **The trial deletion of host references without a hash table** (`src/engine/jsrt/gc.odin` `gc_mark_ext`,
+2. **The trial deletion of host references without a hash table** (`ext/gui_toolkit/src/js/gc.odin` `gc_mark_ext`,
    `host_class.odin` `host_mark_value`): the counts are subtracted in the cells themselves and put back from a flat array.
 3. **Element names lower-cased in ASCII** (`src/dom/dom.odin` `create_element`, `lower_name`): DOM's createElement
    and getElementsByTagName ask for ASCII lower case; the Unicode lower-casing went through a string builder rune by
@@ -738,7 +738,7 @@ runs each; then the browser (`wrentool bench perf`, 5 runs of each build, interl
    notes which of those names the subtree holds, and only the steps that found something look further. 16.6
    (16.3-16.6) -> 15.7 (15.6-15.8) ms. Test: `inserted_subtree_kinds`.
 4. **The wrapper's platform object in the engine's block** (`JS_NewObjectProtoClassPayload`, `src/jscapi`;
-   `Host_Object.payload`, `src/engine/jsrt/host_class.odin`). A wrapper took three allocations: the object (the engine's
+   `Host_Object.payload`, `ext/gui_toolkit/src/js/host_class.odin`). A wrapper took three allocations: the object (the engine's
    size classes), its host part (`new` through the engine's general allocator) and the glue's `Obj` (`libc_calloc`),
    and its finalizer freed the last two. The host part is now a block of the size classes that holds the `Obj` after it,
    freed with the object. 15.8 (15.6-16.1) -> 14.4 (14.0-15.0) ms. Test: `judge capi` (payloads zeroed, one per object,
@@ -748,7 +748,7 @@ runs each; then the browser (`wrentool bench perf`, 5 runs of each build, interl
    the word (a switch over every tag) to read a pointer, and `JS_DupValue` copied the Odin context for every value, a
    number too. The collection the DOM asks for calls them for every wrapper (its prologue's `obj_of`, `gc_mark`, the
    finalizers): 8.1 (7.0-8.3) -> 5.8 (5.8-5.8) ms a collection; `build()` 14.1 (14.0-14.2) -> 13.3 (13.2-13.3) ms.
-6. **A getter is called where the lookup found it** (`get_field` in `src/engine/jsrt/interp.odin`, `global_get` in
+6. **A getter is called where the lookup found it** (`get_field` in `ext/gui_toolkit/src/js/interp.odin`, `global_get` in
    `globals.odin`): a DOM attribute (`lastChild`) was found on the prototype chain, given up as not a data property,
    looked up again by `get_property`, then called; a global accessor (`document`, [LegacyUnforgeable] and so the
    window's own) went through `[[HasProperty]]` and `[[Get]]` after the slot lookup that had found it. 13.3
@@ -791,7 +791,7 @@ a build of jspage that was not kept), the build before it and the build with it 
 browser, all of it (6 runs of each build, interleaved).
 
 1. **A collection unpins its nodes in one call** (`unpin_later`, `gc_epilogue`, `native/js/odin/wj/qjs_platform.odin`;
-   `JS_SetGCEpilogue`, `src/jscapi`; `Host_Config.gc_epilogue`, `src/engine/jsrt`). A finalized node wrapper
+   `JS_SetGCEpilogue`, `src/jscapi`; `Host_Config.gc_epilogue`, `ext/gui_toolkit/src/js`). A finalized node wrapper
    called the browser's `Node_unpin`, one call for each of the 10 000 wrappers a collection frees; their handles now go
    into a flat array and the epilogue, called at the end of every collection and at the runtime's teardown, hands them
    to `Node_unpinAll` (which, as `Node_unpin` did, runs nothing when it returns: `hold_reactions`). The collection 5.45
@@ -1146,12 +1146,12 @@ Odin's `append` of the engine's root lists 4 %, the two crossings for the realm'
    were four. `build()` 11.11 (10.93-11.40) -> 10.55 (10.43-15.76) ms. Tests: `adopted_document_keeps_its_handle` (page:
    HTML, XHTML, parsed off the thread), `js_new_nodes_wrapped_in_one_call` (web tests: interfaces, one pin for each
    wrapper, a custom element constructed during createElement, the browser's errors, the same document object).
-2. **The engine's root lists appended in place** (`list_push`, `src/engine/jsrt/gc.odin`): every cell made goes on
+2. **The engine's root lists appended in place** (`list_push`, `ext/gui_toolkit/src/js/gc.odin`): every cell made goes on
    `temp_roots`, every host object of a class with references on `gc_hooked`, every marked cell on `gray`; Odin's
    `append` is a call that checks the allocator each time, now taken only when the list is full. `build()` 10.55 ->
    10.25 (10.18-10.73) ms.
 3. **The hot loop calls native getters and pushes string constants** (`hot_get_prop`, `hot_native_getter`, `get_var`,
-   `push_atom_value` in `src/engine/jsrt/interp_hot.odin`; `global_index`, `globals.odin`). A DOM attribute
+   `push_atom_value` in `ext/gui_toolkit/src/js/interp_hot.odin`; `global_index`, `globals.odin`). A DOM attribute
    (`list.lastChild`), an accessor of the global object (`document`) and a string constant (`"item "`) left the hot loop
    for the full dispatch and came back to it; the getter, a native called as a function, is now called where the lookup
    found it, as a call instruction calls a native (`call_native`, the same checks of depth and stack). `build()` 10.25
@@ -1217,7 +1217,7 @@ rounds; the engine's changes also against `examples/jsbench/micro.js` and `macro
 runs of each case); then the browser (5 runs of each build, interleaved, the order turning).
 
 1. **A wrapper's data asked for its values only once it holds some** (`host_object_set_marked`,
-   `src/engine/jsrt/host_class.odin`; `JS_SetOpaqueMarked`, `src/jscapi`; `wj_obj_marked`,
+   `ext/gui_toolkit/src/js/host_class.odin`; `JS_SetOpaqueMarked`, `src/jscapi`; `wj_obj_marked`,
    `native/js/odin/wj/qjs_platform.odin`). Every wrapper was in `gc_hooked`, so each collection called its class's
    `gc_mark` (the bridge, then the glue's `obj_mark`) in the counting pass of the trial deletion, and again when marking
    the live ones: on nodes10k, 20 000 wrappers a collection that hold nothing. An object made with a payload
@@ -1351,7 +1351,7 @@ factor of 2: the best run of each case is the figure, the median of the runs sai
 machine's load, 8.6 or 14 to 20 ms in every build, so its p10 is the figure); then the browser (5 runs of each build,
 interleaved).
 
-1. **The hot loop calls nothing** (`interp_hot`, `src/engine/jsrt/interp_hot.odin`). What round 13 saw, looked at in the
+1. **The hot loop calls nothing** (`interp_hot`, `ext/gui_toolkit/src/js/interp_hot.odin`). What round 13 saw, looked at in the
    code LLVM makes for wasm32 (`odin build -build-mode:asm`): `interp_hot` was a procedure of its own with 36 locals and
    calls in its handlers (`call_native` three times, `frame_push`, `close_var_refs` and the dynamic array's resize of an
    inlined `frame_pop`, `atom_to_value`, `host_exotic_of`, and `shape_realize` from each of the seven inlined
@@ -1367,7 +1367,7 @@ interleaved).
    `interp_run` of its own accord (the full dispatch and the loop then share pc and sp without a call); it is now
    `#force_inline`, so that does not depend on its size. Built as a procedure of its own (`#force_no_inline`) the same
    loop was 8 % slower on `micro.js` than inlined (0.875 against 0.801 of the base, same runs).
-2. **The prototype walk without the host class's hooks, again** (`Object.host_exotic`, `src/engine/jsrt/object.odin`, set by
+2. **The prototype walk without the host class's hooks, again** (`Object.host_exotic`, `ext/gui_toolkit/src/js/object.odin`, set by
    `host_object_new`: the class has exotic hooks or was not defined when the object was made). Round 13's change, which
    then slowed `micro.js` 12 %: on top of 1, the loop walks a node wrapper's chain to the DOM attribute's getter itself
    (without it, the loop handed every lookup that met a host object to `hot_get_field`, `build()` 8.51 -> 8.81 ms p10);
@@ -1674,7 +1674,7 @@ the browser's anywhere (about:home: 38.5 ms).
 
 ## What changed, round 20: the loop JIT takes properties and calls
 
-The loop JIT (`src/engine/jsrt/jit.odin`, [engine/jit.md](engine/jit.md)) compiled loops of number arithmetic,
+The loop JIT (`ext/gui_toolkit/src/js/jit.odin`, [the toolkit's jit.md](https://github.com/sachahjkl/gui_toolkit/blob/master/src/md/js/jit.md)) compiled loops of number arithmetic,
 comparisons, branches and locals; a property read, a call or a global kept the loop interpreted (round 13: "the loop JIT
 does not take a loop that reads a property"). Measured with `jsengine run -jit -image <engine>` on
 `examples/jsbench/micro.js`, `macro.js` and `realworld.js` (new: JSON records, particles updated in place, a sort with a
@@ -1757,7 +1757,7 @@ string concatenation and comparison by value; callees with branches (a `?:`); po
 
 ## What changed, round 21: the JIT compiles functions, calls them directly, makes objects and strings, reads DOM attributes
 
-What round 20 left, in its order ([engine/jit.md](engine/jit.md)). Measured with `jsengine run -jit -image <engine>` on
+What round 20 left, in its order ([the toolkit's jit.md](https://github.com/sachahjkl/gui_toolkit/blob/master/src/md/js/jit.md)). Measured with `jsengine run -jit -image <engine>` on
 `examples/jsbench/micro.js`, `macro.js` and `realworld.js`, every engine image of the round in turn, 5 rounds (the
 median, the range in brackets); DOM loops and nodes10k in `jspage -image` (a timed copy of nodes10k: `build()`'s p50 over
 400 frames). Other agents built and ran `test_all` on the machine for part of the round: the series below are the ones
@@ -1934,7 +1934,7 @@ container, written only by the page's turn).
 
 ## What changed, round 23: `document` read by compiled code, objects allocated inline, accessors of the script's
 
-What round 21 left, in its order ([engine/jit.md](engine/jit.md)). Measured as round 21 did (`jsengine run -jit -image
+What round 21 left, in its order ([the toolkit's jit.md](https://github.com/sachahjkl/gui_toolkit/blob/master/src/md/js/jit.md)). Measured as round 21 did (`jsengine run -jit -image
 <engine>`, every image of the round in turn, 5 rounds, the median and the range in brackets; nodes10k in `jspage
 -image`, a timed copy: `build()`'s p50 over 400 frames). Other agents ran test suites on the machine for much of the
 round: each run waited for the machine to be quiet (under 1.5 cores busy besides it) and ran at a high priority; series
@@ -1959,7 +1959,7 @@ taken while it was busy are said so.
    allocation collects, the object is only in the code's hands until its next call or exit. `new Point(i, i)` 110
    (107-160) -> 51 (50-53) ns, `{a, b, c}` 56.7 (56.3-59.8) -> 28.4 (27.4-30.0) ns; array literals keep the helper
    (`Array_Data` and its values: 83 ns).
-3. **The two slowdowns with the JIT off**, bisected by engine image (round 21's commits, only `src/engine/jsrt` and
+3. **The two slowdowns with the JIT off**, bisected by engine image (round 21's commits, only `ext/gui_toolkit/src/js` and
    the glue's `jit.odin` taken from each, 7 runs): a closure made and called in a loop 531 (524-558) ns before round 21,
    522 at its first step, 565 from its third (`shape_transition` factored out of `add_property`, so the JIT could
    append properties: a closure's four properties each paid the call), 540 (537-562) with it inlined again (kept;
@@ -3699,7 +3699,7 @@ Read plainly. **Of what we have been optimizing, a user with the lists runs a fr
 
 **The bench should default to the lists**, two arms or one: measuring with the built-in list optimizes work most users never run (three quarters of theverge.com's script), and misses what they do (the engine's start, cnn.com's cosmetic filters). Not done in this round: `-Lists` is a flag, the folder has to be fetched first (`wrentool replay lists`), and the default of a bench should move with the round that takes it up. The first-paint cost at start-up is the largest single thing on the table here, ahead of anything the engine could give these pages.
 
-**2. The slope of a bigger `Value`.** `Value` is 16 bytes (`src/engine/jsrt/value.odin`), `jscapi` already NaN-boxes to a `u64`. Not rewritten: as round 49 did for time, the slope was measured upward. A temporary patch padded `Value` to 32 bytes (`pad: [2]u64`, `VALUE_SHIFT` 5, the two size asserts), built as `build\wren_v32.exe`, then taken out (`git checkout` of the three files; the tree has none of it). Both arms `javascript.jit.enabled=false`, 7 runs, no frames, median (range), ms:
+**2. The slope of a bigger `Value`.** `Value` is 16 bytes (`ext/gui_toolkit/src/js/value.odin`), `jscapi` already NaN-boxes to a `u64`. Not rewritten: as round 49 did for time, the slope was measured upward. A temporary patch padded `Value` to 32 bytes (`pad: [2]u64`, `VALUE_SHIFT` 5, the two size asserts), built as `build\wren_v32.exe`, then taken out (`git checkout` of the three files; the tree has none of it). Both arms `javascript.jit.enabled=false`, 7 runs, no frames, median (range), ms:
 
 | | | CPU to load | `Guest` to load | load | CPU to settled |
 |---|---|---|---|---|---|
@@ -3714,7 +3714,7 @@ Read plainly. **Of what we have been optimizing, a user with the lists runs a fr
 
 Read plainly. **Doubling `Value` costs theverge.com 8 % of `Guest` and 6.4 % of the window thread's CPU to the load, bbc.com/news 9.5 and 8.4 %, ranges apart; npr.org 2.5 and 1.3 %, cnn.com 4.9 and 0.3 %, ranges overlapping.** The engine is a third of cnn.com's thread (round 46: its imports are style and layout), which is why it moves least. An upward slope only suggests the downward one: 8 bytes would save the copies and half the cache lines of the operand stack, the locals and the properties, and add what a NaN-boxed value costs to tag and untag at each operation, which 32 bytes never paid. Read it as "the size of a value is worth up to about 5 to 10 % of `Guest` on script-heavy pages", not as what 8 bytes would give.
 
-**3. The Wasm tax.** The same script work on the engine compiled natively (`judge eval`, `src/engine/jsrt/judge`, `-o:speed -debug`, the engine's own allocator on the system heap) and through the shipped image (`jsengine run`, Wasmtime, the image's polls), interpreter only and with the JIT (`-jit`, which translates hot functions to Wasm); the same file in both, `console.log` shimmed to `print`. `examples/jsbench` micro, macro and realworld (55 cases, ns per iteration), and the 40 largest scripts of the four recordings, compiled and not run (`new Function` of the text: run without a DOM, a page's script reaches the web API, which the image traps on and the judge has not), interleaved, best of 3 rounds:
+**3. The Wasm tax.** The same script work on the engine compiled natively (`judge eval`, `ext/gui_toolkit/src/js/judge`, `-o:speed -debug`, the engine's own allocator on the system heap) and through the shipped image (`jsengine run`, Wasmtime, the image's polls), interpreter only and with the JIT (`-jit`, which translates hot functions to Wasm); the same file in both, `console.log` shimmed to `print`. `examples/jsbench` micro, macro and realworld (55 cases, ns per iteration), and the 40 largest scripts of the four recordings, compiled and not run (`new Function` of the text: run without a DOM, a page's script reaches the web API, which the image traps on and the judge has not), interleaved, best of 3 rounds:
 
 | | native, ns | Wasm / native | Wasm with the JIT / native |
 |---|---|---|---|
@@ -4267,7 +4267,7 @@ layer).
 After rounds 20, 21 and 23. Item 1's interpreter gave way to a JIT for hot loops and hot functions (round 20: loops,
 properties, calls; 21: whole functions, direct calls, objects, strings, DOM getters, natives; 23: `document`, objects
 allocated inline, the script's accessors): nodes10k's `build()` p50 8.63 -> 7.44 ms in round 23's series. What is left of
-item 9 now counts only for code the JIT does not take; [engine/jit.md](engine/jit.md) has the JIT's own list.
+item 9 now counts only for code the JIT does not take; [the toolkit's jit.md](https://github.com/sachahjkl/gui_toolkit/blob/master/src/md/js/jit.md) has the JIT's own list.
 
 After rounds 22 and 24. Off this list too: what the user does while a script is busy (input, selection, the scroll bars,
 keys, then animations of `transform` and `opacity`, scroll boxes and the caret, drawn by chrome frames from the last

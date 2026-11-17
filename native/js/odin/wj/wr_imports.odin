@@ -2967,7 +2967,7 @@ foreign _wr_wj_js {
 	// The table index of the function of an Engine_jitCompile ticket once compiled and attached; -1 while it still
 	// compiles; 0 when it failed (the ticket is then forgotten).
 	@(link_name = "Engine_jitPoll") wr_Engine_jitPoll :: proc(ticket: i32) -> i32 ---
-	// The engine's stack in linear memory (src/engine/jsrt/stack.odin): moves its stack pointer to `sp`, a block of the
+	// The engine's stack in linear memory (ext/gui_toolkit/src/js/stack.odin): moves its stack pointer to `sp`, a block of the
 	// engine's heap past the end of the stack it was linked with, and returns where it was. 0 from any other module.
 	@(link_name = "Engine_stackMove") wr_Engine_stackMove :: proc(sp: u32) -> u32 ---
 	// Is the machine's stack, which the engine's compiled code and the browser share, near its end? Asked before going deeper.

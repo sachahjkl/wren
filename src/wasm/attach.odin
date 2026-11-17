@@ -15,7 +15,7 @@ import "wb:base"
 import "wb:host"
 
 // The import ("e", this) through which a module made at run time gets its maker's table (the JIT's calls of compiled
-// code: src/engine/jsrt/jit.odin, JIT_TABLE_IMPORT)
+// code: ext/gui_toolkit/src/js/jit.odin, JIT_TABLE_IMPORT)
 ATTACH_TABLE_IMPORT :: "table"
 
 Attach_Stats :: struct {

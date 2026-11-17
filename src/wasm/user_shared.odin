@@ -3,7 +3,7 @@ package wasm
 // Memory that several agents have: a shared WebAssembly.Memory and a SharedArrayBuffer of a page, the same thing here. The
 // JavaScript engine's own memory cannot be shared between realms (docs/shared-memory.md), so the bytes are a Wasmtime shared
 // memory, outside every realm: a module reaches them by its instructions, a script through a host buffer (Buffer_Host in
-// src/engine/jsrt), its Atomics through the calls below.
+// ext/gui_toolkit/src/js), its Atomics through the calls below.
 //
 // `memory.atomic.wait` of a module and of Atomics.wait must find each other, and the place where waiters park belongs to
 // the memory inside Wasmtime, which only those instructions reach: each store has a small module importing the memory (WAIT_MODULE).

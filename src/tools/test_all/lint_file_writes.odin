@@ -15,7 +15,7 @@ import "wb:tools/tooling"
 FILE_WRITES_ALLOWED :: "tools/file_writes_allowed.txt"
 FILE_WRITER_SOURCE :: "src/host/profile_file.odin"
 // Not the product: the tools, the test harnesses, the generators (and every *_test.odin and *_test_<system>.odin).
-FILE_WRITE_SKIPPED :: [?]string{"src/tools/", "src/e2e/", "src/testenv/", "/judge/", "/gen/"}
+FILE_WRITE_SKIPPED :: [?]string{"src/tools/", "src/e2e/", "src/testenv/", "/gen/"}
 FILE_WRITE_CALLS :: [?]string{
 	"os.write_entire_file(", "os.rename(", "os.remove(", "os.remove_all(",
 	"base.file_write_atomic(", "base.file_write_parts(", "base.file_replace(", "base.file_delete(", "base.remove_tree(",

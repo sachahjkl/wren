@@ -1,7 +1,7 @@
 package jscapi
 
 // The QuickJS-ng C API (quickjs.h, with Wren's native/js/patches) implemented on the Odin runtime
-// (src/engine/jsrt). Wren's glue (native/js/odin, package wj) is written against that API: JSValue is the
+// (ext/gui_toolkit/src/js). Wren's glue (native/js/odin, package wj) is written against that API: JSValue is the
 // 64-bit NaN-boxed word of QuickJS on wasm32, JS_DupValue / JS_FreeValue count references, classes carry
 // an opaque pointer with a finalizer. This package keeps those contracts on top of a tracing collector:
 //
@@ -18,7 +18,7 @@ package jscapi
 // Every entry point is `proc "c"`: it sets the package's Odin context first (api_context).
 
 import "base:runtime"
-import js "wb:engine/jsrt"
+import js "toolkit:js"
 
 JSValue :: u64
 Atom :: u32

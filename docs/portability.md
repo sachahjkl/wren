@@ -378,10 +378,10 @@ linked it: a browser that ran no script (the CI's Linux sweep too). `./build.sh 
   `shell_native_other.odin`.
 - `crashtrace`, `stacks` and `testenv` moved from `src/tools` to `src`: the browser, `remote/api` and the unit tests
   of `js`, `page` and `wasm` imported them.
-- `URLPattern` moved from `src/url` to `src/urlpattern`. `url` does not import `wb:engine/regexp` and
-  `wb:engine/unicode` now, so `cookies`, `csp` and `webauthn` do not link them.
-- The judges (`src/engine/jsrt/judge`, `src/engine/frontend/judge`) keep their Win32 calls in `fuzz_crash_windows.odin`
-  and `prof_windows.odin`. Off Windows, the sampling profiler does nothing.
+- `URLPattern` moved from `src/url` to `src/urlpattern`. `url` does not import `toolkit:js/regexp` and
+  `toolkit:js/unicode` now, so `cookies`, `csp` and `webauthn` do not link them.
+- The JavaScript engine and its judges are the toolkit's (`ext/gui_toolkit/src/js`, `ext/gui_toolkit/tools/js_judge`,
+  `tools/js_parse_judge`). The toolkit checks them on each of its targets.
 - `src/tools/jscapi_check` keeps its Win32 call in `capi_arena_windows.odin`. Off Windows, it cannot reserve its arena
   below 4 GiB yet.
 - `src/tools/test_all/lint_layers.odin` keeps these rules (see "How a package is made portable").

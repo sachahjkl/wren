@@ -14,7 +14,7 @@
 // pairs to keep balanced.
 package odin_glue
 
-import "../../../src/engine/numconv"
+import "toolkit:js/numconv"
 import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"

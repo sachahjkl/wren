@@ -6,7 +6,7 @@ package jscapi
 // wasm32 varargs (a pointer to the argument area, last parameter), which the exported versions below read.
 
 import "base:runtime"
-import js "wb:engine/jsrt"
+import js "toolkit:js"
 
 JSCAPI_EXPORT :: #config(JSCAPI_EXPORT, false)
 

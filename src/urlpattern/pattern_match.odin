@@ -3,11 +3,11 @@ package urlpattern
 // URLPattern — a component's regular expression and its match (URL Pattern Standard §1.5 "compile a component",
 // §2.2 "generate a regular expression and name list", §1.4 "perform a match"). The part list becomes the
 // specification's regular expression, compiled with flags "v" ("vi" ignoring case) by the browser's ECMAScript regexp
-// engine (wb:engine/regexp), so greediness, captures of repeated groups, the v-mode syntax of a custom group (classes
+// engine (toolkit:js/regexp), so greediness, captures of repeated groups, the v-mode syntax of a custom group (classes
 // with set operations, named groups, invalid escapes refused) are ECMAScript's own.
 
 import "core:strings"
-import rx "wb:engine/regexp"
+import rx "toolkit:js/regexp"
 
 Compiled_Component :: struct {
 	pattern:           string,       // owned: the normalized pattern string (the component getter returns it)

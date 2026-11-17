@@ -8,7 +8,7 @@ package urlpattern
 
 import "core:strings"
 import "core:unicode/utf8"
-import uni "wb:engine/unicode"
+import uni "toolkit:js/unicode"
 
 // The joiners an identifier may hold past its first code point.
 @(private = "file")

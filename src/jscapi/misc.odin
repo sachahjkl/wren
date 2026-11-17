@@ -4,7 +4,7 @@ package jscapi
 
 import "core:mem"
 import "core:strings"
-import js "wb:engine/jsrt"
+import js "toolkit:js"
 
 // ---- strings ----
 

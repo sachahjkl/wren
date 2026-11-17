@@ -4,7 +4,7 @@ package jscapi
 
 import "base:runtime"
 import "core:mem"
-import js "wb:engine/jsrt"
+import js "toolkit:js"
 
 // ---- the engine heap (js_malloc & co.): the host allocator ----
 

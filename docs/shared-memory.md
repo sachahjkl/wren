@@ -10,7 +10,7 @@ Each realm is an instance of the JavaScript engine image, whose objects live in 
 another's. So a shared buffer's bytes are outside every realm: a Wasmtime shared memory (`src/wasm/user_shared.odin`).
 
 - A module reaches them by its instructions, at full speed.
-- A script reaches them through a host buffer (`Buffer_Host` in `src/engine/jsrt`): `data == nil`, one element is one call to
+- A script reaches them through a host buffer (`Buffer_Host` in `ext/gui_toolkit/src/js`): `data == nil`, one element is one call to
   the browser, and the JIT and the fast paths step aside. `new SharedArrayBuffer` makes such a memory too (`Host_Shared`,
   `config.host_shared`), a whole number of pages holding a length in bytes.
 - `test262`'s image keeps the engine's own SharedArrayBuffers: its agents are not realms.

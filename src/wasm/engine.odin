@@ -481,7 +481,7 @@ STACK_POINTER_EXPORT :: "__stack_pointer"
 // One part in this of wasm.wasmtime.max_stack_bytes stays for what a module does between two looks at native_stack_low.
 NATIVE_STACK_KEPT_PART :: 4
 
-// The stack pointer of a module that exports it (the JavaScript engine: its stack in linear memory, src/engine/jsrt/stack.odin) moved to `sp`: where it was.
+// The stack pointer of a module that exports it (the JavaScript engine: its stack in linear memory, ext/gui_toolkit/src/js/stack.odin) moved to `sp`: where it was.
 stack_pointer_move :: proc(inst: ^Instance, sp: u32) -> u32 {
 	s := &inst.wt
 	ext: wt_extern

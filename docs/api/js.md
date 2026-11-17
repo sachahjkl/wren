@@ -129,7 +129,7 @@ Host: `Engine_jitPoll :: proc(c: ^Call, ticket: i32) -> i32`
 u32 Engine_stackMove(u32 sp)
 ```
 
-The engine's stack in linear memory (src/engine/jsrt/stack.odin): moves its stack pointer to `sp`, a block of the
+The engine's stack in linear memory (ext/gui_toolkit/src/js/stack.odin): moves its stack pointer to `sp`, a block of the
 engine's heap past the end of the stack it was linked with, and returns where it was. 0 from any other module.
 
 Host: `Engine_stackMove :: proc(c: ^Call, sp: u32) -> u32`
