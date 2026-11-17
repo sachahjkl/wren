@@ -10,6 +10,24 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-17
+
+### Added
+- **Something engraved on the back of the licence card**: turn the card over and look at it from the right angle.
+- **The Nix package carries wren-vault**: a Wren installed with Nix finds the Vault's helper beside it, the version this Wren pins, with its license and the address of its source.
+- **The Vault brings its helper with it**: the Linux archive carries wren-vault beside wren, with its licence and the address of its source. On Windows, the first use of the Vault downloads wren-vault beside wren.exe, from the wren-vault release that this Wren names, and runs it only when its size and SHA-256 match. After an update of Wren, the Vault replaces the helper before the first unlock. A failed download says why, and the panel offers Try again.
+
+### Removed
+- **The preference vault.helper.path**: a release runs the helper beside the browser, checked against the version it names; a development build runs its own build/vault/wren-vault.
+
+### Fixed
+- **A filter list and subtitles found faulty by the new fuzzer**: a blocker filter made of NUL bytes made every request read out of bounds, and subtitles with a tag left open or a setting given twice kept memory they no longer used.
+- **The tabs stand clear of the window's top edge**: the modern tabs filled the row up to the edge, which left no room to grab the window above them.
+- **The settings in the command palette read by their titles**: after `:`, a setting shows its title under its category ("Enabled" under "Settings · Vault"), no longer its key ("vault.enabled"); typing the key still finds it.
+
+### Security
+- **A broken AVIF image no longer ends the browser**: a crafted picture made the AV1 decoder stop the whole process. It is now shown as a broken image, and any later fault of that decoder is too.
+
 ## [0.9.0] - 2026-11-17
 
 ### Added
@@ -1638,7 +1656,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/sachahjkl/wren/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/sachahjkl/wren/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/sachahjkl/wren/compare/v0.7.9...v0.8.0
 [0.7.9]: https://github.com/sachahjkl/wren/compare/v0.7.8...v0.7.9
