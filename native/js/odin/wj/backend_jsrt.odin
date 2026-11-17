@@ -19,11 +19,14 @@ when WJ_JSRT {
 JS_NewRuntime :: proc "c" () -> ^Runtime {
 	jscapi.host_allocator = libc_allocator()
 	context = heap_context()
+	rt := jscapi.JS_NewRuntime()
+	// (before any script: the clocks are the runtime's own, in its Host_Config)
 	jscapi.set_host_time(
+		rt,
 		proc() -> f64 {return now_ms()},
 		proc "contextless" (t: i64) -> int {return int(wr_Engine_timezoneOffset(f64(t)))},
 	)
-	return jscapi.JS_NewRuntime()
+	return rt
 }
 
 // libunicode.h ID_Start / ID_Continue (without '$', '_', ZWNJ, ZWJ)

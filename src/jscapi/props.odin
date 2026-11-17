@@ -220,7 +220,7 @@ JS_DefineHostAutoInitProperty :: proc "c" (c: ^Context, obj: JSValue, prop: Atom
 	ctx := jctx(c)
 	m := js.host_enter(ctx.rt)
 	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
-	js.auto_init_getter = is_auto_init_getter
+	// (JS_NewRuntime put is_auto_init_getter in the runtime's Host_Config.auto_init_getter)
 	// (the key as a value too: the pair keeps its atom alive, which jsrt frees when nothing holds it, should the
 	// property be deleted while a script still holds the getter)
 	data := [5]JSValue{obj, enc(js.mk_int(i32(prop))), enc(js.mk_int(i32(uintptr(rawptr(fn))))), enc(js.mk_int(flags)), enc(js.atom_to_value(ctx.rt, prop))}
@@ -586,9 +586,9 @@ JS_ReadObject :: proc "c" (c: ^Context, buf: [^]u8, buf_len: uint, flags: i32) -
 	}
 	m := js.host_enter(ctx.rt)
 	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
-	js.span_stage(.deserialize, true)
+	js.span_stage(ctx.rt, .deserialize, true)
 	v := js.read_object(ctx, buf[:buf_len])
-	js.span_stage(.deserialize, false)
+	js.span_stage(ctx.rt, .deserialize, false)
 	// a module read is among the loaded ones (as in QuickJS), found by name when it is imported
 	if v.tag == .module { js.module_register(ctx.rt, cast(^js.Module)v.u.ptr) }
 	return own(ctx.rt, v)

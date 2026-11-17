@@ -7,10 +7,12 @@ import jsdate "toolkit:js/datetime"
 import js "toolkit:js"
 
 // The clock and the local time zone come from the host (the wasm module has neither): the wall clock in
-// milliseconds since the epoch, and the offset of the local time from UTC in minutes at an instant.
-set_host_time :: proc(now_ms: proc() -> f64, tz_offset: proc "contextless" (t_ms: i64) -> int) {
-	js.date_now_hook = now_ms
-	jsdate.timezone_offset_proc = tz_offset
+// milliseconds since the epoch, and the offset of the local time from UTC in minutes at an instant. Each runtime has
+// its own (Host_Config): set them after JS_NewRuntime, before a script runs.
+set_host_time :: proc "contextless" (r: ^Runtime, now_ms: proc() -> f64, tz_offset: jsdate.Timezone_Offset) {
+	rt := jrt(r)
+	rt.config.date_now_hook = now_ms
+	rt.config.timezone_offset_proc = tz_offset
 }
 
 // What the API keeps per runtime (jsrt's Runtime.host_data points at it).
@@ -71,6 +73,7 @@ JS_NewRuntime :: proc "c" () -> ^Runtime {
 	rt.config.compile_strings = compile_strings_bridge
 	rt.config.dynamic_import = dynamic_import_bridge
 	rt.config.load_module = load_module_bridge
+	rt.config.auto_init_getter = is_auto_init_getter
 	last_rt = rt
 	return wrt(rt)
 }

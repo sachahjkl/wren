@@ -23,22 +23,30 @@ when wj.WJ_JSRT {
 	// one: wj.heap_context() each time was a measurable part of it)
 	jit_context: runtime.Context
 
+	// The instance's one runtime, made by wj_preinit (the image keeps it): the engine's settings, counters and poll word
+	// are its own (jsrt.Runtime), and the host's calls below come after pre-initialization.
+	the_runtime :: #force_inline proc "contextless" () -> ^jsrt.Runtime {
+		return cast(^jsrt.Runtime)wj.JS_GetRuntime(wj.wj_the_realm.ctx)
+	}
+
 	@(export, link_name = "wj_jit_configure")
 	wj_jit_configure :: proc "c" (flags: i32, call_threshold: i32, max_functions: i32, max_bytecode_bytes: i32, loop_threshold: i32) {
 		context = wj.heap_context()
 		jit_context = context
+		rt := the_runtime()
 		// (bit 2 of the flags, the C engine's step-only test mode, has no meaning here: the translator has no step path, and
 		// its trace goes to the profile of the page's functions, never to the console, where a test compares what the scripts print)
-		if max_bytecode_bytes > 0 {jsrt.jit_cfg.max_code_bytes = int(max_bytecode_bytes)}
-		jsrt.jit_configure(flags & 1 != 0 && max_functions != 0, wj.wr_Engine_jitCompile, wj.wr_Engine_jitPoll, nil, int(call_threshold))
-		jsrt.jit_cfg.loop_sightings = int(loop_threshold)
+		if max_bytecode_bytes > 0 {rt.jit_cfg.max_code_bytes = int(max_bytecode_bytes)}
+		jsrt.jit_configure(rt, flags & 1 != 0 && max_functions != 0, wj.wr_Engine_jitCompile, wj.wr_Engine_jitPoll, nil, int(call_threshold))
+		rt.jit_cfg.loop_sightings = int(loop_threshold)
 	}
 
 	// WREN_JS_PROFILE: why code stays in the interpreter. What the JIT refuses and every deopt counted in the profile of the page's functions (wj_profile_dump).
 	@(export, link_name = "wj_jit_trace")
 	wj_jit_trace :: proc "c" (on: i32) {
-		jsrt.jit_cfg.log = on != 0 ? proc(msg: string) { wj.prof_note(msg) } : nil
-		jsrt.jit_cfg.trace = on != 0
+		rt := the_runtime()
+		rt.jit_cfg.log = on != 0 ? proc(msg: string) { wj.prof_note(msg) } : nil
+		rt.jit_cfg.trace = on != 0
 	}
 
 	// The stack past the one the module was linked with (ext/gui_toolkit/src/js/stack.odin): its limit, from what wasm-ld made of
@@ -48,29 +56,30 @@ when wj.WJ_JSRT {
 		__stack_high: u8
 	}
 
-	wj_stack_setup :: proc(rt: ^wj.Runtime) {
-		wj.JS_SetMaxStackSize(rt, uint(uintptr(&__stack_high) - uintptr(&__stack_low)) - jsrt.STACK_SEGMENT_KEPT)
-		jsrt.stack_move_hook = proc "contextless" (sp: uintptr) -> uintptr { return uintptr(wj.wr_Engine_stackMove(u32(sp))) }
-		jsrt.native_stack_low_hook = proc "contextless" () -> bool { return wj.wr_Engine_nativeStackLow() != 0 }
-		jsrt.poll_hook = proc "contextless" () { wren_poll() }
+	// (called by wj_preinit right after the runtime is made, before any script: the hooks are in its Host_Config)
+	wj_stack_setup :: proc(r: ^wj.Runtime) {
+		wj.JS_SetMaxStackSize(r, uint(uintptr(&__stack_high) - uintptr(&__stack_low)) - jsrt.STACK_SEGMENT_KEPT)
+		rt := cast(^jsrt.Runtime)r
+		rt.config.stack_move_hook = proc "contextless" (sp: uintptr) -> uintptr { return uintptr(wj.wr_Engine_stackMove(u32(sp))) }
+		rt.config.native_stack_low_hook = proc "contextless" () -> bool { return wj.wr_Engine_nativeStackLow() != 0 }
+		rt.config.poll_hook = proc "contextless" () { wren_poll() }
 	}
 
 	// WREN_SPANS: the engine says when it compiles, collects, reads bytecode and translates.
 	@(export, link_name = "wj_spans_on")
 	wj_spans_on :: proc "c" () {
-		jsrt.span_hook = proc "c" (kind: i32, begin: bool) { wj.wr_Engine_span(kind, begin ? 1 : 0) }
+		the_runtime().config.span_hook = proc "c" (kind: i32, begin: bool) { wj.wr_Engine_span(kind, begin ? 1 : 0) }
 	}
 
 	// WREN_JS_PROFILE_TIME: the counter of the interrupt checks (wj_profile_tick_address).
 	@(export, link_name = "wj_profile_counter_address")
 	wj_profile_counter_address :: proc "c" () -> u32 {
-		rt := cast(^jsrt.Runtime)wj.JS_GetRuntime(wj.wj_the_realm.ctx)
-		return u32(uintptr(&rt.interrupt_counter))
+		return u32(uintptr(&the_runtime().interrupt_counter))
 	}
 
 	@(export, link_name = "wj_jit_stat")
 	wj_jit_stat :: proc "c" (which: i32) -> f64 {
-		return jsrt.jit_stat(int(which))
+		return jsrt.jit_stat(the_runtime(), int(which))
 	}
 
 	// The helpers compiled code calls (jsrt.JIT_HELPERS): the call's jsrt.Jit_Call_Result; 1 when the array changed kind.
@@ -141,9 +150,11 @@ when wj.WJ_JSRT {
 		return 0
 	}
 
-	// The word the host raises (src/wasm/poll.odin; `jsengine snapshot` puts its address in the image).
+	// The word the host raises (src/wasm/poll.odin; `jsengine snapshot` puts its address in the image). It is the
+	// runtime's, in the heap: `jsengine snapshot` asks after wj_preinit made the runtime, and every instance of the image
+	// starts from that memory, so the address holds for each of them.
 	@(export, link_name = "wj_poll_address")
-	wj_poll_address :: proc "c" () -> u32 { return u32(uintptr(&jsrt.poll_word)) }
+	wj_poll_address :: proc "c" () -> u32 { return u32(uintptr(&the_runtime().poll_word)) }
 
 	@(export, link_name = "wj_jit_array")
 	wj_jit_array :: proc "c" (f: ^jsrt.Frame, slot: i32, kind: i32, out: ^jsrt.Jit_Arr) -> i32 {
