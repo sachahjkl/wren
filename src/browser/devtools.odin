@@ -515,7 +515,9 @@ devtools_panel :: proc(app: ^App, t: ^Tab, place := ui.Style_Mod{}, fill := draw
 		mod := place
 		mod.axis, mod.radius = .Y, 0
 		ui.next(mod)
-		panel := ui.build_box({.Draw_Background}, "###dt_panel")
+		// (.Fits_Width: its width is the dock zone's share; with its content's least, the tab strip and the tool bars
+		// would push the page aside, whatever size the person gave the panel)
+		panel := ui.build_box({.Draw_Background, .Fits_Width}, "###dt_panel")
 		dev().rect = panel.rect
 		if ui.parent(panel) {
 			devtools_take_keys(app)
