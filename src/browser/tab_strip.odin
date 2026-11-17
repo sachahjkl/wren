@@ -141,6 +141,11 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 	ui.next({width = ui.fill(), height = ui.px(h), axis = .X, cross = .Center})
 	bar := ui.build_box(integrated ? {.Window_Caption} : {}, "###tabstrip")
 	if classic { bar.custom, bar.custom_user = strip_bar_draw, cc }
+	if !classic && !machined_on(app) {
+		fill := ui.frame_new(draw.Color)
+		fill^ = modern_strip_colors().strip
+		bar.custom, bar.custom_user = modern_strip_draw, fill
+	}
 	if ui.parent(bar) {
 		lead: f32
 		if integrated {
@@ -180,12 +185,24 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 		strip_w := min(run, avail) + extra
 		add: ui.Signal
 		move_from, move_to := -1, -1
-		// modern: the tabs stand clear of the window's top edge (the row centres them): flush with it, they left no room
-		// to grab the window above them. Classic keeps the whole height, which its feet's geometry is drawn from.
-		strip_h := classic ? ui.pct(1) : ui.px(h - math.round(em * 0.9))
-		ui.next({width = ui.px(strip_w), height = strip_h})
-		if ui.strip("###tabs_strip") {
-			strip_tabs(app, ui.parent_box(), strip_w, w, cg.overlap + extra, &move_from, &move_to, &cg, cc)
+		// The tabs stand clear of the window's top edge: flush with it, they left no room to grab the window above them.
+		// Modern: they sit on the row's bottom, the current one joined to the toolbar under it (a column: the room above,
+		// then the strip). Machined: its pills, centred in a lower strip. Classic keeps the whole height, which its feet's
+		// geometry is drawn from.
+		switch {
+		case classic:
+			ui.next({width = ui.px(strip_w), height = ui.pct(1)})
+			if ui.strip("###tabs_strip") { strip_tabs(app, ui.parent_box(), strip_w, w, cg.overlap + extra, &move_from, &move_to, &cg, cc) }
+		case machined_on(app):
+			ui.next({width = ui.px(strip_w), height = ui.px(h - math.round(em * 0.9))})
+			if ui.strip("###tabs_strip") { strip_tabs(app, ui.parent_box(), strip_w, w, cg.overlap + extra, &move_from, &move_to, &cg, cc) }
+		case:
+			ui.next({width = ui.px(strip_w), height = ui.pct(1), axis = .Y})
+			if ui.parent(ui.build_box({}, "###tabs_column")) {
+				ui.spacer(ui.px(math.round(em * TAB_TOP_ROOM_EM)))
+				ui.next({width = ui.px(strip_w), height = ui.fill()})
+				if ui.strip("###tabs_strip") { strip_tabs(app, ui.parent_box(), strip_w, w, cg.overlap + extra, &move_from, &move_to, &cg, cc) }
+			}
 		}
 		if move_from >= 0 {
 			// pinned tabs stay among themselves; a tab takes the group of the one whose place it takes (tab_groups.odin)
@@ -328,16 +345,43 @@ strip_clear_rect :: proc(view: ^ui.Box) -> draw.Rect {
 }
 
 @(private = "file")
+// The room above the modern tabs, where the window is grabbed (em).
+TAB_TOP_ROOM_EM :: 0.5
+// How far the row of modern tabs goes from the toolbar's colour: darker on a light theme, lighter on a dark one.
+@(private = "file") STRIP_STEP :: 0.075
+// How far a hovered tab goes from the row toward the toolbar's colour.
+@(private = "file") TAB_HOVER_STEP :: 0.5
+
+// The modern tabs' colours, Chrome's way: the current tab is the toolbar's colour and joins it; the row behind the
+// others is a step away from it (an accent underline before read as a stray line).
+Modern_Strip :: struct {
+	strip, face: draw.Color,   // the row; the current tab (the toolbar's, the window's background)
+}
+
+modern_strip_colors :: proc() -> Modern_Strip {
+	face := ui.color("background")
+	face.a = 1
+	toward := ui.current_state().theme.dark ? draw.Color{1, 1, 1, 1} : draw.Color{0, 0, 0, 1}
+	return {strip = draw.mix(face, toward, STRIP_STEP), face = face}
+}
+
+@(private = "file")
+modern_strip_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	draw.rect(dc, b.rect, (^draw.Color)(user)^)
+}
+
 Tab_Look :: struct {
 	selected:  f32,          // 0..1, animated
 	accent:    draw.Color,
 	divider:   draw.Color,
 	hover:     draw.Color,
+	strip:     draw.Color,   // modern: the row behind the tabs
+	face:      draw.Color,   // modern: the current tab's (the toolbar's); machined: its face
+	hover_t:   f32,          // modern: 0..1, the pointer over it (animated)
 	hot:       bool,
 	divide:    bool,         // a divider on its right (between two tabs that are neither selected nor hovered)
 	group:     draw.Color,   // its group's colour, a line along its top (a = 0: in no group)
 	machined:  bool,         // the machined style: the current tab a bevelled part, grooves between tabs
-	face:      draw.Color,   // machined: the current tab's face
 	hot_t:     f32,          // machined: 0..1, the pointer over it (animated)
 }
 
@@ -388,9 +432,12 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		b.custom, b.custom_user = classic_tab_draw, paint
 	} else {
 		ui.next({fixed_x = x, fixed_y = 0, width = ui.px(w), height = ui.pct(1), axis = .X, cross = .Center, radius = em * 0.45})
-		// lit under the pointer, also while it is on the tab's close button
+		// lit under the pointer, also while it is on the tab's close button (machined: by the toolkit's hot effects; the
+		// other finishes: tab_look_draw's own patch, which the toolkit's fill would cover)
 		ui.push_tags("tab")
-		b = ui.build_box({.Clickable, .Focusable, .Middle_Click, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
+		flags := ui.Box_Flags{.Clickable, .Focusable, .Middle_Click, .Hot_Within, .Clip}
+		if machined_on(app) { flags += {.Draw_Hot_Effects} }
+		b = ui.build_box(flags, id)
 		ui.pop_tags()
 		look := ui.frame_new(Tab_Look)
 		look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, CHROME_ANIM_SELECT_RATE)
@@ -403,6 +450,10 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		if machined_on(app) {
 			look.machined, look.face = true, ui.color("button background")
 			look.hot_t = ui.anim(ui.key_from_string(b.key, "mhot"), inside ? 1 : 0, CHROME_ANIM_HOVER_RATE)
+		} else {
+			mc := modern_strip_colors()
+			look.strip, look.face = mc.strip, mc.face
+			look.hover_t = ui.anim(ui.key_from_string(b.key, "hov"), inside && !on ? 1 : 0, CHROME_ANIM_HOVER_RATE)
 		}
 		b.custom, b.custom_user = tab_look_draw, look
 	}
@@ -530,21 +581,41 @@ tab_look_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		}
 		return
 	}
+	// Chrome's shape: the current tab rises from the toolbar (its colour, round top corners, square at the bottom, with a
+	// concave curve on each side of its foot); a hovered one is a softer patch; a thin line parts two others. The foot's
+	// curves are drawn inside the box (it clips): the shape is inset by its radius on each side.
+	rad := b.radius
 	if l.divide {
 		lw := max(math.round(ui.scale()), 1)
-		inset := (r.max.y - r.min.y) * 0.3
+		inset := (r.max.y - r.min.y) * 0.28
 		draw.rect(dc, {{r.max.x - lw, r.min.y + inset}, {r.max.x, r.max.y - inset}}, l.divider)
+	}
+	if l.hover_t > 0.01 {
+		patch := draw.mix(l.strip, l.face, TAB_HOVER_STEP)
+		patch.a *= l.hover_t
+		gap := max(math.round(3 * ui.scale()), 2)
+		draw.rect(dc, {{r.min.x + rad, r.min.y}, {r.max.x - rad, r.max.y - gap}}, patch, rad)
+	}
+	if l.selected > 0.01 {
+		face := l.face
+		face.a *= l.selected
+		body := draw.Rect{{r.min.x + rad, r.min.y}, {r.max.x - rad, r.max.y}}
+		draw.rect_corners(dc, body, {face, face, face, face}, {rad, 0, rad, 0})
+		// the foot: a square of the tab's colour on each side, its outer corner carved by a circle of the row's colour
+		for side in ([2]f32{-1, 1}) {
+			x := side < 0 ? body.min.x : body.max.x
+			foot := side < 0 ? draw.Rect{{x - rad, r.max.y - rad}, {x, r.max.y}} : draw.Rect{{x, r.max.y - rad}, {x + rad, r.max.y}}
+			draw.rect(dc, foot, face)
+			c := draw.Vec2{x + side * rad, r.max.y - rad}
+			cut := l.strip
+			cut.a = l.selected
+			draw.rect(dc, {c - rad, c + rad}, cut, rad)
+		}
 	}
 	if l.group.a > 0 {
 		gh := max(math.round(2 * ui.scale()), 2)
-		draw.rect(dc, {{r.min.x + b.radius * 0.5, r.min.y + gh}, {r.max.x - b.radius * 0.5, r.min.y + gh * 2}}, l.group, gh * 0.5)
+		draw.rect(dc, {{r.min.x + rad * 1.5, r.min.y + gh}, {r.max.x - rad * 1.5, r.min.y + gh * 2}}, l.group, gh * 0.5)
 	}
-	if l.selected < 0.01 { return }
-	// the current tab: an accent underline growing from the middle
-	w := (r.max.x - r.min.x - b.radius * 2) * l.selected
-	cx := (r.min.x + r.max.x) * 0.5
-	th := max(math.round(2.5 * ui.scale()), 2)
-	draw.rect(dc, {{cx - w * 0.5, r.max.y - th}, {cx + w * 0.5, r.max.y}}, l.accent, th * 0.5)
 }
 
 ////////////////////////////////
