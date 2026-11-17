@@ -27,11 +27,14 @@ import "wb:base"
 import config "toolkit:config"
 import "wb:host"
 import i18n "toolkit:i18n"
+import update "toolkit:update"
+import vault_pin "wb:vault/pin"
 
 State :: enum u8 {
 	Disabled,          // vault.enabled is off: nothing runs
 	Locating,          // looking for the helper and the remembered account (a blocking job)
-	Helper_Missing,    // the helper program is not there
+	Helper_Missing,    // the helper program is not there (`message`: why, when Wren knows)
+	Installing,        // a release: the pinned helper is downloaded and put beside the browser (vault-helper-delivery.md)
 	Logged_Out,        // no account: the next step is a login
 	Logging_In,        // a login waits for its answer
 	Need_Two_Factor,   // the account asks for the code of a second step (`factors`, `factor`)
@@ -120,6 +123,17 @@ Hooks :: struct {
 	changed: proc(user: rawptr),                                       // the state, the rows or the message changed: draw again
 	fill:    proc(user: rawptr, values: ^Fill_Values) -> bool,            // applies a fill; false: dropped
 	copy:    proc(user: rawptr, what: Copy_What, value: string, seconds_left: int),   // puts a value on the clipboard (valid for the call only); seconds_left: a code's
+	// downloads the pinned helper (Installing): at most `size` bytes of `url`; the shell answers with vault_helper_downloaded.
+	// nil: nothing is downloaded, a missing helper stays missing
+	download: proc(user: rawptr, url: string, size: i64),
+}
+
+// Where the helper comes from (src/md/features/vault-helper-delivery.md): what the shell knows of its build.
+Helper_Options :: struct {
+	development: bool,            // a development build: build/vault/wren-vault (else beside it), as it is; never downloaded
+	pin:         vault_pin.Pin,   // a release: the one helper it runs (vault_pin.built_in); its strings outlive the Vault
+	dir:         string,          // the folder of the helper ("": the executable's; tests give another)
+	path:        string,          // tests: this file is the helper, as it is (a fake that the spawn hook "starts")
 }
 
 @(private)
@@ -189,6 +203,8 @@ Vault :: struct {
 	remember_refused:     bool,
 	unlocking_remembered: bool,
 	helper:         string,   // owned: the helper's path ("" until located)
+	helper_options: Helper_Options,   // (dir and path owned)
+	install_target: string,   // owned: Installing: where the pinned helper goes (beside the browser)
 	profile_dir:    string,   // owned: "" = nothing is written (browser.profile.persist off)
 	client_version: string,   // owned
 	t:              ^Transport,
@@ -250,8 +266,11 @@ PIN_MIN :: 4
 // Life
 
 // Loop thread. `profile_dir` "": nothing is written and no account is remembered between runs.
-vault_init :: proc(v: ^Vault, loop: ^host.Loop, pool: ^host.Blocking_Pool, prefs: ^config.Prefs, profile_dir, client_version: string, hooks: Hooks, spawn: Spawn_Proc = process_spawn, writer: ^host.File_Writer = nil) {
+vault_init :: proc(v: ^Vault, loop: ^host.Loop, pool: ^host.Blocking_Pool, prefs: ^config.Prefs, profile_dir, client_version: string, hooks: Hooks, helper: Helper_Options, spawn: Spawn_Proc = process_spawn, writer: ^host.File_Writer = nil) {
 	v.loop, v.pool, v.hooks, v.spawn, v.writer = loop, pool, hooks, spawn, writer
+	v.helper_options = helper
+	v.helper_options.dir = strings.clone(helper.dir, base.process_allocator())
+	v.helper_options.path = strings.clone(helper.path, base.process_allocator())
 	v.settings = settings_from_prefs(prefs)
 	v.profile_dir = strings.clone(profile_dir, base.process_allocator())
 	v.client_version = strings.clone(client_version, base.process_allocator())
@@ -290,6 +309,9 @@ vault_destroy :: proc(v: ^Vault) {
 	offer_reset(v)
 	string_wipe(&v.generated)
 	delete(v.helper, base.process_allocator())
+	delete(v.helper_options.dir, base.process_allocator())
+	delete(v.helper_options.path, base.process_allocator())
+	delete(v.install_target, base.process_allocator())
 	delete(v.profile_dir, base.process_allocator())
 	delete(v.client_version, base.process_allocator())
 	settings_destroy(&v.settings)
@@ -306,8 +328,8 @@ vault_prefs_changed :: proc(v: ^Vault, prefs: ^config.Prefs) {
 		disable(v)
 	case v.settings.enabled && !old.enabled:
 		enable(v)
-	case v.settings.enabled && (!same_server(old, v.settings) || old.helper_path != v.settings.helper_path):
-		// another server or another helper: what runs now is for the old one
+	case v.settings.enabled && !same_server(old, v.settings):
+		// another server: what runs now is for the old one
 		disable(v)
 		enable(v)
 	case v.state == .Unlocked && (old.idle_minutes != v.settings.idle_minutes || old.sync_minutes != v.settings.sync_minutes):
@@ -331,11 +353,21 @@ enable :: proc(v: ^Vault) {
 	set_state(v, .Locating)
 	v.setup_gen += 1
 	identity, _ := server_urls(v.settings)
+	o := v.helper_options
+	asset, pinned := vault_pin.asset_of(o.pin, update.PLATFORM)
 	j := new(Setup_Job, base.process_allocator())
 	j^ = {v = v, gen = v.setup_gen, profile_dir = strings.clone(v.profile_dir, base.process_allocator()),
-		helper_setting = strings.clone(v.settings.helper_path, base.process_allocator()), identity = strings.clone(identity, base.process_allocator())}
+		identity = strings.clone(identity, base.process_allocator()),
+		find = {development = o.development, dir = strings.clone(o.dir, base.process_allocator()), path = strings.clone(o.path, base.process_allocator()), asset = asset, pinned = pinned}}
 	v.jobs += 1
 	host.run_blocking(v.pool, setup_work, setup_done, j, setup_discard)
+}
+
+// Helper_Missing: look for the helper again, and download the pinned one when it is not there (the panel's "Try again").
+vault_retry :: proc(v: ^Vault) {
+	if v.state != .Helper_Missing || !v.settings.enabled { return }
+	clear_problem(v)
+	enable(v)
 }
 
 @(private)
@@ -379,7 +411,7 @@ vault_login :: proc(v: ^Vault, email, password: string, code := "", remember := 
 		request_string(&r, "provider", provider)
 		if remember && !device { request_bool(&r, "remember", true) }
 		send(v, &r, .Login)
-	case .Disabled, .Locating, .Helper_Missing, .Logging_In, .Unlocking, .Unlocked, .Waiting_Device, .Passkey:
+	case .Disabled, .Locating, .Helper_Missing, .Installing, .Logging_In, .Unlocking, .Unlocked, .Waiting_Device, .Passkey:
 		return false
 	}
 	clear_problem(v)
@@ -635,7 +667,7 @@ remember_send :: proc(v: ^Vault, mode: Remember_Unlock) {
 
 // Lock: the helper exits (docs/bitwarden.md 3.2). Also what a cancelled login does (vault_cancel says why).
 vault_lock :: proc(v: ^Vault) {
-	if v.state == .Disabled || v.state == .Locating || v.state == .Helper_Missing { return }
+	if v.state == .Disabled || v.state == .Locating || v.state == .Helper_Missing || v.state == .Installing { return }
 	if v.t != nil {
 		r: Request
 		request_begin(&r, next_id(v), .Lock, 0)
@@ -649,7 +681,7 @@ vault_lock :: proc(v: ^Vault) {
 // server refused it): the helper keeps the PIN for the next login of the same account, which then needs no new PIN.
 vault_logout :: proc(v: ^Vault, keep_pin := false) -> bool {
 	#partial switch v.state {
-	case .Disabled, .Locating, .Helper_Missing: return false
+	case .Disabled, .Locating, .Helper_Missing, .Installing: return false
 	}
 	if v.email == "" && v.t == nil { return false }
 	if ensure_helper(v) {
@@ -1925,9 +1957,11 @@ Setup_Job :: struct {
 	v:              ^Vault,
 	gen:            u64,
 	profile_dir:    string,   // owned
-	helper_setting: string,   // owned
+	find:           Helper_Find,   // (its strings owned)
 	identity:       string,   // owned: the server's identity address (an account of another server is not this one's)
 	helper:         string,   // owned: found
+	target:         string,   // owned: no helper found: where the pinned one goes ("": none can be fetched)
+	missing:        Missing,  // no helper found: why
 	email:          string,   // owned: from the account file
 	pin:            bool,     // from the account file
 	passkey:        bool,     // from the account file: a passkey of the account can unlock it
@@ -1940,7 +1974,7 @@ Setup_Job :: struct {
 setup_work :: proc(data: rawptr) {
 	j := (^Setup_Job)(data)
 	context.allocator = base.process_allocator()
-	j.helper = locate_helper(j.helper_setting)
+	j.helper, j.target, j.missing = locate_helper(j.find)
 	if j.profile_dir != "" {
 		path := join_path({j.profile_dir, "vault", ACCOUNT_FILE})
 		if bytes, err := os.read_entire_file(path, context.temp_allocator); err == nil {
@@ -2036,7 +2070,21 @@ setup_done :: proc(data: rawptr) {
 		strings_free(&v.never)
 		v.never, j.never = j.never, nil
 	}
-	if v.helper == "" { set_state(v, .Helper_Missing); return }
+	if v.helper == "" {
+		if j.target != "" && v.hooks.download != nil {
+			// a release without its pinned helper beside it: the shell downloads it, install_start places it
+			delete(v.install_target, base.process_allocator())
+			v.install_target, j.target = j.target, ""
+			set_state(v, .Installing)
+			a, _ := vault_pin.asset_of(v.helper_options.pin, update.PLATFORM)
+			url := strings.concatenate({vault_pin.release_folder(v.helper_options.pin.version, context.temp_allocator), vault_pin.file_name(v.helper_options.pin.version, a.platform, context.temp_allocator)}, context.temp_allocator)
+			v.hooks.download(v.hooks.user, url, a.size)
+			return
+		}
+		set_message(v, missing_words(j.missing))
+		set_state(v, .Helper_Missing)
+		return
+	}
 	set_state(v, v.email != "" ? .Locked : .Logged_Out)
 	// (the browser starts: the unlock the keyring keeps opens the Vault now, once a run; a later lock asks again)
 	if v.state == .Locked && !v.remember_tried {
@@ -2056,9 +2104,11 @@ setup_discard :: proc(data: rawptr) {
 setup_free :: proc(j: ^Setup_Job) {
 	context.allocator = base.process_allocator()
 	delete(j.profile_dir)
-	delete(j.helper_setting)
+	delete(j.find.dir)
+	delete(j.find.path)
 	delete(j.identity)
 	delete(j.helper)
+	delete(j.target)
 	string_wipe(&j.email)
 	string_wipe(&j.remembered)
 	strings_free(&j.never)
@@ -2071,17 +2121,7 @@ join_path :: proc(parts: []string, allocator := context.temp_allocator) -> strin
 	return p
 }
 
-// The helper's path: the preference, else beside the browser, else in its vault folder (build/vault/ beside build/wren).
-// "" when none is a file. Off the loop thread (it reads the disk).
-locate_helper :: proc(setting: string, allocator := context.allocator) -> string {
-	if setting != "" { return os.is_file(setting) ? strings.clone(setting, allocator) : "" }
-	dir, err := os.get_executable_directory(context.temp_allocator)
-	if err != nil { return "" }
-	for c in ([]string{join_path({dir, HELPER_NAME}), join_path({dir, "vault", HELPER_NAME})}) {
-		if os.is_file(c) { return strings.clone(c, allocator) }
-	}
-	return ""
-}
+// (locate_helper, the pinned helper's download and placement: delivery.odin)
 
 @(private)
 File_Job :: struct {

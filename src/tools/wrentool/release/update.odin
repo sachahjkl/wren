@@ -1,5 +1,5 @@
 // wrentool update: the signed manifest of a release (src/update, docs/updates.md).
-//   update keygen -Private FILE                         make the update key pair; FILE is outside the repository
+//   update keygen -Private FILE [-Product wren-vault]   make the update key pair (Wren's, or the Vault helper's); FILE is outside the repository
 //   update pubkey [-Private FILE]                       the public key of the private one (the environment's UPDATE_SIGNING_KEY by default)
 //   update manifest -Exe f -Version v [-Platform p] -Out f.json    the manifest of a program (its size and SHA-256), unsigned
 //   update sign -Manifest f.json [-Private FILE]        writes f.json.sig
@@ -17,12 +17,15 @@ import "wb:tools/tooling"
 import signing "toolkit:signing"
 import update "toolkit:update"
 import wren_update "wb:update"
+import vault_pin "wb:vault/pin"
 
 UPDATE_KEY_ENV :: "UPDATE_SIGNING_KEY"
 
 UPDATE_USAGE :: `usage: update <command> [options]
-  keygen -Private FILE                   make the update key pair (FILE: outside the repository; a path inside a git work tree is refused);
-                                         prints the public key, for PRODUCT.public_key in src/update/product.odin
+  keygen -Private FILE [-Product wren-vault]
+                                         make the update key pair (FILE: outside the repository; a path inside a git work tree is refused);
+                                         prints the public key, for PRODUCT.public_key in src/update/product.odin (wren-vault's:
+                                         in src/vault/pin/pin.odin; src/md/features/vault-helper-delivery.md)
   pubkey [-Private FILE]                 the public key of FILE, or of $UPDATE_SIGNING_KEY
   manifest -Exe f -Version v [-Platform windows-x64] -Out f.json
                                          the manifest of a program: its size and SHA-256
@@ -50,11 +53,12 @@ run_update :: proc(args: []string) -> int {
 // The private key
 
 // True when `path` is inside a git work tree (an ancestor holds .git): a signing key there could be committed.
-@(private = "file")
+@(private)
 update_inside_git_tree :: proc(path: string) -> bool {
-	abs, abs_err := filepath.abs(path, context.temp_allocator)
+	// (the folder's absolute path, not the file's: the key does not exist yet, and an absolute path of a missing file fails,
+	// which refused every new key)
+	dir, abs_err := filepath.abs(os.dir(path), context.temp_allocator)
 	if abs_err != nil { return true }   // cannot tell where it is: do not risk it
-	dir := os.dir(abs)
 	for dir != "" {
 		if os.exists(fmt.tprintf("%s/.git", dir)) { return true }
 		parent := os.dir(dir)
@@ -93,21 +97,29 @@ update_seed_chosen :: proc(f: tooling.Flags) -> (seed: [32]byte, ok: bool) {
 
 @(private = "file")
 update_keygen :: proc(args: []string) -> int {
-	f, ok := tooling.parse_flags(args, "-Private=")
+	f, ok := tooling.parse_flags(args, "-Private= -Product=")
 	if !ok { return EXIT_USAGE }
 	path := tooling.flag(f, "-Private", "")
 	if path == "" { fmt.eprintln("keygen needs -Private FILE (outside the repository)"); return EXIT_USAGE }
+	// (the Vault helper's key: its own, a secret of the wren-vault repository; src/md/features/vault-helper-delivery.md)
+	vault := false
+	switch tooling.flag(f, "-Product", wren_update.PRODUCT.name) {
+	case wren_update.PRODUCT.name: vault = false
+	case vault_pin.PRODUCT.name:   vault = true
+	case:                          fmt.eprintfln("-Product is %s or %s", wren_update.PRODUCT.name, vault_pin.PRODUCT.name); return EXIT_USAGE
+	}
 	if update_inside_git_tree(path) { return fail("refusing to write a signing key inside a git work tree:", path) }
 	if os.exists(path) { return fail(path, "exists already: a second key would orphan the releases signed with the first (delete it yourself if you mean it)") }
 	seed: [32]byte
 	crypto.rand_bytes(seed[:])
 	text := signing.key_encode(seed[:], context.temp_allocator)
 	pub, _ := signing.public_key_of(seed[:], context.temp_allocator)
-	body := fmt.tprintf("# Wren update signing key (Ed25519). SECRET: whoever has it can ship an update to every Wren.\n# Never commit it, never send it. Keep it in secrets/production.yaml (UPDATE_SIGNING_KEY) and in a password manager.\n%s\n", text)
+	body := vault ? fmt.tprintf("# wren-vault release signing key (Ed25519). SECRET: whoever has it can sign a wren-vault release.\n# Never commit it, never send it. Keep it in secrets/production.yaml (WREN_VAULT_SIGNING_KEY), in the secret of the same name of sachahjkl/wren-vault, and in a password manager.\n%s\n", text) : fmt.tprintf("# Wren update signing key (Ed25519). SECRET: whoever has it can ship an update to every Wren.\n# Never commit it, never send it. Keep it in secrets/production.yaml (UPDATE_SIGNING_KEY) and in a password manager.\n%s\n", text)
 	if err := os.write_entire_file(path, body); err != nil { return fail("cannot write", path) }
 	fmt.printfln("private key written to %s", path)
 	fmt.printfln("public key: %s", pub)
-	fmt.printfln("\nPut it in PRODUCT.public_key, src/update/product.odin, then rebuild Wren:\n\npublic_key = \"%s\",", pub)
+	product_file := vault ? "src/vault/pin/pin.odin" : "src/update/product.odin"
+	fmt.printfln("\nPut it in PRODUCT.public_key, %s, then rebuild Wren:\n\npublic_key = \"%s\",", product_file, pub)
 	return 0
 }
 

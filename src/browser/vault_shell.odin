@@ -26,12 +26,14 @@ import "toolkit:ui"
 import "wb:base"
 import config "toolkit:config"
 import "wb:dom"
+import "wb:fetch"
 import "wb:forms"
 import "wb:host"
 import i18n "toolkit:i18n"
 import "wb:page"
 import "wb:style"
 import "wb:vault"
+import vault_pin "wb:vault/pin"
 
 VAULT_PANEL_W_EM :: f32(26)
 VAULT_PANEL_LIST_EM :: f32(22)   // the most height the logins take in the panel before they scroll
@@ -40,6 +42,8 @@ VAULT_SECRET_RESERVE :: 512   // bytes reserved in a secret field before any typ
 Vault_Shell :: struct {
 	v:              vault.Vault,
 	started:        bool,
+	helper_path:    string,   // tests: the helper's path instead of the one found (set before vault_shell_init)
+	helper_status:  int,      // the download of the pinned helper: its answer's status (0: none yet)
 	watch:          int,    // the `vault.` preference watch
 	panel_was:      bool,   // the panel was open last frame (its rows are released when it closes)
 	dialog:         bool,   // the login / unlock dialog is open
@@ -134,7 +138,8 @@ vault_shell_init :: proc(app: ^App) {
 		changed = proc(user: rawptr) { request_frames((^App)(user), 2) },
 		fill = vault_apply,   // vault_fill.odin
 		copy = vault_copied,  // vault_fill.odin
-	}, writer = &app.writer)
+		download = vault_helper_download,
+	}, vault_helper_options(app), writer = &app.writer)
 	s.watch = config.watch(&app.prefs, "vault.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
 		vault.vault_prefs_changed(&app.vault.v, p)
@@ -144,6 +149,44 @@ vault_shell_init :: proc(app: ^App) {
 	s.dd_sel = -1
 	vault_shortcut_apply(app)
 	s.started = true
+}
+
+// Where the helper comes from (src/md/features/vault-helper-delivery.md): a development build runs its own; a release runs
+// the one its pin names (vault.version, built in), beside the executable.
+@(private = "file")
+vault_helper_options :: proc(app: ^App) -> vault.Helper_Options {
+	pin, problem := vault_pin.built_in()
+	if problem != "" { pin = {} }   // (vault/pin's test refuses such a file: never in a build that ships)
+	return {development = IS_DEV_BUILD, pin = pin, path = app.vault.helper_path}
+}
+
+// The download of the pinned helper (vault.Hooks.download): Wren's own fetch, at most its pinned size, without cookies.
+@(private = "file")
+vault_helper_download :: proc(user: rawptr, url: string, size: i64) {
+	app := (^App)(user)
+	app.vault.helper_status = 0
+	task := fetch.start(&app.loader, {
+		request = {url = url, mode = .Navigate, credentials = .Omit, redirect = .Follow, destination = .Empty, max_body = int(size)},
+		on_event = vault_helper_event, user = app, scope = app.process, collect = true,
+	})
+	if task == base.NIL_HANDLE { vault.vault_helper_downloaded(&app.vault.v, nil, i18n.tr("the request could not start")) }
+}
+
+@(private = "file")
+vault_helper_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
+	app := (^App)(user)
+	#partial switch ev.kind {
+	case .Response:
+		app.vault.helper_status = int(ev.response.status)
+	case .Done:
+		if app.vault.helper_status != 200 {
+			vault.vault_helper_downloaded(&app.vault.v, nil, fmt.tprintf(i18n.tr("the server answered %d"), app.vault.helper_status))
+			return
+		}
+		vault.vault_helper_downloaded(&app.vault.v, ev.data, "")
+	case .Failed:
+		vault.vault_helper_downloaded(&app.vault.v, nil, ev.detail)
+	}
 }
 
 vault_shell_destroy :: proc(app: ^App) {
@@ -328,6 +371,7 @@ vault_state_words :: proc(v: ^vault.Vault) -> string {
 	switch v.state {
 	case .Disabled, .Locating:  return i18n.tr("Vault")
 	case .Helper_Missing:       return i18n.tr("Vault: its helper program is missing")
+	case .Installing:           return i18n.tr("Vault: downloading its helper program…")
 	case .Logged_Out:           return i18n.tr("Vault: log in to your account")
 	case .Logging_In, .Unlocking: return i18n.tr("Vault: working…")
 	case .Need_Two_Factor:      return i18n.tr("Vault: the code of the second step is needed")
@@ -374,7 +418,14 @@ vault_panel_body :: proc(app: ^App, t: ^Tab) {
 			switch v.state {
 			case .Disabled, .Locating, .Logging_In, .Unlocking:
 			case .Helper_Missing:
-				panel_line(i18n.tr("Install wren-vault beside Wren, or set vault.helper.path."), "vp_missing", weak = true)
+				// (the message says why; a release downloads its pinned helper again)
+				if !IS_DEV_BUILD {
+					if ui.button("###vp_retry", i18n.tr("Try again"), lucide.REFRESH_CW, {width = ui.fill()}).clicked { vault.vault_retry(v) }
+				}
+			case .Installing:
+				// (what comes, under which licence, and where its source is: a separate GPL program, vault-helper-delivery.md)
+				version := v.helper_options.pin.version
+				panel_line(fmt.tprintf(i18n.tr("wren-vault %s, a separate program under the GPL-3.0. Its source: %s"), version, vault_pin.source_url(version, context.temp_allocator)), "vp_installing", weak = true)
 			case .Logged_Out, .Locked, .Failed, .Need_Two_Factor, .Need_Device_Code, .Waiting_Device, .Passkey:
 				label := v.state == .Locked || (v.state == .Failed && vault.vault_has_account(v)) ? i18n.tr("Unlock…") : i18n.tr("Log in…")
 				ui.next({width = ui.fill(), height = ui.children_sum()})
@@ -801,7 +852,7 @@ vault_login_answer :: proc(app: ^App) {
 	}
 	if !s.dialog { return }
 	#partial switch v.state {
-	case .Unlocked, .Disabled, .Helper_Missing:
+	case .Unlocked, .Disabled, .Helper_Missing, .Installing:
 		vault_dialog_close(app)
 	}
 }

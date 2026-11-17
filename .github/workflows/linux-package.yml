@@ -92,6 +92,7 @@ jobs:
       - name: Build (release)
         run: ./build.sh release
 
+      # (it puts the pinned wren-vault beside wren, fetched from its release and checked against vault.version: src/md/features/vault-helper-delivery.md)
       - name: Package
         run: build/wrentool package ${{ inputs.version && format('-Version {0}', inputs.version) || '' }}   # (by hand: the sources' version)
 
@@ -100,6 +101,10 @@ jobs:
           mkdir -p "$RUNNER_TEMP/unpacked"
           tar -xzf build/dist/wren-*-linux-x64.tar.gz -C "$RUNNER_TEMP/unpacked"
           ldd "$RUNNER_TEMP"/unpacked/*/wren | grep -v 'linux-vdso\|ld-linux'
+          # the Vault's helper starts on this glibc too (it links libdbus: the package says so in README.txt)
+          apt-get install -y -qq --no-install-recommends libdbus-1-3 >/dev/null
+          ldd "$RUNNER_TEMP"/unpacked/*/wren-vault | grep -v 'linux-vdso\|ld-linux'
+          test -s "$RUNNER_TEMP"/unpacked/*/wren-vault-LICENSE.txt && test -s "$RUNNER_TEMP"/unpacked/*/wren-vault-SOURCE.txt
           xvfb-run -a build/wrentool smoke "$RUNNER_TEMP"/unpacked/*/wren
 
       - uses: actions/upload-artifact@v4

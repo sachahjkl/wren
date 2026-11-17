@@ -17,12 +17,12 @@ vault_follows_its_switch_and_starts_nothing_by_default :: proc(t: ^testing.T) {
 	host.blocking_init(&app.blocking, &app.loop, 1)
 	defer host.blocking_destroy(&app.blocking)
 
+	app.vault.helper_path = "/nonexistent/wren-vault"
 	vault_shell_init(app)
 	defer vault_shell_destroy(app)
 	testing.expect_value(t, app.vault.v.state, vault.State.Disabled)
 	testing.expect(t, app.vault.v.t == nil)
 
-	_ = config.set_from_string(&app.prefs, "vault.helper.path", "/nonexistent/wren-vault", .User)
 	_ = config.set_from_string(&app.prefs, "vault.enabled", "true", .User)
 	host.blocking_settle(&app.blocking)
 	testing.expect_value(t, app.vault.v.state, vault.State.Helper_Missing)
@@ -75,7 +75,7 @@ vault_icon_opens_the_dialog_when_that_is_the_next_step :: proc(t: ^testing.T) {
 	for st in ([]vault.State{.Logged_Out, .Logging_In, .Need_Two_Factor, .Locked, .Unlocking}) {
 		testing.expectf(t, vault_icon_opens_dialog(st), "%v opens the dialog", st)
 	}
-	for st in ([]vault.State{.Unlocked, .Helper_Missing, .Failed, .Disabled}) {
+	for st in ([]vault.State{.Unlocked, .Helper_Missing, .Installing, .Failed, .Disabled}) {
 		testing.expectf(t, !vault_icon_opens_dialog(st), "%v opens the panel", st)
 	}
 }

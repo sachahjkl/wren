@@ -13,7 +13,9 @@ import "core:testing"
 import "core:time"
 import "wb:base"
 import config "toolkit:config"
+import update "toolkit:update"
 import "wb:host"
+import vault_pin "wb:vault/pin"
 
 @(private = "file")
 Script :: struct {
@@ -47,6 +49,9 @@ Fx :: struct {
 	copied:  [dynamic]string,   // "what:value" of each copy (a code's: "totp:value:seconds left")
 	refuse:  bool,              // the fill hook drops the fill (the page changed)
 	profile: string,            // a temporary profile folder ("" none); removed at the end
+	downloads:     int,         // Hooks.download asked
+	download_url:  string,      // the last one's (owned)
+	download_size: i64,
 }
 
 // (the Vault's `spawn` has no user data: the test's script is this thread's)
@@ -148,17 +153,18 @@ fake_close :: proc(t: ^Transport) {
 @(private = "file")
 fake_destroy :: proc(t: ^Transport) { free((^Fake)(t), base.process_allocator()) }
 
-// `profile`: the Vault gets a temporary profile folder (the account file is written there).
+// `profile`: the Vault gets a temporary profile folder (the account file is written there). `helper`: where the helper
+// comes from (nil: the test executable, a file that exists: what the fake "starts"). `download`: Hooks.download.
 @(private = "file")
-fx_make :: proc(enabled := true, virtual_clock := false, profile := false) -> ^Fx {
+fx_make :: proc(enabled := true, virtual_clock := false, profile := false, helper: Maybe(Helper_Options) = nil, download: proc(user: rawptr, url: string, size: i64) = nil) -> ^Fx {
 	x := new(Fx)
 	host.loop_init(&x.loop)
 	if virtual_clock { host.clock_virtual(&x.loop, &x.clock) }
 	host.blocking_init(&x.pool, &x.loop, 1)
 	x.prefs = config.prefs_make()
 	register_prefs(&x.prefs)
-	exe, _ := os.get_executable_path(context.temp_allocator)   // (a file that exists: what the fake "starts")
-	_ = config.set_from_string(&x.prefs, "vault.helper.path", exe, .User)
+	exe, _ := os.get_executable_path(context.temp_allocator)
+	options := helper.? or_else Helper_Options{path = exe}
 	_ = config.set_from_string(&x.prefs, "vault.request.timeout_ms", "1000", .User)
 	if enabled { _ = config.set_from_string(&x.prefs, "vault.enabled", "true", .User) }
 	if profile {
@@ -192,7 +198,8 @@ fx_make :: proc(enabled := true, virtual_clock := false, profile := false) -> ^F
 			}
 		},
 	}
-	vault_init(&x.v, &x.loop, &x.pool, &x.prefs, x.profile, "test", hooks, fake_spawn)
+	hooks.download = download
+	vault_init(&x.v, &x.loop, &x.pool, &x.prefs, x.profile, "test", hooks, options, fake_spawn)
 	settle(x)
 	return x
 }
@@ -217,6 +224,7 @@ fx_destroy :: proc(x: ^Fx) {
 	delete(x.filled)
 	for s in x.copied { delete(s) }
 	delete(x.copied)
+	delete(x.download_url)
 	if x.profile != "" {
 		_ = base.remove_tree(x.profile)
 		delete(x.profile)
@@ -293,12 +301,140 @@ enabling_locates_the_helper_then_a_login_unlocks :: proc(t: ^testing.T) {
 
 @(test)
 a_missing_helper_is_said :: proc(t: ^testing.T) {
-	x := fx_make(enabled = false)
+	x := fx_make(enabled = false, helper = Helper_Options{path = "/nonexistent/wren-vault"})
 	defer fx_destroy(x)
-	_ = config.set_from_string(&x.prefs, "vault.helper.path", "/nonexistent/wren-vault", .User)
 	set_pref(x, "vault.enabled", "true")
 	testing.expect_value(t, x.v.state, State.Helper_Missing)
 	testing.expect_value(t, x.script.spawned, 0)
+}
+
+// The delivery of the helper (src/md/features/vault-helper-delivery.md), in a folder of the test's: the "program" is the
+// first bytes of one of this system and the least size the toolkit's update takes.
+
+@(private = "file")
+Delivery :: struct {
+	dir:     string,   // the browser's folder: the helper goes beside it
+	program: []byte,   // the pinned bytes
+	pin:     vault_pin.Pin,
+}
+
+@(private = "file")
+delivery_make :: proc(name: string) -> (d: Delivery) {
+	d.dir = strings.concatenate({base.temp_dir(context.temp_allocator), "/wren-vault-delivery-", name, "-", base.unique_name(context.temp_allocator)}, context.temp_allocator)
+	_ = os.make_directory_all(d.dir)
+	d.program = fake_program(7)
+	d.pin.version = "0.5.0"
+	d.pin.assets[0] = {platform = update.PLATFORM, size = i64(len(d.program)), sha256 = update.sha256_hex(d.program, context.temp_allocator)}
+	return
+}
+
+@(private = "file")
+fake_program :: proc(mark: u8) -> []byte {
+	data := make([]byte, update.MIN_BINARY + 5, context.temp_allocator)
+	copy(data, update.PLATFORM == update.PLATFORM_WINDOWS_X64 ? "MZ" : "\x7fELF")
+	data[len(data) - 1] = mark
+	return data
+}
+
+@(private = "file")
+beside :: proc(d: Delivery) -> string { return join_path({d.dir, HELPER_NAME}) }
+
+@(private = "file")
+download_asked :: proc(user: rawptr, url: string, size: i64) {
+	x := (^Fx)(user)
+	x.downloads += 1
+	delete(x.download_url)
+	x.download_url = strings.clone(url)
+	x.download_size = size
+}
+
+// A release without its helper asks for the pinned one, puts it beside the browser, and runs it; the next start finds it
+// and downloads nothing.
+@(test)
+a_release_downloads_its_pinned_helper_beside_it :: proc(t: ^testing.T) {
+	d := delivery_make("first")
+	defer base.remove_tree(d.dir)
+	x := fx_make(helper = Helper_Options{pin = d.pin, dir = d.dir}, download = download_asked)
+	defer fx_destroy(x)
+	testing.expect_value(t, x.v.state, State.Installing)
+	testing.expect_value(t, x.downloads, 1)
+	testing.expect_value(t, x.download_url, strings.concatenate({vault_pin.release_folder("0.5.0", context.temp_allocator), vault_pin.file_name("0.5.0", update.PLATFORM, context.temp_allocator)}, context.temp_allocator))
+	testing.expect_value(t, x.download_size, i64(len(d.program)))
+	vault_helper_downloaded(&x.v, d.program, "")
+	settle(x)
+	testing.expect_value(t, x.v.state, State.Logged_Out)
+	testing.expect_value(t, x.v.helper, beside(d))
+	placed, _ := os.read_entire_file(beside(d), context.temp_allocator)
+	testing.expect(t, slice.equal(placed, d.program), "the pinned bytes are beside the browser")
+	set_pref(x, "vault.enabled", "false")
+	set_pref(x, "vault.enabled", "true")
+	testing.expect_value(t, x.v.state, State.Logged_Out)
+	testing.expect_value(t, x.downloads, 1)
+}
+
+// A helper beside the browser that is not the pinned one (an older Wren's) is replaced before it runs; bytes that are not
+// the pinned ones are never put there.
+@(test)
+another_helper_is_replaced_by_the_pinned_one :: proc(t: ^testing.T) {
+	d := delivery_make("replace")
+	defer base.remove_tree(d.dir)
+	old := fake_program(1)
+	_ = os.write_entire_file(beside(d), old)
+	x := fx_make(helper = Helper_Options{pin = d.pin, dir = d.dir}, download = download_asked)
+	defer fx_destroy(x)
+	testing.expect_value(t, x.v.state, State.Installing)
+	testing.expect_value(t, x.script.spawned, 0)
+	vault_helper_downloaded(&x.v, fake_program(9), "")   // (the server gave other bytes)
+	settle(x)
+	testing.expect_value(t, x.v.state, State.Helper_Missing)
+	testing.expect(t, x.v.message != "", "why is said")
+	kept, _ := os.read_entire_file(beside(d), context.temp_allocator)
+	testing.expect(t, slice.equal(kept, old), "the helper there is untouched")
+	vault_retry(&x.v)
+	settle(x)
+	testing.expect_value(t, x.v.state, State.Installing)
+	testing.expect_value(t, x.downloads, 2)
+	vault_helper_downloaded(&x.v, d.program, "")
+	settle(x)
+	testing.expect_value(t, x.v.state, State.Logged_Out)
+	placed, _ := os.read_entire_file(beside(d), context.temp_allocator)
+	testing.expect(t, slice.equal(placed, d.program), "the pinned bytes replaced the old ones")
+}
+
+@(test)
+a_failed_download_is_said :: proc(t: ^testing.T) {
+	d := delivery_make("offline")
+	defer base.remove_tree(d.dir)
+	x := fx_make(helper = Helper_Options{pin = d.pin, dir = d.dir}, download = download_asked)
+	defer fx_destroy(x)
+	vault_helper_downloaded(&x.v, nil, "no network")
+	settle(x)
+	testing.expect_value(t, x.v.state, State.Helper_Missing)
+	testing.expect(t, strings.contains(x.v.message, "no network"), x.v.message)
+	testing.expect(t, !os.exists(beside(d)))
+}
+
+// A development build runs its own build of the helper as it is, and downloads nothing; without one it says how to make it.
+// A pin without this system's program downloads nothing either.
+@(test)
+a_development_build_runs_its_own_helper :: proc(t: ^testing.T) {
+	d := delivery_make("dev")
+	defer base.remove_tree(d.dir)
+	x := fx_make(helper = Helper_Options{development = true, pin = d.pin, dir = d.dir}, download = download_asked)
+	testing.expect_value(t, x.v.state, State.Helper_Missing)
+	testing.expect(t, strings.contains(x.v.message, "wrentool build vault"), x.v.message)
+	fx_destroy(x)
+	_ = os.make_directory_all(join_path({d.dir, "vault"}))
+	_ = os.write_entire_file(join_path({d.dir, "vault", HELPER_NAME}), fake_program(3))
+	y := fx_make(helper = Helper_Options{development = true, pin = d.pin, dir = d.dir}, download = download_asked)
+	testing.expect_value(t, y.v.state, State.Logged_Out)
+	testing.expect_value(t, y.v.helper, join_path({d.dir, "vault", HELPER_NAME}))
+	testing.expect_value(t, y.downloads, 0)
+	fx_destroy(y)
+	z := fx_make(helper = Helper_Options{pin = {version = "0.5.0"}, dir = d.dir}, download = download_asked)
+	testing.expect_value(t, z.v.state, State.Helper_Missing)
+	testing.expect_value(t, z.downloads, 0)
+	fx_destroy(z)
 }
 
 @(test)

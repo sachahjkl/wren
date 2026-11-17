@@ -40,6 +40,7 @@ src/remote/api/session.odin 1  # wren ctl: the throwaway profile folder of a dri
 src/remote/client/commands.odin 2  # wren ctl (another process, no interface): files the user named on its command line
 src/remote/client/diff.odin 1  # wren ctl (another process, no interface): the picture the user named on its command line
 src/remote/client/spawn.odin 3  # wren ctl (another process, no interface): its own state file
+src/vault/delivery.odin 5  # the program's folder, not the profile's: the pinned helper beside the executable, written, read back and renamed (removed on a failure), on the blocking pool
 src/wasm/disk_cache.odin 10  # the compiled-module cache's own store: a temporary file renamed on its job's thread, the stale ones swept
 src/wasm/host_profile.odin 1  # diagnostic: the host profile a developer asks for
 src/wasm/profiler.odin 1  # diagnostic: the Wasm profiler's output

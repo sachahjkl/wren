@@ -284,6 +284,9 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		if pkg == "images" { flags = {TOOLKIT, WB, ONE_THREAD} }
 		unit(&t, fmt.aprintf("unit tests: %s", pkg), fmt.aprintf("src/%s", pkg), exe(fmt.aprintf("build/%s_test", pkg)), flags)
 	}
+	// (the pin of the Vault's helper and wrentool's commands that release, sign, pin and bundle it: src/md/features/vault-helper-delivery.md)
+	unit(&t, "unit tests: vault/pin", "src/vault/pin", exe("build/vault_pin_test"), {TOOLKIT, WB})
+	unit(&t, "unit tests: wrentool vault (the helper's release, its pin, the files of the Linux package)", "src/tools/wrentool/vaulttool", exe("build/vaulttool_test"), {TOOLKIT, WB})
 	unit(&t, "unit tests of freed memory made loud: base (src\\base\\poison.odin: the heap, arenas, scopes, temporary allocators, pools, the C runtime)", "src/base", exe("build/base_poison_test"), {TOOLKIT, WB, POISON})
 	unit(&t, "unit tests of the style passes and of layout on poisoned memory: style", "src/style", exe("build/style_poison_test"), {TOOLKIT, WB, POISON})
 	unit(&t, "unit tests of the style passes and of layout on poisoned memory: layout", "src/layout", exe("build/layout_poison_test"), {TOOLKIT, WB, POISON})

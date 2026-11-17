@@ -20,7 +20,8 @@ package changelog
 //   wrentool changelog -Migrate [-DefaultType Added] [-Types '42=Fixed,57=Changed']
 //                                  the entries a branch still wrote under "## [Unreleased]" become fragments (an entry under a
 //                                  "### Type" heading keeps it; another one takes -Types[its line] or -DefaultType)
-// -Root dir works on another checkout (tests). Exit code 0 when all is well, 1 otherwise.
+// -Root dir works on another checkout (tests; wrentool vault prepare, on wren-vault's), -Repo url names its repository
+// in the link references. Exit code 0 when all is well, 1 otherwise.
 
 import "core:fmt"
 import "core:os"
@@ -43,7 +44,7 @@ YANKED              :: " [YANKED]"
 FRAGMENT_DIR        :: "changelog.d"
 CHANGELOG_FILE      :: "CHANGELOG.md"
 README_NAME         :: "README.md"                // the folder's, not a fragment
-FLAG_SPEC           :: "-New -Check -Assemble -Section -Migrate -Version= -Release= -Date= -Type= -Subject= -Text= -Types= -DefaultType= -Out= -Root="
+FLAG_SPEC           :: "-New -Check -Assemble -Section -Migrate -Version= -Release= -Date= -Type= -Subject= -Text= -Types= -DefaultType= -Out= -Root= -Repo="
 USAGE               :: "wrentool changelog: -New, -Check, -Assemble, -Section or -Migrate (see the head of src/tools/wrentool/changelog/changelog.odin)"
 UTF8_BOM            :: "\xEF\xBB\xBF"
 FRAGMENT_PATTERN    :: "<yyyyMMdd-HHmmss>-<subject>.md"
@@ -72,6 +73,7 @@ Semver :: [SEMVER_PARTS]int
 // What a run knows: the checkout it works on, where it says things, and what went wrong so far.
 Tool :: struct {
 	root:     string,
+	repo:     string,   // the repository's URL in the link references (REPO_URL by default)
 	out:      ^strings.Builder,
 	errors:   [dynamic]string,
 	warnings: [dynamic]string,
@@ -124,7 +126,7 @@ execute :: proc(args: []string, out: ^strings.Builder) -> int {
 	if !ok { return 1 }
 	root := tooling.flag(flags, "-Root")
 	if root == "" { root = tooling.repo_root() }
-	t := Tool{root = root, out = out}
+	t := Tool{root = root, repo = tooling.flag(flags, "-Repo", REPO_URL), out = out}
 	has :: tooling.flag_has
 	opt :: tooling.flag
 	switch {
@@ -157,10 +159,10 @@ fragments_body :: proc(root: string, allocator := context.allocator) -> (body: s
 }
 
 // What `-Check -Release version` does, saying it on standard output: ready to tag `version`?
-check_release :: proc(root, version: string) -> bool {
+check_release :: proc(root, version: string, repo := REPO_URL) -> bool {
 	out := strings.builder_make(context.temp_allocator)
 	context.allocator = context.temp_allocator
-	t := Tool{root = root, out = &out}
+	t := Tool{root = root, repo = repo, out = &out}
 	code := command_check(&t, version)
 	fmt.print(strings.to_string(out))
 	return code == 0
@@ -489,15 +491,15 @@ versions_of :: proc(lines: []string) -> []string {
 }
 
 // The link references of these versions: each one compares with the version below it, the oldest has only its tag.
-link_lines :: proc(versions: []string) -> [dynamic]string {
+link_lines :: proc(versions: []string, repo := REPO_URL) -> [dynamic]string {
 	links := make([dynamic]string)
 	if len(versions) == 0 { return links }
-	append(&links, fmt.aprintf("[Unreleased]: %s/compare/v%s...HEAD", REPO_URL, versions[0]))
+	append(&links, fmt.aprintf("[Unreleased]: %s/compare/v%s...HEAD", repo, versions[0]))
 	for v, i in versions {
 		if i + 1 < len(versions) {
-			append(&links, fmt.aprintf("[%s]: %s/compare/v%s...v%s", v, REPO_URL, versions[i + 1], v))
+			append(&links, fmt.aprintf("[%s]: %s/compare/v%s...v%s", v, repo, versions[i + 1], v))
 		} else {
-			append(&links, fmt.aprintf("[%s]: %s/releases/tag/v%s", v, REPO_URL, v))
+			append(&links, fmt.aprintf("[%s]: %s/releases/tag/v%s", v, repo, v))
 		}
 	}
 	return links
@@ -567,7 +569,7 @@ check_format :: proc(t: ^Tool, c: ^Changelog) {
 		// text before a version's first section introduces it; below a section, only an entry and what continues it
 		if sub != "" && !in_entry { fail(t, "%s line %d: text in section '%s' that is not an entry ('- ...')", CHANGELOG_FILE, n, sub) }
 	}
-	expected := link_lines(versions_of(c.lines))
+	expected := link_lines(versions_of(c.lines), t.repo)
 	actual := make([dynamic]string)
 	for l in c.lines[c.link_start:] { if s := strings.trim_right_space(l); s != "" { append(&actual, s) } }
 	wrong := 0
@@ -776,7 +778,10 @@ command_check :: proc(t: ^Tool, release: string) -> int {
 		if len(frags) > 0 { fail(t, "%d fragments are not assembled: wrentool changelog -Assemble -Version %s", len(frags), release) }
 		if len(c.entries) > 0 { fail(t, "entries are left under '%s'", UNRELEASED) }
 		if last != release { fail(t, "the latest section of %s is '%s', not %s", CHANGELOG_FILE, last, release) }
-		if sv, found := source_version(t); found && sv != release { fail(t, "the sources say version %s, not %s", sv, release) }
+		// (a checkout without Wren's version file, wren-vault's, says its version in Cargo.toml: wrentool vault checks that one)
+		if os.exists(join_path(t.root, SOURCE_VERSION_FILE)) {
+			if sv, found := source_version(t); found && sv != release { fail(t, "the sources say version %s, not %s", sv, release) }
+		}
 	}
 	for w in t.warnings { fmt.sbprintfln(t.out, "warning: %s", w) }
 	for e in t.errors { fmt.sbprintfln(t.out, "error: %s", e) }
@@ -856,7 +861,7 @@ command_assemble :: proc(t: ^Tool, version, date, default_type, out_path: string
 	}
 	all := slice.concatenate([][]string{before, released[:], after})
 	for len(all) > 0 && all[len(all) - 1] == "" { all = all[:len(all) - 1] }
-	links := link_lines(versions_of(all))
+	links := link_lines(versions_of(all), t.repo)
 	if len(links) > 0 { all = slice.concatenate([][]string{all, {""}, links[:]}) }
 	_ = os.write_entire_file(join_path(t.root, CHANGELOG_FILE), strings.join(slice.concatenate([][]string{all, {""}}), c.nl))
 	fmt.sbprintfln(t.out, "%s: section %s (%d entries)", CHANGELOG_FILE, version, len(items))

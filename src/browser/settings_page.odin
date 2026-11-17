@@ -39,7 +39,7 @@ SETTINGS_PAGES := [?]Settings_Page_Def{
 		"history.global.retention_days", "browser.profile.persist"}},
 	{"vault", "Vault", lucide.LOCK, {
 		"vault.enabled", "vault.server.region", "vault.server.url", "vault.lock.idle_minutes", "vault.sync.interval_minutes",
-		"vault.fill.insecure", "vault.fill.dropdown", "vault.fill.shortcut", "vault.clipboard.clear_seconds", "vault.helper.path"}},
+		"vault.fill.insecure", "vault.fill.dropdown", "vault.fill.shortcut", "vault.clipboard.clear_seconds"}},
 	{"downloads", "Downloads", lucide.DOWNLOAD, {"browser.download.ask", "browser.download.directory"}},
 	{"media", "Media", lucide.PLAY, {"media.autoplay.policy"}},
 	// (the toolkit's standard Text set; the renderer and DirectWrite's mode are registered on Windows alone, and a page skips

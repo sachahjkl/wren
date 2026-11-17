@@ -370,21 +370,20 @@ the clipboard still holds that value. On Windows, the copy is marked to stay out
 
 ### 3.7 Helper integrity
 
-Wren runs the helper only from a path that it controls, and only when its SHA-256 equals the value built into this
-Wren version. `vault.helper.path` (for development and for packagers) overrides the path; a policy file can forbid it.
+A release of Wren runs the helper beside its executable, and only when its size and SHA-256 equal the pin built into
+this Wren version (`vault.version`). A development build runs its own `build/vault/wren-vault`; a copy in the Nix store
+runs its package's. No preference names another path. The design: [src/md/features/vault-helper-delivery.md](../src/md/features/vault-helper-delivery.md).
 
 ## 4. Integration design
 
 ### 4.1 Distribution of the helper
 
-`wren.exe` has no file beside it. This rule stays. When the user enables the feature:
-
-1. Wren shows what will happen: a download of `wren-vault` (size, license GPL-3.0, link to the source).
-2. Wren downloads the helper of its own version from the release assets, with the code of `gui_toolkit` `update`.
-3. Wren checks the SHA-256 that is built into `wren.exe`, then stores the file in `<data dir>/vault/<version>/`.
-4. A Wren update downloads the matching helper before the first unlock. Old versions are deleted.
-
-Linux packages (Nix, others) install `wren-vault` beside `wren`. Wren finds it there and downloads nothing.
+The design is [src/md/features/vault-helper-delivery.md](../src/md/features/vault-helper-delivery.md). In short:
+wren-vault publishes signed releases (the toolkit's update manifests, a key of its own); Wren pins one release in
+`vault.version` (its version, and the size and SHA-256 of each platform's program). The Linux archive carries the
+pinned helper beside `wren`, with its licence and a note of its source. The Windows release stays one file: at the
+first use, Wren downloads the pinned helper beside `wren.exe` and checks it against the pin. A new Wren pins a new
+helper and replaces the old one before the first unlock.
 
 ### 4.2 Packages
 
@@ -450,7 +449,6 @@ All in `src/vault/settings.odin`, registered in `src/browser/settings.odin`.
 | `vault.clipboard.clear_seconds` | Int, 30, 0 to 600 | 0: never clear. |
 | `vault.passkeys.offer` | Bool, `true` | A page's passkey request offers the unlocked vault's passkeys of the site (4.11). |
 | `vault.request.timeout_ms` | Int, 15000, 1000 to 120000 | Deadline of one helper request. |
-| `vault.helper.path` | String, empty | Override of the helper path. |
 | `vault.test.remote` | Bool, `false` | For automated tests only: remote control can drive the Vault surfaces. |
 
 ### 4.6 Forms
@@ -814,11 +812,11 @@ this section is the truth.
   (`Control.vault_filled`, until a reset or a script's value): history restoration (`page/history_state.odin`) skips
   it, and a document with a filled field is not kept in the back/forward cache (`Forms.vault_filled`). Session files
   hold no form values at all. The fill clears the field's undo steps.
-- The helper is found, not downloaded: `vault.helper.path`, else `wren-vault` beside the browser, else in its `vault`
-  folder (`build/vault/` beside `build/wren`). The download on enable (4.1), with the SHA-256 built into Wren (3.7),
-  needs release assets of the helper: a later step.
+- The helper (4.1, 3.7): a development build runs `build/vault/wren-vault` (else the one beside it) as it is; a copy
+  in the Nix store runs its package's; a release runs the one beside it when it is the pinned one (`vault.version`),
+  else downloads the pinned one there first (state `Installing`).
 - Automation: `wrentool build vault`, `wrentool vault test`, `wrentool vault probe` (it asks for a second step's code
-  on its input).
+  on its input); `wrentool vault prepare | sign | pin | fetch` (the releases, 4.1).
 - Phase 3 (`src/browser/vault_fill.odin`):
   - The target of a fill is the document that holds the focused field: the focused frame's, else the tab's. The Vault
     keeps four sets of rows (`Row_Slot`): the tab's document (`Page`), the focused frame's document (`Frame`), the

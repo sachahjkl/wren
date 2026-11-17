@@ -5,7 +5,8 @@
 // a flag stays in the shell's history), syncs, prints the item count, and locks. It prints no value of the vault.
 // -Code is the second step's code: the authenticator's (or the email's, for an account with email only). Without it,
 // probe asks for the code on its input when the account needs one (a new-device code is mailed at that moment).
-// The protocol is written here with core:encoding/json: this tool links none of the browser's packages.
+// The protocol is written here with core:encoding/json: this tool links none of the browser's packages (only the pin of
+// the helper, wb:vault/pin). release.odin: the helper's releases and Wren's pin (prepare, check-release, sign, pin, fetch).
 package vaulttool
 
 import "core:encoding/json"
@@ -26,12 +27,14 @@ run :: proc(args: []string) -> int {
 	case "probe":
 		return probe(args[1:])
 	}
+	if code, known := run_release(args[0], args[1:]); known { return code }   // release.odin
 	usage()
 	return 2
 }
 
 usage :: proc() {
 	fmt.eprintln("wrentool vault test")
+	fmt.eprintln("wrentool vault prepare <X.Y.Z> | check-release <X.Y.Z> | sign -Dir d -Version v [-Private f] | pin <X.Y.Z> [-Folder url] | fetch [-Platform p] [-Out d]")
 	fmt.eprintfln("wrentool vault probe -Server <base URL> -Email <email> [-Code <code>] [-Helper <path>]   (the password: %s)", PASSWORD_ENV)
 }
 

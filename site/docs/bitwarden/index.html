@@ -655,18 +655,17 @@ limit which page gets it.</p>
 <p>A copied password or TOTP code is removed from the clipboard after <code>vault.clipboard.clear_seconds</code> (default 30), if
 the clipboard still holds that value. On Windows, the copy is marked to stay out of the clipboard history.</p>
 <h3 id="37-helper-integrity"><a class="anchor" href="#37-helper-integrity" aria-hidden="true">#</a>3.7 Helper integrity</h3>
-<p>Wren runs the helper only from a path that it controls, and only when its SHA-256 equals the value built into this
-Wren version. <code>vault.helper.path</code> (for development and for packagers) overrides the path; a policy file can forbid it.</p>
+<p>A release of Wren runs the helper beside its executable, and only when its size and SHA-256 equal the pin built into
+this Wren version (<code>vault.version</code>). A development build runs its own <code>build/vault/wren-vault</code>; a copy in the Nix store
+runs its package's. No preference names another path. The design: <a href="https://github.com/sachahjkl/wren/blob/master/src/md/features/vault-helper-delivery.md">src/md/features/vault-helper-delivery.md</a>.</p>
 <h2 id="4-integration-design"><a class="anchor" href="#4-integration-design" aria-hidden="true">#</a>4. Integration design</h2>
 <h3 id="41-distribution-of-the-helper"><a class="anchor" href="#41-distribution-of-the-helper" aria-hidden="true">#</a>4.1 Distribution of the helper</h3>
-<p><code>wren.exe</code> has no file beside it. This rule stays. When the user enables the feature:</p>
-<ol>
-<li>Wren shows what will happen: a download of <code>wren-vault</code> (size, license GPL-3.0, link to the source).</li>
-<li>Wren downloads the helper of its own version from the release assets, with the code of <code>gui_toolkit</code> <code>update</code>.</li>
-<li>Wren checks the SHA-256 that is built into <code>wren.exe</code>, then stores the file in <code>&lt;data dir&gt;/vault/&lt;version&gt;/</code>.</li>
-<li>A Wren update downloads the matching helper before the first unlock. Old versions are deleted.</li>
-</ol>
-<p>Linux packages (Nix, others) install <code>wren-vault</code> beside <code>wren</code>. Wren finds it there and downloads nothing.</p>
+<p>The design is <a href="https://github.com/sachahjkl/wren/blob/master/src/md/features/vault-helper-delivery.md">src/md/features/vault-helper-delivery.md</a>. In short:
+wren-vault publishes signed releases (the toolkit's update manifests, a key of its own); Wren pins one release in
+<code>vault.version</code> (its version, and the size and SHA-256 of each platform's program). The Linux archive carries the
+pinned helper beside <code>wren</code>, with its licence and a note of its source. The Windows release stays one file: at the
+first use, Wren downloads the pinned helper beside <code>wren.exe</code> and checks it against the pin. A new Wren pins a new
+helper and replaces the old one before the first unlock.</p>
 <h3 id="42-packages"><a class="anchor" href="#42-packages" aria-hidden="true">#</a>4.2 Packages</h3>
 <div class="table-box"><table>
 <thead><tr><th>Package</th><th>Role</th></tr></thead>
@@ -724,7 +723,6 @@ URLs only). Wren does not start the helper to draw the locked icon.</p>
 <tr><td><code>vault.clipboard.clear_seconds</code></td><td>Int, 30, 0 to 600</td><td>0: never clear.</td></tr>
 <tr><td><code>vault.passkeys.offer</code></td><td>Bool, <code>true</code></td><td>A page's passkey request offers the unlocked vault's passkeys of the site (4.11).</td></tr>
 <tr><td><code>vault.request.timeout_ms</code></td><td>Int, 15000, 1000 to 120000</td><td>Deadline of one helper request.</td></tr>
-<tr><td><code>vault.helper.path</code></td><td>String, empty</td><td>Override of the helper path.</td></tr>
 <tr><td><code>vault.test.remote</code></td><td>Bool, <code>false</code></td><td>For automated tests only: remote control can drive the Vault surfaces.</td></tr>
 </tbody>
 </table></div>
@@ -1069,11 +1067,11 @@ the dialogs close and zero their fields: a capture of the window shows nothing o
 (<code>Control.vault_filled</code>, until a reset or a script's value): history restoration (<code>page/history_state.odin</code>) skips
 it, and a document with a filled field is not kept in the back/forward cache (<code>Forms.vault_filled</code>). Session files
 hold no form values at all. The fill clears the field's undo steps.</li>
-<li>The helper is found, not downloaded: <code>vault.helper.path</code>, else <code>wren-vault</code> beside the browser, else in its <code>vault</code>
-folder (<code>build/vault/</code> beside <code>build/wren</code>). The download on enable (4.1), with the SHA-256 built into Wren (3.7),
-needs release assets of the helper: a later step.</li>
+<li>The helper (4.1, 3.7): a development build runs <code>build/vault/wren-vault</code> (else the one beside it) as it is; a copy
+in the Nix store runs its package's; a release runs the one beside it when it is the pinned one (<code>vault.version</code>),
+else downloads the pinned one there first (state <code>Installing</code>).</li>
 <li>Automation: <code>wrentool build vault</code>, <code>wrentool vault test</code>, <code>wrentool vault probe</code> (it asks for a second step's code
-on its input).</li>
+on its input); <code>wrentool vault prepare | sign | pin | fetch</code> (the releases, 4.1).</li>
 <li><p>Phase 3 (<code>src/browser/vault_fill.odin</code>):</p>
 <ul>
 <li>The target of a fill is the document that holds the focused field: the focused frame's, else the tab's. The Vault

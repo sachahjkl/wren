@@ -28,7 +28,6 @@ Settings :: struct {
 	idle_minutes: int,      // lock after this idle time; 0: only on demand and at exit
 	sync_minutes: int,      // time between two syncs while unlocked
 	timeout_ms:   int,      // deadline of one helper request
-	helper_path:  string,   // owned: where the helper is ("" = beside the browser)
 	insecure:     Insecure_Fill,
 	test_remote:  bool,     // remote control may drive the Vault surfaces (automated tests only)
 	dropdown:     bool,     // the list of logins under a focused login field
@@ -86,8 +85,6 @@ PREFS := [?]config.Def{
 		description = "Time between two syncs with the server while the Vault is unlocked."},
 	{name = "vault.request.timeout_ms", kind = .Int, default = {i = 15_000}, bounded = true, min = 1000, max = 120_000, value_kind = .Duration,
 		description = "How long the Vault waits for one answer of its helper (a login, an unlock, the logins of a page, a fill). Past it the request is dropped and the helper is stopped."},
-	{name = "vault.helper.path", kind = .String, default = {s = ""},
-		description = "Where the helper program wren-vault is. Empty: beside the browser, or in its vault folder. For development and for packagers."},
 	{name = "vault.fill.insecure", kind = .String, default = {s = "ask"}, choices = {"ask", "never"},
 		description = "On a page served over plain http (not this machine), ask before each fill, or never fill."},
 	{name = "vault.fill.dropdown", kind = .Bool, default = {b = true},
@@ -145,7 +142,6 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.idle_minutes = int(config.int_of(p, "vault.lock.idle_minutes"))
 	s.sync_minutes = int(config.int_of(p, "vault.sync.interval_minutes"))
 	s.timeout_ms = int(config.int_of(p, "vault.request.timeout_ms"))
-	s.helper_path = strings.clone(strings.trim_space(config.string_of(p, "vault.helper.path")))
 	s.insecure = config.string_of(p, "vault.fill.insecure") == "never" ? .Never : .Ask
 	s.test_remote = config.bool_of(p, "vault.test.remote")
 	s.dropdown = config.bool_of(p, "vault.fill.dropdown")
@@ -196,7 +192,6 @@ settings_default :: proc() -> Settings {
 
 settings_destroy :: proc(s: ^Settings) {
 	delete(s.server_url)
-	delete(s.helper_path)
 	delete(s.shortcut)
 	delete(s.generator.separator)
 	s^ = {}

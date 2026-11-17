@@ -19,7 +19,9 @@ import "wb:tools/wrentool/builder"
 import "wb:tools/wrentool/changelog"
 import "wb:tools/wrentool/deps"
 import "wb:tools/wrentool/gen"
+import "wb:tools/wrentool/vaulttool"
 import toolbox "toolkit:toolbox"
+import update "toolkit:update"
 
 EXIT_USAGE :: 2
 DIST :: "build/dist"
@@ -52,6 +54,9 @@ It needs, from your distribution:
                 a Vulkan or OpenGL driver (Mesa's is enough)
   for H.264     Cisco's openh264; AV1 and VP9 are built in
   for dialogs   zenity or kdialog
+
+wren-vault beside it is the helper of the Vault (Bitwarden® accounts): a separate program under the GPL-3.0, with
+its licence (wren-vault-LICENSE.txt) and the address of its source (wren-vault-SOURCE.txt). It needs libdbus.
 
 NixOS: start it once with steam-run (or nix-ld with the libraries above) and choose Install in Setup. The installed
 copy gets its libraries from Nix and then starts by itself. Or install the Nix package: nix profile add git+https://github.com/sachahjkl/wren
@@ -93,6 +98,13 @@ package_linux :: proc(version: string) -> int {
 	_ = tooling.run({command = {"strip", "--strip-debug", fmt.tprintf("%s/wren", stage)}})
 	_ = os.copy_file(fmt.tprintf("%s/LICENSE", stage), "LICENSE")
 	_ = os.write_entire_file(fmt.tprintf("%s/README.txt", stage), fmt.tprintf(LINUX_README, version))
+	// the Vault's helper beside the browser: a separate GPL program, with its licence and its source note (src/md/features/vault-helper-delivery.md)
+	helper, problem := vaulttool.fetch_pinned(update.PLATFORM_LINUX_X64)
+	if problem != "" { return fail("the Vault's helper:", problem) }
+	for b in vaulttool.bundle_files(helper, update.PLATFORM_LINUX_X64, context.temp_allocator) {
+		if os.copy_file(fmt.tprintf("%s/%s", stage, b.name), b.from) != nil { return fail(b.from, "cannot be copied") }
+	}
+	_ = tooling.run({command = {"chmod", "+x", fmt.tprintf("%s/wren-vault", stage)}})
 	tar_name := fmt.tprintf("%s.tar.gz", name)
 	if tooling.run({command = {"tar", "-C", DIST, "-czf", fmt.tprintf("%s/%s", DIST, tar_name), name}}) != 0 { return fail("tar failed") }
 	sha, _ := toolbox.sha256_file(fmt.tprintf("%s/%s", DIST, tar_name))
@@ -148,6 +160,10 @@ package_windows :: proc(f: tooling.Flags, version: string) -> int {
 	if !dev && label == "" && !tooling.flag_has(f, "-AllowUnreleased") {
 		cwd, _ := os.get_working_directory(context.temp_allocator)
 		if !changelog.check_release(cwd, version) { return fail("the CHANGELOG is not ready for", version, ": wrentool changelog -Assemble -Version", version, "(or -AllowUnreleased to try a package)") }
+	}
+	// a release downloads its pinned helper at the first use of the Vault: it must pin one for this system (vault-helper-delivery.md)
+	if !dev && label == "" {
+		if problem := vaulttool.pin_names(update.PLATFORM_WINDOWS_X64); problem != "" { return fail("the Vault's helper:", problem) }
 	}
 	name := fmt.tprintf("wren-%s%s%s-windows-x64", version, label, dev ? "-dev" : "")
 	_ = os.make_directory_all(fmt.tprintf("%s/symbols", DIST))

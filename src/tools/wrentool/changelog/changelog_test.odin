@@ -208,6 +208,22 @@ test_release :: proc(t: ^testing.T) {
 	refuses(t, tool(root, "-Assemble", "-Version", TEST_RELEASE), "already has a section 9.9.9")
 }
 
+// Another project's checkout (wren-vault's, wrentool vault prepare): its repository in the link references, its version
+// said elsewhere than src/browser/about.odin.
+@(test)
+test_release_of_another_repository :: proc(t: ^testing.T) {
+	OTHER :: "https://github.com/sachahjkl/wren-vault"
+	root := fresh("other")
+	_ = os.remove(fmt.aprintf("%s/%s", root, SOURCE_VERSION_FILE, allocator = context.temp_allocator))
+	write(root, CHANGELOG_FILE, "# Changelog\n\nIntro.\n\n## [Unreleased]\n")
+	fragment(root, "20261026-100000-fix.md", "type: Fixed\n\n**A fix**.\n")
+	passes(t, tool(root, "-Assemble", "-Version", TEST_RELEASE, "-Date", TEST_DATE, "-Repo", OTHER), "section 9.9.9")
+	cl := read(root, CHANGELOG_FILE)
+	testing.expect(t, strings.contains(cl, "[9.9.9]: " + OTHER + "/releases/tag/v9.9.9\n"), "the link of that repository")
+	testing.expect(t, check_release(root, TEST_RELEASE, OTHER), "ready, with no about.odin")
+	testing.expect(t, !check_release(root, TEST_RELEASE), "Wren's links are not that repository's")
+}
+
 @(test)
 test_release_sources_version :: proc(t: ^testing.T) {
 	root := fresh("sources")
