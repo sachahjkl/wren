@@ -338,7 +338,7 @@ side_colors_compose_with_palettes :: proc(t: ^testing.T) {
 	}
 }
 
-// The style is a preference: modern by default (the machined finish draws its tabs), changeable at once, with bounded
+// The style is a preference: modern by default (the finish draws its tabs), changeable at once, with bounded
 // companions.
 @(test)
 chrome_style_preferences :: proc(t: ^testing.T) {

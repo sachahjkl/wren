@@ -38,7 +38,7 @@ standard_settings_have_wren_defaults :: proc(t: ^testing.T) {
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)
 	testing.expect_value(t, config.string_of(&p, "appearance.theme"), "Ember")
-	testing.expect_value(t, config.string_of(&p, "appearance.finish"), "machined")
+	testing.expect_value(t, config.string_of(&p, "appearance.finish"), "gradient")
 	testing.expect_value(t, config.string_of(&p, "browser.ui.chrome_style"), "modern")
 	testing.expect_value(t, config.float_of(&p, "appearance.font_size"), 15)
 	testing.expect_value(t, config.bool_of(&p, "window.system_title"), false)
