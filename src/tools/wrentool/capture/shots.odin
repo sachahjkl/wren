@@ -152,6 +152,8 @@ run_shots :: proc(args: []string) -> int {
 		prefs := make([dynamic]string, context.temp_allocator)
 		append(&prefs, SHOT_PREFS)
 		append(&prefs, ..s.prefs)
+		// (about:demos names where its pages come from: the server's name too, not the path of a checkout)
+		if site_base != "" { append(&prefs, fmt.tprintf("browser.demos.path=%s", site_base)) }
 		if !bench.start(&w, {exe = exe, size = size, dpi = SHOT_DPI, prefs = prefs[:], url = address(s.url)}) { return 1 }
 		good := at_rest(&w.session) && run_actions(&w.session, s.actions) && take(&w.session, png)
 		bench.stop(&w)
