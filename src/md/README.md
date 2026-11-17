@@ -23,4 +23,4 @@ Wasm, run by Wasmtime. The window, the widgets, the settings, the install and th
 
 ## File Index
 
-No design file yet: each new design gets its line here.
+- [features/profile.md](features/profile.md): where the profile lives, and its move to `FromentSoftware/Wren`.

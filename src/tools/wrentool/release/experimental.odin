@@ -30,9 +30,9 @@ CARD_SCRIPT :: `(document.getElementById("lic") ? "card" : "no card") + "|" + do
 KNOWN_LIMITS :: `- The exe is not signed: Windows SmartScreen or an antivirus may warn on the first start ("More info", then "Run anyway"). Its SHA-256 is below.
 - Windows 10 or 11, 64 bits. Nothing else to install.
 - This build trusts the development key of the licences (public, worth nothing): the demonstration licence shows the card, a real licence will not be accepted by it. A release never accepts that key, and has no licence inside.
-- It shares %APPDATA%\Wren with any other Wren: start it with ` + "`--profile <folder>`" + ` to keep it apart.
+- It shares %APPDATA%\FromentSoftware\Wren with any other Wren: start it with ` + "`--profile <folder>`" + ` to keep it apart.
 - With a fresh profile the content blocker compiles its lists at the first start: the first page can wait a few seconds (up to 20) before it loads.
-- Experimental means what it says: it is the current state of the work, tested by the project's checks but not used for long. Crashes leave a report in %APPDATA%\Wren\crashes.`
+- Experimental means what it says: it is the current state of the work, tested by the project's checks but not used for long. Crashes leave a report in %APPDATA%\FromentSoftware\Wren\crashes.`
 SECTION_NAMES := []string{"Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"}
 
 // The card of about:wren, in a Wren of that exe and profile.

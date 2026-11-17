@@ -144,7 +144,7 @@ copy* (a copy is installed elsewhere; same version or newer: **Replace installed
 
 ### Standalone and portable
 
-*Standalone* is a copy that was not installed and keeps the **normal profile** (`%APPDATA%\Wren`). A *portable* copy is a
+*Standalone* is a copy that was not installed and keeps the **normal profile** (`%APPDATA%\FromentSoftware\Wren`). A *portable* copy is a
 folder with a file `wren.portable` next to `wren.exe`: its profile (preferences, cookies, history, session, crash reports,
 license) is `<folder>\data`, it never offers Setup by itself, and `--profile DIR` still wins.
 

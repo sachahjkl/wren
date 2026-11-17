@@ -238,7 +238,7 @@ The address bar takes Windows paths as well as URLs (`C:\pages\a.html`, `S:/site
 and files or folders dropped on the window open. A folder opens its `index.html` (`file.directory.index`), else a list
 of its files (`file.directory.*` in `about:config`); `about:about` lists the built-in pages.
 
-Useful command-line options: `--profile DIR` (another profile directory; the default is `%APPDATA%\Wren`),
+Useful command-line options: `--profile DIR` (another profile directory; the default is `%APPDATA%\FromentSoftware\Wren`, `~/.config/FromentSoftware/Wren` on Linux),
 `--pref name=value` (any preference of `about:config`, for example `--pref javascript.enabled=false`),
 `--policy FILE` (without it, `policies.txt` beside `wren.exe` is read, never one in the working directory).
 

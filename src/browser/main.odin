@@ -1745,13 +1745,19 @@ app_start :: proc(args: []string) -> ^App {
 	cdp_port, cdp_have_port, cdp_address, a9 := cdp_extract_args(a8[:])   // --remote-debugging-port[=N] / --remote-debugging-address (cdp.odin)
 	app_prefs_begin(app)
 	rest, arg_errors := config.apply_args(&app.prefs, a9[:], context.temp_allocator)   // (read before the first frame)
-	cfg_dir := platform.user_dir(.Config, "", context.temp_allocator)
 	portable_dir := profile_override == "" ? portable_profile_dir() : ""   // a copy with wren.portable beside it keeps its profile beside it (setup.odin)
 	app.portable = portable_dir != ""
-	app.profile_dir = strings.clone(profile_override != "" ? profile_override : (app.portable ? portable_dir : (cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/", APP_NAME}, context.temp_allocator))))
+	move_failed := ""
+	switch {
+	case profile_override != "": app.profile_dir = strings.clone(profile_override)
+	case app.portable:           app.profile_dir = strings.clone(portable_dir)
+	case:                        app.profile_dir, move_failed = profile_folder_move(context.allocator)   // profile_folder.odin
+	}
 	// program_log.odin: <profile>/logs/wren.log, the user's profile even for a private Wren (its own goes at its end)
 	logger, has_log := program_log_install(app.profile_dir)
 	if has_log { context.logger = logger }
+	if move_failed != "" { log.warnf("the profile did not move: %s", move_failed) }
+	delete(move_failed)
 	if private_mode {
 		// a profile of its own in the temporary folder, with the user's settings copied in (private_browsing.odin)
 		if dir := private_profile_make(app.profile_dir); dir != "" {

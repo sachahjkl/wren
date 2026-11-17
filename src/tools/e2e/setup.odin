@@ -28,7 +28,7 @@ import "wb:remote/api"
 @(private = "file") NEWER_RELEASE :: "browser.update.url=data:application/json,%7B%22tag_name%22%3A%22v99.0.0%22%2C%22html_url%22%3A%22https%3A%2F%2Fgithub.com%2Fsachahjkl%2Fwren%2Freleases%2Ftag%2Fv99.0.0%22%7D"
 @(private = "file") NEWER_STILL :: "browser.update.url=data:application/json,%7B%22tag_name%22%3A%22v100.0.0%22%7D"
 // The profile's folder under APPDATA.
-@(private = "file") PROFILE_IN_APPDATA :: "Wren"
+@(private = "file") PROFILE_IN_APPDATA :: "FromentSoftware/Wren"
 
 // The environment of a start that finds its profile under `appdata`, and that does not take it for a throwaway one (a folder under its temporary folder is).
 @(private = "file")
