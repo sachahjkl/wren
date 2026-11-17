@@ -38,7 +38,7 @@ PAINT_PROPS :: [?]Prop{
 	.Scroll_Behavior, .Overflow_Anchor, .Overscroll_Behavior_X, .Overscroll_Behavior_Y, .Caret_Color, .Accent_Color,
 	.Mask_Image, .Mask_Mode, .Mask_Repeat, .Mask_Position, .Mask_Size, .Mask_Origin, .Mask_Clip, .Mask_Composite,
 	.Text_Fill_Color, .Text_Stroke_Color, .Text_Stroke_Width, .Text_Emphasis_Color, .Text_Emphasis_Style, .Text_Emphasis_Position, .Text_Emphasis_Skip,
-	.Text_Underline_Position, .Text_Decoration_Skip_Ink, .Text_Decoration_Skip_Spaces, .Text_Decoration_Inset, .Wren_Shader,
+	.Text_Underline_Position, .Text_Decoration_Skip_Ink, .Text_Decoration_Skip_Spaces, .Text_Decoration_Inset,
 }
 
 @(private) tiers_once: sync.Once

@@ -37,7 +37,6 @@ Features
   anchor-positioning.md   CSS anchor positioning
   js/webgl.md         WebGL
   accessibility.md    Accessibility
-  shaders.md          Shaders in the chrome
   downloads.md        Downloads
   newtab-art.md       Artistic new tab
   tab-sidebar.md      Tabs in a sidebar

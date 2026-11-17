@@ -970,8 +970,6 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Text_Underline_Position, .Text_Decoration_Skip_Ink, .Text_Decoration_Skip_Spaces, .Text_Decoration_Inset, .Text_Emphasis_Style, .Text_Emphasis_Color,
 	     .Text_Emphasis_Position, .Text_Emphasis_Skip, .Text_Stroke_Width, .Text_Stroke_Color:
 		return apply_text_decor_prop(cx, p, vs)
-	case .Wren_Shader:
-		return apply_shader_prop(cx, p, vs)
 	case .Anchor_Name, .Anchor_Scope, .Position_Anchor, .Position_Area, .Position_Try_Fallbacks, .Position_Try_Order, .Position_Visibility:
 		return apply_anchor_prop(cx, p, vs)
 	}

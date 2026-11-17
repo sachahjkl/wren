@@ -18,12 +18,14 @@ import "wb:wasm"
 //
 // Two ordinary documents, made like the start page, in the colors of the interface's theme (appearance.theme) so they
 // read as part of the browser: the logo of the channel, the version and build, "by Froment Software", the beta notice,
-// the licence line and the form to enter a key, the third-party list. They are documents rather than a chrome panel
-// because they need text that can be selected and copied (the commit, the key), links, a form with a text area and
-// the page scroller; the chrome only reaches them through a command (browser.about, in the menu and the palette).
+// the licence line (whether Wren is registered; the licence itself is the settings' Licence page, license_shell.odin),
+// the third-party list. They are documents rather than a chrome panel because they need text that can be selected and
+// copied (the commit), links, forms and the page scroller; the chrome only reaches them through a command (browser.about,
+// in the menu and the palette).
 //
-// The form submits to about:wren itself (GET: the forms package posts to http(s) only): navigate hands the query to
-// show_wren_page, which acts on it only when it comes from this page (or the browser's own UI), never from a web page.
+// The forms of the updates submit to about:wren itself (GET: the forms package posts to http(s) only): navigate hands the
+// query to show_wren_page, which acts on it only when it comes from this page (or the browser's own UI), never from a web
+// page.
 
 WREN_URL     :: "about:wren"
 LICENSES_URL :: "about:licenses"
@@ -41,19 +43,9 @@ Wren_Page :: struct {
 	palette:     ui.Palette,
 	state:       licence.Status,
 	checking:    bool,             // the store has not answered yet (its first read is under way)
-	notice:      Wren_Notice,
 	support_url: string,
 	profile_dir: string,
-	card_sample: bool,   // about:wren?card=sample: the licence card of a sample licence, to see its shader without a licence (nothing is registered)
 	update:      Update_Summary,   // the "Updates" section (update_install.odin); zero: not shown
-}
-
-// What about:wren?card=sample shows on the card.
-SAMPLE_LICENSE :: licence.Licence{product = "wren", edition = "supporter", name = "Sample Supporter", email = "sample@example.org", date = "2026-10-24", order = "WREN-SAMPLE"}
-
-Wren_Notice :: struct {
-	text: string,
-	bad:  bool,
 }
 
 @(private = "file")
@@ -101,23 +93,17 @@ WREN_STYLE :: `
   .sig a { color: $TEXT$; font-weight: 600; }
   .beta { margin: 24px 0 0; padding: 10px 14px; background-color: $PANEL$; border: 1px solid $BORDER$; border-radius: 4px; }
   .status { margin: 0 0 4px; }
-  .notice { margin: 12px 0 0; padding: 8px 12px; background-color: $PANEL$; border: 1px solid $BORDER$; border-radius: 4px; }
-  .notice.bad { color: $BAD$; border-color: $BAD$; }
-  .notice.ok { border-color: $GOOD$; }
   table { width: 100%; border-collapse: collapse; }
   td, th { text-align: left; padding: 4px 8px 4px 0; vertical-align: top; border-bottom: 1px solid $BORDER$; }
   th { color: $WEAK$; font-weight: normal; }
   td.k { color: $WEAK$; width: 150px; white-space: nowrap; }
   td.v { word-break: break-all; }
   form { margin: 12px 0 0; }
-  textarea { display: block; width: 100%; box-sizing: border-box; height: 74px; padding: 8px; background-color: $BG$; color: $TEXT$; border: 1px solid $BORDER$; border-radius: 4px; font-family: monospace; font-size: 13px; }
-  button, .btn { display: inline-block; margin: 8px 8px 0 0; padding: 6px 14px; background-color: $PANEL2$; color: $TEXT$; border: 1px solid $BORDER$; border-radius: 4px; font-size: 14px; }
-  button.primary { background-color: $ACCENT$; color: $ACCENT_TEXT$; border-color: $ACCENT$; }
-  .btn:hover { text-decoration: none; }
+  button { display: inline-block; margin: 8px 8px 0 0; padding: 6px 14px; background-color: $PANEL2$; color: $TEXT$; border: 1px solid $BORDER$; border-radius: 4px; font-size: 14px; }
   pre { margin: 8px 0 0; padding: 10px 12px; background-color: $PANEL$; border: 1px solid $BORDER$; border-radius: 4px; font-size: 12px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
   .text h3 { font-size: 15px; margin: 24px 0 2px; }
   .foot { margin-top: 36px; color: $WEAK$; font-size: 13px; }
-` + COPY_BUTTON_STYLE
+`
 
 @(private = "file")
 theme_css :: proc(p: ui.Palette) -> string {
@@ -153,72 +139,16 @@ row :: proc(sb: ^strings.Builder, key, value: string) {
 }
 
 @(private = "file")
-page_head :: proc(sb: ^strings.Builder, title: string, p: ui.Palette, extra_css := "") {
+page_head :: proc(sb: ^strings.Builder, title: string, p: ui.Palette) {
 	strings.write_string(sb, "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>")
 	esc(sb, title)
 	strings.write_string(sb, "</title>\n<style>")
 	strings.write_string(sb, theme_css(p))
-	strings.write_string(sb, extra_css)
 	strings.write_string(sb, "</style>\n</head>\n<body>\n<div class=\"main\">\n")
 }
 
-// The licence as plain text for the clipboard: never the key itself. A field that is empty is left out.
-licence_details_text :: proc(lic: licence.Licence) -> string {
-	sb := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&sb, "Wren %s license\nRegistered to: %s", licence.edition_title(license.WREN, lic.edition), lic.name)
-	if lic.email != "" { fmt.sbprintf(&sb, "\nEmail: %s", lic.email) }
-	if lic.date != "" { fmt.sbprintf(&sb, "\nIssued: %s", lic.date) }
-	if lic.order != "" { fmt.sbprintf(&sb, "\nOrder: %s", lic.order) }
-	return strings.to_string(sb)
-}
-
-// Lucide's "copy" and "check", inline so that they take the button's color (currentColor) and the size of its text (1em).
-COPY_ICON      :: `<svg class="i-copy" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></g></svg>`
-COPY_DONE_ICON :: `<svg class="i-ok" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"/></svg>`
-
-@(private = "file")
-COPY_BUTTON_STYLE :: `
-  button.copy { display: inline-flex; align-items: center; }
-  button.copy .ics, button.copy .lbs { display: inline-grid; }
-  button.copy .ics { margin-right: 8px; width: 1.15em; height: 1.15em; }
-  button.copy .ics svg { grid-area: 1 / 1; width: 1.15em; height: 1.15em; }
-  button.copy .lbs > span { grid-area: 1 / 1; text-align: center; }
-  button.copy .i-ok, button.copy .l-done, button.copy .l-fail { visibility: hidden; }
-  button.copy[data-state=done] .i-copy, button.copy[data-state=done] .l-idle, button.copy[data-state=fail] .l-idle { visibility: hidden; }
-  button.copy[data-state=done] .i-ok, button.copy[data-state=done] .l-done, button.copy[data-state=fail] .l-fail { visibility: visible; }
-`
-
-// The "Copy the license details" button and its one handler. The text rides in an attribute (escaped like every field of the page), so
-// no field is ever part of a script. navigator.clipboard.writeText is the engine's own; when it is refused the text appears in a
-// read-only field, selected, and the button says so.
-@(private = "file")
-copy_details_html :: proc(sb: ^strings.Builder, lic: licence.Licence) {
-	// The three labels share one grid cell and the two icons another, so the button keeps the width of the longest label whatever it says;
-	// the state (data-state on the button) only decides which of them shows.
-	fmt.sbprintf(sb, "<p><button type=\"button\" id=\"copylic\" class=\"copy\" data-state=\"idle\" data-text=\"%s\"><span class=\"ics\" aria-hidden=\"true\">%s%s</span><span class=\"lbs\"><span class=\"l-idle\">%s</span><span class=\"l-done\" aria-live=\"polite\">%s</span><span class=\"l-fail\">%s</span></span></button></p>\n",
-		escape_html(licence_details_text(lic)), COPY_ICON, COPY_DONE_ICON, escape_html(i18n.tr("Copy the license details")), escape_html(i18n.tr("Copied")), escape_html(i18n.tr("Copy failed")))
-	fmt.sbprintf(sb, "<textarea id=\"copyfb\" readonly rows=\"5\" aria-label=\"%s\" spellcheck=\"false\" style=\"display: none\"></textarea>\n", escape_html(i18n.tr("License details to copy by hand")))
-	strings.write_string(sb, `<script>
-(function () {
-  var b = document.getElementById("copylic");
-  if (!b) return;
-  var text = b.getAttribute("data-text");
-  function say(s) { b.setAttribute("data-state", s); setTimeout(function () { b.setAttribute("data-state", "idle"); }, 1600); }
-  function by_hand() {
-    var a = document.getElementById("copyfb");
-    a.style.display = "block"; a.value = text; a.focus(); a.select();
-    say("fail");
-  }
-  b.addEventListener("click", function () {
-    if (!navigator.clipboard || !navigator.clipboard.writeText) { by_hand(); return; }
-    navigator.clipboard.writeText(text).then(function () { say("done"); }, by_hand);
-  });
-})();
-</script>
-`)
-}
-
-// The licence line, and under it the entry form.
+// The licence line: whether Wren is registered, and the way to the settings' Licence page, where its card, its key and
+// its file are (license_shell.odin). Nothing more of the licence is said here: the page says it once.
 @(private = "file")
 licence_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 	strings.write_string(sb, "<h2>License</h2>\n")
@@ -227,40 +157,14 @@ licence_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 		strings.write_string(sb, "<p class=\"status\"><b>Registered to ")
 		esc(sb, s.licence.name)
 		fmt.sbprintf(sb, "</b> &middot; %s license</p>\n", escape_html(licence.edition_title(license.WREN, s.licence.edition)))
-		license_card_html(sb, s.licence)
-		strings.write_string(sb, "<p>Thank you for supporting the development of Wren.</p>\n")
-		copy_details_html(sb, s.licence)
 	} else if d.checking {
-		strings.write_string(sb, "<p class=\"status weak\">Checking the license\u2026</p>\n")
+		strings.write_string(sb, "<p class=\"status weak\">Reading the license\u2026</p>\n")
 	} else {
 		strings.write_string(sb, "<p class=\"status weak\">Unregistered &mdash; free during the beta &middot; <a href=\"")
 		esc(sb, d.support_url)
 		strings.write_string(sb, "\">Support Wren</a></p>\n")
-		if d.card_sample {
-			strings.write_string(sb, "<p class=\"weak\">Preview of the license card with a sample license: nothing is registered.</p>\n")
-			license_card_html(sb, SAMPLE_LICENSE)
-		}
-		if s.err != .None && s.stored {
-			// a licence is stored but does not check out (another key, a damaged file): said once, quietly
-			strings.write_string(sb, "<p class=\"weak\">The stored license was not accepted: ")
-			esc(sb, license_error_text(s.err))
-			strings.write_string(sb, "</p>\n")
-		}
 	}
-	if d.notice.text != "" {
-		fmt.sbprintf(sb, "<p class=\"notice %s\">", d.notice.bad ? "bad" : "ok")
-		esc(sb, d.notice.text)
-		strings.write_string(sb, "</p>\n")
-	}
-	strings.write_string(sb, "<form method=\"get\" action=\"about:wren\"><input type=\"hidden\" name=\"action\" value=\"register\">\n")
-	strings.write_string(sb, "<p class=\"weak\" style=\"margin-bottom: 6px\">")
-	strings.write_string(sb, s.registered ? "Replace the license: paste another key, or drop a <code>.wrenlicense</code> file on this window." : "Enter a license key: paste it here, or drop a <code>.wrenlicense</code> file on this window.")
-	strings.write_string(sb, "</p>\n<textarea name=\"key\" spellcheck=\"false\" placeholder=\"WREN1.…\"></textarea>\n")
-	strings.write_string(sb, "<button type=\"submit\" class=\"primary\">Register</button><a class=\"btn\" href=\"about:wren?choose=1\">Choose a file…</a>\n</form>\n")
-	if s.registered {
-		strings.write_string(sb, "<form method=\"get\" action=\"about:wren\"><input type=\"hidden\" name=\"action\" value=\"remove\"><button type=\"submit\">Remove the license from this computer</button></form>\n")
-	}
-	strings.write_string(sb, "<p class=\"weak\" style=\"margin-top: 12px\">A license is checked on this computer with a signature; Wren never contacts a server for it, and nothing in Wren depends on it.</p>\n")
+	fmt.sbprintf(sb, "<p><a href=\"%s\">Manage the license</a></p>\n", SETTINGS_LICENCE_URL)
 }
 
 @(private = "file")
@@ -383,7 +287,7 @@ third_party_table :: proc(sb: ^strings.Builder, with_text_links: bool) {
 
 wren_page_html :: proc(d: Wren_Page) -> string {
 	sb := strings.builder_make(context.temp_allocator)
-	page_head(&sb, "About Wren", d.palette, d.state.registered || d.card_sample ? card_css() : "")
+	page_head(&sb, "About Wren", d.palette)
 	// the name, the version, the tagline, and the maker's signature as the last, small line of the header
 	fmt.sbprintf(&sb, "<div class=\"id\"><img class=\"mark\" src=\"%s\" width=\"96\" height=\"96\" alt=\"\"><div class=\"text\"><h1>%s</h1><p>Version %s%s</p><p class=\"weak\">%s</p>",
 		app_logo_url(), APP_NAME, APP_VERSION_SHOWN, IS_DEV_BUILD ? " (development build)" : "", escape_html(APP_TAGLINE))
@@ -424,34 +328,27 @@ licenses_page_html :: proc(d: Wren_Page) -> string {
 ////////////////////////////////
 // Showing it
 
-wren_page_data :: proc(app: ^App, notice: Wren_Notice) -> Wren_Page {
-	pal := chrome_palette(app)
-	status, known := license_status(app)
+wren_page_data :: proc(app: ^App) -> Wren_Page {
 	return Wren_Page{
-		palette = pal, state = status, checking = !known, notice = notice,
+		palette = chrome_palette(app), state = app.licence.status, checking = !app.licence.read,
 		support_url = license_support_url(app), profile_dir = app.profile_dir, update = update_summary(app),
 	}
 }
 
-// about:wren / about:licenses in `t`. `acts`: the navigation may run the query (the form of about:wren, whose action is
-// about:wren?action=register&key=...: a form that does not post to http(s) always submits with GET). The query is acted
-// on only when `acts` (nav_judge: the person typed it, or it comes from this page), never from a web page nor from a replay.
-show_wren_page :: proc(app: ^App, t: ^Tab, address: string, acts := false, notice := Wren_Notice{}) {
-	notice := notice
+// about:wren / about:licenses in `t`. `acts`: the navigation may run the query (the forms of the updates, whose action is
+// about:wren?action=check_update: a form that does not post to http(s) always submits with GET). The query is acted on
+// only when `acts` (nav_judge: the person typed it, or it comes from this page), never from a web page nor from a replay.
+show_wren_page :: proc(app: ^App, t: ^Tab, address: string, acts := false) {
 	query := ""
 	if i := strings.index_byte(address, '?'); i >= 0 { query = address[i + 1:] }
 	shown := address
-	choose := false
 	if acts && query != "" {
 		params := url.params_make(context.temp_allocator)
 		url.params_parse(&params, query)
-		notice = wren_query(app, params)
-		if v, ok := url.params_get(params, "choose"); ok && v == "1" { choose = true }
+		wren_query(app, params)
 	}
-	// the entry is about:wren again: the key is not left in the history, and going back here does not ask twice (the card preview
-	// is the one query that stays: it changes nothing)
-	sample := query == "card=sample"
-	if query != "" && !sample { shown = WREN_URL }
+	// the entry is about:wren again: going back here does not ask twice
+	if query != "" { shown = WREN_URL }
 	if hash := strings.index_byte(shown, '#'); hash >= 0 && strings.has_prefix(shown, WREN_URL) { shown = WREN_URL }
 
 	nav_show_page(app, t, shown)
@@ -459,12 +356,9 @@ show_wren_page :: proc(app: ^App, t: ^Tab, address: string, acts := false, notic
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0
 	console_reset(t)
-	d := wren_page_data(app, notice)
-	d.card_sample = sample
+	d := wren_page_data(app)
 	html := strings.has_prefix(shown, LICENSES_URL) ? licenses_page_html(d) : wren_page_html(d)
 	page.load_html(t.page, transmute([]byte)html)
-	// the licence card's pointer script (about_card.odin); the other built-in pages have none, so they start no realm
-	if (d.state.registered || d.card_sample) && !strings.has_prefix(shown, LICENSES_URL) { page.scripts_start(t.page) }
 	if shown != address {
 		page.session_replace(&t.session, shown)
 		sync_history(app, t)
@@ -472,27 +366,13 @@ show_wren_page :: proc(app: ^App, t: ^Tab, address: string, acts := false, notic
 	delete(t.url); t.url = strings.clone(shown)
 	delete(t.title); t.title = strings.clone(strings.has_prefix(shown, LICENSES_URL) ? "Licenses" : "About Wren")
 	set_status(t, shown)
-	if choose { license_choose_file(app) }
 }
 
-// The form of the page: register a key, or remove the stored licence.
-wren_query :: proc(app: ^App, sp: url.Search_Params) -> Wren_Notice {
+// The forms of the page: check for an update, install it (each says how it goes in its own notices).
+wren_query :: proc(app: ^App, sp: url.Search_Params) {
 	action, _ := url.params_get(sp, "action")
 	switch action {
-	case "register":
-		key, _ := url.params_get(sp, "key")
-		if strings.trim_space(key) == "" { return {"Paste a license key first.", true} }
-		license_install(app, key)   // (the store's answer builds this page again, with its words)
-		return {"Checking the license\u2026", false}
-	case "remove":
-		license_remove(app)
-		return {"Removing the license\u2026", false}
-	case "check_update":
-		update_check_now(app)
-		return {"Asking GitHub whether a newer Wren exists. The answer is a notice; open this page again to see it.", false}
-	case "install_update":
-		update_install(app)
-		return {"Installing the update: the notices say how it goes.", false}
+	case "check_update":   update_check_now(app)
+	case "install_update": update_install(app)
 	}
-	return {}
 }

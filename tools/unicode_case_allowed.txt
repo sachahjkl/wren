@@ -4,8 +4,6 @@
 src/blocker/jsre.odin lo, up := unicode.to_lower(r), unicode.to_upper(r)  # a JavaScript regular expression's i flag
 src/blocker/jsre.odin re.icase && strings.equal_fold(  # a JavaScript regular expression's i flag
 src/blocker/jsre.odin return unicode.to_lower(r)  # a JavaScript regular expression's i flag: Unicode simple case folding (ECMA-262 Canonicalize)
-src/browser/about_card_back.odin strings.to_upper(APP_NAME  # display text
-src/browser/about_card_engrave.odin strings.to_upper(parts[1]  # display text
 src/browser/blocker_dashboard.odin !strings.contains(strings.to_lower(e.url  # user text: the dashboard's search
 src/browser/blocker_dashboard.odin q := strings.to_lower(query  # user text: the dashboard's search
 src/browser/blocker_dashboard.odin strings.to_upper(text, context.temp_allocator), id  # display text: a section's title in capitals

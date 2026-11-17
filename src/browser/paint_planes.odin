@@ -240,7 +240,7 @@ Plane_Plan :: struct {
 
 // A layer shown at most this many times smaller than it is rasterized needs no mip levels (a GPU samples the full-size level up to
 // a reduction of 2, and the anisotropic taps take the long axis of a slant): a card tilted by a few degrees, rasterized again at
-// every frame for its shader, does not build them at every frame.
+// every frame of an animation, does not build them at every frame.
 PLANE_MIPS_REDUCTION :: 2
 
 // How a plane group's layer is rasterized: its bounds (cut to the part that shows when the layer would be too big) and its
@@ -350,8 +350,8 @@ open_plane :: proc(e: ^Effects, c: i32, og: ^Open_Group, bounds: lay.Rect) -> bo
 	g := &l.groups[c]
 	s := g.space
 	if s == lay.NONE || e.v.singular[s] || lay.rect_empty(bounds) { return false }
-	// a face with backface-visibility: hidden that is turned away is not drawn at all: its layer (and a shader in it: the licence card's two
-	// faces) would be rasterized only for close_plane to throw it away. A plane that keeps its children in 3D is left alone: they are not its
+	// a face with backface-visibility: hidden that is turned away is not drawn at all: its layer (a card's two faces) would be
+	// rasterized only for close_plane to throw it away. A plane that keeps its children in 3D is left alone: they are not its
 	// own, they have their own backfaces.
 	if l.spaces[s].back_hidden && !l.spaces[s].preserve && style.m4_back_facing(e.v.accs[s]) {
 		planes_culled += 1

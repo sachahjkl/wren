@@ -45,15 +45,14 @@ judge_table :: proc(t: ^testing.T) {
 		{.Page,   "about:sites", "about:cache?clear=1",         "about:cache", false, false},   // not the cache's own page
 		{.Replay, "",        "about:cache?q=x&clear=1",         "about:cache?q=x", false, false},
 		{.User,   "",        "about:cache?clear=1",             "about:cache?clear=1", true, false},
-		{.Page,   WEB,       "about:wren?action=remove",        "about:wren",  false, false},
-		{.Page,   WEB,       "about:wren?action=register&key=x#a", "about:wren#a", false, false},
-		{.Page,   WEB,       "about:wren?choose=1",             "about:wren",  false, false},
-		{.Page,   WEB,       "about:wren?card=sample",          "about:wren?card=sample", false, false},
-		{.Page,   WEB,       "about:wren?card=sample&action=remove", "about:wren?card=sample", false, false},
-		{.Page,   "about:wren", "about:wren?action=remove",     "about:wren?action=remove", true, false},   // the form of the page
-		{.Page,   "about:demos", "about:wren?action=remove",    "about:wren?action=remove", true, false},
-		{.User,   "",        "about:wren?action=remove",        "about:wren?action=remove", true, false},
-		{.Replay, "",        "about:wren?action=remove",        "about:wren",  false, false},
+		{.Page,   WEB,       "about:wren?action=install_update", "about:wren", false, false},
+		{.Page,   WEB,       "about:wren?action=check_update#a", "about:wren#a", false, false},
+		{.Page,   WEB,       "about:wren?q=x&action=install_update", "about:wren", false, false},   // no query of about:wren is kept
+		{.Page,   "about:wren", "about:wren?action=install_update", "about:wren?action=install_update", true, false},   // the form of the page
+		{.Page,   "about:demos", "about:wren?action=install_update", "about:wren?action=install_update", true, false},
+		{.User,   "",        "about:wren?action=install_update", "about:wren?action=install_update", true, false},
+		{.Replay, "",        "about:wren?action=install_update", "about:wren",  false, false},
+		{.Page,   WEB,       "about:settings#licence",          "about:settings#licence", false, false},   // a page of the settings: nothing to cut
 		{.Page,   WEB,       "about:licenses#x",                "about:licenses#x", false, false},   // nothing to cut
 		// a licence file is read from disk only for a person or the browser's own pages
 		{.User,   "",        "file:///C:/Users/x/a.wrenlicense", "file:///C:/Users/x/a.wrenlicense", true, false},

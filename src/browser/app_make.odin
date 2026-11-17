@@ -147,6 +147,7 @@ app_ui_init :: proc(app: ^App) {
 	views_start(app)   // views.odin: the program's views, before a window builds one
 	views_attach(app, w.ui)
 	standard_settings_watch(app, &w.standard, w.ui)
+	licence_start(app)   // license_shell.odin: its store's tasks answer in this State
 	app.made += {.Ui}
 }
 
@@ -207,7 +208,7 @@ app_free :: proc(app: ^App) {
 	if .Window in app.made { app_windows_end(app) }
 	if .Fonts in app.made { app_fonts_end(app) }
 	if .Pools in app.made { app_pools_end(app) }
-	licence_shell_destroy(app)   // license_shell.odin (after the pools: no job of its store runs any more)
+	licence_stop(app)   // license_shell.odin (after the windows' toolkit states: no answer of its tasks comes any more)
 	if .Loop in app.made { app_loop_end(app) }
 	if .Prefs in app.made { app_prefs_end(app) }
 	delete(app.tab_ids)

@@ -306,7 +306,8 @@ App :: struct {
 	dtm:           Dt_Metrics,               // devtools_kit.odin: the developer tools' metrics
 	dtc:           Dt_Colors,                // ... and colours
 	shape_cache:   Shape_Cache,              // chrome_style.odin: the tabs' shapes (Classic_Colors.shapes)
-	licence:       Licence_Shell,            // license_shell.odin: the support licence's store and its last status
+	licence:       prefs_page.Licence,       // license_shell.odin: the settings' Licence page, its store and its last status
+	licence_seen:  Licence_Seen,             // license_shell.odin: what about:wren last saw of it
 	frame_log:     Frame_Log,                // frame_log.odin: when the frames were presented (a ring of FRAME_LOG_CAP)
 }
 
@@ -557,7 +558,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	license_file := is_license_file_address(target) && verdict.acts   // license_shell.odin
 	if is_builtin_address(target) || license_file || is_cache_address(target) || is_sites_address(target) || is_extensions_address(target) { hold_step(app, t, .Over); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
 	if target == "about:config" { show_config(app, t); return }
-	if target == SETTINGS_URL { show_settings(app, t); return }
+	if is_settings_address(target) { show_settings(app, t, target); return }
 	if is_history_address(target) { show_history(app, t, target); return }
 	if is_blocker_address(target) { show_blocker(app, t, target); return }   // blocker_dashboard.odin
 	if is_downloads_address(target) { show_downloads(app, t, target); return }   // downloads_ui.odin
@@ -783,16 +784,24 @@ load_closed :: proc(data: rawptr) {
 
 SETTINGS_URL :: "about:settings"
 
-// about:settings, like about:config, is a view of the browser itself (settings_page.odin).
-show_settings :: proc(app: ^App, t: ^Tab) {
+// about:settings, or about:settings#<page>: the settings opened on that page (SETTINGS_LICENCE_URL).
+is_settings_address :: proc(a: string) -> bool { return a == SETTINGS_URL || strings.has_prefix(a, SETTINGS_URL + "#") }
+
+// about:settings, like about:config, is a view of the browser itself (settings_page.odin). A fragment names the page it
+// opens on (a page's category: about:wren's link to the Licence page); the search is focused otherwise.
+show_settings :: proc(app: ^App, t: ^Tab, address: string) {
 	nav_show_view(app, t, .Settings)
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	console_reset(t)
-	delete(t.url); t.url = strings.clone(SETTINGS_URL)
+	delete(t.url); t.url = strings.clone(address)
 	delete(t.title); t.title = strings.clone("Settings")
-	set_status(t, SETTINGS_URL)
-	prefs_page.focus_search(&app.settings_view)
+	set_status(t, address)
+	if hash := strings.index_byte(address, '#'); hash >= 0 && hash + 1 < len(address) {
+		prefs_page.show(&app.settings_view, &app.prefs, settings_options(app), address[hash + 1:])
+	} else {
+		prefs_page.focus_search(&app.settings_view)
+	}
 }
 
 // about:config is a view of the browser itself, not a document: it has no page, no origin, no scripts.
@@ -1394,7 +1403,6 @@ apply_prefs :: proc(app: ^App, changed := "") {
 
 	page.settings_destroy(&app.page_settings)
 	app.page_settings = page.settings_from_prefs(&app.prefs)
-	app.page_settings.internal_address = is_builtin_href
 	for tab in tabs_all(app) { if tab.page != nil { page.configure_styles(tab.page) } }
 
 	settings_destroy(&app.cfg)
@@ -1619,6 +1627,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	instance_frame(app)   // instance_shell.odin: the notice of a first Wren that did not answer
 	remote_notice(app)   // remote_shell.odin: the notice of a remote channel that did not start
 	ui.end_build()
+	licence_frame(app)   // license_shell.odin: about:wren again after an answer of the licence's store
 	page_a11y_frame(app)   // a11y_page.odin: the page's tree, after the chrome's that grafts it
 	prof_end(.Build_UI)
 	window_cursor_apply(app)   // page_cursor.odin: the page's cursor over the page, else the chrome's
@@ -1836,7 +1845,6 @@ app_start :: proc(args: []string) -> ^App {
 	host.phase("storage")
 	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "", &app.writer)
 	app.page_settings = page.settings_from_prefs(&app.prefs)
-	app.page_settings.internal_address = is_builtin_href
 	host.phase("script runtime")
 	if !process_share_join(app) { log.error("wasm runtime init failed"); return nil }   // process_share.odin: the Wasm engine, the bytecode cache... (the first App sets them up)
 	app.process = base.scope_make("process")

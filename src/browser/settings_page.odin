@@ -60,20 +60,26 @@ SETTINGS_PAGES := [?]Settings_Page_Def{
 
 // The settings page of the tab (page_view): the whole room.
 settings_page :: proc(app: ^App) {
-	pages: [len(SETTINGS_PAGES)]prefs_page.Page_Info
+	ui.next({width = ui.fill(), height = ui.fill()})
+	prefs_page.build(&app.settings_view, &app.prefs, settings_options(app))
+}
+
+// The page's options, its pages in the temporary allocator: the build's, and show_settings' (a page chosen by the address).
+settings_options :: proc(app: ^App) -> prefs_page.Page_Options {
+	pages := make([]prefs_page.Page_Info, len(SETTINGS_PAGES), context.temp_allocator)
 	for pg, i in SETTINGS_PAGES { pages[i] = {category = pg.category, title = pg.title, icon = pg.icon, names = pg.names} }
 	_, _, prefs_file := profile_paths(app)
-	ui.next({width = ui.fill(), height = ui.fill()})
-	prefs_page.build(&app.settings_view, &app.prefs, {
+	return {
 		user = app,
-		pages = pages[:],
+		pages = pages,
 		icon_font = app.lucide, search_icon = lucide.SEARCH, reset_icon = lucide.ROTATE_CCW,
 		file = app.cfg.persist_profile ? prefs_file : "",   // (a profile that is not kept has no file)
 		changed = proc(user: rawptr, name: string) { request_frames((^App)(user), 2) },
 		choices = settings_choices,
 		themes = app.themes_file.all[:], themes_light = app.theme_shown.light,
 		themes_file = app.cfg.persist_profile ? &app.themes_file : nil,   // (a profile that is not kept has no file of themes)
-	})
+		licence = app.licence.store != nil ? &app.licence : nil,   // (license_shell.odin; nil before licence_start: no page to show)
+	}
 }
 
 // The values of a String preference without its own choices: the default search engine among the profile's engines.

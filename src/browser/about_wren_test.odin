@@ -4,19 +4,12 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 import "toolkit:ui"
-import "wb:base"
 import config "toolkit:config"
 import licence "toolkit:licence"
 import "wb:wasm"
 
 ////////////////////////////////
 // The third-party list
-
-// A file of this run: the unit tests and their run under AddressSanitizer may be going on side by side.
-@(private = "file")
-about_scratch :: proc(name: string) -> string {
-	return strings.concatenate({"build/tmp/", name, "_", base.unique_name(context.temp_allocator), ".wrenlicense"}, context.temp_allocator)
-}
 
 @(test)
 third_party_table_is_parsed :: proc(t: ^testing.T) {
@@ -94,9 +87,9 @@ every_shipped_license_text_is_shown :: proc(t: ^testing.T) {
 // The page
 
 @(private = "file")
-test_page :: proc(theme: string, state: licence.Status = {}, notice: Wren_Notice = {}) -> Wren_Page {
+test_page :: proc(theme: string, state: licence.Status = {}) -> Wren_Page {
 	pal := ui.palette_of(strings.trim_suffix(theme, " light"), strings.has_suffix(theme, " light"))
-	return {palette = pal, state = state, notice = notice, support_url = SUPPORT_URL, profile_dir = `C:\Users\x\AppData\Roaming\Wren`}
+	return {palette = pal, state = state, support_url = SUPPORT_URL, profile_dir = `C:\Users\x\AppData\Roaming\Wren`}
 }
 
 @(test)
@@ -107,18 +100,18 @@ about_page_without_a_license :: proc(t: ^testing.T) {
 		for want in ([]string{
 			"Unregistered", "free during the beta", "Support Wren", SUPPORT_URL,
 			"Wren is a beta under development.", "Every version is free; a license only supports development.",
-			"Froment Software", FROMENT_URL, "data:image/png;base64,", "Version " + APP_VERSION, "Enter a license key", "WREN1",
+			"Froment Software", FROMENT_URL, "data:image/png;base64,", "Version " + APP_VERSION,
+			"Manage the license", `href="` + SETTINGS_LICENCE_URL + `"`,
 			"gui_toolkit", "Slug", "Wasmtime", "QuickJS-ng", "Odin", "about:licenses",
 		}) {
 			testing.expectf(t, strings.contains(html, want), "about:wren (%s) lacks %q", theme, want)
 		}
 		testing.expect(t, !strings.contains(html, "Registered to"), "an unregistered Wren does not claim a registration")
 		testing.expect(t, !strings.contains(html, "UNREGISTERED"), "no shouting")
-		testing.expect(t, !strings.contains(html, "Remove the license"), "nothing to remove")
 		pal := ui.palette_of(strings.trim_suffix(theme, " light"), strings.has_suffix(theme, " light"))
 		testing.expectf(t, strings.contains(html, pal.dark ? "color-scheme: dark" : "color-scheme: light"), "%s's color scheme", theme)
 		testing.expect(t, !strings.contains(html, "$"), "every theme token was replaced")
-		testing.expect(t, !strings.contains(html, "<script") && !strings.contains(html, `id="lic"`), "no card, no script without a license")
+		testing.expect(t, !strings.contains(html, "<script") && !strings.contains(html, "<textarea"), "no script and no key field: the licence is the settings'")
 		// the maker's signature is part of the header, under the tagline; the logo keeps its proportions in a narrow row
 		sig := strings.index(html, `class="sig"`)
 		testing.expect(t, sig > strings.index(html, "<h1>") && sig < strings.index(html, "beta under development"), "by Froment Software ends the header")
@@ -128,74 +121,33 @@ about_page_without_a_license :: proc(t: ^testing.T) {
 	testing.expect(t, wren_page_html(test_page("graphite")) != wren_page_html(test_page("daylight")))
 }
 
-@(test)
-the_card_can_be_previewed_without_a_licence :: proc(t: ^testing.T) {
-	test_app(t)
-	d := test_page("graphite")
-	d.card_sample = true
-	html := wren_page_html(d)
-	for want in ([]string{`id="lic"`, "Sample Supporter", "-wren-shader: card-foil", "<script>", "Unregistered"}) {
-		testing.expectf(t, strings.contains(html, want), "the preview lacks %q", want)
-	}
-	testing.expect(t, !strings.contains(html, "Registered to"), "nothing is registered")
-	d.card_sample = false
-	testing.expect(t, !strings.contains(wren_page_html(d), `id="lic"`), "no card without the preview or a license")
-	testing.expect(t, is_builtin_href("about:wren?card=sample") && !is_builtin_href("about:blank") && !is_builtin_href("https://example.org/about:wren"), "the preview is a built-in page; about:blank is not")
-}
-
+// A registered Wren says who it is registered to and which edition, once; the rest of the licence (its card, the date,
+// the order, the e-mail) is the settings' Licence page's.
 @(test)
 about_page_with_a_license :: proc(t: ^testing.T) {
 	test_app(t)
 	lic := licence.Licence{product = "wren", edition = "patron", name = "Zoé <b>Martin</b> & Co", email = "z@example.org", date = "2026-10-22", order = "WREN-0042"}
 	state := licence.Status{licence = lic, registered = true, stored = true, covered = true}
 	html := wren_page_html(test_page("graphite", state))
-	for want in ([]string{"Registered to Zoé &lt;b&gt;Martin&lt;/b&gt; &amp; Co", "Patron license", "2026-10-22", "WREN-0042", "z@example.org", "Thank you", "Remove the license", "Replace the license"}) {
+	for want in ([]string{"Registered to Zoé &lt;b&gt;Martin&lt;/b&gt; &amp; Co", "Patron license", "Manage the license", "Wren is a beta under development."}) {
 		testing.expectf(t, strings.contains(html, want), "about:wren with a license lacks %q", want)
 	}
 	testing.expect(t, !strings.contains(html, "Unregistered"), "a registered Wren is not unregistered")
 	testing.expect(t, !strings.contains(html, "<b>Martin</b>"), "the name is escaped")
-	for want in ([]string{`id="lic"`, "CERTIFIED", `class="seal"`, "<script>", "requestAnimationFrame", "prefers-reduced-motion", "-wren-shader: card-foil", "@property --sweep", `class="tickwrap"`, "text-shadow", "@media (max-width: 520px)"}) {
-		testing.expectf(t, strings.contains(html, want), "the license card lacks %q", want)
+	for unwanted in ([]string{"WREN-0042", "z@example.org", "<script", "Remove the license"}) {
+		testing.expectf(t, !strings.contains(html, unwanted), "about:wren says %q: the settings' Licence page says it", unwanted)
 	}
-	testing.expect(t, strings.contains(html, "Zoé &lt;b&gt;Martin&lt;/b&gt; &amp; Co</div>"), "the card shows the escaped name")
-	// the copy button: an icon inside, the three labels in one grid cell (so its width is the longest one's), and a script that only
-	// changes the state, never the text
-	for want in ([]string{`id="copylic"`, `class="i-copy"`, `class="i-ok"`, `class="l-idle">Copy the license details<`, `class="l-done" aria-live="polite">Copied<`, `class="l-fail">Copy failed<`, `currentColor`, `width="1em"`,
-		"button.copy .lbs > span { grid-area: 1 / 1;", "button.copy .ics svg { grid-area: 1 / 1;", `setAttribute("data-state"`}) {
-		testing.expectf(t, strings.contains(html, want), "the copy button lacks %q", want)
-	}
-	testing.expect(t, strings.index(html, `class="ics"`) < strings.index(html, `class="l-idle"`), "the icon is left of the text")
-	testing.expect(t, !strings.contains(html, "b.textContent"), "the label's text is never swapped: the button keeps its width")
-	// the seal: drawn by its own shader, the tick a whole stroked path (the rotated bordered box it was cut at its foot in a filter)
-	for want in ([]string{`class="relief" data-engrave="CERTIFIED"`, "-wren-shader: card-seal", `<path d="M31.75 27.5L40.25 36L56.25 17"`, `stroke-linecap="round"`, `.lic .seal[data-shader=off] .edge`}) {
-		testing.expectf(t, strings.contains(html, want), "the seal lacks %q", want)
-	}
-	testing.expect(t, !strings.contains(html, `class="tick"`), "no bordered box for the tick")
-	testing.expect(t, !strings.contains(html, "setInterval") && !strings.contains(html, "requestAnimationFrame(loop"), "the card's script never loops: no frame at rest")
-	// the logo is printed on the card: one picture, outside the layer whose parallax the pointer moves (it floated and snapped back on release),
-	// and what does slide eases with the card
-	card := html[strings.index(html, `class="cardbox"`):]
-	testing.expect_value(t, strings.count(card[:strings.index(card, "<script>")], "<img"), 1)
-	logo, face := strings.index(card, `<img class="logo"`), strings.index(card, `<div class="face">`)
-	testing.expect(t, logo >= 0 && logo < face && !strings.contains(card[face:strings.index(card, `class="seal"`)], "<img"), "the logo is not in the face")
-	testing.expect(t, strings.contains(html, ".lic .logo { position: absolute;") && !strings.contains(html[strings.index(html, ".lic .logo {"):][:240], ", 18px"), "the logo is in the base's plane, not lifted")
-	for want in ([]string{"function follow(ms)", "face.style.transition = s; shadow.style.transition = s;", ".lic .face {", "transition: transform 0.55s", ".lic.live .face, .lic.live .seal .shadow { transition: none; }"}) {
-		testing.expectf(t, strings.contains(html, want), "the parallax layers do not ease with the card: lacks %q", want)
-	}
-	// every page has the beta notice
-	testing.expect(t, strings.contains(html, "Wren is a beta under development."))
 }
 
 @(test)
-about_page_notices_and_rejected_store :: proc(t: ^testing.T) {
+about_page_while_the_license_is_read :: proc(t: ^testing.T) {
 	test_app(t)
-	state := licence.Status{stored = true, err = .Bad_Signature}
-	html := wren_page_html(test_page("daylight", state, {"Nope <i>", true}))
-	testing.expect(t, strings.contains(html, "Unregistered"))
-	testing.expect(t, strings.contains(html, "The stored license was not accepted"))
-	testing.expect(t, strings.contains(html, `class="notice bad">Nope &lt;i&gt;`))
-	html = wren_page_html(test_page("daylight", {}, {"Fine", false}))
-	testing.expect(t, strings.contains(html, `class="notice ok">Fine`))
+	d := test_page("daylight")
+	d.checking = true
+	html := wren_page_html(d)
+	testing.expect(t, strings.contains(html, "Reading the license"))
+	testing.expect(t, !strings.contains(html, "Unregistered") && !strings.contains(html, "Registered to"), "nothing is claimed before the store answers")
+	testing.expect(t, strings.contains(html, "Manage the license"))
 }
 
 @(test)
@@ -248,18 +200,22 @@ licenses_page_has_every_text :: proc(t: ^testing.T) {
 @(test)
 addresses_of_the_about_pages :: proc(t: ^testing.T) {
 	test_app(t)
-	for a in ([]string{"about:wren", "about:wren?choose=1", "about:wren?action=register&key=x", "about:wren#x", "about:licenses", "about:licenses#slug"}) {
+	for a in ([]string{"about:wren", "about:wren?action=check_update", "about:wren#x", "about:licenses", "about:licenses#slug"}) {
 		testing.expectf(t, is_wren_address(a) && is_builtin_address(a), "%s is a page of the browser", a)
 	}
 	for a in ([]string{"about:wrenx", "about:blank", "https://about:wren", "about:licensesx", "about:config"}) {
 		testing.expectf(t, !is_wren_address(a), "%s is not", a)
 	}
+	// the settings opened on their Licence page: the link of about:wren, and where a licence file leads
+	testing.expect(t, is_settings_address(SETTINGS_LICENCE_URL) && is_builtin_address(SETTINGS_LICENCE_URL))
+	testing.expect(t, is_settings_address(SETTINGS_URL) && !is_settings_address("about:settingsx") && !is_settings_address("about:settings?x"))
 	testing.expect(t, is_license_file_address("file:///C:/Users/x/jeanne.wrenlicense"))
 	testing.expect(t, is_license_file_address("file:///C:/Users/x/JEANNE.WRENLICENSE"))
 	testing.expect(t, is_license_file_address("file:///C:/x/a%20b.wrenlicense"))
 	testing.expect(t, !is_license_file_address("file:///C:/x/a.html"))
 	testing.expect(t, !is_license_file_address("https://example.org/a.wrenlicense"), "only files of this computer")
 	testing.expect(t, !is_license_file_address("file:///C:/x/a.wrenlicense.txt"))
+	testing.expect(t, is_builtin_href("about:wren") && !is_builtin_href("about:blank") && !is_builtin_href("https://example.org/about:wren"), "about:wren is a built-in page; about:blank is not")
 	r: Command_Registry
 	commands_build(&r)
 	defer commands_destroy(&r)

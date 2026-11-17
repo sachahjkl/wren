@@ -26,7 +26,8 @@ UPLOAD_LIMIT_SECONDS :: "1800"
 LINK_LIMIT_SECONDS :: "60"
 TITLE_MAX :: 150
 CARD_SIZE :: [2]int{1000, 1100}
-CARD_SCRIPT :: `(document.getElementById("lic") ? "card" : "no card") + "|" + document.title`
+// (about:wren's licence line: the card itself is the settings' Licence page, a view of the toolkit with no document)
+CARD_SCRIPT :: `(document.body.textContent.indexOf("Registered to") >= 0 ? "registered" : "unregistered") + "|" + document.title`
 KNOWN_LIMITS :: `- The exe is not signed: Windows SmartScreen or an antivirus may warn on the first start ("More info", then "Run anyway"). Its SHA-256 is below.
 - Windows 10 or 11, 64 bits. Nothing else to install.
 - This build trusts the development key of the licences (public, worth nothing): the demonstration licence shows the card, a real licence will not be accepted by it. A release never accepts that key, and has no licence inside.
@@ -35,7 +36,7 @@ KNOWN_LIMITS :: `- The exe is not signed: Windows SmartScreen or an antivirus ma
 - Experimental means what it says: it is the current state of the work, tested by the project's checks but not used for long. Crashes leave a report in %APPDATA%\FromentSoftware\Wren\crashes.`
 SECTION_NAMES := []string{"Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"}
 
-// The card of about:wren, in a Wren of that exe and profile.
+// Whether about:wren says Wren is registered, in a Wren of that exe and profile.
 @(private)
 licence_card :: proc(exe, profile: string, prefs: []string) -> (text: string, ok: bool) {
 	w: bench.Wren
@@ -84,7 +85,7 @@ run_experimental :: proc(args: []string) -> int {
 	_ = os.make_directory_all(EXPERIMENTAL_DIR)
 	lic_file := fmt.tprintf("%s/WREN-DEMO.wrenlicense", EXPERIMENTAL_DIR)
 	order := fmt.tprintf("WREN-DEMO-%s", strings.join(strings.split(today(), "-", context.temp_allocator), "", context.temp_allocator))
-	lic_code := tooling.run({command = {"build/license" + tooling.EXE_SUFFIX, "issue", "-dev", "-name", "Demo Supporter", "-email", "demo@example.org", "-edition", "supporter", "-order", order, "-out", lic_file}})
+	lic_code := tooling.run({command = {"build/license" + tooling.EXE_SUFFIX, "licence", "issue", "-dev", "-name:Demo Supporter", "-email:demo@example.org", "-edition:supporter", fmt.tprintf("-order:%s", order), fmt.tprintf("-out:%s", lic_file)}})
 	if lic_code != 0 && !os.exists(lic_file) { return fail("making the demonstration licence failed (wrentool license builds the tool)") }
 	lic_data, _ := os.read_entire_file(lic_file, context.temp_allocator)
 	key := ""
@@ -184,20 +185,20 @@ verify_experimental :: proc(exe, lic_file, version, label: string, embed: bool) 
 	if !embed {
 		full, _ := filepath.abs(lic_file, context.temp_allocator)
 		r, ok := licence_card(exe, profile, {fmt.tprintf("browser.license.path=%s", full)})
-		if !ok || strings.contains(r, "no card") { fmt.eprintfln("the packed exe does not show the licence card when it is given the file (%s): it does not accept the development key", r); return false }
-		fmt.printfln("the card shows when the licence file is opened (%s)", r)
+		if !ok || strings.contains(r, "unregistered") { fmt.eprintfln("the packed exe is not registered when it is given the licence file (%s): it does not accept the development key", r); return false }
+		fmt.printfln("the licence file registers it (%s)", r)
 		return true
 	}
 	// a profile that never held a licence: the card is there with no setting at all
 	r, ok := licence_card(exe, profile, nil)
-	if !ok || strings.contains(r, "no card") { fmt.eprintfln("the packed exe is not pre-registered: about:wren has no card on a new profile (%s)", r); return false }
+	if !ok || strings.contains(r, "unregistered") { fmt.eprintfln("the packed exe is not pre-registered: about:wren says unregistered on a new profile (%s)", r); return false }
 	// the user removes the licence: it stays removed at the next start
 	file := fmt.tprintf("%s/license.wrenlicense", profile)
 	if !os.exists(file) { fmt.eprintfln("the licence was not put in the profile (%s)", file); return false }
 	_ = os.remove(file)
 	r, ok = licence_card(exe, profile, nil)
-	if !ok || !strings.contains(r, "no card") { fmt.eprintfln("a removed licence came back at the next start (%s)", r); return false }
-	fmt.println("the card shows on a new profile; removed, it stays removed at the next start")
+	if !ok || !strings.contains(r, "unregistered") { fmt.eprintfln("a removed licence came back at the next start (%s)", r); return false }
+	fmt.println("a new profile is registered; the licence removed, it stays removed at the next start")
 	return true
 }
 
@@ -232,11 +233,11 @@ experimental_notes :: proc(f: tooling.Flags, version, label, name, commit: strin
 	heading(&b, "To try it", "-")
 	fmt.sbprintfln(&b, "1. Run %s.exe (nothing to install).", name)
 	if embed {
-		strings.write_string(&b, "2. Open about:wren in the address bar: this build is pre-registered, the licence of \"Demo Supporter\" is already there and its card shows.\n   \"Remove the licence\" takes it off for good (it does not come back at the next start); to put it back, or to try another one,\n   paste the one line of demo-licence\\key.txt in the box and press Register, or open demo-licence\\WREN-DEMO.wrenlicense with Wren.\n")
+		strings.write_string(&b, "2. Open about:settings#licence in the address bar: this build is pre-registered, the licence of \"Demo Supporter\" is already there and its card shows.\n   \"Remove the licence\" takes it off for good (it does not come back at the next start); to put it back, or to try another one,\n   paste the one line of demo-licence\\key.txt in the field and press Register, or open demo-licence\\WREN-DEMO.wrenlicense with Wren.\n")
 	} else {
-		strings.write_string(&b, "2. Open about:wren in the address bar. To see the licence card, paste the one line of demo-licence\\key.txt in the box and press Register,\n   or open demo-licence\\WREN-DEMO.wrenlicense with Wren, or drop that file on its window. The licence is made out to \"Demo Supporter\".\n")
+		strings.write_string(&b, "2. Open about:settings#licence in the address bar. To see the licence card, paste the one line of demo-licence\\key.txt in the field and press Register,\n   or open demo-licence\\WREN-DEMO.wrenlicense with Wren, or drop that file on its window. The licence is made out to \"Demo Supporter\".\n")
 	}
-	strings.write_string(&b, "3. The card follows the pointer; the sheen crosses it every few seconds.\n\n")
+	strings.write_string(&b, "3. The card follows the pointer; the sheen crosses it when it shows and when the pointer comes onto it.\n\n")
 	heading(&b, "To know", "-")
 	fmt.sbprintfln(&b, "%s\n", strings.trim_right_space(known))
 	for s in SECTION_NAMES {

@@ -2,11 +2,12 @@
 
 Wren is a beta under development and every version is free. During the beta a **supporter license** only supports its
 development: it unlocks nothing, nothing in Wren checks it, and no window or reminder asks for one. Once Wren is out of
-beta, the updates that follow need a license, and one bought during the beta covers them. The only visible effect is one
-line of `about:wren`:
+beta, the updates that follow need a license, and one bought during the beta covers them. The only visible effects are the
+*License* page of `about:settings` and one line of `about:wren`, with a link to that page:
 
 - without a license: `Unregistered — free during the beta · Support Wren`;
-- with one: `Registered to <name>`, with the edition, the date, the order number and a thank-you.
+- with one: `Registered to <name> · <edition> license`; the settings' page shows the license as its card (the name, the
+  edition, the date and the order number).
 
 The code is under the PolyForm Strict License 1.0.0 ([LICENSE](../LICENSE)). A supporter license is separate from the code's license.
 
@@ -25,7 +26,7 @@ mails it, and shows it on the thank-you page. Both produce byte-identical licens
 
 ### Format
 
-The text of a license (what is pasted in `about:wren`, or kept in a `.wrenlicense` file):
+The text of a license (what is pasted in the settings' *License* page, or kept in a `.wrenlicense` file):
 
 ```
 WREN1.<payload>.<signature>
@@ -51,14 +52,15 @@ WREN1.eyJwcm9kdWN0Ijoid3JlbiIs…
 
 ### In Wren
 
-- **Enter** a key: `about:wren` (menu → *About Wren*, or the command palette) has a text box (*Register*), a *Choose a
-  file…* button, and accepts a `.wrenlicense` file dropped on the window, typed in the address bar, or given on the
-  command line (`wren.exe jeanne.wrenlicense`). A key that does not check out is refused with the reason and nothing is
-  kept.
+- **Enter** a key: the *License* page of `about:settings` (`about:settings#licence`, also the *Manage the license* link of
+  `about:wren`) has a key field (*Register*) and a *Choose a licence file…* button. A `.wrenlicense` file dropped on the
+  window, typed in the address bar, or given on the command line (`wren.exe jeanne.wrenlicense`) is installed and opens
+  that page. A key that does not check out is refused with the reason and nothing is kept. The page is the toolkit's
+  (`prefs_page.Licence`, the same in every program of Froment Software; [src/md/features/licence.md](../src/md/features/licence.md)).
 - **Stored** in `license.wrenlicense` in the profile folder (`browser.license.path` points elsewhere; with
-  `browser.profile.persist` off it lives in memory for the session). It is read and checked only when `about:wren` is
-  opened.
-- **Remove** it with *Remove the license from this computer* on the same page.
+  `browser.profile.persist` off it lives in memory for the session). It is read and checked once at the start, off the
+  interface's thread.
+- **Remove** it with *Remove the licence* on the same page (a second click confirms).
 - Preferences (`about:config`): `browser.license.path`, `browser.license.public_key` (replaces the built-in key, to
   read licenses of another issuer), `browser.license.support_url` (the *Support Wren* link, a web page).
 
@@ -82,8 +84,8 @@ Rebuild Wren. **Back up the private key outside this computer** (a password mana
 be issued for the builds that carry the public key, and if it leaks, anyone can issue licenses. `keygen` will not
 overwrite an existing key without `-force`; a new key invalidates every license issued with the old one.
 
-Until the public key is set, builds read no license: `about:wren` stays on *Unregistered*, and pasting a key says that
-this build has no key to check it with.
+Until the public key is set, builds read no license: `about:wren` stays on *Unregistered*, and pasting a key in the
+settings says that this build has no key to check it with.
 
 ### 2. Issue a license
 
@@ -106,7 +108,7 @@ it). A license made with it is refused by a build that carries the production ke
 
 An experimental build (`wrentool experimental`, which builds with `WREN_ACCEPT_DEV_LICENSE_KEY=1`: `build.bat` passes `-define:WREN_ACCEPT_DEV_LICENSE_KEY=true`) accepts the licenses of this pair too, as a development build does, so that the demonstration license it is handed out with shows its card with no setting. A release never does.
 
-A **pre-registered** build carries a license inside: `build.bat` with `WREN_EMBEDDED_LICENSE=<the one line of the .wrenlicense>` (and a `WREN_VERSION_LABEL`, which it requires so that such a build is never an unlabelled one). The first time `about:wren` asks the profile for its license and the profile holds none, the build's is written there (`license_seed`, `src/browser/license_shell.odin`) with a marker file `<license file>.seeded`; it is then the profile's own: `Remove the license` removes it and the marker stops it coming back, another license replaces it, and a profile that already holds a license keeps its own. A build that cannot check the text (a release with no key for it) puts nothing anywhere. `wrentool experimental` builds this way with the development pair's demonstration license. A release has no `WREN_EMBEDDED_LICENSE`.
+A **pre-registered** build carries a license inside: `build.bat` with `WREN_EMBEDDED_LICENSE=<the one line of the .wrenlicense>` (and a `WREN_VERSION_LABEL`, which it requires so that such a build is never an unlabelled one). The first time the store reads the profile's license (at the start) and the profile holds none, the build's is written there (the toolkit's `licence.Store_Options.seed`, given by `src/browser/license_shell.odin`) with a marker file `<license file>.seeded`; it is then the profile's own: `Remove the licence` removes it and the marker stops it coming back, another license replaces it, and a profile that already holds a license keeps its own. A build that cannot check the text (a release with no key for it) puts nothing anywhere. `wrentool experimental` builds this way with the development pair's demonstration license. A release has no `WREN_EMBEDDED_LICENSE`.
 
 ### 4. Without the Worker
 
@@ -352,7 +354,7 @@ what it would send.
    wrentool license verify "-text:WREN1.…" -public:<the public key>
    ```
 
-   and paste it in `about:wren`. If something is missing: *Developer tools → Notifications → the destination → Logs* shows
+   and paste it in the settings' *License* page (`about:settings#licence`). If something is missing: *Developer tools → Notifications → the destination → Logs* shows
    what Paddle sent and got back (a *Replay* button redelivers it), and `npx wrangler tail --env sandbox` shows the
    Worker's side (`webhook_rejected` with the reason, `issued`, `mail`…).
 8. Try the failure paths once if you like: a wrong `PADDLE_WEBHOOK_SECRET` gives 401 and nothing is stored; a wrong

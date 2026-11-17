@@ -730,9 +730,9 @@ planes_density_is_the_jacobian :: proc(t: ^testing.T) {
 	}
 }
 
-// The licence card of about:wren (440 x 277 css px, perspective 900px, device scale 1.75) at the most the pointer tilts it (rotateX 14deg,
-// rotateY 18deg: about_card.odin) is shown nowhere reduced enough to need mip levels: its layer, rasterized again at every frame for its
-// shader, builds none. Turned (the manipulation mode) it builds them once the slant is more than the anisotropic taps take.
+// A card of 440 x 277 css px (perspective 900px, device scale 1.75) tilted by a pointer at most (rotateX 14deg, rotateY 18deg) is
+// shown nowhere reduced enough to need mip levels: its layer, rasterized again at every frame of the tilt, builds none. Turned further
+// it builds them once the slant is more than the anisotropic taps take.
 @(test)
 planes_tilted_by_the_pointer_build_no_mips :: proc(t: ^testing.T) {
 	test_app(t)

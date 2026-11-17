@@ -70,11 +70,12 @@ nav_judge :: proc(origin: Nav_Origin, from: ^fetch.Environment, policy: fetch.Fi
 }
 
 // The address without what it would do: of the query only the parameters that change nothing (the filter of about:sites and
-// about:cache, the sample card of about:wren). A name is kept as written, never decoded: `cl%65ar` is not `q`.
+// about:cache). A name is kept as written, never decoded: `cl%65ar` is not `q`.
 nav_neutral_address :: proc(target: string) -> string {
-	name_q, name_card := [1]string{"q"}, [1]string{"card"}
-	names := is_wren_address(target) ? name_card[:] : name_q[:]
-	if is_home_address(target) { names = nil }   // (art=next and art=on change nothing a page may ask for: the query goes)
+	name_q := [1]string{"q"}
+	names := name_q[:]
+	// (art=next and art=on change nothing a page may ask for, and every query of about:wren acts: the query goes)
+	if is_home_address(target) || is_wren_address(target) { names = nil }
 	rest, fragment := target, ""
 	if i := strings.index_byte(rest, '#'); i >= 0 { rest, fragment = rest[:i], rest[i:] }
 	query := ""

@@ -44,9 +44,6 @@ Settings :: struct {
 	webcodecs:       Webcodecs_Settings,  // WebCodecs (webcodecs_settings.odin)
 	webaudio:        webaudio.Settings,   // the Web Audio API (bindings_webaudio.odin)
 	webgl:           webgl.Settings,      // WebGL (bindings_webgl.odin)
-	// Whether a document address is one of the browser's own pages (about:wren...): those documents may use the properties made for
-	// them (-wren-shader). Set by the shell; nil: no page is.
-	internal_address: proc(href: string) -> bool,
 }
 
 PREFS := [?]config.Def{

@@ -417,7 +417,6 @@ Rare_Group :: struct {
 	// scroll bars (container.odin; the room classic bars take: layout scrollbars.odin)
 	scrollbar_width:   Scrollbar_Width,
 	scrollbar_gutter:  Scrollbar_Gutter,
-	wren_shader:       Shader_Call,        // -wren-shader (wren_shader.odin): built-in pages only
 	// anchor positioning (anchor.odin)
 	anchor_name:       []string,            // nil: none
 	anchor_scope:      Anchor_Scope,
@@ -480,7 +479,6 @@ Prop :: enum u8 {
 	Container_Type, Container_Name, Scrollbar_Width, Scrollbar_Color, Scrollbar_Gutter,
 	Mask_Image, Mask_Mode, Mask_Repeat, Mask_Position, Mask_Size, Mask_Origin, Mask_Clip, Mask_Composite, Text_Fill_Color,
 	Fill, Stroke, Stroke_Width, Stroke_Linecap, Stroke_Linejoin,
-	Wren_Shader,
 	Anchor_Name, Anchor_Scope, Position_Anchor, Position_Area, Position_Try_Fallbacks, Position_Try_Order, Position_Visibility,
 }
 

@@ -24,4 +24,5 @@ Wasm, run by Wasmtime. The window, the widgets, the settings, the install and th
 ## File Index
 
 - [features/keys.md](features/keys.md): how Wren connects the toolkit's keymap, and the command that opens a page in a new tab.
+- [features/licence.md](features/licence.md): Wren's licence as the toolkit's Licence page and card, what Wren gives it, and the HTML card with its CSS shaders that it replaces.
 - [features/profile.md](features/profile.md): where the profile lives, and its move to `FromentSoftware/Wren`.

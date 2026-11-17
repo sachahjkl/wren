@@ -2,9 +2,6 @@
 # here, on one listed that is gone, and on a class that is not what the code says. "<dir>/<file> <name> <class>  # why". The rule is docs\architecture.md, "Where state lives".
 # const: a table, written once and only read (any thread). process: a resource of the process, one whatever the number of Apps (locked, atomic, or bound to a thread the note
 # names). thread: @(thread_local). test: a test's. There is no class for one App's state: it is a field of App (or of its window, tab or page; page.Pages).
-browser/about_card_engrave.odin engr_cache thread  # the engraved cards' textures, of the thread that draws them
-browser/about_card_relief.odin GLYPHS const  # a table
-browser/about_card_seal.odin SEAL_TICK const  # a table
 browser/about_pages.odin ABOUT_PAGES const  # a table
 browser/app_commands.odin APP_COMMAND_PREFS const  # a table
 browser/appearance_windows.odin LOOK_KEYS const  # a table
@@ -147,10 +144,6 @@ browser/session.odin SESSION_PREFS const  # a table
 browser/settings.odin PREFS const  # a table
 browser/settings_page.odin SETTINGS_PAGES const  # a table
 browser/setup.odin SETUP_PREFS const  # a table
-browser/shaders.odin CARD_FOIL_ARGS const  # a table
-browser/shaders.odin CARD_FOIL_PASSES const  # a table
-browser/shaders.odin SHADERS const  # a table
-browser/shaders.odin shader_states thread  # the shaders, of the thread that draws (its renderer's)
 browser/shell_frames.odin SHELL_FRAME_PREFS const  # a table
 browser/shell_latency.odin lat_cur process  # ... the frame being recorded
 browser/shell_latency.odin lat_frames process  # WREN_PROF's latency records (the profiler's)

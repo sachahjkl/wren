@@ -56,9 +56,6 @@ Scenario :: struct {
 	prefs:  []string,
 }
 
-// Scenarios about one element (a selector): it is scrolled into view first, and a Hover wanders over its box instead of the window.
-SCENARIO_ELEMENT := [?][2]string{{"card_hover", "#lic"}, {"card_idle", "#lic"}}
-
 FULL_LAYOUT := []string{"layout.incremental.enabled=false"}
 FULL_STYLE := []string{"style.incremental.enabled=false"}
 NO_COMPOSITOR := []string{"render.compositor.enabled=false"}
@@ -89,8 +86,6 @@ SCENARIOS := []Scenario{
 	{"transforms", "site:transforms.html", .Idle, nil}, {"transforms_nocomp", "site:transforms.html", .Idle, NO_COMPOSITOR}, {"transforms3d", "site:transforms-3d.html", .Idle, nil},
 	{"effects", "site:effects.html", .Idle, nil}, {"effects_hover", "site:effects.html", .Hover, nil}, {"effects_wheel", "site:effects.html", .Wheel, nil},
 	{"gradients", "site:gradients.html", .Idle, nil},
-	// the licence card of about:wren (3D planes, shaders) under a moving pointer, and at rest
-	{"card_hover", "about:wren?card=sample", .Hover, nil}, {"card_idle", "about:wren?card=sample", .Idle, nil},
 	{"planes_nested", "perf:planes-nested.html", .Idle, nil}, {"planes_nested_merged", "perf:planes-nested.html", .Idle, {"paint.planes.detach_children=false"}},
 	// a module changes one text of a page of ~17 000 nodes every 16 ms (examples/mutation), or toggles a class (examples/mutation_class)
 	{"mutation", "site:mutation.html", .Idle, nil}, {"mutation_full", "site:mutation.html", .Idle, FULL_LAYOUT}, {"mutation_fullstyle", "site:mutation.html", .Idle, FULL_STYLE},
@@ -270,15 +265,8 @@ perf_action :: proc(w: ^Wren, s: Scenario, url: string, measure: time.Duration) 
 	action := s.action
 	bounds, _ := api.window_bounds(ses)
 	width, height := f64(bounds.width), f64(bounds.height)
-	// where the pointer wanders: the window, or the element named
+	// where the pointer wanders: the window
 	area := api.Rect{0, 0, width, height}
-	for o in SCENARIO_ELEMENT {
-		if o[0] != s.name { continue }
-		_, _ = api.eval(ses, fmt.tprintf("document.querySelector(%q).scrollIntoView({{block: 'center'}})", o[1]))
-		settle(w)
-		_, _ = api.stats(ses, reset_frames = true)
-		if b, e := api.box_model(ses, o[1]); e == .None && b.visible { area = b.window } else { fmt.eprintfln("%s: no box for %q", s.name, o[1]) }
-	}
 	begin := time.tick_now()
 	left :: proc(begin: time.Tick, measure: time.Duration) -> bool { return time.tick_since(begin) < measure }
 	switch action {

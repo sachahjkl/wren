@@ -63,9 +63,10 @@ open {o}/site/shadow-dom.html
 load
 open {o}/site/layout.html
 load
-open about:wren?card=sample
+open about:wren
 load
-frames 60
+open about:settings#licence
+frames 10
 wait 500
 open {o}/site/media.html
 load

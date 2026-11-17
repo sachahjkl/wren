@@ -128,7 +128,6 @@ tables_build :: proc() {
 		logical_names[name] = true
 	}
 	mask_names()
-	shader_names()
 }
 
 // A property name as written in CSS: a longhand, a shorthand or neither.

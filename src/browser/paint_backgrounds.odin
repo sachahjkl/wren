@@ -1,8 +1,6 @@
 package browser
 
 import "core:math"
-import "wb:base"
-import "wb:dom"
 import "toolkit:draw"
 import "wb:style"
 
@@ -45,7 +43,7 @@ area_of :: proc(b: ^Bg_Boxes, a: style.Box_Area) -> (draw.Rect, [4]f32) {
 
 // Background color and every background-image layer of `cs`, bottom first. The color is clipped like the bottom layer
 // (CSS Backgrounds §3.10).
-paint_backgrounds :: proc(dc: ^draw.Context, cs: ^style.Computed, b: ^Bg_Boxes, scale: f32, doc: ^dom.Document = nil, node := base.NIL_HANDLE) {
+paint_backgrounds :: proc(dc: ^draw.Context, cs: ^style.Computed, b: ^Bg_Boxes, scale: f32) {
 	layers := style.background_layers(cs)
 	if cs.background_color.a > 0 {
 		clip, radii := area_of(b, layers[len(layers) - 1].clip)
@@ -57,11 +55,6 @@ paint_backgrounds :: proc(dc: ^draw.Context, cs: ^style.Computed, b: ^Bg_Boxes, 
 		pos_area, _ := area_of(b, layer.origin)
 		clip, radii := area_of(b, layer.clip)
 		paint_image_layer(dc, layer, pos_area, clip, radii, scale)
-	}
-	// -wren-shader (built-in pages): over the CSS background, which is also what shows where the shader cannot be had
-	if cs.wren_shader.name != "" {
-		clip, radii := area_of(b, layers[len(layers) - 1].clip)
-		paint_wren_shader(dc, cs, clip, radii, scale, doc, node)
 	}
 }
 

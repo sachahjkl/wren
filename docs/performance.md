@@ -1633,6 +1633,9 @@ over it every 8 ms; `card_idle`: the card at rest), profile builds, 3 interleave
 hardware adapter: `nvwgf2umx.dll` in the process, not WARP). GPU times are those of a GPU that the driver keeps at low
 clocks for so little work: the counts of `-GpuSteps 1` say more.
 
+(Since then the card is the toolkit's `ui.licence_card`, on the settings' Licence page, and the page engine's card, its
+shaders and the scenarios `card_hover` and `card_idle` are gone. The four changes below are general and stay.)
+
 1. **A document changed only in style attributes is refreshed, not laid out** (`styles_only_mutations`,
    `src/layout/refresh.odin`). The card's script writes its tilt in the style attributes of the card, its lettering and
    the seal's shadow at each frame (transform, `--rx`...): paint-only values, but any change of the document disqualified
