@@ -200,7 +200,7 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 			ui.next({width = ui.px(strip_w), height = ui.pct(1), axis = .Y})
 			if ui.parent(ui.build_box({}, "###tabs_column")) {
 				ui.spacer(ui.px(math.round(em * TAB_TOP_ROOM_EM)))
-				ui.next({width = ui.px(strip_w), height = ui.fill()})
+				ui.next({width = ui.px(strip_w), height = ui.px(h - math.round(em * TAB_TOP_ROOM_EM))})   // (a fill took the column's whole height: the tabs ran 8 px under the toolbar, which hid their feet)
 				if ui.strip("###tabs_strip") { strip_tabs(app, ui.parent_box(), strip_w, w, cg.overlap + extra, &move_from, &move_to, &cg, cc) }
 			}
 		}
@@ -245,7 +245,7 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 			ui.next({width = ui.px(new_w), height = ui.pct(1), axis = .Y, cross = .Center})
 			if ui.parent(ui.build_box({}, "###newtab_column")) {
 				ui.spacer(ui.px(math.round(em * TAB_TOP_ROOM_EM)))
-				ui.next({width = ui.fill(), height = ui.fill(), axis = .X, cross = .Center})
+				ui.next({width = ui.fill(), height = ui.px(h - math.round(em * TAB_TOP_ROOM_EM)), axis = .X, cross = .Center})
 				if ui.parent(ui.build_box({}, "###newtab_middle")) {
 					ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.0)), radius = em * CHROME_BUTTON_RADIUS})
 					add = ui.button("###newtab", icon = lucide.PLUS)
