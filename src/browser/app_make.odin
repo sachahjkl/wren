@@ -154,6 +154,7 @@ app_ui_init :: proc(app: ^App) {
 app_ui_end :: proc(app: ^App) {
 	windows_destroy_ui(app)
 	views_end(app)   // (after the last build of every window)
+	prefs_page.changelog_destroy(&app.changelog)   // (the What's new page's state: settings_page.odin)
 	prefs_page.themes_file_destroy(&app.themes_file)
 	ui.theme_destroy(&app.theme)
 	app.made -= {.Ui}

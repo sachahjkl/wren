@@ -559,10 +559,10 @@ commands_build :: proc(r: ^Command_Registry) {
 			if t != nil && t.kind == .Web { reload(app, t) }
 		}})
 	add(r, {id = "browser.check_updates", label = "Check for updates", group = "Browser", tags = command_words(r, "update upgrade new version release github latest"),
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { update_check_now(app) }})
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { updates_check_now(app) }})
 	add(r, {id = "browser.install_update", label = "Install the update", group = "Browser", tags = command_words(r, "update upgrade install new version signed release"),
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return update_install_ready(app) },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { update_install(app) }})
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return updates_on_offer(app) },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { updates_install_now(app) }})
 	add(r, {id = "browser.desktop_integration", label = "Integrate Wren with the desktop", group = "Browser", tags = command_words(r, "start menu shortcut default apps browser application menu desktop entry install uninstall"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_available() },
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_checked(app) },

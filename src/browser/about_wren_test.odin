@@ -102,6 +102,7 @@ about_page_without_a_license :: proc(t: ^testing.T) {
 			"Wren is a beta under development.", "Every version is free; a license only supports development.",
 			"Froment Software", FROMENT_URL, "data:image/png;base64,", "Version " + APP_VERSION,
 			"Manage the license", `href="` + SETTINGS_LICENCE_URL + `"`,
+			`href="` + SETTINGS_WHATS_NEW_URL + `"`, `href="` + SETTINGS_INSTALL_URL + `"`,
 			"gui_toolkit", "Slug", "Wasmtime", "QuickJS-ng", "Odin", "about:licenses",
 		}) {
 			testing.expectf(t, strings.contains(html, want), "about:wren (%s) lacks %q", theme, want)
@@ -112,6 +113,8 @@ about_page_without_a_license :: proc(t: ^testing.T) {
 		testing.expectf(t, strings.contains(html, pal.dark ? "color-scheme: dark" : "color-scheme: light"), "%s's color scheme", theme)
 		testing.expect(t, !strings.contains(html, "$"), "every theme token was replaced")
 		testing.expect(t, !strings.contains(html, "<script") && !strings.contains(html, "<textarea"), "no script and no key field: the licence is the settings'")
+		testing.expect(t, !strings.contains(html, "<form"), "no form: the updates are the settings'")
+		testing.expect_value(t, strings.contains(html, `href="` + SETTINGS_UPDATES_URL + `"`), UPDATES_SELF)
 		// the maker's signature is part of the header, under the tagline; the logo keeps its proportions in a narrow row
 		sig := strings.index(html, `class="sig"`)
 		testing.expect(t, sig > strings.index(html, "<h1>") && sig < strings.index(html, "beta under development"), "by Froment Software ends the header")

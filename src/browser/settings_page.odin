@@ -8,12 +8,26 @@ package browser
 // A page lists its preferences by name (prefs_page.Page_Info.names): the categories of the registry stay about:config's. The
 // theme is chosen on cards in its own colours, the user's own themes (themes.txt of the profile) after the toolkit's; the
 // default search engine is a choice among the profile's engines. The text and the rendering are the toolkit's standard
-// settings, which standard_watch applies. The standard settings that Wren does not use as they are (general.menu and
-// general.autostart: the desktop integration is Setup's; rendering.max_frame_latency: the pacer's) are left to about:config.
+// settings, which standard_watch applies; general.menu and general.autostart, which the toolkit's install_follow applies
+// to the installed copy. rendering.max_frame_latency (the pacer's) is left to about:config.
+//
+// After Wren's pages, the toolkit's own (src/md/features/settings-pages.md): What's new (CHANGELOG.md), the Licence,
+// the Installation (setup.odin) and the Diagnostics of the window the page is in; the updater's state and buttons under
+// update.auto on the System page (updates.odin).
 
+import "core:fmt"
 import "toolkit:ui"
 import lucide "toolkit:lucide"
 import prefs_page "toolkit:prefs_page"
+import desktop "toolkit:desktop"
+
+// The settings opened on the toolkit's pages (show_settings): about:wren's links, the message after an update.
+SETTINGS_WHATS_NEW_URL :: SETTINGS_URL + "#" + prefs_page.CHANGELOG_PAGE
+SETTINGS_INSTALL_URL   :: SETTINGS_URL + "#" + prefs_page.INSTALL_PAGE
+SETTINGS_UPDATES_URL   :: SETTINGS_URL + "#system"   // (the updater's state is under update.auto, on the System page)
+
+// Wren's changelog, as released (wrentool's release writes it): the What's new page reads it in the program.
+CHANGELOG_TEXT :: #load("../../CHANGELOG.md", string)
 
 Settings_Page_Def :: struct {
 	category, title, icon: string,
@@ -55,13 +69,25 @@ SETTINGS_PAGES := [?]Settings_Page_Def{
 	{"rendering", "Rendering", lucide.GAUGE, {
 		"rendering.present", "rendering.frame_rate", "rendering.partial_redraw", "rendering.blur_sigma_limit",
 		"rendering.filter_precision"}},
-	{"system", "System", lucide.MONITOR, {"general.messages", "update.auto", "browser.session.crash_recovery"}},
+	// (general.menu and general.autostart: hidden until the toolkit's install_follow finds this copy installed)
+	{"system", "System", lucide.MONITOR, {"general.messages", "general.menu", "general.autostart", "update.auto", "browser.session.crash_recovery"}},
 }
 
 // The settings page of the tab (page_view): the whole room.
 settings_page :: proc(app: ^App) {
+	if app.install.prefs != nil { setup_follow_prefs(app) }   // (the Installation page's boxes start as the preferences say)
 	ui.next({width = ui.fill(), height = ui.fill()})
 	prefs_page.build(&app.settings_view, &app.prefs, settings_options(app))
+}
+
+// Once at start, the first window open: the first start of a new version says so, and its click opens What's new.
+whats_new_after_update :: proc(app: ^App) {
+	if app.changelog.english == "" { app.changelog.english = CHANGELOG_TEXT }
+	if !app.cfg.persist_profile { return }   // (a profile that is not kept starts as new every time)
+	_ = prefs_page.changelog_after_update(&app.changelog, &app.prefs, APP_VERSION, &app.announcer, proc(user: rawptr) {
+		app := (^App)(user)
+		tab_open(app, SETTINGS_WHATS_NEW_URL, origin = .User)
+	}, app)
 }
 
 // The page's options, its pages in the temporary allocator: the build's, and show_settings' (a page chosen by the address).
@@ -79,7 +105,23 @@ settings_options :: proc(app: ^App) -> prefs_page.Page_Options {
 		themes = app.themes_file.all[:], themes_light = app.theme_shown.light,
 		themes_file = app.cfg.persist_profile ? &app.themes_file : nil,   // (a profile that is not kept has no file of themes)
 		licence = app.licence.store != nil ? &app.licence : nil,   // (license_shell.odin; nil before licence_start: no page to show)
+		version = fmt.tprintf("%s %s", APP_NAME, APP_VERSION_SHOWN),
+		changelog = app.changelog.english != "" ? &app.changelog : nil,
+		// (setup.odin; nil before setup_startup, and where the desktop has no install)
+		install = app.install.prefs != nil && desktop.supported() ? &app.install : nil,
+		// (updates.odin; nil where Wren does not update itself: no line under update.auto, which is not registered there)
+		updater = app.updates.updater, restart = updates_restart,
+		// (the window the page is built in: its renderer is every window's, its frames its own)
+		diagnostics = settings_diagnostics(app),
 	}
+}
+
+// What the Diagnostics page reads: Wren's renderer, the window being built and its frame ring (main.odin frame).
+@(private = "file")
+settings_diagnostics :: proc(app: ^App) -> prefs_page.Diagnostics_Source {
+	if .Renderer not_in app.made { return {} }
+	w := active_window(app)
+	return {renderer = &app.r, window = w.win, frames = &w.frames, partial_redraw = app.cfg.partial_redraw}
 }
 
 // The values of a String preference without its own choices: the default search engine among the profile's engines.

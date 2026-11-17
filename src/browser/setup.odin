@@ -1,17 +1,17 @@
 package browser
 
-// Wren Setup: the one executable is its own installer, with the toolkit's Setup dialog (toolkit:setup): install this copy
-// (into the default folder, "Wren Dev" for the development channel, or one the user chooses), repair, upgrade or replace
-// the installed copy, uninstall it, or carry on without installing ("Keep standalone", remembered in the profile). The
-// dialog does its work on a thread of its own and follows the disk while it is open; Wren gives it its identity, its
-// icons, the console launcher (Windows), the places of a test (WREN_DESKTOP_* roots) and three choices of its own:
-// the PATH, the registration as a browser, and the daily update check.
+// Wren Setup: the one executable is its own installer, through the toolkit's install (prefs_page.Install over
+// toolkit:setup): the offer at a start, the modal (the command "Setup…", `wren --setup`), the Installation page of
+// about:settings, and the answer kept in the preferences (install.choice). Wren gives it its identity, its icons, the
+// console launcher (Windows), the places of a test (WREN_DESKTOP_* roots) and choices of its own: the PATH, the
+// registration as a browser, and (where Wren updates itself) the updates.
 //
-// Opens by itself (setup_startup) at the start of a copy that is not the installed one when setup.wanted says so (no
-// install, one to repair, an older one to upgrade; not again after "Keep standalone", nor for a version closed without an
-// answer); never for a profile given with --profile or kept in the temporary folder, a portable copy (a wren.portable file
-// beside the executable), a copy of the Nix store, nor with WREN_DESKTOP_INTEGRATION=off in the environment. The command
-// "Setup…" (menu, palette) and `wren --setup` open it whatever the build.
+// The offer opens by itself at the start of a copy that is not the installed one when setup.wanted says so (no install,
+// one to repair, an older one to upgrade; not again after "Keep standalone", nor for a version closed without an
+// answer); never for a profile given with --profile or kept in the temporary folder, a portable copy (a wren.portable
+// file beside the executable), with browser.desktop_integration.on_first_run off, nor with WREN_DESKTOP_INTEGRATION=off
+// in the environment. A copy of the Nix store is never offered it (setup.wanted). The reading still runs then: the
+// updater asks which copy runs (Install.known, running_it).
 
 import "core:fmt"
 import "core:os"
@@ -25,49 +25,48 @@ import desktop "toolkit:desktop"
 import process "toolkit:process"
 import prefs_page "toolkit:prefs_page"
 import setup "toolkit:setup"
-import "wb:host"
 import wren_desktop "wb:desktop"
 
-SETUP_CHOICE_FILE :: "setup.txt"
+// The order of Wren's choices in the dialog (Setup_Options.choices). Update_By_Itself only where Wren updates itself
+// (UPDATES_SELF: update.auto is registered there alone).
+Setup_Choice :: enum u8 { Add_To_Path, Register_Browser, Update_By_Itself }
+SETUP_CHOICES :: len(Setup_Choice) when UPDATES_SELF else len(Setup_Choice) - 1
 
-// The order of Wren's choices in the dialog (Config.choices).
-Setup_Choice :: enum u8 { Add_To_Path, Register_Browser, Check_Daily }
-
-SETUP_PREFS := [?]config.Def{
-	{name = "browser.update.url", kind = .String, default = {s = "https://api.github.com/repos/sachahjkl/wren/releases/latest"},
-		description = "The address the update check reads (a JSON document with tag_name and html_url, as GitHub's \"latest release\" answers). For tests and mirrors."},
-	{name = "browser.update.public_key", kind = .String, default = {s = ""},
-		description = "The key (base64url of 32 bytes) that a release's manifest must be signed with, instead of the one built into Wren. Empty: the built-in one. For trying releases made with another key (the tests); setting it widens whom you trust to update Wren."},
-	{name = "browser.update.require_signature", kind = .Bool, default = {b = true},
-		description = "Install an update only when its manifest carries a valid signature of the key above (the built-in one, or browser.update.public_key). Turn it off only for a channel of your own that does not sign: the file's length and SHA-256 are then checked against an unsigned manifest, which proves nothing about who made it. A channel is: browser.update.url (what announces a release), update.base_url (where its files are), this and browser.update.public_key."},
-	{name = "browser.update.allow_development_build", kind = .Bool, default = {b = false},
-		description = "Let a development build install a release over itself. For the tests of the updater only: a development build is updated by hand."},
-}
-
-// What Wren keeps of the dialog (App.stp).
+// What Wren keeps around the toolkit's install (App.stp; the install itself is App.install).
 Setup_State :: struct {
-	d:          setup.Dialog,
-	choices:    [len(Setup_Choice)]setup.Choice,   // the boxes' first values, from the preferences (setup_config; by Setup_Choice)
-	file_types: string,                       // browser.desktop_integration.file_types when the dialog opened (owned): read by its thread
-	deciding:   int,                          // the start's reading of the install, out on the blocking pool
-	asked:      bool,                         // setup_open: the next build of the window the person is in opens it
-	logo:       Maybe(setup.Logo),            // Wren's 256 px logo as a texture of the renderer, made at the first opening
+	choices:    [len(Setup_Choice)]setup.Choice,   // the boxes' first values, from the preferences (setup_follow_prefs)
+	file_types: string,     // browser.desktop_integration.file_types (owned): read by the dialog's thread, replaced only while it is closed
+	asked:      bool,       // setup_open: the next build of the window the person is in opens the modal
 	at_primary, at_uninstall, at_secondary: draw.Rect,   // where the last frame put its buttons (control_setup_state)
 }
 
-setup_is_open :: proc(app: ^App) -> bool { return app.stp.d.open || app.stp.asked }
+setup_is_open :: proc(app: ^App) -> bool { return prefs_page.install_open_now(&app.install) || app.stp.asked }
 
-// The dialog's Config: Wren's identity, version, icons and choices. Called on the interface thread; the dialog's thread
-// keeps a copy, whose strings and `user` (the App) outlive it.
+// The setup's options: Wren's identity, version, icons and choices. Its strings are constants and `user` the App: the
+// dialog's thread and Install keep a copy that outlives the call.
 setup_config :: proc(app: ^App) -> setup.Setup_Options {
+	setup_follow_prefs(app)
+	return setup.Setup_Options{
+		identity = desktop_identity(), version = APP_VERSION, icons = desktop_icons(), choices = app.stp.choices[:SETUP_CHOICES],
+		prepare = setup_prepare, folder = true, square = true, user = app,
+		running = instance_running, quit = instance_quit,   // instance_shell.odin: the Wren that runs on this profile
+	}
+}
+
+// The boxes' first values and the file types, as the preferences say now: only while no dialog works (its thread
+// reads both). Before the modal opens and before the Installation page builds (its controller starts there).
+setup_follow_prefs :: proc(app: ^App) {
+	if app.install.dialog.open || app.install.dialog.job != nil { return }
 	p := &app.prefs
 	app.stp.choices[Setup_Choice.Add_To_Path] = {label = "Add Wren to PATH", on = config.bool_of(p, "browser.desktop_integration.add_to_path")}
 	app.stp.choices[Setup_Choice.Register_Browser] = {label = "Register as a browser", on = config.bool_of(p, "browser.desktop_integration.register_browser")}
-	app.stp.choices[Setup_Choice.Check_Daily] = {label = "Check for updates once per day", on = config.bool_of(p, prefs_page.UPDATE_AUTO_PREF)}
-	return setup.Setup_Options{
-		identity = desktop_identity(), version = APP_VERSION, icons = desktop_icons(), choices = app.stp.choices[:],
-		prepare = setup_prepare, folder = true, square = true, user = app,
-		running = instance_running, quit = instance_quit,   // instance_shell.odin: the Wren that runs on this profile
+	when UPDATES_SELF {
+		app.stp.choices[Setup_Choice.Update_By_Itself] = {label = "Update by itself", on = config.bool_of(p, prefs_page.UPDATE_AUTO_PREF)}
+	}
+	types := config.string_of(p, "browser.desktop_integration.file_types")
+	if types != app.stp.file_types {
+		delete(app.stp.file_types)
+		app.stp.file_types = strings.clone(types)
 	}
 }
 
@@ -76,7 +75,7 @@ setup_config :: proc(app: ^App) -> setup.Setup_Options {
 setup_prepare :: proc(o: ^desktop.Integration_Options, choices: []bool, user: rawptr) {
 	app := (^App)(user)
 	o.start_menu = true
-	if len(choices) == len(Setup_Choice) {
+	if len(choices) >= 2 {
 		o.add_to_path = choices[Setup_Choice.Add_To_Path]
 		o.register_browser = choices[Setup_Choice.Register_Browser]
 	}
@@ -86,35 +85,13 @@ setup_prepare :: proc(o: ^desktop.Integration_Options, choices: []bool, user: ra
 }
 
 ////////////////////////////////
-// The profile's memory of what the user answered
-
-// The choice of setup ("installed", "standalone", "dismissed:<version>", or "").
-setup_choice :: proc(app: ^App) -> string {
-	data, err := os.read_entire_file(strings.concatenate({app.profile_dir, "/", SETUP_CHOICE_FILE}, context.temp_allocator), context.temp_allocator)
-	if err != nil { return "" }
-	for line in strings.split_lines(string(data), context.temp_allocator) {
-		if l := strings.trim_space(line); strings.has_prefix(l, "choice=") { return l[len("choice="):] }
-	}
-	return ""
-}
-
-@(private = "file")
-setup_choice_write :: proc(app: ^App, choice: string) {
-	if !app.cfg.persist_profile { return }
-	text := strings.concatenate({"wren setup: what was answered\nchoice=", choice, "\nversion=", APP_VERSION, "\nchannel=", channel_name(), "\n"}, context.temp_allocator)
-	host.profile_write(&app.writer, strings.concatenate({app.profile_dir, "/", SETUP_CHOICE_FILE}, context.temp_allocator), text)
-}
-
-////////////////////////////////
 // Opening, each frame, the end
 
-// Opens the dialog (the command, --setup, the start): the view opens in the next build of the window the person is in
-// (setup_build), from a build or not.
+// Opens the modal (the command, --setup, a second start's --setup): it opens in the next build of the window the person
+// is in (setup_build), from a build or not.
 setup_open :: proc(app: ^App) {
 	if !desktop.supported() { announce(app, .Info, "Setup is not available on this platform"); return }
-	if app.stp.d.open || app.stp.asked { return }
-	delete(app.stp.file_types)
-	app.stp.file_types = strings.clone(config.string_of(&app.prefs, "browser.desktop_integration.file_types"))
+	if setup_is_open(app) { return }
 	if ui.building() {
 		ui.menu_close()
 		palette_hide(app)
@@ -123,58 +100,40 @@ setup_open :: proc(app: ^App) {
 	request_frames(app, 3)
 }
 
-// The setup's logo: the 256 px picture, made once. (The window's icon was used before: a title bar's 16 to 24 px drawn
-// at 4 em, blurred.)
-@(private = "file")
-setup_logo :: proc(app: ^App) -> Maybe(setup.Logo) {
-	if app.stp.logo == nil && .Renderer in app.made {
-		if l, ok := setup.logo_make(&app.r, APP_LOGO_PNG); ok { app.stp.logo = l }
-	}
-	return app.stp.logo
-}
-
-// Each frame of each window: the view opened when asked, its logo when the icon changes, the work it collects, what
-// its events leave.
+// Each frame of each window, in its build: the modal opened when asked, its marks once the renderer exists, the work it
+// collects, what its events leave beyond install.choice (which the toolkit keeps).
 setup_build :: proc(app: ^App) {
-	d := &app.stp.d
+	if app.install.prefs == nil { return }   // (setup_startup did not run: a test's App)
+	if .Renderer in app.made {
+		// (the 256 px picture: the window's icon, a title bar's 16 to 24 px drawn at 4 em, was blurred)
+		// (Install.logo is the program's to make and free: install_end frees the vendor's mark alone)
+		if app.install.logo == nil {
+			if l, ok := setup.logo_make(&app.r, APP_LOGO_PNG); ok { app.install.logo = l }
+		}
+		_ = prefs_page.install_vendor_mark(&app.install, &app.r, FROMENT_LOGO_PNG)   // (once: later calls do nothing)
+	}
 	if app.stp.asked && window_is_front(app) {
 		app.stp.asked = false
-		setup.open(d, setup_config(app), setup_logo(app))
+		setup_follow_prefs(app)   // (the boxes start as the preferences say now: Install's options share their array)
+		prefs_page.install_open(&app.install)
 	}
-	ev := setup.update(d, setup_config(app))
-	switch ev {
-	case .None:
+	d := &app.install.dialog
+	#partial switch prefs_page.install_frame(&app.install) {
 	case .Installed:
-		setup_choice_write(app, setup.CHOICE_INSTALLED)
-		// what was ticked is what the preferences say from now on (about:config's integration row, the update check)
-		if len(d.choices) == len(Setup_Choice) {
+		// what was ticked is what the preferences say from now on (about:config's integration row, the updates)
+		if len(d.choices) >= 2 {
 			set_pref_bool(app, "browser.desktop_integration.add_to_path", d.choices[Setup_Choice.Add_To_Path])
 			set_pref_bool(app, "browser.desktop_integration.register_browser", d.choices[Setup_Choice.Register_Browser])
-			set_pref_bool(app, prefs_page.UPDATE_AUTO_PREF, d.choices[Setup_Choice.Check_Daily])
+		}
+		when UPDATES_SELF {
+			if len(d.choices) == len(Setup_Choice) { set_pref_bool(app, prefs_page.UPDATE_AUTO_PREF, d.choices[Setup_Choice.Update_By_Itself]) }
 		}
 		set_pref_bool(app, "browser.desktop_integration.desktop_shortcut", d.shortcut)
-	case .Uninstalled:
 	case .Kept_Standalone:
-		setup_choice_write(app, setup.CHOICE_STANDALONE)
 		announce(app, .Info, fmt.tprintf("%s runs standalone. Setup is in the menu if you change your mind.", APP_NAME))
-	case .Dismissed:
-		// (the profile's choice is read by the blocking pool: the dialog closes at once)
-		Dismiss_Job :: struct { app: ^App, upgrade: bool, saved: string }
-		j := new(Dismiss_Job)
-		j^ = {app = app, upgrade = setup.is_upgrade(d.facts, APP_VERSION)}
-		drop :: proc(data: rawptr) { j := (^Dismiss_Job)(data); delete(j.saved); free(j) }
-		host.run_blocking(&app.blocking, proc(data: rawptr) {
-			j := (^Dismiss_Job)(data)
-			j.saved = strings.clone(setup_choice(j.app))
-		}, proc(data: rawptr) {
-			j := (^Dismiss_Job)(data)
-			defer drop(j)
-			if j.upgrade || (j.saved != setup.CHOICE_STANDALONE && j.saved != setup.CHOICE_INSTALLED) {
-				setup_choice_write(j.app, setup.choice_dismissed(APP_VERSION))
-			}
-		}, j, drop)
 	case .Launched:
-		app.quitting = true   // (the installed copy runs now: this one ends)
+		// (the installed copy starts once this one has ended and let go of its profile: setup_shutdown, app_stop)
+		app.quitting = true
 		platform.request_close(active_window(app).win)
 	}
 	// where its buttons are, for the remote channel (the tests click them)
@@ -182,13 +141,18 @@ setup_build :: proc(app: ^App) {
 	if d.open { request_frames(app, 1) }   // (the work it waits for comes back by a post; the frame after it reads it)
 }
 
-// At the end of the process: what an uninstall left because this process held it goes then; the dialog's thread is
-// waited for. Before the interface goes.
+// At the end of the process, before the windows' states and the renderer go: what an uninstall left because this process
+// held it goes then, the dialog's thread is waited for; the installed copy to start after the end is kept (App.relaunch).
 setup_shutdown :: proc(app: ^App) {
-	for app.stp.deciding > 0 { host.blocking_settle(&app.blocking) }
-	setup.finish(&app.stp.d, setup_config(app))
-	setup.destroy(&app.stp.d)
-	if .Renderer in app.made { setup.logo_destroy(&app.r, &app.stp.logo) }
+	if app.install.prefs != nil {
+		if app.install.launch != "" {
+			delete(app.relaunch)
+			app.relaunch, app.install.launch = app.install.launch, ""
+		}
+		prefs_page.install_end(&app.install)
+	}
+	if .Renderer in app.made { setup.logo_destroy(&app.r, &app.install.logo) }
+	app.install = {}
 	delete(app.stp.file_types)
 	app.stp = {}
 }
@@ -209,48 +173,15 @@ portable_profile_dir :: proc() -> string {
 	return strings.concatenate({dir, filepath.SEPARATOR_STRING, "data"}, context.temp_allocator)
 }
 
-@(private = "file")
-Setup_Start_Job :: struct {
-	app:    ^App,
-	cfg:    setup.Setup_Options,
-	clean:  bool,   // the installed copy: the `.old` files of a replacement go
-	choice: string, // owned
-	wanted: bool,
-}
-
-// After the first tab exists. `force`: --setup (open it whatever the build and the profile).
+// Once the first window's interface exists (its State takes the reading's answer). `force`: --setup (the modal whatever
+// the build and the profile).
 setup_startup :: proc(app: ^App, profile_explicit: bool, force: bool) {
 	if !desktop.supported() { return }
-	if force { setup_open(app); return }
-	exe := process.executable_path(context.temp_allocator)
-	clean := os.exists(strings.concatenate({process.parent_dir(exe), filepath.SEPARATOR_STRING, desktop_identity().manifest_name}, context.temp_allocator))
-	offer := true
+	prefs_page.install_init(&app.install, &app.prefs, setup_config(app), &app.announcer)   // (install_follow says there when the desktop refuses general.menu or general.autostart)
+	offer := config.bool_of(&app.prefs, "browser.desktop_integration.on_first_run")
 	if v, ok := os.lookup_env("WREN_DESKTOP_INTEGRATION", context.temp_allocator); ok && v == "off" { offer = false }   // src/e2e sets it for every test
-	if desktop_profile_is_disposable(app, profile_explicit) || app.portable || desktop.in_nix_store(exe) { offer = false }
-	if !config.bool_of(&app.prefs, "browser.desktop_integration.on_first_run") { offer = false }
-	if !offer && !clean { return }
-	// what the disk says is read on the blocking pool; the dialog opens if there is something to do
-	delete(app.stp.file_types)
-	app.stp.file_types = strings.clone(config.string_of(&app.prefs, "browser.desktop_integration.file_types"))
-	job := new(Setup_Start_Job)
-	job.app, job.cfg, job.clean = app, setup_config(app), clean
-	job.choice = offer ? strings.clone(setup_choice(app)) : ""
-	job.wanted = offer   // (until the facts say)
-	app.stp.deciding += 1
-	host.run_blocking(&app.blocking, proc(data: rawptr) {
-		j := (^Setup_Start_Job)(data)
-		if j.clean {
-			o := desktop.Integration_Options{identity = j.cfg.identity}
-			desktop.clean_old(&o, process.parent_dir(process.executable_path(context.temp_allocator)))
-		}
-		if j.wanted { j.wanted = setup.wanted(setup.facts(j.cfg), APP_VERSION, j.choice) }
-		free_all(context.temp_allocator)
-	}, proc(data: rawptr) {
-		j := (^Setup_Start_Job)(data)
-		j.app.stp.deciding -= 1
-		if j.wanted { setup_open(j.app) }
-		request_frames(j.app, 2)
-		delete(j.choice)
-		free(j)
-	}, job)
+	if desktop_profile_is_disposable(app, profile_explicit) || app.portable || force { offer = false }
+	// (always read: the installed copy deletes what an update replaced, and the updater learns which copy runs)
+	prefs_page.install_offer(&app.install, active_window(app).ui, offer)
+	if force { setup_open(app) }
 }

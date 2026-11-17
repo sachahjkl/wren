@@ -11,6 +11,7 @@ import "core:math"
 import "toolkit:draw"
 import "toolkit:render"
 import lucide "toolkit:lucide"
+import prefs_page "toolkit:prefs_page"
 import "toolkit:ui"
 import "core:strings"
 import "wb:base"
@@ -158,6 +159,12 @@ status_bar_build :: proc(app: ^App, t: ^Tab) {
 		}
 		if ui.status_fill("###sb_left") {
 			if t != nil { status_left(app, t, avail) }
+		}
+		// (the toolkit's: Install, Downloading, Restart to update; nothing while there is nothing to do, and then no `next`
+		// left for the box after it)
+		if updates_badge_due(app) {
+			ui.next({height = ui.pct(1)})
+			_ = prefs_page.update_badge(app.updates.updater, updates_restart, app)
 		}
 		graph_box = status_right(app)
 	}

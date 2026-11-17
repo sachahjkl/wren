@@ -13,8 +13,6 @@ DEFAULT_FILE_TYPES :: ".htm,.html,.xhtml,.svg,.webp,.avif"
 PREFS := [?]config.Def{
 	{name = "browser.desktop_integration.register_browser", kind = .Bool, default = {b = true},
 		description = "Integrating with the desktop also registers Wren as a program that can open web addresses (http, https) and the file types below: Windows lists it in Settings > Apps > Default apps (it never makes itself the default: the user picks), a freedesktop.org desktop lists it in the default browser setting. Off: only the menu entry and its icon. Applied the next time the integration is installed or repaired."},
-	{name = "browser.desktop_integration.start_menu", kind = .Bool, default = {b = true},
-		description = "Integrating with the desktop adds the launcher to the application menu (the Start menu on Windows). The box in about:config applies it; an install (Setup, wren --install) always adds the menu entry."},
 	{name = "browser.desktop_integration.desktop_shortcut", kind = .Bool, default = {b = false},
 		description = "Integrating with the desktop also puts a launcher on the desktop (Windows). Setup's \"Create desktop shortcut\" option sets it."},
 	{name = "browser.desktop_integration.add_to_path", kind = .Bool, default = {b = false},
@@ -28,7 +26,9 @@ register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
 // Takes what the preferences decide into `o` (the file types are in the temporary allocator).
 options_apply_prefs :: proc(o: ^tk.Integration_Options, p: ^config.Prefs) {
 	o.register_browser = config.bool_of(p, "browser.desktop_integration.register_browser")
-	o.start_menu = config.bool_of(p, "browser.desktop_integration.start_menu")
+	// (the toolkit's standard settings, which prefs_page.install_follow applies to the installed copy)
+	o.start_menu = config.bool_of(p, "general.menu")
+	o.autostart = config.bool_of(p, "general.autostart")
 	o.desktop_shortcut = config.bool_of(p, "browser.desktop_integration.desktop_shortcut")
 	o.add_to_path = config.bool_of(p, "browser.desktop_integration.add_to_path")
 	o.file_types = file_types_of(config.string_of(p, "browser.desktop_integration.file_types"))

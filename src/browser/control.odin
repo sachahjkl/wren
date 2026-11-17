@@ -952,18 +952,20 @@ control_subscribe :: proc(app: ^App, conn: u64, on: bool) {
 	}
 }
 
-// The Setup dialog as the last frame showed it.
+// The Setup modal as the last frame showed it (the toolkit's install: setup.odin).
 control_setup_state :: proc(app: ^App, allocator := context.temp_allocator) -> api.Setup_State {
 	rect :: proc(r: draw.Rect) -> api.Rect { return {f64(r.min.x), f64(r.min.y), f64(r.max.x - r.min.x), f64(r.max.y - r.min.y)} }
+	d := &app.install.dialog
 	return {
-		// busy: the dialog's work out, or the start still deciding whether to offer it
-		open = app.stp.d.open, known = app.stp.d.known, confirm_uninstall = app.stp.d.confirm, busy = app.stp.deciding + (app.stp.d.job != nil ? 1 : 0), note = strings.clone(app.stp.d.note, allocator),
+		// busy: the dialog's work out, the start still reading the install, or the modal asked and not open yet
+		open = d.open && !d.in_page, known = d.known, confirm_uninstall = d.confirm,
+		busy = (app.install.reading ? 1 : 0) + (d.job != nil ? 1 : 0) + (app.stp.asked ? 1 : 0), note = strings.clone(d.note, allocator),
 		primary = rect(app.stp.at_primary), uninstall = rect(app.stp.at_uninstall), secondary = rect(app.stp.at_secondary),
 	}
 }
 
-// The daily update check has a request out (update_check.odin).
-control_update_checking :: proc(app: ^App) -> bool { return update_checking(app) }
+// The updater has a check out (updates.odin).
+control_update_checking :: proc(app: ^App) -> bool { return updates_checking(app) }
 
 ////////////////////////////////
 // Recording, playing back, the timeline

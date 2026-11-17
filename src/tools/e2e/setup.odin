@@ -7,10 +7,10 @@ package e2e_scenarios
 // has is compared at the end.
 //   A install with a click on the main button
 //   B uninstall from the installed copy (two clicks; the running executable is deleted once the process has ended)
-//   C "Use standalone" (remembered in the profile)
+//   C "Use standalone" (remembered in the preferences: the toolkit's install.choice)
 //   D the automatic opening at the first start, and not again after the answer
 //   E nothing opens by itself with WREN_DESKTOP_INTEGRATION=off, with --profile, in a portable copy
-//   F the daily update check
+// (The updates are the toolkit's Updater: its own tests cover the check, the signature and the placement.)
 
 import "core:fmt"
 import "core:os"
@@ -20,13 +20,11 @@ import "wb:e2e"
 import "wb:remote/api"
 
 @(private = "file") INTEGRATION_ON :: "WREN_DESKTOP_INTEGRATION="   // (e2e sets it off for every program it starts)
-@(private = "file") CHOICE_FILE :: "setup.txt"
-@(private = "file") UPDATE_FILE :: "update.txt"
+// The profile's preferences, where the toolkit keeps the answer (prefs_page.INSTALL_CHOICE_PREF), a tab after its name.
+@(private = "file") PREFS_FILE :: "prefs.txt"
+@(private = "file") CHOICE_STANDALONE :: "install.choice\tstandalone"
+@(private = "file") CHOICE_DISMISSED :: "install.choice\tdismissed"
 @(private = "file") FIRST_RUN_PREF :: "browser.desktop_integration.on_first_run=true"
-@(private = "file") UPDATE_ON_PREF :: "update.auto=true"
-// A release that is newer, as GitHub's API answers.
-@(private = "file") NEWER_RELEASE :: "browser.update.url=data:application/json,%7B%22tag_name%22%3A%22v99.0.0%22%2C%22html_url%22%3A%22https%3A%2F%2Fgithub.com%2Fsachahjkl%2Fwren%2Freleases%2Ftag%2Fv99.0.0%22%7D"
-@(private = "file") NEWER_STILL :: "browser.update.url=data:application/json,%7B%22tag_name%22%3A%22v100.0.0%22%7D"
 // The profile's folder under APPDATA.
 @(private = "file") PROFILE_IN_APPDATA :: "FromentSoftware/Wren"
 
@@ -161,8 +159,7 @@ install_uninstall_standalone :: proc(t: ^testing.T) {
 	p = e2e.launch(t, options)
 	st = setup_ready(p.s)
 	click_button(p.s, st.secondary)
-	choice := fmt.tprintf("%s/%s", profile, CHOICE_FILE)
-	e2e.wait_file(t, choice, "choice=standalone")
+	e2e.wait_file(t, fmt.tprintf("%s/%s", profile, PREFS_FILE), CHOICE_STANDALONE)
 	testing.expect_value(t, e2e.quit(p), 0)
 	testing.expect_value(t, real_state(), before)
 }
@@ -179,21 +176,21 @@ the_first_start_opens_setup_by_itself_once :: proc(t: ^testing.T) {
 	scratch := desktop_scratch(t, dir)
 	appdata := fmt.tprintf("%s/appdata", dir)
 	env := env_with(scratch, appdata, INTEGRATION_ON)
-	choice := fmt.tprintf("%s/%s/%s", appdata, PROFILE_IN_APPDATA, CHOICE_FILE)
+	prefs := fmt.tprintf("%s/%s/%s", appdata, PROFILE_IN_APPDATA, PREFS_FILE)
 	options := e2e.Process_Options{own_profile = true, prefs = {FIRST_RUN_PREF}, start = {env = env}}
 
 	p := e2e.launch(t, options)
 	setup_ready(p.s)
 	api.key(p.s, "Escape")
-	e2e.wait_file(t, choice, "choice=dismissed")
+	e2e.wait_file(t, prefs, CHOICE_DISMISSED)
 	st, _ := api.setup_state(p.s)
 	testing.expect(t, !st.open, "Escape closes it, and is remembered as dismissed")
 	testing.expect_value(t, e2e.quit(p), 0)
 
-	// answered "standalone": not again
-	e2e.write_text(choice, "choice=standalone\nversion=0.0.1\n")
+	// answered "standalone": not again (the file is the user's preferences: this one line is the answer)
+	e2e.write_text(prefs, "wbprefs 1\n" + CHOICE_STANDALONE + "\n")
 	testing.expect(t, !opened_by_itself(t, options), "after standalone it does not open")
-	testing.expect_value(t, e2e.read_text(choice), "choice=standalone\nversion=0.0.1\n")
+	testing.expect(t, strings.contains(e2e.read_text(prefs), CHOICE_STANDALONE), "... and the answer stays")
 }
 
 @(test)
@@ -219,42 +216,4 @@ nothing_opens_setup_by_itself_in_a_driven_portable_or_named_profile :: proc(t: ^
 	testing.expect(t, !opened_by_itself(t, copy), "a portable copy")
 	testing.expect(t, os.exists(fmt.tprintf("%s/data", portable)), "a portable copy keeps its profile in <folder>/data")
 	testing.expect(t, !os.exists(fmt.tprintf("%s/%s", appdata2, PROFILE_IN_APPDATA)), "a portable copy writes nothing to APPDATA")
-}
-
-// The request's end, seen from the channel; and the file of the check.
-@(private = "file")
-update_settled :: proc(s: ^api.Session) {
-	api.wait_until(s, proc(s: ^api.Session) -> bool {
-		checking, _ := api.update_checking(s)
-		return !checking
-	}, "the update check to end")
-}
-
-@(test)
-the_daily_update_check :: proc(t: ^testing.T) {
-	dir := e2e.temp_folder(t)
-	appdata := fmt.tprintf("%s/appdata", dir)
-	env := env_with(desktop_scratch(t, dir), appdata, INTEGRATION_ON)
-	file := fmt.tprintf("%s/%s/%s", appdata, PROFILE_IN_APPDATA, UPDATE_FILE)
-
-	p := e2e.launch(t, {own_profile = true, prefs = {UPDATE_ON_PREF, NEWER_RELEASE}, start = {env = env}})
-	e2e.wait_file(t, file, "notified=")
-	e2e.quit(p)
-	text := e2e.read_text(file)
-	testing.expectf(t, strings.contains(text, "latest=99.0.0") && strings.contains(text, "notified=99.0.0") && strings.contains(text, "url=https://github.com/sachahjkl/wren/releases/tag/v99.0.0"), "a newer version is recorded: %q", text)
-
-	// asked once a day: the channel answers once the start has decided, and no request is out
-	p = e2e.launch(t, {own_profile = true, prefs = {UPDATE_ON_PREF, NEWER_STILL}, start = {env = env}})
-	checking, _ := api.update_checking(p.s)
-	testing.expect(t, !checking, "a second start the same day does not ask again")
-	e2e.quit(p)
-	testing.expect(t, strings.contains(e2e.read_text(file), "latest=99.0.0"), "... and keeps what it knows")
-
-	// off by default: no request, nothing written
-	os.remove(file)
-	p = e2e.launch(t, {own_profile = true, start = {env = env}})
-	checking, _ = api.update_checking(p.s)
-	testing.expect(t, !checking, "off by default: no request")
-	e2e.quit(p)
-	testing.expect(t, !os.exists(file), "... nothing written")
 }

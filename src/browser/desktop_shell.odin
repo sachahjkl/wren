@@ -49,7 +49,6 @@ DESKTOP_PREFS := [?]config.Def{
 register_desktop_shell_prefs :: proc(p: ^config.Prefs) {
 	wren_desktop.register_prefs(p)
 	config.register(p, DESKTOP_PREFS[:])
-	config.register(p, SETUP_PREFS[:])
 }
 
 // What Wren is called on the desktop (src/desktop/identity.odin). A development build has its own entries (name, keys,
@@ -91,10 +90,8 @@ desktop_options :: proc(app: ^App) -> desktop.Integration_Options {
 
 // `--install`, `--uninstall [--purge]`, `--status` (setup.command_alone): runs it without a window and returns the exit code.
 desktop_command :: proc(app: ^App, command: setup.Command, purge := false) -> cli.Exit {
-	// (setup_prepare reads the file types from here: the dialog's setup_open sets them, and no dialog opens here)
-	delete(app.stp.file_types)
-	app.stp.file_types = strings.clone(config.string_of(&app.prefs, "browser.desktop_integration.file_types"))
 	instance_ask_of(app)   // (--status and --quit ask the Wren of this profile)
+	// (setup_config reads the file types setup_prepare gives the integration)
 	code := setup.command_run(command, setup_config(app), process.console_write)
 	if command == .Uninstall && purge && code == .Done { code = desktop_profile_purge(app) }
 	return code
@@ -159,10 +156,10 @@ desktop_shell_shutdown :: proc(app: ^App) {
 	for app.dsk.jobs > 0 { host.blocking_settle(&app.blocking) }
 	host.shutdown_step("desktop watcher")
 	desktop_shell_destroy()   // (the watcher's thread is stopped and joined here)
+	host.shutdown_step("updates_stop")
+	updates_stop(app)   // updates.odin: no news after it (before the install it reads goes)
 	host.shutdown_step("setup jobs, uninstall helper")
 	setup_shutdown(app)   // setup.odin: its jobs, and the deletion of what this process held
-	host.shutdown_step("update_destroy")
-	update_destroy(app)   // update_check.odin
 }
 
 @(private = "file")

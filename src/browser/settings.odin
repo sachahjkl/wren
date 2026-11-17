@@ -135,9 +135,8 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 // desktop integration registers too (update.auto and update.base_url are among them).
 register_standard_prefs :: proc(p: ^config.Prefs) {
 	// the toolkit's standard settings, every set: the look, the text, scrolling, the input, the delays, the rendering, the
-	// updates and the session (gui_toolkit docs/settings.md), applied by standard_watch. general.menu and general.autostart are
-	// not on about:settings: Wren's place on the desktop is its desktop integration (desktop_shell.odin, Setup), which installs
-	// and removes more than a menu entry and reads the system's state, not a preference.
+	// updates and the session (gui_toolkit docs/settings.md), applied by standard_watch. general.menu and general.autostart
+	// are the toolkit's install_follow's: it applies them to the installed copy and hides them elsewhere (setup.odin).
 	d := STANDARD_DEFAULTS
 	// Wren's own defaults of other standard settings (read by standard_register alone: a String's value is a literal, which
 	// the registry keeps; a number's is parsed there)
@@ -157,15 +156,20 @@ register_standard_prefs :: proc(p: ^config.Prefs) {
 		{"appearance.text.coverage_exponent", "1"},
 	}
 	d.values = values[:]
-	prefs_page.standard_register(p, prefs_page.STANDARD_ALL, d, base.permanent_allocator())   // (the registry keeps its descriptions)
+	// (the Updates set only where Wren updates itself: elsewhere "Update by itself" would promise what no release gives)
+	sets := prefs_page.STANDARD_ALL
+	when !UPDATES_SELF { sets -= {.Update} }
+	prefs_page.standard_register(p, sets, d, base.permanent_allocator())   // (the registry keeps its descriptions)
+	prefs_page.changelog_register(p)   // (the version last started as: What's new after an update, settings_page.odin)
 }
 
 // Wren's own defaults of the standard settings: the Ember theme in the gradient finish (under the modern tabs, which the
 // finish draws: underlined, the address field flat; the machined finish's pills and sunken field read heavy at a small
-// size, and stay a choice), 15 px text, the integrated title bar, and no update check unless asked.
+// size, and stay a choice), 15 px text, the integrated title bar, and no update unless asked (update.base_url empty:
+// the latest release of UPDATE_REPOSITORY).
 STANDARD_DEFAULTS :: prefs_page.Standard_Defaults{
 	theme = "Ember", mode = "system", finish = "gradient", font_size = 15, glow = 1,
-	menu = true, update_auto = false, update_base_url = UPDATE_DOWNLOAD_BASE, app_name = APP_NAME,
+	menu = true, update_auto = false, app_name = APP_NAME,
 }
 
 // The standard settings applied to a window's interface `s`, then each change as it comes (prefs_page.standard_watch); the

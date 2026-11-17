@@ -27,6 +27,7 @@ import "core:strings"
 import "core:sync"
 import "core:time"
 import "toolkit:draw"
+import tk_host "toolkit:host"   // (its Frame_Ring alone: Wren's loop is wb:host)
 import "toolkit:platform"
 import "toolkit:render"
 import prefs_page "toolkit:prefs_page"
@@ -70,6 +71,7 @@ Browser_Window :: struct {
 	title_ms: f64,                // when it was made (ui.now_ms; 0: at the next frame)
 	opened:  time.Tick,
 	own:     Window_Own,          // the chrome's state of this window, always here (not exchanged by window_activate)
+	frames:  tk_host.Frame_Ring,  // its last pictures' build and draw times: the settings' Diagnostics page (main.odin frame)
 }
 
 // What the chrome keeps of one window from frame to frame. It lives in the window: the procedures that read it are given

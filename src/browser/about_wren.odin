@@ -10,7 +10,6 @@ import i18n "toolkit:i18n"
 import "wb:license"
 import licence "toolkit:licence"
 import "wb:page"
-import "wb:url"
 import "wb:wasm"
 
 ////////////////////////////////
@@ -20,12 +19,9 @@ import "wb:wasm"
 // read as part of the browser: the logo of the channel, the version and build, "by Froment Software", the beta notice,
 // the licence line (whether Wren is registered; the licence itself is the settings' Licence page, license_shell.odin),
 // the third-party list. They are documents rather than a chrome panel because they need text that can be selected and
-// copied (the commit), links, forms and the page scroller; the chrome only reaches them through a command (browser.about,
-// in the menu and the palette).
-//
-// The forms of the updates submit to about:wren itself (GET: the forms package posts to http(s) only): navigate hands the
-// query to show_wren_page, which acts on it only when it comes from this page (or the browser's own UI), never from a web
-// page.
+// copied (the commit), links and the page scroller; the chrome only reaches them through a command (browser.about, in
+// the menu and the palette). The updates and the installation are the settings' (about:settings: the System page's
+// Updates line, the Installation page): this page links to them and says nothing of their state.
 
 WREN_URL     :: "about:wren"
 LICENSES_URL :: "about:licenses"
@@ -45,7 +41,6 @@ Wren_Page :: struct {
 	checking:    bool,             // the store has not answered yet (its first read is under way)
 	support_url: string,
 	profile_dir: string,
-	update:      Update_Summary,   // the "Updates" section (update_install.odin); zero: not shown
 }
 
 @(private = "file")
@@ -183,20 +178,13 @@ build_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 	strings.write_string(sb, "</table>\n")
 }
 
-// Updates: what is known, a button that asks GitHub, and, when a release signed by Froment Software is waiting, the button that installs it.
+// The settings' pages that say what changed, the updates and the installation: links, their state is theirs.
 @(private = "file")
-updates_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
-	if !d.update.shown { return }
-	strings.write_string(sb, "<h2>Updates</h2>\n<p>")
-	esc(sb, d.update.text)
-	strings.write_string(sb, "</p>\n")
-	if d.update.can_install {
-		strings.write_string(sb, "<form method=\"get\" action=\"about:wren\"><input type=\"hidden\" name=\"action\" value=\"install_update\"><button type=\"submit\">Install the update</button></form>\n")
-	}
-	if d.update.can_check {
-		strings.write_string(sb, "<form method=\"get\" action=\"about:wren\"><input type=\"hidden\" name=\"action\" value=\"check_update\"><button type=\"submit\">Check for updates</button></form>\n")
-	}
-	strings.write_string(sb, "<p class=\"weak\" style=\"margin-top: 12px\">By default an update is a program signed with a key built into Wren (browser.update.public_key and the other browser.update.* settings in about:config choose another channel or key, or turn the signature off): its signature, its length and its checksum are checked before anything is written, the old program is kept until the new one is in place, and nothing is installed unless you press the button. Wren asks GitHub only when you check.</p>\n")
+settings_links :: proc(sb: ^strings.Builder) {
+	fmt.sbprintf(sb, "<p><a href=\"%s\">What's new</a>", SETTINGS_WHATS_NEW_URL)
+	// (no Updates line where Wren does not update itself: updates_other.odin)
+	if UPDATES_SELF { fmt.sbprintf(sb, " &middot; <a href=\"%s\">Updates</a>", SETTINGS_UPDATES_URL) }
+	fmt.sbprintf(sb, " &middot; <a href=\"%s\">Installation</a></p>\n", SETTINGS_INSTALL_URL)
 }
 
 // The people and projects Wren owes its design or its code to: one link each, to the official site (the official X account
@@ -296,7 +284,7 @@ wren_page_html :: proc(d: Wren_Page) -> string {
 	strings.write_string(&sb, "<p class=\"beta\"><b>Wren is a beta under development.</b> Every version is free; a license only supports development.</p>\n")
 	licence_section(&sb, d)
 	build_section(&sb, d)
-	updates_section(&sb, d)
+	settings_links(&sb)
 	thanks_section(&sb)
 	strings.write_string(&sb, "<h2>Third-party software</h2>\n<p>Wren's own code is under the PolyForm Strict License 1.0.0 (its source is public). It is built from the components below, whose licenses require this notice; the full texts are in <a href=\"about:licenses\">about:licenses</a>.</p>\n<p>Text rendering can use the Slug algorithm and shaders by Eric Lengyel (MIT license), credited as its license requires.</p>\n")
 	third_party_table(&sb, false)
@@ -331,24 +319,14 @@ licenses_page_html :: proc(d: Wren_Page) -> string {
 wren_page_data :: proc(app: ^App) -> Wren_Page {
 	return Wren_Page{
 		palette = chrome_palette(app), state = app.licence.status, checking = !app.licence.read,
-		support_url = license_support_url(app), profile_dir = app.profile_dir, update = update_summary(app),
+		support_url = license_support_url(app), profile_dir = app.profile_dir,
 	}
 }
 
-// about:wren / about:licenses in `t`. `acts`: the navigation may run the query (the forms of the updates, whose action is
-// about:wren?action=check_update: a form that does not post to http(s) always submits with GET). The query is acted on
-// only when `acts` (nav_judge: the person typed it, or it comes from this page), never from a web page nor from a replay.
-show_wren_page :: proc(app: ^App, t: ^Tab, address: string, acts := false) {
-	query := ""
-	if i := strings.index_byte(address, '?'); i >= 0 { query = address[i + 1:] }
+// about:wren / about:licenses in `t`. A query does nothing (the page has no form): the entry is about:wren.
+show_wren_page :: proc(app: ^App, t: ^Tab, address: string) {
 	shown := address
-	if acts && query != "" {
-		params := url.params_make(context.temp_allocator)
-		url.params_parse(&params, query)
-		wren_query(app, params)
-	}
-	// the entry is about:wren again: going back here does not ask twice
-	if query != "" { shown = WREN_URL }
+	if strings.index_byte(address, '?') >= 0 { shown = WREN_URL }
 	if hash := strings.index_byte(shown, '#'); hash >= 0 && strings.has_prefix(shown, WREN_URL) { shown = WREN_URL }
 
 	nav_show_page(app, t, shown)
@@ -366,13 +344,4 @@ show_wren_page :: proc(app: ^App, t: ^Tab, address: string, acts := false) {
 	delete(t.url); t.url = strings.clone(shown)
 	delete(t.title); t.title = strings.clone(strings.has_prefix(shown, LICENSES_URL) ? "Licenses" : "About Wren")
 	set_status(t, shown)
-}
-
-// The forms of the page: check for an update, install it (each says how it goes in its own notices).
-wren_query :: proc(app: ^App, sp: url.Search_Params) {
-	action, _ := url.params_get(sp, "action")
-	switch action {
-	case "check_update":   update_check_now(app)
-	case "install_update": update_install(app)
-	}
 }

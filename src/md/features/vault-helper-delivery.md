@@ -12,7 +12,7 @@ of docs/bitwarden.md.
   differently. So **Wren chooses its helper**: a helper newer than the one Wren was tested with must never arrive behind
   its back.
 - The Windows release is one file, `wren-<version>-windows-x64.exe`: the winget manifest, Setup and the update
-  (`update_install.odin`) all take one program. It has no archive to put a second file in.
+  (the toolkit's Updater, `updates.odin`) all take one program. It has no archive to put a second file in.
 - The Linux release is a `tar.gz`: a folder, where a second program and its licence can sit beside `wren`.
 - Wren runs only a helper it can vouch for: in a release, the bytes of the helper are known in advance.
 
@@ -94,7 +94,7 @@ panel says what comes while it downloads: the version, GPL-3.0, the source's add
 ### 5. How it stays current
 
 A new Wren pins a new helper. Its first setup job finds the old helper beside it, not the pinned one, and replaces it
-before the first unlock. On Windows the update of Wren is Wren's own (`update_install.odin`); on Linux a person
+before the first unlock. On Windows the update of Wren is the toolkit's Updater (`updates.odin`); on Linux a person
 extracts a new tar.gz, which carries the new helper. No second updater runs, and no helper changes without a Wren.
 
 ## Refused

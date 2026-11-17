@@ -17,9 +17,10 @@ settings_pages_name_registered_preferences :: proc(t: ^testing.T) {
 		testing.expect(t, !pages[pg.category], pg.category)
 		pages[pg.category] = true
 		for name in pg.names {
-			// (the toolkit registers these on Windows alone: elsewhere Slug is the only text renderer, and the page skips them)
+			// (registered on Windows alone: elsewhere Slug is the only text renderer, and Wren does not update itself
+			// (updates.odin); the page skips them)
 			when ODIN_OS != .Windows {
-				if name == "appearance.text.renderer" || name == "appearance.text.rendering" { continue }
+				if name == "appearance.text.renderer" || name == "appearance.text.rendering" || name == "update.auto" { continue }
 			}
 			_, ok := p.index[name]
 			testing.expectf(t, ok, "about:settings lists %s, which is not registered", name)
@@ -42,8 +43,12 @@ standard_settings_have_wren_defaults :: proc(t: ^testing.T) {
 	testing.expect_value(t, config.string_of(&p, "browser.ui.chrome_style"), "modern")
 	testing.expect_value(t, config.float_of(&p, "appearance.font_size"), 15)
 	testing.expect_value(t, config.bool_of(&p, "window.system_title"), false)
-	testing.expect_value(t, config.bool_of(&p, "update.auto"), false)
-	testing.expect_value(t, config.string_of(&p, "update.base_url"), UPDATE_DOWNLOAD_BASE)
+	when UPDATES_SELF {
+		testing.expect_value(t, config.bool_of(&p, "update.auto"), false)
+		testing.expect_value(t, config.string_of(&p, "update.base_url"), "")   // (the updater's own folder: the latest release)
+	} else {
+		testing.expect(t, "update.auto" not_in p.index, "no Updates set where Wren does not update itself")
+	}
 	testing.expect_value(t, config.float_of(&p, "scrolling.autoscroll.max_speed"), AUTOSCROLL_TOP_SPEED)
 	testing.expect_value(t, config.float_of(&p, "scrolling.autoscroll.full_dist"), AUTOSCROLL_FULL_DISTANCE)
 	testing.expect_value(t, config.bool_of(&p, "rendering.partial_redraw"), true)
@@ -55,7 +60,8 @@ standard_settings_have_wren_defaults :: proc(t: ^testing.T) {
 	testing.expect_value(t, config.float_of(&p, "appearance.text.coverage_exponent"), 1)
 	for gone in ([]string{"browser.ui.theme", "browser.ui.theme_mode", "browser.ui.font_size", "browser.ui.zoom", "browser.ui.animations",
 		"browser.ui.scrollbar_autohide", "browser.ui.machined_glow", "browser.ui.partial_redraw", "browser.window.integrated_titlebar",
-		"browser.update.check_daily", "browser.update.base_url", "browser.scroll.autoscroll.enabled", "browser.scroll.smooth.enabled",
+		"browser.update.check_daily", "browser.update.base_url", "browser.update.url", "browser.update.public_key",
+		"browser.update.require_signature", "browser.update.allow_development_build", "browser.scroll.autoscroll.enabled", "browser.scroll.smooth.enabled",
 		"browser.frame.present_mode", "paint.effects.blur_full_resolution_px", "paint.effects.filter_precision",
 		"text.backend", "text.emoji", "text.emoji.raster_samples", "text.emoji.outline_cache", "render.blend_space", "render.text.curve",
 		"render.text.gamma", "render.text.contrast", "render.text.coverage_exponent"}) {

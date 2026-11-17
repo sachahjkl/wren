@@ -108,7 +108,8 @@ of that name without the launcher's mark is never replaced or deleted.
 
 ## Setup: the installed copy
 
-The toolkit's `install.odin` (platform agnostic) and `src/browser/setup.odin`, `setup_ui.odin` (the dialog).
+The toolkit's `install.odin` (platform agnostic), its `prefs_page.Install` (the offer, the modal, the settings' Installation
+page) and `src/browser/setup.odin` (what Wren gives it).
 
 - **Where**: `%LOCALAPPDATA%\Programs\Wren\wren.exe` (`Wren Dev` for the development channel), or any folder that passes
   `check_install_dir`: an absolute path on a local drive, no forbidden character, not a drive root, not inside Windows,
@@ -136,11 +137,12 @@ copy* (a copy is installed elsewhere; same version or newer: **Replace installed
 ### When it opens
 
 - The command **Setup...** (main menu, palette, a button beside the box in `about:config`) and `wren.exe --setup`: always.
+  about:settings has the same as its **Installation** page (the toolkit's `prefs_page.Install`).
 - At the start of a **release** copy that is not the installed one (`browser.desktop_integration.on_first_run`), and when the
   installed copy needs repair: never for development builds, `--profile` profiles, profiles in the temporary folder, portable
   copies, or with `WREN_DESKTOP_INTEGRATION=off` (`src/e2e` sets it for every test).
-- The profile remembers the answer in `setup.txt`: **Use standalone** (`choice=standalone`) is for good; closing the dialog
-  without an answer (X, Escape, a click outside) is `choice=dismissed` and holds for the current version only.
+- The preferences remember the answer in `install.choice` (`prefs.txt`): **Use standalone** (`standalone`) is for good;
+  closing the dialog without an answer (X, Escape, a click outside) is `dismissed:<version>` and holds for that version only.
 
 ### Standalone and portable
 
@@ -150,10 +152,9 @@ license) is `<folder>\data`, it never offers Setup by itself, and `--profile DIR
 
 ### Updates
 
-`update.auto` (off: no request is made unless asked): one GET a day of GitHub's latest release
-(`browser.update.url`), compared with the running version, announced once per version; nothing is downloaded. The command
-**Check for updates** asks at once and opens the release page. State in `update.txt` in the profile. Never for disposable
-profiles or with `WREN_UPDATE_CHECK=off`.
+The toolkit's updater ([updates.md](updates.md)): with `update.auto` on, the installed copy checks once a day and installs
+a signed release; any other copy checks only when asked (about:settings, System; the command **Check for updates**).
+Windows release builds only.
 
 ### Following the disk
 
@@ -213,9 +214,11 @@ it ("or open `about:wren` in Wren") and never tries to find out with a script.
 
 ## Preferences
 
-`browser.desktop_integration.on_first_run`, `.status_refresh_ms`, `.start_menu`, `.desktop_shortcut`, `.add_to_path`,
-`.register_browser` (also register as a browser, or only the menu entry), `.file_types`, `update.auto`,
-`browser.update.url`.
+`browser.desktop_integration.on_first_run`, `.status_refresh_ms`, `.desktop_shortcut`, `.add_to_path`,
+`.register_browser` (also register as a browser, or only the menu entry), `.file_types`, `install.choice` (the answer of
+the offer, hidden), `update.auto` and `update.base_url` (Windows). The toolkit's `general.menu` (in the applications
+menu) and `general.autostart` (start with the session) show on about:settings' System page once this copy is the
+installed one; the toolkit applies them to it.
 
 ## Tests
 

@@ -14,6 +14,7 @@ import "core:sync"
 import "core:time"
 import "toolkit:draw"
 import "toolkit:font"
+import tk_host "toolkit:host"   // (its frame ring alone: Wren's loop is wb:host)
 import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
@@ -211,9 +212,12 @@ App :: struct {
 	dls:           Downloads,                // download.odin: the profile's downloads
 	sengines:      Search_Engines,           // search_engines.odin: the profile's search engines
 	hcfg:          History_Settings,         // history_settings.odin
-	upd:           Update_State,             // update_check.odin: the daily check
+	updates:       prefs_page.Updates,       // updates.odin: the toolkit's updater (nil where Wren does not update itself)
+	changelog:     prefs_page.Changelog,     // settings_page.odin: CHANGELOG.md, the settings' What's new page
 	pal:           Palette_Table,            // palette.odin: the commands the windows' palettes list (each window has its palette: Window_Own)
-	stp:           Setup_State,              // setup.odin: the Setup dialog (toolkit:setup)
+	stp:           Setup_State,              // setup.odin: what Wren keeps around the toolkit's install
+	install:       prefs_page.Install,       // setup.odin: the offer, the Setup modal, the settings' Installation page
+	relaunch:      string,                   // owned: the program app_stop starts once this one let go of its profile (the installed copy, an update)
 	wchrome:       Window_Chrome,            // window_chrome.odin: its preferences, the program's icon, the system menu asked for
 	tsh:           Touch_Shell,              // touch_shell.odin: touch input and its preferences
 	tab_drag:      Tab_Drag,                 // tab_drag.odin: the tab being dragged
@@ -571,7 +575,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if strings.has_prefix(target, HOME_URL + "?") { home_query(app, t, target, verdict.acts); return }   // newtab_art_page.odin
 	if target == DEMOS_URL { show_demos(app, t); return }
 	if target == ABOUT_URL { show_about_pages(app, t); return }
-	if is_wren_address(target) { show_wren_page(app, t, target, verdict.acts); return }   // about_wren.odin
+	if is_wren_address(target) { show_wren_page(app, t, target); return }   // about_wren.odin
 	if license_file { license_open_file(app, t, target); return }
 	if is_cache_address(target) { show_cache_page(app, t, target, verdict.acts); return }   // http_cache_ui.odin
 	if is_sites_address(target) { show_sites_page(app, t, target, verdict.acts); return }   // site_data_ui.odin
@@ -1653,6 +1657,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	remote_notice(app)   // remote_shell.odin: the notice of a remote channel that did not start
 	ui.end_build()
 	licence_frame(app)   // license_shell.odin: about:wren again after an answer of the licence's store
+	updates_frame(app)   // updates.odin: update.auto as the install says, each change of the updater said once
 	page_a11y_frame(app)   // a11y_page.odin: the page's tree, after the chrome's that grafts it
 	prof_end(.Build_UI)
 	window_cursor_apply(app)   // page_cursor.odin: the page's cursor over the page, else the chrome's
@@ -1662,6 +1667,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 
 	shell_before_draw(app)   // (a chrome frame used the screen's slot)
 	platform.frame_gate_stage(gate, .Drawing)
+	draw_tick := time.tick_now()   // (the Diagnostics page's draw time: from here to the present)
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	prof_begin(.UI_Draw)
@@ -1689,6 +1695,15 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	render.frame_end(&app.r, !pacer_at_once(app))   // a resize step, the frames right after it, or an input frame are shown at once
 	wnd.presented = true
 	prof_end(.Present)
+	{
+		// (the host's record, in Wren's loop: the settings' Diagnostics page reads the ring of the window it is in)
+		x := tk_host.Frame_Sample{build_ms = f32(ui.build_metrics(wnd.ui).total_ms), draw_ms = f32(time.duration_milliseconds(time.tick_since(draw_tick)))}
+		if app.cfg.partial_redraw {
+			ds := ui.damage_stats(wnd.ui)
+			x.px_drawn, x.px_window = i32(ds.px_drawn), i32(ds.px_window)
+		}
+		tk_host.frame_add(&wnd.frames, x)
+	}
 	frame_log_presented(app, pacer_at_once(app))
 	pacer_end_frame(app)
 	{
@@ -1907,8 +1922,6 @@ app_start :: proc(args: []string) -> ^App {
 	remote_start(app, remote_asked, remote_name)   // remote_shell.odin: the pipe, when asked for   // (tab_log keeps its copy)
 	cdp_start(app, cdp_port, cdp_have_port, cdp_address)   // cdp.odin: the CDP / WebDriver BiDi WebSocket, when asked for
 	desktop_watch_begin(app, profile_override != "")   // desktop_shell.odin: the system tells when the integration changes (the box in about:config and the Setup dialog follow it)
-	setup_startup(app, profile_override != "", setup_requested)   // setup.odin: a copy that is not the installed one is offered Setup; --setup opens it
-	update_startup(app, profile_override != "")   // update_check.odin: the daily check, when it is on and due
 
 	host.phase("renderer")   // (the device made early, then the swap chain or the offscreen target)
 	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
@@ -1971,6 +1984,11 @@ app_start :: proc(args: []string) -> ^App {
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
 	ui_cdp_start(app)   // ui_cdp.odin: the toolkit's endpoint for the interface and its demo states, when TOOLKIT_DEVTOOLS is set
+	host.phase("setup, updates, what's new")
+	// (here: the first window's State exists, and the reading of the install answers in its next build)
+	setup_startup(app, profile_override != "", setup_requested)   // setup.odin: a copy that is not the installed one is offered Setup; --setup opens it
+	updates_start(app)   // updates.odin: the toolkit's updater, waiting (it checks by itself only in the installed copy, with update.auto on)
+	whats_new_after_update(app)   // settings_page.odin: the first start of a new version says so, and opens What's new on a click
 	host.phase("first windows")
 	app.last_tick = time.tick_now()
 	active_window(app).frames_requested = 4
@@ -2169,9 +2187,18 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	page.settings_destroy(&app.page_settings)
 	if app.private { base.remove_tree(app.profile_dir) }   // (a private Wren's profile goes with it)
 	delete(app.profile_dir)
+	// (the installed copy or the updated program, started after the release below: started before, it would find this
+	// Wren on the profile and hand itself over to it)
+	relaunch := strings.clone(app.relaunch, base.process_allocator())   // (not the temporary allocator: the teardown below may clear it)
+	delete(app.relaunch)
 	app_free(app)   // app_make.odin: the preferences, and the App
 	host.shutdown_step("instance_release")
 	instance_release()   // instance_shell.odin: the profile is written and free: a start that waited becomes the owner (before the watchdog's stop, which can wait for its next tick)
+	if relaunch != "" {
+		host.shutdown_step("relaunch")
+		_ = setup.launch(relaunch)
+	}
+	delete(relaunch, base.process_allocator())   // (before the leak report of the check build)
 	host.shutdown_step("shutdown_end")
 	host.shutdown_end()
 	if process_ends { memcheck_exit(profile_dir) }   // memcheck.odin: the leak report of the check build (a program that goes on after this reports once it has let go of its own: src/e2e)

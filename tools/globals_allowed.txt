@@ -146,7 +146,6 @@ browser/search_engines.odin BUILTIN_ENGINES const  # a table
 browser/session.odin SESSION_PREFS const  # a table
 browser/settings.odin PREFS const  # a table
 browser/settings_page.odin SETTINGS_PAGES const  # a table
-browser/setup.odin SETUP_PREFS const  # a table
 browser/shell_frames.odin SHELL_FRAME_PREFS const  # a table
 browser/shell_latency.odin lat_cur process  # ... the frame being recorded
 browser/shell_latency.odin lat_frames process  # WREN_PROF's latency records (the profiler's)
