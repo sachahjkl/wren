@@ -38,6 +38,15 @@ test_host_anchor :: proc(t: ^testing.T) {
 	testing.expect(t, !blocked(e, "https://tracker.net/p", "https://www.tracker.net/", .Image))
 }
 
+// A rule of NUL bytes: its key is 0, which marks an empty slot, so its table has slots and no bloom. A match must not
+// read the empty bloom (the fuzzer's first find: an index out of range on any URL).
+@(test)
+test_a_rule_of_nul_bytes_matches_nothing :: proc(t: ^testing.T) {
+	e := engine_from_text("\x00\x00\x00\x00\n")
+	defer engine_destroy(e)
+	testing.expect(t, !blocked(e, "https://example.org/page", "https://site.org/", .Image))
+}
+
 // A filter whose token lies past the first 96 tokens, or past 8 KiB of URL, still matches: the request was cut there,
 // and a long URL escaped every such filter.
 @(test)

@@ -56,6 +56,7 @@
 <li><a href="#the-test-server">The test server</a></li>
 <li class="lvl3"><a href="#the-demo-pages-under-a-name-with-no-port-portless">The demo pages under a name, with no port (portless)</a></li>
 <li><a href="#freed-memory-made-loud">Freed memory made loud</a></li>
+<li><a href="#fuzzing">Fuzzing</a></li>
 <li><a href="#the-replay-bench">The replay bench</a></li>
 <li><a href="#tools-beside-the-tests">Tools beside the tests</a></li>
 <li><a href="#debugging-the-tests-time">Debugging the tests' time</a></li>
@@ -306,6 +307,20 @@ build\wrentool shots -Site http://wren.localhost/site/ -Only css-grid</code></pr
 <div class="code"><pre><code>build.bat check
 build\wrentool sweep -List tools\site_compare_list.txt,tools\site_compare_list2.txt -Exe build\wren_check.exe -CloseMs 60000 -PingMs 60000</code></pre></div>
 <p><code>test_all</code> has it in every end-to-end test, in the unit tests of <code>base</code>, <code>style</code> and <code>layout</code>, in the crash reports (<code>crashmodes_poison</code>), <code>WREN_POISON_PAGES=1</code> for the tests that found something only with it, and <code>-CI</code> and full runs visit the pages of <code>tools/sweep_local.txt</code> on the check build (a minute, no network; a line of a list that is no address is a file of the repository). So does a Linux job of the CI of its own (<code>linux-sweep</code>).</p>
+<h2 id="fuzzing"><a class="anchor" href="#fuzzing" aria-hidden="true">#</a>Fuzzing</h2>
+<p><code>wrentool fuzz</code> gives the parsers of untrusted input mutated variants of real inputs: HTML, CSS, URLs, image headers and decoders, web fonts, MP4 and WebM, WebVTT, headers, cookies, CSP, filter lists, extension manifests and packages, Wasm modules. The design is in <a href="https://github.com/sachahjkl/wren/blob/master/src/md/features/fuzzing.md">src/md/features/fuzzing.md</a>.</p>
+<div class="code"><pre><code>build/wrentool fuzz -List                               the targets
+build/wrentool fuzz -Target css -Seconds 300            one target for five minutes
+build/wrentool fuzz -Target all -Iterations 2000        every target, the same 2000 inputs each (seed 1)
+build/wrentool fuzz -Target html -Asan                  Linux: AddressSanitizer in place of the poison</code></pre></div>
+<ul>
+<li>The worker, <code>build/fuzz_worker</code>, is built when its sources changed, with the memory tracker and the poison. After each input it checks that nothing is left allocated and nothing was freed twice; a watchdog ends an input that runs 10 s (<code>-HangSeconds</code>).</li>
+<li>A finding is kept in <code>build/fuzz/&lt;target&gt;/&lt;crash|leak|hang&gt;-&lt;hash&gt;</code>, and the run prints the commands that use it:
+<code>wrentool fuzz -Target &lt;target&gt; -Repro &lt;file&gt;</code> runs that input alone (after the seeds, as the run did), and <code>-Minimize &lt;file&gt;</code> shrinks it to <code>&lt;file&gt;.min</code>.</li>
+<li>Seeds come from the target's own file in <code>src/tools/fuzz</code> and from the repository; files you put in <code>build/fuzz/&lt;target&gt;/corpus/</code> are added.</li>
+<li><code>test_all -Fuzz</code> (or <code>WREN_FUZZ=1</code>) adds the step that runs every target with seed 1 and 2000 inputs: the same inputs at each run. Without it the run prints <code>fuzz: skipped</code>.</li>
+<li>The JavaScript engine is fuzzed by the toolkit's judge: from <code>ext/gui_toolkit</code>, <code>odin build tools/js_judge -collection:gt=src -out:build/js_judge -o:speed</code> (with <code>-extra-linker-flags:/STACK:67108864</code> on Windows, <code>ulimit -s 65536</code> on Linux), then <code>build/js_judge fuzz &lt;folder of .js&gt; [iterations] [seed]</code> (the bytecode reader) or <code>fuzzsrc</code> (the front end and the interpreter); <code>build/js_judge fuzzrun build/fuzz/last.bin</code> replays.</li>
+</ul>
 <h2 id="the-replay-bench"><a class="anchor" href="#the-replay-bench" aria-hidden="true">#</a>The replay bench</h2>
 <p><code>wrentool waterfall</code> loads public sites: a request changes with the ads, a run with the network, and two arms of one binary differ by 5 %. <code>wrentool replay</code> loads what a site served once, so that a change of 1 to 5 % can be told from nothing (<a href="../../docs/performance/#round-56-a-replay-bench-and-what-it-can-prove">round 51</a>).</p>
 <div class="code"><pre><code>build\wrentool desktop build\wrentool.exe replay record -Urls https://www.cnn.com/,https://www.npr.org/

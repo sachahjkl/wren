@@ -16,7 +16,7 @@ linux_table :: proc(cfg: ^Config) -> []Step {
 	t: [dynamic]Step
 	// (js/image is out until the JS engine's wasm can be built on Linux. idb is checked but its tests are out: two of them, a failed request and a failed write, fail on the GitHub runner and pass in WSL; not understood yet)
 	CHECK := []string{"base", "host", "css", "http", "xml", "adblock", "canvas2d", "license", "dom", "url", "urlpattern", "html", "cookies", "csp", "extensions", "forms", "vault", "vault/pin", "tools/wrentool", "style", "layout", "webfont", "wasm", "js", "idb", "httpcache", "images",
-		"webauthn", "desktop", "update", "remote", "testenv", "net", "fetch", "media", "page", "blocker", "remote/api", "remote/client", "tools/wpt/reftest", "tools/wpt", "tools/test_all", "tools/endurance", "browser", "e2e", "tools/e2e",
+		"webauthn", "desktop", "update", "remote", "testenv", "net", "fetch", "media", "page", "blocker", "remote/api", "remote/client", "tools/wpt/reftest", "tools/wpt", "tools/test_all", "tools/fuzz", "tools/endurance", "browser", "e2e", "tools/e2e",
 		"jscapi"}
 	UNITS := []string{"base", "host", "css", "http", "xml", "adblock", "canvas2d", "dom", "url", "urlpattern", "html", "cookies", "csp", "extensions", "forms", "vault", "vault/pin", "tools/wrentool/vaulttool", "style", "layout", "webfont", "js", "httpcache", "webauthn", "desktop", "update", "net", "fetch", "media", "blocker", "page", "tools/wpt/reftest"}
 	ONE_AT_A_TIME := []string{"wasm", "remote", "remote/api", "remote/client"}   // (one channel per process, as on Windows)
@@ -59,5 +59,7 @@ linux_table :: proc(cfg: ^Config) -> []Step {
 	}
 	// browser: the tests of its own that hold on Linux, with the text backend Wren has there (build/native-linux built with -Features text,a11y)
 	if wgpu { linux_unit(&t, "browser", {BROWSER_LINUX_TESTS, "-define:FONT_BACKEND=native", "-define:FONT_NATIVE_LINK=false"}) }
+	// (the native libraries are made by hand on Linux, as the header says: no step to wait for)
+	fuzz_step(&t, cfg, {})
 	return t[:]
 }

@@ -125,6 +125,7 @@ commands, by family:
 - sweep: real pages visited headless as a person does (`-List tools/site_compare_list.txt`, `-Shard i -Shards n`, `-OneProcess`): crashes, hangs, unclean ends, the time of each step, in `build/sweep/summary_<shard>.tsv`;
 - gen: `gen psl|idna|media-fixtures|video-fixtures|perf-media|rust-crates`; `logo [-Variant amber|dev|violet|amber-plain] [-Out folder] [-Single]` (the committed logos and icons, drawn by the toolkit's paint package);
 - docs and checks: `docs` (the documentation site), `license`, `i18n`, `portability`, `engine rx-diff`, `changelog`;
+- fuzz: `fuzz [-Target name|all] [-Seconds n] [-Iterations n] [-Seed n]`, `-Repro file`, `-Minimize file`: the parsers of untrusted input on mutated inputs, findings in `build/fuzz` ([docs/testing.md](docs/testing.md#fuzzing)); `test_all -Fuzz` runs every target on fixed inputs;
 - the JavaScript engine is the toolkit's (`ext/gui_toolkit/src/js`): its Unicode tables and its native test262 are
   toolkit commands. Run them from `ext/gui_toolkit`: `odin run tools/tk -- gen_js_unicode` and `odin run tools/tk -- js_test262`;
 - release helpers: `package`, `sign`, `winget`, `notes`, `experimental`, `smoke`, `crash-e2e`;

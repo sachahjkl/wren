@@ -325,6 +325,24 @@ build\wrentool sweep -List tools\site_compare_list.txt,tools\site_compare_list2.
 
 `test_all` has it in every end-to-end test, in the unit tests of `base`, `style` and `layout`, in the crash reports (`crashmodes_poison`), `WREN_POISON_PAGES=1` for the tests that found something only with it, and `-CI` and full runs visit the pages of `tools/sweep_local.txt` on the check build (a minute, no network; a line of a list that is no address is a file of the repository). So does a Linux job of the CI of its own (`linux-sweep`).
 
+## Fuzzing
+
+`wrentool fuzz` gives the parsers of untrusted input mutated variants of real inputs: HTML, CSS, URLs, image headers and decoders, web fonts, MP4 and WebM, WebVTT, headers, cookies, CSP, filter lists, extension manifests and packages, Wasm modules. The design is in [src/md/features/fuzzing.md](../src/md/features/fuzzing.md).
+
+```
+build/wrentool fuzz -List                               the targets
+build/wrentool fuzz -Target css -Seconds 300            one target for five minutes
+build/wrentool fuzz -Target all -Iterations 2000        every target, the same 2000 inputs each (seed 1)
+build/wrentool fuzz -Target html -Asan                  Linux: AddressSanitizer in place of the poison
+```
+
+- The worker, `build/fuzz_worker`, is built when its sources changed, with the memory tracker and the poison. After each input it checks that nothing is left allocated and nothing was freed twice; a watchdog ends an input that runs 10 s (`-HangSeconds`).
+- A finding is kept in `build/fuzz/<target>/<crash|leak|hang>-<hash>`, and the run prints the commands that use it:
+  `wrentool fuzz -Target <target> -Repro <file>` runs that input alone (after the seeds, as the run did), and `-Minimize <file>` shrinks it to `<file>.min`.
+- Seeds come from the target's own file in `src/tools/fuzz` and from the repository; files you put in `build/fuzz/<target>/corpus/` are added.
+- `test_all -Fuzz` (or `WREN_FUZZ=1`) adds the step that runs every target with seed 1 and 2000 inputs: the same inputs at each run. Without it the run prints `fuzz: skipped`.
+- The JavaScript engine is fuzzed by the toolkit's judge: from `ext/gui_toolkit`, `odin build tools/js_judge -collection:gt=src -out:build/js_judge -o:speed` (with `-extra-linker-flags:/STACK:67108864` on Windows, `ulimit -s 65536` on Linux), then `build/js_judge fuzz <folder of .js> [iterations] [seed]` (the bytecode reader) or `fuzzsrc` (the front end and the interpreter); `build/js_judge fuzzrun build/fuzz/last.bin` replays.
+
 ## The replay bench
 
 `wrentool waterfall` loads public sites: a request changes with the ads, a run with the network, and two arms of one binary differ by 5 %. `wrentool replay` loads what a site served once, so that a change of 1 to 5 % can be told from nothing ([round 51](performance.md#round-56-a-replay-bench-and-what-it-can-prove)).

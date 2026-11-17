@@ -276,7 +276,7 @@ checks_are_counted_from_what_a_step_says :: proc(t: ^testing.T) {
 @(test)
 two_steps_never_share_a_log :: proc(t: ^testing.T) {
 	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
-	cfg := Config{}
+	cfg := Config{fuzz = true}   // (the step of -Fuzz too)
 	seen := make(map[string]string)
 	for s in build_table(&cfg) {
 		log := log_path_of(s.name)

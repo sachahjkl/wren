@@ -1,6 +1,6 @@
 // test_all: every test of the project, step by step (docs/testing.md). On Windows it all happens on a desktop of its own (desktop_windows.odin).
 //   odin run src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -keep-executable -out:build/test_all.exe -- -Quick
-//   build/test_all -Quick [-CI] [-Ui] [-Perf] [-NoCache] [-Cache] [-NoAsan] [-Jobs n] [-LightJobs n] [-StepTimeoutSec n] [-RunTimeoutSec n] [-Group check|shell|other]
+//   build/test_all -Quick [-CI] [-Ui] [-Perf] [-Fuzz] [-NoCache] [-Cache] [-NoAsan] [-Jobs n] [-LightJobs n] [-StepTimeoutSec n] [-RunTimeoutSec n] [-Group check|shell|other]
 //                  [-Only regex] [-Except regex] [-Failed] [-Changed] [-Base commit] [-List] [-Profile] [-Odin path]
 //   build/test_all -ProfileReport base | -ProfileCompare a b    the tables of runs that were profiled (build/prof)
 //   build/test_all -Globals | -GlobalsWrite                     the globals of the browser's packages with their class; the list rewritten from the code
@@ -36,7 +36,7 @@ LOG_DIR :: "build/test_logs"
 TEMP_DIR :: "build/tmp"
 
 Config :: struct {
-	quick, ci, ui, perf, no_asan, no_cache, cache, failed, changed, list, profile: bool,
+	quick, ci, ui, perf, fuzz, no_asan, no_cache, cache, failed, changed, list, profile: bool,
 	jobs, light_jobs, step_timeout: int,
 	run_timeout: int,      // seconds the whole run may take (0: no limit): past it what runs is stopped and the report is written
 	group:     Group,      // -Group: only the steps of this group (and what they need)
@@ -50,7 +50,7 @@ Config :: struct {
 }
 
 usage :: proc() -> ! {
-	fmt.eprintln("usage: test_all [-Quick] [-CI] [-Ui] [-Perf] [-NoCache] [-Cache] [-NoAsan] [-Jobs n] [-LightJobs n] [-StepTimeoutSec n] [-RunTimeoutSec n] [-Group check|shell|other] [-Only regex] [-Except regex] [-Failed] [-Changed] [-Base commit] [-List] [-Profile] [-Odin path] | -ProfileReport base | -ProfileCompare a b | -Globals | -GlobalsWrite | -AsanBrowser [-AsanConsole] | -AsanProgram dir | -AsanPackages a,b [-AsanNames names]")
+	fmt.eprintln("usage: test_all [-Quick] [-CI] [-Ui] [-Perf] [-Fuzz] [-NoCache] [-Cache] [-NoAsan] [-Jobs n] [-LightJobs n] [-StepTimeoutSec n] [-RunTimeoutSec n] [-Group check|shell|other] [-Only regex] [-Except regex] [-Failed] [-Changed] [-Base commit] [-List] [-Profile] [-Odin path] | -ProfileReport base | -ProfileCompare a b | -Globals | -GlobalsWrite | -AsanBrowser [-AsanConsole] | -AsanProgram dir | -AsanPackages a,b [-AsanNames names]")
 	os.exit(EXIT_USAGE)
 }
 
@@ -78,6 +78,7 @@ main :: proc() {
 		case "-ci": cfg.ci = true
 		case "-ui": cfg.ui = true
 		case "-perf": cfg.perf = true
+		case "-fuzz": cfg.fuzz = true
 		case "-noasan": cfg.no_asan = true
 		case "-nocache": cfg.no_cache = true
 		case "-cache": cfg.cache = true
@@ -160,6 +161,9 @@ configure :: proc(cfg: ^Config) {
 	} else {
 		os.unset_env("WREN_PERF")
 	}
+	// -Fuzz (or WREN_FUZZ=1): the step that fuzzes the parsers (steps.odin, fuzz_step). Its inputs are fixed by its seed, so the CI may run it;
+	// it is opt-in for its cost: a third program that links every parser, and minutes of inputs.
+	cfg.fuzz = cfg.fuzz || env_true("WREN_FUZZ")
 	cfg.slow = cfg.ci ? CI_SLOW_FACTOR : 1
 	if cfg.jobs <= 0 { cfg.jobs = cfg.ci ? JOBS_CI : clamp(int(JOBS_PER_PROCESSOR * f64(os.get_processor_core_count())), 1, JOBS_MOST) }
 	if cfg.light_jobs <= 0 { cfg.light_jobs = cfg.ci ? LIGHT_JOBS_CI : LIGHT_JOBS }

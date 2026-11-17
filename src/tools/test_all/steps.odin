@@ -536,6 +536,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	}
 	// Last, and alone: closing the browser with every core saturated by busy loops, a video playing and a client connected, by wren ctl quit and by the window's close button, within 8 s and with no forced
 	// exit. A background thread starved by the load that the close waits for made it take 10 to 25 s (src/tools/e2e/remote_close_load.odin); this step saturates the machine.
+	fuzz_step(&t, cfg, {.Native})
 	if cfg.perf {
 		e2e_step(&t, "remote control (performance, -Perf): the browser closes within 8 s with every core busy (src\\tools\\e2e\\remote_close_load.odin: quit with a client connected, and WM_CLOSE, a video playing)", "remote_close_load", {.Alone}, browser = true)
 	} else {
@@ -544,6 +545,26 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	return t[:]
 }
 
+
+// The fuzzer of the parsers (src/md/features/fuzzing.md): every target, a fixed count of inputs from seed 1, so that each run
+// sees the same inputs and a failure is a regression. -Seconds bounds a slow machine. Opt-in (-Fuzz, WREN_FUZZ=1): it builds
+// a program that links every parser, and runs minutes. What it finds is in build/fuzz, with the command that replays it.
+FUZZ_ITERATIONS :: "2000"
+FUZZ_SECONDS_PER_TARGET :: "30"
+// 18 targets at their bound, the build of the worker and the warm-up of every corpus.
+FUZZ_LIMIT_SECONDS :: 1800
+
+// `needs`: what the worker links, where a step of the table makes it (Windows: the native libraries).
+fuzz_step :: proc(t: ^[dynamic]Step, cfg: ^Config, needs: Products) {
+	if !cfg.fuzz {
+		fmt.println("fuzz: skipped, run with -Fuzz (test_all -Fuzz, or WREN_FUZZ=1): the parsers of untrusted input on mutated inputs")
+		return
+	}
+	append(t, Step{name = "fuzz the parsers of untrusted input (wrentool fuzz -Target all -Seed 1 -Iterations 2000: HTML, CSS, URLs, images, fonts, media, headers, cookies, CSP, filter lists, extensions, Wasm; a finding is kept in build\\fuzz with its replay command)",
+		actions = slice_of(tool_build("src/tools/wrentool", exe("build/wrentool_fuzz")),
+			Command{argv = strs(exe("build/wrentool_fuzz"), "fuzz", "-Target", "all", "-Seed", "1", "-Iterations", FUZZ_ITERATIONS, "-Seconds", FUZZ_SECONDS_PER_TARGET)}),
+		needs = needs, inputs = .Tree, limit = FUZZ_LIMIT_SECONDS * cfg.slow})
+}
 
 // The lints of the sources: what they read is the same on every system, so both tables run them.
 lint_steps :: proc(steps: ^[dynamic]Step) {

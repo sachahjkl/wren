@@ -415,7 +415,7 @@ scan :: proc(e: ^Engine, class: Class, c: ^Ctx, opts: Scan_Opts) -> Scan_Result 
 			}
 		}
 	}
-	if len(ix.tok) > 0 {
+	if len(ix.bloom) > 0 {
 		for t in 0 ..< c.n_tok {
 			key := c.tokens[t]
 			bh := bloom_hash(key, ix.bloom_shift)
@@ -423,7 +423,9 @@ scan :: proc(e: ^Engine, class: Class, c: ^Ctx, opts: Scan_Opts) -> Scan_Result 
 			if start, found := multi_find(ix.tok, key); found && visit(e, ix, c, start, &res, &o) { return res }
 		}
 	}
-	if len(ix.gram) > 0 {
+	// (by the blooms, not the tables: a table whose keys are all 0 — a rule of NUL bytes, as 0 marks an empty slot — has
+	// slots and no bloom; found by the fuzzer)
+	if len(ix.gram_bloom) > 0 {
 		n := len(c.url_l) - 3   // (every window: a gram past a cut would never match)
 		p := raw_data(c.url_l)
 		for i in 0 ..< n {

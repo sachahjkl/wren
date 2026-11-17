@@ -221,7 +221,7 @@ vtt_time :: proc(s: string) -> (Time, bool) {
 vtt_cue_settings :: proc(cue: ^Vtt_Cue, settings: string) {
 	if settings == "" { return }
 	al := base.process_allocator()
-	for tok in strings.fields(settings) {
+	for tok in strings.fields(settings, context.temp_allocator) {
 		colon := strings.index(tok, ":")
 		if colon < 0 { continue }
 		key := tok[:colon]
@@ -272,7 +272,7 @@ vtt_cue_settings :: proc(cue: ^Vtt_Cue, settings: string) {
 			case "right": cue.align = .Right
 			}
 		case "region":
-			cue.region = strings.clone(val, al)
+			delete(cue.region, al); cue.region = strings.clone(val, al)   // (a second region: the last one counts)
 		}
 	}
 }
@@ -282,12 +282,12 @@ vtt_region :: proc(f: ^Vtt_File, lines: []string) {
 	al := base.process_allocator()
 	r := Vtt_Region{width = 100, lines = 3, region_anchor = {0, 100}, viewport_anchor = {0, 100}}
 	settings := strings.join(lines, " ", context.temp_allocator)
-	for tok in strings.fields(settings) {
+	for tok in strings.fields(settings, context.temp_allocator) {
 		colon := strings.index(tok, ":")
 		if colon < 0 { continue }
 		key, val := tok[:colon], tok[colon + 1:]
 		switch key {
-		case "id": r.id = strings.clone(val, al)
+		case "id": delete(r.id, al); r.id = strings.clone(val, al)   // (a second id: the last one counts)
 		case "width": if strings.has_suffix(val, "%") { if n, ok := strconv.parse_f64(val[:len(val) - 1]); ok { r.width = n } }
 		case "lines": if n, ok := strconv.parse_int(val); ok { r.lines = n }
 		case "regionanchor": r.region_anchor = vtt_percent_pair(val)
@@ -378,8 +378,12 @@ vtt_payload :: proc(payload: string) -> []Vtt_Run {
 		}
 	}
 	flush(&runs, &cur, &fmt_state)
-	// the format state's dynamic class stack is temp-allocated; nothing of `fmt_state` is kept past here
+	// nothing of `fmt_state` is kept past here: the runs hold their own copies. What a tag never closed left open (a <c>,
+	// a <v>, a <lang>) goes too (found by the fuzzer)
+	for s in fmt_state.classes { delete(s, base.process_allocator()) }
 	delete(fmt_state.classes)
+	delete(fmt_state.voice, base.process_allocator())
+	delete(fmt_state.lang, base.process_allocator())
 	return runs[:]
 }
 
@@ -397,7 +401,7 @@ vtt_tag :: proc(tag: string, st: ^Vtt_Fmt, stack: ^[dynamic]string) {
 		case "u": st.underline = false
 		case "ruby": st.ruby = false
 		case "rt": st.rt = false
-		case "c": if len(st.classes) > 0 { delete(st.classes[len(st.classes) - 1]); pop(&st.classes) }
+		case "c": if len(st.classes) > 0 { delete(st.classes[len(st.classes) - 1], base.process_allocator()); pop(&st.classes) }
 		case "v": delete(st.voice, base.process_allocator()); st.voice = ""
 		case "lang": delete(st.lang, base.process_allocator()); st.lang = ""
 		}

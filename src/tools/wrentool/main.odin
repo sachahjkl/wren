@@ -12,6 +12,7 @@ import "wb:tools/wrentool/builder"
 import "wb:tools/wrentool/capture"
 import "wb:tools/wrentool/changelog"
 import "wb:tools/wrentool/deps"
+import "wb:tools/wrentool/fuzztool"
 import "wb:tools/wrentool/gen"
 import "wb:tools/wrentool/release"
 import "wb:tools/wrentool/threadtime"
@@ -50,6 +51,7 @@ COMMANDS := []Command{
 	{name = "license", about = "keygen | pubkey | issue | verify ...: Wren's licences (docs/licence.md)", run = gen.run_license},
 	{name = "i18n", about = "[-Missing] [-Json f]: the texts passed to tr, the interface's that are not", run = gen.run_i18n},
 	{name = "portability", about = "[-Target t] [-Only a,b] [-Csv f] [-Expect f]: every package checked for another target", run = gen.run_portability},
+	{name = "fuzz", about = "[-Target name|all] [-Seconds n] [-Iterations n] [-Seed n] [-Asan] | -Target t -Repro f | -Target t -Minimize f | -List: the parsers of untrusted input on mutated inputs; findings in build/fuzz (src/md/features/fuzzing.md; the JavaScript engine: ext/gui_toolkit/tools/js_judge fuzz | fuzzsrc)", run = fuzztool.run},
 	{name = "engine", about = "rx-diff [-Seed n] [-Fuzz n] [-NoC]: the engine's regexp against QuickJS-ng's C (its test262 and Unicode tables: from ext/gui_toolkit, odin run tools/tk -- js_test262 | gen_js_unicode)", run = gen.run_engine},
 	{name = "trace", about = "start | stop [-Out file.etl] | cancel: a WPR recording with tools\\wren.wprp (an elevated prompt)", run = gen.run_trace},
 	{name = "desktop", about = "<program> [arguments]: a command on a Windows desktop of its own", run = gen.run_desktop},
