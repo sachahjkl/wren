@@ -152,6 +152,7 @@ App :: struct {
 	theme_shown: ui.Theme_Shown,   // what ui.theme_show applied last (chrome_frame_style)
 	themes_file: prefs_page.Themes_File,   // the toolkit's themes, then the user's own (themes.txt of the profile; app_ui_init)
 	chrome_pal:  ui.Palette,       // the palette of the theme shown (chrome_palette), kept from theme_show to theme_show
+	look_changed: bool,            // the theme shown changed side (light, dark): the pages follow at the next full frame (pages_follow_look)
 	ui_font:  font.Font_Id,
 	lucide:   font.Font_Id,   // the Lucide icons (toolkit:lucide): Wren's one icon set, every window's ui icon_font
 
@@ -1420,6 +1421,18 @@ apply_prefs :: proc(app: ^App, changed := "") {
 	request_frames(app, 3)
 }
 
+// The pages' settings derived again and the pages restyled for the browser's new look (style.set_browser_look), and
+// nothing else: apply_prefs would read every setting of the shell from the preferences again. Not under a page that
+// holds the thread (a chrome frame): its settings are not replaced there; the next full frame does it.
+pages_follow_look :: proc(app: ^App) {
+	if !app.look_changed || shell_nested() { return }
+	app.look_changed = false
+	page.settings_destroy(&app.page_settings)
+	app.page_settings = page.settings_from_prefs(&app.prefs)
+	for tab in tabs_all(app) { if tab.page != nil { page.configure_styles(tab.page) } }
+	request_frames(app, 3)
+}
+
 on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 	if shell_defer({kind = .Prefs}) { return }   // (shell_frames.odin: pages' settings are not replaced under a running page)
 	apply_prefs((^App)(user), name)
@@ -1446,9 +1459,9 @@ chrome_frame_style :: proc(app: ^App) -> ui.Style {
 	_ = prefs_page.themes_file_poll(&app.themes_file, wnd.ui)
 	if ui.theme_show(&app.theme, app.themes_file.all[:], chrome_theme_choice(app), &app.theme_shown, render.blend_space(&app.r)) {
 		app.chrome_pal = chrome_palette(app)
-		// pages in style.color_scheme = auto follow the browser's look: derived again and restyled when its side changes
-		// (only then: theme_show applies on any change of the theme, the look changes far less often)
-		if style.set_browser_look(app.theme_shown.light ? .Light : .Dark) { apply_prefs(app, "browser.appearance") }
+		// pages in style.color_scheme = auto follow the browser's look: restyled when its side changes (only then: theme_show
+		// applies on any change of the theme, the look changes far less often), in a full frame (pages_follow_look)
+		if style.set_browser_look(app.theme_shown.light ? .Light : .Dark) { app.look_changed = true }
 	}
 	pal := app.chrome_pal
 	platform.set_dark_title(wnd.win, !app.theme_shown.light)
@@ -1625,6 +1638,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	dt := frame_seconds(app)
 
 	base_style := chrome_frame_style(app)
+	pages_follow_look(app)   // (a full frame: the pages' settings may be replaced here)
 	window_chrome_frame(app)   // window_chrome.odin
 	prof_begin(.Build_UI)
 	ui.begin_build(active_window(app).ui, {
