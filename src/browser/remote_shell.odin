@@ -649,7 +649,9 @@ op_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 				if ok && op.visible { ok = element_visible(app, t, h) }
 			}
 		case .Function:
-			if page_has_script(t) {
+			// (a loaded document with no engine yet starts one, as the wait's first look did: another document took the tab
+			// meanwhile, about:extensions made again by its own page, and the condition was never asked of it)
+			if page_has_script(t) || tab_loaded(app, t) {
 				if v, _, err := eval_sync(t, op.arg); err == "" { ok = v != "false" && v != "null" && v != "0" && v != `""` }
 			}
 		}
