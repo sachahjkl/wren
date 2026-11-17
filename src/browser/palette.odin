@@ -20,6 +20,7 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 import lucide "toolkit:lucide"
+import prefs_page "toolkit:prefs_page"
 import "toolkit:ui"
 import "wb:base"
 import config "toolkit:config"
@@ -34,6 +35,8 @@ Palette_Table :: struct {
 	table:    []ui.Command,   // the commands the palette lists (the hidden ones left out), in the registry's order
 	rows:     []int,          // each one's index in the registry
 	gated:    []int,          // the table's commands that have a condition (`enabled`)
+	// the pages tab.open_page offers: each command's that opens one (Command.url), its label (English) and its address
+	page_labels, page_urls: []string,
 	registry: u64,            // the registry's version it was made from
 	version:  u64,            // counts the makes
 }
@@ -62,6 +65,7 @@ Window_Palette :: struct {
 	// asked from outside a build (a command's key, a menu of another window, the remote control): done at the next one
 	due, due_close: bool,
 	due_typed:      string,        // (owned) what the field starts with
+	due_form:       string,        // a command whose form opens (the registry's id: tab.open_page from its key or a menu)
 
 	// the Vault's question in flight: the helper searches, the answer is made when its rows came (vault_poll)
 	vault_q:      ui.Palette_Question,
@@ -77,6 +81,14 @@ palette_show :: proc(app: ^App, typed := "") {
 	wp := &window_own(app).palette
 	delete(wp.due_typed)
 	wp.due, wp.due_close, wp.due_typed = true, false, strings.clone(typed)
+	request_frames(app, 2)
+}
+
+// Opens the active window's palette at its next build on command `id`'s form (a command with arguments run from a key
+// or a menu: the palette asks for them).
+palette_ask_form :: proc(app: ^App, id: string) {
+	wp := &window_own(app).palette
+	wp.due, wp.due_close, wp.due_form = false, false, id
 	request_frames(app, 2)
 }
 
@@ -124,6 +136,10 @@ palette_frame :: proc(app: ^App) {
 		delete(wp.due_typed)
 		wp.due_typed = ""
 	}
+	if wp.due_form != "" {
+		_ = ui.palette_open_form(&wp.pal, wp.due_form)
+		wp.due_form = ""
+	}
 	// (the Setup dialog keeps the window's keys: setup.odin)
 	if !setup_is_open(app) { _ = ui.palette_keys(&wp.pal) }
 	open := ui.palette_is_open(&wp.pal)
@@ -168,6 +184,7 @@ palette_start :: proc(app: ^App, wp: ^Window_Palette) {
 		if app.cfg.persist_profile && !app.private { path = strings.concatenate({app.profile_dir, "/palette_choices.txt"}, context.temp_allocator) }
 		ui.palette_memory_open(&wp.pal, s, path)
 	}
+	prefs_page.palette_forms_use(&wp.pal)   // (the forms of the commands that take arguments: tab.open_page)
 	palette_commands_give(app, wp)   // (first: the commands come before Wren's sources)
 	// (the tabs' ids and the pages' addresses change from one run to the next, and the pages are the history's to keep:
 	// the usage memory keeps the commands and the settings only)
@@ -226,8 +243,12 @@ palette_run :: proc(app: ^App, wp: ^Window_Palette, c: ui.Palette_Choice) {
 	if _, is := ui.palette_chosen_command(&wp.pal, c); is {
 		// (by its name: the table may have been made again since it was ranked)
 		cmd := command(app, c.id)
-		if cmd == nil { return }
-		if .Ctrl in c.mods && cmd.url != "" { open_in_new_tab(app, cmd.url, origin = .User) } else { command_run(app, current_tab(app), cmd) }
+		// (Ctrl+Enter and Alt+Enter on a command are the toolkit's: a key, an alias)
+		switch {
+		case cmd == nil:
+		case cmd.id == "tab.open_page": if len(c.arguments) == 1 && c.arguments[0] != "" { open_in_new_tab(app, c.arguments[0], origin = .User) }
+		case: command_run(app, current_tab(app), cmd)
+		}
 		return
 	}
 	id := strings.clone(c.id, context.temp_allocator)   // (the palette's until its next choice)
@@ -275,6 +296,14 @@ palette_table :: proc(app: ^App) -> ^Palette_Table {
 		if c.enabled != nil { append(&gated, k) }
 		k += 1
 	}
+	labels := make([dynamic]string, 0, n, a)
+	urls := make([dynamic]string, 0, n, a)
+	for c in list {
+		if c.hidden || c.url == "" { continue }
+		append(&labels, c.label)
+		append(&urls, c.url)
+	}
+	pt.page_labels, pt.page_urls = labels[:], urls[:]
 	pt.table, pt.rows, pt.gated = table, rows, gated[:]
 	pt.registry = app.cmds.version
 	pt.version += 1
@@ -302,7 +331,15 @@ palette_commands_give :: proc(app: ^App, wp: ^Window_Palette) {
 		}
 	}
 	if changed { wp.version += 1 }
-	ui.palette_commands(&wp.pal, pt.table, wp.disabled[:], {version = wp.version, checked = command_checked, user = app})
+	ui.palette_commands(&wp.pal, pt.table, wp.disabled[:], {version = wp.version, checked = command_checked, choices = open_page_choices, user = app})
+}
+
+// The closed list of tab.open_page's argument: the pages the commands open.
+@(private = "file")
+open_page_choices :: proc(user: rawptr, index: int, argument: string) -> (labels, values: []string) {
+	if argument != OPEN_PAGE_ARGUMENT { return nil, nil }
+	pt := &(^App)(user).pal
+	return pt.page_labels, pt.page_urls
 }
 
 // Whether the switch at `index` of the table is on now: read for the rows in view, at each build.

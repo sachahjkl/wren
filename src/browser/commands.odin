@@ -25,7 +25,7 @@ Command_Test :: proc(app: ^App, t: ^Tab, c: ^Command) -> bool
 // handling read) with what only the browser has: its stable name, its condition and its action.
 Command :: struct {
 	using spec:  ui.Command,
-	url:         string,           // the command opens this page: Ctrl+Enter in the palette opens it in a new tab
+	url:         string,           // the page the command opens: "Open a built-in page in a new tab" offers it
 	arg:         string,           // parameter of a generated command (the theme's name)
 	enabled:     Command_Test,     // nil: always
 	checked:     Command_Test,     // nil: not a toggle
@@ -42,6 +42,16 @@ Command_Registry :: struct {
 	built:         bool,
 	version:       u64,              // counts the changes of the keys in effect (the palette's table is made again: palette.odin)
 	vault_fill_key: [1]ui.Chord,     // the key of vault.fill from its preference (vault_fill.odin): `keys` points here
+	// the person's keys and aliases (keys.custom, keys.aliases): every window reads it (ui.keymap_use), the palette's
+	// Ctrl+Enter and Alt+Enter write it. Here, so it goes where the registry goes
+	keymap:         ui.Keymap,
+}
+
+// The person's keys, in the process's memory: the windows share it, and it outlives every frame.
+command_keymap :: proc(app: ^App) -> ^ui.Keymap {
+	km := &app.cmds.keymap
+	if km.allocator.procedure == nil { km.allocator = base.process_allocator() }
+	return km
 }
 
 // The registry, built at first use; its keys in effect follow the preferences.
@@ -58,10 +68,16 @@ command :: proc(app: ^App, name: string) -> ^Command {
 
 @(private = "file")
 commands_ready :: proc(app: ^App) {
-	if !app.cmds.built { commands_build(&app.cmds) }
+	if app.cmds.built { return }
+	commands_build(&app.cmds)
+	// (the ids before the first key is read: a person's key on one takes its chord from the first frame)
+	specs := make([]ui.Command, len(app.cmds.list), context.temp_allocator)
+	for c, i in app.cmds.list { specs[i] = c.spec }
+	ui.keymap_known(command_keymap(app), specs)
 }
 
 commands_destroy :: proc(r: ^Command_Registry) {
+	ui.keymap_destroy(&r.keymap)   // (read from the settings before the registry is built)
 	if !r.built { return }
 	delete(r.list)
 	delete(r.index)
@@ -86,11 +102,41 @@ command_words :: proc(r: ^Command_Registry, text: string) -> []string {
 	return strings.fields(text, base.arena_allocator(&r.arena))
 }
 
+// A name as part of a generated command's id, which holds only lower case ASCII letters, digits, '.', '_' and '-'
+// (ui.command_ids_check): "Rosé Pine" -> "rose_pine". A Latin letter loses its accent, so the id stays readable in
+// keys.custom; another character becomes '_'.
+command_id_part :: proc(name: string, allocator := context.allocator) -> string {
+	Fold :: struct { from: string, to: u8 }
+	FOLDS :: [?]Fold{
+		{"àáâãäåÀÁÂÃÄÅ", 'a'}, {"çÇ", 'c'}, {"èéêëÈÉÊË", 'e'}, {"ìíîïÌÍÎÏ", 'i'}, {"ñÑ", 'n'},
+		{"òóôõöøÒÓÔÕÖØ", 'o'}, {"ùúûüÙÚÛÜ", 'u'}, {"ýÿÝ", 'y'},
+	}
+	b := strings.builder_make(allocator)
+	outer: for r in name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '.', r == '_', r == '-': strings.write_rune(&b, r)
+		case r >= 'A' && r <= 'Z': strings.write_rune(&b, r + ('a' - 'A'))
+		case:
+			folds := FOLDS
+			for f in folds { if strings.contains_rune(f.from, r) { strings.write_byte(&b, f.to); continue outer } }
+			strings.write_byte(&b, '_')
+		}
+	}
+	return strings.to_string(b)
+}
+
 // A command's keys, in the registry's memory (a slice literal would be on the stack of commands_build).
 command_keys :: proc(r: ^Command_Registry, keys: ..ui.Chord) -> []ui.Chord {
 	out := make([]ui.Chord, len(keys), base.arena_allocator(&r.arena))
 	copy(out, keys)
 	return out
+}
+
+// What tab.open_page takes: the address of a page a command opens (Command.url), chosen in the palette's list
+// (palette.odin, open_page_choices).
+OPEN_PAGE_ARGUMENT :: "page"
+OPEN_PAGE_ARGUMENTS := [?]config.Def{
+	{name = OPEN_PAGE_ARGUMENT, kind = .String, default = {s = ""}},   // (no description: the command's title says it)
 }
 
 // The shortcuts of the chrome that are not commands of the registry (they depend on what has the keyboard, or are a
@@ -170,6 +216,10 @@ commands_build :: proc(r: ^Command_Registry) {
 	// --- tabs
 	add(r, {id = "tab.new", label = "New tab", group = "Tabs", keys = command_keys(r, {key = .T, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_open_new(app) }})
+	// (a command that opens a page opens it where it does; this one opens any of them in a new tab, which Ctrl+Enter did
+	// before the palette gave Ctrl+Enter to the person's keys)
+	add(r, {id = "tab.open_page", label = i18n.later("Open a built-in page in a new tab"), group = "Tabs", tags = command_words(r, "about: new tab page"),
+		arguments = OPEN_PAGE_ARGUMENTS[:], run = proc(app: ^App, t: ^Tab, c: ^Command) { palette_ask_form(app, c.id) }})
 	add(r, {id = "tab.reopen_closed", label = "Reopen closed tab", group = "Tabs", tags = command_words(r, "undo close restore"), keys = command_keys(r, {key = .T, mods = cs}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(closed_items(app)) > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { reopen_closed_tab(app) }})
@@ -425,8 +475,7 @@ commands_build :: proc(r: ^Command_Registry) {
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.favs.cfg.side_collapsed },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tabs_toggle_collapsed(app) }})
 	for th in ui.THEMES {
-		slug, _ := strings.replace_all(base.ascii_lower(th.name, context.temp_allocator), " ", "_", a)
-		add(r, {id = fmt.aprintf("view.theme.%s", slug, allocator = a), label = fmt.aprintf("Theme: %s", th.name, allocator = a), group = "View",
+		add(r, {id = fmt.aprintf("view.theme.%s", command_id_part(th.name, context.temp_allocator), allocator = a), label = fmt.aprintf("Theme: %s", th.name, allocator = a), group = "View",
 			tags = command_words(r, "colors appearance palette"), arg = th.name,
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return base.ascii_equal_fold(app.cfg.look.theme, c.arg) },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_string(app, prefs_page.THEME_PREF, c.arg) }})

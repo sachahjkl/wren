@@ -26,6 +26,7 @@ browser/cdp.odin the_cdp process  # the DevTools-protocol server of the process 
 browser/chrome_style.odin CHROME_PREFS const  # a table
 browser/chrome_style.odin CHROME_STYLE_NAMES const  # a table
 browser/closed_tabs.odin CLOSED_PREFS const  # a table
+browser/commands.odin OPEN_PAGE_ARGUMENTS const  # a table
 browser/commands.odin RESERVED_SHORTCUTS const  # a table
 browser/compositor.odin COMPOSITOR_PREFS const  # a table
 browser/compositor.odin comp_stuck thread  # the fixed and sticky parts of the last paint (window pixels), of the thread that paints
