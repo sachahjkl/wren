@@ -51,7 +51,7 @@ Setup_State :: struct {
 	file_types: string,                       // browser.desktop_integration.file_types when the dialog opened (owned): read by its thread
 	deciding:   int,                          // the start's reading of the install, out on the blocking pool
 	asked:      bool,                         // setup_open: the next build of the window the person is in opens it
-	logo_px:    int,                          // the size of the window's icon the view shows as its logo (0: none)
+	logo:       Maybe(setup.Logo),            // Wren's 256 px logo as a texture of the renderer, made at the first opening
 	at_primary, at_uninstall, at_secondary: draw.Rect,   // where the last frame put its buttons (control_setup_state)
 }
 
@@ -123,11 +123,14 @@ setup_open :: proc(app: ^App) {
 	request_frames(app, 3)
 }
 
-// The window's icon as the setup's logo (nil: none made yet).
+// The setup's logo: the 256 px picture, made once. (The window's icon was used before: a title bar's 16 to 24 px drawn
+// at 4 em, blurred.)
 @(private = "file")
 setup_logo :: proc(app: ^App) -> Maybe(setup.Logo) {
-	if app.wchrome.icon_px <= 0 { return nil }
-	return setup.Logo{app.wchrome.icon, {f32(app.wchrome.icon_px), f32(app.wchrome.icon_px)}}
+	if app.stp.logo == nil && .Renderer in app.made {
+		if l, ok := setup.logo_make(&app.r, APP_LOGO_PNG); ok { app.stp.logo = l }
+	}
+	return app.stp.logo
 }
 
 // Each frame of each window: the view opened when asked, its logo when the icon changes, the work it collects, what
@@ -136,11 +139,7 @@ setup_build :: proc(app: ^App) {
 	d := &app.stp.d
 	if app.stp.asked && window_is_front(app) {
 		app.stp.asked = false
-		app.stp.logo_px = app.wchrome.icon_px
 		setup.open(d, setup_config(app), setup_logo(app))
-	} else if d.open && app.wchrome.icon_px != app.stp.logo_px {
-		app.stp.logo_px = app.wchrome.icon_px
-		setup.set_logo(d, setup_logo(app))
 	}
 	ev := setup.update(d, setup_config(app))
 	switch ev {
@@ -189,6 +188,7 @@ setup_shutdown :: proc(app: ^App) {
 	for app.stp.deciding > 0 { host.blocking_settle(&app.blocking) }
 	setup.finish(&app.stp.d, setup_config(app))
 	setup.destroy(&app.stp.d)
+	if .Renderer in app.made { setup.logo_destroy(&app.r, &app.stp.logo) }
 	delete(app.stp.file_types)
 	app.stp = {}
 }

@@ -10,6 +10,20 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-17
+
+### Added
+- **Your own keys and aliases for every command**: in the command palette, Ctrl+Enter on a command records a key (or two in a row) for it, and Alt+Enter makes the letters typed its alias. Your key wins over the command's own key, and the menus, the tooltips and the shortcut sheet show it. The keys are kept in `keys.custom` and `keys.aliases`, in English whatever the language.
+
+### Changed
+- **Sizes and speeds read the same as in the other programs**: the developer tools write "2.5 MB" and "13 MB" (no trailing zeros, decimal units), and a download's speed reads "1.2 MB/s".
+- **The license is in the settings**: about:settings has a License page with the card, the key field, Choose a file and Remove, the same page as the other programs of Froment Software. about:wren keeps a line that says whether Wren is registered, with a link to it. A `.wrenlicense` file opened or dropped installs the license and shows that page.
+- **"Open a built-in page in a new tab"** is a command of the palette: choose it, then the page (Settings, History, the blocker's dashboard...). Ctrl+Enter on a command no longer opens its page in a new tab: it now sets a key.
+- **The profile is in `FromentSoftware\Wren`**: `%APPDATA%\FromentSoftware\Wren` on Windows, `~/.config/FromentSoftware/Wren` on Linux, beside the other programs of the same vendor. The first start moves the old `Wren` folder there, with the settings, the history and the Vault. If the move fails, Wren keeps the old folder and tries again at the next start.
+
+### Fixed
+- **Setup shows a sharp logo**: it drew the window's small icon enlarged, which came out blurred.
+
 ## [0.8.0] - 2026-11-17
 
 ### Added
@@ -1624,7 +1638,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/sachahjkl/wren/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/sachahjkl/wren/compare/v0.7.9...v0.8.0
 [0.7.9]: https://github.com/sachahjkl/wren/compare/v0.7.8...v0.7.9
 [0.7.8]: https://github.com/sachahjkl/wren/compare/v0.7.7...v0.7.8
