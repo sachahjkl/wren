@@ -523,7 +523,11 @@ toolbar_row :: proc(app: ^App, t: ^Tab) {
 	caption := platform.is_integrated_title(w) && !platform.is_fullscreen(w)
 	if ui.row(.Center, caption ? {.Window_Caption} : {.Clickable}, "###toolbar") {
 		b := ui.parent_box()
-		if classic_on(app) { b.custom, b.custom_user = toolbar_draw, classic_colors_frame(app) }
+		if classic_on(app) {
+			b.custom, b.custom_user = toolbar_draw, classic_colors_frame(app)
+		} else if !machined_on(app) && !tabs_in_sidebar(app) {
+			b.custom = modern_toolbar_draw   // (tab_strip.odin: the current tab continues into it)
+		}
 		address_row(app, t)
 	}
 	if ui.signal(ui.prev_box("###toolbar")).right_clicked { bookmarks_bar_menu(app, ui.mouse_pos()) }

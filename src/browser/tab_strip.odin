@@ -235,10 +235,22 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 			ui.next({width = ui.px(plus_w - plus_pull), height = ui.pct(1)})
 			room := ui.build_box({}, "###newtab_room")
 			if ui.parent(room) { add = classic_new_tab_button(app, &cg, cc, h, plus_w, -plus_pull) }
-		} else {
+		} else if machined_on(app) {
 			ui.spacer(ui.px(em * 0.3))
 			ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.2)), radius = em * CHROME_BUTTON_RADIUS})
 			add = ui.button("###newtab", icon = lucide.PLUS)
+		} else {
+			// (centred on the tabs, not on the row: below the same room above)
+			ui.spacer(ui.px(em * 0.3))
+			ui.next({width = ui.px(new_w), height = ui.pct(1), axis = .Y, cross = .Center})
+			if ui.parent(ui.build_box({}, "###newtab_column")) {
+				ui.spacer(ui.px(math.round(em * TAB_TOP_ROOM_EM)))
+				ui.next({width = ui.fill(), height = ui.fill(), axis = .X, cross = .Center})
+				if ui.parent(ui.build_box({}, "###newtab_middle")) {
+					ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.0)), radius = em * CHROME_BUTTON_RADIUS})
+					add = ui.button("###newtab", icon = lucide.PLUS)
+				}
+			}
 		}
 		tip(add, i18n.tr("New tab (Ctrl+T)"))
 		if add.clicked { tab_open_new(app) }
@@ -347,22 +359,35 @@ strip_clear_rect :: proc(view: ^ui.Box) -> draw.Rect {
 @(private = "file")
 // The room above the modern tabs, where the window is grabbed (em).
 TAB_TOP_ROOM_EM :: 0.5
-// How far the row of modern tabs goes from the toolbar's colour: darker on a light theme, lighter on a dark one.
-@(private = "file") STRIP_STEP :: 0.075
-// How far a hovered tab goes from the row toward the toolbar's colour.
+// How far a hovered tab goes from the row toward the current tab's colour.
 @(private = "file") TAB_HOVER_STEP :: 0.5
+// A light palette without a sunken step: the row is the page this much toward black.
+@(private = "file") STRIP_LIGHT_STEP :: 0.07
 
-// The modern tabs' colours, Chrome's way: the current tab is the toolbar's colour and joins it; the row behind the
-// others is a step away from it (an accent underline before read as a stray line).
+// The modern tabs' colours, Chrome's way, from the theme's own steps (an accent underline before read as a stray line;
+// a row mixed toward white read as a grey foreign to the theme). The current tab is the toolbar's colour and joins it.
+//   light: the toolbar is the page's colour, the row behind the other tabs the theme's sunken step (a shade darker);
+//   dark: the page is nearly black, nothing is darker: the row is the page's colour, and the toolbar and the current
+//         tab the theme's bar step (a shade lighter), as Chrome's dark frame is under a lighter toolbar.
 Modern_Strip :: struct {
-	strip, face: draw.Color,   // the row; the current tab (the toolbar's, the window's background)
+	strip, face: draw.Color,   // the row; the current tab and the toolbar
 }
 
 modern_strip_colors :: proc() -> Modern_Strip {
-	face := ui.color("background")
-	face.a = 1
-	toward := ui.current_state().theme.dark ? draw.Color{1, 1, 1, 1} : draw.Color{0, 0, 0, 1}
-	return {strip = draw.mix(face, toward, STRIP_STEP), face = face}
+	pal := &the_app.chrome_pal
+	page := ui.color("background")
+	page.a = 1
+	if pal.dark {
+		bar := pal.bar != 0 ? pal.bar : pal.panel
+		return {strip = page, face = draw.hex(bar | 0xff)}
+	}
+	if pal.well != 0 { return {strip = draw.hex(pal.well | 0xff), face = page} }
+	return {strip = draw.mix(page, draw.Color{0, 0, 0, 1}, STRIP_LIGHT_STEP), face = page}
+}
+
+// The toolbar of the modern tabs: the current tab's colour, which it continues (dark: lighter than the page).
+modern_toolbar_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	draw.rect(dc, b.rect, modern_strip_colors().face)
 }
 
 @(private = "file")
@@ -468,8 +493,10 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 			// of it, as the end of the title stops before the next tab's slope, below)
 			d := tab_dims(paint.m)
 			side = d.ext + max(cg.overlap - d.run * 0.5, d.run * 0.5)
+		} else if !machined_on(app) {
+			side = b.radius   // (the drawn tab is inset by its radius on each side: tab_look_draw)
 		}
-		pad := classic ? side + math.round(em * 0.35) : math.round(em * 0.65)
+		pad := classic ? side + math.round(em * 0.35) : side + math.round(em * 0.75)
 		isz := f32(tab_icon_px(app))
 		if t.pinned { pad = max(math.round((w - isz) * 0.5), pad) }   // a pinned tab: its icon alone, in the middle (tab_groups.odin)
 		ui.spacer(ui.px(pad))
@@ -519,7 +546,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 			}
 		}
 		// (classic: the next tab covers this one's right foot: the content stops before its slope)
-		ui.spacer(ui.px(classic ? tab_dims(paint.m).ext + max(cg.overlap - tab_dims(paint.m).run * 0.5, tab_dims(paint.m).run * 0.5) + math.round(em * 0.2) : math.round(em * 0.35)))
+		ui.spacer(ui.px(classic ? tab_dims(paint.m).ext + max(cg.overlap - tab_dims(paint.m).run * 0.5, tab_dims(paint.m).run * 0.5) + math.round(em * 0.2) : side + math.round(em * 0.45)))
 	}
 	if closed { shell_after_build(app, {kind = .Close_Tab, tab = t.id, flag = true}); return }
 	sig := ui.signal(b)
