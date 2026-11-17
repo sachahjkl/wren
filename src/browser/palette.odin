@@ -7,7 +7,8 @@ package browser
 //     >  the registry's commands (commands.odin), as the toolkit's table; the views' moves are the toolkit's
 //     @  the window's tabs, then the recently closed ones
 //     /  the pages: the bookmarks, then the visited pages (global_history.odin); Ctrl+Enter opens one in a new tab
-//     :  the preferences (about:config): a switch flips and the palette stays, another opens about:config on it
+//     :  the preferences (about:config), by their title under "Settings · <category>", found by their name too: a
+//        switch flips and the palette stays, another opens about:config on it
 //     $  the Vault's items (vault_fill.odin): only while it is unlocked, never under remote control
 //
 // A source's answer is made on a chore (Palette_Job) from lines the source copied on the interface's thread when its
@@ -413,15 +414,26 @@ pages_source_read :: proc(p: ^ui.Command_Palette, src: ^ui.Palette_Source, q: ui
 ////////////////////////////////
 // `:` The settings
 
-// Every preference about:config shows, by its name: its value after it, its description and its title to find it by.
+// Every preference about:config shows.
 @(private = "file")
 settings_source_read :: proc(p: ^ui.Command_Palette, src: ^ui.Palette_Source, q: ui.Palette_Question) {
 	app := (^Window_Palette)(src.user).app
+	job := palette_job_new(q, len(app.prefs.entries))
+	settings_lines(app, job)
+	palette_job_send(p, job)
+}
+
+// One line per preference about:config shows, read as about:config reads it: its title under its category, which is the
+// line's group ("Settings · Vault"), since many titles alone say little ("Enabled"); its value and its state after it.
+// The name and the description are its last text: a search by "vault.enabled" still finds it, nothing lit.
+// (The toolkit's settings source, prefs_page.palette_settings_add, lists only the preferences of about:settings' pages.)
+settings_lines :: proc(app: ^App, job: ^Palette_Job) {
 	prefs := &app.prefs
-	job := palette_job_new(q, len(prefs.entries))
 	job.sort = true
 	modified := i18n.tr("(modified)")
 	locked := i18n.tr("(locked)")
+	// (a category's group, copied once into the answer: the lines share it)
+	groups := make(map[string]string, 64, context.temp_allocator)
 	for e, i in prefs.entries {
 		d := e.def
 		if d.hidden { continue }
@@ -437,16 +449,19 @@ settings_source_read :: proc(p: ^ui.Command_Palette, src: ^ui.Palette_Source, q:
 			if value == "" { value = i18n.tr("(empty)") }
 			detail = state != "" ? fmt.tprintf("%s  %s", value, state) : value
 		}
-		tags := make([]string, len(d.tags) + 1, context.temp_allocator)
-		tags[0] = config.title_of(d)
-		copy(tags[1:], d.tags)
+		category := config_category(d.name)
+		group, known := groups[category]
+		if !known {
+			group = palette_job_text(job, fmt.tprintf(i18n.tr("Settings · %s"), i18n.tr(config_category_title(category))))
+			groups[category] = group
+		}
 		palette_line_add(job, {
-			id = d.name, title = d.name, detail = detail, last = i18n.tr(d.description), tags = tags,
+			id = d.name, title = i18n.tr(config_title(d, category)), detail = detail, group = group, tags = d.tags,
+			last = d.description != "" ? fmt.tprintf("%s  %s", d.name, i18n.tr(d.description)) : d.name,
 			icon = d.kind == .Bool ? lucide.TOGGLE_RIGHT : lucide.SLIDERS_HORIZONTAL,
 			disabled = e.source == .Policy, stays = d.kind == .Bool,
 		})
 	}
-	palette_job_send(p, job)
 }
 
 // A switch on.
@@ -549,7 +564,7 @@ Palette_Job :: struct {
 	answer: ui.Palette_Answer,
 	lines:  [dynamic]Palette_Line,   // in the answer's arena
 	unique: bool,                    // the first line of each id only (a page visited many times)
-	sort:   bool,                    // the items by their title
+	sort:   bool,                    // the items by their group, then their title
 }
 
 palette_job_new :: proc(q: ui.Palette_Question, lines: int) -> ^Palette_Job {
@@ -605,7 +620,10 @@ palette_job_work :: proc(data: rawptr) {
 			tags = l.tags, last = l.last, disabled = l.disabled, stays = l.stays,
 		})
 	}
-	if job.sort { slice.sort_by(items[:], proc(a, b: ui.Palette_Item) -> bool { return a.title < b.title }) }
+	// (by the group first: with nothing typed the palette heads each run of a group, so a group split would show twice)
+	if job.sort {
+		slice.sort_by(items[:], proc(a, b: ui.Palette_Item) -> bool { return a.group != b.group ? a.group < b.group : a.title < b.title })
+	}
 	job.answer.items = items[:]
 }
 

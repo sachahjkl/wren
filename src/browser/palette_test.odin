@@ -106,6 +106,42 @@ palette_prefixes_of_wren :: proc(t: ^testing.T) {
 	testing.expect(t, !wp.vault.plain && !wp.vault.remember)
 }
 
+// The settings read as about:config reads them: vault.enabled is "Enabled" under "Settings · Vault", not its key; the key
+// still finds it.
+@(test)
+palette_settings_titles :: proc(t: ^testing.T) {
+	page_render_test_lock()
+	defer page_render_test_unlock()
+	app := app_make()
+	defer app_free(app)
+	app_prefs_init(app)
+	job := palette_job_new({}, len(app.prefs.entries))
+	defer free(job, base.process_allocator())
+	defer ui.palette_answer_free(&job.answer)
+	settings_lines(app, job)
+	palette_job_work(job)
+	items := job.answer.items
+	at := -1
+	for it, i in items { if it.id == "vault.enabled" { at = i } }
+	testing.expect(t, at >= 0)
+	if at < 0 { return }
+	testing.expect_value(t, items[at].title, "Enabled")
+	testing.expect_value(t, items[at].group, "Settings · Vault")
+	entry :: proc(it: ^ui.Palette_Item, _: rawptr) -> ui.Rank_Entry { return {label = it.title, group = it.group, tags = it.tags, last = it.last} }
+	for query in ([]string{"vault.enabled", "vault enabled"}) {
+		found := false
+		for h in ui.rank(query, items, entry) { if h.index == at { found = true } }
+		testing.expectf(t, found, "%q does not find vault.enabled", query)
+	}
+	// (each group in one run: a group split would show its heading twice)
+	seen := make(map[string]bool, context.temp_allocator)
+	for it, i in items {
+		if i > 0 && items[i - 1].group == it.group { continue }
+		testing.expectf(t, !seen[it.group], "the group %q is split", it.group)
+		seen[it.group] = true
+	}
+}
+
 // What a chore makes of a source's lines: one item per id (the first: a bookmark before the visits of its page), a
 // page without a title named by its address, the settings in the order of their names.
 @(test)
