@@ -1,6 +1,6 @@
 # Writing Wren's JavaScript glue in Odin
 
-Wren's JavaScript engine is the Odin engine (`src/engine/jsrt`, through the QuickJS C API of `src/engine/jscapi`) compiled
+Wren's JavaScript engine is the Odin engine (`src/engine/jsrt`, through the QuickJS C API of `src/jscapi`) compiled
 to one WebAssembly module (`build/js/wren_js.wasm`), run by Wasmtime. Around the engine sits the *glue*: the code that
 implements the web platform's objects as native functions of that API and wires them to the browser's `wr_*` imports. All
 of it is Odin (`native/js/odin/`; the binding tables are generated into `bindings_gen.odin`). No C of ours is compiled any
@@ -52,16 +52,16 @@ The WebAssembly JavaScript API (a page's own modules) is hand-written: [webassem
 ## The engine (`WJ_JSRT`)
 
 `wj.WJ_JSRT` is a constant (`true`): the layer sits on the Odin runtime. `wj/backend_jsrt.odin` aliases the names of the
-QuickJS C API to the procedures of `src/engine/jscapi` (the API implemented on `src/engine/jsrt`). The API types
+QuickJS C API to the procedures of `src/jscapi` (the API implemented on `src/engine/jsrt`). The API types
 (`Context`, `Native`, `Class_Def`, ...) are defined once in `jscapi/types.odin` and aliased in `wj`.
 `-define:JSCAPI_EXPORT=true` also exports the API under its C names, which a few `foreign` declarations of `wj/` resolve to.
-Details and contracts: [../engine/jscapi.md](../engine/jscapi.md).
+Details and contracts: [jscapi.md](jscapi.md).
 
 ## Where a helper goes
 
 | What it is | Where |
 |---|---|
-| a function of the QuickJS C API | implemented in `src/engine/jscapi`, aliased in `wj/backend_jsrt.odin` |
+| a function of the QuickJS C API | implemented in `src/jscapi`, aliased in `wj/backend_jsrt.odin` |
 | a quickjs.h `static inline` / macro (`JS_NewInt32`, `JS_IsString`, `JS_UNDEFINED`) | `wj/quickjs.odin`, reimplemented (NAN-box bit operations); never `foreign` |
 | a `wj_*` / `web_*` function of the C that stays | `wj/host.odin` (objects, realm, events, iterators), `wj/values.odin` (values), `wj/errors.odin` (throwers), `wj/dom.odin` (dom_internal.h) |
 | a helper of `wj.h` you port to Odin (a former engine/runtime .c everyone calls) | its own file in `wj/` (like `convert.odin`), `@(export, link_name = "<C name>")` so the remaining C links against it |

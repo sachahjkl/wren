@@ -31,6 +31,6 @@ Where to read more:
 
 - how the glue is written, where a helper goes, how to add a domain: [`docs/js/odin-glue.md`](../../docs/js/odin-glue.md);
 - the comptime ABI between members and `wr_*` imports: [`docs/js/odin-abi.md`](../../docs/js/odin-abi.md);
-- the engine: [`docs/engine/runtime.md`](../../docs/engine/runtime.md), [`jscapi.md`](../../docs/engine/jscapi.md),
+- the engine: [`docs/engine/runtime.md`](../../docs/engine/runtime.md), [`jscapi.md`](../../docs/js/jscapi.md),
   [`frontend.md`](../../docs/engine/frontend.md);
 - what is implemented: [`docs/js/coverage.md`](../../docs/js/coverage.md).

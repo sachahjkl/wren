@@ -267,13 +267,11 @@ goes on after the run when it fails: what follows was tried at every position a 
 `atomics_wait`/`atomics_notify`, `can_block`, `malloc_limit`. Values handed to the host live until the
 next call into the engine unless retained.
 
-`src/engine/jsrt/wasm` is the freestanding module (`jsrt_init/new/alloc/eval/run_jobs/free`).
-
-## The QuickJS C API on this runtime (`src/engine/jscapi`)
+## The QuickJS C API on this runtime (`src/jscapi`)
 
 Wren's glue is written against `quickjs.h`. `jscapi` implements that API (167 procedures, `proc "c"`,
 exported under their QuickJS names with `-define:JSCAPI_EXPORT=true`) over `jsrt`; see
-[jscapi.md](jscapi.md) for the ownership model, the classes and the plan of what is left.
+[jscapi.md](../js/jscapi.md) for the ownership model, the classes and the plan of what is left.
 
 ## Measurements (Windows x64, Odin `-o:speed`, Zig 0.15 `-O2` for QuickJS)
 

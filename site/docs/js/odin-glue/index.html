@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Writing Wren's JavaScript glue in Odin · Wren docs</title>
-<meta name="description" content="Writing Wren's JavaScript glue in Odin Wren's JavaScript engine is the Odin engine (src/engine/jsrt, through the QuickJS C API of src/engine/jscapi) compiled to one WebAs">
+<meta name="description" content="Writing Wren's JavaScript glue in Odin Wren's JavaScript engine is the Odin engine (src/engine/jsrt, through the QuickJS C API of src/jscapi) compiled to one WebAssembly ">
 <link rel="icon" type="image/png" sizes="32x32" href="../../../img/logo-32.png">
 <link rel="stylesheet" href="../../../style.css">
 <link rel="stylesheet" href="../../../docs/docs.css">
@@ -292,13 +292,13 @@
 <li><a href="../../../docs/engine/datetime/">datetime (package jsdate): the JavaScript engine's Date</a></li>
 <li><a href="../../../docs/engine/frontend/">Moteur JavaScript — front-end E1 (src/engine/frontend)</a></li>
 <li><a href="../../../docs/engine/jit/">The JIT (src/engine/jsrt/jit.odin)</a></li>
-<li><a href="../../../docs/engine/jscapi/">The QuickJS C API on the Odin runtime (src/engine/jscapi)</a></li>
 <li><a href="../../../docs/engine/numconv/">numconv: float64 ↔ string for the JavaScript engine</a></li>
 <li><a href="../../../docs/engine/regexp/">engine/regexp</a></li>
 <li><a href="../../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../../docs/extensions/">Browser extensions</a></li>
 <li><a href="../../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
+<li><a href="../../../docs/js/jscapi/">The QuickJS C API on the Odin runtime (src/jscapi)</a></li>
 <li><a href="../../../docs/js/odin-abi/">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../../docs/js/odin-glue/" aria-current="page" class="active">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../../docs/js/web-crypto/">crypto.subtle</a></li>
@@ -319,7 +319,7 @@
 <li aria-current="page">Writing Wren's JavaScript glue in Odin</li>
 </ol></nav>
 <h1 id="writing-wrens-javascript-glue-in-odin"><a class="anchor" href="#writing-wrens-javascript-glue-in-odin" aria-hidden="true">#</a>Writing Wren's JavaScript glue in Odin</h1>
-<p>Wren's JavaScript engine is the Odin engine (<code>src/engine/jsrt</code>, through the QuickJS C API of <code>src/engine/jscapi</code>) compiled
+<p>Wren's JavaScript engine is the Odin engine (<code>src/engine/jsrt</code>, through the QuickJS C API of <code>src/jscapi</code>) compiled
 to one WebAssembly module (<code>build/js/wren_js.wasm</code>), run by Wasmtime. Around the engine sits the <em>glue</em>: the code that
 implements the web platform's objects as native functions of that API and wires them to the browser's <code>wr_*</code> imports. All
 of it is Odin (<code>native/js/odin/</code>; the binding tables are generated into <code>bindings_gen.odin</code>). No C of ours is compiled any
@@ -362,15 +362,15 @@ in <code>wj/</code>. A domain of the glue calls another domain unqualified, neve
 <p>The WebAssembly JavaScript API (a page's own modules) is hand-written: <a href="../../../docs/js/webassembly-api/">webassembly-api.md</a>.</p>
 <h2 id="the-engine-wj-jsrt"><a class="anchor" href="#the-engine-wj-jsrt" aria-hidden="true">#</a>The engine (<code>WJ_JSRT</code>)</h2>
 <p><code>wj.WJ_JSRT</code> is a constant (<code>true</code>): the layer sits on the Odin runtime. <code>wj/backend_jsrt.odin</code> aliases the names of the
-QuickJS C API to the procedures of <code>src/engine/jscapi</code> (the API implemented on <code>src/engine/jsrt</code>). The API types
+QuickJS C API to the procedures of <code>src/jscapi</code> (the API implemented on <code>src/engine/jsrt</code>). The API types
 (<code>Context</code>, <code>Native</code>, <code>Class_Def</code>, ...) are defined once in <code>jscapi/types.odin</code> and aliased in <code>wj</code>.
 <code>-define:JSCAPI_EXPORT=true</code> also exports the API under its C names, which a few <code>foreign</code> declarations of <code>wj/</code> resolve to.
-Details and contracts: <a href="../../../docs/engine/jscapi/">../engine/jscapi.md</a>.</p>
+Details and contracts: <a href="../../../docs/js/jscapi/">jscapi.md</a>.</p>
 <h2 id="where-a-helper-goes"><a class="anchor" href="#where-a-helper-goes" aria-hidden="true">#</a>Where a helper goes</h2>
 <div class="table-box"><table>
 <thead><tr><th>What it is</th><th>Where</th></tr></thead>
 <tbody>
-<tr><td>a function of the QuickJS C API</td><td>implemented in <code>src/engine/jscapi</code>, aliased in <code>wj/backend_jsrt.odin</code></td></tr>
+<tr><td>a function of the QuickJS C API</td><td>implemented in <code>src/jscapi</code>, aliased in <code>wj/backend_jsrt.odin</code></td></tr>
 <tr><td>a quickjs.h <code>static inline</code> / macro (<code>JS_NewInt32</code>, <code>JS_IsString</code>, <code>JS_UNDEFINED</code>)</td><td><code>wj/quickjs.odin</code>, reimplemented (NAN-box bit operations); never <code>foreign</code></td></tr>
 <tr><td>a <code>wj_*</code> / <code>web_*</code> function of the C that stays</td><td><code>wj/host.odin</code> (objects, realm, events, iterators), <code>wj/values.odin</code> (values), <code>wj/errors.odin</code> (throwers), <code>wj/dom.odin</code> (dom_internal.h)</td></tr>
 <tr><td>a helper of <code>wj.h</code> you port to Odin (a former engine/runtime .c everyone calls)</td><td>its own file in <code>wj/</code> (like <code>convert.odin</code>), <code>@(export, link_name = "&lt;C name&gt;")</code> so the remaining C links against it</td></tr>

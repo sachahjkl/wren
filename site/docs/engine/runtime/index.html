@@ -292,13 +292,13 @@
 <li><a href="../../../docs/engine/datetime/">datetime (package jsdate): the JavaScript engine's Date</a></li>
 <li><a href="../../../docs/engine/frontend/">Moteur JavaScript — front-end E1 (src/engine/frontend)</a></li>
 <li><a href="../../../docs/engine/jit/">The JIT (src/engine/jsrt/jit.odin)</a></li>
-<li><a href="../../../docs/engine/jscapi/">The QuickJS C API on the Odin runtime (src/engine/jscapi)</a></li>
 <li><a href="../../../docs/engine/numconv/">numconv: float64 ↔ string for the JavaScript engine</a></li>
 <li><a href="../../../docs/engine/regexp/">engine/regexp</a></li>
 <li><a href="../../../docs/engine/runtime/" aria-current="page" class="active">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../../docs/extensions/">Browser extensions</a></li>
 <li><a href="../../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
+<li><a href="../../../docs/js/jscapi/">The QuickJS C API on the Odin runtime (src/jscapi)</a></li>
 <li><a href="../../../docs/js/odin-abi/">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../../docs/js/web-crypto/">crypto.subtle</a></li>
@@ -567,11 +567,10 @@ goes on after the run when it fails: what follows was tried at every position a 
 <code>import_meta</code>, <code>interrupt</code>, <code>rejection</code>, <code>gc_prologue</code>, <code>gc_epilogue</code>, <code>compile_strings</code>, <code>dynamic_import</code>,
 <code>atomics_wait</code>/<code>atomics_notify</code>, <code>can_block</code>, <code>malloc_limit</code>. Values handed to the host live until the
 next call into the engine unless retained.</p>
-<p><code>src/engine/jsrt/wasm</code> is the freestanding module (<code>jsrt_init/new/alloc/eval/run_jobs/free</code>).</p>
-<h2 id="the-quickjs-c-api-on-this-runtime-srcenginejscapi"><a class="anchor" href="#the-quickjs-c-api-on-this-runtime-srcenginejscapi" aria-hidden="true">#</a>The QuickJS C API on this runtime (<code>src/engine/jscapi</code>)</h2>
+<h2 id="the-quickjs-c-api-on-this-runtime-srcjscapi"><a class="anchor" href="#the-quickjs-c-api-on-this-runtime-srcjscapi" aria-hidden="true">#</a>The QuickJS C API on this runtime (<code>src/jscapi</code>)</h2>
 <p>Wren's glue is written against <code>quickjs.h</code>. <code>jscapi</code> implements that API (167 procedures, <code>proc "c"</code>,
 exported under their QuickJS names with <code>-define:JSCAPI_EXPORT=true</code>) over <code>jsrt</code>; see
-<a href="../../../docs/engine/jscapi/">jscapi.md</a> for the ownership model, the classes and the plan of what is left.</p>
+<a href="../../../docs/js/jscapi/">jscapi.md</a> for the ownership model, the classes and the plan of what is left.</p>
 <h2 id="measurements-windows-x64-odin-ospeed-zig-015-o2-for-quickjs"><a class="anchor" href="#measurements-windows-x64-odin-ospeed-zig-015-o2-for-quickjs" aria-hidden="true">#</a>Measurements (Windows x64, Odin <code>-o:speed</code>, Zig 0.15 <code>-O2</code> for QuickJS)</h2>
 <div class="table-box"><table>
 <thead><tr><th></th><th style="text-align:right">jsrt</th><th style="text-align:right">QuickJS‑ng C</th></tr></thead>
@@ -630,7 +629,7 @@ on wasm32, what ships, 104: <code>Object</code> 40 + 4 inline slots of 16; a str
 <li><a href="#interpreter-interpodin-opsodin-coroodin">Interpreter (interp.odin, ops.odin, coro.odin)</a></li>
 <li><a href="#standard-library">Standard library</a></li>
 <li><a href="#embedding-interface-embedodin-runtimeodin">Embedding interface (embed.odin, runtime.odin)</a></li>
-<li><a href="#the-quickjs-c-api-on-this-runtime-srcenginejscapi">The QuickJS C API on this runtime (src/engine/jscapi)</a></li>
+<li><a href="#the-quickjs-c-api-on-this-runtime-srcjscapi">The QuickJS C API on this runtime (src/jscapi)</a></li>
 <li><a href="#measurements-windows-x64-odin-ospeed-zig-015-o2-for-quickjs">Measurements (Windows x64, Odin -o:speed, Zig 0.15 -O2 for QuickJS)</a></li>
 <li><a href="#intended-divergences-from-quickjs">Intended divergences from QuickJS</a></li>
 <li><a href="#known-gaps">Known gaps</a></li>

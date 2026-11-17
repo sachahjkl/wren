@@ -6,7 +6,7 @@
 // exact C names and signatures.
 package wj
 
-import jscapi "wb:engine/jscapi"
+import jscapi "wb:jscapi"
 
 // ---- structs the API takes by pointer (quickjs.h) ----
 

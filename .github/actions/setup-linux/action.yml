@@ -69,7 +69,7 @@ runs:
           build/js/wren_js_raw.wasm
           build/js/wren_js.code
           build/js/STAMP
-        key: linux-js-${{ hashFiles('native/js/**', 'src/engine/**', 'src/config/**', 'src/wasm/*.odin', 'src/tools/jsengine/*.odin', 'src/tools/tooling/js_engine.odin') }}
+        key: linux-js-${{ hashFiles('native/js/**', 'src/engine/**', 'src/jscapi/**', 'src/config/**', 'src/wasm/*.odin', 'src/tools/jsengine/*.odin', 'src/tools/tooling/js_engine.odin') }}
         restore-keys: linux-js-
 
     # (the Rust library with the toolkit's text backend and accessibility adapter, as build.sh builds it: the browser's tests that run here shape text)

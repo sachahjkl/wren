@@ -295,8 +295,8 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	unit(&t, "unit tests: regexp (src\\engine\\regexp, the ECMAScript regular expressions of URLPattern)", "src/engine/regexp", exe("build/regexp_test"), {TOOLKIT, WB})
 	append(&t, Step{name = "unit tests: the headless host (src\\tools\\headless: the windows of the WPT runner's pages, their back/forward cache; against the test server)",
 		actions = slice_of(odin_test("src/tools/headless", exe("build/headless_test"), {TOOLKIT, WB})), needs = COMMON_NEEDS + {.Test_Server}})
-	append(&t, Step{name = "the engine's C API natively (src\\engine\\jsrt\\judge\\capi_test.odin: judge capi, the calls the glue makes: references, classes, opaque data in the object's block, cycles, the GC epilogue, strings read in place, promises, modules)",
-		actions = slice_of(tool_build("src/engine/jsrt/judge", exe("build/judge")), Command{argv = strs(exe("build/judge"), "capi")}), needs = COMMON_NEEDS})
+	append(&t, Step{name = "the engine's C API natively (src\\tools\\jscapi_check: the calls the glue makes: references, classes, opaque data in the object's block, cycles, the GC epilogue, strings read in place, promises, modules)",
+		actions = slice_of(tool_build("src/tools/jscapi_check", exe("build/jscapi_check")), Command{argv = strs(exe("build/jscapi_check"))}), needs = COMMON_NEEDS})
 	// (the pipe server is one per process, so its tests run one at a time; the client's tests link the image encoder)
 	unit(&t, "unit tests: remote (protocol, pipe server: requests, answers, limits, vanishing clients, stopping with clients connected)", "src/remote", exe("build/remote_test"), {ONE_THREAD, WB, TOOLKIT})
 	unit(&t, "unit tests: measure (src\\tools\\wrentool\\measure: settled, visually ready, the noise floor, what counts as a gain)", "src/tools/wrentool/measure", exe("build/measure_test"), {WB, TOOLKIT})

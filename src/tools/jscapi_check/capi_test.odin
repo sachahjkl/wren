@@ -1,6 +1,6 @@
-package jsrt_judge
+package jscapi_check
 
-// judge capi: exercises the QuickJS C API on jsrt (src/engine/jscapi) the way Wren's glue uses it: owned and
+// jscapi_check: exercises the QuickJS C API on jsrt (src/jscapi) the way Wren's glue uses it: owned and
 // borrowed references, classes with opaque data, finalizers and gc_mark (cycles through opaque data), exotic
 // objects, native functions, exceptions, promises and jobs, array buffers, native modules.
 //
@@ -12,7 +12,7 @@ import "core:fmt"
 import "core:mem"
 import "core:mem/tlsf"
 import "core:strings"
-import capi "wb:engine/jscapi"
+import capi "wb:jscapi"
 import js "wb:engine/jsrt"
 
 @(private = "file") checks, fails: int

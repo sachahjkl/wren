@@ -7,7 +7,7 @@ import "core:slice"
 import "core:strings"
 import toolbox "toolkit:toolbox"
 
-// Wren's JavaScript engine: the Odin engine (src/engine/jsrt, through the QuickJS C API of src/engine/jscapi) and the browser's bindings (native/js/odin, with the generated
+// Wren's JavaScript engine: the Odin engine (src/engine/jsrt, through the QuickJS C API of src/jscapi) and the browser's bindings (native/js/odin, with the generated
 // native/js/odin/bindings_gen.odin), compiled to WebAssembly, then pre-initialized: the engine, its intrinsics and the bindings set up once, at build time, and stored in the module's
 // memory image, so that a realm starts from that image instead of running the engine's start-up code. Outputs, in <out>: wren_js_raw.wasm, the engine as compiled (a WASI reactor);
 // wren_js.wasm, the pre-initialized module the browser embeds (src/js/engine.odin); wren_js.code, its machine code, which the program embeds as well (not the test image's). The linker is the wasm-ld that ships with Odin (on Linux, the system's lld on the PATH). Nothing happens when <out>/STAMP matches the hash of

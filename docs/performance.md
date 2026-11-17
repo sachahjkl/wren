@@ -737,13 +737,13 @@ runs each; then the browser (`wrentool bench perf`, 5 runs of each build, interl
    subtree three times (style sheets, media elements, scripts and frames), each with a list of its own; one walk now
    notes which of those names the subtree holds, and only the steps that found something look further. 16.6
    (16.3-16.6) -> 15.7 (15.6-15.8) ms. Test: `inserted_subtree_kinds`.
-4. **The wrapper's platform object in the engine's block** (`JS_NewObjectProtoClassPayload`, `src/engine/jscapi`;
+4. **The wrapper's platform object in the engine's block** (`JS_NewObjectProtoClassPayload`, `src/jscapi`;
    `Host_Object.payload`, `src/engine/jsrt/host_class.odin`). A wrapper took three allocations: the object (the engine's
    size classes), its host part (`new` through the engine's general allocator) and the glue's `Obj` (`libc_calloc`),
    and its finalizer freed the last two. The host part is now a block of the size classes that holds the `Obj` after it,
    freed with the object. 15.8 (15.6-16.1) -> 14.4 (14.0-15.0) ms. Test: `judge capi` (payloads zeroed, one per object,
    a cycle through them collected, 10 000 made and dropped without the heap keeping them).
-5. **The C API reads a value without decoding it** (`cell_of`, `object_of`, `src/engine/jscapi/types.odin`):
+5. **The C API reads a value without decoding it** (`cell_of`, `object_of`, `src/jscapi/types.odin`):
    `JS_DupValue`, `JS_FreeValue`, `JS_GetOpaque`, `JS_SetOpaque`, `JS_GetClassID` built a whole engine value out of
    the word (a switch over every tag) to read a pointer, and `JS_DupValue` copied the Odin context for every value, a
    number too. The collection the DOM asks for calls them for every wrapper (its prologue's `obj_of`, `gc_mark`, the
@@ -791,12 +791,12 @@ a build of jspage that was not kept), the build before it and the build with it 
 browser, all of it (6 runs of each build, interleaved).
 
 1. **A collection unpins its nodes in one call** (`unpin_later`, `gc_epilogue`, `native/js/odin/wj/qjs_platform.odin`;
-   `JS_SetGCEpilogue`, `src/engine/jscapi`; `Host_Config.gc_epilogue`, `src/engine/jsrt`). A finalized node wrapper
+   `JS_SetGCEpilogue`, `src/jscapi`; `Host_Config.gc_epilogue`, `src/engine/jsrt`). A finalized node wrapper
    called the browser's `Node_unpin`, one call for each of the 10 000 wrappers a collection frees; their handles now go
    into a flat array and the epilogue, called at the end of every collection and at the runtime's teardown, hands them
    to `Node_unpinAll` (which, as `Node_unpin` did, runs nothing when it returns: `hold_reactions`). The collection 5.45
    (5.20-6.03) -> 4.98 (4.90-6.24) ms. Test: `judge capi` (the epilogue once a collection, after its finalizers).
-2. **The string arguments of the bindings read in place** (`JS_ToStringView`, `src/engine/jscapi/misc.odin`;
+2. **The string arguments of the bindings read in place** (`JS_ToStringView`, `src/jscapi/misc.odin`;
    `STR_VIEW`, `native/js/odin/wj`). Every string argument was copied to the C heap (`JS_ToCStringLen2`: an UTF-8 copy
    in a fresh block) and freed after the call. A string that is all ASCII is its own UTF-8: the generated bindings,
    whose imports read the bytes before the native returns while the caller holds the argument, and `createElement`, now
@@ -1157,10 +1157,10 @@ Odin's `append` of the engine's root lists 4 %, the two crossings for the realm'
    found it, as a call instruction calls a native (`call_native`, the same checks of depth and stack). `build()` 10.25
    -> 9.11 (8.81-10.35) ms.
 4. **The C API's bridge converts its values in place** (`#force_inline enc` and `dec` in `bridge_invoke`,
-   `src/engine/jscapi/runtime.odin`): every DOM call converted its `this`, its arguments and its result through two
+   `src/jscapi/runtime.odin`): every DOM call converted its `this`, its arguments and its result through two
    calls each. `build()` 9.11 -> 8.73 (8.65-13.32) ms.
 5. **The class and the opaque data of a platform object in one call** (`JS_GetAnyOpaque`, QuickJS-ng's, in
-   `src/engine/jscapi`): `obj_of`, which every DOM call makes for its `this` and node arguments, and the collection's
+   `src/jscapi`): `obj_of`, which every DOM call makes for its `this` and node arguments, and the collection's
    `obj_mark` and `obj_finalizer`, asked `JS_GetClassID` then `JS_GetOpaque`; `obj_mark` reports a group only when the
    wrapper is in one. With the gray list of 2: the collection 4.07 (3.89-6.54) -> 3.69 (3.53-4.15) ms (median of the
    ratios 0.90), `build()` 8.73 -> 8.60 (8.53-8.85) ms. Test: `judge capi` (a payload and its class, a built-in
@@ -1217,7 +1217,7 @@ rounds; the engine's changes also against `examples/jsbench/micro.js` and `macro
 runs of each case); then the browser (5 runs of each build, interleaved, the order turning).
 
 1. **A wrapper's data asked for its values only once it holds some** (`host_object_set_marked`,
-   `src/engine/jsrt/host_class.odin`; `JS_SetOpaqueMarked`, `src/engine/jscapi`; `wj_obj_marked`,
+   `src/engine/jsrt/host_class.odin`; `JS_SetOpaqueMarked`, `src/jscapi`; `wj_obj_marked`,
    `native/js/odin/wj/qjs_platform.odin`). Every wrapper was in `gc_hooked`, so each collection called its class's
    `gc_mark` (the bridge, then the glue's `obj_mark`) in the counting pass of the trial deletion, and again when marking
    the live ones: on nodes10k, 20 000 wrappers a collection that hold nothing. An object made with a payload

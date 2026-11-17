@@ -116,7 +116,7 @@ OBJ_HELD_WEAKLY :: u8(1 << 0)
 OBJ_ON_WALKED_CHAIN :: u8(1 << 1)
 
 // Whether `o` is as it was made with prototype `proto`: no own property, extensible, never held weakly. A host may then
-// let it go and make the same object again when a script asks for it (src/engine/jscapi JS_IsUntouched).
+// let it go and make the same object again when a script asks for it (src/jscapi JS_IsUntouched).
 object_untouched :: proc "contextless" (o: ^Object, proto: ^Object) -> bool {
 	return o.extensible && o.flags & OBJ_HELD_WEAKLY == 0 && !o.shape.is_dict && len(o.shape.props) == 0 && o.shape.lazy == nil && o.shape.proto == proto
 }

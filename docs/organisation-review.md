@@ -349,7 +349,7 @@ Evidence:
   does not exist.
 - The names of generated files have five forms: `api_generated.odin`, `bindings_gen.odin`, `cexport_gen.odin`,
   `atoms_table.odin`, `opcodes.odin`. A lint cannot find them by name.
-- Two generated files name no generator that exists in the tree. `src/engine/jscapi/cexport_gen.odin:3` says "by a
+- Two generated files name no generator that exists in the tree. `src/jscapi/cexport_gen.odin:3` says "by a
   script". `src/engine/jsrt/atoms_table.odin:3` and `opcodes.odin:3` name QuickJS headers.
 - Generators are in three places: `src/tools/bindgen`, `src/tools/wrentool/gen`, and `src/engine/unicode/gen`, a
   program inside the engine's tree.

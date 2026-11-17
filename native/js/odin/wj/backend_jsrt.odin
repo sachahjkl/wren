@@ -1,13 +1,13 @@
 // backend_jsrt.odin: the engine API of the layer on the Odin runtime (WJ_JSRT, backend.odin): every name that
 // quickjs.odin and the m*_quickjs.odin files declare `foreign` (the QuickJS C symbols) is an alias of the same
-// procedure of src/engine/jscapi, which implements the quickjs.h contracts (JSValue words, counted references,
+// procedure of src/jscapi, which implements the quickjs.h contracts (JSValue words, counted references,
 // classes with opaque data) over src/engine/jsrt. The static inlines of quickjs.h stay where they are.
 //
 // What is not a plain alias is below: the runtime constructor (the engine allocates from the C heap, as the C
 // engine did), and the few non-QuickJS C symbols the layer reached through the same foreign blocks.
 package wj
 
-import jscapi "wb:engine/jscapi"
+import jscapi "wb:jscapi"
 import ucd "wb:engine/unicode"
 
 // the imports are used in both backends (an import cannot sit in a when)

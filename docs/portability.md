@@ -380,6 +380,8 @@ linked it: a browser that ran no script (the CI's Linux sweep too). `./build.sh 
   of `js`, `page` and `wasm` imported them.
 - `URLPattern` moved from `src/url` to `src/urlpattern`. `url` does not import `wb:engine/regexp` and
   `wb:engine/unicode` now, so `cookies`, `csp` and `webauthn` do not link them.
-- The judge (`src/engine/jsrt/judge`) keeps its Win32 calls in `fuzz_crash_windows.odin` and `capi_arena_windows.odin`.
-  Off Windows, `judge capi` cannot reserve its arena below 4 GiB yet.
+- The judges (`src/engine/jsrt/judge`, `src/engine/frontend/judge`) keep their Win32 calls in `fuzz_crash_windows.odin`
+  and `prof_windows.odin`. Off Windows, the sampling profiler does nothing.
+- `src/tools/jscapi_check` keeps its Win32 call in `capi_arena_windows.odin`. Off Windows, it cannot reserve its arena
+  below 4 GiB yet.
 - `src/tools/test_all/lint_layers.odin` keeps these rules (see "How a package is made portable").

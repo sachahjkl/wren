@@ -39,11 +39,11 @@
 // same module) is reached through wj.malloc / wj.free when a domain needs raw memory.
 package wj
 
-import jscapi "wb:engine/jscapi"
+import jscapi "wb:jscapi"
 
 // ---- core types (qjs_backend.h) ----
 
-// The types of the engine API are defined once, in src/engine/jscapi (the QuickJS C API on the Odin runtime), and
+// The types of the engine API are defined once, in src/jscapi (the QuickJS C API on the Odin runtime), and
 // aliased here for both backends: the layer's `foreign` declarations (QuickJS C) and its jscapi aliases
 // (backend_jsrt.odin) then take and return the very same types. See WJ_JSRT in backend.odin.
 

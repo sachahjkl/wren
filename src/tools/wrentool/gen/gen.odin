@@ -569,7 +569,7 @@ engine_rx_diff :: proc(args: []string) -> int {
 	}
 	if tooling.run({command = {"zig", "cc", "-shared", "-O2", "-o", "creflib.dll", "shim.c", "libregexp.c", "libunicode.c", "-D_CRT_SECURE_NO_WARNINGS"}, dir = RXDIFF_DIR}) != 0 { fmt.eprintln("the C reference library did not build"); return 1 }
 	exe := fmt.tprintf("%s/rxdiff%s", RXDIFF_DIR, tooling.EXE_SUFFIX)
-	if tooling.run({command = {tooling.odin_program(), "build", "src/engine/regexp/diff", "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit/src", fmt.tprintf("-out:%s", exe), "-o:speed", RXDIFF_STACK}}) != 0 { return 1 }
+	if tooling.run({command = {tooling.odin_program(), "build", "src/tools/rxdiff", "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit/src", fmt.tprintf("-out:%s", exe), "-o:speed", RXDIFF_STACK}}) != 0 { return 1 }
 	full, _ := filepath.abs(exe, context.temp_allocator)
 	env := tooling.flag_has(f, "-NoC") ? []string{"RXDIFF_NO_C=1"} : nil
 	return tooling.run({command = {full, tooling.flag(f, "-Seed", fmt.tprint(RXDIFF_SEED)), tooling.flag(f, "-Fuzz", fmt.tprint(RXDIFF_FUZZ))}, dir = RXDIFF_DIR, env = env})

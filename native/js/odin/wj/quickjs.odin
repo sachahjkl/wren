@@ -4,7 +4,7 @@
 // foreign ones to the QuickJS-ng objects in the same module.
 package wj
 
-import jscapi "wb:engine/jscapi"
+import jscapi "wb:jscapi"
 
 // ---- NAN-boxed value encoding (the inline helpers of quickjs.h, reimplemented) ----
 //

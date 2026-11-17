@@ -292,13 +292,13 @@
 <li><a href="../../docs/engine/datetime/">datetime (package jsdate): the JavaScript engine's Date</a></li>
 <li><a href="../../docs/engine/frontend/">Moteur JavaScript — front-end E1 (src/engine/frontend)</a></li>
 <li><a href="../../docs/engine/jit/">The JIT (src/engine/jsrt/jit.odin)</a></li>
-<li><a href="../../docs/engine/jscapi/">The QuickJS C API on the Odin runtime (src/engine/jscapi)</a></li>
 <li><a href="../../docs/engine/numconv/">numconv: float64 ↔ string for the JavaScript engine</a></li>
 <li><a href="../../docs/engine/regexp/">engine/regexp</a></li>
 <li><a href="../../docs/engine/runtime/">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="../../docs/engine/unicode/">engine/unicode (ucd)</a></li>
 <li><a href="../../docs/extensions/">Browser extensions</a></li>
 <li><a href="../../docs/js/bindgen/">bindgen: the generated copies of the web API</a></li>
+<li><a href="../../docs/js/jscapi/">The QuickJS C API on the Odin runtime (src/jscapi)</a></li>
 <li><a href="../../docs/js/odin-abi/">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../docs/js/odin-glue/">Writing Wren's JavaScript glue in Odin</a></li>
 <li><a href="../../docs/js/web-crypto/">crypto.subtle</a></li>
@@ -680,8 +680,10 @@ state of a headless window are in <code>*_windows.odin</code> files. Each has an
 of <code>js</code>, <code>page</code> and <code>wasm</code> imported them.</li>
 <li><code>URLPattern</code> moved from <code>src/url</code> to <code>src/urlpattern</code>. <code>url</code> does not import <code>wb:engine/regexp</code> and
 <code>wb:engine/unicode</code> now, so <code>cookies</code>, <code>csp</code> and <code>webauthn</code> do not link them.</li>
-<li>The judge (<code>src/engine/jsrt/judge</code>) keeps its Win32 calls in <code>fuzz_crash_windows.odin</code> and <code>capi_arena_windows.odin</code>.
-Off Windows, <code>judge capi</code> cannot reserve its arena below 4 GiB yet.</li>
+<li>The judges (<code>src/engine/jsrt/judge</code>, <code>src/engine/frontend/judge</code>) keep their Win32 calls in <code>fuzz_crash_windows.odin</code>
+and <code>prof_windows.odin</code>. Off Windows, the sampling profiler does nothing.</li>
+<li><code>src/tools/jscapi_check</code> keeps its Win32 call in <code>capi_arena_windows.odin</code>. Off Windows, it cannot reserve its arena
+below 4 GiB yet.</li>
 <li><code>src/tools/test_all/lint_layers.odin</code> keeps these rules (see "How a package is made portable").</li>
 </ul>
 <nav class="doc-seq" aria-label="Previous and next page">

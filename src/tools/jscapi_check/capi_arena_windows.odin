@@ -1,4 +1,4 @@
-package jsrt_judge
+package jscapi_check
 
 import win "core:sys/windows"
 

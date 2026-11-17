@@ -1,4 +1,4 @@
-# The QuickJS C API on the Odin runtime (`src/engine/jscapi`)
+# The QuickJS C API on the Odin runtime (`src/jscapi`)
 
 Wren's glue (`native/js/odin`, package `wj` and the domains above it) is written against the QuickJS‑ng
 C API: `JSValue` words, `JS_DupValue`/`JS_FreeValue`, classes with an opaque pointer and a finalizer,
@@ -9,8 +9,8 @@ QuickJS-ng C engine is gone since 0.6.0.
 ```
 domain files (web_url.odin, dom_core.odin, …)        unchanged
    wj.JS_Call, wj.JS_NewObject …                     the layer's names
-       wj/backend_jsrt.odin                          aliases of src/engine/jscapi
-           src/engine/jscapi (167 procedures, "c")  the QuickJS contracts
+       wj/backend_jsrt.odin                          aliases of src/jscapi
+           src/jscapi (167 procedures, "c")         the QuickJS contracts
                src/engine/jsrt                       the engine
 ```
 
@@ -22,7 +22,7 @@ The API types (`Context`, `Runtime`, `Class_Def`, `Native`, `Property_Descriptor
 - **`JSValue`** is the 64‑bit NaN‑boxed word of QuickJS on wasm32 (`types.odin`: tags `-9 … 8`, floats
   offset by `0x7ff8000A << 32`, heap values a 32‑bit pointer). The glue's own bit operations
   (`wj.tag_of`, `is_string`, `int_of`, …) keep working. A 64‑bit host must keep the engine below 4 GiB
-  (the judge's test reserves an arena at a low address); wasm32 has 32‑bit pointers anyway.
+  (`jscapi_check` reserves an arena at a low address); wasm32 has 32‑bit pointers anyway.
 - **Counted references on a tracing collector.** A reference the caller *owns* (every `JS_New*`,
   `JS_Get*`, `JS_To*`, `JS_Dup*` result) adds one to the `ext` count in the cell header, which makes the
   cell a collector root; `JS_FreeValue` removes it. Values the callee *consumes* (`JS_SetPropertyStr`'s
@@ -31,7 +31,7 @@ The API types (`Context`, `Runtime`, `Class_Def`, `Native`, `Property_Descriptor
   releases it as the engine takes it over. Freeing a value that has no count is harmless.
 - **Cycles through opaque data are collected.** `Class_Def.gc_mark` reports the values the opaque data holds
   (`JS_MarkValue`); the collector subtracts them from the host counts before marking, so an object that holds
-  a counted reference to a closure that captures the object dies (checked by `judge capi`: 1000 such
+  a counted reference to a closure that captures the object dies (checked by `jscapi_check`: 1000 such
   cycles are all finalized by one `JS_RunGC`). Finalizers run before any cell of the collection is freed.
 - **Classes** (`JS_NewClassID`, `JS_NewClass`, `JS_NewObjectProtoClass`, `JS_GetOpaque`/`SetOpaque`, and QuickJS-ng's
   `JS_GetAnyOpaque`: the class and the opaque data in one call, what the glue reads of every platform object) with
@@ -80,7 +80,7 @@ Distinct `JS_*` / `js_*` names the glue references: **176**.
 | helper names of the glue that are not API (`js_str`, `js_cstr` …) | 5 |
 | missing | 0 |
 
-The API itself is tested natively by `judge capi` (61 checks); the glue runs on it in every build.
+The API itself is tested natively by `jscapi_check` (61 checks); the glue runs on it in every build.
 
 ### What is approximated or absent (by weight)
 
@@ -98,7 +98,7 @@ The API itself is tested natively by `judge capi` (61 checks); the glue runs on 
 7. **`JS_ComputeMemoryUsage`** fills the totals only (`malloc_size`, counts).
 8. **Class `call` hooks** (callable platform objects) are not supported.
 9. **Performance**: each API call enters/leaves the host bracket and copies the Odin context (the engine's own speed
-    is in [runtime.md](runtime.md)).
+    is in [runtime.md](../engine/runtime.md)).
 10. **Memory**: a tracing heap holds garbage until the next collection (1.6× QuickJS on allocation‑heavy
     scripts); `JS_SetGCGrowth` says when the next collection comes (`javascript.gc_heap_growth_percent`,
     `javascript.gc_min_growth_bytes`).
@@ -107,7 +107,7 @@ The API itself is tested natively by `judge capi` (61 checks); the glue runs on 
 
 ## Testing
 
-`judge capi` (`src/engine/jsrt/judge/capi_test.odin`) runs the API natively on a heap below 4 GiB: values,
+`jscapi_check` (`src/tools/jscapi_check`) runs the API natively on a heap below 4 GiB: values,
 strings, properties, native functions with data and magic, formatted exceptions, classes with opaque data,
 cycles through `gc_mark`, counted references as roots, the GC epilogue (once a collection, after its finalizers),
 strings read in place (ASCII and concatenations; none of Latin-1, UTF-16 or other values), opaque data in the object's block (zeroed, one per object,

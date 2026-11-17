@@ -125,7 +125,7 @@ runs:
           build/js-test262/wren_js.wasm
           build/js-test262/wren_js_raw.wasm
           build/js-test262/STAMP
-        key: js-${{ hashFiles('native/js/**', 'src/engine/**', 'src/config/**', 'src/wasm/*.odin', 'src/tools/jsengine/*.odin', 'src/tools/tooling/js_engine.odin') }}
+        key: js-${{ hashFiles('native/js/**', 'src/engine/**', 'src/jscapi/**', 'src/config/**', 'src/wasm/*.odin', 'src/tools/jsengine/*.odin', 'src/tools/tooling/js_engine.odin') }}
         restore-keys: js-
 
     # The test server's programs, each with the digest of the sources it was built from (<program>.stamp, tooling.ensure_testserver):

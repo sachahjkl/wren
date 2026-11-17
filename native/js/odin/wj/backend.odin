@@ -1,7 +1,7 @@
 // backend.odin: which engine the layer sits on.
 //
 //   (default)            QuickJS-ng in C: quickjs.h's real symbols are `foreign` (quickjs.odin, m*_quickjs.odin).
-//   -define:WJ_JSRT=true the Odin runtime (src/engine/jsrt) through the QuickJS C API of src/engine/jscapi:
+//   -define:WJ_JSRT=true the Odin runtime (src/engine/jsrt) through the QuickJS C API of src/jscapi:
 //                        the same names are aliases of jscapi's procedures (backend_jsrt.odin), the `foreign`
 //                        blocks are not compiled, and nothing else in the glue changes.
 //

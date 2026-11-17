@@ -5,7 +5,7 @@
 // JS_NewCFunctionMagic is reimplemented over JS_NewCFunction2.
 package wj
 
-import jscapi "wb:engine/jscapi"
+import jscapi "wb:jscapi"
 
 // JSCFunctionEnum (quickjs.h): the kinds a native function is made as.
 CFUNC_getter_magic  :: 10

@@ -23,7 +23,7 @@ import "core:unicode/utf8"
 import rx "wb:engine/regexp"
 import ucd "wb:engine/unicode"
 
-foreign import cref "../../../../build/cref/shim.lib"
+foreign import cref "../../../build/cref/shim.lib"
 
 @(default_calling_convention="c")
 foreign cref {
