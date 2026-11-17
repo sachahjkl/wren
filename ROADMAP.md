@@ -3,7 +3,6 @@
 ## Now
 
 - **A passkey sign-in with two accounts on one security key no longer freezes.** Signing in to Bitwarden with a key that holds two of its passkeys froze the browser once, in the passkey's thread; the stacks of a hang are being caught to find where it waits.
-- **The Windows checks of the CI pass again.** Three tests still fail on Windows. The developer tools' colour picker takes no Escape or Enter: it waits on the toolkit, whose view keys miss a popover opened from a view's body. About one run in two, `about:extensions?path=` shows the install prompt but the test never reads it. `webauthn_exclude_credentials` gets NotAllowedError instead of InvalidStateError.
 
 ## Next
 
