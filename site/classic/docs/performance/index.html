@@ -1680,6 +1680,8 @@ most of the work is on the style and layout threads, which this sampler does not
 over it every 8 ms; <code>card_idle</code>: the card at rest), profile builds, 3 interleaved runs, 60 Hz, RTX 4070 SUPER (the
 hardware adapter: <code>nvwgf2umx.dll</code> in the process, not WARP). GPU times are those of a GPU that the driver keeps at low
 clocks for so little work: the counts of <code>-GpuSteps 1</code> say more.</p>
+<p>(Since then the card is the toolkit's <code>ui.licence_card</code>, on the settings' Licence page, and the page engine's card, its
+shaders and the scenarios <code>card_hover</code> and <code>card_idle</code> are gone. The four changes below are general and stay.)</p>
 <ol>
 <li><strong>A document changed only in style attributes is refreshed, not laid out</strong> (<code>styles_only_mutations</code>,
 <code>src/layout/refresh.odin</code>). The card's script writes its tilt in the style attributes of the card, its lettering and
@@ -4196,7 +4198,6 @@ must call nothing itself (<code>interp_hot.odin</code>'s header says how).</li>
 <li><a href="../../docs/anchor-positioning/">CSS anchor positioning</a></li>
 <li><a href="../../docs/js/webgl/">WebGL</a></li>
 <li><a href="../../docs/accessibility/">Accessibility</a></li>
-<li><a href="../../docs/shaders/">Shaders in the chrome</a></li>
 <li><a href="../../docs/downloads/">Downloads</a></li>
 <li><a href="../../docs/newtab-art/">Artistic new tab</a></li>
 <li><a href="../../docs/tab-sidebar/">Tabs in a sidebar</a></li>

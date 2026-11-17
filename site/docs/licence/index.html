@@ -113,7 +113,6 @@
 <li><a href="../../docs/anchor-positioning/">CSS anchor positioning</a></li>
 <li><a href="../../docs/js/webgl/">WebGL</a></li>
 <li><a href="../../docs/accessibility/">Accessibility</a></li>
-<li><a href="../../docs/shaders/">Shaders in the chrome</a></li>
 <li><a href="../../docs/downloads/">Downloads</a></li>
 <li><a href="../../docs/newtab-art/">Artistic new tab</a></li>
 <li><a href="../../docs/tab-sidebar/">Tabs in a sidebar</a></li>
@@ -322,11 +321,12 @@
 <h1 id="wren-user-licenses"><a class="anchor" href="#wren-user-licenses" aria-hidden="true">#</a>Wren User Licenses</h1>
 <p>Wren is a beta under development and every version is free. During the beta a <strong>supporter license</strong> only supports its
 development: it unlocks nothing, nothing in Wren checks it, and no window or reminder asks for one. Once Wren is out of
-beta, the updates that follow need a license, and one bought during the beta covers them. The only visible effect is one
-line of <code>about:wren</code>:</p>
+beta, the updates that follow need a license, and one bought during the beta covers them. The only visible effects are the
+<em>License</em> page of <code>about:settings</code> and one line of <code>about:wren</code>, with a link to that page:</p>
 <ul>
 <li>without a license: <code>Unregistered — free during the beta · Support Wren</code>;</li>
-<li>with one: <code>Registered to &lt;name&gt;</code>, with the edition, the date, the order number and a thank-you.</li>
+<li>with one: <code>Registered to &lt;name&gt; · &lt;edition&gt; license</code>; the settings' page shows the license as its card (the name, the
+edition, the date and the order number).</li>
 </ul>
 <p>The code is under the PolyForm Strict License 1.0.0 (<a href="https://github.com/sachahjkl/wren/blob/master/LICENSE">LICENSE</a>). A supporter license is separate from the code's license.</p>
 <h2 id="how-it-works"><a class="anchor" href="#how-it-works" aria-hidden="true">#</a>How it works</h2>
@@ -340,7 +340,7 @@ mails it, and shows it on the thank-you page. Both produce byte-identical licens
 <a href="#selling-with-paddle">Selling with Paddle</a>.</p>
 <p>(The folder is <code>license</code>, not <code>license</code>: on Windows <code>license</code> would collide with the <code>LICENSE</code> file at the root.)</p>
 <h3 id="format"><a class="anchor" href="#format" aria-hidden="true">#</a>Format</h3>
-<p>The text of a license (what is pasted in <code>about:wren</code>, or kept in a <code>.wrenlicense</code> file):</p>
+<p>The text of a license (what is pasted in the settings' <em>License</em> page, or kept in a <code>.wrenlicense</code> file):</p>
 <div class="code"><pre><code>WREN1.&lt;payload&gt;.&lt;signature&gt;</code></pre></div>
 <ul>
 <li><code>payload</code>: base64url (no padding) of a JSON object
@@ -359,14 +359,15 @@ WREN1.eyJwcm9kdWN0Ijoid3JlbiIs…
 …</code></pre></div>
 <h3 id="in-wren"><a class="anchor" href="#in-wren" aria-hidden="true">#</a>In Wren</h3>
 <ul>
-<li><strong>Enter</strong> a key: <code>about:wren</code> (menu → <em>About Wren</em>, or the command palette) has a text box (<em>Register</em>), a <em>Choose a
-file…</em> button, and accepts a <code>.wrenlicense</code> file dropped on the window, typed in the address bar, or given on the
-command line (<code>wren.exe jeanne.wrenlicense</code>). A key that does not check out is refused with the reason and nothing is
-kept.</li>
+<li><strong>Enter</strong> a key: the <em>License</em> page of <code>about:settings</code> (<code>about:settings#licence</code>, also the <em>Manage the license</em> link of
+<code>about:wren</code>) has a key field (<em>Register</em>) and a <em>Choose a licence file…</em> button. A <code>.wrenlicense</code> file dropped on the
+window, typed in the address bar, or given on the command line (<code>wren.exe jeanne.wrenlicense</code>) is installed and opens
+that page. A key that does not check out is refused with the reason and nothing is kept. The page is the toolkit's
+(<code>prefs_page.Licence</code>, the same in every program of Froment Software; <a href="https://github.com/sachahjkl/wren/blob/master/src/md/features/licence.md">src/md/features/licence.md</a>).</li>
 <li><strong>Stored</strong> in <code>license.wrenlicense</code> in the profile folder (<code>browser.license.path</code> points elsewhere; with
-<code>browser.profile.persist</code> off it lives in memory for the session). It is read and checked only when <code>about:wren</code> is
-opened.</li>
-<li><strong>Remove</strong> it with <em>Remove the license from this computer</em> on the same page.</li>
+<code>browser.profile.persist</code> off it lives in memory for the session). It is read and checked once at the start, off the
+interface's thread.</li>
+<li><strong>Remove</strong> it with <em>Remove the licence</em> on the same page (a second click confirms).</li>
 <li>Preferences (<code>about:config</code>): <code>browser.license.path</code>, <code>browser.license.public_key</code> (replaces the built-in key, to
 read licenses of another issuer), <code>browser.license.support_url</code> (the <em>Support Wren</em> link, a web page).</li>
 </ul>
@@ -380,8 +381,8 @@ prints the public key and the value of <code>PRODUCTION_PUBLIC_KEY</code> in <co
 <p>Rebuild Wren. <strong>Back up the private key outside this computer</strong> (a password manager): if it is lost, no new license can
 be issued for the builds that carry the public key, and if it leaks, anyone can issue licenses. <code>keygen</code> will not
 overwrite an existing key without <code>-force</code>; a new key invalidates every license issued with the old one.</p>
-<p>Until the public key is set, builds read no license: <code>about:wren</code> stays on <em>Unregistered</em>, and pasting a key says that
-this build has no key to check it with.</p>
+<p>Until the public key is set, builds read no license: <code>about:wren</code> stays on <em>Unregistered</em>, and pasting a key in the
+settings says that this build has no key to check it with.</p>
 <h3 id="2-issue-a-license"><a class="anchor" href="#2-issue-a-license" aria-hidden="true">#</a>2. Issue a license</h3>
 <div class="code"><div class="file">PowerShell</div><pre><code>wrentool license issue <span class="s">"-name:Jeanne Dupont"</span> -email:jeanne@example.org -edition:supporter -order:WREN-<span class="t">0001</span></code></pre></div>
 <p><code>-edition</code> is <code>supporter</code> or <code>patron</code>; <code>-date</code> defaults to today; <code>-private FILE</code> uses another key. The tool verifies
@@ -394,7 +395,7 @@ against the built-in key; <code>-public KEY</code> against another).</p>
 it). A license made with it is refused by a build that carries the production key. To try one in a build:
 <code>wrentool license issue -dev …</code> and <code>--pref browser.license.public_key=&lt;wrentool license pubkey -dev&gt;</code>.</p>
 <p>An experimental build (<code>wrentool experimental</code>, which builds with <code>WREN_ACCEPT_DEV_LICENSE_KEY=1</code>: <code>build.bat</code> passes <code>-define:WREN_ACCEPT_DEV_LICENSE_KEY=true</code>) accepts the licenses of this pair too, as a development build does, so that the demonstration license it is handed out with shows its card with no setting. A release never does.</p>
-<p>A <strong>pre-registered</strong> build carries a license inside: <code>build.bat</code> with <code>WREN_EMBEDDED_LICENSE=&lt;the one line of the .wrenlicense&gt;</code> (and a <code>WREN_VERSION_LABEL</code>, which it requires so that such a build is never an unlabelled one). The first time <code>about:wren</code> asks the profile for its license and the profile holds none, the build's is written there (<code>license_seed</code>, <code>src/browser/license_shell.odin</code>) with a marker file <code>&lt;license file&gt;.seeded</code>; it is then the profile's own: <code>Remove the license</code> removes it and the marker stops it coming back, another license replaces it, and a profile that already holds a license keeps its own. A build that cannot check the text (a release with no key for it) puts nothing anywhere. <code>wrentool experimental</code> builds this way with the development pair's demonstration license. A release has no <code>WREN_EMBEDDED_LICENSE</code>.</p>
+<p>A <strong>pre-registered</strong> build carries a license inside: <code>build.bat</code> with <code>WREN_EMBEDDED_LICENSE=&lt;the one line of the .wrenlicense&gt;</code> (and a <code>WREN_VERSION_LABEL</code>, which it requires so that such a build is never an unlabelled one). The first time the store reads the profile's license (at the start) and the profile holds none, the build's is written there (the toolkit's <code>licence.Store_Options.seed</code>, given by <code>src/browser/license_shell.odin</code>) with a marker file <code>&lt;license file&gt;.seeded</code>; it is then the profile's own: <code>Remove the licence</code> removes it and the marker stops it coming back, another license replaces it, and a profile that already holds a license keeps its own. A build that cannot check the text (a release with no key for it) puts nothing anywhere. <code>wrentool experimental</code> builds this way with the development pair's demonstration license. A release has no <code>WREN_EMBEDDED_LICENSE</code>.</p>
 <h3 id="4-without-the-worker"><a class="anchor" href="#4-without-the-worker" aria-hidden="true">#</a>4. Without the Worker</h3>
 <p><code>wrentool license issue</code> still works for a gift, a refund replacement or a license given by hand, with the same key.
 Use an order number that does not look like a Worker one (<code>GIFT-0001</code>).</p>
@@ -602,7 +603,7 @@ sandbox Worker lets call it).</li>
 <li><p><strong>Try it</strong>: press <em>Supporter</em>, pay with the test card <code>4242 4242 4242 4242</code>, any future expiry, CVC <code>100</code>. The browser
 goes to <code>thanks/?txn=txn_…</code> and shows the key; the e-mail arrives with the file. Check the key:</p>
 <div class="code"><div class="file">PowerShell</div><pre><code>wrentool license verify <span class="s">"-text:WREN1.…"</span> -public:&lt;the public key&gt;</code></pre></div>
-<p>and paste it in <code>about:wren</code>. If something is missing: <em>Developer tools → Notifications → the destination → Logs</em> shows
+<p>and paste it in the settings' <em>License</em> page (<code>about:settings#licence</code>). If something is missing: <em>Developer tools → Notifications → the destination → Logs</em> shows
 what Paddle sent and got back (a <em>Replay</em> button redelivers it), and <code>npx wrangler tail --env sandbox</code> shows the
 Worker's side (<code>webhook_rejected</code> with the reason, <code>issued</code>, <code>mail</code>…).</p></li>
 <li>Try the failure paths once if you like: a wrong <code>PADDLE_WEBHOOK_SECRET</code> gives 401 and nothing is stored; a wrong
