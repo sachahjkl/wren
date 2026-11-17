@@ -7,6 +7,7 @@ package browser
 // PRF output. The PRF output is a secret: zeroed here once handed over.
 
 import "base:runtime"
+import "core:fmt"
 import "wb:base"
 import "wb:host"
 import i18n "toolkit:i18n"
@@ -23,12 +24,17 @@ Vault_Passkey_Op :: struct {
 }
 
 // Why a passkey cannot open the Vault on this computer ("": it can). Bitwarden's passkeys open the keys with the PRF
-// extension: Wren's platform must pass it to the authenticator (Windows' webauthn.dll from version 6; the libfido2 one
-// of Linux has no PRF yet).
+// extension: Wren's platform must pass it to the authenticator (Windows' webauthn.dll from version 6; on Linux libfido2,
+// as hmac-secret).
 vault_passkey_unsupported :: proc(app: ^App) -> string {
 	pl := webauthn.platform_for(&app.page_settings.authn)
 	if pl == nil { return webauthn.NO_PLATFORM_REASON }
 	if .Prf not_in pl.capabilities(pl).extensions {
+		// (Windows passes the PRF's salts to the authenticator from version 6 of its Web Authentication API: a system
+		// with an older one cannot give the secret that opens the keys, whatever the passkey. Say which one was found.)
+		if pl.name == "Windows" {
+			return fmt.tprintf(i18n.tr("Logging in with a passkey needs the passkey's PRF extension, which Windows passes on from version 6 of its Web Authentication API (a recent Windows 11). This Windows has version %d. Use the master password, or update Windows."), pl.version)
+		}
 		return i18n.tr("Logging in with a passkey needs its PRF extension, which Wren does not support on this system yet. Use the master password or another device.")
 	}
 	return ""
