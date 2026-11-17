@@ -359,6 +359,17 @@ strip_clear_rect :: proc(view: ^ui.Box) -> draw.Rect {
 @(private = "file")
 // The room above the modern tabs, where the window is grabbed (em).
 TAB_TOP_ROOM_EM :: 0.5
+// The outline of the current tab and the line under the row: a hint of an edge, not a frame. Dark: the theme's border,
+// half see-through. Light: the theme's border is too near the row's sunken step to show, so a step darker, whole.
+@(private = "file") TAB_EDGE_DARK_ALPHA :: 0.55
+@(private = "file") TAB_EDGE_LIGHT_STEP :: 0.14
+
+@(private = "file")
+tab_edge_color :: proc() -> draw.Color {
+	edge := ui.color("border")
+	if the_app.chrome_pal.dark { edge.a *= TAB_EDGE_DARK_ALPHA; return edge }
+	return draw.mix(edge, draw.Color{0, 0, 0, edge.a}, TAB_EDGE_LIGHT_STEP)
+}
 // How far a hovered tab goes from the row toward the current tab's colour.
 @(private = "file") TAB_HOVER_STEP :: 0.5
 // A light palette without a sunken step: the row is the page this much toward black.
@@ -390,9 +401,14 @@ modern_toolbar_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.rect(dc, b.rect, modern_strip_colors().face)
 }
 
+// The row, and a line along its bottom: the current tab covers it where it joins the toolbar, so the line and the tab's
+// outline read as one edge.
 @(private = "file")
 modern_strip_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.rect(dc, b.rect, (^draw.Color)(user)^)
+	lw := max(math.round(ui.scale()), 1)
+	edge := tab_edge_color()
+	draw.rect(dc, {{b.rect.min.x, b.rect.max.y - lw}, {b.rect.max.x, b.rect.max.y}}, edge)
 }
 
 Tab_Look :: struct {
@@ -629,6 +645,9 @@ tab_look_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		body := draw.Rect{{r.min.x + rad, r.min.y}, {r.max.x - rad, r.max.y}}
 		draw.rect_corners(dc, body, {face, face, face, face}, {rad, 0, rad, 0})
 		// the foot: a square of the tab's colour on each side, its outer corner carved by a circle of the row's colour
+		lw := max(math.round(ui.scale()), 1)
+		edge := tab_edge_color()
+		edge.a *= l.selected
 		for side in ([2]f32{-1, 1}) {
 			x := side < 0 ? body.min.x : body.max.x
 			foot := side < 0 ? draw.Rect{{x - rad, r.max.y - rad}, {x, r.max.y}} : draw.Rect{{x, r.max.y - rad}, {x + rad, r.max.y}}
@@ -637,7 +656,16 @@ tab_look_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 			cut := l.strip
 			cut.a = l.selected
 			draw.rect(dc, {c - rad, c + rad}, cut, rad)
+			// the outline along the foot's curve: the carving circle's edge, inside the foot only
+			draw.push_clip(dc, foot)
+			draw.rect(dc, {c - rad, c + rad}, edge, rad, border = lw)
+			draw.pop_clip(dc)
 		}
+		// the outline along the top and the sides, down to where the feet's curves take over (the bottom is open: the tab
+		// joins the toolbar)
+		draw.push_clip(dc, {{body.min.x, r.min.y}, {body.max.x, r.max.y - rad}})
+		draw.rect_corners(dc, body, {edge, edge, edge, edge}, {rad, 0, rad, 0}, border = lw)
+		draw.pop_clip(dc)
 	}
 	if l.group.a > 0 {
 		gh := max(math.round(2 * ui.scale()), 2)
