@@ -513,10 +513,12 @@ webauthn_settle :: proc(p: ^Page, op: ^Webauthn_Op, st: webauthn.Status) {
 		return
 	}
 	if st.error != .None {
-		msg := strings.clone(st.message, context.temp_allocator)
+		// (`st` is often op.c.status, and a struct parameter is passed by reference: what it says is read before the
+		// ceremony goes. Read after, Windows gave the freed memory's fill, and every error became NotAllowedError)
+		code, msg := error_code(st.error), strings.clone(st.message, context.temp_allocator)
 		webauthn.ceremony_destroy(op.c)
 		log(p, .Warn, msg)
-		promise_reject(p, op.promise, error_code(st.error), msg)
+		promise_reject(p, op.promise, code, msg)
 		return
 	}
 	h := credential_create(p, op.c, op.owner)   // the credential owns the ceremony from here
