@@ -624,9 +624,9 @@ tab_look_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		}
 		return
 	}
-	// Chrome's shape: the current tab rises from the toolbar (its colour, round top corners, square at the bottom, with a
-	// concave curve on each side of its foot); a hovered one is a softer patch; a thin line parts two others. The foot's
-	// curves are drawn inside the box (it clips): the shape is inset by its radius on each side.
+	// The current tab rises from the toolbar: its colour, round top corners, straight sides down to the toolbar (Chrome's
+	// concave curves at its foot were tried: at this size they read as a kink). A hovered one is a softer patch; a thin
+	// line parts two others. The shape is inset by its radius on each side, the room between two tabs.
 	rad := b.radius
 	if l.divide {
 		lw := max(math.round(ui.scale()), 1)
@@ -644,26 +644,12 @@ tab_look_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		face.a *= l.selected
 		body := draw.Rect{{r.min.x + rad, r.min.y}, {r.max.x - rad, r.max.y}}
 		draw.rect_corners(dc, body, {face, face, face, face}, {rad, 0, rad, 0})
-		// the foot: a square of the tab's colour on each side, its outer corner carved by a circle of the row's colour
+		// the outline along the top and the sides, which meet the row's line at the bottom (the bottom itself is open:
+		// the tab joins the toolbar, and covers the row's line there)
 		lw := max(math.round(ui.scale()), 1)
 		edge := tab_edge_color()
 		edge.a *= l.selected
-		for side in ([2]f32{-1, 1}) {
-			x := side < 0 ? body.min.x : body.max.x
-			foot := side < 0 ? draw.Rect{{x - rad, r.max.y - rad}, {x, r.max.y}} : draw.Rect{{x, r.max.y - rad}, {x + rad, r.max.y}}
-			draw.rect(dc, foot, face)
-			c := draw.Vec2{x + side * rad, r.max.y - rad}
-			cut := l.strip
-			cut.a = l.selected
-			draw.rect(dc, {c - rad, c + rad}, cut, rad)
-			// the outline along the foot's curve: the carving circle's edge, inside the foot only
-			draw.push_clip(dc, foot)
-			draw.rect(dc, {c - rad, c + rad}, edge, rad, border = lw)
-			draw.pop_clip(dc)
-		}
-		// the outline along the top and the sides, down to where the feet's curves take over (the bottom is open: the tab
-		// joins the toolbar)
-		draw.push_clip(dc, {{body.min.x, r.min.y}, {body.max.x, r.max.y - rad}})
+		draw.push_clip(dc, {{body.min.x, r.min.y}, {body.max.x, r.max.y - lw}})
 		draw.rect_corners(dc, body, {edge, edge, edge, edge}, {rad, 0, rad, 0}, border = lw)
 		draw.pop_clip(dc)
 	}
