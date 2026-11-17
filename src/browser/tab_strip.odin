@@ -180,7 +180,10 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 		strip_w := min(run, avail) + extra
 		add: ui.Signal
 		move_from, move_to := -1, -1
-		ui.next({width = ui.px(strip_w), height = ui.pct(1)})
+		// modern: the tabs stand clear of the window's top edge (the row centres them): flush with it, they left no room
+		// to grab the window above them. Classic keeps the whole height, which its feet's geometry is drawn from.
+		strip_h := classic ? ui.pct(1) : ui.px(h - math.round(em * 0.9))
+		ui.next({width = ui.px(strip_w), height = strip_h})
 		if ui.strip("###tabs_strip") {
 			strip_tabs(app, ui.parent_box(), strip_w, w, cg.overlap + extra, &move_from, &move_to, &cg, cc)
 		}
