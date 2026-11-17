@@ -208,7 +208,10 @@ shutdown_watchdog :: proc(_: rawptr) {
 				// (in the program's log too, not only in the file: a test's profile goes with the test, what it leaves is its log)
 				if data, err := os.read_entire_file(stacks_path, context.temp_allocator); err == nil { log.warnf("shutdown: the threads' stacks:\n%s", string(data)) } else { shutdown_line("shutdown: the stacks were not read in time") }
 			}
-			shutdown_line(fmt.tprintf("shutdown: still in step %q after %d ms: ending the process (the profile was saved before the teardown)", step, sd.force_ms), .Error)
+			last := fmt.tprintf("shutdown: still in step %q after %d ms: ending the process (the profile was saved before the teardown)", step, sd.force_ms)
+			shutdown_line(last, .Error)
+			// (on standard error at once too: the logger may write later, on another thread, and the process ends now)
+			fmt.eprintln(last)
 			if shutdown_on_force != nil { shutdown_on_force() }
 			shutdown_force_exit()
 		}

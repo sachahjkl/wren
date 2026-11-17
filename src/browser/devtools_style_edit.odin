@@ -180,15 +180,21 @@ styles_pick_popover :: proc(app: ^App, t: ^Tab, s: ^Dev_Styles) {
 	if !s.pick_on { return }
 	if s.pick_b >= len(s.blocks) || s.pick_d >= len(s.blocks[s.pick_b].decls) { s.pick_on = false; return }
 	d := &s.blocks[s.pick_b].decls[s.pick_d]
-	// (before the picker's own field takes them)
-	if ui.key_press(.Escape) {
+	// (before the picker's own field takes them. The panel's body holds its keys while the focus is not under it, and the
+	// picker's popover is a root of its own: open, Escape and Enter are the picker's wherever the focus went in it)
+	st := ui.current_state()
+	keys_root := st.view_keys_root
+	st.view_keys_root = 0
+	escape, enter := ui.key_press(.Escape), ui.key_press(.Return)
+	st.view_keys_root = keys_root
+	if escape {
 		delete(d.value)
 		d.value = strings.clone(s.pick_was)
 		apply_block(app, t, s, s.pick_b)
 		s.pick_on = false
 		return
 	}
-	if ui.key_press(.Return) { s.pick_on = false; s.rev += 1; return }
+	if enter { s.pick_on = false; s.rev += 1; return }
 	if r, ok := ui.popover_rect("###dt_sty_pick"); ok && ui.mouse_pressed() && !draw.rect_contains(r, ui.mouse_pos()) && !draw.rect_contains(s.pick_at, ui.mouse_pos()) {
 		s.pick_on = false
 		s.rev += 1
