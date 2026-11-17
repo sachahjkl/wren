@@ -398,6 +398,7 @@ style/color_scheme.odin FALLBACK_SYSTEM const  # a table
 style/color_scheme.odin SYSTEM_COLOR_NAMES const  # a table
 style/color_scheme.odin color_prefs const  # ... the table
 style/color_scheme.odin color_prefs_once const  # a table built once
+style/color_scheme.odin browser_look process  # the browser's interface shown light or dark (every window shows the same theme)
 style/color_scheme.odin os_look process  # the system's appearance (the machine's)
 style/counters.odin ALPHA_EARTHLY const  # a table
 style/counters.odin ALPHA_GREEK const  # a table

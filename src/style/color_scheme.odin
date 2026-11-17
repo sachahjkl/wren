@@ -73,12 +73,31 @@ set_os_appearance :: proc(a: Os_Appearance) -> bool {
 
 os_appearance :: proc() -> Os_Appearance { return os_look }
 
-// The scheme the user prefers (style.color_scheme; auto: the platform's apps theme).
+// The browser's own look (its interface theme shown light or dark; Light_Dark.Unknown before its first frame). Pages
+// in style.color_scheme = auto follow it, as Chrome's and Firefox's do: a person who sets the browser light gets light
+// pages on a dark desktop.
+Browser_Look :: enum u8 { Unknown, Light, Dark }
+@(private) browser_look: Browser_Look
+
+// Records the browser's look; true when it changed (settings must then be derived again, and pages restyle).
+set_browser_look :: proc(l: Browser_Look) -> bool {
+	if l == browser_look { return false }
+	browser_look = l
+	return true
+}
+
+// The scheme the user prefers (style.color_scheme; auto: the browser's look, else, before it is known, the platform's
+// apps theme).
 preferred_scheme :: proc(s: ^Settings) -> Scheme {
 	switch s.color_scheme {
 	case .Light: return .Light
 	case .Dark: return .Dark
 	case .Auto:
+	}
+	switch browser_look {
+	case .Light: return .Light
+	case .Dark: return .Dark
+	case .Unknown:
 	}
 	return os_look.dark ? .Dark : .Light
 }

@@ -364,31 +364,52 @@ demo_href :: proc(app: ^App, d: Demo, base_url: string, allocator := context.tem
 }
 
 @(private)
+// (light and dark, by the person's preferred scheme; color-scheme makes the browser's own parts of the page — its scroll
+// bars, its controls — follow, and scrollbar-color matches the bars to the page's palette)
 DEMOS_STYLE :: `
-  html { background-color: #0d1017; }
-  body { margin: 0; color: #c9d1e3; font-family: system-ui; font-size: 15px; }
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f7fb; --card: #ffffff; --well: #eef1f8; --line: #dfe4ef; --line-strong: #cfd6e6;
+    --text: #232a3b; --strong: #10141f; --weak: #5b6478; --faint: #8a93a8;
+    --accent: #c46a00; --accent-active: #8f4d00; --code-bg: #e9edf6;
+    --srv-bg: #fff1dc; --srv-fg: #9a5400; --srv-line: #f2c98c;
+    --tool-bg: #e3f1fd; --tool-fg: #1c6fb0; --tool-line: #a9d2f3;
+    --bar-thumb: #b9c1d3; --bar-track: #eceff6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1017; --card: #131825; --well: #151a26; --line: #232b40; --line-strong: #272f45;
+      --text: #c9d1e3; --strong: #f1f4fb; --weak: #8993ad; --faint: #4f5a78;
+      --accent: #ffb84d; --accent-active: #ffd699; --code-bg: #1b2132;
+      --srv-bg: #3b2a10; --srv-fg: #ffb84d; --srv-line: #6b4a14;
+      --tool-bg: #1a2a3b; --tool-fg: #74c0fc; --tool-line: #1c4a6e;
+      --bar-thumb: #2c3550; --bar-track: #0d1017;
+    }
+  }
+  html { background-color: var(--bg); scrollbar-color: var(--bar-thumb) var(--bar-track); }
+  body { margin: 0; color: var(--text); font-family: system-ui; font-size: 15px; }
   .head { max-width: 760px; margin: 0 auto; padding: 48px 20px 8px; }
-  h1 { font-size: 40px; margin: 0; color: #f1f4fb; }
-  h1 .w { color: #ffb84d; }
-  .intro { color: #8993ad; margin: 8px 0 0; }
-  .from { margin: 16px 0 0; padding: 10px 16px; background-color: #151a26; border: 1px solid #272f45; border-radius: 10px; color: #8993ad; font-size: 13px; }
-  .from code { color: #c9d1e3; }
+  h1 { font-size: 40px; margin: 0; color: var(--strong); }
+  h1 .w { color: var(--accent); }
+  .intro { color: var(--weak); margin: 8px 0 0; }
+  .from { margin: 16px 0 0; padding: 10px 16px; background-color: var(--well); border: 1px solid var(--line-strong); border-radius: 10px; color: var(--weak); font-size: 13px; }
+  .from code { color: var(--text); }
   .main { max-width: 760px; margin: 0 auto; padding: 0 20px 48px; }
-  h2 { font-size: 20px; color: #ffb84d; margin: 30px 0 4px; }
-  .demo { margin: 10px 0; padding: 12px 18px; background-color: #131825; border: 1px solid #232b40; border-radius: 12px; }
+  h2 { font-size: 20px; color: var(--accent); margin: 30px 0 4px; }
+  .demo { margin: 10px 0; padding: 12px 18px; background-color: var(--card); border: 1px solid var(--line); border-radius: 12px; }
   .demo h3 { margin: 0 0 4px; font-size: 16px; }
-  .demo h3 a { color: #f1f4fb; text-decoration: none; }
-  .demo h3 a:hover { color: #ffb84d; }
-  .demo h3 a:active { color: #ffd699; }
-  .demo h3 .off { color: #8993ad; }
-  .demo p { margin: 0; color: #8993ad; line-height: 1.4; }
-  .demo code { color: #c9d1e3; background-color: #1b2132; padding: 0 3px; border-radius: 3px; }
-  .demo .where { color: #4f5a78; font-size: 12px; margin-top: 6px; }
+  .demo h3 a { color: var(--strong); text-decoration: none; }
+  .demo h3 a:hover { color: var(--accent); }
+  .demo h3 a:active { color: var(--accent-active); }
+  .demo h3 .off { color: var(--weak); }
+  .demo p { margin: 0; color: var(--weak); line-height: 1.4; }
+  .demo code { color: var(--text); background-color: var(--code-bg); padding: 0 3px; border-radius: 3px; }
+  .demo .where { color: var(--faint); font-size: 12px; margin-top: 6px; }
   .badge { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 9px; font-size: 11px; font-weight: normal; vertical-align: middle; }
-  .srv { background-color: #3b2a10; color: #ffb84d; border: 1px solid #6b4a14; }
-  .tool { background-color: #1a2a3b; color: #74c0fc; border: 1px solid #1c4a6e; }
-  .foot { text-align: center; color: #4f5a78; font-size: 13px; padding: 12px 20px 40px; }
-  .foot b { color: #8993ad; }
+  .srv { background-color: var(--srv-bg); color: var(--srv-fg); border: 1px solid var(--srv-line); }
+  .tool { background-color: var(--tool-bg); color: var(--tool-fg); border: 1px solid var(--tool-line); }
+  .foot { text-align: center; color: var(--faint); font-size: 13px; padding: 12px 20px 40px; }
+  .foot b { color: var(--weak); }
 `
 
 demos_html :: proc(app: ^App) -> string {
@@ -453,7 +474,7 @@ demos_html :: proc(app: ^App) -> string {
 			strings.write_string(&sb, "</div>\n")
 		}
 	}
-	fmt.sbprintf(&sb, "</div>\n<p class=\"foot\"><b>%s</b> %s &middot; <a href=\"%s\" style=\"color: #8993ad\">home</a></p>\n</body>\n</html>\n", APP_NAME, APP_VERSION, HOME_URL)
+	fmt.sbprintf(&sb, "</div>\n<p class=\"foot\"><b>%s</b> %s &middot; <a href=\"%s\" style=\"color: var(--weak)\">home</a></p>\n</body>\n</html>\n", APP_NAME, APP_VERSION, HOME_URL)
 	return strings.to_string(sb)
 }
 

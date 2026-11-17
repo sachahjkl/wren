@@ -33,6 +33,7 @@ import "wb:html"
 import "wb:http"
 import "wb:net"
 import "wb:page"
+import "wb:style"
 import "wb:url"
 import "wb:wasm"
 
@@ -1443,7 +1444,12 @@ chrome_frame_style :: proc(app: ^App) -> ui.Style {
 	wnd := active_window(app)
 	// (the user's themes, read again when their file changed: theme_show compares the theme's colours too, and shows them)
 	_ = prefs_page.themes_file_poll(&app.themes_file, wnd.ui)
-	if ui.theme_show(&app.theme, app.themes_file.all[:], chrome_theme_choice(app), &app.theme_shown, render.blend_space(&app.r)) { app.chrome_pal = chrome_palette(app) }
+	if ui.theme_show(&app.theme, app.themes_file.all[:], chrome_theme_choice(app), &app.theme_shown, render.blend_space(&app.r)) {
+		app.chrome_pal = chrome_palette(app)
+		// pages in style.color_scheme = auto follow the browser's look: derived again and restyled when its side changes
+		// (only then: theme_show applies on any change of the theme, the look changes far less often)
+		if style.set_browser_look(app.theme_shown.light ? .Light : .Dark) { apply_prefs(app, "browser.appearance") }
+	}
 	pal := app.chrome_pal
 	platform.set_dark_title(wnd.win, !app.theme_shown.light)
 	// the system's frame line is half transparent along the top of an integrated title bar: the palette's, opaque

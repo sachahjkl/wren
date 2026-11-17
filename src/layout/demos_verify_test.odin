@@ -71,7 +71,7 @@ demo_sheets :: proc(d: ^Demo, dir: string) {
 @(private = "file")
 demo_frame :: proc(d: ^Demo, dir: string) -> (style_diff: string) {
 	d.now += 16
-	env := style.media_env_from(&d.eng.settings, f64(d.vp.x / 1.25), f64(d.vp.y / 1.25), 1.25, false)
+	env := style.media_env_from(&d.eng.settings, f64(d.vp.x / 1.25), f64(d.vp.y / 1.25), 1.25)
 	style.engine_set_environment(d.eng, env)
 	if d.st != nil && !d.eng.restyle_needed { _ = style.engine_extend(d.eng, d.doc, d.st) }
 	full := d.st == nil || d.eng.dirty || d.eng.restyle_needed

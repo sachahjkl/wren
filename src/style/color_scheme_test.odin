@@ -283,6 +283,23 @@ meta_changes_restyle :: proc(t: ^testing.T) {
 	testing.expect(t, same(sx(f, "p").color, hexc(0xffffff)))
 }
 
+// Under auto, pages follow the browser's look, not the desktop's: a light browser on a dark desktop gives light pages,
+// and their media queries say light too (they read the system's once, and disagreed with the scroll bars).
+@(test)
+auto_follows_the_browser_look :: proc(t: ^testing.T) {
+	saved_os, saved_look := os_appearance(), browser_look
+	defer { set_os_appearance(saved_os); set_browser_look(saved_look) }
+	s := Settings{color_scheme = .Auto}
+	set_os_appearance(Os_Appearance{known = true, dark = true})
+	set_browser_look(.Unknown)
+	testing.expect_value(t, preferred_scheme(&s), Scheme.Dark)   // (before the browser's first frame: the desktop's)
+	set_browser_look(.Light)
+	testing.expect_value(t, preferred_scheme(&s), Scheme.Light)
+	testing.expect(t, !media_env_from(&s, 800, 600, 1).prefers_dark, "prefers-color-scheme agrees")
+	s.color_scheme = .Dark
+	testing.expect(t, media_env_from(&s, 800, 600, 1).prefers_dark, "a scheme set by the person wins")
+}
+
 @(test)
 system_color_preferences :: proc(t: ^testing.T) {
 	p := config.prefs_make(context.temp_allocator)

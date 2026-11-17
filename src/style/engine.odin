@@ -1156,13 +1156,10 @@ engine_set_environment :: proc(e: ^Engine, env: css.Media_Env) -> bool {
 	return changed
 }
 
-media_env_from :: proc(s: ^Settings, width, height, dppx: f64, os_dark: bool) -> css.Media_Env {
-	dark: bool
-	switch s.color_scheme {
-	case .Auto: dark = os_dark
-	case .Light: dark = false
-	case .Dark: dark = true
-	}
+// (prefers-color-scheme is the preferred scheme, the one the shell's own parts of pages use: the browser's look under
+// auto. Reading the system's here once made a light browser on a dark desktop give pages dark media queries.)
+media_env_from :: proc(s: ^Settings, width, height, dppx: f64) -> css.Media_Env {
+	dark := preferred_scheme(s) == .Dark
 	pc := pointer_caps
 	return css.Media_Env{
 		type = .Screen, width = width, height = height, dppx = dppx,

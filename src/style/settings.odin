@@ -161,7 +161,7 @@ PREFS := [?]config.Def{
 	{name = "style.author_fonts.enabled", kind = .Bool, default = {b = true}, description = "Let pages set fonts. Off: font-family and font-size from pages are ignored."},
 	{name = "style.user_stylesheet", kind = .String, default = {s = ""}, description = "Path of a CSS file applied to every page with user priority (empty = none)."},
 	{name = "style.color_scheme", kind = .String, default = {s = "auto"}, choices = {"auto", "light", "dark"},
-		description = "The color scheme the user prefers: reported to pages (prefers-color-scheme) and used by pages and elements that support both (color-scheme: light dark). auto follows the Windows apps theme (Settings > Personalization > Colors), live."},
+		description = "The color scheme the user prefers: reported to pages (prefers-color-scheme) and used by pages and elements that support both (color-scheme: light dark). auto follows the browser's look (appearance.mode), live; before its first frame, the system's apps theme."},
 	{name = "style.prefers_reduced_motion", kind = .Bool, default = {b = false}, description = "Report prefers-reduced-motion: reduce to pages."},
 	{name = "style.prefers_more_contrast", kind = .Bool, default = {b = false}, description = "Report prefers-contrast: more to pages."},
 	{name = "font.size.default", kind = .Float, default = {f = 16}, bounded = true, min = 6, max = 96, value_kind = .Length, description = "Default font size (CSS `medium`)."},

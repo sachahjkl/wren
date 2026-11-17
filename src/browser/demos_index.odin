@@ -19,7 +19,8 @@ DEMOS_INDEX_SERVER :: "http://127.0.0.1:8765/"   // the default of browser.demos
 @(private = "file")
 DEMOS_INDEX_STYLE :: `
   :root { color-scheme: light dark; }
-  html { background-color: light-dark(#f6f7fb, #0d1017); }
+  html { background-color: light-dark(#f6f7fb, #0d1017); scrollbar-color: #b9c1d3 #eceff6; }
+  @media (prefers-color-scheme: dark) { html { scrollbar-color: #2c3550 #0d1017; } }
   body { margin: 0; color: light-dark(#1d2433, #c9d1e3); font-family: system-ui; font-size: 15px; }
   .head, .main { max-width: 800px; margin: 0 auto; padding: 0 20px; }
   .head { padding-top: 44px; }

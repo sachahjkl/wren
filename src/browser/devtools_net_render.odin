@@ -71,7 +71,7 @@ preview_render_make :: proc(app: ^App, pr: ^Preview_Render, body: []byte, base_u
 preview_render_layout :: proc(app: ^App, pr: ^Preview_Render, size: draw.Vec2, scale: f32) {
 	if pr.doc == nil || pr.engine == nil || size.x <= 0 || size.y <= 0 { return }
 	if pr.built && pr.size == size && pr.scale == scale { return }
-	env := style.media_env_from(&pr.engine.settings, f64(size.x / scale), f64(size.y / scale), f64(scale), style.os_appearance().dark)
+	env := style.media_env_from(&pr.engine.settings, f64(size.x / scale), f64(size.y / scale), f64(scale))
 	env.scripting = false   // the preview never runs scripts: @media (scripting: none) and <noscript> apply
 	style.engine_set_environment(pr.engine, env)
 	styled := style.compute_styles(pr.engine, pr.doc, style.State{})   // no forced or pointer state: a plain render

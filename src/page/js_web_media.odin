@@ -71,7 +71,7 @@ media_page :: proc(p: ^Page) -> ^Media_Page {
 
 // The environment a page is styled and its media queries are answered in, for a viewport of this size and scale.
 page_media_env :: proc(e: ^style.Engine, viewport_w, viewport_h, dppx: f64) -> css.Media_Env {
-	env := style.media_env_from(&e.settings, viewport_w, viewport_h, dppx, style.os_appearance().dark)
+	env := style.media_env_from(&e.settings, viewport_w, viewport_h, dppx)
 	env.scripting = e.settings.scripting   // (scripting: enabled) / (scripting: none)
 	return env
 }
