@@ -403,6 +403,28 @@ modern_toolbar_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.rect(dc, b.rect, modern_strip_colors().face)
 }
 
+// A tab's title. `classic` (its paint): the title is cut by its box (clip) and fades out into the tab's gradient instead
+// of ending in dots; nil: a plain label.
+@(private = "file")
+tab_title_box :: proc(title: string, classic: ^Classic_Tab, em: f32) {
+	if classic != nil {
+		ui.next({width = ui.fill(), height = ui.pct(1), axis = .X, cross = .Center})
+		tb := ui.build_box({.Clip}, "###titlebox")
+		if ui.parent(tb) {
+			ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
+			ui.a11y({ignore = true})   // (the tab's name)
+			lb := ui.build_box({.Draw_Text, .No_Text_Trunc}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
+			fade := ui.frame_new(Title_Fade)
+			fade^ = {tab = classic, width = em * 1.7}
+			lb.custom, lb.custom_user = title_fade_draw, fade
+		}
+		return
+	}
+	ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
+	ui.a11y({ignore = true})   // (the tab's name)
+	ui.build_box({.Draw_Text}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
+}
+
 @(private = "file")
 Strip_Style :: enum u8 { Modern, Classic, Machined }
 
@@ -546,28 +568,20 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		if t.pinned { pad = max(math.round((w - isz) * 0.5), pad) }   // a pinned tab: its icon alone, in the middle (tab_groups.odin)
 		ui.spacer(ui.px(pad))
 		ui.next({width = ui.px(isz), height = ui.pct(1)})
-		ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
+		icon := tab_icon_of(app, t, isz)
+		// (on a caption band, the glyph in the band's ink as the title is; a page's own icon and the spinner keep theirs)
+		if b.ink.a > 0 && icon.kind != .Favicon && icon.kind != .Spinner { icon.color = b.ink }
+		ui.custom("###icon", tab_icon_draw, icon)
 		speaker := tab_speaker(app, t)
 		if t.pinned { tab_speaker_badge(speaker, {pad + isz * 0.45, math.round((b.size.y - isz) * 0.5 + isz * 0.45)}, math.round(isz * 0.8), "###speaker_badge") }
 		ui.space(ui.ICON_GAP)
 		title := t.pinned ? "" : t.title
 		if strings.contains(title, "###") { title, _ = strings.replace_all(title, "###", "# # #", context.temp_allocator) }
-		if classic {
-			// the title is cut by its box (clip) and fades out into the tab's gradient instead of ending in dots
-			ui.next({width = ui.fill(), height = ui.pct(1), axis = .X, cross = .Center})
-			tb := ui.build_box({.Clip}, "###titlebox")
-			if ui.parent(tb) {
-				ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
-				ui.a11y({ignore = true})   // (the tab's name)
-				lb := ui.build_box({.Draw_Text, .No_Text_Trunc}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
-				fade := ui.frame_new(Title_Fade)
-				fade^ = {tab = paint, width = em * 1.7}
-				lb.custom, lb.custom_user = title_fade_draw, fade
-			}
-		} else {
-			ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
-			ui.a11y({ignore = true})   // (the tab's name)
-			ui.build_box({.Draw_Text}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
+		// (a tab on the band takes its words' face, bold when the theme says so; the current tab has its own face)
+		if on {
+			tab_title_box(title, classic ? paint : nil, em)
+		} else if ui.caption_text() {
+			tab_title_box(title, classic ? paint : nil, em)
 		}
 		if speaker != .None && !t.pinned {
 			if ui.tab_stops(false) { _ = tab_speaker_button(app, t, speaker, math.round(em * 1.45), "###speaker") }
@@ -582,7 +596,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 				if ui.tags("icon_button") {
 					cb = ui.build_box({.Clickable, .Draw_Background, .Draw_Hot_Effects}, "###close")
 					cross := ui.frame_new(draw.Color)
-					cross^ = ui.color("text")
+					cross^ = b.ink.a > 0 ? b.ink : ui.color("text")   // (on a caption band: its ink)
 					cb.custom, cb.custom_user = close_cross_draw, cross
 				}
 				c := ui.signal(cb)
