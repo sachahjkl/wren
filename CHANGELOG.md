@@ -10,6 +10,27 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-18
+
+### Added
+- **Diagnostics in the settings**: about:settings has a Diagnostics page with the graphics adapter, the window, the last frames' build and draw times and the versions, and a Copy button to send them with a report.
+- **What's new in the settings**: about:settings has a What's new page with Wren's changelog, which you can search and filter by kind of change. The first start of a new version says so in a message, and a click on it opens the page.
+
+### Changed
+- **The applications menu and the start with the session are on the System page**: once Wren is installed, about:settings shows "In the applications menu" and "Start with the session", and a change applies at once. The preference browser.desktop_integration.start_menu is gone: the System page's setting replaces it.
+- **One spacing across the interface**: the pages, panels, dialogs and bars of Wren now space their lines, buttons, icons and groups on the toolkit's scale, so the same kind of gap has the same size everywhere. The blocker's settings show their whole words, with their switches on the right. The tooltips of icon buttons show their whole text again.
+- **Updates in the settings, and by themselves** (Windows): the System page of about:settings shows the update state under "Update by itself", with Check now, Install and Restart now. With "Update by itself" on, the installed copy checks once a day, installs a signed release and asks you to restart. The status bar offers the install and the restart. On Linux, "Check for updates" opens the release page.
+- **Setup is also a page of the settings**: about:settings has an Installation page where you install, repair, upgrade or uninstall Wren, the same as the Setup window. Your answer to the offer at a start is kept with your preferences, so a profile that answered before is asked once more. "Open the installed copy" now starts it once this Wren has closed.
+- **The Vault says why a passkey cannot log in on this Windows**: logging in with a passkey needs Windows to pass the passkey's PRF extension, which its Web Authentication API does from version 6 (a recent Windows 11). The message now names the version found and what to do.
+- **A lighter default look, with tabs like Chrome's**: Wren starts in the gradient finish. The current tab is the toolbar's colour and joins it; the others sit on a row a shade darker (lighter in dark mode), with a soft patch under the pointer. The address bar is flat, without the machined finish's sunken field. The machined finish stays in about:settings, Appearance, Finish; a finish you chose is kept.
+- **Pages follow the browser's light or dark look**: with the color scheme on automatic, a page that supports both is shown light or dark as Wren is, not as the desktop is, and its media queries agree with its scroll bars. The demos page is light or dark with it, its scroll bars in its own colors.
+
+### Removed
+- **about:wren's Updates section and the `browser.update.*` settings**: the update state and its buttons are in the settings now, and about:wren links to What's new, Updates and Installation. The settings `browser.update.url`, `browser.update.public_key`, `browser.update.require_signature` and `browser.update.allow_development_build` are gone: an update is always signed with Wren's key, and `update.base_url` still names another folder of releases.
+
+### Fixed
+- **No terminal window beside the Vault on Windows**: starting the Vault's helper opened an empty console window titled "wren-vault". The helper now starts without one, and the Vault's dialogs keep the toolkit's spacing between their fields, buttons and boxes.
+
 ## [0.10.0] - 2026-11-17
 
 ### Added
@@ -1656,7 +1677,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/sachahjkl/wren/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/sachahjkl/wren/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/sachahjkl/wren/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/sachahjkl/wren/compare/v0.7.9...v0.8.0
