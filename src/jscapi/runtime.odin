@@ -61,6 +61,9 @@ JS_NewRuntime :: proc "c" () -> ^Runtime {
 	api_context = context
 	cfg := js.DEFAULT_CONFIG
 	cfg.max_stack_bytes = 0
+	// (no block of the runtime's own: a JSValue holds a 32-bit pointer, so every cell comes from host_allocator, which
+	// keeps them below 4 GiB natively; the system would place the block anywhere. In Wasm no block is reserved anyway)
+	cfg.reserve_bytes = -1
 	rt := js.engine_new(host_allocator, cfg)
 	st := new(State, host_allocator)
 	st.rt = rt
