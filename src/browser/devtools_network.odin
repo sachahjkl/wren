@@ -419,20 +419,17 @@ network_panel :: proc(app: ^App, t: ^Tab) {
 
 @(private = "file")
 net_split_body :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, sel: ^Net_Entry, side: bool, split, room_w: f32, menu_key: string) {
-	if side {
-		ui.next({width = sel != nil ? ui.pct(split) : ui.fill(), height = ui.fill()})
-	} else {
-		ui.next({width = ui.fill(), height = sel != nil ? ui.pct(split) : ui.fill()})
-	}
-	if ui.column(.Start, {.Clip}, "###dt_net_main") { net_table(app, t, v, menu_key) }
+	if side && sel != nil { net_side_split(app, t, v, sel, split, room_w, menu_key); return }
+	ui.next({width = ui.fill(), height = sel != nil ? ui.pct(split) : ui.fill()})
+	if ui.column(.Start, {.Clip}, "###dt_net_main") { net_table(app, t, v, menu_key, room_w) }
 	if sel != nil {
 		// the toolkit's splitter, its size a share of the room: from a few em to all but a few em of the table
 		pr := ui.parent_box().rect
-		room := side ? room_w : pr.max.y - pr.min.y
+		room := pr.max.y - pr.min.y
 		if room > 0 {
 			lo := min(ui.PANE_MIN_EM * ui.font_size() / room, DEV_NET_SPLIT_DEFAULT)
 			share := split
-			r := ui.splitter(side ? "###dt_net_vs" : "###dt_net_hs", side ? .X : .Y, &share, lo, 1 - lo, {unit = room, thickness = dt_px(5), default_size = DEV_NET_SPLIT_DEFAULT})
+			r := ui.splitter("###dt_net_hs", .Y, &share, lo, 1 - lo, {unit = room, thickness = dt_px(5), default_size = DEV_NET_SPLIT_DEFAULT})
 			if r.changed {
 				set_pref_quiet(app, "browser.devtools.network.split", share)
 				request_frames(app, 2)
@@ -442,6 +439,104 @@ net_split_body :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, sel: ^Net_Entry, sid
 		if ui.column(.Start, {.Clip}, "###dt_net_detail_box") { net_detail_panel(app, t, v, sel) }
 	}
 }
+
+// The fold of the detail beside the table: what ui.side_fold_format writes (src/md/features/network-detail-fold.md).
+NET_DETAIL_FOLD_PREF :: "browser.devtools.network.detail_fold"
+// The space between the fold button and the detail's right edge (logical px), open and on the rail: the same pixel.
+@(private = "file") NET_FOLD_GAP :: 4
+
+// The detail beside the table, the toolkit's foldable side panel. Its width is a share of the room (unit = room), the
+// detail's share being 1 - the table's: the preference keeps the table's share, as the stacked split does.
+@(private = "file")
+net_side_split :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, sel: ^Net_Entry, split, room: f32, menu_key: string) {
+	o := net_side_options(app, v, room)
+	p := ui.Side_Panel{width = 1 - split}
+	p.fold, _ = ui.side_fold_parse(config_string(app, NET_DETAIL_FOLD_PREF))   // (an unknown word: the zero value, open)
+	was := p
+	w, folded, crossed := ui.side_panel_begin(&p, room, o)
+	handle := dt_px(5)
+	ui.next({width = ui.fill(), height = ui.fill()})
+	if ui.column(.Start, {.Clip}, "###dt_net_main") { net_table(app, t, v, menu_key, room - w - handle) }
+	h := ui.side_panel_handle("###dt_net_vs", &p, room, o)
+	ui.next({width = ui.px(w), height = ui.fill(), axis = .Y})
+	fold_clicked := false
+	if ui.column(.Start, {.Clip}, "###dt_net_detail_box") {
+		if folded {
+			fold_clicked = net_detail_rail(app, sel)
+		} else {
+			fold_clicked = net_detail_panel(app, t, v, sel, foldable = true)
+		}
+	}
+	if fold_clicked { ui.side_fold_set(&p.fold, !folded) }
+	if p.width != was.width { set_pref_quiet(app, "browser.devtools.network.split", 1 - p.width) }
+	if p.fold != was.fold || crossed { set_pref_string(app, NET_DETAIL_FOLD_PREF, ui.side_fold_format(p.fold)) }
+	if h.changed || fold_clicked || crossed { request_frames(app, 2) }
+}
+
+// The side panel's sizes as shares of the room: the detail from a few em, its rail the fold button and its gaps, and the
+// table's least: its Name column (never dropped, net_layout) and its scroll bar. `room` > 0: the detail is beside the
+// table only in a panel of 640 px or more.
+@(private = "file")
+net_side_options :: proc(app: ^App, v: ^Dev_Network, room: f32) -> ui.Side_Panel_Options {
+	name_w := dt_px(net_col_default_w(.Name))
+	for c in v.cols { if c.col == .Name { name_w = dt_px(c.w) } }
+	return {
+		after = true, unit = room,
+		default_width = 1 - DEV_NET_SPLIT_DEFAULT,
+		min_width = min(ui.PANE_MIN_EM * ui.font_size() / room, 1 - DEV_NET_SPLIT_DEFAULT),
+		rail = net_rail_width() / room,
+		content_min = (name_w + dt_px(10)) / room,
+	}
+}
+
+@(private = "file")
+net_rail_width :: proc() -> f32 { return math.round(ui.font_size() * ui.SIDE_ICON_EM) + dt_px(NET_FOLD_GAP) * 2 }
+
+// The detail folded: its first bar holds the fold button where the open detail has it, then the selected request's mark
+// (its type's icon, its status's dot; the method, the status and the name as its tooltip). A click on the mark opens
+// the detail. Returns whether the button or the mark asked to open it.
+@(private = "file")
+net_detail_rail :: proc(app: ^App, e: ^Net_Entry) -> (open: bool) {
+	if dt_bar("###dt_nd_bar", app.dtm.bar - dt_px(2)) {
+		ui.spacer(ui.fill())
+		open = net_fold_button(true)
+		net_fold_gap()
+	}
+	ui.next({width = ui.fill(), height = ui.px(app.dtm.row * 2), cursor = .Arrow})
+	b := ui.build_box({.Clickable}, "###dt_nd_mark")
+	sig := ui.signal(b)
+	d := ui.frame_new(Rail_Draw)
+	d.icon, d.tone, d.type_col, d.hot = NET_TYPE_ICONS[e.type], net_tone(e), net_type_color(e.type), sig.hovering
+	b.custom, b.custom_user = rail_paint, d
+	dt_tip(sig, fmt.tprintf("%s %s %s", e.method, net_status_text(e), net_name_of(e.url)))
+	if sig.clicked { open = true }
+	return
+}
+
+@(private = "file")
+Rail_Draw :: struct { icon: Dt_Icon, tone: Net_Tone, type_col: draw.Color, hot: bool }
+
+@(private = "file")
+rail_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	d := (^Rail_Draw)(user)
+	r := b.rect
+	if d.hot { draw.rect(dc, r, the_app.dtc.hover) }
+	cx := math.round((r.min.x + r.max.x) * 0.5)
+	h := r.max.y - r.min.y
+	bad := d.tone == .Failed || d.tone == .Blocked || d.tone == .Server || d.tone == .Client
+	dt_icon(dc, d.icon, {cx, r.min.y + h * 0.3}, the_app.dtm.icon, bad ? the_app.dtc.bad : d.type_col, the_app.dtm.sc)
+	dot := the_app.dtm.fs * 0.30
+	cy := r.min.y + h * 0.72
+	draw.rect(dc, {{cx - dot, cy - dot}, {cx + dot, cy + dot}}, d.tone == .Pending ? the_app.dtc.accent : tone_color(d.tone), dot)
+}
+
+// The fold button of the detail beside the table, in its first bar (net_detail_panel, net_detail_rail).
+net_fold_button :: proc(folded: bool) -> bool {
+	return ui.side_fold_button("###dt_net_fold", folded, true, "Fold the details", "Open the details").clicked
+}
+
+// The space after the fold button, to the detail's right edge.
+net_fold_gap :: proc() { dt_gap(NET_FOLD_GAP) }
 
 @(private = "file")
 net_entry_of_id :: proc(t: ^Tab, v: ^Dev_Network) -> ^Net_Entry {
@@ -558,10 +653,10 @@ net_set_types :: proc(app: ^App, v: ^Dev_Network, mask: u32) {
 ////////////////////////////////
 // The table
 
+// `avail`: the table's width this frame (the panel's, less the detail beside it), physical px.
 @(private = "file")
-net_table :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, menu_key: string) {
-	avail := dev_width()
-	if v.has_sel { avail = avail * f32(config_float(app, "browser.devtools.network.split")) }
+net_table :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, menu_key: string, avail: f32) {
+	avail := avail
 	if avail <= 0 { avail = f32(active_window(app).win.size.x) }
 	scroll_w := dt_px(10)
 	net_layout(app, v, avail - scroll_w)

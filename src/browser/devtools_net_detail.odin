@@ -87,7 +87,9 @@ detail_tabs :: proc(e: ^Net_Entry) -> []int {
 ////////////////////////////////
 // The pane
 
-net_detail_panel :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, e: ^Net_Entry) {
+// `foldable`: beside the table, where the bar ends with the fold button (devtools_network.odin net_side_split); fold:
+// it was clicked.
+net_detail_panel :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, e: ^Net_Entry, foldable := false) -> (fold: bool) {
 	d := &v.detail
 	if d.pv.id != e.id && d.pv.id != 0 { preview_release(app, &d.pv) }
 	// the caches are of one request and one body
@@ -99,20 +101,25 @@ net_detail_panel :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, e: ^Net_Entry) {
 	}
 	// the tab strip
 	if dt_bar("###dt_nd_bar", app.dtm.bar - dt_px(2)) {
-		dt_gap(2)
-		if dt_btn("###dt_nd_close", .Close, tooltip = "Close the details", shortcut = "Esc").clicked { v.has_sel = false }
-		dt_vsep("###dt_nd_s0")
-		visible := false
-		for i in detail_tabs(e) { if i == d.tab { visible = true } }
-		if !visible { d.tab = 0 }
-		for i in detail_tabs(e) {
-			name := DETAIL_TABS[i]
-			if i == 6 && e.is_sse { name = "EventStream" }
-			if sub_tab(fmt.tprintf("###dt_ndt_%d", i), name, d.tab == i).clicked {
-				d.tab = i
-				dev_set_pref(app, "browser.devtools.network.detail_tab", DETAIL_PREFS[i])
+		// (the close button and the tabs in a clipped part: a narrow detail cuts them, never the fold button after them)
+		ui.next({width = ui.fill(), height = ui.fill(), axis = .X, cross = .Center})
+		if ui.row(.Start, {.Clip}, "###dt_nd_tabs") {
+			dt_gap(2)
+			if dt_btn("###dt_nd_close", .Close, tooltip = "Close the details", shortcut = "Esc").clicked { v.has_sel = false }
+			dt_vsep("###dt_nd_s0")
+			visible := false
+			for i in detail_tabs(e) { if i == d.tab { visible = true } }
+			if !visible { d.tab = 0 }
+			for i in detail_tabs(e) {
+				name := DETAIL_TABS[i]
+				if i == 6 && e.is_sse { name = "EventStream" }
+				if sub_tab(fmt.tprintf("###dt_ndt_%d", i), name, d.tab == i).clicked {
+					d.tab = i
+					dev_set_pref(app, "browser.devtools.network.detail_tab", DETAIL_PREFS[i])
+				}
 			}
 		}
+		if foldable { fold = net_fold_button(false); net_fold_gap() }
 	}
 	ui.next({width = ui.fill(), height = ui.fill(), axis = .Y})
 	if ui.column(.Start, {.Clip}, "###dt_nd_body") {
@@ -126,6 +133,7 @@ net_detail_panel :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, e: ^Net_Entry) {
 		case 6: detail_messages(app, d, e)
 		}
 	}
+	return
 }
 
 @(private = "file")

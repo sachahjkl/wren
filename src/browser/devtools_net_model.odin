@@ -139,6 +139,8 @@ NETWORK_PREFS := [?]config.Def{
 		description = "The request types the Network tab shows: a sum of bits (1 doc, 2 js, 4 css, 8 img, 16 media, 32 font, 64 fetch/xhr, 128 ws, 256 wasm, 512 other); 0 shows all."},
 	{name = "browser.devtools.network.split", kind = .Float, default = {f = DEV_NET_SPLIT_DEFAULT}, bounded = true, min = 0.01, max = 0.99,
 		description = "The share of the Network tab's width (or height) the request list keeps while a request's details are open."},
+	{name = NET_DETAIL_FOLD_PREF, kind = .String, default = {s = ""}, hidden = true,
+		description = "Whether the request's details beside the list show as their rail, and on which side of the width that folds them the panel was last (ui.side_fold_format)."},
 	{name = "browser.devtools.network.detail_tab", kind = .String, default = {s = "headers"}, choices = {"headers", "payload", "preview", "response", "timing", "cookies", "messages"},
 		description = "The view of a request's details that is shown."},
 	{name = "browser.devtools.network.waterfall", kind = .Bool, default = {b = true},
