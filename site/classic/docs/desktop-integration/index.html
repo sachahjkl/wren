@@ -160,7 +160,8 @@ there by hand is never taken out (except the folder of a copy that is being unin
 uninstall delete it, and the Path part is "incomplete" (Repair) while the entry is there and the launcher is not. A file
 of that name without the launcher's mark is never replaced or deleted.</p>
 <h2 id="setup-the-installed-copy"><a class="anchor" href="#setup-the-installed-copy" aria-hidden="true">#</a>Setup: the installed copy</h2>
-<p>The toolkit's <code>install.odin</code> (platform agnostic) and <code>src/browser/setup.odin</code>, <code>setup_ui.odin</code> (the dialog).</p>
+<p>The toolkit's <code>install.odin</code> (platform agnostic), its <code>prefs_page.Install</code> (the offer, the modal, the settings' Installation
+page) and <code>src/browser/setup.odin</code> (what Wren gives it).</p>
 <ul>
 <li><strong>Where</strong>: <code>%LOCALAPPDATA%\Programs\Wren\wren.exe</code> (<code>Wren Dev</code> for the development channel), or any folder that passes
 <code>check_install_dir</code>: an absolute path on a local drive, no forbidden character, not a drive root, not inside Windows,
@@ -186,22 +187,22 @@ copy</em> (a copy is installed elsewhere; same version or newer: <strong>Replace
 <em>Repair</em> (this is the installed copy but a shortcut, a key, the manifest or a file is missing or runs another executable).</p>
 <h3 id="when-it-opens"><a class="anchor" href="#when-it-opens" aria-hidden="true">#</a>When it opens</h3>
 <ul>
-<li>The command <strong>Setup...</strong> (main menu, palette, a button beside the box in <code>about:config</code>) and <code>wren.exe --setup</code>: always.</li>
+<li>The command <strong>Setup...</strong> (main menu, palette, a button beside the box in <code>about:config</code>) and <code>wren.exe --setup</code>: always.
+about:settings has the same as its <strong>Installation</strong> page (the toolkit's <code>prefs_page.Install</code>).</li>
 <li>At the start of a <strong>release</strong> copy that is not the installed one (<code>browser.desktop_integration.on_first_run</code>), and when the
 installed copy needs repair: never for development builds, <code>--profile</code> profiles, profiles in the temporary folder, portable
 copies, or with <code>WREN_DESKTOP_INTEGRATION=off</code> (<code>src/e2e</code> sets it for every test).</li>
-<li>The profile remembers the answer in <code>setup.txt</code>: <strong>Use standalone</strong> (<code>choice=standalone</code>) is for good; closing the dialog
-without an answer (X, Escape, a click outside) is <code>choice=dismissed</code> and holds for the current version only.</li>
+<li>The preferences remember the answer in <code>install.choice</code> (<code>prefs.txt</code>): <strong>Use standalone</strong> (<code>standalone</code>) is for good;
+closing the dialog without an answer (X, Escape, a click outside) is <code>dismissed:&lt;version&gt;</code> and holds for that version only.</li>
 </ul>
 <h3 id="standalone-and-portable"><a class="anchor" href="#standalone-and-portable" aria-hidden="true">#</a>Standalone and portable</h3>
 <p><em>Standalone</em> is a copy that was not installed and keeps the <strong>normal profile</strong> (<code>%APPDATA%\FromentSoftware\Wren</code>). A <em>portable</em> copy is a
 folder with a file <code>wren.portable</code> next to <code>wren.exe</code>: its profile (preferences, cookies, history, session, crash reports,
 license) is <code>&lt;folder&gt;\data</code>, it never offers Setup by itself, and <code>--profile DIR</code> still wins.</p>
 <h3 id="updates"><a class="anchor" href="#updates" aria-hidden="true">#</a>Updates</h3>
-<p><code>update.auto</code> (off: no request is made unless asked): one GET a day of GitHub's latest release
-(<code>browser.update.url</code>), compared with the running version, announced once per version; nothing is downloaded. The command
-<strong>Check for updates</strong> asks at once and opens the release page. State in <code>update.txt</code> in the profile. Never for disposable
-profiles or with <code>WREN_UPDATE_CHECK=off</code>.</p>
+<p>The toolkit's updater (<a href="../../docs/updates/">updates.md</a>): with <code>update.auto</code> on, the installed copy checks once a day and installs
+a signed release; any other copy checks only when asked (about:settings, System; the command <strong>Check for updates</strong>).
+Windows release builds only.</p>
 <h3 id="following-the-disk"><a class="anchor" href="#following-the-disk" aria-hidden="true">#</a>Following the disk</h3>
 <p>The state is read from the disk, never from a preference. On Windows one named thread (<code>wren-desktop-watch</code>) waits for the
 system to say that a place of the integration changed: the registry subtree <code>HKCU\Software</code> (registration, Uninstall entry),
@@ -253,9 +254,11 @@ shell. A development build opens its own <code>wren-dev-</code> links and the re
 <p>Where Wren is not installed the link does nothing (the browser says it cannot open it): a page shows the address beside
 it ("or open <code>about:wren</code> in Wren") and never tries to find out with a script.</p>
 <h2 id="preferences"><a class="anchor" href="#preferences" aria-hidden="true">#</a>Preferences</h2>
-<p><code>browser.desktop_integration.on_first_run</code>, <code>.status_refresh_ms</code>, <code>.start_menu</code>, <code>.desktop_shortcut</code>, <code>.add_to_path</code>,
-<code>.register_browser</code> (also register as a browser, or only the menu entry), <code>.file_types</code>, <code>update.auto</code>,
-<code>browser.update.url</code>.</p>
+<p><code>browser.desktop_integration.on_first_run</code>, <code>.status_refresh_ms</code>, <code>.desktop_shortcut</code>, <code>.add_to_path</code>,
+<code>.register_browser</code> (also register as a browser, or only the menu entry), <code>.file_types</code>, <code>install.choice</code> (the answer of
+the offer, hidden), <code>update.auto</code> and <code>update.base_url</code> (Windows). The toolkit's <code>general.menu</code> (in the applications
+menu) and <code>general.autostart</code> (start with the session) show on about:settings' System page once this copy is the
+installed one; the toolkit applies them to it.</p>
 <h2 id="tests"><a class="anchor" href="#tests" aria-hidden="true">#</a>Tests</h2>
 <p>The toolkit's <code>odin test src/desktop</code> runs the backends and the installed copy on scratch folders and a scratch registry
 key, with an identity of its own. <code>odin test src/desktop</code> here checks Wren's identity: the <code>.desktop</code> text an installed
