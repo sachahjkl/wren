@@ -140,12 +140,14 @@ tab_strip :: proc(app: ^App, integrated: bool) {
 
 	ui.next({width = ui.fill(), height = ui.px(h), axis = .X, cross = .Center})
 	bar := ui.build_box(integrated ? {.Window_Caption} : {}, "###tabstrip")
-	if classic { bar.custom, bar.custom_user = strip_bar_draw, cc }
-	if !classic && !machined_on(app) {
-		fill := ui.frame_new(draw.Color)
-		fill^ = modern_strip_colors().strip
-		bar.custom, bar.custom_user = modern_strip_draw, fill
-	}
+	// the row is Wren's title bar: under a theme with a caption band (Theme_Look.caption) it is that band, active or
+	// not with the window, else the style's own row (strip_row_draw)
+	sd := ui.frame_new(Strip_Draw)
+	sd^ = {style = classic ? .Classic : (machined_on(app) ? .Machined : .Modern), classic = cc, active = wnd.win == nil || wnd.win.active}
+	if sd.style == .Modern { sd.fill = modern_strip_colors().strip }
+	bar.custom, bar.custom_user = strip_row_draw, sd
+	// (the band's ink reaches the tabs without a face of their own, as ui.title_bar's does; the current tab keeps its text)
+	if ink, ok := ui.caption_band_ink().?; ok { bar.ink = ink }
 	if ui.parent(bar) {
 		lead: f32
 		if integrated {
@@ -401,11 +403,35 @@ modern_toolbar_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.rect(dc, b.rect, modern_strip_colors().face)
 }
 
-// The row, and a line along its bottom: the current tab covers it where it joins the toolbar, so the line and the tab's
-// outline read as one edge.
 @(private = "file")
-modern_strip_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-	draw.rect(dc, b.rect, (^draw.Color)(user)^)
+Strip_Style :: enum u8 { Modern, Classic, Machined }
+
+@(private = "file")
+Strip_Draw :: struct {
+	style:   Strip_Style,
+	fill:    draw.Color,         // modern: the row's colour
+	classic: ^Classic_Colors,    // classic: its colours
+	active:  bool,               // the window is the foreground one (the band's active or inactive stops)
+}
+
+// The row of tabs: the theme's caption band when it has one, else the style's row (machined: none, the window's face).
+@(private = "file")
+strip_row_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	d := (^Strip_Draw)(user)
+	banded := ui.caption_band(dc, b.rect, d.active)
+	switch d.style {
+	case .Classic:
+		if banded { the_app.cur_gap = {} } else { strip_bar_draw(b, d.classic, dc) }   // (strip_bar_draw resets it too)
+	case .Modern:   modern_strip_draw(b, banded ? nil : &d.fill, dc)
+	case .Machined:
+	}
+}
+
+// The row (`fill` nil: a band is drawn already), and a line along its bottom: the current tab covers it where it joins
+// the toolbar, so the line and the tab's outline read as one edge.
+@(private = "file")
+modern_strip_draw :: proc(b: ^ui.Box, fill: ^draw.Color, dc: ^draw.Context) {
+	if fill != nil { draw.rect(dc, b.rect, fill^) }
 	lw := max(math.round(ui.scale()), 1)
 	edge := tab_edge_color()
 	draw.rect(dc, {{b.rect.min.x, b.rect.max.y - lw}, {b.rect.max.x, b.rect.max.y}}, edge)
@@ -498,6 +524,9 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		}
 		b.custom, b.custom_user = tab_look_draw, look
 	}
+	// (the current tab has a face of its own, drawn by its custom proc, not a Draw_Background the ink rule sees: it keeps
+	// its text, not the caption band's ink, which would be white on the toolbar's grey)
+	if on { b.ink = {} }
 	b.cursor = .Arrow
 	tab_a11y(b, t, i, n, on)
 	closed := false
