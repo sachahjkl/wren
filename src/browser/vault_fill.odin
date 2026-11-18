@@ -706,7 +706,10 @@ dropdown_row :: proc(app: ^App, i: int, title, detail, glyph: string, tex: rende
 		ui.push_tags("menu_item")
 		if selected { ui.push_tags("selected") }
 		ui.next({width = ui.fill(), height = ui.pct(1), radius = em * CHROME_BUTTON_RADIUS, axis = .X, cross = .Center})
-		item := ui.build_box({.Clickable, .Draw_Background, .Draw_Hot_Effects}, fmt.tprintf("###vdd_item_%d", i))
+		// (.Chosen: the theme's ink for a selected row reaches its words, on a selection that may be dark)
+		item_flags := ui.Box_Flags{.Clickable, .Draw_Background, .Draw_Hot_Effects}
+		if selected { item_flags += {.Chosen} }
+		item := ui.build_box(item_flags, fmt.tprintf("###vdd_item_%d", i))
 		if selected { ui.pop_tags() }
 		sig := ui.signal(item)
 		ui.a11y_set(item, {role = .List_Item, name = title, description = detail, selected = selected})

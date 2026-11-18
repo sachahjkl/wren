@@ -711,7 +711,10 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 				if chosen { ui.push_tags("selected") }
 				ui.push_tags("list_row")
 				ui.next({width = ui.fill(), height = ui.pct(1), axis = .X, cross = .Center, radius = em * CHROME_BUTTON_RADIUS, cursor = .Hand})
-				row := ui.build_box({.Clickable, .Draw_Background, .Draw_Hot_Effects, .Hot_Within}, fmt.tprintf("###ubr_%d", i))
+				// (.Chosen: the theme's ink for a selected row reaches its words, on a selection that may be dark)
+				row_flags := ui.Box_Flags{.Clickable, .Draw_Background, .Draw_Hot_Effects, .Hot_Within}
+				if chosen { row_flags += {.Chosen} }
+				row := ui.build_box(row_flags, fmt.tprintf("###ubr_%d", i))
 				ui.pop_tags()
 				if chosen { ui.pop_tags() }
 				ui.a11y_set(row, {role = .List_Box_Option, selected = chosen, position = i + 1, set_size = len(uv.rows)})
