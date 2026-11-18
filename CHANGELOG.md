@@ -15,6 +15,7 @@ Semantic Versioning, since a patch version can add or remove features.
 ### Added
 - **Diagnostics in the settings**: about:settings has a Diagnostics page with the graphics adapter, the window, the last frames' build and draw times and the versions, and a Copy button to send them with a report.
 - **What's new in the settings**: about:settings has a What's new page with Wren's changelog, which you can search and filter by kind of change. The first start of a new version says so in a message, and a click on it opens the page.
+- **The Network detail folds to a rail**: beside the request list, the selected request's details fold to a narrow rail when the developer tools get too narrow for the list's Name column, and open again when they are wide. The rail shows the request's type and status; its button, a click on that mark or a pull of its edge opens it. A fold or an opening by hand holds until the panel's width next crosses that point, and a restart keeps it.
 
 ### Changed
 - **The applications menu and the start with the session are on the System page**: once Wren is installed, about:settings shows "In the applications menu" and "Start with the session", and a change applies at once. The preference browser.desktop_integration.start_menu is gone: the System page's setting replaces it.

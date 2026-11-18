@@ -652,6 +652,10 @@ tab_look_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		draw.push_clip(dc, {{body.min.x, r.min.y}, {body.max.x, r.max.y - lw}})
 		draw.rect_corners(dc, body, {edge, edge, edge, edge}, {rad, 0, rad, 0}, border = lw)
 		draw.pop_clip(dc)
+		// each side down through the row's line too: the body covers that line up to its own edges, so a side stopped
+		// above it left the corner pixel empty, a notch where the two lines meet
+		draw.rect(dc, {{body.min.x, r.max.y - lw}, {body.min.x + lw, r.max.y}}, edge)
+		draw.rect(dc, {{body.max.x - lw, r.max.y - lw}, {body.max.x, r.max.y}}, edge)
 	}
 	if l.group.a > 0 {
 		gh := max(math.round(2 * ui.scale()), 2)
