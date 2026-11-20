@@ -80,8 +80,10 @@ retired_frame_preferences_are_ignored :: proc(t: ^testing.T) {
 }
 
 // What pacer_wait decided before the cadence model, with the retired preferences at their defaults (resize_immediate on,
-// resize_hold_ms 120, input_immediate on, input_idle_periods 1.5): the reference the model must match. One change since,
-// on purpose: a drag's frame on a variable refresh screen is shown at once (`variable`; platform/pacing.odin Drag).
+// resize_hold_ms 120, input_immediate on, input_idle_periods 1.5): the reference the model must match. Two changes since,
+// on purpose: a drag's frame on a variable refresh screen is shown at once (`variable`; platform/pacing.odin Drag); a
+// resize's burst (`held`) waits for its slots but its delays do not count toward a strict grid (the toolkit's v0.337.0:
+// eight of them at a window's opening made the grid strict for good, which turned the start just in time off).
 @(private = "file")
 Legacy :: struct { resize_ns, present_ns: i64, slots: platform.Frame_Slots, variable: bool }
 
@@ -96,7 +98,9 @@ legacy_decide :: proc(l: ^Legacy, in_: platform.Cadence_Inputs) -> (at_once, wai
 	drag := !resizing && !held && !input_frame && !in_.idled && in_.dragging
 	at_once = resizing || held || input_frame || (drag && l.variable)
 	latency = at_once ? 2 : 1
+	escalated_before := l.slots.escalated
 	wait, _ = platform.frame_slot_wait(&l.slots, in_.now_ns, in_.idled, resizing || input_frame)
+	if held { l.slots.delayed, l.slots.escalated = 0, escalated_before }   // (a burst's frame, an input's answer too)
 	if resizing { return at_once, false, latency, 0 }
 	wait_swap_chain = in_.presented && !in_.slot_held && !input_frame
 	return

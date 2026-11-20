@@ -91,8 +91,10 @@ body.docs { overflow-x: hidden; }
 .doc-links a.active { color: var(--accent); background: var(--accent-dim); font-weight: 650; }
 .doc-group details > summary { cursor: pointer; padding: 5px 10px; border-radius: 6px; color: var(--text); font-weight: 600; list-style: none; }
 .doc-group details > summary::-webkit-details-marker { display: none; }
-.doc-group details > summary::before { content: "▸"; display: inline-block; width: 1em; color: var(--soft); }
-.doc-group details[open] > summary::before { content: "▾"; }
+.doc-group details > summary::before { content: ""; display: inline-block; width: 0.38em; height: 0.38em; margin: 0 0.5em 0.1em 0.1em;
+  border-right: 1.5px solid var(--soft); border-bottom: 1.5px solid var(--soft); transform: rotate(-45deg);
+  transition: transform 0.15s; vertical-align: middle; }
+.doc-group details[open] > summary::before { transform: rotate(45deg); }
 .doc-group .doc-links { margin-left: 12px; border-left: 1px solid var(--line); padding-left: 4px; }
 
 /* the mobile sidebar toggle, no script */
