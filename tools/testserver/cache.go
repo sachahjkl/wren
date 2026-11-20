@@ -41,6 +41,11 @@ func cacheEtagMatches(inm, etag string) bool {
 
 var cacheAheadSeconds atomic.Int64
 
+// Each default body's number: a response stored and the one that replaces it must differ. The wall clock's nanoseconds
+// did not: Windows' clock steps coarsely, and a request and its background revalidation a few milliseconds apart had the
+// same body (cache_stale_while_revalidate failed now and then on Windows).
+var cacheBodySerial atomic.Int64
+
 func cacheNow() time.Time {
 	return time.Now().UTC().Add(time.Duration(cacheAheadSeconds.Load()) * time.Second)
 }
@@ -125,7 +130,7 @@ func registerCacheHandlers(mux *http.ServeMux) {
 		q := r.URL.Query()
 		body := q.Get("body")
 		if body == "" {
-			body = fmt.Sprintf("%s %s #%d", r.Method, strings.TrimPrefix(r.URL.Path, "/cache/r/"), time.Now().UnixNano())
+			body = fmt.Sprintf("%s %s #%d", r.Method, strings.TrimPrefix(r.URL.Path, "/cache/r/"), cacheBodySerial.Add(1))
 		}
 		ctype := q.Get("type")
 		if ctype == "" {
