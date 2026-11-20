@@ -358,7 +358,7 @@ bookmarks_list :: proc(app: ^App, t: ^Tab, menu_key: string) {
 				if b.folder { v.open[b.id] = !v.open[b.id]; request_frames(app, 2) } else { open_at, new_tab = r.index, .Ctrl in row.mods }
 			}
 			if row.middle_clicked && !b.folder { open_at, new_tab = r.index, true }
-			if row.right_clicked { v.menu_id = b.id; ui.menu_open(menu_key, ui.mouse_pos(), search = true) }   // (typing finds an item, a folder of Move to)
+			if row.right_clicked { v.menu_id = b.id; ui.menu_open(menu_key, ui.mouse_pos()) }   // (typing finds an item, a folder of Move to)
 		}
 		if len(rows) == 0 {
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 4))})

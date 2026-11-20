@@ -327,7 +327,7 @@ vault_button :: proc(app: ^App, t: ^Tab) {
 		switch {
 		case to_dialog:                  vault_dialog_open(app)
 		case ui.menu_is_open(key):   ui.menu_close()
-		case:                            ui.menu_open(key, b.rect, b.key, search = false, align = .End)
+		case:                            ui.menu_open(key, b.rect, b.key, align = .End)
 		}
 	}
 	// (the fill shortcut or a command asked for the panel)
@@ -336,7 +336,7 @@ vault_button :: proc(app: ^App, t: ^Tab) {
 		switch {
 		case !vault_usable(app):
 		case to_dialog:                  vault_dialog_open(app)
-		case !ui.menu_is_open(key):  ui.menu_open(key, b.rect, b.key, search = false, align = .End)
+		case !ui.menu_is_open(key):  ui.menu_open(key, b.rect, b.key, align = .End)
 		}
 	}
 	open := ui.menu_is_open(key)
