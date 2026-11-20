@@ -2,8 +2,16 @@
   description = "Wren, a web browser where WebAssembly runs everything, JavaScript included";
 
   inputs = {
-    # the toolkit and Lexbor are submodules: the package builds from them
-    self.submodules = true;
+    # The toolkit and Lexbor, at their submodules' commits: a flake fetched from GitHub is a tarball without submodules
+    # (gui_toolkit docs/toolbox.md, "The flake's toolkit").
+    gui_toolkit = {
+      url = "github:sachahjkl/gui_toolkit/2a8ab7bca43e593be47c396371da906bab977986";
+      flake = false;
+    };
+    lexbor = {
+      url = "github:lexbor/lexbor/7e278c0188489bfce6b71ced0cc900cbb31e6244";
+      flake = false;
+    };
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
     rust-overlay = {
       url = "https://flakehub.com/f/oxalica/rust-overlay/0.1";
@@ -20,6 +28,8 @@
     nixpkgs,
     rust-overlay,
     git-hooks,
+    gui_toolkit,
+    lexbor,
   }: let
     system = "x86_64-linux";
     inherit (nixpkgs) lib;
@@ -168,8 +178,15 @@
       inherit version;
       src = lib.fileset.toSource {
         root = ./.;
-        fileset = lib.fileset.difference ./. (lib.fileset.unions (map lib.fileset.maybeMissing [./site ./wpt ./.github ./build]));
+        fileset = lib.fileset.difference ./. (lib.fileset.unions (map lib.fileset.maybeMissing [./site ./wpt ./.github ./build ./ext/gui_toolkit ./ext/lexbor]));
       };
+      # (the submodules from their inputs, where they go; writable: the build writes into them)
+      postUnpack = ''
+        mkdir -p $sourceRoot/ext
+        cp -r ${gui_toolkit} $sourceRoot/ext/gui_toolkit
+        cp -r ${lexbor} $sourceRoot/ext/lexbor
+        chmod -R u+w $sourceRoot/ext/gui_toolkit $sourceRoot/ext/lexbor
+      '';
       cargoDeps = pkgs.rustPlatform.importCargoLock {
         lockFile = ./native/Cargo.lock;
         # (rav1d from its fork's branch: native/Cargo.toml, [patch.crates-io])
@@ -204,14 +221,10 @@
       configurePhase = ''
         runHook preConfigure
         export HOME="$TMPDIR"
-        # the crates of native/Cargo.lock, vendored: cargo makes no request
+        # the crates of native/Cargo.lock, vendored: cargo makes no request. The vendor's own config, not crates.io's
+        # alone: it also replaces the git sources ([patch.crates-io] rav1d), which offline cargo cannot clone.
         mkdir -p "$HOME/.cargo"
-        cat > "$HOME/.cargo/config.toml" <<EOF
-        [source.crates-io]
-        replace-with = "vendored-sources"
-        [source.vendored-sources]
-        directory = "$cargoDeps"
-        EOF
+        sed "s|directory = \"cargo-vendor-dir\"|directory = \"$cargoDeps\"|" "$cargoDeps/.cargo/config.toml" > "$HOME/.cargo/config.toml"
         export CARGO_NET_OFFLINE=true
         # wrentool seals wgpu-native into Odin's vendor/: a writable copy of the compiler
         cp -r ${odin}/lib/odin "$TMPDIR/odin"
