@@ -135,4 +135,6 @@ commands, by family:
 
 `ext/gui_toolkit` follows tagged releases of [gui_toolkit](https://github.com/sachahjkl/gui_toolkit): a toolkit
 commit must be pushed there (on `master`, with its tag) before `master` points to it here, or fresh clones cannot check
-the submodule out.
+the submodule out. The flake takes the toolkit from an input pinned to the same commit (a flake fetched from GitHub has
+no submodules): a bump sets the `gui_toolkit` input's url in `flake.nix` to the new commit, then runs `nix flake lock`.
+`test_all` checks that `flake.lock` and the submodule agree (`lint_flake.odin`).
