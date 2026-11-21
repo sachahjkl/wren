@@ -158,11 +158,15 @@ extensions_popup_panel :: proc(t: ^testing.T) {
 	}
 
 	popup_open(s, id, "popup.html")
+	// The title comes from the <head>, and the parser paints what it has before the external popup.js runs
+	// (js_load.odin, Yield_Paint): the panel can be shown and ready with no click listener yet. The document's
+	// readiness past "loading" means the parser-blocking popup.js ran, so its listeners are there.
 	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool {
 		context = s.ctx
 		ep := s.app.ext.popup
-		return ep != nil && ep.fit.shown && ep.view.ready && ep.view.rect.max.x > ep.view.rect.min.x && popup_title(s) == "Hello popup"
-	}, "the popup's panel to show its page")
+		return ep != nil && ep.fit.shown && ep.view.ready && ep.view.rect.max.x > ep.view.rect.min.x && popup_title(s) == "Hello popup" &&
+			page.document_ready_state(ep.view.tab.page) != .Loading
+	}, "the popup's panel to show its page, its script run")
 	rect: [2]f64
 	{
 		context = s.ctx
