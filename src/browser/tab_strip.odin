@@ -568,10 +568,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		if t.pinned { pad = max(math.round((w - isz) * 0.5), pad) }   // a pinned tab: its icon alone, in the middle (tab_groups.odin)
 		ui.spacer(ui.px(pad))
 		ui.next({width = ui.px(isz), height = ui.pct(1)})
-		icon := tab_icon_of(app, t, isz)
-		// (on a caption band, the glyph in the band's ink as the title is; a page's own icon and the spinner keep theirs)
-		if b.ink.a > 0 && icon.kind != .Favicon && icon.kind != .Spinner { icon.color = b.ink }
-		ui.custom("###icon", tab_icon_draw, icon)
+		ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz, b.ink))
 		speaker := tab_speaker(app, t)
 		if t.pinned { tab_speaker_badge(speaker, {pad + isz * 0.45, math.round((b.size.y - isz) * 0.5 + isz * 0.45)}, math.round(isz * 0.8), "###speaker_badge") }
 		ui.space(ui.ICON_GAP)
@@ -721,10 +718,11 @@ Tab_Icon_Draw :: struct {
 	size:   f32,
 }
 
-tab_icon_of :: proc(app: ^App, t: ^Tab, size: f32) -> ^Tab_Icon_Draw {
+// `ink`: on a caption band or a selected row, the glyph takes that ink; a page's own icon and the active spinner keep theirs.
+tab_icon_of :: proc(app: ^App, t: ^Tab, size: f32, ink := draw.Color{}) -> ^Tab_Icon_Draw {
 	d := ui.frame_new(Tab_Icon_Draw)
 	d.size = size
-	d.color = ui.color("text")
+	d.color = ink.a > 0 ? ink : ui.color("text")
 	if tab_busy(t) {
 		// the response has not come: a slower, muted turn (Chrome's "waiting"); then the accent one
 		waiting := t.page == nil

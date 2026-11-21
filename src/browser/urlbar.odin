@@ -625,7 +625,7 @@ urlbar_captures :: proc(app: ^App, pos: draw.Vec2) -> bool {
 // The list
 
 @(private = "file")
-Row_Icon :: struct { kind: enum u8 { None, Favicon, Globe, Search, Go }, tex: render.Texture, color: draw.Color, tab: rawptr }   // tab: tab_icon_of's
+Row_Icon :: struct { kind: enum u8 { None, Favicon, Globe, Search, Go }, tex: render.Texture, tab: rawptr }   // tab: tab_icon_of's
 
 @(private = "file")
 row_icon_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
@@ -636,7 +636,7 @@ row_icon_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	r := draw.Rect{{math.round(c.x - s * 0.5), math.round(c.y - s * 0.5)}, {}}
 	r.max = r.min + {s, s}
 	lw := max(math.round(s * 0.09), 1)
-	col := d.color
+	col := b.text_color
 	switch d.kind {
 	case .None:
 	case .Favicon: draw.image(dc, d.tex, r)
@@ -726,7 +726,6 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 					// icon, title, address, what it does
 					icon := ui.frame_new(Row_Icon)
 					title, detail, hint := "", "", ""
-					if ui.tags("weak") { icon.color = ui.color("text") }
 					switch r.kind {
 					case .Go:
 						icon.kind = .Go
@@ -741,7 +740,7 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 						title, hint = words, fmt.tprintf(i18n.tr("Search with %s"), search_engine_name(app, engine))
 					case .Tab:
 						if x := tab_by_id(app, r.tab_id); x != nil {
-							icon.tab = tab_icon_of(app, x, f32(tab_icon_px(app)))
+							icon.tab = tab_icon_of(app, x, f32(tab_icon_px(app)), row.ink)
 							title, detail, hint = x.title, shown_address(x.url), "Switch to tab"
 						}
 					case .Bookmark:
@@ -758,8 +757,10 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 						title = e.title != "" ? e.title : default_tab_title(e.url)
 						detail = shown_address(e.url)
 					}
-					ui.next({width = ui.px(em * 1.5), height = ui.pct(1)})
-					ui.custom("###ubi", row_icon_draw, icon)
+					if ui.tags("weak") {
+						ui.next({width = ui.px(em * 1.5), height = ui.pct(1)})
+						ui.custom("###ubi", row_icon_draw, icon)
+					}
 					ui.space(ui.ICON_GAP)
 					// the title, then the address: as wide as they are, the address cut first (then the title) when
 					// the row is too narrow for both

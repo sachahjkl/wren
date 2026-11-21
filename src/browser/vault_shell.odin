@@ -561,21 +561,22 @@ vault_kind_glyph :: proc(k: vault.Item_Kind) -> string {
 }
 
 @(private = "file")
-Glyph_Draw :: struct { app: ^App, glyph: string, color: draw.Color }
+Glyph_Draw :: struct { app: ^App, glyph: string }
 
 // A Lucide glyph that is no button (what an item is).
 vault_glyph :: proc(app: ^App, glyph, id: string, side: f32) {
-	ui.next({width = ui.px(side), height = ui.px(side)})
-	d := ui.frame_new(Glyph_Draw)
-	d^ = {app = app, glyph = glyph, color = ui.color("text")}
-	d.color.a *= 0.7
-	ui.custom(strings.concatenate({"###", id}, ui.frame_allocator()), proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-		d := (^Glyph_Draw)(user)
-		size := (b.rect.max.y - b.rect.min.y) * 0.62
-		w := font.text_width(&d.app.fonts, d.app.lucide, size, d.glyph)
-		c := draw.rect_center(b.rect)
-		draw.text(dc, d.app.lucide, size, {math.round(c.x - w * 0.5), math.round(c.y + size * 0.36)}, d.color, d.glyph)
-	}, d)
+	if ui.tags("weak") {
+		ui.next({width = ui.px(side), height = ui.px(side)})
+		d := ui.frame_new(Glyph_Draw)
+		d^ = {app = app, glyph = glyph}
+		ui.custom(strings.concatenate({"###", id}, ui.frame_allocator()), proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+			d := (^Glyph_Draw)(user)
+			size := (b.rect.max.y - b.rect.min.y) * 0.62
+			w := font.text_width(&d.app.fonts, d.app.lucide, size, d.glyph)
+			c := draw.rect_center(b.rect)
+			draw.text(dc, d.app.lucide, size, {math.round(c.x - w * 0.5), math.round(c.y + size * 0.36)}, b.text_color, d.glyph)
+		}, d)
+	}
 }
 
 // A list of items, each with its kind's icon, its name and detail, and the acts that fit its kind: a login fills (when
