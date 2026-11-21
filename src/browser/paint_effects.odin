@@ -3,6 +3,7 @@ package browser
 import "core:math"
 import "toolkit:draw"
 import "toolkit:render"
+import turn "toolkit:turn"
 import config "toolkit:config"
 import lay "wb:layout"
 import "wb:style"
@@ -351,7 +352,7 @@ css_filters :: proc(ops: []style.Filter_Op, scale: f32) -> []draw.Filter {
 		case .Brightness: append(&out, draw.filter_brightness(f.v))
 		case .Contrast: append(&out, draw.filter_contrast(f.v))
 		case .Grayscale: append(&out, draw.filter_grayscale(f.v))
-		case .Hue_Rotate: append(&out, draw.filter_hue_rotate(f.v))
+		case .Hue_Rotate: append(&out, draw.filter_hue_rotate(turn.from_radians(f.v)))
 		case .Invert: append(&out, draw.filter_invert(f.v))
 		case .Opacity: append(&out, draw.filter_opacity(f.v))
 		case .Saturate: append(&out, draw.filter_saturate(f.v))

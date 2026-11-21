@@ -23,6 +23,7 @@ import "core:os"
 import "wb:tools/tooling"
 import paint "toolkit:paint"
 import toolbox "toolkit:toolbox"
+import turn "toolkit:turn"
 
 // Drawn at LOGO_UNITS * LOGO_SUPERSAMPLE in LOGO_UNITS-unit coordinates, then scaled down.
 LOGO_SUPERSAMPLE :: 4
@@ -120,29 +121,29 @@ logo_geometry :: proc(v: Logo_Variant, detail: int) -> (g: Logo_Geometry) {
 notch_rect :: proc(p: ^paint.Path, x, y, w, h, r, nr: f32) {
 	d := 2 * r
 	paint.start_figure(p)
-	paint.arc(p, x, y, d, d, 180, 90)
+	paint.arc(p, x, y, d, d, 0.5, 0.25)
 	if nr > 0 {
 		cx := x + w / 2
 		paint.line_to(p, x + r, y)
 		paint.line_to(p, cx - nr, y)
-		paint.arc(p, cx - nr, y - nr, 2 * nr, 2 * nr, 180, -180)
+		paint.arc(p, cx - nr, y - nr, 2 * nr, 2 * nr, 0.5, -0.5)
 	}
-	paint.arc(p, x + w - d, y, d, d, 270, 90)
-	paint.arc(p, x + w - d, y + h - d, d, d, 0, 90)
-	paint.arc(p, x, y + h - d, d, d, 90, 90)
+	paint.arc(p, x + w - d, y, d, d, 0.75, 0.25)
+	paint.arc(p, x + w - d, y + h - d, d, d, 0, 0.25)
+	paint.arc(p, x, y + h - d, d, d, 0.25, 0.25)
 	paint.close(p)
 }
 
 // An ellipse centred on (cx, cy), rotated by `degrees` (clockwise, y down).
 rotated_ellipse :: proc(p: ^paint.Path, cx, cy, w, h, degrees: f32) {
 	paint.ellipse(p, cx - w / 2, cy - h / 2, w, h)
-	paint.path_transform(p, paint.rotate_at(paint.IDENTITY, degrees, cx, cy))
+	paint.path_transform(p, paint.rotate_at(paint.IDENTITY, turn.from_degrees(degrees), cx, cy))
 }
 
 // A rounded rectangle centred on (cx, cy), rotated by `degrees`.
 rotated_round_rect :: proc(p: ^paint.Path, cx, cy, w, h, r, degrees: f32) {
 	paint.round_rect(p, cx - w / 2, cy - h / 2, w, h, r)
-	paint.path_transform(p, paint.rotate_at(paint.IDENTITY, degrees, cx, cy))
+	paint.path_transform(p, paint.rotate_at(paint.IDENTITY, turn.from_degrees(degrees), cx, cy))
 }
 
 // A layer of the logo at LOGO_UNITS * LOGO_SUPERSAMPLE pixels.

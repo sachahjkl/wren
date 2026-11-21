@@ -32,7 +32,7 @@ remove_cross_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	c := draw.rect_center(b.rect)
 	arm := (b.rect.max.x - b.rect.min.x) * 0.2
 	th := max(math.round(1.25 * ui.scale()), 1)
-	for angle in ([2]f32{math.PI / 4, -math.PI / 4}) {
+	for angle in ([2]f32{0.125, -0.125}) {
 		draw.push_transform(dc, draw.affine_around(draw.affine_rotate(angle), c))
 		draw.rect(dc, {{c.x - arm, c.y - th * 0.5}, {c.x + arm, c.y + th * 0.5}}, col, th * 0.5)
 		draw.pop_transform(dc)

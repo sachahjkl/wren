@@ -3,7 +3,6 @@ package browser
 // The pure parts of the Vault's fill everywhere (vault_fill.odin): the shortcut's text, the rule of frames, where the
 // dropdown goes for a transformed or scrolled field, the clipboard's clearing, the palette's keys.
 
-import "core:math"
 import "core:testing"
 import "toolkit:draw"
 import "toolkit:ui"
@@ -66,7 +65,7 @@ vault_frame_rules :: proc(t: ^testing.T) {
 vault_dropdown_geometry :: proc(t: ^testing.T) {
 	area := draw.Rect{{0, 100}, {800, 700}}
 	content := draw.Rect{{0, 0}, {200, 30}}
-	xf := draw.affine_mul(draw.affine_translate({300, 250}), draw.affine_mul(draw.affine_rotate(math.PI / 12), draw.affine_scale({1.5, 1.5})))
+	xf := draw.affine_mul(draw.affine_translate({300, 250}), draw.affine_mul(draw.affine_rotate(1.0 / 24), draw.affine_scale({1.5, 1.5})))
 	field := draw.affine_bounds(xf, content)
 	r := vault_dropdown_place(field, area, 240, 120)
 	testing.expect_value(t, r.min.y, field.max.y)

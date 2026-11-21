@@ -7,6 +7,7 @@ import "core:strings"
 import "toolkit:draw"
 import "toolkit:font"
 import lucide "toolkit:lucide"
+import turn "toolkit:turn"
 import "toolkit:ui"
 import "wb:adblock"
 import "wb:blocker"
@@ -174,7 +175,7 @@ stroke :: proc(dc: ^draw.Context, a, b: draw.Vec2, thick: f32, color: draw.Color
 	d := b - a
 	l := math.sqrt(d.x * d.x + d.y * d.y)
 	mid := (a + b) * 0.5
-	draw.push_transform(dc, draw.affine_around(draw.affine_rotate(math.atan2(-d.x, d.y)), mid))
+	draw.push_transform(dc, draw.affine_around(draw.affine_rotate(turn.atan2(-d.x, d.y)), mid))
 	draw.rect(dc, {{mid.x - thick * 0.5, mid.y - l * 0.5 - thick * 0.5}, {mid.x + thick * 0.5, mid.y + l * 0.5 + thick * 0.5}}, color, thick * 0.5)
 	draw.pop_transform(dc)
 }

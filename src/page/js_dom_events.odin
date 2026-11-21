@@ -6,6 +6,7 @@ package page
 // page's Window host object (bindings_history.odin, window_object), for every event but `load`.
 
 import "core:fmt"
+import turn "toolkit:turn"
 import "wb:base"
 import "wb:dom"
 
@@ -69,7 +70,8 @@ Event_uiData :: proc(c: ^Call, event: Api_Event) -> Api_UiEventData {
 	r.pointer_id, r.pointer_type, r.is_primary = pd.id, u32(pd.kind), 1
 	r.width, r.height = f64(pd.size.x), f64(pd.size.y)
 	r.pressure, r.tangential_pressure = f64(pd.pressure), f64(pd.tangential)
-	r.tilt_x, r.tilt_y, r.twist = f64(pd.tilt.x), f64(pd.tilt.y), f64(pd.twist)
+	// Pointer Events give the pen's angles in degrees
+	r.tilt_x, r.tilt_y, r.twist = f64(turn.to_degrees(pd.tilt.x)), f64(turn.to_degrees(pd.tilt.y)), f64(turn.to_degrees(pd.twist))
 	if pd.kind == .Mouse {
 		r.pointer_id = MOUSE_POINTER_ID
 		r.pressure = r.buttons != 0 ? 0.5 : 0

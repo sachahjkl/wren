@@ -122,7 +122,7 @@ pixel_format :: proc(f: media.Pixel_Format) -> render.Video_Format {
 picture_of :: proc(f: ^media.Video_Frame) -> render.Video_Picture {
 	pic := render.Video_Picture{
 		format = pixel_format(f.format), size = f.surface, crop_origin = f.crop, crop_size = {f.width, f.height},
-		rotation = f.rotation, full_range = f.color.full_range,
+		rotation = f32(f.rotation) / 360, full_range = f.color.full_range,
 		gpu_texture = f.gpu_texture, gpu_index = f.gpu_index, planes = f.planes, strides = f.strides,
 	}
 	switch f.color.coeffs {

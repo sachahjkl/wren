@@ -16,6 +16,7 @@ import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:render"
 import lucide "toolkit:lucide"
+import turn "toolkit:turn"
 import "toolkit:ui"
 import desktop "toolkit:desktop"
 import "wb:base"
@@ -632,7 +633,7 @@ dl_stroke :: proc(dc: ^draw.Context, a, b: draw.Vec2, thick: f32, color: draw.Co
 	d := b - a
 	l := math.sqrt(d.x * d.x + d.y * d.y)
 	mid := (a + b) * 0.5
-	draw.push_transform(dc, draw.affine_around(draw.affine_rotate(math.atan2(-d.x, d.y)), mid))
+	draw.push_transform(dc, draw.affine_around(draw.affine_rotate(turn.atan2(-d.x, d.y)), mid))
 	draw.rect(dc, {{mid.x - thick * 0.5, mid.y - l * 0.5 - thick * 0.5}, {mid.x + thick * 0.5, mid.y + l * 0.5 + thick * 0.5}}, color, thick * 0.5)
 	draw.pop_transform(dc)
 }
@@ -663,9 +664,9 @@ dl_button_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		ri := ro - max(2.5, bh * 0.07)
 		outer, inner: [RING_N]draw.Vec2
 		for i in 0 ..< RING_N {
-			a := f32(i) / RING_N * 2 * math.PI
-			outer[i] = {c.x + math.sin(a) * ro, c.y - math.cos(a) * ro}
-			inner[i] = {c.x + math.sin(a) * ri, c.y - math.cos(a) * ri}
+			sa, ca := turn.sincos(f32(i) / RING_N)
+			outer[i] = {c.x + sa * ro, c.y - ca * ro}
+			inner[i] = {c.x + sa * ri, c.y - ca * ri}
 		}
 		ring: [2 * RING_N + 4]draw.Vec2
 		k := 0
@@ -680,9 +681,9 @@ dl_button_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		draw.rect(dc, bounds, tr)
 		clear_c := draw.Color{d.accent.r, d.accent.g, d.accent.b, 0}
 		if d.unknown {
-			turn := f32(math.mod(d.now_ms, DOWNLOAD_RING_TURN_MS) / DOWNLOAD_RING_TURN_MS)
+			phase := f32(math.mod(d.now_ms, DOWNLOAD_RING_TURN_MS) / DOWNLOAD_RING_TURN_MS)
 			stops := [4]draw.Gradient_Stop{{color = clear_c, pos = 0}, {color = d.accent, pos = 0.3}, {color = clear_c, pos = 0.3001}, {color = clear_c, pos = 1}}
-			draw.gradient(dc, bounds, draw.Gradient{kind = .Conic, center = {c.x - bounds.min.x, c.y - bounds.min.y}, angle = turn * 2 * math.PI - 0.3 * 2 * math.PI, stops = stops[:]})
+			draw.gradient(dc, bounds, draw.Gradient{kind = .Conic, center = {c.x - bounds.min.x, c.y - bounds.min.y}, angle = phase - 0.3, stops = stops[:]})
 		} else {
 			f := clamp(d.frac, 0.02, 1)
 			stops := [4]draw.Gradient_Stop{{color = d.accent, pos = 0}, {color = d.accent, pos = f}, {color = clear_c, pos = min(f + 0.0001, 1)}, {color = clear_c, pos = 1}}

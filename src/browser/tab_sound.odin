@@ -163,7 +163,7 @@ speaker_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	if d.muted {
 		m := draw.Vec2{o.x + s * 0.8, c.y}
 		arm := s * 0.16
-		for angle in ([2]f32{math.PI / 4, -math.PI / 4}) {
+		for angle in ([2]f32{0.125, -0.125}) {
 			draw.push_transform(dc, draw.affine_around(draw.affine_rotate(angle), m))
 			draw.rect(dc, {{m.x - arm, m.y - th * 0.5}, {m.x + arm, m.y + th * 0.5}}, col, th * 0.5)
 			draw.pop_transform(dc)

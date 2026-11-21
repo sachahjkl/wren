@@ -59,8 +59,8 @@ Pointer_Details :: struct {
 	primary:     bool,
 	pressure:    f32,
 	tangential:  f32,
-	tilt:        [2]f32,
-	twist:       f32,
+	tilt:        [2]f32,     // turns, as the platform gives them
+	twist:       f32,        // turns
 	size:        [2]f32,     // width, height (CSS px; 0 = 1)
 }
 

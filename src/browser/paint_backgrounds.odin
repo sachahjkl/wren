@@ -2,6 +2,7 @@ package browser
 
 import "core:math"
 import "toolkit:draw"
+import turn "toolkit:turn"
 import "wb:style"
 
 ////////////////////////////////
@@ -176,7 +177,7 @@ gradient_geometry :: proc(g: ^style.Gradient, size: draw.Vec2, scale: f32) -> dr
 	case .Conic:
 		out.kind = .Conic
 		out.center = {style.resolve(g.position[0], w / scale) * scale, style.resolve(g.position[1], h / scale) * scale}
-		out.angle = g.angle
+		out.angle = turn.from_radians(g.angle)   // the computed style keeps radians
 		line = 1   // stop positions are fractions of a turn
 	}
 	if line <= 0 { line = 0.001 }

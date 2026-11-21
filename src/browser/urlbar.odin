@@ -649,14 +649,14 @@ row_icon_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		lens := draw.Rect{{r.min.x + s * 0.08, r.min.y + s * 0.08}, {r.min.x + s * 0.68, r.min.y + s * 0.68}}
 		draw.rect(dc, lens, col, s * 0.3, lw * 1.2)
 		h := draw.rect_center(lens) + {s * 0.21, s * 0.21}
-		draw.push_transform(dc, draw.affine_around(draw.affine_rotate(math.PI / 4), h + {s * 0.12, s * 0.12}))
+		draw.push_transform(dc, draw.affine_around(draw.affine_rotate(0.125), h + {s * 0.12, s * 0.12}))
 		draw.rect(dc, {{h.x, h.y + s * 0.12 - lw * 0.7}, {h.x + s * 0.34, h.y + s * 0.12 + lw * 0.7}}, col, lw * 0.7)
 		draw.pop_transform(dc)
 	case .Go:
 		// an arrow to the right
 		draw.rect(dc, {{r.min.x + s * 0.15, c.y - lw * 0.6}, {r.max.x - s * 0.18, c.y + lw * 0.6}}, col, lw * 0.6)
 		tip := draw.Vec2{r.max.x - s * 0.15, c.y}
-		for angle in ([2]f32{math.PI * 0.75, -math.PI * 0.75}) {
+		for angle in ([2]f32{0.375, -0.375}) {
 			draw.push_transform(dc, draw.affine_around(draw.affine_rotate(angle), tip))
 			draw.rect(dc, {{tip.x, tip.y - lw * 0.6}, {tip.x + s * 0.38, tip.y + lw * 0.6}}, col, lw * 0.6)
 			draw.pop_transform(dc)
