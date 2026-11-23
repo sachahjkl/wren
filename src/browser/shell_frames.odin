@@ -996,6 +996,7 @@ Paint_Source :: struct {
 	page:      ^page.Page,
 	mutations: u64,    // the document's (the layout painted was made from it)
 	styles:    u64,    // the style pass the layout took: a hover, a focus, an animation
+	records:   u64,    // the page's styles now (style.Styled.serial): see paint_source_add
 	pixels:    u64,    // its images' and canvases' pixels
 	forms:     u64,    // what its form controls show
 	selection: u64,    // what it shows selected, a click that clears it runs no task and changes no node
@@ -1016,6 +1017,13 @@ paint_source_add :: proc(s: ^Paint_Source, t: ^Tab) {
 	a := page.page_activity(p)
 	s.mutations += a.mutations
 	s.styles += t.layout.serial
+	// The layout's boxes and items point into the records of the page's styles, and its anonymous boxes share their parent's
+	// inherited group. A style pass the script runs without a layout (getComputedStyle) moves the page's serial and not the
+	// layout's: a timeline tick empties each overlay's arena (style.overlay_for) where those groups and pseudo-element
+	// records were, a new pass retires overlays against a Styled no layout reads yet (style.overlay_retire). The layout then
+	// points at freed memory until its next pass: it is paintable only while the page's styles are those it was painted with.
+	// (Styled.serial is unique in the process and changes with every pass, partial restyle and tick: style.styled_next_serial.)
+	if p.styled != nil { s.records += p.styled.serial }
 	s.pixels += a.pixels
 	s.selection += a.selection
 	s.highlights += a.highlights
