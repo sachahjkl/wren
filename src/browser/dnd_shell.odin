@@ -515,6 +515,7 @@ dnd_events :: proc(app: ^App, events: []platform.Event) {
 	for ev in events {
 		#partial switch ev.kind {
 		case .Drop_Enter, .Drop_Over, .Drop_Leave, .Drop:
+			if tab_drop_queued(app, ev) { continue }   // tab_drag.odin: a tab's drag of the system (Wayland)
 			dnd_external(app, ev)
 		}
 	}

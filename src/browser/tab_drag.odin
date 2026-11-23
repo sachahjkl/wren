@@ -10,10 +10,18 @@ package browser
 // Over the tab bar of another window the tab shows where it would go (the tabs make room, a faded copy of it in the gap); the release there moves the
 // tab into that window at that place (the carried window, empty, closes); anywhere else the window stays where it was dropped.
 // Nothing here loads a page again: tab_move only moves the pointer to the tab.
+//
+// Where the system does not tell a window where it and the pointer are, nor lets it move itself (Wayland:
+// platform.positions_known is false), no window can follow the pointer and no window under it can be found. There the
+// tab leaves its bar as a drag of the system (tab_drag_system), as Firefox does without xdg_toplevel_drag: every window
+// is a drop target, a drop on a window's tabs moves the tab there (positions of the drop are the window's own, which
+// is all window_drop_slot needs), a drop anywhere else opens it in a new window that the compositor places.
 
 import "core:fmt"
 import "core:math"
+import "core:strconv"
 import "core:strings"
+import "core:time"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
@@ -121,6 +129,65 @@ Tab_Drag :: struct {
 
 tab_dragging :: proc(app: ^App) -> bool { return app.tab_drag.active }
 
+// How a tab leaves its bar. Carry: its window follows the pointer, the release finds the window under it (the system
+// tells positions and moves windows). System: a drag of the system with the tab's id (it does not).
+Tab_Drag_Path :: enum u8 { Carry, System }
+
+tab_drag_path :: proc(positions_known: bool) -> Tab_Drag_Path { return positions_known ? .Carry : .System }
+
+// What the end of a tab's drag of the system leaves to do. Detach: no window took it (released over nothing, over a
+// window that refused it, given up), so it gets a window of its own. Taken: a window took the drop and moves the tab.
+Tab_Drop_End :: enum u8 { Detach, Taken }
+
+tab_drop_end :: proc(effect: Maybe(platform.Drop_Effect)) -> Tab_Drop_End { return effect == nil ? .Detach : .Taken }
+
+// When a tab's drag of the system makes the tab's own window. Start: at once, so that the drag carries it (a compositor
+// with xdg-toplevel-drag-v1, once the toolkit can attach a window to the drag). End: only when the drag ends with no
+// window that took it. The one place that decides it: tab_drag_system calls tab_detach at the moment this says, and
+// the rest of the drag does not depend on which (a drop on a window's tabs moves the tab out of a made window too,
+// which then closes empty).
+Tab_Window_When :: enum u8 { Start, End }
+
+tab_window_when :: proc(window_carried: bool) -> Tab_Window_When { return window_carried ? .Start : .End }
+
+// The private type of a tab's drag of the system: other applications do not know it, so they refuse the drop, and a
+// release over one of them detaches the tab.
+TAB_MIME :: "application/x-wren-tab"
+
+tab_drag_payload :: proc(id: u64, allocator := context.temp_allocator) -> string { return fmt.aprintf("%d", id, allocator = allocator) }
+
+// The tab a drop carries (TAB_MIME), if it is one.
+tab_drag_id_of :: proc(d: ^platform.Drag_Data) -> (u64, bool) {
+	if d == nil { return 0, false }
+	for e in d.custom {
+		if e.mime != TAB_MIME { continue }
+		id, ok := strconv.parse_u64(e.data, 10)
+		return id, ok && id != 0
+	}
+	return 0, false
+}
+
+// Where a tab dropped on window `w` at `p` (its client pixels) goes: on its tabs, the slot; elsewhere on_bar = false.
+tab_drop_at :: proc(w: ^Browser_Window, p: draw.Vec2, carried: ^Tab) -> (slot: Drop_Slot, on_bar: bool) {
+	if _, inside := drop_index(w.zone, p); !inside { return {}, false }
+	return window_drop_slot(w, p, carried), true
+}
+
+// Moves `t` to `slot` of window `w`. In its own window the slot counts the tab itself (a gap of the list as it is), so
+// a gap after it is one place less once it is taken out; tab_move does not apply the slot's group there.
+tab_drop_into :: proc(app: ^App, t: ^Tab, w: ^Browser_Window, slot: Drop_Slot) {
+	src, si := window_of_tab(app, t)
+	if src == nil { return }
+	if src != w {
+		tab_move(app, t, w, slot.index, slot = slot)
+		window_focus(app, w, true)
+		return
+	}
+	if !t.pinned { t.group = slot.group }
+	tab_move(app, t, w, slot.index > si ? slot.index - 1 : slot.index)
+	window_request(app, w, 3)
+}
+
 @(private = "file")
 client_origin :: proc(w: ^Browser_Window) -> draw.Vec2 {
 	o := platform.client_origin(w.win)
@@ -129,16 +196,15 @@ client_origin :: proc(w: ^Browser_Window) -> draw.Vec2 {
 
 // pointer_screen (where the pointer is on the screen, from the system), keep_on_screen (a window position that keeps part
 // of the window on some monitor) and windows_by_z (the browser windows topmost first, the system's z-order) are the
-// window-manager queries of tab tear-off; they are in tab_drag_windows.odin / tab_drag_other.odin. On Wayland a client
-// cannot know the pointer's absolute position, the virtual-screen bounds or the window stacking order, so the other
-// backend answers with sane values (the event position, no clamp, the app's own window order) — enough for a single
-// window and for injected input, which is how tests and the remote control drive a drag.
+// window-manager queries of tab tear-off; they are in tab_drag_windows.odin / tab_drag_other.odin. They serve the Carry
+// path only: Windows, X11 and the offscreen windows of tests and the remote control (Wayland takes the System path).
 
 // The tab `t` of the active window is dragged out of its bar with the pointer at `pos` (client pixels of the active window). Asked by the
 // build of the bar (the list of tabs changes: shell_after_build).
 tab_drag_begin :: proc(app: ^App, t: ^Tab, pos: draw.Vec2) {
 	src := app.active
 	if src == nil || app.tab_drag.active { return }
+	if tab_drag_path(platform.positions_known(src.win)) == .System { tab_drag_system(app, src, t); return }
 	scale := max(src.win.dpi_scale, 0.5)
 	grab := [2]int{int(60 * scale), int(16 * scale)}
 	screen := client_origin(src) + pos
@@ -239,6 +305,74 @@ drop_ghost :: proc(app: ^App, area: ^ui.Box, vertical: bool, from, extent, x, w:
 		ui.build_box({.Draw_Text}, fmt.aprintf("%s###ghost_title", title, allocator = ui.frame_allocator()))
 	}
 }
+// The tab leaves its bar as a drag of the system (Tab_Drag_Path.System). drag_start blocks until the release. Its own
+// window answers at once (drop_sync_set: a drop on its tabs reorders, elsewhere it refuses); the other windows of the
+// browser accept it by the toolkit's convention and get their Drop_* events queued, which tab_drop_queued reads in their
+// next frame. The window of the tab is not made before the drop: nothing could place it under the pointer.
+@(private = "file")
+tab_drag_system :: proc(app: ^App, src: ^Browser_Window, t: ^Tab) {
+	data: platform.Drag_Data
+	defer delete(data.custom)
+	append(&data.custom, platform.Drag_Entry{TAB_MIME, tab_drag_payload(t.id)})
+	id := t.id
+	// (no toolkit carries a window in a Wayland drag yet: when gt:platform can, its answer goes here)
+	made: ^Browser_Window
+	if tab_window_when(false) == .Start { made = tab_detach(app, t, focus = false) }
+	app.tab_drag = {active = true, tab = id, window = made != nil ? made.id : src.id, source = src.id}
+	platform.drop_sync_set(src.win, tab_drop_sync, app)
+	app.tab_drop_span = {time.tick_now(), {}}
+	effect, ok := platform.drag_start(src.win, data, {.Move})
+	app.tab_drop_span[1] = time.tick_now()
+	platform.drop_sync_set(src.win, nil, nil)
+	tab_drag_end(app)
+	tab := tab_by_id(app, id)   // (the drop may have closed it)
+	if tab == nil { return }
+	// (a drag the system could not start: the tab still leaves its bar, as the user asked)
+	if made != nil { if tab_drop_end(effect) == .Detach { window_focus(app, made, true) }; return }
+	if !ok || tab_drop_end(effect) == .Detach { tab_detach(app, tab) }
+}
+
+// The answer of the tab's own window while its drag of the system runs (tab_drag_system).
+@(private = "file")
+tab_drop_sync :: proc(user: rawptr, win: ^platform.Window, ev: platform.Event) -> Maybe(platform.Drop_Effect) {
+	app := (^App)(user)
+	w := window_by_id(app, app.tab_drag.source)
+	t := tab_by_id(app, app.tab_drag.tab)
+	if w == nil || w.win != win || t == nil { return nil }
+	slot, on_bar := tab_drop_at(w, ev.pos, t)
+	if !on_bar { return nil }
+	#partial switch ev.kind {
+	case .Drop_Enter, .Drop_Over: return .Move
+	case .Drop: tab_drop_into(app, t, w, slot); return .Move
+	}
+	return nil
+}
+
+// A Drop_* event of the active window: true when it came during the last tab's drag of the system (its stamp is in
+// App.tab_drop_span), and then it is that drag's: its Drop puts the tab on the window's tabs, or elsewhere in a new
+// window. The others of it (enter, over, leave) are no page's: they go nowhere. (dnd_shell.odin's dnd_events asks.)
+tab_drop_queued :: proc(app: ^App, ev: platform.Event) -> bool {
+	if !tab_drop_in_span(app.tab_drop_span, ev.stamp) { return false }
+	if ev.kind != .Drop { return true }
+	w := active_window(app)
+	id, ok := tab_drag_id_of(platform.drop_data(w.win))
+	platform.drop_data_release(w.win)
+	t := ok ? tab_by_id(app, id) : nil
+	if t == nil { return true }
+	if slot, on_bar := tab_drop_at(w, ev.pos, t); on_bar {
+		tab_drop_into(app, t, w, slot)
+	} else {
+		tab_detach(app, t)
+	}
+	return true
+}
+
+// Whether an event made at `stamp` came while the drag of `span` ran (an end of zero: none ran).
+tab_drop_in_span :: proc(span: [2]time.Tick, stamp: time.Tick) -> bool {
+	if span[1] == {} { return false }
+	return time.tick_diff(span[0], stamp) >= 0 && time.tick_diff(stamp, span[1]) >= 0
+}
+
 tab_drag_end :: proc(app: ^App) {
 	for w in app.windows { if w.dropping { w.dropping = false; window_request(app, w, 2) } }
 	app.tab_drag = {}

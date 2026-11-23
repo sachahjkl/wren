@@ -1,12 +1,11 @@
 #+build !windows
 package browser
 
-// The window-manager queries of tab tear-off off Windows (tab_drag_windows.odin has the Windows ones). Wayland does not
-// let a client know the pointer's absolute position, the virtual-screen bounds or the window stacking order (the
-// compositor owns all three), and X11 could but the toolkit does not surface them yet. So:
+// The window-manager queries of tab tear-off off Windows (tab_drag_windows.odin has the Windows ones), for the Carry path:
+// X11 and offscreen windows (Wayland, where a client knows no positions, takes the System path: tab_drag.odin). X11
+// could tell the pointer's position and the stacking order but the toolkit does not surface them yet. So:
 //   * pointer_screen returns the event-derived position the caller already has (correct for a single window and for the
-//     injected input tests and the remote control drive a drag with; a tab torn into its own window follows the pointer
-//     through the event stream, and move_window is a no-op on Wayland anyway);
+//     injected input tests and the remote control drive a drag with);
 //   * keep_on_screen does not clamp (the compositor places windows);
 //   * windows_by_z returns the browser's own windows in their list order, so a drop still finds a window under the
 //     pointer by its client rectangle — only the "topmost when two overlap" tie-break is missing.

@@ -221,6 +221,7 @@ App :: struct {
 	wchrome:       Window_Chrome,            // window_chrome.odin: its preferences, the program's icon, the system menu asked for
 	tsh:           Touch_Shell,              // touch_shell.odin: touch input and its preferences
 	tab_drag:      Tab_Drag,                 // tab_drag.odin: the tab being dragged
+	tab_drop_span: [2]time.Tick,             // tab_drag.odin: when the last tab's drag of the system ran (its queued Drop_* events)
 	closed:        Closed_Tabs,              // closed_tabs.odin: what was closed, to reopen
 	session_last:  string,                   // session.odin: the session written last (nothing is written when it did not change)
 	rest_text:     string,                   // session.odin: a session whose windows from rest_from on are still to open

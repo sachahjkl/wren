@@ -1,7 +1,9 @@
 package browser
 
 import "core:testing"
+import "core:time"
 import "toolkit:draw"
+import "toolkit:platform"
 
 @(private = "file")
 row_zone :: proc(n: int, offset: f32 = 0) -> Drop_Zone {
@@ -142,4 +144,72 @@ a_tab_leaves_the_bar_only_far_enough :: proc(t: ^testing.T) {
 	testing.expect(t, !detach_wanted(side, {200, 900}, true, 40))   // along the sidebar is the reorder's
 	testing.expect(t, detach_wanted(side, {300, 100}, true, 40))
 	testing.expect(t, detach_wanted(side, {-60, 100}, true, 40))
+}
+
+
+// Where the system keeps positions from the app (Wayland), the tab leaves as a drag of the system; elsewhere its window
+// follows the pointer.
+@(test)
+the_path_of_a_tab_drag_follows_what_the_system_tells :: proc(t: ^testing.T) {
+	testing.expect_value(t, tab_drag_path(true), Tab_Drag_Path.Carry)
+	testing.expect_value(t, tab_drag_path(false), Tab_Drag_Path.System)
+}
+
+// A drag of the system that no window took (released over nothing, over another application, given up) detaches the
+// tab; one a window took leaves the move to that window.
+@(test)
+a_tab_drag_with_no_target_detaches :: proc(t: ^testing.T) {
+	testing.expect_value(t, tab_drop_end(nil), Tab_Drop_End.Detach)
+	testing.expect_value(t, tab_drop_end(platform.Drop_Effect.Move), Tab_Drop_End.Taken)
+	testing.expect_value(t, tab_drop_end(platform.Drop_Effect.Copy), Tab_Drop_End.Taken)
+	// the window is made at the end unless the drag can carry it
+	testing.expect_value(t, tab_window_when(false), Tab_Window_When.End)
+	testing.expect_value(t, tab_window_when(true), Tab_Window_When.Start)
+}
+
+@(test)
+a_tab_drag_carries_its_id_in_its_own_type :: proc(t: ^testing.T) {
+	d: platform.Drag_Data
+	defer delete(d.custom)
+	_, ok := tab_drag_id_of(&d)
+	testing.expect(t, !ok, "no entry: no tab")
+	append(&d.custom, platform.Drag_Entry{"text/x-other", "12"}, platform.Drag_Entry{TAB_MIME, tab_drag_payload(4242)})
+	id, ok2 := tab_drag_id_of(&d)
+	testing.expect(t, ok2 && id == 4242, "the tab's id from its type, other entries aside")
+	d.custom[1].data = "not a number"
+	_, ok = tab_drag_id_of(&d)
+	testing.expect(t, !ok)
+	_, ok = tab_drag_id_of(nil)
+	testing.expect(t, !ok)
+}
+
+// A drop's position is the window's own (no screen position on Wayland): on its tabs it is window_drop_slot's slot.
+@(test)
+a_drop_on_a_window_bar_takes_the_slot_from_its_own_position :: proc(t: ^testing.T) {
+	test_app(t)
+	ts: [3]Tab
+	ts[1].group, ts[2].group = 5, 5
+	w: Browser_Window
+	defer delete(w.tabs)
+	for _, i in ts { append(&w.tabs, &ts[i]) }
+	w.zone = row_zone(3)
+	carried: Tab
+	slot, on_bar := tab_drop_at(&w, {340, 10}, &carried)   // the gap between the two tabs of group 5
+	testing.expect(t, on_bar)
+	testing.expect_value(t, slot, window_drop_slot(&w, {340, 10}, &carried))
+	testing.expect(t, slot.index == 2 && slot.group == 5)
+	_, on_bar = tab_drop_at(&w, {340, 200}, &carried)   // on the page: a new window
+	testing.expect(t, !on_bar)
+}
+
+// Only the Drop_* events of the drag's time are the tab drag's (they were queued while drag_start blocked).
+@(test)
+queued_drop_events_belong_to_the_tab_drag_by_their_time :: proc(t: ^testing.T) {
+	a := time.Tick{_nsec = 100}
+	b := time.Tick{_nsec = 200}
+	testing.expect(t, !tab_drop_in_span({}, {_nsec = 150}), "no drag ran")
+	testing.expect(t, tab_drop_in_span({a, b}, {_nsec = 150}))
+	testing.expect(t, tab_drop_in_span({a, b}, b))
+	testing.expect(t, !tab_drop_in_span({a, b}, {_nsec = 50}), "before it")
+	testing.expect(t, !tab_drop_in_span({a, b}, {_nsec = 250}), "a later drag of another application")
 }
