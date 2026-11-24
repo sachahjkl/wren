@@ -1062,6 +1062,31 @@ wjr_CSSUnitValue_get_unit :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -
 	return u != nil ? wj.new_string_len(ctx, string(u.unit[:u.n])) : wj.JS_ThrowTypeError(ctx, "Illegal invocation")
 }
 
+// CSSStyleValue's stringifier (CSS Typed OM §6, serialization of a CSSUnitValue): the value as a CSS number, then its
+// unit ("%" for percent, none for number). Libraries hand CSS.px(70) to code that writes it into a rule's text: JSS's
+// default-unit plugin does, and with "[object CSSUnitValue]" the declaration was dropped (Material UI pages lost their
+// padding and grids). The number is the engine's own Number-to-string, which CSS serialization follows for finite values.
+@(export, link_name = "wjr_CSSStyleValue_toString")
+wjr_CSSStyleValue_toString :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	u := unit_of(this_val)
+	if u == nil { return wj.JS_ThrowTypeError(ctx, "Illegal invocation") }
+	num := wj.new_float64(ctx, u.value)
+	defer wj.JS_FreeValue(ctx, num)
+	s: wj.Str
+	if !wj.wj_to_str(ctx, num, &s, 0, "") { return wj.EXCEPTION }
+	defer wj.wj_str_free(ctx, &s)
+	digits := wj.str_slice(s)
+	unit := string(u.unit[:u.n])
+	switch unit {
+	case "percent": unit = "%"
+	case "number":  unit = ""
+	}
+	buf: [64]u8
+	n := copy(buf[:], digits)
+	n += copy(buf[n:], unit)
+	return wj.new_string_len(ctx, string(buf[:n]))
+}
+
 @(private = "file")
 css_factory :: proc "contextless" (ctx: ^wj.Context, argc: i32, argv: [^]wj.JSValue, unit: string) -> wj.JSValue {
 	d: f64

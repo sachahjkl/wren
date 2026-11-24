@@ -291,6 +291,17 @@ a_colour_and_what_inherits_it_go_on_under_a_task :: proc(t: ^testing.T) {
 	}
 }
 
+// A CSSUnitValue is its CSS text when a script makes a string of it (CSSStyleValue's stringifier): JSS's default-unit plugin
+// writes CSS.px(70) into a rule's text, and "[object CSSUnitValue]" dropped the declaration (Material UI pages lost their
+// padding and grids).
+@(test)
+a_css_unit_value_is_its_css_text :: proc(t: ^testing.T) {
+	s := open(t)
+	testing.expect_value(t, e2e.eval(s, "[String(CSS.px(70)), String(CSS.percent(12.5)), String(CSS.number(-0.5)), CSS.px(1.25) + ''].join(' ')"), "70px 12.5% -0.5 1.25px")
+	e2e.eval(s, "window.st = document.createElement('style'); document.head.appendChild(st); st.sheet.insertRule('.typed-om {}', 0); st.sheet.cssRules[0].style.setProperty('padding-left', CSS.px(70)); window.el = document.createElement('div'); el.className = 'typed-om'; document.body.appendChild(el); 1")
+	testing.expect_value(t, e2e.eval(s, "getComputedStyle(el).paddingLeft"), "70px")
+}
+
 // At rest a page of scroll-driven animations draws nothing: a layout that moved a timeline asks for one more frame, not for frames for ever.
 @(test)
 a_page_of_timelines_at_rest_draws_no_frames :: proc(t: ^testing.T) {

@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 608 |
 | exposed by default | 396 |
 | members | 5321 |
-| members implemented | 3899 (73.3 %) |
+| members implemented | 3900 (73.3 %) |
 
 ## By specification
 
@@ -39,7 +39,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-properties-values-api.idl` | 1 (1) | 4 / 4 |
 | `css-transitions-2.idl` | 2 (1) | 1 / 1 |
 | `css-transitions.idl` | 1 (1) | 4 / 5 |
-| `css-typed-om.idl` | 37 (3) | 6 / 126 |
+| `css-typed-om.idl` | 37 (3) | 7 / 126 |
 | `css-view-transitions.idl` | 3 (0) | 0 / 10 |
 | `cssom-view.idl` | 5 (4) | 24 / 28 |
 | `cssom.idl` | 16 (15) | 69 / 149 |
@@ -577,9 +577,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### CSSStyleValue
 
-0 / 3 members.
+1 / 3 members.
 
-- `stringifier`: not supported
+- `stringifier`: C `wjr_CSSStyleValue_toString`
 - `static parse()`: not supported
 - `static parseAll()`: not supported
 

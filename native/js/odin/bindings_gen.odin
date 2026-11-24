@@ -25678,7 +25678,7 @@ wj_install_bindings :: proc "c" () {
 	m_CSSPageDescriptors[12] = wj.Member{name = "marks", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
 	m_CSSPageDescriptors[13] = wj.Member{name = "bleed", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
 	m_CSSStyleProperties[0] = wj.Member{name = "cssFloat", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_CSSStyleProperties_get_cssFloat, set = wjr_CSSStyleProperties_set_cssFloat}
-	m_CSSStyleValue[0] = wj.Member{name = "toString", kind = wj.M_METHOD, fn = nil}
+	m_CSSStyleValue[0] = wj.Member{name = "toString", kind = wj.M_METHOD, fn = wjr_CSSStyleValue_toString}
 	m_CSSStyleValue[1] = wj.Member{name = "parse", kind = wj.M_STATIC_METHOD, flags = wj.F_NOT_DEDICATED | wj.F_NOT_SHARED | wj.F_NOT_SERVICE, length = 2, fn = nil}
 	m_CSSStyleValue[2] = wj.Member{name = "parseAll", kind = wj.M_STATIC_METHOD, flags = wj.F_NOT_DEDICATED | wj.F_NOT_SHARED | wj.F_NOT_SERVICE, length = 2, fn = nil}
 	m_CSSColorValue[0] = wj.Member{name = "parse", kind = wj.M_STATIC_METHOD, flags = wj.F_NOT_DEDICATED | wj.F_NOT_SHARED | wj.F_NOT_SERVICE, length = 1, fn = nil}
