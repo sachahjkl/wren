@@ -54,6 +54,10 @@ Gradient :: struct {
 	angle:     f32,            // radians. Linear: direction of the gradient line (0 = to top, clockwise); Conic: `from`
 	to_corner: bool,           // Linear `to top right`...: the angle depends on the box, see `gradient_angle`
 	corner:    [2]i8,          // to_corner: x -1 left / +1 right, y -1 top / +1 bottom
+	// Linear from -webkit-gradient(): the line runs from line_points[0] to line_points[1] (x, y in the box), not
+	// through the center at `angle`. See `linear_gradient_line`.
+	has_line_points: bool,
+	line_points:     [2][2]Length,
 	shape:     Radial_Shape,
 	extent:    Radial_Extent,
 	radius:    [2]Length,      // Radial with an explicit size (circle: radius[0] only)

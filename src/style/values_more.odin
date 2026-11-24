@@ -343,6 +343,7 @@ parse_color_space :: proc(items: []css.Value, i: ^int, hue: ^Hue_Method = nil) -
 @(private)
 parse_gradient :: proc(cx: ^Cx, f: css.Value) -> (^Gradient, bool) {
 	name := base.ascii_lower(f.tok.text)
+	if name == "-webkit-gradient" { return parse_webkit_gradient(cx, f) }
 	legacy := false
 	if strings.has_prefix(name, "-webkit-") || strings.has_prefix(name, "-moz-") || strings.has_prefix(name, "-o-") {
 		name = name[strings.index_byte(name[1:], '-') + 2:]
@@ -395,6 +396,133 @@ parse_gradient :: proc(cx: ^Cx, f: css.Value) -> (^Gradient, bool) {
 	if len(stops) == 1 { append(&stops, stops[0]) }   // one stop paints a solid color
 	g.stops = stops[:]
 	return g, true
+}
+
+// -webkit-gradient(): WebKit's first gradient syntax, which pages still ship and every browser accepts. It is parsed into
+// the same model. Linear keeps its two points (`line_points`), so the line is the one WebKit draws, not only its
+// direction. Radial becomes a circle around the center of the larger radius, as in Firefox, with the stops moved into
+// the ring between the two radii: exact when both centers are the same, which is what pages write.
+@(private)
+parse_webkit_gradient :: proc(cx: ^Cx, f: css.Value) -> (^Gradient, bool) {
+	parts := css.split_commas(f.children, context.temp_allocator)
+	if len(parts) < 3 { return nil, false }
+	kind := split_items(parts[0])
+	if len(kind) != 1 { return nil, false }
+	g := new(Gradient, cx.alloc)
+	g.position = {pct(50), pct(50)}
+	first := 0
+	inner, outer: f32   // radial: the smaller and the larger radius, in px
+	reverse := false    // radial: the first circle is the larger one, so the stops run inwards
+	switch ident_lower(kind[0]) {
+	case "linear":
+		p0, ok0 := webkit_point(parts[1])
+		p1, ok1 := webkit_point(parts[2])
+		if !ok0 || !ok1 { return nil, false }
+		g.kind = .Linear
+		g.angle = math.PI
+		g.has_line_points, g.line_points = true, {p0, p1}
+		first = 3
+	case "radial":
+		if len(parts) < 5 { return nil, false }
+		p0, ok0 := webkit_point(parts[1])
+		r0, okr0 := webkit_radius(parts[2])
+		p1, ok1 := webkit_point(parts[3])
+		r1, okr1 := webkit_radius(parts[4])
+		if !ok0 || !okr0 || !ok1 || !okr1 { return nil, false }
+		g.kind, g.shape, g.extent = .Radial, .Circle, .Explicit
+		if r1 >= r0 {
+			g.position, inner, outer = p1, r0, r1
+		} else {
+			g.position, inner, outer, reverse = p0, r1, r0, true
+		}
+		g.radius[0] = px(outer)
+		first = 5
+	case: return nil, false
+	}
+	Webkit_Stop :: struct { at: f32, color: css.Color }   // at: 0 = from(), 1 = to()
+	stops := make([dynamic]Webkit_Stop, context.temp_allocator)
+	for part in parts[first:] {
+		items := split_items(part)
+		if len(items) != 1 || items[0].kind != .Function { return nil, false }
+		args := css.split_commas(items[0].children, context.temp_allocator)
+		s: Webkit_Stop
+		color_arg: []css.Value
+		switch base.ascii_lower(items[0].tok.text) {
+		case "from", "to":
+			if len(args) != 1 { return nil, false }
+			s.at = base.ascii_lower(items[0].tok.text) == "to" ? 1 : 0
+			color_arg = args[0]
+		case "color-stop":
+			if len(args) != 2 { return nil, false }
+			at := split_items(args[0])
+			if len(at) != 1 { return nil, false }
+			switch {
+			case tok_is(at[0], .Number): s.at = f32(at[0].tok.num)
+			case tok_is(at[0], .Percentage): s.at = f32(at[0].tok.num) / 100
+			case: return nil, false
+			}
+			color_arg = args[1]
+		case: return nil, false
+		}
+		c, ok := parse_color(cx, css.trim_values(color_arg))
+		if !ok { return nil, false }
+		s.color = c
+		// WebKit sorts the stops by position; an insertion keeps the order of equal ones
+		i := len(stops)
+		append(&stops, s)
+		for i > 0 && stops[i - 1].at > s.at { stops[i] = stops[i - 1]; i -= 1 }
+		stops[i] = s
+	}
+	switch len(stops) {
+	case 0:
+		// no stop paints nothing
+		append(&stops, Webkit_Stop{0, {}}, Webkit_Stop{1, {}})
+	case 1:
+		append(&stops, stops[0])
+	}
+	out := make([]Color_Stop, len(stops), cx.alloc)
+	for i in 0 ..< len(stops) {
+		s := stops[reverse ? len(stops) - 1 - i : i]
+		at := reverse ? 1 - s.at : s.at
+		out[i].color = s.color
+		if g.kind == .Radial && outer > 0 { at = (inner + at * (outer - inner)) / outer }
+		out[i].pos = pct(at * 100)
+	}
+	g.stops = out
+	return g, true
+}
+
+// A point of -webkit-gradient(): x then y, each a keyword of its axis, center, a number (px) or a percentage.
+@(private)
+webkit_point :: proc(part: []css.Value) -> (p: [2]Length, ok: bool) {
+	items := split_items(part)
+	if len(items) != 2 { return }
+	for it, axis in items {
+		switch ident_lower(it) {
+		case "center": p[axis] = pct(50)
+		case "left", "top":
+			if (axis == 0) != (ident_lower(it) == "left") { return }
+			p[axis] = pct(0)
+		case "right", "bottom":
+			if (axis == 0) != (ident_lower(it) == "right") { return }
+			p[axis] = pct(100)
+		case "":
+			switch {
+			case tok_is(it, .Number): p[axis] = px(f32(it.tok.num))
+			case tok_is(it, .Percentage): p[axis] = pct(f32(it.tok.num))
+			case: return
+			}
+		case: return
+		}
+	}
+	return p, true
+}
+
+@(private)
+webkit_radius :: proc(part: []css.Value) -> (f32, bool) {
+	items := split_items(part)
+	if len(items) != 1 || !tok_is(items[0], .Number) || items[0].tok.num < 0 { return 0, false }
+	return f32(items[0].tok.num), true
 }
 
 @(private)
@@ -551,6 +679,25 @@ gradient_angle :: proc(g: ^Gradient, w, h: f32) -> f32 {
 	case x < 0 && y > 0: return 3 * math.PI / 2 - a
 	}
 	return 3 * math.PI / 2 + a
+}
+
+// The gradient line of a linear gradient in a w x h box (device px, `scale` device px per CSS px): where the stops
+// at 0% and 100% are. CSS Images 3 puts it through the box center at `gradient_angle`; -webkit-gradient() gives both
+// points. A line of no length gets a tiny one downwards, so that it still has a direction.
+linear_gradient_line :: proc(g: ^Gradient, w, h: f32, scale: f32 = 1) -> (start, end: [2]f32) {
+	if g.has_line_points {
+		point :: proc(p: [2]Length, w, h, scale: f32) -> [2]f32 {
+			return {resolve(p[0], w / scale) * scale, resolve(p[1], h / scale) * scale}
+		}
+		start, end = point(g.line_points[0], w, h, scale), point(g.line_points[1], w, h, scale)
+		if start == end { end.y += 0.001 }
+		return
+	}
+	a := gradient_angle(g, w, h)
+	length := gradient_line_length(a, w, h)
+	dir := [2]f32{math.sin(a), -math.cos(a)}
+	c := [2]f32{w, h} * 0.5
+	return c - dir * length * 0.5, c + dir * length * 0.5
 }
 
 // The length of the gradient line of a linear gradient at `angle` in a w x h box.

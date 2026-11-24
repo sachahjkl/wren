@@ -394,6 +394,15 @@ gradients :: proc(t: ^testing.T) {
 	testing.expect_value(t, pixel(&sized, 15, 5), LIME)
 	testing.expect_value(t, pixel(&sized, 25, 5), RED)
 	testing.expect_value(t, pixel(&sized, 35, 5), LIME)
+	// -webkit-gradient() runs from its first point to its second, not through the center of the box
+	webkit := draw_page(`<!DOCTYPE html><body style="margin: 0"><div style="width: 100px; height: 10px; background: -webkit-gradient(linear, 0 0, 40 0, from(red), color-stop(0.5, red), color-stop(0.5, lime), to(lime))"></div>`)
+	testing.expect_value(t, pixel(&webkit, 18, 5), RED)
+	testing.expect_value(t, pixel(&webkit, 22, 5), LIME)
+	testing.expect_value(t, pixel(&webkit, 90, 5), LIME)
+	ring := draw_page(`<!DOCTYPE html><body style="margin: 0"><div style="width: 100px; height: 100px; background: -webkit-gradient(radial, 50% 50%, 20, center center, 40, from(red), color-stop(0.5, red), color-stop(0.5, blue), to(blue))"></div>`)
+	testing.expect_value(t, pixel(&ring, 50, 50), RED)
+	testing.expect_value(t, pixel(&ring, 50, 23), RED)    // 27 px from the center: inside 30
+	testing.expect_value(t, pixel(&ring, 50, 17), BLUE)   // 33 px
 }
 
 @(test)

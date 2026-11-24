@@ -138,12 +138,9 @@ gradient_geometry :: proc(g: ^style.Gradient, size: draw.Vec2, scale: f32) -> dr
 	switch g.kind {
 	case .Linear:
 		out.kind = .Linear
-		a := style.gradient_angle(g, w, h)
-		length := style.gradient_line_length(a, w, h)
-		dir := draw.Vec2{math.sin(a), -math.cos(a)}
-		c := draw.Vec2{w, h} * 0.5
-		out.start, out.end = c - dir * length * 0.5, c + dir * length * 0.5
-		line = length / scale
+		out.start, out.end = style.linear_gradient_line(g, w, h, scale)
+		d := out.end - out.start
+		line = math.sqrt(d.x * d.x + d.y * d.y) / scale
 	case .Radial:
 		out.kind = .Radial
 		c := draw.Vec2{style.resolve(g.position[0], w / scale) * scale, style.resolve(g.position[1], h / scale) * scale}

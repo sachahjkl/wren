@@ -564,6 +564,72 @@ gradients_and_backgrounds :: proc(t: ^testing.T) {
 	testing.expect(t, node(f, "g").background_image.grad == nil, "said twice: invalid")
 }
 
+// -webkit-gradient(): the legacy syntax goes into the same model (linear keeps its two points).
+@(test)
+webkit_gradients :: proc(t: ^testing.T) {
+	f := open(`<style>
+		#name { background: -webkit-gradient(linear, 0% 0%, 100% 0%, from(rgb(255, 82, 82)), to(rgb(255, 213, 79))) text; -webkit-text-fill-color: transparent }
+		#kw { background-image: -webkit-gradient(linear, left top, right bottom, to(blue), color-stop(0.25, lime), from(red), color-stop(50%, white)) }
+		#px { background-image: -webkit-gradient(linear, 10 center, 30 20%, from(red)) }
+		#rad { background-image: -webkit-gradient(radial, 50% 50%, 10, center center, 40, from(red), to(blue)) }
+		#inw { background-image: -webkit-gradient(radial, 0 0, 40, 10 10, 10, from(red), color-stop(0.25, lime), to(blue)) }
+		#none { background-image: -webkit-gradient(linear, left top, left bottom) }
+		#b1 { background-image: linear-gradient(red, blue); background-image: -webkit-gradient(linear, top left, left bottom, from(red)) }
+		#b2 { background-image: linear-gradient(red, blue); background-image: -webkit-gradient(conic, left top, left bottom, from(red)) }
+		#b3 { background-image: linear-gradient(red, blue); background-image: -webkit-gradient(linear, left top, from(red)) }
+		#b4 { background-image: linear-gradient(red, blue); background-image: -webkit-gradient(linear, left top, left bottom, from(red), red) }
+		#b5 { background-image: linear-gradient(red, blue); background-image: -webkit-gradient(linear, left top, left bottom, color-stop(10px, red)) }
+		#b6 { background-image: linear-gradient(red, blue); background-image: -webkit-gradient(radial, left top, -1, left bottom, 5, from(red)) }
+		#b7 { background-image: linear-gradient(red, blue); background-image: -webkit-gradient(linear, 0 0 0, 0 1, from(red)) }
+	</style><div id=name></div><div id=kw></div><div id=px></div><div id=rad></div><div id=inw></div><div id=none></div>
+	<div id=b1></div><div id=b2></div><div id=b3></div><div id=b4></div><div id=b5></div><div id=b6></div><div id=b7></div>`)
+	defer fixture_unload(f)
+	name := node(f, "name")
+	layers := background_layers(name)
+	testing.expect(t, len(layers) == 1 && layers[0].clip == .Text, "the shorthand keeps its text box")
+	if len(layers) == 1 {
+		img := layers[0].image
+		testing.expect_value(t, img.gradient, "-webkit-gradient(linear, 0% 0%, 100% 0%, from(rgb(255, 82, 82)), to(rgb(255, 213, 79)))")
+		g := img.grad
+		testing.expect(t, g != nil && g.kind == .Linear && g.has_line_points && len(g.stops) == 2)
+		if g != nil && len(g.stops) == 2 {
+			testing.expect(t, g.line_points == {{pct(0), pct(0)}, {pct(100), pct(0)}})
+			testing.expect(t, g.stops[0].pos == pct(0) && g.stops[1].pos == pct(100))
+			testing.expect(t, abs(g.stops[0].color.r - 1) < 1e-3 && abs(g.stops[1].color.g - 213.0 / 255) < 1e-3)
+			start, end := linear_gradient_line(g, 200, 40, 2)
+			testing.expect(t, start == {0, 0} && end == {200, 0}, "from the first point to the second")
+		}
+	}
+	kw := node(f, "kw").background_image.grad
+	testing.expect(t, kw != nil && kw.line_points == {{pct(0), pct(0)}, {pct(100), pct(100)}} && len(kw.stops) == 4)
+	if kw != nil && len(kw.stops) == 4 {
+		testing.expect(t, kw.stops[0].color.r == 1 && kw.stops[1].pos == pct(25) && kw.stops[2].pos == pct(50) && kw.stops[3].color.b == 1, "sorted by position")
+	}
+	p := node(f, "px").background_image.grad
+	testing.expect(t, p != nil && p.line_points == {{px(10), pct(50)}, {px(30), pct(20)}} && len(p.stops) == 2, "numbers are px; one stop is a solid color")
+	if p != nil {
+		start, end := linear_gradient_line(p, 100, 100)
+		testing.expect(t, start == {10, 50} && end == {30, 20})
+	}
+	r := node(f, "rad").background_image.grad
+	testing.expect(t, r != nil && r.kind == .Radial && r.shape == .Circle && r.extent == .Explicit && r.radius[0] == px(40) && r.position == {pct(50), pct(50)})
+	if r != nil && len(r.stops) == 2 {
+		testing.expect(t, r.stops[0].pos == pct(25) && r.stops[1].pos == pct(100), "the stops fill the ring between the radii")
+	}
+	w := node(f, "inw").background_image.grad
+	testing.expect(t, w != nil && w.radius[0] == px(40) && w.position == {px(0), px(0)} && len(w.stops) == 3)
+	if w != nil && len(w.stops) == 3 {
+		testing.expect(t, w.stops[0].color.b == 1 && w.stops[2].color.r == 1, "the larger circle first: the stops run inwards")
+		testing.expect(t, abs(w.stops[1].pos.v - 81.25) < 1e-3 && w.stops[2].pos == pct(100) && w.stops[0].pos == pct(25))
+	}
+	n := node(f, "none").background_image.grad
+	testing.expect(t, n != nil && len(n.stops) == 2 && n.stops[0].color.a == 0, "no stop: transparent")
+	for id in ([]string{"b1", "b2", "b3", "b4", "b5", "b6", "b7"}) {
+		g := node(f, id).background_image.grad
+		testing.expectf(t, g != nil && !g.has_line_points, "%s: invalid, the earlier declaration stays", id)
+	}
+}
+
 @(test)
 font_faces :: proc(t: ^testing.T) {
 	f := open(`<style>

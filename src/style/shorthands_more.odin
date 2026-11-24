@@ -144,7 +144,7 @@ expand_background :: proc(input: []css.Value, a: runtime.Allocator) -> ([]Longha
 				case "url", "image", "image-set", "-webkit-image-set", "cross-fade", "element",
 				     "linear-gradient", "radial-gradient", "conic-gradient", "repeating-linear-gradient", "repeating-radial-gradient", "repeating-conic-gradient",
 				     "-webkit-linear-gradient", "-webkit-radial-gradient", "-webkit-repeating-linear-gradient", "-webkit-repeating-radial-gradient",
-				     "-moz-linear-gradient", "-moz-radial-gradient", "-o-linear-gradient":
+				     "-moz-linear-gradient", "-moz-radial-gradient", "-o-linear-gradient", "-webkit-gradient":
 					if l.image != nil { return }
 					l.image = items[i:i + 1]
 				case "calc", "min", "max", "clamp":

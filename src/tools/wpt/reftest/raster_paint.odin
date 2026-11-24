@@ -159,12 +159,12 @@ gradient_make :: proc(g: ^style.Gradient, size: lay.Vec2, scale: f32) -> ^Gradie
 	line: f32
 	switch g.kind {
 	case .Linear:
-		a := style.gradient_angle(g, w, h)
-		length := style.gradient_line_length(a, w, h)
-		dir := lay.Vec2{math.sin(a), -math.cos(a)}
-		out.start = lay.Vec2{w, h} * HALF - dir * length * HALF
-		out.axis = length > 0 ? dir / length : lay.Vec2{}
-		line = length / scale
+		start, end := style.linear_gradient_line(g, w, h, scale)
+		d := end - start
+		l2 := linalg_dot(d, d)
+		out.start = start
+		out.axis = l2 > 0 ? d / l2 : lay.Vec2{}   // dot(u - start, axis) is the fraction along the line
+		line = math.sqrt(l2) / scale
 	case .Radial:
 		c := lay.Vec2{style.resolve(g.position[0], w / scale) * scale, style.resolve(g.position[1], h / scale) * scale}
 		out.center = c
