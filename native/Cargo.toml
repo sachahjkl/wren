@@ -51,8 +51,6 @@ opt-level = 3
 opt-level = 3
 [profile.release.package.image-webp]
 opt-level = 3
-[profile.release.package.flate2]
-opt-level = 3
 [profile.release.package.zlib-rs]
 opt-level = 3
 [profile.release.package.brotli-decompressor]
@@ -61,11 +59,10 @@ opt-level = 3
 opt-level = 3
 [profile.release.package.qcms]
 opt-level = 3
-[profile.release.package.harfrust]
+# Keep opt-level = 3 on gt_text's shaping/outlining crates only; resvg's older copies (0.12.0/0.44.0) and read-fonts stay at "z".
+[profile.release.package."harfrust:0.15.0"]
 opt-level = 3
-[profile.release.package.skrifa]
-opt-level = 3
-[profile.release.package.read-fonts]
+[profile.release.package."skrifa:0.49.0"]
 opt-level = 3
 
 [profile.quick]

@@ -3846,6 +3846,8 @@ version = "0.1.0"
 dependencies = [
  "gt_a11y",
  "gt_text",
+ "log",
+ "tracing",
  "wren_crypto",
  "wren_media",
  "wren_net",

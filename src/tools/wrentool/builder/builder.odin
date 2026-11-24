@@ -157,8 +157,8 @@ program_of :: proc(o: Options) -> string {
 // makes them a step of their own, which every step that links build\native waits for: no program links the library while it is
 // being replaced (a dev and a release build use different profiles of it).
 dependencies :: proc(o: Options) -> bool {
-	// (Linux: the text backend and the accessibility adapter are built into Wren's Rust library, as on Windows by default)
-	features := ODIN_OS == .Windows ? "" : "text,a11y"
+	// (Linux: the text backend is built into Wren's Rust library; AccessKit is Windows-only)
+	features := ODIN_OS == .Windows ? "" : "text"
 	return deps.all({profile = VARIANTS[o.variant].native_release ? "release" : "quick", features = features, tracy = o.tracy, log = o.log})
 }
 
@@ -247,10 +247,10 @@ common_flags :: proc(o: Options) -> []string {
 		append(&f, fmt.tprintf("-extra-linker-flags:/STACK:%d %s%s", STACK_BYTES, toolbox.CRASH_LINKER_FLAGS, opt))
 	} else {
 		// --build-id: a crash report names the build (wrentool crash-symbolize); -z noexecstack: the stack not executable;
-		// --gc-sections (and lld --icf=safe when ld.lld is installed): drop dead functions/tables from static archives;
+		// --gc-sections, --icf=safe, -z pack-relative-relocs (DT_RELR), and -O2 (string tail merging) under ld.lld;
 		// threads, dlopen (openh264, libfido2, libva at run time), maths, Opus and ALSA. (--no-as-needed is scoped to
 		// -lpthread so --as-needed applies to the remaining shared libraries.) The 64 MiB stack is the soft limit at run time (ulimit -s), not a link option.
-		gc_flags := has_lld() ? "-fuse-ld=lld -Wl,--gc-sections -Wl,--icf=safe" : "-Wl,--gc-sections"
+		gc_flags := has_lld() ? "-fuse-ld=lld -Wl,--gc-sections -Wl,--icf=safe -Wl,-z,pack-relative-relocs -Wl,-O2" : "-Wl,--gc-sections"
 		append(&f, fmt.tprintf("-extra-linker-flags:%s %s -Wl,-z,noexecstack -Wl,--no-as-needed -lpthread -Wl,--as-needed -ldl -lm -lopus -lasound", toolbox.CRASH_LINKER_FLAGS, gc_flags), "-target:linux_amd64")
 	}
 	append(&f, fmt.tprintf("-define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=%d", TEMP_ALLOCATOR_BACKING_BYTES))

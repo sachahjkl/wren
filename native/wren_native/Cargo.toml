@@ -27,6 +27,10 @@ gt_text = { path = "../../ext/gui_toolkit/native/text", optional = true }
 # The toolkit's accessibility adapter (AccessKit and its UI Automation adapter: screen readers read the chrome and the
 # pages): the toolkit is then built with -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false.
 gt_a11y = { path = "../../ext/gui_toolkit/native/a11y", optional = true }
+# No log logger or tracing subscriber is ever installed in Wren: disable both at compile time in release/quick builds so
+# log::*/tracing::* call sites, metadata statics, format strings and Debug impls are stripped across all native crates.
+log = { version = "=0.4.34", default-features = false, features = ["release_max_level_off"] }
+tracing = { version = "=0.1.44", default-features = false, features = ["release_max_level_off"] }
 
 [features]
 text = ["dep:gt_text"]
