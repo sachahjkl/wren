@@ -214,8 +214,9 @@ IMPORTS := [?]wasm.Import{
 }
 
 usage :: proc() -> ! {
-	fmt.eprintln("usage: jsengine snapshot <raw.wasm> <out.wasm>")
-	fmt.eprintln("       jsengine precompile <image.wasm> <out.code> [a,b | native]")
+	fmt.eprintln("usage: jsengine snapshot <raw.wasm> <out.wasm> [-strip-names]")
+	fmt.eprintln("       jsengine pack <image.wasm> <out.wasmz> [-fast]")
+	fmt.eprintln("       jsengine precompile <image.wasm> <out.code> [a,b | native] [-packed <image.wasmz>]")
 	fmt.eprintln("       jsengine run [-image m.wasm] [-raw] [-e code] [file.js ...]")
 	fmt.eprintln("       jsengine bench [-image m.wasm] [-raw] [-iterations n] <dir> [names...]")
 	fmt.eprintln("       jsengine startup [-image m.wasm] [-raw] [-n count]")
@@ -420,6 +421,8 @@ cmd_hung :: proc(args: []string) {
 		wasm.destroy(r.inst)
 	}
 	failed := 0
+	ran := new(int)
+	defer free(ran)
 	for name, i in names {
 		for compiled in ([]bool{false, true}) {
 			current = name
@@ -429,15 +432,15 @@ cmd_hung :: proc(args: []string) {
 			r, ok := realm_new(image, c.raw, HUNG_CALL_MS)
 			if !ok { os.exit(1) }
 			if js.eval_script(r.inst, source, c.rest[0]) != .Ok { fmt.eprintln("hung: the script failed:", r.inst.last_error); os.exit(1) }
-			ran := 0
-			wasm.set_preempt_hook(proc(user: rawptr) { (^int)(user)^ += 1 }, &ran, tick_ms = HUNG_TICK_MS)
+			ran^ = 0
+			wasm.set_preempt_hook(proc(user: rawptr) { (^int)(user)^ += 1 }, ran, tick_ms = HUNG_TICK_MS)
 			res := js.eval_script(r.inst, transmute([]byte)fmt.tprintf("eval(HUNG_CASES[%d][1])", i), "hung")
 			wasm.set_preempt_hook(nil, nil)
 			spent := time.duration_milliseconds(time.tick_since(started))
-			good := res != .Ok && strings.contains(r.inst.last_error, "wasm.max_call_ms") && ran > 0
-			fmt.printfln("%s %4d turns %6.0f ms  %s%s", good ? "ok    " : "FAILED", ran, spent, name, compiled ? " (compiled)" : "")
+			good := res != .Ok && strings.contains(r.inst.last_error, "wasm.max_call_ms") && ran^ > 0
+			fmt.printfln("%s %4d turns %6.0f ms  %s%s", good ? "ok    " : "FAILED", ran^, spent, name, compiled ? " (compiled)" : "")
 			if !good {
-				fmt.eprintfln("hung: %s: %v, %d turns of the hook: %s", name, res, ran, r.inst.last_error)
+				fmt.eprintfln("hung: %s: %v, %d turns of the hook: %s", name, res, ran^, r.inst.last_error)
 				failed += 1
 			}
 			wasm.destroy(r.inst)
@@ -449,12 +452,17 @@ cmd_hung :: proc(args: []string) {
 	}
 }
 
-// jsengine polls: every loop of the image has its poll but those of POLL_EXEMPT, and they are there (a name that changed).
-cmd_polls :: proc(args: []string) {
-	c := parse_common(args)
-	setup()
-	stats, without, err := wasm.poll_audit(read_file(c.image))
-	if err != "" { fmt.eprintln("polls:", err); os.exit(1) }
+@(private = "file")
+named_sibling_path :: proc(path: string, allocator := context.temp_allocator) -> string {
+	ext := filepath.ext(path)
+	stem := strings.trim_suffix(path, ext)
+	return fmt.aprintf("%s_named%s", stem, ext, allocator = allocator)
+}
+
+@(private = "file")
+audit_polls_image :: proc(image: []byte, label: string) -> bool {
+	stats, without, err := wasm.poll_audit(image)
+	if err != "" { fmt.eprintfln("%s: %s", label, err); return false }
 	fmt.printfln("%d functions, %d loops, %d with a poll", stats.functions, stats.loops, stats.polled)
 	bad := 0
 	for name, loops in without {
@@ -463,9 +471,34 @@ cmd_polls :: proc(args: []string) {
 		if !exempt { bad += 1 }
 	}
 	if bad > 0 || stats.polled == 0 {
-		fmt.eprintln("polls: FAILED: loops without a poll, and no reason for it")
-		os.exit(1)
+		fmt.eprintfln("%s: FAILED: loops without a poll, and no reason for it", label)
+		return false
 	}
+	return true
+}
+
+// jsengine polls: every loop of the image has its poll but those of POLL_EXEMPT, and they are there (a name that changed).
+// When the shipped image has its "name" section stripped, verifies byte-for-byte that sibling <stem>_named.wasm strips to it, then audits the named copy.
+cmd_polls :: proc(args: []string) {
+	c := parse_common(args)
+	setup()
+	image := read_file(c.image)
+	audit_img := image
+	if !wasm.has_name_section(image) {
+		named_path := named_sibling_path(c.image)
+		if !os.exists(named_path) {
+			fmt.eprintfln("polls: %s has no name section and %s is missing", c.image, named_path)
+			os.exit(1)
+		}
+		named := read_file(named_path)
+		stripped, _, serr := wasm.strip_name_section(named)
+		if serr != "" || !slice.equal(stripped, image) {
+			fmt.eprintfln("polls: %s does not match %s after stripping the name section", named_path, c.image)
+			os.exit(1)
+		}
+		audit_img = named
+	}
+	if !audit_polls_image(audit_img, "polls") { os.exit(1) }
 }
 
 // The lines of the JIT in the profile of the page's functions: "count<TAB>count<TAB>jit: ...".
@@ -630,6 +663,7 @@ main :: proc() {
 	switch os.args[1] {
 	case "gc": cmd_gc(os.args[2:])
 	case "snapshot": cmd_snapshot(os.args[2:])
+	case "pack": cmd_pack(os.args[2:])
 	case "precompile": cmd_precompile(os.args[2:])
 	case "run": cmd_run(os.args[2:])
 	case "bench": cmd_bench(os.args[2:])
@@ -647,7 +681,9 @@ main :: proc() {
 }
 
 cmd_snapshot :: proc(args: []string) {
-	if len(args) != 2 { usage() }
+	if len(args) < 2 || len(args) > 3 { usage() }
+	strip_names := len(args) == 3 && args[2] == "-strip-names"
+	if len(args) == 3 && !strip_names { usage() }
 	raw := read_file(args[0])
 	// (an import of "env" is a foreign declaration that named no module: the browser provides none, so it is a trap at
 	// its first call. An optimised build may fold one away, a -o:minimal one keeps it: env.floor stopped every page's
@@ -674,22 +710,61 @@ cmd_snapshot :: proc(args: []string) {
 	wasm.destroy(probe)
 	polled, polls, ierr := wasm.poll_instrument(out, u32(word), POLL_EXEMPT)
 	if ierr != "" { fmt.eprintln("jsengine snapshot:", ierr); os.exit(1) }
-	if werr := os.write_entire_file(args[1], polled); werr != nil { fmt.eprintln("jsengine snapshot: cannot write", args[1]); os.exit(1) }
+	if !audit_polls_image(polled, "jsengine snapshot") { os.exit(1) }
+	written := polled
+	named_path := named_sibling_path(args[1])
+	if strip_names {
+		if werr := os.write_entire_file(named_path, polled); werr != nil { fmt.eprintln("jsengine snapshot: cannot write", named_path); os.exit(1) }
+		stripped, _, serr := wasm.strip_name_section(polled)
+		if serr != "" { fmt.eprintln("jsengine snapshot:", serr); os.exit(1) }
+		written = stripped
+	} else {
+		_ = os.remove(named_path)
+	}
+	if werr := os.write_entire_file(args[1], written); werr != nil { fmt.eprintln("jsengine snapshot: cannot write", args[1]); os.exit(1) }
 	fmt.printfln("snapshot: memory %d KiB, %d segments (%d KiB of data), %d globals, %d functions, %d loops, %d with a poll, %.1f ms -> %s (%d KiB)",
 		stats.memory_bytes / 1024, stats.segments, stats.data_bytes / 1024, stats.globals, polls.functions, polls.loops, polls.polled,
-		time.duration_milliseconds(time.tick_since(t0)), args[1], len(polled) / 1024)
+		time.duration_milliseconds(time.tick_since(t0)), args[1], len(written) / 1024)
 }
 
-// jsengine precompile <image.wasm> <out.code> [a,b | native]: the image's machine code, as the program ships it (src/wasm/shipped.odin), or for
+// jsengine pack <image.wasm> <out.wasmz> [-fast]: compresses the fallback Wasm image into WRENWZ01 (src/wasm/shipped.odin).
+cmd_pack :: proc(args: []string) {
+	if len(args) < 2 || len(args) > 3 { usage() }
+	fast := len(args) == 3 && args[2] == "-fast"
+	if len(args) == 3 && !fast { usage() }
+	t0 := time.tick_now()
+	raw := read_file(args[0])
+	packed, err := wasm.pack_image(raw, fast = fast)
+	if err != "" { fmt.eprintln("jsengine pack:", err); os.exit(1) }
+	if werr := os.write_entire_file(args[1], packed); werr != nil { fmt.eprintln("jsengine pack: cannot write", args[1]); os.exit(1) }
+	fmt.printfln("pack: %.1f ms -> %s (%d KiB from %d KiB)", time.duration_milliseconds(time.tick_since(t0)), args[1], len(packed) / 1024, len(raw) / 1024)
+}
+
+// jsengine precompile <image.wasm> <out.code> [a,b | native] [-packed <image.wasmz>]: the image's machine code, as the program ships it (src/wasm/shipped.odin), or for
 // other CPU features than the baseline it has, for a measure: those named, or this machine's.
 cmd_precompile :: proc(args: []string) {
 	if len(args) < 2 { usage() }
 	setup()
 	t0 := time.tick_now()
 	features: []string
-	native := len(args) > 2 && args[2] == "native"
-	if len(args) > 2 && !native { features = strings.split(args[2], ",") }
-	blob, err := wasm.shipped_make(read_file(args[0]), true, features, native)
+	native := false
+	packed_digest: wasm.Digest
+	for i := 2; i < len(args); i += 1 {
+		switch args[i] {
+		case "-packed":
+			if i + 1 >= len(args) { usage() }
+			i += 1
+			packed_digest, _ = wasm.digest(read_file(args[i]))
+		case "--pref":
+			if i + 1 >= len(args) { usage() }
+			i += 1
+		case "native":
+			native = true
+		case:
+			features = strings.split(args[i], ",")
+		}
+	}
+	blob, err := wasm.shipped_make(read_file(args[0]), true, features, native, packed_digest)
 	if err != "" { fmt.eprintln("jsengine precompile:", err); os.exit(1) }
 	if werr := os.write_entire_file(args[1], blob); werr != nil { fmt.eprintln("jsengine precompile: cannot write", args[1]); os.exit(1) }
 	fmt.printfln("precompile: %.1f ms -> %s (%d KiB)", time.duration_milliseconds(time.tick_since(t0)), args[1], len(blob) / 1024)

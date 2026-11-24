@@ -898,3 +898,200 @@ wt_start_rolls_back_on_import_failure :: proc(t: ^testing.T) {
 	testing.expect(t, wt.start_failed, "start_failed prevents retrying into half-initialized state")
 	testing.expect(t, !runtime_init(), "subsequent runtime_init still returns false")
 }
+
+@(test)
+strip_name_section_removes_only_name :: proc(t: ^testing.T) {
+	setup(t)
+	defer runtime_destroy()
+	image, _, perr := poll_instrument(wat(t, POLL_MODULE), POLL_WORD, {"counted"}, context.temp_allocator)
+	testing.expect_value(t, perr, "")
+	testing.expect(t, has_name_section(image), "wat module carries a name section")
+
+	stripped, copied, serr := strip_name_section(image)
+	defer if copied { delete(stripped) }
+	testing.expect_value(t, serr, "")
+	testing.expect(t, copied, "name section was removed")
+	testing.expect(t, len(stripped) < len(image), "stripped image is smaller")
+	testing.expect(t, !has_name_section(stripped), "name section is gone")
+	word, has := poll_word_of(stripped)
+	testing.expect(t, has && word == POLL_WORD, "wren.poll custom section is preserved")
+
+	again, copied2, serr2 := strip_name_section(stripped)
+	testing.expect_value(t, serr2, "")
+	testing.expect(t, !copied2 && raw_data(again) == raw_data(stripped), "stripping again is a zero-copy no-op")
+
+	o := options_default()
+	o.polled = true
+	inst := make_instance(t, stripped, o)
+	if inst != nil {
+		testing.expect(t, inst.wt.polled && inst.poll_word != nil, "stripped image runs on polled engine")
+		n, res := call_i32(inst, "counted")
+		testing.expect(t, res == .Ok && n == 1000, "stripped image executes")
+		destroy(inst)
+	}
+}
+
+@(test)
+shipped_header_metadata_parsing :: proc(t: ^testing.T) {
+	setup(t)
+	defer runtime_destroy()
+	image, _, perr := poll_instrument(wat(t, POLL_MODULE), POLL_WORD, {}, context.temp_allocator)
+	testing.expect_value(t, perr, "")
+	packed, pkerr := pack_image(image, fast = true)
+	defer delete(packed)
+	testing.expect_value(t, pkerr, "")
+	packed_digest, _ := sha256(packed)
+	raw_digest, _ := sha256(image)
+
+	blob, merr := shipped_make(image, true, packed_digest = packed_digest)
+	defer delete(blob)
+	testing.expect_value(t, merr, "")
+
+	h, meta, ok := shipped_header_parse(blob)
+	testing.expect(t, ok, "valid Shipped_Header parses")
+	testing.expect(t, h.image == raw_digest && h.packed == packed_digest, "header records both raw and packed digests")
+	testing.expect_value(t, meta.memory_export, "memory")
+	testing.expect_value(t, meta.table_export, "")
+	testing.expect(t, !meta.memory64 && meta.has_poll && meta.poll_word == POLL_WORD, "header records poll word and flags")
+
+	// Reject truncated, bad magic, and out-of-bounds name lengths.
+	_, _, ok = shipped_header_parse(blob[:size_of(Shipped_Header)])
+	testing.expect(t, !ok, "header without code payload is rejected")
+	bad := slice.clone(blob, context.temp_allocator)
+	bad[0] = 'X'
+	_, _, ok = shipped_header_parse(bad)
+	testing.expect(t, !ok, "bad magic is rejected")
+	bad = slice.clone(blob, context.temp_allocator)
+	bad[offset_of(Shipped_Header, mem_len)] = SHIPPED_NAME_MAX + 1
+	_, _, ok = shipped_header_parse(bad)
+	testing.expect(t, !ok, "oversized memory_export length is rejected")
+	bad = slice.clone(blob, context.temp_allocator)
+	bad[offset_of(Shipped_Header, table_len)] = SHIPPED_NAME_MAX + 1
+	_, _, ok = shipped_header_parse(bad)
+	testing.expect(t, !ok, "oversized table_export length is rejected")
+
+	// Windows targets require native unwind info (SEH); verify wt_engine_new accepts a Windows triple.
+	win_eng := wt_engine_new(runtime_settings_default(), true, "x86_64-pc-windows-msvc")
+	testing.expect(t, win_eng != nil, "wt_engine_new succeeds for Windows target with native unwind enabled")
+	if win_eng != nil { wasm_engine_delete(win_eng) }
+
+	// strip_cwasm_symtab refuses ELFs with program headers (e_phnum != 0).
+	elf_with_ph := slice.clone(blob[size_of(Shipped_Header):], context.temp_allocator)
+	if len(elf_with_ph) >= 64 {
+		elf_with_ph[56] = 1
+		elf_with_ph[57] = 0
+		_, ph_ok := strip_cwasm_symtab(elf_with_ph, context.temp_allocator)
+		testing.expect(t, !ph_ok, "ELF with non-zero e_phnum is returned untouched")
+	}
+}
+
+@(test)
+packed_image_shipped_hit_and_fallback_roundtrip :: proc(t: ^testing.T) {
+	dir := temp_dir(t, "packed")
+	defer testenv.remove_tree(dir)
+	defer shipped_set(nil)
+	setup(t, dir)
+	defer runtime_destroy()
+
+	image, _, perr := poll_instrument(wat(t, POLL_MODULE), POLL_WORD, {}, context.temp_allocator)
+	testing.expect_value(t, perr, "")
+	packed, pkerr := pack_image(image, fast = true)
+	defer delete(packed)
+	testing.expect_value(t, pkerr, "")
+	testing.expect(t, is_packed_image(packed), "packed magic set")
+
+	// Roundtrip unpack produces identical bytes with zero leaks.
+	unpacked, uerr := unpack_image(packed)
+	defer delete(unpacked)
+	testing.expect_value(t, uerr, "")
+	testing.expect(t, slice.equal(unpacked, image), "unpack roundtrips byte-for-byte")
+
+	packed_digest, _ := sha256(packed)
+	blob, merr := shipped_make(image, true, packed_digest = packed_digest)
+	defer delete(blob)
+	testing.expect_value(t, merr, "")
+
+	// 1. Normal startup: shipped hit via packed digest, zero compiles, zero disk writes.
+	setup(t, dir)
+	shipped_set(blob)
+	testing.expect(t, read_ahead(packed, &packed_digest, {polled = true}), "read_ahead hits shipped code for packed image")
+	o := options_default()
+	o.polled = true
+	inst, ierr := instance_create(packed, nil, nil, o, "packed-shipped", nil, &packed_digest)
+	testing.expectf(t, inst != nil, "instance_create packed shipped: %s", ierr)
+	delete(ierr)
+	if inst != nil {
+		testing.expect(t, inst.wt.polled && inst.poll_word != nil, "packed shipped runs polled")
+		n, res := call_i32(inst, "counted")
+		testing.expect(t, res == .Ok && n == 1000, "packed shipped runs")
+		destroy(inst)
+	}
+	cache_flush()
+	s := cache_stats()
+	testing.expectf(t, s.shipped_hits == 1 && s.compiles == 0 && s.disk_writes == 0 && s.shipped_refused == 0, "shipped hit: %v", s)
+
+	// 2. Fallback compile: configuration differs, shipped code refused -> unpacks, compiles, caches on disk, frees temp buffer.
+	setup(t, dir, proc(rs: ^Runtime_Settings) { rs.opt_level = .None })
+	shipped_set(blob)
+	inst, ierr = instance_create(packed, nil, nil, o, "packed-fallback", nil, &packed_digest)
+	testing.expectf(t, inst != nil, "instance_create packed fallback: %s", ierr)
+	delete(ierr)
+	if inst != nil {
+		n, res := call_i32(inst, "counted")
+		testing.expect(t, res == .Ok && n == 1000, "packed fallback runs")
+		destroy(inst)
+	}
+	cache_flush()
+	s = cache_stats()
+	testing.expectf(t, s.shipped_refused == 1 && s.compiles == 1 && s.disk_writes == 1, "fallback compiled and cached: %v", s)
+
+	// 3. Next start with same custom config: shipped refused, disk cache hits using Packed_Header metadata (no unpack).
+	setup(t, dir, proc(rs: ^Runtime_Settings) { rs.opt_level = .None })
+	shipped_set(blob)
+	inst, ierr = instance_create(packed, nil, nil, o, "packed-disk", nil, &packed_digest)
+	testing.expectf(t, inst != nil, "instance_create packed disk hit: %s", ierr)
+	delete(ierr)
+	if inst != nil {
+		n, res := call_i32(inst, "counted")
+		testing.expect(t, res == .Ok && n == 1000, "packed disk hit runs")
+		destroy(inst)
+	}
+	s = cache_stats()
+	testing.expectf(t, s.shipped_refused == 1 && s.disk_hits == 1 && s.compiles == 0, "disk cache hit: %v", s)
+
+	// 4. Corrupt compressed payload is rejected cleanly without leaking.
+	corrupt := slice.clone(packed, context.temp_allocator)
+	corrupt[len(corrupt) - 1] ~= 0xff
+	bad_raw, bad_err := unpack_image(corrupt)
+	testing.expect(t, bad_raw == nil && bad_err != "", "corrupt compressed payload rejected")
+
+	// 5. Untrusted page module (with import filter) cannot load WRENWZ01 containers.
+	allow_all := proc(m, f: string) -> bool { return true }
+	untrusted, u_err := instance_create(packed, nil, nil, options_default(), "page-wasm", allow_all)
+	testing.expect(t, untrusted == nil && strings.contains(u_err, "not a WebAssembly module"), "untrusted filter rejects packed container")
+	delete(u_err)
+
+	// 6. Stripped module produces a smaller .cwasm (without .symtab/.strtab) that still hits shipped code and yields Wasm backtraces on traps.
+	setup(t, dir)
+	mod_raw := wat(t, MODULE)
+	mod_stripped, mod_copied, mod_serr := strip_name_section(mod_raw)
+	defer if mod_copied { delete(mod_stripped) }
+	testing.expect_value(t, mod_serr, "")
+	blob_named, bn_err := shipped_make(mod_raw, false)
+	defer delete(blob_named)
+	testing.expect_value(t, bn_err, "")
+	blob_stripped, bs_err := shipped_make(mod_stripped, false)
+	defer delete(blob_stripped)
+	testing.expect_value(t, bs_err, "")
+	testing.expect(t, len(blob_stripped) < len(blob_named), "stripped shipped blob drops .name.wasm/.symtab/.strtab")
+	setup(t, dir)
+	shipped_set(blob_stripped)
+	tinst := make_instance(t, mod_stripped)
+	if tinst != nil {
+		_, tres := call_i32(tinst, "unreachable")
+		testing.expectf(t, tres == .Trapped && strings.contains(tinst.last_error, "\n    at "), "trap backtrace still works without unwind info or .symtab: %q", tinst.last_error)
+		destroy(tinst)
+	}
+	s = cache_stats()
+	testing.expectf(t, s.shipped_hits == 1 && s.compiles == 0 && s.shipped_refused == 0, "stripped shipped blob hit: %v", s)
+}

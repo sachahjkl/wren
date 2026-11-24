@@ -177,14 +177,28 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, no_compile := false, 
 	sync.mutex_unlock(&cache.lock)
 	if no_compile && !cache.disk && len(shipped_code) == 0 { return nil, "" }
 
-	info, aerr := analyze_image(image)
-	if aerr != "" { return nil, strings.clone(aerr, caller) }
 	filekey: Digest
 	path: string
 	defer delete(path)
-	module := shipped_load(image_key, polled)
+	module, meta := shipped_load(image_key, polled)
 	from_shipped := module != nil
 	from_disk := false
+	packed := is_packed_image(image)
+	has_meta := from_shipped
+	if !has_meta && packed {
+		_, pmeta, pok := packed_header_parse(image)
+		if !pok { return nil, strings.clone("malformed compressed Wasm image", caller) }
+		meta = pmeta
+		has_meta = true
+	}
+	info: Image_Info
+	if !has_meta {
+		aerr: string
+		info, aerr = analyze_image(image)
+		if aerr != "" { return nil, strings.clone(aerr, caller) }
+		meta = Shipped_Meta{memory_export = info.memory_export, table_export = info.table_export, memory64 = info.memory64}
+		has_meta = true
+	}
 	if cache.disk && module == nil {
 		fingerprint := polled ? wt.polled_fingerprint : wt.fingerprint
 		filekey, _ = sha256(key[:], fingerprint[:])
@@ -194,7 +208,20 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, no_compile := false, 
 	}
 	if module == nil && no_compile { return nil, "" }
 	if module == nil {
-		patched, copied := patch_image(image, info)
+		raw := image
+		unpacked: []byte
+		if packed {
+			uerr: string
+			unpacked, uerr = unpack_image(image)
+			if uerr != "" { return nil, strings.clone(uerr, caller) }
+			raw = unpacked
+			aerr: string
+			info, aerr = analyze_image(raw)
+			if aerr != "" { delete(unpacked); return nil, strings.clone(aerr, caller) }
+			meta = Shipped_Meta{memory_export = info.memory_export, table_export = info.table_export, memory64 = info.memory64}
+		}
+		defer delete(unpacked)
+		patched, copied := patch_image(raw, info)
 		e := wasmtime_module_new(engine, raw_data(patched), len(patched), &module)
 		if copied { delete(patched) }
 		if e != nil {
@@ -208,9 +235,9 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, no_compile := false, 
 	c = new(Cached)
 	c.key = key
 	c.module = module
-	c.memory_export = strings.clone(info.memory_export)
-	c.table_export = strings.clone(info.table_export)
-	c.memory64 = info.memory64
+	c.memory_export = strings.clone(meta.memory_export)
+	c.table_export = strings.clone(meta.table_export)
+	c.memory64 = meta.memory64
 	c.polled = polled
 	start, end: rawptr
 	wasmtime_module_image_range(module, &start, &end)

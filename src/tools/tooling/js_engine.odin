@@ -21,6 +21,7 @@ QJS_VERSION :: "0.17.0"
 // recursion that runs past it goes on in the engine's heap (ext/gui_toolkit/src/js/stack.odin, for which the host moves the stack pointer: the export). The engine's limit comes from what the linker made of this.
 WASM_STACK_BYTES :: 2 << 20
 JS_OUT_DEFAULT :: "build/js"
+JS_PACKED_NAME :: "wren_js.wasmz" // compressed fallback image embedded in the browser (src/js/image)
 JS_CODE_NAME :: "wren_js.code"   // the machine code of wren_js.wasm, which the program ships (src/wasm/shipped.odin, src/js/image/code)
 THIS_FILE :: "src/tools/tooling/js_engine.odin"
 BYTES_PER_KIB :: 1024
@@ -138,17 +139,22 @@ build_jsengine_tool :: proc(o: Js_Options) -> (exe: string, ok: bool) {
 	return exe, true
 }
 
-// The image's machine code for this system, from an image built elsewhere: only Windows builds the image, and code is made for the system it runs on (Linux: build.sh).
+// The image's machine code and compressed fallback for this system, from an image built elsewhere: only Windows builds the image, and code is made for the system it runs on (Linux: build.sh).
 build_js_code :: proc(options: Js_Options) -> bool {
 	o := options
 	if o.out == "" { o.out = JS_OUT_DEFAULT }
 	final := fmt.tprintf("%s/wren_js.wasm", o.out)
 	if !os.exists(final) { say(o.log, fmt.tprintfln("%s is missing", final)); return false }
+	packed := fmt.tprintf("%s/%s", o.out, JS_PACKED_NAME)
 	code := fmt.tprintf("%s/%s", o.out, JS_CODE_NAME)
 	// (the empty file test_all leaves where no image was built: no engine in the program, no code for it)
-	if info, err := os.stat(final, context.temp_allocator); err == nil && info.size == 0 { return os.write_entire_file(code, "") == nil }
+	if info, err := os.stat(final, context.temp_allocator); err == nil && info.size == 0 {
+		_ = os.remove(packed)
+		return os.write_entire_file(code, "") == nil
+	}
 	exe := build_jsengine_tool(o) or_return
-	return run({command = {exe, "precompile", final, code}, log = o.log}) == 0
+	if run({command = {exe, "pack", final, packed}, log = o.log}) != 0 { return false }
+	return run({command = {exe, "precompile", final, code, "-packed", packed}, log = o.log}) == 0
 }
 
 // Builds it unless it is up to date. False: said in the log.
@@ -158,9 +164,11 @@ build_js_engine :: proc(options: Js_Options) -> bool {
 	if o.odin_opt == "" { o.odin_opt = "speed" }
 	raw := fmt.tprintf("%s/wren_js_raw.wasm", o.out)
 	final := fmt.tprintf("%s/wren_js.wasm", o.out)
+	packed := fmt.tprintf("%s/%s", o.out, JS_PACKED_NAME)
+	code := fmt.tprintf("%s/%s", o.out, JS_CODE_NAME)
 	stamp_file := fmt.tprintf("%s/STAMP", o.out)
 	stamp := js_stamp(o)
-	if !o.force && os.exists(final) && (o.test262 || os.exists(fmt.tprintf("%s/%s", o.out, JS_CODE_NAME))) {
+	if !o.force && os.exists(final) && (o.test262 || (os.exists(packed) && os.exists(code))) {
 		known, err := os.read_entire_file(stamp_file, context.temp_allocator)
 		if err == nil && strings.trim_space(string(known)) == stamp {
 			say(o.log, fmt.tprintfln("wren_js up to date in %s", o.out))
@@ -186,7 +194,7 @@ build_js_engine :: proc(options: Js_Options) -> bool {
 	append(&cmd, odin_program(), "build", "native/js/odin", "-build-mode:obj", "-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-vet",
 		"-target-features:simd128", fmt.tprintf("-o:%s", o.odin_opt))
 	append(&cmd, ..o.odin_flags)
-	append(&cmd, "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit/src", "-define:WJ_JSRT=true", "-define:JSCAPI_EXPORT=true")
+	append(&cmd, "-collection:wb=src", "-collection:toolkit=ext/gui_toolkit/src", "-define:JSCAPI_EXPORT=true")
 	if o.test262 { append(&cmd, "-define:WREN_TEST262=true") }
 	append(&cmd, fmt.tprintf("-out:%s", object))
 	if run({command = cmd[:], log = o.log}) != 0 { say(o.log, "the odin build of native/js/odin failed\n"); return false }
@@ -201,8 +209,17 @@ build_js_engine :: proc(options: Js_Options) -> bool {
 	// Pre-initialize (src/tools/jsengine: runs wj_preinit under Wasmtime and writes the snapshot). Wasm calls run on the main thread: room for wasm.wasmtime.max_stack_bytes.
 	// (in <out>: the test image of test262 is built beside the browser's engine, at the same time)
 	exe := build_jsengine_tool(o) or_return
-	if run({command = {exe, "snapshot", raw, final}, log = o.log}) != 0 { say(o.log, "the pre-initialization of the engine failed\n"); return false }
-	if !o.test262 && run({command = {exe, "precompile", final, fmt.tprintf("%s/%s", o.out, JS_CODE_NAME)}, log = o.log}) != 0 { say(o.log, "the engine's machine code could not be made\n"); return false }
+	snap := make([dynamic]string, context.temp_allocator)
+	append(&snap, exe, "snapshot", raw, final)
+	if !o.names && !o.test262 { append(&snap, "-strip-names") }
+	if run({command = snap[:], log = o.log}) != 0 { say(o.log, "the pre-initialization of the engine failed\n"); return false }
+	if !o.test262 {
+		pack_cmd := make([dynamic]string, context.temp_allocator)
+		append(&pack_cmd, exe, "pack", final, packed)
+		if o.odin_opt == "minimal" { append(&pack_cmd, "-fast") }
+		if run({command = pack_cmd[:], log = o.log}) != 0 { say(o.log, "compressing the engine image failed\n"); return false }
+		if run({command = {exe, "precompile", final, code, "-packed", packed}, log = o.log}) != 0 { say(o.log, "the engine's machine code could not be made\n"); return false }
+	}
 	if os.write_entire_file(stamp_file, stamp) != nil { return false }
 	if fi, err := os.stat(final, context.temp_allocator); err == nil {
 		say(o.log, fmt.tprintfln("built %s (%d KiB)", final, fi.size / BYTES_PER_KIB))

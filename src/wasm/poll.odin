@@ -338,9 +338,14 @@ poll_called :: proc "c" (env: rawptr, caller: wt_caller, a: [^]wt_val_raw, n: ui
 POLL_IMPORTS := [?]Import{{module = POLL_IMPORT_MODULE, name = POLL_IMPORT_NAME, fn = poll_called}}
 
 // Whether an instance of `image` runs without epoch checks, and the address of its word.
+// For a compressed embedded image (WRENWZ01), reads the header directly without decompressing.
 @(private)
 polled_image :: proc(image: []byte, opt: Options) -> (word: u32, polled: bool) {
 	if !opt.polled || wt.polled_engine == nil { return 0, false }
+	if is_packed_image(image) {
+		_, meta, ok := packed_header_parse(image)
+		return meta.poll_word, ok && meta.has_poll
+	}
 	return poll_word_of(image)
 }
 

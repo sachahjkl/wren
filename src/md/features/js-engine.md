@@ -24,7 +24,11 @@ keeps the memory sandbox that the toolkit's native build does not have. Wren kee
   needs it, so it does not go to the toolkit.
 - **The glue and the bindings** (`native/js/odin`, generated from Web IDL by `src/tools/bindgen` and `api/js*.widl`).
 - **The build of the Wasm image** (`src/tools/tooling/js_engine.odin`, `src/tools/jsengine`). Its stamp follows the
-  glue's imports, `toolkit:` included, so a change in `ext/gui_toolkit/src/js` builds the image again.
+  glue's imports, `toolkit:` included, so a change in `ext/gui_toolkit/src/js` builds the image again. Normal builds
+  audit loop polls, strip the `"name"` custom section (keeping `wren_js_named.wasm` on disk for audit), compress the
+  embedded fallback image into `wren_js.wasmz` (`WRENWZ01`, zlib), and store export and poll metadata in `Shipped_Header`
+  (`wren_js.code`) so normal startup uses the machine code without decompressing the fallback Wasm image. `-names` keeps
+  function names and symbols for profiling.
 - **test262 in the Wasm engine** (`src/tools/test262`), interpreted and with the JIT. The suite and QuickJS-ng's
   configuration come from `toolbox.test262_fetch`: one pin for Wren's runner and the toolkit's native one.
 - **`wrentool engine rx-diff`** (`src/tools/rxdiff`): the regexp against QuickJS-ng's C. It needs the C sources and zig,

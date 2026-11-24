@@ -112,8 +112,9 @@ effective_features :: proc(rs: Runtime_Settings) -> Features {
 @(private)
 config_text :: proc(rs: Runtime_Settings, epoch: bool, allocator := context.temp_allocator) -> string {
 	f := effective_features(rs)
-	return fmt.aprintf("wasmtime %s|compiler %v|opt %v|fuel %v|epoch %v|nan %v|stack %d|reservation %d|guard %d|may_move false|features %v",
-		WASMTIME_VERSION, rs.compiler, rs.opt_level, rs.fuel, epoch, rs.nan_canonicalization, rs.max_stack_bytes, rs.memory_reservation, rs.memory_guard, f,
+	native_unwind := ODIN_OS == .Windows
+	return fmt.aprintf("wasmtime %s|compiler %v|opt %v|fuel %v|epoch %v|nan %v|unwind %v|stack %d|reservation %d|guard %d|may_move false|features %v",
+		WASMTIME_VERSION, rs.compiler, rs.opt_level, rs.fuel, epoch, rs.nan_canonicalization, native_unwind, rs.max_stack_bytes, rs.memory_reservation, rs.memory_guard, f,
 		allocator = allocator)
 }
 
@@ -138,6 +139,9 @@ wt_engine_new :: proc(rs: Runtime_Settings, epoch: bool, target := "", features:
 	}
 	wasmtime_config_parallel_compilation_set(c, rs.parallel_compilation)
 	wasmtime_config_profiler_set(c, u8(rs.profiler))   // (wasm.wasmtime.profiler: its choices are what the library has)
+	// Wasmtime requires native unwind tables on Windows (SEH); on Unix it walks frame pointers and omits ~0.7 MiB .eh_frame.
+	native_unwind := target != "" ? strings.contains(target, "windows") : (ODIN_OS == .Windows)
+	wasmtime_config_native_unwind_info_set(c, native_unwind)
 	wasmtime_config_cranelift_nan_canonicalization_set(c, rs.nan_canonicalization)
 	wasmtime_config_epoch_interruption_set(c, epoch)
 	wasmtime_config_consume_fuel_set(c, rs.fuel)
@@ -371,6 +375,10 @@ wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) 
 @(private)
 wt_instantiate :: proc(inst: ^Instance, image: []byte, filter: Import_Filter, digest: ^Digest = nil) -> (ok: bool, err: string) {
 	name := inst.name
+	// Untrusted page modules (those with an import filter) must supply a standard WebAssembly binary, never Wren's internal compressed container.
+	if filter != nil && is_packed_image(image) {
+		return false, fmt.aprintf("%s: not a WebAssembly module (bad magic or version)", name)
+	}
 	poll_word, polled := polled_image(image, inst.opt)
 	c, cerr := cache_acquire(image, digest, polled = polled)
 	defer delete(cerr)

@@ -287,3 +287,39 @@ patch_image :: proc(image: []byte, info: Image_Info, allocator := context.alloca
 	strings.write_bytes(&b, image[after:])
 	return b.buf[:], true
 }
+
+@(private = "file")
+is_name_custom_section :: proc(image: []byte, s: Section) -> bool {
+	if s.id != 0 { return false }
+	r := Reader{b = image[:s.end], pos = s.body}
+	return rd_name(&r) == "name" && !r.bad
+}
+
+// Whether `image` carries a WebAssembly "name" custom section.
+has_name_section :: proc(image: []byte) -> bool {
+	secs, err := sections_of(image)
+	if err != "" { return false }
+	for s in secs {
+		if is_name_custom_section(image, s) { return true }
+	}
+	return false
+}
+
+// `image` with every "name" custom section removed (a copy when any was present, else `image` itself).
+// Keeps every other custom section (such as wren.poll and target_features) and all standard sections intact.
+strip_name_section :: proc(image: []byte, allocator := context.allocator) -> (out: []byte, copied: bool, err: string) {
+	secs, serr := sections_of(image)
+	if serr != "" { return nil, false, serr }
+	found := false
+	for s in secs {
+		if is_name_custom_section(image, s) { found = true; break }
+	}
+	if !found { return image, false, "" }
+	res := make([dynamic]byte, 0, len(image), allocator)
+	append(&res, ..image[:8])
+	for s in secs {
+		if is_name_custom_section(image, s) { continue }
+		append(&res, ..image[s.start:s.end])
+	}
+	return res[:], true, ""
+}
