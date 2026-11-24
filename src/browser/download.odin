@@ -310,7 +310,7 @@ Download_State :: enum u8 {
 }
 
 // Work of ours that is out with a pointer to the download.
-Download_Work :: enum u8 { Write, Dialog, Move }
+Download_Work :: enum u8 { Open, Write, Dialog, Move }
 
 Download :: struct {
 	app:       ^App,
@@ -464,11 +464,10 @@ download_from_navigation :: proc(app: ^App, load: ^Doc_Load, task: base.Handle, 
 	append(&app.dls.list, d)
 	load.task = base.NIL_HANDLE
 
-	// the temporary file, next to where it will most likely go
+	// the temporary file, next to where it will most likely go (opened off the interface thread)
 	d.dir = strings.clone(download_dir(app))
-	if !download_open_temp(app, d) {
-		download_to(d, .Failed, fmt.tprintf("cannot write in %s", d.dir))
-	} else {
+	download_open_start(app, d)
+	if !download_finished(d) {
 		window_ask(app, .Downloads_Panel)   // the button's drop-down shows it running (downloads_ui.odin)
 		if app.dls.cfg.button == "never" { announce(app, .Info, fmt.tprintf("Downloading %s", d.name)) }
 		if app.dls.cfg.ask { download_dialog_open(app, d) }
@@ -478,22 +477,103 @@ download_from_navigation :: proc(app: ^App, load: ^Doc_Load, task: base.Handle, 
 }
 
 @(private = "file")
-download_open_temp :: proc(app: ^App, d: ^Download) -> bool {
+Open_Job :: struct {
+	d:      ^Download,
+	dir:    string,     // process_allocator
+	name:   string,     // process_allocator
+	suffix: string,     // process_allocator
+	temp:   string,     // process_allocator (set by worker on success)
+	handle: ^os.File,   // set by worker on success
+}
+
+// Opens the temporary file for `d` on the blocking pool (falling back to synchronous only when no pool runs).
+@(private)
+download_open_start :: proc(app: ^App, d: ^Download) {
+	pa := base.process_allocator()
+	suffix := app.dls.cfg.suffix != "" ? app.dls.cfg.suffix : ".wrenpart"
+	job := new(Open_Job, pa)
+	job^ = {
+		d      = d,
+		dir    = strings.clone(d.dir, pa),
+		name   = strings.clone(d.name, pa),
+		suffix = strings.clone(suffix, pa),
+	}
+	d.out += {.Open}
+	if profile_pool_ready(app) {
+		host.run_blocking(&app.blocking, download_open_work, download_open_done, job, download_open_discard)
+	} else {
+		download_open_work(job)
+		download_open_done(job)
+	}
+}
+
+@(private = "file")
+download_open_work :: proc(data: rawptr) {
+	j := (^Open_Job)(data)
+	pa := base.process_allocator()
 	for i in 0 ..< 1000 {
-		base_name := i == 0 ? d.name : fmt.tprintf("%s (%d)", d.name, i)
-		path := fsx.path_join(d.dir, strings.concatenate({base_name, app.dls.cfg.suffix}, context.temp_allocator))
+		base_name := i == 0 ? j.name : fmt.tprintf("%s (%d)", j.name, i)
+		path := fsx.path_join(j.dir, strings.concatenate({base_name, j.suffix}, context.temp_allocator))
 		// O_EXCL: the open fails when the name is taken (CREATE_NEW), so a name free when it opens stays this download's.
 		// A taken name is tried again under the next number; any other failure (an unwritable folder) stops at once, which
 		// os.exists distinguishes without inspecting a platform-specific error code.
 		h, err := os.open(path, os.O_WRONLY | os.O_CREATE | os.O_EXCL)
 		if err == nil {
-			d.handle = h
-			d.temp = strings.clone(path)
-			return true
+			j.handle = h
+			j.temp = strings.clone(path, pa)
+			return
 		}
-		if !os.exists(path) { return false }
+		if !os.exists(path) { return }
 	}
-	return false
+}
+
+@(private = "file")
+download_open_discard :: proc(data: rawptr) {
+	j := (^Open_Job)(data)
+	pa := base.process_allocator()
+	if j.d != nil { j.d.out -= {.Open} }
+	if j.handle != nil { _ = os.close(j.handle); j.handle = nil }
+	delete(j.dir, pa)
+	delete(j.name, pa)
+	delete(j.suffix, pa)
+	delete(j.temp, pa)
+	free(j, pa)
+}
+
+@(private = "file")
+download_open_done :: proc(data: rawptr) {
+	j := (^Open_Job)(data)
+	d := j.d
+	pa := base.process_allocator()
+	defer {
+		if j.handle != nil { _ = os.close(j.handle); j.handle = nil }
+		delete(j.dir, pa)
+		delete(j.name, pa)
+		delete(j.suffix, pa)
+		delete(j.temp, pa)
+		free(j, pa)
+	}
+	d.out -= {.Open}
+	if download_finished(d) {
+		// Cancelled or failed while opening: close and delete the temp file off the UI thread.
+		h := j.handle
+		j.handle = nil
+		download_close_and_remove(d.app, h, j.temp)
+		download_temp_drop(d)
+		request_frames(d.app, 2)
+		return
+	}
+	if j.handle == nil {
+		download_to(d, .Failed, fmt.tprintf("cannot write in %s", d.dir))
+		request_frames(d.app, 2)
+		return
+	}
+	d.handle = j.handle
+	j.handle = nil
+	delete(d.temp)
+	d.temp = strings.clone(j.temp)
+	download_advance(d)
+	request_frames(d.app, 2)
 }
 
 @(private = "file")
@@ -546,7 +626,7 @@ write_at :: proc(h: ^os.File, buf: []byte, offset: i64) -> (ok: bool, err: os.Er
 
 // The one place a download changes state (see the top of this part). Entering an end state stops the request, lets the
 // temporary file go, says so and writes the list; entering Moving hands the file to the move job.
-@(private = "file")
+@(private)
 download_to :: proc(d: ^Download, to: Download_State, why := "") {
 	if !download_transition_ok(d.state, to) { return }
 	d.state = to
@@ -554,19 +634,27 @@ download_to :: proc(d: ^Download, to: Download_State, why := "") {
 	switch to {
 	case .Receiving, .Flushing, .Awaiting_Path:
 	case .Moving:
-		if d.handle != nil { os.close(d.handle); d.handle = nil }
-		job := new(Move_Job)
-		job^ = {d = d, temp = strings.clone(d.temp), dir = strings.clone(d.dir), name = strings.clone(d.name), path = strings.clone(d.path)}
+		pa := base.process_allocator()
+		job := new(Move_Job, pa)
+		job^ = {
+			d      = d,
+			handle = d.handle,
+			temp   = strings.clone(d.temp, pa),
+			dir    = strings.clone(d.dir, pa),
+			name   = strings.clone(d.name, pa),
+			path   = strings.clone(d.path, pa),
+		}
+		d.handle = nil
 		d.out += {.Move}
 		if profile_pool_ready(app) {
-			host.run_blocking(&app.blocking, download_move_work, download_move_done, job)
+			host.run_blocking(&app.blocking, download_move_work, download_move_done, job, download_move_discard)
 		} else {
 			download_move_work(job)
 			download_move_done(job)
 		}
 	case .Done:
 		d.size = d.received
-		announce(app, .Good, fmt.tprintf("Saved %s", filepath.base(d.path)))
+		if profile_can_tell(app) { announce(app, .Good, fmt.tprintf("Saved %s", filepath.base(d.path))) }
 		notification_download(app, d)   // notification_shell.odin: told by the system when Wren is not in front
 		download_ended(d)
 	case .Failed, .Cancelled:
@@ -574,7 +662,7 @@ download_to :: proc(d: ^Download, to: Download_State, why := "") {
 		if to == .Failed {
 			delete(d.error)
 			d.error = strings.clone(why)
-			announce(app, .Bad, fmt.tprintf("Download failed: %s", d.name))
+			if profile_can_tell(app) { announce(app, .Bad, fmt.tprintf("Download failed: %s", d.name)) }
 		}
 		download_temp_drop(d)
 		download_ended(d)
@@ -582,15 +670,17 @@ download_to :: proc(d: ^Download, to: Download_State, why := "") {
 }
 
 // What comes next for a download that receives or writes: a chunk to the disk, the bound on memory, the next state.
-@(private = "file")
+@(private)
 download_advance :: proc(d: ^Download) {
 	app := d.app
+	flush_at := max(app.dls.cfg.flush, 1)
 	#partial switch d.state {
 	case .Receiving, .Flushing:
-		if .Write not_in d.out && len(d.pending) > 0 && (len(d.pending) >= app.dls.cfg.flush || d.state == .Flushing) {
-			job := new(Write_Job)
+		if .Open not_in d.out && .Write not_in d.out && d.handle != nil && len(d.pending) > 0 && (len(d.pending) >= flush_at || d.state == .Flushing) {
+			pa := base.process_allocator()
+			job := new(Write_Job, pa)
 			job.d, job.handle, job.offset = d, d.handle, d.queued
-			job.buf = make([]byte, len(d.pending))
+			job.buf = make([]byte, len(d.pending), pa)
 			copy(job.buf, d.pending[:])
 			d.queued += i64(len(d.pending))
 			clear(&d.pending)
@@ -599,17 +689,17 @@ download_advance :: proc(d: ^Download) {
 				host.run_blocking(&app.blocking, proc(data: rawptr) {
 					j := (^Write_Job)(data)
 					j.ok, j.err = write_at(j.handle, j.buf, j.offset)
-				}, write_done, job)
+				}, write_done, job, write_discard)
 			} else {
 				job.ok, job.err = write_at(job.handle, job.buf, job.offset)
 				write_done(job)
 				return   // (write_done advanced it)
 			}
 		}
-		// the request waits while a chunk is written: what the network brings meanwhile stays in it, one window at most
-		// (net.pause), so `pending` holds what came between two writes and the disk sets the pace
-		if d.task != base.NIL_HANDLE { fetch.task_pause(&app.loader, d.task, .Write in d.out) }
-		if d.state == .Flushing && .Write not_in d.out && len(d.pending) == 0 {
+		// the request waits while a chunk is written (or while opening once pending reaches the flush watermark):
+		// what the network brings meanwhile stays in it, one window at most (net.pause), so the disk sets the pace
+		if d.task != base.NIL_HANDLE { fetch.task_pause(&app.loader, d.task, .Write in d.out || (.Open in d.out && len(d.pending) >= flush_at)) }
+		if d.state == .Flushing && .Open not_in d.out && .Write not_in d.out && len(d.pending) == 0 {
 			// (no place yet and no dialog: the move job picks a free name in the folder)
 			download_to(d, d.path == "" && .Dialog in d.out ? .Awaiting_Path : .Moving)
 		}
@@ -619,10 +709,20 @@ download_advance :: proc(d: ^Download) {
 }
 
 @(private = "file")
+write_discard :: proc(data: rawptr) {
+	j := (^Write_Job)(data)
+	pa := base.process_allocator()
+	if j.d != nil { j.d.out -= {.Write} }
+	delete(j.buf, pa)
+	free(j, pa)
+}
+
+@(private = "file")
 write_done :: proc(data: rawptr) {
 	j := (^Write_Job)(data)
 	d := j.d
-	defer { delete(j.buf); free(j) }
+	pa := base.process_allocator()
+	defer { delete(j.buf, pa); free(j, pa) }
 	d.out -= {.Write}
 	if !j.ok { download_to(d, .Failed, fmt.tprintf("cannot write %s (%v)", d.temp, j.err)) }
 	if download_finished(d) { download_temp_drop(d); return }   // (it ended while the write was out)
@@ -630,56 +730,116 @@ write_done :: proc(data: rawptr) {
 	request_frames(d.app, 2)
 }
 
-// The temporary file of a download that ended without it goes (once no write holds its handle; again later is nothing).
+// The temporary file of a download that ended without it goes (once no open or write holds its handle; again later is nothing).
 @(private = "file")
 download_temp_drop :: proc(d: ^Download) {
-	if .Write in d.out { return }   // (write_done calls it again)
+	if .Open in d.out || .Write in d.out { return }   // (open_done / write_done calls it again)
 	clear(&d.pending)
 	shrink(&d.pending)
-	if d.handle != nil { os.close(d.handle); d.handle = nil }
-	if d.temp != "" { download_remove_file(d.app, d.temp); delete(d.temp); d.temp = "" }
+	h := d.handle
+	d.handle = nil
+	temp := d.temp
+	d.temp = ""
+	download_close_and_remove(d.app, h, temp)
+	delete(temp)
+}
+
+@(private = "file")
+Close_Remove_Job :: struct {
+	handle: ^os.File,
+	path:   string,   // process_allocator
+}
+
+@(private = "file")
+close_remove_discard :: proc(data: rawptr) {
+	j := (^Close_Remove_Job)(data)
+	pa := base.process_allocator()
+	if j.handle != nil { _ = os.close(j.handle); j.handle = nil }
+	delete(j.path, pa)
+	free(j, pa)
+}
+
+// Closes `handle` (if non-nil) and removes `path` (if non-empty) on the blocking pool: a slow disk or share never holds
+// the interface, and closing precedes removal on the same worker (required on Windows). At the end of the browser, when
+// the pool is gone, runs on this thread.
+@(private)
+download_close_and_remove :: proc(app: ^App, handle: ^os.File, path: string) {
+	if handle == nil && path == "" { return }
+	if !profile_pool_ready(app) {
+		if handle != nil { _ = os.close(handle) }
+		if path != "" { _ = os.remove(path) }
+		return
+	}
+	pa := base.process_allocator()
+	j := new(Close_Remove_Job, pa)
+	j^ = {handle = handle, path = strings.clone(path, pa)}
+	host.run_blocking(&app.blocking, proc(data: rawptr) {
+		j := (^Close_Remove_Job)(data)
+		if j.handle != nil { _ = os.close(j.handle); j.handle = nil }
+		if j.path != "" { _ = os.remove(j.path) }
+	}, close_remove_discard, j, close_remove_discard)
 }
 
 // Removes a file of a download on the blocking pool: a slow disk or share never holds the interface. At the end of the
 // browser, when the pool is gone, on this thread.
 download_remove_file :: proc(app: ^App, path: string) {
-	if path == "" { return }
-	if !profile_pool_ready(app) { _ = os.remove(path); return }
-	s := new(string)
-	s^ = strings.clone(path)
-	drop :: proc(data: rawptr) { s := (^string)(data); delete(s^); free(s) }
-	host.run_blocking(&app.blocking, proc(data: rawptr) { _ = os.remove((^string)(data)^) }, drop, s, drop)
+	download_close_and_remove(app, nil, path)
 }
 
 // The move of the temporary file to its place. The move can cross volumes (the Save dialog may put the file on another
 // drive than the download folder the temporary file sits in), so it goes through download_move (download_move_<os>.odin),
 // which copies across volumes when a rename cannot. Without a place chosen, a free name of the folder is found here too:
-// the lookups are the disk's, off the interface thread.
+// the lookups and closing the temporary handle are the disk's, off the interface thread.
 @(private = "file")
 Move_Job :: struct {
 	d:                     ^Download,
-	temp, dir, name, path: string,   // owned; `path` "": a free name in `dir`
-	error:                 string,   // owned: why it failed ("": moved)
+	handle:                ^os.File,   // closed on the worker before moving
+	temp, dir, name, path: string,     // process_allocator; `path` "": a free name in `dir`
+	error:                 string,     // process_allocator: why it failed ("": moved)
 }
 
 @(private = "file")
 download_move_work :: proc(data: rawptr) {
 	j := (^Move_Job)(data)
+	pa := base.process_allocator()
+	if j.handle != nil {
+		err := os.close(j.handle)
+		j.handle = nil
+		if err != nil {
+			j.error = fmt.aprintf("cannot close %s (%v)", j.temp, err, allocator = pa)
+			return
+		}
+	}
 	if j.path == "" {
 		taken :: proc(name: string, user: rawptr) -> bool { return os.exists(fsx.path_join((^string)(user)^, name)) }
-		delete(j.path)
-		j.path = fsx.path_join(j.dir, unique_file_name(j.name, taken, &j.dir), allocator = context.allocator)
+		delete(j.path, pa)
+		j.path = fsx.path_join(j.dir, unique_file_name(j.name, taken, &j.dir), allocator = pa)
 	}
-	if ok, why := download_move(j.temp, j.path); !ok { j.error = fmt.aprintf("cannot move it to %s (%s)", j.path, why) }
+	if ok, why := download_move(j.temp, j.path); !ok { j.error = fmt.aprintf("cannot move it to %s (%s)", j.path, why, allocator = pa) }
+}
+
+@(private = "file")
+download_move_discard :: proc(data: rawptr) {
+	j := (^Move_Job)(data)
+	pa := base.process_allocator()
+	if j.d != nil { j.d.out -= {.Move} }
+	if j.handle != nil { _ = os.close(j.handle); j.handle = nil }
+	delete(j.temp, pa); delete(j.dir, pa); delete(j.name, pa); delete(j.path, pa); delete(j.error, pa)
+	free(j, pa)
 }
 
 @(private = "file")
 download_move_done :: proc(data: rawptr) {
 	j := (^Move_Job)(data)
 	d := j.d
-	defer { delete(j.temp); delete(j.dir); delete(j.name); delete(j.path); delete(j.error); free(j) }
+	pa := base.process_allocator()
+	defer {
+		if j.handle != nil { _ = os.close(j.handle); j.handle = nil }
+		delete(j.temp, pa); delete(j.dir, pa); delete(j.name, pa); delete(j.path, pa); delete(j.error, pa)
+		free(j, pa)
+	}
 	d.out -= {.Move}
-	if d.path == "" { d.path, j.path = j.path, "" }
+	if d.path == "" && j.path != "" { d.path = strings.clone(j.path) }
 	if j.error != "" {
 		download_to(d, .Failed, j.error)
 	} else {
@@ -814,8 +974,9 @@ downloads_prune :: proc(app: ^App) {
 @(private = "file")
 download_free :: proc(d: ^Download) {
 	if d.scope != nil { base.scope_close(d.scope) }   // (nil once the process scope closed it; a running one is cancelled)
-	if d.handle != nil { os.close(d.handle) }
-	if d.state != .Done && d.temp != "" { download_remove_file(d.app, d.temp) }
+	h := d.handle
+	d.handle = nil
+	download_close_and_remove(d.app, h, d.state != .Done ? d.temp : "")
 	delete(d.url); delete(d.name); delete(d.dir); delete(d.temp); delete(d.path); delete(d.error)
 	delete(d.pending)
 	free(d)
@@ -1072,6 +1233,13 @@ downloads_apply :: proc(app: ^App) { download_cfg(app) }
 // is left goes; unfinished downloads lose their temporary file (each one's scope cancels it).
 downloads_shutdown :: proc(app: ^App) {
 	app.dls.closing = true
+	if .Loop in app.made {
+		// Discard any blocking callbacks posted after the last loop_drain so their job structs and handles never leak.
+		host.discard_posted(&app.loop, download_open_done, download_open_discard)
+		host.discard_posted(&app.loop, write_done, write_discard)
+		host.discard_posted(&app.loop, download_move_done, download_move_discard)
+		host.discard_posted(&app.loop, close_remove_discard, close_remove_discard)
+	}
 	host.profile_file_flush(&app.dls.file)   // (written on this thread from now on)
 	for d in app.dls.list { download_free(d) }
 	delete(app.dls.list)

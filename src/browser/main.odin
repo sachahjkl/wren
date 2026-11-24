@@ -242,6 +242,7 @@ App :: struct {
 	vfast:         Video_Fast,               // video_fast_path.odin: what each video drew in the last page frame
 	emoji_applied: string,                   // font_settings.odin: what the font state has: a path (heap), EMOJI_BUILTIN, or "" for none
 	prefs_apply_counts: [Pref_Group]int,     // prefs_apply.odin: how many times each subsystem was configured again
+	user_css:      User_Stylesheet_Cache,    // prefs_apply.odin: cached text of style.user_stylesheet (loaded off the UI thread)
 	gpu_slow:      map[i32]Slow_Step,        // gpu_steps.odin: the slow GPU steps
 	gpu_slow_frames: int,                    // gpu_steps.odin
 	gpu_kept:      [dynamic][3]i32,          // gpu_steps.odin: per recorded frame: kept effect results reused, redrawn, kept anew
@@ -1414,6 +1415,7 @@ apply_prefs :: proc(app: ^App, changed := "") {
 
 	page.settings_destroy(&app.page_settings)
 	app.page_settings = page.settings_from_prefs(&app.prefs)
+	user_stylesheet_sync(app)
 	for tab in tabs_all(app) { if tab.page != nil { page.configure_styles(tab.page) } }
 
 	settings_destroy(&app.cfg)
@@ -1434,6 +1436,7 @@ pages_follow_look :: proc(app: ^App) {
 	app.look_changed = false
 	page.settings_destroy(&app.page_settings)
 	app.page_settings = page.settings_from_prefs(&app.prefs)
+	user_stylesheet_sync(app)
 	for tab in tabs_all(app) { if tab.page != nil { page.configure_styles(tab.page) } }
 	request_frames(app, 3)
 }
@@ -1973,6 +1976,7 @@ app_start :: proc(args: []string) -> ^App {
 	host.phase("storage")
 	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "", &app.writer)
 	app.page_settings = page.settings_from_prefs(&app.prefs)
+	user_stylesheet_sync(app)
 	done += {.Dialogs_And_Loader}
 	host.phase("script runtime")
 	if !process_share_join(app) { log.error("wasm runtime init failed"); app_start_rollback(app, done, preload); return nil }   // process_share.odin: the Wasm engine, the bytecode cache... (the first App sets them up)

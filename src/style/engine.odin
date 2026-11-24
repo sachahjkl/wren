@@ -2,7 +2,6 @@ package style
 
 import "base:runtime"
 import "core:fmt"
-import "core:os"
 import "core:slice"
 import "core:time"
 import "core:strings"
@@ -245,6 +244,7 @@ engine_make :: proc(settings: Settings) -> ^Engine {
 clone_settings :: proc(s: Settings) -> Settings {
 	c := s
 	c.user_stylesheet = strings.clone(s.user_stylesheet)
+	c.user_stylesheet_css = strings.clone(s.user_stylesheet_css)
 	c.default_generic = strings.clone(s.default_generic)
 	c.family_serif = strings.clone(s.family_serif)
 	c.family_sans_serif = strings.clone(s.family_sans_serif)
@@ -367,10 +367,8 @@ engine_reset_builtin_sheets :: proc(e: ^Engine) {
 		text := ua_stylesheet_text(&e.settings, context.temp_allocator)
 		e.ua = add_sheet(e, text, .UA, base.NIL_HANDLE, "", false, "")
 	}
-	if e.settings.user_stylesheet != "" {
-		if data, err := os.read_entire_file(e.settings.user_stylesheet, context.temp_allocator); err == nil {
-			e.user = add_sheet(e, string(data), .User, base.NIL_HANDLE, "", false, "")
-		}
+	if e.settings.user_stylesheet_css != "" {
+		e.user = add_sheet(e, e.settings.user_stylesheet_css, .User, base.NIL_HANDLE, "", false, "")
 	}
 	// browser and user sheets sort before document sheets
 	slice.stable_sort_by(e.sheets[:], proc(a, b: ^Sheet) -> bool { return int(a.origin) < int(b.origin) })

@@ -100,6 +100,7 @@ app_pools_end :: proc(app: ^App) {
 	// left out when the pool ends, and a file written later goes on this thread)
 	host.file_writer_flush(&app.writer)
 	host.blocking_destroy(&app.blocking)
+	user_stylesheet_destroy(app)
 	host.file_writer_destroy(&app.writer)
 	app.made -= {.Pools}
 }
@@ -209,6 +210,7 @@ app_free :: proc(app: ^App) {
 	if .Window in app.made { app_windows_end(app) }
 	if .Fonts in app.made { app_fonts_end(app) }
 	if .Pools in app.made { app_pools_end(app) }
+	user_stylesheet_destroy(app)
 	licence_stop(app)   // license_shell.odin (after the windows' toolkit states: no answer of its tasks comes any more)
 	if .Loop in app.made { app_loop_end(app) }
 	if .Prefs in app.made { app_prefs_end(app) }

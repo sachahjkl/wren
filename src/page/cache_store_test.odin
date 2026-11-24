@@ -1,5 +1,7 @@
 package page
 
+import "core:fmt"
+import "core:os"
 import "wb:base"
 import "core:strings"
 import "core:testing"
@@ -81,6 +83,82 @@ cache_matching_and_quota :: proc(t: ^testing.T) {
 	testing.expect(t, cache_delete_entries(dir, origin, "c", "https://q.example/a", "GET", {}))
 	testing.expect(t, cache_delete_named(dir, origin, "c"))
 	testing.expect(t, !cache_has(dir, origin, "c"))
+	cache_store_shutdown()
+	_ = base.remove_tree(dir)
+}
+
+// Indexed lookups, write-behind read coherence, coalesced background flush, persistence across restart, and zero leaks.
+@(test)
+cache_indexed_async_flush_and_persistence :: proc(t: ^testing.T) {
+	test_pages(t)
+	dir := strings.concatenate({"build/tmp/cache_async_test_", base.unique_name(context.temp_allocator)}, context.temp_allocator)
+	defer base.remove_tree(dir)
+	origin := "https://indexed.example"
+	cache_open(dir, origin, "assets")
+
+	// Insert a burst of entries with query strings and Vary headers.
+	for i in 0 ..< 60 {
+		u := fmt.tprintf("https://indexed.example/item?id=%d", i)
+		payload := fmt.tprintf("payload-%d", i)
+		err := cache_put(dir, origin, "assets", Cached_Response{url = u, status = 200, headers = "Content-Type: text/plain\r\n"}, transmute([]byte)payload, 1 << 20)
+		testing.expect_value(t, err, Cache_Put_Error.None)
+	}
+	// Read-after-write coherence before flush (served from write-behind resident body or disk).
+	ids0 := cache_match_ids(dir, origin, "assets", "https://indexed.example/item?id=42", "GET", {})
+	testing.expect_value(t, len(ids0), 1)
+	if len(ids0) == 1 {
+		b, ok := cache_entry_body(dir, origin, "assets", ids0[0], context.temp_allocator)
+		testing.expect(t, ok)
+		testing.expect_value(t, string(b), "payload-42")
+	}
+
+	// Indexed replacement (single pass) updates status and body without duplicating entries.
+	err_rep := cache_put(dir, origin, "assets", Cached_Response{url = "https://indexed.example/item?id=42", status = 201}, transmute([]byte)string("updated-42"), 1 << 20)
+	testing.expect_value(t, err_rep, Cache_Put_Error.None)
+	ids_rep := cache_match_ids(dir, origin, "assets", "https://indexed.example/item?id=42", "GET", {})
+	testing.expect_value(t, len(ids_rep), 1)
+	if len(ids_rep) == 1 {
+		h, hok := cache_entry_head(dir, origin, "assets", ids_rep[0])
+		testing.expect(t, hok && h.status == 201)
+		b, bok := cache_entry_body(dir, origin, "assets", ids_rep[0], context.temp_allocator)
+		testing.expect(t, bok && string(b) == "updated-42")
+	}
+
+	// ignore_search uses by_base_url index and preserves insertion order.
+	all_base := cache_match_ids(dir, origin, "assets", "https://indexed.example/item", "GET", {ignore_search = true})
+	testing.expect_value(t, len(all_base), 60)
+
+	// Delete 10 entries via exact URL index.
+	for i in 0 ..< 10 {
+		u := fmt.tprintf("https://indexed.example/item?id=%d", i)
+		testing.expect(t, cache_delete_entries(dir, origin, "assets", u, "GET", {}))
+		testing.expect(t, !cache_delete_entries(dir, origin, "assets", u, "GET", {}))
+	}
+
+	// Flush background writer and verify on-disk files + post-flush disk read (outside lock).
+	cache_store_flush()
+	origin_dir := cache_origin_dir(dir, origin, context.temp_allocator)
+	testing.expect(t, os.exists(strings.concatenate({origin_dir, "/index.wcs"}, context.temp_allocator)), "index.wcs flushed to disk")
+	ids_after_flush := cache_match_ids(dir, origin, "assets", "https://indexed.example/item?id=42", "GET", {})
+	testing.expect_value(t, len(ids_after_flush), 1)
+	if len(ids_after_flush) == 1 {
+		b, ok := cache_entry_body(dir, origin, "assets", ids_after_flush[0], context.temp_allocator)
+		testing.expect(t, ok && string(b) == "updated-42")
+	}
+
+	// Simulate restart: shutdown clears RAM, reopening reloads index.wcs and reads bodies from disk.
+	expected_usage := cache_usage(dir, origin)
+	cache_store_shutdown()
+	testing.expect(t, cache_has(dir, origin, "assets"))
+	testing.expect_value(t, cache_usage(dir, origin), expected_usage)
+	reloaded_all := cache_match_ids(dir, origin, "assets", "https://indexed.example/item", "GET", {ignore_search = true})
+	testing.expect_value(t, len(reloaded_all), 50)
+	reloaded_42 := cache_match_ids(dir, origin, "assets", "https://indexed.example/item?id=42", "GET", {})
+	testing.expect_value(t, len(reloaded_42), 1)
+	if len(reloaded_42) == 1 {
+		b, ok := cache_entry_body(dir, origin, "assets", reloaded_42[0], context.temp_allocator)
+		testing.expect(t, ok && string(b) == "updated-42")
+	}
 	cache_store_shutdown()
 	_ = base.remove_tree(dir)
 }

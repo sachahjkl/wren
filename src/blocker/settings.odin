@@ -39,7 +39,9 @@ Settings :: struct {
 	console:          bool,
 }
 
-PREFS := [?]config.Def{
+// Split into two tables so each stays below Odin's large non-constant initializer threshold while keeping i18n.later calls.
+@(private = "file")
+PREFS_CORE := [?]config.Def{
 	{name = "blocker.enabled", kind = .Bool, default = {b = true},
 		description = i18n.later("The content blocker: requests to advertising, tracking and malware servers are stopped before they leave the machine, and the page elements they leave behind are hidden. Off: no request is looked at (no cost at all).")},
 	{name = "blocker.cosmetic.enabled", kind = .Bool, default = {b = true},
@@ -70,6 +72,10 @@ PREFS := [?]config.Def{
 		description = i18n.later("Redirects a list download follows (a list that moved). Only to https addresses; past this many, the download fails and the previous copy is kept.")},
 	{name = "blocker.log.capacity", kind = .Int, default = {i = 5000}, bounded = true, min = 100, max = 1_000_000,
 		description = i18n.later("Entries kept by the request log of the dashboard (Journal).")},
+}
+
+@(private = "file")
+PREFS_EXTRA := [?]config.Def{
 	{name = "blocker.log.always", kind = .Bool, default = {b = false},
 		description = i18n.later("Record requests in the log even when no dashboard shows it (the log costs a few allocations per request).")},
 	{name = "blocker.large_media_kb", kind = .Int, default = {i = 2048}, bounded = true, min = 1, max = 1 << 24, value_kind = .Size, unit = .Kibibyte,
@@ -100,7 +106,10 @@ PREFS := [?]config.Def{
 		description = i18n.later("Blocked requests of a page kept for the time graph of the panel.")},
 }
 
-register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
+register_prefs :: proc(p: ^config.Prefs) {
+	config.register(p, PREFS_CORE[:])
+	config.register(p, PREFS_EXTRA[:])
+}
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	return Settings{

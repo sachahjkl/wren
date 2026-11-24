@@ -5,6 +5,7 @@ import "core:strings"
 import "core:testing"
 import "core:unicode/utf8"
 import "wb:base"
+import "wb:host"
 
 // The list of finished downloads is written to the profile and read back: what ended stays (with its size, times, address
 // and path; a tab or a line end in a name is a space), what still runs is not written, and a restored one has no live part.
@@ -262,4 +263,79 @@ download_transitions :: proc(t: ^testing.T) {
 	}
 	// no state goes to itself (a second call is nothing)
 	for s in Download_State { testing.expect(t, !ok(s, s)) }
+}
+
+// Temp-file creation, writing, closing, moving, and cancel cleanup all run off the UI thread without leaks or races.
+@(test)
+download_async_open_cancel_and_close :: proc(t: ^testing.T) {
+	app := app_make()
+	defer app_free(app)
+	app_prefs_init(app)
+	app_settings_read(app)
+	app_loop_init(app)
+	app_pools_init(app, 2)
+	downloads_init(app)
+	defer downloads_shutdown(app)
+
+	dir := strings.concatenate({"build/tmp/dl_async_test_", base.unique_name(context.temp_allocator)}, context.temp_allocator)
+	_ = os.make_directory_all(dir)
+	defer base.remove_tree(dir)
+
+	// 1. Network finishes and transitions to .Flushing while .Open is still in flight on the blocking pool.
+	d := new(Download)
+	app.dls.ids += 1
+	d.app, d.id, d.total = app, app.dls.ids, 11
+	d.name = strings.clone("hello.bin")
+	d.dir = strings.clone(dir)
+	append(&app.dls.list, d)
+
+	download_open_start(app, d)
+	testing.expect(t, .Open in d.out, "temp open must run on the blocking pool, not synchronously on the UI thread")
+	testing.expect(t, d.handle == nil, "handle must not be opened synchronously on the UI thread")
+	payload := transmute([]byte)string("hello world")
+	append(&d.pending, ..payload)
+	d.received = i64(len(payload))
+	download_to(d, .Flushing)
+	download_advance(d)
+	testing.expect_value(t, d.state, Download_State.Flushing)
+
+	host.blocking_settle(&app.blocking)
+	testing.expect_value(t, d.state, Download_State.Done)
+	testing.expect(t, d.handle == nil, "handle must be closed on the worker")
+	testing.expect_value(t, d.temp, "")
+	testing.expect(t, d.out == {}, "no work left out after settle")
+	if got, err := os.read_entire_file(d.path, context.temp_allocator); testing.expect(t, err == nil, "final file readable") {
+		testing.expect_value(t, string(got), "hello world")
+	}
+
+	// 2. Download is cancelled while .Open is in flight: temp file is closed and removed off-thread.
+	d2 := new(Download)
+	app.dls.ids += 1
+	d2.app, d2.id, d2.total = app, app.dls.ids, -1
+	d2.name = strings.clone("cancelled.bin")
+	d2.dir = strings.clone(dir)
+	append(&app.dls.list, d2)
+
+	download_open_start(app, d2)
+	download_cancel(d2)
+	host.blocking_settle(&app.blocking)
+	testing.expect_value(t, d2.state, Download_State.Cancelled)
+	testing.expect(t, d2.handle == nil)
+	testing.expect_value(t, d2.temp, "")
+	testing.expect(t, d2.out == {})
+	testing.expect(t, !os.exists(strings.concatenate({dir, "/cancelled.bin.wrenpart"}, context.temp_allocator)), "cancelled temp file removed")
+
+	// 3. Unwritable/missing destination folder fails cleanly once open_work returns.
+	d3 := new(Download)
+	app.dls.ids += 1
+	d3.app, d3.id, d3.total = app, app.dls.ids, -1
+	d3.name = strings.clone("fail.bin")
+	d3.dir = strings.clone(strings.concatenate({dir, "/no_such_subdir/nested"}, context.temp_allocator))
+	append(&app.dls.list, d3)
+
+	download_open_start(app, d3)
+	host.blocking_settle(&app.blocking)
+	testing.expect_value(t, d3.state, Download_State.Failed)
+	testing.expect(t, d3.handle == nil)
+	testing.expect(t, d3.out == {})
 }

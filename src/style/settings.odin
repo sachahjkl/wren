@@ -37,6 +37,7 @@ Settings :: struct {
 	author_colors:       bool,      // false: the page's colors are ignored (high-contrast reading)
 	author_fonts:        bool,      // false: font-family / font-size from pages are ignored
 	user_stylesheet:     string,    // owned: path of a user CSS file ("" = none)
+	user_stylesheet_css: string,    // owned: pre-loaded CSS text of user_stylesheet (loaded off the UI thread)
 	color_scheme:        Color_Scheme,
 	reduced_motion:      bool,
 	prefers_contrast:    bool,
@@ -344,6 +345,7 @@ settings_default :: proc() -> Settings {
 
 settings_destroy :: proc(s: ^Settings) {
 	delete(s.user_stylesheet)
+	delete(s.user_stylesheet_css)
 	delete(s.default_generic)
 	delete(s.family_serif); delete(s.family_sans_serif); delete(s.family_monospace)
 	delete(s.family_cursive); delete(s.family_fantasy); delete(s.family_system_ui)
