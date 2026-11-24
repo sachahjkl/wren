@@ -21,6 +21,7 @@ import "wb:base"
 import "wb:host"
 import lay "wb:layout"
 import "wb:page"
+import "wb:style"
 
 Bf_Entry :: struct {
 	tab:      u64,              // Tab.id
@@ -130,7 +131,11 @@ bfcache_take :: proc(app: ^App, t: ^Tab) -> bool {
 		url = strings.clone(t.url), title = strings.clone(t.title),
 		image_sizes = t.image_sizes, web_fonts = t.web_fonts, no_store = t.nav_state.no_store, stored = host.now_ns(&app.loop)}
 	page_fonts_transfer(&app.page_render.fonts, t, e)   // its web faces stay with its layout
+	composite_forget(&t.layout)
+	text_clip_forget(&t.layout)
 	t.layout = {}
+	lay.release_spares(&e.layout)
+	if e.page.engine != nil { style.engine_release_spares(e.page.engine) }
 	t.web_font_page, t.web_fonts = nil, 0
 	t.nav = nil   // (the entry has it)
 	nav_fresh(t, t.kind)
@@ -154,8 +159,11 @@ bfcache_take_held :: proc(app: ^App, t: ^Tab) -> bool {
 		page_fonts_transfer(&app.page_render.fonts, t, e)
 		t.web_font_page, t.web_fonts = nil, 0
 	}
+	composite_forget(&h.layout)
+	text_clip_forget(&h.layout)
 	h.layout = {}
 	lay.release_spares(&e.layout)
+	if e.page.engine != nil { style.engine_release_spares(e.page.engine) }
 	bf_store(app, e)
 	return true
 }

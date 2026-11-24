@@ -183,6 +183,14 @@ Engine :: struct {
 	container_conds: [dynamic]^css.Cq_Node,     // ... the conditions of the document's @container rules (cq_size_settled), which live with their sheets
 	container_conds_lost: bool,                 // ... not all of them: a sheet went without a rebuild, or one of a shadow tree has some
 	container_pending: [dynamic]base.Handle,    // containers whose size changed since the styles were computed: restyle_containers restyles their subtrees
+	cq_settled_layout: rawptr,                  // last Layout settled by settle_container_queries (identity only)
+	cq_settled_passes: u64,                     // Layout.passes[.Full] + Layout.passes[.Incremental]
+	cq_settled_serial: u64,                     // Layout.serial
+	cq_settled_rebuilds: u64,                   // Engine.rebuilds
+	cq_settled_scale:  f32,
+	cq_containers:     [dynamic]base.Handle,    // cached query containers of (cq_containers_styled, cq_containers_serial)
+	cq_containers_styled: rawptr,
+	cq_containers_serial: u64,
 	rebuilds:  u64,                       // counts rebuilds: compiled keyframes and faces are stale after one
 	cur_base_url: string,                 // while flattening: the URL of the sheet being read
 
@@ -277,6 +285,7 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.container_sizes)
 	delete(e.container_pending)
 	delete(e.container_conds)
+	delete(e.cq_containers)
 	delete(e.media_seen)
 	delete(e.gates); delete(e.gate_on); delete(e.gate_touched)
 	if e.has_spare { base.arena_destroy(&e.spare) }
@@ -299,6 +308,11 @@ engine_release_spares :: proc(e: ^Engine) {
 	for a in e.spare_arenas { thread_arena_free(a) }
 	clear(&e.spare_arenas)
 	e.spare_arena_bytes = 0
+	delete(e.cq_containers)
+	e.cq_containers = nil
+	e.cq_containers_styled, e.cq_containers_serial = nil, 0
+	e.cq_settled_layout = nil
+	base.arena_destroy(&e.compile_scratch)
 }
 
 @(private)

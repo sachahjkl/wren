@@ -198,19 +198,24 @@ Element_boundingRect :: proc(c: ^Call, element: Api_Element) -> Api_DomRect {
 }
 
 Element_clientRectsPacked :: proc(c: ^Call, element: Api_Element) -> []u8 {
-	g, l, vp := element_geometry(c.page, H(element.handle))
-	if !g.ok { return nil }
-	// transformed: the bounds of the box, drawn where it is (no fragment is told apart)
+	h := H(element.handle)
+	l, vp := js_layout_now(c.page)
+	if l == nil || !l.valid { return nil }
+	bi := lay.box_index(l, h)
+	if bi == lay.NONE { return nil }
 	s := f32(vp.scale)
 	view := lay.view_make(l, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s, cull = false)
-	bi := lay.box_index(l, H(element.handle))
-	if bi == lay.NONE || !lay.space_plain(l, l.boxes[bi].space) { return pack_rects({g.client}) }
+	r, ok := lay.box_of_view(l, &view, h)
+	g := geometry_of_rects(l, vp, h, r, ok)
+	if !g.ok { return nil }
+	// transformed: the bounds of the box, drawn where it is (no fragment is told apart)
+	if !lay.space_plain(l, l.boxes[bi].space) { return pack_rects({g.client}) }
 	rects := make([dynamic]lay.Rect, 0, 4, context.temp_allocator)
-	if !lay.box_client_rects(l, &view, H(element.handle), &rects) || len(rects) <= 1 { return pack_rects({g.client}) }
+	if !lay.box_client_rects(l, &view, h, &rects) || len(rects) <= 1 { return pack_rects({g.client}) }
 	dom_rects := make([]Api_DomRect, min(len(rects), c.page.settings.dom.max_rects), context.temp_allocator)
 	for &d, i in dom_rects {
-		r := rects[i]
-		d = Api_DomRect{x = f64(r.min.x / s) - vp.scroll_x, y = f64(r.min.y / s) - vp.scroll_y, width = f64((r.max.x - r.min.x) / s), height = f64((r.max.y - r.min.y) / s)}
+		rc := rects[i]
+		d = Api_DomRect{x = f64(rc.min.x / s) - vp.scroll_x, y = f64(rc.min.y / s) - vp.scroll_y, width = f64((rc.max.x - rc.min.x) / s), height = f64((rc.max.y - rc.min.y) / s)}
 	}
 	return pack_rects(dom_rects)
 }
@@ -486,13 +491,19 @@ offset_parent :: proc(p: ^Page, h: base.Handle) -> base.Handle {
 
 @(private)
 offset_rect :: proc(p: ^Page, h: base.Handle) -> (x, y, w, hh: f64, ok: bool) {
-	g, _, _ := element_geometry(p, h)
+	l, vp := js_layout_now(p)
+	if l == nil || !l.valid || lay.box_index(l, h) == lay.NONE { return }
+	s := f32(vp.scale)
+	view := lay.view_make(l, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s, cull = false)
+	r, rok := lay.box_of_view(l, &view, h)
+	g := geometry_of_rects(l, vp, h, r, rok)
 	if !g.ok { return }
 	x, y = f64(g.border.min.x), f64(g.border.min.y)
 	w, hh = f64(g.border.max.x - g.border.min.x), f64(g.border.max.y - g.border.min.y)
 	parent := offset_parent(p, h)
 	if parent != base.NIL_HANDLE && parent != jd_body(p.doc) {
-		pg, _, _ := element_geometry(p, parent)
+		pr, pok := lay.box_of_view(l, &view, parent)
+		pg := geometry_of_rects(l, vp, parent, pr, pok)
 		if pg.ok { x -= f64(pg.padding.min.x); y -= f64(pg.padding.min.y) }
 	}
 	return x, y, w, hh, true
@@ -625,6 +636,10 @@ range_rects :: proc(c: ^Call, start: base.Handle, so: u32, end: base.Handle, eo:
 	}
 	seen := make(map[base.Handle]bool, 8, context.temp_allocator)
 	limit := p.settings.dom.max_rects
+	l, vp := js_layout_now(p)
+	if l == nil || !l.valid { return out }
+	s := f32(vp.scale)
+	view := lay.view_make(l, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s, cull = false)
 	for cur := first; cur != base.NIL_HANDLE && len(out) < limit; cur = dom.next_in_tree(d, cur, d.root) {
 		n := dom.get(d, cur)
 		target := cur
@@ -632,7 +647,8 @@ range_rects :: proc(c: ^Call, start: base.Handle, so: u32, end: base.Handle, eo:
 		if n.kind == .Element || n.kind == .Text {
 			if !(target in seen) {
 				seen[target] = true
-				if g, _, _ := element_geometry(p, target); g.ok { append(&out, g.client) }
+				r, ok := lay.box_of_view(l, &view, target)
+				if g := geometry_of_rects(l, vp, target, r, ok); g.ok { append(&out, g.client) }
 			}
 		}
 		if cur == last { break }

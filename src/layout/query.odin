@@ -510,6 +510,72 @@ box_point_to_local :: proc(r: Box_Rects, p: Vec2) -> Vec2 {
 	return mat_apply(r.inverse, p)
 }
 
+// Offset of space `s` for `viewport` and `doc_scroll` (identical to view_make(...).offsets[s]), without building a View.
+space_offset :: proc(l: ^Layout, s: i32, viewport: Vec2, doc_scroll: f32) -> Vec2 {
+	if s == NONE || int(s) >= len(l.spaces) { return {} }
+	sp := &l.spaces[s]
+	switch sp.kind {
+	case .Document: return {-doc_scroll_x_snapped(l), -doc_scroll}
+	case .Fixed: return {0, 0}
+	case .Scroll: return space_offset(l, sp.parent, viewport, doc_scroll) - scroll_offset_of(l, sp)
+	case .Sticky: return space_offset(l, sp.parent, viewport, doc_scroll) + sticky_offset(l, sp, viewport, doc_scroll)
+	case .Transform: return space_offset(l, sp.parent, viewport, doc_scroll)
+	case .Anchored: return space_offset(l, sp.parent, viewport, doc_scroll) + anchored_shift(l, sp, viewport, doc_scroll)
+	case .Flow: return space_offset(l, sp.parent, viewport, doc_scroll)
+	case .Column: return space_offset(l, sp.parent, viewport, doc_scroll) + sp.shift
+	}
+	return {}
+}
+
+// Order-independent fingerprint of every scroll container offset in `l` and `doc_scroll_x_snapped`: lets observers and
+// image distance tracking skip frames where no scroll position moved.
+scroll_digest :: proc(l: ^Layout) -> u64 {
+	if l == nil { return 0 }
+	h := u64(transmute(u32)doc_scroll_x_snapped(l))
+	if len(l.scroll) == 0 { return h }
+	sum: u64
+	for k, v in l.scroll {
+		x := u64(k) ~ (u64(transmute(u32)v.x) << 32) ~ u64(transmute(u32)v.y)
+		x = (x ~ (x >> 30)) * 0xbf58476d1ce4e5b9
+		x = (x ~ (x >> 27)) * 0x94d049bb133111eb
+		sum += x ~ (x >> 31)
+	}
+	return h ~ (sum * 0x9e3779b97f4a7c15)
+}
+
+// Untransformed border-box size, content-box size, and content offset inside the padding box (device px), without
+// building a View. Container queries and ResizeObserver read box dimensions, which do not depend on scroll or transforms.
+box_sizes :: proc(l: ^Layout, node: base.Handle) -> (border, content, pad_offset: Vec2, inline_box, ok: bool) {
+	bi := box_index(l, node)
+	if bi == NONE || !l.valid { return }
+	b := &l.boxes[bi]
+	inline_box = b.kind == .Inline
+	br := border_rect(b)
+	pr, cr: Rect
+	if inline_box {
+		pr = Rect{br.min + {b.border[3], b.border[0]}, br.max - {b.border[1], b.border[2]}}
+		cr = Rect{pr.min + {b.padding[3], b.padding[0]}, pr.max - {b.padding[1], b.padding[2]}}
+	} else {
+		pr = padding_rect(b)
+		cr = content_rect(b)
+	}
+	if l.frames_on && l.spaces[b.space].kind == .Flow {
+		fb := flow_bounds(l, l.spaces[b.space].box, br)
+		p_min, p_max := pr.min - br.min, br.max - pr.max
+		c_min, c_max := cr.min - pr.min, pr.max - cr.max
+		br = fb
+		pr = Rect{br.min + p_min, br.max - p_max}
+		cr = Rect{pr.min + c_min, pr.max - c_max}
+	}
+	return br.max - br.min, cr.max - cr.min, cr.min - pr.min, inline_box, true
+}
+
+// Content-box size of an element's box (device px), without building a View (container queries).
+content_size :: proc(l: ^Layout, node: base.Handle) -> (Vec2, bool) {
+	_, content, _, _, ok := box_sizes(l, node)
+	return content, ok
+}
+
 // Where an element's box is, for focus rings, carets and scroll-into-view. Inline boxes: the union of their fragments.
 // Under a transform the rects are the box's own (local) geometry; `transform`, `quad` and `bounds` say where it shows.
 box_of :: proc(l: ^Layout, node: base.Handle, viewport: Vec2, doc_scroll: f32) -> (Box_Rects, bool) {

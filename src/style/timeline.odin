@@ -1,7 +1,9 @@
 package style
 
+import "base:intrinsics"
 import "base:runtime"
 import "core:math"
+import "core:mem"
 import "core:slice"
 import "core:strings"
 import "wb:base"
@@ -48,22 +50,191 @@ Anim_Event :: struct {
 @(private)
 Phase :: enum u8 { Before, Active, After }
 
+// Heap-backed small bump arena: allocates zero bytes when nothing is allocated into it (plain scalar transitions,
+// animations without linear() easing or named timelines, scalar overlays) and avoids a 4-64 KiB OS virtual mapping
+// per active transition or animation.
+@(private = "file")
+SMALL_ARENA_MIN_BLOCK :: 256
+
+@(private = "file")
+Small_Arena :: struct {
+	blocks:    [dynamic][]u8,
+	used:      int,
+	allocator: runtime.Allocator,
+}
+
+@(private = "file")
+small_arena_init :: proc(a: ^Small_Arena, backing := context.allocator) {
+	a.allocator = backing
+}
+
+@(private = "file")
+small_arena_free_all :: proc(a: ^Small_Arena) {
+	if len(a.blocks) > 1 {
+		for blk in a.blocks[1:] { delete(blk, a.allocator) }
+		resize(&a.blocks, 1)
+	}
+	a.used = 0
+}
+
+@(private = "file")
+small_arena_destroy :: proc(a: ^Small_Arena) {
+	for blk in a.blocks { delete(blk, a.allocator) }
+	delete(a.blocks)
+	a^ = {}
+}
+
+@(private = "file")
+small_arena_allocator :: proc(a: ^Small_Arena) -> runtime.Allocator {
+	if a.allocator.procedure == nil { a.allocator = context.allocator }
+	return {procedure = small_arena_proc, data = a}
+}
+
+@(private = "file")
+small_arena_proc :: proc(allocator_data: rawptr, mode: runtime.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, location := #caller_location) -> ([]byte, runtime.Allocator_Error) {
+	a := (^Small_Arena)(allocator_data)
+	#partial switch mode {
+	case .Alloc, .Alloc_Non_Zeroed:
+		if size == 0 { return nil, nil }
+		align := max(alignment, 1)
+		if len(a.blocks) > 0 {
+			blk := a.blocks[len(a.blocks) - 1]
+			base_addr := uintptr(raw_data(blk))
+			aligned := mem.align_forward_uintptr(base_addr + uintptr(a.used), uintptr(align))
+			off := int(aligned - base_addr)
+			if off + size <= len(blk) {
+				a.used = off + size
+				out := blk[off : off + size]
+				if mode == .Alloc { mem.zero_slice(out) }
+				return out, nil
+			}
+		}
+		prev_len := len(a.blocks) > 0 ? len(a.blocks[len(a.blocks) - 1]) : 0
+		cap := max(SMALL_ARENA_MIN_BLOCK, prev_len * 2, size + align)
+		backing := a.allocator.procedure != nil ? a.allocator : base.process_allocator()
+		a.allocator = backing
+		if a.blocks.allocator.procedure == nil { a.blocks.allocator = backing }
+		blk, err := make([]u8, cap, backing, location)
+		if err != nil { return nil, err }
+		append(&a.blocks, blk)
+		base_addr := uintptr(raw_data(blk))
+		aligned := mem.align_forward_uintptr(base_addr, uintptr(align))
+		off := int(aligned - base_addr)
+		a.used = off + size
+		return blk[off : off + size], nil
+	case .Resize, .Resize_Non_Zeroed:
+		if size == 0 { return nil, nil }
+		if old_memory != nil && size <= old_size { return ([^]byte)(old_memory)[:size], nil }
+		out, err := small_arena_proc(allocator_data, mode == .Resize ? .Alloc : .Alloc_Non_Zeroed, size, alignment, nil, 0, location)
+		if err != nil { return nil, err }
+		if old_memory != nil && old_size > 0 { mem.copy_non_overlapping(raw_data(out), old_memory, min(old_size, size)) }
+		return out, nil
+	case .Free:
+		return nil, nil
+	case .Free_All:
+		small_arena_free_all(a)
+		return nil, nil
+	case .Query_Features:
+		set := (^runtime.Allocator_Mode_Set)(old_memory)
+		if set != nil { set^ = {.Alloc, .Alloc_Non_Zeroed, .Resize, .Resize_Non_Zeroed, .Free, .Free_All, .Query_Features} }
+		return nil, nil
+	}
+	return nil, .Mode_Not_Implemented
+}
+
+// Compact storage for one CSS property's computed value (its 1 or 2 fields from prop_slots[p]), replacing a full
+// ~1.8 KiB Computed + Group per endpoint in Transition.
+@(private = "file")
+PROP_VAL_INLINE_WORDS :: 10   // 80 bytes, 8-byte aligned
+
+@(private = "file")
+Prop_Val :: struct {
+	buf:  [PROP_VAL_INLINE_WORDS]u64,
+	heap: rawptr,
+	off1: u16,
+}
+
+@(private = "file")
+prop_val_ptrs :: #force_inline proc(v: ^Prop_Val, p: Prop) -> (p0, p1: rawptr) {
+	sl := &prop_slots[p]
+	b := v.heap != nil ? uintptr(v.heap) : uintptr(&v.buf[0])
+	p0 = rawptr(b)
+	if sl.size[1] > 0 { p1 = rawptr(b + uintptr(v.off1)) }
+	return
+}
+
+@(private = "file")
+prop_val_init :: proc(v: ^Prop_Val, src: ^Computed, p: Prop, alloc: runtime.Allocator) {
+	sl := &prop_slots[p]
+	a0 := sl.ti[0].align
+	a1 := sl.size[1] > 0 ? sl.ti[1].align : 1
+	off1 := sl.size[1] > 0 ? mem.align_forward_int(sl.size[0], max(a1, 1)) : 0
+	total := sl.size[1] > 0 ? off1 + sl.size[1] : sl.size[0]
+	v.off1 = u16(off1)
+	if total > size_of(v.buf) || max(a0, a1) > align_of(v.buf) {
+		v.heap, _ = mem.alloc(total, max(a0, a1, 8), alloc)
+	} else {
+		v.heap = nil
+	}
+	p0, p1 := prop_val_ptrs(v, p)
+	sb := group_base(src, sl.group)
+	mem.copy(p0, rawptr(sb + sl.off[0]), sl.size[0])
+	deep_clone(p0, sl.ti[0], alloc)
+	if sl.size[1] > 0 {
+		mem.copy(p1, rawptr(sb + sl.off[1]), sl.size[1])
+		deep_clone(p1, sl.ti[1], alloc)
+	}
+}
+
+@(private = "file")
+prop_val_equal :: proc(v: ^Prop_Val, c: ^Computed, p: Prop) -> bool {
+	sl := &prop_slots[p]
+	cb := group_base(c, sl.group)
+	p0, p1 := prop_val_ptrs(v, p)
+	if !deep_equal(p0, rawptr(cb + sl.off[0]), sl.ti[0]) { return false }
+	if sl.size[1] > 0 && !deep_equal(p1, rawptr(cb + sl.off[1]), sl.ti[1]) { return false }
+	return true
+}
+
+@(private = "file")
+prop_val_write :: proc(dst: ^Computed, v: ^Prop_Val, p: Prop) {
+	sl := &prop_slots[p]
+	db := group_base(dst, sl.group)
+	p0, p1 := prop_val_ptrs(v, p)
+	mem.copy(rawptr(db + sl.off[0]), p0, sl.size[0])
+	if sl.size[1] > 0 { mem.copy(rawptr(db + sl.off[1]), p1, sl.size[1]) }
+}
+
+@(private = "file")
+Prop_Computed_Scratch :: struct {
+	c:     Computed,
+	group: [GROUP_MAX_BYTES]u8,
+}
+
+@(private = "file")
+prop_val_scratch :: proc(sc: ^Prop_Computed_Scratch, v: ^Prop_Val, p: Prop) -> ^Computed {
+	sl := &prop_slots[p]
+	if sl.group != .Main { group_slot(&sc.c, sl.group)^ = &sc.group[0] }
+	prop_val_write(&sc.c, v, p)
+	return &sc.c
+}
+
 @(private)
 Transition :: struct {
-	prop:       Prop,
-	arena:      base.Arena,
-	from, to:   ^Computed,     // only `prop` is meaningful; owned by `arena`
-	reverse_start: ^Computed,  // the reversing-adjusted start value (CSS Transitions 1 §3)
-	start:      f64,           // document time of creation
-	delay:      f64,
-	duration:   f64,
-	easing:     Easing,
-	discrete:   bool,          // allow-discrete between values that do not interpolate
-	shortening: f64,           // the reversing shortening factor
-	start_sent: bool,
-	done:       bool,
-	key:        [2]f64,        // phase and eased progress of the last tick
-	serial:     u64,           // its identity for scripts (css_anim_api.odin): never reused
+	prop:          Prop,
+	arena:         Small_Arena,    // slices/strings/easing points owned by this transition (0 bytes for scalar props)
+	from, to:      Prop_Val,       // compact single-property start and end values
+	reverse_start: Prop_Val,       // the reversing-adjusted start value (CSS Transitions 1 §3)
+	start:         f64,            // document time of creation
+	delay:         f64,
+	duration:      f64,
+	easing:        Easing,
+	discrete:      bool,           // allow-discrete between values that do not interpolate
+	shortening:    f64,            // the reversing shortening factor
+	start_sent:    bool,
+	done:          bool,
+	key:           [2]f64,         // phase and eased progress of the last tick
+	serial:        u64,            // its identity for scripts (css_anim_api.odin): never reused
 }
 
 @(private)
@@ -81,7 +252,7 @@ Frame_Value :: struct {
 Anim_Run :: struct {
 	name:        string,       // heap
 	spec:        Animation_Spec,
-	spec_arena:  base.Arena,   // the spec's easing points
+	spec_arena:  Small_Arena,  // the spec's easing points and timeline name (0 bytes for typical animations)
 	frames_arena: base.Arena,
 	frames:      []Frame_Value,
 	props:       Prop_Set,
@@ -132,10 +303,10 @@ Element_Anim :: struct {
 
 @(private)
 Overlay :: struct {
-	c:     Computed,
-	arena: base.Arena,
-	tick:  u64,
-	sig:   u8,     // structure_sig of `c` as last applied (what layout saw)
+	c:         Computed,
+	arena:     Small_Arena,
+	tick:      u64,
+	sig:       u8,            // structure_sig of `c` as last applied (what layout saw)
 	pushed_by: base.Handle,   // the animated ancestor it inherits `pushed` from (push_inherited); NIL: none
 	pushed:    Prop_Set,
 }
@@ -278,18 +449,18 @@ element_free :: proc(tl: ^Timeline, ea: ^Element_Anim) {
 }
 
 @(private)
-transition_free :: proc(tr: ^Transition) { base.arena_destroy(&tr.arena); free(tr) }
+transition_free :: proc(tr: ^Transition) { small_arena_destroy(&tr.arena); free(tr) }
 
 @(private)
 run_free :: proc(r: ^Anim_Run) {
-	base.arena_destroy(&r.spec_arena)
+	small_arena_destroy(&r.spec_arena)
 	base.arena_destroy(&r.frames_arena)
 	delete(r.name)
 	free(r)
 }
 
 @(private)
-overlay_free :: proc(ov: ^Overlay) { base.arena_destroy(&ov.arena); free(ov) }
+overlay_free :: proc(ov: ^Overlay) { small_arena_destroy(&ov.arena); free(ov) }
 
 // An overlay is over: a layout of `s` may still point at its record (see styled_read_begin), until it has followed the journal.
 @(private)
@@ -383,7 +554,7 @@ timeline_restyled :: proc(tl: ^Timeline, doc: ^dom.Document, old, s: ^Styled, wa
 				if oc := before[f.h] or_else style_of(old, f.h); oc != nil && !hidden_in(old, doc, f.h, before) { old_eff = oc }
 			}
 			update_element(tl, doc, s, f.h, old_eff, c, hidden)
-			seen[f.h] = true
+			if ea != nil || f.h in tl.elements { seen[f.h] = true }
 		}
 		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev { append(&stack, Frame{ch, hidden}) }
 	}
@@ -496,6 +667,30 @@ drop_element :: proc(tl: ^Timeline, doc: ^dom.Document, h: base.Handle) {
 	delete_key(&tl.elements, h)
 }
 
+@(private = "file")
+ensure_element_anim :: proc(tl: ^Timeline, h: base.Handle, c: ^Computed) -> ^Element_Anim {
+	if ea := tl.elements[h] or_else nil; ea != nil { return ea }
+	ea := new(Element_Anim)
+	ea.node = h
+	ea.transitions = make([dynamic]^Transition)
+	ea.runs = make([dynamic]^Anim_Run)
+	ea.base = c
+	tl.base_gens += 1
+	ea.base_gen = tl.base_gens
+	tl.elements[h] = ea
+	tl.order_dirty = true
+	return ea
+}
+
+@(private = "file")
+has_valid_animation :: proc(tl: ^Timeline, c: ^Computed) -> bool {
+	if len(c.animation_name) == 0 { return false }
+	for name in c.animation_name {
+		if name != "" && keyframes_lookup(tl.engine, name) != nil { return true }
+	}
+	return false
+}
+
 @(private)
 update_element :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, h: base.Handle, old_eff, c: ^Computed, hidden: bool) {
 	if hidden || mode_of(tl) == .Off {
@@ -504,12 +699,31 @@ update_element :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, h: base.Ha
 	}
 	ea := tl.elements[h] or_else nil
 	if ea == nil {
-		ea = new(Element_Anim)
-		ea.node = h
-		ea.transitions = make([dynamic]^Transition)
-		ea.runs = make([dynamic]^Anim_Run)
-		tl.elements[h] = ea
-		tl.order_dirty = true
+		// Steady-state fast path: do not allocate Element_Anim or touch tl.elements unless an animation or
+		// transition actually starts.
+		want_anim := has_valid_animation(tl, c)
+		want_trans := old_eff != nil && has_transitions(c) && old_eff != c && !computed_equal(old_eff, c)
+		if !want_anim && !want_trans { return }
+		if want_anim {
+			ea = ensure_element_anim(tl, h, c)
+			sync_runs(tl, ea, c)
+		}
+		if want_trans {
+			if ea != nil {
+				update_transitions(tl, ea, old_eff, c)
+			} else {
+				update_transitions_new(tl, &ea, h, old_eff, c)
+			}
+		}
+		for r in tl.retired { run_free(r) }
+		clear(&tl.retired)
+		if ea != nil && len(ea.runs) == 0 && len(ea.transitions) == 0 && len(ea.scripts) == 0 {
+			element_free(tl, ea)
+			delete_key(&tl.elements, h)
+			tl.order_dirty = true
+		}
+		_ = s
+		return
 	}
 	ea.base = c
 	tl.base_gens += 1
@@ -542,6 +756,7 @@ clone_easing :: proc(e: Easing, a: runtime.Allocator) -> Easing {
 
 @(private)
 sync_runs :: proc(tl: ^Timeline, ea: ^Element_Anim, c: ^Computed) {
+	if len(c.animation_name) == 0 && len(ea.runs) == 0 { return }
 	matched := make([]bool, len(ea.runs), context.temp_allocator)
 	next := make([dynamic]^Anim_Run)
 	for name, i in c.animation_name {
@@ -559,20 +774,21 @@ sync_runs :: proc(tl: ^Timeline, ea: ^Element_Anim, c: ^Computed) {
 			r.last_now = tl.now
 			r.iteration = -1
 			r.key = {-1, -1, -1}
-			_ = base.arena_init_growing(&r.spec_arena, 16 * 1024)
-			_ = base.arena_init_growing(&r.frames_arena, 64 * 1024)
+			small_arena_init(&r.spec_arena)
+			_ = base.arena_init_growing(&r.frames_arena, 4 * 1024)
 			tl.running += 1
 		}
 		// the time since its last tick went by under the spec it had: a paused run was not ticked while the page drew nothing
 		if r.timeline.kind == .Auto && run_running(r) { r.local += tl.now - r.last_now }
 		r.last_now = tl.now
 		spec := animation_at(c, i)
-		base.arena_free_all(&r.spec_arena)
-		spec.easing = clone_easing(spec.easing, base.arena_allocator(&r.spec_arena))
+		small_arena_free_all(&r.spec_arena)
+		sa := small_arena_allocator(&r.spec_arena)
+		spec.easing = clone_easing(spec.easing, sa)
 		spec.name = r.name
 		r.index = i
 		r.timeline = spec.timeline
-		r.timeline.name = strings.clone(spec.timeline.name, base.arena_allocator(&r.spec_arena))
+		r.timeline.name = len(spec.timeline.name) > 0 ? strings.clone(spec.timeline.name, sa) : ""
 		spec.timeline, spec.range_start, spec.range_end = {}, {}, {}   // (in the style's memory: the sample reads them again)
 		if r.timeline.kind != .Auto {
 			spec = spec_normalised(spec)
@@ -628,15 +844,14 @@ remove_transition :: proc(tl: ^Timeline, ea: ^Element_Anim, tr: ^Transition, wit
 @(private)
 start_transition :: proc(tl: ^Timeline, ea: ^Element_Anim, p: Prop, from, to, reverse_start: ^Computed, duration, delay: f64, easing: Easing, discrete: bool, shortening: f64) -> ^Transition {
 	tr := new(Transition)
-	_ = base.arena_init_growing(&tr.arena, 16 * 1024)
-	a := base.arena_allocator(&tr.arena)
+	small_arena_init(&tr.arena)
+	a := small_arena_allocator(&tr.arena)
 	tr.prop = p
 	tl.css_serial += 1
 	tr.serial = tl.css_serial
-	tr.from, tr.to, tr.reverse_start = new(Computed, a), new(Computed, a), new(Computed, a)
-	clone_prop(tr.from, from, p, a)
-	clone_prop(tr.to, to, p, a)
-	clone_prop(tr.reverse_start, reverse_start, p, a)
+	prop_val_init(&tr.from, from, p, a)
+	prop_val_init(&tr.to, to, p, a)
+	prop_val_init(&tr.reverse_start, reverse_start, p, a)
 	tr.start = tl.now
 	tr.duration, tr.delay = duration, delay
 	tr.easing = clone_easing(easing, a)
@@ -664,36 +879,74 @@ transition_progress :: proc(tr: ^Transition, now: f64) -> (phase: Phase, eased: 
 transition_value :: proc(tr: ^Transition, now: f64, dst: ^Computed, ctx: ^Interp_Ctx) {
 	phase, t := transition_progress(tr, now)
 	prop_take(dst, tr.prop, ctx.alloc)
-	if phase == .Before { copy_prop(dst, tr.from, tr.prop); return }   // transitions fill backwards
-	if tr.discrete || !interpolate_prop(dst, tr.from, tr.to, tr.prop, t, ctx) { discrete_prop(dst, tr.from, tr.to, tr.prop, t) }
+	if phase == .Before { prop_val_write(dst, &tr.from, tr.prop); return }   // transitions fill backwards
+	a_sc, b_sc: Prop_Computed_Scratch
+	a := prop_val_scratch(&a_sc, &tr.from, tr.prop)
+	b := prop_val_scratch(&b_sc, &tr.to, tr.prop)
+	if tr.discrete || !interpolate_prop(dst, a, b, tr.prop, t, ctx) { discrete_prop(dst, a, b, tr.prop, t) }
+}
+
+@(private = "file")
+transition_specs :: proc(c: ^Computed, specs: ^[Prop]i32) -> (listed: Prop_Set) {
+	for &x in specs { x = -1 }
+	for tp, i in c.transition_property {
+		switch tp.kind {
+		case .All:
+			for p in Prop { if animatable(p) { specs[p] = i32(i); ps_add(&listed, p) } }
+		case .Prop:
+			if animatable(tp.prop) { specs[tp.prop] = i32(i); ps_add(&listed, tp.prop) }
+		case .Short:
+			for p in short_longhands(tp.short) { if animatable(p) { specs[p] = i32(i); ps_add(&listed, p) } }
+		case .None, .Unknown:
+		}
+	}
+	return
+}
+
+// Starts transitions for an element that has no Element_Anim yet: allocates Element_Anim only if a listed property
+// actually starts transitioning.
+@(private = "file")
+update_transitions_new :: proc(tl: ^Timeline, ea_ptr: ^^Element_Anim, h: base.Handle, old_eff, c: ^Computed) {
+	specs: [Prop]i32
+	listed := transition_specs(c, &specs)
+	if ps_empty(listed) { return }
+	ctx := Interp_Ctx{alloc = context.temp_allocator, space = tl.engine.settings.anim_color_space}
+	for word, wi in listed.bits {
+		for x := word; x != 0; x &= x - 1 {
+			p := Prop(wi * 64 + int(intrinsics.count_trailing_zeros(x)))
+			spec := transition_at(c, int(specs[p]))
+			duration, delay := reduced(tl, max(f64(spec.duration), 0), f64(spec.delay))
+			combined := max(duration, 0) + delay
+			if mode_of(tl) == .Off || combined <= 0 || prop_equal(old_eff, c, p) { continue }
+			ok := interpolable(old_eff, c, p, &ctx)
+			if !ok && !spec.allow_discrete { continue }
+			if tl.running >= tl.engine.settings.anim_max_running { continue }
+			if ea_ptr^ == nil { ea_ptr^ = ensure_element_anim(tl, h, c) }
+			start_transition(tl, ea_ptr^, p, old_eff, c, old_eff, duration, delay, spec.easing, !ok, 1)
+		}
+	}
 }
 
 @(private)
 update_transitions :: proc(tl: ^Timeline, ea: ^Element_Anim, old_eff, c: ^Computed) {
 	specs: [Prop]i32
-	for &x in specs { x = -1 }
-	listed := false
-	for tp, i in c.transition_property {
-		switch tp.kind {
-		case .All: for p in Prop { if animatable(p) { specs[p] = i32(i) } }; listed = true
-		case .Prop: if animatable(tp.prop) { specs[tp.prop] = i32(i); listed = true }
-		case .Short: for p in short_longhands(tp.short) { if animatable(p) { specs[p] = i32(i); listed = true } }
-		case .None, .Unknown:
-		}
-	}
+	listed := transition_specs(c, &specs)
 	// a running transition whose property is no longer listed is cancelled
 	for i := len(ea.transitions) - 1; i >= 0; i -= 1 {
 		tr := ea.transitions[i]
 		if specs[tr.prop] < 0 { remove_transition(tl, ea, tr, true) }
 	}
-	if !listed { return }
+	if ps_empty(listed) { return }
 	if len(ea.transitions) == 0 && computed_equal(old_eff, c) { return }
 	animated: Prop_Set
 	for r in ea.runs { animated = ps_union(animated, r.props) }
 	ctx := Interp_Ctx{alloc = context.temp_allocator, space = tl.engine.settings.anim_color_space}
-	for p in Prop {
-		if specs[p] < 0 || ps_has(animated, p) { continue }   // a CSS animation decides this property's value
-		process_property(tl, ea, p, transition_at(c, int(specs[p])), old_eff, c, &ctx)
+	for word, wi in listed.bits {
+		for x := word; x != 0; x &= x - 1 {
+			p := Prop(wi * 64 + int(intrinsics.count_trailing_zeros(x)))
+			if ps_has(animated, p) { continue }   // a CSS animation decides this property's value
+			process_property(tl, ea, p, transition_at(c, int(specs[p])), old_eff, c, &ctx)
+		}
 	}
 }
 
@@ -711,7 +964,7 @@ process_property :: proc(tl: ^Timeline, ea: ^Element_Anim, p: Prop, spec: Transi
 		start_transition(tl, ea, p, old_eff, c, old_eff, duration, delay, spec.easing, !ok, 1)
 		return
 	}
-	if prop_equal(running.to, c, p) { return }   // already heading there
+	if prop_val_equal(&running.to, c, p) { return }   // already heading there
 	current := new(Computed, context.temp_allocator)
 	current^ = c^
 	transition_value(running, tl.now, current, ctx)
@@ -720,12 +973,14 @@ process_property :: proc(tl: ^Timeline, ea: ^Element_Anim, p: Prop, spec: Transi
 		remove_transition(tl, ea, running, true)
 		return
 	}
-	if prop_equal(running.reverse_start, c, p) {
+	if prop_val_equal(&running.reverse_start, c, p) {
 		// going back to where it came from: shorten by how far it got (CSS Transitions 1 §3, reversing)
 		_, out := transition_progress(running, tl.now)
 		factor := clamp(abs(out * running.shortening + 1 - running.shortening), 0, 1)
 		d := delay < 0 ? delay * factor : delay
-		start_transition(tl, ea, p, current, c, running.to, duration * factor, d, spec.easing, !ok, factor)
+		to_sc: Prop_Computed_Scratch
+		to_c := prop_val_scratch(&to_sc, &running.to, p)
+		start_transition(tl, ea, p, current, c, to_c, duration * factor, d, spec.easing, !ok, factor)
 		remove_transition(tl, ea, running, true)
 		return
 	}
@@ -1257,12 +1512,12 @@ overlay_for :: proc(tl: ^Timeline, s: ^Styled, h: base.Handle) -> ^Overlay {
 	ov := tl.overlays[h] or_else nil
 	if ov == nil {
 		ov = new(Overlay)
-		_ = base.arena_init_growing(&ov.arena, 16 * 1024)
+		small_arena_init(&ov.arena)
 		ov.sig = structure_sig(base_style_of(s, h))
 		tl.overlays[h] = ov
 	}
 	if ov.tick != tl.tick {
-		base.arena_free_all(&ov.arena)
+		small_arena_free_all(&ov.arena)
 		b := base_style_of(s, h)
 		ov.c = b^
 		ov.tick = tl.tick
@@ -1296,7 +1551,7 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 			ea.base_gen = tl.base_gens
 		}
 		ov := overlay_for(tl, s, ea.node)
-		ctx := Interp_Ctx{alloc = base.arena_allocator(&ov.arena), space = tl.engine.settings.anim_color_space}
+		ctx := Interp_Ctx{alloc = small_arena_allocator(&ov.arena), space = tl.engine.settings.anim_color_space}
 		animated: Prop_Set
 		promised: Prop_Set   // (CSS Animations 1 §3: the box behaves as under will-change for what a running animation targets)
 		for r in ea.runs {
@@ -1398,7 +1653,7 @@ push_inherited :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, h: base.Ha
 		if ps_empty(take) { continue }
 		ov := overlay_for(tl, s, it.h)
 		ov.pushed_by, ov.pushed = h, take
-		oa := base.arena_allocator(&ov.arena)
+		oa := small_arena_allocator(&ov.arena)
 		group_take(&ov.c, .Inherited, oa)   // (shared with its cascaded style, or with the parent's)
 		for p in Prop { if ps_has(take, p) { copy_prop(&ov.c, it.src, p) } }
 		derive_fields(&ov.c, oa)

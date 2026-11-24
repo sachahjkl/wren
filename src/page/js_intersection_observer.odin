@@ -185,6 +185,7 @@ IntersectionObserver_observe :: proc(c: ^Call, observer: u64, target: Api_Elemen
 	for t in io.targets { if t.node == h { return .None } }
 	if !dom.pin(c.page.doc, h) { return fail(c, .Invalid_Handle, "not a live Element") }
 	append(&io.targets, Io_Target{node = h, index = -1})
+	c.page.web.observers.io_target_serial += 1
 	c.page.web.io_active, c.page.web.io_pending = true, true
 	return .None
 }
@@ -336,17 +337,34 @@ io_update :: proc(p: ^Page, f: ^Obs_Frame, io: ^Intersection_Observer, time: f64
 }
 
 @(private)
+io_key_of :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) -> Io_Key {
+	k := Io_Key{layout = l, mutations = p.doc != nil ? p.doc.mutations : 0, vp = vp, target_serial = p.web.observers.io_target_serial}
+	if l != nil && l.valid {
+		k.valid = true
+		k.passes = l.passes[.Full] + l.passes[.Incremental] + l.passes[.Refresh]
+		k.serial = l.serial
+		k.scroll_digest = lay.scroll_digest(l)
+	}
+	return k
+}
+
+@(private)
 intersection_observers_update :: proc(p: ^Page) {
 	w := p.web
 	if p.closed || !w.io_active { return }
 	w.io_pending = false
-	f := obs_frame(p)
+	l, vp := js_layout_now(p)
+	key := io_key_of(p, l, vp)
+	if w.observers.io_has_key && key == w.observers.io_key { return }
+	f := obs_frame_from(l, vp)
 	time := page_now_ms(p)
 	queued := false
 	// (no script runs here: the list cannot change under the loop)
 	for io in w.observers.intersection {
 		if len(io.targets) > 0 && io_update(p, &f, io, time) { queued = true }
 	}
+	w.observers.io_key = key
+	w.observers.io_has_key = true
 	if queued && !w.observers.io_task {
 		w.observers.io_task = true
 		post_page_task(p, io_deliver, nil)

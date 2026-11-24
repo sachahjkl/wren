@@ -126,7 +126,7 @@ layout_job_run :: proc(j: ^Layout_Job) {
 // outgrew it mapped more blocks, gave them back to the system at the end (free_all) and faulted fresh pages in at the
 // next pass, every pass of a large page. Past PAGE_TEMP_KEEP_MAX the block goes back to its first size.
 @(private = "file") PAGE_TEMP_FIRST :: 4 << 20
-@(private = "file") PAGE_TEMP_KEEP_MAX :: 512 << 20
+@(private) PAGE_TEMP_KEEP_MAX :: 32 << 20
 @(private = "file") PAGE_TEMP_ROOM_NUM, PAGE_TEMP_ROOM_DEN :: 5, 4   // the block: what the largest pass used times 5 / 4
 
 @(private = "file")

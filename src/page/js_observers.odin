@@ -11,10 +11,39 @@ package page
 import "wb:base"
 import lay "wb:layout"
 
+@(private)
+Ro_Key :: struct {
+	layout:        rawptr,
+	valid:         bool,
+	layout_passes: u64,
+	layout_serial: u64,
+	mutations:     u64,
+	scale:         f64,
+	target_serial: u64,
+}
+
+@(private)
+Io_Key :: struct {
+	layout:        rawptr,
+	valid:         bool,
+	passes:        u64,
+	serial:        u64,
+	mutations:     u64,
+	scroll_digest: u64,
+	vp:            Viewport,
+	target_serial: u64,
+}
+
 Layout_Observers :: struct {
-	resize:       [dynamic]^Resize_Observer,         // in creation order
-	intersection: [dynamic]^Intersection_Observer,
-	io_task:      bool,                              // the task that delivers intersection entries is queued
+	resize:           [dynamic]^Resize_Observer,         // in creation order
+	intersection:     [dynamic]^Intersection_Observer,
+	io_task:          bool,                              // the task that delivers intersection entries is queued
+	ro_target_serial: u64,                               // bumped when a ResizeObserver target is observed or changes box
+	ro_key:           Ro_Key,                            // last state for which ResizeObserver converged
+	ro_has_key:       bool,
+	io_target_serial: u64,                               // bumped when an IntersectionObserver target is observed
+	io_key:           Io_Key,                            // last state for which IntersectionObserver ran
+	io_has_key:       bool,
 }
 
 // The layout of one stretch of the rendering update, read once: the view (where every space is for the viewport and the
@@ -29,14 +58,19 @@ Obs_Frame :: struct {
 }
 
 @(private)
-obs_frame :: proc(p: ^Page) -> (f: Obs_Frame) {
-	l, vp := js_layout_now(p)
+obs_frame_from :: proc(l: ^lay.Layout, vp: Viewport) -> (f: Obs_Frame) {
 	f.l, f.vp = l, vp
 	if l == nil || !l.valid { return }
 	s := f32(vp.scale)
 	f.view = lay.view_make(l, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s, cull = false)
 	f.ok = true
 	return
+}
+
+@(private)
+obs_frame :: proc(p: ^Page) -> Obs_Frame {
+	l, vp := js_layout_now(p)
+	return obs_frame_from(l, vp)
 }
 
 @(private)
@@ -55,8 +89,8 @@ observers_refresh :: proc(p: ^Page) {
 	w.ro_active, w.io_active = false, false
 	for ro in w.observers.resize { if len(ro.targets) > 0 { w.ro_active = true; break } }
 	for io in w.observers.intersection { if len(io.targets) > 0 { w.io_active = true; break } }
-	if !w.ro_active { w.ro_pending = false }
-	if !w.io_active { w.io_pending = false }
+	if !w.ro_active { w.ro_pending = false; w.observers.ro_has_key = false }
+	if !w.io_active { w.io_pending = false; w.observers.io_has_key = false }
 }
 
 @(private)

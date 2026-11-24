@@ -1,5 +1,6 @@
 package browser
 
+import "core:slice"
 import "core:strings"
 import "toolkit:font"
 import lucide "toolkit:lucide"
@@ -33,17 +34,42 @@ Web_Face :: struct {
 	wght, wdth, ital, slnt: bool,   // variable axes of the face
 }
 
+// Default LRU cap for Page_Fonts.resolved so long sessions do not accumulate unbounded cascade cache entries.
+FONT_RESOLVED_MAX :: 2048
+
+Font_Cache_Key :: struct {
+	scope:      rawptr,            // nil when no web face of pf.scope matches the requested families (shared across tabs)
+	hash_a:     u64,               // 128-bit dual hash of families, features, variations, and language
+	hash_b:     u64,
+	weight:     u16,
+	stretch10:  i32,               // int(req.stretch * 10)
+	style:      style.Font_Style,
+	n_families: u16,
+	n_features: u16,
+	n_vars:     u16,
+	lang_len:   u16,
+}
+
+Resolved_Font :: struct {
+	id:  font.Font_Id,
+	lru: u64,
+	web: bool,                     // true: owned by pf.shared / pf.owned; false: tracked in pf.shared_cascades
+}
+
 Page_Fonts :: struct {
-	state:    ^font.State,
-	ui:       font.Font_Id,
-	web:      [dynamic]Web_Face,
-	resolved: map[string]font.Font_Id,             // request -> cascade
-	owned:    map[rawptr][dynamic]font.Font_Id,    // fonts made from an owner's web faces
-	scope:    rawptr,                              // whose web faces the layout sees
-	emoji, math, fangsong: string,                 // owned: families of the generic families style does not map
-	scanned:  bool,                                // compatibility: start-up preloading happened
-	shared:   Shared_Faces,                        // web faces by content, for every tab and page (web_font_faces.odin)
-	blocking: Blocking_Text,                       // text drawn invisible while its web font loads (web_font_faces.odin)
+	state:           ^font.State,
+	ui:              font.Font_Id,
+	web:             [dynamic]Web_Face,
+	resolved:        map[Font_Cache_Key]Resolved_Font,    // request -> cascade (bounded LRU)
+	resolved_lru:    u64,
+	resolved_max:    int,                                 // 0 uses FONT_RESOLVED_MAX
+	owned:           map[rawptr][dynamic]font.Font_Id,    // fonts made from an owner's web faces
+	shared_cascades: map[font.Font_Id]struct{},           // non-web cascades owned by Page_Fonts (unloaded on eviction / destroy)
+	scope:           rawptr,                              // whose web faces the layout sees
+	emoji, math, fangsong: string,                        // owned: families of the generic families style does not map
+	scanned:         bool,                                // compatibility: start-up preloading happened
+	shared:          Shared_Faces,                        // web faces by content, for every tab and page (web_font_faces.odin)
+	blocking:        Blocking_Text,                       // text drawn invisible while its web font loads (web_font_faces.odin)
 }
 
 // Names pages use for fonts this system may not have, and what stands for them: the font of a generic family
@@ -61,8 +87,10 @@ ALIASES := [?][2]string{
 
 page_fonts_init :: proc(pf: ^Page_Fonts, state: ^font.State, ui_font: font.Font_Id) {
 	pf.state, pf.ui = state, ui_font
-	pf.resolved = make(map[string]font.Font_Id)
+	pf.resolved = make(map[Font_Cache_Key]Resolved_Font)
+	pf.resolved_max = FONT_RESOLVED_MAX
 	pf.owned = make(map[rawptr][dynamic]font.Font_Id)
+	pf.shared_cascades = make(map[font.Font_Id]struct{})
 	pf.emoji, pf.math, pf.fangsong = strings.clone(style.FONT_EMOJI), strings.clone(style.FONT_MATH), strings.clone("FangSong")
 }
 
@@ -73,6 +101,8 @@ page_fonts_destroy :: proc(pf: ^Page_Fonts) {
 	for o in owners { page_fonts_drop(pf, o) }
 	shared_faces_destroy(pf)
 	blocking_text_destroy(&pf.blocking)
+	for id in pf.shared_cascades { font.unload(pf.state, id) }
+	delete(pf.shared_cascades)
 	delete(pf.web)
 	delete(pf.owned)
 	page_fonts_forget(pf)
@@ -85,7 +115,6 @@ page_fonts_destroy :: proc(pf: ^Page_Fonts) {
 page_fonts_forget :: proc(pf: ^Page_Fonts) {
 	canvas_outlines_clear()      // (canvas glyph outlines are keyed by font id)
 	canvas_color_glyphs_clear()  // (so are color-glyph bitmaps)
-	for k in pf.resolved { delete(k) }
 	clear(&pf.resolved)
 }
 
@@ -329,23 +358,93 @@ generic_name :: proc(pf: ^Page_Fonts, name: string, settings: ^style.Settings) -
 	return name
 }
 
+// Scope key for a request: nil unless pf.scope owns a web font face matching one of req.families, so pure system font
+// cascades are shared across all tabs.
+@(private = "file")
+request_web_scope :: proc(pf: ^Page_Fonts, req: ^lay.Font_Request, settings: ^style.Settings) -> rawptr {
+	if pf.scope == nil || len(pf.web) == 0 { return nil }
+	has_scoped := false
+	for w in pf.web { if w.owner == pf.scope { has_scoped = true; break } }
+	if !has_scoped { return nil }
+	for f in req.families {
+		name := generic_name(pf, base.ascii_lower(strings.trim_space(f)), settings)
+		for w in pf.web { if w.owner == pf.scope && w.family == name { return pf.scope } }
+	}
+	return nil
+}
+
+@(private = "file")
+font_hash_mix :: #force_inline proc(ha, hb: ^u64, v: u64) {
+	ha^ = (ha^ ~ v) * 0x100000001b3
+	hb^ = (hb^ ~ (v + 0x9e3779b97f4a7c15)) * 0xbf58476d1ce4e5b9
+}
+
+@(private = "file")
+font_hash_bytes :: proc(ha, hb: ^u64, s: string) {
+	font_hash_mix(ha, hb, u64(len(s)))
+	i := 0
+	for ; i + 8 <= len(s); i += 8 {
+		w := u64(s[i]) | (u64(s[i + 1]) << 8) | (u64(s[i + 2]) << 16) | (u64(s[i + 3]) << 24) |
+			(u64(s[i + 4]) << 32) | (u64(s[i + 5]) << 40) | (u64(s[i + 6]) << 48) | (u64(s[i + 7]) << 56)
+		font_hash_mix(ha, hb, w)
+	}
+	for ; i < len(s); i += 1 { font_hash_mix(ha, hb, u64(s[i])) }
+}
+
+@(private = "file")
+font_cache_key :: proc(scope: rawptr, req: ^lay.Font_Request) -> Font_Cache_Key {
+	ha: u64 = 0xcbf29ce484222325
+	hb: u64 = 0x84222325cbf29ce4
+	for f in req.families { font_hash_bytes(&ha, &hb, f); font_hash_mix(&ha, &hb, 0xff) }
+	for f in req.features {
+		t := u32(f.tag[0]) | (u32(f.tag[1]) << 8) | (u32(f.tag[2]) << 16) | (u32(f.tag[3]) << 24)
+		font_hash_mix(&ha, &hb, (u64(t) << 32) | u64(f.value))
+	}
+	for v in req.variations {
+		t := u32(v.tag[0]) | (u32(v.tag[1]) << 8) | (u32(v.tag[2]) << 16) | (u32(v.tag[3]) << 24)
+		font_hash_mix(&ha, &hb, (u64(t) << 32) | u64(u32(i32(v.value * 100))))
+	}
+	if req.language != "" { font_hash_bytes(&ha, &hb, req.language) }
+	return Font_Cache_Key{
+		scope = scope, hash_a = ha, hash_b = hb,
+		weight = req.weight, stretch10 = i32(req.stretch * 10), style = req.style,
+		n_families = u16(min(len(req.families), int(max(u16)))),
+		n_features = u16(min(len(req.features), int(max(u16)))),
+		n_vars = u16(min(len(req.variations), int(max(u16)))),
+		lang_len = u16(min(len(req.language), int(max(u16)))),
+	}
+}
+
+@(private = "file")
+is_cascade_id :: proc(id, ui: font.Font_Id, entries: []font.Cascade_Entry) -> bool {
+	if id == 0 || id == ui { return false }
+	for e in entries { if e.font == id { return false } }
+	return true
+}
+
+@(private = "file")
+resolved_evict :: proc(pf: ^Page_Fonts, limit: int) {
+	if len(pf.resolved) < limit { return }
+	Victim :: struct { key: Font_Cache_Key, lru: u64 }
+	items := make([dynamic]Victim, 0, len(pf.resolved), context.temp_allocator)
+	for k, v in pf.resolved { append(&items, Victim{k, v.lru}) }
+	slice.sort_by(items[:], proc(a, b: Victim) -> bool { return a.lru < b.lru })
+	drop := max(len(items) - limit + 1, max(limit / 8, 1))
+	drop = min(drop, len(items))
+	// Evict only the map keys here; never call font.unload while live tabs/chrome may still reference Font_Id on
+	// another thread. font.cascade deduplicates in font.State.keys and page_fonts_destroy unloads pf.shared_cascades.
+	for v in items[:drop] { delete_key(&pf.resolved, v.key) }
+}
+
 // The cascade for a font request of the layout.
 resolve_request :: proc(pf: ^Page_Fonts, req: ^lay.Font_Request, settings: ^style.Settings) -> font.Font_Id {
-	sb := strings.builder_make(context.temp_allocator)
-	strings.write_u64(&sb, u64(uintptr(pf.scope)))
-	strings.write_byte(&sb, '|')
-	for f in req.families { strings.write_string(&sb, f); strings.write_byte(&sb, ',') }
-	strings.write_byte(&sb, '|')
-	strings.write_int(&sb, int(req.weight))
-	strings.write_byte(&sb, '|')
-	strings.write_int(&sb, int(req.style))
-	strings.write_byte(&sb, '|')
-	strings.write_int(&sb, int(req.stretch * 10))
-	for f in req.features { tag := f.tag; strings.write_byte(&sb, '|'); strings.write_string(&sb, string(tag[:])); strings.write_int(&sb, int(f.value)) }
-	for v in req.variations { tag := v.tag; strings.write_byte(&sb, '~'); strings.write_string(&sb, string(tag[:])); strings.write_int(&sb, int(v.value * 100)) }
-	if req.language != "" { strings.write_byte(&sb, '@'); strings.write_string(&sb, req.language) }
-	key := strings.to_string(sb)
-	if id, ok := pf.resolved[key]; ok { return id }
+	scope := request_web_scope(pf, req, settings)
+	key := font_cache_key(scope, req)
+	if entry, ok := &pf.resolved[key]; ok {
+		pf.resolved_lru += 1
+		entry.lru = pf.resolved_lru
+		return entry.id
+	}
 
 	entries := make([dynamic]font.Cascade_Entry, 0, 4, context.temp_allocator)
 	web := false
@@ -377,8 +476,15 @@ resolve_request :: proc(pf: ^Page_Fonts, req: ^lay.Font_Request, settings: ^styl
 	feats := make([]font.Feature, len(req.features), context.temp_allocator)
 	for f, i in req.features { feats[i] = {f.tag, f.value} }
 	id := font.cascade(pf.state, dedup[:], feats, language = req.language)
-	if web { own_cascade(pf, id, dedup[:]) }   // (with the shared faces it uses: web_font_faces.odin)
-	pf.resolved[strings.clone(key)] = id
+	if web {
+		own_cascade(pf, id, dedup[:])   // (with the shared faces it uses: web_font_faces.odin)
+	} else if is_cascade_id(id, pf.ui, dedup[:]) {
+		pf.shared_cascades[id] = {}
+	}
+	limit := pf.resolved_max > 0 ? pf.resolved_max : FONT_RESOLVED_MAX
+	if len(pf.resolved) >= limit { resolved_evict(pf, limit) }
+	pf.resolved_lru += 1
+	pf.resolved[key] = Resolved_Font{id = id, lru = pf.resolved_lru, web = web}
 	return id
 }
 

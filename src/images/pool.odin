@@ -88,6 +88,7 @@ Job :: struct {
 	port:     Port_Id,
 	state:    Job_State,
 	seq:      u64,
+	heap_idx: i32,              // index in Decoder.queue binary max-heap (-1 when not queued)
 }
 
 // Runs on the port's loop thread. The receiver owns `j` and calls job_free.
@@ -102,6 +103,16 @@ Port :: struct {
 	posted:  bool,
 }
 
+// Stack-owned state registered in Decoder.drains under d.mu while port_drain delivers a batch without holding d.mu.
+// Holds only value job ids and atomic flags so job_cancel and port_close never dereference ^Job or a reallocated ^Port.
+@(private)
+Drain_State :: struct {
+	port:      Port_Id,
+	ids:       [dynamic]Job_Id,
+	cancelled: [dynamic]bool,   // atomic per-slot cancel flags parallel to batch
+	closed:    bool,            // atomic: set true by port_close under d.mu
+}
+
 @(private)
 Decoder :: struct {
 	mu:       sync.Mutex,
@@ -110,6 +121,7 @@ Decoder :: struct {
 	running:  [dynamic]^Job,
 	threads:  [dynamic]^host.Thread,   // live ones and ended ones not joined yet (reap_threads)
 	ports:    base.Pool(Port),
+	drains:   [dynamic]^Drain_State,   // active port_drain batches (protected by mu)
 	max_threads: int,
 	stack_bytes: int,
 	idle_ms:  int,    // a thread idle this long ends (0: never); submit starts another when none is idle
@@ -205,6 +217,7 @@ decoder_start :: proc(threads: int, stack_bytes := DECODER_STACK_DEFAULT, idle_m
 	d.queue = make([dynamic]^Job)
 	d.running = make([dynamic]^Job)
 	d.threads = make([dynamic]^host.Thread)
+	d.drains = make([dynamic]^Drain_State)
 	d.live = make(map[Job_Id]^Job)
 	d.max_threads, d.stack_bytes, d.idle_ms = max(threads, 1), stack_bytes, max(idle_ms, 0)
 	dec = d
@@ -284,6 +297,7 @@ decoder_stop :: proc() {
 	delete(d.queue)
 	delete(d.running)
 	delete(d.threads)
+	delete(d.drains)
 	delete(d.live)
 	free(d)
 }
@@ -301,6 +315,80 @@ port_open :: proc(loop: ^host.Loop, on_done: Done_Proc, user: rawptr) -> Port_Id
 	return Port_Id(h)
 }
 
+// Binary max-heap helpers for Decoder.queue (highest priority first, ties broken by oldest seq). Caller holds d.mu.
+@(private)
+job_higher :: #force_inline proc(a, b: ^Job) -> bool {
+	return a.priority > b.priority || (a.priority == b.priority && a.seq < b.seq)
+}
+
+@(private)
+queue_swap :: #force_inline proc(d: ^Decoder, i, j: int) {
+	a, b := d.queue[i], d.queue[j]
+	d.queue[i], d.queue[j] = b, a
+	b.heap_idx, a.heap_idx = i32(i), i32(j)
+}
+
+@(private)
+queue_sift_up :: proc(d: ^Decoder, idx: int) {
+	i := idx
+	for i > 0 {
+		p := (i - 1) / 2
+		if !job_higher(d.queue[i], d.queue[p]) { break }
+		queue_swap(d, i, p)
+		i = p
+	}
+}
+
+@(private)
+queue_sift_down :: proc(d: ^Decoder, idx: int) {
+	n := len(d.queue)
+	i := idx
+	for {
+		best := i
+		l := 2 * i + 1
+		r := l + 1
+		if l < n && job_higher(d.queue[l], d.queue[best]) { best = l }
+		if r < n && job_higher(d.queue[r], d.queue[best]) { best = r }
+		if best == i { break }
+		queue_swap(d, i, best)
+		i = best
+	}
+}
+
+@(private)
+queue_push :: proc(d: ^Decoder, j: ^Job) {
+	j.heap_idx = i32(len(d.queue))
+	append(&d.queue, j)
+	queue_sift_up(d, len(d.queue) - 1)
+}
+
+@(private)
+queue_remove_at :: proc(d: ^Decoder, idx: int) -> ^Job {
+	j := d.queue[idx]
+	j.heap_idx = -1
+	last := len(d.queue) - 1
+	if idx != last {
+		d.queue[idx] = d.queue[last]
+		d.queue[idx].heap_idx = i32(idx)
+	}
+	pop(&d.queue)
+	if idx < len(d.queue) {
+		queue_sift_up(d, idx)
+		queue_sift_down(d, idx)
+	}
+	return j
+}
+
+@(private)
+queue_pop :: #force_inline proc(d: ^Decoder) -> ^Job {
+	return queue_remove_at(d, 0)
+}
+
+@(private)
+queue_heapify :: proc(d: ^Decoder) {
+	for i := len(d.queue) / 2 - 1; i >= 0; i -= 1 { queue_sift_down(d, i) }
+}
+
 // Loop thread of the port. Disposes of every job of the port not yet delivered.
 port_close :: proc(id: Port_Id) {
 	d := dec
@@ -308,11 +396,26 @@ port_close :: proc(id: Port_Id) {
 	sync.mutex_lock(&d.mu)
 	defer sync.mutex_unlock(&d.mu)
 	context.allocator = d.allocator
-	for i := 0; i < len(d.queue); {
-		j := d.queue[i]
-		if j.port == id { ordered_remove(&d.queue, i); delete_key(&d.live, j.id); job_free(j) } else { i += 1 }
+	w := 0
+	for j in d.queue {
+		if j.port == id {
+			j.heap_idx = -1
+			delete_key(&d.live, j.id)
+			job_free(j)
+		} else {
+			j.heap_idx = i32(w)
+			d.queue[w] = j
+			w += 1
+		}
+	}
+	if w != len(d.queue) {
+		resize(&d.queue, w)
+		queue_heapify(d)
 	}
 	for j in d.running { if j.port == id { j.state = .Cancelled; delete_key(&d.live, j.id) } }
+	for ds in d.drains {
+		if ds.port == id { sync.atomic_store(&ds.closed, true) }
+	}
 	if p, ok := base.pool_remove(&d.ports, base.Handle(id)); ok {
 		for j in p.done { delete_key(&d.live, j.id); job_free(j) }
 		delete(p.done)
@@ -323,7 +426,7 @@ port_close :: proc(id: Port_Id) {
 job_make :: proc(kind: Job_Kind, data: ^Blob, opts: Decode_Options, priority: i32 = 0, user: rawptr = nil, tag: u64 = 0) -> ^Job {
 	context.allocator = base.process_allocator()
 	j := new(Job)
-	j.kind, j.data, j.opts, j.priority, j.user, j.tag = kind, blob_retain(data), opts, priority, user, tag
+	j.kind, j.data, j.opts, j.priority, j.user, j.tag, j.heap_idx = kind, blob_retain(data), opts, priority, user, tag, -1
 	j.opts.mime = strings.clone(opts.mime)
 	return j
 }
@@ -353,7 +456,8 @@ submit :: proc(id: Port_Id, j: ^Job) -> Job_Id {
 	j.seq, j.port, j.state = d.seq, id, .Queued
 	j.id = Job_Id(d.seq)
 	d.live[j.id] = j
-	append(&d.queue, j)
+	context.allocator = d.allocator
+	queue_push(d, j)
 	// every thread is busy (or ended while idle): one more, up to the configured number
 	if d.idle < len(d.queue) && d.threads_live < d.max_threads { spawn_thread(d) }
 	sync.cond_signal(&d.cond)
@@ -368,12 +472,23 @@ job_cancel :: proc(id: Job_Id) {
 	sync.mutex_lock(&d.mu)
 	defer sync.mutex_unlock(&d.mu)
 	j, ok := d.live[id]
-	if !ok { return }
+	if !ok {
+		// a job already swapped into a port_drain batch: match by value Job_Id without touching ^Job
+		for ds in d.drains {
+			for jid, k in ds.ids {
+				if jid == id {
+					sync.atomic_store(&ds.cancelled[k], true)
+					return
+				}
+			}
+		}
+		return
+	}
 	delete_key(&d.live, id)
 	context.allocator = d.allocator
 	switch j.state {
 	case .Queued:
-		for x, i in d.queue { if x == j { ordered_remove(&d.queue, i); break } }
+		if j.heap_idx >= 0 { queue_remove_at(d, int(j.heap_idx)) }
 		job_free(j)
 	case .Running:
 		j.state = .Cancelled   // the thread that runs it frees it
@@ -391,7 +506,14 @@ job_set_priority :: proc(id: Job_Id, priority: i32) {
 	if d == nil || id == 0 { return }
 	sync.mutex_lock(&d.mu)
 	defer sync.mutex_unlock(&d.mu)
-	if j, ok := d.live[id]; ok { j.priority = priority }
+	if j, ok := d.live[id]; ok {
+		if j.priority == priority { return }
+		j.priority = priority
+		if j.state == .Queued && j.heap_idx >= 0 {
+			queue_sift_up(d, int(j.heap_idx))
+			queue_sift_down(d, int(j.heap_idx))
+		}
+	}
 }
 @(private)
 decoder_thread :: proc(data: rawptr) {
@@ -419,13 +541,7 @@ decoder_thread :: proc(data: rawptr) {
 			if !woken && len(d.queue) == 0 && !d.stopping { ended = true; break }
 		}
 		if d.stopping || ended { d.threads_live -= 1; sync.mutex_unlock(&d.mu); return }
-		best := 0
-		for j, i in d.queue {
-			b := d.queue[best]
-			if j.priority > b.priority || (j.priority == b.priority && j.seq < b.seq) { best = i }
-		}
-		j := d.queue[best]
-		ordered_remove(&d.queue, best)
+		j := queue_pop(d)
 		j.state = .Running
 		append(&d.running, j)
 		sync.mutex_unlock(&d.mu)
@@ -461,23 +577,114 @@ decoder_thread :: proc(data: rawptr) {
 	}
 }
 
-// The port's loop: delivers finished jobs one at a time (a callback may close the port).
+@(private = "file")
+drain_unregister :: proc(d: ^Decoder, ds: ^Drain_State) {
+	for x, i in d.drains {
+		if x == ds {
+			unordered_remove(&d.drains, i)
+			return
+		}
+	}
+}
+
+// The port's loop: swap-drains p.done under a single lock and delivers each finished job (callbacks may open/close
+// ports or cancel remaining jobs in the batch without racing on ^Port or ^Job).
 @(private)
 port_drain :: proc(data: rawptr) {
 	id := Port_Id(uintptr(data))
+	d := dec
+	if d == nil { return }
+	batch := make([dynamic]^Job, 0, 0, d.allocator)
+	ds := Drain_State{
+		port      = id,
+		ids       = make([dynamic]Job_Id, 0, 0, d.allocator),
+		cancelled = make([dynamic]bool, 0, 0, d.allocator),
+	}
+	registered := false
+	finished := false
+	defer {
+		if !finished {
+			if d2 := dec; d2 != nil {
+				sync.mutex_lock(&d2.mu)
+				if registered {
+					drain_unregister(d2, (^Drain_State)(rawptr(&ds)))
+					registered = false
+				}
+				if !sync.atomic_load(&ds.closed) {
+					if p := base.pool_get(&d2.ports, base.Handle(id)); p != nil {
+						if len(p.done) == 0 {
+							clear(&batch)
+							p.done, batch = batch, p.done
+						}
+						p.posted = false
+					}
+				}
+				sync.mutex_unlock(&d2.mu)
+			}
+		}
+		delete(batch)
+		delete(ds.ids)
+		delete(ds.cancelled)
+	}
 	for {
-		d := dec
+		d = dec
 		if d == nil { return }
 		sync.mutex_lock(&d.mu)
+		if registered {
+			drain_unregister(d, (^Drain_State)(rawptr(&ds)))
+			registered = false
+		}
 		p := base.pool_get(&d.ports, base.Handle(id))
-		if p == nil { sync.mutex_unlock(&d.mu); return }
-		if len(p.done) == 0 { p.posted = false; sync.mutex_unlock(&d.mu); return }
-		j := p.done[0]
-		ordered_remove(&p.done, 0)
-		j.state = .Delivered
-		delete_key(&d.live, j.id)   // the receiver's now
+		if p == nil || sync.atomic_load(&ds.closed) {
+			finished = true
+			sync.mutex_unlock(&d.mu)
+			return
+		}
+		if len(p.done) == 0 {
+			clear(&batch)
+			p.done, batch = batch, p.done
+			p.posted = false
+			finished = true
+			sync.mutex_unlock(&d.mu)
+			return
+		}
+		clear(&batch)
+		p.done, batch = batch, p.done
+		clear(&ds.ids)
+		clear(&ds.cancelled)
+		reserve(&ds.ids, len(batch))
+		reserve(&ds.cancelled, len(batch))
+		for j in batch {
+			j.state = .Delivered
+			delete_key(&d.live, j.id)   // the receiver's now
+			append(&ds.ids, j.id)
+			append(&ds.cancelled, false)
+		}
+		sync.atomic_store(&ds.closed, false)
+		// Unregistered under d.mu before loop re-entry or return on every exit path.
+		context.allocator = d.allocator
+		append(&d.drains, (^Drain_State)(rawptr(&ds)))
+		registered = true
 		fn, user := p.on_done, p.user
 		sync.mutex_unlock(&d.mu)
-		fn(user, j)
+
+		for j, i in batch {
+			if sync.atomic_load(&ds.closed) {
+				for rem in batch[i:] { job_free(rem) }
+				if d2 := dec; d2 != nil {
+					sync.mutex_lock(&d2.mu)
+					drain_unregister(d2, (^Drain_State)(rawptr(&ds)))
+					registered = false
+					sync.mutex_unlock(&d2.mu)
+				}
+				finished = true
+				return
+			}
+			if sync.atomic_load(&ds.cancelled[i]) {
+				job_free(j)
+				continue
+			}
+			fn(user, j)
+		}
 	}
 }

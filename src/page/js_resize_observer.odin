@@ -15,6 +15,7 @@ package page
 import "core:math"
 import "wb:base"
 import "wb:dom"
+import lay "wb:layout"
 
 Ro_Box :: enum u8 { Content, Border, Device }   // the ResizeObserverBoxOptions, in the order the engine numbers them
 
@@ -87,11 +88,13 @@ ResizeObserver_observe :: proc(c: ^Call, observer: u64, target: Api_Element, box
 		if t.node != h { continue }
 		if t.box == b { return .None }
 		t.box, t.last = b, {}
+		c.page.web.observers.ro_target_serial += 1
 		c.page.web.ro_active, c.page.web.ro_pending = true, true
 		return .None
 	}
 	if !dom.pin(c.page.doc, h) { return fail(c, .Invalid_Handle, "not a live Element") }
 	append(&ro.targets, Ro_Target{node = h, box = b})
+	c.page.web.observers.ro_target_serial += 1
 	c.page.web.ro_active, c.page.web.ro_pending = true, true
 	return .None
 }
@@ -134,27 +137,29 @@ Ro_Sizes :: struct {
 	left, top:               f64,
 }
 
-// The boxes of a target as the layout has them now. Not rendered: all zero.
+// The boxes of a target as the layout has them now, read directly without building a lay.View. Not rendered: all zero.
 @(private)
-ro_measure :: proc(p: ^Page, f: ^Obs_Frame, node: base.Handle) -> (m: Ro_Sizes) {
-	if !dom.is_connected(p.doc, node) { return }
-	g := obs_geometry(f, node)
-	if !g.ok || is_inline_box(g) { return }
-	m.border = {f64(g.border.max.x - g.border.min.x), f64(g.border.max.y - g.border.min.y)}
-	m.content = {f64(g.content.max.x - g.content.min.x), f64(g.content.max.y - g.content.min.y)}
-	m.device = {math.round(m.content[0] * f.vp.scale), math.round(m.content[1] * f.vp.scale)}
-	m.left, m.top = f64(g.content.min.x - g.padding.min.x), f64(g.content.min.y - g.padding.min.y)
+ro_measure :: proc(p: ^Page, l: ^lay.Layout, scale: f64, node: base.Handle) -> (m: Ro_Sizes) {
+	if l == nil || !dom.is_connected(p.doc, node) { return }
+	border, content, pad_off, inline_box, ok := lay.box_sizes(l, node)
+	if !ok || inline_box { return }
+	sc := scale > 0 ? scale : 1
+	s := f32(sc)
+	m.border = {f64(border.x / s), f64(border.y / s)}
+	m.content = {f64(content.x / s), f64(content.y / s)}
+	m.device = {math.round(m.content[0] * sc), math.round(m.content[1] * sc)}
+	m.left, m.top = f64(pad_off.x / s), f64(pad_off.y / s)
 	return
 }
 
 // "Gather active resize observations" of one observer: the entries (packed in ro.pending) of the targets whose observed
 // box changed since they were reported. Returns how many.
 @(private)
-ro_gather :: proc(p: ^Page, f: ^Obs_Frame, ro: ^Resize_Observer) -> int {
+ro_gather :: proc(p: ^Page, l: ^lay.Layout, scale: f64, ro: ^Resize_Observer) -> int {
 	clear(&ro.pending)
 	n := 0
 	for &t in ro.targets {
-		m := ro_measure(p, f, t.node)
+		m := ro_measure(p, l, scale, t.node)
 		size := m.content
 		switch t.box {
 		case .Content:
@@ -172,6 +177,17 @@ ro_gather :: proc(p: ^Page, f: ^Obs_Frame, ro: ^Resize_Observer) -> int {
 	return n
 }
 
+@(private)
+ro_key_of :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) -> Ro_Key {
+	k := Ro_Key{layout = l, mutations = p.doc != nil ? p.doc.mutations : 0, scale = vp.scale, target_serial = p.web.observers.ro_target_serial}
+	if l != nil && l.valid {
+		k.valid = true
+		k.layout_passes = l.passes[.Full] + l.passes[.Incremental]
+		k.layout_serial = l.layout_serial
+	}
+	return k
+}
+
 // The resize observations of a rendering update. The observers are looked up again by handle after each delivery: a
 // callback may disconnect or drop any of them.
 @(private)
@@ -179,17 +195,19 @@ resize_observers_update :: proc(p: ^Page) {
 	w := p.web
 	if p.closed || !w.ro_active { return }
 	w.ro_pending = false
+	l, vp := js_layout_now(p)
+	key := ro_key_of(p, l, vp)
+	if w.observers.ro_has_key && key == w.observers.ro_key { return }
 	passes := max(p.settings.dom.max_resize_passes, 1)
 	delivered := false
 	for _ in 0 ..< passes {
 		delivered = false
 		handles := make([dynamic]u64, 0, len(w.observers.resize), context.temp_allocator)
 		for ro in w.observers.resize { append(&handles, ro.self) }
-		f := obs_frame(p)
 		for h in handles {
 			ro := (^Resize_Observer)(object_data(p, h, &ro_vt))
 			if ro == nil || len(ro.targets) == 0 { continue }
-			if ro_gather(p, &f, ro) == 0 { continue }
+			if ro_gather(p, l, vp.scale, ro) == 0 { continue }
 			inst := instance_by_index(p, ro.instance)
 			if inst == nil { clear(&ro.pending); continue }
 			delivered = true
@@ -197,10 +215,16 @@ resize_observers_update :: proc(p: ^Page) {
 			call_guest(p, inst, ro.notify, argv[:])
 			if p.closed { return }
 			if (^Resize_Observer)(object_data(p, h, &ro_vt)) == ro { clear(&ro.pending) }
-			f = obs_frame(p)   // the callback may have changed the layout
+			l, vp = js_layout_now(p)   // fast path when the callback did not change layout
 		}
 		if !delivered { break }
 	}
 	// still changing after the last pass: the next frame delivers the rest
-	if delivered && w.ro_active { w.ro_pending = true }
+	if delivered && w.ro_active {
+		w.ro_pending = true
+		w.observers.ro_has_key = false
+	} else {
+		w.observers.ro_key = ro_key_of(p, l, vp)
+		w.observers.ro_has_key = true
+	}
 }

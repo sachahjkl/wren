@@ -55,6 +55,7 @@ engine_set_container_sizes :: proc(e: ^Engine, sizes: map[base.Handle][2]f32) ->
 	clear(&e.container_sizes)
 	for h, s in sizes { e.container_sizes[h] = s }
 	if !e.container_dependent { return false }
+	e.cq_settled_layout = nil
 	if gone || !e.settings.cq_partial || !e.settings.inc_enabled {
 		e.restyle_needed, e.restyle_why = true, "a container left the list"
 		clear(&e.container_pending)
@@ -155,6 +156,37 @@ cq_fail :: proc(e: ^Engine, why: string) -> (bool, bool) {
 
 // Some rule or value of the documents depends on container sizes.
 engine_uses_container_queries :: proc(e: ^Engine) -> bool { return e.container_dependent }
+
+// Whether container queries were already settled for this layout state (same layout, geometry passes, style serial,
+// engine rebuilds, scale, and no pending container updates).
+engine_cq_settled :: proc(e: ^Engine, layout: rawptr, passes, serial: u64, scale: f32) -> bool {
+	if e == nil || layout == nil || len(e.container_pending) > 0 { return false }
+	return e.cq_settled_layout == layout && e.cq_settled_passes == passes && e.cq_settled_serial == serial &&
+		e.cq_settled_rebuilds == e.rebuilds && e.cq_settled_scale == scale
+}
+
+// Records that container queries converged for this layout state.
+engine_cq_mark_settled :: proc(e: ^Engine, layout: rawptr, passes, serial: u64, scale: f32) {
+	if e == nil { return }
+	e.cq_settled_layout = layout
+	e.cq_settled_passes = passes
+	e.cq_settled_serial = serial
+	e.cq_settled_rebuilds = e.rebuilds
+	e.cq_settled_scale = scale
+}
+
+// The query containers of `s`, cached on `e` by `(s, s.serial)` so unchanged style passes do not rescan `s.by_node`.
+engine_containers :: proc(e: ^Engine, s: ^Styled) -> []base.Handle {
+	if e == nil || s == nil { return nil }
+	if e.cq_containers_styled == rawptr(s) && e.cq_containers_serial == s.serial { return e.cq_containers[:] }
+	clear(&e.cq_containers)
+	for c, i in s.by_node {
+		if c != nil && c.container_type != .Normal && c.display != .None { append(&e.cq_containers, s.nodes[i]) }
+	}
+	e.cq_containers_styled = rawptr(s)
+	e.cq_containers_serial = s.serial
+	return e.cq_containers[:]
+}
 
 // The query containers of a computed style pass: the elements whose container-type is not normal.
 styled_containers :: proc(s: ^Styled, allocator := context.temp_allocator) -> []base.Handle {

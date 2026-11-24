@@ -272,8 +272,7 @@ paint_canvas_images :: proc(l: ^Layout, dc: ^draw.Context, origin, size: draw.Ve
 	if ri < 0 || int(ri) >= len(l.items) { return }
 	root := &l.items[ri]
 	rb := &l.boxes[root.box]
-	v := lay.view_make(l, size, scroll, cull = false)
-	off := v.offsets[root.space] + origin
+	off := lay.space_offset(l, root.space, size, scroll) + origin
 	border := draw.rect_shift(dr(root.rect), off)
 	boxes := bg_boxes(border, {}, {rb.border[0], rb.border[1], rb.border[2], rb.border[3]}, rb.padding)
 	viewport := draw.Rect{origin, origin + size}

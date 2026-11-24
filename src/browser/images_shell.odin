@@ -70,6 +70,19 @@ Shell_Texture :: struct {
 	premultiplied: bool,   // made by create_premultiplied: filled by update_premultiplied
 }
 
+@(private = "file")
+Images_After_Key :: struct {
+	page:           rawptr,
+	layout:         rawptr,
+	passes:         u64,
+	serial:         u64,
+	scroll_digest:  u64,
+	doc_scroll:     f32,
+	size:           draw.Vec2,
+	scale:          f32,
+	watched_serial: u64,
+}
+
 Images_Shell :: struct {
 	api:        Texture_Api,
 	textures:   map[u64]^Shell_Texture,
@@ -82,6 +95,8 @@ Images_Shell :: struct {
 	evicted:    [dynamic]u64,
 	fake_next:  Image_Texture,
 	device_generation: u64,          // render.Renderer.device_generation the textures were made on
+	after_cache: [8]Images_After_Key,
+	after_next:  int,
 }
 
 
@@ -222,10 +237,22 @@ images_before_layout :: proc(t: ^Tab) {
 
 // After the layout: distances to the viewport of the images still waiting (loading=lazy, queued downloads).
 images_after_layout :: proc(t: ^Tab, size: draw.Vec2, scale: f32) {
-	watched := page.images_watched(t.page)
-	if len(watched) == 0 { return }
+	if t.page == nil { return }
+	has_watched, watched_serial := page.images_watched_state(t.page)
+	if !has_watched { return }
 	l := &t.layout
 	if !l.valid { return }
+	key := Images_After_Key{
+		page = t.page, layout = l,
+		passes = l.passes[.Full] + l.passes[.Incremental] + l.passes[.Refresh],
+		serial = l.serial, scroll_digest = lay.scroll_digest(l),
+		doc_scroll = t.scroll, size = size, scale = scale, watched_serial = watched_serial,
+	}
+	if the_app != nil {
+		for k in the_app.images_shell.after_cache { if k == key { return } }
+	}
+	watched := page.images_watched(t.page)
+	if len(watched) == 0 { return }
 	v := lay.view_make(l, size, t.scroll, cull = false)
 	for node in watched {
 		bi := lay.box_index(l, node)
@@ -235,6 +262,18 @@ images_after_layout :: proc(t: ^Tab, size: draw.Vec2, scale: f32) {
 		dx := max(0, r.min.x - size.x, -r.max.x)
 		dy := max(0, r.min.y - size.y, -r.max.y)
 		page.images_set_distance(t.page, node, max(dx, dy) / max(scale, 0.01))
+	}
+	if the_app != nil {
+		_, key.watched_serial = page.images_watched_state(t.page)
+		slot := -1
+		for k, i in the_app.images_shell.after_cache {
+			if k.page == key.page && k.layout == key.layout { slot = i; break }
+		}
+		if slot < 0 {
+			slot = the_app.images_shell.after_next
+			the_app.images_shell.after_next = (slot + 1) % len(the_app.images_shell.after_cache)
+		}
+		the_app.images_shell.after_cache[slot] = key
 	}
 }
 

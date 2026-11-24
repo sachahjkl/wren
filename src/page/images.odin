@@ -321,6 +321,8 @@ Img_Request :: struct {
 	refs:     int,             // elements and CSS uses
 	error:    string,          // owned
 	distance: f32,             // from the viewport, CSS px (priority); max = unknown
+	queue_idx: i32,            // index in Page_Images.queue min-heap (-1 when not queued)
+	queue_seq: u64,            // tie-breaker for equal distances (FIFO)
 	css:      bool,
 	bad_status: bool,
 	status:   int,
@@ -367,8 +369,11 @@ Page_Images :: struct {
 	doc:        ^dom.Document,          // the tree the element handles belong to
 	elements:   map[base.Handle]^Img_Element,
 	requests:   map[string]^Img_Request,
-	queue:      [dynamic]^Img_Request,  // waiting for a download slot
+	queue:      [dynamic]^Img_Request,  // waiting for a download slot (binary min-heap by distance, then queue_seq)
+	queue_seq:  u64,
 	loading:    int,
+	lazy_waiting: int,                  // Img_Elements currently in lazy_wait (O(1) images_watched_state)
+	watched_serial: u64,                // bumped whenever watched elements/queue membership changes
 	css_urls:   map[string]^Img_Request,   // CSS image URL as written -> request
 	css_bases:  map[string]string,      // URL as written -> the base of the sheet that declares it
 	css_rebuilds: u64,
@@ -415,6 +420,7 @@ images_init :: proc(p: ^Page) {
 	pi.events = make([dynamic]Pending_Image_Event)
 	pi.guest = make([dynamic]Guest_Decode)
 	pi.sizes = next_serial()
+	pi.watched_serial = next_serial()
 }
 
 @(private)
@@ -449,6 +455,94 @@ request_free :: proc(r: ^Img_Request) {
 	free(r)
 }
 
+// Binary min-heap helpers for Page_Images.queue (nearest viewport distance first, ties FIFO by queue_seq).
+@(private = "file")
+img_req_before :: #force_inline proc(a, b: ^Img_Request) -> bool {
+	return a.distance < b.distance || (a.distance == b.distance && a.queue_seq < b.queue_seq)
+}
+
+@(private = "file")
+img_queue_swap :: #force_inline proc(pi: ^Page_Images, i, j: int) {
+	a, b := pi.queue[i], pi.queue[j]
+	pi.queue[i], pi.queue[j] = b, a
+	b.queue_idx, a.queue_idx = i32(i), i32(j)
+}
+
+@(private = "file")
+img_queue_sift_up :: proc(pi: ^Page_Images, idx: int) {
+	i := idx
+	for i > 0 {
+		p := (i - 1) / 2
+		if !img_req_before(pi.queue[i], pi.queue[p]) { break }
+		img_queue_swap(pi, i, p)
+		i = p
+	}
+}
+
+@(private = "file")
+img_queue_sift_down :: proc(pi: ^Page_Images, idx: int) {
+	n := len(pi.queue)
+	i := idx
+	for {
+		best := i
+		l := 2 * i + 1
+		r := l + 1
+		if l < n && img_req_before(pi.queue[l], pi.queue[best]) { best = l }
+		if r < n && img_req_before(pi.queue[r], pi.queue[best]) { best = r }
+		if best == i { break }
+		img_queue_swap(pi, i, best)
+		i = best
+	}
+}
+
+@(private)
+img_queue_push :: proc(pi: ^Page_Images, r: ^Img_Request) {
+	pi.queue_seq += 1
+	r.queue_seq = pi.queue_seq
+	r.queue_idx = i32(len(pi.queue))
+	append(&pi.queue, r)
+	img_queue_sift_up(pi, len(pi.queue) - 1)
+	pi.watched_serial = next_serial()
+}
+
+@(private)
+img_queue_remove_at :: proc(pi: ^Page_Images, idx: int) -> ^Img_Request {
+	r := pi.queue[idx]
+	r.queue_idx = -1
+	last := len(pi.queue) - 1
+	if idx != last {
+		pi.queue[idx] = pi.queue[last]
+		pi.queue[idx].queue_idx = i32(idx)
+	}
+	pop(&pi.queue)
+	if idx < len(pi.queue) {
+		img_queue_sift_up(pi, idx)
+		img_queue_sift_down(pi, idx)
+	}
+	pi.watched_serial = next_serial()
+	return r
+}
+
+@(private)
+img_queue_pop :: #force_inline proc(pi: ^Page_Images) -> ^Img_Request {
+	return img_queue_remove_at(pi, 0)
+}
+
+@(private)
+img_queue_update :: proc(pi: ^Page_Images, r: ^Img_Request) {
+	if r == nil || r.queue_idx < 0 || int(r.queue_idx) >= len(pi.queue) { return }
+	img_queue_sift_up(pi, int(r.queue_idx))
+	img_queue_sift_down(pi, int(r.queue_idx))
+}
+
+@(private = "file")
+set_lazy_wait :: proc(p: ^Page, el: ^Img_Element, wait: bool) {
+	if el.lazy_wait == wait { return }
+	el.lazy_wait = wait
+	if wait { p.images.lazy_waiting += 1 } else if p.images.lazy_waiting > 0 { p.images.lazy_waiting -= 1 }
+	p.images.watched_serial = next_serial()
+}
+
 // One user fewer; the request goes when the last one does (its download is cancelled).
 @(private)
 request_release :: proc(r: ^Img_Request) {
@@ -457,7 +551,9 @@ request_release :: proc(r: ^Img_Request) {
 	if r.refs > 0 { return }
 	p := r.page
 	if r.state == .Loading { p.images.loading -= 1 }
-	for x, i in p.images.queue { if x == r { ordered_remove(&p.images.queue, i); break } }
+	if r.queue_idx >= 0 && int(r.queue_idx) < len(p.images.queue) && p.images.queue[r.queue_idx] == r {
+		img_queue_remove_at(&p.images, int(r.queue_idx))
+	}
 	delete_key(&p.images.requests, r.key)
 	request_free(r)
 	images_pump(p)
@@ -512,6 +608,7 @@ page_request :: proc(p: ^Page, abs: string, mode: fetch.Mode, cred: fetch.Creden
 	r.nonce = strings.clone(nonce)
 	r.refs = 1
 	r.distance = max(f32)
+	r.queue_idx = -1
 	p.images.requests[r.key] = r
 	if !p.settings.images.enabled {
 		r.state, r.error = .Broken, strings.clone("images are disabled (images.enabled)")
@@ -534,7 +631,7 @@ page_request :: proc(p: ^Page, abs: string, mode: fetch.Mode, cred: fetch.Creden
 		return r
 	}
 	r.state = .Queued
-	append(&p.images.queue, r)
+	img_queue_push(&p.images, r)
 	images_pump_soon(p)
 	return r
 }
@@ -559,10 +656,7 @@ images_pump :: proc(p: ^Page) {
 	if p.closed { return }
 	limit := max(p.settings.images.max_parallel, 1)
 	for pi.loading < limit && len(pi.queue) > 0 {
-		best := 0
-		for r, i in pi.queue { if r.distance < pi.queue[best].distance { best = i } }
-		r := pi.queue[best]
-		ordered_remove(&pi.queue, best)
+		r := img_queue_pop(pi)
 		r.state = .Loading
 		pi.loading += 1
 		pi.started += 1
@@ -677,6 +771,7 @@ request_settled :: proc(r: ^Img_Request) {
 
 @(private)
 element_free :: proc(p: ^Page, el: ^Img_Element, live: bool) {
+	if live { set_lazy_wait(p, el, false) }
 	for pr in el.decodes { if live { promise_reject(p, pr, WEB_ERR_ENCODING, "the image element went away") } }
 	delete(el.decodes)
 	if live {   // else the page is closing: its requests are freed with its table
@@ -736,7 +831,9 @@ images_adopt_document :: proc(p: ^Page) {
 	bit_array.clear(&pi.css_users)
 	pi.css_user_count = 0
 	pi.css_records = 0
+	pi.lazy_waiting = 0
 	pi.sizes = next_serial()
+	pi.watched_serial = next_serial()
 }
 
 // Finds <img> / <input type=image> elements, runs source selection where something it depends on changed, follows
@@ -1044,7 +1141,7 @@ element_update :: proc(p: ^Page, el: ^Img_Element) {
 	set_string(&el.signature, sig)
 	sel := select_source(p, el, env)
 	mode, cred := cors_of(p.doc, el.node)
-	el.lazy_wait = false
+	set_lazy_wait(p, el, false)
 	if !sel.has {
 		// no image: src missing (nothing happens) or empty / invalid (broken, error event)
 		request_release(el.pending); el.pending = nil
@@ -1070,7 +1167,7 @@ element_update :: proc(p: ^Page, el: ^Img_Element) {
 		return
 	}
 	if is_lazy(p.doc, el.node) && (el.distance > p.settings.images.lazy_margin_px) {
-		el.lazy_wait = true
+		set_lazy_wait(p, el, true)
 		set_string(&el.lazy_url, sel.url)
 		el.lazy_density, el.lazy_mode, el.lazy_cred = sel.density, mode, cred
 		return
@@ -1082,7 +1179,10 @@ element_update :: proc(p: ^Page, el: ^Img_Element) {
 element_start :: proc(p: ^Page, el: ^Img_Element, abs: string, density: f32, mode: fetch.Mode, cred: fetch.Credentials) {
 	nonce, _ := dom.get_attribute(p.doc, el.node, "nonce")
 	r := page_request(p, abs, mode, cred, false, nonce)
-	r.distance = min(r.distance, el.distance)
+	if el.distance < r.distance {
+		r.distance = el.distance
+		img_queue_update(&p.images, r)
+	}
 	request_release(el.pending)
 	el.pending = nil
 	if el.current == nil || el.current.state != .Ready {
@@ -1176,13 +1276,26 @@ images_set_distance :: proc(p: ^Page, node: base.Handle, distance: f32) {
 	el, ok := p.images.elements[node]
 	if !ok { return }
 	el.distance = distance
-	if el.current != nil { el.current.distance = min(el.current.distance, distance) }
-	if el.pending != nil { el.pending.distance = min(el.pending.distance, distance) }
+	if el.current != nil && distance < el.current.distance {
+		el.current.distance = distance
+		img_queue_update(&p.images, el.current)
+	}
+	if el.pending != nil && distance < el.pending.distance {
+		el.pending.distance = distance
+		img_queue_update(&p.images, el.pending)
+	}
 	if el.lazy_wait && distance <= p.settings.images.lazy_margin_px {
-		el.lazy_wait = false
+		set_lazy_wait(p, el, false)
 		element_start(p, el, el.lazy_url, el.lazy_density, el.lazy_mode, el.lazy_cred)
 		images_pump(p)
 	}
+}
+
+// Fast O(1) check for images_after_layout: whether any lazy or queued image needs distance updates, and a serial
+// bumped whenever that set changes.
+images_watched_state :: proc(p: ^Page) -> (has_watched: bool, serial: u64) {
+	if p == nil || !p.images.ready { return false, 0 }
+	return p.images.lazy_waiting > 0 || len(p.images.queue) > 0, p.images.watched_serial
 }
 
 // Elements the shell should report distances for: lazy ones waiting, and those whose download has not started.
@@ -1766,6 +1879,8 @@ canvas_image_pixels :: proc(p: ^Page, node: base.Handle) -> Canvas_Pixels {
 		e.image = img
 		e.generation += 1
 		entry_account(e)
+		cache_enforce()
+		if e.image == nil || len(e.image.frames) == 0 { return Canvas_Pixels{status = .Pending} }
 	}
 	img := e.image
 	r.pixels, r.width, r.height, r.stride, r.generation = img.frames[0].pixels, img.width, img.height, img.stride, e.generation
