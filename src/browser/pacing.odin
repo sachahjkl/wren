@@ -350,7 +350,7 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	// (frame's early return) keeps the slot it took, or the next frame would wait for a present that never came, until
 	// the timeout (100 ms of input latency after any wake of no consequence).
 	if d.wait_swap_chain {   // (the timer's wait above takes messages)
-		ok := platform.wait_handle(wnd.win, render.frame_waitable(&app.r), app.pacing.cfg.timeout_ms)
+		ok := render.wait_frame_slot(&app.r, wnd.win, app.pacing.cfg.timeout_ms)
 		if ok { pacer.slot_held = true } else { pacer.missed_timeouts += 1 }
 		when PACING_DEBUG { fmt.eprintln("wait", ok, idled, time.duration_milliseconds(time.tick_since(t0)), wnd.frames_requested) }
 	}

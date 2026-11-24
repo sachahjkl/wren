@@ -333,7 +333,7 @@ shell_presented :: proc() { the_app.chrome_frames.last_present = time.tick_now()
 shell_before_draw :: proc(app: ^App) {
 	wnd := active_window(app)
 	if wnd.presented && !wnd.pacer.slot_held && !wnd.pacer.first_paint {
-		if platform.wait_handle(wnd.win, render.frame_waitable(&app.r), app.pacing.cfg.timeout_ms) { wnd.pacer.slot_held = true }
+		if render.wait_frame_slot(&app.r, wnd.win, app.pacing.cfg.timeout_ms) { wnd.pacer.slot_held = true }
 	}
 }
 
@@ -415,9 +415,10 @@ shell_chrome_frame :: proc(app: ^App) {
 	// the screen's slot: a frame only when the swap chain can take one now (the guest is not kept waiting for it). A
 	// resize step skips it: its frame is presented at once, whatever the screen is doing
 	if !wnd.pacer.slot_held && !pacer_resize_step(app) {
-		// a slot only when the swap chain can take a frame now (pacing_timer_<os>.odin: the frame-latency object polled
-		// without blocking on Windows; always true on the Linux FIFO path, which blocks at present instead)
-		if !frame_slot_ready(render.frame_waitable(&app.r)) { app.chrome_frames.skipped += 1; return }
+		// a slot only when the swap chain can take a frame now: the renderer polls its frame-latency object without
+		// blocking (true at once where there is none: Linux, offscreen). Every wait goes through it, so that it keeps the
+		// object's count exact (gui_toolkit src/md/infrastructure/frame-latency-object.md)
+		if !render.wait_frame_slot(&app.r, wnd.win, 0) { app.chrome_frames.skipped += 1; return }
 		wnd.pacer.slot_held = true
 	}
 	was_nested := app.chrome_frames.nested   // (a modal loop of the system may have begun inside a chrome frame: window_frame)

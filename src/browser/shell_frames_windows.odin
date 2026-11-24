@@ -3,8 +3,7 @@ package browser
 // Reading the thread's message queue to pace the chrome frames inside the system's modal loops (live resize, a menu,
 // where WM_PAINT drives frames): what input and repaints wait, and whether genuine user input (not another thread's
 // wake-up) is pending so a frame is shown at once. Windows only (the Win32 queue); shell_frames_other.odin answers
-// false off Windows, where the toolkit's event loop drives frames and there is no such modal pump. It also provides
-// frame_slot_ready, the non-blocking poll of the swap chain's frame-latency object (shell_frames.odin / pacing).
+// false off Windows, where the toolkit's event loop drives frames and there is no such modal pump.
 
 import win "core:sys/windows"
 
@@ -43,11 +42,4 @@ shell_user_input_pending :: proc() -> bool {
 		if PeekMessageW(&msg, nil, r[0], r[1], PM_NOREMOVE | PM_NOYIELD) { return true }
 	}
 	return false
-}
-
-// Whether the swap chain can take a frame now: the frame-latency object polled without blocking (nil object: always
-// ready, e.g. an offscreen window).
-frame_slot_ready :: proc(handle: rawptr) -> bool {
-	if handle == nil { return true }
-	return win.WaitForSingleObject(win.HANDLE(handle), 0) == win.WAIT_OBJECT_0
 }

@@ -5,7 +5,7 @@ package browser
 // portable waitable timer that also takes window input, and the Linux present path is the FIFO vblank, which paces
 // presents at the refresh rate on its own. So the pacer's between-frame wait is a plain high-resolution sleep of the UI
 // thread: input that arrives during it is taken on the next pump. The frame-latency wait on the swap chain
-// (render.frame_waitable through platform.wait_handle in pacing.odin) is unchanged and does the real present pacing.
+// (render.wait_frame_slot in pacing.odin) is unchanged and does the real present pacing.
 
 import "core:time"
 import "toolkit:platform"
