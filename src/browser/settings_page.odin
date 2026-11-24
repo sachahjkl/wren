@@ -52,8 +52,9 @@ SETTINGS_PAGES := [?]Settings_Page_Def{
 		"blocker.enabled", "browser.notifications.enabled", "cookies.enabled", "privacy.third_party_cookies", "privacy.do_not_track", "history.global.enabled",
 		"history.global.retention_days", "browser.profile.persist"}},
 	{"vault", "Vault", lucide.LOCK, {
-		"vault.enabled", "vault.server.region", "vault.server.url", "vault.lock.idle_minutes", "vault.sync.interval_minutes",
-		"vault.fill.insecure", "vault.fill.dropdown", "vault.fill.shortcut", "vault.clipboard.clear_seconds"}},
+		"vault.enabled", "vault.server.region", "vault.server.url", "vault.unlock.remember", "vault.lock.idle_minutes", "vault.sync.interval_minutes",
+		"vault.fill.insecure", "vault.fill.dropdown", "vault.fill.shortcut", "vault.save.offer", "vault.passkeys.offer",
+		"vault.totp.autofill", "vault.totp.copy_on_fill", "vault.clipboard.clear_seconds"}},
 	{"downloads", "Downloads", lucide.DOWNLOAD, {"browser.download.ask", "browser.download.directory"}},
 	{"media", "Media", lucide.PLAY, {"media.autoplay.policy"}},
 	// (the toolkit's standard Text set; the renderer and DirectWrite's mode are registered on Windows alone, and a page skips

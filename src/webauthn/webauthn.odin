@@ -226,12 +226,13 @@ Credential :: struct {
 // Cancellation of a ceremony in progress: requested from the UI thread (an abort, the lifetime timer, the page closing),
 // honoured by the platform from the thread blocked in it.
 Cancel_Token :: struct {
-	mu:        sync.Mutex,
-	cancelled: bool,
-	reason:    Error,          // Abort (signal), Not_Allowed (timer, page gone, the user's click)
-	platform:  [16]u8,         // the platform's own id for the operation (WebAuthNGetCancellationId's GUID)
+	mu:           sync.Mutex,
+	cancelled:    bool,
+	reason:       Error,          // Abort (signal), Not_Allowed (timer, page gone, the user's click)
+	platform:     [16]u8,         // the platform's own id for the operation (WebAuthNGetCancellationId's GUID)
 	has_platform: bool,
-	wake:      sync.Cond,      // the virtual authenticator's wake-up (with mu)
+	cleanup:      proc(token: ^Cancel_Token),   // frees platform cancel state when the ceremony is destroyed
+	wake:         sync.Cond,      // the virtual authenticator's wake-up (with mu)
 }
 
 // One ceremony: everything it allocates, so that the end is a single free.
@@ -258,6 +259,7 @@ ceremony_allocator :: proc(c: ^Ceremony) -> runtime.Allocator { return base.aren
 
 ceremony_destroy :: proc(c: ^Ceremony) {
 	if c == nil { return }
+	if c.cancel.cleanup != nil { c.cancel.cleanup(&c.cancel) }
 	base.arena_destroy(&c.arena)
 	free(c)
 }

@@ -2,8 +2,6 @@
 
 ## Now
 
-- **A passkey sign-in with two accounts on one security key no longer freezes.** Signing in to Bitwarden with a key that holds two of its passkeys froze the browser once, in the passkey's thread; the stacks of a hang are being caught to find where it waits.
-
 ## Next
 
 - **The JavaScript engine fuzzed in the test run.** The parsers of untrusted input are fuzzed by `wrentool fuzz`

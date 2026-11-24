@@ -35,20 +35,26 @@ webauthn_shell_init :: proc(app: ^App) {
 			return the_app != nil && passkey_choice_offer(the_app, rq)
 		},
 	}
-	// a security key's PIN is asked on the ceremony's thread: the loop wakes, the next frame shows the question
-	webauthn.pin_wake = proc "contextless" () {
+	// a security key's PIN, touch or account prompt opens on the ceremony's thread: wake the UI loop with the
+	// process-safe App pointer (thread-local the_app is nil on worker threads)
+	webauthn.pin_wake_set(proc "contextless" (user: rawptr) {
 		context = base.process_context()
-		if the_app != nil { host.post(&the_app.loop, proc(_: rawptr) { if the_app != nil { request_frames(the_app, 2) } }, nil) }
-	}
+		app := (^App)(user)
+		if app == nil { return }
+		host.post(&app.loop, proc(data: rawptr) {
+			app := (^App)(data)
+			if app != nil && the_app == app { request_frames(app, 2) }
+		}, app)
+	}, app)
 }
 
 webauthn_shell_destroy :: proc(app: ^App) {
 	app.pages.webauthn_embedder = {}
 	passkey_choice_reset(app)
-	if q := webauthn.pin_question(); q.number != 0 { webauthn.pin_answer(q.number, "", false) }   // (a ceremony that waits for a PIN stops waiting)
-	if q := webauthn.choose_question(); q.number != 0 { webauthn.choose_answer(q.number, 0, false) }   // (and one that waits for an account)
+	webauthn.pin_dismiss()   // (a ceremony that waits for a PIN or account stops waiting)
 	ui.line_edit_wipe(&app.key_pin.field)
 	page.webauthn_shutdown(app.page_settings.authn.cancel_grace_ms)   // cancels what still waits and joins its threads, before the loop goes
+	webauthn.pin_wake_set(nil, nil)
 }
 
 // The address bar's chip while the current page waits for a passkey dialog.
@@ -63,7 +69,7 @@ webauthn_chip :: proc(app: ^App, t: ^Tab) {
 		label := create ? "Creating a passkey" : "Passkey"
 		b := ui.button("webauthn_chip", label)
 		what := create ? "create a passkey for" : "sign in with a passkey of"
-		tip(b, fmt.tprintf("This page asked to %s %s. Windows shows its dialog; click here to cancel the request.", what, rp_id))
+		tip(b, fmt.tprintf("This page asked to %s %s. Follow the passkey prompt, or click here to cancel the request.", what, rp_id))
 		if b.clicked { page.webauthn_cancel(t.page) }
 	}
 }
@@ -107,14 +113,17 @@ webauthn_pin_build :: proc(app: ^App) {
 		d.touch_cancelled = number
 	}
 	q := webauthn.pin_question()
+	defer webauthn.pin_question_destroy(&q)
 	if q.number != d.number {
 		// (a new question, or the old one over: what was typed for another goes)
 		ui.line_edit_wipe(&d.field)
 		d.number, d.reveal, d.focus = q.number, false, true
 	}
 	cq := webauthn.choose_question()
+	defer webauthn.choose_question_destroy(&cq)
 	if cq.number != d.choose_number { d.choose_number, d.choose_sel = cq.number, 0 }
 	tq := webauthn.touch_question()
+	defer webauthn.touch_question_destroy(&tq)
 	pin_key := q.number
 	choose_key := pin_key == 0 ? cq.number : 0
 	touch_key: u64 = pin_key == 0 && choose_key == 0 && tq.number != d.touch_cancelled ? tq.number : 0
@@ -127,6 +136,7 @@ webauthn_pin_build :: proc(app: ^App) {
 key_pin_view :: proc(v: ^ui.View, app: ^App) {
 	d := &app.key_pin
 	q := webauthn.pin_question()
+	defer webauthn.pin_question_destroy(&q)
 	if q.number == 0 { return }   // (over: webauthn_pin_build closes it)
 	em := ui.font_size()
 	submit, cancel := false, false
@@ -169,6 +179,7 @@ key_pin_view :: proc(v: ^ui.View, app: ^App) {
 key_choose_view :: proc(v: ^ui.View, app: ^App) {
 	d := &app.key_pin
 	q := webauthn.choose_question()
+	defer webauthn.choose_question_destroy(&q)
 	if q.number == 0 { return }   // (over: webauthn_pin_build closes it)
 	n := len(q.accounts)
 	d.choose_sel = clamp(d.choose_sel, 0, max(n - 1, 0))
@@ -208,6 +219,7 @@ key_choose_view :: proc(v: ^ui.View, app: ^App) {
 // ceremony.
 key_touch_view :: proc(v: ^ui.View, app: ^App) {
 	q := webauthn.touch_question()
+	defer webauthn.touch_question_destroy(&q)
 	if q.number == 0 { return }   // (over: webauthn_pin_build closes it)
 	em := ui.font_size()
 	ui.next({width = ui.fill(), height = ui.fill()})

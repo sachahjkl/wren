@@ -561,8 +561,11 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 	idx := -1
 	for x, i in app.windows { if x == w { idx = i } }
 	ordered_remove(&app.windows, idx)
+	heir := app.windows[0]
+	// retarget app.licence before freeing w.ui and w.win so multi-window licence actions never use freed pointers
+	licence_retarget(app, w, heir)
+	if app.tab_drag.active && (app.tab_drag.source == w.id || app.tab_drag.window == w.id) { tab_drag_end(app) }
 	if w.primary {
-		heir := app.windows[0]
 		if heir.headless_shared {
 			// headless: no surfaces, one offscreen target. The heir simply becomes the primary and keeps rendering into it.
 			heir.headless_shared, heir.primary = false, true
@@ -811,6 +814,7 @@ windows_forget_tabs :: proc(app: ^App) {
 // The toolkit states of every window, and their address fields.
 windows_destroy_ui :: proc(app: ^App) {
 	for w in app.windows {
+		licence_retarget(app, w, nil)
 		address_destroy(w)
 		prefs_page.standard_unwatch(&w.standard)
 		ui.destroy(w.ui)

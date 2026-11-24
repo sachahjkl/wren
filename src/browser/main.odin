@@ -1763,8 +1763,92 @@ main :: proc() {
 @(thread_local)
 headless_software: bool   // (read once, by the app_start of this thread)
 
+@(private = "file")
+Start_Cleanup :: enum u8 {
+	Recovery,
+	Appearance,
+	Net_Client,
+	Dialogs_And_Loader,
+	Process_Share,
+	Shell_State,
+	Renderer_Only,
+}
+@(private = "file")
+Start_Cleanups :: bit_set[Start_Cleanup; u8]
+
+@(private = "file")
+profile_dir_remove_if_private :: proc(app: ^App) {
+	if app.private { base.remove_tree(app.profile_dir) }
+}
+
+// Tears down partially initialized subsystems when app_start fails early, so neither app, the_app, nor background
+// threads leak.
+@(private = "file")
+app_start_rollback :: proc(app: ^App, done: Start_Cleanups, preload: ^Font_Preload) {
+	if preload != nil {
+		if preload.th != nil { host.thread_join(preload.th) }
+		for g in preload.generics { delete(g) }
+		delete(preload.generics)
+		free(preload)
+	}
+	if .Loop in app.made { instance_end(app) }
+	if .Shell_State in done {
+		cdp_stop(app)
+		remote_stop(app)
+		desktop_shell_destroy()
+		vault_shell_destroy(app)
+		tabs := tabs_all(app)
+		windows_forget_tabs(app)
+		for t in tabs { tab_free(app, t) }
+		global_history_shutdown(app)
+		bookmarks_shutdown(app)
+		history_settings_shutdown(app)
+		base.scope_close(app.process)
+		page.shutdown_threads()
+	}
+	if .Dialogs_And_Loader in done { page.storage_manager_destroy(&app.storage) }
+	if .Shell_State in done {
+		host.loop_drain(&app.loop)
+		page.images_shutdown()
+	}
+	if .Dialogs_And_Loader in done {
+		blocker_stop(app)
+		fetch.loader_destroy(&app.loader)
+		page.timeline_shutdown()
+		http_cache_stop(app)
+		host.dialogs_destroy(&app.dialogs)
+		app_pools_end(app)
+	}
+	if .Net_Client in done { net.client_destroy(&app.client) }
+	if .Dialogs_And_Loader in done { fetch.profile_destroy(&app.profile) }
+	if .Appearance in done { appearance_destroy(app) }
+	if .Shell_State in done {
+		page.compile_shutdown()
+		page.discard_page_tasks(&app.loop)
+	}
+	if .Loop in app.made { app_loop_end(app) }
+	if .Process_Share in done {
+		page.frames_shutdown()
+		page.cache_store_shutdown()
+		page.fs_store_shutdown()
+		process_share_leave()
+	}
+	if .Shell_State in done {
+		config_view_destroy(&app.config_view)
+		session_destroy(app)
+	}
+	if .Recovery in done { recovery_destroy() }
+	if .Renderer_Only in done { render.destroy(&app.r) }
+	if .Dialogs_And_Loader in done { page.settings_destroy(&app.page_settings) }
+	profile_dir_remove_if_private(app)
+	delete(app.profile_dir)
+	app_free(app)
+	instance_release()
+}
+
 app_start :: proc(args: []string) -> ^App {
 	app := app_make()   // app_make.odin: the stages of the App, shared with the tests and the chrome world
+	done: Start_Cleanups
 	frame_gate_init()   // windows.odin: the frames of this thread, one state machine
 	platform.dragdrop_thread_init()   // OLE on this thread before any decoder joins it to the multithreaded apartment (dnd_shell.odin)
 
@@ -1840,6 +1924,7 @@ app_start :: proc(args: []string) -> ^App {
 	instance_early(app, rest[:], setup_requested, new_window || no_single, remote_asked || headless_mode || hidden_mode || cdp_have_port)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists
 	recovery_start(app)   // crash_recovery.odin: how the last run ended, and this run's marker
+	done += {.Recovery}
 
 	// Start-up order: the renderer's start-up is by far the longest step, and most of it is the graphics device (the
 	// driver's first load in the process). The device is made on a thread of its own from here (render.preload_device:
@@ -1865,7 +1950,7 @@ app_start :: proc(args: []string) -> ^App {
 	} else {
 		first_window = platform.open_window(APP_NAME, {1280, 800}, transparent = config.bool_of(&app.prefs, "browser.window.fixed_surface"), integrated_title = !config.bool_of(&app.prefs, prefs_page.SYSTEM_TITLE_PREF))
 	}
-	if first_window == nil { log.error("cannot open the window"); return nil }
+	if first_window == nil { log.error("cannot open the window"); app_start_rollback(app, done, preload); return nil }
 	window_adopt_primary(app, first_window)   // windows.odin: the window the App's per-window fields are about
 	prof_mark(.Window)
 
@@ -1874,9 +1959,11 @@ app_start :: proc(args: []string) -> ^App {
 	instance_begin(app)   // instance_shell.odin: the window that takes the second starts' addresses
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	appearance_init(app)   // before any settings are derived: `system` colors, auto color scheme
+	done += {.Appearance}
 	ns := net.settings_from_prefs(&app.prefs)
-	if !net.client_init(&app.client, &app.loop, ns) { log.error("network init failed"); return nil }
+	if !net.client_init(&app.client, &app.loop, ns) { net.settings_destroy(&ns); log.error("network init failed"); app_start_rollback(app, done, preload); return nil }
 	net.settings_destroy(&ns)
+	done += {.Net_Client}
 	app_pools_init(app, app.cfg.blocking_threads)
 	host.dialogs_init(&app.dialogs, &app.loop)
 	app.profile = fetch.profile_make(fetch.settings_from_prefs(&app.prefs), cookies.settings_from_prefs(&app.prefs))
@@ -1886,8 +1973,10 @@ app_start :: proc(args: []string) -> ^App {
 	host.phase("storage")
 	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "", &app.writer)
 	app.page_settings = page.settings_from_prefs(&app.prefs)
+	done += {.Dialogs_And_Loader}
 	host.phase("script runtime")
-	if !process_share_join(app) { log.error("wasm runtime init failed"); return nil }   // process_share.odin: the Wasm engine, the bytecode cache... (the first App sets them up)
+	if !process_share_join(app) { log.error("wasm runtime init failed"); app_start_rollback(app, done, preload); return nil }   // process_share.odin: the Wasm engine, the bytecode cache... (the first App sets them up)
+	done += {.Process_Share}
 	app.process = base.scope_make("process")
 	app.config_view.rows = make(map[string]^Row_State)
 	history_settings_init(app)   // history_settings.odin: before the first tab
@@ -1923,6 +2012,7 @@ app_start :: proc(args: []string) -> ^App {
 	remote_start(app, remote_asked, remote_name)   // remote_shell.odin: the pipe, when asked for   // (tab_log keeps its copy)
 	cdp_start(app, cdp_port, cdp_have_port, cdp_address)   // cdp.odin: the CDP / WebDriver BiDi WebSocket, when asked for
 	desktop_watch_begin(app, profile_override != "")   // desktop_shell.odin: the system tells when the integration changes (the box in about:config and the Setup dialog follow it)
+	done += {.Shell_State}
 
 	host.phase("renderer")   // (the device made early, then the swap chain or the offscreen target)
 	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
@@ -1930,10 +2020,11 @@ app_start :: proc(args: []string) -> ^App {
 	if headless_mode {
 		// no window: the renderer draws into an offscreen target of the window's size. Captures read it (render.capture_*,
 		// on both backends). It resizes with the window (window_resize_offscreen).
-		if !render.init_offscreen(&app.r, active_window(app).win.size, warp = headless_software) { fonts_preload_finish(app, preload); log.error("offscreen renderer init failed"); return nil }
+		if !render.init_offscreen(&app.r, active_window(app).win.size, warp = headless_software) { log.error("offscreen renderer init failed"); app_start_rollback(app, done, preload); return nil }
 	} else {
-		if !render.init_window(&app.r, active_window(app).win, active_window(app).win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); log.error("renderer init failed"); return nil }
+		if !render.init_window(&app.r, active_window(app).win, active_window(app).win.size, transparent = fixed_surface) { log.error("renderer init failed"); app_start_rollback(app, done, preload); return nil }
 	}
+	done += {.Renderer_Only}
 	fixed_size: [2]int
 	if !headless_mode { fixed_size = fixed_surface_size(app, active_window(app).win) }
 	if fixed_size.x > 0 {
@@ -1944,7 +2035,7 @@ app_start :: proc(args: []string) -> ^App {
 	render.set_teardown_wait(&app.r, int(config.int_of(&app.prefs, "browser.shell.shutdown_surface_wait_ms")))   // (see the preference: the compositor may be slow to let go of the surface)
 	prof_mark(.Renderer)
 	host.phase("fonts finish")
-	if !fonts_preload_finish(app, preload) { log.error("cannot load the UI or icon font"); return nil }
+	if !fonts_preload_finish(app, preload) { preload.th = nil; log.error("cannot load the UI or icon font"); app_start_rollback(app, done, preload); return nil }
 	prof_mark(.UI_Fonts)
 	host.phase("draw, ui, page render, shells")
 	app_draw_init(app)
@@ -2186,7 +2277,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("platform.destroy_window")
 	app_windows_end(app)
 	page.settings_destroy(&app.page_settings)
-	if app.private { base.remove_tree(app.profile_dir) }   // (a private Wren's profile goes with it)
+	profile_dir_remove_if_private(app)   // (a private Wren's profile goes with it)
 	delete(app.profile_dir)
 	// (the installed copy or the updated program, started after the release below: started before, it would find this
 	// Wren on the profile and hand itself over to it)

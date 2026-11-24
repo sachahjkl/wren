@@ -7,6 +7,7 @@ package webauthn
 // answers (pin_answer) with the question's number, so that an answer to a question already over is dropped. The PIN
 // is a secret: the slot's copy is zeroed once the thread has taken it.
 
+import "core:strings"
 import "core:sync"
 import "core:time"
 
@@ -14,7 +15,7 @@ PIN_MAX :: 63   // CTAP2: a PIN is at most 63 bytes of UTF-8
 
 Pin_Question :: struct {
 	number:  u64,      // 0: no question
-	rp_id:   string,   // the site the key is asked for (the slot's own copy, valid while the question is open)
+	rp_id:   string,   // owned copy when number != 0 (free with pin_question_destroy)
 	retries: int,      // the PINs the key still takes before it blocks (-1: not known)
 	wrong:   bool,     // the last PIN given was wrong
 }
@@ -35,16 +36,72 @@ Pin_Slot :: struct {
 @(private = "file")
 pin_slot: Pin_Slot
 
-// Told when a question opens or closes, on the ceremony's thread: the interface wakes and reads pin_question. It must
-// not block. Set by the shell before any ceremony runs (nil: no interface; a PIN is then never asked).
-pin_wake: proc "contextless" ()
+// Called on the ceremony's thread when a question opens or closes: the interface wakes and reads the question. It must
+// not block. `user` is the process-safe pointer registered with pin_wake_set.
+Pin_Wake_Proc :: proc "contextless" (user: rawptr)
 
-// The open question, or one with number 0. Called by the interface each frame it builds: a lock and a copy.
-pin_question :: proc() -> Pin_Question {
+@(private = "file")
+Pin_Wake_State :: struct {
+	mu:   sync.Mutex,
+	fn:   Pin_Wake_Proc,
+	user: rawptr,
+}
+
+@(private = "file")
+pin_wake_state: Pin_Wake_State
+
+// Registers (or clears, with nil) the wake callback for security-key prompts. Clearing acquires the wake mutex so no
+// in-flight wake call can still read `user` once pin_wake_set(nil, nil) returns.
+pin_wake_set :: proc(fn: Pin_Wake_Proc, user: rawptr = nil) {
+	sync.mutex_lock(&pin_wake_state.mu)
+	pin_wake_state.fn, pin_wake_state.user = fn, user
+	sync.mutex_unlock(&pin_wake_state.mu)
+}
+
+@(private = "file")
+pin_wake_has :: proc() -> bool {
+	sync.mutex_lock(&pin_wake_state.mu)
+	defer sync.mutex_unlock(&pin_wake_state.mu)
+	return pin_wake_state.fn != nil
+}
+
+@(private = "file")
+pin_wake_fire :: proc() {
+	sync.mutex_lock(&pin_wake_state.mu)
+	fn, user := pin_wake_state.fn, pin_wake_state.user
+	if fn != nil { fn(user) }
+	sync.mutex_unlock(&pin_wake_state.mu)
+}
+
+// Dismisses any open PIN or account prompt so a waiting ceremony thread unblocks immediately (used at shutdown).
+pin_dismiss :: proc() {
+	sync.mutex_lock(&pin_slot.mu)
+	if pin_slot.question.number != 0 && !pin_slot.answered {
+		pin_slot.answered, pin_slot.given = true, false
+	}
+	sync.mutex_unlock(&pin_slot.mu)
+	sync.mutex_lock(&choose_slot.mu)
+	if choose_slot.question.number != 0 && !choose_slot.answered {
+		choose_slot.answered, choose_slot.chosen, choose_slot.index = true, false, 0
+	}
+	sync.mutex_unlock(&choose_slot.mu)
+}
+
+// Frees the strings owned by a Pin_Question returned by pin_question.
+pin_question_destroy :: proc(q: ^Pin_Question, allocator := context.allocator) {
+	delete(q.rp_id, allocator)
+	q^ = {}
+}
+
+// The open question, or one with number 0. Returns an owned copy so the caller never races with slot reuse; free with
+// pin_question_destroy when number != 0.
+pin_question :: proc(allocator := context.allocator) -> Pin_Question {
 	sync.mutex_lock(&pin_slot.mu)
 	defer sync.mutex_unlock(&pin_slot.mu)
-	if pin_slot.answered { return {} }
-	return pin_slot.question
+	if pin_slot.answered || pin_slot.question.number == 0 { return {} }
+	q := pin_slot.question
+	q.rp_id = strings.clone(q.rp_id, allocator)
+	return q
 }
 
 // The person's answer to the question `number`: a PIN (`given`), or a refusal. Dropped when that question is over.
@@ -62,17 +119,17 @@ pin_answer :: proc(number: u64, pin: string, given: bool) {
 // Asks the person for the key's PIN and waits for the answer, or for the ceremony's cancel. `out` receives the PIN
 // (the caller zeroes it); ok is false when the person refused, the ceremony was cancelled, or no interface asks.
 pin_ask :: proc(token: ^Cancel_Token, rp_id: string, retries: int, wrong: bool, out: ^[PIN_MAX + 1]u8) -> (n: int, ok: bool) {
-	if pin_wake == nil { return 0, false }
+	if !pin_wake_has() { return 0, false }
 	sync.mutex_lock(&pin_slot.ask)
 	defer sync.mutex_unlock(&pin_slot.ask)
 	sync.mutex_lock(&pin_slot.mu)
 	pin_slot.next += 1
-	rp := copy(pin_slot.rp[:], rp_id)
+	rp := copy(pin_slot.rp[:], utf8_cut(rp_id, len(pin_slot.rp)))
 	pin_slot.question = {number = pin_slot.next, rp_id = string(pin_slot.rp[:rp]), retries = retries, wrong = wrong}
 	pin_slot.answered, pin_slot.given, pin_slot.pin_len = false, false, 0
 	sync.mutex_unlock(&pin_slot.mu)
-	pin_wake()
-	defer pin_wake()   // (the question is over: the dialog goes)
+	pin_wake_fire()
+	defer pin_wake_fire()   // (the question is over: the dialog goes)
 	// (a look at the answer and at the cancel every 50 ms: the person types for seconds, a cancel is seen at once)
 	for {
 		sync.mutex_lock(&pin_slot.mu)
@@ -114,8 +171,8 @@ Choose_Account :: struct {
 
 Choose_Question :: struct {
 	number:   u64,                // 0: no question
-	rp_id:    string,             // the slot's own copy, valid while the question is open
-	accounts: []Choose_Account,   // the same (at most CHOOSE_MAX)
+	rp_id:    string,             // owned copy when number != 0 (free with choose_question_destroy)
+	accounts: []Choose_Account,   // owned copy (at most CHOOSE_MAX)
 }
 
 @(private = "file")
@@ -146,12 +203,38 @@ utf8_cut :: proc(s: string, max: int) -> string {
 	return s[:n]
 }
 
-// The open question, or one with number 0. Called by the interface each frame it builds: a lock and a copy.
-choose_question :: proc() -> Choose_Question {
+// Frees the strings and slice owned by a Choose_Question returned by choose_question.
+choose_question_destroy :: proc(q: ^Choose_Question, allocator := context.allocator) {
+	delete(q.rp_id, allocator)
+	for a in q.accounts {
+		delete(a.name, allocator)
+		delete(a.display_name, allocator)
+	}
+	delete(q.accounts, allocator)
+	q^ = {}
+}
+
+// The open question, or one with number 0. Returns an owned copy so the caller never races with slot reuse; free with
+// choose_question_destroy when number != 0.
+choose_question :: proc(allocator := context.allocator) -> Choose_Question {
 	sync.mutex_lock(&choose_slot.mu)
 	defer sync.mutex_unlock(&choose_slot.mu)
-	if choose_slot.answered { return {} }
-	return choose_slot.question
+	if choose_slot.answered || choose_slot.question.number == 0 { return {} }
+	src := choose_slot.question
+	q := Choose_Question{
+		number = src.number,
+		rp_id  = strings.clone(src.rp_id, allocator),
+	}
+	if len(src.accounts) > 0 {
+		q.accounts = make([]Choose_Account, len(src.accounts), allocator)
+		for a, i in src.accounts {
+			q.accounts[i] = {
+				name         = strings.clone(a.name, allocator),
+				display_name = strings.clone(a.display_name, allocator),
+			}
+		}
+	}
+	return q
 }
 
 // The person's answer to the question `number`: the account at `index` (`chosen`), or a refusal. Dropped when that
@@ -168,7 +251,7 @@ choose_answer :: proc(number: u64, index: int, chosen: bool) {
 // CHOOSE_MAX accounts are offered. ok is false when the person refused, the ceremony was cancelled, or no interface
 // asks.
 choose_ask :: proc(token: ^Cancel_Token, rp_id: string, accounts: []Choose_Account) -> (index: int, ok: bool) {
-	if pin_wake == nil || len(accounts) == 0 { return 0, false }
+	if !pin_wake_has() || len(accounts) == 0 { return 0, false }
 	sync.mutex_lock(&choose_slot.ask)
 	defer sync.mutex_unlock(&choose_slot.ask)
 	sync.mutex_lock(&choose_slot.mu)
@@ -183,8 +266,8 @@ choose_ask :: proc(token: ^Cancel_Token, rp_id: string, accounts: []Choose_Accou
 	choose_slot.question = {number = choose_slot.next, rp_id = string(choose_slot.rp[:rp]), accounts = choose_slot.accounts[:n]}
 	choose_slot.answered, choose_slot.chosen, choose_slot.index = false, false, 0
 	sync.mutex_unlock(&choose_slot.mu)
-	pin_wake()
-	defer pin_wake()   // (the question is over: the dialog goes)
+	pin_wake_fire()
+	defer pin_wake_fire()   // (the question is over: the dialog goes)
 	// (a look at the answer and at the cancel every 50 ms, as pin_ask)
 	for {
 		sync.mutex_lock(&choose_slot.mu)
@@ -209,7 +292,7 @@ choose_ask :: proc(token: ^Cancel_Token, rp_id: string, accounts: []Choose_Accou
 // The interface shows it, and its Cancel stops the ceremony.
 Touch_Question :: struct {
 	number: u64,      // 0: no wait
-	rp_id:  string,   // the slot's own copy, valid while the wait is open
+	rp_id:  string,   // owned copy when number != 0 (free with touch_question_destroy)
 }
 
 @(private = "file")
@@ -229,11 +312,11 @@ touch_slot: Touch_Slot
 touch_begin :: proc(pl: ^Platform, token: ^Cancel_Token, rp_id: string) {
 	sync.mutex_lock(&touch_slot.mu)
 	touch_slot.next += 1
-	n := copy(touch_slot.rp[:], rp_id)
+	n := copy(touch_slot.rp[:], utf8_cut(rp_id, len(touch_slot.rp)))
 	touch_slot.question = {number = touch_slot.next, rp_id = string(touch_slot.rp[:n])}
 	touch_slot.platform, touch_slot.token = pl, token
 	sync.mutex_unlock(&touch_slot.mu)
-	if pin_wake != nil { pin_wake() }
+	pin_wake_fire()
 }
 
 // The key answered (or the wait was cancelled): the wait is over.
@@ -241,14 +324,24 @@ touch_end :: proc() {
 	sync.mutex_lock(&touch_slot.mu)
 	touch_slot.question, touch_slot.platform, touch_slot.token = {}, nil, nil
 	sync.mutex_unlock(&touch_slot.mu)
-	if pin_wake != nil { pin_wake() }
+	pin_wake_fire()
 }
 
-// The open wait, or one with number 0.
-touch_question :: proc() -> Touch_Question {
+// Frees the strings owned by a Touch_Question returned by touch_question.
+touch_question_destroy :: proc(q: ^Touch_Question, allocator := context.allocator) {
+	delete(q.rp_id, allocator)
+	q^ = {}
+}
+
+// The open wait, or one with number 0. Returns an owned copy so the caller never races with slot reuse; free with
+// touch_question_destroy when number != 0.
+touch_question :: proc(allocator := context.allocator) -> Touch_Question {
 	sync.mutex_lock(&touch_slot.mu)
 	defer sync.mutex_unlock(&touch_slot.mu)
-	return touch_slot.question
+	if touch_slot.question.number == 0 { return {} }
+	q := touch_slot.question
+	q.rp_id = strings.clone(q.rp_id, allocator)
+	return q
 }
 
 // The person gave up the wait `number`: its ceremony is cancelled (the key stops blinking, the caller gets

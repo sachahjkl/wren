@@ -227,8 +227,9 @@ desktop_note_activate :: proc() { sync.atomic_store(&the_app.dsk.stale, true) }
 desktop_watch_wake :: proc(user: rawptr) {
 	context = base.process_context()   // (the watcher's thread runs with the default context)
 	app := (^App)(user)
+	if app == nil { return }
 	sync.atomic_store(&app.dsk.stale, true)
-	if app != nil { host.post(&app.loop, desktop_changed_on_loop, app) }
+	host.post(&app.loop, desktop_changed_on_loop, app)
 }
 
 // On the loop's thread (a woken idle loop builds no frame by itself): what shows the integration is drawn again. Nothing

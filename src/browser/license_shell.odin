@@ -86,6 +86,18 @@ licence_stop :: proc(app: ^App) {
 	delete(pricing, base.process_allocator())
 }
 
+// Retargets app.licence away from a window that is closing, before its ui.State and platform.Window are freed.
+// When closing the last window (heir == nil), clears both pointers.
+licence_retarget :: proc(app: ^App, closing, heir: ^Browser_Window) {
+	if closing == nil { return }
+	if app.licence.state != nil && app.licence.state == closing.ui {
+		app.licence.state = heir != nil ? heir.ui : nil
+	}
+	if app.licence.options.owner != nil && app.licence.options.owner == closing.win {
+		app.licence.options.owner = heir != nil ? heir.win : nil
+	}
+}
+
 // about:wren says the store's last status: each answer of the store (the first read, a change on the settings' page)
 // builds it again. The page's answers come in a build (ui.task), so the frame looks after it.
 licence_frame :: proc(app: ^App) {

@@ -243,24 +243,48 @@ Fido2_Op :: struct {
 	mu:  sync.Mutex,
 }
 
-@(private = "file")
+@(private)
 fido2_prepare_cancel :: proc(pl: ^Platform, token: ^Cancel_Token) {
 	op := new(Fido2_Op, base.process_allocator())
 	// store the op in the token's platform id slot (a pointer, little-endian) so cancel can find it
 	ptr := uintptr(op)
+	sync.mutex_lock(&token.mu)
 	for i in 0 ..< size_of(uintptr) { token.platform[i] = u8(ptr >> uint(i * 8)) }
 	token.has_platform = true
+	token.cleanup = fido2_destroy_cancel
+	sync.mutex_unlock(&token.mu)
+}
+
+// Frees the per-operation cancel state once the ceremony's worker thread has been joined (ceremony_destroy).
+@(private = "file")
+fido2_destroy_cancel :: proc(token: ^Cancel_Token) {
+	if token == nil { return }
+	sync.mutex_lock(&token.mu)
+	if !token.has_platform {
+		sync.mutex_unlock(&token.mu)
+		return
+	}
+	ptr: uintptr
+	for i in 0 ..< size_of(uintptr) { ptr |= uintptr(token.platform[i]) << uint(i * 8) }
+	token.platform = {}
+	token.has_platform = false
+	token.cleanup = nil
+	sync.mutex_unlock(&token.mu)
+	if op := (^Fido2_Op)(ptr); op != nil { free(op, base.process_allocator()) }
 }
 
 @(private = "file")
 op_of :: proc(token: ^Cancel_Token) -> ^Fido2_Op {
+	if token == nil { return nil }
+	sync.mutex_lock(&token.mu)
+	defer sync.mutex_unlock(&token.mu)
 	if !token.has_platform { return nil }
 	ptr: uintptr
 	for i in 0 ..< size_of(uintptr) { ptr |= uintptr(token.platform[i]) << uint(i * 8) }
 	return (^Fido2_Op)(ptr)
 }
 
-@(private = "file")
+@(private)
 fido2_cancel :: proc(pl: ^Platform, token: ^Cancel_Token) {
 	op := op_of(token)
 	if op == nil { return }

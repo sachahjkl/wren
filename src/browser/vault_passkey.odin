@@ -8,19 +8,23 @@ package browser
 
 import "base:runtime"
 import "core:fmt"
+import "core:sync"
+import "core:time"
 import "wb:base"
 import "wb:host"
 import i18n "toolkit:i18n"
+import "wb:page"
 import "wb:url"
 import "wb:vault"
 import "wb:webauthn"
 
-@(private = "file")
+@(private)
 Vault_Passkey_Op :: struct {
 	app:      ^App,
 	c:        ^webauthn.Ceremony,
 	platform: ^webauthn.Platform,
 	thread:   ^host.Thread,
+	done:     b32,   // atomic: worker finished (or failed to start)
 }
 
 // Why a passkey cannot open the Vault on this computer ("": it can). Bitwarden's passkeys open the keys with the PRF
@@ -76,11 +80,13 @@ vault_passkey_frame :: proc(app: ^App) {
 	op.thread = host.thread_start(proc(data: rawptr) {
 		op := (^Vault_Passkey_Op)(data)
 		webauthn.run(op.c, op.platform)
-		host.post(&op.app.loop, passkey_finished, op)
+		sync.atomic_store(&op.done, true)
+		host.post(&op.app.loop, passkey_finished, op.app)
 	}, op, name = "wren-vault-passkey")
 	if op.thread == nil {
 		op.c.status = webauthn.fail(.Not_Allowed, "The passkey request could not start.")
-		host.post(&app.loop, passkey_finished, op)
+		sync.atomic_store(&op.done, true)
+		host.post(&app.loop, passkey_finished, app)
 	}
 }
 
@@ -91,21 +97,31 @@ vault_passkey_cancel :: proc(app: ^App) {
 	webauthn.cancel(op.platform, &op.c.cancel, .Abort)
 }
 
-// At exit: a ceremony still running is cancelled and its thread joined, before the loop goes.
+// At exit: dismiss open security-key prompts, cancel a running ceremony, and wait within the grace period before the
+// loop goes. A stuck authenticator call that ignores cancellation is left to process exit (matching page.webauthn_shutdown).
 vault_passkey_destroy :: proc(app: ^App) {
 	op := (^Vault_Passkey_Op)(app.vault.passkey_op)
 	if op == nil { return }
+	webauthn.pin_dismiss()
 	webauthn.cancel(op.platform, &op.c.cancel, .Abort)
+	grace_ms := app.page_settings.authn.cancel_grace_ms
+	deadline := time.tick_now()
+	for !host.thread_finished(op.thread) && time.duration_milliseconds(time.tick_since(deadline)) < f64(grace_ms) {
+		time.sleep(page.WEBAUTHN_SHUTDOWN_POLL)
+	}
+	app.vault.passkey_op = nil
+	if !host.thread_finished(op.thread) { return }
 	host.thread_join(op.thread)
 	webauthn.ceremony_destroy(op.c)
 	free(op, base.process_allocator())
-	app.vault.passkey_op = nil
 }
 
 @(private = "file")
 passkey_finished :: proc(data: rawptr) {
-	op := (^Vault_Passkey_Op)(data)
-	app := op.app
+	app := (^App)(data)
+	if app == nil || !app.vault.started { return }
+	op := (^Vault_Passkey_Op)(app.vault.passkey_op)
+	if op == nil || !sync.atomic_load(&op.done) { return }
 	host.thread_join(op.thread)
 	defer {
 		webauthn.ceremony_destroy(op.c)

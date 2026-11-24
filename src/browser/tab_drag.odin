@@ -25,6 +25,7 @@ import "core:time"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
+import "wb:base"
 
 // Where the tabs of a window are (client pixels), as the last frame laid them out.
 Drop_Zone :: struct {
@@ -220,13 +221,36 @@ tab_drag_begin :: proc(app: ^App, t: ^Tab, pos: draw.Vec2) {
 // The events of the window the press began in, while a tab is carried: the carried window follows the pointer, the bar under it
 // shows the place, the release drops. Called by the frame of that window with what it polled.
 tab_drag_events :: proc(app: ^App, events: []platform.Event) {
-	if !app.tab_drag.active || app.active == nil || app.active.id != app.tab_drag.source { return }
+	if !app.tab_drag.active { return }
+	if window_by_id(app, app.tab_drag.source) == nil { tab_drag_end(app); return }
+	if app.active == nil || app.active.id != app.tab_drag.source { return }
 	carried := window_by_id(app, app.tab_drag.window)
 	t := tab_by_id(app, app.tab_drag.tab)
 	if carried == nil || t == nil { tab_drag_end(app); return }
 	for ev in events {
 		#partial switch ev.kind {
+		case .Close, .Frame_Press, .Pointer_Cancel:
+			tab_drag_end(app)
+			return
+		case .Activate:
+			if app.active.win == nil || !app.active.win.active {
+				tab_drag_end(app)
+				return
+			}
+		case .Key_Press:
+			if ev.key == .Escape {
+				tab_drag_end(app)
+				return
+			}
 		case .Mouse_Move, .Mouse_Release:
+			if ev.kind == .Mouse_Release && ev.lost {
+				tab_drag_end(app)
+				return
+			}
+			if ev.kind == .Mouse_Move && !ev.injected && .Left not_in ev.buttons {
+				tab_drag_end(app)
+				return
+			}
 			// (the system's cursor, but for input a test or a remote control injected: the real pointer is elsewhere)
 			at_event := client_origin(app.active) + ev.pos
 			screen := ev.injected ? at_event : pointer_screen(at_event)
@@ -311,13 +335,16 @@ drop_ghost :: proc(app: ^App, area: ^ui.Box, vertical: bool, from, extent, x, w:
 // next frame. The window of the tab is not made before the drop: nothing could place it under the pointer.
 @(private = "file")
 tab_drag_system :: proc(app: ^App, src: ^Browser_Window, t: ^Tab) {
+	// heap-allocated: nested repaints during blocking drag_start reset context.temp_allocator
+	payload := tab_drag_payload(t.id, base.process_allocator())
+	defer delete(payload, base.process_allocator())
 	data: platform.Drag_Data
 	defer delete(data.custom)
-	append(&data.custom, platform.Drag_Entry{TAB_MIME, tab_drag_payload(t.id)})
+	append(&data.custom, platform.Drag_Entry{TAB_MIME, payload})
 	id := t.id
 	// (no toolkit carries a window in a Wayland drag yet: when gt:platform can, its answer goes here)
 	made: ^Browser_Window
-	if tab_window_when(false) == .Start { made = tab_detach(app, t, focus = false) }
+	if tab_window_when(false) == .Start && len(src.tabs) > 1 { made = tab_detach(app, t, focus = false) }
 	app.tab_drag = {active = true, tab = id, window = made != nil ? made.id : src.id, source = src.id}
 	platform.drop_sync_set(src.win, tab_drop_sync, app)
 	app.tab_drop_span = {time.tick_now(), {}}
@@ -329,7 +356,9 @@ tab_drag_system :: proc(app: ^App, src: ^Browser_Window, t: ^Tab) {
 	if tab == nil { return }
 	// (a drag the system could not start: the tab still leaves its bar, as the user asked)
 	if made != nil { if tab_drop_end(effect) == .Detach { window_focus(app, made, true) }; return }
-	if !ok || tab_drop_end(effect) == .Detach { tab_detach(app, tab) }
+	if !ok || tab_drop_end(effect) == .Detach {
+		if w, _ := window_of_tab(app, tab); w != nil && len(w.tabs) > 1 { tab_detach(app, tab) }
+	}
 }
 
 // The answer of the tab's own window while its drag of the system runs (tab_drag_system).
@@ -361,7 +390,7 @@ tab_drop_queued :: proc(app: ^App, ev: platform.Event) -> bool {
 	if t == nil { return true }
 	if slot, on_bar := tab_drop_at(w, ev.pos, t); on_bar {
 		tab_drop_into(app, t, w, slot)
-	} else {
+	} else if src, _ := window_of_tab(app, t); src != nil && len(src.tabs) > 1 {
 		tab_detach(app, t)
 	}
 	return true
