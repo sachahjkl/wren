@@ -191,7 +191,7 @@ document_open :: proc(p: ^Page) -> bool {
 	clear(&s.deferred)
 	// erase all event listeners and handlers of the document's tree and of its Window: the old document's
 	// DOMContentLoaded listener must not see the new one's (it would open it again, forever). The engine forgets its
-	// records of them first (wj_document_opening: native/js/runtime/load.c), while the nodes are still connected.
+	// records of them first (wj_document_opening: native/js/odin/load.odin), while the nodes are still connected.
 	if r := p.js; r != nil && !r.failed && r.inst != nil { js_call(p, r.inst, "wj_document_opening", nil) }
 	if p.closed { return false }
 	dom.erase_listeners(d, d.root)

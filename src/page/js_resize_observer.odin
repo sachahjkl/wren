@@ -1,7 +1,7 @@
 package page
 
 // ResizeObserver for JavaScript (api/js_observers.widl; Resize Observer §3). The browser keeps the observations and
-// measures the targets from the layout; the engine (native/js/runtime/web_resize.c) keeps the script's objects. At each
+// measures the targets from the layout; the engine (native/js/odin/web_resize.odin) keeps the script's objects. At each
 // rendering update (resize_observers_update, after the animation frame callbacks and the layout they asked for, before
 // the intersection observations and the paint) every observer's targets are measured; the observers with a target whose
 // observed box differs from the size last reported get their entries in one call of the engine's `notify`, which takes

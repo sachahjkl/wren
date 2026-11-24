@@ -1,8 +1,8 @@
 # Wren
 
 A web browser in Odin where WebAssembly is the only execution engine: the JavaScript engine is Odin compiled to Wasm,
-run by Wasmtime. The UI comes from the `ext/gui_toolkit` submodule. Releases are Windows x64; Linux (Wayland, X11)
-is in progress ([docs/portability.md](docs/portability.md)).
+run by Wasmtime. The UI comes from the `ext/gui_toolkit` submodule. Releases target Windows x64 and Linux (Wayland,
+X11); see [docs/portability.md](docs/portability.md).
 
 Read first: [docs/architecture.md](docs/architecture.md) (design rules, security model),
 [CONTRIBUTING.md](CONTRIBUTING.md) (workflow, tools, releases), [docs/testing.md](docs/testing.md).

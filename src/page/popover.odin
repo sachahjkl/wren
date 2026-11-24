@@ -6,7 +6,7 @@ import "wb:forms"
 import "wb:host"
 import "wb:style"
 
-// The Popover API (HTML §6.12; api/popover.widl, native/js/runtime/dom_popover.c): the `popover` attribute, showPopover /
+// The Popover API (HTML §6.12; api/popover.widl, native/js/odin/dom_popover.odin): the `popover` attribute, showPopover /
 // hidePopover / togglePopover, the popover target attributes of buttons (forms/activation.odin calls popover_invoke),
 // light dismiss (a trusted click outside the showing auto popovers: popover_light_dismiss) and Escape as a close request.
 //

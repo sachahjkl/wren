@@ -1,6 +1,6 @@
 package page
 
-// The document's Performance Timeline (api/performance.widl; native/js/runtime/web_perf.c makes the objects): the entries
+// The document's Performance Timeline (api/performance.widl; native/js/odin/web_perf.odin makes the objects): the entries
 // the browser itself records, as opposed to the marks and measures a page makes (bindings_performance.odin).
 //
 //   * navigation  (PerformanceNavigationTiming): one for the document. The shell gives what it measured of the load

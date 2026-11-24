@@ -515,6 +515,10 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Stroke_Width: return fa(&c.stroke_width), nil
 	case .Stroke_Linecap: return fa(&c.stroke_linecap), nil
 	case .Stroke_Linejoin: return fa(&c.stroke_linejoin), nil
+	case .Fill_Opacity: return fa(&c.fill_opacity), nil
+	case .Stroke_Opacity: return fa(&c.stroke_opacity), nil
+	case .Stroke_Dasharray: return fa(&c.stroke_dasharray), nil
+	case .Stroke_Dashoffset: return fa(&c.stroke_dashoffset), nil
 	case .Anchor_Name: return fa(&c.anchor_name), nil
 	case .Anchor_Scope: return fa(&c.anchor_scope), nil
 	case .Position_Anchor: return fa(&c.position_anchor), nil

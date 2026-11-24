@@ -4,8 +4,8 @@ import "core:strings"
 import "wb:base"
 import "wb:dom"
 
-// XMLSerializer (DOM Parsing §3.2, "XML serialization", the well-formed flag off) for JavaScript: native/js/runtime/
-// dom_core.c (wjr_XMLSerializer_*), api/js_xml.widl. A node and its subtree as XML: each element's namespace declared
+// XMLSerializer (DOM Parsing §3.2, "XML serialization", the well-formed flag off) for JavaScript: native/js/odin/
+// dom_core.odin (wjr_XMLSerializer_*), api/js_xml.widl. A node and its subtree as XML: each element's namespace declared
 // where it differs from the one in scope (xmlns="..." on the first HTML element, on an <svg> inside HTML...), prefixed
 // names and the xlink: / xml: attributes of SVG declared as they appear, empty elements of other namespaces closed
 // as <x/>, HTML void elements as <br />, text and attribute values escaped, a template's contents as its children.

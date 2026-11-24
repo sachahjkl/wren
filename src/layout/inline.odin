@@ -237,6 +237,7 @@ next_seg :: proc(it: ^Seg_Iter) -> (Seg, bool) {
 			keep_nl := ws != .Normal && ws != .Nowrap
 			f := &c.l.fonts[item.fi]
 			wsp := cs.word_spacing * c.scale
+			lsp := cs.letter_spacing * c.scale
 			b := text[it.pos]
 			if keep_nl && (b == '\n' || (b == '\r' && (it.pos + 1 >= len(text) || text[it.pos + 1] != '\n'))) {
 				it.pos += 1
@@ -252,14 +253,14 @@ next_seg :: proc(it: ^Seg_Iter) -> (Seg, bool) {
 					it.pos = j
 					if it.prev_space { continue }
 					it.prev_space = true
-					return Seg{kind = .Space, item = idx, start = i32(s), end = i32(j), w = f.space + wsp, brk = wrap, collapsible = true, hang = true, level = lv}, true
+					return Seg{kind = .Space, item = idx, start = i32(s), end = i32(j), w = f.space + wsp + lsp, brk = wrap, collapsible = true, hang = true, level = lv}, true
 				}
 				s := it.pos
 				it.pos += 1
 				it.prev_space = false
 				if b == '\r' { continue }
 				if b == '\t' { return Seg{kind = .Tab, item = idx, start = i32(s), end = i32(s + 1), brk = wrap, level = lv}, true }
-				return Seg{kind = .Space, item = idx, start = i32(s), end = i32(s + 1), w = f.space + wsp, brk = wrap, hang = ws != .Break_Spaces, level = lv}, true
+				return Seg{kind = .Space, item = idx, start = i32(s), end = i32(s + 1), w = f.space + wsp + lsp, brk = wrap, hang = ws != .Break_Spaces, level = lv}, true
 			}
 			it.prev_space = false
 			j, brk := word_end(text, it.pos, cs, wrap)
@@ -729,7 +730,7 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 			if f.kind == .Text && len(f.text) > 0 && f.text[len(f.text) - 1] == ' ' && f.nsp > 0 {
 				it := &c.l.inline_items[f.item]
 				if it.cs.white_space == .Normal || it.cs.white_space == .Nowrap || it.cs.white_space == .Pre_Line {
-					sw := c.l.fonts[f.fi].space + it.cs.word_spacing * c.scale
+					sw := c.l.fonts[f.fi].space + it.cs.word_spacing * c.scale + it.cs.letter_spacing * c.scale
 					f.text = f.text[:len(f.text) - 1]
 					f.w -= sw
 					f.nsp -= 1

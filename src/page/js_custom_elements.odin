@@ -1,7 +1,7 @@
 package page
 
 // Custom elements (HTML §4.13), the browser's half. The registry, the definitions and the reactions' callbacks live in
-// the engine (native/js/prelude/customelements.js, runtime/custom_elements.c); here the browser keeps what the DOM must
+// the engine (native/js/prelude/customelements.js, native/js/odin/custom_elements.odin); here the browser keeps what the DOM must
 // know: the local names that have a definition, each element's custom element state, and the queue of reactions the
 // DOM's mutations cause:
 //   * upgrade: an element with a defined name and no state yet was created by createElement, or inserted (by the

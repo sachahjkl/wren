@@ -1,7 +1,7 @@
 package page
 
 // The imports of module "frames" (api/frames.widl): what a realm needs to reach other windows by navigable id
-// (frames.odin). The engine's side is native/js/runtime/frames.c and prelude/frames.js.
+// (frames.odin). The engine's side is native/js/odin/frames.odin and prelude/frames.js.
 
 import "core:strings"
 import "wb:base"

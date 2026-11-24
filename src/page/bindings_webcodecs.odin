@@ -1,6 +1,6 @@
 package page
 
-// WebCodecs host side (api/webcodecs.widl, native/js/runtime/web_webcodecs.c). VideoFrame first: a host object holding
+// WebCodecs host side (api/webcodecs.widl, native/js/odin/web_webcodecs.odin). VideoFrame first: a host object holding
 // Video_Pixels (webcodecs_frame.odin). A frame is constructed from an image source (canvas / image / video / bitmap /
 // another VideoFrame) or from a BufferSource with a VideoFrameBufferInit; its metadata (format, coded / display size,
 // visible rectangle, timestamp, duration, colour space) and its pixels are read by getters and by copyTo. drawImage and

@@ -179,7 +179,7 @@ r_take :: proc(r: ^Mse_Reader, n: int) -> []byte {
 @(private) r_f64 :: proc(r: ^Mse_Reader) -> f64 { v: f64; if s := r_take(r, 8); s != nil { mem.copy(&v, raw_data(s), 8) }; return v }
 
 ////////////////////////////////
-// Transfer (structured clone, runtime/clone.c)
+// Transfer (structured clone, native/js/odin/clone.odin)
 
 @(private) mse_tokens: [dynamic]^Mse_Channel   // taken, not adopted yet (any thread: under mse_tokens_mu)
 @(private) mse_tokens_mu: sync.Mutex

@@ -1,7 +1,7 @@
 package page
 
 // IndexedDB for pages: the profile's idb.Manager (package idb) behind the one import "idb".Idb_call, and the delivery of its
-// events to the page's JavaScript realm (native/js/prelude/idb.js, runtime/web_idb.c).
+// events to the page's JavaScript realm (native/js/prelude/idb.js, native/js/odin/web_idb.odin).
 //
 //   * The manager belongs to the profile's Storage_Manager (made on the first use, so a profile that never touches
 //     IndexedDB pays nothing, not even a timer). The data of an origin is shared by every page of it; the pages are the
@@ -70,7 +70,7 @@ IDB_OP_TASK       :: 10
 IDB_OP_EVENT      :: 11
 IDB_OP_CLEANUP    :: 12
 IDB_OP_LIMITS     :: 13
-IDB_OP_PRELUDE    :: 14   // retired: the object model is native (runtime/web_idb_prelude.c); no source is served
+IDB_OP_PRELUDE    :: 14   // retired: the object model is native (native/js/odin/web_idb_native.odin); no source is served
 IDB_OP_ESTIMATE   :: 15   // bucket -> usage, quota
 IDB_OP_PERSIST    :: 16   // bucket, request -> persisted
 IDB_OP_BUCKETS    :: 17   // 0 open (name, persisted, durability, expires), 1 names, 2 delete (name), 3 set expires (name, ms)
@@ -294,7 +294,7 @@ idb_clear_origin :: proc(sm: ^Storage_Manager, origin: string) {
 	}
 }
 
-// IndexedDB's object model is native now (runtime/web_idb_prelude.c, built by the realm on first use). The browser no
+// IndexedDB's object model is native now (native/js/odin/web_idb_native.odin, built by the realm on first use). The browser no
 // longer serves a JavaScript source: IDB_OP_PRELUDE is gone.
 
 @(private)

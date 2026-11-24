@@ -1,6 +1,6 @@
 package page
 
-// HTML drag and drop (HTML §6.11): the drag data store behind a DataTransfer (api/js_dnd.widl, runtime/web_dnd.c), the
+// HTML drag and drop (HTML §6.11): the drag data store behind a DataTransfer (api/js_dnd.widl, native/js/odin/web_dnd.odin), the
 // files a page is given as browser objects read on demand, HTMLInputElement.files, and the drag-and-drop processing
 // model the shell drives (src/browser/dnd_shell.odin): a drag that starts in the page (a draggable element, a link, an
 // image, a text selection) or that comes from another application, its dragenter / dragover / dragleave / drop events

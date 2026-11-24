@@ -25,7 +25,14 @@ import "wb:tools/tooling"
 
 GLOBALS_LIST :: "tools/globals_allowed.txt"
 // The packages whose globals are listed, under src.
-GLOBALS_DIRS :: [?]string{"browser", "page", "style", "layout", "media", "js"}
+GLOBALS_DIRS :: [?]string{
+	"a11y", "adblock", "base", "blocker", "browser", "canvas2d", "cookies", "csp", "css",
+	"desktop", "dom", "e2e", "extensions", "fetch", "forms", "host", "html", "http",
+	"httpcache", "idb", "images", "js", "js/image", "jscapi", "layout", "license", "media",
+	"net", "page", "remote", "remote/api", "remote/client", "stacks", "style", "testenv",
+	"testserver", "trace", "update", "url", "urlpattern", "vault", "vault/pin", "wasm",
+	"webaudio", "webauthn", "webfont", "webgl", "xml",
+}
 GLOBAL_CLASSES :: [?]string{"const", "process", "thread", "test"}
 
 Global :: struct { file, name: string, test, thread_local: bool }
@@ -51,6 +58,11 @@ find_globals :: proc(dir: string, allocator := context.allocator) -> []Global {
 		top_level(&found, file.decls[:], e.name, allocator)
 	}
 	return found[:]
+}
+
+@(private = "file")
+is_test_file :: proc(file: string) -> bool {
+	return strings.has_suffix(file, "_test.odin") || strings.contains(file, "_test_")
 }
 
 // The variables of a file's top level, and of its `when` blocks (both branches: a global of one system is a global all the same).
@@ -83,7 +95,7 @@ top_level :: proc(found: ^[dynamic]Global, stmts: []^ast.Stmt, file: string, all
 			local := is_thread_local(s)
 			for name in s.names {
 				if id, is_ident := name.derived_expr.(^ast.Ident); is_ident {
-					append(found, Global{strings.clone(file, allocator), strings.clone(id.name, allocator), strings.has_suffix(file, "_test.odin"), local})
+					append(found, Global{strings.clone(file, allocator), strings.clone(id.name, allocator), is_test_file(file), local})
 				}
 			}
 		}
@@ -103,7 +115,7 @@ proc_statics :: proc(found: ^[dynamic]Global, body: ^ast.Stmt, file, owner: stri
 		if !is_decl || !v.is_mutable || !has_attribute(v, "static") || has_attribute(v, "rodata") { return true }
 		for name in v.names {
 			if id, is_ident := name.derived_expr.(^ast.Ident); is_ident {
-				append(w.found, Global{strings.clone(w.file, w.allocator), strings.concatenate({w.owner, ".", id.name}, w.allocator), strings.has_suffix(w.file, "_test.odin"), has_attribute(v, "thread_local")})
+				append(w.found, Global{strings.clone(w.file, w.allocator), strings.concatenate({w.owner, ".", id.name}, w.allocator), is_test_file(w.file), has_attribute(v, "thread_local")})
 			}
 		}
 		return true
@@ -173,7 +185,7 @@ lint_globals :: proc(list := false, write := false, log := "") -> bool {
 		for h in header { fmt.sbprintln(&b, h) }
 		for f in found {
 			c, has := known[global_key(f.dir, f.g.file, f.g.name)]
-			if !has { c = {f.g.test ? "test" : (f.g.thread_local ? "thread" : "?"), ""} }
+			if !has { c = {f.g.thread_local ? "thread" : (f.g.test ? "test" : "?"), ""} }
 			fmt.sbprintf(&b, "%s/%s %s %s", f.dir, f.g.file, f.g.name, c.class)
 			if c.why != "" { fmt.sbprintf(&b, "  # %s", c.why) }
 			fmt.sbprintln(&b)

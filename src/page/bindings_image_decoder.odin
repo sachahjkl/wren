@@ -1,6 +1,6 @@
 package page
 
-// WebCodecs ImageDecoder (api/webcodecs_image.widl, native/js/runtime/web_webcodecs_image.c). Decodes an encoded image
+// WebCodecs ImageDecoder (api/webcodecs_image.widl, native/js/odin/web_webcodecs_image.odin). Decodes an encoded image
 // (PNG / JPEG / GIF / WebP / AVIF / BMP / ICO / TIFF, animations included) into VideoFrames with src/images. The whole
 // decode is native: the host decodes the bytes once (images.decode_now, every frame composed), holds the Image, and
 // each decode({frameIndex}) wraps that frame's RGBA pixels as a VideoFrame (webcodecs_frame.odin). The ImageTrackList /

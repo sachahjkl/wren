@@ -5,8 +5,8 @@ package page
 //
 // The browser keeps what the API shows: the entries (the same-origin run of the path the web sees around the current
 // entry; key = History_Entry.id, id = History_Entry.nav_id, new when an entry is replaced), the state of each entry
-// (navigation.navigate({state}), updateCurrentEntry), and every navigation. The engine (native/js/runtime/
-// web_navigation.c) keeps the JavaScript objects: NavigationHistoryEntry wrappers, the NavigateEvent and what
+// (navigation.navigate({state}), updateCurrentEntry), and every navigation. The engine (native/js/odin/
+// web_navigation.odin) keeps the JavaScript objects: NavigationHistoryEntry wrappers, the NavigateEvent and what
 // intercept() was given, the promises of navigate() / reload() / traverseTo(), navigation.transition.
 //
 // Every navigation of the document goes through here before it happens: location (assign, replace, href, hash...),

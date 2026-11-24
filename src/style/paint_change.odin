@@ -39,6 +39,7 @@ PAINT_PROPS :: [?]Prop{
 	.Mask_Image, .Mask_Mode, .Mask_Repeat, .Mask_Position, .Mask_Size, .Mask_Origin, .Mask_Clip, .Mask_Composite,
 	.Text_Fill_Color, .Text_Stroke_Color, .Text_Stroke_Width, .Text_Emphasis_Color, .Text_Emphasis_Style, .Text_Emphasis_Position, .Text_Emphasis_Skip,
 	.Text_Underline_Position, .Text_Decoration_Skip_Ink, .Text_Decoration_Skip_Spaces, .Text_Decoration_Inset,
+	.Fill, .Stroke, .Stroke_Width, .Stroke_Linecap, .Stroke_Linejoin, .Fill_Opacity, .Stroke_Opacity, .Stroke_Dasharray, .Stroke_Dashoffset,
 }
 
 @(private) tiers_once: sync.Once

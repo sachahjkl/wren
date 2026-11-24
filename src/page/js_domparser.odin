@@ -1,6 +1,6 @@
 package page
 
-// DOMParser (HTML §8.5.1) for JavaScript: native/js/runtime/dom_core.c (wjr_DOMParser_*), api/js_dom_tree.widl.
+// DOMParser (HTML §8.5.1) for JavaScript: native/js/odin/dom_core.odin (wjr_DOMParser_*), api/js_dom_tree.widl.
 
 import "wb:dom"
 import "wb:html"

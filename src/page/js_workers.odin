@@ -4,7 +4,7 @@ package page
 // Page without a document, the link and its two queues, the requests relayed to the UI thread); here:
 //   * new Worker(url) from a page's JavaScript: the script is fetched as a classic script (HTML's MIME rules), and
 //     the worker's thread starts an engine instance as a Worker realm (DedicatedWorkerGlobalScope) and runs it;
-//   * messages are structured-clone bytes (native/js/runtime/clone.c) carried as the message's text;
+//   * messages are structured-clone bytes (native/js/odin/clone.odin) carried as the message's text;
 //   * importScripts(url): fetched through the UI thread like the worker's other requests, but synchronously: the
 //     worker waits for that request alone (its other messages and its timers wait their turn), as HTML requires.
 

@@ -1540,7 +1540,7 @@ sw_global_free :: proc(g: ^Sw_Global) {
 	g^ = {}
 }
 
-// An event arrived for the worker: kept until the engine takes it (wj_sw_event, runtime/web_sw.c).
+// An event arrived for the worker: kept until the engine takes it (wj_sw_event, native/js/odin/web_sw.odin).
 sw_worker_event :: proc(p: ^Page, m: ^Worker_Msg) {
 	g := p.worker
 	if Sw_Event_Kind(m.code) == .Ext { ext_worker_event(p, m); return }   // an extension's event or answer (ext_realm.odin; frees m)

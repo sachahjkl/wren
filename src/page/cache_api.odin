@@ -1,7 +1,7 @@
 package page
 
 // Module "caches" (api/caches.widl): the Cache API's browser functions over cache_store.odin, for the engine's
-// CacheStorage / Cache (native/js/runtime/web_cache.c). Any realm: documents, workers, service workers (the store is
+// CacheStorage / Cache (native/js/odin/web_cache.odin). Any realm: documents, workers, service workers (the store is
 // thread-safe; the profile directory comes from the realm's embedder).
 
 import "core:fmt"

@@ -4,7 +4,7 @@ package page
 // a worker, any thread) is a port end with no peer and a channel key (the realm's origin and the channel's name). A
 // message posted on one end is copied into the queue of every other end with the same key and delivered to its owner
 // as port messages are (one wake per message, a task of the receiving realm); the engine fires it at the
-// BroadcastChannel bound to that end (native/js/runtime/web_broadcast.c). Closing the object closes its end.
+// BroadcastChannel bound to that end (native/js/odin/web_broadcast.odin). Closing the object closes its end.
 
 import "core:strings"
 import "core:sync"

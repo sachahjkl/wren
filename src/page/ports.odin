@@ -3,7 +3,7 @@ package page
 // MessagePorts between realms (HTML "channel messaging" across documents and workers). Each realm runs in its own engine
 // instance: a MessagePort sent to another realm cannot be the same object there. When a port goes to another realm (in
 // the transfer list of window.postMessage, of a worker's message or of another port's message), the engine turns its
-// pair into a pair of port ends routed here (api/ports.widl; native/js/runtime/web_message.c):
+// pair into a pair of port ends routed here (api/ports.widl; native/js/odin/web_message.odin):
 //
 //   realm A: port Q ──Port_post(end a)──▶ router (ends a ⇄ b, queue of b) ──wake──▶ realm B: wj_port_message(end b)
 //
@@ -19,7 +19,7 @@ import "wb:js"
 
 @(private)
 Port_Msg :: struct {
-	data:  []byte,   // structured serialization (runtime/clone.c)
+	data:  []byte,   // structured serialization (native/js/odin/clone.odin)
 	ports: []u64,    // ends travelling with it
 }
 

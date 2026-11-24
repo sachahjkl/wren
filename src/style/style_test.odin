@@ -988,7 +988,7 @@ backdrop_styles :: proc(t: ^testing.T) {
 @(test)
 computed_layout_compact_and_group_sharing :: proc(t: ^testing.T) {
 	testing.expectf(t, size_of(Computed) <= 552, "style.Computed grew to %d bytes", size_of(Computed))
-	testing.expectf(t, size_of(Inherited_Group) <= 528, "style.Inherited_Group grew to %d bytes", size_of(Inherited_Group))
+	testing.expectf(t, size_of(Inherited_Group) <= 568, "style.Inherited_Group grew to %d bytes", size_of(Inherited_Group))
 	testing.expectf(t, size_of(Transform_Group) <= 176, "style.Transform_Group grew to %d bytes", size_of(Transform_Group))
 
 	f := fixture_load(`<style>

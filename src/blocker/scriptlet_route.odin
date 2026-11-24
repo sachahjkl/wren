@@ -9,7 +9,7 @@ import "core:strings"
 //             the engine's mutation journal (new nodes only, once per batch), no realm involved.
 //   .Network  JSON, XML and text in a response: done by the loader on the body before the page sees it (`rewrite.odin`), by URL.
 //   .Hook     the behavior of an API of the realm (a property, a timer, fetch, a listener, JSON.parse): installed before the first script
-//             as native hooks of the engine (`hooks.odin`, native/js/runtime/blocker.c): host functions, no interpreted wrapper.
+//             as native hooks of the engine (`hooks.odin`, native/js/odin/qjs_blocker.odin): host functions, no interpreted wrapper.
 //   .Js       none of the above fits: JavaScript run in the page (the rules written as raw `#%#` JavaScript, and nothing else).
 //
 // docs/blocker.md carries the same table.

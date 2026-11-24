@@ -1,6 +1,6 @@
 package page
 
-// What script loading asks of the realm beyond running scripts (native/js/runtime/load.c, handlers.c):
+// What script loading asks of the realm beyond running scripts (native/js/odin/load.odin, handlers.odin):
 //   * starting the realm's loading machinery (wj_load_init: rejection tracker, module loader, eval policy);
 //   * event handler content attributes (onclick="..."): registered with the realm when the attribute is set (by the
 //     parser's reveal or setAttribute), compiled by the realm on first use;

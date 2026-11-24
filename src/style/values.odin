@@ -208,6 +208,9 @@ initial_computed :: proc(s: ^Settings, inh: ^Inherited_Group) -> Computed {
 	c.svg_fill = Svg_Paint{kind = .Color, color = {0, 0, 0, 1}}   // SVG's initial fill: black
 	c.svg_stroke = Svg_Paint{kind = .None}                       // SVG's initial stroke: none
 	c.stroke_width = 1
+	c.fill_opacity = 1
+	c.stroke_opacity = 1
+	c.stroke_dashoffset = px(0)
 	c.stroke_linecap = .Butt
 	c.stroke_linejoin = .Miter
 	c.scrollbar_color = Scrollbar_Colors{auto = true}
@@ -316,6 +319,51 @@ apply_paint :: proc(cx: ^Cx, vs: []css.Value, dst: ^Svg_Paint) -> bool {
 	if cv.kind != .Rgba { return false }
 	dst^ = Svg_Paint{kind = .Color, color = cv.rgba}
 	return true
+}
+
+@(private)
+parse_alpha_value :: proc(vs: []css.Value) -> (f32, bool) {
+	items := css.trim_values(vs)
+	if len(items) == 1 && items[0].kind == .Token && items[0].tok.kind == .Percentage {
+		return clamp(f32(items[0].tok.num) / 100, 0, 1), true
+	}
+	n, ok := css.parse_number(vs)
+	if !ok { return 0, false }
+	return clamp(f32(n), 0, 1), true
+}
+
+// SVG length-percentage or unitless user-space number (SVG 2 / CSS Fill and Stroke).
+@(private)
+parse_svg_length :: proc(cx: ^Cx, vs: []css.Value, flags: Len_Flags) -> (Length, bool) {
+	if n, ok := css.parse_number(vs); ok {
+		if n < 0 && .Negative not_in flags { return {}, false }
+		return px(f32(n)), true
+	}
+	return parse_length(cx, vs, flags)
+}
+
+// `stroke-dasharray`: one or more non-negative lengths, percentages, or unitless numbers separated by whitespace and/or single commas.
+@(private)
+parse_dasharray :: proc(cx: ^Cx, vs: []css.Value) -> ([]Length, bool) {
+	items := split_items(vs)
+	if len(items) == 0 { return nil, false }
+	out := make([dynamic]Length, 0, len(items), context.temp_allocator)
+	expect_val := true
+	for item in items {
+		if item.kind == .Token && item.tok.kind == .Comma {
+			if expect_val { return nil, false }
+			expect_val = true
+			continue
+		}
+		l, ok := parse_svg_length(cx, {item}, {.Percent})
+		if !ok { return nil, false }
+		append(&out, l)
+		expect_val = false
+	}
+	if expect_val || len(out) == 0 { return nil, false }
+	res := make([]Length, len(out), cx.alloc)
+	copy(res, out[:])
+	return res, true
 }
 
 @(private)
@@ -511,11 +559,33 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Fill: return apply_paint(cx, vs, &c.svg_fill)
 	case .Stroke: return apply_paint(cx, vs, &c.svg_stroke)
 	case .Stroke_Width:
-		l, ok := parse_length(cx, vs, {})
-		if !ok || l.kind != .Px { return false }
-		c.stroke_width = l.v
+		// SVG presentation property: accepts unitless user-space numbers as well as CSS lengths.
+		if n, nok := css.parse_number(vs); nok {
+			if n < 0 { return false }
+			c.stroke_width = f32(n)
+		} else {
+			l, ok := parse_length(cx, vs, {})
+			if !ok || l.kind != .Px { return false }
+			c.stroke_width = l.v
+		}
 	case .Stroke_Linecap: return set_enum(vs, &c.stroke_linecap)
 	case .Stroke_Linejoin: return set_enum(vs, &c.stroke_linejoin)
+	case .Fill_Opacity, .Stroke_Opacity:
+		v, ok := parse_alpha_value(vs)
+		if !ok { return false }
+		if p == .Fill_Opacity { c.fill_opacity = v } else { c.stroke_opacity = v }
+	case .Stroke_Dashoffset:
+		l, ok := parse_svg_length(cx, vs, {.Percent, .Negative})
+		if !ok { return false }
+		c.stroke_dashoffset = l
+	case .Stroke_Dasharray:
+		if id, ok := ident_raw(vs); ok && base.ascii_equal_fold(id, "none") {
+			c.stroke_dasharray = nil
+			return true
+		}
+		dashes, ok := parse_dasharray(cx, vs)
+		if !ok { return false }
+		c.stroke_dasharray = dashes
 	case .Font_Family:
 		fam, ok := parse_font_family(cx, vs)
 		if !ok { return false }

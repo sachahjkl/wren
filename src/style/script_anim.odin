@@ -15,7 +15,7 @@ import "wb:css"
 // writes the values exactly as it writes a CSS animation's (`apply_run`), above the CSS animations of the element and
 // below its transitions, in composite order (the order the page created them in, `id`).
 //
-// Keyframes come packed by the engine (native/js/runtime/web_animations.c): keyframes separated by U+001E, the fields
+// Keyframes come packed by the engine (native/js/odin/web_animations.odin): keyframes separated by U+001E, the fields
 // of one separated by U+001F: its computed offset, its easing ("" for linear), then property name / value pairs (CSS
 // names, custom properties included; the pair `composite` is the keyframe's own composite operation, over the
 // effect's). Each value is parsed for its property alone: a value that would hold another declaration ("red; width:

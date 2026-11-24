@@ -9,6 +9,7 @@ package page
 // What moves boxes is seen as soon as it has one: a change of its size moves the boxes around it.
 
 import "wb:base"
+import "wb:dom"
 import lay "wb:layout"
 import "wb:style"
 
@@ -50,7 +51,7 @@ animations_seen_begin :: proc(user: rawptr) {
 	s.ok = true
 }
 
-@(private = "file")
+@(private)
 animations_seen :: proc(user: rawptr, node: base.Handle, moves_boxes: bool) -> bool {
 	p := (^Page)(user)
 	s := &p.anim.seen
@@ -58,8 +59,20 @@ animations_seen :: proc(user: rawptr, node: base.Handle, moves_boxes: bool) -> b
 	l := s.frame.l
 	bi := lay.box_index(l, node)
 	if bi == lay.NONE {
-		c := style.style_of(p.styled, node)
-		return c == nil || c.display == .Contents
+		// An inline <svg>'s descendants have no layout boxes of their own; their visibility is the enclosing <svg>'s.
+		for cur := node; cur != base.NIL_HANDLE; {
+			n := dom.get(p.doc, cur)
+			if n == nil { break }
+			if n.kind == .Element && n.name == "svg" {
+				bi = lay.box_index(l, cur)
+				break
+			}
+			cur = n.parent
+		}
+		if bi == lay.NONE {
+			c := style.style_of(p.styled, node)
+			return c == nil || c.display == .Contents
+		}
 	}
 	if moves_boxes { return true }
 	// the viewport and its margin, CSS px of the viewport's coordinates (what geometry_of_rects gives)

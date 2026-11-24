@@ -1,6 +1,6 @@
 package page
 
-// Navigation Timing level 1 (performance.timing): native/js/runtime/web_perf.c (wjr_PerformanceTiming_*), and the
+// Navigation Timing level 1 (performance.timing): native/js/odin/web_perf.odin (wjr_PerformanceTiming_*), and the
 // PerformanceTiming names performance.measure accepts as marks ("navigationStart"...).
 
 import "core:math"

@@ -1,7 +1,7 @@
 package page
 
 // URLPattern as a host object (module url). The pattern parsing and matching are pure (package url, pattern*.odin);
-// this holds the compiled urlpattern.Url_Pattern and the last exec() result so the C glue (native/js/runtime/web_urlpattern.c)
+// this holds the compiled urlpattern.Url_Pattern and the last exec() result so the C glue (native/js/odin/web_urlpattern.odin)
 // can assemble the structured URLPatternResult (inputs, the eight URLPatternComponentResult with their group records).
 //
 // Native-first: no JavaScript prelude. The constructor parses the shorthand string or the URLPatternInit entirely in

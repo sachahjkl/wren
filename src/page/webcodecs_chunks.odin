@@ -1,6 +1,6 @@
 package page
 
-// WebCodecs encoded chunks and audio data (api/webcodecs_codec.widl, native/js/runtime/web_webcodecs_codec.c):
+// WebCodecs encoded chunks and audio data (api/webcodecs_codec.widl, native/js/odin/web_webcodecs_codec.odin):
 //   * EncodedVideoChunk / EncodedAudioChunk: an immutable coded sample — a type ("key" / "delta"), a timestamp and
 //     optional duration (microseconds), and the coded bytes (copyTo / byteLength). The bytes are held against the
 //     page's memory ceiling like any buffer.

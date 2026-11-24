@@ -1,7 +1,7 @@
 package page
 
 // The Prioritized Task Scheduling API (scheduler.postTask / scheduler.yield, import module "scheduler"). The priority
-// queue and the ordering live here natively, on the page's event loop; the C glue (native/js/runtime/web_scheduler.c)
+// queue and the ordering live here natively, on the page's event loop; the C glue (native/js/odin/web_scheduler.odin)
 // holds each task's JavaScript promise, callback and signal, and runs the callback when the host says the task is due.
 //
 // Three priorities, highest first: user-blocking, user-visible, background (TaskPriority). Within one priority, tasks

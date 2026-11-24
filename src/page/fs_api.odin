@@ -1,6 +1,6 @@
 package page
 
-// Module "fs" (api/fs.widl): file handles for the engine (native/js/runtime/web_fs.c) over fs_store.odin, in every
+// Module "fs" (api/fs.widl): file handles for the engine (native/js/odin/web_fs.odin) over fs_store.odin, in every
 // realm (documents, workers): the origin private file system (navigator.storage.getDirectory), the user's files and
 // folders the pickers and drops give (File System Access), their permissions, writables and sync access handles.
 

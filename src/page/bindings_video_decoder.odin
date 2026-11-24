@@ -1,6 +1,6 @@
 package page
 
-// WebCodecs VideoDecoder (api/webcodecs_video_decoder.widl, native/js/runtime/web_webcodecs_video_decoder.c). Wires to
+// WebCodecs VideoDecoder (api/webcodecs_video_decoder.widl, native/js/odin/web_webcodecs_video_decoder.odin). Wires to
 // the media decoders of src/media (Video_Decoder) behind an honest isConfigSupported. The decoder, the queue count and
 // the state machine are native; the engine holds the output / error callbacks and the dequeue event listeners.
 //

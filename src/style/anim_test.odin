@@ -852,3 +852,57 @@ touch_action_values :: proc(t: ^testing.T) {
 	testing.expect_value(t, node(f, "bad").touch_action, Touch_Blocked{})
 	testing.expect_value(t, node(f, "dup").touch_action, Touch_Blocked{})
 }
+
+@(test)
+svg_stroke_and_fill_opacity_parse_and_animate :: proc(t: ^testing.T) {
+	f := open(`<style>
+		@keyframes dash { to { fill-opacity: 1; stroke-width: 0; stroke-dashoffset: 0; } }
+		#a {
+			fill: #ffe475;
+			fill-opacity: 0;
+			stroke: #fafafa;
+			stroke-opacity: 50%;
+			stroke-width: 0.5;
+			stroke-dasharray: 600;
+			stroke-dashoffset: 600;
+			animation: dash 1s linear 1 forwards;
+		}
+		#b { stroke-dasharray: 10px, 5px 20%; stroke-dashoffset: -12; stroke-width: 2px; }
+		#c { stroke-dasharray: none; fill-opacity: 1.5; stroke-opacity: -0.2; }
+		#bad { stroke-dasharray: 10, , 5; stroke-width: -1; }
+	</style><svg><polygon id=a></polygon><polygon id=b></polygon><polygon id=c></polygon><polygon id=bad></polygon></svg>`)
+	defer fixture_unload(f)
+
+	testing.expect(t, paint_only(ps_of(.Fill, .Stroke, .Stroke_Width, .Fill_Opacity, .Stroke_Opacity, .Stroke_Dasharray, .Stroke_Dashoffset)), "SVG paint/stroke props are paint-only")
+
+	b := node(f, "b")
+	testing.expect(t, len(b.stroke_dasharray) == 3 && near3(b.stroke_dasharray[0].v, 10) && near3(b.stroke_dasharray[1].v, 5) && b.stroke_dasharray[2].kind == .Percent && near3(b.stroke_dasharray[2].v, 20), "dasharray list")
+	testing.expect(t, b.stroke_dashoffset.kind == .Px && near3(b.stroke_dashoffset.v, -12), "negative unitless dashoffset")
+	testing.expect(t, near3(b.stroke_width, 2), "length stroke-width")
+
+	c := node(f, "c")
+	testing.expect(t, len(c.stroke_dasharray) == 0 && near3(c.fill_opacity, 1) && near3(c.stroke_opacity, 0), "dasharray none and clamped opacities")
+
+	bad := node(f, "bad")
+	testing.expect(t, len(bad.stroke_dasharray) == 0 && near3(bad.stroke_width, 1), "invalid values rejected")
+
+	// Start of animation (t = 0)
+	a0 := node(f, "a")
+	testing.expect(t, near3(a0.fill_opacity, 0) && near3(a0.stroke_opacity, 0.5), "initial fill/stroke opacity")
+	testing.expect(t, near3(a0.stroke_width, 0.5), "unitless stroke-width 0.5 parsed")
+	testing.expect(t, len(a0.stroke_dasharray) == 1 && near3(a0.stroke_dasharray[0].v, 600), "unitless dasharray 600")
+	testing.expect(t, a0.stroke_dashoffset.kind == .Px && near3(a0.stroke_dashoffset.v, 600), "unitless dashoffset 600")
+
+	// Midpoint (t = 500ms)
+	tick(f, 500)
+	am := node(f, "a")
+	testing.expectf(t, near3(am.fill_opacity, 0.5, 1e-2), "mid fill-opacity: %v", am.fill_opacity)
+	testing.expectf(t, near3(am.stroke_width, 0.25, 1e-2), "mid stroke-width: %v", am.stroke_width)
+	testing.expectf(t, near3(am.stroke_dashoffset.v, 300, 1), "mid stroke-dashoffset: %v", am.stroke_dashoffset.v)
+	testing.expect(t, !ps_has(am.inherits, .Fill_Opacity) && !ps_has(am.inherits, .Stroke_Width) && !ps_has(am.inherits, .Stroke_Dashoffset), "animated props are not marked inherited")
+
+	// End (t = 1000ms, forwards)
+	tick(f, 1000)
+	ae := node(f, "a")
+	testing.expectf(t, near3(ae.fill_opacity, 1, 1e-2) && near3(ae.stroke_width, 0, 1e-2) && near3(ae.stroke_dashoffset.v, 0, 1e-2), "end values: fo=%v sw=%v sdo=%v", ae.fill_opacity, ae.stroke_width, ae.stroke_dashoffset.v)
+}

@@ -1574,6 +1574,8 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 			transition_value(tr, tl.now, &ov.c, &ctx)
 			ps_add(&animated, tr.prop)
 		}
+		// animated properties are set by the animation itself, not inherited unchanged from the parent
+		for w, i in animated.bits { ov.c.inherits.bits[i] &~= w }
 		derive_fields(&ov.c, ctx.alloc)
 		props = ps_union(props, animated)
 		push := ps_intersect(animated, inherited_set)

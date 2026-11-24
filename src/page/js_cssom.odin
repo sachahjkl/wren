@@ -1,6 +1,6 @@
 package page
 
-// CSSOM stylesheets for JavaScript (api/js_cssom.widl, api/js_shadow.widl; native/js/runtime/shadow.c):
+// CSSOM stylesheets for JavaScript (api/js_cssom.widl, api/js_shadow.widl; native/js/odin/shadow.odin):
 //   * constructed sheets (new CSSStyleSheet(), replace / replaceSync, adoptedStyleSheets: CSSOM §6.1.2);
 //   * the sheets of <style> and <link rel=stylesheet> elements (LinkStyle.sheet, document.styleSheets,
 //     shadowRoot.styleSheets), which scripts read and change like the others: CSS-in-JS libraries (Emotion, which MUI

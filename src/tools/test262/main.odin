@@ -1,7 +1,7 @@
 // test262: the ECMAScript conformance suite (tc39/test262) in Wren's JavaScript engine compiled to Wasm, test by test
 // as QuickJS-ng's own runner (run-test262.c, of the pinned engine release) runs it natively, so that the two results
 // compare file by file and mode by mode. prepare.odin fetches the pinned suite, builds the test image of the
-// engine (the shipped engine plus native/js/runtime/test262_host.c) and the native runner, and drives this tool.
+// engine (the shipped engine plus native/js/odin/test262_host.odin) and the native runner, and drives this tool.
 //
 //   test262 [-c file.conf]... [-a] [-image m.wasm] [-threads n] [-stride k] [-timeout ms] [-errors out.txt]
 //           [-known failures.txt] [-native native_errors.txt] [-md table.md] [-v] [files...]
@@ -487,7 +487,7 @@ engine_jit_poll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 	return nil
 }
 
-// the shell is a secure context, as jsengine's is (every realm asks at its start: worker_scope.c)
+// the shell is a secure context, as jsengine's is (every realm asks at its start: native/js/odin/worker_scope.odin)
 secure_context :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	a[0] = {}
 	a[0].i32 = 1

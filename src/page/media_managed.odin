@@ -12,7 +12,7 @@ package page
 //     the ranges added and removed. The engine builds the BufferedChangeEvent's TimeRanges from the event payload.
 //
 // The objects are the same host structs as the plain MediaSource / SourceBuffer with their `managed` flag set; the
-// script engine wraps them as the Managed* interfaces (native/js/runtime/web_mediaobjects.c).
+// script engine wraps them as the Managed* interfaces (native/js/odin/web_mediaobjects.odin).
 
 import "core:slice"
 import "core:strings"

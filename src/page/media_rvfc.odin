@@ -8,7 +8,7 @@ package page
 // the shell draws.
 //
 // The callback is handed `now` (the page's performance timeline) and reads the rest of its VideoFrameCallbackMetadata
-// back through HTMLVideoElement_videoFrameMetadata, which the engine (native/js/runtime/web_mediaobjects.c) turns into
+// back through HTMLVideoElement_videoFrameMetadata, which the engine (native/js/odin/web_mediaobjects.odin) turns into
 // the dictionary. The metadata is snapshotted at presentation into the element, keyed by the callback id, so a callback
 // that reads it synchronously sees the frame it fired for even though several may fire in the same turn.
 

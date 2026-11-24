@@ -1,6 +1,6 @@
 #+build windows
 #+private file
-// The web APIs of JavaScript (native/js/runtime/web*.c): each section is one test, which runs scripts of examples/jsweb/*.js in pages of
+// The web APIs of JavaScript (native/js/odin/web_*.odin): each section is one test, which runs scripts of examples/jsweb/*.js in pages of
 // the test server's origin, after a small harness (examples/jsweb/harness.js). What a script finds comes back through `wrenTest`, and each
 // section declares how many tests it runs: testhost.finish fails what ran another number, ran nothing or ended early. A section alone:
 //   build\e2e_test.exe -tests:jsweb_core,zz_the_process_ends_with_nothing_left

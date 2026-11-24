@@ -161,6 +161,11 @@ inline_svg_ratio :: proc(p: ^Page, node: base.Handle) -> f32 {
 // What the inline <svg> `node` shows, for a box of `css_w` x `css_h` CSS px: the `parts` of its picture a display item
 // draws. UI thread, while painting.
 inline_svg_view :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts := lay.Svg_Parts{}) -> Image_View {
+	return inline_svg_resolve(p, node, css_w, css_h, parts, keep_in_flight = false)
+}
+
+@(private = "file")
+inline_svg_resolve :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts: lay.Svg_Parts, keep_in_flight: bool) -> Image_View {
 	if p == nil || p.closed || p.worker != nil || p.doc == nil { return {} }
 	s := &p.settings.images
 	if !s.enabled || !s.svg_inline_enabled || !s.limits.svg.enabled { return {} }
@@ -178,7 +183,10 @@ inline_svg_view :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts :=
 	style_serial := p.styled != nil ? p.styled.serial : 0
 	stale := !found || rec.mutations != p.doc.mutations || rec.style_serial != style_serial
 	if !rec.has_view_box && (abs(rec.css_w - css_w) > 0.5 || abs(rec.css_h - css_h) > 0.5) { stale = true }
-	if stale {
+	// While a previous frame's rasterization is still in flight, let it finish before queuing a newer one so continuous
+	// 60 Hz CSS animations on complex SVGs do not repeatedly cancel in-flight decodes and starve `rec.shown`.
+	in_flight := keep_in_flight && rec.request != nil && rec.request != rec.shown && rec.request.state != .Broken
+	if stale && !in_flight {
 		rec.mutations, rec.style_serial, rec.css_w, rec.css_h = p.doc.mutations, style_serial, css_w, css_h
 		_, rec.has_view_box = svg_view_box(p.doc, node)
 		markup, ok := svg_serialize(p, node, css_w, css_h, parts)
@@ -206,7 +214,7 @@ inline_svg_view :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts :=
 // change: currentColor on :hover, a mutation) is parsed and rasterised on the decoding threads: until its pixels are
 // there, those of the markup drawn last stand for them, so that no frame shows the <svg> empty meanwhile.
 inline_svg_pixels :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts: lay.Svg_Parts, want_w, want_h: int, now_ms: f64, priority: i32) -> Frame_Pixels {
-	v := inline_svg_view(p, node, css_w, css_h, parts)
+	v := inline_svg_resolve(p, node, css_w, css_h, parts, keep_in_flight = true)
 	if v.state != .Ready && v.state != .Loading { return {} }
 	rec := p.images.svgs[Svg_Key{node, parts}]
 	if v.state == .Ready {
@@ -215,6 +223,11 @@ inline_svg_pixels :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts:
 				rec.request.refs += 1
 				request_release(rec.shown)
 				rec.shown = rec.request
+			}
+			// If styles or DOM moved on while this request was decoding, kick off the next frame right away.
+			style_serial := p.styled != nil ? p.styled.serial : 0
+			if rec.mutations != p.doc.mutations || rec.style_serial != style_serial {
+				_ = inline_svg_resolve(p, node, css_w, css_h, parts, keep_in_flight = false)
 			}
 			return fp
 		}
@@ -351,10 +364,14 @@ inner_style :: proc(p: ^Page, h: base.Handle, name: string) -> string {
 	st := strings.builder_make(context.temp_allocator)
 	if !style.ps_has(cs.inherits, .Color) { fmt.sbprintf(&st, "color:%s;", css_color(cs.color)) }
 	if !style.ps_has(cs.inherits, .Fill) { write_paint(&st, "fill", cs.svg_fill, cs.color) }
+	if !style.ps_has(cs.inherits, .Fill_Opacity) { fmt.sbprintf(&st, "fill-opacity:%.3f;", cs.fill_opacity) }
 	if !style.ps_has(cs.inherits, .Stroke) { write_paint(&st, "stroke", cs.svg_stroke, cs.color) }
+	if !style.ps_has(cs.inherits, .Stroke_Opacity) { fmt.sbprintf(&st, "stroke-opacity:%.3f;", cs.stroke_opacity) }
 	if !style.ps_has(cs.inherits, .Stroke_Width) { fmt.sbprintf(&st, "stroke-width:%.3f;", cs.stroke_width) }
 	if !style.ps_has(cs.inherits, .Stroke_Linecap) { strings.write_string(&st, cs.stroke_linecap == .Round ? "stroke-linecap:round;" : cs.stroke_linecap == .Square ? "stroke-linecap:square;" : "stroke-linecap:butt;") }
 	if !style.ps_has(cs.inherits, .Stroke_Linejoin) { strings.write_string(&st, cs.stroke_linejoin == .Round ? "stroke-linejoin:round;" : cs.stroke_linejoin == .Bevel ? "stroke-linejoin:bevel;" : "stroke-linejoin:miter;") }
+	if !style.ps_has(cs.inherits, .Stroke_Dasharray) { write_svg_dasharray(&st, cs.stroke_dasharray) }
+	if !style.ps_has(cs.inherits, .Stroke_Dashoffset) { strings.write_string(&st, "stroke-dashoffset:"); write_svg_length(&st, cs.stroke_dashoffset); strings.write_byte(&st, ';') }
 	if !style.ps_has(cs.inherits, .Visibility) && cs.visibility != .Visible { strings.write_string(&st, "visibility:hidden;") }
 	if cs.opacity != 1 { fmt.sbprintf(&st, "opacity:%.3f;", cs.opacity) }
 	switch name {
@@ -480,6 +497,28 @@ write_paint :: proc(st: ^strings.Builder, name: string, pv: style.Svg_Paint, col
 	}
 }
 
+@(private = "file")
+write_svg_length :: proc(st: ^strings.Builder, l: style.Length) {
+	#partial switch l.kind {
+	case .Percent: fmt.sbprintf(st, "%.3f%%", l.v)
+	case: fmt.sbprintf(st, "%.3f", l.v)
+	}
+}
+
+@(private = "file")
+write_svg_dasharray :: proc(st: ^strings.Builder, list: []style.Length) {
+	strings.write_string(st, "stroke-dasharray:")
+	if len(list) == 0 {
+		strings.write_string(st, "none;")
+		return
+	}
+	for l, i in list {
+		if i > 0 { strings.write_byte(st, ',') }
+		write_svg_length(st, l)
+	}
+	strings.write_byte(st, ';')
+}
+
 // The SVG document an inline <svg> draws. false: over the limits.
 // A style attribute that declares `color` (not `background-color`, `flood-color`...).
 @(private)
@@ -533,10 +572,16 @@ svg_serialize :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts := l
 		if _, has := dom.get_attribute(d, node, "fill"); !has && !svg_style_sets(own, "fill") {
 			write_paint(&st, "fill", cs.svg_fill, cs.color)
 		}
+		if cs.fill_opacity != 1 && !svg_style_sets(own, "fill-opacity") {
+			if _, has := dom.get_attribute(d, node, "fill-opacity"); !has { fmt.sbprintf(&st, "fill-opacity:%.3f;", cs.fill_opacity) }
+		}
 		if _, has := dom.get_attribute(d, node, "stroke"); !has && !svg_style_sets(own, "stroke") {
 			write_paint(&st, "stroke", cs.svg_stroke, cs.color)
 		}
-		if cs.stroke_width > 0 && cs.stroke_width != 1 && !svg_style_sets(own, "stroke-width") {
+		if cs.stroke_opacity != 1 && !svg_style_sets(own, "stroke-opacity") {
+			if _, has := dom.get_attribute(d, node, "stroke-opacity"); !has { fmt.sbprintf(&st, "stroke-opacity:%.3f;", cs.stroke_opacity) }
+		}
+		if cs.stroke_width != 1 && !svg_style_sets(own, "stroke-width") {
 			fmt.sbprintf(&st, "stroke-width:%.3f;", cs.stroke_width)
 		}
 		if cs.stroke_linecap != .Butt && !svg_style_sets(own, "stroke-linecap") {
@@ -544,6 +589,16 @@ svg_serialize :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts := l
 		}
 		if cs.stroke_linejoin != .Miter && !svg_style_sets(own, "stroke-linejoin") {
 			fmt.sbprintf(&st, "stroke-linejoin:%s;", cs.stroke_linejoin == .Round ? "round" : "bevel")
+		}
+		if len(cs.stroke_dasharray) > 0 && !svg_style_sets(own, "stroke-dasharray") {
+			if _, has := dom.get_attribute(d, node, "stroke-dasharray"); !has { write_svg_dasharray(&st, cs.stroke_dasharray) }
+		}
+		if (cs.stroke_dashoffset.kind != .Px || cs.stroke_dashoffset.v != 0) && !svg_style_sets(own, "stroke-dashoffset") {
+			if _, has := dom.get_attribute(d, node, "stroke-dashoffset"); !has {
+				strings.write_string(&st, "stroke-dashoffset:")
+				write_svg_length(&st, cs.stroke_dashoffset)
+				strings.write_byte(&st, ';')
+			}
 		}
 	}
 	// the root's color, last so that it wins: in the standalone document the root has no parent, so `currentColor` or

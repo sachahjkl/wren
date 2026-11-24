@@ -1,6 +1,6 @@
 package page
 
-// WebCodecs AudioDecoder (api/webcodecs_audio_decoder.widl, native/js/runtime/web_webcodecs_audio_decoder.c). Wires to
+// WebCodecs AudioDecoder (api/webcodecs_audio_decoder.widl, native/js/odin/web_webcodecs_audio_decoder.odin). Wires to
 // the audio decoders of src/media (Audio_Decoder) behind an honest isConfigSupported. A decoded block (interleaved f32
 // PCM) is wrapped as AudioData (webcodecs_chunks.odin) and delivered through the output callback. The queue count, the
 // state machine and the drain are native; the engine holds the callbacks and the dequeue listeners.

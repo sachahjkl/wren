@@ -7,7 +7,7 @@ package page
 //     on whatever documents come and go; its realm's global is a SharedWorkerGlobalScope (js_realm.odin).
 //   * new SharedWorker() in a document makes a SharedWorker object there and a pair of port ends (ports.odin): the
 //     document's port takes one, the other travels to the worker in a Connect message, where it becomes the port of a
-//     `connect` event (runtime/shared_workers.c). From then on the two ports talk through the router, thread to thread.
+//     `connect` event (native/js/odin/shared_workers.odin). From then on the two ports talk through the router, thread to thread.
 //   * Its owners are the documents that connected and are still open. When the last one closes, the worker stops (or,
 //     made with {extendedLifetime: true}, after shared_workers.extended_lifetime_ms, unless a document connects again).
 //     A worker that called close() or whose script failed is no longer matched: the next constructor starts another.

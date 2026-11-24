@@ -2,7 +2,7 @@ package page
 
 // The Web Locks API (navigator.locks, import module "locks"). A lock is held per origin and shared across every page
 // and worker of that origin in this process (the registry lives on the process allocator, behind a mutex). The engine
-// (native/js/runtime/web_locks.c) holds the request's callback and the promise it returns; this host side owns the
+// (native/js/odin/web_locks.odin) holds the request's callback and the promise it returns; this host side owns the
 // grant order, the shared/exclusive rule, ifAvailable, steal and the waiting queue, and tells the engine when a lock
 // is granted so it can run the callback. The lock is released when the engine says the callback's promise settled, or
 // when the owning page/worker goes away.

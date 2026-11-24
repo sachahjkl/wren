@@ -1,6 +1,6 @@
 #+build windows
 #+private file
-// Nested documents (src/page/frames.odin, frames_scripts.odin; native/js/runtime/frames.c, prelude/frames.js): <iframe> creation and
+// Nested documents (src/page/frames.odin, frames_scripts.odin; native/js/odin/frames.odin): <iframe> creation and
 // destruction, about:blank / srcdoc / fetched documents, load events and the parent's load, window.frames / length / parent / top / name,
 // postMessage across origins (targetOrigin, origin, source), what a cross-origin window refuses, sandbox (scripts, opaque origin),
 // X-Frame-Options, frame-ancestors, the parent's frame-src, navigation by src, by the frame itself and by window.open to a frame name, the

@@ -1,6 +1,6 @@
 package page
 
-// WebCodecs VideoEncoder / AudioEncoder (api/webcodecs_encoders.widl, native/js/runtime/web_webcodecs_encoders.c).
+// WebCodecs VideoEncoder / AudioEncoder (api/webcodecs_encoders.widl, native/js/odin/web_webcodecs_encoders.odin).
 //
 // Wren has no encoder wired in today: the Rust workspace (native/Cargo.toml) ships decoders only, and no pure-Rust
 // video encoder (rav1e / a VP8/VP9 encoder) or Opus encoder is linked. Rather than pretend, the encoders are honest:

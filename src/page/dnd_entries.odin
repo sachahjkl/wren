@@ -1,7 +1,7 @@
 package page
 
 // The File and Directory Entries API (WICG entries-api) for files and folders the user dropped (api/js_entries.widl,
-// native/js/runtime/web_entries.c): item.webkitGetAsEntry() during drop gives an entry for a file item; an entry is a
+// native/js/odin/web_entries.odin): item.webkitGetAsEntry() during drop gives an entry for a file item; an entry is a
 // path below one dropped item (its `root`, an absolute path of this computer, and `rel`, "/" separated). Nothing is
 // read before the page asks: a folder is listed one directory at a time when its reader is read, a file is looked at
 // when file() is called, both on a background thread (host.run_blocking); the page gets the answer from a task.

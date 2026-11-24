@@ -261,7 +261,7 @@ js_after_task :: proc(p: ^Page, r: ^Js_Realm, what: string) {
 }
 
 // Runs a classic script (or a module when `module`). `url` names it in stack traces and in the cache key.
-// The content blocker's native hooks (qjs_blocker.c): rules as js.hook_install reads them, installed before the page's first script. False
+// The content blocker's native hooks (native/js/odin/qjs_blocker.odin): rules as js.hook_install reads them, installed before the page's first script. False
 // when there is no realm (scripts are off) or the engine refused.
 js_hooks :: proc(p: ^Page, spec: []byte) -> bool {
 	r := js_realm(p)

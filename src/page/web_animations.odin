@@ -7,7 +7,7 @@ import "wb:dom"
 import "wb:host"
 import "wb:style"
 
-// Web Animations 1 for scripts (api/animations.widl; the JavaScript objects: native/js/runtime/web_animations.c).
+// Web Animations 1 for scripts (api/animations.widl; the JavaScript objects: native/js/odin/web_animations.odin).
 //
 // Each Animation is a host object holding the animation's state as Web Animations 1 §4.4 defines it: start time, hold
 // time, playback rate and pending playback rate, pending play or pause task, previous current time, the states of its

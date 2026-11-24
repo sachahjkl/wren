@@ -219,3 +219,32 @@ size_containment_inline_axis :: proc(t: ^testing.T) {
 		testing.expect(t, size_of_el(l, doc, "c").x == 40, "a given width stays")
 	})
 }
+
+// Spaces carry letter-spacing just like non-space glyphs: an inline run with spaces and positive letter-spacing must
+// advance lb.pen by space + letter-spacing per space, so following inline siblings (or ::after) do not overlap it.
+@(test)
+letter_spacing_on_spaces_does_not_overlap_adjacent_runs :: proc(t: ^testing.T) {
+	with_layout(t, `<style>
+		body { margin: 0; font-size: 10px; }
+		p { white-space: nowrap; letter-spacing: 8px; margin: 0; }
+		p::before { content: "a b c d e"; }
+		p::after { content: "z"; }
+	</style><p id=p>mid</p>`, proc(t: ^testing.T, l: ^Layout, doc: ^dom.Document) {
+		// Find the text display items on the line: ::before ("a b c d e"), "mid", ::after ("z").
+		// Each glyph in the test font is 5px wide (font-size 10 * 0.5), space is 5px; with letter-spacing 8px each
+		// character advances 13px, so 9 characters ("a b c d e") must span 9 * 13 = 117px (not 117 - 4*8 = 85px).
+		xs: [dynamic]f32
+		ws: [dynamic]f32
+		defer { delete(xs); delete(ws) }
+		for it in l.items {
+			if it.kind != .Text { continue }
+			append(&xs, it.rect.min.x)
+			append(&ws, it.rect.max.x - it.rect.min.x)
+		}
+		testing.expectf(t, len(xs) == 3, "expected 3 text items (::before, mid, ::after), got %d", len(xs))
+		if len(xs) < 3 { return }
+		testing.expectf(t, ws[0] >= 116.5, "::before width must include letter-spacing on all 4 spaces (got %.1f, want >= 117)", ws[0])
+		testing.expectf(t, xs[1] >= xs[0] + ws[0] - 0.1, "mid must not overlap ::before (x1=%.1f, end0=%.1f)", xs[1], xs[0] + ws[0])
+		testing.expectf(t, xs[2] >= xs[1] + ws[1] - 0.1, "::after must not overlap mid (x2=%.1f, end1=%.1f)", xs[2], xs[1] + ws[1])
+	})
+}

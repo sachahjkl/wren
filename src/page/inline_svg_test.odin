@@ -8,6 +8,7 @@ import "wb:dom"
 import "wb:fetch"
 import "wb:host"
 import lay "wb:layout"
+import "wb:style"
 
 // The parts of an inline <svg>'s picture split at its foreign objects: each part's markup has the shapes between two of
 // them (in groups too), all of them keep what is referenced (<defs>, gradients), and the whole picture has every shape.
@@ -106,4 +107,79 @@ inline_svg_keeps_its_picture_while_the_new_one_is_made :: proc(t: ^testing.T) {
 		testing.expect(t, now.ok, "a picture at every frame")
 	}
 	testing.expect(t, now.ok && now.texture != first.texture && stroke(now) == 2, "the new picture comes")
+}
+
+// Inline <svg> descendants styled and animated with fill-opacity, stroke-width, stroke-dasharray and stroke-dashoffset
+// serialize their animated values into the SVG markup and count as seen whenever their enclosing <svg> box is visible.
+@(test)
+inline_svg_css_animation_serializes_and_is_seen :: proc(t: ^testing.T) {
+	test_pages(t)
+	loop: host.Loop
+	host.loop_init(&loop)
+	defer host.loop_destroy(&loop)
+	settings := settings_default()
+	defer settings_destroy(&settings)
+	loader: fetch.Loader
+	scope := base.scope_make("test")
+	defer base.scope_close(scope)
+	p := page_create(&loop, &loader, &settings, scope, "http://127.0.0.1:8765/svg_anim.html")
+	defer page_close(p)
+
+	html_src := `<!doctype html><style>
+		@keyframes dash { to { fill-opacity: 1; stroke-width: 0; stroke-dashoffset: 0; } }
+		svg { width: 100px; height: 100px; }
+		#p { fill: #ffe475; fill-opacity: 0; stroke: #fafafa; stroke-width: 0.5; stroke-dasharray: 600; stroke-dashoffset: 600; animation: dash 1s linear 1 forwards; }
+	</style><svg id="s" viewBox="0 0 100 100"><polygon id="p" points="10,10 90,10 50,90"></polygon></svg>`
+	load_html(p, transmute([]byte)html_src)
+
+	svg := dom.find_by_id(p.doc, "s")
+	poly := dom.find_by_id(p.doc, "p")
+	testing.expect(t, svg != base.NIL_HANDLE && poly != base.NIL_HANDLE, "svg and polygon exist")
+	if svg == base.NIL_HANDLE || poly == base.NIL_HANDLE { return }
+
+	set_frame_time(p, 1000)
+	_ = styles(p, 800, 600, 1)
+	m0, ok0 := svg_serialize(p, svg, 100, 100)
+	testing.expect(t, ok0, "t=0 serializes")
+	testing.expectf(t, strings.contains(m0, "fill-opacity:0.000;"), "t=0 has fill-opacity:0 (%s)", m0)
+	testing.expectf(t, strings.contains(m0, "stroke-width:0.500;"), "t=0 has stroke-width:0.5 (%s)", m0)
+	testing.expectf(t, strings.contains(m0, "stroke-dasharray:600.000;"), "t=0 has stroke-dasharray:600 (%s)", m0)
+	testing.expectf(t, strings.contains(m0, "stroke-dashoffset:600.000;"), "t=0 has stroke-dashoffset:600 (%s)", m0)
+
+	// Advance the page animation timeline by 500ms and verify serialized markup updates.
+	changed := style.timeline_tick(p.anim.timeline, p.doc, p.styled, 1500)
+	testing.expect(t, changed, "animation tick advances SVG polygon styles")
+	m500, ok500 := svg_serialize(p, svg, 100, 100)
+	testing.expect(t, ok500 && m500 != m0, "t=500ms markup differs from t=0")
+	testing.expectf(t, strings.contains(m500, "fill-opacity:0.500;"), "t=500ms has fill-opacity:0.5 (%s)", m500)
+	testing.expectf(t, strings.contains(m500, "stroke-dashoffset:300.000;"), "t=500ms has stroke-dashoffset:300 (%s)", m500)
+	testing.expectf(t, strings.contains(m500, "stroke-width:0.250;"), "t=500ms has stroke-width:0.25 (%s)", m500)
+
+	// Verify animations_seen treats an SVG descendant as seen when its enclosing <svg> box is in the viewport.
+	l: lay.Layout
+	defer lay.destroy(&l)
+	ls := lay.settings_default()
+	lay.run(&l, lay.Input{
+		doc = p.doc, styled = p.styled, settings = &ls,
+		text = lay.Text_Api{
+			font = proc(_: rawptr, _: []string, _: u16, _: bool) -> lay.Font { return 1 },
+			width = proc(_: rawptr, _: lay.Font, sz: f32, s: string) -> f32 { return f32(len(s)) * sz * 0.5 },
+			metrics = proc(_: rawptr, _: lay.Font, sz: f32) -> lay.Font_Metrics { return {ascent = sz * 0.8, descent = sz * 0.2, x_height = sz * 0.5} },
+		},
+		viewport = {800, 600}, scale = 1, band_h = 256,
+	})
+	p.anim.seen = Anim_Seen{ok = true, frame = Obs_Frame{ok = true, l = &l, vp = Viewport{width = 800, height = 600, scale = 1}, view = lay.view_make(&l, {800, 600}, 0, cull = false)}}
+	testing.expect(t, animations_seen(p, poly, false), "SVG polygon descendant counts as seen via its enclosing <svg>")
+
+	// Continuous animation ticks while the first decode is in flight must not cancel the decode and starve pixels.
+	t_ms: f64 = 1500
+	start := time.tick_now()
+	fp := inline_svg_pixels(p, svg, 32, 32, {}, 32, 32, 0, 0)
+	for !fp.ok && time.duration_seconds(time.tick_since(start)) < SVG_PIXELS_DEADLINE_S {
+		t_ms += 16
+		_ = style.timeline_tick(p.anim.timeline, p.doc, p.styled, t_ms)
+		host.loop_wait(&loop, SVG_PIXELS_POLL_MS)
+		fp = inline_svg_pixels(p, svg, 32, 32, {}, 32, 32, 0, 0)
+	}
+	testing.expect(t, fp.ok, "continuous animation ticks must not starve inline SVG rasterization")
 }

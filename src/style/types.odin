@@ -215,6 +215,8 @@ Inherited_Group :: struct {
 	quotes:                  Quotes,
 	text_indent:             Length,
 	text_underline_offset:   Length,                     // Auto, Px, Percent (of 1em) or Calc
+	stroke_dasharray:        []Length,                   // nil = none (SVG stroke-dasharray)
+	stroke_dashoffset:       Length,                     // Px, Percent or Calc (SVG stroke-dashoffset)
 	text_emphasis_style:     Text_Emphasis_Style,
 	// --- 4-byte aligned colors, paints and scalars ---
 	color_pair:              Scheme_Color,               // `color` resolved in both schemes (children with another scheme pick the other)
@@ -229,6 +231,8 @@ Inherited_Group :: struct {
 	line_height:             Line_Height,
 	border_spacing:          [2]f32,
 	stroke_width:            f32,
+	fill_opacity:            f32,
+	stroke_opacity:          f32,
 	font_size:               f32,
 	letter_spacing, word_spacing: f32,
 	tab_size:                f32,                        // tab_spaces: a number of spaces (initial 8), else px
@@ -488,7 +492,7 @@ Prop :: enum u8 {
 	Grid_Row_Start, Grid_Row_End, Grid_Column_Start, Grid_Column_End, Justify_Items, Justify_Self,
 	Container_Type, Container_Name, Scrollbar_Width, Scrollbar_Color, Scrollbar_Gutter,
 	Mask_Image, Mask_Mode, Mask_Repeat, Mask_Position, Mask_Size, Mask_Origin, Mask_Clip, Mask_Composite, Text_Fill_Color,
-	Fill, Stroke, Stroke_Width, Stroke_Linecap, Stroke_Linejoin,
+	Fill, Stroke, Stroke_Width, Stroke_Linecap, Stroke_Linejoin, Fill_Opacity, Stroke_Opacity, Stroke_Dasharray, Stroke_Dashoffset,
 	Anchor_Name, Anchor_Scope, Position_Anchor, Position_Area, Position_Try_Fallbacks, Position_Try_Order, Position_Visibility,
 }
 
@@ -509,7 +513,7 @@ INHERITED_PROPS :: [?]Prop{
 	.Text_Combine_Upright,
 	.Font_Feature_Settings, .Font_Variation_Settings, .Font_Kerning, .Font_Variant_Ligatures, .Font_Variant_Numeric,
 	.Font_Variant_East_Asian, .Font_Variant_Position, .Font_Optical_Sizing, .Text_Rendering, .Text_Fill_Color,
-	.Fill, .Stroke, .Stroke_Width, .Stroke_Linecap, .Stroke_Linejoin,
+	.Fill, .Stroke, .Stroke_Width, .Stroke_Linecap, .Stroke_Linejoin, .Fill_Opacity, .Stroke_Opacity, .Stroke_Dasharray, .Stroke_Dashoffset,
 }
 
 // Shorthands: expanded to longhands when a stylesheet is compiled.

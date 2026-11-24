@@ -434,7 +434,7 @@ VTTCue_set_text :: proc(c: ^Call, cue: Api_TextTrackCue, value: string) {
 	cue.data.has_vtt = true
 }
 
-// new VTTCue(startTime, endTime, text): a script-made cue (MediaObjects.c builds the object around this handle).
+// new VTTCue(startTime, endTime, text): a script-made cue (native/js/odin/web_mediaobjects.odin builds the object around this handle).
 VTTCue_create :: proc(c: ^Call, start, end: f64, text: string) -> (u64, Api_Error) {
 	cue := new(Text_Cue_Object)
 	cue.page = c.page

@@ -422,13 +422,13 @@ COMPUTED_PROPERTIES :: [?]string{
 	"border-collapse", "border-left-color", "border-left-style", "border-left-width", "border-right-color", "border-right-style",
 	"border-right-width", "border-spacing", "border-top-color", "border-top-left-radius", "border-top-right-radius",
 	"border-top-style", "border-top-width", "bottom", "box-shadow", "box-sizing", "break-after", "break-before", "break-inside", "clear", "color", "column-count", "column-fill", "column-gap", "column-rule-color", "column-rule-style", "column-rule-width", "column-span", "column-width", "content",
-	"cursor", "direction", "display", "flex-basis", "flex-direction", "flex-grow", "flex-shrink", "flex-wrap", "float",
+	"cursor", "direction", "display", "fill", "fill-opacity", "flex-basis", "flex-direction", "flex-grow", "flex-shrink", "flex-wrap", "float",
 	"font-family", "font-size", "font-stretch", "font-style", "font-weight", "height", "justify-content", "left",
 	"letter-spacing", "line-height", "list-style-position", "list-style-type", "margin-bottom", "margin-left", "margin-right",
 	"margin-top", "max-height", "max-width", "min-height", "min-width", "object-fit", "opacity", "order", "orphans", "outline-color",
 	"outline-offset", "outline-style", "outline-width", "overflow-wrap", "overflow-x", "overflow-y", "padding-bottom",
 	"padding-left", "padding-right", "padding-top", "pointer-events", "position", "position-anchor", "position-area", "position-try-fallbacks",
-	"position-try-order", "position-visibility", "right", "row-gap", "table-layout", "text-align",
+	"position-try-order", "position-visibility", "right", "row-gap", "stroke", "stroke-dasharray", "stroke-dashoffset", "stroke-linecap", "stroke-linejoin", "stroke-opacity", "stroke-width", "table-layout", "text-align",
 	"text-combine-upright", "text-decoration-color", "text-decoration-inset", "text-decoration-line", "text-decoration-skip-ink", "text-decoration-skip-spaces", "text-decoration-style",
 	"text-decoration-thickness", "text-emphasis-color", "text-emphasis-position", "text-emphasis-skip", "text-emphasis-style", "text-indent", "text-orientation", "text-overflow", "text-shadow",
 	"text-transform", "text-underline-offset", "text-underline-position", "top", "transform", "transform-origin", "unicode-bidi", "user-select", "vertical-align", "visibility",
@@ -643,6 +643,29 @@ computed_value :: proc(cs: ^style.Computed, name_in: string, used: Used_Box) -> 
 	case "border-spacing": return fmt.tprintf("%s %s", css_px(cs.border_spacing[0]), css_px(cs.border_spacing[1]))
 	case "table-layout": return kw(cs.table_layout)
 	case "opacity": return css_num(cs.opacity)
+	case "fill":
+		switch cs.svg_fill.kind {
+		case .None: return "none"
+		case .Current_Color: return css_color(cs.color)
+		case .Color: return css_color(cs.svg_fill.color)
+		}
+	case "fill-opacity": return css_num(cs.fill_opacity)
+	case "stroke":
+		switch cs.svg_stroke.kind {
+		case .None: return "none"
+		case .Current_Color: return css_color(cs.color)
+		case .Color: return css_color(cs.svg_stroke.color)
+		}
+	case "stroke-opacity": return css_num(cs.stroke_opacity)
+	case "stroke-width": return css_px(cs.stroke_width)
+	case "stroke-linecap": return kw(cs.stroke_linecap)
+	case "stroke-linejoin": return kw(cs.stroke_linejoin)
+	case "stroke-dashoffset": return css_length(cs.stroke_dashoffset)
+	case "stroke-dasharray":
+		if len(cs.stroke_dasharray) == 0 { return "none" }
+		parts := make([]string, len(cs.stroke_dasharray), context.temp_allocator)
+		for l, i in cs.stroke_dasharray { parts[i] = css_length(l) }
+		return strings.join(parts, ", ", context.temp_allocator)
 	case "vertical-align":
 		if cs.vertical_align.kind == .Length { return css_length(cs.vertical_align.amount) }
 		return kw(cs.vertical_align.kind)
