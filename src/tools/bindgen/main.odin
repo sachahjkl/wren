@@ -187,7 +187,7 @@ run_js :: proc(api: ^idl.Api) {
 		fmt.eprintfln("%s:%d: %s", d.pos.file, d.pos.line, d.msg)
 		problems += 1
 	}
-	out := jsgen.generate(api, model, scan_raw_impls(JS_IMPL_DIR), "page")
+	out := jsgen.generate(api, model, scan_raw_impls(JS_IMPL_DIR), "page", scan_used_dicts(JS_IMPL_DIR))
 	for pr in out.problems { fmt.eprintfln("bindgen: %s", pr) }
 	emit("native/js/odin/bindings_gen.odin", out.odin_glue)
 	emit("src/page/js_interfaces_generated.odin", out.odin)
@@ -251,6 +251,43 @@ scan_raw_impls :: proc(dir: string) -> []string {
 		}
 	}
 	walk(dir, &out, &seen)
+	return out[:]
+}
+
+// Names of the Web IDL dictionaries referenced by hand-written glue (`wjd_<Name>`).
+scan_used_dicts :: proc(dir: string) -> []string {
+	out := make([dynamic]string)
+	seen := make(map[string]bool)
+	walk :: proc(dir: string, out: ^[dynamic]string, seen: ^map[string]bool) {
+		infos, err := os.read_all_directory_by_path(dir, context.allocator)
+		if err != nil { return }
+		for fi in infos {
+			if fi.type == .Directory { walk(fi.fullpath, out, seen); continue }
+			if !strings.has_suffix(fi.name, ".odin") || fi.name == "bindings_gen.odin" { continue }
+			data, rerr := os.read_entire_file(fi.fullpath, context.allocator)
+			if rerr != nil { continue }
+			text := string(data)
+			for {
+				i := strings.index(text, "wjd_")
+				if i < 0 { break }
+				text = text[i + 4:]
+				j := 0
+				for j < len(text) && (text[j] == '_' || (text[j] >= 'a' && text[j] <= 'z') || (text[j] >= 'A' && text[j] <= 'Z') || (text[j] >= '0' && text[j] <= '9')) { j += 1 }
+				if j > 0 {
+					name := text[:j]
+					if strings.has_suffix(name, "_from") { name = name[:len(name) - 5] } else if strings.has_suffix(name, "_free") { name = name[:len(name) - 5] }
+					if len(name) > 0 && name not_in seen^ {
+						c := strings.clone(name)
+						seen[c] = true
+						append(out, c)
+					}
+				}
+				text = text[j:]
+			}
+		}
+	}
+	walk(dir, &out, &seen)
+	slice.sort(out[:])
 	return out[:]
 }
 // Writes `text` to `path` when it differs (or reports it with -check).

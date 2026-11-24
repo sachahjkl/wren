@@ -48,18 +48,25 @@ wj_start_isolated: bool
 
 // ---- the generated tables (wj.h) ----
 
-// wj_member.
+// wj_member. Zero-cast typed fields so the generated member table lives in @(rodata).
 Member :: struct {
-	name:   cstring,
-	kind:   u8,
-	flags:  u16,
-	length: u16,     // Function.length of a method; the [SameObject] slot of an attribute
-	fn:     Native,
-	get:    Getter,
-	set:    Setter,  // nil: readonly
-	value:  f64,     // constant
+	name:      cstring,
+	fn:        Native,
+	get:       Getter,
+	set:       Setter,  // nil: readonly
+	flags:     u16,
+	length:    u16,     // Function.length of a method; the [SameObject] slot of an attribute
+	magic:     i16,     // magic for fn_kind/get_kind, or index into constant_table (M_CONSTANT)
+	set_magic: i16,     // magic for set_kind
+	kind:      u8,
+	fn_kind:   u8,      // 0: use fn; >0: index into magic_fns
+	get_kind:  u8,      // 0: use get; >0: index into magic_getters
+	set_kind:  u8,      // 0: use set; >0: index into magic_setters
 }
-#assert(size_of(Member) == 32 && offset_of(Member, fn) == 12 && offset_of(Member, value) == 24)
+
+magic_fns:     [2]Native_Magic
+magic_getters: [5]Getter_Magic
+magic_setters: [6]Setter_Magic
 
 M_METHOD           :: 1
 M_ATTRIBUTE        :: 2
@@ -96,16 +103,8 @@ CLASS_PLAIN   :: 0
 CLASS_INDEXED :: 1
 CLASS_NAMED   :: 2
 
-// The legacy platform object hooks of an interface (wj_interface's function pointers, mirrored as rawptr).
-@(private = "file") Index_Get    :: #type proc "c" (ctx: ^Context, obj: JSValue, index: u32, found: ^bool) -> JSValue
-@(private = "file") Length_Get   :: #type proc "c" (ctx: ^Context, obj: JSValue) -> u32
-@(private = "file") Named_Get    :: #type proc "c" (ctx: ^Context, obj: JSValue, name: cstring, len: uint, found: ^bool) -> JSValue
-@(private = "file") Named_Set    :: #type proc "c" (ctx: ^Context, obj: JSValue, name: cstring, len: uint, value: JSValue) -> i32
-@(private = "file") Named_Delete :: #type proc "c" (ctx: ^Context, obj: JSValue, name: cstring, len: uint) -> i32
-@(private = "file") Named_Keys   :: #type proc "c" (ctx: ^Context, obj: JSValue, array: JSValue) -> i32
-
 @(private = "file")
-members_of :: #force_inline proc "contextless" (it: ^Interface) -> [^]Member { return ([^]Member)(it.members) }
+members_of :: #force_inline proc "contextless" (it: ^Interface) -> [^]Member { return &member_table[it.members_off] }
 
 // ---- handle -> wrapper maps (open addressing, linear probing, backward-shift deletion) ----
 
@@ -666,7 +665,7 @@ named_get_own :: proc "c" (ctx: ^Context, desc: ^Property_Descriptor, obj: JSVal
 	name := JS_AtomToCStringLen(ctx, &n, prop)
 	if name == nil { return -1 }
 	found := false
-	v := Named_Get(it.named_get)(ctx, obj, name, n, &found)
+	v := it.named_get(ctx, obj, ([^]u8)(rawptr(name)), n, &found)
 	JS_FreeCString(ctx, name)
 	if is_exception(v) { return -1 }
 	if !found { JS_FreeValue(ctx, v); return 0 }
@@ -721,7 +720,7 @@ named_define :: proc "c" (ctx: ^Context, obj: JSValue, prop: Atom, val, getter, 
 			n: uint
 			name := JS_AtomToCStringLen(ctx, &n, prop)
 			if name == nil { return -1 }
-			r := Named_Set(it.named_set)(ctx, obj, name, n, val)
+			r := it.named_set(ctx, obj, ([^]u8)(rawptr(name)), n, val)
 			JS_FreeCString(ctx, name)
 			return r < 0 ? -1 : 1
 		}
@@ -737,7 +736,7 @@ named_delete :: proc "c" (ctx: ^Context, obj: JSValue, prop: Atom) -> i32 {
 		n: uint
 		name := JS_AtomToCStringLen(ctx, &n, prop)
 		if name == nil { return -1 }
-		r := Named_Delete(it.named_delete)(ctx, obj, name, n)
+		r := it.named_delete(ctx, obj, ([^]u8)(rawptr(name)), n)
 		JS_FreeCString(ctx, name)
 		if r != 0 { return r < 0 ? -1 : 1 }
 	}
@@ -1087,8 +1086,8 @@ unsupported_fn :: proc "contextless" (ctx: ^Context, name: cstring, length: i32,
 @(private = "file")
 member_unimplemented :: proc "contextless" (mb: ^Member) -> bool {
 	switch mb.kind {
-	case M_METHOD, M_STATIC_METHOD:       return mb.fn == nil
-	case M_ATTRIBUTE, M_STATIC_ATTRIBUTE: return mb.get == nil
+	case M_METHOD, M_STATIC_METHOD:       return mb.fn == nil && mb.fn_kind == 0
+	case M_ATTRIBUTE, M_STATIC_ATTRIBUTE: return mb.get == nil && mb.get_kind == 0
 	}
 	return false
 }
@@ -1135,10 +1134,17 @@ define_members :: proc "contextless" (ctx: ^Context, target: JSValue, i: i32, ki
 		switch mb.kind {
 		case M_METHOD, M_STATIC_METHOD:
 			f: JSValue
-			if rawptr(mb.fn) == rawptr(wj_stringifier) && mb.get != nil {
-				g := JS_NewCFunction2(ctx, Native(rawptr(mb.get)), "get", 0, CFUNC_getter, 0)
+			if rawptr(mb.fn) == rawptr(wj_stringifier) && (mb.get != nil || mb.get_kind != 0) {
+				g: JSValue
+				if mb.get_kind != 0 {
+					g = JS_NewCFunction2(ctx, Native(rawptr(magic_getters[mb.get_kind])), "get", 0, CFUNC_getter_magic, i32(mb.magic))
+				} else {
+					g = JS_NewCFunction2(ctx, Native(rawptr(mb.get)), "get", 0, CFUNC_getter, 0)
+				}
 				f = JS_NewCFunctionData2(ctx, stringifier_data, mb.name, 0, 0, 1, &g)
 				JS_FreeValue(ctx, g)
+			} else if mb.fn_kind != 0 {
+				f = JS_NewCFunction2(ctx, Native(rawptr(magic_fns[mb.fn_kind])), mb.name, i32(mb.length), CFUNC_generic_magic, i32(mb.magic))
 			} else if mb.fn != nil {
 				f = JS_NewCFunction2(ctx, mb.fn, mb.name, i32(mb.length), CFUNC_generic, 0)
 			} else {
@@ -1151,8 +1157,12 @@ define_members :: proc "contextless" (ctx: ^Context, target: JSValue, i: i32, ki
 			snprintf(&sname[0], len(sname), "set %s", mb.name)
 			g: JSValue
 			s := UNDEFINED
-			if mb.get != nil {
-				g = JS_NewCFunction2(ctx, Native(rawptr(mb.get)), cstring(&gname[0]), 0, CFUNC_getter, 0)
+			if mb.get_kind != 0 || mb.get != nil {
+				if mb.get_kind != 0 {
+					g = JS_NewCFunction2(ctx, Native(rawptr(magic_getters[mb.get_kind])), cstring(&gname[0]), 0, CFUNC_getter_magic, i32(mb.magic))
+				} else {
+					g = JS_NewCFunction2(ctx, Native(rawptr(mb.get)), cstring(&gname[0]), 0, CFUNC_getter, 0)
+				}
 				if mb.flags & F_SAME_OBJECT != 0 {
 					d := [2]JSValue{new_int32(i32(mb.length)), g}
 					w := JS_NewCFunctionData2(ctx, same_object_getter, cstring(&gname[0]), 0, 0, 2, &d[0])
@@ -1166,6 +1176,8 @@ define_members :: proc "contextless" (ctx: ^Context, target: JSValue, i: i32, ki
 				d := JS_NewString(ctx, mb.name)
 				s = JS_NewCFunctionData2(ctx, replaceable_data, cstring(&sname[0]), 1, 0, 1, &d)
 				JS_FreeValue(ctx, d)
+			} else if mb.set_kind != 0 {
+				s = JS_NewCFunction2(ctx, Native(rawptr(magic_setters[mb.set_kind])), cstring(&sname[0]), 1, CFUNC_setter_magic, i32(mb.set_magic))
 			} else if mb.set != nil {
 				s = JS_NewCFunction2(ctx, Native(rawptr(mb.set)), cstring(&sname[0]), 1, CFUNC_setter, 0)
 			} else if mb.flags & F_SETTER_UNSUPPORTED != 0 {
@@ -1173,7 +1185,7 @@ define_members :: proc "contextless" (ctx: ^Context, target: JSValue, i: i32, ki
 			}
 			r = JS_DefinePropertyGetSet(ctx, target, atom, g, s, configurable | enumerable)
 		case M_CONSTANT:
-			r = JS_DefinePropertyValue(ctx, target, atom, new_float64(ctx, mb.value), PROP_ENUMERABLE)
+			r = JS_DefinePropertyValue(ctx, target, atom, new_float64(ctx, constant_table[mb.magic]), PROP_ENUMERABLE)
 		}
 		JS_FreeAtom(ctx, atom)
 		if r < 0 { return -1 }

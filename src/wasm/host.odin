@@ -44,6 +44,80 @@ Import :: struct {
 	realms:       u32,          // the embedder's availability bits (which kinds of instance may import it)
 }
 
+// Compact descriptor for generated import tables: 16 bytes and 1 relocation per entry.
+Compact_Import :: struct {
+	fn:       Host_Fn,
+	name_off: u32,   // NUL-terminated name in names
+	mod_idx:  u8,    // index in modules
+	realms:   u8,
+	sig_idx:  u16,   // index in sigs: params + '>' + results (i=I32, l=I64, f=F32, d=F64, p=Addr)
+}
+
+@(private)
+sig_kind :: proc "contextless" (c: u8, wide: bool) -> Val_Kind {
+	switch c {
+	case 'l': return .I64
+	case 'f': return .F32
+	case 'd': return .F64
+	case 'p': return wide ? .I64 : .I32
+	}
+	return .I32
+}
+
+// Registers host functions from a compact generated table.
+register_compact :: proc(modules: []string, sigs: []string, names: string, imports: []Compact_Import) -> bool {
+	arena: base.Arena
+	if err := base.arena_init_growing(&arena); err != nil { return false }
+	defer base.arena_destroy(&arena)
+	alloc := base.arena_allocator(&arena)
+
+	Sig_Decoded :: struct {
+		params, results:           []Val_Kind,
+		wide_params, wide_results: []Val_Kind,
+	}
+	decoded := make([]Sig_Decoded, len(sigs), alloc)
+	for s, i in sigs {
+		sep := strings.index_byte(s, '>')
+		ps := sep >= 0 ? s[:sep] : s
+		rs := sep >= 0 ? s[sep + 1:] : ""
+		has_p := strings.index_byte(s, 'p') >= 0
+		d := &decoded[i]
+		d.params = make([]Val_Kind, len(ps), alloc)
+		d.results = make([]Val_Kind, len(rs), alloc)
+		if has_p {
+			d.wide_params = make([]Val_Kind, len(ps), alloc)
+			d.wide_results = make([]Val_Kind, len(rs), alloc)
+		}
+		for c, k in transmute([]u8)ps {
+			d.params[k] = sig_kind(c, false)
+			if has_p { d.wide_params[k] = sig_kind(c, true) }
+		}
+		for c, k in transmute([]u8)rs {
+			d.results[k] = sig_kind(c, false)
+			if has_p { d.wide_results[k] = sig_kind(c, true) }
+		}
+	}
+
+	expanded := make([]Import, len(imports), alloc)
+	for ci, i in imports {
+		start := int(ci.name_off)
+		end := start
+		for end < len(names) && names[end] != 0 { end += 1 }
+		d := decoded[ci.sig_idx]
+		expanded[i] = Import{
+			module       = modules[ci.mod_idx],
+			name         = names[start:end],
+			fn           = ci.fn,
+			params       = d.params,
+			results      = d.results,
+			wide_params  = d.wide_params,
+			wide_results = d.wide_results,
+			realms       = u32(ci.realms),
+		}
+	}
+	return register(expanded)
+}
+
 @(private)
 registry: [dynamic]^Import
 @(private)

@@ -9,6 +9,7 @@ package wasmbench
 
 import "base:intrinsics"
 import "base:runtime"
+import "core:fmt"
 import "wb:wasm"
 
 _ :: intrinsics
@@ -17,66 +18,124 @@ _ :: runtime
 API_WINDOW :: u32(1)
 API_WORKER :: u32(2)
 
+@(private = "file")
+_Tramp :: struct {
+	c:    Call,
+	f:    wasm.Frame,
+	a:    [^]wasm.Raw,
+	q:    string,
+}
+
+@(private = "file")
+_enter :: #force_no_inline proc "contextless" (t: ^_Tramp, env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, q: string, drop_oversized: bool) -> runtime.Context {
+	ctx := wasm.default_context()
+	t.f = wasm.frame(env, caller)
+	t.c = api_begin(t.f.inst)
+	t.a = a
+	t.q = q
+	if drop_oversized && t.f.inst.oversized.fn != 0 { context = ctx; wasm.oversized_drop(t.f.inst) }
+	return ctx
+}
+
+@(private = "file")
+_trap_bounds :: #force_no_inline proc(t: ^_Tramp, arg: string) -> wasm.Trap {
+	return wasm.trap_bounds(&t.f, t.q, arg)
+}
+
+@(private = "file")
+_span :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string) -> ([]u8, wasm.Trap) {
+	n := wasm.addr(&t.f, t.a[slot + 1])
+	s, ok := wasm.span(&t.f, wasm.addr(&t.f, t.a[slot]), n)
+	if !ok { return nil, _trap_bounds(t, arg) }
+	return s[:n], nil
+}
+
+@(private = "file")
+_utf8 :: #force_no_inline proc(t: ^_Tramp, s: string, arg: string) -> wasm.Trap {
+	if wasm.valid_utf8(s) { return nil }
+	return wasm.trap_new(fmt.tprintf("%s: argument %s is not valid UTF-8", t.q, arg))
+}
+
+@(private = "file")
+_str :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string) -> (string, wasm.Trap) {
+	b, tr := _span(t, slot, arg)
+	if tr != nil { return "", tr }
+	s := string(b)
+	if tr = _utf8(t, s, arg); tr != nil { return "", tr }
+	return s, nil
+}
+
+@(private = "file")
+_end_void :: #force_no_inline proc(t: ^_Tramp) -> wasm.Trap {
+	api_end(&t.c)
+	return wasm.take_trap(t.f.inst)
+}
+
+@(private = "file")
+_end_i32 :: #force_no_inline proc(t: ^_Tramp, v: i32) -> wasm.Trap {
+	api_end(&t.c)
+	if tr := wasm.take_trap(t.f.inst); tr != nil { return tr }
+	t.a[0] = {}
+	t.a[0].i32 = v
+	return nil
+}
+
 // nop :: proc(c: ^Call)
 @(private = "file")
 _t_bench_nop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	f := wasm.frame(env, caller)
-	context = wasm.default_context()
-	c := api_begin(f.inst)
-	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
-	nop(&c)
-	api_end(&c)
-	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
-	return nil
+	t: _Tramp = ---
+	context = _enter(&t, env, caller, a, "bench.nop", true)
+	nop(&t.c)
+	return _end_void(&t)
 }
 
 // touch :: proc(c: ^Call, data: []u8) -> i32
 @(private = "file")
 _t_bench_touch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	f := wasm.frame(env, caller)
-	context = wasm.default_context()
-	c := api_begin(f.inst)
-	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
-	_n0 := wasm.addr(&f, a[1])
-	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
-	if !_k0 { return wasm.trap_bounds(&f, "bench.touch", "data") }
-	_p0 := _s0[:_n0]
-	_r := touch(&c, _p0)
-	api_end(&c)
-	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
-	a[0] = {}
-	a[0].i32 = _r
-	return nil
+	t: _Tramp = ---
+	context = _enter(&t, env, caller, a, "bench.touch", true)
+	_tr: wasm.Trap
+	_s0: []u8
+	_s0, _tr = _span(&t, 0, "data")
+	if _tr != nil { return _tr }
+	_p0 := _s0
+	_r := touch(&t.c, _p0)
+	return _end_i32(&t, _r)
 }
 
 // touch_string :: proc(c: ^Call, text: string) -> i32
 @(private = "file")
 _t_bench_touch_string :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	f := wasm.frame(env, caller)
-	context = wasm.default_context()
-	c := api_begin(f.inst)
-	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
-	_n0 := wasm.addr(&f, a[1])
-	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
-	if !_k0 { return wasm.trap_bounds(&f, "bench.touch_string", "text") }
-	_p0 := string(_s0[:_n0])
-	if !wasm.valid_utf8(_p0) {
-		return wasm.trap_new("bench.touch_string: argument text is not valid UTF-8")
-	}
-	_r := touch_string(&c, _p0)
-	api_end(&c)
-	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
-	a[0] = {}
-	a[0].i32 = _r
-	return nil
+	t: _Tramp = ---
+	context = _enter(&t, env, caller, a, "bench.touch_string", true)
+	_tr: wasm.Trap
+	_p0: string
+	_p0, _tr = _str(&t, 0, "text")
+	if _tr != nil { return _tr }
+	_r := touch_string(&t.c, _p0)
+	return _end_i32(&t, _r)
 }
 
-// Every import, for wasm.register.
-api_imports := [?]wasm.Import{
-	{module = "bench", name = "nop", fn = _t_bench_nop, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{}},
-	{module = "bench", name = "touch", fn = _t_bench_touch, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "bench", name = "touch_string", fn = _t_bench_touch_string, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+@(private = "file")
+api_modules := [1]string{
+	"bench",
+}
+
+@(private = "file")
+api_sigs := [2]string{
+	">", "pp>i",
+}
+
+@(private = "file")
+api_names ::
+	"nop\x00touch\x00touch_string\x00"
+
+// Every import, for wasm.register_compact.
+api_imports := [3]wasm.Compact_Import{
+	{fn = _t_bench_nop, name_off = 0, mod_idx = 0, realms = 3, sig_idx = 0},
+	{fn = _t_bench_touch, name_off = 4, mod_idx = 0, realms = 3, sig_idx = 1},
+	{fn = _t_bench_touch_string, name_off = 10, mod_idx = 0, realms = 3, sig_idx = 1},
 }
 
 // Defines every import of the API on the engine (once per process).
-api_register :: proc() -> bool { return wasm.register(api_imports[:]) }
+api_register :: proc() -> bool { return wasm.register_compact(api_modules[:], api_sigs[:], api_names, api_imports[:]) }

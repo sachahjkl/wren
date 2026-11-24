@@ -59,10 +59,10 @@ dict_reaches :: proc(g: ^Gen, from, target: string, depth: int) -> bool {
 	return false
 }
 
-// Every dictionary reachable from the arguments of the included interfaces' members, bases first.
+// Every dictionary referenced by the glue (or reachable from included interfaces when none specified), bases first.
 @(private)
 collect_dicts :: proc(g: ^Gen) -> []string {
-	seen := make(map[string]bool, 256, context.temp_allocator)
+	seen := make(map[string]bool, 64, context.temp_allocator)
 	order := make([dynamic]string, context.temp_allocator)
 	visit :: proc(g: ^Gen, name: string, seen: ^map[string]bool, order: ^[dynamic]string) {
 		if seen[name] { return }
@@ -75,6 +75,10 @@ collect_dicts :: proc(g: ^Gen) -> []string {
 			if k == .Dict { visit(g, n, seen, order) }
 		}
 		append(order, name)
+	}
+	if len(g.used_dicts) > 0 {
+		for name in g.used_dicts { visit(g, name, &seen, &order) }
+		return order[:]
 	}
 	walk_type :: proc(g: ^Gen, t: ^webidl.Type, seen: ^map[string]bool, order: ^[dynamic]string) {
 		if t == nil { return }

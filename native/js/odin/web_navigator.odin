@@ -225,7 +225,7 @@ drop_unimplemented :: proc "contextless" (ctx: ^wj.Context, iface: i32) {
 	if !wj.is_object(proto) { return }
 	for m in wj.members_of(iface) {
 		if m.name == nil { continue }
-		missing := (m.kind == wj.M_ATTRIBUTE && m.get == nil) || (m.kind == wj.M_METHOD && m.fn == nil)
+		missing := (m.kind == wj.M_ATTRIBUTE && m.get == nil && m.get_kind == 0) || (m.kind == wj.M_METHOD && m.fn == nil && m.fn_kind == 0)
 		if !missing { continue }
 		a := wj.JS_NewAtom(ctx, m.name)
 		wj.JS_DeleteProperty(ctx, proto, a, 0)

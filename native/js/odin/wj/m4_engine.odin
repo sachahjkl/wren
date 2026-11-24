@@ -6,6 +6,7 @@ package wj
 // The members of interface `iface` (the generated table, gen/bindings.c).
 members_of :: proc "contextless" (iface: i32) -> []Member {
 	it := &interfaces()[iface]
-	return ([^]Member)(it.members)[:it.n_members]
+	if it.n_members == 0 { return nil }
+	return member_table[it.members_off : it.members_off + u32(it.n_members)]
 }
 

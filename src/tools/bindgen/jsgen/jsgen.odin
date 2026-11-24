@@ -43,27 +43,122 @@ Output :: struct {
 Impl_Kind :: enum u8 { None, Raw, Generic, Import }
 
 Member_Impl :: struct {
-	kind:   Impl_Kind,
-	fn:     string,     // procedure for the table (method / getter)
-	set_fn: string,     // setter
-	set_kind: Impl_Kind,
-	note:   string,     // coverage: which raw function / import
+	kind:           Impl_Kind,
+	fn:             string,     // direct procedure for the table (when fn_kind == 0)
+	fn_magic:       i32,
+	fn_kind:        u8,         // 0: direct fn/get; >0: magic thunk index
+	set_fn:         string,     // direct setter (when set_magic_kind == 0)
+	set_magic:      i32,
+	set_magic_kind: u8,         // 0: direct set; >0: magic thunk index
+	set_kind:       Impl_Kind,
+	note:           string,     // coverage: which raw function / import
+}
+
+@(private)
+Glue_Ref :: struct {
+	fn:         string,
+	magic:      i32,
+	magic_kind: u8,
+}
+
+@(private)
+Event_Desc :: struct {
+	event: string,
+	iface: int,
+	spec:  i32,
+}
+
+@(private)
+Pf_Desc :: struct {
+	attr:   string,
+	target: string,
+}
+
+@(private)
+Reflect_Desc :: struct {
+	iface:   int,
+	content: string,
+	kind:    int,
+	mode:    int,
+	def:     string,
+	lo:      string,
+	hi:      string,
+}
+
+@(private)
+Get_Str_Desc :: struct {
+	fn:             string,
+	qual:           string,
+	iface:          int,
+	nullable_raise: bool,
+}
+
+@(private)
+Set_Str_Desc :: struct {
+	fn:        string,
+	qual:      string,
+	def:       string,
+	iface:     int,
+	str_flags: string,
+	raises:    bool,
+	p_opt:     bool,
+}
+
+@(private)
+Get_Val_Desc :: struct {
+	fn:        string,
+	iface:     int,
+	ret_iface: int,
+	abi_ret:   int,
+	conv:      int,
+}
+
+@(private)
+Call0_Desc :: struct {
+	fn:        string,
+	qual:      string,
+	iface:     int,
+	ret_iface: int,
+	abi_ret:   int,
+	conv:      int,
+}
+
+@(private)
+Set_Val_Desc :: struct {
+	fn:         string,
+	qual:       string,
+	iface:      int,
+	conv:       int,
+	abi_arg:    int,
+	bits:       int,
+	range_mode: string,
+	raises:     bool,
+	restricted: bool,
 }
 
 @(private)
 Gen :: struct {
-	api:      ^idl.Api,
-	m:        ^webidl.Model,
-	raw:      map[string]bool,
-	imports:  map[string]^idl.Decl,      // import name -> function
-	o:        strings.Builder,           // glue procedures
-	problems: [dynamic]string,
-	included: [dynamic]^webidl.Interface,
-	index_of: map[string]int,            // interface name -> table index
-	supported: map[string]bool,
+	api:               ^idl.Api,
+	m:                 ^webidl.Model,
+	raw:               map[string]bool,
+	used_dicts:        []string,
+	imports:           map[string]^idl.Decl,      // import name -> function
+	o:                 strings.Builder,           // non-uniform glue procedures
+	problems:          [dynamic]string,
+	included:          [dynamic]^webidl.Interface,
+	index_of:          map[string]int,            // interface name -> table index
+	supported:         map[string]bool,
 	same_object_count: int,
-	cov:      map[string][dynamic]string, // interface -> coverage lines
-	counts:   map[string][2]int,          // implemented, total
+	cov:               map[string][dynamic]string, // interface -> coverage lines
+	counts:            map[string][2]int,          // implemented, total
+	events:            [dynamic]Event_Desc,
+	reflects:          [dynamic]Reflect_Desc,
+	pfs:               [dynamic]Pf_Desc,
+	get_strs:          [dynamic]Get_Str_Desc,
+	set_strs:          [dynamic]Set_Str_Desc,
+	get_vals:          [dynamic]Get_Val_Desc,
+	call0s:            [dynamic]Call0_Desc,
+	set_vals:          [dynamic]Set_Val_Desc,
 }
 
 @(private)
@@ -74,8 +169,8 @@ wl :: proc(b: ^strings.Builder, format: string, args: ..any) { w(b, format, ..ar
 @(private)
 exposed_any :: proc(e: webidl.Exposures) -> bool { return e != {} }
 
-generate :: proc(api: ^idl.Api, m: ^webidl.Model, raw_impls: []string, odin_package: string) -> Output {
-	g := Gen{api = api, m = m}
+generate :: proc(api: ^idl.Api, m: ^webidl.Model, raw_impls: []string, odin_package: string, used_dicts: []string = nil) -> Output {
+	g := Gen{api = api, m = m, used_dicts = used_dicts}
 	for r in raw_impls { g.raw[r] = true }
 	for d in api.functions { for imp in d.imports { g.imports[imp] = d } }
 
@@ -183,36 +278,44 @@ classify :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member) -> Member_I
 	case .Attribute:
 		kind_get := mb.static_ ? "static_get" : "get"
 		kind_set := mb.static_ ? "static_set" : "set"
+		ev_idx := i32(-1)
 		if r := find_raw(g, it, mb, kind_get); r != "" {
 			mi.kind, mi.fn, mi.note = .Raw, r, r
 		} else if is_event_handler(g, mb.type) {
 			mi.kind = .Generic
 			mi.note = "event handler"
-			mi.fn = emit_event_handler_odin(g, it, mb, true)
+			ev_idx = add_event_desc(g, it, mb)
+			mi.fn_kind = 1
+			mi.fn_magic = ev_idx
 		} else if g2, s2, reflected := emit_reflect(g, it, mb); reflected {
-			mi.kind, mi.fn, mi.note = .Generic, g2, "reflects a content attribute"
-			if s2 != "" { mi.set_kind, mi.set_fn = .Generic, s2 }
+			mi.kind, mi.fn, mi.fn_magic, mi.fn_kind, mi.note = .Generic, g2.fn, g2.magic, g2.magic_kind, "reflects a content attribute"
+			if s2.fn != "" || s2.magic_kind != 0 { mi.set_kind, mi.set_fn, mi.set_magic, mi.set_magic_kind = .Generic, s2.fn, s2.magic, s2.magic_kind }
 		} else if it.name == "CSSStyleDeclaration" && is_css_property(mb.name) {
 			mi.kind = .Generic
 			mi.note = "CSS property"
 			mi.fn, mi.set_fn = emit_css_property_odin(g, it, mb)
 			mi.set_kind = .Generic
 		} else if f, note, ok := map_import(g, it, mb, false); ok {
-			mi.kind, mi.fn, mi.note = .Import, f, note
+			mi.kind, mi.fn, mi.fn_magic, mi.fn_kind, mi.note = .Import, f.fn, f.magic, f.magic_kind, note
 		}
 		if mi.set_kind == .None && (!mb.readonly || webidl.attr_has(mb.attrs, "Replaceable") || webidl.attr_has(mb.attrs, "PutForwards") || webidl.attr_has(mb.attrs, "LegacyLenientSetter")) {
 			if r := find_raw(g, it, mb, kind_set); r != "" {
 				mi.set_kind, mi.set_fn = .Raw, r
 			} else if is_event_handler(g, mb.type) {
-				mi.set_kind, mi.set_fn = .Generic, emit_event_handler_odin(g, it, mb, false)
+				mi.set_kind = .Generic
+				if ev_idx < 0 { ev_idx = add_event_desc(g, it, mb) }
+				mi.set_magic_kind = 1
+				mi.set_magic = ev_idx
 			} else if webidl.attr_has(mb.attrs, "Replaceable") {
 				mi.set_kind, mi.set_fn = .Generic, "wj_replaceable_setter"
 			} else if webidl.attr_has(mb.attrs, "LegacyLenientSetter") {
 				mi.set_kind, mi.set_fn = .Generic, "wj_lenient_setter"
 			} else if a, ok := webidl.attr_get(mb.attrs, "PutForwards"); ok {
-				mi.set_kind, mi.set_fn = .Generic, emit_put_forwards_odin(g, it, mb, a.ident)
+				mi.set_kind = .Generic
+				mi.set_magic_kind = 3
+				mi.set_magic = add_pf_desc(g, mb.name, a.ident)
 			} else if f, _, ok2 := map_import(g, it, mb, true); ok2 {
-				mi.set_kind, mi.set_fn = .Import, f
+				mi.set_kind, mi.set_fn, mi.set_magic, mi.set_magic_kind = .Import, f.fn, f.magic, f.magic_kind
 			}
 		}
 		if mi.kind != .None && !mb.readonly && mi.set_kind == .None { mi.note = fmt.aprintf("%s (setter not supported)", mi.note) }
@@ -222,7 +325,9 @@ classify :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member) -> Member_I
 		if r := find_raw(g, it, mb, kind); r != "" {
 			mi.kind, mi.fn, mi.note = .Raw, r, r
 		} else if count_overloads(it, mb) == 1 {
-			if f, note, ok := map_import(g, it, mb, false); ok { mi.kind, mi.fn, mi.note = .Import, f, note }
+			if f, note, ok := map_import(g, it, mb, false); ok {
+				mi.kind, mi.fn, mi.fn_magic, mi.fn_kind, mi.note = .Import, f.fn, f.magic, f.magic_kind, note
+			}
 		}
 	case .Stringifier:
 		if r := fmt.tprintf("wjr_%s_toString", it.name); g.raw[r] { mi.kind, mi.fn, mi.note = .Raw, strings.clone(r), r }
@@ -304,7 +409,7 @@ handler_event :: proc(name: string) -> string {
 // imported one for [ReflectSetter]) and the setter. Types not reflected generically (DOMTokenList, Element?) are left
 // to their own implementation.
 @(private)
-emit_reflect :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member) -> (getter, setter: string, ok: bool) {
+emit_reflect :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member) -> (getter, setter: Glue_Ref, ok: bool) {
 	a, has := webidl.attr_get(mb.attrs, "Reflect")
 	if !has {
 		// [ReflectURL] alone reflects the attribute of the same name (img.src, link.href, q.cite...)
@@ -344,13 +449,17 @@ emit_reflect :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member) -> (get
 	if webidl.attr_has(mb.attrs, "ReflectPositiveWithFallback") { mode = 3 }
 	lo, hi := "0", "0"
 	if rr, okr := webidl.attr_get(mb.attrs, "ReflectRange"); okr && len(rr.list) == 2 { lo, hi = rr.list[0], rr.list[1]; mode = 4 }
-	gg, ss := emit_reflect_odin(g, it, mb, kind, content, def, mode, lo, hi, setter_only)
 	if setter_only {
-		getter = find_raw(g, it, mb, "get")
-		if getter == "" {
-			if f, _, okm := map_import(g, it, mb, false); okm { getter = f } else { return }
+		if raw_g := find_raw(g, it, mb, "get"); raw_g != "" {
+			getter = Glue_Ref{fn = raw_g}
+		} else if f, _, okm := map_import(g, it, mb, false); okm {
+			getter = f
+		} else {
+			return
 		}
-	} else { getter = gg }
+	}
+	gg, ss := emit_reflect_odin(g, it, mb, kind, content, def, mode, lo, hi, setter_only)
+	if !setter_only { getter = gg }
 	return getter, ss, true
 }
 
@@ -476,7 +585,7 @@ widl_scalar_ok :: proc(c: Conv, t: idl.Type) -> bool {
 
 // Finds a browser function for `mb` and writes its glue; false when there is none, or it does not fit.
 @(private)
-map_import :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, setter: bool) -> (fname: string, note: string, ok: bool) {
+map_import :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, setter: bool) -> (ref: Glue_Ref, note: string, ok: bool) {
 	owners := make([dynamic]string, context.temp_allocator)
 	append(&owners, it.name)
 	if mb.from_mixin != "" { append(&owners, mb.from_mixin) }
@@ -495,14 +604,14 @@ map_import :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, setter: b
 		d, found := g.imports[n]
 		if !found { continue }
 		f, why := emit_import_glue(g, it, mb, d, n, setter)
-		if f != "" { return f, fmt.aprintf("%s.%s", d.module.name, n), true }
+		if f.fn != "" || f.magic_kind != 0 { return f, fmt.aprintf("%s.%s", d.module.name, n), true }
 		append(&g.problems, fmt.aprintf("%s.%s%s: %s.%s exists but %s", it.name, mb.name, setter ? " (setter)" : "", d.module.name, n, why))
 	}
-	return "", "", false
+	return {}, "", false
 }
 
 @(private)
-emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: ^idl.Decl, import_name: string, setter: bool) -> (string, string) {
+emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: ^idl.Decl, import_name: string, setter: bool) -> (Glue_Ref, string) {
 	// the IDL side: arguments (a setter's value), result
 	args := make([dynamic]Glue_Arg, context.temp_allocator)
 	result := Conv.Void
@@ -517,43 +626,43 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 		result_nullable = webidl.resolve(g.m, mb.type).nullable
 	case:
 		for a in mb.args {
-			if a.variadic { return "", "it is variadic" }
+			if a.variadic { return {}, "it is variadic" }
 			c, i := conv_of(g, a.type)
 			append(&args, Glue_Arg{c, i, a.type, a})
 		}
 		result, result_iface = conv_of(g, mb.type)
 		if mb.type != nil { result_nullable = webidl.resolve(g.m, mb.type).nullable }
 	}
-	for a in args { if a.conv == .None || a.conv == .Void || a.conv == .Promise { return "", fmt.tprintf("an argument of type %s has no conversion", webidl.type_text(a.t)) } }
-	if result == .None { return "", fmt.tprintf("the result type %s has no conversion", webidl.type_text(mb.type)) }
+	for a in args { if a.conv == .None || a.conv == .Void || a.conv == .Promise { return {}, fmt.tprintf("an argument of type %s has no conversion", webidl.type_text(a.t)) } }
+	if result == .None { return {}, fmt.tprintf("the result type %s has no conversion", webidl.type_text(mb.type)) }
 
 	// the browser function's side: an optional self handle, then one parameter per argument
 	params := d.params
 	has_self := false
 	if len(params) == len(args) + 1 && !mb.static_ {
 		pt := params[0].type
-		if pt.kind == .Handle || pt.kind == .U64 { has_self = true } else { return "", "its first parameter is not a handle" }
+		if pt.kind == .Handle || pt.kind == .U64 { has_self = true } else { return {}, "its first parameter is not a handle" }
 	} else if len(params) != len(args) {
-		return "", fmt.tprintf("it takes %d parameters for %d arguments", len(params), len(args))
+		return {}, fmt.tprintf("it takes %d parameters for %d arguments", len(params), len(args))
 	}
 	for a, i in args {
 		p := params[i + (has_self ? 1 : 0)]
-		if p.type.seq { return "", fmt.tprintf("parameter %s is a sequence", p.name) }
-		if !widl_scalar_ok(a.conv, p.type) { return "", fmt.tprintf("parameter %s does not match %s", p.name, webidl.type_text(a.t)) }
+		if p.type.seq { return {}, fmt.tprintf("parameter %s is a sequence", p.name) }
+		if !widl_scalar_ok(a.conv, p.type) { return {}, fmt.tprintf("parameter %s does not match %s", p.name, webidl.type_text(a.t)) }
 	}
 	r := d.result
 	// Node.appendChild(node) and the like return their argument: the browser function returns nothing
 	return_arg := -1
 	if (result == .Node || result == .Host) && r.kind == .Void {
 		for a, i in args { if a.iface == result_iface { return_arg = i; break } }
-		if return_arg < 0 { return "", "its result is missing" }
+		if return_arg < 0 { return {}, "its result is missing" }
 	}
 	if result == .Void || return_arg >= 0 {
 		// a result the IDL does not have is dropped
 	} else if (result == .String || result == .Usv) {
-		if r.kind != .String && r.kind != .Usv_String { return "", "its result is not a string" }
+		if r.kind != .String && r.kind != .Usv_String { return {}, "its result is not a string" }
 	} else if !widl_scalar_ok(result, r) {
-		return "", "its result type does not match"
+		return {}, "its result type does not match"
 	}
 
 	return emit_import_glue_odin(g, it, mb, d, import_name, setter, args[:], result, result_iface, result_nullable, has_self, return_arg)

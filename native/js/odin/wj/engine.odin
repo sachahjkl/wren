@@ -12,8 +12,17 @@ package wj
 
 // ---- wj.h: the interface table ----
 
-// wj_interface. The function pointers are only ever called by the engine; they are mirrored as rawptr to keep the
-// layout (and the stride of wj_interfaces[]) exact.
+// Legacy platform object hooks and magic accessor/method proc types.
+Index_Get    :: #type proc "c" (ctx: ^Context, obj: JSValue, index: u32, found: ^bool) -> JSValue
+Length_Get   :: #type proc "c" (ctx: ^Context, obj: JSValue) -> u32
+Named_Get    :: #type proc "c" (ctx: ^Context, obj: JSValue, name: [^]u8, len: uint, found: ^bool) -> JSValue
+Named_Set    :: #type proc "c" (ctx: ^Context, obj: JSValue, name: [^]u8, len: uint, value: JSValue) -> i32
+Named_Delete :: #type proc "c" (ctx: ^Context, obj: JSValue, name: [^]u8, len: uint) -> i32
+Named_Keys   :: #type proc "c" (ctx: ^Context, obj: JSValue, array: JSValue) -> i32
+Getter_Magic :: #type proc "c" (ctx: ^Context, this_val: JSValue, magic: i32) -> JSValue
+Setter_Magic :: #type proc "c" (ctx: ^Context, this_val: JSValue, value: JSValue, magic: i32) -> JSValue
+
+// wj_interface. Typed proc fields let the generated interface table live in @(rodata) with zero init code.
 Interface :: struct {
 	name:           cstring,
 	parent:         i16,      // index in wj_interfaces, -1 for none
@@ -21,19 +30,19 @@ Interface :: struct {
 	flags:          u16,      // WJ_I_*
 	class_kind:     u8,       // WJ_CLASS_*
 	ctor_length:    u16,
-	ctor:           rawptr,
-	members:        rawptr,
+	ctor:           Native,
+	members_off:    u32,      // starting index in member_table
 	n_members:      u16,
 	subtree_end:    u16,      // interfaces [index, subtree_end) inherit from this one (pre-order)
-	index_get:      rawptr,
-	length_get:     rawptr,
-	named_get:      rawptr,
-	named_set:      rawptr,
-	named_delete:   rawptr,
-	named_keys:     rawptr,
+	index_get:      Index_Get,
+	length_get:     Length_Get,
+	named_get:      Named_Get,
+	named_set:      Named_Set,
+	named_delete:   Named_Delete,
+	named_keys:     Named_Keys,
 	legacy_alias:   cstring,
 	factory_name:   cstring,
-	factory:        rawptr,
+	factory:        Native,
 	factory_length: u16,
 }
 
@@ -116,6 +125,8 @@ Buf :: struct {
 
 // set by wj_install_bindings (the generated bindings)
 interface_table:   [^]Interface
+member_table:      [^]Member
+constant_table:    [^]f64
 wj_interface_count: i32
 
 // set while the realm dispatches an event of its own (wj_dispatch_own_event, native/js/odin/events.odin): it is trusted

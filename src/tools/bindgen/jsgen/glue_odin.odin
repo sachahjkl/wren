@@ -3,13 +3,11 @@ package jsgen
 // The JavaScript glue, written in Odin against the wj layer (native/js/odin/wj). One file,
 // native/js/odin/bindings_gen.odin, package odin_glue:
 //
-//   * a trampoline per member the browser implements (arguments converted by the Web IDL rules, the browser's wr_*
-//     import called, the result converted back), and the generic members (event handlers, reflected content attributes,
-//     CSS properties, [PutForwards]);
-//   * the dictionaries (struct + _from + _free) the hand-written members read;
-//   * the member tables and the interface table, filled at run time by wj_install_bindings (called first by
-//     wj_preinit): a module built without the Odin runtime start-up does not run the dynamic initialisation of
-//     globals, so the tables are written by a procedure the image is made with, not by initialisers.
+//   * shared magic-dispatched thunks + compact static descriptor tables for generic members (event handlers,
+//     reflected content attributes, [PutForwards]) and uniform browser-import getters/setters/0-arg methods;
+//   * individual trampolines only for non-uniform multi-arg / special browser-import members;
+//   * the dictionaries (struct + _from + _free) referenced by hand-written glue;
+//   * static member, constant, and interface tables handed to the engine layer by wj_install_bindings.
 //
 // The classification (which member is hand-written, generic, imported) is in jsgen.odin (classify): it calls the
 // *_odin emitters below, so the table and the glue come from one decision.
@@ -35,8 +33,6 @@ raw_ref :: proc(name: string) -> string {
 }
 
 @(private)
-glue_sig_method :: "proc \"c\" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue"
-@(private)
 glue_sig_getter :: "proc \"c\" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue"
 @(private)
 glue_sig_setter :: "proc \"c\" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue"
@@ -47,19 +43,26 @@ Glue_Arg :: struct { conv: Conv, iface: string, t: ^webidl.Type, a: ^webidl.Argu
 // ---- generic members ----
 
 @(private)
-emit_event_handler_odin :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, getter: bool) -> string {
-	event := handler_event(mb.name)
-	special := 0
-	if mb.type.name == "OnErrorEventHandler" { special = 1 }
-	if mb.type.name == "OnBeforeUnloadEventHandler" { special = 2 }
-	if getter {
-		name := fmt.aprintf("wjg_%s_get_%s", it.name, mb.name)
-		wl(&g.o, "%s :: %s {{ return wj_event_handler_get(ctx, this_val, %d, %q) }", name, glue_sig_getter, g.index_of[it.name], event)
-		return name
+add_event_desc :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member) -> i32 {
+	spec: i32 = 0
+	if mb.type.name == "OnErrorEventHandler" { spec = 1 }
+	if mb.type.name == "OnBeforeUnloadEventHandler" { spec = 2 }
+	idx := g.index_of[it.name]
+	ev := handler_event(mb.name)
+	for e, i in g.events {
+		if e.iface == idx && e.spec == spec && e.event == ev { return i32(i) }
 	}
-	name := fmt.aprintf("wjg_%s_set_%s", it.name, mb.name)
-	wl(&g.o, "%s :: %s {{ return wj_event_handler_set(ctx, this_val, %d, %q, v, %d) }", name, glue_sig_setter, g.index_of[it.name], event, special)
-	return name
+	append(&g.events, Event_Desc{event = strings.clone(ev), iface = idx, spec = spec})
+	return i32(len(g.events) - 1)
+}
+
+@(private)
+add_pf_desc :: proc(g: ^Gen, attr, target: string) -> i32 {
+	for p, i in g.pfs {
+		if p.attr == attr && p.target == target { return i32(i) }
+	}
+	append(&g.pfs, Pf_Desc{attr = strings.clone(attr), target = strings.clone(target)})
+	return i32(len(g.pfs) - 1)
 }
 
 @(private)
@@ -78,17 +81,26 @@ reflect_kind_index :: proc(kind: string) -> int {
 }
 
 @(private)
-emit_reflect_odin :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, kind, content, def: string, mode: int, lo, hi: string, setter_only: bool) -> (getter, setter: string) {
+emit_reflect_odin :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, kind, content, def: string, mode: int, lo, hi: string, setter_only: bool) -> (getter, setter: Glue_Ref) {
+	if setter_only && mb.readonly { return }
 	idx := g.index_of[it.name]
-	id := c_ident(mb.name)
 	k := reflect_kind_index(kind)
+	d := Reflect_Desc{
+		iface   = idx,
+		content = strings.clone(content),
+		kind    = k,
+		mode    = mode,
+		def     = strings.clone(odin_num(def)),
+		lo      = strings.clone(odin_num(lo)),
+		hi      = strings.clone(odin_num(hi)),
+	}
+	ref_idx := i32(len(g.reflects))
+	append(&g.reflects, d)
 	if !setter_only {
-		getter = fmt.aprintf("wjg_%s_get_%s", it.name, id)
-		wl(&g.o, "%s :: %s {{ return wj_reflect_get(ctx, this_val, %d, %q, %d, %s, %d, %s, %s) }", getter, glue_sig_getter, idx, content, k, odin_num(def), mode, odin_num(lo), odin_num(hi))
+		getter = Glue_Ref{magic = ref_idx, magic_kind = 2}
 	}
 	if !mb.readonly {
-		setter = fmt.aprintf("wjg_%s_set_%s", it.name, id)
-		wl(&g.o, "%s :: %s {{ return wj_reflect_set(ctx, this_val, %d, %q, %d, v, %s, %d, %s, %s) }", setter, glue_sig_setter, idx, content, k, odin_num(def), mode, odin_num(lo), odin_num(hi))
+		setter = Glue_Ref{magic = ref_idx, magic_kind = 2}
 	}
 	return
 }
@@ -116,13 +128,6 @@ emit_css_property_odin :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Membe
 	return
 }
 
-@(private)
-emit_put_forwards_odin :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, target: string) -> string {
-	name := fmt.aprintf("wjg_%s_set_%s", it.name, mb.name)
-	wl(&g.o, "%s :: %s {{ return wj.wj_put_forwards(ctx, this_val, %q, %q, v) }", name, glue_sig_setter, mb.name, target)
-	return name
-}
-
 // ---- members implemented by a browser function ----
 
 @(private)
@@ -146,13 +151,172 @@ odin_result :: proc(g: ^Gen, c: Conv, iface: string, v: string, owned := false) 
 	return "wj.UNDEFINED"
 }
 
+// Wasm ABI return kind for table-driven thunks: 0=I32, 1=U32, 2=I64, 3=U64, 4=F32, 5=F64, -1=unsupported.
+@(private)
+abi_ret_code :: proc(r: idl.Type) -> int {
+	#partial switch r.kind {
+	case .I32: return 0
+	case .U32, .Bool, .Flags, .Callback: return 1
+	case .Enum: return r.decl.base.kind == .I32 ? 0 : 1
+	case .I64: return 2
+	case .U64, .Handle, .Promise: return 3
+	case .F32: return 4
+	case .F64: return 5
+	}
+	return -1
+}
+
+// JS return conversion kind for table-driven thunks:
+// 0=Bool, 1=I32, 2=U32, 3=I64, 4=U64/F32/F64, 5=Node, 6=Host, 7=Host_Owned, 8=Void (discard).
+@(private)
+ret_conv_code :: proc(c: Conv, owned: bool) -> int {
+	#partial switch c {
+	case .Bool: return 0
+	case .I32: return 1
+	case .U32: return 2
+	case .I64: return 3
+	case .U64, .F32, .F64: return 4
+	case .Node: return 5
+	case .Host: return owned ? 7 : 6
+	case .Void: return 8
+	}
+	return -1
+}
+
+// Wasm ABI scalar arg kind for setter thunks: 0=i32, 1=i64, 2=f32, 3=f64, -1=unsupported.
+@(private)
+abi_arg_code :: proc(t: idl.Type) -> int {
+	#partial switch t.kind {
+	case .Bool, .I32, .U32, .Enum, .Flags: return 0
+	case .I64, .U64: return 1
+	case .F32: return 2
+	case .F64: return 3
+	}
+	return -1
+}
+
+// JS setter arg conversion kind: 0=Bool, 1=I32, 2=U32, 3=I64, 4=U64, 5=F64/F32.
+@(private)
+set_conv_code :: proc(c: Conv) -> int {
+	#partial switch c {
+	case .Bool: return 0
+	case .I32: return 1
+	case .U32: return 2
+	case .I64: return 3
+	case .U64: return 4
+	case .F32, .F64: return 5
+	}
+	return -1
+}
+
 @(private)
 emit_import_glue_odin :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: ^idl.Decl, import_name: string, setter: bool,
-		args: []Glue_Arg, result: Conv, result_iface: string, result_nullable: bool, has_self: bool, return_arg: int) -> (string, string) {
+		args: []Glue_Arg, result: Conv, result_iface: string, result_nullable: bool, has_self: bool, return_arg: int) -> (Glue_Ref, string) {
 	params := d.params
 	r := d.result
 	idx := g.index_of[it.name]
 	qual := fmt.tprintf("%s.%s", it.name, mb.name)
+	_, owned := idl.attr_find(d.attrs, "Owned")
+	callee := fmt.tprintf("wj.wr_%s", import_name)
+
+	// Fast table-driven magic thunks for uniform single-receiver members (replaces ~550 generated procs with 5 thunks).
+	if !mb.static_ && has_self && return_arg < 0 && !(it.name == "Document" && mb.name == "adoptNode") {
+		switch {
+		case mb.kind == .Attribute && !setter && len(args) == 0 && (result == .String || result == .Usv):
+			m := i32(len(g.get_strs))
+			append(&g.get_strs, Get_Str_Desc{
+				fn             = strings.clone(callee),
+				qual           = strings.clone(qual),
+				iface          = idx,
+				nullable_raise = d.raises && result_nullable,
+			})
+			return Glue_Ref{magic = m, magic_kind = 3}, ""
+
+		case setter && len(args) == 1 && !d.abi.ret_ptr && !d.abi.out_string && (d.raises || r.kind == .Void) && (args[0].conv == .String || args[0].conv == .Usv):
+			a := args[0]
+			rt := webidl.resolve(g.m, a.t)
+			flags := make([dynamic]string, context.temp_allocator)
+			append(&flags, "wj.STR_VIEW")
+			if rt.nullable { append(&flags, "wj.STR_NULLABLE") }
+			if webidl.attr_has(rt.attrs, "LegacyNullToEmptyString") { append(&flags, "wj.STR_NULL_EMPTY") }
+			fl := strings.join(flags[:], " | ", context.temp_allocator)
+			m := i32(len(g.set_strs))
+			append(&g.set_strs, Set_Str_Desc{
+				fn        = strings.clone(callee),
+				qual      = strings.clone(qual),
+				def       = "",
+				iface     = idx,
+				str_flags = strings.clone(fl),
+				raises    = d.raises,
+				p_opt     = params[1].optional,
+			})
+			return Glue_Ref{magic = m, magic_kind = 4}, ""
+
+		case mb.kind == .Attribute && !setter && len(args) == 0 && !d.raises && !d.abi.ret_ptr && !d.abi.out_string && result != .Void && result != .String && result != .Usv && result != .Promise:
+			ar := abi_ret_code(r)
+			cc := ret_conv_code(result, owned)
+			if ar >= 0 && cc >= 0 && ((ar != 4 && ar != 5) || cc == 4 || cc == 8) {
+				m := i32(len(g.get_vals))
+				append(&g.get_vals, Get_Val_Desc{
+					fn        = strings.clone(callee),
+					iface     = idx,
+					ret_iface = g.index_of[result_iface] or_else 0,
+					abi_ret   = ar,
+					conv      = cc,
+				})
+				return Glue_Ref{magic = m, magic_kind = 4}, ""
+			}
+
+		case mb.kind == .Operation && !setter && len(args) == 0 && !d.abi.out_string && !d.abi.ret_ptr && result != .Promise:
+			ar := -1
+			cc := -1
+			if d.raises && r.kind == .Void {
+				ar, cc = 7, 8
+			} else if !d.raises && r.kind == .Void {
+				ar, cc = 6, 8
+			} else if !d.raises {
+				ar = abi_ret_code(r)
+				cc = ret_conv_code(result, owned)
+			}
+			if ar >= 0 && cc >= 0 && ((ar != 4 && ar != 5) || cc == 4 || cc == 8) {
+				m := i32(len(g.call0s))
+				append(&g.call0s, Call0_Desc{
+					fn        = strings.clone(callee),
+					qual      = strings.clone(qual),
+					iface     = idx,
+					ret_iface = g.index_of[result_iface] or_else 0,
+					abi_ret   = ar,
+					conv      = cc,
+				})
+				return Glue_Ref{magic = m, magic_kind = 1}, ""
+			}
+
+		case setter && len(args) == 1 && !d.abi.ret_ptr && !d.abi.out_string && (d.raises || r.kind == .Void):
+			a := args[0]
+			sc := set_conv_code(a.conv)
+			aa := abi_arg_code(params[1].type)
+			if sc >= 0 && aa >= 0 && (sc == 5) == (aa == 2 || aa == 3) {
+				rt := webidl.resolve(g.m, a.t)
+				enforce := webidl.attr_has(rt.attrs, "EnforceRange")
+				clamp := webidl.attr_has(rt.attrs, "Clamp")
+				range_mode := enforce ? "wj.ENFORCE_RANGE" : clamp ? "wj.CLAMP" : "0"
+				m := i32(len(g.set_vals))
+				append(&g.set_vals, Set_Val_Desc{
+					fn         = strings.clone(callee),
+					qual       = strings.clone(qual),
+					iface      = idx,
+					conv       = sc,
+					abi_arg    = aa,
+					bits       = idl_int_bits(rt.name),
+					range_mode = range_mode,
+					raises     = d.raises,
+					restricted = !strings.has_prefix(rt.name, "unrestricted"),
+				})
+				return Glue_Ref{magic = m, magic_kind = 5}, ""
+			}
+		}
+	}
+
 	fname: string
 	b := &g.o
 	switch {
@@ -252,8 +416,6 @@ emit_import_glue_odin :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member
 			append(&call, v)
 		}
 	}
-	_, owned := idl.attr_find(d.attrs, "Owned")
-	callee := fmt.tprintf("wj.wr_%s", import_name)
 	// a member of Document whose import names no node acts on the calling document: this one may be another's
 	if !mb.static_ && it.name == "Document" && mb.name == "adoptNode" {
 		// a node of another document moves here now (DOM "adopt")
@@ -320,7 +482,277 @@ emit_import_glue_odin :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member
 		wl(b, "}")
 		wl(b, "")
 	}
-	return fname, ""
+	return Glue_Ref{fn = fname}, ""
+}
+
+// ---- shared magic thunks & descriptor tables ----
+
+@(private)
+emit_magic_thunks_odin :: proc(g: ^Gen, o: ^strings.Builder) {
+	wl(o, "// ---- shared magic-dispatched thunks & descriptor tables ----")
+	wl(o, "")
+
+	if len(g.events) > 0 {
+		wl(o, "@(private = \"file\")")
+		wl(o, "Wjg_Event :: struct { event: cstring, iface: u16, spec: u8 }")
+		wl(o, "@(private = \"file\", rodata)")
+		wl(o, "wjg_events := [%d]Wjg_Event{{", len(g.events))
+		for e in g.events {
+			wl(o, "\t{{event = %q, iface = %d, spec = %d}},", e.event, e.iface, e.spec)
+		}
+		wl(o, "}")
+		wl(o, "")
+		wl(o, "@(private = \"file\")")
+		wl(o, "wjg_event_get :: proc \"c\" (ctx: ^wj.Context, this_val: wj.JSValue, magic: i32) -> wj.JSValue {")
+		wl(o, "\td := &wjg_events[magic]")
+		wl(o, "\treturn wj_event_handler_get(ctx, this_val, i32(d.iface), d.event)")
+		wl(o, "}")
+		wl(o, "")
+		wl(o, "@(private = \"file\")")
+		wl(o, "wjg_event_set :: proc \"c\" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue, magic: i32) -> wj.JSValue {")
+		wl(o, "\td := &wjg_events[magic]")
+		wl(o, "\treturn wj_event_handler_set(ctx, this_val, i32(d.iface), d.event, v, i32(d.spec))")
+		wl(o, "}")
+		wl(o, "")
+	}
+
+	if len(g.reflects) > 0 {
+		wl(o, "@(private = \"file\")")
+		wl(o, "Wjg_Reflect :: struct {")
+		wl(o, "\tcontent: cstring,")
+		wl(o, "\tiface:   u16,")
+		wl(o, "\tkind:    u8,")
+		wl(o, "\tmode:    u8,")
+		wl(o, "\tdef:     f64,")
+		wl(o, "\tlo:      f64,")
+		wl(o, "\thi:      f64,")
+		wl(o, "}")
+		wl(o, "@(private = \"file\", rodata)")
+		wl(o, "wjg_reflects := [%d]Wjg_Reflect{{", len(g.reflects))
+		for r in g.reflects {
+			wl(o, "\t{{content = %q, iface = %d, kind = %d, mode = %d, def = %s, lo = %s, hi = %s}},",
+				r.content, r.iface, r.kind, r.mode, r.def, r.lo, r.hi)
+		}
+		wl(o, "}")
+		wl(o, "")
+		wl(o, "@(private = \"file\")")
+		wl(o, "wjg_reflect_get :: proc \"c\" (ctx: ^wj.Context, this_val: wj.JSValue, magic: i32) -> wj.JSValue {")
+		wl(o, "\td := &wjg_reflects[magic]")
+		wl(o, "\treturn wj_reflect_get(ctx, this_val, i32(d.iface), d.content, i32(d.kind), d.def, i32(d.mode), d.lo, d.hi)")
+		wl(o, "}")
+		wl(o, "")
+		wl(o, "@(private = \"file\")")
+		wl(o, "wjg_reflect_set :: proc \"c\" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue, magic: i32) -> wj.JSValue {")
+		wl(o, "\td := &wjg_reflects[magic]")
+		wl(o, "\treturn wj_reflect_set(ctx, this_val, i32(d.iface), d.content, i32(d.kind), v, d.def, i32(d.mode), d.lo, d.hi)")
+		wl(o, "}")
+		wl(o, "")
+	}
+
+	if len(g.pfs) > 0 {
+		wl(o, "@(private = \"file\")")
+		wl(o, "Wjg_Pf :: struct { attr, target: cstring }")
+		wl(o, "@(private = \"file\", rodata)")
+		wl(o, "wjg_pfs := [%d]Wjg_Pf{{", len(g.pfs))
+		for p in g.pfs { wl(o, "\t{{attr = %q, target = %q}},", p.attr, p.target) }
+		wl(o, "}")
+		wl(o, "@(private = \"file\")")
+		wl(o, "wjg_pf_set :: proc \"c\" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue, magic: i32) -> wj.JSValue {")
+		wl(o, "\td := &wjg_pfs[magic]")
+		wl(o, "\treturn wj.wj_put_forwards(ctx, this_val, d.attr, d.target, v)")
+		wl(o, "}")
+		wl(o, "")
+	}
+
+	if len(g.get_strs) > 0 {
+		wl(o, "@(private = \"file\")")
+		wl(o, "Wjg_Get_Str :: struct { qual: cstring, iface: u16, nullable_raise: bool }")
+		wl(o, "@(private = \"file\", rodata)")
+		wl(o, "wjg_get_strs := [%d]Wjg_Get_Str{{", len(g.get_strs))
+		for d in g.get_strs {
+			wl(o, "\t{{qual = %q, iface = %d, nullable_raise = %v}},", d.qual, d.iface, d.nullable_raise)
+		}
+		wl(o, "}")
+		wl(o, "@(private = \"file\") wjg_get_str_fns: [%d]rawptr", len(g.get_strs))
+		wl(o, "@(private = \"file\")")
+		wl(o, "wjg_imp_get_str :: proc \"c\" (ctx: ^wj.Context, this_val: wj.JSValue, magic: i32) -> wj.JSValue {")
+		wl(o, "\td := &wjg_get_strs[magic]")
+		wl(o, "\tself := wj.wj_this(ctx, this_val, i32(d.iface))")
+		wl(o, "\tif self == nil { return wj.EXCEPTION }")
+		wl(o, "\tf := (proc \"c\" (u64, [^]u8, u32) -> i32)(wjg_get_str_fns[magic])")
+		wl(o, "\tn := f(self.handle, wj.wj_scratch.data, wj.wj_scratch.cap)")
+		wl(o, "\tif n > 0 && u32(n) > wj.wj_scratch.cap {")
+		wl(o, "\t\tif wj.wj_scratch_grow(u32(n)) { n = f(self.handle, wj.wj_scratch.data, wj.wj_scratch.cap) } else { n = -13 }")
+		wl(o, "\t}")
+		wl(o, "\tif d.nullable_raise && n == i32(wj.wr_Error.Not_Found) { return wj.NULL }")
+		wl(o, "\tif n < 0 { return wj.wj_throw_status(ctx, n, d.qual) }")
+		wl(o, "\treturn wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))")
+		wl(o, "}")
+		wl(o, "")
+	}
+
+	if len(g.set_strs) > 0 {
+		wl(o, "@(private = \"file\")")
+		wl(o, "Wjg_Set_Str :: struct { qual: cstring, iface: u16, str_flags: u8, flags: u8 }")
+		wl(o, "@(private = \"file\", rodata)")
+		wl(o, "wjg_set_strs := [%d]Wjg_Set_Str{{", len(g.set_strs))
+		for d in g.set_strs {
+			fl := (1 if d.raises else 0) | (2 if d.p_opt else 0)
+			wl(o, "\t{{qual = %q, iface = %d, str_flags = u8(%s), flags = %d}},", d.qual, d.iface, d.str_flags, fl)
+		}
+		wl(o, "}")
+		wl(o, "@(private = \"file\") wjg_set_str_fns: [%d]rawptr", len(g.set_strs))
+		wl(o, "@(private = \"file\")")
+		wl(o, "wjg_imp_set_str :: proc \"c\" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue, magic: i32) -> wj.JSValue {")
+		wl(o, "\td := &wjg_set_strs[magic]")
+		wl(o, "\tself := wj.wj_this(ctx, this_val, i32(d.iface))")
+		wl(o, "\tif self == nil { return wj.EXCEPTION }")
+		wl(o, "\ta0: wj.Str")
+		wl(o, "\tif !wj.wj_to_str(ctx, v, &a0, i32(d.str_flags), \"\") { return wj.EXCEPTION }")
+		wl(o, "\tptr := a0.ptr")
+		wl(o, "\tln := u32(a0.len)")
+		wl(o, "\tif d.flags & 2 != 0 {")
+		wl(o, "\t\tif ptr == nil { ln = wj.WR_ABSENT }")
+		wl(o, "\t} else if ptr == nil {")
+		wl(o, "\t\tptr = wj.empty_ptr()")
+		wl(o, "\t}")
+		wl(o, "\tfn := wjg_set_str_fns[magic]")
+		wl(o, "\tif d.flags & 1 != 0 {")
+		wl(o, "\t\tst := (proc \"c\" (u64, [^]u8, u32) -> i32)(fn)(self.handle, ptr, ln)")
+		wl(o, "\t\twj.wj_str_free(ctx, &a0)")
+		wl(o, "\t\tif st < 0 { return wj.wj_throw_status(ctx, st, d.qual) }")
+		wl(o, "\t} else {")
+		wl(o, "\t\t(proc \"c\" (u64, [^]u8, u32))(fn)(self.handle, ptr, ln)")
+		wl(o, "\t\twj.wj_str_free(ctx, &a0)")
+		wl(o, "\t}")
+		wl(o, "\treturn wj.UNDEFINED")
+		wl(o, "}")
+		wl(o, "")
+	}
+
+	if len(g.get_vals) > 0 || len(g.call0s) > 0 {
+		wl(o, "@(private = \"file\")")
+		wl(o, "wjg_call_ret_val :: proc \"contextless\" (ctx: ^wj.Context, h: u64, fn: rawptr, abi_ret, conv: u8, ret_iface: u16) -> wj.JSValue {")
+		wl(o, "\tiv: i64; uv: u64; fv: f64")
+		wl(o, "\tswitch abi_ret {")
+		wl(o, "\tcase 0: v := (proc \"c\" (u64) -> i32)(fn)(h); iv = i64(v); uv = u64(u32(v)); fv = f64(v)")
+		wl(o, "\tcase 1: v := (proc \"c\" (u64) -> u32)(fn)(h); iv = i64(i32(v)); uv = u64(v); fv = f64(v)")
+		wl(o, "\tcase 2: v := (proc \"c\" (u64) -> i64)(fn)(h); iv = v; uv = u64(v); fv = f64(v)")
+		wl(o, "\tcase 3: v := (proc \"c\" (u64) -> u64)(fn)(h); iv = i64(v); uv = v; fv = f64(v)")
+		wl(o, "\tcase 4: fv = f64((proc \"c\" (u64) -> f32)(fn)(h))")
+		wl(o, "\tcase 5: fv = (proc \"c\" (u64) -> f64)(fn)(h)")
+		wl(o, "\t}")
+		wl(o, "\tswitch conv {")
+		wl(o, "\tcase 0: return wj.JS_NewBool(ctx, uv != 0)")
+		wl(o, "\tcase 1: return wj.new_int32(i32(iv))")
+		wl(o, "\tcase 2: return wj.new_uint32(ctx, u32(uv))")
+		wl(o, "\tcase 3: return wj.new_int64(ctx, iv)")
+		wl(o, "\tcase 4: return wj.new_float64(ctx, fv)")
+		wl(o, "\tcase 5: return wj.wj_wrap_node(ctx, uv)")
+		wl(o, "\tcase 6: return wj.wj_wrap_host(ctx, uv, i32(ret_iface))")
+		wl(o, "\tcase 7: return wj.wj_wrap_owned(ctx, uv, i32(ret_iface), wj.UNDEFINED)")
+		wl(o, "\t}")
+		wl(o, "\treturn wj.UNDEFINED")
+		wl(o, "}")
+		wl(o, "")
+	}
+
+	if len(g.get_vals) > 0 {
+		wl(o, "@(private = \"file\")")
+		wl(o, "Wjg_Get_Val :: struct { iface: u16, ret_iface: u16, abi_ret: u8, conv: u8 }")
+		wl(o, "@(private = \"file\", rodata)")
+		wl(o, "wjg_get_vals := [%d]Wjg_Get_Val{{", len(g.get_vals))
+		for d in g.get_vals {
+			wl(o, "\t{{iface = %d, ret_iface = %d, abi_ret = %d, conv = %d}},", d.iface, d.ret_iface, d.abi_ret, d.conv)
+		}
+		wl(o, "}")
+		wl(o, "@(private = \"file\") wjg_get_val_fns: [%d]rawptr", len(g.get_vals))
+		wl(o, "@(private = \"file\")")
+		wl(o, "wjg_imp_get_val :: proc \"c\" (ctx: ^wj.Context, this_val: wj.JSValue, magic: i32) -> wj.JSValue {")
+		wl(o, "\td := &wjg_get_vals[magic]")
+		wl(o, "\tself := wj.wj_this(ctx, this_val, i32(d.iface))")
+		wl(o, "\tif self == nil { return wj.EXCEPTION }")
+		wl(o, "\treturn wjg_call_ret_val(ctx, self.handle, wjg_get_val_fns[magic], d.abi_ret, d.conv, d.ret_iface)")
+		wl(o, "}")
+		wl(o, "")
+	}
+
+	if len(g.call0s) > 0 {
+		wl(o, "@(private = \"file\")")
+		wl(o, "Wjg_Call0 :: struct { qual: cstring, iface: u16, ret_iface: u16, abi_ret: u8, conv: u8 }")
+		wl(o, "@(private = \"file\", rodata)")
+		wl(o, "wjg_call0s := [%d]Wjg_Call0{{", len(g.call0s))
+		for d in g.call0s {
+			wl(o, "\t{{qual = %q, iface = %d, ret_iface = %d, abi_ret = %d, conv = %d}},", d.qual, d.iface, d.ret_iface, d.abi_ret, d.conv)
+		}
+		wl(o, "}")
+		wl(o, "@(private = \"file\") wjg_call0_fns: [%d]rawptr", len(g.call0s))
+		wl(o, "@(private = \"file\")")
+		wl(o, "wjg_imp_call0 :: proc \"c\" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32) -> wj.JSValue {")
+		wl(o, "\t_ = argc; _ = argv")
+		wl(o, "\td := &wjg_call0s[magic]")
+		wl(o, "\tself := wj.wj_this(ctx, this_val, i32(d.iface))")
+		wl(o, "\tif self == nil { return wj.EXCEPTION }")
+		wl(o, "\tfn := wjg_call0_fns[magic]")
+		wl(o, "\tif d.abi_ret == 6 { (proc \"c\" (u64))(fn)(self.handle); return wj.UNDEFINED }")
+		wl(o, "\tif d.abi_ret == 7 {")
+		wl(o, "\t\tst := (proc \"c\" (u64) -> i32)(fn)(self.handle)")
+		wl(o, "\t\tif st < 0 { return wj.wj_throw_status(ctx, st, d.qual) }")
+		wl(o, "\t\treturn wj.UNDEFINED")
+		wl(o, "\t}")
+		wl(o, "\treturn wjg_call_ret_val(ctx, self.handle, fn, d.abi_ret, d.conv, d.ret_iface)")
+		wl(o, "}")
+		wl(o, "")
+	}
+
+	if len(g.set_vals) > 0 {
+		wl(o, "@(private = \"file\")")
+		wl(o, "Wjg_Set_Val :: struct { qual: cstring, iface: u16, conv: u8, abi_arg: u8, bits: u8, range_mode: u8, flags: u8 }")
+		wl(o, "@(private = \"file\", rodata)")
+		wl(o, "wjg_set_vals := [%d]Wjg_Set_Val{{", len(g.set_vals))
+		for d in g.set_vals {
+			fl := (1 if d.raises else 0) | (2 if d.restricted else 0)
+			wl(o, "\t{{qual = %q, iface = %d, conv = %d, abi_arg = %d, bits = %d, range_mode = u8(%s), flags = %d}},",
+				d.qual, d.iface, d.conv, d.abi_arg, d.bits, d.range_mode, fl)
+		}
+		wl(o, "}")
+		wl(o, "@(private = \"file\") wjg_set_val_fns: [%d]rawptr", len(g.set_vals))
+		wl(o, "@(private = \"file\")")
+		wl(o, "wjg_imp_set_val :: proc \"c\" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue, magic: i32) -> wj.JSValue {")
+		wl(o, "\td := &wjg_set_vals[magic]")
+		wl(o, "\tself := wj.wj_this(ctx, this_val, i32(d.iface))")
+		wl(o, "\tif self == nil { return wj.EXCEPTION }")
+		wl(o, "\tiv: i64; fv: f64")
+		wl(o, "\tswitch d.conv {")
+		wl(o, "\tcase 0: iv = wj.JS_ToBool(ctx, v) != 0 ? 1 : 0")
+		wl(o, "\tcase 1: x: i32; if !wj.wj_to_int32(ctx, v, &x, i32(d.bits), i32(d.range_mode)) { return wj.EXCEPTION }; iv = i64(x)")
+		wl(o, "\tcase 2: x: u32; if !wj.wj_to_uint32(ctx, v, &x, i32(d.bits), i32(d.range_mode)) { return wj.EXCEPTION }; iv = i64(x)")
+		wl(o, "\tcase 3: x: i64; if !wj.wj_to_int64(ctx, v, &x, i32(d.range_mode)) { return wj.EXCEPTION }; iv = x")
+		wl(o, "\tcase 4: x: u64; if !wj.wj_to_uint64(ctx, v, &x, i32(d.range_mode)) { return wj.EXCEPTION }; iv = i64(x)")
+		wl(o, "\tcase 5: x: f64; if !wj.wj_to_double(ctx, v, &x, d.flags & 2 != 0) { return wj.EXCEPTION }; fv = x")
+		wl(o, "\t}")
+		wl(o, "\tfn := wjg_set_val_fns[magic]")
+		wl(o, "\tif d.flags & 1 != 0 {")
+		wl(o, "\t\tst: i32")
+		wl(o, "\t\tswitch d.abi_arg {")
+		wl(o, "\t\tcase 0: st = (proc \"c\" (u64, i32) -> i32)(fn)(self.handle, i32(iv))")
+		wl(o, "\t\tcase 1: st = (proc \"c\" (u64, i64) -> i32)(fn)(self.handle, iv)")
+		wl(o, "\t\tcase 2: st = (proc \"c\" (u64, f32) -> i32)(fn)(self.handle, f32(fv))")
+		wl(o, "\t\tcase 3: st = (proc \"c\" (u64, f64) -> i32)(fn)(self.handle, fv)")
+		wl(o, "\t\t}")
+		wl(o, "\t\tif st < 0 { return wj.wj_throw_status(ctx, st, d.qual) }")
+		wl(o, "\t} else {")
+		wl(o, "\t\tswitch d.abi_arg {")
+		wl(o, "\t\tcase 0: (proc \"c\" (u64, i32))(fn)(self.handle, i32(iv))")
+		wl(o, "\t\tcase 1: (proc \"c\" (u64, i64))(fn)(self.handle, iv)")
+		wl(o, "\t\tcase 2: (proc \"c\" (u64, f32))(fn)(self.handle, f32(fv))")
+		wl(o, "\t\tcase 3: (proc \"c\" (u64, f64))(fn)(self.handle, fv)")
+		wl(o, "\t\t}")
+		wl(o, "\t}")
+		wl(o, "\treturn wj.UNDEFINED")
+		wl(o, "}")
+		wl(o, "")
+	}
 }
 
 // ---- dictionaries ----
@@ -364,9 +796,9 @@ emit_dicts_odin :: proc(g: ^Gen, o: ^strings.Builder) {
 	slice.sort(enums[:])
 	for e in enums {
 		def := g.m.enums[e]
-		w(o, "@(private = \"file\") wje_%s :: proc \"contextless\" (z: ^[%d]cstring) -> [^]cstring {{ z^ = [%d]cstring{{ ", e, len(def.values) + 1, len(def.values) + 1)
-		for v in def.values { w(o, "%q, ", v) }
-		wl(o, "nil }; return &z[0] }")
+		w(o, "@(private = \"file\", rodata) wje_%s := [%d]cstring{{ ", e, len(def.values) + 1)
+		for v, i in def.values { w(o, "%s%d = %q", i > 0 ? ", " : "", i, v) }
+		wl(o, " }")
 	}
 	wl(o, "")
 	for name in names {
@@ -433,8 +865,7 @@ emit_dicts_odin :: proc(g: ^Gen, o: ^strings.Builder) {
 			case .F64: wl(o, "\t\t\tok := wj.wj_to_double(ctx, x, &out.%s, %v)", f, restricted)
 			case .Str: wl(o, "\t\t\tok := wj.wj_to_str(ctx, x, &out.%s, 0, \"\")", f)
 			case .Enum:
-				wl(o, "\t\t\tez: [%d]cstring", len(g.m.enums[n].values) + 1)
-				wl(o, "\t\t\tok := wj.wj_to_str(ctx, x, &out.%s, 0, \"\") && wj.wj_check_enum(ctx, &out.%s, wje_%s(&ez), %q)", f, f, n, n)
+				wl(o, "\t\t\tok := wj.wj_to_str(ctx, x, &out.%s, 0, \"\") && wj.wj_check_enum(ctx, &out.%s, &wje_%s[0], %q)", f, f, n, n)
 			case .Dict: wl(o, "\t\t\tok := wjd_%s_from(ctx, x, &out.%s)", n, f)
 			case .Value: wl(o, "\t\t\tout.%s = wj.JS_DupValue(ctx, x)", f); okline = ""
 			}
@@ -458,6 +889,12 @@ odin_flag_list :: proc(f: []string) -> string {
 }
 
 @(private)
+add_flag :: proc(flags: string, extra: string) -> string {
+	if flags == "0" { return extra }
+	return strings.concatenate({flags, " | ", extra}, context.temp_allocator)
+}
+
+@(private)
 glue_member_flags :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, mi: Member_Impl) -> string {
 	s := member_flags(g, it, mb, mi)
 	if s == "0" { return "0" }
@@ -471,6 +908,7 @@ glue_member_flags :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, mi
 @(private)
 fn_ref :: proc(name: string) -> string {
 	if name == "" { return "nil" }
+	if strings.has_prefix(name, "wj.") { return name }
 	if strings.has_prefix(name, "wjr_") { return raw_ref(name) }
 	if strings.has_prefix(name, "wj_") { return fmt.tprintf("wj.%s", name) }
 	return name
@@ -479,16 +917,31 @@ fn_ref :: proc(name: string) -> string {
 @(private)
 emit_tables_odin :: proc(g: ^Gen, impls: [][]Member_Impl, o: ^strings.Builder) {
 	total := len(g.included)
-	wl(o, "// ---- the member tables and the interface table (filled by wj_install_bindings) ----")
+	wl(o, "// ---- static member, constant, and interface tables ----")
 	wl(o, "")
+
+	member_offsets := make([]int, total, context.temp_allocator)
 	member_counts := make([]int, total, context.temp_allocator)
-	body := strings.builder_make(context.temp_allocator)
+	members_buf := strings.builder_make(context.temp_allocator)
+	const_vals := make([dynamic]f64, context.temp_allocator)
+	const_idx := make(map[u64]i32, 64, context.temp_allocator)
+	add_const :: proc(vals: ^[dynamic]f64, idx: ^map[u64]i32, v: f64) -> i32 {
+		bits := transmute(u64)v
+		if k, ok := idx[bits]; ok { return k }
+		k := i32(len(vals^))
+		append(vals, v)
+		idx[bits] = k
+		return k
+	}
+
+	flat_idx := 0
 	for it, i in g.included {
 		names_done := make(map[string]bool, 16, context.temp_allocator)
-		entries := strings.builder_make(context.temp_allocator)
+		member_offsets[i] = flat_idx
 		count := 0
-		add :: proc(entries: ^strings.Builder, n: ^int, id: string, text: string) {
-			fmt.sbprintf(entries, "\tm_%s[%d] = %s\n", id, n^, text)
+		add_m :: proc(buf: ^strings.Builder, flat: ^int, n: ^int, text: string) {
+			fmt.sbprintf(buf, "\t%s,\n", text)
+			flat^ += 1
 			n^ += 1
 		}
 		for mb, j in it.members {
@@ -503,21 +956,57 @@ emit_tables_odin :: proc(g: ^Gen, impls: [][]Member_Impl, o: ^strings.Builder) {
 			case .Const:
 				v := webidl.number_value(mb.value)
 				if mb.value == "true" { v = 1 } else if mb.value == "false" { v = 0 }
-				add(&entries, &count, it.name, fmt.tprintf("wj.Member{{name = %q, kind = wj.M_CONSTANT, value = %v}}", mb.name, v))
+				ci := add_const(&const_vals, &const_idx, v)
+				add_m(&members_buf, &flat_idx, &count, fmt.tprintf("{{name = %q, kind = wj.M_CONSTANT, magic = %d}}", mb.name, ci))
 			case .Attribute:
 				kind := mb.static_ ? "wj.M_STATIC_ATTRIBUTE" : "wj.M_ATTRIBUTE"
-				if mi.kind == .None && !mb.readonly { flags = flags == "0" ? "wj.F_SETTER_UNSUPPORTED" : strings.concatenate({flags, " | wj.F_SETTER_UNSUPPORTED"}, context.temp_allocator) }
+				if mi.kind == .None && !mb.readonly { flags = add_flag(flags, "wj.F_SETTER_UNSUPPORTED") }
 				so := webidl.attr_has(mb.attrs, "SameObject") ? g.same_object_count : 0
 				if webidl.attr_has(mb.attrs, "SameObject") { g.same_object_count += 1 }
-				add(&entries, &count, it.name, fmt.tprintf("wj.Member{{name = %q, kind = %s, flags = %s, length = %d, get = %s, set = %s}}", mb.name, kind, flags, so, fn_ref(mi.fn), fn_ref(mi.set_fn)))
+				g_magic := mi.fn_magic
+				s_magic := mi.set_magic
+				mb_str := strings.builder_make(context.temp_allocator)
+				fmt.sbprintf(&mb_str, "{{name = %q, kind = %s", mb.name, kind)
+				if flags != "0" { fmt.sbprintf(&mb_str, ", flags = %s", flags) }
+				if so != 0 { fmt.sbprintf(&mb_str, ", length = %d", so) }
+				if mi.fn_kind != 0 {
+					fmt.sbprintf(&mb_str, ", get_kind = %d", mi.fn_kind)
+					if g_magic != 0 { fmt.sbprintf(&mb_str, ", magic = %d", g_magic) }
+				} else if mi.fn != "" {
+					fmt.sbprintf(&mb_str, ", get = %s", fn_ref(mi.fn))
+				}
+				if mi.set_magic_kind != 0 {
+					fmt.sbprintf(&mb_str, ", set_kind = %d", mi.set_magic_kind)
+					if s_magic != 0 { fmt.sbprintf(&mb_str, ", set_magic = %d", s_magic) }
+				} else if mi.set_fn != "" {
+					fmt.sbprintf(&mb_str, ", set = %s", fn_ref(mi.set_fn))
+				}
+				strings.write_byte(&mb_str, '}')
+				add_m(&members_buf, &flat_idx, &count, strings.to_string(mb_str))
 				if mb.stringifier {
-					add(&entries, &count, it.name, fmt.tprintf("wj.Member{{name = \"toString\", kind = wj.M_METHOD, fn = wj.wj_stringifier, get = %s}}", fn_ref(mi.fn)))
+					if mi.fn_kind != 0 {
+						add_m(&members_buf, &flat_idx, &count, fmt.tprintf("{{name = \"toString\", kind = wj.M_METHOD, fn = wj.wj_stringifier, get_kind = %d, magic = %d}}", mi.fn_kind, g_magic))
+					} else {
+						add_m(&members_buf, &flat_idx, &count, fmt.tprintf("{{name = \"toString\", kind = wj.M_METHOD, fn = wj.wj_stringifier, get = %s}}", fn_ref(mi.fn)))
+					}
 				}
 			case .Operation:
 				kind := mb.static_ ? "wj.M_STATIC_METHOD" : "wj.M_METHOD"
-				add(&entries, &count, it.name, fmt.tprintf("wj.Member{{name = %q, kind = %s, flags = %s, length = %d, fn = %s}}", mb.name, kind, flags, op_length(it, mb), fn_ref(mi.fn)))
+				op_len := op_length(it, mb)
+				mb_str := strings.builder_make(context.temp_allocator)
+				fmt.sbprintf(&mb_str, "{{name = %q, kind = %s", mb.name, kind)
+				if flags != "0" { fmt.sbprintf(&mb_str, ", flags = %s", flags) }
+				if op_len != 0 { fmt.sbprintf(&mb_str, ", length = %d", op_len) }
+				if mi.fn_kind != 0 {
+					fmt.sbprintf(&mb_str, ", fn_kind = %d", mi.fn_kind)
+					if mi.fn_magic != 0 { fmt.sbprintf(&mb_str, ", magic = %d", mi.fn_magic) }
+				} else if mi.fn != "" {
+					fmt.sbprintf(&mb_str, ", fn = %s", fn_ref(mi.fn))
+				}
+				strings.write_byte(&mb_str, '}')
+				add_m(&members_buf, &flat_idx, &count, strings.to_string(mb_str))
 			case .Stringifier:
-				add(&entries, &count, it.name, fmt.tprintf("wj.Member{{name = \"toString\", kind = wj.M_METHOD, fn = %s}}", fn_ref(mi.fn)))
+				add_m(&members_buf, &flat_idx, &count, fmt.tprintf("{{name = \"toString\", kind = wj.M_METHOD, fn = %s}}", fn_ref(mi.fn)))
 			case .Constructor, .Iterable, .Async_Iterable, .Maplike, .Setlike:
 			}
 		}
@@ -526,7 +1015,7 @@ emit_tables_odin :: proc(g: ^Gen, impls: [][]Member_Impl, o: ^strings.Builder) {
 			if mb.kind == .Iterable && mb.key_type == nil && has_indexed_getter(it) { continue }
 			for name in ([]string{"entries", "keys", "values", "forEach"}) {
 				r := fmt.tprintf("wjr_%s_%s", it.name, name)
-				if g.raw[r] { add(&entries, &count, it.name, fmt.tprintf("wj.Member{{name = %q, kind = wj.M_METHOD, length = %d, fn = %s}}", name, name == "forEach" ? 1 : 0, raw_ref(r))) }
+				if g.raw[r] { add_m(&members_buf, &flat_idx, &count, fmt.tprintf("{{name = %q, kind = wj.M_METHOD, length = %d, fn = %s}}", name, name == "forEach" ? 1 : 0, raw_ref(r))) }
 			}
 			for name in ([]string{"get", "has", "set", "add", "delete", "clear", "size"}) {
 				if mb.kind != .Maplike && mb.kind != .Setlike { break }
@@ -534,23 +1023,34 @@ emit_tables_odin :: proc(g: ^Gen, impls: [][]Member_Impl, o: ^strings.Builder) {
 				if name == "size" { r = fmt.tprintf("wjr_%s_get_size", it.name) }
 				if !g.raw[r] { continue }
 				if name == "size" {
-					add(&entries, &count, it.name, fmt.tprintf("wj.Member{{name = \"size\", kind = wj.M_ATTRIBUTE, get = %s}}", raw_ref(r)))
+					add_m(&members_buf, &flat_idx, &count, fmt.tprintf("{{name = \"size\", kind = wj.M_ATTRIBUTE, get = %s}}", raw_ref(r)))
 				} else {
-					add(&entries, &count, it.name, fmt.tprintf("wj.Member{{name = %q, kind = wj.M_METHOD, length = %d, fn = %s}}", name, name == "set" ? 2 : name == "clear" ? 0 : 1, raw_ref(r)))
+					add_m(&members_buf, &flat_idx, &count, fmt.tprintf("{{name = %q, kind = wj.M_METHOD, length = %d, fn = %s}}", name, name == "set" ? 2 : name == "clear" ? 0 : 1, raw_ref(r)))
 				}
 			}
 		}
 		member_counts[i] = count
 		g.counts[it.name] = {count, count}
-		if count > 0 {
-			wl(o, "@(private = \"file\") m_%s: [%d]wj.Member", it.name, count)
-			fmt.sbprintf(&body, "%s", strings.to_string(entries))
-		}
 	}
-	wl(o, "@(private = \"file\") the_interfaces: [%d]wj.Interface", total)
+
+	wl(o, "@(private = \"file\", rodata)")
+	wl(o, "the_constants := [%d]f64{{", len(const_vals))
+	for v, i in const_vals {
+		if i % 8 == 0 { w(o, "\t") }
+		w(o, "%v,", v)
+		if i % 8 == 7 || i == len(const_vals) - 1 { wl(o, "") } else { w(o, " ") }
+	}
+	wl(o, "}")
 	wl(o, "")
-	// the interface table
-	wl(&body, "")
+
+	wl(o, "@(private = \"file\", rodata)")
+	wl(o, "the_members := [%d]wj.Member{{", flat_idx)
+	w(o, "%s", strings.to_string(members_buf))
+	wl(o, "}")
+	wl(o, "")
+
+	wl(o, "@(private = \"file\", rodata)")
+	wl(o, "the_interfaces := [%d]wj.Interface{{", total)
 	for it, i in g.included {
 		parent := -1
 		if it.parent_ref != nil { parent = g.index_of[it.parent_ref.name] or_else -1 }
@@ -591,11 +1091,11 @@ emit_tables_odin :: proc(g: ^Gen, impls: [][]Member_Impl, o: ^strings.Builder) {
 			for a in mb.args { if a.optional || a.variadic { break }; n += 1 }
 			if ctor_len == 0 || n < ctor_len { ctor_len = n }
 		}
-		if r := fmt.tprintf("wjr_%s_constructor", it.name); g.raw[r] { ctor = fmt.tprintf("rawptr(%s)", raw_ref(r)) }
+		if r := fmt.tprintf("wjr_%s_constructor", it.name); g.raw[r] { ctor = raw_ref(r) }
 		if has_ctor && ctor == "nil" { append(&flags, "wj.I_CTOR_UNSUPPORTED") }
 		hook := proc(g: ^Gen, it: ^webidl.Interface, suffix: string) -> string {
 			r := fmt.tprintf("wjr_%s_%s", it.name, suffix)
-			return g.raw[r] ? fmt.tprintf("rawptr(%s)", raw_ref(r)) : "nil"
+			return g.raw[r] ? raw_ref(r) : "nil"
 		}
 		alias := "nil"
 		if a, ok := webidl.attr_get(it.attrs, "LegacyWindowAlias"); ok {
@@ -606,21 +1106,54 @@ emit_tables_odin :: proc(g: ^Gen, impls: [][]Member_Impl, o: ^strings.Builder) {
 		if a, ok := webidl.attr_get(it.attrs, "LegacyFactoryFunction"); ok {
 			fname = fmt.tprintf("%q", a.ident)
 			r := fmt.tprintf("wjr_%s_factory", it.name)
-			if g.raw[r] { ffn = fmt.tprintf("rawptr(%s)", raw_ref(r)) }
+			if g.raw[r] { ffn = raw_ref(r) }
 			for x in a.args { if x.optional { break }; flen += 1 }
 		}
-		members := member_counts[i] > 0 ? fmt.tprintf("rawptr(&m_%s[0])", it.name) : "nil"
-		fmt.sbprintf(&body, "\tthe_interfaces[%d] = wj.Interface{{name = %q, parent = %d, exposed = u16(%s), flags = u16(%s), class_kind = u8(%s), ctor_length = %d, ctor = %s,\n\t\tmembers = %s, n_members = %d, subtree_end = %d,\n\t\tindex_get = %s, length_get = %s, named_get = %s, named_set = %s, named_delete = %s, named_keys = %s,\n\t\tlegacy_alias = %s, factory_name = %s, factory = %s, factory_length = %d}}\n",
-			i, it.name, parent, odin_flag_list(ex[:]), odin_flag_list(flags[:]), class_kind, ctor_len, ctor, members, member_counts[i], table_subtree_end(g, it),
+		wl(o, "\t{{name = %q, parent = %d, exposed = u16(%s), flags = u16(%s), class_kind = u8(%s), ctor_length = %d, ctor = %s, members_off = %d, n_members = %d, subtree_end = %d, index_get = %s, length_get = %s, named_get = %s, named_set = %s, named_delete = %s, named_keys = %s, legacy_alias = %s, factory_name = %s, factory = %s, factory_length = %d}},",
+			it.name, parent, odin_flag_list(ex[:]), odin_flag_list(flags[:]), class_kind, ctor_len, ctor, member_offsets[i], member_counts[i], table_subtree_end(g, it),
 			hook(g, it, "index_get"), hook(g, it, "length_hook"), hook(g, it, "named_get"), hook(g, it, "named_set"), hook(g, it, "named_delete"), hook(g, it, "named_keys"),
 			alias, fname, ffn, flen)
 	}
-	wl(o, "// Fills the tables and hands them to the engine layer; called once, first, by wj_preinit (the image keeps them).")
+	wl(o, "}")
+	wl(o, "")
+	wl(o, "// Hands the @(rodata) tables and thunk pointers to the engine layer; called once by wj_preinit.")
 	wl(o, "wj_install_bindings :: proc \"c\" () {")
-	w(o, "%s", strings.to_string(body))
 	wl(o, "\twj.interface_table = raw_data(the_interfaces[:])")
+	wl(o, "\twj.member_table = raw_data(the_members[:])")
+	wl(o, "\twj.constant_table = raw_data(the_constants[:])")
 	wl(o, "\twj.wj_interface_count = %d", total)
 	wl(o, "\twj.wj_same_object_count = %d", g.same_object_count)
+	if len(g.events) > 0 {
+		wl(o, "\twj.magic_getters[1] = wjg_event_get")
+		wl(o, "\twj.magic_setters[1] = wjg_event_set")
+	}
+	if len(g.reflects) > 0 {
+		wl(o, "\twj.magic_getters[2] = wjg_reflect_get")
+		wl(o, "\twj.magic_setters[2] = wjg_reflect_set")
+	}
+	if len(g.pfs) > 0 {
+		wl(o, "\twj.magic_setters[3] = wjg_pf_set")
+	}
+	if len(g.get_strs) > 0 {
+		wl(o, "\twj.magic_getters[3] = wjg_imp_get_str")
+		for d, k in g.get_strs { wl(o, "\twjg_get_str_fns[%d] = rawptr(%s)", k, d.fn) }
+	}
+	if len(g.set_strs) > 0 {
+		wl(o, "\twj.magic_setters[4] = wjg_imp_set_str")
+		for d, k in g.set_strs { wl(o, "\twjg_set_str_fns[%d] = rawptr(%s)", k, d.fn) }
+	}
+	if len(g.get_vals) > 0 {
+		wl(o, "\twj.magic_getters[4] = wjg_imp_get_val")
+		for d, k in g.get_vals { wl(o, "\twjg_get_val_fns[%d] = rawptr(%s)", k, d.fn) }
+	}
+	if len(g.call0s) > 0 {
+		wl(o, "\twj.magic_fns[1] = wjg_imp_call0")
+		for d, k in g.call0s { wl(o, "\twjg_call0_fns[%d] = rawptr(%s)", k, d.fn) }
+	}
+	if len(g.set_vals) > 0 {
+		wl(o, "\twj.magic_setters[5] = wjg_imp_set_val")
+		for d, k in g.set_vals { wl(o, "\twjg_set_val_fns[%d] = rawptr(%s)", k, d.fn) }
+	}
 	wl(o, "}")
 }
 
@@ -638,6 +1171,7 @@ emit_glue_odin :: proc(g: ^Gen, impls: [][]Member_Impl) -> string {
 	wl(&o, "@(private = \"file\") INFINITY :: f64(0h7FF0_0000_0000_0000)")
 	wl(&o, "")
 	strings.write_string(&o, strings.to_string(g.o))
+	emit_magic_thunks_odin(g, &o)
 	emit_dicts_odin(g, &o)
 	emit_tables_odin(g, impls, &o)
 	return strings.to_string(o)
