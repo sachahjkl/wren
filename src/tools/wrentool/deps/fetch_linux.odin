@@ -10,21 +10,43 @@ import "wb:tools/tooling"
 
 // Sealed: the archive carries its own copy of Rust's standard library, and so does build/native-linux/libwren_native.a. GNU ld pulls members of both and stops on the symbols they share
 // unmangled (rust_eh_personality, the allocator and panic shims); two standard libraries of different compilers must never call into each other anyway. So the archive is linked into one
-// relocatable object and every symbol but `keep`'s is made local: the program sees the C API only, each Rust keeps its own runtime. (On Windows the MSVC toolchain has no such shared symbol.)
+// relocatable object and every symbol but `keep`'s (minus `drop`'s) is made local: the program sees the C API only, each Rust keeps its own runtime.
+// Pulling only members reachable from the kept C API roots (via -u instead of --whole-archive) and preserving .text*/.rodata*/.data*/.bss* subsections (--unique) lets final-link
+// --gc-sections drop unused APIs and crates (such as wat/wast, component-model, wasi, or unused wgpu paths). (On Windows the MSVC toolchain has no such shared symbol.)
 @(private)
-seal_archive :: proc(o: Options, archive, work, out_archive: string, keep: []string) -> bool {
-	object := fmt.tprintf("%s/sealed.o", work)
-	if tooling.run({command = {"ld", "-r", "--force-group-allocation", "--whole-archive", archive, "-o", object}, log = o.log}) != 0 { return fail(o, "ld -r failed") }
-	text, code := tooling.capture({"nm", "-g", "--defined-only", object}, allocator = context.temp_allocator)
+seal_archive :: proc(o: Options, archive, work, out_archive: string, keep: []string, drop: []string = nil) -> bool {
+	text, code := tooling.capture({"nm", "-g", "--defined-only", archive}, allocator = context.temp_allocator)
 	if code != 0 { return fail(o, "nm failed") }
 	names := strings.builder_make(context.temp_allocator)
+	roots := strings.builder_make(context.temp_allocator)
+	seen := make(map[string]bool, context.temp_allocator)
+	kept := 0
 	for line in strings.split_lines(text, context.temp_allocator) {
 		parts := strings.fields(line, context.temp_allocator)
 		if len(parts) < 3 { continue }
-		for prefix in keep { if strings.has_prefix(parts[2], prefix) { fmt.sbprintln(&names, parts[2]); break } }
+		sym := parts[2]
+		if sym in seen { continue }
+		matched := false
+		for prefix in keep { if strings.has_prefix(sym, prefix) { matched = true; break } }
+		if !matched { continue }
+		for prefix in drop { if strings.has_prefix(sym, prefix) { matched = false; break } }
+		if !matched { continue }
+		seen[sym] = true
+		fmt.sbprintln(&names, sym)
+		fmt.sbprintfln(&roots, "-u\n%s", sym)
+		kept += 1
 	}
+	if kept == 0 { return fail(o, "seal_archive matched no symbols") }
 	keep_file := fmt.tprintf("%s/keep.txt", work)
-	_ = os.write_entire_file(keep_file, strings.to_string(names))
+	roots_file := fmt.tprintf("%s/roots.rsp", work)
+	if os.write_entire_file(keep_file, strings.to_string(names)) != nil { return fail(o, "keep.txt cannot be written") }
+	if os.write_entire_file(roots_file, strings.to_string(roots)) != nil { return fail(o, "roots.rsp cannot be written") }
+	object := fmt.tprintf("%s/sealed.o", work)
+	if tooling.run({command = {
+		"ld", "-r", "--force-group-allocation",
+		"--unique=.text*", "--unique=.rodata*", "--unique=.data*", "--unique=.bss*",
+		fmt.tprintf("@%s", roots_file), archive, "-o", object,
+	}, log = o.log}) != 0 { return fail(o, "ld -r failed") }
 	if tooling.run({command = {"objcopy", fmt.tprintf("--keep-global-symbols=%s", keep_file), object}, log = o.log}) != 0 { return fail(o, "objcopy failed") }
 	_ = os.make_directory_all(filepath.dir(out_archive))
 	_ = os.remove(out_archive)
@@ -34,7 +56,7 @@ seal_archive :: proc(o: Options, archive, work, out_archive: string, keep: []str
 
 fetch_wasmtime :: proc(o: Options) -> bool {
 	out := "build/wasmtime-linux"
-	stamp_text := fmt.tprintf("%s-%s-sealed", WASMTIME_VERSION, ARCH_NAME)
+	stamp_text := fmt.tprintf("%s-%s-sealed-v2", WASMTIME_VERSION, ARCH_NAME)
 	stamp := fmt.tprintf("%s/VERSION", out)
 	if !o.force && os.exists(fmt.tprintf("%s/lib/libwasmtime.a", out)) && read_stamp(stamp) == stamp_text {
 		tooling.say(o.log, fmt.tprintfln("wasmtime %s already in %s", WASMTIME_VERSION, out))
@@ -50,7 +72,8 @@ fetch_wasmtime :: proc(o: Options) -> bool {
 	base.remove_tree(out)
 	_ = os.make_directory_all(out)
 	if os.copy_directory_all(fmt.tprintf("%s/include", out), fmt.tprintf("%s/include", from)) != nil { return fail(o, "the Wasmtime headers cannot be copied") }
-	if !seal_archive(o, fmt.tprintf("%s/lib/libwasmtime.a", from), x, fmt.tprintf("%s/lib/libwasmtime.a", out), {"wasm_", "wasmtime_", "wasi_", "wat_"}) { return false }
+	// Wren imports only wasm_* and wasmtime_* (no wasi_*, wat_*, or component-model symbols: src/wasm/wasmtime.odin)
+	if !seal_archive(o, fmt.tprintf("%s/lib/libwasmtime.a", from), x, fmt.tprintf("%s/lib/libwasmtime.a", out), {"wasm_", "wasmtime_"}, {"wasmtime_component_"}) { return false }
 	// (the licence text src/browser/third_party.odin bundles: the C API archive has none, the tag's file is the Windows archive's, at the place Windows puts it)
 	if !tooling.download_pinned(fmt.tprintf("%s/v%s/LICENSE", WASMTIME_LICENSE_URL, WASMTIME_VERSION), "build/wasmtime/LICENSE", WASMTIME_LICENSE_SHA256, o.log) { return false }
 	tooling.say(o.log, fmt.tprintfln("wasmtime %s (%s) in %s", WASMTIME_VERSION, ARCH_NAME, out))
@@ -66,7 +89,7 @@ fetch_wgpu :: proc(o: Options) -> bool {
 	if vendor, err := os.read_entire_file(fmt.tprintf("%s/vendor/wgpu/wgpu.odin", root), context.temp_allocator); err != nil || !strings.contains(string(vendor), fmt.tprintf("releases/tag/%s", WGPU_VERSION)) {
 		fmt.eprintfln("warning: Odin's vendor/wgpu does not name wgpu-native %s: check the version it expects", WGPU_VERSION)
 	}
-	stamp_text := fmt.tprintf("%s-sealed", WGPU_VERSION)
+	stamp_text := fmt.tprintf("%s-sealed-v2", WGPU_VERSION)
 	stamp := fmt.tprintf("%s/VERSION", dest)
 	if !o.force && os.exists(fmt.tprintf("%s/libwgpu_native.a", dest)) && read_stamp(stamp) == stamp_text {
 		tooling.say(o.log, fmt.tprintfln("wgpu-native %s already in %s", WGPU_VERSION, dest))

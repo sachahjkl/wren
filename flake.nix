@@ -211,7 +211,9 @@
       # the libraries it opens with dlopen go in its RUNPATH; the GPU driver is the system's (/run/opengl-driver)
       runtimeDependencies = runtimeLibs;
       desktopItems = [desktopItem];
-      dontStrip = true;
+      separateDebugInfo = true;
+      # leave build/wren unstripped so separateDebugInfo extracts full symbols into $debug before stripping $out
+      WREN_KEEP_SYMBOLS = "1";
       # Odin links a foreign library as -l:<absolute path> with -L/, which the purity check of the linker wrapper drops
       NIX_ENFORCE_PURITY = 0;
 

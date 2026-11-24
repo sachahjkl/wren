@@ -81,7 +81,10 @@ when ODIN_OS == .Windows {
 	@(private) LEXBOR_OTHER_PORT :: "ports/windows_nt"
 }
 
-// The C sources under `dir`, those of the other system's port left out.
+// Lexbor modules Wren never uses (Wren has its own CSS parser, selector matcher and style engine).
+LEXBOR_SKIP_MODULES :: [?]string{"/lexbor/css/", "/lexbor/selectors/", "/lexbor/style/", "/lexbor/engine/", "/lexbor/utils/"}
+
+// The C sources under `dir`, those of the other system's port and unused Lexbor modules left out.
 @(private)
 c_sources :: proc(dir: string) -> []string {
 	all := make([dynamic]string, context.temp_allocator)
@@ -89,7 +92,10 @@ c_sources :: proc(dir: string) -> []string {
 	kept := make([dynamic]string, context.temp_allocator)
 	for f in all {
 		p, _ := strings.replace_all(f, "\\", "/", context.temp_allocator)
-		if strings.has_suffix(p, ".c") && !strings.contains(p, LEXBOR_OTHER_PORT) { append(&kept, p) }
+		if !strings.has_suffix(p, ".c") || strings.contains(p, LEXBOR_OTHER_PORT) { continue }
+		skip := false
+		for m in LEXBOR_SKIP_MODULES { if strings.contains(p, m) { skip = true; break } }
+		if !skip { append(&kept, p) }
 	}
 	return kept[:]
 }
@@ -123,7 +129,7 @@ lexbor_compile :: proc(o: Options, objects: string) -> bool {
 	env := msvc_environment()
 	log := fmt.tprintf("%s/build.log", LEXBOR_OUT)
 	_ = os.remove(log)
-	flags := []string{"/nologo", "/c", "/MP", "/O2", "/DNDEBUG", "/MT", "/W1", "/wd4100", "/wd4255", "/wd4820", "/wd4668",
+	flags := []string{"/nologo", "/c", "/MP", "/O2", "/Gy", "/Gw", "/DNDEBUG", "/MT", "/W1", "/wd4100", "/wd4255", "/wd4820", "/wd4668",
 		"/D_CRT_SECURE_NO_WARNINGS", "/DLEXBOR_STATIC", fmt.tprintf("/I%s", LEXBOR_SOURCE), fmt.tprintf("/I%s/lexbor/ports/windows_nt", LEXBOR_SOURCE)}
 	// same file names exist in several folders (state.c, res.c...): one object folder per source folder
 	groups := make(map[string][dynamic]string, context.temp_allocator)
@@ -166,7 +172,7 @@ lexbor_compile :: proc(o: Options, objects: string) -> bool {
 lexbor_compile :: proc(o: Options, objects: string) -> bool {
 	cc, _ := os.lookup_env("CC", context.temp_allocator)
 	if cc == "" { cc = "cc" }
-	flags := []string{"-c", "-O2", "-DNDEBUG", "-fPIC", "-w", "-DLEXBOR_STATIC", fmt.tprintf("-I%s", LEXBOR_SOURCE), fmt.tprintf("-I%s/lexbor/ports/posix", LEXBOR_SOURCE)}
+	flags := []string{"-c", "-O2", "-ffunction-sections", "-fdata-sections", "-DNDEBUG", "-fPIC", "-w", "-DLEXBOR_STATIC", fmt.tprintf("-I%s", LEXBOR_SOURCE), fmt.tprintf("-I%s/lexbor/ports/posix", LEXBOR_SOURCE)}
 	sources := make([dynamic]string, context.temp_allocator)
 	append(&sources, ..c_sources(fmt.tprintf("%s/lexbor", LEXBOR_SOURCE)))
 	append(&sources, ..c_sources(LEXBOR_SHIMS))

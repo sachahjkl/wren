@@ -27,12 +27,46 @@ members = ["crypto", "media", "net", "webgl", "wren_native"]
 #             against release: decoders as fast (WebP, AVIF, SVG, WOFF2 within 3 %), text shaping 2 to 5 % slower,
 #             the exe 0.6 MB larger (49.3 MB). Release builds are not affected.
 [profile.release]
-opt-level = 3
+# Optimize cold crates (wgpu, naga, networking, TLS, SVG DOM, a11y, crypto) for size; hot decode/compression/shaping crates override to opt-level = 3 below.
+opt-level = "z"
 codegen-units = 1
 lto = "fat"
 debug = false
 panic = "unwind"   # every entry point catches panics: a decoder bug is a broken image, not a dead browser
 incremental = false
+
+[profile.release.package.rav1d]
+opt-level = 3
+[profile.release.package.vp9dec]
+opt-level = 3
+[profile.release.package.zune-jpeg]
+opt-level = 3
+[profile.release.package.png]
+opt-level = 3
+[profile.release.package.fdeflate]
+opt-level = 3
+[profile.release.package.simd-adler32]
+opt-level = 3
+[profile.release.package.crc32fast]
+opt-level = 3
+[profile.release.package.image-webp]
+opt-level = 3
+[profile.release.package.flate2]
+opt-level = 3
+[profile.release.package.zlib-rs]
+opt-level = 3
+[profile.release.package.brotli-decompressor]
+opt-level = 3
+[profile.release.package.tiny-skia]
+opt-level = 3
+[profile.release.package.qcms]
+opt-level = 3
+[profile.release.package.harfrust]
+opt-level = 3
+[profile.release.package.skrifa]
+opt-level = 3
+[profile.release.package.read-fonts]
+opt-level = 3
 
 [profile.quick]
 inherits = "release"

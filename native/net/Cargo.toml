@@ -24,10 +24,10 @@ http-body-util = "=0.1.5"
 bytes = "=1.12.1"
 futures-util = { version = "=0.3.34", default-features = false, features = ["std"] }
 tower-service = "=0.3.3"
-rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 tokio-rustls = { version = "=0.26.6", default-features = false, features = ["ring", "tls12"] }
 rustls-platform-verifier = "=0.6.2"
-quinn = { version = "=0.11.12", default-features = false, features = ["runtime-tokio", "rustls-ring", "log"] }
+quinn = { version = "=0.11.12", default-features = false, features = ["runtime-tokio", "rustls-ring"] }
 h3 = "=0.0.8"
 h3-quinn = "=0.0.10"
 tokio-tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }

@@ -212,11 +212,15 @@ browser :: proc(o: Options) -> bool {
 	// frames wrong (crash reports, wren ctl stacks)
 	if !slice.contains(spec.flags, "-debug") { _ = os.remove(fmt.tprintf("%s.pdb", strings.trim_suffix(program, ".exe"))) }
 
-	// the linker's map becomes <exe>-<fingerprint>.map beside the exe (toolbox.crash_publish_symbols; wrentool crash-symbolize reads them; Linux: the build id names the build)
+	// the linker's map becomes <exe>-<fingerprint>.map beside the exe (toolbox.crash_publish_symbols; wrentool crash-symbolize reads them; Linux: split debug symbols + stripped release)
 	when ODIN_OS == .Windows {
 		named, ok := deps.publish_symbols(program, spec.store_symbols)
 		if !ok { return say_fail(o, fmt.tprintf("naming the symbols of %s failed: run  wrentool symbols -Publish %s", program, program)) }
 		tooling.say(o.log, fmt.tprintfln("symbols: %s%s", named, spec.store_symbols ? " (and in build/symbols)" : ""))
+	} else {
+		if spec.store_symbols && !finalize_release_symbols(program, o.log) {
+			return say_fail(o, fmt.tprintf("stripping %s failed", program))
+		}
 	}
 	channel := channel_of(o)
 	if spec.channel_file {
@@ -239,12 +243,15 @@ common_flags :: proc(o: Options) -> []string {
 	when ODIN_OS == .Windows {
 		append(&f, fmt.tprintf("-resource:%s", VARIANTS[o.variant].release_channel ? "src/browser/wren.rc" : "src/browser/wren_dev.rc"))
 		// /MAP: the linker's map (every function's address) next to the exe, the symbols of a release, which has no PDB (it changes nothing in the exe)
-		append(&f, fmt.tprintf("-extra-linker-flags:/STACK:%d %s", STACK_BYTES, toolbox.CRASH_LINKER_FLAGS))
+		opt := slice.contains(VARIANTS[o.variant].flags, "-debug") ? "" : " /OPT:REF /OPT:ICF"
+		append(&f, fmt.tprintf("-extra-linker-flags:/STACK:%d %s%s", STACK_BYTES, toolbox.CRASH_LINKER_FLAGS, opt))
 	} else {
-		// --build-id: a crash report names the build (wrentool crash-symbolize); -z noexecstack: the stack not executable; threads,
-		// dlopen (openh264, libfido2, libva at run time), the maths of the Rust and C libraries, Opus and ALSA. (--no-as-needed keeps
-		// -lpthread when only the static archives refer to it.) The 64 MiB stack is the soft limit at run time (ulimit -s), not a link option.
-		append(&f, "-extra-linker-flags:" + toolbox.CRASH_LINKER_FLAGS + " -Wl,-z,noexecstack -Wl,--no-as-needed -lpthread -ldl -lm -lopus -lasound", "-target:linux_amd64")
+		// --build-id: a crash report names the build (wrentool crash-symbolize); -z noexecstack: the stack not executable;
+		// --gc-sections (and lld --icf=safe when ld.lld is installed): drop dead functions/tables from static archives;
+		// threads, dlopen (openh264, libfido2, libva at run time), maths, Opus and ALSA. (--no-as-needed is scoped to
+		// -lpthread so --as-needed applies to the remaining shared libraries.) The 64 MiB stack is the soft limit at run time (ulimit -s), not a link option.
+		gc_flags := has_lld() ? "-fuse-ld=lld -Wl,--gc-sections -Wl,--icf=safe" : "-Wl,--gc-sections"
+		append(&f, fmt.tprintf("-extra-linker-flags:%s %s -Wl,-z,noexecstack -Wl,--no-as-needed -lpthread -Wl,--as-needed -ldl -lm -lopus -lasound", toolbox.CRASH_LINKER_FLAGS, gc_flags), "-target:linux_amd64")
 	}
 	append(&f, fmt.tprintf("-define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=%d", TEMP_ALLOCATOR_BACKING_BYTES))
 	commit, date := source_commit()
@@ -262,8 +269,8 @@ common_flags :: proc(o: Options) -> []string {
 	// text: the toolkit's native text backend (Fontations, HarfRust and ICU4X, built into Wren's Rust library by deps: a program links one Rust static library at most) shapes, breaks and reads the
 	// fonts (the system's fonts and their fallback come from DirectWrite in both)
 	if !o.dwrite { append(&f, "-define:FONT_BACKEND=native", "-define:FONT_NATIVE_LINK=false") }
-	// accessibility: the toolkit's AccessKit adapter (UI Automation), built into the same library (feature `a11y` of native\wren_native)
-	append(&f, "-define:A11Y_ACCESSKIT=true", "-define:A11Y_NATIVE_LINK=false")
+	// accessibility: the toolkit's AccessKit adapter (Windows UI Automation: platform/a11y_accesskit.odin), built into the same library (feature `a11y` of native\wren_native)
+	when ODIN_OS == .Windows { append(&f, "-define:A11Y_ACCESSKIT=true", "-define:A11Y_NATIVE_LINK=false") }
 	return f[:]
 }
 

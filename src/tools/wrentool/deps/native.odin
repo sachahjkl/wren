@@ -2,8 +2,8 @@ package deps
 
 import "core:fmt"
 import "core:os"
-@(require) import "core:strings"   // (these two: Windows)
-@(require) import "wb:base"
+import "core:strings"
+@(require) import "wb:base"   // (Windows: rename_personality)
 import "wb:tools/tooling"
 
 // Wren's Rust code (the native/ workspace) as the one Rust static library linked into the program: the image decoders and WOFF2 (native/media), the network stack (native/net), the toolkit's
@@ -19,6 +19,20 @@ NASM_RELEASES :: "https://www.nasm.us/pub/nasm/releasebuilds"
 TOOLS_DIR :: "build/tools"
 BYTES_PER_MB :: 1024 * 1024
 
+// What the library is made of: change any input and it is built again.
+@(private)
+native_stamp :: proc(profile, features: string, include_text, include_a11y: bool) -> string {
+	crates := make([dynamic]string, context.temp_allocator)
+	append(&crates, "native/crypto", "native/media", "native/net", "native/webgl", "native/wren_native")
+	if include_a11y { append(&crates, "ext/gui_toolkit/native/a11y") }
+	if include_text { append(&crates, "ext/gui_toolkit/native/text") }
+	inputs := make([dynamic]string, context.temp_allocator)
+	for c in crates { files_under(fmt.tprintf("%s/src", c), &inputs) }
+	for c in crates { append(&inputs, fmt.tprintf("%s/Cargo.toml", c), fmt.tprintf("%s/build.rs", c)) }
+	append(&inputs, "native/Cargo.toml", "native/Cargo.lock", CARGO_CONFIG, NATIVE_THIS)
+	return stamp_of(fmt.tprintf("profile=%s features=%s\n", profile, features), inputs[:])
+}
+
 when ODIN_OS == .Windows {
 
 // WREN_TEXT=dwrite: a build that shapes with DirectWrite, without the text backend.
@@ -30,15 +44,7 @@ build_native :: proc(o: Options) -> bool {
 	text := text_env != "dwrite"
 	features := text ? "text,a11y" : "a11y"
 
-	// what the library is made of: change any of it and it is built again
-	crates := make([dynamic]string, context.temp_allocator)
-	append(&crates, "native/crypto", "native/media", "native/net", "native/webgl", "native/wren_native", "ext/gui_toolkit/native/a11y")
-	if text { append(&crates, "ext/gui_toolkit/native/text") }
-	inputs := make([dynamic]string, context.temp_allocator)
-	for c in crates { files_under(fmt.tprintf("%s/src", c), &inputs) }
-	for c in crates { append(&inputs, fmt.tprintf("%s/Cargo.toml", c)) }
-	append(&inputs, "native/Cargo.toml", "native/Cargo.lock", CARGO_CONFIG, NATIVE_THIS)
-	stamp := stamp_of(fmt.tprintf("profile=%s features=%s\n", o.profile, features), inputs[:])
+	stamp := native_stamp(o.profile, features, text, true)
 	if !o.force && os.exists(lib) && read_stamp(stamp_file) == stamp {
 		tooling.say(o.log, fmt.tprintfln("wren_native (%s) up to date in %s", o.profile, out))
 		return true
@@ -145,6 +151,13 @@ msvc_tool :: proc(env: []string, name: string) -> string {
 build_native :: proc(o: Options) -> bool {
 	profile := o.profile
 	out := "build/native-linux"
+	lib := fmt.tprintf("%s/libwren_native.a", out)
+	stamp_file := fmt.tprintf("%s/STAMP", out)
+	stamp := native_stamp(profile, o.features, strings.contains(o.features, "text"), strings.contains(o.features, "a11y"))
+	if !o.force && os.exists(lib) && read_stamp(stamp_file) == stamp {
+		tooling.say(o.log, fmt.tprintfln("wren_native (%s) up to date in %s", profile, out))
+		return true
+	}
 	target, _ := os.lookup_env("CARGO_TARGET_DIR", context.temp_allocator)
 	if target == "" { target = fmt.tprintf("%s/target", out) }
 	_ = os.make_directory_all(out)
@@ -152,9 +165,11 @@ build_native :: proc(o: Options) -> bool {
 	append(&cmd, "cargo", "build", "--profile", profile, "--locked", "--manifest-path", "native/Cargo.toml", "--target-dir", target, "-p", "wren_native")
 	if o.features != "" { append(&cmd, "--features", o.features) }
 	if tooling.run({command = cmd[:], log = o.log}) != 0 { return fail(o, "cargo build failed") }
-	lib := fmt.tprintf("%s/libwren_native.a", out)
+	_ = os.remove(stamp_file)   // (a library half replaced is never taken for a built one)
 	if os.copy_file(lib, fmt.tprintf("%s/%s/libwren_native.a", target, profile)) != nil { return fail(o, "the library cannot be copied") }
-	tooling.say(o.log, fmt.tprintfln("built %s (%s%s%s)", lib, profile, o.features != "" ? ", " : "", o.features))
+	if !write_stamp(stamp_file, stamp) { return fail(o, "the stamp cannot be written") }
+	fi, _ := os.stat(lib, context.temp_allocator)
+	tooling.say(o.log, fmt.tprintfln("built %s (%s%s%s, %d MB)", lib, profile, o.features != "" ? ", " : "", o.features, fi.size / BYTES_PER_MB))
 	return true
 }
 
