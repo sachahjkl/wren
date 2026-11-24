@@ -32,7 +32,7 @@ src/extensions/archive.odin 3  # the extensions' folders (the extensions' own ch
 src/host/shutdown.odin 1  # the log of the exit's steps, when one is asked for: the exit is the only work left
 src/httpcache/disk.odin 3  # the HTTP cache's own store: entries and index written by its own jobs, with its own recovery
 src/net/record.odin 1  # diagnostic: a recording of the network a developer asks for
-src/page/cache_store.odin 5  # not converted yet: the Cache API's store writes under its lock from any thread and answers a quota error at once; it needs an asynchronous store
+src/page/cache_store.odin 3  # Cache API store: asynchronous write-behind worker writes/removes bodies and atomically replaces index.wcs off the UI thread
 src/page/fs_api.odin 1  # a site's own files (the File System API): the operation the site asked for, with the site's errors
 src/page/fs_store.odin 8  # a site's own files (the File System API): the operation the site asked for, with the site's errors
 src/page/js_profile.odin 1  # diagnostic: the script profiler's output

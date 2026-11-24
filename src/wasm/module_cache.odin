@@ -207,9 +207,10 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, no_compile := false, 
 		from_disk = module != nil
 	}
 	if module == nil && no_compile { return nil, "" }
+	unpacked: []byte
+	defer delete(unpacked)
 	if module == nil {
 		raw := image
-		unpacked: []byte
 		if packed {
 			uerr: string
 			unpacked, uerr = unpack_image(image)
@@ -217,10 +218,9 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, no_compile := false, 
 			raw = unpacked
 			aerr: string
 			info, aerr = analyze_image(raw)
-			if aerr != "" { delete(unpacked); return nil, strings.clone(aerr, caller) }
+			if aerr != "" { return nil, strings.clone(aerr, caller) }
 			meta = Shipped_Meta{memory_export = info.memory_export, table_export = info.table_export, memory64 = info.memory64}
 		}
-		defer delete(unpacked)
 		patched, copied := patch_image(raw, info)
 		e := wasmtime_module_new(engine, raw_data(patched), len(patched), &module)
 		if copied { delete(patched) }
