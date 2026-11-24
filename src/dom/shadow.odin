@@ -53,13 +53,13 @@ shadow_root_of :: proc(d: ^Document, h: base.Handle) -> base.Handle {
 
 is_shadow_root :: proc(d: ^Document, h: base.Handle) -> bool {
 	n := get(d, h)
-	return n != nil && n.is_shadow
+	return n != nil && (.Is_Shadow in n.flags)
 }
 
 // The host of shadow root `root` (NIL_HANDLE when it is not one).
 host_of :: proc(d: ^Document, root: base.Handle) -> base.Handle {
 	n := get(d, root)
-	if n == nil || !n.is_shadow { return base.NIL_HANDLE }
+	if n == nil || !(.Is_Shadow in n.flags) { return base.NIL_HANDLE }
 	return n.shadow
 }
 
@@ -80,7 +80,7 @@ shadow_including_root :: proc(d: ^Document, h: base.Handle) -> base.Handle {
 	cur := tree_root(d, h)
 	for {
 		n := get(d, cur)
-		if n == nil || !n.is_shadow || n.shadow == base.NIL_HANDLE { return cur }
+		if n == nil || !(.Is_Shadow in n.flags) || n.shadow == base.NIL_HANDLE { return cur }
 		cur = tree_root(d, n.shadow)
 	}
 }
@@ -94,7 +94,7 @@ root_node :: proc(d: ^Document, h: base.Handle, composed: bool) -> base.Handle {
 parent_or_host :: proc(d: ^Document, h: base.Handle) -> base.Handle {
 	n := get(d, h)
 	if n == nil { return base.NIL_HANDLE }
-	if n.parent == base.NIL_HANDLE && n.is_shadow { return n.shadow }
+	if n.parent == base.NIL_HANDLE && (.Is_Shadow in n.flags) { return n.shadow }
 	return n.parent
 }
 
@@ -115,7 +115,7 @@ retarget :: proc(d: ^Document, a, b: base.Handle) -> base.Handle {
 	for {
 		r := tree_root(d, cur)
 		rn := get(d, r)
-		if rn == nil || !rn.is_shadow || shadow_including_ancestor(d, r, b) { return cur }
+		if rn == nil || !(.Is_Shadow in rn.flags) || shadow_including_ancestor(d, r, b) { return cur }
 		cur = rn.shadow
 	}
 }
@@ -176,7 +176,7 @@ attach_shadow :: proc(d: ^Document, host: base.Handle, init: Shadow_Init) -> (ba
 		if info = shadow_info(d, root); info != nil { info.declarative = false }
 		return root, .None
 	}
-	root, rn := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Fragment, is_shadow = true, shadow = host, doc = get(d, host).doc})
+	root, rn := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Fragment, flags = {.Is_Shadow}, shadow = host, doc = get(d, host).doc})
 	_ = rn
 	get(d, host).shadow = root
 	d.shadow_roots[root] = Shadow_Info{init = init}
@@ -495,7 +495,7 @@ shadow_attribute :: proc(d: ^Document, h: base.Handle, name: string) {
 // Node `h` is being destroyed.
 @(private)
 shadow_forget_node :: proc(d: ^Document, h: base.Handle, n: ^Node) {
-	if n.is_shadow {
+	if .Is_Shadow in n.flags {
 		if info, ok := d.shadow_roots[h]; ok { delete(info.slots); delete_key(&d.shadow_roots, h) }
 	}
 	if l, ok := d.assigned[h]; ok { delete(l); delete_key(&d.assigned, h) }
@@ -580,7 +580,7 @@ flat_parent :: proc(d: ^Document, h: base.Handle) -> base.Handle {
 	if n.slot != base.NIL_HANDLE { return n.slot }
 	p := get(d, n.parent)
 	if p == nil { return base.NIL_HANDLE }
-	if p.is_shadow { return p.shadow }
+	if .Is_Shadow in p.flags { return p.shadow }
 	if p.kind == .Element {
 		if p.shadow != base.NIL_HANDLE { return base.NIL_HANDLE }   // a host's child no slot takes
 		if len(d.assigned) > 0 && len(p.name) == 4 && p.name == "slot" {
@@ -617,7 +617,7 @@ next_shadow_including :: proc(d: ^Document, cur, root: base.Handle) -> base.Hand
 	for c := cur; c != base.NIL_HANDLE && c != root; {
 		cn := get(d, c)
 		if cn == nil { return base.NIL_HANDLE }
-		if cn.is_shadow && cn.parent == base.NIL_HANDLE {
+		if (.Is_Shadow in cn.flags) && cn.parent == base.NIL_HANDLE {
 			// the shadow tree is done: the host's own children come next
 			host := cn.shadow
 			if hn := get(d, host); hn != nil && hn.first_child != base.NIL_HANDLE { return hn.first_child }

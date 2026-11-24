@@ -161,7 +161,7 @@ child_container :: proc(l: ^Layout, p: i32) -> (Mode, bool) {
 	if p == NONE { return .None, false }
 	b := &l.boxes[p]
 	if .Dead in b.flags || .Anonymous in b.flags || .Pseudo in b.flags || .Root in b.flags || b.node == base.NIL_HANDLE { return .None, false }
-	if int(b.depth) + 2 >= l.settings.max_depth || .Flattened in b.flags { return .None, false }
+	if int(l.cold[p].depth) + 2 >= l.settings.max_depth || .Flattened in b.flags { return .None, false }
 	switch b.kind {
 	case .Block: if .Ifc not_in b.flags { return .Block, true }
 	case .Flex: return .Flex, true
@@ -296,7 +296,7 @@ plan_children :: proc(c: ^Ctx, touched: []base.Handle, plans: ^[dynamic]Child_Pl
 			// the container's element has left the document or lost its style in the same pass: it is rebuilt whole)
 			if b.kind == .Block {
 				cur := style.style_of(c.st, b.node)
-				if cur == nil || !has_block_child(c, b.node, cur, b.depth) { return false }
+				if cur == nil || !has_block_child(c, b.node, cur, l.cold[p].depth) { return false }
 			}
 		}
 	}
@@ -308,7 +308,7 @@ plan_children :: proc(c: ^Ctx, touched: []base.Handle, plans: ^[dynamic]Child_Pl
 content_frame :: proc(c: ^Ctx, p: i32) -> Frame {
 	b := &c.l.boxes[p]
 	inf := c.l.inc.info[p]
-	g := Frame{kind = .Visit, node = b.node, parent = b.parent, mode = .Block, cb = inf.cb, fcb = inf.fcb, depth = b.depth,
+	g := Frame{kind = .Visit, node = b.node, parent = b.parent, mode = .Block, cb = inf.cb, fcb = inf.fcb, depth = c.l.cold[p].depth,
 		ifc = b.ifc_root, deco = inf.deco, deco_box = inf.deco_box}
 	return child_frame(c, p, g, true)
 }
@@ -370,11 +370,12 @@ rebuild_contents :: proc(c: ^Ctx, bi: i32) {
 	n := dom.get(c.d, h)
 	if n == nil { return }
 	inf := l.inc.info[bi]
-	g := Frame{kind = .Visit, node = h, parent = b.parent, mode = .Block, cb = inf.cb, fcb = inf.fcb, depth = b.depth,
+	depth := l.cold[bi].depth
+	g := Frame{kind = .Visit, node = h, parent = b.parent, mode = .Block, cb = inf.cb, fcb = inf.fcb, depth = depth,
 		ifc = b.ifc_root, deco = inf.deco, deco_box = inf.deco_box}
 	has_block := false
 	if b.kind == .Block || b.kind == .Cell || b.kind == .Caption {
-		has_block = has_block_child(c, h, cs, b.depth)
+		has_block = has_block_child(c, h, cs, depth)
 	}
 	cf := child_frame(c, bi, g, has_block)
 	stack := make([dynamic]Frame, 0, 64, context.temp_allocator)

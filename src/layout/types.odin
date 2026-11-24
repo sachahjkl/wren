@@ -216,16 +216,33 @@ pseudo_key :: proc(b: ^Box) -> u8 { return .Pseudo in b.flags ? u8(b.pseudo) + 1
 // and in quirks mode the height its content's percentage heights resolve against (quirks_base_from).
 Cache_Key :: [4]f32
 
-// What every pass reads of a box: the tree, the style, the geometry, the layout cache, and the space, clip and group its
+// Packed per-box boolean flags for auto margins and layout cache state.
+Box_State_Flag :: enum u8 {
+	Auto_L,
+	Auto_R,
+	Auto_T,
+	Auto_B,
+	Intr_Ok,
+	Cache_Ok,      // layout cache: the result of the last layout_contents, valid for the same inputs
+	Cache_Flow,    // ... laid out in its parent's block formatting context (else on its own)
+	Cache_Open,    // ... its top margin still collapsing with what is above it (Flow_Ctx.open: not below clearance)
+	Cache_Through,
+	// quirks mode: a percentage height inside resolves against an ancestor's height or the window through this box
+	// (quirks_base_from): its cache key holds that height. Set by the layout of that box inside, kept until a full pass.
+	Cache_Quirks,
+	// a second entry, of a layout on its own (block.odin: layout_contents, measure_height, impose_height): the height
+	// the same content had at other inputs (a flex item measured at its auto height, then laid out at its final one)
+	Alt_Ok,
+	Alt_Same,      // ... its content is laid out as for the first entry: any layout may take it
+}
+Box_State :: bit_set[Box_State_Flag; u16]
+
+// What every pass reads of a box: the tree, the style, the geometry, and the space, clip and group its
 // items are drawn in. What only some boxes or some steps need lives beside it, at the same index: Box_Cold
-// (Layout.cold) and Box_Finish (Layout.fin). Passes over every box then touch fewer cache lines.
+// (Layout.cold), Box_Finish (Layout.fin), and Box_Cache (Layout.cache). Passes over every box then touch fewer cache lines.
 Box :: struct {
-	node:      base.Handle,        // element (or the document for the root); NIL for anonymous boxes
+	node:      base.Handle,         // element (or the document for the root); NIL for anonymous boxes
 	cs:        ^style.Computed,
-	kind:      Box_Kind,
-	wm:        style.Writing_Mode,  // the writing mode of its content (only when Layout.frames_on)
-	fx:        Box_Fx,
-	pseudo:    Pseudo_Kind,         // a Pseudo box: which of its node's
 	flags:     Box_Flags,
 	parent, first, last, next: i32,
 	pos_ref:   i32,                 // `pos` is relative to this box's border-box origin
@@ -234,46 +251,46 @@ Box :: struct {
 	items, lines: [2]i32,           // Ifc: [start, end) into Layout.inline_items / Layout.lines
 	fi:        i32,                 // font of the box's own text (index into Layout.fonts)
 	deco_up:   i32,                 // a decorating box: the next one out (NONE: none; decorations.odin)
-	mc:        i32,                 // a multi-column container: its record in Layout.mc_records (NONE: none yet)
-	depth:     i32,
 	// box model, device px: top, right, bottom, left
 	margin, border, padding: [4]f32,
 	gutter:    [4]f32,              // the room of classic scroll bars, between the border and the padding (scrollbars.odin)
-	auto_l, auto_r, auto_t, auto_b: bool,
 	pos, size: Vec2,                // border box
 	rel:       Vec2,                // relative-position offset
 	abs:       Vec2,                // final border-box origin in layout coordinates
 	baseline:  f32,                 // first line's baseline from the border-box top; < 0 = none
 	last_baseline: f32,
 	pre_h:     f32,                 // tables: height of the captions above the border box
-	intr:      [2]f32,              // min-content / max-content border-box width
-	intr_ok:   bool,
-	cache_ok:  bool,                // layout cache: the result of the last layout_contents, valid for the same inputs
-	cache_flow: bool,               // ... laid out in its parent's block formatting context (else on its own)
-	cache_open: bool,               // ... its top margin still collapsing with what is above it (Flow_Ctx.open: not below clearance)
-	cache_through: bool,
-	// quirks mode: a percentage height inside resolves against an ancestor's height or the window through this box
-	// (quirks_base_from): its cache key holds that height. Set by the layout of that box inside, kept until a full pass.
-	cache_quirks: bool,
-	// a second entry, of a layout on its own (block.odin: layout_contents, measure_height, impose_height): the height
-	// the same content had at other inputs (a flex item measured at its auto height, then laid out at its final one)
-	alt_ok:    bool,
-	alt_same:  bool,                // ... its content is laid out as for the first entry: any layout may take it
-	inc:       Inc_Flags,           // invalidation between passes (incremental.odin)
-	cache_in:  Cache_Key,
-	cache_h:   f32,
-	cache_end, cache_contrib: Strut,   // flow: trailing strut; margins it added to the strut it was given
-	alt_in:    Cache_Key,
-	alt_h:     f32,
 	// finishing: what its own items are drawn in (the display list reads them for every item)
 	space, clip, group: i32,
 	tmp:       f32,                 // scratch of the current step (baseline shift of an inline box on the line being built;
 	                                // a table cell's content height, from its layout_contents to its table's alignment)
 	tmp_al:    i32,                 // scratch: top/bottom-aligned group of an inline box on the line being built
+	state:     Box_State,
+	kind:      Box_Kind,
+	wm:        style.Writing_Mode,  // the writing mode of its content (only when Layout.frames_on)
+	fx:        Box_Fx,
+	pseudo:    Pseudo_Kind,         // a Pseudo box: which of its node's
+	inc:       Inc_Flags,           // invalidation between passes (incremental.odin)
 }
 
-// What few boxes have, or only building and positioning read: absolutely positioned boxes, table cells, list items.
+// Layout cache and intrinsic widths of a box, parallel to `Layout.boxes`. Kept out of `Box` so hot tree walks
+// touch fewer cache lines.
+Box_Cache :: struct {
+	cache_in:  Cache_Key,
+	cache_h:   f32,
+	cache_end, cache_contrib: Strut,   // flow: trailing strut; margins it added to the strut it was given
+	intr:      [2]f32,                 // min-content / max-content border-box width
+}
+
+// Sparse second layout-cache entry for boxes measured at one size and laid out at another (Layout.alt_cache).
+Alt_Cache :: struct {
+	alt_in: Cache_Key,
+	alt_h:  f32,
+}
+
+// What few boxes have, or only building and positioning read: absolutely positioned boxes, table cells, list items, multicol.
 Box_Cold :: struct {
+	marker:    string,              // outside marker text (bullets are drawn as shapes: empty text)
 	cb:        i32,                 // absolutely positioned: the containing block
 	abs_last, abs_next: i32,        // boxes whose containing block this is, in tree order (from Box.abs_first)
 	static_ref: i32,                // absolutely positioned: the block container its static position is relative to
@@ -282,8 +299,9 @@ Box_Cold :: struct {
 	cur_anon:  i32,                 // building: the anonymous box that collects the current run of children
 	// tables
 	col, row, colspan, rowspan: i32,
+	mc:        i32,                 // a multi-column container: its record in Layout.mc_records (NONE: none yet)
+	depth:     i32,
 	// list items
-	marker:    string,              // outside marker text (bullets are drawn as shapes: empty text)
 	marker_pos: Vec2,               // marker's left / baseline, relative to the border box
 	marker_w:  f32,
 }
@@ -304,19 +322,19 @@ Inline_Kind :: enum u8 { Text, Open, Close, Atomic, Float, Abs, Break, Block }
 Item_Src :: enum u8 { Element, Before, After, Initial }
 
 Inline_Item :: struct {
-	kind:  Inline_Kind,
-	src:   Item_Src,
-	box:   i32,                     // Open/Close: the inline box; Atomic/Float/Abs/Block: the box; Text: enclosing inline box or NONE
-	ifc:   i32,
-	fi:    i32,                     // Text: font
-	text:  string,
-	cs:    ^style.Computed,         // Text: style of its element
-	node:  base.Handle,             // Text: the element that owns it
-	source: base.Handle,            // Text: the DOM text node it shows (NIL: generated content, markers)
-	deco:  style.Decorations,       // Text: decorations of its ancestors up to the formatting context (CSS Text Decoration §2)
+	text:     string,
+	cs:       ^style.Computed,      // Text: style of its element
+	node:     base.Handle,          // Text: the element that owns it
+	source:   base.Handle,          // Text: the DOM text node it shows (NIL: generated content, markers)
+	box:      i32,                  // Open/Close: the inline box; Atomic/Float/Abs/Block: the box; Text: enclosing inline box or NONE
+	ifc:      i32,
+	fi:       i32,                  // Text: font
 	deco_box: i32,                  // Text: the nearest box that draws them (NONE: none; decorations.odin)
-	fb:      Fallback_State,        // Text: whether its text falls back to other faces than its font's first (line-height:
-	fb_font: Font,                  // normal counts them: used_fonts_extent), found for this font
+	fb_font:  Font,                 // normal counts them: used_fonts_extent), found for this font
+	kind:     Inline_Kind,
+	src:      Item_Src,
+	deco:     style.Decorations,    // Text: decorations of its ancestors up to the formatting context (CSS Text Decoration §2)
+	fb:       Fallback_State,       // Text: whether its text falls back to other faces than its font's first (line-height:
 }
 
 Fallback_State :: enum u8 { Unknown, None, Some }
@@ -355,18 +373,18 @@ Frag_Kind :: enum u8 { Text, Box, Atomic, Ellipsis }
 Frag_Flag :: enum u8 { Left_Edge, Right_Edge, Vertical, Flip }
 
 Frag :: struct {
-	kind:     Frag_Kind,
-	flags:    bit_set[Frag_Flag; u8],
-	level:    u8,                   // Text: bidi embedding level (odd: right to left; its text is one directional run)
+	text:     string,
 	item:     i32,                  // Text: the inline item
 	box:      i32,                  // Box: the inline box; Atomic: the atomic box; Text: the enclosing inline box or NONE
 	fi:       i32,
 	x, y, w, h: f32,                // relative to the IFC root's border box; Text: the glyph area
 	baseline: f32,
-	text:     string,
 	extra:    f32,                  // justification: added after each space
 	spaces:   i32,                  // building: expansion opportunities before the fragment
 	nsp:      i32,                  // building: expansion opportunities inside the fragment
+	kind:     Frag_Kind,
+	flags:    bit_set[Frag_Flag; u8],
+	level:    u8,                   // Text: bidi embedding level (odd: right to left; its text is one directional run)
 }
 
 ////////////////////////////////
@@ -408,6 +426,56 @@ Display_Item :: struct {
 
 Space_Kind :: enum u8 { Document, Fixed, Scroll, Sticky, Transform, Anchored, Flow, Column }
 
+// Sparse 3D plane metadata stored in `Layout.planes` for Transform spaces that project offscreen (plane.odin).
+// Kept out of `Space` so plain 2D spaces do not pay for two 4x4 matrices.
+Space_Plane :: struct {
+	mat4:        Matrix4,           // the box's 4x4 in layout coordinates (origin folded in)
+	persp:       Matrix4,           // the perspective of the nearest transformed ancestor persp_from, in layout coordinates
+	persp_from:  i32,               // that ancestor's space (NONE: no perspective applies)
+	ctx:         i32,               // the plane that roots its 3D rendering context (itself when it is the root)
+	dest:        i32,               // the plane its context is drawn into (NONE: the page)
+	preserve:    bool,              // transform-style: preserve-3d is in force (no grouping property flattens it)
+	back_hidden: bool,              // backface-visibility: hidden
+}
+
+Space_Scroll :: struct {
+	port:       Rect,               // the container's padding box
+	max_scroll: Vec2,
+	min_scroll: Vec2,               // negative where offsets run from the high end of an axis (scroll_limits)
+}
+
+Space_Sticky :: struct {
+	port:  Rect,                    // the box's normal border box
+	limit: Rect,                    // the containing block's content box
+	inset: [4]f32,                  // top right bottom left, NaN = auto
+	frame: i32,                     // the scroll space (or document) it sticks in
+}
+
+Space_Transform :: struct {
+	mat:        Matrix,             // the box's transformation in layout coordinates (origin folded in)
+	plane_data: i32,                // index into Layout.planes when a 3D plane, else NONE
+}
+
+Space_Anchored :: struct {
+	anchor: i32,                    // the box's default anchor, whose scrolling it follows (anchor.odin)...
+	follow: [2]bool,                // ... in these axes
+}
+
+Space_Column :: struct {
+	shift: Vec2,                    // from the flow to where the column shows
+	flow:  [2]i32,                  // [0] which column of the flow
+}
+
+// Kind-specific payload of `Space` (active arm selected by `Space.kind`).
+Space_Data :: struct #raw_union {
+	scroll:    Space_Scroll,
+	sticky:    Space_Sticky,
+	transform: Space_Transform,
+	anchored:  Space_Anchored,
+	flow:      [2]i32,              // Flow: range of Layout.flow_frags
+	column:    Space_Column,
+}
+
 // A coordinate space items are drawn in: the document (shifted by the page scroll), the viewport (fixed boxes), the
 // content of a scroll container (shifted by its scroll offset), a sticky box (shifted by its constraint), a transformed
 // box and its content (mapped by its transformation; the box's own background and borders are in it too), an anchored box
@@ -416,35 +484,29 @@ Space_Kind :: enum u8 { Document, Fixed, Scroll, Sticky, Transform, Anchored, Fl
 // Offsets (scroll, sticky) are translations; a view composes them first, then the matrices of the Transform spaces
 // above, innermost first: viewport point = W(layout point + offset), W = product of the transforms (see View).
 Space :: struct {
-	kind:     Space_Kind,
-	parent:   i32,
-	box:      i32,
-	frame:    i32,                  // Sticky: the scroll space (or document) it sticks in
-	clip:     i32,                  // clip bounding everything in this space (NONE: unbounded)
-	xform:    i32,                  // the innermost Transform space at or above this one (NONE: untransformed)
-	port:     Rect,                 // Scroll: the container's padding box; Sticky: the box's normal border box
-	limit:    Rect,                 // Sticky: the containing block's content box
-	max_scroll: Vec2,               // Scroll
-	min_scroll: Vec2,               // Scroll: negative where offsets run from the high end of an axis (scroll_limits)
-	anchor:   i32,                  // Anchored: the box's default anchor, whose scrolling it follows (anchor.odin)...
-	follow:   [2]bool,              // ... in these axes
-	inset:    [4]f32,               // Sticky: top right bottom left, NaN = auto
-	mat:      Matrix,               // Transform: the box's transformation in layout coordinates (origin folded in)
+	parent:     i32,
+	box:        i32,
+	clip:       i32,                // clip bounding everything in this space (NONE: unbounded)
+	xform:      i32,                // the innermost Transform space at or above this one (NONE: untransformed)
 	// 3D (plane.odin). plane is set on every space: the innermost plane space at or above it (NONE: none)
-	plane:    i32,
-	proj:     bool,                 // Transform: a plane (its items are drawn offscreen and projected)
-	mat4:     Matrix4,              // plane: the box's 4x4 in layout coordinates (origin folded in)
-	persp:    Matrix4,              // plane: the perspective of the nearest transformed ancestor persp_from, in layout coordinates
-	persp_from: i32,                // plane: that ancestor's space (NONE: no perspective applies)
-	preserve: bool,                 // plane: transform-style: preserve-3d is in force (no grouping property flattens it)
-	back_hidden: bool,              // plane: backface-visibility: hidden
-	ctx:      i32,                  // plane: the plane that roots its 3D rendering context (itself when it is the root)
-	dest:     i32,                  // plane: the plane its context is drawn into (NONE: the page)
-	flow:     [2]i32,               // Flow: the flow of a multi-column container (no item is left in it): its range of Layout.flow_frags; Column: [0] which column of it
-	shift:    Vec2,                 // Column: from the flow to where the column shows
-	band0:    f32,                  // spatial index: layout y of the first band
-	band_h:   f32,
+	plane:      i32,
+	band0:      f32,                // spatial index: layout y of the first band
+	band_h:     f32,
 	band_first, band_count: i32,    // its bands: [band_first, band_first + band_count) of Layout.band_start
+	data:       Space_Data,
+	kind:       Space_Kind,
+}
+
+// Whether space `sp` is a 3D plane (draws offscreen and projects via `Layout.planes`).
+space_is_plane :: #force_inline proc(sp: ^Space) -> bool {
+	return sp.kind == .Transform && sp.data.transform.plane_data != NONE
+}
+
+// Sparse 3D plane data for plane space `si` (nil when `si` is not a plane).
+space_plane :: #force_inline proc(l: ^Layout, si: i32) -> ^Space_Plane {
+	sp := &l.spaces[si]
+	if sp.kind != .Transform || sp.data.transform.plane_data == NONE { return nil }
+	return &l.planes[sp.data.transform.plane_data]
 }
 
 // A clip: the padding box of `box` in the coordinates of `space` (so it follows the transforms of that space), with
@@ -488,6 +550,8 @@ Layout :: struct {
 	boxes:        [dynamic]Box,
 	cold:         [dynamic]Box_Cold,       // beside `boxes`, same index
 	fin:          [dynamic]Box_Finish,     // beside `boxes`, same index
+	cache:        [dynamic]Box_Cache,      // beside `boxes`, same index
+	alt_cache:    map[i32]Alt_Cache,       // sparse second layout-cache entries (Box_State_Flag.Alt_Ok)
 	inline_items: [dynamic]Inline_Item,
 	lines:        [dynamic]Line,
 	frags:        [dynamic]Frag,
@@ -497,6 +561,7 @@ Layout :: struct {
 	items_ver:    u64,                     // bumped whenever `items` is made or spliced (Item_Index.ver)
 	item_index:   Item_Index,              // the items of each box, made when a refresh first needs it after a change
 	spaces:       [dynamic]Space,
+	planes:       [dynamic]Space_Plane,    // sparse 3D plane data indexed by Space.data.transform.plane_data
 	clips:        [dynamic]Clip,
 	groups:       [dynamic]Group,
 	band_start:   [dynamic]u32,

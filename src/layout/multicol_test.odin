@@ -216,7 +216,12 @@ multicol_inline_content :: proc(t: ^testing.T) {
 	defer fixture_unload(f)
 	mf_expect(t, f, "m", 0, 0, 200, 40)
 	xs := make([dynamic]Rect, 0, 4, context.temp_allocator)
-	for &it in f.l.items { if it.kind == .Text { append(&xs, rect_shift(it.rect, f.l.spaces[it.space].shift)) } }
+	for &it in f.l.items {
+		if it.kind == .Text {
+			sp := &f.l.spaces[it.space]
+			append(&xs, rect_shift(it.rect, sp.kind == .Column ? sp.data.column.shift : {}))
+		}
+	}
 	testing.expectf(t, len(xs) == 4 && xs[2].min.x == 100 && xs[2].min.y == 0 && xs[3].min.y == 20, "%v", xs)
 }
 

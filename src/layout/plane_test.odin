@@ -49,7 +49,7 @@ planes_are_the_boxes_with_a_3d_transform :: proc(t: ^testing.T) {
 	testing.expect(t, !is_plane(f, "b") && !is_plane(f, "c"), "translateZ(0) and 2D transforms are not")
 	d := pbx(f, "d")
 	testing.expect(t, .Transformed in d.flags && .Stacking in d.flags && .Plane not_in d.flags, "perspective alone: a transformed carrier, not a plane")
-	testing.expect(t, f.l.spaces[pbx(f, "a").space].proj && f.l.spaces[pbx(f, "a").space].plane == pbx(f, "a").space)
+	testing.expect(t, space_is_plane(&f.l.spaces[pbx(f, "a").space]) && f.l.spaces[pbx(f, "a").space].plane == pbx(f, "a").space)
 	// with 3D off: nothing is a plane
 	g := pt_load(`<body style="margin:0"><div id=a style="transform:rotateY(30deg);width:50px;height:50px"></div></body>`, false)
 	defer fixture_unload(g)
@@ -62,7 +62,7 @@ plane_projection_and_hit_test :: proc(t: ^testing.T) {
 	defer fixture_unload(f)
 	card := pbx(f, "card")
 	sp := &f.l.spaces[card.space]
-	testing.expect(t, sp.proj && sp.persp_from == pbx(f, "wrap").space, "the card sits in the perspective of wrap")
+	testing.expect(t, space_is_plane(sp) && space_plane(&f.l, card.space).persp_from == pbx(f, "wrap").space, "the card sits in the perspective of wrap")
 	v := view_make(&f.l, f.vp, 0, cull = false)
 	testing.expect(t, !v.singular[card.space])
 	// the middle stays; the right edge is farther (smaller) than the left
@@ -126,9 +126,10 @@ preserve_3d_contexts :: proc(t: ^testing.T) {
 		</div></div></body>`)
 	defer fixture_unload(f)
 	sp :: proc(f: ^Fixture, id: string) -> ^Space { return &f.l.spaces[pbx(f, id).space] }
-	scene, back, front, flat, inner := sp(f, "scene"), sp(f, "back"), sp(f, "front"), sp(f, "flat"), sp(f, "inner")
+	pl :: proc(f: ^Fixture, id: string) -> ^Space_Plane { return space_plane(&f.l, pbx(f, id).space) }
+	scene, back, front, flat, inner := pl(f, "scene"), pl(f, "back"), pl(f, "front"), pl(f, "flat"), pl(f, "inner")
 	root_space := pbx(f, "scene").space
-	testing.expect(t, scene.proj && scene.preserve && scene.ctx == root_space && scene.dest == NONE, "scene roots a context drawn on the page")
+	testing.expect(t, space_is_plane(sp(f, "scene")) && scene.preserve && scene.ctx == root_space && scene.dest == NONE, "scene roots a context drawn on the page")
 	testing.expect(t, back.ctx == root_space && front.ctx == root_space && back.dest == NONE, "its children are members of it")
 	testing.expect(t, flat.ctx == root_space && flat.preserve == false, "flat is a member too; it keeps nothing 3D below it")
 	testing.expect(t, inner.ctx == pbx(f, "inner").space && inner.dest == pbx(f, "flat").space, "a child of a flat plane is flattened into it")
@@ -138,8 +139,8 @@ preserve_3d_contexts :: proc(t: ^testing.T) {
 	testing.expect(t, gs.dest == f.l.groups[pbx(f, "scene").group].parent, "front lands where scene does")
 	// depth: the front plane is nearer than the back one at the same pixel
 	v := view_make(&f.l, f.vp, 0, cull = false)
-	_, zf, okf := plane_point(&f.l, &v, front.plane, {100, 100})
-	_, zb, okb := plane_point(&f.l, &v, back.plane, {100, 100})
+	_, zf, okf := plane_point(&f.l, &v, sp(f, "front").plane, {100, 100})
+	_, zb, okb := plane_point(&f.l, &v, sp(f, "back").plane, {100, 100})
 	testing.expect(t, okf && okb && zf > zb, "translateZ(100px) is nearer than translateZ(-100px)")
 	// the nearer plane wins the hit even though it comes later in tree order
 	testing.expect(t, phit(f, 150, 150) == dom.find_by_id(f.doc, "front"), "hit: the nearer plane")
@@ -154,11 +155,11 @@ backface_hidden_boxes_in_a_3d_context_are_planes :: proc(t: ^testing.T) {
 		<div id=plain style="backface-visibility:hidden;width:50px;height:50px"></div></body>`)
 	defer fixture_unload(f)
 	face := pbx(f, "face")
-	testing.expect(t, .Plane in face.flags && f.l.spaces[face.space].back_hidden, "a hidden backface under preserve-3d is a plane of its own")
+	testing.expect(t, .Plane in face.flags && space_plane(&f.l, face.space).back_hidden, "a hidden backface under preserve-3d is a plane of its own")
 	testing.expect(t, .Transformed not_in pbx(f, "plain").flags && .Plane not_in pbx(f, "lone").flags, "elsewhere backface-visibility changes nothing")
 	v := view_make(&f.l, f.vp, 0, cull = false)
 	flip := pbx(f, "flip").space
-	testing.expect(t, style.m4_back_facing(v.accs[flip]) && style.m4_back_facing(v.accs[face.space]), "rotateY(180deg): seen from behind, and so is its child")
+	testing.expect(t, style.m4_back_facing(plane_acc_of(&f.l, &v, flip)) && style.m4_back_facing(plane_acc_of(&f.l, &v, face.space)), "rotateY(180deg): seen from behind, and so is its child")
 }
 
 
@@ -187,4 +188,49 @@ hit_inside_a_box_with_a_tilted_card :: proc(t: ^testing.T) {
 		}
 		testing.expectf(t, bad == 0, "%s: %d points of the box hit something outside it (first at %v)", tilt, bad, first)
 	}
+}
+
+// Layout structs stay compact, 2D pages allocate no 3D plane tables or View.accs, and 3D pages populate planes sparsely.
+@(test)
+space_box_compact_and_sparse_planes :: proc(t: ^testing.T) {
+	testing.expectf(t, size_of(Space) <= 92, "layout.Space grew to %d bytes", size_of(Space))
+	testing.expectf(t, size_of(Box) <= 208, "layout.Box grew to %d bytes", size_of(Box))
+	testing.expectf(t, size_of(Box_Cold) <= 88, "layout.Box_Cold grew to %d bytes", size_of(Box_Cold))
+	testing.expectf(t, size_of(Inline_Item) <= 64, "layout.Inline_Item grew to %d bytes", size_of(Inline_Item))
+	testing.expectf(t, size_of(Frag) <= 64, "layout.Frag grew to %d bytes", size_of(Frag))
+
+	// Plain 2D page with 2D transform and flex sizing (exercises Box_Cache / alt_cache without 3D planes).
+	f2d := pt_load(`<body style="margin:0"><div style="display:flex;width:300px">
+		<div id=f1 style="flex:1;min-height:40px;transform:translate(10px, 5px)">one</div>
+		<div id=f2 style="flex:2;min-height:40px">two</div>
+	</div></body>`)
+	defer fixture_unload(f2d)
+	testing.expect_value(t, len(f2d.l.planes), 0)
+	v2d := view_make(&f2d.l, f2d.vp, 0, cull = false)
+	testing.expect(t, v2d.accs == nil, "2D view allocates no 4x4 plane accumulators")
+	for &sp in f2d.l.spaces { testing.expect(t, !space_is_plane(&sp)) }
+	testing.expect(t, pnear(pbx(f2d, "f1").size.x, 100) && pnear(pbx(f2d, "f2").size.x, 200))
+
+	// 3D page: planes are stored sparsely and View.accs matches len(planes), not len(spaces).
+	f3d := pt_load(`<body style="margin:0"><div id=wrap style="perspective:500px;width:240px;height:200px">
+		<div id=p1 style="transform:rotateY(30deg);width:100px;height:100px"></div>
+		<div id=flat style="transform:translate(12px, 4px);width:100px;height:40px"></div>
+		<div id=p2 style="transform:rotateX(25deg);width:100px;height:100px"></div>
+	</div></body>`)
+	defer fixture_unload(f3d)
+	testing.expect_value(t, len(f3d.l.planes), 2)
+	testing.expect(t, len(f3d.l.planes) < len(f3d.l.spaces))
+	v3d := view_make(&f3d.l, f3d.vp, 0, cull = false)
+	testing.expect_value(t, len(v3d.accs), len(f3d.l.planes))
+
+	p1 := pbx(f3d, "p1")
+	p2 := pbx(f3d, "p2")
+	flat := pbx(f3d, "flat")
+	testing.expect(t, space_is_plane(&f3d.l.spaces[p1.space]) && space_plane(&f3d.l, p1.space) != nil)
+	testing.expect(t, space_is_plane(&f3d.l.spaces[p2.space]) && space_plane(&f3d.l, p2.space) != nil)
+	testing.expect(t, !space_is_plane(&f3d.l.spaces[flat.space]) && space_plane(&f3d.l, flat.space) == nil)
+	pt, pok := plane_project(&f3d.l, &v3d, p1.space, {50, 50})
+	testing.expect(t, pok)
+	back, _, bok := plane_point(&f3d.l, &v3d, p1.space, pt)
+	testing.expect(t, bok && pnear(back.x, 50, 0.05) && pnear(back.y, 50, 0.05))
 }

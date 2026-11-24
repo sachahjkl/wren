@@ -158,10 +158,11 @@ resolve_box_model :: proc(c: ^Ctx, b: ^Box, cb_w: f32) {
 		b.padding[i] = max(px_of(c, cs.padding[s], base), 0)
 		b.border[i] = border_px(c, cs.border_width[s])
 	}
-	b.auto_t = cs.margin[.Top].kind == .Auto
-	b.auto_r = cs.margin[.Right].kind == .Auto
-	b.auto_b = cs.margin[.Bottom].kind == .Auto
-	b.auto_l = cs.margin[.Left].kind == .Auto
+	b.state -= {.Auto_T, .Auto_R, .Auto_B, .Auto_L}
+	if cs.margin[.Top].kind == .Auto { b.state += {.Auto_T} }
+	if cs.margin[.Right].kind == .Auto { b.state += {.Auto_R} }
+	if cs.margin[.Bottom].kind == .Auto { b.state += {.Auto_B} }
+	if cs.margin[.Left].kind == .Auto { b.state += {.Auto_L} }
 	if b.kind == .Table && cs.border_collapse {
 		// collapsed borders: the cells draw the grid; the table keeps its outer border
 		for i in 0 ..< 4 { b.padding[i] = 0 }

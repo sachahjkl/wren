@@ -11,7 +11,7 @@ DOMParser_parseHTMLNode :: proc(c: ^Call, markup: string) -> (u64, Api_Error) {
 	d := jd_doc(c)
 	if d == nil { return 0, no_document(c) }
 	f := dom.create_fragment(d)
-	dom.get(d, f).as_document = true
+	dom.get(d, f).flags += {.As_Document}
 	res := html.parse_into(d, f, transmute([]byte)markup, c.page.settings.dom.max_fragment_nodes, declarative_shadow = false)
 	if !res.ok {
 		dom.destroy_unpinned(d, f)

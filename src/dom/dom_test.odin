@@ -57,7 +57,7 @@ node_document_follows_insertion :: proc(t: ^testing.T) {
 	d := document_create()
 	defer document_destroy(d)
 	own := create_fragment(d)
-	get(d, own).as_document = true
+	get(d, own).flags += {.As_Document}
 	host := create_element(d, "div")
 	inner := create_element(d, "span")
 	append_child(d, host, inner)
@@ -111,8 +111,8 @@ xml_element_attribute_case :: proc(t: ^testing.T) {
 	add_listener(d, x, "click", 1, 1, false, false, false)
 	add_listener(d, d.root, "load", 1, 2, false, false, false)
 	erase_listeners(d, d.root)
-	testing.expect_value(t, len(get(d, x).listeners), 0)
-	testing.expect_value(t, len(get(d, d.root).listeners), 0)
+	testing.expect_value(t, len(node_listeners(d, x)), 0)
+	testing.expect_value(t, len(node_listeners(d, d.root)), 0)
 }
 
 @(test)
@@ -167,7 +167,7 @@ release_frees_deep_trees_templates_and_shadows :: proc(t: ^testing.T) {
 	pin(d, inner)
 	testing.expect_value(t, release(d, kept), Error.None)
 	testing.expect(t, get(d, kept) == nil && get(d, content) != nil && get(d, inner) != nil, "pinned contents stay")
-	testing.expect(t, !get(d, content).held, "a tree of their own")
+	testing.expect(t, !(.Held in get(d, content).flags), "a tree of their own")
 	unpin(d, inner)
 	testing.expect_value(t, d.nodes.count, 1)
 }
@@ -366,7 +366,7 @@ event_follows_a_node_moved_to_another_document :: proc(t: ^testing.T) {
 		append(&x.by_from, l.callback)
 		moved := create_element(x.to, "n")
 		append_child(x.to, x.to.root, moved)
-		for cur in get(x.from, x.node).listeners { if !cur.removed { listener_copy(x.to, moved, cur, cur.owner) } }
+		for cur in node_listeners(x.from, x.node) { if !cur.removed { listener_copy(x.to, moved, cur, cur.owner) } }
 		event_path_moved(x.from_dp, x.node, moved)
 		detach(x.from, x.node)
 		destroy_unpinned(x.from, x.node)
@@ -407,7 +407,7 @@ listener_churn_is_bounded :: proc(t: ^testing.T) {
 		testing.expect_value(t, err, Error.None)
 		remove_listener(d, a, id)
 	}
-	testing.expectf(t, len(get(d, a).listeners) <= 4, "%d listener entries", len(get(d, a).listeners))
+	testing.expectf(t, len(node_listeners(d, a)) <= 4, "%d listener entries", len(node_listeners(d, a)))
 }
 // Templates nested in templates' contents and clonable shadow hosts nested in shadow trees, as deep as a script makes
 // them: cloning walks them with its own stack (it recursed once per level and overflowed the native stack).
@@ -460,16 +460,16 @@ element_names_static_or_copied :: proc(t: ^testing.T) {
 	odd := create_element(d, "x-Item")
 	long := create_element(d, "blockquotes")
 	testing.expect_value(t, get(d, li).name, "li")
-	testing.expect(t, get(d, li).name_static && raw_data(get(d, li).name) == raw_data(static_name("li")), "li is the program's string")
+	testing.expect(t, (.Name_Static in get(d, li).flags) && raw_data(get(d, li).name) == raw_data(static_name("li")), "li is the program's string")
 	testing.expect_value(t, get(d, odd).name, "x-item")
-	testing.expect(t, !get(d, odd).name_static && !get(d, long).name_static, "other names are copies")
+	testing.expect(t, !(.Name_Static in get(d, odd).flags) && !(.Name_Static in get(d, long).flags), "other names are copies")
 	append_child(d, li, odd)
 	copy := clone_node(d, li, true)
 	testing.expect(t, raw_data(get(d, copy).name) == raw_data(get(d, li).name), "a clone shares the static name")
 	set_name(get(d, li), "Svg")   // (an XML element keeps its case: a copy)
-	testing.expect(t, get(d, li).name == "Svg" && !get(d, li).name_static, "renamed to a copy")
+	testing.expect(t, get(d, li).name == "Svg" && !(.Name_Static in get(d, li).flags), "renamed to a copy")
 	set_name(get(d, odd), "span")
-	testing.expect(t, get(d, odd).name_static, "renamed to a static name")
+	testing.expect(t, .Name_Static in get(d, odd).flags, "renamed to a static name")
 	append_child(d, d.root, li)
 	append_child(d, d.root, copy)
 	append_child(d, d.root, long)
@@ -516,4 +516,61 @@ namespaced_attributes_beside_plain_ones :: proc(t: ^testing.T) {
 	testing.expect_value(t, attribute_index(get(d, el), "p:id"), 1)
 	testing.expect_value(t, attr_local(get(d, el).attrs[1]), "id")
 	testing.expect_value(t, attr_prefix(get(d, el).attrs[1]), "p")
+}
+
+// Node stays compact, attributes grow and free cleanly by tracked capacity, and event listeners use sparse storage.
+@(test)
+node_layout_compact_and_sparse_listeners :: proc(t: ^testing.T) {
+	testing.expectf(t, size_of(Node) <= 136, "dom.Node grew to %d bytes", size_of(Node))
+	testing.expectf(t, size_of(Listener) <= 56, "dom.Listener grew to %d bytes", size_of(Listener))
+	testing.expectf(t, size_of(Attr) <= 40, "dom.Attr grew to %d bytes", size_of(Attr))
+
+	d := document_create()
+	defer document_destroy(d)
+	a := create_element(d, "div")
+	b := create_element(d, "span")
+	append_child(d, d.root, a)
+	append_child(d, d.root, b)
+
+	testing.expect(t, .Has_Listeners not_in get(d, a).flags)
+	testing.expect_value(t, len(node_listeners(d, a)), 0)
+	testing.expect_value(t, len(d.node_listeners), 0)
+
+	id1, err1 := add_listener(d, a, "click", 101, 0, false, false, false)
+	id2, err2 := add_listener(d, a, "input", 102, 0, true, false, false)
+	testing.expect(t, err1 == .None && err2 == .None)
+	testing.expect(t, .Has_Listeners in get(d, a).flags)
+	testing.expect(t, .Has_Listeners not_in get(d, b).flags)
+	testing.expect_value(t, len(node_listeners(d, a)), 2)
+	testing.expect_value(t, len(node_listeners(d, b)), 0)
+	testing.expect_value(t, len(d.node_listeners), 1)
+	testing.expect(t, listens(d, "click") && listens(d, "input"))
+
+	testing.expect_value(t, remove_listener(d, a, id1), Error.None)
+	testing.expect(t, !listens(d, "click") && listens(d, "input"))
+	testing.expect_value(t, remove_listener(d, a, id2), Error.None)
+	testing.expect_value(t, len(node_listeners(d, a)), 0)
+	testing.expect(t, !listens(d, "input"))
+
+	// Keep one listener on b until document_destroy to exercise sparse cleanup.
+	_, err3 := add_listener(d, b, "keydown", 201, 0, false, false, false)
+	testing.expect_value(t, err3, Error.None)
+
+	// Grow compact attrs across multiple capacities, remove entries, and clone.
+	names := [?]string{"a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"}
+	for name in names { set_attribute(d, a, name, name) }
+	testing.expect_value(t, len(get(d, a).attrs), len(names))
+	testing.expect(t, get(d, a).attrs_cap >= u32(len(names)))
+	remove_attribute(d, a, "a4")
+	remove_attribute(d, a, "a9")
+	testing.expect_value(t, len(get(d, a).attrs), len(names) - 2)
+	v, ok := get_attribute(d, a, "a8")
+	testing.expect(t, ok && v == "a8")
+	_, still := get_attribute(d, a, "a4")
+	testing.expect(t, !still)
+
+	c := clone_node(d, a, deep = false)
+	testing.expect_value(t, len(get(d, c).attrs), len(names) - 2)
+	cv, cok := get_attribute(d, c, "a8")
+	testing.expect(t, cok && cv == "a8")
 }

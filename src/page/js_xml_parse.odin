@@ -136,7 +136,8 @@ DOMParser_parseXMLNode :: proc(c: ^Call, text: string, type: string) -> (u64, Ap
 	if kind == .None || strings.has_suffix(type, "+xml") && kind == .Document { return 0, fail(c, .Type, "TypeError: not an XML type of DOMParserSupportedType") }
 	f := dom.create_fragment(d)
 	fn := dom.get(d, f)
-	fn.as_document, fn.xml = true, kind
+	fn.flags += {.As_Document}
+	fn.xml = kind
 	if _, fits := xml_fill(d, f, text, c.page.settings.dom.max_fragment_nodes, c.page.env.location.href); !fits {
 		dom.destroy_unpinned(d, f)
 		return 0, fail(c, .Quota, "the document has more nodes than dom.max_fragment_nodes")
@@ -153,7 +154,8 @@ Document_parseResponse :: proc(c: ^Call, text: string, type: string) -> (u64, Ap
 	if kind == .None { return 0, fail(c, .Type, "TypeError: not an XML type") }
 	f := dom.create_fragment(d)
 	fn := dom.get(d, f)
-	fn.as_document, fn.xml = true, kind
+	fn.flags += {.As_Document}
+	fn.xml = kind
 	well_formed, fits := xml_fill(d, f, text, c.page.settings.dom.max_fragment_nodes, c.page.env.location.href)
 	if !fits || !well_formed { dom.destroy_unpinned(d, f) }
 	if !fits { return 0, fail(c, .Quota, "the document has more nodes than dom.max_fragment_nodes") }
@@ -207,7 +209,7 @@ Document_createCDATASection :: proc(c: ^Call, document: Api_Node, data: string) 
 	if strings.contains(data, "]]>") { return 0, fail(c, .Invalid_Character, "The data contains ']]>'.") }
 	h := dom.create_text(d, data)
 	dom.get(d, h).xml = .CDATA
-	if document.data.as_document { dom.set_node_document(d, h, H(document.handle)) }
+	if .As_Document in document.data.flags { dom.set_node_document(d, h, H(document.handle)) }
 	return u64(h), .None
 }
 
@@ -280,7 +282,7 @@ DOMImplementation_createDocument :: proc(c: ^Call, namespace: Maybe(string), qua
 	}
 	f := dom.create_fragment(d)
 	fn := dom.get(d, f)
-	fn.as_document, fn.blank_url = true, true
+	fn.flags += {.As_Document, .Blank_Url}
 	switch ns {
 	case dom.NS_HTML: fn.xml = .Created_XHTML
 	case dom.NS_SVG: fn.xml = .Created_SVG

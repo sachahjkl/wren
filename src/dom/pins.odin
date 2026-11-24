@@ -22,7 +22,7 @@ pins_adjust :: proc(d: ^Document, h: base.Handle, delta: i64) -> (root: base.Han
 		n.pins_below = u32(i64(n.pins_below) + delta)
 		root = cur
 		cur = n.parent
-		if cur == base.NIL_HANDLE && n.is_shadow { cur = n.shadow }
+		if cur == base.NIL_HANDLE && .Is_Shadow in n.flags { cur = n.shadow }
 	}
 	return
 }
@@ -44,7 +44,7 @@ unpin :: proc(d: ^Document, h: base.Handle) -> base.Handle {
 	root := pins_adjust(d, h, -1)
 	if root == d.root { return base.NIL_HANDLE }
 	r := get(d, root)
-	if r == nil || r.pins_below > 0 || r.held { return base.NIL_HANDLE }
+	if r == nil || r.pins_below > 0 || .Held in r.flags { return base.NIL_HANDLE }
 	destroy_subtree(d, root)
 	return root
 }
@@ -63,7 +63,7 @@ tree_root :: proc(d: ^Document, h: base.Handle) -> base.Handle {
 // Destroys a detached subtree unless something in it is pinned (it then stays, detached, until its last pin goes).
 destroy_unpinned :: proc(d: ^Document, h: base.Handle) {
 	n := get(d, h)
-	if n == nil || n.pins_below > 0 || n.held || n.is_shadow { return }
+	if n == nil || n.pins_below > 0 || .Held in n.flags || .Is_Shadow in n.flags { return }
 	destroy_subtree(d, h)
 }
 

@@ -160,7 +160,11 @@ pre_model :: #force_inline proc(c: ^Ctx, ch: i32, k: ^Box) -> bool {
 	pm := &c.pre_boxes[ch]
 	if !pm.has_model { return false }
 	k.margin, k.border, k.padding = pm.margin, pm.border, pm.padding
-	k.auto_t, k.auto_r, k.auto_b, k.auto_l = pm.auto[0], pm.auto[1], pm.auto[2], pm.auto[3]
+	k.state -= {.Auto_T, .Auto_R, .Auto_B, .Auto_L}
+	if pm.auto[0] { k.state += {.Auto_T} }
+	if pm.auto[1] { k.state += {.Auto_R} }
+	if pm.auto[2] { k.state += {.Auto_B} }
+	if pm.auto[3] { k.state += {.Auto_L} }
 	return true
 }
 
@@ -197,7 +201,7 @@ pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box 
 				n := len(l.pre_keep.ifcs)
 				for i in l.pre_keep.ifcs[k * n / st.chunks:(k + 1) * n / st.chunks] {
 					b := &l.boxes[i]
-					l.pre_keep.boxes[i].old_cw = pre_stale(b) ? -1 : b.cache_in[0] - pb_w(b)
+					l.pre_keep.boxes[i].old_cw = pre_stale(b) ? -1 : l.cache[i].cache_in[0] - pb_w(b)
 				}
 			}, &st)
 		}
@@ -231,7 +235,7 @@ pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box 
 			}
 			if .Ifc in b.flags {
 				x.simple = pre_simple(l, b)
-				if x.simple && c.inc != nil { x.old_cw = pre_stale(b) ? -1 : b.cache_in[0] - pb_w(b) }
+				if x.simple && c.inc != nil { x.old_cw = pre_stale(b) ? -1 : l.cache[i].cache_in[0] - pb_w(b) }
 			}
 			pb := &l.boxes[p]
 			if pb.kind != .Block || .Ifc in pb.flags || b.cs == nil { continue }
@@ -248,7 +252,7 @@ pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box 
 				resolve_box_model(c, &tmp, 0)
 				x.has_model = true
 				x.margin, x.border, x.padding = tmp.margin, tmp.border, tmp.padding
-				x.auto = {tmp.auto_t, tmp.auto_r, tmp.auto_b, tmp.auto_l}
+				x.auto = {.Auto_T in tmp.state, .Auto_R in tmp.state, .Auto_B in tmp.state, .Auto_L in tmp.state}
 			}
 			if b.kind != .Block || b.flags & {.Abs, .Float, .Block_In_Inline, .Atomic, .Dead} != {} { continue }
 			if cs.width.kind != .Auto || cs.max_width.kind != .None { continue }
@@ -468,7 +472,7 @@ pre_layout :: proc(c: ^Ctx) -> (^host.Thread_Pool, ^Pre_Pass) {
 // one it was laid out at). A guess: a context laid out ahead and not taken is lost work, one not laid out ahead is laid
 // out on the UI thread.
 @(private)
-pre_stale :: proc(b: ^Box) -> bool { return !b.cache_ok || b.inc != {} }
+pre_stale :: proc(b: ^Box) -> bool { return (.Cache_Ok not_in b.state) || b.inc != {} }
 
 @(private)
 pre_chunk :: proc(pre: ^Pre_Pass, k: int) {
@@ -573,14 +577,18 @@ Box_Model_Save :: struct {
 @(private)
 model_save :: #force_inline proc(s: ^Box_Model_Save, b: ^Box, bi: i32 = NONE) {
 	s.margin, s.border, s.padding = b.margin, b.border, b.padding
-	s.auto = {b.auto_t, b.auto_r, b.auto_b, b.auto_l}
+	s.auto = {.Auto_T in b.state, .Auto_R in b.state, .Auto_B in b.state, .Auto_L in b.state}
 	s.box = bi
 }
 
 @(private)
 model_restore :: #force_inline proc(b: ^Box, s: Box_Model_Save) {
 	b.margin, b.border, b.padding = s.margin, s.border, s.padding
-	b.auto_t, b.auto_r, b.auto_b, b.auto_l = s.auto[0], s.auto[1], s.auto[2], s.auto[3]
+	b.state -= {.Auto_T, .Auto_R, .Auto_B, .Auto_L}
+	if s.auto[0] { b.state += {.Auto_T} }
+	if s.auto[1] { b.state += {.Auto_R} }
+	if s.auto[2] { b.state += {.Auto_B} }
+	if s.auto[3] { b.state += {.Auto_L} }
 }
 
 // The context laid out ahead, when the block layout asks for what it was laid out with.

@@ -129,10 +129,12 @@ attr_bytes :: proc(a: Attr) -> int { return (a.name_static ? 0 : len(a.name)) + 
 
 // Gives an element the name `name` (copied unless it is one of the program's), freeing the one it had.
 set_name :: proc(n: ^Node, name: string) {
-	if !n.name_static { delete(n.name) }
+	if .Name_Static not_in n.flags { delete(n.name) }
 	if s := static_name(name); s != "" {
-		n.name, n.name_static = s, true
+		n.name = s
+		n.flags += {.Name_Static}
 	} else {
-		n.name, n.name_static = heap_str(name), false
+		n.name = heap_str(name)
+		n.flags -= {.Name_Static}
 	}
 }

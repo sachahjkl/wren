@@ -62,7 +62,7 @@ Mc_Record :: struct {
 // The record of multi-column container `bi` (nil: none yet).
 @(private)
 mc_record :: #force_inline proc(l: ^Layout, bi: i32) -> ^Mc_Record {
-	r := l.boxes[bi].mc
+	r := l.cold[bi].mc
 	return r == NONE ? nil : &l.mc_records[r]
 }
 
@@ -493,7 +493,7 @@ mark_flow :: proc(c: ^Ctx, container, x: i32, block_path: bool) {
 			continue
 		}
 		k.fx += {.In_Flow}
-		k.cache_ok = false
+		k.state -= {.Cache_Ok}
 		k.fx -= {.Spanner}
 		if block_path && can_span(k) {
 			k.fx += {.Spanner}
@@ -597,7 +597,7 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 	if fc.bfc != nil && len(fc.bfc.floats) > 0 { strip_h = max(strip_h, bfc_bottom(fc.bfc)) }
 	c.mc_full_w = saved_full
 	// (after the content: a container inside adds to the table)
-	if l.boxes[bi].mc == NONE { l.boxes[bi].mc = i32(len(l.mc_records)); append(&l.mc_records, Mc_Record{}) }
+	if l.cold[bi].mc == NONE { l.cold[bi].mc = i32(len(l.mc_records)); append(&l.mc_records, Mc_Record{}) }
 	rec := mc_record(l, bi)
 	clear(&rec.frags)
 	clear(&rec.rules)
@@ -949,7 +949,7 @@ flow_spaces :: proc(l: ^Layout, x: i32) {
 	xform, plane := ps.xform, ps.plane
 	outer := bf.content_clip
 	base := i32(len(l.spaces))
-	append(&l.spaces, Space{kind = .Flow, parent = parent, box = x, frame = NONE, clip = outer, xform = xform, plane = plane, persp_from = NONE, ctx = NONE, dest = NONE, flow = rec.phys})
+	append(&l.spaces, Space{kind = .Flow, parent = parent, box = x, clip = outer, xform = xform, plane = plane, data = {flow = rec.phys}})
 	for fi in rec.phys[0] ..< rec.phys[1] {
 		fr := &l.flow_frags[fi]
 		fr.space = i32(len(l.spaces))
@@ -958,8 +958,8 @@ flow_spaces :: proc(l: ^Layout, x: i32) {
 		// inside a column of an outer container: the one it shows in
 		col_parent, clip_parent := parent, outer
 		if ps.kind == .Flow {
-			at := l.flow_frags[ps.flow[0]]
-			for oi in ps.flow[0] ..< ps.flow[1] {
+			at := l.flow_frags[ps.data.flow[0]]
+			for oi in ps.data.flow[0] ..< ps.data.flow[1] {
 				of := l.flow_frags[oi]
 				if frag_overlaps(&of, Rect{fr.show, fr.show}) { at = of; break }
 			}
@@ -967,7 +967,7 @@ flow_spaces :: proc(l: ^Layout, x: i32) {
 		}
 		append(&l.clips, Clip{parent = clip_parent, space = fr.space, box = NONE, rect = cut})
 		fr.clip = i32(len(l.clips) - 1)
-		append(&l.spaces, Space{kind = .Column, parent = col_parent, box = x, frame = NONE, clip = fr.clip, xform = xform, plane = plane, persp_from = NONE, ctx = NONE, dest = NONE, shift = fr.shift, flow = {fi - rec.phys[0], 0}})
+		append(&l.spaces, Space{kind = .Column, parent = col_parent, box = x, clip = fr.clip, xform = xform, plane = plane, data = {column = {shift = fr.shift, flow = {fi - rec.phys[0], 0}}}})
 	}
 	l.fin[x].content_space = base
 }
@@ -984,8 +984,8 @@ flow_fix_box :: proc(l: ^Layout, x: i32) {
 	if l.spaces[b.space].kind != .Flow { return }
 	if b.flags & {.Transformed, .Sticky, .Scroll} == {} { return }
 	sp := l.spaces[b.space]
-	at := &l.flow_frags[sp.flow[0]]
-	for fi in sp.flow[0] ..< sp.flow[1] {
+	at := &l.flow_frags[sp.data.flow[0]]
+	for fi in sp.data.flow[0] ..< sp.data.flow[1] {
 		fr := &l.flow_frags[fi]
 		if frag_overlaps(fr, Rect{b.abs, b.abs}) { at = fr; break }
 	}
@@ -1001,7 +1001,7 @@ push_flow_item :: proc(c: ^Ctx, it: Display_Item) {
 	out := c.dl_out != nil ? c.dl_out : &l.items
 	it2 := it
 	placed := false
-	for fi in sp.flow[0] ..< sp.flow[1] {
+	for fi in sp.data.flow[0] ..< sp.data.flow[1] {
 		fr := l.flow_frags[fi]
 		if !frag_overlaps(&fr, it.rect) { continue }
 		// an item that ends where a column begins is not in that column
@@ -1013,7 +1013,7 @@ push_flow_item :: proc(c: ^Ctx, it: Display_Item) {
 		placed = true
 	}
 	if !placed {
-		fr := l.flow_frags[sp.flow[0]]
+		fr := l.flow_frags[sp.data.flow[0]]
 		it2.space = fr.space
 		it2.clip = flow_clip(c, it.clip, sp.clip, it.space, fr)
 		append(out, it2)

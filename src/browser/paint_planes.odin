@@ -104,7 +104,7 @@ fo :: proc(e: ^Effects, space: i32) -> draw.Vec2 {
 // The origin of the target a plane is projected into.
 @(private)
 dest_origin :: proc(e: ^Effects, plane_space: i32) -> draw.Vec2 {
-	d := e.l.spaces[plane_space].dest
+	d := lay.space_plane(e.l, plane_space).dest
 	if d == lay.NONE { return e.page_origin }
 	return -e.v.offsets[d]
 }
@@ -115,7 +115,7 @@ to_mat4 :: proc(m: style.Matrix4) -> draw.Mat4 { return draw.Mat4(m) }
 // The matrix that draws a plane's layer (plane frame, offsets taken out) into its destination frame.
 @(private)
 plane_matrix :: proc(e: ^Effects, s: i32) -> style.Matrix4 {
-	acc := e.v.accs[s]
+	acc := lay.plane_acc_of(e.l, e.v, s)
 	d := dest_origin(e, s)
 	return style.m4_mul(style.m4_translate(d.x, d.y, 0), style.m4_mul(acc, style.m4_translate(e.v.offsets[s].x, e.v.offsets[s].y, 0)))
 }
@@ -142,7 +142,7 @@ plane_detach :: proc(l: ^Layout, g: i32) -> bool { return the_app.plane_settings
 @(private)
 plane_total_matrix :: proc(e: ^Effects, s: i32) -> style.Matrix4 {
 	m := plane_matrix(e, s)
-	for d := e.l.spaces[s].dest; d != lay.NONE; d = e.l.spaces[d].dest { m = style.m4_mul(plane_matrix(e, d), m) }
+	for d := lay.space_plane(e.l, s).dest; d != lay.NONE; d = lay.space_plane(e.l, d).dest { m = style.m4_mul(plane_matrix(e, d), m) }
 	return m
 }
 
@@ -325,10 +325,10 @@ plane_group_on_screen :: proc(e: ^Effects, g: i32, bounds: lay.Rect, screen: lay
 	if s == lay.NONE { return true }
 	huge := lay.Rect{{-1e9, -1e9}, {1e9, 1e9}}
 	r := plane_dest_bounds(e, s, bounds, huge)
-	d := e.l.spaces[s].dest
+	d := lay.space_plane(e.l, s).dest
 	for d != lay.NONE {
 		r = plane_dest_bounds(e, d, r, huge)
-		d = e.l.spaces[d].dest
+		d = lay.space_plane(e.l, d).dest
 	}
 	return !lay.rect_empty(lay.rect_intersect(r, screen))
 }
@@ -353,12 +353,13 @@ open_plane :: proc(e: ^Effects, c: i32, og: ^Open_Group, bounds: lay.Rect) -> bo
 	// a face with backface-visibility: hidden that is turned away is not drawn at all: its layer (a card's two faces) would be
 	// rasterized only for close_plane to throw it away. A plane that keeps its children in 3D is left alone: they are not its
 	// own, they have their own backfaces.
-	if l.spaces[s].back_hidden && !l.spaces[s].preserve && style.m4_back_facing(e.v.accs[s]) {
+	pl := lay.space_plane(l, s)
+	if pl.back_hidden && !pl.preserve && style.m4_back_facing(lay.plane_acc_of(l, e.v, s)) {
 		planes_culled += 1
 		return false
 	}
 	// a member of a 3D context is not in its parent's layer: a kept result of the parent does not stand for it
-	if l.spaces[s].ctx != s && e.fxc != nil {
+	if pl.ctx != s && e.fxc != nil {
 		og.member, og.saved_skip = true, e.fxc.skip
 		e.fxc.skip = 0
 	}
@@ -464,11 +465,11 @@ close_plane :: proc(e: ^Effects, og: ^Open_Group) {
 	if og.layer_open { pl = draw.pop_plane(e.dc) }
 	e.origin = og.saved_origin
 	if og.member { e.fxc.skip = og.saved_skip }
-	sp := &l.spaces[s]
-	acc := e.v.accs[s]
+	spl := lay.space_plane(l, s)
+	acc := lay.plane_acc_of(l, e.v, s)
 	m := plane_matrix(e, s)
 	alpha := plane_alpha(l, g)
-	cull := sp.back_hidden && style.m4_back_facing(acc)
+	cull := spl.back_hidden && style.m4_back_facing(acc)
 	o := draw.Plane_Draw{max_taps = the_app.plane_settings.taps, blend = og.blend, backdrop = og.backdrop}
 	if og.detach_to > 0 {
 		// composited on its own: flattened onto the parent's plane, then projected with it, in the parent's z-order position
@@ -476,7 +477,7 @@ close_plane :: proc(e: ^Effects, og: ^Open_Group) {
 		pg := &e.open[og.detach_to - 1]
 		mp := plane_matrix(e, l.groups[pg.g].space)
 		if len(og.backdrop) > 0 { o.shape = plane_shape(e, og.g, pl) }
-		o.cull_back = sp.back_hidden
+		o.cull_back = spl.back_hidden
 		append(&pg.parts, draw.Plane_Part{layer = pl, m = to_mat4(style.m4_mul(mp, flatten4(m))), alpha = alpha, o = o})
 		return
 	}
@@ -490,24 +491,24 @@ close_plane :: proc(e: ^Effects, og: ^Open_Group) {
 		o0 := draw.Vec2{math.floor(og.plan.bounds.min.x * sc) / sc, math.floor(og.plan.bounds.min.y * sc) / sc}
 		geom := draw.Plane_Layer{origin = o0, scale = sc, size = {int(math.ceil((og.plan.bounds.max.x - o0.x) * sc)), int(math.ceil((og.plan.bounds.max.y - o0.y) * sc))}}
 		item := draw.Plane_Item{parts = og.parts[:], geom = plane_geometry(geom), geom_m = to_mat4(m), skip = cull}
-		finish_plane_item(e, sp, s, item)
+		finish_plane_item(e, spl, s, item)
 		return
 	}
 	if pl.img.tex == 0 || pl.direct { return }
 	if len(og.backdrop) > 0 && !cull { o.shape = plane_shape(e, og.g, pl) }
 	item := draw.plane_item(pl, to_mat4(m), alpha, o, cull)
 	item.geom = plane_geometry(pl)
-	if sp.ctx == s && !sp.preserve {
+	if spl.ctx == s && !spl.preserve {
 		if cull { draw.discard_plane(e.dc, pl); draw.discard_plane(e.dc, o.shape); return }
 		draw.draw_plane(e.dc, pl, to_mat4(m), alpha, o)
 		return
 	}
-	finish_plane_item(e, sp, s, item)
+	finish_plane_item(e, spl, s, item)
 }
 
 // Where a plane's composite goes: kept for its 3D context's root (a member), or the root draws its context now, or alone.
 @(private)
-finish_plane_item :: proc(e: ^Effects, sp: ^lay.Space, s: i32, item: draw.Plane_Item) {
+finish_plane_item :: proc(e: ^Effects, sp: ^lay.Space_Plane, s: i32, item: draw.Plane_Item) {
 	if sp.ctx != s {
 		// a member of a 3D context: drawn with its whole context, sorted
 		append(&e.pending, Pending_Plane{item = item, ctx = sp.ctx})

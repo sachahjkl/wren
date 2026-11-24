@@ -152,11 +152,37 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 	}
 	for i in 0 ..< len(a.spaces) {
 		if m.bad { break }
-		p, q := a.spaces[i], b.spaces[i]
-		if p.kind != q.kind || p.parent != q.parent || !beq(&m, p.box, q.box) || p.frame != q.frame || p.clip != q.clip || p.xform != q.xform ||
-		   !req(p.port, q.port) || !req(p.limit, q.limit) || !veq(p.max_scroll, q.max_scroll) || !veq(p.min_scroll, q.min_scroll) || !veq(p.inset, q.inset) || p.mat != q.mat ||
-		   p.follow != q.follow || (p.kind == .Anchored && !beq(&m, p.anchor, q.anchor)) ||
-		   !feq(p.band0, q.band0) || !feq(p.band_h, q.band_h) || p.band_first != q.band_first || p.band_count != q.band_count {
+		p, q := &a.spaces[i], &b.spaces[i]
+		same := p.kind == q.kind && p.parent == q.parent && beq(&m, p.box, q.box) && p.clip == q.clip && p.xform == q.xform && p.plane == q.plane &&
+			feq(p.band0, q.band0) && feq(p.band_h, q.band_h) && p.band_first == q.band_first && p.band_count == q.band_count
+		if same {
+			switch p.kind {
+			case .Document, .Fixed:
+			case .Scroll:
+				ps, qs := p.data.scroll, q.data.scroll
+				same = req(ps.port, qs.port) && veq(ps.max_scroll, qs.max_scroll) && veq(ps.min_scroll, qs.min_scroll)
+			case .Sticky:
+				ps, qs := p.data.sticky, q.data.sticky
+				same = ps.frame == qs.frame && req(ps.port, qs.port) && req(ps.limit, qs.limit) && veq(ps.inset, qs.inset)
+			case .Transform:
+				pt, qt := p.data.transform, q.data.transform
+				same = pt.mat == qt.mat && space_is_plane(p) == space_is_plane(q)
+				if same && space_is_plane(p) {
+					pp, qp := space_plane(a, i32(i)), space_plane(b, i32(i))
+					same = pp.mat4 == qp.mat4 && pp.persp == qp.persp && pp.persp_from == qp.persp_from &&
+						pp.ctx == qp.ctx && pp.dest == qp.dest && pp.preserve == qp.preserve && pp.back_hidden == qp.back_hidden
+				}
+			case .Anchored:
+				pa, qa := p.data.anchored, q.data.anchored
+				same = pa.follow == qa.follow && beq(&m, pa.anchor, qa.anchor)
+			case .Flow:
+				same = p.data.flow == q.data.flow
+			case .Column:
+				pc, qc := p.data.column, q.data.column
+				same = veq(pc.shift, qc.shift) && pc.flow == qc.flow
+			}
+		}
+		if !same {
 			fail(&m, "space %d (%v)", i, p.kind)
 		}
 	}

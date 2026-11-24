@@ -155,10 +155,13 @@ Clone_Work :: struct { src, dst: base.Handle }
 @(private = "file")
 clone_one :: proc(d: ^Document, h: base.Handle, work: ^[dynamic]Clone_Work, roots: ^[dynamic]base.Handle) -> base.Handle {
 	n := get(d, h)
-	c := Node{kind = n.kind, ns = n.ns, xml = n.xml, name = n.name_static ? n.name : heap_str(n.name), name_static = n.name_static, text = heap_str(n.text), doc = n.doc}
+	static_n := .Name_Static in n.flags
+	c := Node{kind = n.kind, ns = n.ns, xml = n.xml, name = static_n ? n.name : heap_str(n.name), flags = static_n ? {.Name_Static} : {}, text = heap_str(n.text), doc = n.doc}
 	if len(n.attrs) > 0 {
-		c.attrs = make([dynamic]Attr, 0, len(n.attrs))
-		for a in n.attrs { append(&c.attrs, Attr{name = a.name_static ? a.name : heap_str(a.name), value = heap_str(a.value), ns = a.ns, name_static = a.name_static}) }
+		buf := make([]Attr, len(n.attrs))
+		for a, i in n.attrs { buf[i] = Attr{name = a.name_static ? a.name : heap_str(a.name), value = heap_str(a.value), ns = a.ns, name_static = a.name_static} }
+		c.attrs = buf
+		c.attrs_cap = u32(len(buf))
 	}
 	nh, cn := base.pool_insert_tagged(&d.nodes, d.tag, c)
 	bytes_add(d, node_bytes(cn))
@@ -170,7 +173,7 @@ clone_one :: proc(d: ^Document, h: base.Handle, work: ^[dynamic]Clone_Work, root
 		// HTML's cloning steps of <template>: its contents are copied too
 		if content, ok := d.templates[h]; ok && get(d, content) != nil && get(d, content).first_child != base.NIL_HANDLE {
 			dup := create_fragment(d)
-			get(d, dup).held = true
+			get(d, dup).flags += {.Held}
 			d.templates[nh] = dup
 			append(work, Clone_Work{content, dup})
 		}
@@ -201,7 +204,7 @@ copy_across :: proc(src, dst: ^Document, h: base.Handle) -> base.Handle {
 		for a in n.attrs { set_attribute_ns(dst, c, attr_ns_of(dst, attr_ns_uri(src, a.ns)), a.name, a.value) }
 		if content, ok := src.templates[h]; ok && get(src, content) != nil {
 			dup := create_fragment(dst)
-			get(dst, dup).held = true
+			get(dst, dup).flags += {.Held}
 			dst.templates[c] = dup
 			copy_children_across(src, dst, content, dup)
 		}
@@ -247,7 +250,8 @@ listener_copy :: proc(d: ^Document, h: base.Handle, l: Listener, owner: u32) {
 	c := l
 	c.type = event_type_string(l.atom, l.type)
 	c.owner = owner
-	append(&n.listeners, c)
+	list := node_listeners_ptr(d, h, true)
+	append(list, c)
 	if c.id >= d.next_listener { d.next_listener = c.id + 1 }
 	listener_counted(d, c, 1)
 }

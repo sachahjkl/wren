@@ -10,6 +10,7 @@ import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:render"
 import config "toolkit:config"
+import "wb:base"
 import "wb:dom"
 import "wb:html"
 import lay "wb:layout"
@@ -342,9 +343,9 @@ transforms_move_slots :: proc(t: ^testing.T) {
 	cx_same(t, f, "scrolled under fixed and sticky boxes", 40, 2)
 	// a transform animation: the refresh path gives the space another matrix
 	turned := -1
-	for &sp, i in f.l.spaces { if sp.kind == .Transform && sp.mat[1] != 0 { turned = i } }
+	for &sp, i in f.l.spaces { if sp.kind == .Transform && sp.data.transform.mat[1] != 0 { turned = i } }
 	testing.expect(t, turned >= 0)
-	f.l.spaces[turned].mat = lay.mat_mul(f.l.spaces[turned].mat, lay.Matrix{0.96, 0.28, -0.28, 0.96, 0, 0})
+	f.l.spaces[turned].data.transform.mat = lay.mat_mul(f.l.spaces[turned].data.transform.mat, lay.Matrix{0.96, 0.28, -0.28, 0.96, 0, 0})
 	f.l.passes[.Refresh] += 1
 	n := cx_same(t, f, "rotated further", 40, 2)
 	testing.expectf(t, n == 0, "a moved transform records nothing (%d)", n)
@@ -489,15 +490,16 @@ planes_tilt_is_a_matrix_only :: proc(t: ^testing.T) {
 	// settle: recorded, then drawn twice so the toolkit keeps the layer
 	for _ in 0 ..< 3 { cx_paint(&f, true) }
 	card := &f.l.spaces[0]
-	for &sp in f.l.spaces { if sp.proj { card = &sp } }
-	testing.expect(t, card.proj, "the card is a plane")
+	card_i := i32(0)
+	for &sp, si in f.l.spaces { if lay.space_is_plane(&sp) { card, card_i = &sp, i32(si) } }
+	testing.expect(t, lay.space_is_plane(card), "the card is a plane")
 	for deg in ([]f32{30, 40, 50}) {
 		a := deg * 3.1415927 / 180
 		co, si := math.cos(a), math.sin(a)
 		// rotateY(deg) about the middle of the card: translate(c) * rotateY * translate(-c)
 		c := lay.Vec2{f.l.boxes[card.box].abs.x + 100, f.l.boxes[card.box].abs.y + 60}
 		ry := style.Matrix4{co, 0, -si, 0, 0, 1, 0, 0, si, 0, co, 0, 0, 0, 0, 1}
-		card.mat4 = style.m4_mul(style.m4_translate(c.x, c.y, 0), style.m4_mul(ry, style.m4_translate(-c.x, -c.y, 0)))
+		lay.space_plane(&f.l, card_i).mat4 = style.m4_mul(style.m4_translate(c.x, c.y, 0), style.m4_mul(ry, style.m4_translate(-c.x, -c.y, 0)))
 		img := cx_paint(&f, true)
 		stats := composite_stats
 		kept := draw.layer_cache_stats(&f.dc)
@@ -828,12 +830,13 @@ planes_keep_their_scale_while_moving_and_sharpen_at_rest :: proc(t: ^testing.T) 
 	cx_paint(&f, true)
 	at_rest := scale_now()
 	card := &f.l.spaces[0]
-	for &sp in f.l.spaces { if sp.proj { card = &sp } }
+	card_i := i32(0)
+	for &sp, si in f.l.spaces { if lay.space_is_plane(&sp) { card, card_i = &sp, i32(si) } }
 	a := f32(50 * math.PI / 180)
 	co, si := math.cos(a), math.sin(a)
 	c := lay.Vec2{f.l.boxes[card.box].abs.x + 100, f.l.boxes[card.box].abs.y + 60}
 	ry := style.Matrix4{co, 0, -si, 0, 0, 1, 0, 0, si, 0, co, 0, 0, 0, 0, 1}
-	card.mat4 = style.m4_mul(style.m4_translate(c.x, c.y, 0), style.m4_mul(ry, style.m4_translate(-c.x, -c.y, 0)))
+	lay.space_plane(&f.l, card_i).mat4 = style.m4_mul(style.m4_translate(c.x, c.y, 0), style.m4_mul(ry, style.m4_translate(-c.x, -c.y, 0)))
 	cx_paint(&f, true)
 	moving := scale_now()
 	// a frame without a move between two moves (a pointer that drives the tilt): the scale holds
@@ -869,16 +872,17 @@ planes_flat_child_does_not_draw_its_parent_again :: proc(t: ^testing.T) {
 	defer cx_close(&f)
 	for _ in 0 ..< 3 { cx_paint(&f, true) }
 	child: ^lay.Space
-	for &sp in f.l.spaces { if sp.proj && f.l.boxes[sp.box].cs != nil && f.l.boxes[sp.box].cs.width.v == 90 { child = &sp } }
+	child_i := lay.NONE
+	for &sp, si in f.l.spaces { if lay.space_is_plane(&sp) && f.l.boxes[sp.box].cs != nil && f.l.boxes[sp.box].cs.width.v == 90 { child, child_i = &sp, i32(si) } }
 	testing.expect(t, child != nil, "the child is a plane")
 	if child == nil { return }
-	base_mat := child.mat4
+	base_mat := lay.space_plane(&f.l, child_i).mat4
 	c := lay.Vec2{f.l.boxes[child.box].abs.x + 45, f.l.boxes[child.box].abs.y + 45}
 	for deg in ([]f32{30, 40, 50, 60}) {
 		a := deg * math.PI / 180
 		co, si := math.cos(a), math.sin(a)
 		rx := style.Matrix4{1, 0, 0, 0, 0, co, si, 0, 0, -si, co, 0, 0, 0, 0, 1}
-		child.mat4 = style.m4_mul(style.m4_translate(c.x, c.y, 0), style.m4_mul(rx, style.m4_translate(-c.x, -c.y, 0)))
+		lay.space_plane(&f.l, child_i).mat4 = style.m4_mul(style.m4_translate(c.x, c.y, 0), style.m4_mul(rx, style.m4_translate(-c.x, -c.y, 0)))
 		img := cx_paint(&f, true)
 		stats := draw.layer_cache_stats(&f.dc)
 		testing.expectf(t, composite_stats.recorded == 0 && stats.misses == 0 && stats.hits >= 3, "%v degrees: nothing is drawn again, parent segments and child come from the cache (%v)", deg, stats)
@@ -902,3 +906,90 @@ planes_flat_child_does_not_draw_its_parent_again :: proc(t: ^testing.T) {
 	} }
 	testing.expectf(t, inside < 40, "inside the child both ways give the same picture (%d pixels differ)", inside)
 }
+
+// Flat CSR storage in compute_floors and node_items_make produces exact clip chains and node item lists across rebuilds.
+@(test)
+compositor_csr_floors_and_node_items :: proc(t: ^testing.T) {
+	l: Layout
+	defer lay.destroy(&l)
+	defer composite_forget(&l)
+	c := comp_of(&l)
+
+	// Clip tree: 0 -> 1 -> 2, plus independent root clip 3.
+	append(&l.clips,
+		lay.Clip{parent = lay.NONE},
+		lay.Clip{parent = 0},
+		lay.Clip{parent = 1},
+		lay.Clip{parent = lay.NONE},
+	)
+	append(&l.boxes,
+		lay.Box{clip = 0},
+		lay.Box{clip = 1},
+		lay.Box{clip = 2},
+		lay.Box{clip = 3},
+	)
+	// Group 0: [0]; Group 1 extends 0: [0, 1]; Group 2 breaks prefix on 1: [0, 1, 3]; Group 3 breaks prefix on 2: [0, 1, 3, 0, 1, 2].
+	append(&l.groups,
+		lay.Group{parent = lay.NONE, box = 0},
+		lay.Group{parent = 0, box = 1},
+		lay.Group{parent = 1, box = 3},
+		lay.Group{parent = 2, box = 2},
+	)
+	compute_floors(c, &l)
+	eq_i32 :: proc(a, b: []i32) -> bool {
+		if len(a) != len(b) { return false }
+		for v, i in a { if v != b[i] { return false } }
+		return true
+	}
+	testing.expect_value(t, len(c.floor_start), 5)
+	testing.expect(t, eq_i32(comp_floor_clips(c, 0), {0}))
+	testing.expect(t, eq_i32(comp_floor_clips(c, 1), {0, 1}))
+	testing.expect(t, eq_i32(comp_floor_clips(c, 2), {0, 1, 3}))
+	testing.expect(t, eq_i32(comp_floor_clips(c, 3), {0, 1, 3, 0, 1, 2}))
+	testing.expect(t, comp_floor_clips(c, -1) == nil && comp_floor_clips(c, 99) == nil)
+
+	chain := make([dynamic]i32, 0, 8, context.temp_allocator)
+	it_ext := lay.Display_Item{group = 1, clip = 2}
+	testing.expect(t, eq_i32(local_clips(c, &l, &it_ext, &chain), {2}))
+	it_brk := lay.Display_Item{group = 1, clip = 3}
+	testing.expect(t, eq_i32(local_clips(c, &l, &it_brk, &chain), {3}))
+
+	// Shrink groups and rebuild CSR floors.
+	resize(&l.groups, 1)
+	compute_floors(c, &l)
+	testing.expect_value(t, len(c.floor_start), 2)
+	testing.expect(t, eq_i32(comp_floor_clips(c, 0), {0}))
+
+	// Interleaved items per DOM node, including NIL_HANDLE entries.
+	h1 := base.handle_make(1, 1)
+	h2 := base.handle_make(2, 1)
+	h3 := base.handle_make(3, 1)
+	append(&l.items,
+		lay.Display_Item{node = h1},
+		lay.Display_Item{node = base.NIL_HANDLE},
+		lay.Display_Item{node = h2},
+		lay.Display_Item{node = h1},
+		lay.Display_Item{node = h3},
+		lay.Display_Item{node = h1},
+		lay.Display_Item{node = h3},
+	)
+	node_items_make(c, &l)
+	testing.expect(t, c.node_items_ok)
+	testing.expect_value(t, len(c.node_item_ranges), 3)
+	testing.expect_value(t, len(c.node_item_list), 6)
+	r1 := c.node_item_ranges[h1]
+	r2 := c.node_item_ranges[h2]
+	r3 := c.node_item_ranges[h3]
+	testing.expect(t, eq_i32(c.node_item_list[r1[0]:r1[1]], {0, 3, 5}))
+	testing.expect(t, eq_i32(c.node_item_list[r2[0]:r2[1]], {2}))
+	testing.expect(t, eq_i32(c.node_item_list[r3[0]:r3[1]], {4, 6}))
+
+	// Rebuild CSR node items after shrinking display list.
+	resize(&l.items, 2)
+	node_items_make(c, &l)
+	testing.expect_value(t, len(c.node_item_ranges), 1)
+	testing.expect_value(t, len(c.node_item_list), 1)
+	r1 = c.node_item_ranges[h1]
+	testing.expect(t, eq_i32(c.node_item_list[r1[0]:r1[1]], {0}))
+}
+

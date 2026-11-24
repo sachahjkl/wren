@@ -38,10 +38,10 @@ intrinsic_clamp :: proc(c: ^Ctx, b: ^Box, w, pb: f32) -> f32 {
 intrinsic :: proc(c: ^Ctx, bi: i32) -> [2]f32 {
 	if c.pre != nil { pre_wait_box(c, bi) }   // (its inline boxes' edges are resolved while measuring)
 	b := &c.l.boxes[bi]
-	if b.intr_ok { return b.intr }
+	if .Intr_Ok in b.state { return c.l.cache[bi].intr }
 	res := intrinsic_compute(c, bi, false)
-	b = &c.l.boxes[bi]
-	b.intr, b.intr_ok = res, true
+	c.l.cache[bi].intr = res
+	c.l.boxes[bi].state += {.Intr_Ok}
 	return res
 }
 

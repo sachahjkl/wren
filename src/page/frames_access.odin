@@ -238,7 +238,7 @@ frames_adopt :: proc(c: ^Call, node: base.Handle, into_tag: u32) -> (out: []u8, 
 	dst := into_tag == c.caller.tag ? c.caller : frames_reach_tag(c.caller, into_tag)
 	if dst == nil || dst == src || dst.worker != nil { return nil, false }
 	n := dom.get(src.doc, node)
-	if n == nil || n.kind == .Document || n.is_shadow { return nil, false }
+	if n == nil || n.kind == .Document || (.Is_Shadow in n.flags) { return nil, false }
 	// (an iframe going into its own document: leaving its tree ends that document, which is still written to below. In use, it is closed after the call.)
 	dst.route_busy += 1
 	defer dst.route_busy -= 1
@@ -326,7 +326,7 @@ frames_page_by_id :: proc(p: ^Page, id: u64) -> ^Page {
 move_listeners :: proc(src, dst: ^Page, from, to: base.Handle) {
 	n := dom.get(src.doc, from)
 	if n == nil { return }
-	for &l in n.listeners {
+	for &l in dom.node_listeners(src.doc, from) {
 		if l.removed { continue }
 		page := src
 		index := l.owner

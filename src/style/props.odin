@@ -132,6 +132,9 @@ group_type :: proc(g: Group) -> ^runtime.Type_Info {
 	case .Motion: return type_info_of(Motion_Group)
 	case .Grid: return type_info_of(Grid_Group)
 	case .Mask: return type_info_of(Mask_Group)
+	case .Decor: return type_info_of(Decor_Group)
+	case .Box_Extra: return type_info_of(Box_Extra_Group)
+	case .Flex: return type_info_of(Flex_Group)
 	case .Rare: return type_info_of(Rare_Group)
 	}
 	return nil
@@ -141,7 +144,8 @@ group_type :: proc(g: Group) -> ^runtime.Type_Info {
 group_size :: #force_inline proc(g: Group) -> int { return group_type(g).size }
 
 #assert(size_of(Inherited_Group) <= GROUP_MAX_BYTES && size_of(Background_Group) <= GROUP_MAX_BYTES && size_of(Transform_Group) <= GROUP_MAX_BYTES && size_of(Motion_Group) <= GROUP_MAX_BYTES &&
-	size_of(Grid_Group) <= GROUP_MAX_BYTES && size_of(Mask_Group) <= GROUP_MAX_BYTES && size_of(Rare_Group) <= GROUP_MAX_BYTES)
+	size_of(Grid_Group) <= GROUP_MAX_BYTES && size_of(Mask_Group) <= GROUP_MAX_BYTES && size_of(Decor_Group) <= GROUP_MAX_BYTES && size_of(Box_Extra_Group) <= GROUP_MAX_BYTES &&
+	size_of(Flex_Group) <= GROUP_MAX_BYTES && size_of(Rare_Group) <= GROUP_MAX_BYTES)
 
 // The pointer to group `g` in `c` (not Main).
 @(private)
@@ -154,6 +158,9 @@ group_slot :: #force_inline proc "contextless" (c: ^Computed, g: Group) -> ^rawp
 	case .Motion: return (^rawptr)(&c.motion_group)
 	case .Grid: return (^rawptr)(&c.grid_group)
 	case .Mask: return (^rawptr)(&c.mask_group)
+	case .Decor: return (^rawptr)(&c.decor_group)
+	case .Box_Extra: return (^rawptr)(&c.box_extra_group)
+	case .Flex: return (^rawptr)(&c.flex_group)
 	case .Rare: return (^rawptr)(&c.rare_group)
 	}
 	return nil

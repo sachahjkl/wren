@@ -474,7 +474,7 @@ Elem_Ctx :: struct {
 ctx_for_root :: proc(p: ^Pass, root: base.Handle) -> Elem_Ctx {
 	doc := p.mc.doc
 	n := dom.get(doc, root)
-	if n == nil || !n.is_shadow { return {} }
+	if n == nil || !(.Is_Shadow in n.flags) { return {} }
 	if p.ctx_cache == nil { p.ctx_cache = make(map[base.Handle]Elem_Ctx, 16, context.temp_allocator) }
 	if c, ok := p.ctx_cache[root]; ok { return c }
 	host := n.shadow

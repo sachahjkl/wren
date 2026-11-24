@@ -520,7 +520,7 @@ parent_for_match :: #force_inline proc(m: ^Match_Ctx, el: base.Handle) -> base.H
 	p := node_of(m, n.parent)
 	if p == nil { return base.NIL_HANDLE }
 	if p.kind == .Element { return n.parent }
-	if p.is_shadow && p.shadow == m.featureless { return m.featureless }
+	if (.Is_Shadow in p.flags) && p.shadow == m.featureless { return m.featureless }
 	return base.NIL_HANDLE
 }
 

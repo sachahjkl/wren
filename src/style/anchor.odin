@@ -127,7 +127,7 @@ try_rule_of :: proc(e: ^Engine, doc: ^dom.Document, h: base.Handle, name: string
 	for cur := h; cur != base.NIL_HANDLE; {
 		n := dom.get(doc, cur)
 		if n == nil { break }
-		if n.is_shadow {
+		if .Is_Shadow in n.flags {
 			if rs := shadow_set_of(e, cur); rs != nil {
 				if t, ok := rs.try_rules[name]; ok { return t }
 			}
@@ -590,6 +590,9 @@ try_tactic_alignment :: proc(c: ^Computed, t: Try_Tactic) {
 // Applies a <try-tactic> to the properties it moves (§try-tactic), physical once the writing mode of the containing block is
 // taken into account (try_tactics_physical): block is y, inline is x here.
 try_tactic_apply :: proc(c: ^Computed, t: Try_Tactic, a := context.allocator) {
+	// Own the grouped fields before mutating so shared or read-only groups stay intact.
+	group_take(c, .Box_Extra, a)
+	group_take(c, .Flex, a)
 	for s in Side {
 		x := s == .Left || s == .Right
 		c.inset[s] = length_flip(c.inset[s], t, x, a)

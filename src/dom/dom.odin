@@ -49,49 +49,89 @@ Attr :: struct {
 Listener_Id :: distinct u32
 
 Listener :: struct {
-	id:       Listener_Id,
 	type:     string,   // the table's string when `atom` names it, else owned (event_types.odin)
-	atom:     Event_Atom,
+	work:     base.Work,   // who registered it: a callback works for them
+	id:       Listener_Id,
 	callback: u32,    // function-table index in the owning instance
 	user:     u32,    // opaque value handed back to the callback
 	owner:    u32,    // which instance of the page registered it (a page can run several modules)
+	atom:     Event_Atom,
 	capture:  bool,
 	once:     bool,
 	passive:  bool,
 	removed:  bool,   // tombstone while a dispatch is walking the list
-	work:     base.Work,   // who registered it: a callback works for them
 }
 
+Node_Flag :: enum u8 {
+	Held,          // a detached tree its owner keeps (a template's contents): not freed when nothing pins it
+	As_Document,   // a Fragment that stands for a document of its own (DOMImplementation.createHTMLDocument)
+	Blank_Url,     // such a document whose URL is about:blank (createHTMLDocument's, createDocument's, parseHTMLUnsafe's, the templates'; DOMParser's has its creator's)
+	Is_Shadow,     // a Fragment that is a shadow root (shadow.odin)
+	Name_Static,   // `name` is the program's own string, never freed (names.odin)
+	Has_Listeners, // the node has registered event listeners in Document.node_listeners
+}
+Node_Flags :: bit_set[Node_Flag; u8]
+
+// Fields ordered by descending alignment with sparse listeners (Document.node_listeners) and compact slice attrs
+// so common nodes avoid inline dynamic-array headers and alignment padding.
 Node :: struct {
-	kind:        Node_Kind,
-	ns:          Namespace,  // elements
-	held:        bool,       // a detached tree its owner keeps (a template's contents): not freed when nothing pins it
-	as_document: bool,       // a Fragment that stands for a document of its own (DOMImplementation.createHTMLDocument)
-	blank_url:   bool,       // such a document whose URL is about:blank (createHTMLDocument's, createDocument's, parseHTMLUnsafe's, the templates'; DOMParser's has its creator's)
-	is_shadow:   bool,       // a Fragment that is a shadow root (shadow.odin)
-	xml:         Xml_Kind,   // what XML adds to a kind (DOMParser's XML documents)
-	name_static: bool,       // `name` is the program's own string, never freed (names.odin)
 	parent:      base.Handle,
 	first_child: base.Handle,
 	last_child:  base.Handle,
 	prev:        base.Handle,
 	next:        base.Handle,
+	// shadow trees (shadow.odin): `shadow` is an element's shadow root, or a shadow root's host; `slot` the slot a
+	// slottable (a host's child) is assigned to, at position `slot_pos` of that slot's assigned nodes
+	shadow:      base.Handle,
+	slot:        base.Handle,
+	// DOM "node document": the document of its own (an As_Document Fragment) it was made for or inserted under, NIL for
+	// the page's; what a detached tree's ownerDocument is (set_node_document)
+	doc:         base.Handle,
 	name:        string,   // element tag (lower case), empty otherwise
 	text:        string,   // Text / Comment data
-	attrs:       [dynamic]Attr,
-	listeners:   [dynamic]Listener,
+	attrs:       []Attr,   // backed by heap slice of capacity `attrs_cap`
+	attrs_cap:   u32,
 	generation_of_layout: u32,   // bumped on any change that needs re-layout (see `dirty`)
 	pins:        u32,      // JavaScript wrappers referring to this node (pins.odin)
 	pins_below:  u32,      // pins of this node and its whole subtree: a detached tree with none can be freed
-	// shadow trees (shadow.odin): `shadow` is an element's shadow root, or a shadow root's host; `slot` the slot a
-	// slottable (a host's child) is assigned to, at position `slot_pos` of that slot's assigned nodes (the fields sit
-	// where they add the least to the node's size)
 	slot_pos:    u32,
-	shadow:      base.Handle,
-	slot:        base.Handle,
-	// DOM "node document": the document of its own (an as_document Fragment) it was made for or inserted under, NIL for
-	// the page's; what a detached tree's ownerDocument is (set_node_document)
-	doc:         base.Handle,
+	kind:        Node_Kind,
+	ns:          Namespace,  // elements
+	xml:         Xml_Kind,   // what XML adds to a kind (DOMParser's XML documents)
+	flags:       Node_Flags,
+}
+
+@(private)
+attr_append :: proc(n: ^Node, a: Attr) {
+	l := len(n.attrs)
+	if l == int(n.attrs_cap) {
+		nc := max(int(n.attrs_cap) * 2, 4)
+		buf := make([]Attr, nc)
+		if l > 0 { copy(buf, n.attrs) }
+		if n.attrs_cap > 0 { delete(raw_data(n.attrs)[:n.attrs_cap]) }
+		n.attrs = buf[:l]
+		n.attrs_cap = u32(nc)
+	}
+	full := raw_data(n.attrs)[:n.attrs_cap]
+	full[l] = a
+	n.attrs = full[:l + 1]
+}
+
+@(private)
+attr_ordered_remove :: proc(n: ^Node, i: int) {
+	l := len(n.attrs)
+	copy(n.attrs[i:], n.attrs[i + 1:])
+	n.attrs = raw_data(n.attrs)[:l - 1]
+}
+
+@(private)
+attrs_free :: proc(n: ^Node) {
+	for a in n.attrs { attr_free(a) }
+	if n.attrs_cap > 0 {
+		delete(raw_data(n.attrs)[:n.attrs_cap])
+		n.attrs = nil
+		n.attrs_cap = 0
+	}
 }
 
 Document :: struct {
@@ -104,6 +144,7 @@ Document :: struct {
 	// (keys owned)
 	listened_atoms:  [Event_Atom]u32,
 	listened_others: map[string]int,
+	node_listeners:  map[base.Handle][dynamic]Listener,   // sparse per-node listener lists (Node_Flag.Has_Listeners)
 	// what scripts may build in this document (0: no bound; the embedder sets them), and the heap bytes of its nodes'
 	// strings (text, names, attributes) they are checked against: quota_check
 	limits:     Limits,
@@ -225,7 +266,7 @@ quota_check :: proc(d: ^Document, nodes, bytes: int) -> Error {
 @(private)
 node_bytes :: proc(n: ^Node) -> int {
 	b := len(n.text)
-	if !n.name_static { b += len(n.name) }
+	if .Name_Static not_in n.flags { b += len(n.name) }
 	for a in n.attrs { b += attr_bytes(a) }
 	return b
 }
@@ -300,8 +341,10 @@ scope_closed :: proc(data: rawptr) { free_document((^Document)(data)) }
 @(private)
 free_document :: proc(d: ^Document) {
 	it: u32
-	for _, n in base.pool_next(&d.nodes, &it) { free_node_data(d, n) }
+	for h, n in base.pool_next(&d.nodes, &it) { free_node_data(d, h, n) }
 	base.pool_destroy(&d.nodes)
+	for _, &v in d.node_listeners { listeners_free(&v, nil) }
+	delete(d.node_listeners)
 	for k in d.listened_others { delete(k) }
 	delete(d.listened_others)
 	versions_free(d)
@@ -322,13 +365,18 @@ free_document :: proc(d: ^Document) {
 }
 
 @(private)
-free_node_data :: proc(d: ^Document, n: ^Node) {
+free_node_data :: proc(d: ^Document, h: base.Handle, n: ^Node) {
 	bytes_add(d, -node_bytes(n))
-	if !n.name_static { delete(n.name) }
+	if .Name_Static not_in n.flags { delete(n.name) }
 	delete(n.text)
-	for a in n.attrs { attr_free(a) }
-	delete(n.attrs)
-	listeners_free(&n.listeners, d)
+	attrs_free(n)
+	if .Has_Listeners in n.flags {
+		if list, ok := &d.node_listeners[h]; ok {
+			listeners_free(list, d)
+			delete_key(&d.node_listeners, h)
+		}
+		n.flags -= {.Has_Listeners}
+	}
 }
 
 get :: proc(d: ^Document, h: base.Handle) -> ^Node { return base.pool_get(&d.nodes, h) }
@@ -345,7 +393,7 @@ create_element :: proc(d: ^Document, tag: string) -> base.Handle {
 		buf: [NAME_STATIC_MAX]u8
 		for i in 0 ..< len(tag) { buf[i] = base.ascii_lower_byte(tag[i]) }
 		if s := static_name(string(buf[:len(tag)])); s != "" {
-			h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Element, name = s, name_static = true})
+			h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Element, name = s, flags = {.Name_Static}})
 			named_add(d, h, s)
 			return h
 		}
@@ -385,8 +433,8 @@ create_element_ns :: proc(d: ^Document, tag: string, ns: Namespace, uri := "", p
 
 create_doctype :: proc(d: ^Document, name, public_id, system_id: string) -> base.Handle {
 	h, n := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Doctype, name = heap_str(name)})
-	if public_id != "" { append(&n.attrs, attr_make("publicId", public_id, ATTR_NS_NONE)) }
-	if system_id != "" { append(&n.attrs, attr_make("systemId", system_id, ATTR_NS_NONE)) }
+	if public_id != "" { attr_append(n, attr_make("publicId", public_id, ATTR_NS_NONE)) }
+	if system_id != "" { attr_append(n, attr_make("systemId", system_id, ATTR_NS_NONE)) }
 	bytes_add(d, node_bytes(n))
 	return h
 }
@@ -400,7 +448,7 @@ create_fragment :: proc(d: ^Document) -> base.Handle {
 template_content :: proc(d: ^Document, template: base.Handle) -> base.Handle {
 	if c, ok := d.templates[template]; ok && get(d, c) != nil { return c }
 	c := create_fragment(d)
-	get(d, c).held = true
+	get(d, c).flags += {.Held}
 	d.templates[template] = c
 	return c
 }
@@ -489,7 +537,7 @@ insert_before :: proc(d: ^Document, parent, child, ref: base.Handle) -> Error {
 		r.prev = child
 	}
 	if c.pins_below > 0 { pins_adjust(d, parent, i64(c.pins_below)) }
-	if to := p.as_document ? parent : p.doc; c.doc != to { set_node_document(d, child, to) }   // DOM "adopt"
+	if to := (.As_Document in p.flags) ? parent : p.doc; c.doc != to { set_node_document(d, child, to) }   // DOM "adopt"
 	touch(d)
 	d.tree_version += 1
 	child_changed(d, parent)
@@ -515,7 +563,7 @@ remove_child :: proc(d: ^Document, parent, child: base.Handle) -> Error {
 release :: proc(d: ^Document, h: base.Handle) -> Error {
 	n := get(d, h)
 	if n == nil { return .Invalid_Handle }
-	if n.parent != base.NIL_HANDLE || h == d.root || n.is_shadow { return .Attached }
+	if n.parent != base.NIL_HANDLE || h == d.root || (.Is_Shadow in n.flags) { return .Attached }
 	destroy_unpinned(d, h)
 	return .None
 }
@@ -557,7 +605,7 @@ destroy_node :: proc(d: ^Document, h: base.Handle, n: ^Node, more: ^[dynamic]bas
 			if content, had := d.templates[h]; had {
 				delete_key(&d.templates, h)
 				if c := get(d, content); c != nil {
-					c.held = false
+					c.flags -= {.Held}
 					if c.pins_below == 0 { more_push(more, content) }
 				}
 			}
@@ -566,7 +614,7 @@ destroy_node :: proc(d: ^Document, h: base.Handle, n: ^Node, more: ^[dynamic]bas
 		if n.shadow != base.NIL_HANDLE { more_push(more, n.shadow); n.shadow = base.NIL_HANDLE }
 	}
 	if len(d.shadow_roots) > 0 || len(d.assigned) > 0 || len(d.manual_slot) > 0 || len(d.custom_states) > 0 || len(d.ce_custom) > 0 { shadow_forget_node(d, h, n) }
-	free_node_data(d, n)
+	free_node_data(d, h, n)
 	base.pool_remove_tagged(&d.nodes, h)
 }
 
@@ -654,7 +702,7 @@ attribute_write :: proc(d: ^Document, h: base.Handle, i: int, name, value: strin
 // A new attribute `a` of element `h`, named `name` to the hooks (its local name).
 @(private = "file")
 attribute_add :: proc(d: ^Document, h: base.Handle, a: Attr, name: string) {
-	append(&get(d, h).attrs, a)
+	attr_append(get(d, h), a)
 	bytes_add(d, attr_bytes(a))
 	touch(d)
 	d.attr_version += 1
@@ -760,7 +808,7 @@ remove_attribute_ns :: proc(d: ^Document, h: base.Handle, ns: Attr_Ns, local: st
 attribute_remove :: proc(d: ^Document, h: base.Handle, i: int, name: string) {
 	n := get(d, h)
 	a := n.attrs[i]
-	ordered_remove(&n.attrs, i)
+	attr_ordered_remove(n, i)
 	touch(d)
 	d.attr_version += 1
 	attr_name_changed(d, name)

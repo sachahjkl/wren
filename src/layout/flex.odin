@@ -89,16 +89,21 @@ set_height :: proc(c: ^Ctx, ki: i32, w, cb_h, h: f32) {
 impose_height :: proc(c: ^Ctx, ki: i32, w, cb_h, h: f32) {
 	key, _ := cache_key(c, ki, w, cb_h, h)
 	k := &c.l.boxes[ki]
+	bc := &c.l.cache[ki]
 	k.size.y = h
-	valid := k.cache_ok && k.inc == {} && !k.cache_flow
-	if valid && k.cache_in == key { return }
-	k.alt_ok = valid && .Frame_Root not_in k.fx
-	k.alt_same = true
-	if k.alt_ok { k.alt_in, k.alt_h = k.cache_in, k.cache_h }
-	k.cache_ok = true
-	k.cache_flow = false
-	k.cache_in = key
-	k.cache_h = h
+	valid := (.Cache_Ok in k.state) && k.inc == {} && (.Cache_Flow not_in k.state)
+	if valid && bc.cache_in == key { return }
+	if valid && .Frame_Root not_in k.fx {
+		k.state += {.Alt_Ok, .Alt_Same}
+		c.l.alt_cache[ki] = Alt_Cache{alt_in = bc.cache_in, alt_h = bc.cache_h}
+	} else {
+		k.state -= {.Alt_Ok}
+		k.state += {.Alt_Same}
+	}
+	k.state += {.Cache_Ok}
+	k.state -= {.Cache_Flow}
+	bc.cache_in = key
+	bc.cache_h = h
 }
 
 @(private)
@@ -197,16 +202,17 @@ layout_flex :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 		k := &c.l.boxes[id]
 		ks := k.cs
 		// margins in flow order
+		auto_l, auto_r, auto_t, auto_b := .Auto_L in k.state, .Auto_R in k.state, .Auto_T in k.state, .Auto_B in k.state
 		if row {
 			s, e := 3, 1
 			if main_rev { s, e = 1, 3 }
 			it.m = {k.margin[s], k.margin[e], k.margin[0], k.margin[2]}
-			it.auto_m = {s == 3 ? k.auto_l : k.auto_r, s == 3 ? k.auto_r : k.auto_l, k.auto_t, k.auto_b}
+			it.auto_m = {s == 3 ? auto_l : auto_r, s == 3 ? auto_r : auto_l, auto_t, auto_b}
 		} else {
 			s, e := 0, 2
 			if main_rev { s, e = 2, 0 }
 			it.m = {k.margin[s], k.margin[e], k.margin[3], k.margin[1]}
-			it.auto_m = {s == 0 ? k.auto_t : k.auto_b, s == 0 ? k.auto_b : k.auto_t, k.auto_l, k.auto_r}
+			it.auto_m = {s == 0 ? auto_t : auto_b, s == 0 ? auto_b : auto_t, auto_l, auto_r}
 		}
 		for j in 0 ..< 4 { if it.auto_m[j] { it.m[j] = 0 } }
 		it.grow, it.shrink = ks.flex_grow, ks.flex_shrink

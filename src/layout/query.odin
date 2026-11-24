@@ -146,25 +146,27 @@ clip_contains :: proc(l: ^Layout, v: ^View, ci: i32, p: Vec2) -> bool {
 scroll_offset_of :: proc(l: ^Layout, sp: ^Space) -> Vec2 {
 	b := &l.boxes[sp.box]
 	off, _ := l.scroll[b.node]
-	return {clamp(off.x, sp.min_scroll.x, sp.max_scroll.x), clamp(off.y, sp.min_scroll.y, sp.max_scroll.y)}
+	sc := &sp.data.scroll
+	return {clamp(off.x, sc.min_scroll.x, sc.max_scroll.x), clamp(off.y, sc.min_scroll.y, sc.max_scroll.y)}
 }
 
 @(private)
 sticky_offset :: proc(l: ^Layout, sp: ^Space, viewport: Vec2, doc_scroll: f32) -> Vec2 {
+	st := &sp.data.sticky
 	view: Rect
-	if sp.frame > FIXED_SPACE {
-		f := &l.spaces[sp.frame]
+	if st.frame > FIXED_SPACE {
+		f := &l.spaces[st.frame]
 		so := scroll_offset_of(l, f)
-		view = Rect{f.port.min + so, f.port.max + so}
-	} else if sp.frame == FIXED_SPACE {
+		view = Rect{f.data.scroll.port.min + so, f.data.scroll.port.max + so}
+	} else if st.frame == FIXED_SPACE {
 		view = Rect{{0, 0}, doc_port(l, viewport)}
 	} else {
 		sx := doc_scroll_x_snapped(l)
 		view = Rect{{sx, doc_scroll}, Vec2{sx, doc_scroll} + doc_port(l, viewport)}
 	}
-	r, lim := sp.port, sp.limit
+	r, lim := st.port, st.limit
 	d: Vec2
-	in2 := sp.inset
+	in2 := st.inset
 	if !math.is_nan(in2[0]) {
 		want := view.min.y + in2[0]
 		if r.min.y < want { d.y = max(min(want - r.min.y, lim.max.y - r.max.y), 0) }
@@ -213,7 +215,7 @@ view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, all
 	v.offsets = make([]Vec2, ns, allocator)
 	v.mats = make([]Matrix, ns, allocator)
 	v.invs = make([]Matrix, ns, allocator)
-	v.accs = make([]Matrix4, ns, allocator)
+	if len(l.planes) > 0 { v.accs = make([]Matrix4, len(l.planes), allocator) }
 	v.singular = make([]bool, ns, allocator)
 	for i in 0 ..< ns {
 		sp := &l.spaces[i]
@@ -225,19 +227,19 @@ view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, all
 		case .Transform: v.offsets[i] = v.offsets[sp.parent]
 		case .Anchored: v.offsets[i] = v.offsets[sp.parent] + anchored_shift(l, sp, viewport, doc_scroll)
 		case .Flow: v.offsets[i] = v.offsets[sp.parent]
-		case .Column: v.offsets[i] = v.offsets[sp.parent] + sp.shift
+		case .Column: v.offsets[i] = v.offsets[sp.parent] + sp.data.column.shift
 		}
 		v.mats[i], v.invs[i] = IDENTITY, IDENTITY
-		if sp.kind == .Transform && sp.proj {
+		if space_is_plane(sp) {
 			// a plane: its frame starts here (its own transform is the projection, accs)
 			acc, ok := plane_acc(l, &v, i32(i))
-			v.accs[i] = acc
+			v.accs[sp.data.transform.plane_data] = acc
 			v.singular[i] = !ok || (sp.parent != NONE && v.singular[sp.parent])
 			v.transformed = true
 		} else if sp.kind == .Transform {
 			// the box's transform, around where the box is drawn, then whatever encloses it
 			outer := sp.parent != NONE ? v.mats[sp.parent] : IDENTITY
-			m := mat_mul(outer, mat_shifted(sp.mat, v.offsets[i]))
+			m := mat_mul(outer, mat_shifted(sp.data.transform.mat, v.offsets[i]))
 			inv, ok := mat_inverse(m)
 			v.mats[i], v.invs[i] = m, inv
 			v.singular[i] = !ok || (sp.parent != NONE && v.singular[sp.parent])
@@ -344,7 +346,7 @@ hit_test :: proc(l: ^Layout, p: Vec2, viewport: Vec2, doc_scroll: f32) -> Hit {
 		ctx := NONE
 		if sp.plane != NONE {
 			_, z, _ = plane_point(l, &v, sp.plane, p)
-			ctx = l.spaces[sp.plane].ctx
+			ctx = space_plane(l, sp.plane).ctx
 		}
 		// in f32 first: a point mapped through an extreme transform can be huge or NaN, which int() turns negative
 		fb := (local.y - sp.band0) / sp.band_h
@@ -380,9 +382,10 @@ scroll_wheel :: proc(l: ^Layout, p: Vec2, delta: Vec2, viewport: Vec2, doc_scrol
 	if h.item == NONE { return false }
 	try :: proc(l: ^Layout, s: i32, delta: Vec2) -> bool {
 		sp := &l.spaces[s]
+		sc := &sp.data.scroll
 		node := l.boxes[sp.box].node
 		cur := scroll_offset_of(l, sp)
-		next := Vec2{clamp(cur.x + delta.x, sp.min_scroll.x, sp.max_scroll.x), clamp(cur.y + delta.y, sp.min_scroll.y, sp.max_scroll.y)}
+		next := Vec2{clamp(cur.x + delta.x, sc.min_scroll.x, sc.max_scroll.x), clamp(cur.y + delta.y, sc.min_scroll.y, sc.max_scroll.y)}
 		if math.abs(next.x - cur.x) < 0.01 && math.abs(next.y - cur.y) < 0.01 { return false }
 		l.scroll[node] = next
 		if l.anchor_scroll { l.anchor_stale = true }
@@ -417,8 +420,8 @@ scroll_of :: proc(l: ^Layout, node: base.Handle) -> (Vec2, bool) {
 set_scroll :: proc(l: ^Layout, node: base.Handle, off: Vec2) -> (Vec2, bool) {
 	bi := box_index(l, node)
 	if bi == NONE || l.fin[bi].scroll_space == NONE { return {}, false }
-	sp := &l.spaces[l.fin[bi].scroll_space]
-	v := Vec2{clamp(off.x, sp.min_scroll.x, sp.max_scroll.x), clamp(off.y, sp.min_scroll.y, sp.max_scroll.y)}
+	sc := &l.spaces[l.fin[bi].scroll_space].data.scroll
+	v := Vec2{clamp(off.x, sc.min_scroll.x, sc.max_scroll.x), clamp(off.y, sc.min_scroll.y, sc.max_scroll.y)}
 	if l.anchor_scroll && l.scroll[node] != v { l.anchor_stale = true }
 	l.scroll[node] = v
 	return v, true
@@ -437,15 +440,16 @@ reveal_in_scroll_containers :: proc(l: ^Layout, node: base.Handle) -> bool {
 		sp := &l.spaces[s]
 		#partial switch sp.kind {
 		case .Scroll:
+			sc := &sp.data.scroll
 			owner := l.boxes[sp.box].node
 			cur, _ := scroll_of(l, owner)
 			want := cur
-			pw, ph := sp.port.max.x - sp.port.min.x, sp.port.max.y - sp.port.min.y
-			if rect.min.y < sp.port.min.y + want.y || rect.max.y > sp.port.max.y + want.y {
-				want.y = rect.min.y - sp.port.min.y - max(ph - (rect.max.y - rect.min.y), 0) / 2
+			pw, ph := sc.port.max.x - sc.port.min.x, sc.port.max.y - sc.port.min.y
+			if rect.min.y < sc.port.min.y + want.y || rect.max.y > sc.port.max.y + want.y {
+				want.y = rect.min.y - sc.port.min.y - max(ph - (rect.max.y - rect.min.y), 0) / 2
 			}
-			if rect.min.x < sp.port.min.x + want.x || rect.max.x > sp.port.max.x + want.x {
-				want.x = rect.min.x - sp.port.min.x - max(pw - (rect.max.x - rect.min.x), 0) / 2
+			if rect.min.x < sc.port.min.x + want.x || rect.max.x > sc.port.max.x + want.x {
+				want.x = rect.min.x - sc.port.min.x - max(pw - (rect.max.x - rect.min.x), 0) / 2
 			}
 			got, _ := set_scroll(l, owner, want)
 			if got != cur { changed = true }
@@ -461,21 +465,21 @@ reveal_in_scroll_containers :: proc(l: ^Layout, node: base.Handle) -> bool {
 scroll_port :: proc(l: ^Layout, node: base.Handle) -> (Rect, bool) {
 	bi := box_index(l, node)
 	if bi == NONE || l.fin[bi].scroll_space == NONE { return {}, false }
-	return l.spaces[l.fin[bi].scroll_space].port, true
+	return l.spaces[l.fin[bi].scroll_space].data.scroll.port, true
 }
 
 // Largest scroll offset of a scroll container.
 scroll_max :: proc(l: ^Layout, node: base.Handle) -> (Vec2, bool) {
 	bi := box_index(l, node)
 	if bi == NONE || l.fin[bi].scroll_space == NONE { return {}, false }
-	return l.spaces[l.fin[bi].scroll_space].max_scroll, true
+	return l.spaces[l.fin[bi].scroll_space].data.scroll.max_scroll, true
 }
 
 // Smallest scroll offset of a scroll container: 0, or negative where its scroll origin is at the high end of the axis.
 scroll_min :: proc(l: ^Layout, node: base.Handle) -> Vec2 {
 	bi := box_index(l, node)
 	if bi == NONE || l.fin[bi].scroll_space == NONE { return {} }
-	return l.spaces[l.fin[bi].scroll_space].min_scroll
+	return l.spaces[l.fin[bi].scroll_space].data.scroll.min_scroll
 }
 
 box_index :: proc(l: ^Layout, node: base.Handle) -> i32 {
@@ -522,7 +526,7 @@ space_offset :: proc(l: ^Layout, s: i32, viewport: Vec2, doc_scroll: f32) -> Vec
 	case .Transform: return space_offset(l, sp.parent, viewport, doc_scroll)
 	case .Anchored: return space_offset(l, sp.parent, viewport, doc_scroll) + anchored_shift(l, sp, viewport, doc_scroll)
 	case .Flow: return space_offset(l, sp.parent, viewport, doc_scroll)
-	case .Column: return space_offset(l, sp.parent, viewport, doc_scroll) + sp.shift
+	case .Column: return space_offset(l, sp.parent, viewport, doc_scroll) + sp.data.column.shift
 	}
 	return {}
 }
@@ -760,13 +764,14 @@ scrollbar_thumb :: proc(l: ^Layout, v: ^View, it: ^Display_Item) -> Rect {
 	ss := l.fin[it.box].scroll_space
 	if ss == NONE { return {} }
 	sp := &l.spaces[ss]
+	sc := &sp.data.scroll
 	vertical := .Vertical in it.flags
 	ax := vertical ? 1 : 0
-	range := sp.max_scroll[ax] - sp.min_scroll[ax]
+	range := sc.max_scroll[ax] - sc.min_scroll[ax]
 	if range <= 0 { return {} }
 	rail := item_rect(l, v, it)
 	if !l.settings.scrollbar_overlay { _, _, rail = classic_parts(rail, vertical) }
 	so := scroll_offset_of(l, sp)
-	port := sp.port.max - sp.port.min
-	return bar_thumb(l, rail, vertical, port[ax], range, (so[ax] - sp.min_scroll[ax]) / range)
+	port := sc.port.max - sc.port.min
+	return bar_thumb(l, rail, vertical, port[ax], range, (so[ax] - sc.min_scroll[ax]) / range)
 }

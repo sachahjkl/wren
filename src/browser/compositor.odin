@@ -111,11 +111,13 @@ Comp :: struct {
 	item_hash:  [dynamic]u64,            // per item: what its picture was recorded from
 	item_cs:    [dynamic]^style.Computed,
 	item_chunk: [dynamic]i32,
-	node_items: map[base.Handle][dynamic]i32,   // items by node, for animated elements (node_items_ok: up to date)
+	node_item_ranges: map[base.Handle][2]i32,   // node -> [start, end) in node_item_list, for animated elements (node_items_ok: up to date)
+	node_item_list:   [dynamic]i32,             // flat display item indices grouped by node (CSR)
 	node_items_ok: bool,
 	clip_radii: [dynamic][4]f32,         // per clip, as recorded
 	deco_keys:  [dynamic]u64,            // per Layout.deco_items, what the boxes that decorate them were when recorded
-	floors:     [dynamic][dynamic]i32,   // per group: the clips pushed around it (paint_effects.odin, open_group)
+	floor_start: [dynamic]i32,           // CSR offsets (len = len(groups) + 1) into floor_clips
+	floor_clips: [dynamic]i32,           // flat clips pushed around each group (paint_effects.odin, open_group)
 	group_units: [dynamic]int,
 	pool:       [dynamic]^draw.Picture,  // pictures of dropped chunks
 	frame:      i64,                     // frames painted
@@ -144,10 +146,8 @@ composite_forget :: proc(l: ^Layout) {
 	for &ch in c.chunks { chunk_free(c, &ch) }
 	for p in c.pool { picture_free(c, p) }
 	delete(c.chunks); delete(c.item_hash); delete(c.item_cs); delete(c.item_chunk); delete(c.clip_radii); delete(c.deco_keys)
-	for _, v in c.node_items { delete(v) }
-	delete(c.node_items)
-	for f in c.floors { delete(f) }
-	delete(c.floors); delete(c.group_units); delete(c.pool)
+	delete(c.node_item_ranges); delete(c.node_item_list)
+	delete(c.floor_start); delete(c.floor_clips); delete(c.group_units); delete(c.pool)
 	free(c)
 	if len(comps) == 0 { delete(comps); comps = nil }
 }
@@ -322,31 +322,48 @@ has_prefix :: proc(a, p: []i32) -> bool {
 	return true
 }
 
+@(private)
+comp_floor_clips :: #force_inline proc(c: ^Comp, g: i32) -> []i32 {
+	if g < 0 || int(g) + 1 >= len(c.floor_start) { return nil }
+	return c.floor_clips[c.floor_start[g]:c.floor_start[g + 1]]
+}
+
 // The clips pushed when group g opens, in the order effects push them: the group's box's clip chain on top of the
 // enclosing group's (set_clip keeps a chain that extends the floor, else stacks the whole chain on it).
-@(private = "file")
+// Stored in flat CSR arrays (floor_start, floor_clips) to avoid per-group heap allocations on rebuild.
+@(private)
 compute_floors :: proc(c: ^Comp, l: ^Layout) {
-	for f in c.floors { delete(f) }
-	resize(&c.floors, len(l.groups))
+	clear(&c.floor_start)
+	clear(&c.floor_clips)
+	ng := len(l.groups)
+	resize(&c.floor_start, ng + 1)
 	want := make([dynamic]i32, 0, 8, context.temp_allocator)
-	for g in 0 ..< len(l.groups) {
+	for g in 0 ..< ng {
 		// groups are made in tree order: a parent before its children
-		f := make([dynamic]i32, 0, 4)
+		c.floor_start[g] = i32(len(c.floor_clips))
 		parent := l.groups[g].parent
-		pf: []i32 = parent != lay.NONE ? c.floors[parent][:] : nil
 		clip_chain(l, l.boxes[l.groups[g].box].clip, &want)
-		if !has_prefix(want[:], pf) { append(&f, ..pf) }
-		append(&f, ..want[:])
-		c.floors[g] = f
+		if parent != lay.NONE {
+			ps, pe := c.floor_start[parent], c.floor_start[parent + 1]
+			if !has_prefix(want[:], c.floor_clips[ps:pe]) {
+				// Resize before copying so reallocation never invalidates the parent slice.
+				base_len := len(c.floor_clips)
+				pn := int(pe - ps)
+				resize(&c.floor_clips, base_len + pn)
+				copy(c.floor_clips[base_len:], c.floor_clips[ps:pe])
+			}
+		}
+		append(&c.floor_clips, ..want[:])
 	}
+	c.floor_start[ng] = i32(len(c.floor_clips))
 }
 
 // The clips item `it` pushes inside its group (all of its chain outside any group).
-@(private = "file")
+@(private)
 local_clips :: proc(c: ^Comp, l: ^Layout, it: ^lay.Display_Item, out: ^[dynamic]i32) -> []i32 {
 	clip_chain(l, it.clip, out)
 	if it.group == lay.NONE { return out[:] }
-	f := c.floors[it.group][:]
+	f := comp_floor_clips(c, it.group)
 	return has_prefix(out[:], f) ? out[len(f):] : out[:]
 }
 
@@ -533,15 +550,31 @@ chunk_extent :: proc(c: ^Comp, l: ^Layout, ch: ^Comp_Chunk, chain: ^[dynamic]i32
 	}
 }
 
-@(private = "file")
+// Groups display items by DOM node in flat CSR storage (node_item_ranges + node_item_list) to avoid per-node heap allocations.
+@(private)
 node_items_make :: proc(c: ^Comp, l: ^Layout) {
-	for _, v in c.node_items { delete(v) }
-	clear(&c.node_items)
+	clear(&c.node_item_ranges)
+	clear(&c.node_item_list)
+	for &it in l.items {
+		if it.node == base.NIL_HANDLE { continue }
+		if r, ok := &c.node_item_ranges[it.node]; ok {
+			r[1] += 1
+		} else {
+			c.node_item_ranges[it.node] = {0, 1}
+		}
+	}
+	off: i32 = 0
+	for _, &r in c.node_item_ranges {
+		cnt := r[1]
+		r = {off, off}
+		off += cnt
+	}
+	non_zero_resize(&c.node_item_list, int(off))
 	for &it, i in l.items {
 		if it.node == base.NIL_HANDLE { continue }
-		list := c.node_items[it.node] or_else make([dynamic]i32, 0, 2)
-		append(&list, i32(i))
-		c.node_items[it.node] = list
+		r := &c.node_item_ranges[it.node]
+		c.node_item_list[r[1]] = i32(i)
+		r[1] += 1
 	}
 	c.node_items_ok = true
 }
@@ -583,7 +616,9 @@ check_paint_values :: proc(c: ^Comp, l: ^Layout) {
 	if st := (^style.Styled)(l.styled); st != nil && len(st.overlaid) > 0 && !style.ps_empty(style.ps_intersect(st.animated, raster_props())) {
 		if !c.node_items_ok { node_items_make(c, l) }
 		for h in st.overlaid {
-			if list, ok := c.node_items[h]; ok { for i in list { check(c, l, int(i), &cache, &chain) } }
+			if r, ok := c.node_item_ranges[h]; ok {
+				for i in c.node_item_list[r[0]:r[1]] { check(c, l, int(i), &cache, &chain) }
+			}
 		}
 	}
 	// decorations follow their boxes, which may not be the item's

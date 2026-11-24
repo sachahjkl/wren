@@ -229,7 +229,7 @@ Node_setHTMLUnsafe :: proc(c: ^Call, node: Api_Node, markup: string) -> Api_Erro
 	h := H(node.handle)
 	n := node.data
 	ctx, target := h, h
-	if n.is_shadow {
+	if .Is_Shadow in n.flags {
 		ctx = dom.host_of(d, h)
 	} else if n.kind == .Element && n.ns == .HTML && n.name == "template" {
 		target = dom.template_content(d, h)
@@ -249,7 +249,7 @@ Document_parseHTMLUnsafeNode :: proc(c: ^Call, markup: string) -> (u64, Api_Erro
 	d := call_doc(c)
 	if d == nil { return 0, fail(c, .Invalid_State, "no document") }
 	f := dom.create_fragment(d)
-	dom.get(d, f).as_document, dom.get(d, f).blank_url = true, true
+	dom.get(d, f).flags += {.As_Document, .Blank_Url}
 	res := html.parse_into(d, f, transmute([]byte)markup, c.page.settings.dom.max_fragment_nodes)
 	if !res.ok {
 		dom.destroy_unpinned(d, f)

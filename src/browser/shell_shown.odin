@@ -107,9 +107,9 @@ shell_shown_set :: proc(app: ^App, t: ^Tab, painting := false) -> (sh: Shown) {
 		moves := style.compositor_moves(v.props)
 		if !style.ps_empty(moves) {
 			for &sp, i in l.spaces {
-				if sp.kind != .Transform || sp.box != bi || sp.proj { continue }
-				append(&sh.mats, Shown_Mat{i32(i), sp.mat})
-				sp.mat = lay.box_matrix_of(l, &l.boxes[bi], v.cs)
+				if sp.kind != .Transform || sp.box != bi || lay.space_is_plane(&sp) { continue }
+				append(&sh.mats, Shown_Mat{i32(i), sp.data.transform.mat})
+				sp.data.transform.mat = lay.box_matrix_of(l, &l.boxes[bi], v.cs)
 			}
 		}
 		if style.ps_has(v.props, .Opacity) {
@@ -171,7 +171,7 @@ shell_shown_put :: proc(sh: ^Shown) {
 	if !sh.set { return }
 	l := &sh.t.layout
 	sh.t.scroll = sh.scroll
-	for m in sh.mats { l.spaces[m.space].mat = m.mat }
+	for m in sh.mats { l.spaces[m.space].data.transform.mat = m.mat }
 	for a in sh.alphas { l.groups[a.group].alpha = a.alpha }
 	for r in sh.records { r.record^ = r.was }
 	for r in sh.radii { l.clips[r.clip].radii = r.radii }

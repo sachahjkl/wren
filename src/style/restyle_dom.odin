@@ -933,7 +933,7 @@ groups_in_document :: proc(s: ^Styled, doc: ^dom.Document) -> bool {
 			if n.kind == .Element && is_listed_control(n.name) && group_control(doc, x, n) { s.forms_scan = 2; break }
 			for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
 			// (a host's shadow root. A shadow root's `shadow` is its host: following it never ended, and the stack took all the memory)
-			if n.shadow != base.NIL_HANDLE && !n.is_shadow { append(&stack, n.shadow) }
+			if n.shadow != base.NIL_HANDLE && !(.Is_Shadow in n.flags) { append(&stack, n.shadow) }
 		}
 	}
 	return s.forms_scan == 2
@@ -1832,16 +1832,17 @@ counters_refresh :: proc(s: ^Styled, doc: ^dom.Document, max_listed: int) -> boo
 	blank :: proc(c: ^Computed, after: bool) {
 		if !after {
 			c.marker_text = ""
-			c.content.items = nil
-			if c.before != nil { c.before.content.items = nil }
+			// Only touch content.items when content is .Items (otherwise rare_group may be read-only initial_groups).
+			if c.content.kind == .Items { c.content.items = nil }
+			if c.before != nil && c.before.content.kind == .Items { c.before.content.items = nil }
 		}
-		if c.after != nil { c.after.content.items = nil }
+		if c.after != nil && c.after.content.kind == .Items { c.after.content.items = nil }
 	}
 	restore :: proc(c: ^Computed, sv: Saved) {
 		c.marker_text = sv.marker
-		c.content.items = sv.items[0]
-		if c.before != nil { c.before.content.items = sv.items[1] }
-		if c.after != nil { c.after.content.items = sv.items[2] }
+		if c.content.kind == .Items { c.content.items = sv.items[0] }
+		if c.before != nil && c.before.content.kind == .Items { c.before.content.items = sv.items[1] }
+		if c.after != nil && c.after.content.kind == .Items { c.after.content.items = sv.items[2] }
 	}
 	// the record of `h` with the resolved values `now` (a copy when they differ from what it has)
 	apply_values :: proc(s: ^Styled, h: base.Handle, c: ^Computed, sv, now: Saved) -> bool {
@@ -1852,9 +1853,19 @@ counters_refresh :: proc(s: ^Styled, doc: ^dom.Document, max_listed: int) -> boo
 		nc := new(Computed, a)
 		nc^ = c^
 		nc.marker_text = strings.clone(now.marker, a)
-		nc.content.items = clone_items(now.items[0], a)
-		if c.before != nil { nb := new(Computed, a); nb^ = c.before^; nb.content.items = clone_items(now.items[1], a); nc.before = nb }
-		if c.after != nil { na := new(Computed, a); na^ = c.after^; na.content.items = clone_items(now.items[2], a); nc.after = na }
+		if nc.content.kind == .Items { group_take(nc, .Rare, a); nc.content.items = clone_items(now.items[0], a) }
+		if c.before != nil {
+			nb := new(Computed, a)
+			nb^ = c.before^
+			if nb.content.kind == .Items { group_take(nb, .Rare, a); nb.content.items = clone_items(now.items[1], a) }
+			nc.before = nb
+		}
+		if c.after != nil {
+			na := new(Computed, a)
+			na^ = c.after^
+			if na.content.kind == .Items { group_take(na, .Rare, a); na.content.items = clone_items(now.items[2], a) }
+			nc.after = na
+		}
 		old := s.by_node[int(base.handle_index(h))]
 		if s.track_changes { append(&s.changes, Style_Change{node = h, old = old, new = nc}) }
 		journal_add(s, h, .Box)

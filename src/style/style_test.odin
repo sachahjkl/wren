@@ -983,3 +983,47 @@ backdrop_styles :: proc(t: ^testing.T) {
 		}
 	}
 }
+
+// Computed styles stay compact, and common elements share read-only initial groups for cold properties.
+@(test)
+computed_layout_compact_and_group_sharing :: proc(t: ^testing.T) {
+	testing.expectf(t, size_of(Computed) <= 552, "style.Computed grew to %d bytes", size_of(Computed))
+	testing.expectf(t, size_of(Inherited_Group) <= 528, "style.Inherited_Group grew to %d bytes", size_of(Inherited_Group))
+	testing.expectf(t, size_of(Transform_Group) <= 176, "style.Transform_Group grew to %d bytes", size_of(Transform_Group))
+
+	f := fixture_load(`<style>
+		#decor { border-radius: 6px }
+		#box { inset: 4px 8px }
+		#flex { flex-grow: 2; gap: 5px }
+		#rare { aspect-ratio: 2 / 1; outline-offset: 3px }
+	</style><div id=plain></div><div id=decor></div><div id=box></div><div id=flex></div><div id=rare></div>`)
+	defer fixture_unload(f)
+
+	init_decor := (^Decor_Group)(initial_groups[.Decor])
+	init_box := (^Box_Extra_Group)(initial_groups[.Box_Extra])
+	init_flex := (^Flex_Group)(initial_groups[.Flex])
+	init_rare := (^Rare_Group)(initial_groups[.Rare])
+
+	plain := at(f, "plain")
+	testing.expect(t, plain.decor_group == init_decor, "plain shares initial Decor_Group")
+	testing.expect(t, plain.box_extra_group == init_box, "plain shares initial Box_Extra_Group")
+	testing.expect(t, plain.flex_group == init_flex, "plain shares initial Flex_Group")
+	testing.expect(t, plain.rare_group == init_rare, "plain shares initial Rare_Group")
+
+	decor := at(f, "decor")
+	testing.expect(t, decor.decor_group != init_decor && near(decor.radius[.Top_Left].h.v, 6))
+	testing.expect(t, decor.box_extra_group == init_box && decor.flex_group == init_flex && decor.rare_group == init_rare)
+
+	box := at(f, "box")
+	testing.expect(t, box.box_extra_group != init_box && near(box.inset[.Top].v, 4) && near(box.inset[.Left].v, 8))
+	testing.expect(t, box.decor_group == init_decor && box.flex_group == init_flex && box.rare_group == init_rare)
+
+	flex := at(f, "flex")
+	testing.expect(t, flex.flex_group != init_flex && near(flex.flex_grow, 2) && near(flex.row_gap.v, 5))
+	testing.expect(t, flex.decor_group == init_decor && flex.box_extra_group == init_box && flex.rare_group == init_rare)
+
+	rare := at(f, "rare")
+	testing.expect(t, rare.rare_group != init_rare && near(rare.aspect_ratio, 2) && near(rare.outline_offset, 3))
+	testing.expect(t, rare.decor_group == init_decor && rare.box_extra_group == init_box && rare.flex_group == init_flex)
+}
+

@@ -333,9 +333,9 @@ finish :: proc(c: ^Ctx) {
 	note_doc_extent_x(l, doc, c.vp)
 
 	// spaces, clips, groups
-	clear(&l.spaces); clear(&l.clips); clear(&l.groups)
-	append(&l.spaces, Space{kind = .Document, parent = NONE, box = 0, frame = NONE, clip = NONE, xform = NONE, plane = NONE, persp_from = NONE, ctx = NONE, dest = NONE})
-	append(&l.spaces, Space{kind = .Fixed, parent = NONE, box = 0, frame = NONE, clip = NONE, xform = NONE, plane = NONE, persp_from = NONE, ctx = NONE, dest = NONE})
+	clear(&l.spaces); clear(&l.planes); clear(&l.clips); clear(&l.groups)
+	append(&l.spaces, Space{kind = .Document, parent = NONE, box = 0, clip = NONE, xform = NONE, plane = NONE})
+	append(&l.spaces, Space{kind = .Fixed, parent = NONE, box = 0, clip = NONE, xform = NONE, plane = NONE})
 	nan := math.nan_f32()
 	isolate := isolated_contexts(l)
 	anchored := anchored_by_box(l)
@@ -367,7 +367,7 @@ finish :: proc(c: ^Ctx) {
 			frame := b.space
 			for frame > FIXED_SPACE && l.spaces[frame].kind != .Scroll { frame = l.spaces[frame].parent }
 			port_size := c.vp
-			if frame > FIXED_SPACE { port_size = l.spaces[frame].port.max - l.spaces[frame].port.min }
+			if frame > FIXED_SPACE { port_size = l.spaces[frame].data.scroll.port.max - l.spaces[frame].data.scroll.port.min }
 			lim := Rect{{-math.F32_MAX, -math.F32_MAX}, {math.F32_MAX, math.F32_MAX}}
 			if q := b.parent; q != NONE {
 				qb := &l.boxes[q]
@@ -381,13 +381,19 @@ finish :: proc(c: ^Ctx) {
 				v, ok := definite(c, b.cs.inset[s], base)
 				ins[i] = ok ? v : nan
 			}
-			append(&l.spaces, Space{kind = .Sticky, parent = b.space, box = x, frame = frame, clip = b.clip, xform = l.spaces[b.space].xform, plane = l.spaces[b.space].plane, persp_from = NONE, ctx = NONE, dest = NONE, port = border_rect(b), limit = lim, inset = ins})
+			append(&l.spaces, Space{
+				kind = .Sticky, parent = b.space, box = x, clip = b.clip, xform = l.spaces[b.space].xform, plane = l.spaces[b.space].plane,
+				data = {sticky = {port = border_rect(b), limit = lim, inset = ins, frame = frame}},
+			})
 			b = &l.boxes[x]
 			b.space = i32(len(l.spaces) - 1)
 		}
 		if .Transformed in b.flags {
 			si := i32(len(l.spaces))
-			sp := Space{kind = .Transform, parent = b.space, box = x, frame = NONE, clip = b.clip, xform = si, mat = box_matrix(l, b), plane = l.spaces[b.space].plane, persp_from = NONE, ctx = NONE, dest = NONE}
+			sp := Space{
+				kind = .Transform, parent = b.space, box = x, clip = b.clip, xform = si, plane = l.spaces[b.space].plane,
+				data = {transform = {mat = box_matrix(l, b), plane_data = NONE}},
+			}
 			if .Plane in b.flags { plane_space(l, &sp, si, b) }
 			append(&l.spaces, sp)
 			b = &l.boxes[x]
@@ -405,7 +411,10 @@ finish :: proc(c: ^Ctx) {
 			port := padding_rect(b)
 			mn, ms := scroll_limits(b, bf.overflow, port)
 			if ms.x > BAR_MIN_OVERFLOW || ms.y > BAR_MIN_OVERFLOW || mn.x < -BAR_MIN_OVERFLOW || mn.y < -BAR_MIN_OVERFLOW {
-				append(&l.spaces, Space{kind = .Scroll, parent = b.space, box = x, frame = NONE, clip = bf.content_clip, xform = l.spaces[b.space].xform, plane = l.spaces[b.space].plane, persp_from = NONE, ctx = NONE, dest = NONE, port = port, max_scroll = ms, min_scroll = mn})
+				append(&l.spaces, Space{
+					kind = .Scroll, parent = b.space, box = x, clip = bf.content_clip, xform = l.spaces[b.space].xform, plane = l.spaces[b.space].plane,
+					data = {scroll = {port = port, max_scroll = ms, min_scroll = mn}},
+				})
 				bf.content_space = i32(len(l.spaces) - 1)
 				bf.scroll_space = bf.content_space
 				if off, ok := l.scroll[b.node]; ok { l.scroll[b.node] = {clamp(off.x, mn.x, ms.x), clamp(off.y, mn.y, ms.y)} }

@@ -754,7 +754,7 @@ media_listened :: proc(el: ^Media_Element, type: string) -> bool {
 	for h := el.node; h != base.NIL_HANDLE; {
 		n := dom.get(d, h)
 		if n == nil { break }
-		for l in n.listeners { if !l.removed && l.type == type { return true } }
+		for l in dom.node_listeners(d, h) { if !l.removed && l.type == type { return true } }
 		h = n.parent
 	}
 	_, has := dom.get_attribute(d, el.node, strings.concatenate({"on", type}, context.temp_allocator))

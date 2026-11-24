@@ -144,7 +144,7 @@ Node_nodeName :: proc(c: ^Call, node: Api_Node) -> string {
 	case .Comment: return n.xml == .Processing_Instruction ? n.name : "#comment"
 	case .Document: return "#document"
 	case .Doctype: return n.name
-	case .Fragment: return n.as_document ? "#document" : "#document-fragment"
+	case .Fragment: return (.As_Document in n.flags) ? "#document" : "#document-fragment"
 	}
 	return ""
 }
@@ -152,8 +152,8 @@ Node_nodeName :: proc(c: ^Call, node: Api_Node) -> string {
 // A document of its own (DOMParser's, createHTMLDocument's) has the URL of the page but not its <base>.
 Node_baseURI :: proc(c: ^Call, node: Api_Node) -> string {
 	p := c.page
-	h := node.data.as_document ? H(node.handle) : node_document(p, H(node.handle))
-	if n := dom.get(p.doc, h); n != nil && n.as_document { return p.env.location.href }
+	h := (.As_Document in node.data.flags) ? H(node.handle) : node_document(p, H(node.handle))
+	if n := dom.get(p.doc, h); n != nil && (.As_Document in n.flags) { return p.env.location.href }
 	return document_base_url(p)
 }
 
@@ -277,13 +277,13 @@ template_owner_document :: proc(p: ^Page) -> base.Handle {
 	if p.template_doc.doc == d && dom.get(d, p.template_doc.handle) != nil { return p.template_doc.handle }
 	f := dom.create_fragment(d)
 	n := dom.get(d, f)
-	n.as_document, n.held, n.blank_url = true, true, true
+	n.flags += {.As_Document, .Held, .Blank_Url}
 	p.template_doc = {d, f}
 	return f
 }
 
 Node_ownerDocument :: proc(c: ^Call, node: Api_Node) -> u64 {
-	if node.data.kind == .Document || node.data.as_document { return 0 }
+	if node.data.kind == .Document || (.As_Document in node.data.flags) { return 0 }
 	return u64(node_document(c.page, H(node.handle)))
 }
 
@@ -296,8 +296,8 @@ node_document :: proc(p: ^Page, h: base.Handle) -> base.Handle {
 	if r == d.root { return r }
 	n := dom.get(d, r)
 	if n == nil { return d.root }
-	if n.as_document { return r }
-	if n.kind == .Fragment && n.held { return template_owner_document(p) }
+	if .As_Document in n.flags { return r }
+	if n.kind == .Fragment && (.Held in n.flags) { return template_owner_document(p) }
 	if n.doc != base.NIL_HANDLE && dom.get(d, n.doc) != nil { return n.doc }
 	return d.root
 }
@@ -322,7 +322,7 @@ Node_set_nodeValue :: proc(c: ^Call, node: Api_Node, value: string) -> Api_Error
 Node_textContent :: proc(c: ^Call, node: Api_Node) -> (string, Api_Error) {
 	#partial switch node.data.kind {
 	case .Document, .Doctype: return "", .Not_Found
-	case .Fragment: if node.data.as_document { return "", .Not_Found }
+	case .Fragment: if .As_Document in node.data.flags { return "", .Not_Found }
 	}
 	return dom.text_content(c.page.doc, H(node.handle)), .None
 }
@@ -338,13 +338,13 @@ Node_normalize :: proc(c: ^Call, node: Api_Node) { dom.normalize(c.page.doc, H(n
 
 Node_cloneNode :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, Api_Error) {
 	if node.data.kind == .Document { return 0, fail(c, .Not_Supported, "cloneNode: this browser has one document per page; the document cannot be cloned") }
-	if node.data.is_shadow { return 0, fail(c, .Not_Supported, "A shadow root cannot be cloned.") }
+	if .Is_Shadow in node.data.flags { return 0, fail(c, .Not_Supported, "A shadow root cannot be cloned.") }
 	h := dom.clone_node(c.page.doc, H(node.handle), deep)
 	scripts_cloned(c.page, H(node.handle), h)   // (js_load_fragment.odin)
 	content_handlers_cloned(c.page, h)          // (js_load_realm.odin)
 	// a clone of a node of the document is in the document's realm: its custom elements are upgraded (HTML "create an
 	// element": cloning enqueues an upgrade reaction); one of a template's contents stays inert
-	if rn := dom.get(c.page.doc, dom.shadow_including_root(c.page.doc, H(node.handle))); rn == nil || !(rn.kind == .Fragment && rn.held) {
+	if rn := dom.get(c.page.doc, dom.shadow_including_root(c.page.doc, H(node.handle))); rn == nil || !(rn.kind == .Fragment && (.Held in rn.flags)) {
 		custom_elements_cloned(c.page, h)
 	}
 	return u64(h), .None
@@ -352,7 +352,7 @@ Node_cloneNode :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, Api_Error)
 
 Document_importNodeCopy :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, Api_Error) {
 	if node.data.kind == .Document { return 0, fail(c, .Not_Supported, "importNode: this browser has one document per page; the document cannot be imported") }
-	if node.data.is_shadow { return 0, fail(c, .Not_Supported, "A shadow root cannot be imported.") }
+	if .Is_Shadow in node.data.flags { return 0, fail(c, .Not_Supported, "A shadow root cannot be imported.") }
 	h := dom.clone_node(c.page.doc, H(node.handle), deep)
 	scripts_cloned(c.page, H(node.handle), h)
 	content_handlers_cloned(c.page, h)
@@ -518,8 +518,8 @@ check_insert :: proc(c: ^Call, parent, node, child: base.Handle, replacing: bool
 		}
 	}
 	// (a document of its own, createHTMLDocument's, is a fragment that stands for one: as_document)
-	p_doc := p.kind == .Document || p.as_document
-	if n.kind == .Document || n.as_document { return fail(c, .Hierarchy, "Nodes of type '#document' may not be inserted inside nodes of type '#document-fragment' or elsewhere.") }
+	p_doc := p.kind == .Document || (.As_Document in p.flags)
+	if n.kind == .Document || (.As_Document in n.flags) { return fail(c, .Hierarchy, "Nodes of type '#document' may not be inserted inside nodes of type '#document-fragment' or elsewhere.") }
 	if n.kind == .Text && p_doc { return fail(c, .Hierarchy, "Nodes of type '#text' may not be inserted inside nodes of type '#document'.") }
 	if n.kind == .Doctype && !p_doc { return fail(c, .Hierarchy, "A doctype may only be a child of the document.") }
 	if !p_doc { return .None }
@@ -1008,17 +1008,17 @@ Document_createComment :: proc(c: ^Call, data: string) -> (u64, Api_Error) {
 }
 
 Document_adoptNode :: proc(c: ^Call, document: Api_Node, node: Api_Node) -> (u64, Api_Error) {
-	if node.data.kind == .Document || node.data.as_document { return 0, fail(c, .Not_Supported, "The node provided is a document, which may not be adopted.") }
-	if node.data.is_shadow { return 0, fail(c, .Hierarchy, "The node provided is a shadow root, which may not be adopted.") }
+	if node.data.kind == .Document || (.As_Document in node.data.flags) { return 0, fail(c, .Not_Supported, "The node provided is a document, which may not be adopted.") }
+	if .Is_Shadow in node.data.flags { return 0, fail(c, .Hierarchy, "The node provided is a shadow root, which may not be adopted.") }
 	d := c.page.doc
 	if node.data.parent != base.NIL_HANDLE { dom.detach(d, H(node.handle)) }
-	to := document.data.as_document ? H(document.handle) : base.NIL_HANDLE
+	to := (.As_Document in document.data.flags) ? H(document.handle) : base.NIL_HANDLE
 	if dom.get(d, H(node.handle)).doc != to { dom.set_node_document(d, H(node.handle), to) }
 	return node.handle, .None
 }
 
 Document_documentURI :: proc(c: ^Call, document: Api_Node) -> string {
-	return document.data.blank_url ? "about:blank" : c.page.env.location.href
+	return (.Blank_Url in document.data.flags) ? "about:blank" : c.page.env.location.href
 }
 
 Document_compatMode :: proc(c: ^Call) -> string {
@@ -1150,7 +1150,7 @@ DOMImplementation_createHTMLDocument :: proc(c: ^Call, title: Maybe(string)) -> 
 	d := jd_doc(c)
 	if d == nil { return 0, no_document(c) }
 	f := dom.create_fragment(d)
-	dom.get(d, f).as_document, dom.get(d, f).blank_url = true, true
+	dom.get(d, f).flags += {.As_Document, .Blank_Url}
 	dom.append_child(d, f, dom.create_doctype(d, "html", "", ""))
 	html := dom.create_element(d, "html")
 	head := dom.create_element(d, "head")

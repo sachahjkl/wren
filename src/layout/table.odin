@@ -585,7 +585,7 @@ layout_table :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32) -> f32 {
 		k.pos = {col_x[gc.col] - cx, 0}
 		content := cell_content[i]
 		k.size.y = span_h
-		k.cache_ok = false
+		k.state -= {.Cache_Ok}
 		dy: f32
 		#partial switch k.cs.vertical_align.kind {
 		case .Middle: dy = (span_h - content) * 0.5
@@ -602,8 +602,8 @@ layout_table :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32) -> f32 {
 	for cap in g.captions {
 		resolve_box_model(c, &c.l.boxes[cap], w)
 		kb := &c.l.boxes[cap]
-		if kb.auto_l { kb.margin[3] = 0 }
-		if kb.auto_r { kb.margin[1] = 0 }
+		if .Auto_L in kb.state { kb.margin[3] = 0 }
+		if .Auto_R in kb.state { kb.margin[1] = 0 }
 		cwid := max(w - mg_w(kb), 0)
 		r := layout_contents(c, cap, cwid, -1, -1, nil)
 		kb = &c.l.boxes[cap]

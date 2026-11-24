@@ -519,7 +519,7 @@ hostile_depth :: proc(t: ^testing.T) {
 	f.vp = {800, 600}
 	fixture_run(f)
 	max_depth: i32
-	for &b in f.l.boxes { max_depth = max(max_depth, b.depth) }
+	for &c in f.l.cold { max_depth = max(max_depth, c.depth) }
 	testing.expect(t, int(max_depth) <= f.set.max_depth, "box depth bounded")
 	found := false
 	for &it in f.l.inline_items { if it.kind == .Text && it.text == "deep" { found = true } }

@@ -782,10 +782,10 @@ grid_item_margins :: proc(c: ^Ctx, g: ^Grid, cw: f32) {
 		resolve_box_model(c, &c.l.boxes[it.box], cw)
 		k := &c.l.boxes[it.box]
 		it.m = k.margin
-		if k.auto_t { it.m[0] = 0 }
-		if k.auto_r { it.m[1] = 0 }
-		if k.auto_b { it.m[2] = 0 }
-		if k.auto_l { it.m[3] = 0 }
+		if .Auto_T in k.state { it.m[0] = 0 }
+		if .Auto_R in k.state { it.m[1] = 0 }
+		if .Auto_B in k.state { it.m[2] = 0 }
+		if .Auto_L in k.state { it.m[3] = 0 }
 		it.ratio_dep = k.cs.aspect_ratio > 0 && k.cs.width.kind == .Auto && style.has_percent(k.cs.height)
 	}
 }
@@ -989,7 +989,7 @@ grid_self :: proc(c: ^Ctx, container: ^style.Computed, k: ^Box, axis: int) -> st
 grid_stretched_h :: proc(container: ^style.Computed, k: ^Box) -> bool {
 	a := k.cs.align_self
 	if a == .Auto { a = container.align_items }
-	return a == .Stretch && k.cs.height.kind == .Auto && !k.auto_t && !k.auto_b
+	return a == .Stretch && k.cs.height.kind == .Auto && (.Auto_T not_in k.state) && (.Auto_B not_in k.state)
 }
 
 // Border-box width of each item in its column area.
@@ -1007,7 +1007,7 @@ grid_item_widths :: proc(c: ^Ctx, g: ^Grid) {
 		switch {
 		case k.kind == .Replaced:
 			w = replaced_size(c, it.box, aw, -1).x
-			if grid_self(c, cs, k, 0) == .Stretch && kcs.width.kind == .Auto && !k.auto_l && !k.auto_r { w = clamp_w(c, k, avail, aw) }
+			if grid_self(c, cs, k, 0) == .Stretch && kcs.width.kind == .Auto && (.Auto_L not_in k.state) && (.Auto_R not_in k.state) { w = clamp_w(c, k, avail, aw) }
 		case k.kind == .Table:
 			w = table_width(c, it.box, aw, avail)
 		case:
@@ -1035,7 +1035,7 @@ grid_item_widths :: proc(c: ^Ctx, g: ^Grid) {
 					}
 				}
 				// a subgrid always fills its area in a subgridded axis
-				if sub_axis || (grid_self(c, cs, k, 0) == .Stretch && !k.auto_l && !k.auto_r) { w = avail } else { w = shrink_to_fit(c, it.box, avail) }
+				if sub_axis || (grid_self(c, cs, k, 0) == .Stretch && (.Auto_L not_in k.state) && (.Auto_R not_in k.state)) { w = avail } else { w = shrink_to_fit(c, it.box, avail) }
 			}
 			k = &c.l.boxes[it.box]
 			w = clamp_w(c, k, w, aw)
@@ -1097,7 +1097,7 @@ grid_baseline_shims :: proc(c: ^Ctx, g: ^Grid) {
 	for &it in g.items[:g.n_real] {
 		if !it.placed { continue }
 		k := &c.l.boxes[it.box]
-		if grid_self(c, cs, k, 1) != .Baseline || k.auto_t || k.auto_b { continue }
+		if grid_self(c, cs, k, 1) != .Baseline || (.Auto_T in k.state) || (.Auto_B in k.state) { continue }
 		h := grid_item_height(c, g, &it)
 		k = &c.l.boxes[it.box]
 		it.baseline = it.m[0] + k.pre_h + (k.baseline >= 0 ? k.baseline : h)
@@ -1155,14 +1155,14 @@ grid_place_items :: proc(c: ^Ctx, g: ^Grid, cw: f32) {
 		if k.kind == .Replaced {
 			h = replaced_size(c, it.box, aw, ah).y
 			// a form control stretched to its area (its height not given)
-			if .Control in k.flags && al == .Stretch && k.cs.height.kind == .Auto && !k.auto_t && !k.auto_b {
+			if .Control in k.flags && al == .Stretch && k.cs.height.kind == .Auto && (.Auto_T not_in k.state) && (.Auto_B not_in k.state) {
 				h = clamp_h(c, k, max(ah - it.m[0] - it.m[2] - k.pre_h, 0), ah)
 			}
 			forced = true
 		} else if spec, ok := to_border_h(c, k, k.cs.height, ah); ok && !sub_axis {
 			h = clamp_h(c, k, spec, ah)
 			forced = true
-		} else if sub_axis || (al == .Stretch && !k.auto_t && !k.auto_b) {
+		} else if sub_axis || (al == .Stretch && (.Auto_T not_in k.state) && (.Auto_B not_in k.state)) {
 			h = clamp_h(c, k, max(ah - it.m[0] - it.m[2] - k.pre_h, 0), ah)
 			// never below the automatic minimum (the content, for a visible-overflow item)
 			if !sub_axis && k.cs.min_height.kind == .Auto && grid_auto_min_applies(c, g, &it, 1) { h = max(h, grid_item_height(c, g, &it) - k.pre_h) }
@@ -1185,7 +1185,7 @@ grid_place_items :: proc(c: ^Ctx, g: ^Grid, cw: f32) {
 
 		// inline axis: logical start margin first
 		ms, me := it.m[3], it.m[1]
-		as_, ae := k.auto_l, k.auto_r
+		as_, ae := .Auto_L in k.state, .Auto_R in k.state
 		if g.rtl { ms, me, as_, ae = me, ms, ae, as_ }
 		free_x := aw - w - ms - me
 		x: f32
@@ -1212,9 +1212,10 @@ grid_place_items :: proc(c: ^Ctx, g: ^Grid, cw: f32) {
 		mt, mb := it.m[0], it.m[2]
 		free_y := ah - outer_h - mt - mb
 		y: f32
-		if k.auto_t || k.auto_b {
+		auto_t, auto_b := .Auto_T in k.state, .Auto_B in k.state
+		if auto_t || auto_b {
 			f := max(free_y, 0)
-			if k.auto_t && k.auto_b { mt += f * 0.5; mb += f * 0.5 } else if k.auto_t { mt += f } else { mb += f }
+			if auto_t && auto_b { mt += f * 0.5; mb += f * 0.5 } else if auto_t { mt += f } else { mb += f }
 			y = mt
 		} else {
 			#partial switch al {

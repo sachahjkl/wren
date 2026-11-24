@@ -29,7 +29,7 @@ ctl_plane_for :: proc(e: ^Effects, it: ^lay.Display_Item) {
 	pl := e.l.spaces[it.space].plane
 	if pl == lay.NONE { return }
 	m := plane_matrix(e, pl)
-	for d := e.l.spaces[pl].dest; d != lay.NONE; d = e.l.spaces[d].dest { m = style.m4_mul(plane_matrix(e, d), m) }
+	for d := lay.space_plane(e.l, pl).dest; d != lay.NONE; d = lay.space_plane(e.l, d).dest { m = style.m4_mul(plane_matrix(e, d), m) }
 	ctl_plane = Ctl_Plane{ok = true, h = lay.plane_h3(m)}
 }
 

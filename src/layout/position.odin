@@ -93,10 +93,11 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 		aligned = sr.kind == .Flex || sr.kind == .Grid
 		if aligned { align, room = kc.static_align, sr.size - {pb_w(sr), pb_h(sr)} }
 	}
-	mL := k.auto_l ? 0 : k.margin[3]
-	mR := k.auto_r ? 0 : k.margin[1]
-	mT := k.auto_t ? 0 : k.margin[0]
-	mB := k.auto_b ? 0 : k.margin[2]
+	auto_l, auto_r, auto_t, auto_b := .Auto_L in k.state, .Auto_R in k.state, .Auto_T in k.state, .Auto_B in k.state
+	mL := auto_l ? 0 : k.margin[3]
+	mR := auto_r ? 0 : k.margin[1]
+	mT := auto_t ? 0 : k.margin[0]
+	mB := auto_b ? 0 : k.margin[2]
 
 	// horizontal (§10.3.7)
 	spec_w, has_w := to_border_w(c, k, cs.width, cbw)
@@ -120,11 +121,11 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 		switch {
 		case il_ok && ir_ok:
 			free := cbw - il - ir - w - mL - mR
-			if k.auto_l && k.auto_r {
+			if auto_l && auto_r {
 				if free >= 0 { mL, mR = free * 0.5, free * 0.5 } else if rtl { mL = free } else { mR = free }
-			} else if k.auto_l { mL = free } else if k.auto_r { mR = free }
+			} else if auto_l { mL = free } else if auto_r { mR = free }
 			left = il
-			if rtl && !k.auto_l && !k.auto_r { left = cbw - ir - w - mL - mR }
+			if rtl && !auto_l && !auto_r { left = cbw - ir - w - mL - mR }
 		case il_ok: left = il
 		case ir_ok: left = cbw - ir - w - mL - mR
 		case aligned: left = static_left + (room.x - w - mL - mR) * align.x
@@ -173,7 +174,7 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 		switch {
 		case it_ok && ib_ok:
 			free := cbh - it - ib - h - mT - mB
-			if k.auto_t && k.auto_b { mT, mB = free * 0.5, free * 0.5 } else if k.auto_t { mT = free } else if k.auto_b { mB = free }
+			if auto_t && auto_b { mT, mB = free * 0.5, free * 0.5 } else if auto_t { mT = free } else if auto_b { mB = free }
 			top = it
 		case it_ok: top = it
 		case ib_ok: top = cbh - ib - h - mT - mB

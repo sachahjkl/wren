@@ -107,6 +107,8 @@ transposed :: proc(c: ^Ctx, cs: ^style.Computed, wm: style.Writing_Mode) -> ^sty
 	key := Frame_Cs_Key{cs, wm}
 	if s, ok := c.frame_cs[key]; ok { return s }
 	s := new_clone(cs^, context.temp_allocator)
+	style.group_take(s, .Box_Extra, context.temp_allocator)
+	if cs.aspect_ratio > 0 { style.group_take(s, .Rare, context.temp_allocator) }
 	sides := style.flow_sides(wm, false)
 	for side in style.Side {
 		p := sides[side]

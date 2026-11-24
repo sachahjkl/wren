@@ -26,16 +26,16 @@ FONT_FIELDS :: [?]uintptr{offset_of(style.Computed, inherited_group)}
 // What the block layout reads (resolve_box_model, block_width, specified heights).
 @(private)
 LAYOUT_FIELDS :: [?]uintptr{
-	offset_of(style.Computed, display), offset_of(style.Computed, width), offset_of(style.Computed, max_width),
+	offset_of(style.Computed, display), offset_of(style.Computed, width), offset_of(style.Computed, box_extra_group),
 	offset_of(style.Computed, margin), offset_of(style.Computed, padding), offset_of(style.Computed, border_width),
-	offset_of(style.Computed, aspect_ratio),
+	offset_of(style.Computed, rare_group),
 }
 
 // What the display list reads (emit_box, emit_lines).
 @(private)
 PAINT_FIELDS :: [?]uintptr{
 	offset_of(style.Computed, display), offset_of(style.Computed, z_index), offset_of(style.Computed, background_color),
-	offset_of(style.Computed, background_group), offset_of(style.Computed, box_shadow), offset_of(style.Computed, outline_width),
+	offset_of(style.Computed, background_group), offset_of(style.Computed, decor_group), offset_of(style.Computed, outline_width),
 }
 
 @(private)

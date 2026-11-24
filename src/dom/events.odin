@@ -270,10 +270,36 @@ listens :: proc(d: ^Document, type: string) -> bool {
 	return d.listened_others[type] > 0
 }
 
+// Returns the listeners registered on node `h` (nil when none).
+node_listeners :: proc(d: ^Document, h: base.Handle) -> []Listener {
+	if len(d.node_listeners) == 0 { return nil }
+	if n := get(d, h); n == nil || (.Has_Listeners not_in n.flags) { return nil }
+	if l, ok := d.node_listeners[h]; ok { return l[:] }
+	return nil
+}
+
+// Pointer to the mutable listener list of node `h` in `d.node_listeners`; inserts an empty entry when `create`.
+@(private)
+node_listeners_ptr :: proc(d: ^Document, h: base.Handle, create: bool) -> ^[dynamic]Listener {
+	if p, ok := &d.node_listeners[h]; ok { return p }
+	if !create { return nil }
+	if n := get(d, h); n != nil { n.flags += {.Has_Listeners} }
+	d.node_listeners[h] = {}
+	return &d.node_listeners[h]
+}
+
 add_listener :: proc(d: ^Document, target: base.Handle, type: string, callback, user: u32, capture, once, passive: bool, owner: u32 = 0, work := base.Work{}) -> (Listener_Id, Error) {
 	n := get(d, target)
 	if n == nil { return 0, .Invalid_Handle }
-	id, err := listener_add(&n.listeners, d, d.next_listener, type, callback, user, owner, capture, once, passive, work, d.limits.max_listeners)
+	if type == "" { return 0, .Invalid_Argument }
+	list := node_listeners_ptr(d, target, true)
+	id, err := listener_add(list, d, d.next_listener, type, callback, user, owner, capture, once, passive, work, d.limits.max_listeners)
+	if err != .None && len(list^) == 0 {
+		delete(list^)
+		delete_key(&d.node_listeners, target)
+		n.flags -= {.Has_Listeners}
+		return 0, err
+	}
 	if err == .None && id == d.next_listener { d.next_listener += 1 }
 	return id, err
 }
@@ -281,20 +307,25 @@ add_listener :: proc(d: ^Document, target: base.Handle, type: string, callback, 
 remove_listener :: proc(d: ^Document, target: base.Handle, id: Listener_Id) -> Error {
 	n := get(d, target)
 	if n == nil { return .Invalid_Handle }
-	return listener_remove(&n.listeners, d, id)
+	list := node_listeners_ptr(d, target, false)
+	if list == nil { return .Not_Found }
+	return listener_remove(list, d, id)
 }
 
 // HTML "erase all event listeners and handlers" on every shadow-including inclusive descendant of `root` (what
 // document.open() does to its document). Tombstones, as remove_listener leaves: a dispatch in progress skips them.
 erase_listeners :: proc(d: ^Document, root: base.Handle) {
+	if len(d.node_listeners) == 0 { return }
 	stack := make([dynamic]base.Handle, context.temp_allocator)
 	append(&stack, root)
 	for len(stack) > 0 {
 		h := pop(&stack)
 		n := get(d, h)
 		if n == nil { continue }
-		listeners_erase(&n.listeners, d)
-		listeners_compact(&n.listeners)
+		if list := node_listeners_ptr(d, h, false); list != nil {
+			listeners_erase(list, d)
+			listeners_compact(list)
+		}
 		if n.kind == .Element && n.shadow != base.NIL_HANDLE { append(&stack, n.shadow) }
 		for ch := n.first_child; ch != base.NIL_HANDLE; ch = get(d, ch).next { append(&stack, ch) }
 	}
@@ -335,7 +366,7 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 
 	closed_root :: proc(d: ^Document, h: base.Handle) -> bool {
 		n := get(d, h)
-		if n == nil || !n.is_shadow { return false }
+		if n == nil || !(.Is_Shadow in n.flags) { return false }
 		info := shadow_info(d, h)
 		return info != nil && info.mode == .Closed
 	}
@@ -348,7 +379,7 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 		n := get(d, h)
 		if n == nil { return base.NIL_HANDLE, false }
 		if h == d.root { return base.NIL_HANDLE, window_ok }
-		if n.is_shadow {
+		if .Is_Shadow in n.flags {
 			if !composed && tree_root(d, first) == h { return base.NIL_HANDLE, false }
 			return n.shadow, false
 		}
@@ -392,7 +423,7 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 						for {
 							rr := tree_root(d, r)
 							rn := get(d, rr)
-							if rn == nil || !rn.is_shadow { break }
+							if rn == nil || !(.Is_Shadow in rn.flags) { break }
 							r = rn.shadow
 						}
 						rel = u64(r)
@@ -458,13 +489,15 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 		if n == nil { return true }
 		e.current_target = node
 		e.phase = phase
+		n_listeners := node_listeners(d, node)
+		if len(n_listeners) == 0 { return true }
 		snapshot := make([dynamic]Listener, context.temp_allocator)
-		listeners_snapshot(n.listeners[:], e.atom, e.type, capture, false, &snapshot)
+		listeners_snapshot(n_listeners, e.atom, e.type, capture, false, &snapshot)
 		// DOM "invoke": a trusted event nobody listens to under its name goes to those of its legacy name, under that name
 		name, atom := e.type, e.atom
 		defer if cur := base.pool_get(&dp.events, eh); cur != nil { cur.type, cur.atom = name, atom }
 		if legacy := EVENT_TYPES[e.atom].legacy; legacy != .None && len(snapshot) == 0 && !e.untrusted {
-			listeners_snapshot(n.listeners[:], legacy, EVENT_TYPES[legacy].name, capture, false, &snapshot)
+			listeners_snapshot(n_listeners, legacy, EVENT_TYPES[legacy].name, capture, false, &snapshot)
 			if len(snapshot) > 0 { e.type, e.atom = EVENT_TYPES[legacy].name, legacy }
 		}
 		// the node is looked up again before each listener: one may have moved it to another document (its listeners
@@ -481,7 +514,7 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 				n := d != nil ? get(d, node) : nil
 				if n == nil { return nil, nil }
 				r.runner, r.node = runner, node
-				return &n.listeners, d
+				return node_listeners_ptr(d, node, false), d
 			},
 			run = proc(user: rawptr, l: Listener) -> bool {
 				r := (^Node_Run)(user)

@@ -92,12 +92,13 @@ new_box :: proc(c: ^Ctx, kind: Box_Kind, cs: ^style.Computed, node: base.Handle,
 	idx := i32(len(c.l.boxes))
 	append(&c.l.boxes, Box{
 		node = node, cs = cs, kind = kind, parent = parent, first = NONE, last = NONE, next = NONE, pos_ref = parent,
-		abs_first = NONE, ifc_root = NONE, fi = -1, mc = NONE, baseline = -1, last_baseline = -1, space = 0, clip = NONE,
-		group = NONE, depth = depth,
+		abs_first = NONE, ifc_root = NONE, fi = -1, baseline = -1, last_baseline = -1, space = 0, clip = NONE,
+		group = NONE,
 	})
 	// (the side records grow with `boxes`: every box has one of each)
-	append(&c.l.cold, Box_Cold{cb = NONE, abs_last = NONE, abs_next = NONE, static_ref = NONE, cur_anon = NONE, colspan = 1, rowspan = 1})
+	append(&c.l.cold, Box_Cold{cb = NONE, abs_last = NONE, abs_next = NONE, static_ref = NONE, cur_anon = NONE, colspan = 1, rowspan = 1, mc = NONE, depth = depth})
 	append(&c.l.fin, Box_Finish{clip_owner = NONE, content_space = 0, content_clip = NONE, scroll_space = NONE, layer = NONE})
+	append(&c.l.cache, Box_Cache{})
 	append(&c.l.inc.info, Box_Info{cb = NONE, fcb = NONE, deco_box = NONE})
 	// tree order holds while each new box's parent is the previous box or one of its ancestors (each box is passed at
 	// most once on the way up)
@@ -136,7 +137,7 @@ up :: proc(c: ^Ctx, h: base.Handle) -> base.Handle {
 	n := dom.get(c.d, h)
 	if n == nil { return base.NIL_HANDLE }
 	if !c.flat { return n.parent }
-	if n.is_shadow { return n.shadow }
+	if .Is_Shadow in n.flags { return n.shadow }
 	return dom.flat_parent(c.d, h)
 }
 
@@ -260,7 +261,7 @@ child_frame :: proc(c: ^Ctx, bi: i32, f: Frame, has_block: bool, sum: ^Style_Sum
 	b := &c.l.boxes[bi]
 	g := f
 	g.parent = bi
-	g.depth = b.depth
+	g.depth = c.l.cold[bi].depth
 	if .Positioned in b.flags {
 		g.cb = bi
 	} else if c.l.frames_on && (sum != nil ? .Spans in sum.bits : b.cs.column_span == .All) {
@@ -461,7 +462,7 @@ anon_block :: proc(c: ^Ctx, f: Frame) -> i32 {
 	p := &c.l.boxes[f.parent]
 	if cur := c.l.cold[f.parent].cur_anon; cur != NONE && c.l.boxes[cur].kind == .Block { return cur }
 	cs := anon_style(c, p.cs, .Block)
-	a := new_box(c, .Block, cs, base.NIL_HANDLE, f.parent, c.l.boxes[f.parent].depth + 1)
+	a := new_box(c, .Block, cs, base.NIL_HANDLE, f.parent, c.l.cold[f.parent].depth + 1)
 	c.l.boxes[a].flags += {.Anonymous, .Ifc}
 	c.l.cold[f.parent].cur_anon = a
 	return a
@@ -485,7 +486,7 @@ anon_table_chain :: proc(c: ^Ctx, f: Frame, want: style.Display) -> Frame {
 		if t == NONE || c.l.boxes[t].kind != .Table {
 			inline := f.mode == .Inline
 			cs := anon_style(c, p.cs, inline ? .Inline_Table : .Table)   // (border-spacing inherited with the rest)
-			t = new_box(c, .Table, cs, base.NIL_HANDLE, f.parent, p.depth + 1)
+			t = new_box(c, .Table, cs, base.NIL_HANDLE, f.parent, c.l.cold[f.parent].depth + 1)
 			c.l.boxes[t].flags += {.Anonymous, .Bfc}
 			if inline {
 				c.l.boxes[t].flags += {.Atomic}
@@ -496,7 +497,7 @@ anon_table_chain :: proc(c: ^Ctx, f: Frame, want: style.Display) -> Frame {
 			c.l.cold[f.parent].cur_anon = t
 		}
 		g.parent, g.mode = t, .Table
-		g.depth = c.l.boxes[t].depth
+		g.depth = c.l.cold[t].depth
 		return anon_table_chain(c, g, want)
 	case .Table:
 		#partial switch want {
@@ -505,33 +506,33 @@ anon_table_chain :: proc(c: ^Ctx, f: Frame, want: style.Display) -> Frame {
 		p := &c.l.boxes[f.parent]
 		rg := c.l.cold[f.parent].cur_anon
 		if rg == NONE || c.l.boxes[rg].kind != .Row_Group {
-			rg = new_box(c, .Row_Group, anon_style(c, p.cs, .Table_Row_Group), base.NIL_HANDLE, f.parent, p.depth + 1)
+			rg = new_box(c, .Row_Group, anon_style(c, p.cs, .Table_Row_Group), base.NIL_HANDLE, f.parent, c.l.cold[f.parent].depth + 1)
 			c.l.boxes[rg].flags += {.Anonymous}
 			c.l.cold[f.parent].cur_anon = rg
 		}
-		g.parent, g.mode, g.depth = rg, .Row_Group, c.l.boxes[rg].depth
+		g.parent, g.mode, g.depth = rg, .Row_Group, c.l.cold[rg].depth
 		return anon_table_chain(c, g, want)
 	case .Row_Group:
 		if want == .Table_Row { return g }
 		p := &c.l.boxes[f.parent]
 		r := c.l.cold[f.parent].cur_anon
 		if r == NONE || c.l.boxes[r].kind != .Row {
-			r = new_box(c, .Row, anon_style(c, p.cs, .Table_Row), base.NIL_HANDLE, f.parent, p.depth + 1)
+			r = new_box(c, .Row, anon_style(c, p.cs, .Table_Row), base.NIL_HANDLE, f.parent, c.l.cold[f.parent].depth + 1)
 			c.l.boxes[r].flags += {.Anonymous}
 			c.l.cold[f.parent].cur_anon = r
 		}
-		g.parent, g.mode, g.depth = r, .Row, c.l.boxes[r].depth
+		g.parent, g.mode, g.depth = r, .Row, c.l.cold[r].depth
 		return anon_table_chain(c, g, want)
 	case .Row:
 		if want == .Table_Cell { return g }
 		p := &c.l.boxes[f.parent]
 		cell := c.l.cold[f.parent].cur_anon
 		if cell == NONE || c.l.boxes[cell].kind != .Cell {
-			cell = new_box(c, .Cell, anon_style(c, p.cs, .Table_Cell), base.NIL_HANDLE, f.parent, p.depth + 1)
+			cell = new_box(c, .Cell, anon_style(c, p.cs, .Table_Cell), base.NIL_HANDLE, f.parent, c.l.cold[f.parent].depth + 1)
 			c.l.boxes[cell].flags += {.Anonymous, .Bfc}
 			c.l.cold[f.parent].cur_anon = cell
 		}
-		g.parent, g.mode, g.depth = cell, .Block, c.l.boxes[cell].depth
+		g.parent, g.mode, g.depth = cell, .Block, c.l.cold[cell].depth
 		return g
 	}
 	return g
@@ -729,7 +730,7 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 	}
 	has_block := false
 	if kind == .Block || kind == .Cell || kind == .Caption {
-		has_block = pseudo ? false : has_block_child(c, h, cs, b.depth)
+		has_block = pseudo ? false : has_block_child(c, h, cs, c.l.cold[bi].depth)
 		if pseudo && cs.content.kind == .Items { has_block = false }
 	}
 	note_frame(c, bi, g)
@@ -803,7 +804,7 @@ visit_text :: proc(c: ^Ctx, f: Frame, n: ^dom.Node) {
 		p := &c.l.boxes[f.parent]
 		a := c.l.cold[f.parent].cur_anon
 		if a == NONE || c.l.boxes[a].kind != .Block {
-			a = new_box(c, .Block, anon_style(c, p.cs, .Block), base.NIL_HANDLE, f.parent, p.depth + 1)
+			a = new_box(c, .Block, anon_style(c, p.cs, .Block), base.NIL_HANDLE, f.parent, c.l.cold[f.parent].depth + 1)
 			c.l.boxes[a].flags += {.Anonymous, .Ifc, .Bfc}
 			c.l.cold[f.parent].cur_anon = a
 		}

@@ -56,7 +56,7 @@ space_key :: proc(l: ^Layout, s: i32) -> Space_Key {
 	b := &l.boxes[sp.box]
 	k := Space_Key{kind = sp.kind, node = b.node}
 	k.pseudo = pseudo_key(b)
-	if sp.kind == .Column { k.column = sp.flow[0] }
+	if sp.kind == .Column { k.column = sp.data.column.flow[0] }
 	return k
 }
 

@@ -312,8 +312,8 @@ emit_scrollbars :: proc(c: ^Ctx, bi: i32) {
 	if w <= 0 { return }
 	bar_x, bar_y: bool
 	if ss := c.l.fin[bi].scroll_space; ss != NONE {
-		sp := &c.l.spaces[ss]
-		bar_x, bar_y = sp.max_scroll.x > 0 || sp.min_scroll.x < 0, sp.max_scroll.y > 0 || sp.min_scroll.y < 0
+		sc := &c.l.spaces[ss].data.scroll
+		bar_x, bar_y = sc.max_scroll.x > 0 || sc.min_scroll.x < 0, sc.max_scroll.y > 0 || sc.min_scroll.y < 0
 	}
 	port := padding_rect(b)
 	if b.gutter[1] + b.gutter[2] > 0 {

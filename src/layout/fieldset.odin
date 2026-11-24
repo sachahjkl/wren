@@ -52,11 +52,11 @@ place_legend :: proc(c: ^Ctx, bi, lg: i32, cw: f32) -> f32 {
 	k := &c.l.boxes[lg]
 	if !pre_model(c, lg, k) { resolve_box_model(c, k, cw) }
 	k = &c.l.boxes[lg]
-	auto_l, auto_r := k.auto_l, k.auto_r
-	if k.auto_l { k.margin[3] = 0 }
-	if k.auto_r { k.margin[1] = 0 }
-	if k.auto_t { k.margin[0] = 0 }
-	if k.auto_b { k.margin[2] = 0 }
+	auto_l, auto_r := .Auto_L in k.state, .Auto_R in k.state
+	if auto_l { k.margin[3] = 0 }
+	if auto_r { k.margin[1] = 0 }
+	if .Auto_T in k.state { k.margin[0] = 0 }
+	if .Auto_B in k.state { k.margin[2] = 0 }
 	w: f32
 	if spec, ok := to_border_w(c, k, k.cs.width, cw); ok {
 		w = clamp_w(c, k, spec, cw)

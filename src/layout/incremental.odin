@@ -149,7 +149,7 @@ too_much_garbage :: proc(l: ^Layout) -> string {
 	floor := f32(l.settings.inc_garbage_floor)
 	s := &l.inc
 	over :: #force_inline proc(dead, live, size, r, floor: f32) -> bool { return dead > r * live && dead * size > floor }
-	if over(f32(s.dead_boxes), f32(max(s.live_boxes, INC_LIVE_FLOOR_ITEMS)), size_of(Box) + size_of(Box_Info), r, floor) { return "memory left by partial passes: boxes" }
+	if over(f32(s.dead_boxes), f32(max(s.live_boxes, INC_LIVE_FLOOR_ITEMS)), size_of(Box) + size_of(Box_Cache) + size_of(Box_Info), r, floor) { return "memory left by partial passes: boxes" }
 	if over(f32(s.dead_items), f32(max(s.live_items, INC_LIVE_FLOOR_ITEMS)), size_of(Inline_Item), r, floor) { return "memory left by partial passes: inline items" }
 	if over(f32(l.arena.total_used) - f32(s.arena_base), f32(s.arena_base) + f32(INC_LIVE_FLOOR_ARENA_BYTES), 1, r, floor) { return "memory left by partial passes: text and lists" }
 	if f32(len(l.fonts)) > (1 + r) * f32(s.fonts_base) + 64 { return "memory left by partial passes: fonts" }
@@ -163,11 +163,11 @@ too_much_garbage :: proc(l: ^Layout) -> string {
 mark_dirty :: proc(l: ^Layout, bi: i32) {
 	b := &l.boxes[bi]
 	b.inc += {.Dirty}
-	b.intr_ok = false
+	b.state -= {.Intr_Ok}
 	for p := b.parent; p != NONE; p = l.boxes[p].parent {
 		pb := &l.boxes[p]
 		pb.inc += {.Child_Dirty}
-		pb.intr_ok = false
+		pb.state -= {.Intr_Ok}
 	}
 }
 

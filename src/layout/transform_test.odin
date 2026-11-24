@@ -177,7 +177,7 @@ transform_refresh_path :: proc(t: ^testing.T) {
 	testing.expectf(t, f.l.last_pass == .Refresh && f.l.passes[.Full] == full, "a transform animation does not lay out: %v", f.l.last_pass)
 	sb := bx(f, "s")
 	sp := &f.l.spaces[sb.space]
-	testing.expect(t, sp.kind == .Transform && math.abs(sp.mat[0]) < 0.01 && math.abs(sp.mat[1] - 1) < 0.01, "quarter turn after 250 ms")
+	testing.expect(t, sp.kind == .Transform && math.abs(sp.data.transform.mat[0]) < 0.01 && math.abs(sp.data.transform.mat[1] - 1) < 0.01, "quarter turn after 250 ms")
 	testing.expect(t, sb.cs == style.style_of(f.st, el(f, "s")), "boxes see the animated style")
 	r, _ := box_of(&f.l, el(f, "s"), f.vp, 0)
 	testing.expect(t, close(r.quad[0], {50, 0}), "the box turned")

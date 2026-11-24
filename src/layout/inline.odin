@@ -1026,10 +1026,10 @@ line_float :: proc(lb: ^Line_Builder, k: i32) {
 layout_atomic :: proc(c: ^Ctx, k: i32, cw: f32, ch: f32 = -1) -> f32 {
 	resolve_box_model(c, &c.l.boxes[k], cw)
 	kb := &c.l.boxes[k]
-	if kb.auto_l { kb.margin[3] = 0 }
-	if kb.auto_r { kb.margin[1] = 0 }
-	if kb.auto_t { kb.margin[0] = 0 }
-	if kb.auto_b { kb.margin[2] = 0 }
+	if .Auto_L in kb.state { kb.margin[3] = 0 }
+	if .Auto_R in kb.state { kb.margin[1] = 0 }
+	if .Auto_T in kb.state { kb.margin[0] = 0 }
+	if .Auto_B in kb.state { kb.margin[2] = 0 }
 	w := used_width_shrink(c, k, cw, ch)
 	layout_contents(c, k, w, ch, -1, nil)
 	kb = &c.l.boxes[k]
@@ -1283,8 +1283,8 @@ block_in_inline :: proc(lb: ^Line_Builder, k: i32) {
 	c := lb.c
 	resolve_box_model(c, &c.l.boxes[k], lb.cw)
 	kb := &c.l.boxes[k]
-	if kb.auto_t { kb.margin[0] = 0 }
-	if kb.auto_b { kb.margin[2] = 0 }
+	if .Auto_T in kb.state { kb.margin[0] = 0 }
+	if .Auto_B in kb.state { kb.margin[2] = 0 }
 	block_width(c, k, lb.cw, lb.cw)
 	kb = &c.l.boxes[k]
 	w := kb.size.x

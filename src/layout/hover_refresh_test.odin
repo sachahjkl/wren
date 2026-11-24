@@ -60,8 +60,8 @@ inline_transform_refreshes :: proc(t: ^testing.T) {
 		testing.expectf(t, f.l.last_pass == .Refresh, "rotateY(%.0fdeg) written in the style attribute: a refresh (%v)", deg, f.l.last_pass)
 		testing.expect(t, f.l.mutations == f.doc.mutations, "the layout has caught up with the document")
 		turned := false
-		for &sp in f.l.spaces {
-			if sp.proj && f.l.boxes[sp.box].node == c { turned = abs(sp.mat4[0] - math.cos(deg * math.PI / 180)) < 1e-4 }
+		for &sp, si in f.l.spaces {
+			if space_is_plane(&sp) && f.l.boxes[sp.box].node == c { turned = abs(space_plane(&f.l, i32(si)).mat4[0] - math.cos(deg * math.PI / 180)) < 1e-4 }
 		}
 		testing.expectf(t, turned, "the plane is turned by %.0fdeg", deg)
 	}

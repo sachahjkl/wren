@@ -44,8 +44,9 @@ Foreign_Object :: struct {
 	box, svg:  i32,                   // its box, the <svg>'s
 	index:     i32,                   // its place among the <svg>'s foreign objects (Svg_Parts)
 	base:      ^style.Computed,       // the element's record its style was made from
-	cs:        ^style.Computed,       // that style (in the layout's arena), with its own transform and rare groups
+	cs:        ^style.Computed,       // that style (in the layout's arena), with its own transform, box_extra and rare groups
 	transform: ^style.Transform_Group,
+	box_extra: ^style.Box_Extra_Group,
 	rare:      ^style.Rare_Group,
 	ops:       []style.Transform_Op,  // the identity, so that the box is transformed (foreign_matrix gives the matrix)
 	filter:    []style.Filter_Op,
@@ -75,8 +76,9 @@ foreign_frames :: proc(c: ^Ctx, stack: ^[dynamic]Frame, svg: i32, g: Frame) {
 		for ch := x.last_child; ch != base.NIL_HANDLE; ch = dom.get(c.d, ch).prev { append(&walk, ch) }
 	}
 	sb := &c.l.boxes[svg]
+	depth := c.l.cold[svg].depth
 	for i := len(found) - 1; i >= 0; i -= 1 {
-		append(stack, Frame{kind = .Foreign, node = found[i], parent = svg, mode = .Block, cb = svg, fcb = g.fcb, depth = sb.depth,
+		append(stack, Frame{kind = .Foreign, node = found[i], parent = svg, mode = .Block, cb = svg, fcb = g.fcb, depth = depth,
 			ifc = i32(i), deco_box = NONE, font_el = root, fi = sb.fi})
 	}
 }
@@ -189,6 +191,7 @@ foreign_make :: proc(c: ^Ctx, h: base.Handle, svg: i32, el: ^style.Computed) -> 
 	fo.svg, fo.base = svg, el
 	fo.cs = new(style.Computed, a)
 	fo.transform = new(style.Transform_Group, a)
+	fo.box_extra = new(style.Box_Extra_Group, a)
 	fo.rare = new(style.Rare_Group, a)
 	fo.ops = make([]style.Transform_Op, 1, a)
 	fo.ops[0] = style.Transform_Op{kind = .Matrix, v = {1, 0, 0, 1, 0, 0}}
@@ -204,6 +207,8 @@ foreign_style :: proc(fo: ^Foreign_Object, el: ^style.Computed) {
 	cs := fo.cs
 	cs^ = el^
 	fo.base = el
+	fo.box_extra^ = el.box_extra_group^
+	cs.box_extra_group = fo.box_extra
 	cs.display, cs.position, cs.float = .Block, .Absolute, .None
 	cs.inset = {.Top = style.px(0), .Left = style.px(0), .Right = {}, .Bottom = {}}
 	cs.width, cs.height = style.px(fo.size.x), style.px(fo.size.y)

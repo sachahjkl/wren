@@ -99,6 +99,7 @@ anchor_changes_are_layout_changes :: proc(t: ^testing.T) {
 	b.anchor_name = {"--z"}
 	testing.expect_value(t, change_level(a, b), Change_Level.Layout)
 	b^ = a^
+	prop_take(b, .Position_Area, context.temp_allocator)
 	b.position_area = {.Top, .Left}
 	testing.expect_value(t, change_level(a, b), Change_Level.Layout)
 }

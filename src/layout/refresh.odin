@@ -310,17 +310,18 @@ refresh_paint_values :: proc(l: ^Layout, input: Input) -> bool {
 	for &sp in l.spaces {
 		if sp.kind != .Transform { continue }
 		m := box_matrix(l, &l.boxes[sp.box])
-		if m != sp.mat { sp.mat = m; transforms = true }
-		if sp.proj {
+		if m != sp.data.transform.mat { sp.data.transform.mat = m; transforms = true }
+		if space_is_plane(&sp) {
+			pl := &l.planes[sp.data.transform.plane_data]
 			// a plane: its 4x4 and the perspective it sits in (animations move both without a layout)
 			m4 := box_matrix4(l, &l.boxes[sp.box])
-			if m4 != sp.mat4 { sp.mat4 = m4; transforms = true }
-			if sp.persp_from != NONE {
-				pm := perspective_of(l, &l.boxes[l.spaces[sp.persp_from].box])
-				if pm != sp.persp { sp.persp = pm; transforms = true }
+			if m4 != pl.mat4 { pl.mat4 = m4; transforms = true }
+			if pl.persp_from != NONE {
+				pm := perspective_of(l, &l.boxes[l.spaces[pl.persp_from].box])
+				if pm != pl.persp { pl.persp = pm; transforms = true }
 			}
-			sp.back_hidden = l.boxes[sp.box].cs.backface_visibility == .Hidden
-			sp.preserve = used_preserve_3d(l.boxes[sp.box].cs)
+			pl.back_hidden = l.boxes[sp.box].cs.backface_visibility == .Hidden
+			pl.preserve = used_preserve_3d(l.boxes[sp.box].cs)
 		}
 	}
 	for &cl in l.clips { if cl.box != NONE { cl.radii = clip_radii(l, &l.boxes[cl.box]) } }   // (NONE: a column's)
@@ -342,8 +343,8 @@ refresh_overflow :: proc(l: ^Layout, vp: Vec2) -> bool {
 		scrolls := ms.x > BAR_MIN_OVERFLOW || ms.y > BAR_MIN_OVERFLOW || mn.x < -BAR_MIN_OVERFLOW || mn.y < -BAR_MIN_OVERFLOW
 		if scrolls != (bf.scroll_space != NONE) { return false }
 		if !scrolls { continue }
-		l.spaces[bf.scroll_space].max_scroll = ms
-		l.spaces[bf.scroll_space].min_scroll = mn
+		l.spaces[bf.scroll_space].data.scroll.max_scroll = ms
+		l.spaces[bf.scroll_space].data.scroll.min_scroll = mn
 		if off, ok := l.scroll[b.node]; ok { l.scroll[b.node] = {clamp(off.x, mn.x, ms.x), clamp(off.y, mn.y, ms.y)} }
 	}
 	note_doc_extent_y(l, doc, vp)

@@ -137,90 +137,57 @@ Custom_Props :: struct {
 // A computed style is a value: elements whose inputs are the same share one record (share.odin), so a record does not
 // say whose style it is (Styled.nodes does).
 Computed :: struct {
-	compositing: Compositing_Set,   // what a running animation promises to change, as will-change does (timeline.odin apply_overlays): the box keeps the space or group it needs
-	// --- box ---
-	frames:     bool,     // a vertical writing mode, columns, or column-span (writing_mode_fixup): what building boxes looks at first
-	display:    Display,
-	position:   Position,
-	float:      Float,
-	clear:      Clear,
-	box_sizing: Box_Sizing,
-	overflow_x, overflow_y: Overflow,
-	inset:      [Side]Length,
-	z_auto:     bool,
-	z_index:    i32,
-	width, height, min_width, min_height, max_width, max_height: Length,   // min-*: Auto = the automatic minimum size (0 outside flex and grid items)
-	margin:     [Side]Length,
-	padding:    [Side]Length,
-	border_width: [Side]f32,
-	border_style: [Side]Border_Style,
-	border_color: [Side]css.Color,
-	radius:     [Corner]Corner_Radius,
-	opacity:    f32,
-	vertical_align: Vertical_Align,
-	aspect_ratio: f32,        // width / height, 0 = auto
-	aspect_ratio_auto: bool,  // `auto && <ratio>`: a replaced element with a natural ratio uses that one instead
-	object_fit: Object_Fit,
-	// --- flex ---
-	flex_direction: Flex_Direction,
-	flex_wrap:      Flex_Wrap,
-	flex_grow, flex_shrink: f32,
-	flex_basis:     Length,
-	justify_content, align_items, align_self, align_content: Content_Align,
-	order:          i32,
-	row_gap, column_gap: Length,
-	// --- text ---
-	text_decoration: Decorations,
-	text_decoration_color: css.Color,
-	text_ellipsis: bool,
-	text_decoration_style: Text_Decoration_Style,
-	text_decoration_thickness: Length,      // Auto, Normal (= from-font), Px, Percent (of 1em) or Calc
-	unicode_bidi:            Unicode_Bidi,
-	// --- background (the image layers: background_group) ---
-	background_color: css.Color,
-	box_shadow: []Shadow,
-	// --- misc ---
-	user_select: User_Select,
-	content:    Content,
-	outline_width: f32,
-	outline_style: Border_Style,
-	outline_color: css.Color,
-	outline_offset: f32,
-	table_layout: Table_Layout,
-	marker_text:       string,              // display: list-item only: the resolved marker, suffix included ("3. ", "• ")
-	touch_action:      Touch_Blocked,      // what fingers may not do here ({} = auto)
-	appearance:        Appearance,
-	column_count:      i32,                 // 0 = auto
-	column_width:      Length,              // Auto or Px
-	column_span:       Column_Span,
-	column_fill:       Column_Fill,
-	column_rule_width: f32,                 // px; 0 when the style is none or hidden (finish_style)
-	column_rule_style: Border_Style,
-	column_rule_color: css.Color,
-	break_before, break_after: Break_Value,
-	break_inside:      Break_Inside,
-	justify_items, justify_self: Content_Align,
-	// --- anchor positioning (anchor.odin; the rest in rare_group) ---
-	position_anchor:   Position_Anchor,
-	position_area:     Position_Area,
+	// --- 8-byte aligned box geometry and pointers ---
+	width, height: Length,
+	margin:        [Side]Length,
+	padding:       [Side]Length,
+	marker_text:   string,               // display: list-item only: the resolved marker, suffix included ("3. ", "• ")
+	anim_vars:     []Pre_Decl,           // an animated element: its declarations that use var(), copied (registered custom properties animate through them)
+	highlights:    []Highlight_Style,    // what the element's rules say of ::selection, ::highlight(name) and the other highlights (selection.odin)
+	inherits:      Prop_Set,             // inherited properties whose value came from the parent (not set by a declaration)
 	// --- what is inherited, shared with the parent until the element sets some of it (see Group) ---
-	using inherited_group: ^Inherited_Group,
+	using inherited_group:  ^Inherited_Group,
 	// --- what most elements never set, by group (see Group) ---
 	using background_group: ^Background_Group,
 	using transform_group:  ^Transform_Group,
 	using motion_group:     ^Motion_Group,
 	using grid_group:       ^Grid_Group,
 	using mask_group:       ^Mask_Group,
+	using decor_group:      ^Decor_Group,
+	using box_extra_group:  ^Box_Extra_Group,
+	using flex_group:       ^Flex_Group,
 	using rare_group:       ^Rare_Group,
 	// --- bookkeeping ---
-	containers: ^Container_Ctx, // the query containers this element's children see (nearest first)
-	anim_vars:  []Pre_Decl,     // an animated element: its declarations that use var(), copied (registered custom properties animate through them)
-	inherits:   Prop_Set,       // inherited properties whose value came from the parent (not set by a declaration)
-	custom:     ^Custom_Props,
-	before, after: ^Computed,   // generated boxes (nil when `content` is none/normal)
-	highlights: []Highlight_Style, // what the element's rules say of ::selection, ::highlight(name) and the other highlights (selection.odin)
-	placeholder: ^Computed,     // ::placeholder of a text field (nil: none)
-	backdrop:   ^Computed,      // ::backdrop of a top layer element (nil: none, or display: none)
+	containers:    ^Container_Ctx,       // the query containers this element's children see (nearest first)
+	custom:        ^Custom_Props,
+	before, after: ^Computed,            // generated boxes (nil when `content` is none/normal)
+	placeholder:   ^Computed,            // ::placeholder of a text field (nil: none)
+	backdrop:      ^Computed,            // ::backdrop of a top layer element (nil: none, or display: none)
+	// --- 4-byte aligned colors, widths and scalars ---
+	border_color:          [Side]css.Color,
+	border_width:          [Side]f32,
+	background_color:      css.Color,
+	text_decoration_color: css.Color,
+	outline_color:         css.Color,
+	column_rule_color:     css.Color,
+	z_index:               i32,
+	opacity:               f32,
+	outline_width:         f32,
+	column_rule_width:     f32,          // px; 0 when the style is none or hidden (finish_style)
+	// --- 1-byte aligned enums and flags ---
+	border_style:      [Side]Border_Style,
+	compositing:       Compositing_Set,  // what a running animation promises to change, as will-change does (timeline.odin apply_overlays): the box keeps the space or group it needs
+	display:           Display,
+	position:          Position,
+	float:             Float,
+	clear:             Clear,
+	box_sizing:        Box_Sizing,
+	overflow_x, overflow_y: Overflow,
+	text_decoration:   Decorations,
+	outline_style:     Border_Style,
+	column_rule_style: Border_Style,
+	frames:            bool,             // a vertical writing mode, columns, or column-span (writing_mode_fixup): what building boxes looks at first
+	z_auto:            bool,
 }
 
 // Properties in groups behind a pointer each, a group shared until a style sets one of its properties: then the style
@@ -232,92 +199,88 @@ Computed :: struct {
 // - The others: what most elements never set. A style shares the group of the initial values (read-only memory,
 //   props.odin `initial_groups`) until it sets one of the group's properties.
 // So an element's style costs the groups it sets, not every property there is.
-Group :: enum u8 { Main, Inherited, Background, Transform, Motion, Grid, Mask, Rare }
-Groups :: bit_set[Group; u8]
+Group :: enum u8 { Main, Inherited, Background, Transform, Motion, Grid, Mask, Decor, Box_Extra, Flex, Rare }
+Groups :: bit_set[Group; u16]
 
 // The inherited properties (CSS: "Inherited: yes", INHERITED_PROPS).
 Inherited_Group :: struct {
-	// --- color schemes (color_scheme.odin) ---
-	color_scheme: Color_Scheme_Value,
-	used_scheme:  Scheme,         // light or dark: the system colors and light-dark() branch this element uses
-	color_pair:   Scheme_Color,   // `color` resolved in both schemes (children with another scheme pick the other)
-	color:        css.Color,
-	// --- SVG paint (CSS Fill and Stroke 3 §7): `fill` and `stroke` of an element, inherited into its inline <svg> ---
-	svg_fill, svg_stroke: Svg_Paint,
-	stroke_width: f32,
-	stroke_linecap: Stroke_Linecap,
-	stroke_linejoin: Stroke_Linejoin,
-	// --- text ---
-	font_family: []string,
-	font_size:  f32,
-	font_size_src: Font_Size_Src,   // where font_size came from (values.odin generic_family_adjust): part of font-size
-	font_weight: u16,
-	font_style: Font_Style,
-	line_height: Line_Height,
+	// --- 8-byte aligned slices, strings, lengths and structs ---
+	font_family:             []string,
+	text_shadow:             []Shadow,
+	font_feature_settings:   []Font_Feature_Setting,     // nil = normal
+	font_variation_settings: []Font_Variation_Setting,   // nil = normal
+	cursor_images:           []Cursor_Image,             // url() / image-set() before the keyword (cursor.odin), nil: none
+	content_language:        string,                     // `lang` / `xml:lang` of the element (inherited), for `locl`; "" none
+	list_style:              List_Marker_Style,          // every counter style; `list_style_type` below is the nearest legacy value
+	quotes:                  Quotes,
+	text_indent:             Length,
+	text_underline_offset:   Length,                     // Auto, Px, Percent (of 1em) or Calc
+	text_emphasis_style:     Text_Emphasis_Style,
+	// --- 4-byte aligned colors, paints and scalars ---
+	color_pair:              Scheme_Color,               // `color` resolved in both schemes (children with another scheme pick the other)
+	color:                   css.Color,
+	svg_fill, svg_stroke:    Svg_Paint,                  // CSS Fill and Stroke 3 §7: inherited into inline <svg>
+	text_emphasis_color:     Auto_Color,
+	text_stroke_color:       Auto_Color,                 // -webkit-text-stroke-color, auto = currentcolor
+	caret_color:             Auto_Color,
+	accent_color:            Auto_Color,
+	scrollbar_color:         Scrollbar_Colors,
+	text_fill_color:         Auto_Color,                 // -webkit-text-fill-color, auto = currentcolor
+	line_height:             Line_Height,
+	border_spacing:          [2]f32,
+	stroke_width:            f32,
+	font_size:               f32,
 	letter_spacing, word_spacing: f32,
-	text_align: Text_Align,
-	text_transform: Text_Transform,
-	text_indent: Length,
-	white_space: White_Space,       // derived from white_space_collapse and text_wrap_mode (derive_fields)
-	word_break: Word_Break,
-	overflow_wrap: Overflow_Wrap,
-	tab_size:   f32,            // tab_spaces: a number of spaces (initial 8), else px
-	tab_spaces: bool,
-	direction:  Direction,
-	text_shadow: []Shadow,
-	visibility: Visibility,
-	font_stretch:      f32,                 // percentage, 100 = normal
-	font_variant_caps: Font_Variant_Caps,
-	text_underline_offset: Length,          // Auto, Px, Percent (of 1em) or Calc
+	tab_size:                f32,                        // tab_spaces: a number of spaces (initial 8), else px
+	font_stretch:            f32,                        // percentage, 100 = normal
+	text_stroke_width:       f32,                        // -webkit-text-stroke-width
+	orphans, widows:         i32,
+	// --- 2-byte aligned ---
+	font_weight:             u16,
+	// --- 1-byte aligned enums, bit_sets and flags ---
+	color_scheme:            Color_Scheme_Value,
+	used_scheme:             Scheme,                     // light or dark: the system colors and light-dark() branch this element uses
+	font_size_src:           Font_Size_Src,              // where font_size came from (values.odin generic_family_adjust): part of font-size
+	stroke_linecap:          Stroke_Linecap,
+	stroke_linejoin:         Stroke_Linejoin,
+	font_style:              Font_Style,
+	text_align:              Text_Align,
+	text_transform:          Text_Transform,
+	white_space:             White_Space,                // derived from white_space_collapse and text_wrap_mode (derive_fields)
+	word_break:              Word_Break,
+	overflow_wrap:           Overflow_Wrap,
+	tab_spaces:              bool,
+	direction:               Direction,
+	visibility:              Visibility,
+	font_variant_caps:       Font_Variant_Caps,
 	text_underline_position: Text_Underline_Position,
 	text_decoration_skip_ink: Text_Decoration_Skip_Ink,
 	text_decoration_skip_spaces: Skip_Spaces,
-	text_emphasis_style: Text_Emphasis_Style,
-	text_emphasis_color: Auto_Color,
-	text_emphasis_position: Text_Emphasis_Position,
-	text_emphasis_skip: Emphasis_Skips,
-	text_stroke_width: f32,                 // -webkit-text-stroke-width
-	text_stroke_color: Auto_Color,          // -webkit-text-stroke-color, auto = currentcolor
-	white_space_collapse: White_Space_Collapse,   // `white_space` above is derived from these two
-	text_wrap_mode:    Text_Wrap_Mode,
-	text_wrap_style:   Text_Wrap_Style,
-	hyphens:           Hyphens,
-	// --- fonts: OpenType features and variations (font_features.odin) ---
-	font_feature_settings:   []Font_Feature_Setting,     // nil = normal
-	font_variation_settings: []Font_Variation_Setting,   // nil = normal
+	text_emphasis_position:  Text_Emphasis_Position,
+	text_emphasis_skip:      Emphasis_Skips,
+	white_space_collapse:    White_Space_Collapse,       // `white_space` above is derived from these two
+	text_wrap_mode:          Text_Wrap_Mode,
+	text_wrap_style:         Text_Wrap_Style,
+	hyphens:                 Hyphens,
 	font_kerning:            Font_Kerning,
 	font_variant_ligatures:  Font_Variant_Ligatures,
 	font_variant_numeric:    Font_Variant_Numeric,
 	font_variant_east_asian: Font_Variant_East_Asian,
 	font_variant_position:   Font_Variant_Position,
-	font_optical_sizing:     Font_Optical_Sizing,     // `opsz` axis follows font-size (CSS Fonts 4 §11.5)
-	text_rendering:          Text_Rendering,          // optimizeSpeed turns off kerning and optional ligatures
-	content_language:        string,                  // `lang` / `xml:lang` of the element (inherited), for `locl`; "" none
-	// --- lists, generated content, tables ---
-	list_style_type: List_Style_Type,
-	list_style_position: List_Style_Position,
-	list_style:        List_Marker_Style,   // every counter style; `list_style_type` above is the nearest legacy value
-	quotes:            Quotes,
-	border_collapse: bool,
-	border_spacing: [2]f32,
-	orphans, widows:   i32,
-	// --- user interface ---
-	cursor:     Cursor,
-	cursor_images: []Cursor_Image,   // url() / image-set() before the keyword (cursor.odin), nil: none
-	pointer_events: bool,
-	caret_color:       Auto_Color,
-	accent_color:      Auto_Color,
-	scrollbar_color:   Scrollbar_Colors,
-	text_fill_color:   Auto_Color,          // -webkit-text-fill-color, auto = currentcolor
-	// --- writing modes (writing_modes.odin) ---
-	writing_mode:      Writing_Mode,
-	text_orientation:  Text_Orientation,
-	text_combine_upright: Text_Combine_Upright,
+	font_optical_sizing:     Font_Optical_Sizing,        // `opsz` axis follows font-size (CSS Fonts 4 §11.5)
+	text_rendering:          Text_Rendering,             // optimizeSpeed turns off kerning and optional ligatures
+	list_style_type:         List_Style_Type,
+	list_style_position:     List_Style_Position,
+	border_collapse:         bool,
+	cursor:                  Cursor,
+	pointer_events:          bool,
+	writing_mode:            Writing_Mode,
+	text_orientation:        Text_Orientation,
+	text_combine_upright:    Text_Combine_Upright,
 }
 // background-* (the singular fields are the first layer, the lists every layer: see `background_layers`).
 Background_Group :: struct {
 	background_image:       Image,
-	background_repeat:      [2]Repeat,
 	background_position:    [2]Length,
 	background_size:        Bg_Size,
 	background_images:      []Image,
@@ -327,20 +290,21 @@ Background_Group :: struct {
 	background_origins:     []Box_Area,
 	background_clips:       []Box_Area,
 	background_attachments: []Bg_Attachment,
+	background_repeat:      [2]Repeat,
 }
 
 // CSS Transforms 1 and 2 (3D is parsed and flattened).
 Transform_Group :: struct {
-	transform:        []Transform_Op,       // nil = none
-	transform_origin: [2]Length,            // percentages of the reference box
-	transform_origin_z: f32,                // px (set with transform-origin; not interpolated)
-	transform_box:    Transform_Box,
-	transform_style:  Transform_Style,
-	translate:        Translate_Value,
-	rotate:           Rotate_Value,
-	scale:            Scale_Value,
-	perspective:      f32,                  // 0 = none
-	perspective_origin: [2]Length,
+	transform:           []Transform_Op,       // nil = none
+	transform_origin:    [2]Length,            // percentages of the reference box
+	perspective_origin:  [2]Length,
+	translate:           Translate_Value,
+	rotate:              Rotate_Value,
+	scale:               Scale_Value,
+	transform_origin_z:  f32,                  // px (set with transform-origin; not interpolated)
+	perspective:         f32,                  // 0 = none
+	transform_box:       Transform_Box,
+	transform_style:     Transform_Style,
 	backface_visibility: Backface_Visibility,
 }
 
@@ -375,8 +339,8 @@ Grid_Group :: struct {
 	grid_template_columns, grid_template_rows: Grid_Template,
 	grid_template_areas: Grid_Areas,
 	grid_auto_columns, grid_auto_rows: []Grid_Track,
-	grid_auto_flow:    Grid_Auto_Flow,
 	grid_row_start, grid_row_end, grid_column_start, grid_column_end: Grid_Line,
+	grid_auto_flow:    Grid_Auto_Flow,
 }
 
 // mask-* (masks.odin; every layer, see `mask_layers`).
@@ -391,38 +355,84 @@ Mask_Group :: struct {
 	mask_composites:   []Mask_Composite,
 }
 
-// Effects, counters, containment, container queries, scrolling and anchors: properties few elements set.
+// Border radii and box shadows: shared initial read-only group until an element sets either.
+Decor_Group :: struct {
+	radius:     [Corner]Corner_Radius,
+	box_shadow: []Shadow,
+}
+
+// Insets and min/max size constraints: shared initial read-only group until an element sets any.
+Box_Extra_Group :: struct {
+	inset:                                      [Side]Length,
+	min_width, min_height, max_width, max_height: Length,   // min-*: Auto = the automatic minimum size (0 outside flex and grid items)
+}
+
+// Flexbox and box-alignment properties: shared initial read-only group until an element sets any.
+Flex_Group :: struct {
+	flex_basis:              Length,
+	row_gap, column_gap:     Length,
+	flex_grow, flex_shrink:  f32,
+	order:                   i32,
+	flex_direction:          Flex_Direction,
+	flex_wrap:               Flex_Wrap,
+	justify_content, align_items, align_self, align_content: Content_Align,
+	justify_items, justify_self: Content_Align,
+}
+
+// Effects, counters, containment, container queries, scrolling, columns, anchors and rare visual properties.
 Rare_Group :: struct {
-	object_position:   [2]Length,
-	text_decoration_inset: [2]Length,      // start, end (Auto: the line's own)
-	filter:            []Filter_Op,
-	backdrop_filter:   []Filter_Op,
-	clip_path:         ^Clip_Path,         // nil = none
-	clip:              ^Clip_Path,         // kind Rect; nil = auto (applies to absolutely positioned boxes: has_clip_rect)
-	isolation:         Isolation,
-	mix_blend_mode:    Blend_Mode,
-	will_change:       []string,
-	contain:           Contain,
-	content_visibility: Content_Visibility,
-	scroll_behavior:   Scroll_Behavior,
-	overflow_anchor:   Overflow_Anchor,
+	// --- 8-byte aligned ---
+	content:                 Content,
+	position_anchor:         Position_Anchor,
+	vertical_align:          Vertical_Align,
+	object_position:         [2]Length,
+	text_decoration_inset:   [2]Length,      // start, end (Auto: the line's own)
+	text_decoration_thickness: Length,       // Auto, Normal (= from-font), Px, Percent (of 1em) or Calc
+	column_width:            Length,         // Auto or Px
+	filter:                  []Filter_Op,
+	backdrop_filter:         []Filter_Op,
+	clip_path:               ^Clip_Path,     // nil = none
+	clip:                    ^Clip_Path,     // kind Rect; nil = auto (applies to absolutely positioned boxes: has_clip_rect)
+	will_change:             []string,
+	counter_reset:           []Counter_Op,
+	counter_increment:       []Counter_Op,
+	counter_set:             []Counter_Op,
+	container_name:          []string,
+	anchor_name:             []string,       // nil: none
+	anchor_scope:            Anchor_Scope,
+	position_try_fallbacks:  []Try_Option,   // nil: none
+	// --- 4-byte aligned ---
+	aspect_ratio:            f32,            // width / height, 0 = auto
+	outline_offset:          f32,
+	column_count:            i32,            // 0 = auto
+	// --- 1-byte aligned ---
+	position_area:           Position_Area,
+	aspect_ratio_auto:       bool,           // `auto && <ratio>`: a replaced element with a natural ratio uses that one instead
+	text_ellipsis:           bool,
+	object_fit:              Object_Fit,
+	text_decoration_style:   Text_Decoration_Style,
+	unicode_bidi:            Unicode_Bidi,
+	user_select:             User_Select,
+	table_layout:            Table_Layout,
+	touch_action:            Touch_Blocked,  // what fingers may not do here ({} = auto)
+	appearance:              Appearance,
+	column_span:             Column_Span,
+	column_fill:             Column_Fill,
+	break_before, break_after: Break_Value,
+	break_inside:            Break_Inside,
+	isolation:               Isolation,
+	mix_blend_mode:          Blend_Mode,
+	contain:                 Contain,
+	content_visibility:      Content_Visibility,
+	scroll_behavior:         Scroll_Behavior,
+	overflow_anchor:         Overflow_Anchor,
 	overscroll_x, overscroll_y: Overscroll,
-	resize:            Resize,
-	counter_reset:     []Counter_Op,
-	counter_increment: []Counter_Op,
-	counter_set:       []Counter_Op,
-	// container queries (container.odin)
-	container_type:    Container_Type,
-	container_name:    []string,
-	// scroll bars (container.odin; the room classic bars take: layout scrollbars.odin)
-	scrollbar_width:   Scrollbar_Width,
-	scrollbar_gutter:  Scrollbar_Gutter,
-	// anchor positioning (anchor.odin)
-	anchor_name:       []string,            // nil: none
-	anchor_scope:      Anchor_Scope,
-	position_try_fallbacks: []Try_Option,   // nil: none
-	position_try_order: Try_Order,
-	position_visibility: Position_Visibility,
+	resize:                  Resize,
+	container_type:          Container_Type,
+	scrollbar_width:         Scrollbar_Width,
+	scrollbar_gutter:        Scrollbar_Gutter,
+	position_try_order:      Try_Order,
+	position_visibility:     Position_Visibility,
 }
 
 

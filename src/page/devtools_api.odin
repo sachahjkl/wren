@@ -87,8 +87,9 @@ dev_listeners :: proc(p: ^Page, h: base.Handle) -> []Dev_Listener {
 	if p == nil || p.closed { return nil }
 	n := dom.get(p.doc, h)
 	if n == nil { return nil }
-	out := make([dynamic]Dev_Listener, 0, len(n.listeners), context.temp_allocator)
-	for l in n.listeners {
+	listeners := dom.node_listeners(p.doc, h)
+	out := make([dynamic]Dev_Listener, 0, len(listeners), context.temp_allocator)
+	for l in listeners {
 		if l.removed { continue }
 		append(&out, Dev_Listener{type = l.type, capture = l.capture, once = l.once, passive = l.passive, callback = l.callback, on_node = h})
 	}

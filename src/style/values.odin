@@ -170,22 +170,14 @@ initial_computed :: proc(s: ^Settings, inh: ^Inherited_Group) -> Computed {
 	groups_initial(&c, inh)
 	c.display = .Inline
 	c.z_auto = true
-	c.max_width = Length{kind = .None}
-	c.max_height = Length{kind = .None}
 	c.width, c.height = auto_length, auto_length
 	for side in Side {
-		c.inset[side] = auto_length
 		c.margin[side] = px(0)
 		c.padding[side] = px(0)
 		c.border_width[side] = 3
 		c.border_color[side] = s.colors[.Light][.Canvas_Text]
 	}
 	c.opacity = 1
-	c.flex_shrink = 1
-	c.flex_basis = auto_length
-	c.align_self = .Auto
-	c.justify_self = .Auto
-	c.row_gap, c.column_gap = Length{kind = .Normal}, Length{kind = .Normal}
 	// the initial color is CanvasText, of the element's own scheme (see scheme_settle)
 	c.color_pair = Scheme_Color{s.colors[.Light][.Canvas_Text], s.colors[.Dark][.Canvas_Text]}
 	c.color = c.color_pair.light
@@ -203,9 +195,7 @@ initial_computed :: proc(s: ^Settings, inh: ^Inherited_Group) -> Computed {
 	c.list_style_type = .Disc
 	c.list_style = List_Marker_Style{style = .Disc}
 	c.border_collapse = false
-	c.content = Content{kind = .Normal}
 	c.font_stretch = 100
-	c.text_decoration_thickness = auto_length
 	c.text_underline_offset = auto_length
 	c.text_decoration_skip_spaces = {.Start, .End}
 	c.text_emphasis_color = Auto_Color{auto = true}
@@ -221,7 +211,6 @@ initial_computed :: proc(s: ^Settings, inh: ^Inherited_Group) -> Computed {
 	c.stroke_linecap = .Butt
 	c.stroke_linejoin = .Miter
 	c.scrollbar_color = Scrollbar_Colors{auto = true}
-	c.column_width = auto_length
 	c.column_rule_width = COLUMN_RULE_MEDIUM_PX
 	c.orphans, c.widows = ORPHANS_WIDOWS_INITIAL, ORPHANS_WIDOWS_INITIAL
 	return c
@@ -231,6 +220,17 @@ initial_computed :: proc(s: ^Settings, inh: ^Inherited_Group) -> Computed {
 // into the read-only `initial_groups` (props.odin).
 @(private)
 initial_groups_fill :: proc(c: ^Computed) {
+	for side in Side { c.inset[side] = auto_length }
+	c.max_width = Length{kind = .None}
+	c.max_height = Length{kind = .None}
+	c.flex_shrink = 1
+	c.flex_basis = auto_length
+	c.align_self = .Auto
+	c.justify_self = .Auto
+	c.row_gap, c.column_gap = Length{kind = .Normal}, Length{kind = .Normal}
+	c.content = Content{kind = .Normal}
+	c.text_decoration_thickness = auto_length
+	c.column_width = auto_length
 	c.background_position = {Length{kind = .Percent, v = 0}, Length{kind = .Percent, v = 0}}
 	c.transform_origin = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
 	c.perspective_origin = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}

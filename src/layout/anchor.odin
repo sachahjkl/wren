@@ -118,7 +118,7 @@ tree_root_of :: proc(c: ^Ctx, h: base.Handle) -> base.Handle {
 	for {
 		n := dom.get(c.d, cur)
 		if n == nil { return base.NIL_HANDLE }
-		if n.is_shadow || n.parent == base.NIL_HANDLE { return cur }
+		if (.Is_Shadow in n.flags) || n.parent == base.NIL_HANDLE { return cur }
 		cur = n.parent
 	}
 }
@@ -387,6 +387,9 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 	l := ac.l
 	v := new(style.Computed, context.temp_allocator)
 	v^ = base^
+	style.group_take(v, .Box_Extra, context.temp_allocator)
+	style.group_take(v, .Flex, context.temp_allocator)
+	style.group_take(v, .Rare, context.temp_allocator)
 	tactics: []style.Try_Tactic
 	if opt >= 0 {
 		o := &base.position_try_fallbacks[opt]
@@ -401,8 +404,8 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 			for k in 0 ..< n { append(&list, buf[k]) }
 		}
 		// (self-alignment values are named by flow or side already: they move by the tactics as written)
-		named: style.Computed
-		named.justify_self, named.align_self = v.justify_self, v.align_self
+		named_flex := style.Flex_Group{justify_self = v.justify_self, align_self = v.align_self}
+		named := style.Computed{flex_group = &named_flex}
 		for t in tactics { style.try_tactic_alignment(&named, t) }
 		tactics = list[:]
 		for t in tactics { style.try_tactic_apply(v, t, context.temp_allocator) }
@@ -526,8 +529,8 @@ align_box :: proc(ac: ^A, q: i32, p: ^Prep) {
 	for axis in 0 ..< 2 {
 		mode := p.align[axis]
 		if mode == .None { continue }
-		auto_s := axis == 0 ? k.auto_l : k.auto_t
-		auto_e := axis == 0 ? k.auto_r : k.auto_b
+		auto_s := axis == 0 ? (.Auto_L in k.state) : (.Auto_T in k.state)
+		auto_e := axis == 0 ? (.Auto_R in k.state) : (.Auto_B in k.state)
 		if auto_s || auto_e { continue }
 		ms := axis == 0 ? k.margin[3] : k.margin[0]
 		me := axis == 0 ? k.margin[1] : k.margin[2]
@@ -563,7 +566,7 @@ try_layout :: proc(ac: ^A, q: i32, base: ^style.Computed, p: ^Prep) {
 	k.cs = p.cs
 	// (the style is not the one the box's cached result was made with; nothing above it needs to know)
 	k.inc += {.Dirty}
-	k.intr_ok = false
+	k.state -= {.Intr_Ok}
 	layout_abs(c, q, p.ref, p.imcb)
 	align_box(ac, q, p)
 	c.l.boxes[q].cs = base
@@ -822,8 +825,8 @@ anchored_space :: proc(l: ^Layout, x: i32, t: []^Anchored) {
 	if l.spaces[b.space].kind == .Flow {
 		if !scroll_apart(l, e.anchor, x) { return }
 		sp := l.spaces[b.space]
-		at := &l.flow_frags[sp.flow[0]]
-		for fi in sp.flow[0] ..< sp.flow[1] {
+		at := &l.flow_frags[sp.data.flow[0]]
+		for fi in sp.data.flow[0] ..< sp.data.flow[1] {
 			fr := &l.flow_frags[fi]
 			if frag_overlaps(fr, Rect{b.abs, b.abs}) { at = fr; break }
 		}
@@ -831,7 +834,7 @@ anchored_space :: proc(l: ^Layout, x: i32, t: []^Anchored) {
 		b.clip = l.clips[at.clip].parent
 	}
 	pb := &l.spaces[b.space]
-	append(&l.spaces, Space{kind = .Anchored, parent = b.space, box = x, frame = NONE, clip = b.clip, xform = pb.xform, plane = pb.plane, persp_from = NONE, ctx = NONE, dest = NONE, anchor = e.anchor, follow = e.follow})
+	append(&l.spaces, Space{kind = .Anchored, parent = b.space, box = x, clip = b.clip, xform = pb.xform, plane = pb.plane, data = {anchored = {anchor = e.anchor, follow = e.follow}}})
 	b.space = i32(len(l.spaces) - 1)
 }
 
@@ -846,7 +849,7 @@ anchored_shift :: proc(l: ^Layout, sp: ^Space, viewport: Vec2, doc_scroll: f32, 
 			switch q.kind {
 			case .Document: off -= Vec2{doc_scroll_x_snapped(l), doc_scroll}
 			case .Fixed, .Transform, .Flow:
-			case .Column: off += q.shift
+			case .Column: off += q.data.column.shift
 			case .Scroll: off -= scroll_offset_of(l, q)
 			case .Sticky: off += sticky_offset(l, q, viewport, doc_scroll)
 			case .Anchored: off += anchored_shift(l, q, viewport, doc_scroll, depth + 1)
@@ -854,10 +857,11 @@ anchored_shift :: proc(l: ^Layout, sp: ^Space, viewport: Vec2, doc_scroll: f32, 
 		}
 		return off
 	}
-	a := l.boxes[sp.anchor].space
+	an := &sp.data.anchored
+	a := l.boxes[an.anchor].space
 	d := walk(l, a, viewport, doc_scroll, depth) - walk(l, sp.parent, viewport, doc_scroll, depth)
-	if !sp.follow[0] { d.x = 0 }
-	if !sp.follow[1] { d.y = 0 }
+	if !an.follow[0] { d.x = 0 }
+	if !an.follow[1] { d.y = 0 }
 	return d
 }
 

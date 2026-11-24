@@ -520,8 +520,8 @@ scrollbar_at :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> (hit: Bar_Hit, ok: boo
 		sp := &l.spaces[ss]
 		vertical := .Vertical in it.flags
 		ax := vertical ? 1 : 0
-		sport := sp.port.max - sp.port.min
-		return bar_hit(l, b.node, vertical, track, lay.scrollbar_thumb(l, &v, it), sp.min_scroll[ax], sp.max_scroll[ax], sport[ax]), true
+		sport := sp.data.scroll.port.max - sp.data.scroll.port.min
+		return bar_hit(l, b.node, vertical, track, lay.scrollbar_thumb(l, &v, it), sp.data.scroll.min_scroll[ax], sp.data.scroll.max_scroll[ax], sport[ax]), true
 	}
 	return
 }

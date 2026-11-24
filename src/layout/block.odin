@@ -177,12 +177,14 @@ used_width_shrink :: proc(c: ^Ctx, k: i32, cw: f32, ch: f32 = -1) -> f32 {
 @(private)
 block_width :: proc(c: ^Ctx, bi: i32, cb_w, avail: f32) {
 	b := &c.l.boxes[bi]
+	auto_l := .Auto_L in b.state
+	auto_r := .Auto_R in b.state
 	if b.kind == .Block && .Block_In_Inline not_in b.flags && .Control not_in b.flags && is_plain(c, bi) {
 		// width, min-width, max-width auto / none: what the general case below finds, without the style
-		ml := b.auto_l ? 0 : b.margin[3]
-		mr := b.auto_r ? 0 : b.margin[1]
-		if b.auto_l { b.margin[3] = 0 }
-		if b.auto_r { b.margin[1] = 0 }
+		ml := auto_l ? 0 : b.margin[3]
+		mr := auto_r ? 0 : b.margin[1]
+		if auto_l { b.margin[3] = 0 }
+		if auto_r { b.margin[1] = 0 }
 		b.size.x = max(avail - ml - mr, pb_w(b))
 		return
 	}
@@ -193,7 +195,7 @@ block_width :: proc(c: ^Ctx, bi: i32, cb_w, avail: f32) {
 		b = &c.l.boxes[bi]
 		w = sz.x
 	} else if b.kind == .Table {
-		w = table_width(c, bi, cb_w, avail - (b.auto_l ? 0 : b.margin[3]) - (b.auto_r ? 0 : b.margin[1]))
+		w = table_width(c, bi, cb_w, avail - (auto_l ? 0 : b.margin[3]) - (auto_r ? 0 : b.margin[1]))
 		b = &c.l.boxes[bi]
 	} else if spec, ok := to_border_w(c, b, cs.width, cb_w); ok {
 		w = clamp_w(c, b, spec, cb_w)
@@ -201,7 +203,7 @@ block_width :: proc(c: ^Ctx, bi: i32, cb_w, avail: f32) {
 		#partial switch cs.width.kind {
 		case .Min_Content: w = intrinsic(c, bi)[0]
 		case .Max_Content: w = intrinsic(c, bi)[1]
-		case .Fit_Content: w = shrink_to_fit(c, bi, avail - (b.auto_l ? 0 : b.margin[3]) - (b.auto_r ? 0 : b.margin[1]))
+		case .Fit_Content: w = shrink_to_fit(c, bi, avail - (auto_l ? 0 : b.margin[3]) - (auto_r ? 0 : b.margin[1]))
 		case:
 			if .Frame_Root in b.fx && frame_orthogonal(c.l, bi) {
 				// its width is its block size: what its content takes
@@ -210,18 +212,18 @@ block_width :: proc(c: ^Ctx, bi: i32, cb_w, avail: f32) {
 			}
 			if .Control in b.flags && cs.width.kind == .Auto {
 				// HTML §15.5.x: a <button> whose width is auto is as wide as its content, also as a block or a flex container
-				w = shrink_to_fit(c, bi, avail - (b.auto_l ? 0 : b.margin[3]) - (b.auto_r ? 0 : b.margin[1]))
+				w = shrink_to_fit(c, bi, avail - (auto_l ? 0 : b.margin[3]) - (auto_r ? 0 : b.margin[1]))
 				break
 			}
-			ml := b.auto_l ? 0 : b.margin[3]
-			mr := b.auto_r ? 0 : b.margin[1]
+			ml := auto_l ? 0 : b.margin[3]
+			mr := auto_r ? 0 : b.margin[1]
 			w = avail - ml - mr
 			if .Block_In_Inline not_in b.flags && (.Bfc not_in b.flags || b.kind == .Flex || b.kind == .Block) {
 				// a block fills its line: auto margins are 0
 				b = &c.l.boxes[bi]
 				w = clamp_w(c, b, w, cb_w)
-				if b.auto_l { b.margin[3] = 0 }
-				if b.auto_r { b.margin[1] = 0 }
+				if auto_l { b.margin[3] = 0 }
+				if auto_r { b.margin[1] = 0 }
 				if w >= avail - ml - mr - 0.001 { b.size.x = w; return }
 			}
 		}
@@ -231,13 +233,13 @@ block_width :: proc(c: ^Ctx, bi: i32, cb_w, avail: f32) {
 	b = &c.l.boxes[bi]
 	b.size.x = w
 	// auto margins share what is left (§10.3.3); over-constrained: the end margin gives way
-	free := avail - w - (b.auto_l ? 0 : b.margin[3]) - (b.auto_r ? 0 : b.margin[1])
+	free := avail - w - (auto_l ? 0 : b.margin[3]) - (auto_r ? 0 : b.margin[1])
 	pcs := c.l.boxes[b.parent].cs
 	// (the initial containing block has the principal direction: CSS Writing Modes 4 §8)
 	rtl := .Root in c.l.boxes[b.parent].flags ? principal_rtl(c) : pcs != nil && is_rtl(pcs)
 	// HTML's align attributes and <center> (-webkit-* text-align values) place a narrower block-level child whose margins
 	// are not auto as Blink does: its margin box centered, or pushed to one side
-	legacy := pcs != nil && !b.auto_l && !b.auto_r ? pcs.text_align : .Start
+	legacy := pcs != nil && !auto_l && !auto_r ? pcs.text_align : .Start
 	if legacy == .Legacy_Center {
 		start := max(free * 0.5, 0)
 		if rtl { b.margin[1] += start; b.margin[3] = avail - w - b.margin[1] } else { b.margin[3] += start; b.margin[1] = avail - w - b.margin[3] }
@@ -245,15 +247,15 @@ block_width :: proc(c: ^Ctx, bi: i32, cb_w, avail: f32) {
 		b.margin[3] += max(free, 0); b.margin[1] = avail - w - b.margin[3]
 	} else if legacy == .Legacy_Left && rtl {
 		b.margin[1] += max(free, 0); b.margin[3] = avail - w - b.margin[1]
-	} else if b.auto_l && b.auto_r {
+	} else if auto_l && auto_r {
 		if free < 0 {
 			if rtl { b.margin[3], b.margin[1] = free, 0 } else { b.margin[3], b.margin[1] = 0, free }
 		} else {
 			b.margin[3], b.margin[1] = free * 0.5, free * 0.5
 		}
-	} else if b.auto_l {
+	} else if auto_l {
 		b.margin[3] = free
-	} else if b.auto_r {
+	} else if auto_r {
 		b.margin[1] = free
 	} else if rtl {
 		b.margin[3] = avail - w - b.margin[1]
@@ -337,7 +339,7 @@ quirks_base_from :: proc(c: ^Ctx, from: i32, mark: bool) -> f32 {
 	for a := from; a != NONE; a = c.l.boxes[a].parent {
 		ab := &c.l.boxes[a]
 		if .Root in ab.flags { return c.vp.y }
-		if mark { ab.cache_quirks = true }
+		if mark { ab.state += {.Cache_Quirks} }
 		if ab.node == c.root_el { return max(c.vp.y - ab.margin[0] - ab.margin[2] - pb_h(ab), 0) }
 		if is_quirks_body(c, a) {
 			root := &c.l.boxes[ab.parent]
@@ -381,7 +383,7 @@ cache_key :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32) -> (key: Cache_Ke
 	} else if !reads {
 		key[1] = -1
 	}
-	if quirks && c.l.boxes[bi].cache_quirks { key[3] = quirks_key(c, bi) }
+	if quirks && (.Cache_Quirks in c.l.boxes[bi].state) { key[3] = quirks_key(c, bi) }
 	return
 }
 
@@ -410,8 +412,10 @@ reads_cb_height :: proc(c: ^Ctx, bi: i32) -> bool {
 measure_height :: proc(c: ^Ctx, bi: i32, w, cb_h: f32) -> f32 {
 	if c.pre != nil { pre_wait_box(c, bi) }
 	b := &c.l.boxes[bi]
-	if b.alt_ok && b.cache_ok && b.inc == {} && .Frame_Root not_in b.fx {
-		if key, _ := cache_key(c, bi, w, cb_h, -1); b.alt_in == key { return b.alt_h }
+	if (.Alt_Ok in b.state) && (.Cache_Ok in b.state) && b.inc == {} && .Frame_Root not_in b.fx {
+		if alt, ok := c.l.alt_cache[bi]; ok {
+			if key, _ := cache_key(c, bi, w, cb_h, -1); alt.alt_in == key { return alt.alt_h }
+		}
 	}
 	return layout_contents(c, bi, w, cb_h, -1, nil).h
 }
@@ -446,35 +450,38 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 	// the subgrid itself: its cached result no longer describes its children (they keep their measuring size)
 	subgrid := b.kind == .Grid && b.parent != NONE && c.l.boxes[b.parent].kind == .Grid && b.cs != nil &&
 		(grid_template(b.cs, 0).kind == .Subgrid || grid_template(b.cs, 1).kind == .Subgrid)
-	valid := b.cache_ok && b.inc == {} && !subgrid
-	if valid && b.cache_in == key {
-		if independent && !b.cache_flow {
-			b.size.y = b.cache_h
-			return Result{h = b.cache_h}
+	bc := &c.l.cache[bi]
+	valid := (.Cache_Ok in b.state) && b.inc == {} && !subgrid
+	if valid && bc.cache_in == key {
+		if independent && (.Cache_Flow not_in b.state) {
+			b.size.y = bc.cache_h
+			return Result{h = bc.cache_h}
 		}
 		// (top margins that collapse through it or not, as they did: what they left inside it is in its height)
-		if flow_ok && b.cache_flow && b.cache_open == (fc.open != nil) {
-			b.size.y = b.cache_h
-			if fc.open != nil { strut_merge(fc.open, b.cache_contrib) }
-			return Result{h = b.cache_h, end = b.cache_end, through = b.cache_through}
+		if flow_ok && (.Cache_Flow in b.state) && ((.Cache_Open in b.state) == (fc.open != nil)) {
+			b.size.y = bc.cache_h
+			if fc.open != nil { strut_merge(fc.open, bc.cache_contrib) }
+			return Result{h = bc.cache_h, end = bc.cache_end, through = .Cache_Through in b.state}
 		}
 	}
 	// the second entry, when its content is laid out as for the first (only its height differs: impose_height)
-	if valid && independent && !b.cache_flow && b.alt_ok && b.alt_same && b.alt_in == key {
-		b.size.y = b.alt_h
-		return Result{h = b.alt_h}
+	if valid && independent && (.Cache_Flow not_in b.state) && (.Alt_Ok in b.state) && (.Alt_Same in b.state) {
+		if alt, ok := c.l.alt_cache[bi]; ok && alt.alt_in == key {
+			b.size.y = alt.alt_h
+			return Result{h = alt.alt_h}
+		}
 	}
 	// the entry this layout replaces becomes the second one (the same content, at other inputs)
 	// (its content moves to this layout's: no longer laid out as for the second entry)
-	if valid && independent && !b.cache_flow && b.cache_in != key && .Frame_Root not_in b.fx {
-		b.alt_ok, b.alt_in, b.alt_h = true, b.cache_in, b.cache_h
+	if valid && independent && (.Cache_Flow not_in b.state) && bc.cache_in != key && .Frame_Root not_in b.fx {
+		b.state += {.Alt_Ok}
+		c.l.alt_cache[bi] = Alt_Cache{alt_in = bc.cache_in, alt_h = bc.cache_h}
 	} else if !valid || !independent || .Frame_Root in b.fx {
-		b.alt_ok = false
+		b.state -= {.Alt_Ok}
 	}
-	b.alt_same = false
+	b.state -= {.Alt_Same, .Cache_Ok}
 	if c.inc != nil { inc_note_layout(c, bi) }
 	b.inc = {}
-	b.cache_ok = false
 	outer_open: ^Strut
 	contrib: Strut
 	own_fc: Flow_Ctx
@@ -586,13 +593,16 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 	if outer_open != nil { strut_merge(outer_open, contrib) }
 	if independent || flow_ok {
 		// (a percentage height inside, met by this layout, marked the box: its entry holds the height that read)
-		if key[3] == 0 && b.cache_quirks && c.st != nil && c.st.quirks { key[3] = quirks_key(c, bi) }
-		b.cache_ok = true
-		b.cache_flow = !independent
-		b.cache_open = outer_open != nil
-		b.cache_in = key
-		b.cache_h = h
-		b.cache_end, b.cache_through, b.cache_contrib = res.end, res.through, contrib
+		if key[3] == 0 && (.Cache_Quirks in b.state) && c.st != nil && c.st.quirks { key[3] = quirks_key(c, bi) }
+		b.state -= {.Cache_Flow, .Cache_Open, .Cache_Through}
+		b.state += {.Cache_Ok}
+		if !independent { b.state += {.Cache_Flow} }
+		if outer_open != nil { b.state += {.Cache_Open} }
+		if res.through { b.state += {.Cache_Through} }
+		bc = &c.l.cache[bi]
+		bc.cache_in = key
+		bc.cache_h = h
+		bc.cache_end, bc.cache_contrib = res.end, contrib
 	}
 	return res
 }
@@ -653,8 +663,8 @@ flow_children :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse
 		if !pre_model(c, ch, k) { resolve_box_model(c, k, k_cw) }
 		k = &c.l.boxes[ch]
 		mt := k.margin[0]
-		if k.auto_t { mt = 0; k.margin[0] = 0 }
-		if k.auto_b { k.margin[2] = 0 }
+		if .Auto_T in k.state { mt = 0; k.margin[0] = 0 }
+		if .Auto_B in k.state { k.margin[2] = 0 }
 
 		// clearance (§9.5.2): the border edge goes below the floats it clears; margins above no longer collapse with it
 		probe := strut^
@@ -676,7 +686,7 @@ flow_children :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse
 		}
 
 		avoid := .Bfc in k.flags && fc.bfc != nil && len(fc.bfc.floats) > 0
-		ml0, mr0 := k.auto_l ? 0 : k.margin[3], k.auto_r ? 0 : k.margin[1]
+		ml0, mr0 := (.Auto_L in k.state) ? 0 : k.margin[3], (.Auto_R in k.state) ? 0 : k.margin[1]
 		block_width(c, ch, k_cw, k_cw)
 		k = &c.l.boxes[ch]
 		w := k.size.x
@@ -691,7 +701,7 @@ flow_children :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse
 					l, r := bfc_band(fc.bfc, t, t + 1, fc.x, fc.x + cw)
 					if r - l < cw - 0.01 {
 						// (the first block_width gave the end margin what was left over: start again from the margins the box has)
-						k.margin[3], k.margin[1] = k.auto_l ? 0 : ml0, k.auto_r ? 0 : mr0
+						k.margin[3], k.margin[1] = (.Auto_L in k.state) ? 0 : ml0, (.Auto_R in k.state) ? 0 : mr0
 						block_width(c, ch, cw, r - l)
 						k = &c.l.boxes[ch]
 						w = k.size.x
@@ -771,10 +781,10 @@ block_baselines :: proc(c: ^Ctx, bi: i32) {
 place_float :: proc(c: ^Ctx, fi, ci: i32, cw: f32, fc: ^Flow_Ctx, min_y: f32) {
 	resolve_box_model(c, &c.l.boxes[fi], cw)
 	k := &c.l.boxes[fi]
-	if k.auto_l { k.margin[3] = 0 }
-	if k.auto_r { k.margin[1] = 0 }
-	if k.auto_t { k.margin[0] = 0 }
-	if k.auto_b { k.margin[2] = 0 }
+	if .Auto_L in k.state { k.margin[3] = 0 }
+	if .Auto_R in k.state { k.margin[1] = 0 }
+	if .Auto_T in k.state { k.margin[0] = 0 }
+	if .Auto_B in k.state { k.margin[2] = 0 }
 	w := used_width_shrink(c, fi, cw)
 	res := layout_contents(c, fi, w, -1, -1, nil)
 	k = &c.l.boxes[fi]

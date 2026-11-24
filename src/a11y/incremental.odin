@@ -369,7 +369,7 @@ live_mark :: proc(l: ^Live, id: u64) {
 up :: proc(d: ^dom.Document, h: base.Handle) -> base.Handle {
 	n := dom.get(d, h)
 	if n == nil { return base.NIL_HANDLE }
-	if n.is_shadow { return n.shadow }
+	if .Is_Shadow in n.flags { return n.shadow }
 	return n.parent
 }
 

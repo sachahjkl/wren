@@ -247,13 +247,11 @@ group_sig_at :: proc(e: ^Effects, c: ^Comp, g: i32, anchor: draw.Vec2) -> u64 {
 		h = fx_f32(fx_f32(fx_f32(fx_f32(h, m[0]), m[1]), m[2]), m[3])
 		h = fx_pos(h, {m[4], m[5]} + fo(e, b.space) - anchor)
 	}
-	if int(g) < len(c.floors) {
-		for ci in c.floors[g] {
-			cl := &l.clips[ci]
-			h = fx_rect(h, cl.rect, anchor - (e.v.offsets[cl.space] + e.origin))
-			h = fx_bytes(h, &cl.radii, size_of(cl.radii))
-			h = fx_mix(h, u64(e.l.spaces[cl.space].xform != lay.NONE))
-		}
+	for ci in comp_floor_clips(c, g) {
+		cl := &l.clips[ci]
+		h = fx_rect(h, cl.rect, anchor - (e.v.offsets[cl.space] + e.origin))
+		h = fx_bytes(h, &cl.radii, size_of(cl.radii))
+		h = fx_mix(h, u64(e.l.spaces[cl.space].xform != lay.NONE))
 	}
 	if gp := &e.groups[g]; gp.seen && .Plane not_in gr.effects { h = fx_rect(h, gp.bounds, anchor) }
 	return h

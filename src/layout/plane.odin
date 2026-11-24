@@ -104,10 +104,15 @@ h3_apply :: proc(h: [9]f32, p: Vec2) -> (Vec2, bool) {
 	return {(h[0] * p.x + h[1] * p.y + h[2]) / w, (h[3] * p.x + h[4] * p.y + h[5]) / w}, true
 }
 
+// Accumulated 4x4 projection matrix of plane space `si` in view `v`.
+plane_acc_of :: #force_inline proc(l: ^Layout, v: ^View, si: i32) -> Matrix4 {
+	return v.accs[l.spaces[si].data.transform.plane_data]
+}
+
 // Plane `pl`'s frame -> the viewport, through the planes that receive it.
 plane_chain_h3 :: proc(l: ^Layout, v: ^View, pl: i32) -> [9]f32 {
-	h := plane_h3(v.accs[pl])
-	for d := l.spaces[pl].dest; d != NONE; d = l.spaces[d].dest { h = h3_mul(plane_h3(v.accs[d]), h) }
+	h := plane_h3(plane_acc_of(l, v, pl))
+	for d := space_plane(l, pl).dest; d != NONE; d = space_plane(l, d).dest { h = h3_mul(plane_h3(plane_acc_of(l, v, d)), h) }
 	return h
 }
 h3_inverse :: proc(h: [9]f32) -> (r: [9]f32, ok: bool) {
@@ -137,23 +142,26 @@ project4 :: proc(m: Matrix4, p: Vec2) -> (q: Vec2, z: f32, ok: bool) {
 // Sets up the plane fields of the Transform space `sp` (index `si`) of plane box `b`, which is in the space b.space.
 @(private)
 plane_space :: proc(l: ^Layout, sp: ^Space, si: i32, b: ^Box) {
-	sp.proj = true
-	sp.plane = si
-	sp.mat4 = box_matrix4(l, b)
-	sp.preserve = used_preserve_3d(b.cs)
-	sp.back_hidden = b.cs.backface_visibility == .Hidden
-	a := l.spaces[b.space].xform
-	sp.persp_from = a
-	sp.persp = style.IDENTITY_MATRIX4
-	if a != NONE { sp.persp = perspective_of(l, &l.boxes[l.spaces[a].box]) }
-	// a member of the context of the transformed ancestor when that one keeps its children in 3D
-	if a != NONE && l.spaces[a].proj && l.spaces[a].preserve {
-		sp.ctx = l.spaces[a].ctx
-		sp.dest = l.spaces[sp.ctx].dest
-	} else {
-		sp.ctx = si
-		sp.dest = a == NONE ? NONE : l.spaces[a].plane
+	pl := Space_Plane{
+		mat4 = box_matrix4(l, b),
+		persp = style.IDENTITY_MATRIX4,
+		preserve = used_preserve_3d(b.cs),
+		back_hidden = b.cs.backface_visibility == .Hidden,
 	}
+	a := l.spaces[b.space].xform
+	pl.persp_from = a
+	if a != NONE { pl.persp = perspective_of(l, &l.boxes[l.spaces[a].box]) }
+	// a member of the context of the transformed ancestor when that one keeps its children in 3D
+	if a != NONE && space_is_plane(&l.spaces[a]) && space_plane(l, a).preserve {
+		pl.ctx = space_plane(l, a).ctx
+		pl.dest = space_plane(l, pl.ctx).dest
+	} else {
+		pl.ctx = si
+		pl.dest = a == NONE ? NONE : l.spaces[a].plane
+	}
+	sp.plane = si
+	sp.data.transform.plane_data = i32(len(l.planes))
+	append(&l.planes, pl)
 }
 
 // The group of plane box `g`'s box now knows its space: where its projection lands.
@@ -161,10 +169,10 @@ plane_space :: proc(l: ^Layout, sp: ^Space, si: i32, b: ^Box) {
 plane_group :: proc(l: ^Layout, g: i32, si: i32) {
 	grp := &l.groups[g]
 	grp.space = si
-	sp := &l.spaces[si]
-	if sp.ctx != si {
+	pl := space_plane(l, si)
+	if pl.ctx != si {
 		// a member of a context: it lands where the context's root does
-		root := l.boxes[l.spaces[sp.ctx].box].group
+		root := l.boxes[l.spaces[pl.ctx].box].group
 		if root != NONE { grp.dest = l.groups[root].parent }
 	}
 }
@@ -188,7 +196,7 @@ detachable_shape :: proc(l: ^Layout, g: i32) -> bool {
 	if p == NONE || gr.dest != p { return false }
 	pg := &l.groups[p]
 	if pg.effects != {.Plane} || pg.space == NONE || pg.alpha < 1 { return false }
-	if l.spaces[gr.space].ctx != gr.space { return false }
+	if space_plane(l, gr.space).ctx != gr.space { return false }
 	for ci := l.boxes[gr.box].clip; ci != NONE; ci = l.clips[ci].parent {
 		if l.spaces[l.clips[ci].space].plane == pg.space { return false }
 	}
@@ -218,34 +226,34 @@ plane_wanted :: proc(l: ^Layout, b: ^Box, parent: i32) -> bool {
 // spaces between. ok = false: it flattens to nothing (edge-on, singular).
 @(private)
 plane_acc :: proc(l: ^Layout, v: ^View, i: i32) -> (Matrix4, bool) {
-	sp := &l.spaces[i]
+	pl := space_plane(l, i)
 	base := style.IDENTITY_MATRIX4
-	a := sp.persp_from
+	a := pl.persp_from
 	if a != NONE {
 		as := &l.spaces[a]
-		if as.proj {
-			if sp.ctx != i { base = v.accs[a] }
+		if space_is_plane(as) {
+			if pl.ctx != i { base = plane_acc_of(l, v, a) }
 		} else {
 			base = style.m4_from_2d(v.mats[a])
 		}
-		base = style.m4_mul(base, shift4(sp.persp, v.offsets[a]))
+		base = style.m4_mul(base, shift4(pl.persp, v.offsets[a]))
 	}
-	acc := style.m4_mul(base, shift4(sp.mat4, v.offsets[i]))
+	acc := style.m4_mul(base, shift4(pl.mat4, v.offsets[i]))
 	return acc, abs(h3_det(plane_h3(acc))) > 1e-12
 }
 
 // A viewport point in the frame of plane `pl`: the point of that plane under it (its depth z in the frame of what
 // receives it, larger = nearer). ok = false: no such point (edge-on, behind the viewer).
 plane_point :: proc(l: ^Layout, v: ^View, pl: i32, p: Vec2) -> (q: Vec2, z: f32, ok: bool) {
-	sp := &l.spaces[pl]
+	pp := space_plane(l, pl)
 	pd := p
-	if sp.dest != NONE {
+	if pp.dest != NONE {
 		dok: bool
-		pd, _, dok = plane_point(l, v, sp.dest, p)
+		pd, _, dok = plane_point(l, v, pp.dest, p)
 		if !dok { return {}, 0, false }
 	}
 	if v.singular[pl] { return {}, 0, false }
-	acc := v.accs[pl]
+	acc := plane_acc_of(l, v, pl)
 	inv, iok := h3_inverse(plane_h3(acc))
 	if !iok { return {}, 0, false }
 	a := inv[0] * pd.x + inv[1] * pd.y + inv[2]
@@ -261,8 +269,8 @@ plane_point :: proc(l: ^Layout, v: ^View, pl: i32, p: Vec2) -> (q: Vec2, z: f32,
 
 // A point of plane `pl`'s frame in the viewport (through the planes that receive it). ok = false: behind the viewer.
 plane_project :: proc(l: ^Layout, v: ^View, pl: i32, u: Vec2) -> (Vec2, bool) {
-	q, _, ok := project4(v.accs[pl], u)
+	q, _, ok := project4(plane_acc_of(l, v, pl), u)
 	if !ok { return q, false }
-	if d := l.spaces[pl].dest; d != NONE { return plane_project(l, v, d, q) }
+	if d := space_plane(l, pl).dest; d != NONE { return plane_project(l, v, d, q) }
 	return q, true
 }

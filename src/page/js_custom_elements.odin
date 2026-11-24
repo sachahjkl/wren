@@ -139,12 +139,12 @@ ce_mutation :: proc(p: ^Page, d: ^dom.Document, e: ^dom.Journal_Entry) {
 		// another document (the templates' inert one, createHTMLDocument's, new Document()): a node in it is connected, so
 		// an element that is already custom gets its connectedCallback (its definition goes with it), but nothing is
 		// upgraded there: such a document has no custom element registry (HTML "look up a custom element definition")
-		if rn.as_document {
+		if .As_Document in rn.flags {
 			ce_walk(p, ce, d, e.node, true, true, upgrade = false)
 			return
 		}
 		// template contents belong to an inert document: no definition applies there
-		if rn.kind == .Fragment && rn.held { return }
+		if rn.kind == .Fragment && (.Held in rn.flags) { return }
 		// a script's insertion into a tree that is not the document's reacts to nothing (HTML "insert": only a connected
 		// node is upgraded or connected); the parser's fragments are upgraded where they were made (innerHTML)
 		if root != d.root && d.parser_inserting == 0 { return }
@@ -152,7 +152,7 @@ ce_mutation :: proc(p: ^Page, d: ^dom.Document, e: ^dom.Journal_Entry) {
 	case .Remove:
 		if e.parent == base.NIL_HANDLE { return }
 		root := dom.shadow_including_root(d, e.parent)
-		if rn := dom.get(d, root); root == d.root || (rn != nil && rn.as_document) { ce_walk(p, ce, d, e.node, false, true) }
+		if rn := dom.get(d, root); root == d.root || (rn != nil && (.As_Document in rn.flags)) { ce_walk(p, ce, d, e.node, false, true) }
 	case .Attribute:
 		if ce.state[e.node] == CE_STATE_CUSTOM {
 			cur, has := dom.get_attribute(d, e.node, e.name)
@@ -260,7 +260,7 @@ CustomElements_take :: proc(c: ^Call) -> []u8 {
 		// an element that ended in a template's contents (innerHTML parses into a fragment first) is in an inert
 		// document: no definition applies there
 		if r.kind == CE_UPGRADE {
-			if rn := dom.get(d, dom.shadow_including_root(d, r.element)); rn == nil || (rn.kind == .Fragment && rn.held) {
+			if rn := dom.get(d, dom.shadow_including_root(d, r.element)); rn == nil || (rn.kind == .Fragment && .Held in rn.flags) {
 				ce_reaction_free(c.page, &r)
 				continue
 			}

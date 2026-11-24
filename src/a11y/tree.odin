@@ -443,7 +443,7 @@ walk_children :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, bounds: [4]f32, pb
 	d := w.v.doc
 	first := n.first_child
 	if n.shadow != base.NIL_HANDLE {
-		if sn := dom.get(d, n.shadow); sn != nil && sn.is_shadow { first = sn.first_child }
+		if sn := dom.get(d, n.shadow); sn != nil && (.Is_Shadow in sn.flags) { first = sn.first_child }
 	}
 	if n.name == "slot" {
 		if assigned, ok := d.assigned[h]; ok && len(assigned) > 0 {
@@ -512,7 +512,7 @@ clickable :: proc(src: ^Source, h: base.Handle, n: ^dom.Node, role: Role) -> boo
 	     .List_Box_Option, .Disclosure_Triangle, .Tree_Item, .Combo_Box, .Color_Well:
 		return true
 	}
-	for l in n.listeners { if !l.removed && (l.type == "click" || l.type == "mousedown" || l.type == "pointerdown") { return true } }
+	for l in dom.node_listeners(src.doc, h) { if !l.removed && (l.type == "click" || l.type == "mousedown" || l.type == "pointerdown") { return true } }
 	return false
 }
 

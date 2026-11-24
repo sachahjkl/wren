@@ -32,7 +32,7 @@ links_of_a_document_in_a_legacy_encoding :: proc(t: ^testing.T) {
 	testing.expect_value(t, u.href, "http://example.test/b/x?q=%93%FA%96{&k=%26%2354620%3B#%E6%97%A5")
 	// a link of a document of its own (createHTMLDocument's): UTF-8
 	own := dom.create_fragment(p.doc)
-	dom.get(p.doc, own).as_document = true
+	dom.get(p.doc, own).flags += {.As_Document}
 	a := dom.create_element(p.doc, "a")
 	dom.append_child(p.doc, own, a)
 	u, ok = resolve_link(p, "x?q=日", a)

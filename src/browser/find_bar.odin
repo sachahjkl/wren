@@ -281,10 +281,11 @@ find_reveal :: proc(app: ^App, fs: ^Find_State, t: ^Tab) {
 			node := l.boxes[sp.box].node
 			cur, _ := lay.scroll_of(l, node)
 			want := cur
-			ph := sp.port.max.y - sp.port.min.y
-			pw := sp.port.max.x - sp.port.min.x
-			if rect.min.y < sp.port.min.y + want.y || rect.max.y > sp.port.max.y + want.y { want.y = rect.min.y - sp.port.min.y - ph * 0.3 }
-			if rect.min.x < sp.port.min.x + want.x || rect.max.x > sp.port.max.x + want.x { want.x = rect.min.x - sp.port.min.x - pw * 0.3 }
+			sport := sp.data.scroll.port
+			ph := sport.max.y - sport.min.y
+			pw := sport.max.x - sport.min.x
+			if rect.min.y < sport.min.y + want.y || rect.max.y > sport.max.y + want.y { want.y = rect.min.y - sport.min.y - ph * 0.3 }
+			if rect.min.x < sport.min.x + want.x || rect.max.x > sport.max.x + want.x { want.x = rect.min.x - sport.min.x - pw * 0.3 }
 			got, _ := lay.set_scroll(l, node, want)
 			rect = {rect.min - got, rect.max - got}
 		case .Document:
