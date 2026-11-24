@@ -736,12 +736,13 @@ polls :: proc(t: ^testing.T) {
 	inst := make_instance(t, image, o)
 	if inst != nil {
 		testing.expect(t, inst.wt.polled && inst.poll_word != nil, "the image runs on the engine without epoch checks")
-		ran := 0
-		set_preempt_hook(proc(user: rawptr) { (^int)(user)^ += 1 }, &ran, tick_ms = POLL_TICK_MS)
+		ran := new(int)
+		defer free(ran)
+		set_preempt_hook(proc(user: rawptr) { (^int)(user)^ += 1 }, ran, tick_ms = POLL_TICK_MS)
 		_, res := call_i32(inst, "spin")
 		set_preempt_hook(nil, nil)
 		testing.expectf(t, res == .Trapped && strings.contains(inst.last_error, "wasm.max_call_ms"), "the deadline ends an endless loop through its poll (%s)", inst.last_error)
-		testing.expect(t, ran > 0, "the hook ran under the loop")
+		testing.expect(t, ran^ > 0, "the hook ran under the loop")
 		n, res2 := call_i32(inst, "counted")
 		testing.expect(t, res2 == .Ok && n == 1000, "a loop without a poll runs, and the instance is usable after the trap")
 		testing.expect(t, inst.poll_next == nil && inst.poll_prev == nil && wt.polls == nil, "no call in progress, no word on the ticker's list")
@@ -850,4 +851,50 @@ refused_shipped_code_falls_back :: proc(t: ^testing.T) {
 	s = cache_stats()
 	testing.expectf(t, res == .Ok && s.compiles == 1 && s.memory_hits == 1, "one compile, ahead of the instance: %v", s)
 	runtime_destroy()
+}
+
+// Disk_Cache caps its background queue, frees dropped payloads, and stops cleanly without racing on d.stop.
+@(test)
+disk_cache_caps_queue_and_stops_cleanly :: proc(t: ^testing.T) {
+	// Queueing into an unstarted cache drops and frees the payload instead of leaking it.
+	{
+		unstarted := Disk_Cache{magic = "test", ext = ".test", max_bytes = 4096}
+		key: Digest
+		disk_queue(&unstarted, "ignored", key, make([]byte, 32, base.process_allocator()))
+		testing.expect_value(t, sync.atomic_load(&unstarted.drops), 1)
+	}
+
+	dir := temp_dir(t, "cap")
+	defer testenv.remove_tree(dir)
+	d := Disk_Cache{magic = "test", ext = ".test", max_bytes = 1 << 20, max_queue = 2, max_queue_bytes = 1024}
+	testing.expect(t, disk_start(&d, dir))
+	TOTAL :: 64
+	for i in 0 ..< TOTAL {
+		key: Digest
+		key[0] = u8(i)
+		p := disk_path(&d, key)
+		disk_queue(&d, p, key, make([]byte, 64, base.process_allocator()))
+		delete(p, base.process_allocator())
+	}
+	disk_flush(&d)
+	writes := sync.atomic_load(&d.writes)
+	drops := sync.atomic_load(&d.drops)
+	disk_stop(&d)
+	testing.expectf(t, writes > 0 && writes + drops == TOTAL, "every job was written or dropped cleanly (writes=%d drops=%d)", writes, drops)
+}
+
+// A wt_start failure (e.g. an import that define_import rejects) rolls back all partial engine state and marks
+// start_failed so subsequent calls never see a half-initialized engine without an epoch ticker.
+@(test)
+wt_start_rolls_back_on_import_failure :: proc(t: ^testing.T) {
+	runtime_destroy()
+	defer runtime_destroy()
+	too_many: [65]Val_Kind
+	bad := [?]Import{{module = "bad", name = "too_many_params", fn = t_user, params = too_many[:]}}
+	testing.expect(t, register(bad[:]), "register accepts the declaration before wt_start links it")
+	configure(runtime_settings_default())
+	testing.expect(t, !runtime_init(), "wt_start fails when define_import fails")
+	testing.expect(t, wt.engine == nil && wt.polled_engine == nil && wt.linker == nil && wt.polled_linker == nil && wt.ticker == nil, "partial engine state was rolled back")
+	testing.expect(t, wt.start_failed, "start_failed prevents retrying into half-initialized state")
+	testing.expect(t, !runtime_init(), "subsequent runtime_init still returns false")
 }

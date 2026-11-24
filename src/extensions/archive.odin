@@ -220,8 +220,9 @@ zip_entries :: proc(z: []byte, s: ^Settings) -> ([]Zip_Entry, Archive_Error) {
 		name, nok := package_path_normalize(raw, context.temp_allocator)
 		if !nok || name == "" { return nil, .Bad_Entry }
 		if method != 0 && method != 8 { return nil, .Unsupported }
-		if seen[name] { return nil, .Bad_Entry }   // the same file twice: which one wins is ambiguous
-		seen[name] = true
+		lower := strings.to_lower(name, context.temp_allocator)
+		if seen[lower] { return nil, .Bad_Entry }   // the same file twice (case-insensitive for Windows): which one wins is ambiguous
+		seen[lower] = true
 		total += i64(size)
 		if total > s.package_max_bytes { return nil, .Too_Large }
 		append(&out, Zip_Entry{name = name, method = method, crc = crc, packed = int(packed), size = int(size), local = int(local)})
@@ -271,22 +272,44 @@ archive_find :: proc(a: ^Archive, name: string) -> (Zip_Entry, bool) {
 	return {}, false
 }
 
-// Writes every entry under `dest` (a folder made for it: what was there before goes first). A blocking call. Each
-// entry's bytes are given back once written: the unpack holds one file at a time, not the whole package.
+// Writes every entry into a sibling temporary folder, then atomically replaces `dest` once every entry has inflated and
+// passed its CRC check, so a mid-archive failure leaves no half-unpacked `dest`. A blocking call. Each entry's bytes
+// are given back once written: the unpack holds one file at a time, not the whole package.
 archive_unpack :: proc(a: ^Archive, dest: string) -> Archive_Error {
-	_ = os.remove_all(dest)
-	if os.make_directory_all(dest) != nil { return .Write_Failed }
+	rm_tree :: proc(p: string) { _ = base.remove_tree(p) }
+	move_dir :: proc(from, to: string) -> bool { return os.rename(from, to) == nil }
+
+	tmp := strings.concatenate({dest, ".unpack.", base.unique_name(context.temp_allocator)}, context.temp_allocator)
+	if os.make_directory_all(tmp) != nil { return .Write_Failed }
+	staged := true
+	defer if staged { rm_tree(tmp) }
+
 	pa := base.process_allocator()
 	for e in a.entries {
 		data, err := archive_read(a, e, pa)
 		if err != .None { return err }
-		path := strings.concatenate({dest, "/", e.name}, context.temp_allocator)
+		path := strings.concatenate({tmp, "/", e.name}, context.temp_allocator)
 		ok := true
-		if i := strings.last_index_byte(path, '/'); i > len(dest) { ok = os.make_directory_all(path[:i]) == nil }
+		if i := strings.last_index_byte(path, '/'); i > len(tmp) { ok = os.make_directory_all(path[:i]) == nil }
 		if ok { ok = os.write_entire_file(path, data) == nil }
 		delete(data, pa)
 		if !ok { return .Write_Failed }
 	}
+	if os.exists(dest) {
+		bak := strings.concatenate({dest, ".old.", base.unique_name(context.temp_allocator)}, context.temp_allocator)
+		if move_dir(dest, bak) {
+			if !move_dir(tmp, dest) {
+				_ = move_dir(bak, dest)
+				return .Write_Failed
+			}
+			staged = false
+			rm_tree(bak)
+			return .None
+		}
+		rm_tree(dest)
+	}
+	if !move_dir(tmp, dest) { return .Write_Failed }
+	staged = false
 	return .None
 }
 

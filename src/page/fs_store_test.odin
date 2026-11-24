@@ -92,3 +92,125 @@ fs_entries_writables_locks_and_quota :: proc(t: ^testing.T) {
 	opfs_clear(dir, "https://a.example")
 	testing.expect_value(t, opfs_usage(dir, "https://a.example"), i64(0))
 }
+
+// Local directory grants must refuse symlink escapes on every operation (stat, open, read, write, list, remove, commit)
+// and keep case-sensitive roots/paths off Windows.
+@(test)
+fs_local_symlink_escape_and_case_sensitivity :: proc(t: ^testing.T) {
+	test_pages(t)
+	root_dir := strings.concatenate({"build/tmp/fs_local_test_", base.unique_name(context.temp_allocator)}, context.temp_allocator)
+	defer { fs_store_shutdown(); _ = base.remove_tree(root_dir) }
+
+	// Case-sensitivity of local roots and handle comparisons.
+	dir_upper := strings.concatenate({root_dir, "/Dir"}, context.temp_allocator)
+	dir_lower := strings.concatenate({root_dir, "/dir"}, context.temp_allocator)
+	testing.expect(t, os.make_directory_all(dir_upper) == nil)
+	testing.expect(t, os.make_directory_all(dir_lower) == nil)
+	r_upper := fs_local_root("https://a.example", dir_upper, .Granted, .Prompt)
+	r_lower := fs_local_root("https://a.example", dir_lower, .Prompt, .Prompt)
+	when ODIN_OS != .Windows {
+		testing.expect(t, r_upper != r_lower, "distinct-case Linux directories must not merge into one grant")
+		rl, ok := fs_root(r_lower)
+		testing.expect(t, ok && rl.read == .Prompt, "distinct-case directory must not inherit read grant")
+		testing.expect(t, !fs_same(r_upper, "a.txt", r_lower, "a.txt"))
+		testing.expect(t, !fs_same(r_upper, "Foo.txt", r_upper, "foo.txt"))
+		_, resolved := fsh_resolve(r_upper, "", r_lower, "a.txt")
+		testing.expect(t, !resolved)
+	} else {
+		testing.expect(t, r_upper == r_lower, "Windows local grants fold ASCII case")
+	}
+
+	// Symlink escape checks (run on non-Windows where symlink creation requires no elevated privileges).
+	when ODIN_OS != .Windows {
+		outside := strings.concatenate({root_dir, "/outside"}, context.temp_allocator)
+		granted := strings.concatenate({root_dir, "/granted"}, context.temp_allocator)
+		sub := strings.concatenate({granted, "/sub"}, context.temp_allocator)
+		testing.expect(t, os.make_directory_all(outside) == nil)
+		testing.expect(t, os.make_directory_all(sub) == nil)
+		secret := strings.concatenate({outside, "/secret.txt"}, context.temp_allocator)
+		testing.expect(t, os.write_entire_file(secret, transmute([]byte)string("TOP_SECRET")) == nil)
+		ok_file := strings.concatenate({sub, "/ok.txt"}, context.temp_allocator)
+		testing.expect(t, os.write_entire_file(ok_file, transmute([]byte)string("inside")) == nil)
+		victim := strings.concatenate({granted, "/victim.txt"}, context.temp_allocator)
+		testing.expect(t, os.write_entire_file(victim, transmute([]byte)string("orig")) == nil)
+		swap_target := strings.concatenate({granted, "/swap.txt"}, context.temp_allocator)
+		testing.expect(t, os.write_entire_file(swap_target, transmute([]byte)string("swap")) == nil)
+
+		abs_outside, _ := os.get_absolute_path(outside, context.temp_allocator)
+		abs_secret, _ := os.get_absolute_path(secret, context.temp_allocator)
+		testing.expect(t, os.symlink(abs_secret, strings.concatenate({granted, "/escape_file"}, context.temp_allocator)) == nil)
+		testing.expect(t, os.symlink(abs_outside, strings.concatenate({granted, "/escape_dir"}, context.temp_allocator)) == nil)
+		testing.expect(t, os.symlink(abs_secret, strings.concatenate({sub, "/deep_escape"}, context.temp_allocator)) == nil)
+		testing.expect(t, os.symlink(strings.concatenate({abs_outside, "/dangling_new.txt"}, context.temp_allocator), strings.concatenate({granted, "/dangling"}, context.temp_allocator)) == nil)
+		testing.expect(t, os.symlink(abs_secret, strings.concatenate({granted, "/victim.txt.crswap"}, context.temp_allocator)) == nil)
+
+		root := fs_local_root("https://a.example", granted, .Granted, .Granted)
+
+		// Every operation touching a symlink or traversing a symlinked directory must fail with .Security.
+		_, e_kind := fs_kind(root, "escape_file")
+		testing.expect_value(t, e_kind, Fs_Error.Security)
+		_, e_get_f := fs_get_entry(root, "", "escape_file", false, false)
+		testing.expect_value(t, e_get_f, Fs_Error.Security)
+		_, e_get_d := fs_get_entry(root, "", "escape_dir", true, false)
+		testing.expect_value(t, e_get_d, Fs_Error.Security)
+		_, e_trav_r := fs_get_entry(root, "escape_dir", "secret.txt", false, false)
+		testing.expect_value(t, e_trav_r, Fs_Error.Security)
+		_, e_trav_c := fs_get_entry(root, "escape_dir", "pwned.txt", false, true)
+		testing.expect_value(t, e_trav_c, Fs_Error.Security)
+		_, e_deep := fs_get_entry(root, "sub", "deep_escape", false, false)
+		testing.expect_value(t, e_deep, Fs_Error.Security)
+		_, e_dang := fs_get_entry(root, "", "dangling", false, true)
+		testing.expect_value(t, e_dang, Fs_Error.Security)
+		_, e_open_w := fs_open(root, "escape_file", false, false)
+		testing.expect_value(t, e_open_w, Fs_Error.Security)
+		_, e_open_s := fs_open(root, "escape_file", false, true)
+		testing.expect_value(t, e_open_s, Fs_Error.Security)
+		_, e_crswap := fs_open(root, "victim.txt", false, false)
+		testing.expect_value(t, e_crswap, Fs_Error.Security)
+		testing.expect_value(t, fs_remove_entry(root, "", "escape_file", false), Fs_Error.Security)
+		testing.expect_value(t, fs_remove_entry(root, "", "escape_dir", true), Fs_Error.Security)
+		testing.expect_value(t, fs_remove_entry(root, "escape_dir", "secret.txt", false), Fs_Error.Security)
+		_, e_list_d := fs_list(root, "escape_dir")
+		testing.expect_value(t, e_list_d, Fs_Error.Security)
+
+		// Listing the granted root omits symlinks while showing normal entries.
+		listing, e_list := fs_list(root, "")
+		testing.expect_value(t, e_list, Fs_Error.None)
+		testing.expect(t, !strings.contains(listing, "escape_file") && !strings.contains(listing, "escape_dir") && !strings.contains(listing, "dangling"), "symlinks are omitted from listing")
+		testing.expect(t, strings.contains(listing, "d\tsub") && strings.contains(listing, "f\tvictim.txt"), "normal entries remain listed")
+
+		// TOCTOU commit guard: replacing target with a symlink after fs_open is caught by fs_close.
+		w, ew := fs_open(root, "swap.txt", false, false)
+		testing.expect_value(t, ew, Fs_Error.None)
+		_, _ = fs_write(w, -1, transmute([]byte)string("OVERWRITTEN"), 1 << 20)
+		testing.expect(t, os.remove(swap_target) == nil)
+		testing.expect(t, os.symlink(abs_secret, swap_target) == nil)
+		testing.expect_value(t, fs_close(w, true, 1 << 20), Fs_Error.Security)
+
+		// Normal operations inside the granted folder still succeed, and outside files stayed untouched.
+		child, e_ok := fs_get_entry(root, "sub", "ok.txt", false, false)
+		testing.expect(t, e_ok == .None && child == "sub/ok.txt")
+		secret_after, serr := os.read_entire_file(secret, context.temp_allocator)
+		testing.expect(t, serr == nil && string(secret_after) == "TOP_SECRET", "outside secret must remain untouched")
+		testing.expect(t, !os.exists(strings.concatenate({outside, "/pwned.txt"}, context.temp_allocator)))
+		testing.expect(t, !os.exists(strings.concatenate({outside, "/dangling_new.txt"}, context.temp_allocator)))
+
+		// A user-granted root that is itself a symlink (e.g. ~/Work -> /mnt/data/Work) still works on root operations,
+		// while symlinks inside it continue to fail with .Security.
+		abs_granted, _ := os.get_absolute_path(granted, context.temp_allocator)
+		granted_link := strings.concatenate({root_dir, "/granted_link"}, context.temp_allocator)
+		testing.expect(t, os.symlink(abs_granted, granted_link) == nil)
+		link_root := fs_local_root("https://a.example", granted_link, .Granted, .Granted)
+		is_dir, e_rk := fs_kind(link_root, "")
+		testing.expect(t, e_rk == .None && is_dir, "symlinked granted root is still recognized as a directory")
+		link_list, e_rl := fs_list(link_root, "")
+		testing.expect_value(t, e_rl, Fs_Error.None)
+		testing.expect(t, strings.contains(link_list, "d\tsub") && !strings.contains(link_list, "escape_file"))
+		got_v, e_rv := fs_get_entry(link_root, "", "victim.txt", false, false)
+		testing.expect(t, e_rv == .None && got_v == "victim.txt")
+		_, e_r_esc := fs_get_entry(link_root, "", "escape_file", false, false)
+		testing.expect_value(t, e_r_esc, Fs_Error.Security)
+		_, e_r_trav := fs_get_entry(link_root, "escape_dir", "secret.txt", false, false)
+		testing.expect_value(t, e_r_trav, Fs_Error.Security)
+	}
+}

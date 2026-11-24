@@ -174,12 +174,32 @@ fs_opfs_root :: proc(profile_dir, key: string) -> (u64, Fs_Error) {
 	return fs_root_add_locked(.Opfs, key, dir, .Granted, .Granted), .None
 }
 
+@(private)
+fs_local_path_equal :: proc(a, b: string) -> bool {
+	when ODIN_OS == .Windows { return base.ascii_equal_fold(a, b) }
+	return a == b
+}
+
+@(private)
+fs_local_path_has_prefix :: proc(path, prefix: string) -> bool {
+	when ODIN_OS == .Windows {
+		return strings.has_prefix(strings.to_lower(path, context.temp_allocator), strings.to_lower(prefix, context.temp_allocator))
+	}
+	return strings.has_prefix(path, prefix)
+}
+
+@(private)
+fs_is_symlink :: proc(path: string) -> bool {
+	info, e := os.lstat(path, context.temp_allocator)
+	return e == nil && info.type == .Symlink
+}
+
 // A root for a folder of the user's disk given to `origin` (the same folder given again: the same root and its grants).
 fs_local_root :: proc(origin, dir: string, read, write: Fs_Permission) -> u64 {
 	sync.mutex_lock(&the_pages.fs_store.mu)
 	defer sync.mutex_unlock(&the_pages.fs_store.mu)
 	for id, r in the_pages.fs_store.roots {
-		if r.kind == .Local && r.key == origin && base.ascii_equal_fold(r.dir, dir) {
+		if r.kind == .Local && r.key == origin && fs_local_path_equal(r.dir, dir) {
 			if read == .Granted { r.read = .Granted }
 			if write == .Granted { r.write = .Granted }
 			return id
@@ -231,6 +251,31 @@ fs_disk_path :: proc(r: Fs_Root, path: string, allocator := context.temp_allocat
 	return strings.to_string(b), .None
 }
 
+// Stats an entry: for .Local roots, follows symlinks only on the user-granted root itself (`rel_path` empty) and uses
+// lstat for every component underneath it so symlinks inside a granted folder are never followed.
+@(private)
+fs_stat_entry :: proc(r: Fs_Root, rel_path, disk_path: string) -> (os.File_Info, os.Error) {
+	if r.kind == .Local && strings.trim(rel_path, "/") != "" { return os.lstat(disk_path, context.temp_allocator) }
+	return os.stat(disk_path, context.temp_allocator)
+}
+
+// Like fs_disk_path, and for .Local grants rejects any symlink or reparse-point component under r.dir so a page cannot
+// read, write, list, or delete outside the granted folder.
+fs_disk_path_safe :: proc(r: Fs_Root, path: string, allocator := context.temp_allocator) -> (full: string, err: Fs_Error) {
+	full = fs_disk_path(r, path, allocator) or_return
+	if r.kind != .Local { return full, .None }
+	b := strings.builder_make(context.temp_allocator)
+	strings.write_string(&b, r.dir)
+	rest := path
+	for name in strings.split_iterator(&rest, "/") {
+		if name == "" { continue }
+		strings.write_byte(&b, '/')
+		strings.write_string(&b, name)
+		if fs_is_symlink(strings.to_string(b)) { return "", .Security }
+	}
+	return full, .None
+}
+
 @(private)
 fs_join :: proc(path, name: string, allocator := context.temp_allocator) -> string {
 	return path == "" ? strings.clone(name, allocator) : strings.concatenate({path, "/", name}, allocator)
@@ -247,9 +292,10 @@ fs_kind :: proc(root: u64, path: string) -> (is_dir: bool, err: Fs_Error) {
 	r, ok := fs_root(root)
 	if !ok { return false, .Not_Found }
 	if r.read != .Granted { return false, .Not_Allowed }
-	p := fs_disk_path(r, path) or_return
-	info, e := os.stat(p, context.temp_allocator)
+	p := fs_disk_path_safe(r, path) or_return
+	info, e := fs_stat_entry(r, path, p)
 	if e != nil { return false, .Not_Found }
+	if r.kind == .Local && info.type == .Symlink { return false, .Security }
 	return info.type == .Directory, .None
 }
 
@@ -259,11 +305,15 @@ fs_get_entry :: proc(root: u64, dir_path, name: string, directory, create: bool)
 	if !ok { return "", .Not_Found }
 	if !fs_name_valid(name) || (r.kind == .Local && !fs_disk_name_valid(name)) { return "", .Invalid_Name }
 	if r.read != .Granted { return "", .Not_Allowed }
-	parent := fs_disk_path(r, dir_path) or_return
-	if pinfo, e := os.stat(parent, context.temp_allocator); e != nil || pinfo.type != .Directory { return "", .Not_Found }
+	parent := fs_disk_path_safe(r, dir_path) or_return
+	pinfo, pe := fs_stat_entry(r, dir_path, parent)
+	if pe != nil { return "", .Not_Found }
+	if r.kind == .Local && pinfo.type == .Symlink { return "", .Security }
+	if pinfo.type != .Directory { return "", .Not_Found }
 	child := fs_join(dir_path, name)
-	p := fs_disk_path(r, child) or_return
-	if info, e := os.stat(p, context.temp_allocator); e == nil {
+	p := fs_disk_path_safe(r, child) or_return
+	if info, e := fs_stat_entry(r, child, p); e == nil {
+		if r.kind == .Local && info.type == .Symlink { return "", .Security }
 		if (info.type == .Directory) != directory { return "", .Type_Mismatch }
 		return child, .None
 	}
@@ -286,9 +336,10 @@ fs_remove_entry :: proc(root: u64, dir_path, name: string, recursive: bool) -> F
 	if !fs_name_valid(name) || (r.kind == .Local && !fs_disk_name_valid(name)) { return .Invalid_Name }
 	if r.write != .Granted { return .Not_Allowed }
 	child := fs_join(dir_path, name)
-	p := fs_disk_path(r, child) or_return
-	info, e := os.stat(p, context.temp_allocator)
+	p := fs_disk_path_safe(r, child) or_return
+	info, e := fs_stat_entry(r, child, p)
 	if e != nil { return .Not_Found }
+	if r.kind == .Local && info.type == .Symlink { return .Security }
 	if fs_locked_under(root, child) { return .Locked }
 	freed: i64
 	if info.type == .Directory {
@@ -321,7 +372,14 @@ fs_list :: proc(root: u64, dir_path: string) -> (listing: string, err: Fs_Error)
 	r, ok := fs_root(root)
 	if !ok { return "", .Not_Found }
 	if r.read != .Granted { return "", .Not_Allowed }
-	p := fs_disk_path(r, dir_path) or_return
+	p := fs_disk_path_safe(r, dir_path) or_return
+	if r.kind == .Local {
+		if info, se := fs_stat_entry(r, dir_path, p); se != nil {
+			return "", .Not_Found
+		} else if info.type == .Symlink {
+			return "", .Security
+		}
+	}
 	entries, e := os.read_all_directory_by_path(p, context.temp_allocator)
 	if e != nil { return "", .Not_Found }
 	b := strings.builder_make(context.temp_allocator)
@@ -331,8 +389,9 @@ fs_list :: proc(root: u64, dir_path: string) -> (listing: string, err: Fs_Error)
 			n, good := fs_decode_name(x.name, context.temp_allocator)
 			if !good { continue }   // (".tmp": the temporary files of writables)
 			name = n
-		} else if strings.has_suffix(name, ".crswap") {
-			continue
+		} else {
+			if strings.has_suffix(name, ".crswap") { continue }
+			if x.type == .Symlink || fs_is_symlink(x.fullpath) { continue }
 		}
 		if strings.builder_len(b) > 0 { strings.write_byte(&b, '\n') }
 		strings.write_string(&b, x.type == .Directory ? "d\t" : "f\t")
@@ -350,8 +409,11 @@ fsh_resolve :: proc(root_a: u64, path_a: string, root_b: u64, path_b: string) ->
 	db, eb := fs_disk_path(rb, path_b)
 	if ea != .None || eb != .None { return "", false }
 	if ra.kind != rb.kind { return "", false }
-	if strings.equal_fold(da, db) && (ra.kind == .Local || da == db) { return "", true }
-	if !strings.has_prefix(strings.to_lower(db, context.temp_allocator), strings.to_lower(strings.concatenate({da, "/"}, context.temp_allocator), context.temp_allocator)) { return "", false }
+	equal := ra.kind == .Opfs ? (da == db) : fs_local_path_equal(da, db)
+	if equal { return "", true }
+	prefix := strings.concatenate({da, "/"}, context.temp_allocator)
+	under := ra.kind == .Opfs ? strings.has_prefix(db, prefix) : fs_local_path_has_prefix(db, prefix)
+	if !under { return "", false }
 	// the names below `a`, read from b's own path when both are of one root, else from the disk path's tail
 	if root_a == root_b { return path_a == "" ? path_b : path_b[len(path_a) + 1:], true }
 	tail := db[len(da) + 1:]
@@ -377,7 +439,7 @@ fs_same :: proc(root_a: u64, path_a: string, root_b: u64, path_b: string) -> boo
 	da, ea := fs_disk_path(ra, path_a)
 	db, eb := fs_disk_path(rb, path_b)
 	if ea != .None || eb != .None { return false }
-	return ra.kind == .Opfs ? da == db : base.ascii_equal_fold(da, db)
+	return ra.kind == .Opfs ? da == db : fs_local_path_equal(da, db)
 }
 
 ////////////////////////////////
@@ -389,6 +451,7 @@ fs_dir_bytes :: proc(dir: string) -> i64 {
 	entries, e := os.read_all_directory_by_path(dir, context.temp_allocator)
 	if e != nil { return 0 }
 	for x in entries {
+		if x.type == .Symlink { continue }
 		if x.type == .Directory { total += fs_dir_bytes(strings.concatenate({dir, "/", x.name}, context.temp_allocator)) } else { total += x.size }
 	}
 	return total
@@ -454,9 +517,10 @@ fs_open :: proc(root: u64, path: string, keep: bool, sync_handle: bool) -> (open
 	r, ok := fs_root(root)
 	if !ok { return 0, .Not_Found }
 	if r.write != .Granted { return 0, .Not_Allowed }
-	target := fs_disk_path(r, path) or_return
-	info, e := os.stat(target, context.temp_allocator)
+	target := fs_disk_path_safe(r, path) or_return
+	info, e := fs_stat_entry(r, path, target)
 	if e != nil { return 0, .Not_Found }
+	if r.kind == .Local && info.type == .Symlink { return 0, .Security }
 	if info.type == .Directory { return 0, .Type_Mismatch }
 	key := fs_lock_key(root, path)
 	sync.mutex_lock(&the_pages.fs_store.mu)
@@ -482,8 +546,10 @@ fs_open :: proc(root: u64, path: string, keep: bool, sync_handle: bool) -> (open
 			o.temp = fmt.aprintf("%s/%d-%d", tmp_dir, id, time.time_to_unix_nano(time.now()))
 		} else {
 			o.temp = strings.concatenate({target, ".crswap"})
+			// A pre-existing symlink at the .crswap path would redirect the write outside the granted folder.
+			if fs_is_symlink(o.temp) { err = .Security }
 		}
-		if keep { if os.copy_file(o.temp, target) != nil { err = .Io } else { o.size = info.size } }
+		if err == .None && keep { if os.copy_file(o.temp, target) != nil { err = .Io } else { o.size = info.size } }
 		if err == .None {
 			f, oe := os.open(o.temp, keep ? {.Read, .Write} : {.Read, .Write, .Create, .Trunc})
 			if oe != nil { err = .Io } else { o.file = f }
@@ -605,15 +671,22 @@ fs_close :: proc(id: u64, commit: bool, max_bytes: i64) -> Fs_Error {
 	if !ok { return .Not_Found }
 	err: Fs_Error
 	if !o.sync_handle && commit {
+		r, okr := fs_root(o.root)
 		if !fs_quota_ok(o.root, o.size - o.base, max_bytes) {
 			err = .Quota
-		} else {
+		} else if okr && r.kind == .Local {
+			// Re-verify before rename so a symlink planted while the writable was open cannot redirect the commit.
+			if _, se := fs_disk_path_safe(r, o.path); se != .None || fs_is_symlink(o.temp) {
+				err = .Security
+			}
+		}
+		if err == .None {
 			os.close(o.file)
 			o.file = nil
 			if os.rename(o.temp, o.target) != nil {
 				err = .Io
 			} else {
-				if r, okr := fs_root(o.root); okr && r.kind == .Opfs { fs_usage_add(o.root, o.size - o.base) }
+				if okr && r.kind == .Opfs { fs_usage_add(o.root, o.size - o.base) }
 				delete(o.temp)
 				o.temp = ""
 			}

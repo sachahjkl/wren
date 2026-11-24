@@ -141,9 +141,13 @@ test_archive_hostile_entries :: proc(t: ^testing.T) {
 		_, err := archive_open(zip_make({{name = "manifest.json", data = MANIFEST_MIN}, c.entry}), &s)
 		testing.expectf(t, err == c.want, "%s: %v, expected %v", c.name, err, c.want)
 	}
-	// the same file twice
+	// the same file twice (exact and case-insensitive duplicate for Windows)
 	_, dup := archive_open(zip_make({{name = "a.js", data = "1"}, {name = "./a.js", data = "2"}}), &s)
 	testing.expect_value(t, dup, Archive_Error.Bad_Entry)
+	_, case_dup := archive_open(zip_make({{name = "manifest.json", data = MANIFEST_MIN}, {name = "Manifest.json", data = MANIFEST_MIN}}), &s)
+	testing.expect_value(t, case_dup, Archive_Error.Bad_Entry)
+	_, nested_case_dup := archive_open(zip_make({{name = "js/bg.js", data = "1"}, {name = "JS/BG.js", data = "2"}}), &s)
+	testing.expect_value(t, nested_case_dup, Archive_Error.Bad_Entry)
 	// limits: files, then bytes (declared sizes are counted before anything inflates)
 	small := s
 	small.package_max_files = 1
@@ -217,6 +221,56 @@ test_archive_install :: proc(t: ^testing.T) {
 	again := image_load(dest, settings_default(), "en-US", profile, id)
 	defer load_result_destroy(&again)
 	testing.expect(t, again.image != nil && again.image.id == id)
+}
+
+// A mid-archive unpack failure leaves no partial destination folder, preserves an existing folder, and cleans up temp dirs.
+@(test)
+test_archive_unpack_atomic_rollback :: proc(t: ^testing.T) {
+	root := fmt.tprintf("%s/wren_ext_test_atomic_%s", os.temp_directory(context.temp_allocator) or_else ".", base.unique_name(context.temp_allocator))
+	_ = os.make_directory_all(root)
+	defer { _ = base.remove_tree(root) }
+
+	s := settings_default()
+	good_zip := zip_make({
+		{name = "manifest.json", data = MANIFEST_MIN},
+		{name = "second.js", data = "console.log(2);"},
+	})
+	// Corrupt a byte in the second entry's stored data so entry 1 unpacks fine and entry 2 fails CRC verification.
+	bad_zip := make([]byte, len(good_zip), context.temp_allocator)
+	copy(bad_zip, good_zip)
+	a_bad, oerr := archive_open(bad_zip, &s)
+	testing.expect_value(t, oerr, Archive_Error.None)
+	e2, ok2 := archive_find(&a_bad, "second.js")
+	testing.expect(t, ok2)
+	bad_zip[e2.local + 30 + len("second.js")] ~= 0xFF
+
+	dest := strings.concatenate({root, "/package"}, context.temp_allocator)
+	// Case 1: fresh dest must not be created on mid-archive failure, and no sibling temp dir remains.
+	testing.expect_value(t, archive_unpack(&a_bad, dest), Archive_Error.Corrupt)
+	testing.expect(t, !os.exists(dest), "failed unpack must not leave a half-unpacked dest")
+	leftovers, _ := os.read_all_directory_by_path(root, context.temp_allocator)
+	testing.expect_value(t, len(leftovers), 0)
+
+	// Case 2: an existing dest must stay intact on mid-archive failure.
+	testing.expect(t, os.make_directory_all(dest) == nil)
+	keep_path := strings.concatenate({dest, "/existing.txt"}, context.temp_allocator)
+	testing.expect(t, os.write_entire_file(keep_path, transmute([]byte)string("keep_me")) == nil)
+	testing.expect_value(t, archive_unpack(&a_bad, dest), Archive_Error.Corrupt)
+	kept, kerr := os.read_entire_file(keep_path, context.temp_allocator)
+	testing.expect(t, kerr == nil && string(kept) == "keep_me", "existing dest survives a failed unpack")
+	testing.expect(t, !os.exists(strings.concatenate({dest, "/manifest.json"}, context.temp_allocator)))
+	leftovers2, _ := os.read_all_directory_by_path(root, context.temp_allocator)
+	testing.expect_value(t, len(leftovers2), 1)   // only "package"
+
+	// Case 3: a valid unpack atomically replaces existing dest and cleans up temporary siblings.
+	a_good, gerr := archive_open(good_zip, &s)
+	testing.expect_value(t, gerr, Archive_Error.None)
+	testing.expect_value(t, archive_unpack(&a_good, dest), Archive_Error.None)
+	testing.expect(t, !os.exists(keep_path), "old contents were replaced")
+	testing.expect(t, os.exists(strings.concatenate({dest, "/manifest.json"}, context.temp_allocator)))
+	testing.expect(t, os.exists(strings.concatenate({dest, "/second.js"}, context.temp_allocator)))
+	leftovers3, _ := os.read_all_directory_by_path(root, context.temp_allocator)
+	testing.expect_value(t, len(leftovers3), 1)   // only "package"
 }
 
 ////////////////////////////////

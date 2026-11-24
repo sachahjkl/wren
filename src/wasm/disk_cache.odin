@@ -12,7 +12,6 @@ import "core:path/filepath"
 import "core:slice"
 import "core:strings"
 import "core:sync"
-import "core:thread"
 import "core:time"
 import "wb:base"
 import "wb:host"
@@ -23,26 +22,32 @@ import "wb:host"
 // A trim makes this share of the limit free. Down to the limit only, the next write was over it: a full cache read its folder at each write, a second with thirty thousand files, the queue never ended
 // and every window waited for it at its close (DISK_STOP_BUDGET).
 @(private) DISK_TRIM_ROOM :: 8
+// Caps on pending background disk writes so bursts cannot grow the queue without bound; the cache is only an optimisation.
+@(private) DISK_QUEUE_MAX :: 256
+@(private) DISK_QUEUE_MAX_BYTES :: 64 << 20
 
 Disk_Cache :: struct {
 	// set before disk_start
-	magic:       string,          // the first bytes of every file
-	ext:         string,          // the files' extension
-	max_bytes:   i64,
-	stop_budget: time.Duration,   // when stopping, the writes still queued after this are dropped (0: every one is written)
-	warn:        string,          // the prefix of the message printed when the folder cannot be used ("": none)
+	magic:           string,          // the first bytes of every file
+	ext:             string,          // the files' extension
+	max_bytes:       i64,
+	max_queue:       int,             // optional cap on queued jobs (0: DISK_QUEUE_MAX)
+	max_queue_bytes: i64,             // optional cap on queued payload bytes (0: DISK_QUEUE_MAX_BYTES)
+	stop_budget:     time.Duration,   // when stopping, the writes still queued after this are dropped (0: every one is written)
+	warn:            string,          // the prefix of the message printed when the folder cannot be used ("": none)
 
 	dir:         string,
 	key:         [32]u8,
-	writes, rejects, evictions: int,   // files written, refused (and deleted), trimmed (atomic)
+	writes, rejects, evictions, drops: int,   // files written, refused (and deleted), trimmed, dropped when full (atomic)
 	scans:       int,    // the folder read by disk_trim (atomic)
 	known_bytes: i64,    // what it held at that time and what was written since (the writer's)
 	qlock:       sync.Mutex,
 	qcond:       sync.Cond,
 	queue:       [dynamic]Disk_Job,
+	queued_bytes: i64,   // bytes held in queue (under qlock)
 	writing:     bool,   // a job is taken off the queue and not finished (under qlock)
-	stop:        bool,
-	writer:      ^thread.Thread,
+	stop:        bool,   // under qlock
+	writer:      ^host.Thread,
 }
 
 @(private)
@@ -62,7 +67,13 @@ disk_start :: proc(d: ^Disk_Cache, dir: string) -> bool {
 	if !disk_key_load(d, path) { return false }
 	d.dir = strings.clone(dir)
 	d.stop = false
-	d.writer = thread.create_and_start_with_data(d, disk_writer_main)
+	d.writer = host.thread_start(disk_writer_main, d, priority = .Below_Normal, name = "wren-wasm-cache")
+	if d.writer == nil {
+		if d.warn != "" { fmt.eprintfln("%s disabled: cannot start writer thread", d.warn) }
+		delete(d.dir)
+		d.dir = ""
+		return false
+	}
 	return true
 }
 
@@ -96,8 +107,7 @@ disk_stop :: proc(d: ^Disk_Cache) {
 		d.stop = true
 		sync.cond_broadcast(&d.qcond)
 		sync.mutex_unlock(&d.qlock)
-		thread.join(d.writer)
-		thread.destroy(d.writer)
+		host.thread_join(d.writer)
 	}
 	for j in d.queue { delete(j.path); delete(j.payload) }
 	delete(d.queue)
@@ -157,9 +167,19 @@ disk_reject :: proc(d: ^Disk_Cache, path: string) {
 }
 
 // Queues `payload` (the process heap: the cache owns it from now) for the file at `path` (copied).
+// Drops the write and frees `payload` when stopped, unstarted, or past the queue cap.
 disk_queue :: proc(d: ^Disk_Cache, path: string, key: Digest, payload: []byte) {
+	limit := d.max_queue > 0 ? d.max_queue : DISK_QUEUE_MAX
+	byte_limit := d.max_queue_bytes > 0 ? d.max_queue_bytes : DISK_QUEUE_MAX_BYTES
 	sync.mutex_lock(&d.qlock)
+	if d.stop || d.writer == nil || len(d.queue) >= limit || (len(d.queue) > 0 && d.queued_bytes + i64(len(payload)) > byte_limit) {
+		sync.mutex_unlock(&d.qlock)
+		delete(payload, base.process_allocator())
+		sync.atomic_add(&d.drops, 1)
+		return
+	}
 	append(&d.queue, Disk_Job{path = strings.clone(path, base.process_allocator()), key = key, payload = payload})
+	d.queued_bytes += i64(len(payload))
 	sync.cond_signal(&d.qcond)
 	sync.mutex_unlock(&d.qlock)
 }
@@ -168,7 +188,6 @@ disk_queue :: proc(d: ^Disk_Cache, path: string, key: Digest, payload: []byte) {
 disk_writer_main :: proc(data: rawptr) {
 	d := (^Disk_Cache)(data)
 	context.allocator = base.process_allocator()
-	host.thread_name_self("wren-wasm-cache")
 	stopped_at: time.Tick   // when the writer first saw the stop request
 	for {
 		sync.mutex_lock(&d.qlock)
@@ -185,19 +204,24 @@ disk_writer_main :: proc(data: rawptr) {
 			if time.tick_since(stopped_at) > d.stop_budget {
 				for j in d.queue { delete(j.path); delete(j.payload) }
 				clear(&d.queue)
+				d.queued_bytes = 0
 				sync.mutex_unlock(&d.qlock)
 				return
 			}
 		}
 		job := pop_front(&d.queue)
+		d.queued_bytes -= i64(len(job.payload))
 		d.writing = true
 		sync.mutex_unlock(&d.qlock)
 
 		if disk_write(d, job) {
 			sync.atomic_add(&d.writes, 1)
 			d.known_bytes += i64(len(job.payload))
+			sync.mutex_lock(&d.qlock)
+			stopping := d.stop
+			sync.mutex_unlock(&d.qlock)
 			// the folder is read once a run and when it may be over its limit: with thousands of files that is seconds of a thread for each write, and of a closing window for the last one
-			if !d.stop && (sync.atomic_load(&d.scans) == 0 || d.known_bytes > d.max_bytes) { disk_trim(d) }
+			if !stopping && (sync.atomic_load(&d.scans) == 0 || d.known_bytes > d.max_bytes) { disk_trim(d) }
 		}
 		delete(job.path)
 		delete(job.payload)

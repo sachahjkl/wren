@@ -64,8 +64,9 @@ a_socket_client_is_not_turned_away_by_clients_that_have_gone :: proc(t: ^testing
 	loop: host.Loop
 	host.loop_init(&loop)
 	defer host.loop_destroy(&loop)
-	served: int
-	testing.expect_value(t, tcp_start((^host.Loop)(rawptr(&loop)), 0, TCP_HELD_CLIENTS, proc(user: rawptr, conn: u64, data: []byte) { (^int)(user)^ += 1 }, nil, &served), "")
+	served := new(int)
+	defer free(served)
+	testing.expect_value(t, tcp_start((^host.Loop)(rawptr(&loop)), 0, TCP_HELD_CLIENTS, proc(user: rawptr, conn: u64, data: []byte) { (^int)(user)^ += 1 }, nil, served), "")
 	t_srv.client_hold = proc() { if sync.atomic_add(&tcp_held_started, 1) < TCP_HELD_CLIENTS { sync.sema_wait(&tcp_held_release) } }
 	gone: [TCP_HELD_CLIENTS]win.SOCKET
 	for &s in gone { s = tcp_open_client() }
@@ -75,8 +76,8 @@ a_socket_client_is_not_turned_away_by_clients_that_have_gone :: proc(t: ^testing
 	c := tcp_open_client()
 	win.send(c, raw_data(string("x")), 1, 0)
 	deadline = time.tick_add(time.tick_now(), TCP_PUMP_DEADLINE)
-	for served == 0 && time.tick_diff(time.tick_now(), deadline) > 0 { host.loop_wait(&loop, TCP_PUMP_WAIT_MS) }
-	testing.expect_value(t, served, 1)
+	for served^ == 0 && time.tick_diff(time.tick_now(), deadline) > 0 { host.loop_wait(&loop, TCP_PUMP_WAIT_MS) }
+	testing.expect_value(t, served^, 1)
 	sync.sema_post(&tcp_held_release, TCP_HELD_CLIENTS)
 	win.closesocket(c)
 	tcp_stop()

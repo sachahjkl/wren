@@ -18,9 +18,10 @@ spans_keep_what_was_added_and_stop_at_their_room :: proc(t: ^testing.T) {
 	spans_open(strings.clone(path, process_allocator()), TEST_SPANS, TEST_LABEL_BYTES)
 	defer spans_close()
 
-	label := [?]u8{'a', '.', 'j', 's'}
+	label := make([]u8, 4, context.temp_allocator)
+	copy(label, "a.js")
 	at := span_now()
-	span_add(.Script, at, string(label[:]), copy_label = true)
+	span_add(.Script, at, string(label), copy_label = true)
 	label[0] = 'z'
 	span_add(.Task, at, "loop.odin", 42, work = Work{page = 3, origin = 2, class = .Arrival, third_party = true})
 	span_add(.Gc, at, "past the room")

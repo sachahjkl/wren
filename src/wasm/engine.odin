@@ -17,7 +17,6 @@ package wasm
 import "core:fmt"
 import "core:strings"
 import "core:sync"
-import "core:thread"
 import "core:time"
 import "wb:base"
 import "wb:host"
@@ -86,7 +85,7 @@ Wt_Global :: struct {
 	running:      sync.Futex,          // outermost calls in progress, all stores
 	polls:        ^Instance,           // those with a word (poll.odin)
 	polls_lock:   sync.Mutex,
-	ticker:       ^thread.Thread,
+	ticker:       ^host.Thread,
 	ticker_stop:  b32,
 	start_failed: bool,
 }
@@ -172,6 +171,19 @@ wt_engine_new :: proc(rs: Runtime_Settings, epoch: bool, target := "", features:
 	return wasm_engine_new_with_config(c)   // takes the config
 }
 
+// Tears down partially-initialized engine state after a wt_start failure so subsequent calls never observe a half-built
+// engine without an epoch ticker. Under runtime_lock.
+@(private)
+wt_start_rollback :: proc() {
+	if wt.linker != nil { wasmtime_linker_delete(wt.linker) }
+	if wt.engine != nil { wasm_engine_delete(wt.engine) }
+	if wt.polled_linker != nil { wasmtime_linker_delete(wt.polled_linker) }
+	if wt.polled_engine != nil { wasm_engine_delete(wt.polled_engine) }
+	runtime_settings_destroy(&wt.rs)
+	wt = {}
+	wt.start_failed = true
+}
+
 // Under runtime_lock.
 @(private)
 wt_start :: proc(rs: Runtime_Settings) -> bool {
@@ -183,22 +195,25 @@ wt_start :: proc(rs: Runtime_Settings) -> bool {
 	if wt.engine == nil { wt.start_failed = true; return false }
 	if rs.js_polls {
 		wt.polled_engine = wt_engine_new(rs, false)
-		if wt.polled_engine == nil { wasm_engine_delete(wt.engine); wt.engine = nil; wt.start_failed = true; return false }
+		if wt.polled_engine == nil { wt_start_rollback(); return false }
 		text := config_text(rs, false)
 		wt.polled_fingerprint, _ = sha256(transmute([]byte)text)
 		wt.polled_linker = wasmtime_linker_new(wt.polled_engine)
+		if wt.polled_linker == nil { wt_start_rollback(); return false }
 	}
 	wt.rs = clone_settings(rs)
 	text := config_text(rs, true)
 	wt.fingerprint, _ = sha256(transmute([]byte)text)
 	wt.linker = wasmtime_linker_new(wt.engine)
+	if wt.linker == nil { wt_start_rollback(); return false }
 	for im in registry {
-		if !define_import(wt.linker, im, false) { return false }
-		if wt.polled_linker != nil && !define_import(wt.polled_linker, im, false) { return false }
+		if !define_import(wt.linker, im, false) { wt_start_rollback(); return false }
+		if wt.polled_linker != nil && !define_import(wt.polled_linker, im, false) { wt_start_rollback(); return false }
 	}
 	wt.linker_gen += 1
 	sync.atomic_store(&wt.ticker_stop, false)
-	wt.ticker = thread.create_and_start_with_data(nil, wt_ticker_main)
+	wt.ticker = host.thread_start(wt_ticker_main, nil, name = "wren-wasm-epoch")
+	if wt.ticker == nil { wt_start_rollback(); return false }
 	cache_start(wt.rs)
 	return true
 }
@@ -217,8 +232,7 @@ wt_stop :: proc() {
 		sync.atomic_add(&wt.running, 1)   // wakes it
 		sync.futex_broadcast(&wt.running)
 		host.shutdown_step("wasm.runtime_destroy: epoch ticker thread")
-		thread.join(wt.ticker)
-		thread.destroy(wt.ticker)
+		host.thread_join(wt.ticker)
 		wt.ticker = nil
 	}
 	host.shutdown_step("wasm.runtime_destroy: attach (module compile) threads")
@@ -242,7 +256,6 @@ wt_stop :: proc() {
 
 @(private)
 wt_ticker_main :: proc(_: rawptr) {
-	host.thread_name_self("wren-wasm-epoch")
 	for !sync.atomic_load(&wt.ticker_stop) {
 		n := u32(sync.atomic_load(&wt.running))
 		if n == 0 {

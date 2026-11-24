@@ -21,8 +21,12 @@ import "core:fmt"
 import "core:strconv"
 import "core:strings"
 import config "toolkit:config"
+import "wb:base"
 import "wb:host"
 import "wb:remote"
+
+// Cap on a client's buffered input or reassembled fragmented message so an unclosed request or frame cannot exhaust memory.
+@(private) CDP_MAX_INBUF :: 16 << 20
 
 // Shorthands used across the CDP files (json.Object is verbose and appears everywhere here).
 json_obj :: json.Object
@@ -36,15 +40,18 @@ json_parse :: proc(s: string) -> (json.Value, bool) {
 Cdp_Flavor :: enum u8 { None, Cdp, Bidi }
 
 Cdp_Client :: struct {
-	tcp_id:    u64,                  // the tcp_server connection (untagged)
-	conn:      u64,                  // the tagged id the Wren engine answers to (tcp_id | CDP_CONN_TAG)
-	upgraded:  bool,                 // the WebSocket handshake is done
-	flavor:    Cdp_Flavor,           // CDP or BiDi (BiDi once a session.new / a bidi method arrives)
-	inbuf:     [dynamic]byte,        // bytes not yet a whole handshake or frame (the process heap)
-	pending:   map[u64]Cdp_Pending,  // Wren request id -> how to shape its reply (the engine answers by id)
-	next_wren: u64,                  // the Wren request ids this client hands out
-	session:   string,               // CDP sessionId handed to the tool (owned), or a BiDi context session
-	auto_attach: bool,               // Target.setAutoAttach: new targets are attached and announced
+	tcp_id:      u64,                  // the tcp_server connection (untagged)
+	conn:        u64,                  // the tagged id the Wren engine answers to (tcp_id | CDP_CONN_TAG)
+	upgraded:    bool,                 // the WebSocket handshake is done
+	flavor:      Cdp_Flavor,           // CDP or BiDi (BiDi once a session.new / a bidi method arrives)
+	inbuf:       [dynamic]byte,        // bytes not yet a whole handshake or frame (the process heap)
+	frag_buf:    [dynamic]byte,        // payload accumulated across fragmented WebSocket frames
+	frag_op:     remote.Ws_Opcode,     // initial opcode of the active fragmented message (.Text or .Binary)
+	frag_active: bool,                 // a fragmented WebSocket message is in progress
+	pending:     map[u64]Cdp_Pending,  // Wren request id -> how to shape its reply (the engine answers by id)
+	next_wren:   u64,                  // the Wren request ids this client hands out
+	session:     string,               // CDP sessionId handed to the tool (owned), or a BiDi context session
+	auto_attach: bool,                 // Target.setAutoAttach: new targets are attached and announced
 }
 
 // How a Wren reply is to be turned back into a CDP / BiDi message for the client.
@@ -137,8 +144,11 @@ app_prefs :: proc(app: ^App) -> ^config.Prefs { return &app.prefs }
 @(private = "file")
 cdp_client_free :: proc(cl: ^Cdp_Client) {
 	// the client's subscription to Wren events is dropped (it was added on upgrade)
-	for i := len(the_app.remote.subs) - 1; i >= 0; i -= 1 { if the_app.remote.subs[i] == cl.conn { unordered_remove(&the_app.remote.subs, i) } }
+	if the_app != nil {
+		for i := len(the_app.remote.subs) - 1; i >= 0; i -= 1 { if the_app.remote.subs[i] == cl.conn { unordered_remove(&the_app.remote.subs, i) } }
+	}
 	delete(cl.inbuf)
+	delete(cl.frag_buf)
 	for _, p in cl.pending { delete(p.msg_id); delete(p.method) }
 	delete(cl.pending)
 	delete(cl.session)
@@ -157,6 +167,17 @@ cdp_closed :: proc(user: rawptr, tcp_id: u64) {
 	}
 }
 
+// Appends incoming bytes to `cl.inbuf` if the result fits within CDP_MAX_INBUF; returns false on overflow.
+@(private)
+cdp_append_inbuf :: proc(cl: ^Cdp_Client, data: []byte) -> bool {
+	if len(data) > CDP_MAX_INBUF || len(cl.inbuf) > CDP_MAX_INBUF - len(data) {
+		clear(&cl.inbuf)
+		return false
+	}
+	append(&cl.inbuf, ..data)
+	return true
+}
+
 // Raw bytes from a client (the loop thread). Collects them until a handshake or a frame is whole.
 @(private = "file")
 cdp_handle :: proc(user: rawptr, tcp_id: u64, data: []byte) {
@@ -171,7 +192,15 @@ cdp_handle :: proc(user: rawptr, tcp_id: u64, data: []byte) {
 		cl.pending = make(map[u64]Cdp_Pending)
 		c.clients[tcp_id] = cl
 	}
-	append(&cl.inbuf, ..data)
+	if !cdp_append_inbuf(cl, data) {
+		if cl.upgraded {
+			remote.tcp_send(cl.tcp_id, remote.ws_close_frame(1009, context.temp_allocator))
+		} else {
+			cdp_http_send(cl, "413 Content Too Large", "text/plain", "request too large")
+		}
+		remote.tcp_close_client(cl.tcp_id)
+		return
+	}
 	cdp_drain(app, cl)
 }
 
@@ -186,7 +215,7 @@ cdp_drain :: proc(app: ^App, cl: ^Cdp_Client) {
 	}
 	if !cl.upgraded {
 		cdp_try_handshake(app, cl)
-		if !cl.upgraded { return }   // still HTTP, or a request consumed; frames (if any) are drained on upgrade
+		if !cl.upgraded { return }   // still HTTP, rejected, or waiting for headers
 	}
 	cdp_drain_frames(app, cl)
 }
@@ -198,55 +227,65 @@ cdp_drain_posted :: proc(data: rawptr) {
 	if cl, ok := the_cdp.clients[u64(uintptr(data))]; ok { cdp_drain(app, cl) }
 }
 
-// Before the upgrade: parse the HTTP request. A WebSocket upgrade is accepted (after the loopback check); the /json
-// endpoints are answered and the connection stays HTTP (a new request may follow, as Chrome's do).
-@(private = "file")
+// Before the upgrade: parse the HTTP request. Both WebSocket upgrades and the /json HTTP endpoints enforce the loopback
+// Host/Origin guard against DNS rebinding; frames arriving right after the upgrade are drained once by cdp_drain.
+@(private)
 cdp_try_handshake :: proc(app: ^App, cl: ^Cdp_Client) {
 	h := remote.ws_parse_handshake(cl.inbuf[:])
 	if !h.complete { return }
+	if !cdp_origin_ok(h.host, h.origin) {
+		cdp_http_send(cl, "403 Forbidden", "text/plain", "origin not allowed")
+		clear(&cl.inbuf)
+		remote.tcp_close_client(cl.tcp_id)
+		return
+	}
 	if h.ok {
-		if !cdp_origin_ok(h.host, h.origin) {
-			cdp_http_send(cl, "403 Forbidden", "text/plain", "origin not allowed")
-			remote.tcp_close_client(cl.tcp_id)
-			return
-		}
 		resp := remote.ws_accept_response(h.key)
 		remote.tcp_send(cl.tcp_id, transmute([]byte)resp)
 		cl.upgraded = true
 		cl.flavor = .Cdp
 		// a CDP client gets Wren's events (translated): it joins the subscription list, as Remote.subscribe does
-		append(&app.remote.subs, cl.conn)
-		// any bytes after the handshake are frames
-		rest := cl.inbuf[h.header_end:]
-		kept := make([dynamic]byte)
-		append(&kept, ..rest)
-		delete(cl.inbuf)
-		cl.inbuf = kept
-		cdp_drain_frames(app, cl)
+		if app != nil { append(&app.remote.subs, cl.conn) }
+		// keep any frame bytes after the handshake; cdp_drain will drain them immediately
+		remove_range(&cl.inbuf, 0, h.header_end)
 		return
 	}
 	// a plain HTTP request: the /json endpoints
 	cdp_http_request(app, cl, h.path)
 	// the request is consumed; keep anything after it for a next one
-	rest := cl.inbuf[h.header_end:]
-	kept := make([dynamic]byte)
-	append(&kept, ..rest)
-	delete(cl.inbuf)
-	cl.inbuf = kept
+	remove_range(&cl.inbuf, 0, h.header_end)
 }
 
 // The loopback guard against DNS rebinding: Host and Origin, when present, must be a loopback name. A tool connecting
 // by ws://127.0.0.1:<port> sends Host "127.0.0.1:<port>" and usually no Origin; a page on a site has an Origin of that
 // site, which is refused.
-@(private = "file")
+@(private)
 cdp_origin_ok :: proc(host, origin: string) -> bool {
 	loopback :: proc(s: string) -> bool {
-		hostpart := s
-		// strip a scheme (origin: http://127.0.0.1) and a port
+		hostpart := strings.trim_space(s)
+		// strip a scheme (origin: http://127.0.0.1) and any path
 		if i := strings.index(hostpart, "://"); i >= 0 { hostpart = hostpart[i + 3:] }
-		if i := strings.index(hostpart, "/"); i >= 0 { hostpart = hostpart[:i] }
-		if i := strings.last_index(hostpart, ":"); i >= 0 { hostpart = hostpart[:i] }
-		return hostpart == "127.0.0.1" || hostpart == "localhost" || hostpart == "[::1]" || hostpart == "::1"
+		if i := strings.index_byte(hostpart, '/'); i >= 0 { hostpart = hostpart[:i] }
+		if strings.index_byte(hostpart, '@') >= 0 { return false }
+		// bracketed IPv6 literal: [::1] or [::1]:<port>
+		if strings.has_prefix(hostpart, "[") {
+			close := strings.index_byte(hostpart, ']')
+			if close < 0 { return false }
+			rest := hostpart[close + 1:]
+			if len(rest) > 0 {
+				if rest[0] != ':' || len(rest) == 1 { return false }
+				for c in transmute([]byte)rest[1:] { if c < '0' || c > '9' { return false } }
+			}
+			return hostpart[1:close] == "::1"
+		}
+		if hostpart == "::1" { return true }
+		if i := strings.index_byte(hostpart, ':'); i >= 0 {
+			port := hostpart[i + 1:]
+			if len(port) == 0 { return false }
+			for c in transmute([]byte)port { if c < '0' || c > '9' { return false } }
+			hostpart = hostpart[:i]
+		}
+		return hostpart == "127.0.0.1" || base.ascii_equal_fold(hostpart, "localhost")
 	}
 	if host != "" && !loopback(host) { return false }
 	if origin != "" && !loopback(origin) { return false }
@@ -289,35 +328,80 @@ cdp_query_url :: proc(path: string) -> string {
 	return ""
 }
 
-// Reads whole WebSocket frames out of the buffer and acts on each.
+// Closes the WebSocket client with `code` and drops any buffered bytes.
 @(private = "file")
-cdp_drain_frames :: proc(app: ^App, cl: ^Cdp_Client) {
+cdp_fail_ws :: proc(cl: ^Cdp_Client, code: u16) {
+	remote.tcp_send(cl.tcp_id, remote.ws_close_frame(code, context.temp_allocator))
+	clear(&cl.inbuf)
+	clear(&cl.frag_buf)
+	cl.frag_active = false
+	remote.tcp_close_client(cl.tcp_id)
+}
+
+// Reads whole WebSocket frames out of the buffer and acts on each.
+// Returns the WebSocket close code sent if the connection was closed (0 while still open).
+@(private)
+cdp_drain_frames :: proc(app: ^App, cl: ^Cdp_Client) -> u16 {
 	for {
 		f, consumed, got, bad := remote.ws_decode_frame(cl.inbuf[:])
-		if bad { remote.tcp_send(cl.tcp_id, remote.ws_close_frame(1002)); remote.tcp_close_client(cl.tcp_id); return }
-		if !got { return }
+		if bad { cdp_fail_ws(cl, 1002); return 1002 }
+		if !got { return 0 }
 		switch f.opcode {
-		case .Text:
-			// the frame payload points into inbuf; copy it before the buffer is shifted
-			msg := make([]byte, len(f.payload), context.temp_allocator)
-			copy(msg, f.payload)
-			cdp_message(app, cl, msg)
-		case .Binary:
-			// CDP and BiDi are text; ignore
+		case .Text, .Binary:
+			if cl.frag_active { cdp_fail_ws(cl, 1002); return 1002 }
+			if f.fin {
+				if f.opcode == .Text {
+					// the frame payload points into inbuf; copy it before the buffer is shifted
+					msg := make([]byte, len(f.payload), context.temp_allocator)
+					copy(msg, f.payload)
+					remove_range(&cl.inbuf, 0, consumed)
+					cdp_message(app, cl, msg)
+					continue
+				}
+			} else {
+				cl.frag_active = true
+				cl.frag_op = f.opcode
+				clear(&cl.frag_buf)
+				if f.opcode == .Text {
+					if len(f.payload) > CDP_MAX_INBUF { cdp_fail_ws(cl, 1009); return 1009 }
+					append(&cl.frag_buf, ..f.payload)
+				}
+			}
+		case .Continuation:
+			if !cl.frag_active { cdp_fail_ws(cl, 1002); return 1002 }
+			if cl.frag_op == .Text {
+				if len(f.payload) > CDP_MAX_INBUF || len(cl.frag_buf) > CDP_MAX_INBUF - len(f.payload) {
+					cdp_fail_ws(cl, 1009)
+					return 1009
+				}
+				append(&cl.frag_buf, ..f.payload)
+			}
+			if f.fin {
+				op := cl.frag_op
+				cl.frag_active = false
+				remove_range(&cl.inbuf, 0, consumed)
+				if op == .Text {
+					msg := make([]byte, len(cl.frag_buf), context.temp_allocator)
+					copy(msg, cl.frag_buf[:])
+					clear(&cl.frag_buf)
+					cdp_message(app, cl, msg)
+				}
+				continue
+			}
 		case .Ping:
+			if !f.fin || len(f.payload) > 125 { cdp_fail_ws(cl, 1002); return 1002 }
 			remote.tcp_send(cl.tcp_id, remote.ws_encode_frame(.Pong, f.payload, context.temp_allocator))
+		case .Pong:
+			if !f.fin || len(f.payload) > 125 { cdp_fail_ws(cl, 1002); return 1002 }
 		case .Close:
-			remote.tcp_send(cl.tcp_id, remote.ws_close_frame(1000))
-			remote.tcp_close_client(cl.tcp_id)
-			return
-		case .Pong, .Continuation:
+			if !f.fin || len(f.payload) > 125 { cdp_fail_ws(cl, 1002); return 1002 }
+			cdp_fail_ws(cl, 1000)
+			return 1000
+		case:
+			cdp_fail_ws(cl, 1002)
+			return 1002
 		}
-		// shift the buffer past the frame
-		rest := cl.inbuf[consumed:]
-		kept := make([dynamic]byte)
-		append(&kept, ..rest)
-		delete(cl.inbuf)
-		cl.inbuf = kept
+		remove_range(&cl.inbuf, 0, consumed)
 	}
 }
 

@@ -78,8 +78,9 @@ Fs_getFile :: proc(c: ^Call, root: u64, path: string) -> (u64, Api_Error) {
 	r, ok := fs_root(root)
 	if !ok { return 0, fs_fail(c, .Not_Found, "getFile") }
 	if r.read != .Granted { return 0, fs_fail(c, .Not_Allowed, "getFile") }
-	disk, e := fs_disk_path(r, path)
+	disk, e := fs_disk_path_safe(r, path)
 	if e != .None { return 0, fs_fail(c, e, "getFile") }
+	if r.kind == .Local && strings.trim(path, "/") != "" && fs_is_symlink(disk) { return 0, fs_fail(c, .Security, "getFile") }
 	// (temporary: the object keeps a copy)
 	f, found := local_file_from_path(disk, context.temp_allocator)
 	if !found { return 0, fs_fail(c, .Not_Found, "getFile") }
@@ -231,7 +232,7 @@ Fs_showPicker :: proc(c: ^Call, kind: i32, types: string, multiple, exclude_all:
 	req.suggested, req.start_known, req.id = strings.clone(suggested), strings.clone(start_in), strings.clone(id)
 	if start_root != 0 {
 		if r, ok := fs_root(start_root); ok {
-			if d, e := fs_disk_path(r, start_path); e == .None { req.start_dir = strings.clone(d) }
+			if d, e := fs_disk_path_safe(r, start_path); e == .None { req.start_dir = strings.clone(d) }
 			if is_dir, e := fs_kind(start_root, start_path); e == .None && !is_dir && req.start_dir != "" {
 				// a file as startIn: its folder
 				d := req.start_dir

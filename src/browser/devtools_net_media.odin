@@ -14,6 +14,7 @@ import "toolkit:draw"
 import "toolkit:render"
 import "toolkit:ui"
 import "wb:base"
+import "wb:host"
 import "wb:media"
 
 // The system's media control interface (devtools_net_media_windows.odin: MCI; devtools_net_media_other.odin: a stub that
@@ -45,6 +46,18 @@ Net_Media :: struct {
 	path:     string,           // owned: the temporary file
 	pos_s:    f64,
 	started:  bool,
+	loading:  bool,             // temporary file write in progress on the blocking pool
+	open_gen: u64,              // bumped on release to discard stale async opens
+}
+
+@(private = "file")
+Net_Media_Write_Job :: struct {
+	app:  ^App,
+	id:   u64,
+	gen:  u64,
+	path: string,
+	body: []byte,
+	ok:   bool,
 }
 
 @(private = "file")
@@ -52,8 +65,31 @@ Demux_Ctx :: struct { m: ^Net_Media, kinds: [dynamic]media.Track_Kind, duration:
 
 net_media_active :: proc(app: ^App) -> bool { return app.net_media.mode != .None }
 
+@(private = "file")
+net_media_remove_file :: proc(app: ^App, path: string) {
+	if path == "" { return }
+	if profile_pool_ready(app) {
+		p := new(string, base.process_allocator())
+		p^ = strings.clone(path, base.process_allocator())
+		drop :: proc(data: rawptr) {
+			s := (^string)(data)
+			delete(s^, base.process_allocator())
+			free(s, base.process_allocator())
+		}
+		host.run_blocking(&app.blocking, proc(data: rawptr) {
+			s := (^string)(data)
+			_ = os.remove(s^)
+			delete(s^, base.process_allocator())
+			free(s, base.process_allocator())
+		}, nil, p, drop)
+		return
+	}
+	_ = os.remove(path)
+}
+
 net_media_release :: proc(app: ^App) {
 	m := &app.net_media
+	m.open_gen += 1
 	switch m.mode {
 	case .Player:
 		media.player_destroy(m.player)
@@ -62,13 +98,85 @@ net_media_release :: proc(app: ^App) {
 		if app != nil && m.tex != 0 { render.destroy_texture(&app.r, m.tex) }
 	case .System:
 		mci("close dtmedia")
-		if m.path != "" { os.remove(m.path) }
+		if m.path != "" { net_media_remove_file(app, m.path) }
 	case .None:
 	}
 	delete(m.err); delete(m.path)
-	vol, muted := m.volume, m.muted
+	vol, muted, gen := m.volume, m.muted, m.open_gen
 	m^ = {}
-	m.volume, m.muted = vol, muted
+	m.volume, m.muted, m.open_gen = vol, muted, gen
+}
+
+// A safe temporary-file extension for the system's media player: known MIME types map directly; URL-derived extensions
+// are restricted to 1..8 ASCII alphanumerics so untrusted URLs cannot inject MCI commands or path separators.
+@(private)
+net_media_safe_ext :: proc(mime, url: string) -> string {
+	switch net_mime_base(mime) {
+	case "audio/mpeg", "audio/mp3": return ".mp3"
+	case "audio/wav", "audio/x-wav", "audio/wave": return ".wav"
+	case "audio/ogg", "application/ogg": return ".ogg"
+	case "audio/flac": return ".flac"
+	case "audio/aac", "audio/mp4", "audio/x-m4a": return ".m4a"
+	case "audio/webm": return ".webm"
+	case "video/ogg": return ".ogv"
+	}
+	name := net_name_of(url)
+	if q := strings.index_any(name, "?#"); q >= 0 { name = name[:q] }
+	dot := strings.last_index_byte(name, '.')
+	if dot < 0 { return ".bin" }
+	raw := name[dot + 1:]
+	if len(raw) == 0 || len(raw) > 8 { return ".bin" }
+	for c in transmute([]u8)raw {
+		ok := (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+		if !ok { return ".bin" }
+	}
+	return name[dot:]
+}
+
+@(private = "file")
+net_media_write_free :: proc(data: rawptr) {
+	j := (^Net_Media_Write_Job)(data)
+	delete(j.path, base.process_allocator())
+	delete(j.body, base.process_allocator())
+	free(j, base.process_allocator())
+}
+
+@(private = "file")
+net_media_write_work :: proc(data: rawptr) {
+	j := (^Net_Media_Write_Job)(data)
+	j.ok = os.write_entire_file(j.path, j.body) == nil
+}
+
+@(private = "file")
+net_media_write_done :: proc(data: rawptr) {
+	j := (^Net_Media_Write_Job)(data)
+	defer net_media_write_free(data)
+	app := j.app
+	if app == nil { return }
+	m := &app.net_media
+	if m.id != j.id || m.open_gen != j.gen {
+		if j.ok { net_media_remove_file(app, j.path) }
+		return
+	}
+	m.loading = false
+	if !j.ok {
+		m.err = strings.clone("The media could not be written to a temporary file for the system's player.")
+		request_frames(app, 1)
+		return
+	}
+	if _, ok := mci(fmt.tprintf("open \"%s\" alias dtmedia", j.path)); !ok {
+		m.err = strings.clone("The system cannot play this format (the browser's own player reads MP4 and WebM).")
+		net_media_remove_file(app, j.path)
+		request_frames(app, 1)
+		return
+	}
+	m.path = strings.clone(j.path)
+	mci("set dtmedia time format milliseconds")
+	if s, ok := mci("status dtmedia length"); ok { m.duration = f64(parse_int(s)) / MCI_UNITS_PER_SECOND }
+	m.audio = true
+	m.mode = .System
+	mci(fmt.tprintf("setaudio dtmedia volume to %d", int(m.muted ? 0 : m.volume * MCI_VOLUME_FULL)))
+	request_frames(app, 2)
 }
 
 @(private = "file")
@@ -78,7 +186,7 @@ sniff_container :: proc(b: []byte) -> enum { Unknown, Mp4, Webm } {
 	return .Unknown
 }
 
-@(private = "file")
+@(private)
 net_media_open :: proc(app: ^App, e: ^Net_Entry) {
 	m := &app.net_media
 	if m.volume == 0 && !m.muted { m.volume = 0.7 }
@@ -138,37 +246,31 @@ net_media_open :: proc(app: ^App, e: ^Net_Entry) {
 		m.err = strings.clone("This file could not be read (the container is damaged or has no track the decoders take).")
 		return
 	}
-	// the system's player, from a file
-	ext := ".bin"
-	switch net_mime_base(e.mime) {
-	case "audio/mpeg", "audio/mp3": ext = ".mp3"
-	case "audio/wav", "audio/x-wav", "audio/wave": ext = ".wav"
-	case "audio/ogg", "application/ogg": ext = ".ogg"
-	case "audio/flac": ext = ".flac"
-	case "audio/aac", "audio/mp4", "audio/x-m4a": ext = ".m4a"
-	case "audio/webm": ext = ".webm"
-	case "video/ogg": ext = ".ogv"
-	case: if i := strings.last_index_byte(net_name_of(e.url), '.'); i >= 0 { ext = net_name_of(e.url)[i:] }
-	}
-	if q := strings.index_byte(ext, '?'); q >= 0 { ext = ext[:q] }
-	dir := base.temp_dir(context.temp_allocator)
-	path, _ := filepath.join({dir, fmt.tprintf("wren_devtools_media_%d%s", e.id, ext)}, context.allocator)
-	if err := os.write_entire_file(path, body); err != nil {
-		m.err = strings.clone("The media could not be written to a temporary file for the system's player.")
-		delete(path)
-		return
-	}
-	m.path = path
-	if _, ok := mci(fmt.tprintf("open \"%s\" alias dtmedia", path)); !ok {
+	// the system's player, from a file (Windows MCI only)
+	if ODIN_OS != .Windows {
 		m.err = strings.clone("The system cannot play this format (the browser's own player reads MP4 and WebM).")
-		os.remove(path); delete(m.path); m.path = ""
 		return
 	}
-	mci("set dtmedia time format milliseconds")
-	if s, ok := mci("status dtmedia length"); ok { m.duration = f64(parse_int(s)) / MCI_UNITS_PER_SECOND }
-	m.audio = true
-	m.mode = .System
-	mci(fmt.tprintf("setaudio dtmedia volume to %d", int(m.muted ? 0 : m.volume * MCI_VOLUME_FULL)))
+	ext := net_media_safe_ext(e.mime, e.url)
+	dir := base.temp_dir(context.temp_allocator)
+	path, _ := filepath.join({dir, fmt.tprintf("wren_devtools_media_%d_%d%s", e.id, m.open_gen, ext)}, base.process_allocator())
+	// Reject quotes in the temp directory path so MCI command parsing cannot break out of the quoted filename.
+	if strings.index_byte(path, '"') >= 0 {
+		m.err = strings.clone("The media could not be written to a temporary file for the system's player.")
+		delete(path, base.process_allocator())
+		return
+	}
+	job := new(Net_Media_Write_Job, base.process_allocator())
+	job.app, job.id, job.gen, job.path = app, e.id, m.open_gen, path
+	job.body = make([]byte, len(body), base.process_allocator())
+	copy(job.body, body)
+	m.loading = true
+	if profile_pool_ready(app) {
+		host.run_blocking(&app.blocking, net_media_write_work, net_media_write_done, job, net_media_write_free)
+	} else {
+		net_media_write_work(job)
+		net_media_write_done(job)
+	}
 }
 
 @(private = "file")
@@ -303,7 +405,7 @@ video_stage_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 
 net_media_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	m := &app.net_media
-	if m.mode != .None && m.owner != nil && m.owner != dev() {
+	if (m.mode != .None || m.loading) && m.owner != nil && m.owner != dev() {
 		// (one media at a time: another window's developer tools play theirs)
 		dt_empty("###dt_pm_err", .File_Media, "Playing in another window", "The developer tools of another window are playing a media; one plays at a time.")
 		return
@@ -315,6 +417,10 @@ net_media_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	m.owner = dev()
 	m.seen = true
 	if m.mode == .None {
+		if m.loading {
+			dt_empty("###dt_pm_load", .File_Media, "Opening media", "Writing the media for the system's player.")
+			return
+		}
 		dt_empty("###dt_pm_err", .File_Media, "No player for this media", m.err != "" ? m.err : "Press the request's address in a tab to play it.")
 		return
 	}
@@ -362,7 +468,7 @@ net_media_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 // Called every frame by devtools_panel after its tabs: a media whose preview was not built is closed (the tab was changed,
 // the request is no longer chosen).
 net_media_frame_end :: proc(app: ^App) {
-	if app.net_media.mode == .None || app.net_media.owner != dev() { return }   // (another window's panel builds its own frames)
+	if (app.net_media.mode == .None && !app.net_media.loading) || app.net_media.owner != dev() { return }   // (another window's panel builds its own frames)
 	if !app.net_media.seen { net_media_release(app) }
 	app.net_media.seen = false
 }
