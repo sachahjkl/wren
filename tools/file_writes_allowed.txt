@@ -28,7 +28,7 @@ src/browser/remote_extras.odin 2  # wren ctl: captures to the path its client ga
 src/browser/remote_methods.odin 1  # wren ctl: a screenshot to the path its client gave
 src/browser/remote_timeline.odin 5  # wren ctl: a timeline to the folder its client gave
 src/browser/shell_latency.odin 1  # diagnostic: the --prof latency output, written at exit
-src/extensions/archive.odin 2  # the extensions' folders (the extensions' own change): an archive unpacked by its install job
+src/extensions/archive.odin 3  # the extensions' folders (the extensions' own change): an archive unpacked atomically by its install job
 src/host/shutdown.odin 1  # the log of the exit's steps, when one is asked for: the exit is the only work left
 src/httpcache/disk.odin 3  # the HTTP cache's own store: entries and index written by its own jobs, with its own recovery
 src/net/record.odin 1  # diagnostic: a recording of the network a developer asks for

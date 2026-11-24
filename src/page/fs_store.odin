@@ -176,7 +176,7 @@ fs_opfs_root :: proc(profile_dir, key: string) -> (u64, Fs_Error) {
 
 @(private)
 fs_local_path_equal :: proc(a, b: string) -> bool {
-	when ODIN_OS == .Windows { return base.ascii_equal_fold(a, b) }
+	when ODIN_OS == .Windows { return strings.equal_fold(a, b) }
 	return a == b
 }
 

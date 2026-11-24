@@ -39,14 +39,15 @@ src/browser/urlbar_index.odin low := strings.to_lower(rest, allocator)  # user t
 src/browser/urlbar_index.odin low := strings.to_lower(typed  # user text: the address bar's index
 src/browser/urlbar_index.odin low_title = strings.to_lower(v.title), visits  # user text: the address bar's index
 src/browser/urlbar_index.odin q := strings.to_lower(strings.trim_space(query)  # user text: the address bar's index
+src/extensions/archive.odin lower := strings.to_lower(name  # a Windows path (the file system folds by Unicode)
 src/fetch/directory.odin html_text(&sb, strings.to_upper(ext  # display text: a folder listing's file type
 src/fetch/directory.odin strings.compare(strings.to_lower(ea  # display order of a folder's listing
 src/layout/build.odin case .Lowercase: out = unicode.to_lower(r)  # text-transform: Unicode by CSS Text
 src/layout/build.odin case .Uppercase: out = unicode.to_upper(r)  # text-transform: Unicode by CSS Text
 src/layout/selection.odin case .Lowercase: out = unicode.to_lower(r)  # text-transform: Unicode by CSS Text
 src/layout/selection.odin case .Uppercase: out = unicode.to_upper(r)  # text-transform: Unicode by CSS Text
-src/page/fs_store.odin if strings.equal_fold(da, db)  # a Windows path of the disk
-src/page/fs_store.odin strings.has_prefix(strings.to_lower(db  # a Windows path of the disk
+src/page/fs_store.odin when ODIN_OS == .Windows { return strings.equal_fold(a, b) }  # a Windows path of the disk
+src/page/fs_store.odin return strings.has_prefix(strings.to_lower(path  # a Windows path of the disk
 src/remote/api/process_windows.odin return strings.equal_fold(a, b)  # a Windows path
 src/remote/api/process_windows.odin strings.equal_fold(name_of(v)  # a Windows program's name
 src/remote/client/commands.odin filter := len(args) > 0 ? strings.to_lower(  # user text: a filter typed at the command line
