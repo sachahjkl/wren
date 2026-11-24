@@ -131,6 +131,9 @@ generation_is_deterministic :: proc(t: ^testing.T) {
 	host := emit_host(a, cfg)
 	testing.expect(t, strings.contains(host, "f :: proc(c: ^Call, h: Api_H, e: Api_E, s: Maybe(string)) -> (string, Api_Error)"), "the prototype of the implementation is written")
 	testing.expect(t, strings.contains(ca.table, `"m.f", "s: invalid UTF-8", .Error_Code, -10`), "a UTF-8 case with its expected code")
+	// an argument refused without a trap must end the call too: the trampoline tests the helper's answer, never its trap
+	testing.expect(t, strings.contains(host, "_p0, _ok = _h_H(&t, 0, \"h\")\n\tif !_ok { return t.trap }"), "a handle that is not live ends the call, with a trap or without")
+	testing.expect(t, strings.count(host, "_ok = ") == strings.count(host, "if !_ok { return t.trap }"), "every argument helper's answer is tested")
 }
 
 @(test)

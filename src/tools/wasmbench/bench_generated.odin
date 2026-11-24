@@ -24,6 +24,7 @@ _Tramp :: struct {
 	f:    wasm.Frame,
 	a:    [^]wasm.Raw,
 	q:    string,
+	trap: wasm.Trap, // what a refused argument ends the call with: nil when the error is in the instance's record
 }
 
 @(private = "file")
@@ -33,51 +34,62 @@ _enter :: #force_no_inline proc "contextless" (t: ^_Tramp, env: rawptr, caller: 
 	t.c = api_begin(t.f.inst)
 	t.a = a
 	t.q = q
+	t.trap = nil
 	if drop_oversized && t.f.inst.oversized.fn != 0 { context = ctx; wasm.oversized_drop(t.f.inst) }
 	return ctx
 }
 
 @(private = "file")
-_trap_bounds :: #force_no_inline proc(t: ^_Tramp, arg: string) -> wasm.Trap {
-	return wasm.trap_bounds(&t.f, t.q, arg)
+_trap_bounds :: #force_no_inline proc(t: ^_Tramp, arg: string) -> bool {
+	t.trap = wasm.trap_bounds(&t.f, t.q, arg)
+	return false
 }
 
 @(private = "file")
-_span :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string) -> ([]u8, wasm.Trap) {
+_span :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string) -> ([]u8, bool) {
 	n := wasm.addr(&t.f, t.a[slot + 1])
 	s, ok := wasm.span(&t.f, wasm.addr(&t.f, t.a[slot]), n)
 	if !ok { return nil, _trap_bounds(t, arg) }
-	return s[:n], nil
+	return s[:n], true
 }
 
 @(private = "file")
-_utf8 :: #force_no_inline proc(t: ^_Tramp, s: string, arg: string) -> wasm.Trap {
-	if wasm.valid_utf8(s) { return nil }
-	return wasm.trap_new(fmt.tprintf("%s: argument %s is not valid UTF-8", t.q, arg))
+_refuse :: #force_no_inline proc(t: ^_Tramp, message: string) -> bool {
+	t.trap = wasm.trap_new(message)
+	return false
 }
 
 @(private = "file")
-_str :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string) -> (string, wasm.Trap) {
-	b, tr := _span(t, slot, arg)
-	if tr != nil { return "", tr }
+_utf8 :: #force_no_inline proc(t: ^_Tramp, s: string, arg: string) -> bool {
+	if wasm.valid_utf8(s) { return true }
+	return _refuse(t, fmt.tprintf("%s: argument %s is not valid UTF-8", t.q, arg))
+}
+
+@(private = "file")
+_str :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string) -> (string, bool) {
+	b, ok := _span(t, slot, arg)
+	if !ok { return "", false }
 	s := string(b)
-	if tr = _utf8(t, s, arg); tr != nil { return "", tr }
-	return s, nil
+	if !_utf8(t, s, arg) { return "", false }
+	return s, true
 }
 
 @(private = "file")
 _end_void :: #force_no_inline proc(t: ^_Tramp) -> wasm.Trap {
 	api_end(&t.c)
-	return wasm.take_trap(t.f.inst)
+	tr := wasm.take_trap(t.f.inst)
+	return tr
 }
 
 @(private = "file")
 _end_i32 :: #force_no_inline proc(t: ^_Tramp, v: i32) -> wasm.Trap {
 	api_end(&t.c)
-	if tr := wasm.take_trap(t.f.inst); tr != nil { return tr }
-	t.a[0] = {}
-	t.a[0].i32 = v
-	return nil
+	tr := wasm.take_trap(t.f.inst)
+	if tr == nil {
+		t.a[0] = {}
+		t.a[0].i32 = v
+	}
+	return tr
 }
 
 // nop :: proc(c: ^Call)
@@ -94,10 +106,10 @@ _t_bench_nop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: u
 _t_bench_touch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	t: _Tramp = ---
 	context = _enter(&t, env, caller, a, "bench.touch", true)
-	_tr: wasm.Trap
+	_ok: bool
 	_s0: []u8
-	_s0, _tr = _span(&t, 0, "data")
-	if _tr != nil { return _tr }
+	_s0, _ok = _span(&t, 0, "data")
+	if !_ok { return t.trap }
 	_p0 := _s0
 	_r := touch(&t.c, _p0)
 	return _end_i32(&t, _r)
@@ -108,10 +120,10 @@ _t_bench_touch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 _t_bench_touch_string :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	t: _Tramp = ---
 	context = _enter(&t, env, caller, a, "bench.touch_string", true)
-	_tr: wasm.Trap
+	_ok: bool
 	_p0: string
-	_p0, _tr = _str(&t, 0, "text")
-	if _tr != nil { return _tr }
+	_p0, _ok = _str(&t, 0, "text")
+	if !_ok { return t.trap }
 	_r := touch_string(&t.c, _p0)
 	return _end_i32(&t, _r)
 }

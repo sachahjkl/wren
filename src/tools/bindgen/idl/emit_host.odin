@@ -474,6 +474,7 @@ emit_host_helpers :: proc(api: ^Api, cfg: Host_Config, u: ^Host_Usage, o: ^Out) 
 		wl(o, "\tf:    wasm.Frame,")
 		wl(o, "\ta:    [^]wasm.Raw,")
 		wl(o, "\tq:    string,")
+		wl(o, "\ttrap: wasm.Trap, // what a refused argument ends the call with: nil when the error is in the instance's record")
 		if lenient_available { wl(o, "\tmode: _Mode,") }
 		wl(o, "}")
 		wl(o, "")
@@ -485,6 +486,7 @@ emit_host_helpers :: proc(api: ^Api, cfg: Host_Config, u: ^Host_Usage, o: ^Out) 
 			wl(o, "\tt.c = %s(t.f.inst)", cfg.begin)
 			wl(o, "\tt.a = a")
 			wl(o, "\tt.q = q")
+			wl(o, "\tt.trap = nil")
 			wl(o, "\tt.mode = mode")
 			wl(o, "\tif mode < .Out && t.f.inst.oversized.fn != 0 {{ context = ctx; wasm.oversized_drop(t.f.inst) }}")
 			wl(o, "\treturn ctx")
@@ -496,6 +498,7 @@ emit_host_helpers :: proc(api: ^Api, cfg: Host_Config, u: ^Host_Usage, o: ^Out) 
 			wl(o, "\tt.c = %s(t.f.inst)", cfg.begin)
 			wl(o, "\tt.a = a")
 			wl(o, "\tt.q = q")
+			wl(o, "\tt.trap = nil")
 			wl(o, "\tif drop_oversized && t.f.inst.oversized.fn != 0 {{ context = ctx; wasm.oversized_drop(t.f.inst) }}")
 			wl(o, "\treturn ctx")
 			wl(o, "}")
@@ -503,52 +506,57 @@ emit_host_helpers :: proc(api: ^Api, cfg: Host_Config, u: ^Host_Usage, o: ^Out) 
 		wl(o, "")
 	}
 
+	// The argument helpers answer whether the call goes on, apart from its trap (t.trap): an argument refused without a
+	// trap (a lenient instance, a status) ends the call too. The implementation never sees an argument that is not valid.
+	// The unroute is the last thing a call does: it can run scripts, which can move the guest's memory, replace its
+	// exception record and free the message.
 	if u.span || u.span_opt || u.span_el || u.ret_ptr {
 		wl(o, "@(private = \"file\")")
-		wl(o, "_trap_bounds :: #force_no_inline proc(t: ^_Tramp, arg: string) -> wasm.Trap {{")
+		wl(o, "_trap_bounds :: #force_no_inline proc(t: ^_Tramp, arg: string) -> bool {{")
+		wl(o, "\tt.trap = wasm.trap_bounds(&t.f, t.q, arg)")
 		emit_unroute_stmt(cfg, o, "\t", "t.c")
-		wl(o, "\treturn wasm.trap_bounds(&t.f, t.q, arg)")
+		wl(o, "\treturn false")
 		wl(o, "}")
 		wl(o, "")
 	}
 	if u.span {
 		wl(o, "@(private = \"file\")")
-		wl(o, "_span :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string) -> ([]u8, wasm.Trap) {{")
+		wl(o, "_span :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string) -> ([]u8, bool) {{")
 		wl(o, "\tn := wasm.addr(&t.f, t.a[slot + 1])")
 		wl(o, "\ts, ok := wasm.span(&t.f, wasm.addr(&t.f, t.a[slot]), n)")
 		wl(o, "\tif !ok {{ return nil, _trap_bounds(t, arg) }}")
-		wl(o, "\treturn s[:n], nil")
+		wl(o, "\treturn s[:n], true")
 		wl(o, "}")
 		wl(o, "")
 	}
 	if u.span_el {
 		wl(o, "@(private = \"file\")")
-		wl(o, "_span_el :: #force_no_inline proc(t: ^_Tramp, slot: int, elem: u64, arg: string) -> ([^]u8, u64, wasm.Trap) {{")
+		wl(o, "_span_el :: #force_no_inline proc(t: ^_Tramp, slot: int, elem: u64, arg: string) -> ([^]u8, u64, bool) {{")
 		wl(o, "\tn := wasm.addr(&t.f, t.a[slot + 1])")
 		wl(o, "\ts, ok := wasm.span(&t.f, wasm.addr(&t.f, t.a[slot]), n, elem)")
 		wl(o, "\tif !ok {{ return nil, 0, _trap_bounds(t, arg) }}")
-		wl(o, "\treturn s, n, nil")
+		wl(o, "\treturn s, n, true")
 		wl(o, "}")
 		wl(o, "")
 	}
 	if u.span_opt {
 		wl(o, "@(private = \"file\")")
-		wl(o, "_span_opt :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string) -> (Maybe([]u8), wasm.Trap) {{")
+		wl(o, "_span_opt :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string) -> (Maybe([]u8), bool) {{")
 		wl(o, "\tabsent := wasm.is_absent(&t.f, t.a[slot + 1])")
 		wl(o, "\tn := u64(0) if absent else wasm.addr(&t.f, t.a[slot + 1])")
 		wl(o, "\ts, ok := wasm.span(&t.f, wasm.addr(&t.f, t.a[slot]), n)")
 		wl(o, "\tif !ok {{ return nil, _trap_bounds(t, arg) }}")
-		wl(o, "\tif absent {{ return nil, nil }}")
-		wl(o, "\treturn s[:n], nil")
+		wl(o, "\tif absent {{ return nil, true }}")
+		wl(o, "\treturn s[:n], true")
 		wl(o, "}")
 		wl(o, "")
 	}
 	if u.ret_ptr {
 		wl(o, "@(private = \"file\")")
-		wl(o, "_ret_ptr :: #force_no_inline proc(t: ^_Tramp, slot: int, size: u64) -> ([^]u8, wasm.Trap) {{")
+		wl(o, "_ret_ptr :: #force_no_inline proc(t: ^_Tramp, slot: int, size: u64) -> ([^]u8, bool) {{")
 		wl(o, "\ts, ok := wasm.span(&t.f, wasm.addr(&t.f, t.a[slot]), size)")
 		wl(o, "\tif !ok {{ return nil, _trap_bounds(t, \"result pointer\") }}")
-		wl(o, "\treturn s, nil")
+		wl(o, "\treturn s, true")
 		wl(o, "}")
 		wl(o, "")
 	}
@@ -557,77 +565,78 @@ emit_host_helpers :: proc(api: ^Api, cfg: Host_Config, u: ^Host_Usage, o: ^Out) 
 	if need_fail {
 		wl(o, "@(private = \"file\")")
 		wl(o, "_fail :: #force_no_inline proc(t: ^_Tramp, code: %sError, message: string) -> wasm.Trap {{", PREFIX)
-		emit_unroute_stmt(cfg, o, "\t", "t.c")
+		wl(o, "\ttr: wasm.Trap")
 		wl(o, "\tswitch t.mode {{")
 		wl(o, "\tcase .Trap, .Out:")
 		wl(o, "\t\tif t.f.inst.lenient {{")
 		wl(o, "\t\t\t%s(&t.c, code, message)", cfg.raise)
 		wl(o, "\t\t\tt.a[0] = {{}}")
-		wl(o, "\t\t\treturn nil")
+		wl(o, "\t\t}} else {{")
+		wl(o, "\t\t\ttr = wasm.trap_new(message)")
 		wl(o, "\t\t}")
-		wl(o, "\t\treturn wasm.trap_new(message)")
 		wl(o, "\tcase .Status:")
 		wl(o, "\t\t%s(&t.c, code, message)", cfg.raise)
 		wl(o, "\t\tt.a[0] = {{}}")
 		wl(o, "\t\tt.a[0].i32 = i32(code)")
-		wl(o, "\t\treturn nil")
 		wl(o, "\tcase .Out_Raise:")
 		wl(o, "\t\t%s(&t.c, code, message)", cfg.raise)
 		wl(o, "\t\twasm.put_size(&t.f, t.a, i64(code))")
-		wl(o, "\t\treturn nil")
 		wl(o, "\t}")
-		wl(o, "\treturn nil")
+		emit_unroute_stmt(cfg, o, "\t", "t.c")
+		wl(o, "\treturn tr")
 		wl(o, "}")
 		wl(o, "")
 	}
 
+	if u.utf8 || u.opt_utf8 || len(u.handles) > 0 {
+		wl(o, "@(private = \"file\")")
+		if lenient_available {
+			wl(o, "_refuse :: #force_no_inline proc(t: ^_Tramp, code: %sError, message: string) -> bool {{", PREFIX)
+			wl(o, "\tt.trap = _fail(t, code, message)")
+		} else {
+			wl(o, "_refuse :: #force_no_inline proc(t: ^_Tramp, message: string) -> bool {{")
+			wl(o, "\tt.trap = wasm.trap_new(message)")
+			emit_unroute_stmt(cfg, o, "\t", "t.c")
+		}
+		wl(o, "\treturn false")
+		wl(o, "}")
+		wl(o, "")
+	}
 	if u.utf8 {
 		wl(o, "@(private = \"file\")")
-		wl(o, "_utf8 :: #force_no_inline proc(t: ^_Tramp, s: string, arg: string) -> wasm.Trap {{")
-		wl(o, "\tif wasm.valid_utf8(s) {{ return nil }}")
-		if lenient_available {
-			wl(o, "\treturn _fail(t, .Type, fmt.tprintf(\"%%s: argument %%s is not valid UTF-8\", t.q, arg))")
-		} else {
-			emit_unroute_stmt(cfg, o, "\t", "t.c")
-			wl(o, "\treturn wasm.trap_new(fmt.tprintf(\"%%s: argument %%s is not valid UTF-8\", t.q, arg))")
-		}
+		wl(o, "_utf8 :: #force_no_inline proc(t: ^_Tramp, s: string, arg: string) -> bool {{")
+		wl(o, "\tif wasm.valid_utf8(s) {{ return true }}")
+		wl(o, "\treturn _refuse(t, %sfmt.tprintf(\"%%s: argument %%s is not valid UTF-8\", t.q, arg))", lenient_available ? ".Type, " : "")
 		wl(o, "}")
 		wl(o, "")
 	}
 	if u.str {
 		wl(o, "@(private = \"file\")")
-		wl(o, "_str :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string) -> (string, wasm.Trap) {{")
-		wl(o, "\tb, tr := _span(t, slot, arg)")
-		wl(o, "\tif tr != nil {{ return \"\", tr }}")
+		wl(o, "_str :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string) -> (string, bool) {{")
+		wl(o, "\tb, ok := _span(t, slot, arg)")
+		wl(o, "\tif !ok {{ return \"\", false }}")
 		wl(o, "\ts := string(b)")
-		wl(o, "\tif tr = _utf8(t, s, arg); tr != nil {{ return \"\", tr }}")
-		wl(o, "\treturn s, nil")
+		wl(o, "\tif !_utf8(t, s, arg) {{ return \"\", false }}")
+		wl(o, "\treturn s, true")
 		wl(o, "}")
 		wl(o, "")
 	}
 	if u.opt_utf8 {
 		wl(o, "@(private = \"file\")")
-		wl(o, "_opt_str :: #force_no_inline proc(t: ^_Tramp, b: Maybe([]u8), arg: string) -> (Maybe(string), wasm.Trap) {{")
+		wl(o, "_opt_str :: #force_no_inline proc(t: ^_Tramp, b: Maybe([]u8), arg: string) -> (Maybe(string), bool) {{")
 		wl(o, "\traw, ok := b.?")
-		wl(o, "\tif !ok {{ return nil, nil }}")
+		wl(o, "\tif !ok {{ return nil, true }}")
 		wl(o, "\tv := string(raw)")
-		if lenient_available {
-			wl(o, "\tif !wasm.valid_utf8(v) {{ return nil, _fail(t, .Type, fmt.tprintf(\"%%s: argument %%s is not valid UTF-8\", t.q, arg)) }}")
-		} else {
-			wl(o, "\tif !wasm.valid_utf8(v) {{")
-			emit_unroute_stmt(cfg, o, "\t\t", "t.c")
-			wl(o, "\t\treturn nil, wasm.trap_new(fmt.tprintf(\"%%s: argument %%s is not valid UTF-8\", t.q, arg))")
-			wl(o, "\t}")
-		}
-		wl(o, "\treturn v, nil")
+		wl(o, "\tif !wasm.valid_utf8(v) {{ return nil, _refuse(t, %sfmt.tprintf(\"%%s: argument %%s is not valid UTF-8\", t.q, arg)) }}", lenient_available ? ".Type, " : "")
+		wl(o, "\treturn v, true")
 		wl(o, "}")
 		wl(o, "")
 	}
 	if u.str_opt {
 		wl(o, "@(private = \"file\")")
-		wl(o, "_str_opt :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string) -> (Maybe(string), wasm.Trap) {{")
-		wl(o, "\tb, tr := _span_opt(t, slot, arg)")
-		wl(o, "\tif tr != nil {{ return nil, tr }}")
+		wl(o, "_str_opt :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string) -> (Maybe(string), bool) {{")
+		wl(o, "\tb, ok := _span_opt(t, slot, arg)")
+		wl(o, "\tif !ok {{ return nil, false }}")
 		wl(o, "\treturn _opt_str(t, b, arg)")
 		wl(o, "}")
 		wl(o, "")
@@ -685,13 +694,8 @@ emit_host_helpers :: proc(api: ^Api, cfg: Host_Config, u: ^Host_Usage, o: ^Out) 
 	// per-checked-handle helpers (sorted for determinism)
 	if len(u.handles) > 0 {
 		wl(o, "@(private = \"file\")")
-		wl(o, "_fail_handle :: #force_no_inline proc(t: ^_Tramp, arg, kind: string) -> wasm.Trap {{")
-		if lenient_available {
-			wl(o, "\treturn _fail(t, .Invalid_Handle, fmt.tprintf(\"%%s: argument %%s is not a live %%s\", t.q, arg, kind))")
-		} else {
-			emit_unroute_stmt(cfg, o, "\t", "t.c")
-			wl(o, "\treturn wasm.trap_new(fmt.tprintf(\"%%s: argument %%s is not a live %%s\", t.q, arg, kind))")
-		}
+		wl(o, "_fail_handle :: #force_no_inline proc(t: ^_Tramp, arg, kind: string) -> bool {{")
+		wl(o, "\treturn _refuse(t, %sfmt.tprintf(\"%%s: argument %%s is not a live %%s\", t.q, arg, kind))", lenient_available ? ".Invalid_Handle, " : "")
 		wl(o, "}")
 		wl(o, "")
 
@@ -701,7 +705,7 @@ emit_host_helpers :: proc(api: ^Api, cfg: Host_Config, u: ^Host_Usage, o: ^Out) 
 		for hn in hnames {
 			h := u.handles[hn]
 			wl(o, "@(private = \"file\")")
-			wl(o, "_h_%s :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string, opt := false, kind := %s) -> (%s%s, wasm.Trap) {{",
+			wl(o, "_h_%s :: #force_no_inline proc(t: ^_Tramp, slot: int, arg: string, opt := false, kind := %s) -> (%s%s, bool) {{",
 				h.name, base.json_quote(h.name), PREFIX, h.name)
 			wl(o, "\traw := u64(t.a[slot].i64)")
 			if cfg.route != "" { wl(o, "\t%s(&t.c, raw)", cfg.route) }
@@ -710,7 +714,7 @@ emit_host_helpers :: proc(api: ^Api, cfg: Host_Config, u: ^Host_Usage, o: ^Out) 
 			wl(o, "\t\tr.data = %s(&t.c, raw)", h.lookup)
 			wl(o, "\t\tif r.data == nil {{ return {{}}, _fail_handle(t, arg, kind) }}")
 			wl(o, "\t}")
-			wl(o, "\treturn r, nil")
+			wl(o, "\treturn r, true")
 			wl(o, "}")
 			wl(o, "")
 		}
@@ -762,21 +766,21 @@ emit_host_helpers :: proc(api: ^Api, cfg: Host_Config, u: ^Host_Usage, o: ^Out) 
 		wl(o, "}")
 		wl(o, "")
 		wl(o, "@(private = \"file\")")
-		wl(o, "_out_buf :: #force_no_inline proc(t: ^_Tramp, o: ^_Out, slot: int, id: u32, desc: string) -> (done: bool, tr: wasm.Trap) {{")
-		wl(o, "\tbuf, tr_span := _span(t, slot, \"result buffer\")")
-		wl(o, "\tif tr_span != nil {{ return true, tr_span }}")
+		wl(o, "_out_buf :: #force_no_inline proc(t: ^_Tramp, o: ^_Out, slot: int, id: u32, desc: string) -> bool {{")
+		wl(o, "\tbuf, ok := _span(t, slot, \"result buffer\")")
+		wl(o, "\tif !ok {{ return false }}")
 		wl(o, "\tif t.f.inst.oversized.fn != 0 {{")
 		wl(o, "\t\tif t.f.inst.oversized.fn != id {{")
 		wl(o, "\t\t\twasm.oversized_drop(t.f.inst)")
 		wl(o, "\t\t}} else if wasm.oversized_serve(&t.f, t.a, buf, id, _digest(&t.f, t.a, desc)) {{")
 		emit_unroute_stmt(cfg, o, "\t\t\t", "t.c")
-		wl(o, "\t\t\treturn true, nil")
+		wl(o, "\t\t\treturn false")
 		wl(o, "\t\t}")
 		wl(o, "\t}")
 		wl(o, "\to.buf = buf")
 		wl(o, "\to.id = id")
 		wl(o, "\to.desc = desc")
-		wl(o, "\treturn false, nil")
+		wl(o, "\treturn true")
 		wl(o, "}")
 		wl(o, "")
 	}
@@ -786,8 +790,9 @@ emit_host_helpers :: proc(api: ^Api, cfg: Host_Config, u: ^Host_Usage, o: ^Out) 
 		wl(o, "@(private = \"file\")")
 		wl(o, "_end_void :: #force_no_inline proc(t: ^_Tramp) -> wasm.Trap {{")
 		wl(o, "\tapi_end(&t.c)")
+		wl(o, "\ttr := wasm.take_trap(t.f.inst)")
 		emit_unroute_stmt(cfg, o, "\t", "t.c")
-		wl(o, "\treturn wasm.take_trap(t.f.inst)")
+		wl(o, "\treturn tr")
 		wl(o, "}")
 		wl(o, "")
 	}
@@ -810,11 +815,13 @@ emit_host_helpers :: proc(api: ^Api, cfg: Host_Config, u: ^Host_Usage, o: ^Out) 
 		wl(o, "@(private = \"file\")")
 		wl(o, "_end_%s :: #force_no_inline proc(t: ^_Tramp, v: %s) -> wasm.Trap {{", suffix, typ)
 		wl(o, "\tapi_end(&t.c)")
+		wl(o, "\ttr := wasm.take_trap(t.f.inst)")
+		wl(o, "\tif tr == nil {{")
+		wl(o, "\t\tt.a[0] = {{}}")
+		wl(o, "\t\tt.a[0].%s = v", field)
+		wl(o, "\t}")
 		emit_unroute_stmt(cfg, o, "\t", "t.c")
-		wl(o, "\tif tr := wasm.take_trap(t.f.inst); tr != nil {{ return tr }}")
-		wl(o, "\tt.a[0] = {{}}")
-		wl(o, "\tt.a[0].%s = v", field)
-		wl(o, "\treturn nil")
+		wl(o, "\treturn tr")
 		wl(o, "}")
 		wl(o, "")
 	}
@@ -887,7 +894,6 @@ emit_host_helpers :: proc(api: ^Api, cfg: Host_Config, u: ^Host_Usage, o: ^Out) 
 		wl(o, "\t\treturn tr, false")
 		wl(o, "\t}")
 		wl(o, "\tif err != .None {{ return _fail(t, err, t.c.message), false }}")
-		emit_unroute_stmt(cfg, o, "\t", "t.c")
 		wl(o, "\tt.a[0] = {{}}")
 		wl(o, "\treturn nil, true")
 		wl(o, "}")
@@ -897,8 +903,11 @@ emit_host_helpers :: proc(api: ^Api, cfg: Host_Config, u: ^Host_Usage, o: ^Out) 
 		wl(o, "@(private = \"file\")")
 		wl(o, "_end_struct_ok :: #force_no_inline proc(t: ^_Tramp) -> wasm.Trap {{")
 		wl(o, "\tapi_end(&t.c)")
-		emit_unroute_stmt(cfg, o, "\t", "t.c")
-		wl(o, "\treturn wasm.take_trap(t.f.inst)")
+		wl(o, "\ttr := wasm.take_trap(t.f.inst)")
+		wl(o, "\tif tr != nil {{")
+		emit_unroute_stmt(cfg, o, "\t\t", "t.c")
+		wl(o, "\t}")
+		wl(o, "\treturn tr")
 		wl(o, "}")
 		wl(o, "")
 	}
@@ -1046,7 +1055,7 @@ digest_desc :: proc(d: ^Decl) -> string {
 }
 
 @(private)
-trampoline_needs_tr :: proc(d: ^Decl) -> bool {
+trampoline_needs_ok :: proc(d: ^Decl) -> bool {
 	if d.abi.out_string || d.abi.ret_ptr { return true }
 	for p in d.params {
 		t := p.type
@@ -1072,7 +1081,7 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl, id: u32) {
 	} else {
 		wl(o, "\tcontext = _enter(&t, env, caller, a, %s, %v)", qq, !d.abi.out_string)
 	}
-	if trampoline_needs_tr(d) { wl(o, "\t_tr: wasm.Trap") }
+	if trampoline_needs_ok(d) { wl(o, "\t_ok: bool") }
 
 	// 1. every memory range first: a bad pointer traps before anything else happens
 	slot := 0
@@ -1084,28 +1093,28 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl, id: u32) {
 		case t.seq:
 			el := mem_size(Type{kind = t.kind, decl = t.decl})
 			wl(o, "\t_s%d: [^]u8; _n%d: u64", i, i)
-			wl(o, "\t_s%d, _n%d, _tr = _span_el(&t, %d, %d, %s)", i, i, slot, el, base.json_quote(p.name))
-			wl(o, "\tif _tr != nil {{ return _tr }}")
+			wl(o, "\t_s%d, _n%d, _ok = _span_el(&t, %d, %d, %s)", i, i, slot, el, base.json_quote(p.name))
+			wl(o, "\tif !_ok {{ return t.trap }}")
 			slot += 2
 		case t.kind == .String && fuse:
 			if p.optional {
 				wl(o, "\t_p%d: Maybe(string)", i)
-				wl(o, "\t_p%d, _tr = _str_opt(&t, %d, %s)", i, slot, base.json_quote(p.name))
+				wl(o, "\t_p%d, _ok = _str_opt(&t, %d, %s)", i, slot, base.json_quote(p.name))
 			} else {
 				wl(o, "\t_p%d: string", i)
-				wl(o, "\t_p%d, _tr = _str(&t, %d, %s)", i, slot, base.json_quote(p.name))
+				wl(o, "\t_p%d, _ok = _str(&t, %d, %s)", i, slot, base.json_quote(p.name))
 			}
-			wl(o, "\tif _tr != nil {{ return _tr }}")
+			wl(o, "\tif !_ok {{ return t.trap }}")
 			slot += 2
 		case t.kind == .String || t.kind == .Usv_String || t.kind == .Bytes:
 			if p.optional {
 				wl(o, "\t_s%d: Maybe([]u8)", i)
-				wl(o, "\t_s%d, _tr = _span_opt(&t, %d, %s)", i, slot, base.json_quote(p.name))
+				wl(o, "\t_s%d, _ok = _span_opt(&t, %d, %s)", i, slot, base.json_quote(p.name))
 			} else {
 				wl(o, "\t_s%d: []u8", i)
-				wl(o, "\t_s%d, _tr = _span(&t, %d, %s)", i, slot, base.json_quote(p.name))
+				wl(o, "\t_s%d, _ok = _span(&t, %d, %s)", i, slot, base.json_quote(p.name))
 			}
-			wl(o, "\tif _tr != nil {{ return _tr }}")
+			wl(o, "\tif !_ok {{ return t.trap }}")
 			slot += 2
 		case t.kind == .Struct:
 			slot += len(t.decl.fields)
@@ -1114,15 +1123,15 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl, id: u32) {
 		}
 	}
 	if d.abi.out_string {
-		wl(o, "\t_o: _Out = ---; _done: bool")
-		wl(o, "\t_done, _tr = _out_buf(&t, &_o, %d, %d, %s)", slot, id, desc)
-		wl(o, "\tif _done {{ return _tr }}")
+		wl(o, "\t_o: _Out = ---")
+		wl(o, "\t_ok = _out_buf(&t, &_o, %d, %d, %s)", slot, id, desc)
+		wl(o, "\tif !_ok {{ return t.trap }}")
 		slot += 2
 	}
 	if d.abi.ret_ptr {
 		wl(o, "\t_rs: [^]u8")
-		wl(o, "\t_rs, _tr = _ret_ptr(&t, %d, %d)", slot, mem_size(d.result))
-		wl(o, "\tif _tr != nil {{ return _tr }}")
+		wl(o, "\t_rs, _ok = _ret_ptr(&t, %d, %d)", slot, mem_size(d.result))
+		wl(o, "\tif !_ok {{ return t.trap }}")
 	}
 
 	// 2. strings and memory, 3. handles, enums, structs: an invalid string is reported whatever the handles are
@@ -1140,16 +1149,16 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl, id: u32) {
 		case t.kind == .String:
 			if p.optional {
 				wl(o, "\t%s: Maybe(string)", name)
-				wl(o, "\t%s, _tr = _opt_str(&t, _s%d, %s)", name, i, base.json_quote(p.name))
-				wl(o, "\tif _tr != nil {{ return _tr }}")
+				wl(o, "\t%s, _ok = _opt_str(&t, _s%d, %s)", name, i, base.json_quote(p.name))
+				wl(o, "\tif !_ok {{ return t.trap }}")
 			} else {
 				wl(o, "\t%s := string(_s%d)", name, i)
-				wl(o, "\tif _tr = _utf8(&t, %s, %s); _tr != nil {{ return _tr }}", name, base.json_quote(p.name))
+				wl(o, "\tif !_utf8(&t, %s, %s) {{ return t.trap }}", name, base.json_quote(p.name))
 			}
 		case t.kind == .Usv_String:
 			if p.optional {
 				wl(o, "\t%s: Maybe(string)", name)
-				wl(o, "\tif _b, _ok := _s%d.?; _ok {{ %s = %s(string(_b), context.temp_allocator) }}", i, name, cfg.scrub)
+				wl(o, "\tif _b, _has := _s%d.?; _has {{ %s = %s(string(_b), context.temp_allocator) }}", i, name, cfg.scrub)
 			} else {
 				wl(o, "\t%s := %s(string(_s%d), context.temp_allocator)", name, cfg.scrub, i)
 			}
@@ -1164,13 +1173,13 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl, id: u32) {
 			}
 			wl(o, "\t%s: %s%s", name, PREFIX, h.name)
 			if t.decl.name != h.name {
-				wl(o, "\t%s, _tr = _h_%s(&t, %d, %s, %v, %s)", name, h.name, s, base.json_quote(p.name), p.optional, base.json_quote(t.decl.name))
+				wl(o, "\t%s, _ok = _h_%s(&t, %d, %s, %v, %s)", name, h.name, s, base.json_quote(p.name), p.optional, base.json_quote(t.decl.name))
 			} else if p.optional {
-				wl(o, "\t%s, _tr = _h_%s(&t, %d, %s, true)", name, h.name, s, base.json_quote(p.name))
+				wl(o, "\t%s, _ok = _h_%s(&t, %d, %s, true)", name, h.name, s, base.json_quote(p.name))
 			} else {
-				wl(o, "\t%s, _tr = _h_%s(&t, %d, %s)", name, h.name, s, base.json_quote(p.name))
+				wl(o, "\t%s, _ok = _h_%s(&t, %d, %s)", name, h.name, s, base.json_quote(p.name))
 			}
-			wl(o, "\tif _tr != nil {{ return _tr }}")
+			wl(o, "\tif !_ok {{ return t.trap }}")
 		case t.kind == .Enum:
 			wl(o, "\t_e%d := %s", i, raw_read(t, s))
 			wl(o, "\tif !_valid_%s(_e%d) {{ return _fail_enum(&t, %s, %s) }}", t.decl.name, i, base.json_quote(p.name), base.json_quote(t.decl.name))
@@ -1233,11 +1242,9 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl, id: u32) {
 	case d.abi.ret_ptr:
 		if d.result.kind == .Struct {
 			if d.raises {
-				wl(o, "\t_ok: bool")
-				wl(o, "\t_tr, _ok = _end_struct_raise(&t, _err)")
-				wl(o, "\tif !_ok {{ return _tr }}")
+				wl(o, "\tif _tr, _done := _end_struct_raise(&t, _err); !_done {{ return _tr }}")
 			} else {
-				wl(o, "\tif _tr = _end_struct_ok(&t); _tr != nil {{ return _tr }}")
+				wl(o, "\tif _tr := _end_struct_ok(&t); _tr != nil {{ return _tr }}")
 			}
 			offs := make([dynamic]int, context.temp_allocator)
 			struct_layout(d.result.decl, &offs)
@@ -1246,6 +1253,7 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl, id: u32) {
 				if fl.type.kind == .Handle && handle_checker(fl.type.decl) != nil { v = fmt.tprintf("_r.%s.handle", fl.name) }
 				wl(o, "\tintrinsics.unaligned_store((^%s)(&_rs[%d]), %s)", storage_type(fl.type), offs[k], to_storage(fl.type, v))
 			}
+			emit_unroute_stmt(cfg, o, "\t", "t.c")
 			wl(o, "\treturn nil")
 		} else {
 			wl(o, "\treturn _end_ret_%s(&t, _rs, %s, _err)", storage_type(d.result), to_storage(d.result, "_r"))
