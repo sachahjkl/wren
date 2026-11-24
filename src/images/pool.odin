@@ -274,6 +274,23 @@ decoder_hold :: proc(hold: bool) {
 	sync.mutex_unlock(&d.mu)
 }
 
+// Waits until no thread runs a cancelled job: such a job holds its Blob until its thread is done with it, after the page
+// that made it is gone. False at the bound. (Tests: what a test allocated is freed before its memory is counted.)
+decoder_settle :: proc(bound: time.Duration) -> bool {
+	d := dec
+	if d == nil { return true }
+	start := time.tick_now()
+	for {
+		sync.mutex_lock(&d.mu)
+		busy := false
+		for j in d.running { if j.state == .Cancelled { busy = true; break } }
+		sync.mutex_unlock(&d.mu)
+		if !busy { return true }
+		if time.tick_since(start) > bound { return false }
+		time.sleep(time.Millisecond)
+	}
+}
+
 // Joins the threads; queued and finished jobs are dropped. Every port is closed. Call at shutdown.
 decoder_stop :: proc() {
 	sync.mutex_lock(&dec_mu)

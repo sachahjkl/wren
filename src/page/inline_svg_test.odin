@@ -17,7 +17,7 @@ inline_svg_parts :: proc(t: ^testing.T) {
 	test_pages(t)
 	loop: host.Loop
 	host.loop_init(&loop)
-	defer host.loop_destroy(&loop)
+	defer test_loop_destroy(&loop)
 	settings := settings_default()
 	defer settings_destroy(&settings)
 	loader: fetch.Loader
@@ -63,7 +63,7 @@ inline_svg_keeps_its_picture_while_the_new_one_is_made :: proc(t: ^testing.T) {
 	test_pages(t)
 	loop: host.Loop
 	host.loop_init(&loop)
-	defer host.loop_destroy(&loop)
+	defer test_loop_destroy(&loop)
 	settings := settings_default()
 	defer settings_destroy(&settings)
 	loader: fetch.Loader
@@ -116,7 +116,7 @@ inline_svg_css_animation_serializes_and_is_seen :: proc(t: ^testing.T) {
 	test_pages(t)
 	loop: host.Loop
 	host.loop_init(&loop)
-	defer host.loop_destroy(&loop)
+	defer test_loop_destroy(&loop)
 	settings := settings_default()
 	defer settings_destroy(&settings)
 	loader: fetch.Loader

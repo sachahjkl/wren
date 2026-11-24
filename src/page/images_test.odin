@@ -14,7 +14,7 @@ images_found_among_the_documents_images :: proc(t: ^testing.T) {
 	test_pages(t)
 	loop: host.Loop
 	host.loop_init(&loop)
-	defer host.loop_destroy(&loop)
+	defer test_loop_destroy(&loop)
 	settings := settings_default()
 	defer settings_destroy(&settings)
 	loader: fetch.Loader
