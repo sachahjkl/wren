@@ -423,6 +423,55 @@ wj_event_host :: proc "c" (obj: wj.JSValue) -> u64 {
 	return e != nil ? e.host : 0
 }
 
+@(export, link_name = "wj_event_is_trusted")
+wj_event_is_trusted :: proc "c" (obj: wj.JSValue) -> bool {
+	e := event_state(obj)
+	return e != nil && e.trusted
+}
+
+@(export, link_name = "wj_event_time_stamp")
+wj_event_time_stamp :: proc "c" (obj: wj.JSValue) -> f64 {
+	e := event_state(obj)
+	return e != nil ? e.time_stamp : 0
+}
+
+@(export, link_name = "wj_event_type_val")
+wj_event_type_val :: proc "c" (obj: wj.JSValue) -> wj.JSValue {
+	e := event_state(obj)
+	return e != nil ? e.type : wj.UNDEFINED
+}
+
+@(export, link_name = "wj_event_target_val")
+wj_event_target_val :: proc "c" (obj: wj.JSValue) -> wj.JSValue {
+	e := event_state(obj)
+	return e != nil ? e.target : wj.NULL
+}
+
+@(export, link_name = "wj_event_set_target")
+wj_event_set_target :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, target: wj.JSValue) {
+	e := event_state(obj)
+	if e == nil { return }
+	wj.JS_FreeValue(ctx, e.target)
+	e.target = wj.JS_DupValue(ctx, target)
+}
+
+// Constructs an initialized, non-bubbling, non-cancelable event of `iface` (used for coalesced PointerEvent items).
+@(export, link_name = "wj_event_new_derived")
+wj_event_new_derived :: proc "c" (ctx: ^wj.Context, iface: i32, type: wj.JSValue, target: wj.JSValue, trusted: bool, time_stamp: f64, ext: wj.JSValue) -> wj.JSValue {
+	e := event_new()
+	if e == nil { wj.JS_FreeValue(ctx, ext); return wj.JS_ThrowOutOfMemory(ctx) }
+	e.type = wj.JS_DupValue(ctx, type)
+	e.target = wj.JS_DupValue(ctx, target)
+	e.ext = ext
+	e.trusted = trusted
+	e.initialized = true
+	e.time_stamp = time_stamp
+	obj := wj.wj_new_object(ctx, iface, nil, nil)
+	if wj.is_exception(obj) { event_free(e); return obj }
+	event_attach(obj, e)
+	return obj
+}
+
 // document.createEvent(): an event of `iface` that initEvent must initialize before it can be dispatched.
 @(export, link_name = "wj_event_new_uninitialized")
 wj_event_new_uninitialized :: proc "c" (ctx: ^wj.Context, iface: i32) -> wj.JSValue {

@@ -787,6 +787,7 @@ hud_captures :: proc(app: ^App, pos: draw.Vec2) -> bool {
 	if vault_dropdown_captures(app, pos) { return true }   // and the Vault's list under a login field (vault_fill.odin)
 	if vault_offer_captures(app, pos) { return true }   // and the Vault's save offer (vault_save.odin)
 	if urlbar_captures(app, pos) { return true }   // and the address bar's suggestions (urlbar.odin)
+	if forms_color_popover_captures(app, pos) { return true }   // and the <input type="color"> toolkit picker popover (forms_shell.odin)
 	if ui.menu_at(pos) { return true }   // and the open menus: their wheel scrolls them, never the page or a frame under them
 	if !app.hud.panel_open { return false }
 	r, ok := ui.popover_rect(PANEL_ID)

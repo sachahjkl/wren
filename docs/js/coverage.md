@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 608 |
 | exposed by default | 396 |
 | members | 5321 |
-| members implemented | 3900 (73.3 %) |
+| members implemented | 3901 (73.3 %) |
 
 ## By specification
 
@@ -71,7 +71,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `paint-timing.idl` | 1 (1) | 3 / 3 |
 | `performance-timeline.idl` | 3 (3) | 15 / 15 |
 | `permissions.idl` | 2 (2) | 4 / 4 |
-| `pointerevents.idl` | 3 (3) | 43 / 47 |
+| `pointerevents.idl` | 3 (3) | 44 / 47 |
 | `requestidlecallback.idl` | 1 (1) | 2 / 2 |
 | `resize-observer.idl` | 3 (3) | 11 / 11 |
 | `resource-timing.idl` | 1 (1) | 25 / 29 |
@@ -1579,7 +1579,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### PointerEvent : MouseEvent
 
-13 / 16 members.
+14 / 16 members.
 
 - `constructor()`: C `wjr_PointerEvent_constructor`
 - `readonly pointerId`: C `wjr_PointerEvent_get_pointerId`
@@ -1595,7 +1595,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly pointerType`: C `wjr_PointerEvent_get_pointerType`
 - `readonly isPrimary`: C `wjr_PointerEvent_get_isPrimary`
 - `readonly persistentDeviceId`: not supported
-- `getCoalescedEvents()`: not supported
+- `getCoalescedEvents()`: C `wjr_PointerEvent_getCoalescedEvents`
 - `getPredictedEvents()`: not supported
 
 ### WheelEvent : MouseEvent

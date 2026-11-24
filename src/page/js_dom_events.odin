@@ -56,8 +56,11 @@ derived_detail :: proc(e: ^dom.Event) -> i32 {
 }
 
 Event_uiData :: proc(c: ^Call, event: Api_Event) -> Api_UiEventData {
-	e := event.data
-	p := c.page
+	return ui_event_data_of(c, c.page, event.data)
+}
+
+@(private)
+ui_event_data_of :: proc(c: ^Call, p: ^Page, e: ^dom.Event) -> Api_UiEventData {
 	r := Api_UiEventData{
 		client_x = e.x, client_y = e.y,
 		screen_x = e.screen_x != 0 ? e.screen_x : e.x, screen_y = e.screen_y != 0 ? e.screen_y : e.y,

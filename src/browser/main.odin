@@ -1179,6 +1179,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 		}
 	}
 	context_menus_build(app)
+	forms_color_popover_build(app)   // forms_shell.odin: the toolkit colour picker popover for <input type="color"> (off Windows)
 	// the dialogs: each opens, closes and takes its answer here; the toolkit builds them at the end of the build (views.odin)
 	setup_build(app)   // setup.odin: the Setup dialog (toolkit:setup; it also collects the work of its thread)
 	fs_shell_build(app)   // fs_shell.odin: a page's file permission prompt (nothing while none waits)
@@ -1209,8 +1210,9 @@ anchor_href :: proc(d: ^dom.Document, h: base.Handle) -> (string, bool) {
 }
 
 // The last position of a frame's pointer moves over the page: its hover state and its pointer events (route_page_input).
+// `moves` holds every non-emulated Mouse_Move coalesced in this batch so PointerEvent.getCoalescedEvents() exposes them.
 @(private = "file")
-page_move_flush :: proc(app: ^App, t: ^Tab, last_move: platform.Event) {
+page_move_flush :: proc(app: ^App, t: ^Tab, last_move: platform.Event, moves: []platform.Event) {
 	wnd := active_window(app)
 	hovered := base.NIL_HANDLE
 	// (the pointer over a menu, a chrome widget that overlaps the page or the statistics panel is not over the page: its hover state and
@@ -1222,7 +1224,28 @@ page_move_flush :: proc(app: ^App, t: ^Tab, last_move: platform.Event) {
 	was := st.hover
 	st.hover = hovered
 	page.set_style_state(t.page, st)
-	page_pointer_events(app, t, was, hovered, last_move.pos, dom_buttons(last_move.buttons), last_move.emulated)   // page_pointer.odin
+	samples: [dynamic]page.Pointer_Sample
+	if !last_move.emulated && len(moves) > 0 {
+		scale := max(page_scale(app), 0.01)
+		now_ms := page.page_now_ms(t.page)
+		samples = make([dynamic]page.Pointer_Sample, 0, len(moves), context.temp_allocator)
+		for m in moves {
+			if m.emulated { continue }
+			ts := now_ms
+			if m.stamp._nsec != 0 && last_move.stamp._nsec != 0 {
+				delta_ms := time.duration_milliseconds(time.tick_diff(m.stamp, last_move.stamp))
+				if delta_ms >= 0 { ts = max(now_ms - delta_ms, 0) }
+			}
+			append(&samples, page.Pointer_Sample{
+				x          = f64((m.pos.x - wnd.page_rect.min.x) / scale),
+				y          = f64((m.pos.y - wnd.page_rect.min.y) / scale),
+				mods       = dom_mods(m.mods),
+				buttons    = dom_buttons(m.buttons),
+				time_stamp = ts,
+			})
+		}
+	}
+	page_pointer_events(app, t, was, hovered, last_move.pos, dom_buttons(last_move.buttons), last_move.emulated, samples[:])   // page_pointer.odin
 }
 
 // Mouse and wheel events that land on the page become DOM events / scrolling.
@@ -1236,14 +1259,16 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	g := gesture_of(app)
 	last_move: platform.Event
 	have_move := false
-	defer if have_move && t.page != nil { page_move_flush(app, t, last_move) }
+	moves := make([dynamic]platform.Event, 0, 8, context.temp_allocator)
+	defer if have_move && t.page != nil { page_move_flush(app, t, last_move, moves[:]) }
 	for ev, index in events {
 		inside := draw.rect_contains(wnd.page_rect, ev.pos)
 		// the pointer got where it is before the button went down or up: the move's events (mouseover of a handle a script reads
 		// on the press, mousemove) come first, in the order they happened
 		if (ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && have_move && t.page != nil {
-			page_move_flush(app, t, last_move)
+			page_move_flush(app, t, last_move, moves[:])
 			have_move = false
+			clear(&moves)
 			if t.page == nil { return }
 		}
 		if ev.kind == .Mouse_Leave { scrollbar_over_move(app, t, ev.pos, false) }
@@ -1281,7 +1306,8 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		if (ev.kind == .Mouse_Press || ev.kind == .Scroll) && hud_captures(app, ev.pos) { continue }   // the frame statistics panel
 		#partial switch ev.kind {
 		case .Mouse_Move:
-			last_move, have_move = ev, true   // only the last position of the frame matters: hit test once, after the loop
+			last_move, have_move = ev, true   // hit test once after the loop, but retain every move sample for getCoalescedEvents()
+			append(&moves, ev)
 			selection_pointer_move(app, t, ev.pos)
 		case .Scroll:
 			if inside && .Ctrl in ev.mods {

@@ -116,6 +116,31 @@ TouchListKind :: enum i32 {
 	Changed_Touches = 2,
 }
 
+// A coalesced pointer sample of a pointermove / pointerrawupdate event.
+CoalescedPointer :: struct {
+	client_x: f64,
+	client_y: f64,
+	screen_x: f64,
+	screen_y: f64,
+	page_x: f64,
+	page_y: f64,
+	offset_x: f64,
+	offset_y: f64,
+	time_stamp: f64,
+	mods: u32,
+	buttons: u32,
+	pointer_id: i32,
+	pointer_type: u32,
+	is_primary: u32,
+	pressure: f64,
+	tangential_pressure: f64,
+	width: f64,
+	height: f64,
+	tilt_x: f64,
+	tilt_y: f64,
+	twist: f64,
+}
+
 foreign import _m_events "events"
 
 @(private = "file", default_calling_convention = "contextless")
@@ -143,6 +168,8 @@ foreign _m_events {
 	@(link_name = "PointerCapture_set") _PointerCapture_set :: proc(element: u64, pointer_id: i32) -> Error ---
 	@(link_name = "PointerCapture_release") _PointerCapture_release :: proc(element: u64, pointer_id: i32) -> Error ---
 	@(link_name = "PointerCapture_has") _PointerCapture_has :: proc(element: u64, pointer_id: i32) -> i32 ---
+	@(link_name = "PointerEvent_coalescedCount") _PointerEvent_coalescedCount :: proc(event: Event) -> i32 ---
+	@(link_name = "PointerEvent_coalescedAt") _PointerEvent_coalescedAt :: proc(event: Event, index: i32, _ret: ^CoalescedPointer) -> Error ---
 	@(link_name = "Event_uiData") _Event_uiData :: proc(event: Event, _ret: ^UiEventData) ---
 	@(link_name = "UiEvent_key") _UiEvent_key :: proc(event: Event, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "UiEvent_code") _UiEvent_code :: proc(event: Event, _buf: [^]u8, _cap: u32) -> i32 ---
@@ -356,6 +383,17 @@ PointerCapture_release :: proc "contextless" (element: $T_element, pointer_id: i
 // Element.hasPointerCapture(pointerId)
 PointerCapture_has :: proc "contextless" (element: $T_element, pointer_id: i32) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
 	return _PointerCapture_has(u64(element), pointer_id) != 0
+}
+
+// The number of coalesced pointer samples carried by a dispatched pointermove / pointerrawupdate (0 when none were recorded).
+PointerEvent_coalescedCount :: proc "contextless" (event: Event) -> i32 {
+	return _PointerEvent_coalescedCount(event)
+}
+
+// One coalesced pointer sample of that event (Invalid_Argument past its end).
+PointerEvent_coalescedAt :: proc "contextless" (event: Event, index: i32) -> (result: CoalescedPointer, err: Error) {
+	err = _PointerEvent_coalescedAt(event, index, &result)
+	return
 }
 
 // The details of a UI event being dispatched.

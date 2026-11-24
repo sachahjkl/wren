@@ -116,6 +116,34 @@ The lists of a TouchEvent.
 | `Target_Touches` | 1 |  |%!(EXTRA false)
 | `Changed_Touches` | 2 |  |%!(EXTRA false)
 
+### struct `CoalescedPointer`
+
+A coalesced pointer sample of a pointermove / pointerrawupdate event.
+
+| field | type | |
+|---|---|---|
+| `client_x` | `f64` |  |%!(EXTRA false)
+| `client_y` | `f64` |  |%!(EXTRA false)
+| `screen_x` | `f64` |  |%!(EXTRA false)
+| `screen_y` | `f64` |  |%!(EXTRA false)
+| `page_x` | `f64` |  |%!(EXTRA false)
+| `page_y` | `f64` |  |%!(EXTRA false)
+| `offset_x` | `f64` |  |%!(EXTRA false)
+| `offset_y` | `f64` |  |%!(EXTRA false)
+| `time_stamp` | `f64` |  |%!(EXTRA false)
+| `mods` | `u32` |  |%!(EXTRA false)
+| `buttons` | `u32` |  |%!(EXTRA false)
+| `pointer_id` | `i32` |  |%!(EXTRA false)
+| `pointer_type` | `u32` |  |%!(EXTRA false)
+| `is_primary` | `u32` |  |%!(EXTRA false)
+| `pressure` | `f64` |  |%!(EXTRA false)
+| `tangential_pressure` | `f64` |  |%!(EXTRA false)
+| `width` | `f64` |  |%!(EXTRA false)
+| `height` | `f64` |  |%!(EXTRA false)
+| `tilt_x` | `f64` |  |%!(EXTRA false)
+| `tilt_y` | `f64` |  |%!(EXTRA false)
+| `twist` | `f64` |  |%!(EXTRA false)
+
 ## Functions
 
 ### `EventTarget_addEventListener`
@@ -361,6 +389,28 @@ bool PointerCapture_has(Element element, i32 pointer_id)
 Element.hasPointerCapture(pointerId)
 
 Host: `PointerCapture_has :: proc(c: ^Call, element: Api_Element, pointer_id: i32) -> bool`
+
+### `PointerEvent_coalescedCount`
+
+```
+i32 PointerEvent_coalescedCount(Event event)
+```
+
+The number of coalesced pointer samples carried by a dispatched pointermove / pointerrawupdate (0 when none were recorded).
+
+Host: `PointerEvent_coalescedCount :: proc(c: ^Call, event: Api_Event) -> i32`
+
+### `PointerEvent_coalescedAt`
+
+```
+CoalescedPointer PointerEvent_coalescedAt(Event event, i32 index) raises
+```
+
+One coalesced pointer sample of that event (Invalid_Argument past its end).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `PointerEvent_coalescedAt :: proc(c: ^Call, event: Api_Event, index: i32) -> (Api_CoalescedPointer, Api_Error)`
 
 ### `Event_uiData`
 

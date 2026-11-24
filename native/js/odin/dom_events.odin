@@ -65,6 +65,13 @@ wj_event_wrapped :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, host: u64, ifac
 		for n in nums { set_num(ctx, x, n.k, n.v) }
 		set_bool(ctx, x, "isPrimary", d.is_primary != 0)
 		wj.JS_SetPropertyStr(ctx, x, "pointerType", wj.new_string(ctx, pointer_types[d.pointer_type < 3 ? d.pointer_type : 0]))
+		if iface == ifc("PointerEvent") && wj_event_is_trusted(obj) {
+			type_val := wj_event_type_val(obj)
+			if js_str_is(ctx, type_val, "pointermove") || js_str_is(ctx, type_val, "pointerrawupdate") {
+				arr := pointer_coalesced_from_host(ctx, obj, host, type_val, &d)
+				if !wj.is_exception(arr) { wj.JS_SetPropertyStr(ctx, x, "coalescedEvents", arr) } else { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)) }
+			}
+		}
 		if iface == ifc("DragEvent") {
 			dt: abi.Handle
 			jsb.host(&dt, api_decl.DragEvent_dataTransfer, wj.wr_DragEvent_dataTransfer, ev)
@@ -184,7 +191,19 @@ ui_construct :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, a
 	plain := iface == ifc("UIEvent") || iface == ifc("CompositionEvent") || iface == ifc("InputEvent") || iface == ifc("FocusEvent")
 	if ok && !plain { ok = read_fields(ctx, init, x, mod_fields[:]) }
 	if ok && is_mouse(iface) { ok = read_fields(ctx, init, x, mouse_fields[:]) }
-	if ok && iface == ifc("PointerEvent") { ok = read_fields(ctx, init, x, pointer_fields[:]) }
+	if ok && iface == ifc("PointerEvent") {
+		ok = read_fields(ctx, init, x, pointer_fields[:])
+		if ok {
+			seq := wj.dom_dict_get(ctx, init, "coalescedEvents")
+			if wj.is_exception(seq) {
+				ok = false
+			} else {
+				arr := pointer_event_sequence(ctx, seq, "coalescedEvents")
+				wj.JS_FreeValue(ctx, seq)
+				if wj.is_exception(arr) { ok = false } else { wj.JS_SetPropertyStr(ctx, x, "coalescedEvents", arr) }
+			}
+		}
+	}
 	if ok && iface == ifc("WheelEvent") { ok = read_fields(ctx, init, x, wheel_fields[:]) }
 	if ok && iface == ifc("KeyboardEvent") { ok = read_fields(ctx, init, x, key_fields[:]) }
 	if ok && iface == ifc("FocusEvent") { ok = read_fields(ctx, init, x, focus_fields[:]) }
@@ -400,6 +419,118 @@ wjr_TouchEvent_getModifierState :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, ar
 @(export, link_name = "wjr_PointerEvent_get_azimuthAngle")       wjr_PointerEvent_get_azimuthAngle       :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return P(ctx, t, "azimuthAngle", .Zero) }
 @(export, link_name = "wjr_PointerEvent_get_pointerType")        wjr_PointerEvent_get_pointerType        :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return P(ctx, t, "pointerType", .Empty) }
 @(export, link_name = "wjr_PointerEvent_get_isPrimary")          wjr_PointerEvent_get_isPrimary          :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return P(ctx, t, "isPrimary", .False) }
+
+// Converts PointerEventInit.coalescedEvents into an internal array of PointerEvent objects (TypeError on invalid input).
+@(private = "file")
+pointer_event_sequence :: proc "contextless" (ctx: ^wj.Context, seq: wj.JSValue, member: cstring) -> wj.JSValue {
+	arr := wj.JS_NewArray(ctx)
+	if wj.is_exception(arr) || wj.is_undefined(seq) { return arr }
+	if !wj.is_object(seq) {
+		wj.JS_FreeValue(ctx, arr)
+		return wj.wj_throw_type(ctx, "Failed to construct 'PointerEvent': member %s is not iterable.", member)
+	}
+	n := i64(0)
+	if wj.JS_GetLength(ctx, seq, &n) < 0 { wj.JS_FreeValue(ctx, arr); return wj.EXCEPTION }
+	for i in 0 ..< n {
+		item := wj.JS_GetPropertyInt64(ctx, seq, i)
+		if wj.is_exception(item) { wj.JS_FreeValue(ctx, arr); return item }
+		if wj.wj_unwrap(item, ifc("PointerEvent")) == nil {
+			wj.JS_FreeValue(ctx, item)
+			wj.JS_FreeValue(ctx, arr)
+			return wj.wj_throw_type(ctx, "Failed to construct 'PointerEvent': member %s contains a value that is not a PointerEvent.", member)
+		}
+		wj.JS_SetPropertyUint32(ctx, arr, u32(i), item)
+	}
+	return arr
+}
+
+// Builds one trusted, non-bubbling, non-cancelable coalesced PointerEvent from a sample.
+@(private = "file")
+make_coalesced_pointer_event :: proc "contextless" (ctx: ^wj.Context, type_val, target_val: wj.JSValue, s: ^wj.wr_CoalescedPointer, button: i32) -> wj.JSValue {
+	cx := wj.JS_NewObjectProto(ctx, wj.NULL)
+	if wj.is_exception(cx) { return cx }
+	wj.JS_SetPropertyStr(ctx, cx, "view", wj.JS_DupValue(ctx, wj.realm_global()))
+	set_num(ctx, cx, "detail", 0)
+	set_bool(ctx, cx, "ctrlKey", s.mods & 1 != 0)
+	set_bool(ctx, cx, "shiftKey", s.mods & 2 != 0)
+	set_bool(ctx, cx, "altKey", s.mods & 4 != 0)
+	set_bool(ctx, cx, "metaKey", s.mods & 8 != 0)
+	nums := [?]struct { k: cstring, v: f64 }{
+		{"clientX", s.client_x}, {"clientY", s.client_y}, {"screenX", s.screen_x}, {"screenY", s.screen_y},
+		{"pageX", s.page_x}, {"pageY", s.page_y}, {"offsetX", s.offset_x}, {"offsetY", s.offset_y},
+		{"button", f64(button)}, {"buttons", f64(s.buttons)},
+		{"pointerId", f64(s.pointer_id)}, {"width", s.width}, {"height", s.height},
+		{"pressure", s.pressure}, {"tangentialPressure", s.tangential_pressure},
+		{"tiltX", s.tilt_x}, {"tiltY", s.tilt_y}, {"twist", s.twist},
+	}
+	for n in nums { set_num(ctx, cx, n.k, n.v) }
+	set_bool(ctx, cx, "isPrimary", s.is_primary != 0)
+	wj.JS_SetPropertyStr(ctx, cx, "pointerType", wj.new_string(ctx, pointer_types[s.pointer_type < 3 ? s.pointer_type : 0]))
+	return wj_event_new_derived(ctx, ifc("PointerEvent"), type_val, target_val, true, s.time_stamp, cx)
+}
+
+// Materializes the coalesced PointerEvent list for a trusted pointermove / pointerrawupdate when first wrapped.
+@(private = "file")
+pointer_coalesced_from_host :: proc "contextless" (ctx: ^wj.Context, obj: wj.JSValue, host: u64, type_val: wj.JSValue, d: ^wj.wr_UiEventData) -> wj.JSValue {
+	arr := wj.JS_NewArray(ctx)
+	if wj.is_exception(arr) { return arr }
+	target_val := wj_event_target_val(obj)
+	n := wj.wr_PointerEvent_coalescedCount(host)
+	if n > 0 {
+		for i in i32(0) ..< n {
+			s: wj.wr_CoalescedPointer
+			if wj.wr_PointerEvent_coalescedAt(host, i, &s) < 0 { break }
+			ev := make_coalesced_pointer_event(ctx, type_val, target_val, &s, d.button)
+			if wj.is_exception(ev) { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)); break }
+			wj.JS_SetPropertyUint32(ctx, arr, u32(i), ev)
+		}
+		return arr
+	}
+	// Per W3C Pointer Events Level 3, a trusted pointermove / pointerrawupdate with no extra recorded samples still
+	// exposes a single coalesced PointerEvent matching the event's own state.
+	single := wj.wr_CoalescedPointer{
+		client_x = d.client_x, client_y = d.client_y, screen_x = d.screen_x, screen_y = d.screen_y,
+		page_x = d.page_x, page_y = d.page_y, offset_x = d.offset_x, offset_y = d.offset_y,
+		time_stamp = wj_event_time_stamp(obj),
+		mods = d.mods, buttons = d.buttons,
+		pointer_id = d.pointer_id, pointer_type = d.pointer_type, is_primary = d.is_primary,
+		pressure = d.pressure, tangential_pressure = d.tangential_pressure,
+		width = d.width, height = d.height, tilt_x = d.tilt_x, tilt_y = d.tilt_y, twist = d.twist,
+	}
+	ev := make_coalesced_pointer_event(ctx, type_val, target_val, &single, d.button)
+	if !wj.is_exception(ev) { wj.JS_SetPropertyUint32(ctx, arr, 0, ev) } else { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)) }
+	return arr
+}
+
+// PointerEvent.prototype.getCoalescedEvents(): returns a fresh Array of coalesced PointerEvents (W3C Pointer Events Level 3).
+@(export, link_name = "wjr_PointerEvent_getCoalescedEvents")
+wjr_PointerEvent_getCoalescedEvents :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	if wj.wj_this(ctx, this_val, ifc("PointerEvent")) == nil { return wj.EXCEPTION }
+	out := wj.JS_NewArray(ctx)
+	if wj.is_exception(out) { return out }
+	x := wj_event_ext(this_val)
+	if !wj.is_object(x) { return out }
+	stored := wj.JS_GetPropertyStr(ctx, x, "coalescedEvents")
+	if wj.is_exception(stored) { wj.JS_FreeValue(ctx, out); return stored }
+	defer wj.JS_FreeValue(ctx, stored)
+	if !wj.is_object(stored) { return out }
+	n: i64
+	if wj.JS_GetLength(ctx, stored, &n) < 0 { wj.JS_FreeValue(ctx, out); return wj.EXCEPTION }
+	// Keep coalesced event targets synced with the parent's current retargeted target during and after dispatch.
+	cur_target := wj.UNDEFINED
+	if wj_event_is_trusted(this_val) {
+		cur_target = wjr_Event_get_target(ctx, this_val)
+		if wj.is_exception(cur_target) { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)); cur_target = wj.UNDEFINED }
+	}
+	defer wj.JS_FreeValue(ctx, cur_target)
+	for i in 0 ..< n {
+		v := wj.JS_GetPropertyInt64(ctx, stored, i)
+		if wj.is_exception(v) { wj.JS_FreeValue(ctx, out); return v }
+		if !wj.is_undefined(cur_target) { wj_event_set_target(ctx, v, cur_target) }
+		wj.JS_SetPropertyUint32(ctx, out, u32(i), v)
+	}
+	return out
+}
 
 @(export, link_name = "wjr_DragEvent_get_dataTransfer")
 wjr_DragEvent_get_dataTransfer :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return xf(ctx, t, ifc("DragEvent"), "dataTransfer", .Null) }

@@ -352,6 +352,31 @@ wr_TouchListKind :: enum i32 {
 	Target_Touches = 1,
 	Changed_Touches = 2,
 }
+// A coalesced pointer sample of a pointermove / pointerrawupdate event.
+// Layout matches the C struct wr_CoalescedPointer (natural alignment).
+wr_CoalescedPointer :: struct {
+	client_x: f64,
+	client_y: f64,
+	screen_x: f64,
+	screen_y: f64,
+	page_x: f64,
+	page_y: f64,
+	offset_x: f64,
+	offset_y: f64,
+	time_stamp: f64,
+	mods: u32,
+	buttons: u32,
+	pointer_id: i32,
+	pointer_type: u32,
+	is_primary: u32,
+	pressure: f64,
+	tangential_pressure: f64,
+	width: f64,
+	height: f64,
+	tilt_x: f64,
+	tilt_y: f64,
+	twist: f64,
+}
 
 // module dom (partial): types
 
@@ -2335,6 +2360,10 @@ foreign _wr_wj_events {
 	@(link_name = "PointerCapture_release") wr_PointerCapture_release :: proc(element: u64, pointer_id: i32) -> i32 ---
 	// Element.hasPointerCapture(pointerId)
 	@(link_name = "PointerCapture_has") wr_PointerCapture_has :: proc(element: u64, pointer_id: i32) -> i32 ---
+	// The number of coalesced pointer samples carried by a dispatched pointermove / pointerrawupdate (0 when none were recorded).
+	@(link_name = "PointerEvent_coalescedCount") wr_PointerEvent_coalescedCount :: proc(event: u64) -> i32 ---
+	// One coalesced pointer sample of that event (Invalid_Argument past its end).
+	@(link_name = "PointerEvent_coalescedAt") wr_PointerEvent_coalescedAt :: proc(event: u64, index: i32, _ret: ^wr_CoalescedPointer) -> i32 ---
 	// The details of a UI event being dispatched.
 	@(link_name = "Event_uiData") wr_Event_uiData :: proc(event: u64, _ret: ^wr_UiEventData) ---
 	// KeyboardEvent.key ("Enter", "a"...): "Unidentified" when unknown.

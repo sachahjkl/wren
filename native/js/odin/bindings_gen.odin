@@ -26396,7 +26396,7 @@ wj_install_bindings :: proc "c" () {
 	m_PointerEvent[10] = wj.Member{name = "pointerType", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_PointerEvent_get_pointerType, set = nil}
 	m_PointerEvent[11] = wj.Member{name = "isPrimary", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_PointerEvent_get_isPrimary, set = nil}
 	m_PointerEvent[12] = wj.Member{name = "persistentDeviceId", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
-	m_PointerEvent[13] = wj.Member{name = "getCoalescedEvents", kind = wj.M_METHOD, flags = wj.F_SECURE, length = 0, fn = nil}
+	m_PointerEvent[13] = wj.Member{name = "getCoalescedEvents", kind = wj.M_METHOD, flags = wj.F_SECURE, length = 0, fn = wjr_PointerEvent_getCoalescedEvents}
 	m_PointerEvent[14] = wj.Member{name = "getPredictedEvents", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
 	m_WheelEvent[0] = wj.Member{name = "DOM_DELTA_PIXEL", kind = wj.M_CONSTANT, value = 0}
 	m_WheelEvent[1] = wj.Member{name = "DOM_DELTA_LINE", kind = wj.M_CONSTANT, value = 1}

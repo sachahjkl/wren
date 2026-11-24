@@ -444,6 +444,31 @@ Api_TouchListKind :: enum i32 {
 	Changed_Touches = 2,
 }
 
+// A coalesced pointer sample of a pointermove / pointerrawupdate event.
+Api_CoalescedPointer :: struct {
+	client_x: f64,
+	client_y: f64,
+	screen_x: f64,
+	screen_y: f64,
+	page_x: f64,
+	page_y: f64,
+	offset_x: f64,
+	offset_y: f64,
+	time_stamp: f64,
+	mods: u32,
+	buttons: u32,
+	pointer_id: i32,
+	pointer_type: u32,
+	is_primary: u32,
+	pressure: f64,
+	tangential_pressure: f64,
+	width: f64,
+	height: f64,
+	tilt_x: f64,
+	tilt_y: f64,
+	twist: f64,
+}
+
 // A rectangle (DOMRect).
 Api_DomRect :: struct {
 	x: f64,
@@ -21137,6 +21162,78 @@ _t_events_PointerCapture_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	return nil
 }
 
+// PointerEvent_coalescedCount :: proc(c: ^Call, event: Api_Event) -> i32
+@(private = "file")
+_t_events_PointerEvent_coalescedCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "events.PointerEvent_coalescedCount: argument event is not a live Event") }
+		return wasm.trap_new("events.PointerEvent_coalescedCount: argument event is not a live Event")
+	}
+	_r := PointerEvent_coalescedCount(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// PointerEvent_coalescedAt :: proc(c: ^Call, event: Api_Event, index: i32) -> (Api_CoalescedPointer, Api_Error)
+@(private = "file")
+_t_events_PointerEvent_coalescedAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	if f.inst.oversized.fn != 0 { wasm.oversized_drop(f.inst) }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 152)
+	if !_rk { return wasm.trap_bounds(&f, "events.PointerEvent_coalescedAt", "result pointer") }
+	api_route(&c, u64(a[0].i64))
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "events.PointerEvent_coalescedAt: argument event is not a live Event")
+	}
+	_p1 := a[1].i32
+	_r, _err := PointerEvent_coalescedAt(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^f64)(&_rs[0]), _r.client_x)
+	intrinsics.unaligned_store((^f64)(&_rs[8]), _r.client_y)
+	intrinsics.unaligned_store((^f64)(&_rs[16]), _r.screen_x)
+	intrinsics.unaligned_store((^f64)(&_rs[24]), _r.screen_y)
+	intrinsics.unaligned_store((^f64)(&_rs[32]), _r.page_x)
+	intrinsics.unaligned_store((^f64)(&_rs[40]), _r.page_y)
+	intrinsics.unaligned_store((^f64)(&_rs[48]), _r.offset_x)
+	intrinsics.unaligned_store((^f64)(&_rs[56]), _r.offset_y)
+	intrinsics.unaligned_store((^f64)(&_rs[64]), _r.time_stamp)
+	intrinsics.unaligned_store((^u32)(&_rs[72]), _r.mods)
+	intrinsics.unaligned_store((^u32)(&_rs[76]), _r.buttons)
+	intrinsics.unaligned_store((^i32)(&_rs[80]), _r.pointer_id)
+	intrinsics.unaligned_store((^u32)(&_rs[84]), _r.pointer_type)
+	intrinsics.unaligned_store((^u32)(&_rs[88]), _r.is_primary)
+	intrinsics.unaligned_store((^f64)(&_rs[96]), _r.pressure)
+	intrinsics.unaligned_store((^f64)(&_rs[104]), _r.tangential_pressure)
+	intrinsics.unaligned_store((^f64)(&_rs[112]), _r.width)
+	intrinsics.unaligned_store((^f64)(&_rs[120]), _r.height)
+	intrinsics.unaligned_store((^f64)(&_rs[128]), _r.tilt_x)
+	intrinsics.unaligned_store((^f64)(&_rs[136]), _r.tilt_y)
+	intrinsics.unaligned_store((^f64)(&_rs[144]), _r.twist)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // Event_uiData :: proc(c: ^Call, event: Api_Event) -> Api_UiEventData
 @(private = "file")
 _t_events_Event_uiData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -21207,7 +21304,7 @@ _t_events_UiEvent_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "events.UiEvent_key", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 694, _digest_events_UiEvent_key(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 696, _digest_events_UiEvent_key(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -21220,7 +21317,7 @@ _t_events_UiEvent_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 694, _digest_events_UiEvent_key(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 696, _digest_events_UiEvent_key(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21242,7 +21339,7 @@ _t_events_UiEvent_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "events.UiEvent_code", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 695, _digest_events_UiEvent_code(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 697, _digest_events_UiEvent_code(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -21255,7 +21352,7 @@ _t_events_UiEvent_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 695, _digest_events_UiEvent_code(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 697, _digest_events_UiEvent_code(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21996,7 +22093,7 @@ _t_dom_HTMLTitleElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLTitleElement_text", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 724, _digest_dom_HTMLTitleElement_text(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 726, _digest_dom_HTMLTitleElement_text(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -22009,7 +22106,7 @@ _t_dom_HTMLTitleElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 724, _digest_dom_HTMLTitleElement_text(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 726, _digest_dom_HTMLTitleElement_text(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -22063,7 +22160,7 @@ _t_dom_HTMLScriptElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLScriptElement_text", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 726, _digest_dom_HTMLScriptElement_text(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 728, _digest_dom_HTMLScriptElement_text(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -22076,7 +22173,7 @@ _t_dom_HTMLScriptElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 726, _digest_dom_HTMLScriptElement_text(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 728, _digest_dom_HTMLScriptElement_text(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -22153,7 +22250,7 @@ _t_dom_HTMLDialogElement_closedBy :: proc "c" (env: rawptr, caller: wasm.Caller,
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLDialogElement_closedBy", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 729, _digest_dom_HTMLDialogElement_closedBy(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 731, _digest_dom_HTMLDialogElement_closedBy(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -22166,7 +22263,7 @@ _t_dom_HTMLDialogElement_closedBy :: proc "c" (env: rawptr, caller: wasm.Caller,
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 729, _digest_dom_HTMLDialogElement_closedBy(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 731, _digest_dom_HTMLDialogElement_closedBy(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -22360,7 +22457,7 @@ _t_dom_Element_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_clientRectsPacked", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 736, _digest_dom_Element_clientRectsPacked(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 738, _digest_dom_Element_clientRectsPacked(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -22373,7 +22470,7 @@ _t_dom_Element_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 736, _digest_dom_Element_clientRectsPacked(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 738, _digest_dom_Element_clientRectsPacked(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23068,7 +23165,7 @@ _t_dom_Range_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Range_clientRectsPacked", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 770, _digest_dom_Range_clientRectsPacked(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 772, _digest_dom_Range_clientRectsPacked(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -23090,7 +23187,7 @@ _t_dom_Range_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 770, _digest_dom_Range_clientRectsPacked(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 772, _digest_dom_Range_clientRectsPacked(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23181,7 +23278,7 @@ _t_dom_MutationObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.Calle
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.MutationObserver_takeRecords", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 774, _digest_dom_MutationObserver_takeRecords(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 776, _digest_dom_MutationObserver_takeRecords(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := MutationObserver_takeRecords(&c, _p0)
@@ -23189,7 +23286,7 @@ _t_dom_MutationObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.Calle
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 774, _digest_dom_MutationObserver_takeRecords(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 776, _digest_dom_MutationObserver_takeRecords(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23280,7 +23377,7 @@ _t_dom_Range_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Range_text", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 778, _digest_dom_Range_text(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 780, _digest_dom_Range_text(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -23302,7 +23399,7 @@ _t_dom_Range_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 778, _digest_dom_Range_text(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 780, _digest_dom_Range_text(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23463,13 +23560,13 @@ _t_dom_Selection_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Selection_text", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 784, _digest_dom_Selection_text(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 786, _digest_dom_Selection_text(&f, a)) { return nil }
 	_r := Selection_text(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 784, _digest_dom_Selection_text(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 786, _digest_dom_Selection_text(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23498,7 +23595,7 @@ _t_dom_InlineStyle_getProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.InlineStyle_getProperty", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 785, _digest_dom_InlineStyle_getProperty(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 787, _digest_dom_InlineStyle_getProperty(&f, a)) { return nil }
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.InlineStyle_getProperty: argument name is not valid UTF-8") }
@@ -23516,7 +23613,7 @@ _t_dom_InlineStyle_getProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 785, _digest_dom_InlineStyle_getProperty(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 787, _digest_dom_InlineStyle_getProperty(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23545,7 +23642,7 @@ _t_dom_InlineStyle_priority :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.InlineStyle_priority", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 786, _digest_dom_InlineStyle_priority(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 788, _digest_dom_InlineStyle_priority(&f, a)) { return nil }
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.InlineStyle_priority: argument name is not valid UTF-8") }
@@ -23563,7 +23660,7 @@ _t_dom_InlineStyle_priority :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 786, _digest_dom_InlineStyle_priority(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 788, _digest_dom_InlineStyle_priority(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23638,7 +23735,7 @@ _t_dom_InlineStyle_removeProperty :: proc "c" (env: rawptr, caller: wasm.Caller,
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.InlineStyle_removeProperty", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 788, _digest_dom_InlineStyle_removeProperty(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 790, _digest_dom_InlineStyle_removeProperty(&f, a)) { return nil }
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "dom.InlineStyle_removeProperty: argument name is not valid UTF-8")
@@ -23657,7 +23754,7 @@ _t_dom_InlineStyle_removeProperty :: proc "c" (env: rawptr, caller: wasm.Caller,
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 788, _digest_dom_InlineStyle_removeProperty(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 790, _digest_dom_InlineStyle_removeProperty(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23679,7 +23776,7 @@ _t_dom_InlineStyle_cssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.InlineStyle_cssText", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 789, _digest_dom_InlineStyle_cssText(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 791, _digest_dom_InlineStyle_cssText(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -23692,7 +23789,7 @@ _t_dom_InlineStyle_cssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 789, _digest_dom_InlineStyle_cssText(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 791, _digest_dom_InlineStyle_cssText(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23770,7 +23867,7 @@ _t_dom_InlineStyle_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.InlineStyle_item", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 792, _digest_dom_InlineStyle_item(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 794, _digest_dom_InlineStyle_item(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -23784,7 +23881,7 @@ _t_dom_InlineStyle_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 792, _digest_dom_InlineStyle_item(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 794, _digest_dom_InlineStyle_item(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23820,7 +23917,7 @@ _t_dom_ComputedStyle_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_on := wasm.addr(&f, a[6])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[5]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.ComputedStyle_get", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 793, _digest_dom_ComputedStyle_get(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 795, _digest_dom_ComputedStyle_get(&f, a)) { return nil }
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.ComputedStyle_get: argument pseudo is not valid UTF-8") }
@@ -23843,7 +23940,7 @@ _t_dom_ComputedStyle_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 793, _digest_dom_ComputedStyle_get(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 795, _digest_dom_ComputedStyle_get(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23881,14 +23978,14 @@ _t_dom_ComputedStyle_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.ComputedStyle_name", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 795, _digest_dom_ComputedStyle_name(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 797, _digest_dom_ComputedStyle_name(&f, a)) { return nil }
 	_p0 := u32(a[0].i32)
 	_r := ComputedStyle_name(&c, _p0)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 795, _digest_dom_ComputedStyle_name(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 797, _digest_dom_ComputedStyle_name(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23966,7 +24063,7 @@ _t_dom_Node_nodeName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_nodeName", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 798, _digest_dom_Node_nodeName(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 800, _digest_dom_Node_nodeName(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -23979,7 +24076,7 @@ _t_dom_Node_nodeName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 798, _digest_dom_Node_nodeName(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 800, _digest_dom_Node_nodeName(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24001,7 +24098,7 @@ _t_dom_Node_baseURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_baseURI", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 799, _digest_dom_Node_baseURI(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 801, _digest_dom_Node_baseURI(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -24014,7 +24111,7 @@ _t_dom_Node_baseURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 799, _digest_dom_Node_baseURI(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 801, _digest_dom_Node_baseURI(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24128,7 +24225,7 @@ _t_dom_Node_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_nodeValue", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 804, _digest_dom_Node_nodeValue(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 806, _digest_dom_Node_nodeValue(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -24143,7 +24240,7 @@ _t_dom_Node_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 804, _digest_dom_Node_nodeValue(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 806, _digest_dom_Node_nodeValue(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24197,7 +24294,7 @@ _t_dom_Node_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_textContent", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 806, _digest_dom_Node_textContent(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 808, _digest_dom_Node_textContent(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -24212,7 +24309,7 @@ _t_dom_Node_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 806, _digest_dom_Node_textContent(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 808, _digest_dom_Node_textContent(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24472,7 +24569,7 @@ _t_dom_Node_lookupPrefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_lookupPrefix", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 815, _digest_dom_Node_lookupPrefix(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 817, _digest_dom_Node_lookupPrefix(&f, a)) { return nil }
 	_p1: Maybe(string)
 	if !_absent1 {
 		_v1 := string(_s1[:wasm.addr(&f, a[2])])
@@ -24495,7 +24592,7 @@ _t_dom_Node_lookupPrefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 815, _digest_dom_Node_lookupPrefix(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 817, _digest_dom_Node_lookupPrefix(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24524,7 +24621,7 @@ _t_dom_Node_lookupNamespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_lookupNamespaceURI", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 816, _digest_dom_Node_lookupNamespaceURI(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 818, _digest_dom_Node_lookupNamespaceURI(&f, a)) { return nil }
 	_p1: Maybe(string)
 	if !_absent1 {
 		_v1 := string(_s1[:wasm.addr(&f, a[2])])
@@ -24547,7 +24644,7 @@ _t_dom_Node_lookupNamespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 816, _digest_dom_Node_lookupNamespaceURI(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 818, _digest_dom_Node_lookupNamespaceURI(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25025,7 +25122,7 @@ _t_dom_CharacterData_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CharacterData_data", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 834, _digest_dom_CharacterData_data(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 836, _digest_dom_CharacterData_data(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -25038,7 +25135,7 @@ _t_dom_CharacterData_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 834, _digest_dom_CharacterData_data(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 836, _digest_dom_CharacterData_data(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25114,7 +25211,7 @@ _t_dom_CharacterData_substringData :: proc "c" (env: rawptr, caller: wasm.Caller
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CharacterData_substringData", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 837, _digest_dom_CharacterData_substringData(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 839, _digest_dom_CharacterData_substringData(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -25131,7 +25228,7 @@ _t_dom_CharacterData_substringData :: proc "c" (env: rawptr, caller: wasm.Caller
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 837, _digest_dom_CharacterData_substringData(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 839, _digest_dom_CharacterData_substringData(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25305,7 +25402,7 @@ _t_dom_Text_wholeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Text_wholeText", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 843, _digest_dom_Text_wholeText(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 845, _digest_dom_Text_wholeText(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -25318,7 +25415,7 @@ _t_dom_Text_wholeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 843, _digest_dom_Text_wholeText(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 845, _digest_dom_Text_wholeText(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25340,7 +25437,7 @@ _t_dom_DocumentType_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.DocumentType_name", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 844, _digest_dom_DocumentType_name(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 846, _digest_dom_DocumentType_name(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -25353,7 +25450,7 @@ _t_dom_DocumentType_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 844, _digest_dom_DocumentType_name(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 846, _digest_dom_DocumentType_name(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25375,7 +25472,7 @@ _t_dom_DocumentType_publicId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.DocumentType_publicId", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 845, _digest_dom_DocumentType_publicId(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 847, _digest_dom_DocumentType_publicId(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -25388,7 +25485,7 @@ _t_dom_DocumentType_publicId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 845, _digest_dom_DocumentType_publicId(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 847, _digest_dom_DocumentType_publicId(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25410,7 +25507,7 @@ _t_dom_DocumentType_systemId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.DocumentType_systemId", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 846, _digest_dom_DocumentType_systemId(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 848, _digest_dom_DocumentType_systemId(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -25423,7 +25520,7 @@ _t_dom_DocumentType_systemId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 846, _digest_dom_DocumentType_systemId(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 848, _digest_dom_DocumentType_systemId(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25736,7 +25833,7 @@ _t_dom_Document_documentURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_documentURI", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 856, _digest_dom_Document_documentURI(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 858, _digest_dom_Document_documentURI(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -25749,7 +25846,7 @@ _t_dom_Document_documentURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 856, _digest_dom_Document_documentURI(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 858, _digest_dom_Document_documentURI(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25770,13 +25867,13 @@ _t_dom_Document_compatMode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_compatMode", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 857, _digest_dom_Document_compatMode(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 859, _digest_dom_Document_compatMode(&f, a)) { return nil }
 	_r := Document_compatMode(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 857, _digest_dom_Document_compatMode(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 859, _digest_dom_Document_compatMode(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25797,13 +25894,13 @@ _t_dom_Document_characterSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_characterSet", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 858, _digest_dom_Document_characterSet(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 860, _digest_dom_Document_characterSet(&f, a)) { return nil }
 	_r := Document_characterSet(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 858, _digest_dom_Document_characterSet(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 860, _digest_dom_Document_characterSet(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25824,13 +25921,13 @@ _t_dom_Document_charset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_charset", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 859, _digest_dom_Document_charset(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 861, _digest_dom_Document_charset(&f, a)) { return nil }
 	_r := Document_charset(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 859, _digest_dom_Document_charset(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 861, _digest_dom_Document_charset(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25851,13 +25948,13 @@ _t_dom_Document_inputEncoding :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_inputEncoding", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 860, _digest_dom_Document_inputEncoding(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 862, _digest_dom_Document_inputEncoding(&f, a)) { return nil }
 	_r := Document_inputEncoding(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 860, _digest_dom_Document_inputEncoding(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 862, _digest_dom_Document_inputEncoding(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25878,13 +25975,13 @@ _t_dom_Document_contentType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_contentType", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 861, _digest_dom_Document_contentType(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 863, _digest_dom_Document_contentType(&f, a)) { return nil }
 	_r := Document_contentType(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 861, _digest_dom_Document_contentType(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 863, _digest_dom_Document_contentType(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25921,13 +26018,13 @@ _t_dom_Document_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_title", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 863, _digest_dom_Document_title(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 865, _digest_dom_Document_title(&f, a)) { return nil }
 	_r := Document_title(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 863, _digest_dom_Document_title(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 865, _digest_dom_Document_title(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25970,13 +26067,13 @@ _t_dom_Document_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_dir", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 865, _digest_dom_Document_dir(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 867, _digest_dom_Document_dir(&f, a)) { return nil }
 	_r := Document_dir(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 865, _digest_dom_Document_dir(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 867, _digest_dom_Document_dir(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -26035,13 +26132,13 @@ _t_dom_Document_referrer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_referrer", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 868, _digest_dom_Document_referrer(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 870, _digest_dom_Document_referrer(&f, a)) { return nil }
 	_r := Document_referrer(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 868, _digest_dom_Document_referrer(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 870, _digest_dom_Document_referrer(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -26062,13 +26159,13 @@ _t_dom_Document_lastModified :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_lastModified", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 869, _digest_dom_Document_lastModified(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 871, _digest_dom_Document_lastModified(&f, a)) { return nil }
 	_r := Document_lastModified(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 869, _digest_dom_Document_lastModified(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 871, _digest_dom_Document_lastModified(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -26089,13 +26186,13 @@ _t_dom_Document_domain :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_domain", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 870, _digest_dom_Document_domain(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 872, _digest_dom_Document_domain(&f, a)) { return nil }
 	_r := Document_domain(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 870, _digest_dom_Document_domain(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 872, _digest_dom_Document_domain(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -26318,7 +26415,7 @@ _t_dom_ProcessingInstruction_target :: proc "c" (env: rawptr, caller: wasm.Calle
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.ProcessingInstruction_target", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 878, _digest_dom_ProcessingInstruction_target(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 880, _digest_dom_ProcessingInstruction_target(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -26331,7 +26428,7 @@ _t_dom_ProcessingInstruction_target :: proc "c" (env: rawptr, caller: wasm.Calle
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 878, _digest_dom_ProcessingInstruction_target(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 880, _digest_dom_ProcessingInstruction_target(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -26353,7 +26450,7 @@ _t_dom_Document_xmlContentType :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_xmlContentType", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 879, _digest_dom_Document_xmlContentType(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 881, _digest_dom_Document_xmlContentType(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -26368,7 +26465,7 @@ _t_dom_Document_xmlContentType :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 879, _digest_dom_Document_xmlContentType(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 881, _digest_dom_Document_xmlContentType(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -26603,7 +26700,7 @@ _t_entries_FsEntry_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "entries.FsEntry_name", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 886, _digest_entries_FsEntry_name(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 888, _digest_entries_FsEntry_name(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
 	_p0.data = lookup_FsEntry(&c, _p0.handle)
@@ -26616,7 +26713,7 @@ _t_entries_FsEntry_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 886, _digest_entries_FsEntry_name(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 888, _digest_entries_FsEntry_name(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -26638,7 +26735,7 @@ _t_entries_FsEntry_fullPath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "entries.FsEntry_fullPath", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 887, _digest_entries_FsEntry_fullPath(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 889, _digest_entries_FsEntry_fullPath(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
 	_p0.data = lookup_FsEntry(&c, _p0.handle)
@@ -26651,7 +26748,7 @@ _t_entries_FsEntry_fullPath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 887, _digest_entries_FsEntry_fullPath(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 889, _digest_entries_FsEntry_fullPath(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -26673,7 +26770,7 @@ _t_entries_FsEntry_filesystemName :: proc "c" (env: rawptr, caller: wasm.Caller,
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "entries.FsEntry_filesystemName", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 888, _digest_entries_FsEntry_filesystemName(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 890, _digest_entries_FsEntry_filesystemName(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
 	_p0.data = lookup_FsEntry(&c, _p0.handle)
@@ -26686,7 +26783,7 @@ _t_entries_FsEntry_filesystemName :: proc "c" (env: rawptr, caller: wasm.Caller,
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 888, _digest_entries_FsEntry_filesystemName(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 890, _digest_entries_FsEntry_filesystemName(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27319,13 +27416,13 @@ _t_scripts_Script_baseName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "scripts.Script_baseName", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 916, _digest_scripts_Script_baseName(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 918, _digest_scripts_Script_baseName(&f, a)) { return nil }
 	_r := Script_baseName(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 916, _digest_scripts_Script_baseName(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 918, _digest_scripts_Script_baseName(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27360,7 +27457,7 @@ _t_scripts_Module_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "scripts.Module_resolve", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 917, _digest_scripts_Module_resolve(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 919, _digest_scripts_Module_resolve(&f, a)) { return nil }
 	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
 	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
 	_r, _err := Module_resolve(&c, _p0, _p1)
@@ -27371,7 +27468,7 @@ _t_scripts_Module_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 917, _digest_scripts_Module_resolve(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 919, _digest_scripts_Module_resolve(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27399,7 +27496,7 @@ _t_scripts_Module_source :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "scripts.Module_source", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 918, _digest_scripts_Module_source(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 920, _digest_scripts_Module_source(&f, a)) { return nil }
 	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
 	_r, _err := Module_source(&c, _p0)
 	api_end(&c)
@@ -27409,7 +27506,7 @@ _t_scripts_Module_source :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 918, _digest_scripts_Module_source(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 920, _digest_scripts_Module_source(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27599,7 +27696,7 @@ _t_scripts_WorkerGlobalScope_importScript :: proc "c" (env: rawptr, caller: wasm
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "scripts.WorkerGlobalScope_importScript", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 925, _digest_scripts_WorkerGlobalScope_importScript(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 927, _digest_scripts_WorkerGlobalScope_importScript(&f, a)) { return nil }
 	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
 	_r, _err := WorkerGlobalScope_importScript(&c, _p0)
 	api_end(&c)
@@ -27609,7 +27706,7 @@ _t_scripts_WorkerGlobalScope_importScript :: proc "c" (env: rawptr, caller: wasm
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 925, _digest_scripts_WorkerGlobalScope_importScript(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 927, _digest_scripts_WorkerGlobalScope_importScript(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27721,13 +27818,13 @@ _t_scripts_Worker_pendingError :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "scripts.Worker_pendingError", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 929, _digest_scripts_Worker_pendingError(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 931, _digest_scripts_Worker_pendingError(&f, a)) { return nil }
 	_r := Worker_pendingError(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 929, _digest_scripts_Worker_pendingError(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 931, _digest_scripts_Worker_pendingError(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27926,7 +28023,7 @@ _t_dom_ResizeObserver_takeEntries :: proc "c" (env: rawptr, caller: wasm.Caller,
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.ResizeObserver_takeEntries", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 938, _digest_dom_ResizeObserver_takeEntries(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 940, _digest_dom_ResizeObserver_takeEntries(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := ResizeObserver_takeEntries(&c, _p0)
@@ -27934,7 +28031,7 @@ _t_dom_ResizeObserver_takeEntries :: proc "c" (env: rawptr, caller: wasm.Caller,
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 938, _digest_dom_ResizeObserver_takeEntries(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 940, _digest_dom_ResizeObserver_takeEntries(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28000,7 +28097,7 @@ _t_dom_IntersectionObserver_rootMargin :: proc "c" (env: rawptr, caller: wasm.Ca
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.IntersectionObserver_rootMargin", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 940, _digest_dom_IntersectionObserver_rootMargin(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 942, _digest_dom_IntersectionObserver_rootMargin(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := IntersectionObserver_rootMargin(&c, _p0)
@@ -28008,7 +28105,7 @@ _t_dom_IntersectionObserver_rootMargin :: proc "c" (env: rawptr, caller: wasm.Ca
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 940, _digest_dom_IntersectionObserver_rootMargin(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 942, _digest_dom_IntersectionObserver_rootMargin(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28030,7 +28127,7 @@ _t_dom_IntersectionObserver_scrollMargin :: proc "c" (env: rawptr, caller: wasm.
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.IntersectionObserver_scrollMargin", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 941, _digest_dom_IntersectionObserver_scrollMargin(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 943, _digest_dom_IntersectionObserver_scrollMargin(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := IntersectionObserver_scrollMargin(&c, _p0)
@@ -28038,7 +28135,7 @@ _t_dom_IntersectionObserver_scrollMargin :: proc "c" (env: rawptr, caller: wasm.
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 941, _digest_dom_IntersectionObserver_scrollMargin(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 943, _digest_dom_IntersectionObserver_scrollMargin(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28144,7 +28241,7 @@ _t_dom_IntersectionObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.C
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.IntersectionObserver_takeRecords", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 946, _digest_dom_IntersectionObserver_takeRecords(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 948, _digest_dom_IntersectionObserver_takeRecords(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := IntersectionObserver_takeRecords(&c, _p0)
@@ -28152,7 +28249,7 @@ _t_dom_IntersectionObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.C
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 946, _digest_dom_IntersectionObserver_takeRecords(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 948, _digest_dom_IntersectionObserver_takeRecords(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28261,7 +28358,7 @@ _t_dom_ShadowRoot_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.ShadowRoot_mode", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 951, _digest_dom_ShadowRoot_mode(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 953, _digest_dom_ShadowRoot_mode(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -28274,7 +28371,7 @@ _t_dom_ShadowRoot_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 951, _digest_dom_ShadowRoot_mode(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 953, _digest_dom_ShadowRoot_mode(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28365,7 +28462,7 @@ _t_dom_ShadowRoot_slotAssignment :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.ShadowRoot_slotAssignment", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 955, _digest_dom_ShadowRoot_slotAssignment(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 957, _digest_dom_ShadowRoot_slotAssignment(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -28378,7 +28475,7 @@ _t_dom_ShadowRoot_slotAssignment :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 955, _digest_dom_ShadowRoot_slotAssignment(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 957, _digest_dom_ShadowRoot_slotAssignment(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28423,7 +28520,7 @@ _t_dom_ShadowRoot_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.ShadowRoot_innerHTML", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 957, _digest_dom_ShadowRoot_innerHTML(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 959, _digest_dom_ShadowRoot_innerHTML(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -28436,7 +28533,7 @@ _t_dom_ShadowRoot_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 957, _digest_dom_ShadowRoot_innerHTML(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 959, _digest_dom_ShadowRoot_innerHTML(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28521,7 +28618,7 @@ _t_dom_Node_getHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_getHTML", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 960, _digest_dom_Node_getHTML(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 962, _digest_dom_Node_getHTML(&f, a)) { return nil }
 	_p2 := ([^]u64)(_s2)[:_n2]
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
@@ -28536,7 +28633,7 @@ _t_dom_Node_getHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 960, _digest_dom_Node_getHTML(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 962, _digest_dom_Node_getHTML(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28668,7 +28765,7 @@ _t_dom_HTMLSlotElement_assignedPacked :: proc "c" (env: rawptr, caller: wasm.Cal
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLSlotElement_assignedPacked", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 965, _digest_dom_HTMLSlotElement_assignedPacked(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 967, _digest_dom_HTMLSlotElement_assignedPacked(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
@@ -28683,7 +28780,7 @@ _t_dom_HTMLSlotElement_assignedPacked :: proc "c" (env: rawptr, caller: wasm.Cal
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 965, _digest_dom_HTMLSlotElement_assignedPacked(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 967, _digest_dom_HTMLSlotElement_assignedPacked(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28740,7 +28837,7 @@ _t_dom_Document_shadowIncludingByName :: proc "c" (env: rawptr, caller: wasm.Cal
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_shadowIncludingByName", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 967, _digest_dom_Document_shadowIncludingByName(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 969, _digest_dom_Document_shadowIncludingByName(&f, a)) { return nil }
 	_p0 := string(_s0[:_n0])
 	if !wasm.valid_utf8(_p0) {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Document_shadowIncludingByName: argument name is not valid UTF-8") }
@@ -28751,7 +28848,7 @@ _t_dom_Document_shadowIncludingByName :: proc "c" (env: rawptr, caller: wasm.Cal
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 967, _digest_dom_Document_shadowIncludingByName(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 969, _digest_dom_Document_shadowIncludingByName(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28775,7 +28872,7 @@ _t_dom_DocumentOrShadowRoot_elementsFromPointPacked :: proc "c" (env: rawptr, ca
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.DocumentOrShadowRoot_elementsFromPointPacked", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 968, _digest_dom_DocumentOrShadowRoot_elementsFromPointPacked(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 970, _digest_dom_DocumentOrShadowRoot_elementsFromPointPacked(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -28790,7 +28887,7 @@ _t_dom_DocumentOrShadowRoot_elementsFromPointPacked :: proc "c" (env: rawptr, ca
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 968, _digest_dom_DocumentOrShadowRoot_elementsFromPointPacked(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 970, _digest_dom_DocumentOrShadowRoot_elementsFromPointPacked(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28844,7 +28941,7 @@ _t_dom_Node_shadowIncludingElements :: proc "c" (env: rawptr, caller: wasm.Calle
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_shadowIncludingElements", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 971, _digest_dom_Node_shadowIncludingElements(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 973, _digest_dom_Node_shadowIncludingElements(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -28857,7 +28954,7 @@ _t_dom_Node_shadowIncludingElements :: proc "c" (env: rawptr, caller: wasm.Calle
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 971, _digest_dom_Node_shadowIncludingElements(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 973, _digest_dom_Node_shadowIncludingElements(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28879,7 +28976,7 @@ _t_events_Event_composedPathPacked :: proc "c" (env: rawptr, caller: wasm.Caller
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "events.Event_composedPathPacked", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 972, _digest_events_Event_composedPathPacked(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 974, _digest_events_Event_composedPathPacked(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -28892,7 +28989,7 @@ _t_events_Event_composedPathPacked :: proc "c" (env: rawptr, caller: wasm.Caller
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 972, _digest_events_Event_composedPathPacked(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 974, _digest_events_Event_composedPathPacked(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -29159,7 +29256,7 @@ _t_dom_CustomStates_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CustomStates_list", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 985, _digest_dom_CustomStates_list(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 987, _digest_dom_CustomStates_list(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := CustomStates_list(&c, _p0)
@@ -29167,7 +29264,7 @@ _t_dom_CustomStates_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 985, _digest_dom_CustomStates_list(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 987, _digest_dom_CustomStates_list(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -29269,7 +29366,7 @@ _t_dom_CSSStyleSheet_ruleText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_ruleText", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 989, _digest_dom_CSSStyleSheet_ruleText(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 991, _digest_dom_CSSStyleSheet_ruleText(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := u32(a[1].i32)
@@ -29281,7 +29378,7 @@ _t_dom_CSSStyleSheet_ruleText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 989, _digest_dom_CSSStyleSheet_ruleText(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 991, _digest_dom_CSSStyleSheet_ruleText(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -29311,7 +29408,7 @@ _t_dom_CSSStyleSheet_setRuleSelector :: proc "c" (env: rawptr, caller: wasm.Call
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_setRuleSelector", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 990, _digest_dom_CSSStyleSheet_setRuleSelector(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 992, _digest_dom_CSSStyleSheet_setRuleSelector(&f, a)) { return nil }
 	_p2 := string(_s2[:_n2])
 	if !wasm.valid_utf8(_p2) {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CSSStyleSheet_setRuleSelector: argument selector is not valid UTF-8") }
@@ -29325,7 +29422,7 @@ _t_dom_CSSStyleSheet_setRuleSelector :: proc "c" (env: rawptr, caller: wasm.Call
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 990, _digest_dom_CSSStyleSheet_setRuleSelector(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 992, _digest_dom_CSSStyleSheet_setRuleSelector(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -29348,7 +29445,7 @@ _t_dom_CSSStyleSheet_ruleTextOf :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_ruleTextOf", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 991, _digest_dom_CSSStyleSheet_ruleTextOf(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 993, _digest_dom_CSSStyleSheet_ruleTextOf(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := u32(a[1].i32)
@@ -29357,7 +29454,7 @@ _t_dom_CSSStyleSheet_ruleTextOf :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 991, _digest_dom_CSSStyleSheet_ruleTextOf(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 993, _digest_dom_CSSStyleSheet_ruleTextOf(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -29588,7 +29685,7 @@ _t_dom_CSSStyleSheet_mediaText :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_mediaText", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1001, _digest_dom_CSSStyleSheet_mediaText(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1003, _digest_dom_CSSStyleSheet_mediaText(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := CSSStyleSheet_mediaText(&c, _p0)
@@ -29596,7 +29693,7 @@ _t_dom_CSSStyleSheet_mediaText :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1001, _digest_dom_CSSStyleSheet_mediaText(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1003, _digest_dom_CSSStyleSheet_mediaText(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -29721,7 +29818,7 @@ _t_navigator_Navigator_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "navigator.Navigator_get", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1007, _digest_navigator_Navigator_get(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1009, _digest_navigator_Navigator_get(&f, a)) { return nil }
 	_e0 := i32(a[0].i32)
 	if !_valid_NavigatorField(_e0) {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "navigator.Navigator_get: argument field is not a NavigatorField") }
@@ -29733,7 +29830,7 @@ _t_navigator_Navigator_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1007, _digest_navigator_Navigator_get(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1009, _digest_navigator_Navigator_get(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -29952,7 +30049,7 @@ _t_media_MediaQueryList_media :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "media.MediaQueryList_media", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1018, _digest_media_MediaQueryList_media(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1020, _digest_media_MediaQueryList_media(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaQueryList{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaQueryList(&c, _p0.handle)
@@ -29965,7 +30062,7 @@ _t_media_MediaQueryList_media :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1018, _digest_media_MediaQueryList_media(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1020, _digest_media_MediaQueryList_media(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30142,7 +30239,7 @@ _t_dom_XMLSerializer_serialize :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.XMLSerializer_serialize", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1024, _digest_dom_XMLSerializer_serialize(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1026, _digest_dom_XMLSerializer_serialize(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
@@ -30157,7 +30254,7 @@ _t_dom_XMLSerializer_serialize :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1024, _digest_dom_XMLSerializer_serialize(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1026, _digest_dom_XMLSerializer_serialize(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30249,7 +30346,7 @@ _t_locks_LockManager_queryName :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "locks.LockManager_queryName", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1028, _digest_locks_LockManager_queryName(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1030, _digest_locks_LockManager_queryName(&f, a)) { return nil }
 	_p0 := a[0].i32 != 0
 	_p1 := a[1].i32
 	_r, _err := LockManager_queryName(&c, _p0, _p1)
@@ -30260,7 +30357,7 @@ _t_locks_LockManager_queryName :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1028, _digest_locks_LockManager_queryName(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1030, _digest_locks_LockManager_queryName(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30283,7 +30380,7 @@ _t_locks_LockManager_queryMode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "locks.LockManager_queryMode", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1029, _digest_locks_LockManager_queryMode(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1031, _digest_locks_LockManager_queryMode(&f, a)) { return nil }
 	_p0 := a[0].i32 != 0
 	_p1 := a[1].i32
 	_r, _err := LockManager_queryMode(&c, _p0, _p1)
@@ -30294,7 +30391,7 @@ _t_locks_LockManager_queryMode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1029, _digest_locks_LockManager_queryMode(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1031, _digest_locks_LockManager_queryMode(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30317,7 +30414,7 @@ _t_locks_LockManager_queryClient :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "locks.LockManager_queryClient", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1030, _digest_locks_LockManager_queryClient(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1032, _digest_locks_LockManager_queryClient(&f, a)) { return nil }
 	_p0 := a[0].i32 != 0
 	_p1 := a[1].i32
 	_r, _err := LockManager_queryClient(&c, _p0, _p1)
@@ -30328,7 +30425,7 @@ _t_locks_LockManager_queryClient :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1030, _digest_locks_LockManager_queryClient(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1032, _digest_locks_LockManager_queryClient(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30350,7 +30447,7 @@ _t_htmlmedia_HTMLMediaElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_currentSrc", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1031, _digest_htmlmedia_HTMLMediaElement_currentSrc(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1033, _digest_htmlmedia_HTMLMediaElement_currentSrc(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
@@ -30363,7 +30460,7 @@ _t_htmlmedia_HTMLMediaElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1031, _digest_htmlmedia_HTMLMediaElement_currentSrc(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1033, _digest_htmlmedia_HTMLMediaElement_currentSrc(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30798,7 +30895,7 @@ _t_htmlmedia_HTMLMediaElement_ranges :: proc "c" (env: rawptr, caller: wasm.Call
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_ranges", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1050, _digest_htmlmedia_HTMLMediaElement_ranges(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1052, _digest_htmlmedia_HTMLMediaElement_ranges(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
@@ -30812,7 +30909,7 @@ _t_htmlmedia_HTMLMediaElement_ranges :: proc "c" (env: rawptr, caller: wasm.Call
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1050, _digest_htmlmedia_HTMLMediaElement_ranges(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1052, _digest_htmlmedia_HTMLMediaElement_ranges(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30884,7 +30981,7 @@ _t_htmlmedia_HTMLMediaElement_errorMessage :: proc "c" (env: rawptr, caller: was
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_errorMessage", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1053, _digest_htmlmedia_HTMLMediaElement_errorMessage(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1055, _digest_htmlmedia_HTMLMediaElement_errorMessage(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
@@ -30897,7 +30994,7 @@ _t_htmlmedia_HTMLMediaElement_errorMessage :: proc "c" (env: rawptr, caller: was
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1053, _digest_htmlmedia_HTMLMediaElement_errorMessage(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1055, _digest_htmlmedia_HTMLMediaElement_errorMessage(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30991,7 +31088,7 @@ _t_htmlmedia_HTMLMediaElement_canPlayType :: proc "c" (env: rawptr, caller: wasm
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_canPlayType", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1057, _digest_htmlmedia_HTMLMediaElement_canPlayType(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1059, _digest_htmlmedia_HTMLMediaElement_canPlayType(&f, a)) { return nil }
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "htmlmedia.HTMLMediaElement_canPlayType: argument type is not valid UTF-8") }
@@ -31009,7 +31106,7 @@ _t_htmlmedia_HTMLMediaElement_canPlayType :: proc "c" (env: rawptr, caller: wasm
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1057, _digest_htmlmedia_HTMLMediaElement_canPlayType(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1059, _digest_htmlmedia_HTMLMediaElement_canPlayType(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31077,7 +31174,7 @@ _t_htmlmedia_HTMLVideoElement_playbackQuality :: proc "c" (env: rawptr, caller: 
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLVideoElement_playbackQuality", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1060, _digest_htmlmedia_HTMLVideoElement_playbackQuality(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1062, _digest_htmlmedia_HTMLVideoElement_playbackQuality(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
@@ -31090,7 +31187,7 @@ _t_htmlmedia_HTMLVideoElement_playbackQuality :: proc "c" (env: rawptr, caller: 
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1060, _digest_htmlmedia_HTMLVideoElement_playbackQuality(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1062, _digest_htmlmedia_HTMLVideoElement_playbackQuality(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31161,7 +31258,7 @@ _t_htmlmedia_HTMLVideoElement_videoFrameMetadata :: proc "c" (env: rawptr, calle
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLVideoElement_videoFrameMetadata", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1063, _digest_htmlmedia_HTMLVideoElement_videoFrameMetadata(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1065, _digest_htmlmedia_HTMLVideoElement_videoFrameMetadata(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
@@ -31176,7 +31273,7 @@ _t_htmlmedia_HTMLVideoElement_videoFrameMetadata :: proc "c" (env: rawptr, calle
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1063, _digest_htmlmedia_HTMLVideoElement_videoFrameMetadata(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1065, _digest_htmlmedia_HTMLVideoElement_videoFrameMetadata(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31587,7 +31684,7 @@ _t_mse_MediaSource_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mse.MediaSource_readyState", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1079, _digest_mse_MediaSource_readyState(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1081, _digest_mse_MediaSource_readyState(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
@@ -31600,7 +31697,7 @@ _t_mse_MediaSource_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1079, _digest_mse_MediaSource_readyState(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1081, _digest_mse_MediaSource_readyState(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31873,7 +31970,7 @@ _t_mse_SourceBuffer_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mse.SourceBuffer_mode", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1089, _digest_mse_SourceBuffer_mode(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1091, _digest_mse_SourceBuffer_mode(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
@@ -31886,7 +31983,7 @@ _t_mse_SourceBuffer_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1089, _digest_mse_SourceBuffer_mode(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1091, _digest_mse_SourceBuffer_mode(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31963,7 +32060,7 @@ _t_mse_SourceBuffer_ranges :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mse.SourceBuffer_ranges", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1092, _digest_mse_SourceBuffer_ranges(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1094, _digest_mse_SourceBuffer_ranges(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
@@ -31978,7 +32075,7 @@ _t_mse_SourceBuffer_ranges :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	}
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1092, _digest_mse_SourceBuffer_ranges(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1094, _digest_mse_SourceBuffer_ranges(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32532,7 +32629,7 @@ _t_mediatracks_AudioTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.AudioTrack_id", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1113, _digest_mediatracks_AudioTrack_id(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1115, _digest_mediatracks_AudioTrack_id(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioTrack(&c, _p0.handle)
@@ -32545,7 +32642,7 @@ _t_mediatracks_AudioTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1113, _digest_mediatracks_AudioTrack_id(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1115, _digest_mediatracks_AudioTrack_id(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32567,7 +32664,7 @@ _t_mediatracks_AudioTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.AudioTrack_kind", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1114, _digest_mediatracks_AudioTrack_kind(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1116, _digest_mediatracks_AudioTrack_kind(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioTrack(&c, _p0.handle)
@@ -32580,7 +32677,7 @@ _t_mediatracks_AudioTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1114, _digest_mediatracks_AudioTrack_kind(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1116, _digest_mediatracks_AudioTrack_kind(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32602,7 +32699,7 @@ _t_mediatracks_AudioTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.AudioTrack_label", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1115, _digest_mediatracks_AudioTrack_label(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1117, _digest_mediatracks_AudioTrack_label(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioTrack(&c, _p0.handle)
@@ -32615,7 +32712,7 @@ _t_mediatracks_AudioTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1115, _digest_mediatracks_AudioTrack_label(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1117, _digest_mediatracks_AudioTrack_label(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32637,7 +32734,7 @@ _t_mediatracks_AudioTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.AudioTrack_language", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1116, _digest_mediatracks_AudioTrack_language(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1118, _digest_mediatracks_AudioTrack_language(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioTrack(&c, _p0.handle)
@@ -32650,7 +32747,7 @@ _t_mediatracks_AudioTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1116, _digest_mediatracks_AudioTrack_language(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1118, _digest_mediatracks_AudioTrack_language(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32717,7 +32814,7 @@ _t_mediatracks_VideoTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VideoTrack_id", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1119, _digest_mediatracks_VideoTrack_id(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1121, _digest_mediatracks_VideoTrack_id(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoTrack(&c, _p0.handle)
@@ -32730,7 +32827,7 @@ _t_mediatracks_VideoTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1119, _digest_mediatracks_VideoTrack_id(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1121, _digest_mediatracks_VideoTrack_id(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32752,7 +32849,7 @@ _t_mediatracks_VideoTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VideoTrack_kind", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1120, _digest_mediatracks_VideoTrack_kind(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1122, _digest_mediatracks_VideoTrack_kind(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoTrack(&c, _p0.handle)
@@ -32765,7 +32862,7 @@ _t_mediatracks_VideoTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1120, _digest_mediatracks_VideoTrack_kind(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1122, _digest_mediatracks_VideoTrack_kind(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32787,7 +32884,7 @@ _t_mediatracks_VideoTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VideoTrack_label", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1121, _digest_mediatracks_VideoTrack_label(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1123, _digest_mediatracks_VideoTrack_label(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoTrack(&c, _p0.handle)
@@ -32800,7 +32897,7 @@ _t_mediatracks_VideoTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1121, _digest_mediatracks_VideoTrack_label(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1123, _digest_mediatracks_VideoTrack_label(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32822,7 +32919,7 @@ _t_mediatracks_VideoTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VideoTrack_language", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1122, _digest_mediatracks_VideoTrack_language(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1124, _digest_mediatracks_VideoTrack_language(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoTrack(&c, _p0.handle)
@@ -32835,7 +32932,7 @@ _t_mediatracks_VideoTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1122, _digest_mediatracks_VideoTrack_language(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1124, _digest_mediatracks_VideoTrack_language(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32902,7 +32999,7 @@ _t_mediatracks_TextTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_kind", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1125, _digest_mediatracks_TextTrack_kind(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1127, _digest_mediatracks_TextTrack_kind(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
@@ -32915,7 +33012,7 @@ _t_mediatracks_TextTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1125, _digest_mediatracks_TextTrack_kind(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1127, _digest_mediatracks_TextTrack_kind(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32937,7 +33034,7 @@ _t_mediatracks_TextTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_label", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1126, _digest_mediatracks_TextTrack_label(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1128, _digest_mediatracks_TextTrack_label(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
@@ -32950,7 +33047,7 @@ _t_mediatracks_TextTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1126, _digest_mediatracks_TextTrack_label(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1128, _digest_mediatracks_TextTrack_label(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32972,7 +33069,7 @@ _t_mediatracks_TextTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller,
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_language", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1127, _digest_mediatracks_TextTrack_language(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1129, _digest_mediatracks_TextTrack_language(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
@@ -32985,7 +33082,7 @@ _t_mediatracks_TextTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller,
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1127, _digest_mediatracks_TextTrack_language(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1129, _digest_mediatracks_TextTrack_language(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -33007,7 +33104,7 @@ _t_mediatracks_TextTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_id", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1128, _digest_mediatracks_TextTrack_id(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1130, _digest_mediatracks_TextTrack_id(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
@@ -33020,7 +33117,7 @@ _t_mediatracks_TextTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1128, _digest_mediatracks_TextTrack_id(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1130, _digest_mediatracks_TextTrack_id(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -33042,7 +33139,7 @@ _t_mediatracks_TextTrack_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_mode", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1129, _digest_mediatracks_TextTrack_mode(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1131, _digest_mediatracks_TextTrack_mode(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
@@ -33055,7 +33152,7 @@ _t_mediatracks_TextTrack_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1129, _digest_mediatracks_TextTrack_mode(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1131, _digest_mediatracks_TextTrack_mode(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -33214,7 +33311,7 @@ _t_mediatracks_TextTrackCue_id :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrackCue_id", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1135, _digest_mediatracks_TextTrackCue_id(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1137, _digest_mediatracks_TextTrackCue_id(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
@@ -33227,7 +33324,7 @@ _t_mediatracks_TextTrackCue_id :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1135, _digest_mediatracks_TextTrackCue_id(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1137, _digest_mediatracks_TextTrackCue_id(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -33467,7 +33564,7 @@ _t_mediatracks_VTTCue_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VTTCue_text", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1145, _digest_mediatracks_VTTCue_text(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1147, _digest_mediatracks_VTTCue_text(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
@@ -33480,7 +33577,7 @@ _t_mediatracks_VTTCue_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1145, _digest_mediatracks_VTTCue_text(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1147, _digest_mediatracks_VTTCue_text(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -33659,13 +33756,13 @@ _t_navigation_Navigation_entries :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "navigation.Navigation_entries", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1152, _digest_navigation_Navigation_entries(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1154, _digest_navigation_Navigation_entries(&f, a)) { return nil }
 	_r := Navigation_entries(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1152, _digest_navigation_Navigation_entries(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1154, _digest_navigation_Navigation_entries(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -33704,7 +33801,7 @@ _t_navigation_Navigation_getState :: proc "c" (env: rawptr, caller: wasm.Caller,
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "navigation.Navigation_getState", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1154, _digest_navigation_Navigation_getState(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1156, _digest_navigation_Navigation_getState(&f, a)) { return nil }
 	_p0 := a[0].i64
 	_p1 := a[1].i64
 	_r, _err := Navigation_getState(&c, _p0, _p1)
@@ -33715,7 +33812,7 @@ _t_navigation_Navigation_getState :: proc "c" (env: rawptr, caller: wasm.Caller,
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1154, _digest_navigation_Navigation_getState(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1156, _digest_navigation_Navigation_getState(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -33850,7 +33947,7 @@ _t_navigation_Navigation_pending :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "navigation.Navigation_pending", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1159, _digest_navigation_Navigation_pending(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1161, _digest_navigation_Navigation_pending(&f, a)) { return nil }
 	_r, _err := Navigation_pending(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -33859,7 +33956,7 @@ _t_navigation_Navigation_pending :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1159, _digest_navigation_Navigation_pending(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1161, _digest_navigation_Navigation_pending(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -33880,7 +33977,7 @@ _t_navigation_Navigation_pendingState :: proc "c" (env: rawptr, caller: wasm.Cal
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "navigation.Navigation_pendingState", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1160, _digest_navigation_Navigation_pendingState(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1162, _digest_navigation_Navigation_pendingState(&f, a)) { return nil }
 	_r, _err := Navigation_pendingState(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -33889,7 +33986,7 @@ _t_navigation_Navigation_pendingState :: proc "c" (env: rawptr, caller: wasm.Cal
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1160, _digest_navigation_Navigation_pendingState(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1162, _digest_navigation_Navigation_pendingState(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -33929,13 +34026,13 @@ _t_navigation_Navigation_activation :: proc "c" (env: rawptr, caller: wasm.Calle
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "navigation.Navigation_activation", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1162, _digest_navigation_Navigation_activation(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1164, _digest_navigation_Navigation_activation(&f, a)) { return nil }
 	_r := Navigation_activation(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1162, _digest_navigation_Navigation_activation(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1164, _digest_navigation_Navigation_activation(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -34092,7 +34189,7 @@ _t_net_Fetch_statusText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "net.Fetch_statusText", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1167, _digest_net_Fetch_statusText(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1169, _digest_net_Fetch_statusText(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -34105,7 +34202,7 @@ _t_net_Fetch_statusText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1167, _digest_net_Fetch_statusText(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1169, _digest_net_Fetch_statusText(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -34196,7 +34293,7 @@ _t_net_Fetch_headers :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "net.Fetch_headers", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1171, _digest_net_Fetch_headers(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1173, _digest_net_Fetch_headers(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -34209,7 +34306,7 @@ _t_net_Fetch_headers :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1171, _digest_net_Fetch_headers(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1173, _digest_net_Fetch_headers(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -34231,7 +34328,7 @@ _t_net_Fetch_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "net.Fetch_url", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1172, _digest_net_Fetch_url(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1174, _digest_net_Fetch_url(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -34244,7 +34341,7 @@ _t_net_Fetch_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1172, _digest_net_Fetch_url(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1174, _digest_net_Fetch_url(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -34266,7 +34363,7 @@ _t_net_Fetch_error :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "net.Fetch_error", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1173, _digest_net_Fetch_error(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1175, _digest_net_Fetch_error(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
@@ -34279,7 +34376,7 @@ _t_net_Fetch_error :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1173, _digest_net_Fetch_error(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1175, _digest_net_Fetch_error(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -34400,13 +34497,13 @@ _t_notification_Notification_permission :: proc "c" (env: rawptr, caller: wasm.C
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "notification.Notification_permission", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1178, _digest_notification_Notification_permission(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1180, _digest_notification_Notification_permission(&f, a)) { return nil }
 	_r := Notification_permission(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1178, _digest_notification_Notification_permission(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1180, _digest_notification_Notification_permission(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -34746,7 +34843,7 @@ _t_performance_Performance_entryName :: proc "c" (env: rawptr, caller: wasm.Call
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "performance.Performance_entryName", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1191, _digest_performance_Performance_entryName(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1193, _digest_performance_Performance_entryName(&f, a)) { return nil }
 	_p0 := string(_s0[:_n0])
 	if !wasm.valid_utf8(_p0) {
 		return _fail_size(&c, &f, a, .Type, "performance.Performance_entryName: argument name is not valid UTF-8")
@@ -34765,7 +34862,7 @@ _t_performance_Performance_entryName :: proc "c" (env: rawptr, caller: wasm.Call
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1191, _digest_performance_Performance_entryName(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1193, _digest_performance_Performance_entryName(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -34867,7 +34964,7 @@ _t_performance_Performance_timeline :: proc "c" (env: rawptr, caller: wasm.Calle
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "performance.Performance_timeline", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1195, _digest_performance_Performance_timeline(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1197, _digest_performance_Performance_timeline(&f, a)) { return nil }
 	_e0 := i32(a[0].i32)
 	if !_valid_PerformanceEntryType(_e0) {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "performance.Performance_timeline: argument entry_type is not a PerformanceEntryType") }
@@ -34881,7 +34978,7 @@ _t_performance_Performance_timeline :: proc "c" (env: rawptr, caller: wasm.Calle
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1195, _digest_performance_Performance_timeline(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1197, _digest_performance_Performance_timeline(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -35367,7 +35464,7 @@ _t_ports_MessageEvent_portEnds :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "ports.MessageEvent_portEnds", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1217, _digest_ports_MessageEvent_portEnds(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1219, _digest_ports_MessageEvent_portEnds(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -35380,7 +35477,7 @@ _t_ports_MessageEvent_portEnds :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1217, _digest_ports_MessageEvent_portEnds(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1219, _digest_ports_MessageEvent_portEnds(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -35578,13 +35675,13 @@ _t_serviceworker_ServiceWorker_registrationIds :: proc "c" (env: rawptr, caller:
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_registrationIds", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1225, _digest_serviceworker_ServiceWorker_registrationIds(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1227, _digest_serviceworker_ServiceWorker_registrationIds(&f, a)) { return nil }
 	_r := ServiceWorker_registrationIds(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1225, _digest_serviceworker_ServiceWorker_registrationIds(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1227, _digest_serviceworker_ServiceWorker_registrationIds(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -35622,7 +35719,7 @@ _t_serviceworker_ServiceWorkerRegistration_info :: proc "c" (env: rawptr, caller
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerRegistration_info", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1227, _digest_serviceworker_ServiceWorkerRegistration_info(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1229, _digest_serviceworker_ServiceWorkerRegistration_info(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := ServiceWorkerRegistration_info(&c, _p0)
@@ -35630,7 +35727,7 @@ _t_serviceworker_ServiceWorkerRegistration_info :: proc "c" (env: rawptr, caller
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1227, _digest_serviceworker_ServiceWorkerRegistration_info(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1229, _digest_serviceworker_ServiceWorkerRegistration_info(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -35652,7 +35749,7 @@ _t_serviceworker_ServiceWorker_info :: proc "c" (env: rawptr, caller: wasm.Calle
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_info", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1228, _digest_serviceworker_ServiceWorker_info(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1230, _digest_serviceworker_ServiceWorker_info(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := ServiceWorker_info(&c, _p0)
@@ -35660,7 +35757,7 @@ _t_serviceworker_ServiceWorker_info :: proc "c" (env: rawptr, caller: wasm.Calle
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1228, _digest_serviceworker_ServiceWorker_info(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1230, _digest_serviceworker_ServiceWorker_info(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -35732,7 +35829,7 @@ _t_serviceworker_ServiceWorkerRegistration_preload :: proc "c" (env: rawptr, cal
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerRegistration_preload", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1231, _digest_serviceworker_ServiceWorkerRegistration_preload(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1233, _digest_serviceworker_ServiceWorkerRegistration_preload(&f, a)) { return nil }
 	_p2 := string(_s2[:_n2])
 	if !wasm.valid_utf8(_p2) {
 		return _fail_size(&c, &f, a, .Type, "serviceworker.ServiceWorkerRegistration_preload: argument header is not valid UTF-8")
@@ -35748,7 +35845,7 @@ _t_serviceworker_ServiceWorkerRegistration_preload :: proc "c" (env: rawptr, cal
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1231, _digest_serviceworker_ServiceWorkerRegistration_preload(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1233, _digest_serviceworker_ServiceWorkerRegistration_preload(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -35794,7 +35891,7 @@ _t_serviceworker_ServiceWorker_takeMessage :: proc "c" (env: rawptr, caller: was
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_takeMessage", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1233, _digest_serviceworker_ServiceWorker_takeMessage(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1235, _digest_serviceworker_ServiceWorker_takeMessage(&f, a)) { return nil }
 	_r, _err := ServiceWorker_takeMessage(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -35803,7 +35900,7 @@ _t_serviceworker_ServiceWorker_takeMessage :: proc "c" (env: rawptr, caller: was
 	}
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1233, _digest_serviceworker_ServiceWorker_takeMessage(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1235, _digest_serviceworker_ServiceWorker_takeMessage(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -35856,13 +35953,13 @@ _t_serviceworker_ServiceWorkerGlobalScope_scope :: proc "c" (env: rawptr, caller
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerGlobalScope_scope", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1236, _digest_serviceworker_ServiceWorkerGlobalScope_scope(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1238, _digest_serviceworker_ServiceWorkerGlobalScope_scope(&f, a)) { return nil }
 	_r := ServiceWorkerGlobalScope_scope(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1236, _digest_serviceworker_ServiceWorkerGlobalScope_scope(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1238, _digest_serviceworker_ServiceWorkerGlobalScope_scope(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -35883,13 +35980,13 @@ _t_serviceworker_ServiceWorkerGlobalScope_scriptURL :: proc "c" (env: rawptr, ca
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerGlobalScope_scriptURL", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1237, _digest_serviceworker_ServiceWorkerGlobalScope_scriptURL(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1239, _digest_serviceworker_ServiceWorkerGlobalScope_scriptURL(&f, a)) { return nil }
 	_r := ServiceWorkerGlobalScope_scriptURL(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1237, _digest_serviceworker_ServiceWorkerGlobalScope_scriptURL(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1239, _digest_serviceworker_ServiceWorkerGlobalScope_scriptURL(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -35933,14 +36030,14 @@ _t_serviceworker_SwEvent_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.SwEvent_text", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1239, _digest_serviceworker_SwEvent_text(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1241, _digest_serviceworker_SwEvent_text(&f, a)) { return nil }
 	_p0 := a[0].i32
 	_r := SwEvent_text(&c, _p0)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1239, _digest_serviceworker_SwEvent_text(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1241, _digest_serviceworker_SwEvent_text(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -35961,13 +36058,13 @@ _t_serviceworker_SwEvent_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.SwEvent_body", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1240, _digest_serviceworker_SwEvent_body(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1242, _digest_serviceworker_SwEvent_body(&f, a)) { return nil }
 	_r := SwEvent_body(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1240, _digest_serviceworker_SwEvent_body(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1242, _digest_serviceworker_SwEvent_body(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -36069,7 +36166,7 @@ _t_storage_Storage_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "storage.Storage_key", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1244, _digest_storage_Storage_key(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1246, _digest_storage_Storage_key(&f, a)) { return nil }
 	_e0 := i32(a[0].i32)
 	if !_valid_StorageArea(_e0) {
 		return _fail_size(&c, &f, a, .Invalid_Argument, "storage.Storage_key: argument area is not a StorageArea")
@@ -36084,7 +36181,7 @@ _t_storage_Storage_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1244, _digest_storage_Storage_key(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1246, _digest_storage_Storage_key(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -36113,7 +36210,7 @@ _t_storage_Storage_getItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "storage.Storage_getItem", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1245, _digest_storage_Storage_getItem(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1247, _digest_storage_Storage_getItem(&f, a)) { return nil }
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "storage.Storage_getItem: argument key is not valid UTF-8")
@@ -36131,7 +36228,7 @@ _t_storage_Storage_getItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1245, _digest_storage_Storage_getItem(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1247, _digest_storage_Storage_getItem(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -36241,7 +36338,7 @@ _t_storage_StorageEvent_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "storage.StorageEvent_get", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1249, _digest_storage_StorageEvent_get(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1251, _digest_storage_StorageEvent_get(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -36261,7 +36358,7 @@ _t_storage_StorageEvent_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1249, _digest_storage_StorageEvent_get(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1251, _digest_storage_StorageEvent_get(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -36748,7 +36845,7 @@ _t_url_URL_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URL_get", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1272, _digest_url_URL_get(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1274, _digest_url_URL_get(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URL{handle = u64(a[0].i64)}
 	_p0.data = lookup_URL(&c, _p0.handle)
@@ -36767,7 +36864,7 @@ _t_url_URL_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1272, _digest_url_URL_get(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1274, _digest_url_URL_get(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -36978,7 +37075,7 @@ _t_url_URLSearchParams_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLSearchParams_get", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1279, _digest_url_URLSearchParams_get(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1281, _digest_url_URLSearchParams_get(&f, a)) { return nil }
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "url.URLSearchParams_get: argument name is not valid UTF-8")
@@ -36997,7 +37094,7 @@ _t_url_URLSearchParams_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1279, _digest_url_URLSearchParams_get(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1281, _digest_url_URLSearchParams_get(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -37058,7 +37155,7 @@ _t_url_URLSearchParams_getNth :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLSearchParams_getNth", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1281, _digest_url_URLSearchParams_getNth(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1283, _digest_url_URLSearchParams_getNth(&f, a)) { return nil }
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "url.URLSearchParams_getNth: argument name is not valid UTF-8")
@@ -37078,7 +37175,7 @@ _t_url_URLSearchParams_getNth :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1281, _digest_url_URLSearchParams_getNth(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1283, _digest_url_URLSearchParams_getNth(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -37193,7 +37290,7 @@ _t_url_URLSearchParams_toString :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLSearchParams_toString", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1285, _digest_url_URLSearchParams_toString(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1287, _digest_url_URLSearchParams_toString(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
@@ -37206,7 +37303,7 @@ _t_url_URLSearchParams_toString :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1285, _digest_url_URLSearchParams_toString(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1287, _digest_url_URLSearchParams_toString(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -37229,7 +37326,7 @@ _t_url_URLSearchParams_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLSearchParams_nameAt", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1286, _digest_url_URLSearchParams_nameAt(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1288, _digest_url_URLSearchParams_nameAt(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
@@ -37245,7 +37342,7 @@ _t_url_URLSearchParams_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1286, _digest_url_URLSearchParams_nameAt(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1288, _digest_url_URLSearchParams_nameAt(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -37268,7 +37365,7 @@ _t_url_URLSearchParams_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLSearchParams_valueAt", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1287, _digest_url_URLSearchParams_valueAt(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1289, _digest_url_URLSearchParams_valueAt(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
@@ -37284,7 +37381,7 @@ _t_url_URLSearchParams_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1287, _digest_url_URLSearchParams_valueAt(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1289, _digest_url_URLSearchParams_valueAt(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -37440,7 +37537,7 @@ _t_url_URLPattern_component :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_component", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1290, _digest_url_URLPattern_component(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1292, _digest_url_URLPattern_component(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
@@ -37459,7 +37556,7 @@ _t_url_URLPattern_component :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1290, _digest_url_URLPattern_component(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1292, _digest_url_URLPattern_component(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -37672,7 +37769,7 @@ _t_url_URLPattern_resultInput :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_resultInput", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1295, _digest_url_URLPattern_resultInput(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1297, _digest_url_URLPattern_resultInput(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
@@ -37688,7 +37785,7 @@ _t_url_URLPattern_resultInput :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1295, _digest_url_URLPattern_resultInput(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1297, _digest_url_URLPattern_resultInput(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -37711,7 +37808,7 @@ _t_url_URLPattern_componentInput :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_componentInput", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1296, _digest_url_URLPattern_componentInput(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1298, _digest_url_URLPattern_componentInput(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
@@ -37730,7 +37827,7 @@ _t_url_URLPattern_componentInput :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1296, _digest_url_URLPattern_componentInput(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1298, _digest_url_URLPattern_componentInput(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -37783,7 +37880,7 @@ _t_url_URLPattern_groupName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_groupName", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1298, _digest_url_URLPattern_groupName(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1300, _digest_url_URLPattern_groupName(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
@@ -37804,7 +37901,7 @@ _t_url_URLPattern_groupName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1298, _digest_url_URLPattern_groupName(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1300, _digest_url_URLPattern_groupName(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -37828,7 +37925,7 @@ _t_url_URLPattern_groupValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_groupValue", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1299, _digest_url_URLPattern_groupValue(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1301, _digest_url_URLPattern_groupValue(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
@@ -37849,7 +37946,7 @@ _t_url_URLPattern_groupValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1299, _digest_url_URLPattern_groupValue(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1301, _digest_url_URLPattern_groupValue(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -37886,13 +37983,13 @@ _t_web_Exception_message :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "web.Exception_message", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1301, _digest_web_Exception_message(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1303, _digest_web_Exception_message(&f, a)) { return nil }
 	_r := Exception_message(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1301, _digest_web_Exception_message(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1303, _digest_web_Exception_message(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -37996,7 +38093,7 @@ _t_webassembly_WebAssembly_Module_imports :: proc "c" (env: rawptr, caller: wasm
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Module_imports", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1306, _digest_webassembly_WebAssembly_Module_imports(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1308, _digest_webassembly_WebAssembly_Module_imports(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebAssemblyModule{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebAssemblyModule(&c, _p0.handle)
@@ -38009,7 +38106,7 @@ _t_webassembly_WebAssembly_Module_imports :: proc "c" (env: rawptr, caller: wasm
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1306, _digest_webassembly_WebAssembly_Module_imports(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1308, _digest_webassembly_WebAssembly_Module_imports(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -38031,7 +38128,7 @@ _t_webassembly_WebAssembly_Module_exports :: proc "c" (env: rawptr, caller: wasm
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Module_exports", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1307, _digest_webassembly_WebAssembly_Module_exports(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1309, _digest_webassembly_WebAssembly_Module_exports(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebAssemblyModule{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebAssemblyModule(&c, _p0.handle)
@@ -38044,7 +38141,7 @@ _t_webassembly_WebAssembly_Module_exports :: proc "c" (env: rawptr, caller: wasm
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1307, _digest_webassembly_WebAssembly_Module_exports(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1309, _digest_webassembly_WebAssembly_Module_exports(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -38105,7 +38202,7 @@ _t_webassembly_WebAssembly_Module_customSection :: proc "c" (env: rawptr, caller
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Module_customSection", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1309, _digest_webassembly_WebAssembly_Module_customSection(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1311, _digest_webassembly_WebAssembly_Module_customSection(&f, a)) { return nil }
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "webassembly.WebAssembly_Module_customSection: argument name is not valid UTF-8") }
@@ -38124,7 +38221,7 @@ _t_webassembly_WebAssembly_Module_customSection :: proc "c" (env: rawptr, caller
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1309, _digest_webassembly_WebAssembly_Module_customSection(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1311, _digest_webassembly_WebAssembly_Module_customSection(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -38146,7 +38243,7 @@ _t_webassembly_WebAssembly_Module_linkInfo :: proc "c" (env: rawptr, caller: was
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Module_linkInfo", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1310, _digest_webassembly_WebAssembly_Module_linkInfo(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1312, _digest_webassembly_WebAssembly_Module_linkInfo(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebAssemblyModule{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebAssemblyModule(&c, _p0.handle)
@@ -38159,7 +38256,7 @@ _t_webassembly_WebAssembly_Module_linkInfo :: proc "c" (env: rawptr, caller: was
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1310, _digest_webassembly_WebAssembly_Module_linkInfo(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1312, _digest_webassembly_WebAssembly_Module_linkInfo(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -38180,13 +38277,13 @@ _t_webassembly_WebAssembly_lastError :: proc "c" (env: rawptr, caller: wasm.Call
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_lastError", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1311, _digest_webassembly_WebAssembly_lastError(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1313, _digest_webassembly_WebAssembly_lastError(&f, a)) { return nil }
 	_r := WebAssembly_lastError(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1311, _digest_webassembly_WebAssembly_lastError(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1313, _digest_webassembly_WebAssembly_lastError(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -38575,14 +38672,14 @@ _t_webassembly_WebAssembly_Table_element :: proc "c" (env: rawptr, caller: wasm.
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Table_element", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1331, _digest_webassembly_WebAssembly_Table_element(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1333, _digest_webassembly_WebAssembly_Table_element(&f, a)) { return nil }
 	_p0 := a[0].i32
 	_r := WebAssembly_Table_element(&c, _p0)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1331, _digest_webassembly_WebAssembly_Table_element(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1333, _digest_webassembly_WebAssembly_Table_element(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -38707,14 +38804,14 @@ _t_webassembly_WebAssembly_Global_type :: proc "c" (env: rawptr, caller: wasm.Ca
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Global_type", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1337, _digest_webassembly_WebAssembly_Global_type(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1339, _digest_webassembly_WebAssembly_Global_type(&f, a)) { return nil }
 	_p0 := a[0].i32
 	_r := WebAssembly_Global_type(&c, _p0)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1337, _digest_webassembly_WebAssembly_Global_type(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1339, _digest_webassembly_WebAssembly_Global_type(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -38796,14 +38893,14 @@ _t_webassembly_WebAssembly_Func_sig :: proc "c" (env: rawptr, caller: wasm.Calle
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Func_sig", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1341, _digest_webassembly_WebAssembly_Func_sig(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1343, _digest_webassembly_WebAssembly_Func_sig(&f, a)) { return nil }
 	_p0 := a[0].i32
 	_r := WebAssembly_Func_sig(&c, _p0)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1341, _digest_webassembly_WebAssembly_Func_sig(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1343, _digest_webassembly_WebAssembly_Func_sig(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -38845,13 +38942,13 @@ _t_webassembly_WebAssembly_Func_results :: proc "c" (env: rawptr, caller: wasm.C
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Func_results", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1343, _digest_webassembly_WebAssembly_Func_results(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1345, _digest_webassembly_WebAssembly_Func_results(&f, a)) { return nil }
 	_r := WebAssembly_Func_results(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1343, _digest_webassembly_WebAssembly_Func_results(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1345, _digest_webassembly_WebAssembly_Func_results(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -38872,13 +38969,13 @@ _t_webassembly_WebAssembly_import_args :: proc "c" (env: rawptr, caller: wasm.Ca
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_import_args", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1344, _digest_webassembly_WebAssembly_import_args(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1346, _digest_webassembly_WebAssembly_import_args(&f, a)) { return nil }
 	_r := WebAssembly_import_args(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1344, _digest_webassembly_WebAssembly_import_args(&f, a), _r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1346, _digest_webassembly_WebAssembly_import_args(&f, a), _r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -38964,14 +39061,14 @@ _t_webassembly_WebAssembly_Tag_sig :: proc "c" (env: rawptr, caller: wasm.Caller
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Tag_sig", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1348, _digest_webassembly_WebAssembly_Tag_sig(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1350, _digest_webassembly_WebAssembly_Tag_sig(&f, a)) { return nil }
 	_p0 := a[0].i32
 	_r := WebAssembly_Tag_sig(&c, _p0)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1348, _digest_webassembly_WebAssembly_Tag_sig(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1350, _digest_webassembly_WebAssembly_Tag_sig(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -39072,7 +39169,7 @@ _t_webassembly_WebAssembly_Instance_exports :: proc "c" (env: rawptr, caller: wa
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Instance_exports", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1353, _digest_webassembly_WebAssembly_Instance_exports(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1355, _digest_webassembly_WebAssembly_Instance_exports(&f, a)) { return nil }
 	_p0 := a[0].i32
 	api_route(&c, u64(a[1].i64))
 	_p1 := Api_WebAssemblyModule{handle = u64(a[1].i64)}
@@ -39086,7 +39183,7 @@ _t_webassembly_WebAssembly_Instance_exports :: proc "c" (env: rawptr, caller: wa
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1353, _digest_webassembly_WebAssembly_Instance_exports(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1355, _digest_webassembly_WebAssembly_Instance_exports(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -42072,7 +42169,7 @@ _t_webcodecs_image_ImageDecoder_type :: proc "c" (env: rawptr, caller: wasm.Call
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webcodecs_image.ImageDecoder_type", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1480, _digest_webcodecs_image_ImageDecoder_type(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1482, _digest_webcodecs_image_ImageDecoder_type(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
@@ -42085,7 +42182,7 @@ _t_webcodecs_image_ImageDecoder_type :: proc "c" (env: rawptr, caller: wasm.Call
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1480, _digest_webcodecs_image_ImageDecoder_type(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1482, _digest_webcodecs_image_ImageDecoder_type(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -42724,13 +42821,13 @@ _t_webgl_WebGL_createError :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webgl.WebGL_createError", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1506, _digest_webgl_WebGL_createError(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1508, _digest_webgl_WebGL_createError(&f, a)) { return nil }
 	_r := WebGL_createError(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1506, _digest_webgl_WebGL_createError(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1508, _digest_webgl_WebGL_createError(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -43042,7 +43139,7 @@ _t_websocket_WebSocket_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "websocket.WebSocket_url", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1520, _digest_websocket_WebSocket_url(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1522, _digest_websocket_WebSocket_url(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
@@ -43055,7 +43152,7 @@ _t_websocket_WebSocket_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1520, _digest_websocket_WebSocket_url(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1522, _digest_websocket_WebSocket_url(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -43077,7 +43174,7 @@ _t_websocket_WebSocket_protocol :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "websocket.WebSocket_protocol", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1521, _digest_websocket_WebSocket_protocol(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1523, _digest_websocket_WebSocket_protocol(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
@@ -43090,7 +43187,7 @@ _t_websocket_WebSocket_protocol :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1521, _digest_websocket_WebSocket_protocol(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1523, _digest_websocket_WebSocket_protocol(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -43112,7 +43209,7 @@ _t_websocket_WebSocket_extensions :: proc "c" (env: rawptr, caller: wasm.Caller,
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "websocket.WebSocket_extensions", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1522, _digest_websocket_WebSocket_extensions(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1524, _digest_websocket_WebSocket_extensions(&f, a)) { return nil }
 	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
@@ -43125,7 +43222,7 @@ _t_websocket_WebSocket_extensions :: proc "c" (env: rawptr, caller: wasm.Caller,
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1522, _digest_websocket_WebSocket_extensions(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1524, _digest_websocket_WebSocket_extensions(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -43496,7 +43593,7 @@ _t_workers_DedicatedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: was
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "workers.DedicatedWorkerGlobalScope_name", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1536, _digest_workers_DedicatedWorkerGlobalScope_name(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1538, _digest_workers_DedicatedWorkerGlobalScope_name(&f, a)) { return nil }
 	_r, _err := DedicatedWorkerGlobalScope_name(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -43505,7 +43602,7 @@ _t_workers_DedicatedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: was
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1536, _digest_workers_DedicatedWorkerGlobalScope_name(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1538, _digest_workers_DedicatedWorkerGlobalScope_name(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -43545,7 +43642,7 @@ _t_workers_SharedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: wasm.C
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "workers.SharedWorkerGlobalScope_name", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1538, _digest_workers_SharedWorkerGlobalScope_name(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1540, _digest_workers_SharedWorkerGlobalScope_name(&f, a)) { return nil }
 	_r, _err := SharedWorkerGlobalScope_name(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -43554,7 +43651,7 @@ _t_workers_SharedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: wasm.C
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1538, _digest_workers_SharedWorkerGlobalScope_name(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1540, _digest_workers_SharedWorkerGlobalScope_name(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -43575,7 +43672,7 @@ _t_workers_WorkerGlobalScope_location :: proc "c" (env: rawptr, caller: wasm.Cal
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "workers.WorkerGlobalScope_location", "result buffer") }
-	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1539, _digest_workers_WorkerGlobalScope_location(&f, a)) { return nil }
+	if f.inst.oversized.fn != 0 && wasm.oversized_serve(&f, a, _os[:_on], 1541, _digest_workers_WorkerGlobalScope_location(&f, a)) { return nil }
 	_r, _err := WorkerGlobalScope_location(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -43584,7 +43681,7 @@ _t_workers_WorkerGlobalScope_location :: proc "c" (env: rawptr, caller: wasm.Cal
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
-	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1539, _digest_workers_WorkerGlobalScope_location(&f, a), transmute([]u8)_r) }
+	if u64(len(_r)) > u64(_on) { wasm.oversized_keep(f.inst, 1541, _digest_workers_WorkerGlobalScope_location(&f, a), transmute([]u8)_r) }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -44406,6 +44503,8 @@ api_imports := [?]wasm.Import{
 	{module = "events", name = "PointerCapture_set", fn = _t_events_PointerCapture_set, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "PointerCapture_release", fn = _t_events_PointerCapture_release, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "PointerCapture_has", fn = _t_events_PointerCapture_has, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "events", name = "PointerEvent_coalescedCount", fn = _t_events_PointerEvent_coalescedCount, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "events", name = "PointerEvent_coalescedAt", fn = _t_events_PointerEvent_coalescedAt, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_uiData", fn = _t_events_Event_uiData, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "events", name = "UiEvent_key", fn = _t_events_UiEvent_key, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "events", name = "UiEvent_code", fn = _t_events_UiEvent_code, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

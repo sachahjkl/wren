@@ -51,6 +51,7 @@
 <li class="lvl3"><a href="#struct-uieventdata">struct UiEventData</a></li>
 <li class="lvl3"><a href="#struct-touchpoint">struct TouchPoint</a></li>
 <li class="lvl3"><a href="#enum-touchlistkind-i32">enum TouchListKind : i32</a></li>
+<li class="lvl3"><a href="#struct-coalescedpointer">struct CoalescedPointer</a></li>
 <li><a href="#functions">Functions</a></li>
 <li class="lvl3"><a href="#eventtarget-addeventlistener">EventTarget_addEventListener</a></li>
 <li class="lvl3"><a href="#eventtarget-removeeventlistener">EventTarget_removeEventListener</a></li>
@@ -75,6 +76,8 @@
 <li class="lvl3"><a href="#pointercapture-set">PointerCapture_set</a></li>
 <li class="lvl3"><a href="#pointercapture-release">PointerCapture_release</a></li>
 <li class="lvl3"><a href="#pointercapture-has">PointerCapture_has</a></li>
+<li class="lvl3"><a href="#pointerevent-coalescedcount">PointerEvent_coalescedCount</a></li>
+<li class="lvl3"><a href="#pointerevent-coalescedat">PointerEvent_coalescedAt</a></li>
 <li class="lvl3"><a href="#event-uidata">Event_uiData</a></li>
 <li class="lvl3"><a href="#uievent-key">UiEvent_key</a></li>
 <li class="lvl3"><a href="#uievent-code">UiEvent_code</a></li>
@@ -199,6 +202,34 @@ promise, a socket, a worker, an abort signal...) is an EventTarget. An Event han
 <tr><td><code>Changed_Touches</code></td><td style="text-align:right">2</td><td></td></tr>
 </tbody>
 </table></div>
+<h3 id="struct-coalescedpointer"><a class="anchor" href="#struct-coalescedpointer" aria-hidden="true">#</a>struct <code>CoalescedPointer</code></h3>
+<p>A coalesced pointer sample of a pointermove / pointerrawupdate event.</p>
+<div class="table-box"><table>
+<thead><tr><th>field</th><th>type</th><th></th></tr></thead>
+<tbody>
+<tr><td><code>client_x</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>client_y</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>screen_x</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>screen_y</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>page_x</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>page_y</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>offset_x</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>offset_y</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>time_stamp</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>mods</code></td><td><code>u32</code></td><td></td></tr>
+<tr><td><code>buttons</code></td><td><code>u32</code></td><td></td></tr>
+<tr><td><code>pointer_id</code></td><td><code>i32</code></td><td></td></tr>
+<tr><td><code>pointer_type</code></td><td><code>u32</code></td><td></td></tr>
+<tr><td><code>is_primary</code></td><td><code>u32</code></td><td></td></tr>
+<tr><td><code>pressure</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>tangential_pressure</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>width</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>height</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>tilt_x</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>tilt_y</code></td><td><code>f64</code></td><td></td></tr>
+<tr><td><code>twist</code></td><td><code>f64</code></td><td></td></tr>
+</tbody>
+</table></div>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
 <h3 id="eventtarget-addeventlistener"><a class="anchor" href="#eventtarget-addeventlistener" aria-hidden="true">#</a><code>EventTarget_addEventListener</code></h3>
 <div class="code"><pre><code>i32 EventTarget_addEventListener(EventTarget target, string type, EventListener callback, i32 user = 0, ListenerOptions options = none) raises</code></pre></div>
@@ -300,6 +331,15 @@ that is not connected. The capture takes effect at the pointer's next event (got
 <div class="code"><pre><code>bool PointerCapture_has(Element element, i32 pointer_id)</code></pre></div>
 <p>Element.hasPointerCapture(pointerId)</p>
 <p>Host: <code>PointerCapture_has :: proc(c: ^Call, element: Api_Element, pointer_id: i32) -&gt; bool</code></p>
+<h3 id="pointerevent-coalescedcount"><a class="anchor" href="#pointerevent-coalescedcount" aria-hidden="true">#</a><code>PointerEvent_coalescedCount</code></h3>
+<div class="code"><pre><code>i32 PointerEvent_coalescedCount(Event event)</code></pre></div>
+<p>The number of coalesced pointer samples carried by a dispatched pointermove / pointerrawupdate (0 when none were recorded).</p>
+<p>Host: <code>PointerEvent_coalescedCount :: proc(c: ^Call, event: Api_Event) -&gt; i32</code></p>
+<h3 id="pointerevent-coalescedat"><a class="anchor" href="#pointerevent-coalescedat" aria-hidden="true">#</a><code>PointerEvent_coalescedAt</code></h3>
+<div class="code"><pre><code>CoalescedPointer PointerEvent_coalescedAt(Event event, i32 index) raises</code></pre></div>
+<p>One coalesced pointer sample of that event (Invalid_Argument past its end).</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
+<p>Host: <code>PointerEvent_coalescedAt :: proc(c: ^Call, event: Api_Event, index: i32) -&gt; (Api_CoalescedPointer, Api_Error)</code></p>
 <h3 id="event-uidata"><a class="anchor" href="#event-uidata" aria-hidden="true">#</a><code>Event_uiData</code></h3>
 <div class="code"><pre><code>UiEventData Event_uiData(Event event)</code></pre></div>
 <p>The details of a UI event being dispatched.</p>

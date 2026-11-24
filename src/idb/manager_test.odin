@@ -519,7 +519,7 @@ a_failed_write_rolls_the_transaction_back :: proc(t: ^testing.T) {
 	o.jfile = {}
 	os.remove(path)
 	os.make_directory(path)
-	defer os.remove(path)
+	defer base.remove_tree(path)
 	tx_commit(c, w)
 	evs := drain(&h, c)
 	testing.expect_value(t, kinds(evs), "Tx_Aborted")

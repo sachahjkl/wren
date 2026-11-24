@@ -1,11 +1,10 @@
 #+build !windows
+#+build !linux
 package remote
 
-// The CDP / WebDriver-BiDi TCP adapter server is raw Winsock today (tcp_server_windows.odin). It is not ported off
-// Windows yet, so this stub keeps the package and its only caller (src/browser/cdp.odin) compiling while reporting the
-// channel as unavailable: tcp_start fails with a clear message (so --remote-debugging-port prints it and the browser
-// runs on without the channel), and the rest are safe no-ops. A Linux port (a core:sys/linux socket with the event loop,
-// or core:net) is a later chantier; the wren-ctl remote channel (a Unix socket, remote/server_linux.odin) already works.
+// Fallback stub for platforms without a native TCP server implementation (Windows uses tcp_server_windows.odin and
+// Linux uses tcp_server_linux.odin). Keeps the package and its caller (src/browser/cdp.odin) compiling while reporting
+// the channel as unavailable.
 
 import "wb:host"
 

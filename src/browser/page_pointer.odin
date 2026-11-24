@@ -71,8 +71,9 @@ pointer_plan :: proc(d: ^dom.Document, was, now: base.Handle) -> []Pointer_Event
 }
 
 // `buttons`: MouseEvent.buttons held during the move; `mouse_only`: the system's emulation of a finger (its pointer
-// events came from route_device_pointer). The moves of a captured pointer go to the capturing element.
-page_pointer_events :: proc(app: ^App, t: ^Tab, was, now: base.Handle, pos: [2]f32, buttons: u16 = 0, mouse_only := false) {
+// events came from route_device_pointer); `coalesced`: sub-frame mouse move samples carried by pointermove.
+// The moves of a captured pointer go to the capturing element.
+page_pointer_events :: proc(app: ^App, t: ^Tab, was, now: base.Handle, pos: [2]f32, buttons: u16 = 0, mouse_only := false, coalesced: []page.Pointer_Sample = nil) {
 	wnd := active_window(app)
 	p := t.page
 	if p == nil { return }
@@ -87,7 +88,12 @@ page_pointer_events :: proc(app: ^App, t: ^Tab, was, now: base.Handle, pos: [2]f
 			if t.page != p { return }
 			target = page.pointer_target(p, page.MOUSE_POINTER_ID, target)
 		}
-		page.dispatch_event(p, target, dom.Event{type = e.type, bubbles = e.bubbles, cancelable = e.cancelable, x = cx, y = cy, buttons = buttons})
+		ev := dom.Event{type = e.type, bubbles = e.bubbles, cancelable = e.cancelable, x = cx, y = cy, buttons = buttons}
+		if e.type == "pointermove" && len(coalesced) > 0 {
+			page.pointer_dispatch_move(p, target, ev, coalesced)
+		} else {
+			page.dispatch_event(p, target, ev)
+		}
 		if t.page != p { return }   // a handler navigated away
 	}
 }

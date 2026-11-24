@@ -7,6 +7,8 @@ package browser
 import "core:strings"
 import win "core:sys/windows"
 import "toolkit:platform"
+import "wb:base"
+import "wb:page"
 
 foreign import user32_fs "system:User32.lib"
 
@@ -32,6 +34,9 @@ system_mime_of_path :: proc(path: string) -> string {
 	}
 	return ""
 }
+
+// Opens the Windows common colour dialog on a dialog thread (forms_shell.odin).
+shell_open_color_picker :: proc(app: ^App, p: ^page.Page, input: base.Handle) { start_picker(app, p, input, true) }
 
 // The system colour picker (the common colour dialog). `initial` / the result are 0x00BBGGRR (COLORREF). Runs on a
 // worker thread (it blocks until the user answers), so it initialises COM for this thread.

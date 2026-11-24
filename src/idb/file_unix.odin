@@ -65,10 +65,20 @@ file_write_at :: proc(f: File, off: i64, data: []byte) -> bool {
 }
 
 // Cuts (or extends) the file to `size`.
-file_truncate :: proc(f: File, size: i64) -> bool { return posix.ftruncate(f.fd, posix.off_t(size)) == .OK }
+file_truncate :: proc(f: File, size: i64) -> bool {
+	for {
+		if posix.ftruncate(f.fd, posix.off_t(size)) == .OK { return true }
+		if posix.errno() != .EINTR { return false }
+	}
+}
 
 // Flushes what the system holds of the file to the disk.
-file_sync :: proc(f: File) -> bool { return posix.fsync(f.fd) == .OK }
+file_sync :: proc(f: File) -> bool {
+	for {
+		if posix.fsync(f.fd) == .OK { return true }
+		if posix.errno() != .EINTR { return false }
+	}
+}
 
 // A file replaced atomically, and the directory entry made durable (what MOVEFILE_WRITE_THROUGH is on Windows): the
 // directory is synced after the rename.

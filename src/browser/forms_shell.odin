@@ -19,6 +19,7 @@ import "core:unicode/utf8"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
+import "toolkit:ui"
 import "wb:base"
 import "wb:dom"
 import "wb:fetch"
@@ -104,6 +105,23 @@ Popup :: struct {
 	anchor:  draw.Rect,     // the select's box
 }
 
+FORMS_COLOR_POPUP     :: "###forms_color_pick"
+FORMS_COLOR_POPUP_PAD :: 8
+
+// In-window toolkit colour picker popover for <input type="color"> (used off Windows, where there is no native dialog).
+Color_Popover :: struct {
+	open:    bool,
+	page:    ^page.Page,
+	page_id: u64,
+	input:   base.Handle,
+	scope:   ^base.Scope,
+	cleanup: base.Cleanup_Id,
+	anchor:  draw.Rect,
+	pick:    ui.Color_Pick,
+	initial: string,        // owned "#rrggbb" value when opened, restored on Escape
+	changed: bool,          // value changed since opened (controls whether "change" fires on commit)
+}
+
 Forms_View :: struct {
 	frame:        u64,
 	page_id:      u64,
@@ -111,6 +129,7 @@ Forms_View :: struct {
 	scroll:       map[base.Handle][2]f32,
 	consumed:     [dynamic]bool,
 	popup:        Popup,
+	color_pop:    Color_Popover,
 	caret_epoch:  time.Tick,
 	blink_on:     bool,
 	blink_timer:  base.Handle,   // wakes this window at the caret's next toggle (each window blinks in its own phase)
@@ -134,6 +153,9 @@ Field_Press :: struct {
 forms_view :: proc(app: ^App) -> ^Forms_View { return &window_own(app).forms }
 
 forms_shell_destroy :: proc(fv: ^Forms_View) {
+	forms_color_popover_detach(&fv.color_pop)
+	ui.color_pick_destroy(&fv.color_pop.pick)
+	delete(fv.color_pop.initial)
 	delete(fv.painted)
 	delete(fv.scroll)
 	delete(fv.consumed)
@@ -194,12 +216,17 @@ forms_shell_frame :: proc(app: ^App) {
 		})
 	}
 	t, p, f := current_page(app)
-	if f == nil { fv.popup.open = false; return }
+	if f == nil {
+		fv.popup.open = false
+		if fv.color_pop.open { forms_color_popover_close(app, commit = false) }
+		return
+	}
 	if fv.page_id != f.id {
 		clear(&fv.painted)
 		clear(&fv.scroll)
 		fv.page_id = f.id
 		fv.popup.open = false
+		if fv.color_pop.open { forms_color_popover_close(app, commit = false) }
 		keyboard_document(app, t)
 	}
 	// autofocus once the document's scripts had their turn
@@ -1177,6 +1204,7 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 	f := page.page_forms(p)
 	#partial switch ev.kind {
 	case .Mouse_Press:
+		if fv.color_pop.open && forms_color_popover_captures(app, ev.pos) { return true }
 		// (a frame's document: frames_route_pointer gave it the keyboard)
 		if t.view == nil { keyboard_move(app, draw.rect_contains(active_window(app).page_rect, ev.pos) ? .Page : .Chrome) }
 		if fv.popup.open {
@@ -1188,7 +1216,11 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 			return true   // a press that closes the list does nothing else
 		}
 		return false
+	case .Mouse_Release:
+		if fv.color_pop.open && forms_color_popover_captures(app, ev.pos) { return true }
+		return false
 	case .Mouse_Move:
+		if fv.color_pop.open && forms_color_popover_captures(app, ev.pos) { return true }
 		if fv.popup.open && draw.rect_contains(fv.popup.rect, ev.pos) {
 			idx := fv.popup.first + int((ev.pos.y - fv.popup.rect.min.y) / max(fv.popup.row_h, 1))
 			if idx != fv.popup.hover { fv.popup.hover = idx; request_frames(app) }
@@ -1196,6 +1228,7 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 		if gesture_of(app).field.drag != .None { pointer_drag(app, t, f, ev.pos); request_frames(app) }
 		return false
 	case .Scroll:
+		if fv.color_pop.open && forms_color_popover_captures(app, ev.pos) { return true }
 		if fv.popup.open && draw.rect_contains(fv.popup.rect, ev.pos) {
 			rows := len(select_rows(f, fv.popup.sel))
 			fv.popup.first = clamp(fv.popup.first + int(ev.delta.y * 3), 0, max(rows - app.page_settings.forms.select_rows, 0))
@@ -1784,7 +1817,7 @@ Picker_Job :: struct {
 	max_files: int,
 }
 
-@(private = "file")
+@(private)
 start_picker :: proc(app: ^App, p: ^page.Page, input: base.Handle, color: bool) {
 	f := page.page_forms(p)
 	n := dom.get(p.doc, input)
@@ -1818,7 +1851,152 @@ picker_discard :: proc(data: rawptr) {
 }
 
 shell_pick_files :: proc(user: rawptr, p: ^page.Page, input: base.Handle) { start_picker((^App)(user), p, input, false) }
-shell_pick_color :: proc(user: rawptr, p: ^page.Page, input: base.Handle) { start_picker((^App)(user), p, input, true) }
+shell_pick_color :: proc(user: rawptr, p: ^page.Page, input: base.Handle) { shell_open_color_picker((^App)(user), p, input) }
+
+// Formats an opaque sRGB colour as an HTML simple colour ("#rrggbb").
+forms_hex_of_srgba :: proc(c: ui.Srgba, allocator := context.temp_allocator) -> string {
+	r := u8(math.round(clamp(c.r, 0, 1) * 255))
+	g := u8(math.round(clamp(c.g, 0, 1) * 255))
+	b := u8(math.round(clamp(c.b, 0, 1) * 255))
+	HEX := "0123456789abcdef"
+	buf := [7]u8{'#', HEX[r >> 4], HEX[r & 15], HEX[g >> 4], HEX[g & 15], HEX[b >> 4], HEX[b & 15]}
+	return strings.clone(string(buf[:]), allocator)
+}
+
+@(private = "file")
+forms_color_popover_detach :: proc(cp: ^Color_Popover) {
+	if cp.scope != nil && cp.cleanup != 0 { base.forget_cleanup(cp.scope, cp.cleanup) }
+	cp.scope, cp.cleanup = nil, 0
+}
+
+@(private = "file")
+forms_color_popover_on_page_close :: proc(data: rawptr) {
+	cp := (^Color_Popover)(data)
+	cp.open, cp.page, cp.page_id, cp.input, cp.changed = false, nil, 0, base.NIL_HANDLE, false
+	cp.scope, cp.cleanup = nil, 0
+}
+
+// Opens the toolkit colour picker popover anchored to `<input type="color">` `input`.
+forms_color_popover_open :: proc(app: ^App, p: ^page.Page, input: base.Handle) {
+	if app == nil || p == nil || p.closed || p.formctl == nil || dom.get(p.doc, input) == nil { return }
+	f := page.page_forms(p)
+	fv := forms_view(app)
+	cp := &fv.color_pop
+	forms_color_popover_detach(cp)
+	v := forms.value(f, input)
+	c := parse_hex_bytes(v)
+	srgba := ui.Srgba{f32(c[0]) / 255, f32(c[1]) / 255, f32(c[2]) / 255, 1}
+	ui.color_pick_set(&cp.pick, srgba, {.Hex, false})
+	delete(cp.initial)
+	cp.initial = strings.clone(v)
+	cp.open, cp.page, cp.page_id, cp.input, cp.changed = true, p, f.id, input, false
+	if p.scope != nil {
+		cp.scope = p.scope
+		cp.cleanup = base.on_close(p.scope, forms_color_popover_on_page_close, cp)
+	}
+	if pt, ok := fv.painted[input]; ok {
+		cp.anchor = painted_bounds(pt)
+	} else {
+		pr := active_window(app).page_rect
+		center := draw.rect_center(pr)
+		cp.anchor = {center - {22, 11}, center + {22, 11}}
+	}
+	if ui.current_state() != nil {
+		keyboard_move(app, .Chrome)
+	} else {
+		keyboard_to(keyboard_of(app), .Chrome)
+	}
+	request_frames(app, 2)
+}
+
+// Applies a new "#rrggbb" colour from the open popover to its <input type="color">, dispatching "input".
+forms_color_popover_apply :: proc(app: ^App, hex: string) {
+	fv := forms_view(app)
+	cp := &fv.color_pop
+	if !cp.open || cp.page == nil || cp.page.closed || cp.page.formctl == nil || dom.get(cp.page.doc, cp.input) == nil { return }
+	f := page.page_forms(cp.page)
+	if hex != forms.value(f, cp.input) {
+		forms.set_value(f, cp.input, hex, by_user = true)
+		cp.changed = true
+		page.dispatch_event(cp.page, cp.input, dom.Event{type = "input", bubbles = true})
+		request_frames(app, 2)
+	}
+}
+
+// Closes the colour popover. `commit`: dispatch "change" if the value changed; `revert`: restore initial value on cancel.
+forms_color_popover_close :: proc(app: ^App, commit: bool, revert := false) {
+	fv := forms_view(app)
+	cp := &fv.color_pop
+	if !cp.open { return }
+	p, input, changed := cp.page, cp.input, cp.changed
+	forms_color_popover_detach(cp)
+	cp.open, cp.page, cp.page_id, cp.input, cp.changed = false, nil, 0, base.NIL_HANDLE, false
+	if (commit || revert) && changed && p != nil && !p.closed && p.formctl != nil && dom.get(p.doc, input) != nil {
+		f := page.page_forms(p)
+		if revert && cp.initial != "" {
+			if cp.initial != forms.value(f, input) {
+				forms.set_value(f, input, cp.initial, by_user = true)
+				page.dispatch_event(p, input, dom.Event{type = "input", bubbles = true})
+			}
+		} else if commit {
+			page.dispatch_event(p, input, dom.Event{type = "change", bubbles = true})
+		}
+	}
+	request_frames(app, 2)
+}
+
+// True while the pointer is inside the open colour picker popover (keeps the page underneath from receiving input).
+forms_color_popover_captures :: proc(app: ^App, pos: draw.Vec2) -> bool {
+	if !forms_view(app).color_pop.open { return false }
+	r, ok := ui.popover_rect(FORMS_COLOR_POPUP)
+	return ok && draw.rect_contains(r, pos)
+}
+
+// Builds the toolkit colour picker popover during `build_ui` while open.
+forms_color_popover_build :: proc(app: ^App) {
+	fv := forms_view(app)
+	cp := &fv.color_pop
+	if !cp.open { return }
+	_, p, f := current_page(app)
+	if p == nil || p != cp.page || f == nil || f.id != cp.page_id || dom.get(p.doc, cp.input) == nil || forms.is_disabled(f, cp.input) {
+		forms_color_popover_close(app, commit = false)
+		return
+	}
+	if pt, ok := fv.painted[cp.input]; ok { cp.anchor = painted_bounds(pt) }
+	st := ui.current_state()
+	keys_root := st.view_keys_root
+	st.view_keys_root = 0
+	escape, enter := ui.key_press(.Escape), ui.key_press(.Return)
+	st.view_keys_root = keys_root
+	if escape {
+		forms_color_popover_close(app, commit = false, revert = true)
+		keyboard_move(app, .Page)
+		return
+	}
+	if enter {
+		forms_color_popover_close(app, commit = true)
+		keyboard_move(app, .Page)
+		return
+	}
+	if r, ok := ui.popover_rect(FORMS_COLOR_POPUP); ok && ui.mouse_pressed() && !draw.rect_contains(r, ui.mouse_pos()) && !draw.rect_contains(cp.anchor, ui.mouse_pos()) {
+		forms_color_popover_close(app, commit = true)
+		return
+	}
+	pad := math.round(FORMS_COLOR_POPUP_PAD * display_scale_of(app))
+	if ui.popover(FORMS_COLOR_POPUP, cp.anchor, ui.color_picker_width() + 2 * pad, .Below, align_right = false) {
+		ui.spacer(ui.px(pad))
+		ui.next({width = ui.children_sum(), height = ui.children_sum(), axis = .X})
+		if ui.row() {
+			ui.spacer(ui.px(pad))
+			if ui.color_picker("###forms_color_picker", &cp.pick) {
+				// HTML <input type="color"> carries an opaque 6-digit hex simple colour (#rrggbb).
+				cp.pick.alpha = 1
+				forms_color_popover_apply(app, forms_hex_of_srgba(ui.color_pick_rgba(&cp.pick)))
+			}
+		}
+		ui.spacer(ui.px(pad))
+	}
+}
 
 @(private = "file")
 parse_hex_bytes :: proc(s: string) -> [3]u8 {

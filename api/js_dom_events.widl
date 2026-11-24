@@ -89,6 +89,36 @@ partial module events {
   /// Element.hasPointerCapture(pointerId)
   bool PointerCapture_has(Element element, i32 pointer_id);
 
+  /// A coalesced pointer sample of a pointermove / pointerrawupdate event.
+  struct CoalescedPointer {
+    f64 client_x;
+    f64 client_y;
+    f64 screen_x;
+    f64 screen_y;
+    f64 page_x;
+    f64 page_y;
+    f64 offset_x;
+    f64 offset_y;
+    f64 time_stamp;
+    u32 mods;
+    u32 buttons;
+    i32 pointer_id;
+    u32 pointer_type;
+    u32 is_primary;
+    f64 pressure;
+    f64 tangential_pressure;
+    f64 width;
+    f64 height;
+    f64 tilt_x;
+    f64 tilt_y;
+    f64 twist;
+  }
+
+  /// The number of coalesced pointer samples carried by a dispatched pointermove / pointerrawupdate (0 when none were recorded).
+  i32 PointerEvent_coalescedCount(Event event);
+  /// One coalesced pointer sample of that event (Invalid_Argument past its end).
+  CoalescedPointer PointerEvent_coalescedAt(Event event, i32 index) raises;
+
   /// The details of a UI event being dispatched.
   UiEventData Event_uiData(Event event);
   /// KeyboardEvent.key ("Enter", "a"...): "Unidentified" when unknown.

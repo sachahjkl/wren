@@ -23,11 +23,22 @@ Capture :: struct {
 
 @(private)
 Pointer_Page :: struct {
-	captures: [dynamic]Capture,
-	down:     [dynamic]i32,        // pointers with a button / contact down (the mouse is always active)
-	touches:  [dynamic]Touch_Point,
-	dispatch: ^Touch_Dispatch,     // the touch event being dispatched
-	mouse_held: bool,              // a mouse button is held over the page
+	captures:   [dynamic]Capture,
+	down:       [dynamic]i32,          // pointers with a button / contact down (the mouse is always active)
+	touches:    [dynamic]Touch_Point,
+	dispatch:   ^Touch_Dispatch,       // the touch event being dispatched
+	coalesced:  []Pointer_Sample,      // coalesced samples for the pointermove / pointerrawupdate currently being dispatched
+	mouse_held: bool,                  // a mouse button is held over the page
+}
+
+// One coalesced pointer sample captured for a pointermove / pointerrawupdate dispatch.
+Pointer_Sample :: struct {
+	x, y:       f64,                   // client CSS px
+	screen:     [2]f64,
+	mods:       u32,
+	buttons:    u16,
+	pointer:    dom.Pointer_Details,
+	time_stamp: f64,                   // ms (page_now_ms); 0 -> parent event's timeStamp
 }
 
 // One finger on the page.
@@ -180,6 +191,59 @@ pointer_up :: proc(p: ^Page, id: i32, proto: dom.Event) {
 	}
 	pointer_capture_process(p, id, proto)
 	if id != MOUSE_POINTER_ID { pointer_set_down(p, id, false) }
+}
+
+// Dispatches a pointermove (or pointerrawupdate) carrying `samples` as its coalesced events list.
+pointer_dispatch_move :: proc(p: ^Page, target: base.Handle, ev: dom.Event, samples: []Pointer_Sample) -> bool {
+	if len(samples) == 0 { return dispatch_event(p, target, ev) }
+	pp := pointer_page(p)
+	if pp == nil { return dispatch_event(p, target, ev) }
+	saved := pp.coalesced
+	pp.coalesced = samples
+	ok := dispatch_event(p, target, ev)
+	if pp2 := pointer_page(p, false); pp2 == pp { pp.coalesced = saved }
+	return ok
+}
+
+@(private)
+pointer_coalesced_list :: proc(c: ^Call, event: Api_Event) -> []Pointer_Sample {
+	pp := pointer_page(c.page, false)
+	if pp == nil || len(pp.coalesced) == 0 || event.data.untrusted { return nil }
+	switch event.data.type {
+	case "pointermove", "pointerrawupdate":
+		return pp.coalesced
+	}
+	return nil
+}
+
+PointerEvent_coalescedCount :: proc(c: ^Call, event: Api_Event) -> i32 {
+	return i32(len(pointer_coalesced_list(c, event)))
+}
+
+PointerEvent_coalescedAt :: proc(c: ^Call, event: Api_Event, index: i32) -> (Api_CoalescedPointer, Api_Error) {
+	list := pointer_coalesced_list(c, event)
+	if index < 0 || int(index) >= len(list) { return {}, fail(c, .Invalid_Argument, "no coalesced pointer sample at this index") }
+	s := list[index]
+	e := event.data
+	ts := s.time_stamp != 0 ? s.time_stamp : Event_timeStamp(c, event)
+	tmp := dom.Event{
+		type = e.type, target = e.target,
+		x = s.x, y = s.y, screen_x = s.screen.x, screen_y = s.screen.y,
+		mods = s.mods, buttons = s.buttons, pointer = s.pointer, time_stamp = ts,
+	}
+	d := ui_event_data_of(c, c.page, &tmp)
+	return Api_CoalescedPointer{
+		client_x = d.client_x, client_y = d.client_y,
+		screen_x = d.screen_x, screen_y = d.screen_y,
+		page_x = d.page_x, page_y = d.page_y,
+		offset_x = d.offset_x, offset_y = d.offset_y,
+		time_stamp = ts,
+		mods = d.mods, buttons = d.buttons,
+		pointer_id = d.pointer_id, pointer_type = d.pointer_type, is_primary = d.is_primary,
+		pressure = d.pressure, tangential_pressure = d.tangential_pressure,
+		width = d.width, height = d.height,
+		tilt_x = d.tilt_x, tilt_y = d.tilt_y, twist = d.twist,
+	}, .None
 }
 
 ////////////////////////////////

@@ -85,7 +85,7 @@ function not exposed to workers is not instantiated.
 | [`document`](document.md) | `wren:document` | 5 | Window, Worker | The document's address, origin and cookies. Window_origin and Window_isSecureContext belong to |
 | [`dom`](dom.md) | `wren:dom` | 402 | Window, Worker | The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a |
 | [`encoding`](encoding.md) | `wren:encoding` | 8 | Window, Worker | TextEncoder and TextDecoder (Encoding Standard). Decoders keep their state between calls, so every WHATWG label |
-| [`events`](events.md) | `wren:core` | 44 | Window, Worker | Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a |
+| [`events`](events.md) | `wren:core` | 46 | Window, Worker | Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a |
 | [`eventsource`](eventsource.md) | `wren:eventsource` | 7 | Window | Server-sent events (HTML EventSource) and the MessageEvent members that are not plain payload. Messages arrive as |
 | [`ext`](ext.md) | `wren:ext` | 11 | Window, Worker | The transport of browser extensions (docs/extensions.md, section 3.9; src/page/ext_realm.odin, ext_router.odin; |
 | [`fetch`](fetch.md) | `wren:fetch` | 11 | Window | The promise side of the Fetch API, on the same records as the callback API of module net (a Response is a Fetch: |
@@ -134,4 +134,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | `wren:websocket` | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | `wren:workers` | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1639 imports in 1540 functions.
+1641 imports in 1542 functions.
