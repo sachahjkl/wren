@@ -20,6 +20,9 @@ Image_Info :: struct {
 	export_end:    int,
 	export_count:  u32,
 	insert_at:     int,      // where a new export section goes when there is none
+	// imports of the module "env" (temporary allocator): what wasm-ld makes of a foreign declaration that names no
+	// module. The browser's own images must have none (src/tools/jsengine): such an import is a call that traps
+	env_imports:   []string,
 }
 
 @(private) WASM_MAGIC :: [8]u8{0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00}
@@ -114,6 +117,7 @@ analyze_image :: proc(image: []byte) -> (info: Image_Info, err: string) {
 	mem_name, table_name: string
 	inserted := false
 	exports := make([dynamic]string, context.temp_allocator)
+	env := make([dynamic]string, context.temp_allocator)
 	for r.pos < len(image) {
 		start := r.pos
 		id := rd_byte(&r)
@@ -127,8 +131,9 @@ analyze_image :: proc(image: []byte) -> (info: Image_Info, err: string) {
 			n := int(rd_leb(&body, 32))
 			for _ in 0 ..< n {
 				if body.bad { break }
-				rd_name(&body)
-				rd_name(&body)
+				module := rd_name(&body)
+				name := rd_name(&body)
+				if module == "env" { append(&env, name) }
 				kind := rd_byte(&body)
 				switch kind {
 				case 0: rd_leb(&body, 32)
@@ -180,6 +185,7 @@ analyze_image :: proc(image: []byte) -> (info: Image_Info, err: string) {
 	if info.has_table {
 		if table_name != "" { info.table_export = table_name } else { info.table_export = unique(OUR_TABLE_EXPORT, exports[:]); info.add_table = true }
 	}
+	info.env_imports = env[:]
 	return info, ""
 }
 

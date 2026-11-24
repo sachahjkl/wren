@@ -649,6 +649,15 @@ main :: proc() {
 cmd_snapshot :: proc(args: []string) {
 	if len(args) != 2 { usage() }
 	raw := read_file(args[0])
+	// (an import of "env" is a foreign declaration that named no module: the browser provides none, so it is a trap at
+	// its first call. An optimised build may fold one away, a -o:minimal one keeps it: env.floor stopped every page's
+	// scripts at performance.measure in quick builds)
+	if info, aerr := wasm.analyze_image(raw); aerr != "" {
+		fmt.eprintln("jsengine snapshot:", aerr); os.exit(1)
+	} else if len(info.env_imports) > 0 {
+		fmt.eprintfln("jsengine snapshot: the engine imports %v from \"env\", which the browser does not provide: give the foreign declaration its import module, or write it in Odin", info.env_imports)
+		os.exit(1)
+	}
 	setup()
 	quiet = true
 	t0 := time.tick_now()

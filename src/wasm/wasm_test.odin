@@ -636,6 +636,10 @@ binary_patch :: proc(t: ^testing.T) {
 	testing.expect(t, !none.has_memory && !none.has_table, "nothing to export")
 	m64, _ := analyze_image(wat(t, MODULE64))
 	testing.expect(t, m64.memory64, "memory64 detected")
+	// the imports of "env" (src/tools/jsengine refuses an engine image that has any): only those, in order
+	env, _ := analyze_image(wat(t, `(module (import "env" "floor" (func (param f64) (result f64))) (import "dom" "x" (func)) (import "env" "ceil" (func)))`))
+	testing.expectf(t, len(env.env_imports) == 2 && env.env_imports[0] == "floor" && env.env_imports[1] == "ceil", "env imports: %v", env.env_imports)
+	testing.expect_value(t, len(info.env_imports), 0)
 	runtime_destroy()
 }
 
