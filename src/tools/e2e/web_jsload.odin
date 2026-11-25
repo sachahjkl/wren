@@ -130,7 +130,7 @@ Hits_Answer :: struct { done: bool, count: int }
 // How many times the test server was asked for `path` (its hits counter), -1 when it cannot say.
 hits :: proc(t: ^testing.T, path: string) -> int {
 	answer: Hits_Answer
-	fetch.start(&loader, {
+	fetch.start(&world.loader, {
 		request = {url = concat(testenv.url(HITS), enc(path))},
 		on_event = proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			a := (^Hits_Answer)(user)
@@ -646,7 +646,7 @@ jsload_noscript_without_javascript :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	settings.js.enabled = false
+	world.settings.js.enabled = false
 	pr := page_make(t, "noscript off", testenv.url(BASE))
 	page.load_html(pr.p, transmute([]byte)string(`<!doctype html><body><noscript><p id=ns>no script</p></noscript></body>`))
 	found := dom.find_by_id(pr.p.doc, "ns") != base.NIL_HANDLE
@@ -682,8 +682,8 @@ const nested = () => setTimeout(nested, 0);
 try { queueMicrotask(1); } catch (e) { log("queueMicrotask type " + (e instanceof TypeError)); }
 </script></body>`))
 	wait_note(pr, "sync")
-	host.clock_advance(&loop, TIMERS_SPAN)
-	page.run_animation_frames(pr.p, f64(host.now_ns(&loop)) / 1e6)
+	host.clock_advance(&world.loop, TIMERS_SPAN)
+	page.run_animation_frames(pr.p, f64(host.now_ns(&world.loop)) / 1e6)
 	for m in ([]string{"interval 3", "string timer", "timeout args x 2", "zero"}) { wait_note(pr, m) }
 	wait_note_prefix(pr, "idle number")
 	check(pr, noted(pr, "ids true true"), "timer ids are positive and increasing")
@@ -954,7 +954,7 @@ jsload_a_sheet_in_lets_the_parser_and_the_load_go_on :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	settings.js_load.poll_ms = POLL_NEVER_MS
+	world.settings.js_load.poll_ms = POLL_NEVER_MS
 	pr := load(t, "sheet in", concat(`<!doctype html><head>`, PRELUDE, `<link rel=stylesheet href="`, css("p { color: red }", ARRIVES_SOON_MS, "nopoll"),
 		`"><script>log("after the sheet"); addEventListener("load", () => log("loaded"))</script></head><body><p>x</p></body>`))
 	check(pr, wait_note(pr, "after the sheet"), "the parser's script ran once the sheet was in")
@@ -970,7 +970,7 @@ jsload_ready_scripts_give_the_loop_a_turn :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	settings.js_load.pump_slice_ms = PUMP_SLICE_MS
+	world.settings.js_load.pump_slice_ms = PUMP_SLICE_MS
 	first := fmt.tprintf(`setTimeout(() => log("a turn of the loop"), 0); const end = performance.now() + %d; while (performance.now() < end); log("first script")`, PUMP_SCRIPT_MS)
 	pr := load(t, "turn", concat(`<!doctype html><head>`, PRELUDE, `<script defer src="`, gen(first, ARRIVES_SOON_MS, "&k=turn1"), `"></script>`,
 		`<script defer src="`, gen(`log("second script")`, ARRIVES_SOON_MS, "&k=turn2"), `"></script></head><body><p>x</p></body>`))
@@ -986,7 +986,7 @@ jsload_a_long_script_gives_the_loop_a_turn_before_the_next_inline_one :: proc(t:
 	begin(t)
 	defer end()
 	serve(t)
-	settings.js_load.pump_slice_ms = PUMP_SLICE_MS
+	world.settings.js_load.pump_slice_ms = PUMP_SLICE_MS
 	busy := fmt.tprintf(`setTimeout(() => log("a turn of the loop"), 0); const end = performance.now() + %d; while (performance.now() < end); log("first script")`, PUMP_SCRIPT_MS)
 	pr := load(t, "inline after long", concat(`<!doctype html><head>`, PRELUDE, `<script>`, busy, `</script><script>log("second script")</script></head><body><p>x</p></body>`))
 	wait_note(pr, "second script")
@@ -1164,7 +1164,7 @@ jsload_the_parser_gives_the_loop_a_turn :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	settings.js_load.pump_slice_ms = PUMP_SLICE_MS
+	world.settings.js_load.pump_slice_ms = PUMP_SLICE_MS
 	first := fmt.tprintf(`<script>setTimeout(() => log("a turn of the loop"), 0); const end = performance.now() + %d; while (performance.now() < end); log("first script")</script>`, PUMP_SCRIPT_MS)
 	content := strings.repeat(`<p>x</p>`, page.REVEAL_TURN_MIN_NODES * 2, context.temp_allocator)
 	pr := load(t, "parser turn", concat(`<!doctype html><head>`, PRELUDE, first, `</head><body>`, content, `<script>log("second script")</script></body>`))
@@ -1181,8 +1181,8 @@ jsload_the_turns_follow_what_the_page_s_frames_cost :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	settings.js_load.pump_slice_ms = PUMP_SLICE_MS
-	settings.js_load.slice_per_frame = SLICE_PER_FRAME
+	world.settings.js_load.pump_slice_ms = PUMP_SLICE_MS
+	world.settings.js_load.slice_per_frame = SLICE_PER_FRAME
 	busy := fmt.tprintf(`{{ const end = performance.now() + %d; while (performance.now() < end); }}`, PUMP_SCRIPT_MS)
 	content := strings.repeat(`<p>x</p>`, page.REVEAL_TURN_MIN_NODES * 2, context.temp_allocator)
 	markup := concat(`<!doctype html><head>`, PRELUDE, `<script>setTimeout(() => log("a turn of the loop"), 0);`, busy, `log("first script")</script></head><body>`, content,
@@ -1230,7 +1230,7 @@ jsload_the_first_paint_comes_before_the_next_script :: proc(t: ^testing.T) {
 	close_page(pr, min_checks = 1)
 
 	pr = page_make(t, "painted", testenv.url(BASE))
-	settings.js_load.pump_slice_ms = SLICE_LONGER_THAN_THE_TEST_MS
+	world.settings.js_load.pump_slice_ms = SLICE_LONGER_THAN_THE_TEST_MS
 	page.load_html(pr.p, transmute([]byte)markup)
 	page.first_paint_done(pr.p)
 	page.scripts_start(pr.p)
@@ -1239,7 +1239,7 @@ jsload_the_first_paint_comes_before_the_next_script :: proc(t: ^testing.T) {
 	close_page(pr, min_checks = 1)
 
 	// the first script of the document, what comes before it attached from the start
-	settings.js_load.pump_slice_ms = PUMP_SLICE_MS
+	world.settings.js_load.pump_slice_ms = PUMP_SLICE_MS
 	pr = page_make(t, "first script", testenv.url(BASE))
 	page.load_html(pr.p, transmute([]byte)concat(`<!doctype html><body>`, content, `<script>wrenTest.note("the first script")</script></body>`))
 	run(pr, `setTimeout(() => wrenTest.note("a turn before it"), 0)`)
@@ -1260,7 +1260,7 @@ jsload_a_paint_turn_waits_for_a_late_frame :: proc(t: ^testing.T) {
 	pr := load(t, "late frame", concat(`<!doctype html><head>`, PRELUDE, `</head><body>`, content, `<script>log("the script")</script></body>`))
 	drain()
 	check(pr, !noted(pr, "the script"), "the parser stopped before the script")
-	host.clock_advance(&loop, FRAME_LATE)
+	host.clock_advance(&world.loop, FRAME_LATE)
 	check(pr, !noted(pr, "the script"), "a late frame is waited for")
 	page.first_paint_done(pr.p)
 	drain()
@@ -1277,12 +1277,12 @@ jsload_a_paint_turn_ends_at_its_deadline_once :: proc(t: ^testing.T) {
 	virtual_clock(t)
 	content := strings.repeat(`<p>x</p>`, page.REVEAL_TURN_MIN_NODES * 2, context.temp_allocator)
 	markup := concat(`<!doctype html><head>`, PRELUDE, `</head><body>`, content, `<script>log("one")</script>`, content, content, content, `<script>log("two")</script></body>`)
-	deadline := time.Duration(settings.js_load.paint_deadline_ms) * time.Millisecond
+	deadline := time.Duration(world.settings.js_load.paint_deadline_ms) * time.Millisecond
 	pr := load(t, "no frame", markup)
 	drain()
-	host.clock_advance(&loop, deadline - time.Millisecond)
+	host.clock_advance(&world.loop, deadline - time.Millisecond)
 	check(pr, !noted(pr, "one"), "the turn lasts until its deadline")
-	host.clock_advance(&loop, time.Millisecond)
+	host.clock_advance(&world.loop, time.Millisecond)
 	drain()
 	check(pr, noted(pr, "one") && noted(pr, "two"), "the deadline ends it, and there is no other")
 	close_page(pr, min_checks = 1)
@@ -1314,7 +1314,7 @@ jsload_a_long_inline_compile_holds_the_parser_and_not_the_loop :: proc(t: ^testi
 	context.allocator = base.process_allocator()
 	begin(t)
 	defer end()
-	settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
+	world.settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
 	code := concat(`var filler = "`, strings.repeat("x", page.COMPILE_AHEAD_HOLD_BYTES, context.temp_allocator), `"; log("long inline")`)
 	page.compile_hold(true)
 	pr := load(t, "held", concat(`<!doctype html>`, PRELUDE, `<script>setTimeout(function () { log("a timer") }, 0)</script><script>`, code, `</script><script>log("after")</script>`))
@@ -1333,7 +1333,7 @@ jsload_a_deferred_script_goes_behind_the_first_paint :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	settings.js_load.paint_deadline_ms = SLICE_LONGER_THAN_THE_TEST_MS
+	world.settings.js_load.paint_deadline_ms = SLICE_LONGER_THAN_THE_TEST_MS
 	content := strings.repeat(`<p>x</p>`, page.REVEAL_TURN_MIN_NODES * 2, context.temp_allocator)
 	pr := load(t, "deferred", concat(`<!doctype html><head>`, PRELUDE, `<script defer src="`, gen(`log("deferred")`, ARRIVES_SOON_MS, "&k=deferred1"), `"></script></head><body>`, content, `</body>`))
 	wait_until(t, "the deferred script, or its turn", pr, proc(pr: ^Probe) -> bool { return noted(pr, "deferred") || page.paint_turn_waiting(pr.p) })
@@ -1413,7 +1413,7 @@ jsload_large_scripts_compile_off_thread :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
+	world.settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
 	before := page.compile_stats()
 	start := time.tick_now()
 	pr := load(t, "large scripts", concat(`<!doctype html><head>`, big("", "a"), big("", "b"), `<script>wrenTest.note("bigs done")</script></head>`))
@@ -1434,7 +1434,7 @@ jsload_large_inline_scripts_compile_ahead :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
+	world.settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
 	jobs, hits := page.compile_stats().jobs, js.cache_stats().memory_hits
 	sb := strings.builder_make(context.temp_allocator)
 	// (the first script leaves a compile thread the time to take it: not taken at its turn, a script is compiled here, as it should be)
@@ -1459,7 +1459,7 @@ jsload_a_large_script_of_another_origin_compiles_once :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
+	world.settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
 	other_origin := testenv.url("http://localhost:8765/jsload/big?kb=512&id=cdn")
 	jobs, hits := page.compile_stats().jobs, js.cache_stats().memory_hits
 	pr := load(t, "a script of another origin", concat(`<!doctype html><head><script src="`, other_origin, `"></script><script>wrenTest.note("cdn done")</script></head>`))
@@ -1476,7 +1476,7 @@ jsload_large_modules_compile_off_thread :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
+	world.settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
 	before := page.compile_stats()
 	start := time.tick_now()
 	pr := load(t, "large modules", concat(`<!doctype html><head>`, big("type=module", "ma"), big("type=module", "mb"), `<script type=module>wrenTest.note("big modules done")</script></head>`))
@@ -1499,8 +1499,8 @@ jsload_a_compile_past_the_limit_of_a_call_goes_on :: proc(t: ^testing.T) {
 	serve(t)
 	page.compile_shutdown()
 	defer page.compile_shutdown()
-	settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
-	settings.wasm.max_call_ms = SHORT_CALL_MS
+	world.settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
+	world.settings.wasm.max_call_ms = SHORT_CALL_MS
 	before := page.compile_stats()
 	pr := load(t, "long compile", `<!doctype html><head><script src="/jsload/big?kb=4096&id=long"></script><script>wrenTest.note("long done")</script></head>`)
 	wait_note(pr, "long done")
@@ -1515,8 +1515,8 @@ jsload_no_compile_thread_compiles_on_the_interface_thread :: proc(t: ^testing.T)
 	begin(t)
 	defer end()
 	serve(t)
-	settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
-	settings.js_load.compile_threads = 0
+	world.settings.js.offthread_min_bytes = OFFTHREAD_MIN_BYTES
+	world.settings.js_load.compile_threads = 0
 	before := page.compile_stats()
 	start := time.tick_now()
 	pr := load(t, "no compile thread", concat(`<!doctype html><head>`, big("", "c"), big("", "d"), `<script>wrenTest.note("bigs done")</script></head>`))
@@ -1545,7 +1545,7 @@ jsload_a_chain_of_timers :: proc(t: ^testing.T) {
 	run(pr, fmt.tprintf(`let hops = 0; const hop = () => {{ if (++hops === %d) log("hops done"); else setTimeout(hop, 0); }}; setTimeout(hop, 0);`, HOPS))
 	start = time.tick_now()
 	// spinning (no wait in the OS, whose timer resolution would be measured instead), bounded only for a failing run
-	for !noted(pr, "hops done") && time.duration_seconds(time.tick_since(start)) < PAGE_LIMIT_SECONDS { host.loop_wait(&loop, 0) }
+	for !noted(pr, "hops done") && time.duration_seconds(time.tick_since(start)) < PAGE_LIMIT_SECONDS { host.loop_wait(&world.loop, 0) }
 	log.infof("MEASURE setTimeout(0) round trip: %.3f ms per hop over %d (HTML clamps to 4 ms past 5 nested levels)", time.duration_milliseconds(time.tick_since(start)) / HOPS, HOPS)
 	check(pr, noted(pr, "hops done"), "setTimeout(0) chain")
 	close_page(pr, min_checks = 1)
@@ -1568,9 +1568,9 @@ window.n = 0; const go = () => requestAnimationFrame(ts => {{ log("raf " + (++n)
 	for _ in 0 ..< RAF_TRIES {
 		before := len(pr.section.notes)
 		start := time.tick_now()
-		page.run_animation_frames(pr.p, f64(host.now_ns(&loop)) / 1e6)
+		page.run_animation_frames(pr.p, f64(host.now_ns(&world.loop)) / 1e6)
 		if len(pr.section.notes) > before { total += time.duration_microseconds(time.tick_since(start)); frames += 1 }
-		host.loop_wait(&loop, 0)
+		host.loop_wait(&world.loop, 0)
 		if noted(pr, last) { break }
 	}
 	log.infof("MEASURE requestAnimationFrame: %.1f us from the frame to the end of the callback (%d frames)", total / f64(max(frames, 1)), frames)
@@ -1710,20 +1710,20 @@ jsload_a_preconnect_opens_its_connection_unless_the_blocker_refuses :: proc(t: ^
 	defer end()
 	serve(t)
 	origin :: proc(name: string) -> string { return fmt.tprintf("http://%s:%d/", name, testenv.port(PLAIN_HTTP)) }
-	client.settings.preconnect = true
-	defer client.settings.preconnect = false
+	world.client.settings.preconnect = true
+	defer world.client.settings.preconnect = false
 	names := PRECONNECT_NAMES
-	kept := loader.interceptor
-	defer loader.interceptor = kept
-	loader.interceptor = {request = proc(_: rawptr, q: ^fetch.Intercept_Query, r: ^fetch.Intercept_Result) {
+	kept := world.loader.interceptor
+	defer world.loader.interceptor = kept
+	world.loader.interceptor = {request = proc(_: rawptr, q: ^fetch.Intercept_Query, r: ^fetch.Intercept_Result) {
 		if strings.contains(q.url, PRECONNECT_REFUSED) { r.action = .Block }
 	}}
 	pr := load(t, "preconnect", concat(`<!doctype html><head>`, PRELUDE, `<link rel=preconnect href="`, origin(names[0]), `"><link rel=preconnect href="`, origin(PRECONNECT_REFUSED), `">
 <script>const l = document.createElement("link"); l.rel = "preconnect"; l.href = "`, origin(names[1]), `"; document.head.append(l); log("done");</script></head><body>`))
 	wait_note(pr, "done")
 	for name in names {
-		wait_until(t, "the connection opened ahead", origin(name), proc(u: string) -> bool { return net.preconnected(&client, u) })
+		wait_until(t, "the connection opened ahead", origin(name), proc(u: string) -> bool { return net.preconnected(&world.client, u) })
 	}
-	check(pr, !net.preconnected(&client, origin(PRECONNECT_REFUSED)), "no connection to what the blocker refuses")
+	check(pr, !net.preconnected(&world.client, origin(PRECONNECT_REFUSED)), "no connection to what the blocker refuses")
 	close_page(pr, min_checks = 1)
 }

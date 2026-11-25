@@ -46,8 +46,8 @@ on_event :: proc(user: rawptr, sock: base.Handle, ev: ^net.Ws_Event) {
 	c := r.c
 	switch ev.kind {
 	case .Handshake:
-		if ev.status != 101 || !net.websocket_accept(&client, sock) { return }
-		if c.send != "" { net.websocket_send(&client, sock, transmute([]u8)c.send, false) }
+		if ev.status != 101 || !net.websocket_accept(&world.client, sock) { return }
+		if c.send != "" { net.websocket_send(&world.client, sock, transmute([]u8)c.send, false) }
 		if c.close_code != 0 && c.close_when == .Upgrade { close_now(r, sock) }
 	case .Message:
 		fmt.sbprintf(&r.log, "msg;")
@@ -66,7 +66,7 @@ on_event :: proc(user: rawptr, sock: base.Handle, ev: ^net.Ws_Event) {
 }
 
 close_now :: proc(r: ^Run, sock: base.Handle) {
-	if !net.websocket_close(&client, sock, r.c.close_code, r.c.close_reason) { fmt.sbprintf(&r.log, "close-refused;") }
+	if !net.websocket_close(&world.client, sock, r.c.close_code, r.c.close_reason) { fmt.sbprintf(&r.log, "close-refused;") }
 }
 
 // What the socket went through, in the test's temporary memory.
@@ -76,10 +76,10 @@ run_case :: proc(t: ^testing.T, c: ^Case) -> string {
 	strings.builder_init(&r.log, context.temp_allocator)
 	limits := LIMITS
 	limits.close_timeout_ms = c.close_timeout
-	sock := net.websocket_open(&client, {url = fmt.tprintf("%s%s%stag=%d", testenv.url("ws://127.0.0.1:8765"), c.path, strings.contains(c.path, "?") ? "&" : "?", os.get_pid()),
+	sock := net.websocket_open(&world.client, {url = fmt.tprintf("%s%s%stag=%d", testenv.url("ws://127.0.0.1:8765"), c.path, strings.contains(c.path, "?") ? "&" : "?", os.get_pid()),
 		on_event = on_event, user = r, limits = limits})
 	// every case finishes by itself (the close timeout included)
-	if !wait_until(t, c.path, r, proc(r: ^Run) -> bool { return r.done }) { net.websocket_abort(&client, sock); return "timeout" }
+	if !wait_until(t, c.path, r, proc(r: ^Run) -> bool { return r.done }) { net.websocket_abort(&world.client, sock); return "timeout" }
 	return strings.to_string(r.log)
 }
 
@@ -97,7 +97,7 @@ repeat :: proc(t: ^testing.T, what: string, c: Case, want: string, n: int, wire 
 		}
 	}
 	testing.expectf(t, bad == 0, "%s: %d/%d wrong, first %q (server read %q), want %q (server read %q)", what, bad, n, first_bad, first_wire, want, wire, loc = loc)
-	testing.expect_value(t, net.websocket_count(&client), 0, loc = loc)
+	testing.expect_value(t, net.websocket_count(&world.client), 0, loc = loc)
 }
 
 @(test)

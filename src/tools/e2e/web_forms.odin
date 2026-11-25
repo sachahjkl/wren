@@ -49,13 +49,13 @@ keep_submission :: proc(user: rawptr, pg: ^page.Page, s: ^forms.Submission) { ap
 // The page, its form focused, the guest running (two checks). When it cannot go on, nothing is left of it.
 open :: proc(t: ^testing.T, fm: ^Form) -> bool {
 	fm.t = t
-	fm.timers = loop.timers.count
+	fm.timers = world.loop.timers.count
 	fm.submissions = make([dynamic]^forms.Submission)
 	fm.pr = page_make(t, "forms", testenv.url(ADDRESS))
 	source, herr := os.read_entire_file(FORMS_HTML, context.temp_allocator)
 	guest, gerr := os.read_entire_file(FORMS_WASM, context.temp_allocator)
 	testing.expect(t, herr == nil && gerr == nil, "cannot read the page and its guest")
-	fm.decoded, _ = html.decode_document(source, "utf-8", settings.html.default_encoding)
+	fm.decoded, _ = html.decode_document(source, "utf-8", world.settings.html.default_encoding)
 	page.load_html(fm.pr.p, fm.decoded.text)
 	page.set_forms_embedder(fm.pr.p, page.Forms_Embedder{user = fm, navigate = keep_submission})
 	fm.f = page.page_forms(fm.pr.p)
@@ -70,7 +70,7 @@ open :: proc(t: ^testing.T, fm: ^Form) -> bool {
 // The page's end. Whatever it was doing, its requests and timers go with it.
 shut :: proc(fm: ^Form, min_checks: int, loc := #caller_location) {
 	close_page(fm.pr, min_checks = min_checks, loc = loc)
-	testing.expect(fm.t, fetch.in_flight(&loader) == 0 && loop.timers.count == fm.timers, "closing the page released its requests and timers", loc = loc)
+	testing.expect(fm.t, fetch.in_flight(&world.loader) == 0 && world.loop.timers.count == fm.timers, "closing the page released its requests and timers", loc = loc)
 	for s in fm.submissions { forms.submission_destroy(s) }
 	delete(fm.submissions)
 	delete(fm.decoded.text)
@@ -111,12 +111,12 @@ perform :: proc(fm: ^Form, s: ^forms.Submission) -> string {
 	fm.echo = {}
 	headers := make([dynamic]fetch.Header_Pair, context.temp_allocator)
 	if s.method == .Post {
-		ok, msg := forms.encode_submission(s, settings.forms)
+		ok, msg := forms.encode_submission(s, world.settings.forms)
 		testing.expectf(fm.t, ok, "encode failed: %s", msg)
 		if !ok { return "" }
 		append(&headers, fetch.Header_Pair{"Content-Type", s.content_type})
 	}
-	fetch.start(&loader, {
+	fetch.start(&world.loader, {
 		request = {url = s.url, method = s.method == .Post ? "POST" : "GET", headers = headers[:], body = s.body,
 			mode = .Navigate, credentials = .Include, destination = .Document, initiator = &fm.pr.p.env},
 		on_event = on_echo, user = rawptr(&fm.echo), scope = fm.pr.p.scope, collect = true,

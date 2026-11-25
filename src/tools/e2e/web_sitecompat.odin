@@ -195,7 +195,7 @@ open_laid_out :: proc(t: ^testing.T, lh: ^Layout_Host, name, source: string) -> 
 
 // One rendering update, as the shell runs one for each frame it paints.
 frame :: proc(pr: ^Probe) {
-	page.run_animation_frames(pr.p, f64(host.now_ns(&loop)) / 1e6)
+	page.run_animation_frames(pr.p, f64(host.now_ns(&world.loop)) / 1e6)
 	drain()
 }
 

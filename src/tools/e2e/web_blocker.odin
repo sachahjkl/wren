@@ -60,21 +60,21 @@ start_browser :: proc(t: ^testing.T, w: ^Setup, gate: ^Engine_Gate = nil) {
 	serve(t)
 	if gate != nil { w.b.job_gate = {wait = proc(user: rawptr) { sync.sema_wait(&(^Engine_Gate)(user).sema) }, user = gate} }
 	cache_settings := httpcache.settings_default()
-	profile.cache = httpcache.create(&loop, cache_settings, "")
+	world.profile.cache = httpcache.create(&world.loop, cache_settings, "")
 	httpcache.settings_destroy(&cache_settings)
 	w.prefs = config.prefs_make()
 	blocker.register_prefs(&w.prefs)
 	config.set_from_string(&w.prefs, "blocker.update.enabled", "false", .User)
 	// (the blocker and its prefs stay with the loader and the blocker package until shut)
-	blocker.start((^blocker.Blocker)(rawptr(&w.b)), &loop, &client, &loader, (^config.Prefs)(rawptr(&w.prefs)), PROFILE)
-	w.tab = base.scope_make("tab", process)
+	blocker.start((^blocker.Blocker)(rawptr(&w.b)), &world.loop, &world.client, &world.loader, (^config.Prefs)(rawptr(&w.prefs)), PROFILE)
+	w.tab = base.scope_make("tab", world.process)
 	blocker.tab_register(&w.b, TAB, w.tab)
-	w.held_at_start = loader.hold
+	w.held_at_start = world.loader.hold
 }
 
 // The index the lists compile to is in force.
 index_ready :: proc(w: ^Setup) -> bool {
-	return wait_until(w.t, "the first index", w.t, proc(_: ^testing.T) -> bool { return !loader.hold })
+	return wait_until(w.t, "the first index", w.t, proc(_: ^testing.T) -> bool { return !world.loader.hold })
 }
 
 shut :: proc(w: ^Setup) {
@@ -84,12 +84,12 @@ shut :: proc(w: ^Setup) {
 
 // The browser closed: the profile stays for the next start.
 stop_browser :: proc(w: ^Setup) {
-	blocker.shutdown(&w.b, &loader)
+	blocker.shutdown(&w.b, &world.loader)
 	config.prefs_destroy(&w.prefs)
 	base.scope_close(w.tab)
-	httpcache.destroy(profile.cache)
-	profile.cache = nil
-	cookies.clear_all(&profile.jar)
+	httpcache.destroy(world.profile.cache)
+	world.profile.cache = nil
+	cookies.clear_all(&world.profile.jar)
 	drain()
 }
 
@@ -113,7 +113,7 @@ open_doc :: proc(w: ^Setup, address: string) -> ^Doc {
 	d.w = w
 	d.scope = base.scope_make("navigation", w.tab)
 	base.on_close(d.scope, proc(data: rawptr) { (^Doc)(data).page = nil }, d)
-	fetch.start(&loader, {
+	fetch.start(&world.loader, {
 		request = {url = testenv.url(address), mode = .Navigate, credentials = .Include, redirect = .Follow, destination = .Document},
 		on_event = document_event, user = d, scope = d.scope, collect = true,
 	})
@@ -127,7 +127,7 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	case .Response:
 		r := ev.response
 		if r.has_mime { if cs, ok := http.mime_param(r.mime, "charset"); ok { d.charset = strings.clone(cs, keep) } }
-		d.page = page.page_create(&loop, &loader, &settings, d.scope, r.url, proc(user: rawptr, level: page.Log_Level, message: string) {}, d)
+		d.page = page.page_create(&world.loop, &world.loader, &world.settings, d.scope, r.url, proc(user: rawptr, level: page.Log_Level, message: string) {}, d)
 		page.set_embedder(d.page, {user = d, tab_key = d.scope.name})
 	case .Done:
 		if d.page == nil { d.failed = "no response"; return }
@@ -152,7 +152,7 @@ doc_of_text :: proc(w: ^Setup, text: string) -> ^Doc {
 	d.w = w
 	d.scope = base.scope_make("navigation", w.tab)
 	base.on_close(d.scope, proc(data: rawptr) { (^Doc)(data).page = nil }, d)
-	d.page = page.page_create(&loop, &loader, &settings, d.scope, "about:blank", proc(user: rawptr, level: page.Log_Level, message: string) {}, d)
+	d.page = page.page_create(&world.loop, &world.loader, &world.settings, d.scope, "about:blank", proc(user: rawptr, level: page.Log_Level, message: string) {}, d)
 	page.set_embedder(d.page, {user = d, tab_key = d.scope.name})
 	page.parse_document(d.page, transmute([]byte)text, "utf-8", document_parsed, d, "")
 	return d
@@ -183,16 +183,16 @@ log_text :: proc(d: ^Doc) -> string {
 load_stuck :: proc(w: ^Setup, d: ^Doc, loc := #caller_location) {
 	s := d.page != nil ? d.page.scripts : nil
 	if s == nil {
-		testing.expectf(w.t, false, "the load stands at: loader held %v, a page %v, parsed %v", loader.hold, d.page != nil, d.parsed, loc = loc)
+		testing.expectf(w.t, false, "the load stands at: loader held %v, a page %v, parsed %v", world.loader.hold, d.page != nil, d.parsed, loc = loc)
 		return
 	}
 	ps := &s.parser
-	timer := base.pool_get(&loop.timers, s.pump.resume)
+	timer := base.pool_get(&world.loop.timers, s.pump.resume)
 	queued := 0
-	for e in loop.queue.queue { if e.handle == s.pump.resume { queued += 1 } }
-	testing.expectf(w.t, false, "its pump: %v, timer alive %v, due in %v ns, %d entries of %d in the queue, virtual clock %v, slice %v, ran %v, turns %d", s.pump.state, timer != nil, timer != nil ? timer.deadline - host.now_ns(&loop) : 0, queued, len(loop.queue.queue), loop.virtual != nil, settings.js_load.pump_slice_ms, s.pump.ran_ms, ps.paint_turns, loc = loc)
+	for e in world.loop.queue.queue { if e.handle == s.pump.resume { queued += 1 } }
+	testing.expectf(w.t, false, "its pump: %v, timer alive %v, due in %v ns, %d entries of %d in the queue, virtual clock %v, slice %v, ran %v, turns %d", s.pump.state, timer != nil, timer != nil ? timer.deadline - host.now_ns(&world.loop) : 0, queued, len(world.loop.queue.queue), world.loop.virtual != nil, world.settings.js_load.pump_slice_ms, s.pump.ran_ms, ps.paint_turns, loc = loc)
 	testing.expectf(w.t, false, "the load stands at: loader held %v, phase %v, parser at %d of %d, a script pending %v, fetches %d, log %q",
-		loader.hold, s.phase, ps.next, len(ps.queue), ps.pending != nil, len(s.fetches), log_text(d), loc = loc)
+		world.loader.hold, s.phase, ps.next, len(ps.queue), ps.pending != nil, len(s.fetches), log_text(d), loc = loc)
 }
 
 load :: proc(w: ^Setup, address: string, loc := #caller_location) -> ^Doc {
@@ -233,7 +233,7 @@ blocker_a_page_asked_for_at_start_up_waits_for_the_index :: proc(t: ^testing.T) 
 	// first page is filtered by the lists too
 	wait_log(d, "page:")
 	testing.expectf(t, strings.contains(log_text(d), "page:none:OK:"), "a page asked for at start-up is filtered once the index is there (%q)", log_text(d))
-	testing.expect(t, !loader.hold, "the hold on requests ended with the compile job")
+	testing.expect(t, !world.loader.hold, "the hold on requests ended with the compile job")
 }
 
 @(test)
@@ -500,17 +500,17 @@ blocker_the_index_of_the_lists_loads_off_the_window_thread :: proc(t: ^testing.T
 	opened := false
 	defer if !opened { gate_open(&gate) }   // (before the stop above: a failing check must not leave the job's thread held, shutdown joins it)
 	testing.expect(t, w.b.upd.job != nil, "start returned with the job of the engine still to run")
-	testing.expect(t, loader.hold, "the requests to the network wait for the engine")
+	testing.expect(t, world.loader.hold, "the requests to the network wait for the engine")
 
 	quick := doc_of_text(&w, SOME_DOCUMENT)
 	defer close_doc(quick)
 	if !wait_until(t, "a document of text", quick, is_loaded) { return }
 	state, why := page.first_paint_state(quick.page)
-	testing.expectf(t, state == .Ready && loader.hold, "a document that needs no network can be painted while the engine loads (%v %s)", state, why)
+	testing.expectf(t, state == .Ready && world.loader.hold, "a document that needs no network can be painted while the engine loads (%v %s)", state, why)
 	ads := open_doc(&w, ADS)
 	defer close_doc(ads)
 	drain()
-	testing.expect(t, ads.page == nil && ads.failed == "" && loader.hold, "the page's request waits for the engine")
+	testing.expect(t, ads.page == nil && ads.failed == "" && world.loader.hold, "the page's request waits for the engine")
 
 	gate_open(&gate)
 	opened = true

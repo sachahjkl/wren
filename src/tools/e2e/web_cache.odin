@@ -58,7 +58,7 @@ on_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 
 run_fetch :: proc(t: ^testing.T, d: fetch.Request_Desc) -> Result {
 	r := new(Result, context.temp_allocator)
-	fetch.start(&loader, {request = d, on_event = on_event, user = r, collect = true})
+	fetch.start(&world.loader, {request = d, on_event = on_event, user = r, collect = true})
 	if !wait_until(t, d.url, r, proc(r: ^Result) -> bool { return r.done }) { r.failed, r.detail = true, "timeout" }
 	return r^
 }
@@ -77,9 +77,9 @@ World :: struct {
 	doc: ^fetch.Environment,
 }
 
-world :: proc(t: ^testing.T) -> World {
+cache_world :: proc(t: ^testing.T) -> World {
 	serve(t)
-	cookies.clear_all(&profile.jar)
+	cookies.clear_all(&world.profile.jar)
 	open_cache(t, false)
 	return {t, env(t, testenv.url(A + "/page.html"))}
 }
@@ -126,18 +126,18 @@ open_cache :: proc(t: ^testing.T, disk: bool) {
 	s := httpcache.settings_default()
 	defer httpcache.settings_destroy(&s)
 	s.index_flush_ms = 0
-	profile.cache = httpcache.create(&loop, s, disk ? CACHE_DIR : "")
-	wait_until(t, "the cache's index", profile.cache, httpcache.is_ready)
+	world.profile.cache = httpcache.create(&world.loop, s, disk ? CACHE_DIR : "")
+	wait_until(t, "the cache's index", world.profile.cache, httpcache.is_ready)
 }
 
 close_cache :: proc() {
-	if profile.cache == nil { return }
-	httpcache.destroy(profile.cache)
-	profile.cache = nil
+	if world.profile.cache == nil { return }
+	httpcache.destroy(world.profile.cache)
+	world.profile.cache = nil
 }
 
 writes_settled :: proc(t: ^testing.T) {
-	wait_until(t, "the cache's writes", profile.cache, proc(c: ^httpcache.Cache) -> bool {
+	wait_until(t, "the cache's writes", world.profile.cache, proc(c: ^httpcache.Cache) -> bool {
 		for e := httpcache.first(c); e != nil; e = e.next { if e.disk == .Writing { return false } }
 		return true
 	})
@@ -145,7 +145,7 @@ writes_settled :: proc(t: ^testing.T) {
 
 // The entry stored for this address.
 entry_of :: proc(address: string) -> ^httpcache.Entry {
-	for e := httpcache.first(profile.cache); e != nil; e = e.next { if e.url == address { return e } }
+	for e := httpcache.first(world.profile.cache); e != nil; e = e.next { if e.url == address { return e } }
 	return nil
 }
 
@@ -165,7 +165,7 @@ cache_freshness :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	begin(t, .Net)
 	defer end()
-	w := world(t)
+	w := cache_world(t)
 	defer close_cache()
 
 	u, k := res("fresh", "cc=max-age%3D60")
@@ -197,7 +197,7 @@ cache_what_is_never_stored_or_served :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	begin(t, .Net)
 	defer end()
-	w := world(t)
+	w := cache_world(t)
 	defer close_cache()
 
 	u, k := res("nostore", "cc=no-store")
@@ -223,7 +223,7 @@ cache_revalidation :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	begin(t, .Net)
 	defer end()
-	w := world(t)
+	w := cache_world(t)
 	defer close_cache()
 
 	u, k := res("etag", "cc=max-age%3D0&etag=v1")
@@ -248,7 +248,7 @@ cache_a_304_makes_the_stored_response_fresh_again :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	begin(t, .Net)
 	defer end()
-	w := world(t)
+	w := cache_world(t)
 	defer close_cache()
 
 	u, k := res("refresh", "cc=max-age%3D2&etag=r")
@@ -265,7 +265,7 @@ cache_vary :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	begin(t, .Net)
 	defer end()
-	w := world(t)
+	w := cache_world(t)
 	defer close_cache()
 
 	u, k := res("vary", "cc=max-age%3D60&vary=X-Test")
@@ -290,7 +290,7 @@ cache_modes :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	begin(t, .Net)
 	defer end()
-	w := world(t)
+	w := cache_world(t)
 	defer close_cache()
 
 	u, k := res("modes", "cc=max-age%3D60&etag=m")
@@ -315,8 +315,8 @@ cache_modes :: proc(t: ^testing.T) {
 	u3, _ := res("notcached", "cc=max-age%3D60")
 	r = get(w, u3, .Only_If_Cached, mode = .Same_Origin)
 	testing.expect(t, r.failed && r.error == .Not_Cached, "only-if-cached: nothing stored is a network error")
-	testing.expect(t, fetch.cache_peek(&loader, {url = u, mode = .Cors, credentials = .Same_Origin, initiator = w.doc}) == .Fresh, "cache_peek: a fresh response")
-	testing.expect(t, fetch.cache_peek(&loader, {url = u3, mode = .Cors, credentials = .Same_Origin, initiator = w.doc}) == .None, "cache_peek: nothing")
+	testing.expect(t, fetch.cache_peek(&world.loader, {url = u, mode = .Cors, credentials = .Same_Origin, initiator = w.doc}) == .Fresh, "cache_peek: a fresh response")
+	testing.expect(t, fetch.cache_peek(&world.loader, {url = u3, mode = .Cors, credentials = .Same_Origin, initiator = w.doc}) == .None, "cache_peek: nothing")
 }
 
 @(test)
@@ -324,7 +324,7 @@ cache_partitions :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	begin(t, .Net)
 	defer end()
-	w := world(t)
+	w := cache_world(t)
 	defer close_cache()
 
 	u, k := res("partition", "cc=max-age%3D60&acao=*")
@@ -341,7 +341,7 @@ cache_a_post_invalidates_the_address :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	begin(t, .Net)
 	defer end()
-	w := world(t)
+	w := cache_world(t)
 	defer close_cache()
 
 	u, k := res("invalidate", "cc=max-age%3D60")
@@ -357,16 +357,16 @@ cache_cookies_are_not_replayed :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	begin(t, .Net)
 	defer end()
-	w := world(t)
+	w := cache_world(t)
 	defer close_cache()
-	defer cookies.clear_all(&profile.jar)
+	defer cookies.clear_all(&world.profile.jar)
 
 	u, _ := res("cookie", "cc=max-age%3D60&cookie=1")
 	get(w, u, mode = .Navigate)
-	got := cookies.header_for(&profile.jar, {url = w.doc.location, site_context = .Same_Site, http_api = true, now_ms = fetch.now_ms()}, context.temp_allocator)
-	cookies.clear_all(&profile.jar)
+	got := cookies.header_for(&world.profile.jar, {url = w.doc.location, site_context = .Same_Site, http_api = true, now_ms = fetch.now_ms()}, context.temp_allocator)
+	cookies.clear_all(&world.profile.jar)
 	r := get(w, u, mode = .Navigate)
-	again := cookies.header_for(&profile.jar, {url = w.doc.location, site_context = .Same_Site, http_api = true, now_ms = fetch.now_ms()}, context.temp_allocator)
+	again := cookies.header_for(&world.profile.jar, {url = w.doc.location, site_context = .Same_Site, http_api = true, now_ms = fetch.now_ms()}, context.temp_allocator)
 	testing.expect(t, strings.contains(got, "cachetest=1") && r.cache == .Hit && again == "", "Set-Cookie: set by the network response only, never replayed from the cache")
 }
 
@@ -375,7 +375,7 @@ cache_cors_is_checked_on_a_stored_response :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	begin(t, .Net)
 	defer end()
-	w := world(t)
+	w := cache_world(t)
 	defer close_cache()
 
 	// stored from a no-cors request to another site (opaque), then asked in cors mode: the stored fields have no
@@ -393,7 +393,7 @@ cache_stale_while_revalidate :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	begin(t, .Net)
 	defer end()
-	w := world(t)
+	w := cache_world(t)
 	defer close_cache()
 
 	// (HTTP dates have whole seconds: a response may be a second old when it arrives)
@@ -418,7 +418,7 @@ cache_redirects_are_followed_from_the_cache :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	begin(t, .Net)
 	defer end()
-	w := world(t)
+	w := cache_world(t)
 	defer close_cache()
 
 	target, tk := res("redirect-target", "cc=max-age%3D60")
@@ -464,5 +464,5 @@ cache_on_disk_across_a_restart :: proc(t: ^testing.T) {
 	r3 := get(w, u2)
 	n2, _ := count(w, k2)
 	testing.expect(t, damaged != "" && r3.cache == .Network && !r3.failed && n2 == 2, "a damaged file is ignored: fetched again")
-	testing.expect(t, profile.cache.stats.disk_failures == 1, "... and counted")
+	testing.expect(t, world.profile.cache.stats.disk_failures == 1, "... and counted")
 }

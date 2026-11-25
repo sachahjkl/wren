@@ -60,7 +60,7 @@ CREATED :: "created true public-key true true true true webauthn.create AQIDBAUG
 
 // The virtual authenticator, empty, for this test's pages. After `begin`.
 authenticator :: proc() {
-	settings.authn.virtual = true
+	world.settings.authn.virtual = true
 	webauthn.virtual_reset()
 }
 
@@ -275,7 +275,7 @@ webauthn_aborts :: proc(t: ^testing.T) {
 	a_credential(pr)
 	s := ask(pr, "pre ", `navigator.credentials.get({ signal: AbortSignal.abort('stop'), publicKey: { challenge: bytes('x') } }).then(() => wrenTest.note('pre ok'), (e) => wrenTest.note('pre ' + e))`)
 	check(pr, s == "pre stop", fmt.tprintf("an aborted signal: the reason (%s)", s))
-	settings.authn.virtual_delay_ms = USER_NEVER_ANSWERS_MS
+	world.settings.authn.virtual_delay_ms = USER_NEVER_ANSWERS_MS
 	click(pr)
 	run(pr, `window.ac = new AbortController(); navigator.credentials.get({ signal: ac.signal, publicKey: { challenge: bytes('x'), rpId: 'example.com' } }).then(() => wrenTest.note('abort resolved'), (e) => wrenTest.note('abort ' + (e === 'gone')))`)
 	wait_pending(pr)
@@ -300,8 +300,8 @@ webauthn_the_lifetime_timer :: proc(t: ^testing.T) {
 	authenticator()
 	pr := open(t)
 	a_credential(pr)
-	settings.authn.virtual_delay_ms = USER_NEVER_ANSWERS_MS
-	settings.authn.timeout_min_ms = LIFETIME_MIN_MS
+	world.settings.authn.virtual_delay_ms = USER_NEVER_ANSWERS_MS
+	world.settings.authn.timeout_min_ms = LIFETIME_MIN_MS
 	click(pr)
 	s := ask(pr, "timer ", `navigator.credentials.get({ publicKey: { challenge: bytes('x'), rpId: 'example.com', timeout: 1 } }).then(() => wrenTest.note('timer ok'), (e) => wrenTest.note('timer err ' + e.name))`)
 	check(pr, s == "timer err NotAllowedError", fmt.tprintf("the lifetime timer (raised to security.webauthn.timeout.min_ms), the user never answering: NotAllowedError (%s)", s))
@@ -316,7 +316,7 @@ webauthn_the_user_declines :: proc(t: ^testing.T) {
 	authenticator()
 	pr := open(t)
 	a_credential(pr)
-	settings.authn.virtual_mode = .Decline
+	world.settings.authn.virtual_mode = .Decline
 	click(pr)
 	s := ask(pr, "decline ", `navigator.credentials.get({ publicKey: { challenge: bytes('x'), rpId: 'example.com' } }).then(...show('decline'))`)
 	check(pr, strings.has_prefix(s, "decline err NotAllowedError"), fmt.tprintf("the user declines: NotAllowedError (%s)", s))
@@ -374,7 +374,7 @@ webauthn_an_abort_the_platform_ignores :: proc(t: ^testing.T) {
 	pr := open(t)
 	a_credential(pr)
 	testing.expect(t, ceremonies_ended(t), "the first ceremony's thread is joined: the count below is this one's")
-	settings.authn.virtual_mode, settings.authn.virtual_delay_ms, settings.authn.cancel_grace_ms = .Stuck, USER_NEVER_ANSWERS_MS, CANCEL_GRACE_MS
+	world.settings.authn.virtual_mode, world.settings.authn.virtual_delay_ms, world.settings.authn.cancel_grace_ms = .Stuck, USER_NEVER_ANSWERS_MS, CANCEL_GRACE_MS
 	click(pr)
 	run(pr, `window.ac2 = new AbortController(); navigator.credentials.get({ signal: ac2.signal, publicKey: { challenge: bytes('x'), rpId: 'example.com' } }).then(() => wrenTest.note('stuck ok'), (e) => wrenTest.note('stuck ' + e))`)
 	// (the abort comes once the dialog is up: earlier, the ceremony's thread would stop before showing it)
@@ -398,7 +398,7 @@ webauthn_the_page_closes_during_a_ceremony :: proc(t: ^testing.T) {
 	pr := open(t)
 	a_credential(pr)
 	testing.expect(t, ceremonies_ended(t), "the first ceremony's thread is joined: the count below is this one's")
-	settings.authn.virtual_delay_ms = USER_NEVER_ANSWERS_MS
+	world.settings.authn.virtual_delay_ms = USER_NEVER_ANSWERS_MS
 	click(pr)
 	run(pr, `navigator.credentials.get({ publicKey: { challenge: bytes('x'), rpId: 'example.com' } })`)
 	wait_pending(pr)
@@ -439,7 +439,7 @@ webauthn_turned_off :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	authenticator()
-	settings.authn.enabled = false
+	world.settings.authn.enabled = false
 	pr := open(t, "https://login.example.com/")
 	s := ask(pr, "off ", `wrenTest.note('off ' + [typeof PublicKeyCredential, typeof navigator.credentials].join(' '))`)
 	check(pr, s == "off undefined object", fmt.tprintf("security.webauthn.enabled off: no PublicKeyCredential (%s)", s))

@@ -10,10 +10,7 @@ package apiconformance
 import "core:fmt"
 import "core:os"
 import "core:strings"
-import "wb:base"
-import "wb:fetch"
-import "wb:host"
-import "wb:net"
+import "wb:embed"
 import "wb:page"
 import "wb:wasm"
 import "wb:testenv"
@@ -26,23 +23,13 @@ main :: proc() {
 	image, err := os.read_entire_file(os.args[1], context.allocator)
 	if err != nil { fmt.eprintln("cannot read the module"); os.exit(2) }
 
-	loop: host.Loop
-	pages: page.Pages
-	page.bind(&pages)
-	client: net.Client
-	blocking: host.Blocking_Pool
-	host.loop_init(&loop)
-	if !net.client_init(&client, &loop) { fmt.eprintln("net init failed"); os.exit(2) }
-	host.blocking_init(&blocking, &loop, 1)
-	profile := fetch.profile_make()
-	loader: fetch.Loader
-	fetch.loader_init(&loader, &loop, &client, &blocking, &profile)
-	settings := page.settings_default()
-	wasm.configure_from_args(os.args[1:])
-	if !page.register_imports() { fmt.eprintln("register failed"); os.exit(2) }
-	process := base.scope_make("process")
+	world: embed.World
+	if !embed.world_init(&world, {blocking_threads = 1, wasm_args = os.args[1:]}) {
+		fmt.eprintln("world init failed")
+		os.exit(2)
+	}
 
-	p := page.page_create(&loop, &loader, &settings, process, "http://127.0.0.1:8765/conformance.html", console)
+	p := page.page_create(&world.loop, &world.loader, &world.settings, world.process, "http://127.0.0.1:8765/conformance.html", console)
 	inst, ok, lerr := page.load_module(p, image, "apiconformance")
 	if !ok { fmt.eprintln("cannot load the guest:", lerr); os.exit(2) }
 
@@ -76,18 +63,9 @@ main :: proc() {
 	r, res := wasm.call_i32(inst, "case_count")
 	if res != .Ok || int(r) != len(CASES) { fmt.println("FAIL the guest and the table disagree"); failures += 1 }
 	page.page_close(p)
-	base.scope_close(process)
-	page.settings_destroy(&settings)
 	delete(fns)
 	delete(image)
-	page.pages_shutdown()
-	page.process_shutdown()
-	fetch.loader_destroy(&loader)
-	host.blocking_destroy(&blocking)
-	net.client_destroy(&client)
-	fetch.profile_destroy(&profile)
-	page.discard_page_tasks(&loop)
-	host.loop_destroy(&loop)
+	embed.world_destroy(&world)
 	failures += testenv.mem_check("apiconformance")
 	fmt.printf("%d failure(s)\n", failures)
 	os.exit(failures == 0 ? 0 : 1)

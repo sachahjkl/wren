@@ -13,9 +13,9 @@ import "core:strconv"
 import "core:strings"
 import "core:time"
 import "wb:base"
+import "wb:embed"
 import "wb:fetch"
 import "wb:host"
-import "wb:net"
 
 Stats :: struct {
 	url:     string,
@@ -27,11 +27,7 @@ Stats :: struct {
 	done:    bool,
 }
 
-loop:     host.Loop
-client:   net.Client
-blocking: host.Blocking_Pool
-profile:  fetch.Profile
-loader:   fetch.Loader
+world:    embed.World
 opts:     struct { collect: bool, many: int, cancel_ms: f64, slow_ms: int, max_body: int, print: bool, method, body, header: string }
 pending:  int
 failures: int
@@ -66,8 +62,8 @@ on_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 
 cancel_task :: proc(data: rawptr) {
 	h := (^base.Handle)(data)^
-	ok := fetch.cancel(&loader, h)
-	fmt.printf("cancel -> %v, in flight now: %d\n", ok, fetch.in_flight(&loader))
+	ok := fetch.cancel(&world.loader, h)
+	fmt.printf("cancel -> %v, in flight now: %d\n", ok, fetch.in_flight(&world.loader))
 	if ok { pending -= 1 }
 }
 
@@ -91,11 +87,10 @@ main :: proc() {
 	}
 	if len(urls) == 0 { fmt.eprintln("usage: fetch [--collect] [--many N] [--cancel-ms MS] [--slow-ms MS] [--max-body B] [--print] [--method M] [--body T] [--header \"N: v\"] URL..."); os.exit(2) }
 
-	host.loop_init(&loop)
-	if !net.client_init(&client, &loop) { fmt.eprintln("client_init failed"); os.exit(1) }
-	host.blocking_init(&blocking, &loop, 2)
-	profile = fetch.profile_make()
-	fetch.loader_init(&loader, &loop, &client, &blocking, &profile)
+	if !embed.world_init(&world, {network_only = true, blocking_threads = 2}) {
+		fmt.eprintln("world_init failed")
+		os.exit(1)
+	}
 
 	pairs: [dynamic]fetch.Header_Pair
 	if opts.header != "" {
@@ -104,14 +99,14 @@ main :: proc() {
 		}
 	}
 
-	scope := base.scope_make("session")
+	scope := base.scope_make("session", world.process)
 	handles: [dynamic]base.Handle
 	for u in urls {
 		for _ in 0 ..< opts.many {
 			s := new(Stats)
 			s.url = u
 			s.started = time.tick_now()
-			h := fetch.start(&loader, {
+			h := fetch.start(&world.loader, {
 				request = {
 					url = u, method = opts.method, headers = pairs[:], body = transmute([]byte)opts.body,
 					mode = .Navigate, credentials = .Include, destination = .Document, max_body = opts.max_body,
@@ -123,20 +118,16 @@ main :: proc() {
 		}
 	}
 	if opts.cancel_ms > 0 {
-		for &h in handles { host.set_timer(&loop, opts.cancel_ms, 0, cancel_task, &h) }
+		for &h in handles { host.set_timer(&world.loop, opts.cancel_ms, 0, cancel_task, &h) }
 	}
 
 	deadline := time.tick_now()
-	for pending > 0 && time.duration_seconds(time.tick_since(deadline)) < 120 { host.loop_wait(&loop, 100) }
-	fmt.printf("pending=%d in_flight=%d failures=%d\n", pending, fetch.in_flight(&loader), failures)
+	for pending > 0 && time.duration_seconds(time.tick_since(deadline)) < 120 { host.loop_wait(&world.loop, 100) }
+	fmt.printf("pending=%d in_flight=%d failures=%d\n", pending, fetch.in_flight(&world.loader), failures)
 
 	// Closing the scope must leave nothing behind, even for requests that are still running.
 	base.scope_close(scope)
-	fmt.printf("after scope close: in_flight=%d\n", fetch.in_flight(&loader))
-	fetch.loader_destroy(&loader)
-	host.blocking_destroy(&blocking)
-	net.client_destroy(&client)
-	fetch.profile_destroy(&profile)
-	host.loop_destroy(&loop)
+	fmt.printf("after scope close: in_flight=%d\n", fetch.in_flight(&world.loader))
+	embed.world_destroy(&world)
 	os.exit(failures > 0 ? 1 : 0)
 }

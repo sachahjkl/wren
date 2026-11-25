@@ -127,7 +127,7 @@ open :: proc(t: ^testing.T, s: ^Site) {
 		for id in IDS[:EVENTS_OF_IDS] { if !strings.contains(ev, fmt.tprintf("%s:", id)) { return false } }
 		return true
 	})
-	wait(s.pr, "the end of the page's requests", proc(pr: ^Probe) -> bool { return fetch.in_flight(&loader) == 0 })
+	wait(s.pr, "the end of the page's requests", proc(pr: ^Probe) -> bool { return fetch.in_flight(&world.loader) == 0 })
 	drain()
 }
 
@@ -281,7 +281,7 @@ images_lazy_loading :: proc(t: ^testing.T) {
 	page.images_set_distance(s.pr.p, node(s.pr, "lazy"), FAR_PX)
 	turn(s.pr)
 	drain()
-	check(s.pr, fetch.in_flight(&loader) == 0 && count(t, "/images/f/noise.png") == 0, "5000 px away: still not loaded")
+	check(s.pr, fetch.in_flight(&world.loader) == 0 && count(t, "/images/f/noise.png") == 0, "5000 px away: still not loaded")
 	near_the_viewport(&s)
 	check(s.pr, count(t, "/images/f/noise.png") == 1 && call(&s, "natural_width", id_index("lazy")) == NOISE_NATURAL, "near the viewport: loaded")
 	shut(&s, min_checks = 4)
@@ -317,7 +317,7 @@ images_pixels_for_the_painter :: proc(t: ^testing.T) {
 	open(t, &s)
 	near_the_viewport(&s)
 	page.images_paint_begin()
-	now := f64(host.now_ns(&loop)) / 1e6
+	now := f64(host.now_ns(&world.loop)) / 1e6
 	fp := frame_at(s.pr, state(s.pr, "simple").id, now, 8, 6)
 	check(s.pr, fp.ok && fp.width == 8 && fp.height == 6 && fp.stride == 32, "decoded on request")
 	check(s.pr, fp.ok && fp.pixels[0] == 255 && fp.pixels[1] == 0 && fp.pixels[2] == 0 && fp.pixels[3] == 255, "RGBA order, straight alpha")
@@ -391,7 +391,7 @@ images_closing_a_page_cuts_its_download :: proc(t: ^testing.T) {
 	close_page(pr)
 	cut := wait_until(t, "cut", t, proc(t: ^testing.T) -> bool { return count(t, "slow-aborted") == 1 })
 	testing.expect(t, cut, "closing the page cut the download")
-	idle := wait_until(t, "idle", 0, proc(_: int) -> bool { return fetch.in_flight(&loader) == 0 })
+	idle := wait_until(t, "idle", 0, proc(_: int) -> bool { return fetch.in_flight(&world.loader) == 0 })
 	testing.expect(t, idle, "no request left")
 	no_cache_left(t)
 }
@@ -464,7 +464,7 @@ images_200_of_a_megapixel :: proc(t: ^testing.T) {
 	for i in 0 ..< MANY { ids[i] = state(pr, fmt.tprintf("g%d", i)).id }
 
 	// the painter scrolling down the page: each frame shows a few images at their natural size
-	scroll := Scrolling{pr = pr, ids = ids[:], now = f64(host.now_ns(&loop)) / 1e6}
+	scroll := Scrolling{pr = pr, ids = ids[:], now = f64(host.now_ns(&world.loop)) / 1e6}
 	shown := wait_until(t, "every image", &scroll, proc(s: ^Scrolling) -> bool {
 		page.images_paint_begin()
 		next := s.ids[s.shown:min(s.shown + MANY_PER_FRAME, MANY)]
@@ -472,7 +472,7 @@ images_200_of_a_megapixel :: proc(t: ^testing.T) {
 		for id in next { if !page.frame_pixels(id, s.now, MANY_PX, MANY_PX).ok { all = false } }
 		if all { s.shown += len(next) }
 		turn_started := time.tick_now()
-		host.run_ready(&loop)
+		host.run_ready(&world.loop)
 		turn(s.pr)
 		s.longest = max(s.longest, time.tick_since(turn_started))
 		return s.shown >= MANY

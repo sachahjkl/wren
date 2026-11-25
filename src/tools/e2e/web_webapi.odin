@@ -90,7 +90,7 @@ call :: proc(pr: ^Probe, inst: ^wasm.Instance, name: cstring, args: ..i32) -> i3
 	return i32(argv[0])
 }
 
-loop_ms :: proc() -> f64 { return f64(host.now_ns(&loop)) / 1e6 }
+loop_ms :: proc() -> f64 { return f64(host.now_ns(&world.loop)) / 1e6 }
 
 @(test)
 webapi_animation_frames_microtasks_timers :: proc(t: ^testing.T) {
@@ -129,7 +129,7 @@ webapi_visibility_and_background_throttling :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	settings.web.background_align_ms = BACKGROUND_GRID_MS
+	world.settings.web.background_align_ms = BACKGROUND_GRID_MS
 	pr, inst, ok := open(t, testenv.url(ADDRESS), "tab-1")
 	if !ok { return }
 	p := pr.p
@@ -163,7 +163,7 @@ webapi_abort_controller_and_fetch :: proc(t: ^testing.T) {
 	check(pr, attr(p, "data-pre-aborted") == fmt.tprintf("%d", int(fetch.Error_Kind.Aborted)), "an already aborted signal fails the fetch at once")
 	check(pr, attr(p, "data-timeout") == "-17", "AbortSignal.timeout aborts with TimeoutError")
 	check(pr, attr(p, "data-any") == "custom reason", "AbortSignal.any follows its source with its reason")
-	check(pr, wait_until(t, "the requests' end", 0, proc(_: int) -> bool { return fetch.in_flight(&loader) == 0 && net.in_flight(&client) == 0 }), "aborted requests are cancelled in the network stack")
+	check(pr, wait_until(t, "the requests' end", 0, proc(_: int) -> bool { return fetch.in_flight(&world.loader) == 0 && net.in_flight(&world.client) == 0 }), "aborted requests are cancelled in the network stack")
 	close_page(pr, min_checks = 7)
 }
 
@@ -242,7 +242,7 @@ webapi_web_storage :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	settings.web.storage_quota = STORAGE_QUOTA
+	world.settings.web.storage_quota = STORAGE_QUOTA
 	storage := storage_world()
 	pr, inst, ok := open(t, testenv.url(ADDRESS), "tab-1", storage)
 	if !ok { return }
@@ -305,10 +305,10 @@ webapi_closing_and_restart :: proc(t: ^testing.T) {
 	check(pr, call(pr, inst, "storage_probe", STORAGE_CLEAR) == 1, "the profile's area is cleared")
 	check(pr, call(pr, inst, "storage_probe", STORAGE_WRITE) == 1, "setItem")
 	close_page(pr, min_checks = 3)
-	testing.expect(t, wait_until(t, "the requests of the closed page", 0, proc(_: int) -> bool { return fetch.in_flight(&loader) == 0 }), "no request left")
+	testing.expect(t, wait_until(t, "the requests of the closed page", 0, proc(_: int) -> bool { return fetch.in_flight(&world.loader) == 0 }), "no request left")
 	page.storage_manager_destroy(storage)
 	testing.expect(t, os.exists(fmt.tprintf("%s/storage/http_3A_2F_2F127.0.0.1_3A%d.wls", storage_dir(), testenv.port())), "localStorage was written to the profile")
-	page.storage_manager_init(storage, &loop, &blocking, storage_dir())
+	page.storage_manager_init(storage, &world.loop, &world.blocking, storage_dir())
 	after, after_inst, after_ok := open(t, testenv.url(RESTART_ADDRESS), "tab-9", storage)
 	if !after_ok { return }
 	check(after, call(after, after_inst, "storage_probe", STORAGE_READ) == STORED_VALUE_BYTES, "localStorage survives a restart of the storage manager")

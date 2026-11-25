@@ -79,7 +79,7 @@ Painted :: struct {
 
 // Pixels of entry `id` drawn w x h, waiting for the decoding threads.
 pixels :: proc(pr: ^Probe, id: u64, w, h: int, loc := #caller_location) -> page.Frame_Pixels {
-	w := Painted{pr = pr, id = id, now = f64(host.now_ns(&loop)) / 1e6, w = w, h = h}
+	w := Painted{pr = pr, id = id, now = f64(host.now_ns(&world.loop)) / 1e6, w = w, h = h}
 	wait_until(pr.t, "the pixels", &w, proc(w: ^Painted) -> bool {
 		page.images_paint_begin()
 		w.fp = page.frame_pixels(w.id, w.now, w.w, w.h, DECODE_PRIORITY)

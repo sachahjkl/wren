@@ -21,17 +21,15 @@ import "core:testing"
 import "core:time"
 import "wb:base"
 import "wb:e2e"
+import "wb:embed"
 import "wb:fetch"
 import "wb:host"
-import "wb:js"
-import js_code "wb:js/image/code"
 import lay "wb:layout"
 import "wb:net"
 import "wb:page"
 import "wb:testenv"
 import "wb:tools/testhost"
 import "wb:url"
-import "wb:wasm"
 
 BLOCKING_THREADS :: 2
 SCRIPT_CACHE_BYTES :: 16 << 20
@@ -55,7 +53,6 @@ Level :: enum {
 }
 
 world_level: Level
-storage_made: bool
 current: ^testing.T
 began: time.Tick                      // of the test that runs, and its name: WREN_E2E_TRACE says how long each took
 began_name: string
@@ -63,15 +60,7 @@ began_name: string
 // process fails at once instead of waiting out its own limit on it: a broken world ends its step in seconds, not at the step's limit.
 broken: string
 
-loop:     host.Loop
-client:   net.Client
-blocking: host.Blocking_Pool
-profile:  fetch.Profile
-loader:   fetch.Loader
-settings: page.Settings            // a test's own, from `begin`, at the default values
-process:  ^base.Scope
-storage:  page.Storage_Manager     // (made by `storage_world`)
-pages:    page.Pages               // what the pages share (bound to the thread of each test)
+world: embed.World
 
 // The first thing a test does, after `context.allocator = base.process_allocator()` (what the Wasm imports make and free goes through
 // the process's allocator: core:testing's tracker of the test does not know that memory; the process's finds the leaks in the last test).
@@ -80,31 +69,27 @@ begin :: proc(t: ^testing.T, level := Level.Pages, loc := #caller_location) {
 	began, began_name = time.tick_now(), loc.procedure
 	current = t
 	testing.set_fail_timeout(t, TEST_LIMIT, loc)
-	page.bind(&pages)
 	if world_level == .None {
 		world_level = .Net
-		host.loop_init(&loop)
-		testing.expect(t, net.client_init(&client, &loop), "net init", loc = loc)
-		host.blocking_init(&blocking, &loop, BLOCKING_THREADS)
-		profile = fetch.profile_make()
-		fetch.loader_init(&loader, &loop, &client, &blocking, &profile)
+		testing.expect(t, embed.world_init(&world, {network_only = true, blocking_threads = BLOCKING_THREADS}), "world init", loc = loc)
 	}
 	if level == .Pages && world_level == .Net {
 		world_level = .Pages
-		wasm.shipped_set(js_code.CODE)   // (as the browser does: the image is not compiled in the process)
-		wasm.configure_from_args(nil)
-		testing.expect(t, page.register_imports(), "imports", loc = loc)
-		js.cache_start({memory_bytes = SCRIPT_CACHE_BYTES, min_source_bytes = 0})
-		process = base.scope_make("process")
+		testing.expect(t, embed.world_enable_pages(&world, {
+			configure_wasm = true,
+			shipped_js     = true,
+			js_cache_bytes = SCRIPT_CACHE_BYTES,
+		}), "world enable pages", loc = loc)
 	}
-	settings = page.settings_default()
+	embed.world_bind(&world)
+	embed.world_reset_settings(&world)
 }
 
 // With `defer`, after `begin`.
 end :: proc() {
 	if _, trace := os.lookup_env("WREN_E2E_TRACE", context.temp_allocator); trace { fmt.eprintfln("web %9.1f ms  %s", time.duration_milliseconds(time.tick_since(began)), began_name) }
 	drain()
-	page.settings_destroy(&settings)
+	embed.world_clear_settings(&world)
 	current = nil
 }
 
@@ -113,12 +98,11 @@ storage_dir :: proc() -> string { return fmt.tprintf("%s/%d", STORAGE_ROOT, os.g
 
 // The profile's stores for a page's embedder.
 storage_world :: proc() -> ^page.Storage_Manager {
-	if !storage_made {
-		storage_made = true
+	if !embed.world_has_storage(&world) {
 		testenv.remove_tree(storage_dir())   // (a process of the same number, long gone, may have been killed before its end)
-		page.storage_manager_init(&storage, &loop, &blocking, storage_dir())
+		embed.world_enable_storage(&world, storage_dir())
 	}
-	return &storage
+	return embed.world_storage(&world)
 }
 
 // The test server, listening, in this process; testenv.url moves addresses to its block, and it has forgotten what it counted.
@@ -129,7 +113,7 @@ wait_until :: proc(t: ^testing.T, what: string, data: $T, ready: proc(data: T) -
 	start := time.tick_now()
 	for !ready(data) {
 		if time.duration_seconds(time.tick_since(start)) > seconds { world_timeout(t, fmt.tprintf("timeout waiting for %s", what), loc) }
-		host.loop_wait(&loop, LOOP_LOOK_MS)
+		host.loop_wait(&world.loop, LOOP_LOOK_MS)
 	}
 	return true
 }
@@ -148,7 +132,7 @@ Get :: struct { done: bool, body: string }
 // failed.
 http_get :: proc(t: ^testing.T, u: string) -> string {
 	g := new(Get, context.temp_allocator)
-	fetch.start(&loader, {
+	fetch.start(&world.loader, {
 		request = {url = u, mode = .Cors, credentials = .Omit},
 		on_event = proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			g := (^Get)(user)
@@ -168,7 +152,7 @@ http_get :: proc(t: ^testing.T, u: string) -> string {
 // The same from the network client alone (no page, no fetch policy).
 net_get :: proc(t: ^testing.T, u: string) -> string {
 	g := new(Get, context.temp_allocator)
-	net.fetch(&client, {url = u, collect = true, user = g, on_event = proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
+	net.fetch(&world.client, {url = u, collect = true, user = g, on_event = proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 		g := (^Get)(user)
 		#partial switch ev.kind {
 		case .Done:   g.done, g.body = true, strings.clone(string(ev.data), base.process_context().temp_allocator)
@@ -192,16 +176,16 @@ FAKE_TEXT :: lay.Text_Api{font = fake_font, width = fake_width, metrics = fake_m
 // loop, or must not. The network does not wait for it.
 virtual_clock :: proc(t: ^testing.T) {
 	@(static) clock: host.Virtual_Clock
-	clock.now_ns = host.now_ns(&loop)
-	host.clock_virtual(&loop, &clock)
-	testing.cleanup(t, proc(_: rawptr) { loop.virtual = nil }, nil)
+	clock.now_ns = host.now_ns(&world.loop)
+	host.clock_virtual(&world.loop, &clock)
+	testing.cleanup(t, proc(_: rawptr) { world.loop.virtual = nil }, nil)
 }
 
 // Runs what is ready now (posted tasks, due timers), turn after turn, until nothing is.
 drain :: proc() {
 	for _ in 0 ..< DRAIN_MAX_TURNS {
-		if host.next_timeout_ms(&loop) != 0 { return }
-		host.loop_wait(&loop, 0)
+		if host.next_timeout_ms(&world.loop) != 0 { return }
+		host.loop_wait(&world.loop, 0)
 	}
 }
 
@@ -227,7 +211,7 @@ page_make :: proc(t: ^testing.T, name, address: string) -> ^Probe {
 	pr := new(Probe)
 	pr.t = t
 	pr.section.name = name
-	pr.p = page.page_create(&loop, &loader, &settings, process, address, console, pr)
+	pr.p = page.page_create(&world.loop, &world.loader, &world.settings, world.process, address, console, pr)
 	testhost.attach(&pr.section, pr.p)
 	return pr
 }
@@ -299,26 +283,9 @@ zz_the_process_ends_with_nothing_left :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	// (a world left in the middle of a test cannot be undone: its pages and its loop hold what never came, and its teardown would wait for them)
 	if broken != "" { testing.expectf(t, false, "%s ran out of time: the world was not undone, its leaks are not counted", broken); return }
-	if world_level >= .Pages { base.scope_close(process) }
-	if world_level >= .Net { host.blocking_settle(&blocking) }
-	if storage_made {
-		page.storage_manager_destroy(&storage)
-		host.blocking_settle(&blocking)
-		testenv.remove_tree(storage_dir())
-	}
-	if world_level >= .Pages {
-		page.bind(&pages)
-		page.pages_shutdown()
-		page.process_shutdown()
-	}
-	if world_level >= .Net {
-		fetch.loader_destroy(&loader)
-		host.blocking_destroy(&blocking)
-		net.client_destroy(&client)
-		fetch.profile_destroy(&profile)
-		page.discard_page_tasks(&loop)
-		host.loop_destroy(&loop)
-	}
+	had_storage := embed.world_has_storage(&world)
+	embed.world_destroy(&world)
+	if had_storage { testenv.remove_tree(storage_dir()) }
 	world_level = .None
 	testing.expect_value(t, testenv.mem_check("the web tests"), 0)
 	all := testhost.totals

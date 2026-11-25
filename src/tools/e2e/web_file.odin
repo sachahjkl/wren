@@ -49,7 +49,7 @@ on_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 
 run_fetch :: proc(t: ^testing.T, d: fetch.Request_Desc) -> Result {
 	r := new(Result, context.temp_allocator)
-	fetch.start(&loader, {request = d, on_event = on_event, user = r, collect = true})
+	fetch.start(&world.loader, {request = d, on_event = on_event, user = r, collect = true})
 	if !wait_until(t, d.url, r, proc(r: ^Result) -> bool { return r.done }) { r.failed, r.detail = true, "timeout" }
 	return r^
 }
@@ -178,7 +178,7 @@ file_preferences :: proc(t: ^testing.T) {
 	begin(t, .Net)
 	defer end()
 	root := site()
-	files := &profile.settings.files
+	files := &world.profile.settings.files
 	defer {
 		files.listing, files.show_hidden = true, false
 		files.max_entries = DEFAULT_MAX_ENTRIES

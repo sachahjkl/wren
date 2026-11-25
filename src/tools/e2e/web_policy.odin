@@ -82,7 +82,7 @@ on_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 // Runs a request and waits for its end.
 run_fetch :: proc(t: ^testing.T, d: fetch.Request_Desc) -> Result {
 	r := new(Result, context.temp_allocator)
-	fetch.start(&loader, {request = d, on_event = on_event, user = r, collect = true})
+	fetch.start(&world.loader, {request = d, on_event = on_event, user = r, collect = true})
 	if !wait_until(t, d.url, r, proc(r: ^Result) -> bool { return r.done }) { r.failed, r.detail = true, "timeout" }
 	last = r^
 	return r^
@@ -113,14 +113,14 @@ echo :: proc(r: Result) -> map[string]string {
 // Nothing of the profile's from another test: no cookie, no preflight remembered, third-party cookies blocked. The next test finds it so too.
 fresh_profile :: proc(t: ^testing.T) {
 	forget :: proc(_: rawptr) {
-		cookies.clear_all(&profile.jar)
-		fetch.preflight_cache_destroy(&profile.preflights)
-		profile.preflights = fetch.preflight_cache_make()
+		cookies.clear_all(&world.profile.jar)
+		fetch.preflight_cache_destroy(&world.profile.preflights)
+		world.profile.preflights = fetch.preflight_cache_make()
 	}
 	forget(nil)
-	third_party := profile.settings.third_party_cookies
-	profile.settings.third_party_cookies = .Block
-	testing.cleanup(t, proc(ptr: rawptr) { profile.settings.third_party_cookies = fetch.Third_Party_Cookies(uintptr(ptr)) }, rawptr(uintptr(third_party)))
+	third_party := world.profile.settings.third_party_cookies
+	world.profile.settings.third_party_cookies = .Block
+	testing.cleanup(t, proc(ptr: rawptr) { world.profile.settings.third_party_cookies = fetch.Third_Party_Cookies(uintptr(ptr)) }, rawptr(uintptr(third_party)))
 	testing.cleanup(t, forget, nil)
 }
 
@@ -278,15 +278,15 @@ policy_cookies :: proc(t: ^testing.T) {
 	doc := env(t, testenv.url(A + "/page.html"))
 
 	r := run_fetch(t, {url = testenv.url(A + "/cookie/set?raw=sid=abc%3B%20Path=/&raw=pref=1%3B%20Path=/"), mode = .Navigate, credentials = .Include, initiator = nil})
-	expect(t, !r.failed && cookies.count(&profile.jar) == 2, "Set-Cookie headers are stored")
+	expect(t, !r.failed && cookies.count(&world.profile.jar) == 2, "Set-Cookie headers are stored")
 	r = get(t, testenv.url(A + "/cookie/show"), doc, .Same_Origin, .Same_Origin)
 	expect(t, r.body == "sid=abc; pref=1", "cookies are sent same-origin")
 	r = get(t, testenv.url(A + "/cookie/show"), doc, .Same_Origin, .Omit)
 	expect(t, r.body == "", "credentials: omit sends nothing")
 	r = run_fetch(t, {url = testenv.url(A + "/cookie/set?raw=gone=1%3B%20Max-Age=60"), mode = .Cors, credentials = .Omit, initiator = doc})
-	expect(t, cookies.count(&profile.jar) == 2, "credentials: omit stores nothing")
+	expect(t, cookies.count(&world.profile.jar) == 2, "credentials: omit stores nothing")
 	r = run_fetch(t, {url = testenv.url(A + "/cookie/set?raw=h=1%3B%20HttpOnly%3B%20Path=/&raw=bad=1%3B%20Domain=example.org"), mode = .Navigate, credentials = .Include, initiator = nil})
-	expect(t, cookies.count(&profile.jar) == 3, "invalid cookies are dropped, HttpOnly kept")
+	expect(t, cookies.count(&world.profile.jar) == 3, "invalid cookies are dropped, HttpOnly kept")
 	r = get(t, testenv.url(A + "/echo-headers"), doc, .Same_Origin, .Same_Origin)
 	expect(t, strings.contains(echo(r)["cookie"], "h=1"), "HttpOnly cookies are sent by the browser")
 }
@@ -301,19 +301,19 @@ policy_third_party_cookies_and_same_site :: proc(t: ^testing.T) {
 	doc := env(t, testenv.url(A + "/page.html"))
 
 	run_fetch(t, {url = testenv.url(B + "/cookie/set?raw=lax=1%3B%20Path=/&raw=none=1%3B%20SameSite=None%3B%20Secure%3B%20Path=/"), mode = .Navigate, credentials = .Include, initiator = nil})
-	expect(t, cookies.count(&profile.jar) == 2, "first-party cookies for B (localhost is a secure context)")
+	expect(t, cookies.count(&world.profile.jar) == 2, "first-party cookies for B (localhost is a secure context)")
 	r := get(t, testenv.url(B + "/cookie/show"), doc, .Cors, .Include)
 	expect(t, !r.failed && r.body == "", "third-party cookies are blocked by policy")
-	profile.settings.third_party_cookies = .Allow
+	world.profile.settings.third_party_cookies = .Allow
 	// (partitioned, as it is by default, the cookies B set as a top-level site are not the ones B gets inside A: storage_access, storage_partition_test)
 	r = get(t, testenv.url(B + "/cookie/show"), doc, .Cors, .Include)
 	expect(t, r.body == "", "with the policy relaxed, a partitioned third party does not get the cookies it has as a first party")
-	profile.settings.partitioned = false
-	defer profile.settings.partitioned = true
+	world.profile.settings.partitioned = false
+	defer world.profile.settings.partitioned = true
 	r = get(t, testenv.url(B + "/cookie/show"), doc, .Cors, .Include)
 	expect(t, r.body == "none=1", "with the policy relaxed and no partitioning only SameSite=None cookies travel cross-site")
-	profile.settings.partitioned = true
-	profile.settings.third_party_cookies = .Block
+	world.profile.settings.partitioned = true
+	world.profile.settings.third_party_cookies = .Block
 	r = run_fetch(t, {url = testenv.url(B + "/cookie/show"), mode = .Navigate, credentials = .Include, initiator = doc, user_activation = true})
 	expect(t, r.body == "lax=1; none=1" || r.body == "none=1; lax=1", "a top-level cross-site GET navigation sends Lax cookies")
 	r = run_fetch(t, {url = testenv.url(B + "/cookie/show"), method = "POST", body = transmute([]byte)string("x"), mode = .Navigate, credentials = .Include, initiator = doc})
@@ -436,11 +436,11 @@ policy_hsts :: proc(t: ^testing.T) {
 	defer end()
 	serve(t)
 	doc := env(t, testenv.url(A + "/page.html"))
-	fetch.hsts_note(&profile.hsts, "localhost", HSTS_HEADER, fetch.now_ms())
+	fetch.hsts_note(&world.profile.hsts, "localhost", HSTS_HEADER, fetch.now_ms())
 	r := get(t, testenv.url(B + "/echo-headers"), doc, .No_Cors)
 	expect(t, r.failed && r.error == .Transport, "an HSTS host is upgraded to https before anything is sent")
-	fetch.hsts_destroy(&profile.hsts)
-	profile.hsts = fetch.hsts_make()
+	fetch.hsts_destroy(&world.profile.hsts)
+	world.profile.hsts = fetch.hsts_make()
 }
 
 @(test)
@@ -511,18 +511,18 @@ policy_cancellation :: proc(t: ^testing.T) {
 	slow := testenv.url(A + "/slow")
 	scope := base.scope_make("doc")
 	r := new(Result, context.temp_allocator)
-	fetch.start(&loader, {request = {url = slow, mode = .Same_Origin, initiator = doc}, on_event = on_event, user = r, scope = scope})
+	fetch.start(&world.loader, {request = {url = slow, mode = .Same_Origin, initiator = doc}, on_event = on_event, user = r, scope = scope})
 	wait_until(t, "the first byte of the slow body", r, proc(r: ^Result) -> bool { return len(r.body) > 0 })
-	expect(t, fetch.in_flight(&loader) == 1, "a task is in flight")
+	expect(t, fetch.in_flight(&world.loader) == 1, "a task is in flight")
 	seen := r^
 	base.scope_close(scope)
-	expect(t, fetch.in_flight(&loader) == 0 && net.in_flight(&client) == 0, "closing the scope cancels the task and its transport")
+	expect(t, fetch.in_flight(&world.loader) == 0 && net.in_flight(&world.client) == 0, "closing the scope cancels the task and its transport")
 
 	// another slow body gets a byte of a later tick of the server: the cancelled one would have had its own by then
 	other_scope := base.scope_make("doc")
 	defer base.scope_close(other_scope)
 	other := new(Result, context.temp_allocator)
-	fetch.start(&loader, {request = {url = slow, mode = .Same_Origin, initiator = doc}, on_event = on_event, user = other, scope = other_scope})
+	fetch.start(&world.loader, {request = {url = slow, mode = .Same_Origin, initiator = doc}, on_event = on_event, user = other, scope = other_scope})
 	wait_until(t, "a later tick of the server", other, proc(r: ^Result) -> bool { return len(r.body) >= SLOW_BYTES_THAT_TAKE_A_SERVER_TICK })
 	expect(t, !r.done && r.got_response == seen.got_response && r.body == seen.body, "no event is delivered after cancellation")
 }

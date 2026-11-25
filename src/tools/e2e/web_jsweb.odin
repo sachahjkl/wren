@@ -56,8 +56,8 @@ navigate_hook :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 section_begin :: proc(t: ^testing.T, loc := #caller_location) {
 	begin(t, .Pages, loc)
 	serve(t, loc)
-	settings.web.storage_quota = STORAGE_QUOTA_BYTES
-	if os.get_env("JSWEB_NOJIT", context.temp_allocator) != "" { settings.js.jit.enabled = false }   // (to tell an engine bug from a script's)
+	world.settings.web.storage_quota = STORAGE_QUOTA_BYTES
+	if os.get_env("JSWEB_NOJIT", context.temp_allocator) != "" { world.settings.js.jit.enabled = false }   // (to tell an engine bug from a script's)
 }
 
 section_end :: proc() {
@@ -104,7 +104,7 @@ wait_script :: proc(pr: ^Probe, actions: map[string]Action = nil, seconds := DEF
 		if time.duration_seconds(time.tick_since(start)) > seconds {
 			world_timeout(pr.t, fmt.tprintf("[%s] timeout: the script did not finish in %.0f s; its last lines: %v", pr.section.name, seconds, pr.lines[max(0, len(pr.lines) - LAST_LINES_ON_TIMEOUT):]), loc)
 		}
-		host.loop_wait(&loop, LOOP_LOOK_MS)
+		host.loop_wait(&world.loop, LOOP_LOOK_MS)
 	}
 	return true
 }
@@ -137,7 +137,7 @@ verify_skip :: proc(reason: page.Test_Skip_Reason) -> (testhost.Skip_Verdict, st
 	case .WebglAdapter: return adapter_probe()
 	case .Av1Decoder:
 		// (rav1d is built in, on every system: what the browser would answer, asked directly)
-		if media.codec_supported(.AV1, settings.media) { return .Present, "the media backend has an AV1 decoder" }
+		if media.codec_supported(.AV1, world.settings.media) { return .Present, "the media backend has an AV1 decoder" }
 		return .Absent, "the media backend has no AV1 decoder"
 	}
 	return .Unknown, "an unknown reason"
@@ -145,7 +145,7 @@ verify_skip :: proc(reason: page.Test_Skip_Reason) -> (testhost.Skip_Verdict, st
 
 // What the machine says, for a script's skip: webgl.adapter_probe.
 adapter_probe :: proc() -> (testhost.Skip_Verdict, string) {
-	verdict, why := webgl.adapter_probe(settings.webgl)
+	verdict, why := webgl.adapter_probe(world.settings.webgl)
 	switch verdict {
 	case .Absent:  return .Absent, why
 	case .Present: return .Present, why
@@ -182,8 +182,8 @@ jsweb_jit_dom :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	section_begin(t)
 	defer section_end()
-	settings.js.jit.call_threshold = 1
-	settings.js.jit.background_threads = 0
+	world.settings.js.jit.call_threshold = 1
+	world.settings.js.jit.background_threads = 0
 	script(t, "jit_dom", tests = 5)
 }
 
@@ -243,7 +243,7 @@ jsweb_webaudio :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	section_begin(t)
 	defer section_end()
-	settings.media.autoplay = .Allow_All
+	world.settings.media.autoplay = .Allow_All
 	script(t, "webaudio", tests = 21)
 }
 
@@ -256,17 +256,17 @@ jsweb_webaudio_autoplay :: proc(t: ^testing.T) {
 	actions["gesture"] = proc(pr: ^Probe) -> string { page.dispatch_event(pr.p, pr.p.body, dom.Event{type = "mousedown", bubbles = true, cancelable = true}); return "" }
 	actions["collect"] = proc(pr: ^Probe) -> string { js.collect(pr.p.js.inst); return "" }
 	actions["count"] = proc(pr: ^Probe) -> string { return fmt.tprintf("%d", page.web_audio_live_nodes(pr.p)) }
-	settings.js.slow_script_ms = SLOW_SCRIPT_MS
+	world.settings.js.slow_script_ms = SLOW_SCRIPT_MS
 	script(t, "webaudio_autoplay", tests = 1, actions = actions)
 }
 
 // (the software adapter: the same pixels everywhere, and what the CI has)
 webgl_settings :: proc() {
-	settings.webgl.force_software = true
-	settings.js.slow_script_ms = SLOW_SCRIPT_MS   // (not -1: the hard stop of wasm.max_call_ms, one second, would be the limit)
+	world.settings.webgl.force_software = true
+	world.settings.js.slow_script_ms = SLOW_SCRIPT_MS   // (not -1: the hard stop of wasm.max_call_ms, one second, would be the limit)
 	// On pages of their own, or on a machine at work, the macro that doubles forty times takes a long while: its compile went past the time a context has to answer, which lost it, and the
 	// contexts after it had none. Nothing wrong, and slow.
-	settings.webgl.gpu_hang_ms, settings.webgl.wait_ms = WEBGL_LIMIT_MS, WEBGL_LIMIT_MS
+	world.settings.webgl.gpu_hang_ms, world.settings.webgl.wait_ms = WEBGL_LIMIT_MS, WEBGL_LIMIT_MS
 }
 @(private = "file") WEBGL_LIMIT_MS :: 600_000
 
@@ -323,7 +323,7 @@ sections_cut_short :: proc(t: ^testing.T, turns: int) {
 		// (a turn ends on what the loop is given to run, or after LOOP_LOOK_MS with nothing)
 		for _ in 0 ..< turns {
 			if pr.section.finished { break }
-			host.loop_wait(&loop, LOOP_LOOK_MS)
+			host.loop_wait(&world.loop, LOOP_LOOK_MS)
 		}
 		page.page_close(pr.p)
 		testhost.forget(&pr.section)
@@ -355,7 +355,7 @@ jsweb_idb_beside_another_process :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	section_begin(t)
 	defer section_end()
-	settings.idb.idle_unload_ms = 0
+	world.settings.idb.idle_unload_ms = 0
 	script(t, "idb_beside_another_process", tests = 1)
 	// (what keeps a file open goes: the origin leaves memory)
 	wait_until(t, "the origin out of memory", storage_world(), proc(s: ^page.Storage_Manager) -> bool { return idb.manager_tick(&s.idb.m) == 0 })
@@ -383,22 +383,22 @@ jsweb_idb_pages :: proc(t: ^testing.T) {
 	close(a, tests = 2)
 
 	// restart: the manager goes (journals flushed), a new one reads the files
-	host.blocking_settle(&blocking)
-	page.storage_manager_destroy(&storage)
-	host.blocking_settle(&blocking)
-	page.storage_manager_init(&storage, &loop, &blocking, storage_dir())
+	host.blocking_settle(&world.blocking)
+	page.storage_manager_destroy(&world.storage)
+	host.blocking_settle(&world.blocking)
+	page.storage_manager_init(&world.storage, &world.loop, &world.blocking, storage_dir())
 	script(t, "idb_persist", tests = 1)
 
 	// quota: 1 MiB for the origin
-	saved := settings.idb.quota_bytes
-	settings.idb.quota_bytes = IDB_QUOTA_TEST_BYTES
+	saved := world.settings.idb.quota_bytes
+	world.settings.idb.quota_bytes = IDB_QUOTA_TEST_BYTES
 	script(t, "idb_quota", tests = 1)
-	settings.idb.quota_bytes = saved
+	world.settings.idb.quota_bytes = saved
 
 	// clear site data while a connection is open
 	c := open(t, "idb_clear")
 	actions := make(map[string]Action, context.temp_allocator)
-	actions["clear"] = proc(pr: ^Probe) -> string { page.idb_clear_origin(&storage, page.storage_origin_key(pr.p)); return "" }
+	actions["clear"] = proc(pr: ^Probe) -> string { page.idb_clear_origin(&world.storage, page.storage_origin_key(pr.p)); return "" }
 	wait_script(c, actions)
 	close(c, tests = 1)
 }
@@ -514,7 +514,7 @@ jsweb_a_page_without_a_test_host_has_no_test_functions :: proc(t: ^testing.T) {
 	section_begin(t)
 	defer section_end()
 	seen: [dynamic]string
-	p := page.page_create(&loop, &loader, &settings, process, testenv.url(PAGE), proc(user: rawptr, _: page.Log_Level, message: string) { append((^[dynamic]string)(user), strings.clone(message)) }, &seen)
+	p := page.page_create(&world.loop, &world.loader, &world.settings, world.process, testenv.url(PAGE), proc(user: rawptr, _: page.Log_Level, message: string) { append((^[dynamic]string)(user), strings.clone(message)) }, &seen)
 	source := `<!doctype html><body><script>console.log(typeof wrenTest + " " + typeof globalThis.wrenTest)</script></body>`
 	page.load_html(p, transmute([]byte)string(source))
 	page.scripts_start(p)
@@ -532,14 +532,14 @@ jsweb_a_skip_that_is_not_true_of_the_machine_fails_the_section :: proc(t: ^testi
 	context.allocator = base.process_allocator()
 	section_begin(t)
 	defer section_end()
-	settings.webgl.enabled = false
+	world.settings.webgl.enabled = false
 	pr := open(t, "webgl_skip")
 	wait_script(pr)
 	page.page_close(pr.p)
 	pr.p = nil
 	testing.expect(t, pr.section.skipped, "the script said it could not run")
 	testing.expect_value(t, pr.section.begun, 0)
-	settings.webgl.enabled = true
+	world.settings.webgl.enabled = true
 	verdict, _ := adapter_probe()
 	problems, true_skips := testhost.judge(&pr.section, tests = WEBGL_SKIP_TESTS, verify_skip = verify_skip)
 	if verdict == .Absent {

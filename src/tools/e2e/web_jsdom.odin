@@ -104,13 +104,13 @@ open_doc :: proc(t: ^testing.T, source: string, lh: ^Layout_Host, name: string, 
 	for !pr.section.finished && time.duration_milliseconds(time.tick_since(start)) < f64(timeout_ms) {
 		// rendering updates, as the shell runs them: animation frame callbacks, then intersection observations
 		if page.wants_animation_frame(pr.p) { page.run_animation_frames(pr.p, now_ms()) }
-		host.loop_wait(&loop, LOOP_LOOK_MS)
+		host.loop_wait(&world.loop, LOOP_LOOK_MS)
 	}
 	testhost.flush(&pr.section, t)
 	return pr
 }
 
-now_ms :: proc() -> f64 { return f64(host.now_ns(&loop)) / 1e6 }
+now_ms :: proc() -> f64 { return f64(host.now_ns(&world.loop)) / 1e6 }
 
 said :: proc(pr: ^Probe, text: string) -> bool { return testhost.noted(&pr.section, text) }
 
@@ -234,7 +234,7 @@ resize_checks :: proc(pr: ^Probe, lh: ^Layout_Host) {
 // page looks, the Touch* constructors are absent and maxTouchPoints is 0; with one, they are there (other handlers stay).
 touch_page :: proc(t: ^testing.T, all: ^testhost.Section, on: bool) {
 	probe :: `<!doctype html><body><script>wrenTest.note(["ontouchstart" in window, "ontouchend" in document, "ontouchmove" in document.body, "ontouchcancel" in document.createElementNS("http://www.w3.org/2000/svg", "svg"), "onclick" in window, "Touch" in window, "TouchEvent" in window, "TouchList" in window, navigator.maxTouchPoints, matchMedia("(any-pointer: coarse)").matches, matchMedia("(pointer: fine)").matches, matchMedia("(hover: hover)").matches].join(" ")); wrenTest.done()</script>`
-	settings.js.touch_handlers, settings.js.touch_points = on, on ? TOUCH_PAGE_POINTS : 0
+	world.settings.js.touch_handlers, world.settings.js.touch_points = on, on ? TOUCH_PAGE_POINTS : 0
 	caps := style.get_pointer_caps()
 	if on { style.set_pointer_caps({fine = true, hover = true, any_fine = true, any_coarse = true, any_hover = true}) }
 	lh := layout_host_make()
@@ -718,7 +718,7 @@ jsdom_every_page_has_a_test :: proc(t: ^testing.T) {
 
 @(test)
 jsdom_leaks :: proc(t: ^testing.T) {
-	page_test(t, "leaks.html", checks = 4, prepare = proc() { settings.js.slow_script_ms = LEAKS_SLOW_SCRIPT_MS }, after = proc(pr: ^Probe, _: ^Layout_Host) { leak_checks(pr) })
+	page_test(t, "leaks.html", checks = 4, prepare = proc() { world.settings.js.slow_script_ms = LEAKS_SLOW_SCRIPT_MS }, after = proc(pr: ^Probe, _: ^Layout_Host) { leak_checks(pr) })
 }
 
 @(test)
@@ -741,7 +741,7 @@ jsdom_popover :: proc(t: ^testing.T) { page_test(t, "popover.html", checks = 42,
 // dnd.html builds Touch and TouchEvent: a page told about a touch screen (browser.touch.expose = on).
 @(test)
 jsdom_dnd :: proc(t: ^testing.T) {
-	page_test(t, "dnd.html", checks = DND_CHECKS, prepare = proc() { settings.js.touch_handlers, settings.js.touch_points = true, TOUCH_POINTS }, after = proc(pr: ^Probe, _: ^Layout_Host) { dnd_checks(pr) })
+	page_test(t, "dnd.html", checks = DND_CHECKS, prepare = proc() { world.settings.js.touch_handlers, world.settings.js.touch_points = true, TOUCH_POINTS }, after = proc(pr: ^Probe, _: ^Layout_Host) { dnd_checks(pr) })
 }
 
 // An animation far below the viewport ticks at style.animations.unseen_tick_ms for the screen (page/animations_seen.odin); a script reads it at
@@ -767,7 +767,7 @@ jsdom_unseen_animation_reads_the_clock :: proc(t: ^testing.T) {
 	_ = page.styles(pr.p, VIEW_W, VIEW_H, 1)   // a frame's style pass: nobody sees #s
 	check(pr, page.animations_next_ms(pr.p) > 0 && !page.animations_active(pr.p), fmt.tprintf("the animation waits for its unseen tick: next in %v ms", page.animations_next_ms(pr.p)))
 	run(pr, `window.s = document.getElementById("s"); window.a = getComputedStyle(s).transform; window.c = document.getAnimations()[0].currentTime`)
-	host.clock_advance(&loop, UNSEEN_READ_GAP)
+	host.clock_advance(&world.loop, UNSEEN_READ_GAP)
 	run(pr, `wrenTest.check(getComputedStyle(s).transform != a, "getComputedStyle 100 ms later: " + a + " then " + getComputedStyle(s).transform)`)
 	run(pr, `wrenTest.check(document.getAnimations()[0].currentTime > c, "currentTime 100 ms later: " + c + " then " + document.getAnimations()[0].currentTime)`)
 	close_page(pr, min_checks = UNSEEN_CHECKS + 1)
@@ -794,7 +794,7 @@ jsdom_a_frame_lays_out_once_for_an_unseen_animation :: proc(t: ^testing.T) {
 	pr := page_make(t, "unseen_frame.html", strings.concatenate({ADDRESS, "unseen_frame.html"}, context.temp_allocator))
 	slow_layout :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 		l := layout_update(user, p)
-		host.clock_advance(&loop, UNSEEN_LAYOUT_TAKES)
+		host.clock_advance(&world.loop, UNSEEN_LAYOUT_TAKES)
 		return l
 	}
 	page.set_layout_embedder(pr.p, {user = lh, update = slow_layout, viewport = layout_viewport, scroll_to = layout_scroll})
@@ -803,7 +803,7 @@ jsdom_a_frame_lays_out_once_for_an_unseen_animation :: proc(t: ^testing.T) {
 	run(pr, UNSEEN_FRAME_SCRIPT)   // (its first reading lays the page out: the layout the probe reads)
 	_ = layout_update(lh, pr.p)   // a frame's style pass and layout: nobody sees #s
 	check(pr, page.animations_next_ms(pr.p) > 0, "the animation waits for its unseen tick")
-	host.clock_advance(&loop, UNSEEN_READ_GAP)
+	host.clock_advance(&world.loop, UNSEEN_READ_GAP)
 	before := page.layout_updates(pr.p)
 	check(pr, page.run_animation_frames(pr.p, now_ms()) == 1, "the frame runs the callback")
 	laid := page.layout_updates(pr.p) - before

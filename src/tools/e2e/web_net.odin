@@ -141,12 +141,12 @@ net_http_1_1 :: proc(t: ^testing.T) {
 	begin(t, .Net)
 	defer end()
 	serve(t)
-	r := get(t, &client, at("http", HTTP, "/"))
+	r := get(t, &world.client, at("http", HTTP, "/"))
 	testing.expect(t, !r.failed && r.status == 200 && strings.contains(text_of(r), "hello"), "GET /: 200 and the page")
 	testing.expectf(t, r.protocol == HTTP_1 && strings.has_prefix(r.headers, "HTTP/1.1 200"), "the head starts with the status line, HTTP/1.1 (%q)", r.headers[:min(len(r.headers), 20)])
 	testing.expectf(t, r.remote == fmt.tprintf("127.0.0.1:%d", testenv.port(HTTP)), "the remote address (%s)", r.remote)
 	testing.expectf(t, r.timing.response >= 0 && r.timing.done >= r.timing.response, "timing: response %.1f, done %.1f ms", r.timing.response, r.timing.done)
-	r2 := get(t, &client, at("http", HTTP, "/"))
+	r2 := get(t, &world.client, at("http", HTTP, "/"))
 	testing.expectf(t, !r2.failed && r2.timing.connect_start < 0, "the connection is reused: no connect step (%.1f)", r2.timing.connect_start)
 }
 
@@ -156,7 +156,7 @@ net_post :: proc(t: ^testing.T) {
 	begin(t, .Net)
 	defer end()
 	serve(t)
-	r := get(t, &client, at("http", HTTP, "/echo"), "POST", "X-Test: one\r\nContent-Type: text/plain", "hello")
+	r := get(t, &world.client, at("http", HTTP, "/echo"), "POST", "X-Test: one\r\nContent-Type: text/plain", "hello")
 	testing.expectf(t, text_of(r) == `POST 5 bytes, X-Test="one"`, "POST: body and header reach the server (%q)", text_of(r))
 }
 
@@ -166,9 +166,9 @@ net_redirects_and_errors_of_http_are_answers :: proc(t: ^testing.T) {
 	begin(t, .Net)
 	defer end()
 	serve(t)
-	r := get(t, &client, at("http", HTTP, "/redirect?n=1"))
+	r := get(t, &world.client, at("http", HTTP, "/redirect?n=1"))
 	testing.expect(t, r.status == 302 && header_of(r.headers, "location") != "", "a redirect is handed back, not followed")
-	r2 := get(t, &client, at("http", HTTP, "/status/404"))
+	r2 := get(t, &world.client, at("http", HTTP, "/status/404"))
 	testing.expect(t, !r2.failed && r2.status == 404 && text_of(r2) == "status 404", "404 with its body")
 }
 
@@ -178,7 +178,7 @@ net_gzip :: proc(t: ^testing.T) {
 	begin(t, .Net)
 	defer end()
 	serve(t)
-	r := get(t, &client, at("http", HTTP, "/gzip"))
+	r := get(t, &world.client, at("http", HTTP, "/gzip"))
 	testing.expectf(t, len(r.body) == GZIP_BYTES && strings.has_prefix(text_of(r), "compressible "), "gzip decoded (%d bytes)", len(r.body))
 	testing.expect(t, header_of(r.headers, "content-encoding") == "", "the decoded body's head has no Content-Encoding (as WinHTTP's)")
 }
@@ -189,10 +189,10 @@ net_large_bodies :: proc(t: ^testing.T) {
 	begin(t, .Net)
 	defer end()
 	serve(t)
-	r := get(t, &client, at("http", HTTP, fmt.tprintf("/big?mb=%d", STREAMED_MB)))
+	r := get(t, &world.client, at("http", HTTP, fmt.tprintf("/big?mb=%d", STREAMED_MB)))
 	testing.expectf(t, !r.failed && len(r.body) == STREAMED_MB << 20, "16 MB streamed (%d bytes, %d chunks)", len(r.body), r.chunks)
-	testing.expectf(t, r.biggest <= client.settings.read_chunk && r.chunks > 1, "chunks of at most network.read_chunk_bytes (%d)", r.biggest)
-	r2 := get(t, &client, at("http", HTTP, fmt.tprintf("/big?mb=%d", CAPPED_MB)), max_body = BODY_CAP)
+	testing.expectf(t, r.biggest <= world.client.settings.read_chunk && r.chunks > 1, "chunks of at most network.read_chunk_bytes (%d)", r.biggest)
+	r2 := get(t, &world.client, at("http", HTTP, fmt.tprintf("/big?mb=%d", CAPPED_MB)), max_body = BODY_CAP)
 	testing.expectf(t, r2.failed && r2.error == net.ERROR_BODY_TOO_LARGE && len(r2.body) <= BODY_CAP, "a body over max_body fails (%d, %d bytes)", r2.error, len(r2.body))
 }
 
@@ -204,16 +204,16 @@ net_cancelling_a_slow_body :: proc(t: ^testing.T) {
 	serve(t)
 	slow := at("http", HTTP, "/slow")
 	r := result_make(t)
-	h := net.fetch(&client, {url = slow, on_event = on_event, user = r})
+	h := net.fetch(&world.client, {url = slow, on_event = on_event, user = r})
 	wait_until(t, "the first byte", r, has_first_byte)
-	testing.expect(t, has_first_byte(r) && net.cancel(&client, h), "a slow body cancelled after its first byte")
+	testing.expect(t, has_first_byte(r) && net.cancel(&world.client, h), "a slow body cancelled after its first byte")
 	r.cancelled = true
 	// another slow body gets a byte of a later tick of the server: the cancelled one would have had its own by then
 	other := result_make(t)
-	oh := net.fetch(&client, {url = slow, on_event = on_event, user = other})
+	oh := net.fetch(&world.client, {url = slow, on_event = on_event, user = other})
 	wait_until(t, "a later tick of the server", other, proc(r: ^Result) -> bool { return len(r.body) >= SLOW_BYTES_THAT_TAKE_A_SERVER_TICK })
-	net.cancel(&client, oh)
-	testing.expectf(t, r.events_after_cancel == 0 && net.in_flight(&client) == 0, "no event after the cancel (%d), nothing in flight", r.events_after_cancel)
+	net.cancel(&world.client, oh)
+	testing.expectf(t, r.events_after_cancel == 0 && net.in_flight(&world.client) == 0, "no event after the cancel (%d), nothing in flight", r.events_after_cancel)
 }
 
 @(test)
@@ -224,9 +224,9 @@ net_closing_a_scope_cancels_its_requests :: proc(t: ^testing.T) {
 	serve(t)
 	scope := base.scope_make("nettest")
 	r := result_make(t)
-	net.fetch(&client, {url = at("http", HTTP, "/slow"), on_event = on_event, user = r, scope = scope})
+	net.fetch(&world.client, {url = at("http", HTTP, "/slow"), on_event = on_event, user = r, scope = scope})
 	base.scope_close(scope)
-	testing.expect(t, net.in_flight(&client) == 0, "closing the scope cancels the request")
+	testing.expect(t, net.in_flight(&world.client) == 0, "closing the scope cancels the request")
 }
 
 @(test)
@@ -235,19 +235,19 @@ net_transport_failures :: proc(t: ^testing.T) {
 	begin(t, .Net)
 	defer end()
 	serve(t)
-	r := get(t, &client, REFUSED_ADDRESS)
+	r := get(t, &world.client, REFUSED_ADDRESS)
 	testing.expectf(t, r.failed && r.error == ERROR_CANNOT_CONNECT, "connection refused: 12029 (%d: %s)", r.error, net.error_text(r.error, r.flags))
-	r2 := get(t, &client, UNRESOLVED_ADDRESS)
+	r2 := get(t, &world.client, UNRESOLVED_ADDRESS)
 	testing.expectf(t, r2.failed && r2.error == ERROR_NAME_NOT_RESOLVED, "a name that does not resolve: 12007 (%d)", r2.error)
-	r3 := get(t, &client, at("http", HTTP, "/cut"))
-	if client.settings.backend == .Rust {
+	r3 := get(t, &world.client, at("http", HTTP, "/cut"))
+	if world.client.settings.backend == .Rust {
 		testing.expectf(t, r3.failed && r3.error == ERROR_CONNECTION_ABORTED, "a body cut short: 12030 (%d, after %d bytes)", r3.error, len(r3.body))
 	} else {
 		testing.expectf(t, !r3.failed && len(r3.body) == BYTES_BEFORE_THE_CUT, "WinHTTP takes a body cut short for a complete one (failed %v, %d bytes)", r3.failed, len(r3.body))
 	}
-	r4 := get(t, &client, at("http", HTTP, "/garbage"))
+	r4 := get(t, &world.client, at("http", HTTP, "/garbage"))
 	testing.expectf(t, r4.failed && r4.error == ERROR_INVALID_SERVER_RESPONSE, "an answer that is not HTTP: 12152 (%d)", r4.error)
-	r5 := get(t, &client, at("https", HTTPS_SELF_SIGNED, "/"))
+	r5 := get(t, &world.client, at("https", HTTPS_SELF_SIGNED, "/"))
 	// (the certificate is also for "localhost", not 127.0.0.1: WinHTTP names that problem first)
 	testing.expectf(t, r5.failed && strings.has_prefix(net.error_text(r5.error, r5.flags), "secure connection failed"), "a self-signed certificate: %s", net.error_text(r5.error, r5.flags))
 }
@@ -263,7 +263,7 @@ net_an_answer_slower_than_the_receive_timeout :: proc(t: ^testing.T) {
 	s := net.settings_default()
 	defer net.settings_destroy(&s)
 	s.timeout_receive_ms, s.timeout_send_ms = SHORT_TIMEOUT_MS, SHORT_TIMEOUT_MS
-	ok := net.client_init(c, &loop, s)
+	ok := net.client_init(c, &world.loop, s)
 	defer net.client_destroy(c)
 	r := get(t, c, at("http", HTTP, fmt.tprintf("/stall?ms=%d", RECEIVE_TIMEOUT_SERVER_WAIT_MS)))
 	testing.expectf(t, ok && r.failed && r.error == ERROR_TIMED_OUT, "an answer slower than the receive timeout: 12002 (%d)", r.error)
@@ -271,15 +271,15 @@ net_an_answer_slower_than_the_receive_timeout :: proc(t: ^testing.T) {
 
 // The built-in stack's tests. On WinHTTP's turn they check nothing, and say it as a skip, counted apart from what held: their checks are on the built-in stack's turn.
 on_builtin_stack :: proc(loc := #caller_location) -> bool {
-	if client.settings.backend == .Rust { return true }
-	fmt.printfln("SKIP [net] %s: the built-in stack's test, on the turn of %v", loc.procedure, client.settings.backend)
+	if world.client.settings.backend == .Rust { return true }
+	fmt.printfln("SKIP [net] %s: the built-in stack's test, on the turn of %v", loc.procedure, world.client.settings.backend)
 	testhost.totals.skips += 1
 	return false
 }
 
 // The test authority, in a file for network.tls.extra_ca_file until the test's end.
 trust_the_test_authority :: proc(t: ^testing.T) {
-	r := get(t, &client, at("http", HTTP, "/testca.pem"))
+	r := get(t, &world.client, at("http", HTTP, "/testca.pem"))
 	testing.expect(t, r.status == 200 && os.write_entire_file(CA_FILE, r.body[:]) == nil, "the test authority written for network.tls.extra_ca_file")
 	testing.cleanup(t, proc(_: rawptr) { _ = os.remove(CA_FILE) }, nil)
 }
@@ -292,7 +292,7 @@ trusting_client :: proc(c: ^net.Client, http3 := false, h3_race_ms := 0) -> bool
 	s.extra_ca_file = strings.clone(CA_FILE)
 	s.backend = .Rust
 	if http3 { s.http3, s.h3_race_ms = true, h3_race_ms }
-	return net.client_init(c, &loop, s)
+	return net.client_init(c, &world.loop, s)
 }
 
 @(test)
@@ -467,7 +467,7 @@ net_proxy_from_the_environment :: proc(t: ^testing.T) {
 	r2 := get(t, &px, at("https", HTTPS_H2_H3, "/"))
 	testing.expectf(t, r2.status == 200, "https through the proxy's CONNECT tunnel (%d)", r2.error)
 	websocket_echo(t, &px, at("ws", HTTP, "/ws/echo"), "ws through the proxy")
-	stats := text_of(get(t, &client, at("http", HTTP, "/proxystats")))
+	stats := text_of(get(t, &world.client, at("http", HTTP, "/proxystats")))
 	testing.expectf(t, strings.has_prefix(stats, "tunnels=") && !strings.has_prefix(stats, "tunnels=0 ") && !strings.has_suffix(stats, "forwards=0"), "the proxy carried them (%s)", stats)
 }
 
@@ -479,13 +479,13 @@ net_a_connection_opened_ahead_is_what_the_first_request_takes :: proc(t: ^testin
 	defer end()
 	serve(t)
 	if !on_builtin_stack() { return }
-	client.settings.preconnect = true
-	defer client.settings.preconnect = false
+	world.client.settings.preconnect = true
+	defer world.client.settings.preconnect = false
 	u := fmt.tprintf("http://ahead.localhost:%d/", testenv.port(HTTP))
-	net.preconnect(&client, u)
-	wait_until(t, "the connection opened ahead", u, proc(u: string) -> bool { return net.preconnected(&client, u) })
-	r := get(t, &client, u)
+	net.preconnect(&world.client, u)
+	wait_until(t, "the connection opened ahead", u, proc(u: string) -> bool { return net.preconnected(&world.client, u) })
+	r := get(t, &world.client, u)
 	testing.expectf(t, !r.failed && r.status == 200, "the request is answered (%d)", r.status)
 	testing.expectf(t, r.timing.connect_start < 0, "it took the connection: no connect step (%.1f)", r.timing.connect_start)
-	testing.expect(t, !net.preconnected(&client, u), "and no connection waits any more")
+	testing.expect(t, !net.preconnected(&world.client, u), "and no connection waits any more")
 }

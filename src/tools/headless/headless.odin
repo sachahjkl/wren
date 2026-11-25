@@ -15,30 +15,19 @@
 package headless
 
 import "core:fmt"
-import "core:os"
 import "core:strings"
 import "core:time"
 import "wb:base"
 import config "toolkit:config"
+import "wb:embed"
 import "wb:fetch"
 import "wb:host"
 import "wb:http"
-import "wb:httpcache"
-import "wb:net"
 import "wb:page"
 import "wb:url"
 
 Env :: struct {
-	loop:     host.Loop,
-	client:   net.Client,
-	blocking: host.Blocking_Pool,
-	profile:  fetch.Profile,
-	loader:   fetch.Loader,
-	settings: page.Settings,
-	storage:  page.Storage_Manager,
-	process:  ^base.Scope,
-	has_storage: bool,
-	pages:    page.Pages,   // what its pages share (init binds this thread to it)
+	using world: embed.World,
 }
 
 Navigable :: page.Navigable   // (a field named `page` hides the package in Doc)
@@ -91,47 +80,25 @@ Doc :: struct {
 	restoring: u64,             // the entry whose cached document comes back in the task of the navigation in flight (0: none)
 }
 
-// The preferences `init` reads: the page's and the network's.
+// The preferences `init` reads: the embedder runtime stack's (network, Fetch, HTTP cache, cookies, and page).
 register_prefs :: proc(p: ^config.Prefs) {
-	page.register_prefs(p)
-	net.register_prefs(p)
+	embed.register_prefs(p)
 }
 
 // Starts the stack: event loop, network client, blocking pool, the Fetch profile, the page settings (from `prefs` when
 // given, made with register_prefs: --pref name=value of the command line, else the defaults). `profile_dir` holds Web Storage ("" = none).
 init :: proc(e: ^Env, prefs: ^config.Prefs = nil, profile_dir := "", blocking_threads := 2) -> bool {
-	page.bind(&e.pages)   // (this thread runs the pages of the stack)
-	host.loop_init(&e.loop)
-	// the network.* preferences too (network.hosts, network.loopback_only: what a test run gives its pages)
-	ns: net.Settings
-	if prefs != nil { ns = net.settings_from_prefs(prefs, context.temp_allocator) }
-	if !net.client_init(&e.client, &e.loop, ns) { return false }
-	host.blocking_init(&e.blocking, &e.loop, blocking_threads)
-	e.profile = fetch.profile_make()
-	{
-		// an HTTP cache in memory, as a browser has (fetch/http-cache)
-		cs := httpcache.settings_default()
-		e.profile.cache = httpcache.create(&e.loop, cs, "")
-		httpcache.settings_destroy(&cs)
-	}
-	fetch.loader_init(&e.loader, &e.loop, &e.client, &e.blocking, &e.profile)
-	e.settings = prefs != nil ? page.settings_from_prefs(prefs) : page.settings_default()
-	if !page.register_imports() { return false }
-	if profile_dir != "" {
-		os.remove_all(profile_dir)
-		page.storage_manager_init(&e.storage, &e.loop, &e.blocking, profile_dir)
-		e.has_storage = true
-	}
-	e.process = base.scope_make("process")
-	return true
+	if profile_dir != "" { base.remove_tree(profile_dir) }
+	return embed.world_init(&e.world, {
+		prefs            = prefs,
+		blocking_threads = blocking_threads,
+		http_cache       = true,
+		storage_dir      = profile_dir,
+	})
 }
 
 destroy :: proc(e: ^Env) {
-	base.scope_close(e.process)
-	defer page.bind(nil)
-	if e.has_storage { page.storage_manager_destroy(&e.storage) }
-	httpcache.destroy(e.profile.cache)
-	e.profile.cache = nil
+	embed.world_destroy(&e.world)
 }
 
 @(private)
@@ -216,7 +183,7 @@ close_hook :: proc(user: rawptr, p: ^page.Page) {
 connect :: proc(d: ^Doc) {
 	e := d.env
 	page.navigable_attach(d.top, d.page)
-	page.set_embedder(d.page, {navigate = navigate_hook, user = d, session = d.root != nil ? &d.session : nil, tab_key = fmt.tprintf("window-%p", d), storage = e.has_storage ? &e.storage : nil, open = open_hook, close = close_hook})
+	page.set_embedder(d.page, {navigate = navigate_hook, user = d, session = d.root != nil ? &d.session : nil, tab_key = fmt.tprintf("window-%p", d), storage = embed.world_storage(&e.world), open = open_hook, close = close_hook})
 }
 
 // Navigates a new document to `url`. Follow it with `pump`; `close` frees it.

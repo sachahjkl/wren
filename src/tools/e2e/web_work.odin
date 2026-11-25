@@ -25,9 +25,9 @@ DELAY_SLACK_MS :: 20_000
 
 // The owner of the timer the page set with this delay.
 timer_work :: proc(delay_ms: i64) -> (w: base.Work, found: bool) {
-	now := host.now_ns(&loop)
-	for e in loop.queue.queue {
-		t := base.pool_get(&loop.timers, e.handle)
+	now := host.now_ns(&world.loop)
+	for e in world.loop.queue.queue {
+		t := base.pool_get(&world.loop.timers, e.handle)
 		if t == nil { continue }
 		left := (t.deadline - now) / MS_TO_NS
 		if left <= delay_ms && left > delay_ms - DELAY_SLACK_MS { return t.work, true }

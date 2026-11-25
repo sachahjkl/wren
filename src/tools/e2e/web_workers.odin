@@ -282,7 +282,7 @@ workers_refused_or_failing :: proc(t: ^testing.T) {
 	call1(&tab, "release", 2)
 	call1(&tab, "release", 3)
 	check(tab.pr, wait_hosts(&tab, 1), "failed workers are freed once released")
-	settings.workers.max_per_page = 1
+	world.settings.workers.max_per_page = 1
 	check(tab.pr, !make_worker(&tab, 9, WORKER), "workers.max_per_page is enforced")
 	shut(&tab, 8)
 }
@@ -446,7 +446,7 @@ workers_page_thread_stays_responsive_under_16 :: proc(t: ^testing.T) {
 	for i in 0 ..< PARALLEL { wait_message(&tab, fmt.tprintf("msg:%d:ready", FIRST_PARALLEL_SLOT + i)) }
 
 	probe := Gap_Probe{last = time.tick_now()}
-	tick := host.set_timer(&loop, UI_TICK_MS, UI_TICK_MS, proc(data: rawptr) {
+	tick := host.set_timer(&world.loop, UI_TICK_MS, UI_TICK_MS, proc(data: rawptr) {
 		g := (^Gap_Probe)(data)
 		now := time.tick_now()
 		g.worst = max(g.worst, time.duration_milliseconds(time.tick_diff(g.last, now)))
@@ -454,7 +454,7 @@ workers_page_thread_stays_responsive_under_16 :: proc(t: ^testing.T) {
 		g.ticks += 1
 	}, rawptr(&probe))   // (until the timer is cleared below)
 	idle_since := time.tick_now()
-	for time.tick_since(idle_since) < IDLE_REFERENCE { host.loop_wait(&loop, UI_TICK_MS) }
+	for time.tick_since(idle_since) < IDLE_REFERENCE { host.loop_wait(&world.loop, UI_TICK_MS) }
 	idle := probe
 
 	forget_notes(&tab)
@@ -463,15 +463,15 @@ workers_page_thread_stays_responsive_under_16 :: proc(t: ^testing.T) {
 	probe = {last = time.tick_now()}
 	worst_call, worst_turn: f64
 	for count_done(&tab) < PARALLEL && time.duration_seconds(time.tick_since(start)) < DEFAULT_WAIT {
-		if host.next_timeout_ms(&loop) != 0 { sync.sema_wait_with_timeout(&loop.sema, NEAR_NOW) }
+		if host.next_timeout_ms(&world.loop) != 0 { sync.sema_wait_with_timeout(&world.loop.sema, NEAR_NOW) }
 		turn := time.tick_now()
-		host.run_ready(&loop)   // the page's thread's share of the work: relaying 16 workers' messages
+		host.run_ready(&world.loop)   // the page's thread's share of the work: relaying 16 workers' messages
 		worst_turn = max(worst_turn, time.duration_milliseconds(time.tick_since(turn)))
 		c := time.tick_now()
 		wasm.call_i32(tab.inst, "ping")
 		worst_call = max(worst_call, time.duration_milliseconds(time.tick_since(c)))
 	}
-	host.clear_timer(&loop, tick)
+	host.clear_timer(&world.loop, tick)
 	together := time.duration_milliseconds(time.tick_since(start))
 	speed_up := PARALLEL * alone / together
 	fmt.printfln("MEASURE one worker alone: %.0f ms; %d in parallel: %.0f ms; speed-up %.1fx", alone, PARALLEL, together, speed_up)

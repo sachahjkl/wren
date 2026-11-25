@@ -76,7 +76,7 @@ page_one_module_dom_events_timers_fetch :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	timers := loop.timers.count
+	timers := world.loop.timers.count
 	pr, inst, ok := open(t, "one module", ADDRESS)
 	if !ok { return }
 	p := pr.p
@@ -84,16 +84,16 @@ page_one_module_dom_events_timers_fetch :: proc(t: ^testing.T) {
 	app := dom.find_by_id(p.doc, "app")
 	check(pr, app != base.NIL_HANDLE, "guest created #app in the DOM")
 	check(pr, dom.text_content(p.doc, app) == "ready", "text content set by the guest")
-	check(pr, fetch.in_flight(&loader) >= 1, "requests are in flight")
-	check(pr, loop.timers.count == timers + 1, "one timer registered")
+	check(pr, fetch.in_flight(&world.loader) >= 1, "requests are in flight")
+	check(pr, world.loop.timers.count == timers + 1, "one timer registered")
 
 	wait_attrs(pr, "data-timer", "data-fetched", "data-error")
 	check(pr, attr(p, app, "data-timer") == "fired", "timer callback ran in the guest")
 	check(pr, attr(p, app, "data-fetched") == ROOT_BODY_BYTES, "same-origin fetch delivered the body to the guest (49 bytes)")
 	check(pr, attr(p, app, "data-type") == "basic", "same-origin response type is basic")
 	check(pr, strings.contains(attr(p, app, "data-error"), "secure connection failed"), "self-signed HTTPS rejected, error reaches the guest")
-	check(pr, fetch.in_flight(&loader) == 0, "no task left after completion")
-	check(pr, loop.timers.count == timers, "one-shot timer released after firing")
+	check(pr, fetch.in_flight(&world.loader) == 0, "no task left after completion")
+	check(pr, world.loop.timers.count == timers, "one-shot timer released after firing")
 	check(pr, p.fetches.count == 0 && p.held == 0, "guest released its fetch records")
 
 	click := dom.Event{type = "click", bubbles = true, cancelable = true, x = 10, y = 10}
@@ -142,15 +142,15 @@ page_origin_cookies_cors_from_the_guest :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	cookies.clear_all(&profile.jar)
-	defer cookies.clear_all(&profile.jar)
+	cookies.clear_all(&world.profile.jar)
+	defer cookies.clear_all(&world.profile.jar)
 	pr, inst, ok := open(t, "origin", ADDRESS)
 	if !ok { return }
 	p := pr.p
 	app := dom.find_by_id(p.doc, "app")
 	n, res := wasm.call_i32(inst, "cookie_probe")
 	check(pr, res == .Ok && n == len("probe=1"), "document.cookie set and read by the guest")
-	check(pr, cookies.count(&profile.jar) == 1, "the cookie lives in the profile's jar")
+	check(pr, cookies.count(&world.profile.jar) == 1, "the cookie lives in the profile's jar")
 	o, _ := wasm.call_i32(inst, "origin_probe")
 	check(pr, int(o) == len(testenv.url("http://127.0.0.1:8765")), "the guest can read its own origin")
 
@@ -180,16 +180,16 @@ page_closing_with_work_in_flight :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	timers := loop.timers.count
-	children := len(process.children)
+	timers := world.loop.timers.count
+	children := len(world.process.children)
 	pr, inst, ok := open(t, "closing", ADDRESS)
 	if !ok { return }
 	wasm.call_raw(inst, "wb_main")   // a second run: more requests and a timer
-	check(pr, fetch.in_flight(&loader) > 0 && loop.timers.count > timers, "work in flight before close")
+	check(pr, fetch.in_flight(&world.loader) > 0 && world.loop.timers.count > timers, "work in flight before close")
 	close_page(pr, min_checks = 2)
-	testing.expect(t, fetch.in_flight(&loader) == 0 && net.in_flight(&client) == 0, "closing the page cancelled its requests")
-	testing.expect_value(t, loop.timers.count, timers)
-	testing.expect(t, wait_until(t, "the page's scope to leave", Children{children}, proc(c: Children) -> bool { return len(process.children) == c.want }), "page scope detached from its parent")
+	testing.expect(t, fetch.in_flight(&world.loader) == 0 && net.in_flight(&world.client) == 0, "closing the page cancelled its requests")
+	testing.expect_value(t, world.loop.timers.count, timers)
+	testing.expect(t, wait_until(t, "the page's scope to leave", Children{children}, proc(c: Children) -> bool { return len(world.process.children) == c.want }), "page scope detached from its parent")
 }
 
 // The site's "Write a page" example, as written there: fetch a text from Wasm, show it.
@@ -210,7 +210,7 @@ page_the_sites_fetch_example :: proc(t: ^testing.T) {
 	want := string(read(t, FETCH_EXAMPLE_TEXT))
 	check(pr, shown && dom.text_content(p.doc, dom.find_by_id(p.doc, "out")) == want, "the text of message.txt is in #out")
 	close_page(pr, min_checks = 3)
-	testing.expect(t, fetch.in_flight(&loader) == 0, "the example's request was released")
+	testing.expect(t, fetch.in_flight(&world.loader) == 0, "the example's request was released")
 }
 
 // The second module is e2e itself: both instances share the DOM, and their table indices collide on purpose.
@@ -220,15 +220,15 @@ page_an_html_document_with_two_modules :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	timers := loop.timers.count
+	timers := world.loop.timers.count
 	pr := page_make(t, "two modules", testenv.url(COUNTER_ADDRESS))
 	p := pr.p
-	decoded, _ := html.decode_document(read(t, COUNTER_HTML), "utf-8", settings.html.default_encoding)
+	decoded, _ := html.decode_document(read(t, COUNTER_HTML), "utf-8", world.settings.html.default_encoding)
 	defer delete(decoded.text)
 	rr := page.load_html(p, decoded.text)
 	check(pr, rr.ok && rr.nodes > MIN_COUNTER_NODES, "HTML document parsed by Lexbor into the DOM")
 	check(pr, html.title(p.doc) == "Wasm-first demo", "document title extracted")
-	scripts := html.wasm_scripts(p.doc, settings.html.module_script_type)
+	scripts := html.wasm_scripts(p.doc, world.settings.html.module_script_type)
 	src, _ := dom.get_attribute(p.doc, scripts[0] if len(scripts) > 0 else base.NIL_HANDLE, "src")
 	check(pr, len(scripts) == 1 && src == "counter.wasm", "the document names its Wasm module")
 
@@ -246,11 +246,11 @@ page_an_html_document_with_two_modules :: proc(t: ^testing.T) {
 	app := dom.find_by_id(p.doc, "app")
 	page.dispatch_event(p, app, press)
 	check(pr, dom.text_content(p.doc, app) == "clicked 1" && dom.text_content(p.doc, count) == "5", "each listener runs in its own instance")
-	check(pr, loop.timers.count >= timers + 1, "the counter's interval timer is registered")
+	check(pr, world.loop.timers.count >= timers + 1, "the counter's interval timer is registered")
 	ticked := wait_until(t, "the counter's clock", p, proc(p: ^page.Page) -> bool { return dom.text_content(p.doc, dom.find_by_id(p.doc, "clock")) != "0" })
 	check(pr, ticked, "interval timer ticked and updated the DOM")
 	close_page(pr, min_checks = 10)
-	testing.expect(t, loop.timers.count == timers && fetch.in_flight(&loader) == 0, "everything of both modules was released")
+	testing.expect(t, world.loop.timers.count == timers && fetch.in_flight(&world.loader) == 0, "everything of both modules was released")
 }
 
 META :: "<!doctype html><meta http-equiv=\"Content-Security-Policy\" content=\"connect-src 'self'\"><meta name=\"referrer\" content=\"origin\"><p>x"

@@ -90,7 +90,7 @@ style_transitions_and_animations :: proc(t: ^testing.T) {
 	defer end()
 	serve(t)
 	virtual_clock(t)
-	timers := loop.timers.count
+	timers := world.loop.timers.count
 	pr := page_make(t, "transitions and animations", testenv.url(ADDRESS))
 	p := pr.p
 	page.load_html(p, transmute([]byte)string(ANIMATIONS_DOC))
@@ -128,7 +128,7 @@ style_transitions_and_animations :: proc(t: ^testing.T) {
 	wait_until(t, "the events' dispatch", p, proc(p: ^page.Page) -> bool { return len(p.anim.pending) == 0 })
 	check(pr, len(p.anim.pending) == 0 && p.dp.events.count == 0, "events dispatched and freed")
 	close_page(pr, min_checks = 13)
-	testing.expect_value(t, loop.timers.count, timers)
+	testing.expect_value(t, world.loop.timers.count, timers)
 }
 
 // A style pass that takes this long: what a loaded machine makes of a script's every getComputedStyle (the embedder's hook
@@ -164,7 +164,7 @@ style_the_document_time_holds_still_in_a_task :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	virtual_clock(t)
-	page.the_pages.embedder = {before_styles = proc(_: rawptr, _: ^page.Page) { host.clock_move(&loop, SLOW_PASS) }}
+	page.the_pages.embedder = {before_styles = proc(_: rawptr, _: ^page.Page) { host.clock_move(&world.loop, SLOW_PASS) }}
 	defer page.the_pages.embedder = {}
 	pr := open_page(t, "the document's time in a task", HELD_DOC, testenv.url(ADDRESS))
 	run(pr, HELD_SCRIPT)

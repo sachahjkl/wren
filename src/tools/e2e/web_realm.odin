@@ -39,9 +39,9 @@ function is(want, what, ...got) { const line = got.map(String).join(" "); wrenTe
 settle :: proc() -> int {
 	turns := 0
 	for ; turns < SETTLE_TURNS; turns += 1 {
-		next := host.next_timeout_ms(&loop)
+		next := host.next_timeout_ms(&world.loop)
 		if next < 0 || next > SETTLE_FARTHEST_MS { break }
-		host.loop_wait(&loop, next)
+		host.loop_wait(&world.loop, next)
 	}
 	return turns
 }
@@ -78,8 +78,8 @@ usable :: proc(pr: ^Probe, what: string) {
 }
 
 hostile :: proc() {
-	settings.js.slow_script_ms = HOSTILE_SLOW_SCRIPT_MS
-	settings.js.max_heap_bytes = HOSTILE_HEAP_BYTES
+	world.settings.js.slow_script_ms = HOSTILE_SLOW_SCRIPT_MS
+	world.settings.js.max_heap_bytes = HOSTILE_HEAP_BYTES
 }
 
 @(test)
@@ -323,7 +323,7 @@ js_interruption_of_a_script_that_loops :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	begin(t)
 	defer end()
-	settings.js.slow_script_ms = SLOW_SCRIPT_MS
+	world.settings.js.slow_script_ms = SLOW_SCRIPT_MS
 	start := time.tick_now()
 	pr := load(t, "interruption", `<!doctype html><body><script>wrenTest.note("before"); for (;;) {}</script><script>wrenTest.note("after")</script></body>`)
 	ms := time.duration_milliseconds(time.tick_since(start))
@@ -465,7 +465,7 @@ js_hostile_out_of_memory :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	hostile()
-	settings.js.slow_script_ms = FILLING_THE_HEAP_SLOW_SCRIPT_MS
+	world.settings.js.slow_script_ms = FILLING_THE_HEAP_SLOW_SCRIPT_MS
 	pr := load(t, "out of memory", HEAD + `<body><script>
 const keep = [];
 try { for (;;) keep.push(new Array(1 << 16).fill(1.5)); } catch (e) { wrenTest.note("caught") }
@@ -515,8 +515,8 @@ t();
 	// load ran its turns under the flood (each one ends: the loop's time slice, host tests); a task the shell posts meanwhile (input,
 	// painting) runs at the very next turn
 	posted := false
-	host.post(&loop, proc(data: rawptr) { (^bool)(data)^ = true }, rawptr(&posted))   // (run by the wait below)
-	host.loop_wait(&loop, 0)
+	host.post(&world.loop, proc(data: rawptr) { (^bool)(data)^ = true }, rawptr(&posted))   // (run by the wait below)
+	host.loop_wait(&world.loop, 0)
 	check(pr, posted, "timers doubling at every run: a task posted meanwhile runs at the next turn")
 	run(pr, `is("true", "the timers did run in those turns", n >= 100)`)
 	usable(pr, "timer flood")
@@ -552,9 +552,9 @@ js_hostile_compiled_native_flood :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	hostile()
-	settings.js.jit.call_threshold = 1
-	settings.js.jit.loop_threshold = 1
-	settings.js.jit.background_threads = 0
+	world.settings.js.jit.call_threshold = 1
+	world.settings.js.jit.loop_threshold = 1
+	world.settings.js.jit.background_threads = 0
 	pr := load(t, "compiled flood", HEAD + `<body><script>
 function flood() { const big = new Array(20000).fill("ab"); let n = 0; for (;;) { n += big.join(document.title).length; } }
 try { flood(); } catch (e) {}
@@ -608,7 +608,7 @@ js_hostile_deep_trees :: proc(t: ^testing.T) {
 	defer end()
 	if base.perf_skip("deep trees: 20 000 and 50 000 nested elements") { return }
 	hostile()
-	settings.js.slow_script_ms = DEEP_TREES_SLOW_SCRIPT_MS
+	world.settings.js.slow_script_ms = DEEP_TREES_SLOW_SCRIPT_MS
 	pr := load(t, "deep trees", HEAD + `<body><script>
 let n = document.createElement("div");
 const root = n;
@@ -824,7 +824,7 @@ js_cost_of_a_call_across_the_boundary :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	if base.perf_skip("the cost of a call across the boundary") { return }
-	settings.js.slow_script_ms = BENCH_SLOW_SCRIPT_MS
+	world.settings.js.slow_script_ms = BENCH_SLOW_SCRIPT_MS
 	pr := load(t, "boundary", `<!doctype html><body><div id=a title=t><span></span></div><script>
 const a = document.getElementById("a"), N = 1000000;
 function bench(name, f) {

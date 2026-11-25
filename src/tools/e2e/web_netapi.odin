@@ -68,9 +68,9 @@ ES_FAILED :: "error(2);"
 
 // The settings of every test, and a page running the guest (false: closed already).
 open :: proc(t: ^testing.T, name, address: string) -> (pr: ^Probe, ok: bool) {
-	settings.eventsource.min_retry_ms = MIN_RETRY_MS
-	settings.websocket.limits.high_water = HIGH_WATER
-	settings.websocket.limits.low_water = LOW_WATER
+	world.settings.eventsource.min_retry_ms = MIN_RETRY_MS
+	world.settings.websocket.limits.high_water = HIGH_WATER
+	world.settings.websocket.limits.low_water = LOW_WATER
 	pr = page_make(t, name, address)
 	if !load(pr) { close_page(pr); return nil, false }
 	return pr, true
@@ -122,7 +122,7 @@ i32_of :: proc(pr: ^Probe, export: cstring) -> i32 {
 }
 
 no_socket_left :: proc(pr: ^Probe) {
-	settled := wait_until(pr.t, "every socket closed", 0, proc(_: int) -> bool { return net.websocket_count(&client) == 0 })
+	settled := wait_until(pr.t, "every socket closed", 0, proc(_: int) -> bool { return net.websocket_count(&world.client) == 0 })
 	check(pr, settled, "no socket left once every scenario is over")
 }
 
@@ -139,9 +139,9 @@ netapi_eventsource_delivers_and_closes :: proc(t: ^testing.T) {
 	s := scenario(pr, "es_basic", S_ES_BASIC)
 	want := testenv.url("open;message:hello::" + ORIGIN + ";ping:p1:1:" + ORIGIN + ";message:line1\nline2:2:" + ORIGIN + ";done:3:2:" + ORIGIN + ";closed=2")
 	check(pr, s == want, fmt.tprintf("messages, named events, ids, CR/CRLF, BOM, comments, origin (got %q)", s))
-	check(pr, fetch.in_flight(&loader) == 0, "close() cancelled the request")
-	host.clock_advance(&loop, PAST_ANY_RETRY)
-	check(pr, fetch.in_flight(&loader) == 0, "no reconnection started once the time of a retry has passed")
+	check(pr, fetch.in_flight(&world.loader) == 0, "close() cancelled the request")
+	host.clock_advance(&world.loop, PAST_ANY_RETRY)
+	check(pr, fetch.in_flight(&world.loader) == 0, "no reconnection started once the time of a retry has passed")
 	after := net_get(t, testenv.url(ORIGIN + "/sse/hits?name=basic"))
 	check(pr, tooling.parse_digits(after) == tooling.parse_digits(hits) + 1, "one connection, no reconnection after close()")
 	page.call_export(pr.p, pr.p.instances[0], "publish_now", {S_ES_BASIC})
@@ -175,8 +175,8 @@ netapi_eventsource_wrong_type_never_reconnects :: proc(t: ^testing.T) {
 	before := tooling.parse_digits(net_get(t, testenv.url(ORIGIN + "/sse/hits?name=wrong-type")))
 	s := scenario(pr, "es_wrong_type", S_ES_WRONG)
 	check(pr, s == ES_FAILED, fmt.tprintf("a response that is not text/event-stream fails the EventSource (got %q)", s))
-	host.clock_advance(&loop, PAST_ANY_RETRY)
-	check(pr, fetch.in_flight(&loader) == 0 && tooling.parse_digits(net_get(t, testenv.url(ORIGIN + "/sse/hits?name=wrong-type"))) == before + 1, "...and it never reconnects")
+	host.clock_advance(&world.loop, PAST_ANY_RETRY)
+	check(pr, fetch.in_flight(&world.loader) == 0 && tooling.parse_digits(net_get(t, testenv.url(ORIGIN + "/sse/hits?name=wrong-type"))) == before + 1, "...and it never reconnects")
 	close_page(pr, min_checks = 2)
 }
 
@@ -207,15 +207,15 @@ netapi_websocket_text_and_cookies :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	serve(t)
-	cookies.clear_all(&profile.jar)
-	defer cookies.clear_all(&profile.jar)
+	cookies.clear_all(&world.profile.jar)
+	defer cookies.clear_all(&world.profile.jar)
 	pr, ok := open(t, "websocket text", testenv.url(ORIGIN + "/netapi.html"))
 	if !ok { return }
 	s := scenario(pr, "ws_text", S_WS_TEXT)
 	want := testenv.url(fmt.tprintf("open:chat;rs=1;echo:hello;origin:%s;mode:websocket;ua:%s;rs=2;close:4001::1;rs=3;", ORIGIN, net.user_agent_default(context.temp_allocator)))
 	check(pr, s == want, fmt.tprintf("text echo, negotiated subprotocol, Origin, Fetch Metadata, User-Agent, clean close with a code (got %q)", s))
 	found := false
-	for c in cookies.all(&profile.jar) { if c.name == "wscookie" && c.value == "handshake" { found = true } }
+	for c in cookies.all(&world.profile.jar) { if c.name == "wscookie" && c.value == "handshake" { found = true } }
 	check(pr, found, "the cookie set by the handshake is in the profile's jar")
 	s = scenario(pr, "ws_cookie", S_WS_COOKIE)
 	check(pr, strings.has_prefix(s, "cookie:wscookie=handshake;close:"), fmt.tprintf("the next handshake sends it (got %q)", s))
@@ -283,7 +283,7 @@ netapi_websocket_limit_on_messages :: proc(t: ^testing.T) {
 	serve(t)
 	pr, ok := open(t, "websocket message limit", testenv.url(ORIGIN + "/netapi.html"))
 	if !ok { return }
-	settings.websocket.limits.max_message = MAX_MESSAGE
+	world.settings.websocket.limits.max_message = MAX_MESSAGE
 	s := scenario(pr, "ws_too_big", S_WS_TOO_BIG)
 	check(pr, s == SOCKET_FAILED, fmt.tprintf("a message over websocket.max_message_bytes fails the connection (got %q)", s))
 	no_socket_left(pr)
@@ -300,13 +300,13 @@ netapi_websocket_handshake_timeout :: proc(t: ^testing.T) {
 	virtual_clock(t)
 	pr, ok := open(t, "websocket handshake timeout", testenv.url(ORIGIN + "/netapi.html"))
 	if !ok { return }
-	settings.websocket.limits.handshake_timeout_ms = HANDSHAKE_TIMEOUT_MS
+	world.settings.websocket.limits.handshake_timeout_ms = HANDSHAKE_TIMEOUT_MS
 	page.call_export(pr.p, pr.p.instances[0], "ws_slow")
 	drain()
-	host.clock_advance(&loop, (HANDSHAKE_TIMEOUT_MS - 1) * time.Millisecond)
+	host.clock_advance(&world.loop, (HANDSHAKE_TIMEOUT_MS - 1) * time.Millisecond)
 	_, early := result(pr.p, S_WS_SLOW)
 	check(pr, !early, "websocket.handshake_timeout_ms: not before it")
-	host.clock_advance(&loop, time.Millisecond)
+	host.clock_advance(&world.loop, time.Millisecond)
 	s := wait_published(pr, "the handshake's end", S_WS_SLOW)
 	check(pr, s == SOCKET_FAILED, fmt.tprintf("websocket.handshake_timeout_ms fails the connection (got %q)", s))
 	no_socket_left(pr)
@@ -357,14 +357,14 @@ netapi_closing_a_page_with_live_connections :: proc(t: ^testing.T) {
 	if !ok { return }
 	s := scenario(pr, "hold", S_HOLD)
 	check(pr, strings.contains(s, "es-open;") && strings.contains(s, "ws-open;"), fmt.tprintf("an EventSource and a WebSocket are open (got %q)", s))
-	check(pr, net.websocket_count(&client) == 1 && fetch.in_flight(&loader) == 1, "one socket and one stream in flight")
+	check(pr, net.websocket_count(&world.client) == 1 && fetch.in_flight(&world.loader) == 1, "one socket and one stream in flight")
 	page.page_close(pr.p)
 	pr.p = nil
 	lines := len(pr.lines)
-	check(pr, net.websocket_count(&client) == 0, "closing the page closed the socket")
-	check(pr, fetch.in_flight(&loader) == 0 && net.in_flight(&client) == 0, "...and cancelled the stream")
+	check(pr, net.websocket_count(&world.client) == 0, "closing the page closed the socket")
+	check(pr, fetch.in_flight(&world.loader) == 0 && net.in_flight(&world.client) == 0, "...and cancelled the stream")
 	// what could still come: the loop's timers, and the network, a request through it being the barrier
-	host.clock_advance(&loop, PAST_ANY_RETRY)
+	host.clock_advance(&world.loop, PAST_ANY_RETRY)
 	net_get(t, testenv.url(ORIGIN + "/ws/hits"))
 	drain()
 	check(pr, len(pr.lines) == lines, "no late callback after the page is gone")
@@ -376,7 +376,7 @@ Stress_Watch :: struct { p: ^page.Page, peak_held, peak_mem: int }
 stress :: proc(t: ^testing.T, parallel: int) {
 	pr, ok := open(t, "stress", testenv.url(ORIGIN + "/stress.html"))
 	if !ok { return }
-	if parallel > 0 { settings.websocket.limits.max_connecting_per_host = parallel }
+	if parallel > 0 { world.settings.websocket.limits.max_connecting_per_host = parallel }
 	keep := base.poison_quarantine_limit(0)   // (private bytes count what is freed otherwise)
 	defer base.poison_quarantine_limit(keep)
 	mem_before := int(base.process_memory().private)
@@ -393,7 +393,7 @@ stress :: proc(t: ^testing.T, parallel: int) {
 	growth := watch.peak_mem - mem_before
 	check(pr, watch.peak_held <= PAGE_MEMORY_BOUND, fmt.tprintf("page memory stays bounded by the messages in flight (peak %d KiB)", watch.peak_held / KIB))
 	check(pr, growth < PROCESS_GROWTH_BOUND, fmt.tprintf("process memory stays bounded (peak growth %d KiB)", growth / KIB))
-	check(pr, pr.p.held == 0 && net.websocket_count(&client) == 0, "everything released at the end")
+	check(pr, pr.p.held == 0 && net.websocket_count(&world.client) == 0, "everything released at the end")
 	close_page(pr, min_checks = 4)
 }
 
