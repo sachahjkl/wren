@@ -10,7 +10,7 @@ package browser
 //
 //	images_set_texture_api(Texture_Api{
 //		user     = app,
-//		create   = proc(u: rawptr, w, h: int) -> Image_Texture { return Image_Texture(render.create_texture_rgba(&(^App)(u).r, w, h)) },
+//		create   = proc(u: rawptr, w, h: int, mips: bool) -> Image_Texture { return Image_Texture(render.create_texture_rgba(&(^App)(u).r, w, h, mips)) },
 //		update   = proc(u: rawptr, t: Image_Texture, x, y, w, h: int, px: []u8, stride: int) { render.update_texture_rgba(&(^App)(u).r, render.Texture(t), x, y, w, h, px, stride) },
 //		destroy  = proc(u: rawptr, t: Image_Texture) { render.destroy_texture(&(^App)(u).r, render.Texture(t)) },
 //		draw     = proc(u: rawptr, dc: ^draw.Context, t: Image_Texture, dst, src: draw.Rect, tint: draw.Color, radii: [4]f32) { draw.image_corners(dc, render.Texture(t), dst, src, tint, radii) },
@@ -46,7 +46,7 @@ WHITE_TINT :: draw.Color{1, 1, 1, 1}
 
 Texture_Api :: struct {
 	user:       rawptr,
-	create:     proc(user: rawptr, w, h: int) -> Image_Texture,
+	create:     proc(user: rawptr, w, h: int, mips: bool) -> Image_Texture,
 	update:     proc(user: rawptr, tex: Image_Texture, x, y, w, h: int, pixels: []u8, stride: int),
 	destroy:    proc(user: rawptr, tex: Image_Texture),
 	draw:       proc(user: rawptr, dc: ^draw.Context, tex: Image_Texture, dst, src: draw.Rect, tint: draw.Color, radii: [4]f32),
@@ -106,7 +106,7 @@ Images_Shell :: struct {
 // The fallback: textures that remember nothing and draw a placeholder of the image's box.
 PLACEHOLDER_TEXTURES :: Texture_Api{
 	placeholder = true,
-	create = proc(user: rawptr, w, h: int) -> Image_Texture { the_app.images_shell.fake_next += 1; return the_app.images_shell.fake_next },
+	create = proc(user: rawptr, w, h: int, mips: bool) -> Image_Texture { the_app.images_shell.fake_next += 1; return the_app.images_shell.fake_next },
 	update = proc(user: rawptr, tex: Image_Texture, x, y, w, h: int, pixels: []u8, stride: int) {},
 	destroy = proc(user: rawptr, tex: Image_Texture) {},
 	draw = proc(user: rawptr, dc: ^draw.Context, tex: Image_Texture, dst, src: draw.Rect, tint: draw.Color, radii: [4]f32) { draw_placeholder(dc, dst, .Ready) },
@@ -337,7 +337,7 @@ texture_for :: proc(id: u64, fp: page.Frame_Pixels) -> (Image_Texture, bool) {
 	if st != nil && (st.w != fp.width || st.h != fp.height) { release_texture(id); st = nil }
 	if st == nil {
 		prof_begin(.Tex_Create)
-		tex := the_app.images_shell.api.create(the_app.images_shell.api.user, fp.width, fp.height)
+		tex := the_app.images_shell.api.create(the_app.images_shell.api.user, fp.width, fp.height, true)
 		prof_end(.Tex_Create)
 		if tex == 0 { return 0, false }
 		st = new(Shell_Texture)
@@ -536,9 +536,9 @@ paint_canvas :: proc(dc: ^draw.Context, node: base.Handle, content, border: draw
 	if clip { draw.pop_clip(dc) }
 }
 
-// The texture of a canvas bitmap. Created at the bitmap's size; only the changed tile regions are uploaded (all of it
-// for a new texture): directly premultiplied when the renderer takes that (Direct3D canvas textures or WGPU RGBA8
-// data textures in sRGB blend space), else converted to straight alpha through a persistent scratch buffer.
+// The texture of a canvas bitmap. Created at the bitmap's size with on-demand mipmaps; only the changed tile regions
+// are uploaded (all of it for a new texture): directly premultiplied when the renderer exposes canvas textures
+// (Direct3D 11), else converted to straight alpha through a persistent scratch buffer into an RGBA color texture.
 @(private)
 canvas_texture_for :: proc(v: page.Canvas_View, want_mips: bool) -> (Image_Texture, bool) {
 	bmp := v.bmp
@@ -556,8 +556,7 @@ canvas_texture_for :: proc(v: page.Canvas_View, want_mips: bool) -> (Image_Textu
 			premultiplied = tex != 0
 		}
 		if tex == 0 {
-			tex = api.create(api.user, bmp.w, bmp.h)
-			mips = true
+			tex = api.create(api.user, bmp.w, bmp.h, mips)
 		}
 		prof_end(.Tex_Create)
 		if tex == 0 { return 0, false }
@@ -735,31 +734,24 @@ images_paint_background_layer :: proc(dc: ^draw.Context, layer: ^style.Bg_Layer,
 renderer_texture_api :: proc(app: ^App) -> Texture_Api {
 	return Texture_Api{
 		user     = app,
-		create   = proc(u: rawptr, w, h: int) -> Image_Texture { return Image_Texture(render.create_texture_rgba(&(^App)(u).r, w, h)) },
+		create   = proc(u: rawptr, w, h: int, mips: bool) -> Image_Texture { return Image_Texture(render.create_texture_rgba(&(^App)(u).r, w, h, mips)) },
 		update   = proc(u: rawptr, t: Image_Texture, x, y, w, h: int, px: []u8, stride: int) { render.update_texture_rgba(&(^App)(u).r, render.Texture(t), x, y, w, h, px, stride) },
 		destroy  = proc(u: rawptr, t: Image_Texture) { render.destroy_texture(&(^App)(u).r, render.Texture(t)) },
 		draw     = proc(u: rawptr, dc: ^draw.Context, t: Image_Texture, dst, src: draw.Rect, tint: draw.Color, radii: [4]f32) { draw.image_corners(dc, render.Texture(t), dst, src, tint, radii) },
 		draw_tiled = proc(u: rawptr, dc: ^draw.Context, t: Image_Texture, dst, tile: draw.Rect, tint: draw.Color, radii: [4]f32) { draw.image_tiled(dc, render.Texture(t), dst, tile, tint, radii) },
 		max_size = proc(u: rawptr) -> int { return render.max_texture_size(&(^App)(u).r) },
-		// a premultiplied sRGB RGBA8 texture (Direct3D canvas textures, or WGPU RGBA8 data textures in sRGB blend space:
-		// same RGBA8Unorm format, zero CPU unpremultiply/re-premultiply roundtrip)
+		// a premultiplied sRGB RGBA8 texture on backends that expose canvas textures (Direct3D 11);
+		// render.create_texture_data creates a linear raw-data texture (texture_space == .Linear), which would make
+		// draw.image sRGB-encode already-sRGB canvas bytes a second time in sRGB blend space
 		create_premultiplied = proc(u: rawptr, w, h: int, mips: bool) -> Image_Texture {
 			r := &(^App)(u).r
-			if render.canvas_supported(r) {
-				return Image_Texture(render.canvas_texture_create(r, w, h, false, mips))
-			}
-			if render.blend_space(r) == .Srgb {
-				return Image_Texture(render.create_texture_data(r, w, h, .RGBA8, mips))
-			}
-			return 0
+			if !render.canvas_supported(r) { return 0 }
+			return Image_Texture(render.canvas_texture_create(r, w, h, false, mips))
 		},
 		update_premultiplied = proc(u: rawptr, t: Image_Texture, x, y, w, h: int, px: []u8, stride: int) {
 			r := &(^App)(u).r
-			if render.canvas_supported(r) {
-				render.canvas_upload(r, render.Texture(t), x, y, w, h, px, stride)
-			} else {
-				render.update_texture_data(r, render.Texture(t), x, y, w, h, px, stride)
-			}
+			if !render.canvas_supported(r) { return }
+			render.canvas_upload(r, render.Texture(t), x, y, w, h, px, stride)
 		},
 	}
 }
