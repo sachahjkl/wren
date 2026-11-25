@@ -3,7 +3,6 @@ package deps
 import "core:fmt"
 import "core:os"
 import "core:strings"
-@(require) import "wb:base"   // (Windows: rename_personality)
 import "wb:tools/tooling"
 
 // Wren's Rust code (the native/ workspace) as the one Rust static library linked into the program: the image decoders and WOFF2 (native/media), the network stack (native/net), the toolkit's
@@ -21,9 +20,10 @@ BYTES_PER_MB :: 1024 * 1024
 
 // What the library is made of: change any input and it is built again.
 @(private)
-native_stamp :: proc(profile, features: string, include_text, include_a11y: bool) -> string {
+native_stamp :: proc(profile, features: string, include_text, include_a11y, include_wgpu: bool) -> string {
 	crates := make([dynamic]string, context.temp_allocator)
-	append(&crates, "native/crypto", "native/media", "native/net", "native/webgl", "native/wren_native")
+	append(&crates, "native/crypto", "native/media", "native/net", "native/wasmtime_capi", "native/webgl", "native/wren_native")
+	if include_wgpu { append(&crates, "native/wgpu_capi") }
 	if include_a11y { append(&crates, "ext/gui_toolkit/native/a11y") }
 	if include_text { append(&crates, "ext/gui_toolkit/native/text") }
 	inputs := make([dynamic]string, context.temp_allocator)
@@ -44,7 +44,7 @@ build_native :: proc(o: Options) -> bool {
 	text := text_env != "dwrite"
 	features := text ? "text,a11y" : "a11y"
 
-	stamp := native_stamp(o.profile, features, text, true)
+	stamp := native_stamp(o.profile, features, text, true, false)
 	if !o.force && os.exists(lib) && read_stamp(stamp_file) == stamp {
 		tooling.say(o.log, fmt.tprintfln("wren_native (%s) up to date in %s", o.profile, out))
 		return true
@@ -70,44 +70,9 @@ build_native :: proc(o: Options) -> bool {
 	_ = os.make_directory_all(out)
 	_ = os.remove(stamp_file)   // (a library half replaced is never taken for a built one)
 	if os.copy_file(lib, fmt.tprintf("%s/%s/wren_native.lib", target, o.profile)) != nil { return fail(o, "the library cannot be copied") }
-	if !rename_personality(o, lib, out) { return false }
 	if !write_stamp(stamp_file, stamp) { return fail(o, "the stamp cannot be written") }
 	fi, _ := os.stat(lib, context.temp_allocator)
 	tooling.say(o.log, fmt.tprintfln("built %s (%s, %d MB)", lib, o.profile, fi.size / BYTES_PER_MB))
-	return true
-}
-
-// Wasmtime's library carries its own Rust standard library (another compiler's: its mangled symbols differ), and both define the unmangled rust_eh_personality (a no-op on MSVC, where unwinding
-// goes through __CxxFrameHandler3). Ours is renamed in the object that defines it so that the two link together: the only symbol renamed, this workspace's libraries share one standard library.
-@(private)
-rename_personality :: proc(o: Options, lib, out: string) -> bool {
-	sysroot, code := tooling.capture({"rustc", "--print", "sysroot"}, allocator = context.temp_allocator)
-	if code != 0 { return fail(o, "rustc --print sysroot failed") }
-	bin := fmt.tprintf("%s/lib/rustlib/x86_64-pc-windows-msvc/bin", strings.trim_space(sysroot))
-	objcopy := fmt.tprintf("%s/llvm-objcopy.exe", bin)
-	if !os.exists(objcopy) && tooling.run({command = {"rustup", "component", "add", "llvm-tools"}, log = o.log}) != 0 { return fail(o, "rustup component add llvm-tools failed") }
-	listing, nm := tooling.capture({fmt.tprintf("%s/llvm-nm.exe", bin), "--defined-only", "--print-file-name", lib}, allocator = context.temp_allocator)
-	if nm != 0 { return fail(o, "llvm-nm failed") }
-	member, found := "", 0
-	for line in strings.split_lines(listing, context.temp_allocator) {
-		if !strings.has_suffix(strings.trim_right_space(line), " T rust_eh_personality") { continue }
-		// <lib>:<member>.o: <address> T rust_eh_personality
-		start := strings.index(line, ".lib:")
-		stop := strings.last_index(line, ".o:")
-		if start < 0 || stop < start { continue }
-		member = line[start + len(".lib:"):stop + len(".o")]
-		found += 1
-	}
-	if found != 1 { return fail(o, fmt.tprintf("wren_native.lib: expected one object defining rust_eh_personality, found %d", found)) }
-	work := fmt.tprintf("%s/rename", out)
-	base.remove_tree(work)
-	_ = os.make_directory_all(work)
-	defer base.remove_tree(work)
-	ar := fmt.tprintf("%s/llvm-ar.exe", bin)
-	whole := full_path(lib)
-	if tooling.run({command = {ar, "x", whole, member}, dir = work, log = o.log}) != 0 { return fail(o, "llvm-ar x failed") }
-	if tooling.run({command = {objcopy, "--redefine-sym=rust_eh_personality=wren_native_rust_eh_personality", member}, dir = work, log = o.log}) != 0 { return fail(o, "llvm-objcopy failed") }
-	if tooling.run({command = {ar, "r", whole, member}, dir = work, log = o.log}) != 0 { return fail(o, "llvm-ar r failed") }
 	return true
 }
 
@@ -153,7 +118,7 @@ build_native :: proc(o: Options) -> bool {
 	out := "build/native-linux"
 	lib := fmt.tprintf("%s/libwren_native.a", out)
 	stamp_file := fmt.tprintf("%s/STAMP", out)
-	stamp := native_stamp(profile, o.features, strings.contains(o.features, "text"), strings.contains(o.features, "a11y"))
+	stamp := native_stamp(profile, o.features, strings.contains(o.features, "text"), strings.contains(o.features, "a11y"), strings.contains(o.features, "wgpu_capi"))
 	if !o.force && os.exists(lib) && read_stamp(stamp_file) == stamp {
 		tooling.say(o.log, fmt.tprintfln("wren_native (%s) up to date in %s", profile, out))
 		return true

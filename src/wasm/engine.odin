@@ -131,7 +131,8 @@ wt_engine_new :: proc(rs: Runtime_Settings, epoch: bool, target := "", features:
 		}
 		for name in features { wasmtime_config_cranelift_flag_enable(c, strings.clone_to_cstring(name, context.temp_allocator)) }
 	}
-	wasmtime_config_strategy_set(c, rs.compiler == .Winch ? WT_STRATEGY_WINCH : WT_STRATEGY_CRANELIFT)
+	// Winch is not compiled into Wren's Wasmtime build (Cranelift only).
+	wasmtime_config_strategy_set(c, WT_STRATEGY_CRANELIFT)
 	switch rs.opt_level {
 	case .None:           wasmtime_config_cranelift_opt_level_set(c, WT_OPT_NONE)
 	case .Speed:          wasmtime_config_cranelift_opt_level_set(c, WT_OPT_SPEED)
@@ -145,17 +146,13 @@ wt_engine_new :: proc(rs: Runtime_Settings, epoch: bool, target := "", features:
 	wasmtime_config_cranelift_nan_canonicalization_set(c, rs.nan_canonicalization)
 	wasmtime_config_epoch_interruption_set(c, epoch)
 	wasmtime_config_consume_fuel_set(c, rs.fuel)
-	// Wasmtime refuses a wasm stack larger than its async stack size (2 MiB by default), even without async calls
+	// Wasmtime refuses a wasm stack larger than its async stack size (2 MiB by default), even without the async feature
 	wasmtime_config_async_stack_size_set(c, uint(max(2 << 20, rs.max_stack_bytes + rs.host_stack_reserve)))
 	wasmtime_config_max_wasm_stack_set(c, uint(rs.max_stack_bytes))
 	wasmtime_config_memory_reservation_set(c, u64(rs.memory_reservation))
 	wasmtime_config_memory_guard_size_set(c, u64(rs.memory_guard))
 	wasmtime_config_memory_reservation_for_growth_set(c, 0)
 	wasmtime_config_memory_may_move_set(c, false)   // host functions hold native pointers across nested calls
-	// components are not used; their async support would require reference types
-	wasmtime_config_wasm_component_model_async_set(c, false)
-	wasmtime_config_concurrency_support_set(c, false)
-	wasmtime_config_wasm_component_model_set(c, false)
 	wasmtime_config_wasm_threads_set(c, true)   // (a page's modules: user_shared.odin)
 	wasmtime_config_shared_memory_set(c, true)
 	wasmtime_config_wasm_simd_set(c, f.simd)

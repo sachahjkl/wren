@@ -87,22 +87,6 @@
       '';
     };
 
-    # What wrentool fetches (src/tools/wrentool/deps/fetch.odin: the same URLs and SHA-256), put where it looks for them
-    # first, so the build makes no request.
-    wasmtimeVersion = "49.0.3";
-    wasmtimeArchive = pkgs.fetchurl {
-      url = "https://github.com/bytecodealliance/wasmtime/releases/download/v${wasmtimeVersion}/wasmtime-v${wasmtimeVersion}-x86_64-linux-c-api.tar.xz";
-      sha256 = "49c9641ac1f6158ed90404115315b36a9ae68338acda16fcf00f0819622ccd97";
-    };
-    wasmtimeLicense = pkgs.fetchurl {
-      url = "https://raw.githubusercontent.com/bytecodealliance/wasmtime/v${wasmtimeVersion}/LICENSE";
-      sha256 = "268872b9816f90fd8e85db5a28d33f8150ebb8dd016653fb39ef1f94f2686bc5";
-    };
-    wgpuArchive = pkgs.fetchurl {
-      url = "https://github.com/gfx-rs/wgpu-native/releases/download/v29.0.1.1/wgpu-linux-x86_64-release.zip";
-      sha256 = "95a4d90c071005a98d03eab348beaa6b07e16eb00d1dcdb9f8348f75eb97ec5a";
-    };
-
     # wren-vault, the Vault's helper: a separate program (GPL-3.0) that this Wren pins in vault.version, its version and
     # the SHA-256 of its Linux program, read from that file so the package and `wrentool vault pin` agree. It goes beside
     # the browser's executable, where the Vault looks in the Nix store (src/md/features/vault-helper-delivery.md).
@@ -228,14 +212,12 @@
         mkdir -p "$HOME/.cargo"
         sed "s|directory = \"cargo-vendor-dir\"|directory = \"$cargoDeps\"|" "$cargoDeps/.cargo/config.toml" > "$HOME/.cargo/config.toml"
         export CARGO_NET_OFFLINE=true
-        # wrentool seals wgpu-native into Odin's vendor/: a writable copy of the compiler
+        # wrentool writes an empty libwgpu_native.a stub into Odin's vendor/: a writable copy of the compiler
         cp -r ${odin}/lib/odin "$TMPDIR/odin"
         chmod -R u+w "$TMPDIR/odin"
         export ODIN_ROOT="$TMPDIR/odin"
         mkdir -p build/tmp build/wasmtime
-        cp ${wasmtimeArchive} build/tmp/wasmtime-v${wasmtimeVersion}-x86_64-linux-c-api.tar.xz
-        cp ${wgpuArchive} build/tmp/wgpu-linux-x86_64-release.zip
-        cp ${wasmtimeLicense} build/wasmtime/LICENSE
+        cp native/wasmtime_capi/LICENSE build/wasmtime/LICENSE
         runHook postConfigure
       '';
 

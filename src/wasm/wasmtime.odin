@@ -1,15 +1,14 @@
 package wasm
 
-// Bindings for the subset of the Wasmtime C API (build\wasmtime, fetched by wrentool fetch wasmtime) the browser uses.
-// The static library is linked into the executable; it needs the system libraries listed below (Rust's standard library
-// on Windows: sockets, the registry/security API, user profiles, NT calls, COM for paths, BCrypt for random numbers) and
-// the dynamic C runtime Odin already links.
+// Bindings for the subset of the Wasmtime C API (native/wasmtime_capi, linked into libwren_native.a / wren_native.lib)
+// the browser uses. Built from source inside the native/ Rust workspace so Wren links one Rust standard library and
+// omits unused Wasmtime features (pulley, winch, component-model, wasi, async, cache, coredump, addr2line, demangle).
 
-WASMTIME_VERSION :: "49.0.3"   // must match wrentool fetch wasmtime: part of the compiled-code cache key
+WASMTIME_VERSION :: "49.0.3"   // must match native/wasmtime_capi/Cargo.toml: part of the compiled-code cache key
 
 when ODIN_OS == .Windows {
 	foreign import wasmtime_lib {
-		"../../build/wasmtime/lib/wasmtime.lib",
+		"../../build/native/wren_native.lib",
 		"system:ws2_32.lib",
 		"system:advapi32.lib",
 		"system:userenv.lib",
@@ -18,14 +17,29 @@ when ODIN_OS == .Windows {
 		"system:ole32.lib",
 		"system:bcrypt.lib",
 		"system:kernel32.lib",
+		"system:crypt32.lib",
+		"system:secur32.lib",
+		"system:ncrypt.lib",
+		"system:iphlpapi.lib",
+		"system:d3dcompiler.lib",
+		"system:dxgi.lib",
+		"system:d3d12.lib",
+		"system:user32.lib",
+		"system:gdi32.lib",
+		"system:oleaut32.lib",
+		"system:propsys.lib",
+		"system:runtimeobject.lib",
 		"system:libcmt.lib",
 		"system:libucrt.lib",
 		"system:libvcruntime.lib",
 	}
 } else {
-	// wrentool fetch wasmtime: the same release's C API for Linux (glibc: libdl, libpthread and libm)
+	// native/wasmtime_capi linked into Wren's single Rust static library (wrentool build native)
 	foreign import wasmtime_lib {
-		"../../build/wasmtime-" + ODIN_OS_STRING + "/lib/libwasmtime.a",
+		"../../build/native-" + ODIN_OS_STRING + "/libwren_native.a",
+		"system:fontconfig",
+		"system:opus",
+		"system:asound",
 		"system:dl",
 		"system:pthread",
 		"system:m",
@@ -214,7 +228,6 @@ foreign wasmtime_lib {
 	wasmtime_guestprofiler_finish :: proc(g: wt_guestprofiler, out: ^wt_byte_vec) -> wt_error ---
 	wasmtime_guestprofiler_delete :: proc(g: wt_guestprofiler) ---
 
-	wasmtime_config_debug_info_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_consume_fuel_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_epoch_interruption_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_max_wasm_stack_set :: proc(c: wt_config, v: uint) ---
@@ -252,12 +265,7 @@ foreign wasmtime_lib {
 	wasmtime_config_memory_reservation_set :: proc(c: wt_config, v: u64) ---
 	wasmtime_config_memory_guard_size_set :: proc(c: wt_config, v: u64) ---
 	wasmtime_config_memory_reservation_for_growth_set :: proc(c: wt_config, v: u64) ---
-	wasmtime_config_memory_init_cow_set :: proc(c: wt_config, v: bool) ---
-	wasmtime_config_signals_based_traps_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_native_unwind_info_set :: proc(c: wt_config, v: bool) ---
-	wasmtime_config_wasm_component_model_set :: proc(c: wt_config, v: bool) ---
-	wasmtime_config_wasm_component_model_async_set :: proc(c: wt_config, v: bool) ---
-	wasmtime_config_concurrency_support_set :: proc(c: wt_config, v: bool) ---
 
 	wasmtime_store_new :: proc(e: wt_engine, data: rawptr, finalizer: wt_finalizer) -> wt_store ---
 	wasmtime_store_context :: proc(s: wt_store) -> wt_context ---
@@ -272,9 +280,7 @@ foreign wasmtime_lib {
 	wasmtime_error_new :: proc(msg: cstring) -> wt_error ---
 	wasmtime_error_delete :: proc(e: wt_error) ---
 	wasmtime_error_message :: proc(e: wt_error, out: ^wt_byte_vec) ---
-	wasmtime_error_wasm_trace :: proc(e: wt_error, out: ^wt_ptr_vec) ---
 
-	wasm_byte_vec_new :: proc(out: ^wt_byte_vec, size: uint, data: [^]u8) ---
 	wasm_byte_vec_delete :: proc(v: ^wt_byte_vec) ---
 
 	wasm_valtype_new :: proc(kind: u8) -> wt_valtype ---
@@ -316,7 +322,6 @@ foreign wasmtime_lib {
 	wasmtime_linker_clone :: proc(l: wt_linker) -> wt_linker ---
 	wasmtime_linker_delete :: proc(l: wt_linker) ---
 	wasmtime_linker_define_func_unchecked :: proc(l: wt_linker, module: [^]u8, module_len: uint, name: [^]u8, name_len: uint, ty: wt_functype, cb: wt_unchecked_callback, data: rawptr, finalizer: wt_finalizer) -> wt_error ---
-	wasmtime_linker_define_unknown_imports_as_traps :: proc(l: wt_linker, m: wt_module) -> wt_error ---
 	wasmtime_linker_instantiate_pre :: proc(l: wt_linker, m: wt_module, out: ^wt_instance_pre) -> wt_error ---
 	wasmtime_instance_pre_delete :: proc(p: wt_instance_pre) ---
 	wasmtime_instance_pre_instantiate :: proc(p: wt_instance_pre, ctx: wt_context, out: ^wt_instance, trap: ^wt_trap) -> wt_error ---

@@ -157,8 +157,8 @@ program_of :: proc(o: Options) -> string {
 // makes them a step of their own, which every step that links build\native waits for: no program links the library while it is
 // being replaced (a dev and a release build use different profiles of it).
 dependencies :: proc(o: Options) -> bool {
-	// (Linux: the text backend is built into Wren's Rust library; AccessKit is Windows-only)
-	features := ODIN_OS == .Windows ? "" : "text"
+	// (Linux: the text backend and wgpu C API are built into Wren's Rust library; Windows links wgpu_native.dll for WREN_RENDER=wgpu and AccessKit is Windows-only)
+	features := ODIN_OS == .Windows ? "" : "text,wgpu_capi"
 	return deps.all({profile = VARIANTS[o.variant].native_release ? "release" : "quick", features = features, tracy = o.tracy, log = o.log})
 }
 

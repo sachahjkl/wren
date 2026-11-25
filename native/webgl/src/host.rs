@@ -139,7 +139,7 @@ fn make_device(key: Key, take_turn: bool) -> Result<Made, String> {
         desc.flags = wgpu::InstanceFlags::DISCARD_HAL_LABELS;
         let instance = wgpu::Instance::new(desc);
         let preference = if fallback { wgpu::PowerPreference::None } else { wgpu::PowerPreference::HighPerformance };
-        pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions { power_preference: preference, force_fallback_adapter: fallback, compatible_surface: None, apply_limit_buckets: false })).ok()
+        pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions { power_preference: preference, force_fallback_adapter: fallback, compatible_surface: None })).ok()
     };
     // A GPU: on Windows through Vulkan first (FXC, the compiler behind Direct3D 12's path, takes seconds on the large shaders
     // of real pages, for every state a shader is drawn with), if its adapter is a real one. Otherwise Direct3D 12, then software.
@@ -487,7 +487,7 @@ impl Thread {
 
     /// The frame's pixels, premultiplied, top row first, into the section.
     fn deliver(&mut self, fr: &FrameRead) -> bool {
-        let Ok(view) = fr.buffer.slice(..).get_mapped_range() else { return false };
+        let view = fr.buffer.slice(..).get_mapped_range();
         let Some(target) = self.target.as_mut() else { return false };
         let Some(dst) = target.view.fill(fr.w, fr.h) else { return false };
         let (w, h, bpr) = (fr.w as usize, fr.h as usize, fr.bpr as usize);

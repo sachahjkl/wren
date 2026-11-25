@@ -25,7 +25,7 @@ libc = "=0.2.191"
 
 [dependencies]
 # SVG: usvg (parse + simplify) and tiny-skia (rasterise); text with the system's fonts (fontdb), <image> with data: URLs
-resvg = { version = "=0.48.1", default-features = false, features = ["text", "system-fonts", "memmap-fonts", "raster-images"] }
+resvg = { version = "=0.50.0", default-features = false, features = ["text", "system-fonts", "memmap-fonts", "raster-images"] }
 # WebP: lossy (VP8), lossless (VP8L), alpha, animation; pure safe Rust
 image-webp = "=0.2.4"
 # AVIF: container (items, alpha, grid, sequences, colr / irot / imir / clap), safe Rust with fallible allocations
@@ -50,4 +50,4 @@ gif = { version = "=0.14.2", default-features = false, features = ["raii_no_pani
 
 [dev-dependencies]
 # tests only: outlines of decoded WOFF2 fonts compared with the same fonts served as TrueType (already a dependency of resvg)
-skrifa = "=0.44.0"
+skrifa = "=0.49.0"

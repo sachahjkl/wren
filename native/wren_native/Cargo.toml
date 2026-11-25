@@ -21,6 +21,8 @@ wren_net = { path = "../net" }
 wren_webgl = { path = "../webgl" }
 # P-521 for crypto.subtle (RustCrypto): package page
 wren_crypto = { path = "../crypto" }
+# Minimal source-built Wasmtime 49.0.3 C API (cranelift, parallel-compilation, threads, gc, profiling, standalone wat2wasm): package wasm
+wren_wasmtime_capi = { path = "../wasmtime_capi" }
 # The toolkit's native text backend (Fontations, HarfRust, ICU4X): the toolkit is then built with
 # -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false. Left out of a WREN_TEXT=dwrite build.
 gt_text = { path = "../../ext/gui_toolkit/native/text", optional = true }
@@ -32,6 +34,14 @@ gt_a11y = { path = "../../ext/gui_toolkit/native/a11y", optional = true }
 log = { version = "=0.4.34", default-features = false, features = ["release_max_level_off"] }
 tracing = { version = "=0.1.44", default-features = false, features = ["release_max_level_off"] }
 
+# WebGPU C API for gui_toolkit/render (shares wgpu-core/naga/ash with wren_webgl): Linux (Vulkan + GLES fallback) and Windows WREN_RENDER=wgpu (DX12 + Vulkan).
+[target.'cfg(target_os = "windows")'.dependencies]
+wren_wgpu_capi = { path = "../wgpu_capi", optional = true, default-features = false, features = ["wgsl", "dx12", "vulkan"] }
+
+[target.'cfg(not(target_os = "windows"))'.dependencies]
+wren_wgpu_capi = { path = "../wgpu_capi", optional = true, default-features = false, features = ["wgsl", "vulkan", "gles"] }
+
 [features]
 text = ["dep:gt_text"]
 a11y = ["dep:gt_a11y"]
+wgpu_capi = ["dep:wren_wgpu_capi"]

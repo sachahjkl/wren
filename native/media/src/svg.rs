@@ -566,7 +566,7 @@ fn cost(tree: &Tree) -> (f64, u64) {
         nodes += 1;
         let layer = !g.filters().is_empty() || g.clip_path().is_some() || g.mask().is_some() || g.opacity().get() < 1.0 || g.isolate();
         if layer {
-            total += area(Some(g.abs_layer_bounding_box().to_rect()), canvas);
+            total += area(g.abs_layer_bounding_box().map(|r| r.to_rect()), canvas);
         }
         for f in g.filters() {
             let region = area(Some(f.rect().to_rect().transform(g.abs_transform()).unwrap_or(f.rect().to_rect())), canvas);
@@ -583,7 +583,7 @@ fn cost(tree: &Tree) -> (f64, u64) {
                 Node::Group(c) => stack.push(c),
                 Node::Path(p) => {
                     nodes += 1;
-                    total += area(Some(p.abs_stroke_bounding_box()), canvas).max(area(Some(p.abs_bounding_box()), canvas));
+                    total += area(p.abs_stroke_bounding_box(), canvas).max(area(p.abs_bounding_box(), canvas));
                 }
                 Node::Image(i) => {
                     nodes += 1;

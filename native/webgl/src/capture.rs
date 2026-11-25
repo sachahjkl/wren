@@ -313,10 +313,10 @@ impl Ctx {
         let layouts = [Some(bgl0), Some(&bgl1), Some(bgl2), Some(tf_layout)];
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor { label: None, bind_group_layouts: &layouts, immediate_size: 0 });
         let attrs: Vec<Vec<wgpu::VertexAttribute>> = slots.iter().map(|s| s.attrs.iter().map(|(format, offset, loc)| wgpu::VertexAttribute { format: *format, offset: *offset as u64, shader_location: *loc }).collect()).collect();
-        let buffers: Vec<Option<wgpu::VertexBufferLayout<'_>>> = slots
+        let buffers: Vec<wgpu::VertexBufferLayout<'_>> = slots
             .iter()
             .zip(attrs.iter())
-            .map(|(s, a)| Some(wgpu::VertexBufferLayout { array_stride: s.stride as u64, step_mode: if s.instance { wgpu::VertexStepMode::Instance } else { wgpu::VertexStepMode::Vertex }, attributes: a }))
+            .map(|(s, a)| wgpu::VertexBufferLayout { array_stride: s.stride as u64, step_mode: if s.instance { wgpu::VertexStepMode::Instance } else { wgpu::VertexStepMode::Vertex }, attributes: a })
             .collect();
         let validation = device.push_error_scope(wgpu::ErrorFilter::Validation);
         let p = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -545,7 +545,8 @@ impl Ctx {
         slice.map_async(wgpu::MapMode::Read, move |r| done.store(r.is_ok(), Ordering::SeqCst));
         let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
         if ok.load(Ordering::SeqCst) {
-            if let Ok(view) = slice.get_mapped_range() {
+            {
+                let view = slice.get_mapped_range();
                 if let Some(b) = self.buffers.get_mut(&id) {
                     let n = b.shadow.len();
                     b.shadow.copy_from_slice(&view[..n]);
@@ -699,7 +700,8 @@ impl Ctx {
                 self.occlusion.batches.push(batch);
                 continue;
             }
-            if let Ok(view) = batch.staging.slice(..).get_mapped_range() {
+            {
+                let view = batch.staging.slice(..).get_mapped_range();
                 for (i, q) in batch.slots.iter().enumerate() {
                     let at = i * OCCLUSION_RESULT_BYTES as usize;
                     let v = u64::from_ne_bytes(view[at..at + OCCLUSION_RESULT_BYTES as usize].try_into().unwrap_or([0; 8]));

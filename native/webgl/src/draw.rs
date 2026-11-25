@@ -1565,11 +1565,11 @@ impl Ctx {
             .iter()
             .map(|s| s.attrs.iter().map(|(format, offset, loc)| wgpu::VertexAttribute { format: *format, offset: *offset as u64, shader_location: *loc }).collect())
             .collect();
-        let buffers: Vec<Option<wgpu::VertexBufferLayout<'_>>> = key
+        let buffers: Vec<wgpu::VertexBufferLayout<'_>> = key
             .slots
             .iter()
             .zip(vertex_attrs.iter())
-            .map(|(s, a)| Some(wgpu::VertexBufferLayout { array_stride: s.stride as u64, step_mode: if s.instance { wgpu::VertexStepMode::Instance } else { wgpu::VertexStepMode::Vertex }, attributes: a }))
+            .map(|(s, a)| wgpu::VertexBufferLayout { array_stride: s.stride as u64, step_mode: if s.instance { wgpu::VertexStepMode::Instance } else { wgpu::VertexStepMode::Vertex }, attributes: a })
             .collect();
         let blend = key.blend.map(|b| wgpu::BlendState {
             color: wgpu::BlendComponent {
@@ -1688,7 +1688,7 @@ impl Ctx {
         if !matches!(rx.try_recv(), Ok(true)) {
             return None;
         }
-        let data = staging.slice(..).get_mapped_range().ok()?.to_vec();
+        let data = staging.slice(..).get_mapped_range().to_vec();
         staging.unmap();
         Some((data, bpr as usize))
     }

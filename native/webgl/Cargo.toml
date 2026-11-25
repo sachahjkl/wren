@@ -13,16 +13,16 @@ license = "MIT"
 path = "src/lib.rs"
 
 [dependencies]
-naga = { version = "=30.0.1", default-features = false, features = ["glsl-in"] }
+naga = { version = "=29.0.3", default-features = false, features = ["glsl-in"] }
 pp-rs = "=0.2.1"
 pollster = "=0.4.0"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-wgpu = { version = "=30.0.1", default-features = false, features = ["std", "parking_lot", "naga-ir", "dx12", "vulkan"] }
+wgpu = { version = "=29.0.3", default-features = false, features = ["std", "parking_lot", "naga-ir", "dx12", "vulkan"] }
 # The GPU process: sections, events, the Job object, what the child gives up (src/ipc/sys_windows.rs).
 windows-sys = { version = "=0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Diagnostics_Debug", "Win32_System_JobObjects", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_SystemServices", "Win32_System_Threading"] }
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]
-wgpu = { version = "=30.0.1", default-features = false, features = ["std", "parking_lot", "naga-ir", "vulkan"] }
+wgpu = { version = "=29.0.3", default-features = false, features = ["std", "parking_lot", "naga-ir", "vulkan"] }
 # The GPU process: memfds, socket pairs, prctl (src/ipc/sys_linux.rs).
 libc = "=0.2.191"

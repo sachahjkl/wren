@@ -1,0 +1,43 @@
+# WebGPU C API implementation (from wgpu-native v29.0.1.1, ABI matching Odin vendor:wgpu, pre-generated bindings.rs with no bindgen/libclang build step).
+# Linked into wren_native so gui_toolkit/render and native/webgl share one wgpu-core, wgpu-hal, naga, ash, and Rust standard library.
+[package]
+name = "wren_wgpu_capi"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[lib]
+name = "wren_wgpu_capi"
+path = "src/lib.rs"
+test = false
+doctest = false
+
+[features]
+default = ["wgsl", "vulkan"]
+dx12 = ["wgc/dx12"]
+vulkan = ["wgc/vulkan"]
+gles = ["wgc/gles"]
+wgsl = ["wgc/wgsl"]
+spirv = ["naga/spv-in", "wgc/spirv"]
+glsl = ["naga/glsl-in", "wgc/glsl"]
+
+[dependencies]
+wgc = { package = "wgpu-core", version = "=29.0.3" }
+hal = { package = "wgpu-hal", version = "=29.0.3" }
+wgt = { package = "wgpu-types", version = "=29.0.3" }
+naga = { version = "=29.0.3", optional = true }
+raw-window-handle = "=0.6.2"
+paste = "=1.0.15"
+log = { version = "=0.4.34", default-features = false }
+thiserror = "=2.0.21"
+parking_lot = "=0.12.5"
+smallvec = "=1.16.3"
+bitflags = "=2.13.2"
+
+[target.'cfg(windows)'.dependencies]
+hal = { package = "wgpu-hal", version = "=29.0.3", features = ["dx12"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "allow" }
+unused_variables = { level = "allow" }

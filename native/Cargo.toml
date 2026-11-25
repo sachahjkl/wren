@@ -16,7 +16,7 @@
 # runs with --locked. Profiles live here only (Cargo ignores those of members and path dependencies).
 [workspace]
 resolver = "2"
-members = ["crypto", "media", "net", "webgl", "wren_native"]
+members = ["crypto", "media", "net", "wasmtime_capi", "webgl", "wgpu_capi", "wren_native"]
 
 # Two profiles, the same code generation for each crate; they differ only in what happens across crates:
 #   release   what is shipped (build.bat release, and profile: measured as shipped): fat LTO, the whole graph optimized
@@ -59,10 +59,16 @@ opt-level = 3
 opt-level = 3
 [profile.release.package.qcms]
 opt-level = 3
-# Keep opt-level = 3 on gt_text's shaping/outlining crates only; resvg's older copies (0.12.0/0.44.0) and read-fonts stay at "z".
-[profile.release.package."harfrust:0.15.0"]
+# Keep opt-level = 3 on shaping/outlining (shared by gt_text and resvg 0.50) and Cranelift's hot frontend/regalloc; cranelift-codegen uses "s" to keep compile time fast without -O3 table bloat.
+[profile.release.package.harfrust]
 opt-level = 3
-[profile.release.package."skrifa:0.49.0"]
+[profile.release.package.skrifa]
+opt-level = 3
+[profile.release.package.cranelift-codegen]
+opt-level = "s"
+[profile.release.package.cranelift-frontend]
+opt-level = 3
+[profile.release.package.regalloc2]
 opt-level = 3
 
 [profile.quick]

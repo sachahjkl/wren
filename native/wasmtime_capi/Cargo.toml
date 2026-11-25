@@ -1,0 +1,36 @@
+# Wasmtime 49.0.3 C API implementation for Wren (from wasmtime-c-api-impl 49.0.3, without cmake/headers/wasi/async/component-model/pulley/winch).
+# Linked into wren_native so Wren shares one Rust standard library and enables only the Wasmtime features it uses.
+[package]
+name = "wren_wasmtime_capi"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0 WITH LLVM-exception"
+
+[lib]
+name = "wren_wasmtime_capi"
+path = "src/lib.rs"
+test = false
+doctest = false
+
+[features]
+default = ["cranelift", "parallel-compilation", "threads", "gc", "gc-drc", "gc-null", "profiling", "wat"]
+cranelift = ["wasmtime/cranelift"]
+parallel-compilation = ["wasmtime/parallel-compilation"]
+threads = ["wasmtime/threads"]
+gc = ["wasmtime/gc"]
+gc-drc = ["wasmtime/gc-drc"]
+gc-null = ["wasmtime/gc-null"]
+profiling = ["wasmtime/profiling"]
+# Standalone wat2wasm for tests and wasmbench; does NOT enable wasmtime/wat so Module::new never pulls in wat and --gc-sections drops it from build/wren.
+wat = ["dep:wat"]
+
+[dependencies]
+wasmtime = { version = "=49.0.3", default-features = false, features = ["runtime", "std"] }
+wasmtime-c-api-macros = { package = "wasmtime-internal-c-api-macros", version = "=49.0.3" }
+wat = { version = "=1.258.3", optional = true }
+log = { version = "=0.4.34", default-features = false }
+tracing = { version = "=0.1.44", default-features = false }
+
+[lints.rust]
+unexpected_cfgs = { level = "allow" }

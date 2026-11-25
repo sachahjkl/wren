@@ -5,7 +5,10 @@ pub use wren_media;
 pub use wren_net;
 pub use wren_webgl;
 pub use wren_crypto;
+pub use wren_wasmtime_capi;
 #[cfg(feature = "text")]
 pub use gt_text;
 #[cfg(feature = "a11y")]
 pub use gt_a11y;
+#[cfg(feature = "wgpu_capi")]
+pub use wren_wgpu_capi;

@@ -34,7 +34,6 @@ Config :: struct {
 CONFIGS := [?]Config{
 	{"cranelift speed", .Cranelift, .Speed},
 	{"cranelift none", .Cranelift, .None},
-	{"winch", .Winch, .Speed},
 }
 
 cache_dir: string
