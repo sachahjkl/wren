@@ -130,7 +130,7 @@ A11y_Entry :: struct {
 // From now on the active window makes its tree whether or not a screen reader reads it: it can be read at the next frame.
 control_a11y_capture :: proc(app: ^App, on: bool) {
 	ui.a11y_capture(active_window(app).ui, on)
-	request_frames(app, 2)
+	window_invalidate(active_window(app), .Remote)
 }
 
 // The tree as the last frame made it (control_a11y_capture first).

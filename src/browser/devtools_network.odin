@@ -426,7 +426,7 @@ net_split_body :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, sel: ^Net_Entry, sid
 			r := ui.splitter("###dt_net_hs", .Y, &share, lo, 1 - lo, {unit = room, thickness = dt_px(5), default_size = DEV_NET_SPLIT_DEFAULT})
 			if r.changed {
 				set_pref_quiet(app, "browser.devtools.network.split", share)
-				request_frames(app, 2)
+				app_invalidate(app, .Chrome)
 			}
 		}
 		ui.next({width = ui.fill(), height = ui.fill()})
@@ -464,7 +464,7 @@ net_side_split :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, sel: ^Net_Entry, spl
 	if fold_clicked { ui.side_fold_set(&p.fold, !folded) }
 	if p.width != was.width { set_pref_quiet(app, "browser.devtools.network.split", 1 - p.width) }
 	if p.fold != was.fold || crossed { set_pref_string(app, NET_DETAIL_FOLD_PREF, ui.side_fold_format(p.fold)) }
-	if h.changed || fold_clicked || crossed { request_frames(app, 2) }
+	if h.changed || fold_clicked || crossed { app_invalidate(app, .Chrome) }
 }
 
 // The side panel's sizes as shares of the room: the detail from a few em, its rail the fold button and its gaps, and the
@@ -548,7 +548,7 @@ net_tick :: proc(app: ^App, v: ^Dev_Network) {
 			w, d := devtools_of_window_id(the_app, int(uintptr(data)))
 			if d == nil { return }
 			d.net.tick = base.NIL_HANDLE
-			if dev_shows(d, .Network) && d.net.pending > 0 { window_request(the_app, w, 2) }
+			if dev_shows(d, .Network) && d.net.pending > 0 { window_invalidate(w, .Chrome) }
 		}, rawptr(uintptr(active_window(app).id)), nil)
 	}
 }
@@ -560,7 +560,7 @@ net_tick :: proc(app: ^App, v: ^Dev_Network) {
 net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 	if dt_bar("###dt_net_bar") {
 		dt_gap(3)
-		if dt_btn("###dt_net_clear", .Clear, tooltip = "Clear", shortcut = "Ctrl+L", enabled = len(t.net.entries) > 0).clicked { net_clear(&t.net); v.has_sel = false; request_frames(app, 2) }
+		if dt_btn("###dt_net_clear", .Clear, tooltip = "Clear", shortcut = "Ctrl+L", enabled = len(t.net.entries) > 0).clicked { net_clear(&t.net); v.has_sel = false; app_invalidate(app, .Chrome) }
 		rec := dt_btn("###dt_net_rec", .Record, tooltip = v.paused ? "Start recording network log" : "Stop recording network log", tone = v.paused ? app.dtc.weak : app.dtc.bad)
 		if rec.clicked { v.paused = !v.paused }
 		dt_vsep("###dt_nb0")
@@ -841,7 +841,7 @@ net_header :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 			if gs.dragging && v.resizing == int(p.col) {
 				w := clamp(v.resize_from + gs.drag_delta.x / app.dtm.sc, 36, 1200)
 				for &c in v.cols { if c.col == p.col { c.w = math.round(w) } }
-				request_frames(app, 2)
+				app_invalidate(app, .Chrome)
 			}
 			if !gs.dragging && v.resizing == int(p.col) { v.resizing = -1; net_cols_save(app, v) }
 		}

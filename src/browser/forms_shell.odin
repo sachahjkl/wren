@@ -212,7 +212,7 @@ forms_shell_frame :: proc(app: ^App) {
 			user = app, navigate = shell_navigate_submission, pick_files = shell_pick_files, pick_color = shell_pick_color,
 			submitting = vault_form_sent,   // vault_save.odin
 			login_left = vault_login_left,   // vault_save.odin
-			changed = proc(user: rawptr, p: ^page.Page) { request_frames((^App)(user)) },
+			changed = proc(user: rawptr, p: ^page.Page) { app_invalidate((^App)(user), .Page) },
 		})
 	}
 	t, p, f := current_page(app)
@@ -234,13 +234,13 @@ forms_shell_frame :: proc(app: ^App) {
 		fv.autofocus_page = f.id
 		if forms.run_autofocus(f) { caret_reset(fv); scroll_into_view(app, t, f.focus) }
 	}
-	if f.serial != fv.last_serial { fv.last_serial = f.serial; caret_reset(fv); request_frames(app) }
+	if f.serial != fv.last_serial { fv.last_serial = f.serial; caret_reset(fv); app_invalidate(app, .Page) }
 	// :focus-visible: a focus that came from the keyboard, or a text field's (the heuristic of browsers)
 	if vis := f.focus != base.NIL_HANDLE && (f.focus_by_key || forms.is_text_field(f, f.focus)); p.style_state.focus_visible != vis {
 		st := p.style_state
 		st.focus_visible = vis
 		page.set_style_state(p, st)
-		request_frames(app)
+		app_invalidate(app, .Style)
 	}
 	if fv.popup.open && (fv.popup.page_id != f.id || dom.get(p.doc, fv.popup.sel) == nil || forms.is_disabled(f, fv.popup.sel)) { fv.popup.open = false }
 
@@ -255,12 +255,12 @@ forms_shell_frame :: proc(app: ^App) {
 		fv.blink_timer = host.set_timer(&app.loop, max(next, 1), 0, proc(data: rawptr) {
 			// (one frame per toggle: counted as a task as well, it asked for two)
 			if the_app != nil { host.quiet_note(&the_app.loop) }
-			if w := forms_timer_window(the_app, data); w != nil { w.own.forms.blink_timer = base.NIL_HANDLE; window_request_errand(the_app, w, .Caret) }
+			if w := forms_timer_window(the_app, data); w != nil { w.own.forms.blink_timer = base.NIL_HANDLE; window_invalidate(w, .Caret) }
 		}, wid, class = .Input)
 	}
 	if _, _, shown := forms.current_report(f); shown && fv.report_timer == base.NIL_HANDLE {
 		fv.report_timer = host.set_timer(&app.loop, FORMS_REPORT_POLL_MS, 0, proc(data: rawptr) {
-			if w := forms_timer_window(the_app, data); w != nil { w.own.forms.report_timer = base.NIL_HANDLE; window_request(the_app, w, 1) }
+			if w := forms_timer_window(the_app, data); w != nil { w.own.forms.report_timer = base.NIL_HANDLE; window_invalidate(w, .Page) }
 		}, wid, class = .Input)
 	}
 }
@@ -1212,7 +1212,7 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 				popup_pick(app, f, ev.pos, .Ctrl in ev.mods)
 			}
 			fv.popup.open = false
-			request_frames(app)
+			app_invalidate(app, .Input)
 			return true   // a press that closes the list does nothing else
 		}
 		return false
@@ -1223,23 +1223,23 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 		if fv.color_pop.open && forms_color_popover_captures(app, ev.pos) { return true }
 		if fv.popup.open && draw.rect_contains(fv.popup.rect, ev.pos) {
 			idx := fv.popup.first + int((ev.pos.y - fv.popup.rect.min.y) / max(fv.popup.row_h, 1))
-			if idx != fv.popup.hover { fv.popup.hover = idx; request_frames(app) }
+			if idx != fv.popup.hover { fv.popup.hover = idx; app_invalidate(app, .Input) }
 		}
-		if gesture_of(app).field.drag != .None { pointer_drag(app, t, f, ev.pos); request_frames(app) }
+		if gesture_of(app).field.drag != .None { pointer_drag(app, t, f, ev.pos); app_invalidate(app, .Input) }
 		return false
 	case .Scroll:
 		if fv.color_pop.open && forms_color_popover_captures(app, ev.pos) { return true }
 		if fv.popup.open && draw.rect_contains(fv.popup.rect, ev.pos) {
 			rows := len(select_rows(f, fv.popup.sel))
 			fv.popup.first = clamp(fv.popup.first + int(ev.delta.y * 3), 0, max(rows - app.page_settings.forms.select_rows, 0))
-			request_frames(app)
+			app_invalidate(app, .Input)
 			return true
 		}
 		return false
 	case .Key_Press:
 		if !page_has_keyboard(app) { return false }
 		used := route_key(app, t, p, f, ev)
-		if used { consume(app, index); caret_reset(fv); request_frames(app) }
+		if used { consume(app, index); caret_reset(fv); app_invalidate(app, .Input) }
 		return used
 	case .Key_Release:
 		if !page_has_keyboard(app) { return false }
@@ -1255,7 +1255,7 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 		if forms.type_text(f, string(buf[:n])) {
 			consume(app, index)
 			caret_reset(fv)
-			request_frames(app)
+			app_invalidate(app, .Input)
 			return true
 		}
 		if forms.is_text_field(f, f.focus) { consume(app, index); return true }   // read-only field: still the page's text
@@ -1274,7 +1274,7 @@ forms_focus_from_chrome :: proc(app: ^App, t: ^Tab, dir: int) {
 	forms.blur(f)
 	visible :: proc(user: rawptr, h: base.Handle) -> bool { return is_rendered((^page.Page)(user), h) }
 	if forms.focus_next(f, dir < 0 ? -1 : 1, visible, p) { scroll_into_view(app, t, f.focus) }
-	request_frames(app)
+	app_invalidate(app, .Input)
 }
 
 // A key whose default action is the browser's, never the page's (after its keydown, which the page may cancel).
@@ -1424,7 +1424,7 @@ open_popup :: proc(app: ^App, f: ^forms.Forms, sel: base.Handle) {
 	for r, i in rows { if r.option != base.NIL_HANDLE && forms.option_selected(f, r.option) { hover = i } }
 	fv.popup = Popup{open = true, sel = sel, page_id = f.id, hover = hover, anchor = draw.rect_pad(painted_bounds(pt), 3 * page_scale(app))}
 	fv.popup.first = max(hover - app.page_settings.forms.select_rows / 2, 0)
-	request_frames(app)
+	app_invalidate(app, .Chrome)
 }
 
 @(private = "file")
@@ -1516,7 +1516,7 @@ forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.
 	if ft == base.NIL_HANDLE { forms.blur(f); return true }
 	if forms.kind(f, ft) != .Label { forms.focus(f, ft) }
 	caret_reset(fv)
-	request_frames(app)
+	app_invalidate(app, .Input)
 	pt, painted := fv.painted[ft]
 	if !painted { return true }
 	switch {
@@ -1647,7 +1647,7 @@ forms_click :: proc(app: ^App, t: ^Tab, target: base.Handle, ev: platform.Event,
 	f := page.page_forms(p)
 	if o, ok := layout_offset(app, t, target, local); ok { info.offset = {i32(o.x / scale), i32(o.y / scale)} }
 	ok := forms.click(f, target, info)
-	request_frames(app)
+	app_invalidate(app, .Page)
 	return ok
 }
 
@@ -1718,7 +1718,7 @@ post_done :: proc(job: ^Post_Job) {
 	if job.cancelled { return }
 	if !job.ok { tab_log(job.tab, .Error, job.message); set_status(job.tab, "form not sent"); return }
 	submit_navigate(job.app, job.tab, job.from, job.sub)
-	request_frames(job.app, 3)
+	app_invalidate(job.app, .Page)
 }
 
 @(private = "file")
@@ -1906,7 +1906,7 @@ forms_color_popover_open :: proc(app: ^App, p: ^page.Page, input: base.Handle) {
 	} else {
 		keyboard_to(keyboard_of(app), .Chrome)
 	}
-	request_frames(app, 2)
+	app_invalidate(app, .Chrome)
 }
 
 // Applies a new "#rrggbb" colour from the open popover to its <input type="color">, dispatching "input".
@@ -1919,7 +1919,7 @@ forms_color_popover_apply :: proc(app: ^App, hex: string) {
 		forms.set_value(f, cp.input, hex, by_user = true)
 		cp.changed = true
 		page.dispatch_event(cp.page, cp.input, dom.Event{type = "input", bubbles = true})
-		request_frames(app, 2)
+		app_invalidate(app, .Page)
 	}
 }
 
@@ -1942,7 +1942,7 @@ forms_color_popover_close :: proc(app: ^App, commit: bool, revert := false) {
 			page.dispatch_event(p, input, dom.Event{type = "change", bubbles = true})
 		}
 	}
-	request_frames(app, 2)
+	app_invalidate(app, .Page)
 }
 
 // True while the pointer is inside the open colour picker popover (keeps the page underneath from receiving input).
@@ -2103,7 +2103,7 @@ picker_done :: proc(data: rawptr) {
 		forms.set_files(f, job.input, list)
 		delete(list)
 	}
-	request_frames(job.app, 3)
+	app_invalidate(job.app, .Page)
 }
 
 _ :: runtime

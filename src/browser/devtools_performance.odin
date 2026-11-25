@@ -254,7 +254,7 @@ perf_export_done :: proc(data: rawptr) {
 	if j.why != "" { announce(j.app, .Bad, j.why); return }
 	announce(j.app, .Good, "Frames saved", j.dir)
 	shell_open_folder(j.dir)
-	request_frames(j.app, 2)
+	app_invalidate(j.app, .Chrome)
 }
 
 @(private = "file")

@@ -234,7 +234,7 @@ control_click :: proc(app: ^App, c: ^Call, t: ^Tab, selector: string, button: pl
 	op := op_new(app, c, .Click, timeout_ms, fmt.tprintf("the element %s", selector))
 	op.tab, op.arg, op.button, op.count = t.id, strings.clone(selector), button, max(count, 1)
 	op.until = app.remote.frame_no
-	request_frames(app, 3)
+	app_invalidate(app, .Remote)
 	return Reply{deferred = true}
 }
 
@@ -281,7 +281,7 @@ control_drag :: proc(app: ^App, c: ^Call, d: Drag_Request) -> Reply {
 		op.stage, op.idx = 1, 0
 	}
 	op.until = app.remote.frame_no
-	request_frames(app, 3)
+	app_invalidate(app, .Remote)
 	return Reply{deferred = true}
 }
 @(private = "file") DRAG_STEPS_MOST :: 1000
@@ -294,7 +294,7 @@ control_drop :: proc(app: ^App, c: ^Call, pos: [2]f32, d: ^platform.Drag_Data, l
 	platform.drop_inject(wnd.win, .Drop_Over, pos, mods = mods)
 	platform.drop_inject(wnd.win, leave ? .Drop_Leave : .Drop, pos, mods = mods)
 	app.remote.inputs += 1
-	request_frames(app, 4)
+	window_invalidate(wnd, .Input)
 	return frames_op(app, c, nil, app.remote.cfg.settle_frames)
 }
 
@@ -373,8 +373,8 @@ control_activate_tab :: proc(app: ^App, id: int) -> bool {
 	t := tab_by_id(app, u64(id))
 	if t == nil { return false }
 	tab_reveal(app, t)
-	windows_spill(app, 3)
-	request_frames(app, 3)
+	windows_spill_causes(app, {.Remote})
+	app_invalidate(app, .Remote)
 	return true
 }
 
@@ -397,7 +397,7 @@ control_move_tab :: proc(app: ^App, id, to, index: int) -> (dest: ^Browser_Windo
 		if dest == nil { return nil, fmt.tprintf("no window %d", to) }
 		tab_move(app, t, dest, index)
 	}
-	windows_spill(app, 3)
+	windows_spill_causes(app, {.Remote})
 	return dest, ""
 }
 
@@ -572,7 +572,7 @@ control_pref_set :: proc(app: ^App, name, text: string, override := false) -> st
 		return fmt.tprintf("%s: %s", name, config.set_error_text(err))
 	}
 	remote_reload_settings(app)
-	request_frames(app, 3)
+	app_invalidate(app, .Remote)
 	return ""
 }
 
@@ -584,7 +584,7 @@ control_pref_reset :: proc(app: ^App, name: string) -> string {
 		if st.name != name { continue }
 		config.restore(&app.prefs, r.baseline.prefs[i:i + 1])
 		remote_reload_settings(app)
-		request_frames(app, 3)
+		app_invalidate(app, .Remote)
 		return ""
 	}
 	return fmt.tprintf("no preference %q", name)
@@ -596,7 +596,7 @@ control_pref_reset_all :: proc(app: ^App) -> (restored: int, why: string) {
 	if r.baseline == nil { return 0, "no baseline" }
 	restored = config.restore(&app.prefs, r.baseline.prefs)
 	remote_reload_settings(app)
-	request_frames(app, 3)
+	app_invalidate(app, .Remote)
 	return restored, ""
 }
 
@@ -778,7 +778,7 @@ control_stats_all :: proc(app: ^App, allocator := context.temp_allocator) -> api
 	pacer := &wnd.pacer   // (the window's pacing; the preferences are the process's)
 	st.frames, st.cpu_ms, st.cpu_p95_ms, st.cpu_p99_ms, st.cpu_max_ms = int(n.frames), f64(n.cpu_mean), f64(n.cpu_p95), f64(n.cpu_p99), f64(n.cpu_max)
 	st.gpu_ms, st.gpu_measured = f64(n.gpu_mean), n.gpu_n > 0
-	st.frames_requested, st.frames_at_once, st.frame_gaps = int(wnd.frames_requested), int(app.frame_log.at_once), int(gaps.count)
+	st.frames_requested, st.frames_at_once, st.frame_gaps = window_frames_pending(wnd), int(app.frame_log.at_once), int(gaps.count)
 	st.frame_gap_p50_ms, st.frame_gap_p95_ms, st.frame_gap_p99_ms, st.frame_gap_max_ms = gaps.p50, gaps.p95, gaps.p99, gaps.max
 	st.ignored_size_moves = int(platform.pump_stats(wnd.win).ignored_size_moves)
 	if app.pacing.cfg.drag_probe { st.drag_samples, st.has_drag_samples = control_drag_samples(allocator), true }
@@ -894,7 +894,7 @@ control_downloads :: proc(app: ^App, allocator := context.temp_allocator) -> []a
 // Goes there (nothing waits for it: control_wait).
 control_navigate :: proc(app: ^App, t: ^Tab, address: string) {
 	navigate(app, t, address, origin = .User)
-	request_frames(app, 3)
+	app_invalidate(app, .Remote)
 }
 
 // The tab's page again (F5; `bypass_cache`: Ctrl+F5); nothing waits for it: control_wait.
@@ -994,7 +994,7 @@ control_replay :: proc(app: ^App, c: ^Call, events: []Rec_Event, speed := 1.0, t
 	for e in events { append(&op.events, e); last = max(last, e.t_ms) }
 	// (the whole replay must fit in its time: the deadline is the last event's time, plus what the command allows)
 	op.deadline += i64(last / op.speed * NS_PER_MS)
-	request_frames(app, 3)
+	app_invalidate(app, .Remote)
 	return Reply{deferred = true}
 }
 @(private = "file") REPLAY_SPEED_LEAST :: 0.01

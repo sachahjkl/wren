@@ -9,16 +9,16 @@ import "core:fmt"
 import "core:strings"
 import "wb:remote/api"
 
-Frame_Cause :: api.Frame_Cause
-Frame_Causes :: bit_set[Frame_Cause; u8]
+Loop_Cause :: api.Frame_Cause
+Loop_Causes :: bit_set[Loop_Cause; u8]
 
 // How many frames, and how many wakes that drew nothing, are kept with their reason.
 LOOP_REASONS_KEPT :: 32
 
 Loop_Reason :: struct {
 	at_ms:  f64,
-	causes: Frame_Causes,                   // none: a wake that drew nothing
-	by:     runtime.Source_Code_Location,   // who asked: the task that ran, or the caller of request_frames
+	causes: Loop_Causes,                    // none: a wake that drew nothing
+	by:     runtime.Source_Code_Location,   // who asked: the task that ran, or the caller of window_invalidate / request_frames
 }
 
 Loop_Rates :: struct {
@@ -26,7 +26,7 @@ Loop_Rates :: struct {
 	sleeps:  int,                   // of them, the loop slept first: a wake
 	barren:  int,                   // wakes after which no window drew
 	frames:  int,                   // frames made, of every window
-	causes:  [Frame_Cause]int,      // the frames, each under the first of its causes
+	causes:  [Loop_Cause]int,       // the frames, each under the first of its causes
 	// two rings: the frames, and the wakes that drew nothing (one ring of both lost a frame among the wakes of a loop woken
 	// every few milliseconds: what a frame at rest was for could not be read)
 	drawn:   [LOOP_REASONS_KEPT]Loop_Reason,
@@ -36,7 +36,7 @@ Loop_Rates :: struct {
 }
 
 @(private = "file")
-loop_rates_note :: proc(r: ^Loop_Rates, causes: Frame_Causes, by: runtime.Source_Code_Location, now_ms: f64) {
+loop_rates_note :: proc(r: ^Loop_Rates, causes: Loop_Causes, by: runtime.Source_Code_Location, now_ms: f64) {
 	e := Loop_Reason{at_ms = now_ms, causes = causes, by = by}
 	if causes != {} {
 		r.drawn[r.drawn_n % LOOP_REASONS_KEPT] = e
@@ -48,8 +48,8 @@ loop_rates_note :: proc(r: ^Loop_Rates, causes: Frame_Causes, by: runtime.Source
 }
 
 // The frame that is about to be made.
-loop_rates_frame :: proc(r: ^Loop_Rates, causes: Frame_Causes, by: runtime.Source_Code_Location, now_ms: f64) {
-	for c in Frame_Cause { if c in causes { r.causes[c] += 1; break } }
+loop_rates_frame :: proc(r: ^Loop_Rates, causes: Loop_Causes, by: runtime.Source_Code_Location, now_ms: f64) {
+	for c in Loop_Cause { if c in causes { r.causes[c] += 1; break } }
 	r.frames += 1
 	loop_rates_note(r, causes, by, now_ms)
 }
@@ -78,7 +78,7 @@ loop_rates_stats :: proc(r: ^Loop_Rates, allocator := context.temp_allocator) ->
 }
 
 @(private = "file")
-loop_causes_text :: proc(causes: Frame_Causes, allocator := context.temp_allocator) -> string {
+loop_causes_text :: proc(causes: Loop_Causes, allocator := context.temp_allocator) -> string {
 	b := strings.builder_make(allocator)
 	for c in causes {
 		if strings.builder_len(b) > 0 { strings.write_byte(&b, ' ') }
@@ -93,7 +93,7 @@ loop_rates_json :: proc(b: ^strings.Builder, st: api.Loop_Stats) {
 	j_key(b, "loop"); j_begin(b)
 	j_int(b, "turns", i64(st.turns)); j_int(b, "sleeps", i64(st.sleeps)); j_int(b, "barren", i64(st.barren)); j_int(b, "frames", i64(st.frames))
 	j_key(b, "causes"); j_begin(b)
-	for c in Frame_Cause { j_int(b, fmt.tprint(c), i64(st.causes[c])) }
+	for c in Loop_Cause { j_int(b, fmt.tprint(c), i64(st.causes[c])) }
 	j_end(b)
 	j_key(b, "reasons"); j_begin(b, '[')
 	for r, i in st.reasons {

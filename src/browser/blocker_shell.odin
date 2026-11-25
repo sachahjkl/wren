@@ -51,9 +51,9 @@ blocker_event :: proc(user: rawptr, ev: ^blocker.Event) {
 				break
 			}
 		}
-		if t := current_tab(app); t != nil && t.id == ev.tab { request_frames(app, 1) }
+		if t := current_tab(app); t != nil && t.id == ev.tab { app_invalidate(app, .Chrome) }
 	case .Changed, .Lists:
-		request_frames(app, 1)
+		app_invalidate(app, .Chrome)
 	case .Reload:
 		for t in tabs_all(app) { if t.id == ev.tab && t.kind == .Web { reload(app, t); break } }
 	}

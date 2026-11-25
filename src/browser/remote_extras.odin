@@ -156,7 +156,7 @@ replay_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 		inject_raw(app, op.events[op.idx].ev)
 		op.idx += 1
 	}
-	request_frames(app, 2)
+	window_invalidate(active_window(app), .Remote)
 	if op.idx >= len(op.events) {
 		if op.until == 0 { op.until = app.remote.frame_no + u64(max(app.remote.cfg.settle_frames, 1)) + 1 }
 		if app.remote.frame_no >= op.until { op_finish(op, done(fmt.tprintf(`{{"events":%d}}`, len(op.events)))) }
@@ -166,7 +166,7 @@ replay_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 inject_raw :: proc(app: ^App, ev: platform.Event) {
 	platform.inject_event(active_window(app).win, ev)
 	app.remote.inputs += 1
-	request_frames(app, 4)
+	window_invalidate(active_window(app), .Input)
 }
 
 // The HTML and the boxes next to a snapshot's picture.

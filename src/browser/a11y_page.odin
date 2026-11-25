@@ -112,7 +112,7 @@ page_a11y_frame :: proc(app: ^App) {
 		return
 	}
 	if t.page == nil || t.kind != .Web || t.page.formctl == nil { return }
-	if wnd.errands != {} && wnd.errands <= {.Caret, .Status_Bar} { return }   // (nothing a reader is told about changed)
+	if window_is_errand(wnd, {.Caret, .Status_Bar}) { return }   // (nothing a reader is told about changed)
 	set := a11y.settings_from_prefs(&app.prefs)
 	if pa.tab_id != t.id {
 		// another page under the graft: its trees are new to the adapter
@@ -148,7 +148,7 @@ page_a11y_frame :: proc(app: ^App) {
 			pa.wake = host.set_timer(&app.loop, max(time.duration_milliseconds(wait - since), 1), 0, proc(data: rawptr) {
 				if the_app == nil { return }
 				host.quiet_note(&the_app.loop)
-				if w := window_by_id(the_app, int(uintptr(data))); w != nil { w.own.a11y.wake = base.NIL_HANDLE; window_request_errand(the_app, w, .Reader) }
+				if w := window_by_id(the_app, int(uintptr(data))); w != nil { w.own.a11y.wake = base.NIL_HANDLE; window_invalidate(w, .Reader) }
 			}, rawptr(uintptr(wnd.id)))
 		}
 		return

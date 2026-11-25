@@ -506,7 +506,7 @@ elements_panel :: proc(app: ^App, t: ^Tab) {
 		}
 	}
 	dev().room = room
-	if ui.dock_end(&e.layout).changed { request_frames(app, 2) }
+	if ui.dock_end(&e.layout).changed { app_invalidate(app, .Chrome) }
 }
 
 @(private = "file")
@@ -612,7 +612,7 @@ row_input :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, r: ^El_Row, k: int, sig:
 			rel := (mp.y - lb.rect.min.y + lb.view_off.y) - f32(idx) * app.dtm.row
 			e.drop_pos = rel < app.dtm.row * 0.28 ? 0 : (rel > app.dtm.row * 0.72 ? 2 : 1)
 			if e.rows[idx].kind == .Close { e.drop_pos = 0 }
-			request_frames(app, 2)
+			app_invalidate(app, .Chrome)
 		}
 	}
 	if !sig.dragging && e.drag_h == r.h {
@@ -640,7 +640,7 @@ finish_drag :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	if parent == base.NIL_HANDLE { return }
 	// not into itself
 	for cur := parent; cur != base.NIL_HANDLE; { if cur == h { return }; cn := dom.get(d, cur); if cn == nil { break }; cur = cn.parent }
-	if why := page.dev_move_node(t.page, h, parent, before); why != "" { announce(app, .Warn, fmt.tprintf("Elements: %s", why)) } else { e.expanded[parent] = true; e.version += 1; e.selected = h; request_frames(app, 3) }
+	if why := page.dev_move_node(t.page, h, parent, before); why != "" { announce(app, .Warn, fmt.tprintf("Elements: %s", why)) } else { e.expanded[parent] = true; e.version += 1; e.selected = h; app_invalidate(app, .Page) }
 }
 
 // The attribute under x (pixels from the start of the label).
@@ -722,7 +722,7 @@ edit_row :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, r: ^El_Row, k: int) {
 
 @(private = "file")
 commit_edit :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
-	defer { e.edit = .None; e.edit_age = 0; e.version += 1; request_frames(app, 3) }
+	defer { e.edit = .None; e.edit_age = 0; e.version += 1; app_invalidate(app, .Page) }
 	if t.page == nil { return }
 	text := ui.line_edit_string(&e.field)
 	switch e.edit {
@@ -774,7 +774,7 @@ apply_html :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	if why := page.dev_set_outer_html(t.page, e.edit_h, ui.text_edit_string(&e.area)); why != "" { announce(app, .Warn, fmt.tprintf("Elements: %s", why)); return }
 	e.edit = .None
 	e.version += 1
-	request_frames(app, 3)
+	app_invalidate(app, .Page)
 }
 
 ////////////////////////////////
@@ -817,13 +817,13 @@ toggle_or_edit :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, r: ^El_Row) {
 @(private = "file")
 delete_node :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, h: base.Handle) {
 	if t.page == nil { return }
-	if page.dev_remove_node(t.page, h) { e.selected = base.NIL_HANDLE; e.version += 1; request_frames(app, 3) }
+	if page.dev_remove_node(t.page, h) { e.selected = base.NIL_HANDLE; e.version += 1; app_invalidate(app, .Page) }
 }
 
 @(private = "file")
 duplicate_node :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, h: base.Handle) {
 	if t.page == nil { return }
-	if c := page.dev_duplicate_node(t.page, h); c != base.NIL_HANDLE { e.selected = c; e.reveal = true; e.version += 1; request_frames(app, 3) }
+	if c := page.dev_duplicate_node(t.page, h); c != base.NIL_HANDLE { e.selected = c; e.reveal = true; e.version += 1; app_invalidate(app, .Page) }
 }
 
 // `visibility: hidden` through the style attribute, as the browsers' "Hide element".
@@ -840,7 +840,7 @@ toggle_hidden :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, h: base.Handle) {
 	if !had { strings.write_string(&b, "visibility: hidden !important; ") }
 	page.dev_set_style_attribute(t.page, h, strings.trim_space(strings.to_string(b)))
 	e.version += 1
-	request_frames(app, 3)
+	app_invalidate(app, .Style)
 }
 
 ////////////////////////////////
@@ -898,7 +898,7 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			}
 			page.dev_force_state(t.page, h, g.hover, g.active, g.focus, g.focus_within, g.visited)
 			e.version += 1
-			request_frames(app, 3)
+			app_invalidate(app, .Style)
 		}
 		if ui.menu_item(":active###dt_em_s_a", checked = f.active, disabled = !is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 0) }
 		if ui.menu_item(":hover###dt_em_s_h", checked = f.hover, disabled = !is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 1) }
@@ -909,7 +909,7 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		if ui.menu_item("Clear forced states###dt_em_s_clear", disabled = page.dev_forced(t.page).el == base.NIL_HANDLE, icon = lucide.TRASH_2).clicked {
 			page.dev_force_state(t.page, base.NIL_HANDLE, false, false, false, false, false)
 			e.version += 1
-			request_frames(app, 3)
+			app_invalidate(app, .Style)
 		}
 	}
 	ui.menu_separator()
@@ -938,7 +938,7 @@ scroll_into_view :: proc(app: ^App, t: ^Tab, h: base.Handle) {
 	if r, ok := lay.box_of(&t.layout, h, view, 0); ok {
 		t.scroll = max(r.border.min.y - view.y * 0.15, t.layout.doc_min_y)
 		doc_scroll_x_set(t, scroll_nearest(r.border.min.x, r.border.max.x, view.x, t.layout.doc_scroll_x), view.x)
-		request_frames(app, 3)
+		app_invalidate(app, .Page)
 	}
 }
 
@@ -1112,7 +1112,7 @@ step_search :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, dir: int) {
 	if len(e.found) == 0 { return }
 	e.found_at = (e.found_at + dir) %% len(e.found)
 	elements_select(t, e.found[e.found_at])
-	request_frames(app, 2)
+	app_invalidate(app, .Chrome)
 }
 ////////////////////////////////
 // The breadcrumb
@@ -1204,7 +1204,7 @@ elements_picker :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	h := tab_hit_test(t, mp - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll).node
 	if h == base.NIL_HANDLE { return }
 	e.picked = h
-	request_frames(app, 2)
+	app_invalidate(app, .Chrome)
 }
 
 // Called by route_page_input for each event of the frame while picking: the click picks, nothing reaches the page.
@@ -1217,7 +1217,7 @@ devtools_pick_event :: proc(app: ^App, t: ^Tab, kind: int, pos: draw.Vec2, press
 		if h == base.NIL_HANDLE && t.layout.valid { h = tab_hit_test(t, pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll).node }
 		if h != base.NIL_HANDLE { elements_select(t, h) }
 		dev().picking = false
-		request_frames(app, 3)
+		app_invalidate(app, .Chrome)
 	}
 	return true
 }

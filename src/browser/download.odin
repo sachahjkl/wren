@@ -422,7 +422,7 @@ download_pick_folder :: proc(app: ^App) {
 				announce(j.app, .Warn, fmt.tprintf("browser.download.directory: %s", config.set_error_text(err)))
 			}
 		}
-		request_frames(j.app, 2)
+		app_invalidate(j.app, .Chrome)
 		delete(j.start); delete(j.chosen); free(j)
 	}, job, proc(data: rawptr) {   // (the browser ended before the answer was read)
 		j := (^Folder_Job)(data)
@@ -439,7 +439,7 @@ download_pick_folder :: proc(app: ^App) {
 // Back to the Downloads folder of Windows.
 download_folder_default :: proc(app: ^App) {
 	_ = config.set_from_string(&app.prefs, "browser.download.directory", "", .User)
-	request_frames(app, 2)
+	app_invalidate(app, .Chrome)
 }
 
 dl_now_ms :: proc() -> i64 { return time.time_to_unix_nano(time.now()) / 1e6 }
@@ -495,7 +495,7 @@ download_from_navigation :: proc(app: ^App, load: ^Doc_Load, task: base.Handle, 
 		if app.dls.cfg.ask { download_dialog_open(app, d) }
 	}
 	nav_cancel(app, load.tab, load, .Downloaded)   // `load` is gone after this
-	request_frames(app, 2)
+	app_invalidate(app, .Chrome)
 }
 
 @(private = "file")
@@ -582,12 +582,12 @@ download_open_done :: proc(data: rawptr) {
 		j.handle = nil
 		download_close_and_remove(d.app, h, j.temp)
 		download_temp_drop(d)
-		request_frames(d.app, 2)
+		app_invalidate(d.app, .Chrome)
 		return
 	}
 	if j.handle == nil {
 		download_to(d, .Failed, fmt.tprintf("cannot write in %s", d.dir))
-		request_frames(d.app, 2)
+		app_invalidate(d.app, .Chrome)
 		return
 	}
 	d.handle = j.handle
@@ -595,7 +595,7 @@ download_open_done :: proc(data: rawptr) {
 	delete(d.temp)
 	d.temp = strings.clone(j.temp)
 	download_advance(d)
-	request_frames(d.app, 2)
+	app_invalidate(d.app, .Chrome)
 }
 
 @(private = "file")
@@ -621,7 +621,7 @@ download_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		return
 	}
 	download_advance(d)
-	request_frames(d.app, 2)
+	app_invalidate(d.app, .Chrome)
 }
 
 Write_Job :: struct {
@@ -749,7 +749,7 @@ write_done :: proc(data: rawptr) {
 	if !j.ok { download_to(d, .Failed, fmt.tprintf("cannot write %s (%v)", d.temp, j.err)) }
 	if download_finished(d) { download_temp_drop(d); return }   // (it ended while the write was out)
 	download_advance(d)
-	request_frames(d.app, 2)
+	app_invalidate(d.app, .Chrome)
 }
 
 // The temporary file of a download that ended without it goes (once no open or write holds its handle; again later is nothing).
@@ -869,7 +869,7 @@ download_move_done :: proc(data: rawptr) {
 		d.temp = ""   // (it is the file now)
 		download_to(d, .Done)
 	}
-	request_frames(d.app, 3)
+	app_invalidate(d.app, .Chrome)
 }
 
 // A download is over (saved, failed or cancelled): when, and the list is written to the profile.
@@ -880,7 +880,7 @@ download_ended :: proc(d: ^Download) {
 	d.unseen = true
 	if d.app.dls.closing { return }
 	downloads_save(d.app)
-	request_frames(d.app, 2)
+	app_invalidate(d.app, .Chrome)
 }
 
 // Stops a download in progress (Menu > Downloads, or the Save dialog cancelled). A download being moved finishes.
@@ -951,11 +951,11 @@ download_dialog_done :: proc(data: rawptr) {
 	defer download_dialog_discard(j)
 	d.out -= {.Dialog}
 	if download_finished(d) { return }   // (it ended meanwhile: failed, or cancelled from the list)
-	if j.chosen == "" { download_to(d, .Cancelled); request_frames(d.app, 2); return }
+	if j.chosen == "" { download_to(d, .Cancelled); app_invalidate(d.app, .Chrome); return }
 	delete(d.path)
 	d.path, j.chosen = j.chosen, ""
 	download_advance(d)
-	request_frames(d.app, 2)
+	app_invalidate(d.app, .Chrome)
 }
 
 ////////////////////////////////
@@ -1018,7 +1018,7 @@ download_remove :: proc(app: ^App, d: ^Download) {
 	for x, i in app.dls.list { if x == d { ordered_remove(&app.dls.list, i); break } }
 	download_free(d)
 	downloads_save(app)
-	request_frames(app, 2)
+	app_invalidate(app, .Chrome)
 }
 
 // "Clear list": every finished download goes off the list (the files stay).
@@ -1031,7 +1031,7 @@ download_clear_finished :: proc(app: ^App) {
 	}
 	resize(&app.dls.list, k)
 	downloads_save(app)
-	request_frames(app, 2)
+	app_invalidate(app, .Chrome)
 }
 
 // Is the saved file still there? What was last found out: the page asks at every frame, and the lookups (at most every
@@ -1089,7 +1089,7 @@ downloads_check_files :: proc(app: ^App) {
 		}
 		for p in j.paths { delete(p) }
 		delete(j.ids); delete(j.paths); delete(j.missing); free(j)
-		if changed { request_frames(app, 2) } else { host.quiet_note(&app.loop) }
+		if changed { app_invalidate(app, .Chrome) } else { host.quiet_note(&app.loop) }
 	}
 	app.dls.checking = true
 	if profile_pool_ready(app) { host.run_blocking(&app.blocking, work, done, job) } else { work(job); done(job) }
@@ -1122,7 +1122,7 @@ download_delete_file :: proc(app: ^App, d: ^Download) {
 		if j.failed { announce(app, .Bad, fmt.tprintf("Could not delete %s", filepath.base(j.path))); return }
 		for d in app.dls.list { if d.id == j.id { d.missing, d.checked_ms = true, dl_now_ms() } }
 		announce(app, .Info, fmt.tprintf("Deleted %s", filepath.base(j.path)))
-		request_frames(app, 2)
+		app_invalidate(app, .Chrome)
 	}, j, drop)
 }
 

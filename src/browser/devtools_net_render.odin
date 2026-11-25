@@ -139,7 +139,7 @@ preview_html_rendered :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		if sig.scrolled != {} {
 			pr.scroll -= sig.scrolled.y
 			lay.set_doc_scroll_x(&pr.layout, pr.layout.doc_scroll_x - sig.scrolled.x)
-			request_frames(app, 2)
+			app_invalidate(app, .Input)
 		}
 		lo_y, hi_y := lay.doc_scroll_y_range(&pr.layout, size.y)
 		pr.scroll = clamp(pr.scroll, lo_y, hi_y)

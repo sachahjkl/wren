@@ -155,7 +155,7 @@ status_bar_build :: proc(app: ^App, t: ^Tab) {
 			avail = b.size.x
 			// (the window's own: with one for all, two windows with other statuses asked each other for a frame, for ever)
 			ws := window_own(app)
-			if b.size.x != ws.status_left_width { ws.status_left_width = b.size.x; window_request_errand(app, active_window(app), .Status_Bar, 2) }
+			if b.size.x != ws.status_left_width { ws.status_left_width = b.size.x; window_invalidate(active_window(app), .Status_Bar) }
 		}
 		if ui.status_fill("###sb_left") {
 			if t != nil { status_left(app, t, avail) }

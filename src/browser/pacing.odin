@@ -263,6 +263,7 @@ resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wa
 		return false
 	}
 	wnd.frames_requested = 0
+	wnd.causes = {}
 	platform.take_paint_request(wnd.win)
 	pacer.echoes_skipped += 1
 	return true

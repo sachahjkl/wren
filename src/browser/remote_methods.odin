@@ -199,7 +199,7 @@ frames_op :: proc(app: ^App, c: ^Call, t: ^Tab, n: int, result := "") -> Reply {
 	op.tab = t != nil ? t.id : 0
 	op.until = app.remote.frame_no + u64(max(n, 1))
 	op.result = strings.clone(result)
-	request_frames(app, 3)
+	window_invalidate(active_window(app), .Remote)
 	return Reply{deferred = true}
 }
 
@@ -301,13 +301,13 @@ window_simulate_dpi :: proc(app: ^App, w: ^Browser_Window, dpi: int) {
 		// no monitor to move to: the emulated scale changes and the offscreen target follows (the renderer is resized in the frame)
 		platform.set_offscreen_dpi(w.win, dpi)
 		render.resize(&app.r, w.win.size)
-		window_request(app, w, 4)
+		window_invalidate(w, .Layout)
 		return
 	}
 	// a real window: ask the window manager to change its DPI (remote_window_<os>.odin: WM_DPICHANGED on Windows; a
 	// no-op on Linux, where a test drives DPI through an offscreen window instead).
 	window_native_simulate_dpi(w.win, dpi)
-	window_request(app, w, 4)
+	window_invalidate(w, .Layout)
 }
 
 // The window's state and rectangle as asked (the parts that are not asked for stay): `Browser.setWindowBounds`, and the reset and
@@ -325,7 +325,7 @@ window_apply :: proc(app: ^App, state: string, has_state: bool, w, h, left, top:
 			platform.set_size(wnd.win, {has_w ? w : wnd.win.size.x, has_h ? h : wnd.win.size.y})
 			render.resize(&app.r, wnd.win.size)
 		}
-		request_frames(app, 4)
+		window_invalidate(wnd, .Layout)
 		return
 	}
 	if has_state {
@@ -344,7 +344,7 @@ window_apply :: proc(app: ^App, state: string, has_state: bool, w, h, left, top:
 		cw, ch := has_w ? w : wnd.win.size.x, has_h ? h : wnd.win.size.y
 		window_native_set_bounds(wnd.win, left, top, cw, ch, has_w || has_h, has_l || has_t)
 	}
-	request_frames(app, 4)
+	window_invalidate(wnd, .Layout)
 }
 
 ////////////////////////////////
@@ -722,7 +722,7 @@ control_capture :: proc(app: ^App, c: ^Call, t: ^Tab, q: Capture_Request) -> Rep
 		window_native_show_no_activate(active_window(app).win)
 		op.stage = -1
 	}
-	request_frames(app, 3)
+	window_invalidate(active_window(app), .Remote)
 	return Reply{deferred = true}
 }
 @(private = "file") CAPTURE_SCALE_LEAST :: 0.01
@@ -738,7 +738,7 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	}
 	if op.stage < 0 && op.stage != -2 { op.stage = -2 }   // (restored for this capture: minimized again at the end)
 	if op.stage == -2 || op.stage == 0 {
-		request_frames(app, 2)
+		window_invalidate(active_window(app), .Remote)
 		if r.frame_no < op.until || render.capture_pending(&app.r) || r.capture_window != 0 {
 			if timed_out { finish(app, op, fail(remote.ERR_TIMEOUT, "timed out before the frame to capture was drawn (is the window hidden or minimized?)")) }
 			return
@@ -773,11 +773,11 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 		r.capture_window, r.capture_rect, r.capture_refused = active_window(app).id, rect, 0
 		op.asked = true
 		op.stage = op.stage == -2 ? 3 : 1
-		request_frames(app, 2)
+		window_invalidate(active_window(app), .Remote)
 		return
 	}
 	// 1 (or 3: to be minimized again): the copy is made when the frame ends; the GPU reads it a moment later
-	request_frames(app, 2)
+	window_invalidate(active_window(app), .Remote)
 	pixels, size, st := render.capture_poll(&app.r, context.allocator)
 	if op.stage == 3 { op.stage = -2 }   // (finish() looks for -2)
 	switch st {
@@ -879,7 +879,7 @@ inject :: proc(app: ^App, ev: platform.Event) {
 	if ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release { ev.buttons = held }
 	platform.inject_event(active_window(app).win, ev)
 	app.remote.inputs += 1
-	request_frames(app, 4)
+	window_invalidate(active_window(app), .Input)
 }
 
 // A point given in the page's CSS pixels (from its top-left corner), or in window pixels (`"space": "window"`).
@@ -965,7 +965,7 @@ click_at :: proc(app: ^App, pos: [2]f32, button: platform.Mouse_Button, count: i
 click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	wnd := active_window(app)
 	r := &app.remote
-	request_frames(app, 2)
+	window_invalidate(wnd, .Remote)
 	if r.frame_no < op.until { return }
 	// (the click is done and its frames are made: what it did to the element, which may have gone with it, is the page's)
 	if op.stage == CLICK_DONE { op_finish(op, done(fmt.tprintf(`{{"x":%.1f,"y":%.1f}}`, op.pos.x, op.pos.y))); return }
@@ -1109,7 +1109,7 @@ drag_step :: proc(app: ^App, op: ^Remote_Op, timed_out: bool) {
 		if timed_out { op_finish(op, fail(remote.ERR_TIMEOUT, "timed out while the system's drag waited for the page's picture")) }
 		return
 	}
-	request_frames(app, 2)
+	window_invalidate(active_window(app), .Remote)
 	if r.frame_no < op.until { return }
 	switch op.stage {
 	case 0:

@@ -116,5 +116,5 @@ dialog_done :: proc(data: rawptr) {
 			dash_add_filter(app, strings.trim_space(string(data)))
 		}
 	}
-	request_frames(app, 3)
+	app_invalidate(app, .Chrome)
 }

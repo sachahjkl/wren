@@ -39,7 +39,7 @@ devtools_go_with_their_tab_to_a_window_without_them :: proc(t: ^testing.T) {
 	devtools_follow_tab(app, a, b)
 	testing.expect(t, b.own.devtools.visible && b.own.devtools.panel == .Network && b.own.devtools.dock == .Right, "they went with the tab")
 	testing.expect(t, !a.own.devtools.visible, "the window it left has none open")
-	testing.expect_value(t, b.frames_requested, 3)
+	testing.expect(t, .Chrome in b.causes, "destination window invalidated for devtools move")
 
 	a.own.devtools.visible, a.own.devtools.panel = true, .Console
 	devtools_follow_tab(app, a, b)

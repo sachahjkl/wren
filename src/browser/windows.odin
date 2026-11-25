@@ -38,15 +38,20 @@ import "wb:page"
 
 // A window's tabs, address field, page area and frames: only here, never copied into the App (active_window(app).tabs).
 Window_Ctx :: struct {
-	tabs:             [dynamic]^Tab,
-	current:          int,            // the tab shown (an index in tabs)
-	groups:           [dynamic]Tab_Group,   // tab_groups.odin: the groups its tabs are in (freed with the window)
-	address:          ui.Line_Edit,  // the address field
-	page_rect:        draw.Rect,      // where the page was painted last frame (physical pixels)
-	frames_requested: int,            // frames asked for (request_frames, window_request): the loop counts one off per frame
-	asked_by:   runtime.Source_Code_Location,   // the last who asked for frames (loop_rates.odin)
-	errands:    Frame_Errands,        // what the frames asked for are for, when that is all they are for
-	presented:        bool,           // a frame went to the swap chain: from then on each frame waits for it to take the next
+	tabs:              [dynamic]^Tab,
+	current:           int,            // the tab shown (an index in tabs)
+	groups:            [dynamic]Tab_Group,   // tab_groups.odin: the groups its tabs are in (freed with the window)
+	address:           ui.Line_Edit,  // the address field
+	page_rect:         draw.Rect,      // where the page was painted last frame (physical pixels)
+	frames_requested:  int,            // transitional count for remaining legacy request_frames callers
+	causes:            Frame_Causes,   // pending invalidation causes for the next frame
+	frame_causes:      Frame_Causes,   // causes consumed by the frame currently building/drawing
+	frame_errand_only: bool,           // current frame ran solely for FRAME_ERRAND_CAUSES
+	asked_by:          runtime.Source_Code_Location,   // the last who invalidated or asked for frames (loop_rates.odin)
+	presented:         bool,           // a frame went to the swap chain: from then on each frame waits for it to take the next
+	layout_sig:        u64,            // layout/scroll bounds signature from the last completed ui.build
+	layout_settled:    bool,           // layout_sig has been recorded for at least one build
+	layout_followups:  int,            // consecutive automatic .Layout follow-ups without another cause
 }
 
 Browser_Window :: struct {
@@ -182,9 +187,9 @@ window_focus :: proc(app: ^App, w: ^Browser_Window, raise := false) {
 // window: forms_shell.odin).
 window_set_front :: proc(app: ^App, w: ^Browser_Window) {
 	if app.front == w { return }
-	if app.front != nil && slice.contains(app.windows[:], app.front) { window_request(app, app.front, 2) }
+	if app.front != nil && slice.contains(app.windows[:], app.front) { window_invalidate(app.front, .Chrome) }
 	app.front = w
-	if w != nil { window_request(app, w, 2) }
+	if w != nil { window_invalidate(w, .Chrome) }
 }
 
 // Whether the active window is the one the user is in (always, with one window).
@@ -208,46 +213,175 @@ window_current_tab :: proc(app: ^App, w: ^Browser_Window) -> ^Tab {
 	return cur >= 0 && cur < len(tabs) ? tabs[cur] : nil
 }
 
-// Asks for frames of one window, active or not.
+// Why a window needs a frame. Replaces numeric frame counts and Frame_Errand:
+// callers name what changed instead of guessing how many frames the UI needs to settle.
+Frame_Cause :: enum u16 {
+	Input,       // user input events (keyboard, pointer, wheel, drag)
+	Layout,      // layout or scroll bounds changed during ui.build (automatic follow-up)
+	Style,       // CSS styles, theme, zoom, or fonts changed
+	Page,        // page DOM, navigation, forms, images, or script state changed
+	Chrome,      // browser UI chrome, tabs, DevTools, downloads, dialogs, or notices changed
+	Animation,   // ongoing motion (smooth scroll, autoscroll, CSS animations, rAF)
+	Media,       // video/audio playback or media preview frame
+	Caret,       // errand: text field caret blink toggle (partial redraw of caret pixels alone)
+	Status_Bar,  // errand: status bar numbers falling to rest, or its left width following them
+	Reader,      // errand: throttled accessibility tree flush for screen readers
+	Remote,      // remote control / automation / CDP / capture command
+}
+
+Frame_Causes :: bit_set[Frame_Cause; u16]
+
+// Errand causes: quiet maintenance while the browser is otherwise at rest (no status bar sample, no memory_trim activity).
+FRAME_ERRAND_CAUSES :: Frame_Causes{.Caret, .Status_Bar, .Reader}
+
+// Bound on consecutive automatic .Layout follow-up frames without another cause (prevents layout oscillation).
+MAX_LAYOUT_FOLLOWUPS :: 3
+
+// Marks `w` as needing a frame for `cause`. One invalidation schedules one frame;
+// if that frame's UI build changes layout or scroll bounds, window_layout_check schedules
+// a `.Layout` follow-up automatically.
+window_invalidate :: proc(w: ^Browser_Window, cause: Frame_Cause, loc := #caller_location) {
+	if w == nil { return }
+	w.causes += {cause}
+	w.asked_by = loc   // (the last to ask: what the frame's reason names, loop_rates.odin)
+}
+
+// Marks the target window as needing a frame for `cause` when the caller does not hold a window pointer.
+// During frame_tasks, page-owned work targets only that page's window; browser-wide work invalidates the active window
+// (which frame_tasks spills to all non-minimized windows).
+app_invalidate :: proc(app: ^App, cause: Frame_Cause, loc := #caller_location) {
+	if app == nil { return }
+	// (not from a chrome frame made while a page's script runs: what it asks is its window's own)
+	if app.tasks_running && !app.chrome_frames.nested && host.on_loop_thread(&app.loop) {
+		if w := window_of_page_work(app, app.loop.work.page); w != nil {
+			if w == active_window(app) {
+				app.task_own_causes += {cause}
+				w.asked_by = loc
+			} else {
+				window_invalidate(w, cause, loc)
+			}
+			return
+		}
+	}
+	window_invalidate(active_window(app), cause, loc)
+}
+
+// Whether `w` has any pending invalidation cause or transitional frame request.
+window_has_request :: proc(w: ^Browser_Window) -> bool {
+	return w != nil && (w.causes != {} || w.frames_requested != 0)
+}
+
+// Pending frame count reported to diagnostics/stats: at least 1 while any typed cause is pending.
+window_frames_pending :: proc(w: ^Browser_Window) -> int {
+	if w == nil { return 0 }
+	return max(w.frames_requested, w.causes != {} ? 1 : 0)
+}
+
+// Whether `w` has no pending causes, no legacy requested frames, and no toolkit animation or due wake.
+window_at_rest :: proc(w: ^Browser_Window) -> bool {
+	if w == nil { return true }
+	if w.causes != {} || w.frames_requested != 0 { return false }
+	if w.ui != nil && (ui.needs_frame(w.ui) || ui.wake_due(w.ui)) { return false }
+	return true
+}
+
+// Whether the frame currently running on `w` is an errand-only frame whose causes all lie within `allowed`.
+window_is_errand :: proc(w: ^Browser_Window, allowed := FRAME_ERRAND_CAUSES) -> bool {
+	return w != nil && w.frame_errand_only && w.frame_causes != {} && w.frame_causes <= allowed
+}
+
+// Snapshots and clears pending causes at the start of a committed frame.
+// Any window_invalidate called during this frame accumulates into w.causes for the next frame.
+window_frame_begin :: proc(w: ^Browser_Window, why: Loop_Causes) {
+	if w == nil { return }
+	w.frame_causes = w.causes
+	w.causes = {}
+	w.frame_errand_only = why == {.Asked} && w.frames_requested == 0 && w.frame_causes != {} && w.frame_causes <= FRAME_ERRAND_CAUSES
+	if why != {.Asked} || w.frames_requested > 0 || (w.frame_causes - {.Layout}) != {} {
+		w.layout_followups = 0
+	}
+}
+
+// Zero-allocation hash of the UI box tree rects and scroll bounds produced by the last completed build.
+// Any box appearing, disappearing, moving, resizing, or changing scroll bounds/offset changes the signature.
+ui_layout_signature :: proc(s: ^ui.State) -> u64 {
+	if s == nil || s.root == nil { return 0 }
+	FNV_OFFSET :: u64(14695981039346656037)
+	FNV_PRIME :: u64(1099511628211)
+	mix_u64 :: #force_inline proc(h: ^u64, v: u64) { h^ = (h^ ~ v) * FNV_PRIME }
+	mix_f32 :: #force_inline proc(h: ^u64, v: f32) {
+		bits := v == 0 ? u32(0) : transmute(u32)v
+		h^ = (h^ ~ u64(bits)) * FNV_PRIME
+	}
+	h := FNV_OFFSET
+	root := s.root
+	build := s.build_index
+	cur := root
+	for cur != nil {
+		if cur.last_build == build {
+			mix_u64(&h, u64(cur.key))
+			mix_f32(&h, cur.rect.min.x)
+			mix_f32(&h, cur.rect.min.y)
+			mix_f32(&h, cur.rect.max.x)
+			mix_f32(&h, cur.rect.max.y)
+			if cur.flags & {.View_Scroll_X, .View_Scroll_Y} != {} {
+				mix_f32(&h, cur.view_bounds.x)
+				mix_f32(&h, cur.view_bounds.y)
+				mix_f32(&h, cur.view_off.x)
+				mix_f32(&h, cur.view_off.y)
+			}
+			if cur.first != nil {
+				cur = cur.first
+				continue
+			}
+		}
+		for cur != nil && cur != root {
+			if cur.next != nil {
+				cur = cur.next
+				break
+			}
+			cur = cur.parent
+		}
+		if cur == root { break }
+	}
+	return h != 0 ? h : 1
+}
+
+// Compares a newly completed build's layout signature against the previous build.
+// When layout or scroll bounds changed on an active frame (or on the first build, before prev_box existed),
+// schedules a bounded `.Layout` follow-up frame. Errand-only frames (.Caret, .Status_Bar, .Reader) record
+// the updated signature without scheduling an extra frame so at-rest settling draws once.
+window_note_layout :: proc(w: ^Browser_Window, sig: u64, loc := #caller_location) -> bool {
+	if w == nil || sig == 0 { return false }
+	if w.frame_errand_only {
+		w.layout_settled = true
+		w.layout_sig = sig
+		return false
+	}
+	if w.layout_settled && sig == w.layout_sig { return false }
+	w.layout_settled = true
+	w.layout_sig = sig
+	if w.layout_followups >= MAX_LAYOUT_FOLLOWUPS { return false }
+	w.layout_followups += 1
+	window_invalidate(w, .Layout, loc)
+	return true
+}
+
+// Automatically schedules a .Layout follow-up frame when the completed ui.build changed box layout or scroll bounds.
+window_layout_check :: proc(w: ^Browser_Window, loc := #caller_location) -> bool {
+	if w == nil || w.ui == nil { return false }
+	return window_note_layout(w, ui_layout_signature(w.ui), loc)
+}
+
+// Transitional: asks for frames of one window by count. New code uses window_invalidate(w, cause).
 window_request :: proc(app: ^App, w: ^Browser_Window, n: int, loc := #caller_location) {
+	if w == nil { return }
 	w.frames_requested = max(w.frames_requested, n)
 	w.asked_by = loc   // (the last to ask: what the frame's reason names, loop_rates.odin)
-	w.errands = {}
 }
 
-// What a frame is for, when it is for small things and the browser is otherwise at rest: it is no sample of the status bar, no
-// activity for memory_trim, and a caret's draws its own pixels alone (frame()). Any other request makes it a frame like any other.
-Frame_Errand :: enum u8 {
-	Caret,        // a caret's toggle
-	Status_Bar,   // the status bar's numbers falling to rest, and its layout following them
-	Reader,       // the page's accessibility trees, what their rate held back
-}
-
-// The errands of the frames a window was asked for. Empty while frames are asked: they are frames like any other.
-Frame_Errands :: bit_set[Frame_Errand; u8]
-
-window_request_errand :: proc(app: ^App, w: ^Browser_Window, errand: Frame_Errand, n := 1, loc := #caller_location) {
-	errands := errands_after_request(w.frames_requested, w.errands, errand)
-	window_request(app, w, n, loc)
-	w.errands = errands
-}
-
-// The errands of a window once `errand` asks for its frames. An errand that comes while another one waits joins it: two errands
-// stay an errand (a caret's toggle while the status bar's second frame waits was a whole frame, a sample of the status bar, which
-// armed its settle wake again: one more frame of the status bar, and so on while the caret blinks). One that comes while frames
-// like any other wait does not make them errands.
-errands_after_request :: proc(frames_requested: int, errands: Frame_Errands, errand: Frame_Errand) -> (after: Frame_Errands) {
-	if frames_requested == 0 {
-		after += {errand}
-	} else if errands != {} {
-		after = errands
-		after += {errand}
-	}
-	return
-}
-
-// Asks for frames of the active window (the frame being made, or the front one between frames). A callback of the loop that
-// works for a page (frame_tasks) asks for that page's window instead: the active one only runs the loop's callbacks.
+// Transitional: asks for frames of the active window (or page window during frame_tasks) by count.
+// New code uses window_invalidate(w, cause) or app_invalidate(app, cause).
 request_frames :: proc(app: ^App, n := 2, loc := #caller_location) {
 	// (not from a chrome frame made while a page's script runs: what it asks is its window's own)
 	if app.tasks_running && !app.chrome_frames.nested && host.on_loop_thread(&app.loop) {
@@ -312,7 +446,7 @@ tab_reveal :: proc(app: ^App, t: ^Tab) {
 			cur^ = i
 			recovery_touch(app)
 		}
-		window_request(app, w, 2)
+		window_invalidate(w, .Chrome)
 	}
 	window_focus(app, w, true)
 }
@@ -388,11 +522,19 @@ window_asked :: proc(app: ^App, r: Chrome_Request, placed: ^ui.Box = nil) -> boo
 }
 
 // What the tasks of the loop (and anything else made outside a frame) asked of the active window's frames, for the others too: the
-// browser's own work does not say which window it is about (a page's goes to its window: request_frames, frame_tasks).
+// browser's own work does not say which window it is about (a page's goes to its window: app_invalidate, request_frames, frame_tasks).
 windows_spill :: proc(app: ^App, n: int) {
 	for w in app.windows {
 		if w == app.active || w.minimized { continue }
 		w.frames_requested = max(w.frames_requested, n)
+	}
+}
+
+windows_spill_causes :: proc(app: ^App, causes: Frame_Causes) {
+	if causes == {} { return }
+	for w in app.windows {
+		if w == app.active || w.minimized { continue }
+		w.causes += causes
 	}
 }
 
@@ -531,7 +673,7 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 	views_attach(app, bw.ui)   // views.odin: its dialogs are the program's views
 	standard_settings_watch(app, &bw.standard, bw.ui)
 	ui.use(active_window(app).ui)
-	bw.frames_requested = 4
+	window_invalidate(bw, .Chrome)
 	devtools_view_init(app, &bw.own.devtools, false)   // devtools.odin: closed until asked for in this window (or a tab brings its own)
 	append(&app.windows, bw)
 	if show && windows_shown(app) { window_show(bw) }
@@ -586,7 +728,7 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 	free(w)
 	if was_front || app.front == w { app.front = nil }
 	wake_retarget(app)
-	request_frames(app, 2)
+	app_invalidate(app, .Chrome)
 }
 
 ////////////////////////////////
@@ -595,10 +737,10 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 // Whether the window has something to draw: input waiting for it, frames it asked for, an animation or a wake of its toolkit, a
 // repaint the system asked for. (The page's own changes are seen by the frame, once the tasks have run.)
 @(private = "file")
-window_causes :: proc(app: ^App, w: ^Browser_Window) -> (causes: Frame_Causes) {
+window_causes :: proc(app: ^App, w: ^Browser_Window) -> (causes: Loop_Causes) {
 	if w.minimized || len(window_tabs(app, w)) == 0 { return }
 	if len(w.win.events) > w.win.returned || len(w.win.injected) > 0 { causes += {.Input} }
-	if w.frames_requested != 0 { causes += {.Asked} }
+	if window_has_request(w) { causes += {.Asked} }
 	if ui.needs_frame(w.ui) { causes += {.Interface_Animation} }
 	if ui.wake_due(w.ui) { causes += {.Interface_Wake} }
 	if w.win.paint_requested { causes += {.Repaint} }   // (frame() takes it)
@@ -615,7 +757,7 @@ windows_pass :: proc(app: ^App) -> bool {
 	clear(&app.pass_order); clear(&app.pass_causes)
 	if front != nil { append(&app.pass_order, front) }
 	for w in app.windows { if w != front { append(&app.pass_order, w) } }
-	for _ in app.pass_order { append(&app.pass_causes, Frame_Causes{}) }
+	for _ in app.pass_order { append(&app.pass_causes, Loop_Causes{}) }
 	order, causes := app.pass_order[:], app.pass_causes[:]
 	any_cause := view_windows_busy(app)   // views_external.odin: a view in a window of its own has input, a wake or an animation
 	wake := 0
@@ -654,7 +796,6 @@ windows_pass :: proc(app: ^App) -> bool {
 		window_activate(app, w)
 		view_windows_after(app, w, w.ui.build_index != before)   // views_external.odin: the windows of this window's views
 		if w.frames_requested > 0 { w.frames_requested -= 1 }
-		if w.frames_requested == 0 { w.errands = {} }
 	}
 	app.pass_first = false
 	if app.quitting { return false }
@@ -740,8 +881,8 @@ tab_move :: proc(app: ^App, t: ^Tab, dest: ^Browser_Window, at := -1, devtools_f
 	if devtools_follow && showing { devtools_follow_tab(app, src, dest) }   // devtools.odin
 	if len(st) > 0 { tabs_fix(app, src) }
 	tabs_fix(app, dest)
-	window_request(app, src, 3)
-	window_request(app, dest, 3)
+	window_invalidate(src, .Chrome)
+	window_invalidate(dest, .Chrome)
 	return true
 }
 

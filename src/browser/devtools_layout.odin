@@ -121,7 +121,7 @@ devtools_drawer_toggle :: proc(app: ^App) {
 	devtools_save_layout(app)
 	network_sync_observer(app)
 	console_arm_all(app)
-	request_frames(app, 3)
+	app_invalidate(app, .Chrome)
 }
 
 // Ctrl+Tab / Ctrl+Shift+Tab with the keyboard focus in the developer tools: the next or previous panel of the stack it is in
@@ -130,7 +130,7 @@ devtools_take_ctrl_tab :: proc(app: ^App) -> bool {
 	d := dev()
 	if !d.visible || d.built_in != ui.current_state() { return false }   // (built in another window: its keys are that window's)
 	if ui.dock_take_ctrl_tab(&d.els.layout) || ui.dock_take_ctrl_tab(&d.layout) {
-		request_frames(app, 2)
+		app_invalidate(app, .Chrome)
 		return true
 	}
 	return false
@@ -170,9 +170,9 @@ dev_dock :: proc(app: ^App, t: ^Tab) {
 		d.shown = now
 		network_sync_observer(app)
 		console_arm_all(app)
-		request_frames(app, 2)
+		app_invalidate(app, .Chrome)
 	}
-	if r.changed { request_frames(app, 2) }
+	if r.changed { app_invalidate(app, .Chrome) }
 }
 
 dev_panel_body :: proc(app: ^App, t: ^Tab, p: Dev_Panel) {

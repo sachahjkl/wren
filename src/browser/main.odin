@@ -193,8 +193,9 @@ App :: struct {
 	front:    ^Browser_Window,            // the one commands, remote calls and the tasks of the loop act on (the last used)
 	bare:     Browser_Window,             // active_window of an App with no window (the tests'), or between two
 	pass_first: bool,                     // the next frame of this pass of the loop is the first: it runs the tasks of the loop
-	tasks_running: bool,                  // frame_tasks runs the loop's callbacks now: request_frames asks for the window of the page they work for
-	task_own:   int,                      // ... the frames they asked for the active window as their page's own (not spilled to the others)
+	tasks_running:   bool,                // frame_tasks runs the loop's callbacks now: app_invalidate / request_frames targets the page's window
+	task_own:        int,                 // ... legacy numeric frames asked for the active window as its page's own (not spilled)
+	task_own_causes: Frame_Causes,        // ... typed causes asked for the active window as its page's own (not spilled)
 	layout_verify_seen: int,              // js_layout_shell.odin layout_trace: the incremental layout's verify failures reported
 	rendering:  ^Tab,                     // the tab whose rendering update the frame runs (its animation frame callbacks, then its page phase): what it lays out, this frame paints
 	headless:   bool,                     // no window at all (`--headless`)
@@ -233,7 +234,7 @@ App :: struct {
 	rest_focus:    bool,                     // ... the last one comes to the front
 	trim_state:    Trim_State,               // memory_trim.odin
 	pass_order:    [dynamic]^Browser_Window, // windows.odin: the windows of a pass of the loop, in order
-	pass_causes:   [dynamic]Frame_Causes,    // windows.odin: ... and why each draws
+	pass_causes:   [dynamic]Loop_Causes,     // windows.odin: ... and why each draws
 	wake_target:   rawptr,                   // windows.odin: the window the loop waits on (wake_window; read atomically, from any thread)
 	print_last:    time.Tick,                // print.odin: the last window.print()
 	render_settings: Render_Settings,        // render_settings.odin
@@ -1498,36 +1499,39 @@ chrome_frame_style :: proc(app: ^App) -> ui.Style {
 frame_tasks :: proc(app: ^App) -> int {
 	wnd := active_window(app)
 	asked := wnd.frames_requested
-	was_running, was_own := app.tasks_running, app.task_own
-	app.tasks_running, app.task_own = true, 0
+	causes_before := wnd.causes
+	was_running, was_own, was_own_causes := app.tasks_running, app.task_own, app.task_own_causes
+	app.tasks_running, app.task_own, app.task_own_causes = true, 0, {}
 	host.run_ready(&app.loop)
 	app.tasks_running = was_running
 	host.quiet_take(&app.loop)   // (a media player's notices draw nothing: its pictures come on their own timer)
 	browser, pages := host.ran_take(&app.loop)
 	ran := browser
-	if browser > 0 { window_request(app, wnd, 2) }
+	if browser > 0 { window_invalidate(wnd, .Chrome) }
 	for id in pages {
 		w := window_of_page_work(app, id)
 		if w == nil {
 			ran += 1
-			window_request(app, wnd, 2)   // (whose it is is not known: every window, as the browser's)
+			window_invalidate(wnd, .Page)   // (whose it is is not known: every window, as the browser's)
 		} else if w == wnd {
 			ran += 1
-			app.task_own = max(app.task_own, 2)
+			app.task_own_causes += {.Page}
 		} else {
-			window_request(app, w, 2)
+			window_invalidate(w, .Page)
 		}
 	}
 	images_shell_frame(app)
+	if added := wnd.causes - causes_before; added != {} { windows_spill_causes(app, added) }
 	if wnd.frames_requested > asked { windows_spill(app, wnd.frames_requested) }
 	if app.task_own > 0 { window_request(app, wnd, app.task_own) }   // (after the spill: its page's own)
-	app.task_own = was_own
+	if app.task_own_causes != {} { wnd.causes += app.task_own_causes }
+	app.task_own, app.task_own_causes = was_own, was_own_causes
 	return ran
 }
 
 // `causes`: what the loop knew of when it decided on this frame (windows_pass; the system's loop: its repaint); `idled`: it slept before
 // it, or this window had no cause. What the turn's tasks and events add is looked at here: nothing at all, and no frame is made.
-frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
+frame :: proc(app: ^App, idled := false, causes: Loop_Causes = {.Repaint}) {
 	// (windows.odin: the frame gate. A frame made by a loop of the system inside another frame's poll puts back that one's
 	// stage. The callers ask the gate first: a refusal here would be a frame asked for where none may begin.)
 	gate := platform.frame_gate()
@@ -1560,7 +1564,6 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	notification_events(app, events)   // notification_shell.odin: a click on a page's notification, its end
 	events = shell_frame_begin(app, events)   // shell_frames.odin: input held back by chrome frames first; the page phase
 	pacer_begin_frame(app, events)
-	if len(events) > 0 { request_frames(app, 4) }
 	vault_shell_activity(app, events)   // vault_shell.odin: a key or the pointer postpones the Vault's idle lock
 	prof_end(.Events)
 
@@ -1591,7 +1594,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	if len(events) > 0 { why += {.Input} }
 	if ran > 0 { why += {.Task} }
 	if page_wants_frame { why += {.Page} }
-	if wnd.frames_requested != 0 { why += {.Asked} }
+	if window_has_request(wnd) { why += {.Asked} }
 	if ui.needs_frame(wnd.ui) { why += {.Interface_Animation} }
 	if ui.wake_due(wnd.ui) { why += {.Interface_Wake} }
 	if platform.take_paint_request(wnd.win) { why += {.Repaint} }
@@ -1601,10 +1604,13 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 		return
 	}
 	loop_rates_frame(&app.rates, why, .Task in why ? app.loop.last_ran : wnd.asked_by, loop_ms(app, time.tick_now()))
-	// a frame on an errand, or for a timed wake of the toolkit (a caret of the interface, a tooltip), is no activity: the browser stays at rest
-	// (the memory given back, the status bar's numbers at 0)
-	if why != {.Asked} { wnd.errands = {} }
-	if wnd.errands == {} && why != {.Interface_Wake} { memory_trim_active(app) } else { app.hud.settle_skip = true }   // memory_trim.odin; hud.odin: no sample
+	// Consume pending causes for this frame; anything invalidated during the frame queues for the next frame.
+	// A frame on an errand, or for a timed wake of the toolkit (a caret of the interface, a tooltip), is no activity: the browser stays at rest
+	// (the memory given back, the status bar's numbers at 0).
+	window_frame_begin(wnd, why)
+	if !wnd.frame_errand_only && why != {.Interface_Wake} { memory_trim_active(app) } else { app.hud.settle_skip = true }   // memory_trim.odin; hud.odin: no sample
+	// Input events may flip immediate-mode widget state after building this frame: schedule one follow-up frame.
+	if len(events) > 0 { window_invalidate(wnd, .Input) }
 	forms_view(app).caret_painted = {}
 	prof_begin(.Input)
 	events = ext_popup_events(app, events)   // ext_popup.odin: an extension's open popup takes its keys and the pointer over it
@@ -1627,8 +1633,8 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	for tab, i in wnd.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == wnd.current && tab.kind == .Web) } }
 	// smooth scrolling moves the scrollers first: the scroll events of this frame (run_animation_frames) see where they
 	// are painted
-	if autoscroll_tick(app, current_tab(app)) { request_frames(app, 2) }   // page_autoscroll.odin: drives the scroller before smooth_tick samples it
-	if smooth_tick(app, current_tab(app)) { request_frames(app, 2) }   // smooth_scroll.odin
+	if autoscroll_tick(app, current_tab(app)) { window_invalidate(wnd, .Animation) }   // page_autoscroll.odin: drives the scroller before smooth_tick samples it
+	if smooth_tick(app, current_tab(app)) { window_invalidate(wnd, .Animation) }   // smooth_scroll.odin
 	// from here to the end of the page phase the tab's styles and layout are this frame's: a script's reading lays out what this frame paints (js_layout_shell.odin)
 	app.rendering = current_tab(app)
 	// the frame's time (pacing.odin: its vblank) is the animation frame callbacks' timestamp and the CSS clock
@@ -1636,9 +1642,8 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 		prof_begin(.Animation)
 		page.run_animation_frames(t.page, wnd.pacer.frame_ms)
 		prof_end(.Animation)
-		// (the loop counts this frame off after it: 2 = this one and the next)
-		if page.wants_animation_frame(t.page) { request_frames(app, 2) }
-		if frames_tick(app, t, wnd.pacer.frame_ms) { request_frames(app, 2) }   // (frames_shell.odin)
+		if page.wants_animation_frame(t.page) { window_invalidate(wnd, .Animation) }
+		if frames_tick(app, t, wnd.pacer.frame_ms) { window_invalidate(wnd, .Animation) }   // (frames_shell.odin)
 	}
 	fullscreen_shell_frame(app, app.active)   // a page's full screen ends with its tab being shown (fullscreen_shell.odin)
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
@@ -1668,14 +1673,15 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	instance_frame(app)   // instance_shell.odin: the notice of a first Wren that did not answer
 	remote_notice(app)   // remote_shell.odin: the notice of a remote channel that did not start
 	ui.end_build()
+	window_layout_check(wnd)   // schedules .Layout (or .Status_Bar for status-bar errand) when box rects or scroll bounds changed
 	licence_frame(app)   // license_shell.odin: about:wren again after an answer of the licence's store
 	updates_frame(app)   // updates.odin: update.auto as the install says, each change of the updater said once
 	page_a11y_frame(app)   // a11y_page.odin: the page's tree, after the chrome's that grafts it
 	prof_end(.Build_UI)
 	window_cursor_apply(app)   // page_cursor.odin: the page's cursor over the page, else the chrome's
-	if ui.needs_frame(active_window(app).ui) { request_frames(app, 2) }
-	if t := current_tab(app); t != nil && t.page != nil && t.layout.mutations != t.page.doc.mutations { request_frames(app, 2) }
-	if t := current_tab(app); t != nil && t.page != nil && page.animations_active(t.page) { request_frames(app, 2) }   // CSS animations: later changes wake the loop by timer
+	if ui.needs_frame(wnd.ui) { window_invalidate(wnd, .Animation) }
+	if t := current_tab(app); t != nil && t.page != nil && t.layout.mutations != t.page.doc.mutations { window_invalidate(wnd, .Page) }
+	if t := current_tab(app); t != nil && t.page != nil && page.animations_active(t.page) { window_invalidate(wnd, .Animation) }   // CSS animations: later changes wake the loop by timer
 
 	shell_before_draw(app)   // (a chrome frame used the screen's slot)
 	platform.frame_gate_stage(gate, .Drawing)
@@ -1689,10 +1695,10 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	dnd_paint(app, &app.dc)   // dnd_image.odin: the picture of a drag from the page, over everything
 	autoscroll_paint(app, &app.dc)   // page_autoscroll.odin: the autoscroll anchor marker, over everything
 	prof_end(.UI_Draw)
-	// nothing asked for more since (window_request cleared it), the caret is where it was, and the status bar is what this window last drew: only the caret's pixels are drawn
+	// nothing non-caret invalidated since, the caret is where it was, and the status bar is what this window last drew: only the caret's pixels are drawn
 	// again. (A frame's GPU time lands frames later, and another window's frames make samples too. Such a frame is whole, and no sample: it brings no more of them.)
 	own := &wnd.own
-	if caret := forms_view(app).caret_painted; wnd.errands == {.Caret} && caret.exact && own.status_drawn == app.hud.changes {
+	if caret := forms_view(app).caret_painted; wnd.frame_errand_only && wnd.frame_causes == {.Caret} && wnd.causes <= {.Caret} && caret.exact && own.status_drawn == app.hud.changes {
 		draw.damage_begin(&app.dc)
 		draw.damage(&app.dc, caret.at)
 	}
@@ -2095,7 +2101,7 @@ app_start :: proc(args: []string) -> ^App {
 	whats_new_after_update(app)   // settings_page.odin: the first start of a new version says so, and opens What's new on a click
 	host.phase("first windows")
 	app.last_tick = time.tick_now()
-	active_window(app).frames_requested = 4
+	window_invalidate(active_window(app), .Chrome)
 	active_window(app).win.on_frame = window_on_frame   // (shell_frames.odin: a chrome frame when the page holds the thread)
 	if windows_shown(app) { window_show(app.active) }
 	session_open_other_windows(app)   // session.odin: the other windows of a restored session

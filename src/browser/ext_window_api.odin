@@ -109,7 +109,7 @@ ext_tab_create :: proc(user: rawptr, ext: string, spec: page.Ext_Tab_Spec) -> i6
 	if t == nil { return -1 }
 	if !spec.active { w.current = clamp(was, 0, len(w.tabs) - 1) }
 	if spec.index >= 0 { tab_move(app, t, w, at = int(spec.index), devtools_follow = false) }
-	window_request(app, w, 2)
+	window_invalidate(w, .Chrome)
 	return i64(t.id)
 }
 
@@ -125,7 +125,7 @@ ext_tab_update :: proc(user: rawptr, tab: i64, u: string, activate: bool) -> boo
 		window_activate(app, prev)
 	}
 	if activate { tab_reveal(app, t) }
-	window_request(app, w, 2)
+	window_invalidate(w, .Chrome)
 	return true
 }
 
@@ -176,7 +176,7 @@ ext_window_create :: proc(user: rawptr, ext: string, spec: page.Ext_Window_Spec)
 	}
 	window_activate(app, prev)
 	if spec.focused { window_focus(app, nw, true) }
-	window_request(app, nw, 4)
+	window_invalidate(nw, .Chrome)
 	// reported now (ext_watch would see it at the window's first frame)
 	append(&app.ext.seen.windows, nw.id)
 	page.ext_window_event_created(ext_window_info(app, nw))
@@ -189,7 +189,7 @@ ext_window_update :: proc(user: rawptr, window: i64, focus: bool, left, top: int
 	if w == nil { return false }
 	if move && w.win != nil { platform.move_window(w.win, left, top) }
 	if focus { window_focus(app, w, true) }
-	window_request(app, w, 2)
+	window_invalidate(w, .Chrome)
 	return true
 }
 
@@ -198,7 +198,7 @@ ext_window_remove :: proc(user: rawptr, window: i64) -> bool {
 	w := window_by_id(app, int(window))
 	if w == nil || len(app.windows) <= 1 { return false }   // (the last window is the browser: an extension does not end it)
 	w.closing, w.closing_force = true, true   // (closed at the end of the pass, with its tabs: windows_pass)
-	window_request(app, w, 2)
+	window_invalidate(w, .Chrome)
 	return true
 }
 

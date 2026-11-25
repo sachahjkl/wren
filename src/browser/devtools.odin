@@ -210,7 +210,7 @@ devtools_pref_changed :: proc(app: ^App, name: string, p: ^config.Prefs) {
 	view_from_prefs(app, dev(), name)
 	for w in app.windows { if w != app.active { view_from_prefs(app, &w.own.devtools, "-") } }
 	console_arm_all(app)   // (the pages describe their console arguments while a panel is open)
-	for w in app.windows { window_request(app, w, 2) }
+	for w in app.windows { window_invalidate(w, .Chrome) }
 }
 
 // The developer tools of the active window give up what they hold (their window closes, or the browser ends). Their view
@@ -282,7 +282,7 @@ devtools_request_showing :: proc(app: ^App, t: ^Tab, panel: Dev_Panel) {
 		d := &w.own.devtools
 		if !dev_shows(d, panel) { continue }
 		if t != nil && window_current_tab(app, w) != t { continue }
-		window_request(app, w, 2)
+		window_invalidate(w, .Chrome)
 	}
 }
 
@@ -320,7 +320,7 @@ devtools_set_visible :: proc(app: ^App, on: bool) {
 	set_pref_bool(app, "browser.devtools.visible", on)
 	network_sync_observer(app)
 	console_arm_all(app)
-	request_frames(app, 3)
+	app_invalidate(app, .Chrome)
 }
 
 // The panel shown (in its stack, the folds that hid it open; put back with the one shown last when it is not in the layout).
@@ -333,7 +333,7 @@ devtools_open :: proc(app: ^App, panel: Dev_Panel) {
 	if changed { devtools_save(app); devtools_save_layout(app) }
 	network_sync_observer(app)
 	console_arm_all(app)
-	request_frames(app, 3)
+	app_invalidate(app, .Chrome)
 }
 
 // The panels that find from Ctrl+F: their search or filter field takes the keyboard.
@@ -365,7 +365,7 @@ devtools_take_keys :: proc(app: ^App) -> bool {
 	case p == .Elements && d.els.search_on && ui.key_press(.F3, {.Shift}): d.els.find_step = -1
 	case: return false
 	}
-	request_frames(app, 2)
+	app_invalidate(app, .Chrome)
 	return true
 }
 
@@ -393,7 +393,7 @@ devtools_set_dock :: proc(app: ^App, dock: Dev_Dock) {
 	if !ui.view_is_open(vs, DEVTOOLS_VIEW, inst) { ui.view_open(vs, DEVTOOLS_VIEW, w, inst, w.ui) }
 	devtools_present(vs, inst, dock)
 	dev().dock = dock
-	request_frames(app, 3)
+	app_invalidate(app, .Chrome)
 }
 
 @(private = "file")
@@ -411,7 +411,7 @@ devtools_present :: proc(vs: ^ui.Views, inst: string, dock: Dev_Dock) {
 devtools_reattach :: proc(app: ^App) {
 	ui.view_reattach(&app.views, DEVTOOLS_VIEW, devtools_instance(app))
 	dev().dock = .Bottom
-	request_frames(app, 3)
+	app_invalidate(app, .Chrome)
 }
 
 // Where a presentation of the view puts the developer tools.
@@ -490,8 +490,8 @@ devtools_follow_tab :: proc(app: ^App, src, dest: ^Browser_Window) {
 	a^, b^ = b^, a^
 	b.brought = true
 	if app.net_media.owner == a { app.net_media.owner = b } else if app.net_media.owner == b { app.net_media.owner = a }
-	window_request(app, src, 3)
-	window_request(app, dest, 3)
+	window_invalidate(src, .Chrome)
+	window_invalidate(dest, .Chrome)
 }
 
 // The window of its own of `bw`'s developer tools (nil: they are in none).
@@ -503,14 +503,14 @@ devtools_view_window :: proc(app: ^App, bw: ^Browser_Window) -> ^View_Window {
 devtools_pick :: proc(app: ^App) {
 	if !dev_shows(dev(), .Elements) { devtools_open(app, .Elements) }
 	dev().picking = !dev().picking
-	request_frames(app, 3)
+	app_invalidate(app, .Chrome)
 }
 
 // Ctrl and + / - / 0: the text of the panel larger, smaller, as it was.
 devtools_zoom :: proc(app: ^App, step: f32) {
 	pt := step == 0 ? 12 : clamp(dev().font_pt + step, 8, 24)
 	dev_set_pref(app, "browser.devtools.font_size", fmt.tprintf("%g", pt))
-	request_frames(app, 2)
+	app_invalidate(app, .Style)
 }
 
 ////////////////////////////////
@@ -645,7 +645,7 @@ devtools_reset_layout :: proc(app: ^App) {
 	dev_set_pref(app, "browser.devtools.density", "compact")
 	network_reset_layout(app)
 	elements_reset_layout(app)
-	request_frames(app, 2)
+	app_invalidate(app, .Chrome)
 }
 
 ////////////////////////////////

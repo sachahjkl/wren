@@ -336,7 +336,7 @@ apply_block :: proc(app: ^App, t: ^Tab, s: ^Dev_Styles, bi: int) {
 	case .Section:
 	}
 	s.key_mut = 0   // the page changed: the next frame builds the blocks again (what the editor holds stays)
-	request_frames(app, 3)
+	app_invalidate(app, .Style)
 }
 
 ////////////////////////////////
@@ -776,7 +776,7 @@ hov_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		page.dev_force_state(t.page, e.selected, g.hover, g.active, g.focus, g.focus_within, g.visited)
 		e.version += 1
 		e.side.rev += 1   // the Styles list is keyed on this: rebuild it with the new matched rules
-		request_frames(app, 3)
+		app_invalidate(app, .Style)
 	}
 	if ui.menu_item(":hover###dt_hov_h", checked = f.hover, keep_open = true).clicked { toggle(app, t, e, f, 0) }
 	if ui.menu_item(":active###dt_hov_a", checked = f.active, keep_open = true).clicked { toggle(app, t, e, f, 1) }
@@ -788,7 +788,7 @@ hov_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		page.dev_force_state(t.page, base.NIL_HANDLE, false, false, false, false, false)
 		e.version += 1
 		e.side.rev += 1
-		request_frames(app, 3)
+		app_invalidate(app, .Style)
 	}
 }
 
@@ -806,7 +806,7 @@ class_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			for x in active { if x != c { append(&rest, x) } }
 			append(&s.off_classes, strings.clone(c))
 			page.dev_set_attribute(t.page, e.selected, "class", strings.join(rest[:], " ", context.temp_allocator))
-			request_frames(app, 3)
+			app_invalidate(app, .Style)
 		}
 	}
 	for c, i in s.off_classes {
@@ -814,7 +814,7 @@ class_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			page.dev_set_attribute(t.page, e.selected, "class", strings.concatenate({cur, cur == "" ? "" : " ", c}, context.temp_allocator))
 			delete(c)
 			ordered_remove(&s.off_classes, i)
-			request_frames(app, 3)
+			app_invalidate(app, .Style)
 			break
 		}
 	}

@@ -474,7 +474,7 @@ hud_settle_timer :: proc(data: rawptr) {
 	if same { return }
 	h.changes += 1
 	h.settle_skip = true   // the frame this wakes is no sample
-	window_request_errand(app, active_window(app), .Status_Bar)
+	window_invalidate(active_window(app), .Status_Bar)
 }
 
 // What the status bar (its counters and their tips) and the window title show of `n`: two numbers with the same text show the same.

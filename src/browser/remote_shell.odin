@@ -131,7 +131,7 @@ remote_capture_arm :: proc(app: ^App) {
 	// capture then waited for pixels nobody had asked for, until its time ran out)
 	if !render.capture_request(&app.r, r.capture_rect) {
 		r.capture_refused += 1
-		request_frames(app, 2)
+		window_invalidate(active_window(app), .Remote)
 		return
 	}
 	r.capture_window = 0
@@ -282,7 +282,7 @@ remote_run_line :: proc(app: ^App, conn: u64, line: []byte) {
 	req, code, message := remote.parse_request(line)
 	if code != 0 { remote_send(conn, remote.response_error(req.id, code, message)); return }
 	c := Call{conn = conn, id = req.id, method = req.method, params = req.params}
-	if !remote_reads_only(c.method) { request_frames(app, 2) }
+	if !remote_reads_only(c.method) { app_invalidate(app, .Remote) }
 	rep := remote_dispatch(app, &c)
 	if rep.deferred { return }
 	remote_answer(conn, c.id, rep)
@@ -591,7 +591,8 @@ tab_idle :: proc(app: ^App, t: ^Tab) -> bool {
 // Idle, and the picture is no longer changing: no frame wanted, the layout is the document's, the images are in.
 tab_stable :: proc(app: ^App, t: ^Tab) -> bool {
 	if !tab_idle(app, t) { return false }
-	if active_window(app).frames_requested > 1 || ui_needs_frame(app) { return false }
+	wnd := active_window(app)
+	if wnd.frames_requested > 1 || (wnd.causes - FRAME_ERRAND_CAUSES) != {} || ui_needs_frame(app) { return false }
 	if t.page != nil && t.kind == .Web {
 		if t.layout.mutations != t.page.doc.mutations { return false }
 		if page_has_script(t) {
@@ -621,7 +622,7 @@ op_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 	timed_out := now >= op.deadline
 	switch op.kind {
 	case .Frames:
-		request_frames(app, 2)
+		window_invalidate(active_window(app), .Remote)
 		if r.frame_no >= op.until { op_finish(op, done(op.result == "" ? "{}" : op.result)) }
 	case .Eval:
 		if timed_out { op_finish(op, fail(remote.ERR_TIMEOUT, "timed out waiting for the script's promise")) }
@@ -658,9 +659,8 @@ op_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 			op_finish(op, done(op.result == "" ? `{"waited":true}` : op.result))
 		} else if timed_out {
 			op_finish(op, fail(remote.ERR_TIMEOUT, fmt.tprintf("timed out waiting for %s", op.what)))
-		} else if op.wait == .Idle || op.wait == .Stable {
-			request_frames(app, 0)   // (nothing is asked of the loop: the timer looks again)
 		}
+		// .Idle and .Stable ask nothing of the loop: the timer checks again.
 	case .Capture: capture_step(app, op, t, timed_out)
 	case .Replay:  replay_step(app, op, now)
 	case .Click:   click_step(app, op, t, timed_out)

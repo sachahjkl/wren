@@ -441,7 +441,7 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 	// where what the status bar and the tools' badges count changed (a body's piece or a socket's frame changes neither)
 	touched.net.version += 1
 	if shown || len(touched.net.entries) != count_before || touched.net.pending != pending_before {
-		if w, i := window_of_tab(app, touched); w != nil && window_current(app, w)^ == i { window_request(app, w, 2) }
+		if w, i := window_of_tab(app, touched); w != nil && window_current(app, w)^ == i { window_invalidate(w, .Chrome) }
 	}
 	devtools_request_showing(app, touched, .Network)
 	devtools_request_showing(app, nil, .Performance)

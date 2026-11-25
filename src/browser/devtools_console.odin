@@ -582,14 +582,14 @@ console_row_menu_items :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 	}
 	if ui.menu_item("Copy stack trace###dt_con_copy_stack", disabled = !(c.menu_src.line > 0 || row_has_stack(t, c)), icon = lucide.COPY).clicked { clip_set(row_stack_text(t, c)) }
 	ref, rpage := row_object(t, c)
-	if ui.menu_item("Copy object###dt_con_copy_obj", disabled = !(ref > 0 && rpage != nil), icon = lucide.COPY).clicked { page.dev_console_copy(rpage, ref); request_frames(app, 3) }
+	if ui.menu_item("Copy object###dt_con_copy_obj", disabled = !(ref > 0 && rpage != nil), icon = lucide.COPY).clicked { page.dev_console_copy(rpage, ref); app_invalidate(app, .Chrome) }
 	if ui.menu_item("Copy all messages shown###dt_con_copy_all", disabled = !(n > 0), icon = lucide.COPY).clicked { clip_set(con_text(t, c, false, app.con_prefs.timestamps)) }
 	ui.menu_separator()
 	if ui.menu_item("Store as global variable###dt_con_store", disabled = !(ref > 0 && rpage != nil), icon = lucide.TERMINAL).clicked {
 		t.conlog.evaluating = true
 		page.dev_console_store(rpage, ref)
 		t.conlog.evaluating = false
-		request_frames(app, 3)
+		app_invalidate(app, .Chrome)
 	}
 	if ui.menu_item("Select all###dt_con_all", "Ctrl+A", disabled = !(n > 0), icon = lucide.LIST_CHECKS).clicked { c.has_sel, c.sel_a, c.sel_b = true, c.rows[0].abs, c.rows[n - 1].abs }
 	ui.menu_separator()
@@ -664,7 +664,7 @@ row_stack_text :: proc(t: ^Tab, c: ^Dev_Console) -> string {
 @(private = "file")
 con_ctx_changed :: proc(app: ^App, c: ^Dev_Console) {
 	c.key_ser = 0   // the rows are made again (Selected context only)
-	request_frames(app, 3)
+	app_invalidate(app, .Chrome)
 }
 
 // Whether a line is of the selected context: a nested document's lines start with "[frame <address>] ".
@@ -798,7 +798,7 @@ console_clear :: proc(app: ^App, t: ^Tab) {
 	dev().con.stop = t.console_added
 	clear(&dev().con.expanded)
 	clear(&dev().con.folded)
-	request_frames(app, 2)
+	app_invalidate(app, .Chrome)
 }
 
 // console.table: the columns sized to what they hold, a rule under the header.

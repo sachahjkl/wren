@@ -1,6 +1,7 @@
 package browser
 
 import "core:testing"
+import "toolkit:font"
 import "toolkit:ui"
 
 // Tabs with no page in a list of their own (in no window): the App frees them (app_free).
@@ -152,4 +153,151 @@ every_tab_of_every_window_is_listed_once :: proc(t: ^testing.T) {
 	testing.expect_value(t, all[0].url, "b1")   // the front window's first
 	testing.expect(t, tab_by_id(app, a.ctx.tabs[1].id) == a.ctx.tabs[1])
 	testing.expect(t, tab_by_id(app, 0) == nil)   // (ids start at 1)
+}
+
+@(test)
+window_invalidate_records_causes_and_drains_to_rest :: proc(t: ^testing.T) {
+	app := test_app(t)
+	w := active_window(app)
+	testing.expect(t, window_at_rest(w), "fresh window starts at rest")
+	testing.expect(t, !window_has_request(w), "fresh window has no pending request")
+	testing.expect_value(t, window_frames_pending(w), 0)
+
+	// Invalidate records typed causes and caller location.
+	window_invalidate(w, .Chrome)
+	app_invalidate(app, .Remote)
+	testing.expect_value(t, w.causes, Frame_Causes{.Chrome, .Remote})
+	testing.expect(t, w.asked_by.line > 0, "caller location recorded")
+	testing.expect(t, window_has_request(w), "invalidated window has request")
+	testing.expect_value(t, window_frames_pending(w), 1)
+	testing.expect(t, !window_at_rest(w), "invalidated window is not at rest")
+
+	// Frame begin snapshots causes into frame_causes and clears pending causes.
+	window_frame_begin(w, {.Asked})
+	testing.expect_value(t, w.frame_causes, Frame_Causes{.Chrome, .Remote})
+	testing.expect_value(t, w.causes, Frame_Causes{})
+	testing.expect(t, !window_is_errand(w), "Chrome + Remote is not an errand frame")
+	testing.expect(t, window_at_rest(w), "window is at rest once causes drain")
+
+	// Invalidation during a frame queues for the next frame without disturbing frame_causes.
+	window_invalidate(w, .Page)
+	testing.expect_value(t, w.frame_causes, Frame_Causes{.Chrome, .Remote})
+	testing.expect_value(t, w.causes, Frame_Causes{.Page})
+	testing.expect(t, !window_at_rest(w), "in-frame invalidation keeps next frame scheduled")
+	window_frame_begin(w, {.Asked})
+	testing.expect_value(t, w.frame_causes, Frame_Causes{.Page})
+	testing.expect(t, window_at_rest(w), "next frame drains queued cause to rest")
+
+	// Nil safety.
+	window_invalidate(nil, .Chrome)
+	app_invalidate(nil, .Chrome)
+	testing.expect(t, window_at_rest(nil), "nil window is at rest")
+}
+
+@(test)
+window_layout_check_schedules_followup_on_bounds_change_and_rests :: proc(t: ^testing.T) {
+	app := test_app(t)
+	app_fonts_init(app)
+	ui_font, ok := font.load_embedded(&app.fonts, font.FALLBACK_UI_DATA)
+	if !testing.expect(t, ok, "embedded UI font") { return }
+
+	state := new(ui.State)
+	theme: ui.Theme
+	defer {
+		ui.destroy(state)
+		free(state)
+		ui.theme_destroy(&theme)
+		free_all(context.temp_allocator)
+	}
+	ui.init(state, &app.fonts, &theme)
+
+	w: Browser_Window
+	w.ui = state
+
+	step :: proc(w: ^Browser_Window, f: font.Font_Id, box_w, scroll_child_h: f32) -> bool {
+		window_frame_begin(w, {.Asked})
+		base := ui.Style{pref = {.X = ui.px(100), .Y = ui.px(32)}, font = f, font_size = 14}
+		ui.begin_build(w.ui, {window_size = {800, 600}, dt = 1.0 / 60, animations = false, dpi_scale = 1, base = base})
+		ui.next({width = ui.px(box_w), height = ui.px(40)})
+		_ = ui.build_box({}, "###panel")
+		ui.next({width = ui.px(200), height = ui.px(120), axis = .Y})
+		if ui.scroll_y("###list") {
+			ui.next({width = ui.px(180), height = ui.px(scroll_child_h)})
+			_ = ui.build_box({}, "###content")
+		}
+		ui.end_build()
+		return window_layout_check(w)
+	}
+
+	// Build 1: establishes initial layout -> schedules automatic .Layout follow-up.
+	window_invalidate(&w, .Chrome)
+	testing.expect(t, step(&w, ui_font, 120, 400), "first build schedules .Layout settle")
+	testing.expect(t, .Layout in w.causes, ".Layout cause recorded")
+	testing.expect(t, !window_at_rest(&w), "not at rest while .Layout follow-up pending")
+
+	// Build 2: identical rects and scroll bounds -> no follow-up, window rests.
+	testing.expect(t, !step(&w, ui_font, 120, 400), "unchanged layout schedules no follow-up")
+	testing.expect(t, window_at_rest(&w), "window rests after layout settles")
+
+	// Build 3: box width changes -> automatic .Layout follow-up scheduled.
+	window_invalidate(&w, .Chrome)
+	testing.expect(t, step(&w, ui_font, 240, 400), "box resize schedules .Layout follow-up")
+	testing.expect(t, .Layout in w.causes, ".Layout cause recorded on box resize")
+
+	// Build 4: settles again.
+	testing.expect(t, !step(&w, ui_font, 240, 400), "settled resize schedules no follow-up")
+	testing.expect(t, window_at_rest(&w), "window rests after resize settles")
+
+	// Build 5: scroll container content height grows (outer rect unchanged, view_bounds changed) -> .Layout follow-up.
+	window_invalidate(&w, .Page)
+	testing.expect(t, step(&w, ui_font, 240, 900), "scroll bounds change schedules .Layout follow-up")
+	testing.expect(t, .Layout in w.causes, ".Layout cause recorded on scroll bounds change")
+
+	// Build 6: settles again.
+	testing.expect(t, !step(&w, ui_font, 240, 900), "settled scroll bounds schedules no follow-up")
+	testing.expect(t, window_at_rest(&w), "window rests after scroll bounds settle")
+}
+
+@(test)
+window_layout_followup_is_bounded_and_preserves_errands :: proc(t: ^testing.T) {
+	app, a, b := two_windows(t)
+	defer free_windows(app, a, b)
+
+	// Consecutive oscillating signatures stop after MAX_LAYOUT_FOLLOWUPS so the loop cannot spin.
+	window_invalidate(a, .Chrome)
+	window_frame_begin(a, {.Asked})
+	for i in 0 ..< MAX_LAYOUT_FOLLOWUPS {
+		testing.expectf(t, window_note_layout(a, u64(100 + i)), "follow-up %d allowed", i + 1)
+		testing.expect(t, .Layout in a.causes, "follow-up records .Layout")
+		window_frame_begin(a, {.Asked})
+	}
+	testing.expect(t, !window_note_layout(a, 999), "oscillating layout stops after MAX_LAYOUT_FOLLOWUPS")
+	testing.expect(t, window_at_rest(a), "window rests once layout follow-up budget is spent")
+
+	// A non-Layout cause resets the follow-up budget.
+	window_invalidate(a, .Style)
+	window_frame_begin(a, {.Asked})
+	testing.expect(t, window_note_layout(a, 1000), "new non-Layout cause restores budget")
+	testing.expect(t, .Layout in a.causes, ".Layout scheduled again")
+
+	// An errand-only Status_Bar frame records its updated layout signature without scheduling an extra follow-up frame.
+	window_invalidate(b, .Status_Bar)
+	window_frame_begin(b, {.Asked})
+	testing.expect(t, window_is_errand(b, {.Status_Bar}), "Status_Bar frame is errand-only")
+	testing.expect(t, !window_note_layout(b, 42), "errand-only frame does not schedule automatic layout follow-up")
+	testing.expect_value(t, b.layout_sig, u64(42))
+	testing.expect(t, b.layout_settled, "errand-only frame records settled layout signature")
+	testing.expect(t, window_at_rest(b), "errand-only frame rests after drawing once")
+
+	// windows_spill_causes skips active and minimized windows.
+	app.active = a
+	b.minimized = false
+	windows_spill_causes(app, {.Chrome})
+	testing.expect_value(t, a.causes, Frame_Causes{.Layout})
+	testing.expect_value(t, b.causes, Frame_Causes{.Chrome})
+	b.causes = {}
+	b.minimized = true
+	windows_spill_causes(app, {.Remote})
+	testing.expect_value(t, b.causes, Frame_Causes{})
+	app.active = nil
 }

@@ -161,13 +161,13 @@ net_media_write_done :: proc(data: rawptr) {
 	m.loading = false
 	if !j.ok {
 		m.err = strings.clone("The media could not be written to a temporary file for the system's player.")
-		request_frames(app, 1)
+		app_invalidate(app, .Media)
 		return
 	}
 	if _, ok := mci(fmt.tprintf("open \"%s\" alias dtmedia", j.path)); !ok {
 		m.err = strings.clone("The system cannot play this format (the browser's own player reads MP4 and WebM).")
 		net_media_remove_file(app, j.path)
-		request_frames(app, 1)
+		app_invalidate(app, .Media)
 		return
 	}
 	m.path = strings.clone(j.path)
@@ -176,7 +176,7 @@ net_media_write_done :: proc(data: rawptr) {
 	m.audio = true
 	m.mode = .System
 	mci(fmt.tprintf("setaudio dtmedia volume to %d", int(m.muted ? 0 : m.volume * MCI_VOLUME_FULL)))
-	request_frames(app, 2)
+	app_invalidate(app, .Media)
 }
 
 @(private = "file")
@@ -435,7 +435,7 @@ net_media_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		if m.playing && m.duration > 0 && pos >= m.duration - 0.05 { m.playing, m.ended = false, true }
 	case .None:
 	}
-	if m.playing { request_frames(app, 2) }
+	if m.playing { app_invalidate(app, .Media) }
 	if dt_bar("###dt_pm_bar", app.dtm.bar) {
 		dt_gap(4)
 		if dt_btn("###dt_pm_play", m.playing ? .Pause : .Play, tooltip = m.playing ? "Pause" : "Play", shortcut = "Space").clicked { set_playing(m, !m.playing) }

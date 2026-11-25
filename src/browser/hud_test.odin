@@ -193,32 +193,36 @@ hud_shown_numbers :: proc(t: ^testing.T) {
 	testing.expect(t, hud_shown(gpu, false, 16.7, 33.4) != hud_shown(busy, false, 16.7, 33.4))
 }
 
-// Errands that ask for a window's frames one after the other stay errands; one that comes after frames like any other does not make
-// them errands.
+// Errand causes join as a subset of FRAME_ERRAND_CAUSES; any non-errand cause makes the frame active.
 @(test)
 frame_errands_join :: proc(t: ^testing.T) {
 	test_app(t)
-	testing.expect_value(t, errands_after_request(0, {}, .Caret), Frame_Errands{.Caret})
-	// (a stale set of a window with no frame asked is not kept)
-	testing.expect_value(t, errands_after_request(0, {.Reader}, .Caret), Frame_Errands{.Caret})
-	// the status bar's second frame waits when the caret's toggle comes
-	testing.expect_value(t, errands_after_request(1, {.Status_Bar}, .Caret), Frame_Errands{.Caret, .Status_Bar})
-	testing.expect_value(t, errands_after_request(1, {.Caret}, .Caret), Frame_Errands{.Caret})
-	// frames like any other wait
-	testing.expect_value(t, errands_after_request(2, {}, .Caret), Frame_Errands{})
+	w: Browser_Window
+	window_invalidate(&w, .Status_Bar)
+	window_invalidate(&w, .Caret)
+	window_frame_begin(&w, {.Asked})
+	testing.expect(t, window_is_errand(&w), "errand causes stay errand-only when joined")
+	testing.expect_value(t, w.frame_causes, Frame_Causes{.Caret, .Status_Bar})
+	// a frame woken by input or another non-errand loop cause is not errand-only
+	window_invalidate(&w, .Caret)
+	window_frame_begin(&w, {.Input, .Asked})
+	testing.expect(t, !window_is_errand(&w), "input wakes an active frame")
 }
 
-// The window's request: an errand joins the one that waits; any other request makes the frames ones like any other.
+// Adding a non-errand cause or a legacy window_request promotes an errand window to an active frame.
 @(test)
 window_errand_requests :: proc(t: ^testing.T) {
 	app := test_app(t)
 	w: Browser_Window
-	window_request_errand(app, &w, .Status_Bar, 2)
-	window_request_errand(app, &w, .Caret)
-	testing.expect_value(t, w.frames_requested, 2)
-	testing.expect_value(t, w.errands, Frame_Errands{.Caret, .Status_Bar})
+	window_invalidate(&w, .Status_Bar)
+	window_invalidate(&w, .Caret)
+	testing.expect_value(t, w.causes, Frame_Causes{.Caret, .Status_Bar})
+	window_invalidate(&w, .Chrome)
+	window_frame_begin(&w, {.Asked})
+	testing.expect(t, !window_is_errand(&w), "non-errand cause clears errand-only status")
+	// legacy window_request also prevents errand-only treatment
 	window_request(app, &w, 1)
-	testing.expect_value(t, w.errands, Frame_Errands{})
-	window_request_errand(app, &w, .Caret)
-	testing.expect_value(t, w.errands, Frame_Errands{})
+	window_invalidate(&w, .Caret)
+	window_frame_begin(&w, {.Asked})
+	testing.expect(t, !window_is_errand(&w), "legacy numeric request clears errand-only status")
 }

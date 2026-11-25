@@ -257,6 +257,6 @@ instance_open :: proc(d: ^Instance_Open, closing: bool) {
 	// up with the keyboard: Windows through the instance's handover (the foreground right it was given), elsewhere the
 	// system's request (Wayland: xdg-activation, with the last input's serial)
 	window_native_raise_handed(active_window(app).win, d.token)   // remote_window_*.odin
-	request_frames(app, 4)
+	window_invalidate(active_window(app), .Chrome)
 }
 
