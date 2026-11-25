@@ -1097,7 +1097,7 @@ scroll_to_fragment :: proc(app: ^App, t: ^Tab) {
 	page.scroll_to_fragment(t.page, animate = false)
 }
 
-// The page's own box (or the view of a built-in page): what fills the room the panels of the window leave.
+// The page's own box (or the view of a built-in page): what fills the room the docked panels leave in the viewport.
 page_view :: proc(app: ^App, t: ^Tab) {
 	ui.next({width = ui.fill(), height = ui.fill()})
 	if t != nil && t.kind == .Config {
@@ -1121,11 +1121,21 @@ page_view :: proc(app: ^App, t: ^Tab) {
 	}
 }
 
-// What is under the toolbar (beside the sidebar when the tabs are in one): the crash banner, the find bar, the page. (The
-// developer tools are a view: docked, the frame of views lays them out at an edge of the window: devtools.odin.)
-page_column :: proc(app: ^App, t: ^Tab, elem_fs: bool) {
+// What is under the toolbar (beside the sidebar when the tabs are in one): the bookmarks bar, the crash banner, the
+// find bar, and the viewport (the page and any docked panels such as the developer tools: devtools.odin).
+// `base_pref` restores the base style's default box size before the view frame so docked panels and floating views do
+// not inherit `###window`'s `{fill, fill}` default.
+page_column :: proc(app: ^App, t: ^Tab, elem_fs: bool, base_pref: [ui.Axis]ui.Size) {
 	if !elem_fs { bookmarks_bar(app, t); crash_banner(app); find_bar(app, t) }   // bookmarks_bar.odin, crash_banner.odin
-	page_view(app, t)
+	if ui.style({width = base_pref[.X], height = base_pref[.Y]}) {
+		// (.Fits_Width: the viewport fits the column width beside a tab sidebar instead of pushing it out: least-width.md)
+		ui.next({flags = {.Fits_Width}})
+		if ui.views_frame(&app.views) {
+			if ui.style({width = ui.fill(), height = ui.fill()}) {
+				page_view(app, t)
+			}
+		}
+	}
 }
 
 build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restored tab loads when it is first shown
@@ -1134,48 +1144,45 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	ext_watch(app)   // ext_window_api.odin: the extensions' view of the windows, tabs and input changes
 	devtools_view_follow(app)   // devtools.odin: the developer tools' view opens or closes before the frame of views settles it
 	t := current_tab(app)
-	// (the window's frame of views: its panels and floating views around the content; its dialogs come at the end of the build, over it: views.odin)
-	if ui.views_frame(&app.views) {
-		if ui.style({width = ui.fill(), height = ui.fill()}) {
-			ui.next({axis = .Y})
-			// (.Fits_Width: its width is what the frame of views leaves beside the docked panels, a share; with the least
-			// of its tab strip and toolbar it would keep the page at the window's width: least-width.md of the toolkit)
-			root := ui.build_box({.Draw_Background, .Fits_Width}, "###window")
-			if ui.parent(root) {
-				// tab strip (the window's title bar when integrated: window_chrome.odin), navigation, security chip,
-				// address, menu; in full screen they come over the page on demand (fullscreen_bars)
-				// the tabs in a sidebar (tab_sidebar.odin): the toolbar is the title bar (integrated; else its own row under
-				// the system's), and the sidebar and the page share what is below it
-				side := tabs_in_sidebar(app)
-				// (an extension's popout window: its page only, no tab strip and no toolbar: ext_window_api.odin)
-				if !platform.is_fullscreen(active_window(app).win) && !ext_is_popout(app, active_window(app)) {
-					if side && platform.is_integrated_title(active_window(app).win) {
-						sidebar_titlebar(app, t)
-					} else {
-						if !side { tab_strip(app, platform.is_integrated_title(active_window(app).win)) }
-						toolbar_row(app, t)   // chrome_style.odin
-					}
-				}
-				elem_fs := fullscreen_shell_active(app.active)   // a page's element in full screen: the page has the whole window
-				if side {
-					pos := app.favs.cfg.position
-					side_now := sidebar_extent_now(app, pos)
-					ui.next({width = ui.fill(), height = ui.fill()})
-					if ui.row(.Start, {}, "###sidebar_row") {
-						if pos == .Left { tab_sidebar(app, pos, side_now) }
-						ui.next({width = ui.fill(), height = ui.fill()})
-						if ui.column(.Start, {}, "###page_column") { page_column(app, t, elem_fs) }
-						if pos == .Right { tab_sidebar(app, pos, side_now) }
-					}
+	base_pref := ui.top_style().pref
+	if ui.style({width = ui.fill(), height = ui.fill()}) {
+		ui.next({axis = .Y})
+		// (.Fits_Width: keep the window column within the window width when chrome bars are wider than a narrow window)
+		root := ui.build_box({.Draw_Background, .Fits_Width}, "###window")
+		if ui.parent(root) {
+			// tab strip (the window's title bar when integrated: window_chrome.odin), navigation, security chip,
+			// address, menu; in full screen they come over the page on demand (fullscreen_bars)
+			// the tabs in a sidebar (tab_sidebar.odin): the toolbar is the title bar (integrated; else its own row under
+			// the system's), and the sidebar and the page share what is below it
+			side := tabs_in_sidebar(app)
+			// (an extension's popout window: its page only, no tab strip and no toolbar: ext_window_api.odin)
+			if !platform.is_fullscreen(active_window(app).win) && !ext_is_popout(app, active_window(app)) {
+				if side && platform.is_integrated_title(active_window(app).win) {
+					sidebar_titlebar(app, t)
 				} else {
-					window_own(app).sidebar.shown = false
-					page_column(app, t, elem_fs)
+					if !side { tab_strip(app, platform.is_integrated_title(active_window(app).win)) }
+					toolbar_row(app, t)   // chrome_style.odin
 				}
-				// status bar (status_bar.odin)
-				if !elem_fs { status_bar_build(app, t) }
-				fullscreen_bars(app, t)
-				link_bubble(app, t)   // status_bar.odin: where the link under the pointer goes, over the page's corner
 			}
+			elem_fs := fullscreen_shell_active(app.active)   // a page's element in full screen: the page has the whole window
+			if side {
+				pos := app.favs.cfg.position
+				side_now := sidebar_extent_now(app, pos)
+				ui.next({width = ui.fill(), height = ui.fill()})
+				if ui.row(.Start, {}, "###sidebar_row") {
+					if pos == .Left { tab_sidebar(app, pos, side_now) }
+					ui.next({width = ui.fill(), height = ui.fill()})
+					if ui.column(.Start, {.Fits_Width}, "###page_column") { page_column(app, t, elem_fs, base_pref) }
+					if pos == .Right { tab_sidebar(app, pos, side_now) }
+				}
+			} else {
+				window_own(app).sidebar.shown = false
+				page_column(app, t, elem_fs, base_pref)
+			}
+			// status bar (status_bar.odin)
+			if !elem_fs { status_bar_build(app, t) }
+			fullscreen_bars(app, t)
+			link_bubble(app, t)   // status_bar.odin: where the link under the pointer goes, over the page's corner
 		}
 	}
 	context_menus_build(app)

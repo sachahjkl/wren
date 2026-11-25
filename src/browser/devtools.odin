@@ -1,7 +1,7 @@
 package browser
 
 // The developer tools: a native view of the chrome (not a page), the toolkit's view "devtools" (views.odin), an instance
-// per browser window: a panel at the bottom of the window at first, moved by the person to another edge, floated over the
+// per browser window: a panel at the bottom of the viewport at first, moved by the person to another edge, floated over the
 // page or put in a window of its own (views_external.odin) as every view is; the toolkit remembers where. Inside, the panels
 // (Console, Elements, Network, Application, Performance, Memory) are in the toolkit's dock
 // (ui.Dock, docs/docking.md of the toolkit): stacks of tabs the user drags to split, join, float and dock back, every target
@@ -35,7 +35,7 @@ import "wb:host"
 import i18n "toolkit:i18n"
 import "wb:page"
 
-// Where the developer tools are: the view's presentation and, docked, its edge of the window (dev_dock_of). The view's
+// Where the developer tools are: the view's presentation and, docked, its edge of the viewport (dev_dock_of). The view's
 // memory is the toolkit's; this is what the menus, the commands and wren ctl say of it.
 Dev_Dock :: enum u8 { Bottom, Right, Left, Top, Floating, Window }
 Dev_Panel :: enum u8 { Console, Elements, Network, Application, Performance, Memory }
@@ -370,7 +370,7 @@ devtools_present :: proc(vs: ^ui.Views, inst: string, dock: Dev_Dock) {
 	}
 }
 
-// Back to their home: a panel at the bottom of the window.
+// Back to their home: a panel at the bottom of the viewport.
 devtools_reattach :: proc(app: ^App) {
 	ui.view_reattach(&app.views, DEVTOOLS_VIEW, devtools_instance(app))
 	dev().dock = .Bottom

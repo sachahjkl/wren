@@ -6,6 +6,9 @@ import "core:testing"
 import "wb:base"
 import config "toolkit:config"
 import "toolkit:draw"
+import "toolkit:font"
+import lucide "toolkit:lucide"
+import "toolkit:platform"
 import "toolkit:ui"
 import "wb:fetch"
 
@@ -471,5 +474,154 @@ highlight_rings_paint_each_pixel_once :: proc(t: ^testing.T) {
 			for q in parts[i + 1:n] { testing.expectf(t, area(overlap(p, q)) == 0, "parts %v and %v overlap", p, q) }
 		}
 		testing.expectf(t, sum == area(outer) - area(overlap(outer, inner)), "the parts of %v cover the ring: %v", inner, sum)
+	}
+}
+
+// Docked developer tools share the page viewport inside `page_column`, never stealing outer window chrome: tab strip,
+// toolbar, bookmarks bar, tab sidebar and status bar keep their window edges while DevTools and `page_area` partition
+// the viewport inside them.
+@(test)
+devtools_docks_inside_viewport_not_outer_chrome :: proc(t: ^testing.T) {
+	page_render_test_lock()
+	defer page_render_test_unlock()
+	WIN :: [2]int{1280, 800}
+	WIN_W, WIN_H :: f32(1280), f32(800)
+
+	app := app_make()
+	defer {
+		app_free(app)
+		free_all(context.temp_allocator)
+	}
+	refused := app_prefs_init(app, {
+		"appearance.mode=dark",
+		"browser.devtools.visible=true",
+		"browser.devtools.tab=console",
+		"browser.status_bar.visible=true",
+		"browser.bookmarks.bar=true",
+		"browser.tabs.position=top",
+	})
+	testing.expectf(t, refused == "", "prefs applied: %s", refused)
+	app_settings_read(app)
+	app.favs.disk.offline = true
+	app_loop_init(app)
+	frame_gate_init()
+	app_fonts_init(app)
+	win := platform.open_window_offscreen("devtools-dock", WIN, 1)
+	wnd := window_adopt_primary(app, win)
+	ok: bool
+	app.ui_font, ok = font.load_embedded(&app.fonts, font.FALLBACK_UI_DATA)
+	if !testing.expect(t, ok, "embedded UI font") { return }
+	app.lucide, ok = font.load_embedded(&app.fonts, lucide.DATA)
+	if !testing.expect(t, ok, "embedded icon font") { return }
+	app_ui_init(app)
+	app_interface_init(app)
+	wnd.ui.caption_font_tried = true
+	tab := tab_new_bare(app, wnd, "https://example.test/", "Example")
+	tab.kind = .Web
+
+	find_box :: proc(s: ^ui.State, name: string) -> ^ui.Box {
+		for _, b in s.boxes {
+			if b.last_build == s.build_index && b.name == name { return b }
+		}
+		return nil
+	}
+	step :: proc(app: ^App, wnd: ^Browser_Window, n: int) {
+		size := draw.Vec2{f32(wnd.win.size.x), f32(wnd.win.size.y)}
+		for _ in 0 ..< n {
+			style := chrome_frame_style(app)
+			window_chrome_frame(app)
+			ui.begin_build(wnd.ui, {
+				window_size = size, dt = 1.0 / 60, animations = false, dpi_scale = 1,
+				base = style, disable_zoom = true, window = wnd.win,
+			})
+			build_ui(app)
+			ui.end_build()
+			for _, b in wnd.ui.boxes {
+				if b.last_build == wnd.ui.build_index && b.name == "page_area" { wnd.page_rect = b.rect; break }
+			}
+			free_all(context.temp_allocator)
+		}
+	}
+	inside :: proc(inner, outer: draw.Rect) -> bool {
+		return inner.min.x >= outer.min.x - 0.5 && inner.min.y >= outer.min.y - 0.5 &&
+			inner.max.x <= outer.max.x + 0.5 && inner.max.y <= outer.max.y + 0.5
+	}
+	disjoint :: proc(a, b: draw.Rect) -> bool {
+		return a.max.x <= b.min.x + 0.5 || b.max.x <= a.min.x + 0.5 ||
+			a.max.y <= b.min.y + 0.5 || b.max.y <= a.min.y + 0.5
+	}
+	non_empty :: proc(r: draw.Rect) -> bool { return r.max.x > r.min.x + 1 && r.max.y > r.min.y + 1 }
+
+	// 1. Top tabs: every docked edge stays strictly inside the viewport between bookmarks bar and status bar.
+	for dock in ([?]Dev_Dock{.Right, .Left, .Bottom, .Top}) {
+		devtools_set_dock(app, dock)
+		step(app, wnd, 4)
+		win_box := find_box(wnd.ui, "window")
+		strip := find_box(wnd.ui, "tabstrip")
+		bar := find_box(wnd.ui, "toolbar")
+		bm := find_box(wnd.ui, "bookmarks_bar")
+		sb := find_box(wnd.ui, "statusbar")
+		pg := find_box(wnd.ui, "page_area")
+		dt := find_box(wnd.ui, "dt_panel")
+		if !testing.expectf(t, win_box != nil && strip != nil && bar != nil && bm != nil && sb != nil && pg != nil && dt != nil,
+			"top tabs (%v): all chrome and viewport boxes exist", dock) { continue }
+		testing.expectf(t, win_box.rect == {{0, 0}, {WIN_W, WIN_H}}, "top tabs (%v): window keeps full rect, got %v", dock, win_box.rect)
+		testing.expectf(t, strip.rect.min.x == 0 && strip.rect.max.x == WIN_W && strip.rect.min.y == 0,
+			"top tabs (%v): tabstrip spans window top, got %v", dock, strip.rect)
+		testing.expectf(t, bar.rect.min.x == 0 && bar.rect.max.x == WIN_W,
+			"top tabs (%v): toolbar spans full width, got %v", dock, bar.rect)
+		testing.expectf(t, bm.rect.min.x == 0 && bm.rect.max.x == WIN_W,
+			"top tabs (%v): bookmarks bar spans full width, got %v", dock, bm.rect)
+		testing.expectf(t, sb.rect.min.x == 0 && sb.rect.max.x == WIN_W && sb.rect.max.y == WIN_H,
+			"top tabs (%v): statusbar spans window bottom, got %v", dock, sb.rect)
+
+		vp := draw.Rect{{0, bm.rect.max.y}, {WIN_W, sb.rect.min.y}}
+		testing.expectf(t, non_empty(dt.rect) && inside(dt.rect, vp), "top tabs (%v): dt_panel %v inside viewport %v", dock, dt.rect, vp)
+		testing.expectf(t, non_empty(pg.rect) && inside(pg.rect, vp), "top tabs (%v): page_area %v inside viewport %v", dock, pg.rect, vp)
+		testing.expectf(t, disjoint(dt.rect, pg.rect), "top tabs (%v): dt_panel %v and page_area %v do not overlap", dock, dt.rect, pg.rect)
+		switch dock {
+		case .Right:
+			testing.expectf(t, abs(dt.rect.max.x - vp.max.x) <= 0.5 && abs(dt.rect.min.y - vp.min.y) <= 0.5 && abs(dt.rect.max.y - vp.max.y) <= 0.5 && pg.rect.max.x <= dt.rect.min.x + 0.5,
+				"top tabs (Right): dt %v right of page %v in vp %v", dt.rect, pg.rect, vp)
+		case .Left:
+			testing.expectf(t, abs(dt.rect.min.x - vp.min.x) <= 0.5 && abs(dt.rect.min.y - vp.min.y) <= 0.5 && abs(dt.rect.max.y - vp.max.y) <= 0.5 && dt.rect.max.x <= pg.rect.min.x + 0.5,
+				"top tabs (Left): dt %v left of page %v in vp %v", dt.rect, pg.rect, vp)
+		case .Bottom:
+			testing.expectf(t, abs(dt.rect.min.x - vp.min.x) <= 0.5 && abs(dt.rect.max.x - vp.max.x) <= 0.5 && abs(dt.rect.max.y - vp.max.y) <= 0.5 && pg.rect.max.y <= dt.rect.min.y + 0.5,
+				"top tabs (Bottom): dt %v below page %v in vp %v", dt.rect, pg.rect, vp)
+		case .Top:
+			testing.expectf(t, abs(dt.rect.min.x - vp.min.x) <= 0.5 && abs(dt.rect.max.x - vp.max.x) <= 0.5 && abs(dt.rect.min.y - vp.min.y) <= 0.5 && dt.rect.max.y <= pg.rect.min.y + 0.5,
+				"top tabs (Top): dt %v above page %v in vp %v", dt.rect, pg.rect, vp)
+		case .Floating, .Window:
+		}
+	}
+
+	// 2. Left and right tab sidebars: sidebar stays at the outer window edge and DevTools stay inside the remaining viewport.
+	for side_pos in ([?]string{"left", "right"}) {
+		testing.expect_value(t, config.set_from_string(&app.prefs, "browser.tabs.position", side_pos, .User), config.Set_Error.None)
+		for dock in ([?]Dev_Dock{.Right, .Left, .Bottom}) {
+			devtools_set_dock(app, dock)
+			step(app, wnd, 4)
+			side := find_box(wnd.ui, "sidebar")
+			bm := find_box(wnd.ui, "bookmarks_bar")
+			sb := find_box(wnd.ui, "statusbar")
+			pg := find_box(wnd.ui, "page_area")
+			dt := find_box(wnd.ui, "dt_panel")
+			if !testing.expectf(t, side != nil && bm != nil && sb != nil && pg != nil && dt != nil,
+				"sidebar=%s (%v): boxes exist", side_pos, dock) { continue }
+			testing.expectf(t, sb.rect.min.x == 0 && sb.rect.max.x == WIN_W && sb.rect.max.y == WIN_H,
+				"sidebar=%s (%v): statusbar spans full bottom, got %v", side_pos, dock, sb.rect)
+			if side_pos == "left" {
+				testing.expectf(t, side.rect.min.x == 0 && side.rect.max.x > 40, "left sidebar at outer left edge, got %v", side.rect)
+			} else {
+				testing.expectf(t, side.rect.max.x == WIN_W && side.rect.min.x < WIN_W - 40, "right sidebar at outer right edge, got %v", side.rect)
+			}
+			vp_x0 := side_pos == "left" ? side.rect.max.x : 0
+			vp_x1 := side_pos == "left" ? WIN_W : side.rect.min.x
+			vp := draw.Rect{{vp_x0, bm.rect.max.y}, {vp_x1, sb.rect.min.y}}
+			testing.expectf(t, non_empty(dt.rect) && inside(dt.rect, vp), "sidebar=%s (%v): dt_panel %v inside viewport %v", side_pos, dock, dt.rect, vp)
+			testing.expectf(t, non_empty(pg.rect) && inside(pg.rect, vp), "sidebar=%s (%v): page_area %v inside viewport %v", side_pos, dock, pg.rect, vp)
+			testing.expectf(t, disjoint(dt.rect, pg.rect) && disjoint(dt.rect, side.rect), "sidebar=%s (%v): dt %v disjoint from page %v and sidebar %v", side_pos, dock, dt.rect, pg.rect, side.rect)
+		}
 	}
 }

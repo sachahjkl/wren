@@ -10,7 +10,7 @@ package browser
 // build. Window_View keeps where it is open and what for (window_view_follow, window_view_ended).
 //
 // A view can go in a window of the system's own: Wren's backend of windows (views_external.odin) is the Views' one
-// (ui.views_set_windows). The developer tools are a view too: a panel at the bottom of their browser window at
+// (ui.views_set_windows). The developer tools are a view too: a panel at the bottom of their viewport at
 // first, an instance per browser window (devtools.odin).
 
 import "core:fmt"
