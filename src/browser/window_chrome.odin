@@ -124,7 +124,7 @@ window_chrome_destroy :: proc(app: ^App) {
 	config.unwatch(&app.prefs, app.wchrome.watch)
 	config.unwatch(&app.prefs, app.wchrome.watch_bar)
 	config.unwatch(&app.prefs, app.wchrome.watch_title)
-	if app.wchrome.icon_px > 0 { render.destroy_texture(&app.r, app.wchrome.icon) }
+	if .Renderer in app.made && app.wchrome.icon_px > 0 { render.destroy_texture(&app.r, app.wchrome.icon) }
 	app.wchrome = {}
 }
 
@@ -133,7 +133,7 @@ window_chrome_frame :: proc(app: ^App) {
 	wnd := active_window(app)
 	if !platform.is_fullscreen(wnd.win) && platform.is_integrated_title(wnd.win) != app.wchrome.cfg.integrated {
 		platform.set_integrated_title(wnd.win, app.wchrome.cfg.integrated)
-		render.resize(&app.r, wnd.win.size)
+		if .Renderer in app.made { render.resize(&app.r, wnd.win.size) }
 	}
 	// a right click on the free space of the title bar opens the toolbar's menu (toolbar_menu.odin), not the system's;
 	// the system's is an item of it. (A flag of the window: set on each, every frame, wherever the window was made.)
@@ -146,7 +146,7 @@ toggle_fullscreen :: proc(app: ^App) {
 	on := !platform.is_fullscreen(wnd.win)
 	platform.set_fullscreen(wnd.win, on)
 	window_own(app).full.revealed = false
-	render.resize(&app.r, wnd.win.size)
+	if .Renderer in app.made { render.resize(&app.r, wnd.win.size) }
 	request_frames(app, 3)
 }
 
@@ -156,7 +156,8 @@ Icon_Draw :: struct { tex: render.Texture, ok: bool }
 // The exe's icon: the window title (version, build, statistics) in its tooltip; a click opens the system menu.
 app_icon :: proc(app: ^App, size: f32) {
 	px := int(size)
-	if px != app.wchrome.icon_px && px != app.wchrome.icon_failed {
+	// (headless unit tests build chrome without initialising App.r; guard GPU uploads on .Renderer)
+	if .Renderer in app.made && px != app.wchrome.icon_px && px != app.wchrome.icon_failed {
 		if app.wchrome.icon_px > 0 { render.destroy_texture(&app.r, app.wchrome.icon); app.wchrome.icon_px = 0 }
 		if pixels, ok := platform.app_icon_rgba(px, context.temp_allocator); ok {
 			app.wchrome.icon = render.create_texture_rgba(&app.r, px, px, mips = false)
