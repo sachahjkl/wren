@@ -1,3 +1,0 @@
-type: Security
-
-**File System Access, CDP, DevTools media, Wasm runtime, and extension archive hardening**: Local directory grants now reject symlinks and use case-sensitive paths on Linux; CDP `/json*` routes enforce the loopback Host/Origin guard with IPv6 `[::1]` support, capped input buffers, and proper WebSocket frame fragmentation; DevTools media previews sanitize URL extensions and skip temporary file writes off Windows; Wasm disk cache writes and engine startup fix data races, queue caps, and partial-init rollback; extension archives reject case-colliding duplicate entries and unpack atomically.

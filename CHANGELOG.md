@@ -10,6 +10,45 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-25
+
+### Added
+- **PointerEvent.getCoalescedEvents() and Linux parity**: implemented `PointerEvent.prototype.getCoalescedEvents()` and `PointerEventInit.coalescedEvents` (retaining sub-frame pointer move samples for drawing apps), wired the toolkit colour picker popover for `<input type="color">` off Windows, and added the Linux loopback TCP listener for `--remote-debugging-port` (CDP / WebDriver BiDi).
+- **Several views in the file dialogs**: the dialogs that open and save files show them as details, names, columns, or cards of four sizes with pictures' thumbnails. A button in the dialog's bar changes the view, as do Ctrl with the wheel and Ctrl+= or Ctrl+-; Ctrl+0 goes back to details. Each dialog keeps its view.
+- **The tab row takes a theme's title bar**: under a theme with a title bar of its own, such as Old Head, the row of tabs is that bar, with its colours when the window is in front and when it is not, and the other tabs' titles in its ink. The current tab keeps its own colours.
+- **Themes carry their whole look, and a new theme, Old Head**: a theme now sets its corner radii, the colour of a selected row's words, how focus shows, whether things animate and its font, as well as its colours. Old Head joins the themes in about:settings, Appearance. In the address bar's and the Vault's drop-downs, a selected row's words take the theme's colour for them.
+
+### Changed
+- **Smaller Linux binaries and faster dynamic startup**: Linux release builds pack relative relocations (DT_RELR), merge duplicate string tails, omit the Windows-only accessibility crate, and compile out unused native logging and tracing overhead.
+- **Smaller browser binary and embedded JavaScript engine image**: host API trampolines now share validation and return helpers with compact import tables, and generated JavaScript bindings use table-driven dispatch and read-only metadata tables instead of per-property wrapper functions.
+- **Off-thread download, Cache API, and user stylesheet I/O**: downloads now open, write, close, and remove temporary files off the interface thread; Cache API writes, deletions, and debounced index saves run on a background writer with indexed entry lookups and lock-free disk reads; `style.user_stylesheet` is read once off the interface thread and cached instead of on every new page.
+- **Lower memory use on large pages**: DOM nodes, computed styles, layout boxes, coordinate spaces, and compositor clip and item tables use compact layouts with sparse storage for 3D planes, event listeners, and rare style properties.
+- **Smaller embedded JavaScript engine**: Wren compresses the embedded fallback WebAssembly image and trims unused symbol and unwind metadata from the precompiled engine code, reducing executable size with no startup decompression cost.
+- **Smaller release binaries**: Release builds strip unused code and debug symbols on Linux and shrink native libraries, reducing download and disk size.
+- **Lower per-frame CPU work and lower memory use for animations, fonts, images, and cached pages**: container queries, ResizeObserver, IntersectionObserver, and lazy-image distance checks now skip unchanged frames and avoid redundant layout view builds; CSS transitions and animations use compact per-property storage and small arenas without steady-state allocation churn; image decode and download queues use binary priority heaps and single-lock batch draining with enforced raster cache limits; system font cascades share entries across tabs with bounded LRU eviction and clean unloading; and back/forward cached pages release retained GPU pictures and spare style and layout buffers while the layout thread caps kept temporary memory at 32 MiB.
+- **The update in the status bar shows its download** (Windows): after a click on Install, the badge becomes a bar that fills as the update downloads, then Restart. The tab sidebar opens and folds with a quicker start.
+- **Every menu filters what you type**: in a menu (a page's, a tab's, a bookmark's, a download's), typing shows a field above its items and keeps the items that match. The panels of the toolbar (the Vault, the blocker, the downloads) are not menus of items and show no field.
+
+### Fixed
+- **Free-text fields in about:settings stay saved**: text fields such as homepage, download folder, and Vault server URL now commit edits when focus leaves, when switching pages or tabs, and on exit. Reset and Escape also clear stale text for empty defaults.
+- **DevTools dock inside the viewport**: Docked Developer Tools now stay inside the page viewport instead of occupying an outer window side panel. The tab bar, address toolbar, tab sidebar, and status bar keep their full window span when DevTools are docked to any edge.
+- **Preferences edited in about:config now stay saved**: free-text string (such as `network.user_agent`), integer, and float fields in `about:config` commit when focus leaves, when filtered or scrolled out of view, when switching tabs, and on exit (not only on Enter); resetting or cancelling empty-default fields clears stale displayed text; and preference changes now write `prefs.txt` promptly in the background instead of waiting for the 30-second autosave timer.
+- **A page that used a closed or forbidden object no longer crashes.** A call with such an object reported its error, then ran all the same without the object. A document kept after its frame moved to another site was enough.
+- **Spaced inline text and animated inline SVG strokes render cleanly**: inline layout now includes `letter-spacing` on spaces so adjacent text runs and `::before`/`::after` pseudo-elements do not overlap, and inline `<svg>` elements now parse, animate, and serialize `fill-opacity`, `stroke-opacity`, `stroke-dasharray`, `stroke-dashoffset`, and unitless `stroke-width` while ticking CSS animations whenever their enclosing `<svg>` is visible.
+- **Pages built with Material UI keep their spacing and grids**: a CSS value made with `CSS.px()` and the other `CSS` factories now reads as its CSS text (`70px`) when a page writes it into a style. Pages styled by JSS, such as those of Material UI v4, lost their padding, margins and grid columns.
+- **WebAuthn security-key prompts, multi-window licence state, tab drags, and startup error handling**: security-key PIN, touch, and multi-passkey account prompts now wake the browser loop from worker threads without freezing, avoid prompt data races, free Linux `libfido2` cancel state after each ceremony, dismiss open prompts with a bounded grace wait on Vault shutdown, and use an OS-neutral address-bar tooltip; closing the first window retargets the settings Licence page to a surviving window instead of using freed window state; tab drags allocate drag payloads safely, clear drag state on capture loss, deactivation, or Escape, and skip detaching single-tab windows; desktop watcher wake checks nil before dereference, `app_start` rolls back initialized state on startup failure, and `about:settings` Vault exposes unlock-remember, passkey-offer, save-offer, and TOTP preferences.
+- **Legacy `-webkit-gradient()` backgrounds show**: text and backgrounds that a page draws with the old WebKit gradient syntax (`-webkit-gradient(linear, …)` and `-webkit-gradient(radial, …)`) are painted, where the declaration was dropped before and gradient text was invisible.
+- **Readable chosen option in segmented choices**: in about:settings, the chosen option of a choice of several (for example System, Window, Off) now keeps at least 4.5:1 contrast on its key in every theme.
+- **No crash while a page runs a long script**: when the window was scrolled or showed an animation while a page's script held the browser, and that script had read the page's styles (`getComputedStyle`) during a running animation, the browser could crash.
+- **Tabs dragged out of the bar on Wayland**: a tab dragged away from the tab bar now opens in a new window when it is
+released, and a tab dropped on another window's tabs joins them at that place.
+- **Readable details and matches on a selected row**: in the address bar's suggestions, the Vault's drop-down, the command palette and the lists, a selected row's secondary words and icon now keep at least 4.5:1 contrast in every theme, and the matched letters are underlined instead of tinted over the selection. In about:settings, the mouse wheel steps numeric fields, dropdowns, segmented buttons and font pickers; on Linux, opening a downloaded file runs `xdg-open`.
+- **`nix run github:sachahjkl/wren` works.** A flake fetched from GitHub is a tarball without the gui_toolkit and Lexbor submodules; the package now takes them from inputs pinned to the submodules' commits. Its build also finds rav1d, which comes from a fork: the vendored crates' configuration now replaces that git source too, which cargo cannot fetch offline.
+- **Wren follows the screen it is on under Wayland**: with several screens, a window on a faster screen (144 Hz) was held to the first screen's rate (60 Hz). It now draws at the rate of the screen it is on.
+
+### Security
+- **File System Access, CDP, DevTools media, Wasm runtime, and extension archive hardening**: Local directory grants now reject symlinks and use case-sensitive paths on Linux; CDP `/json*` routes enforce the loopback Host/Origin guard with IPv6 `[::1]` support, capped input buffers, and proper WebSocket frame fragmentation; DevTools media previews sanitize URL extensions and skip temporary file writes off Windows; Wasm disk cache writes and engine startup fix data races, queue caps, and partial-init rollback; extension archives reject case-colliding duplicate entries and unpack atomically.
+
 ## [0.11.0] - 2026-11-18
 
 ### Added
@@ -1678,7 +1717,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/sachahjkl/wren/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/sachahjkl/wren/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/sachahjkl/wren/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/sachahjkl/wren/compare/v0.8.0...v0.9.0
