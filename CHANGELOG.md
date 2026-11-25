@@ -10,6 +10,14 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-11-25
+
+### Fixed
+- **Toolbar layout stability**: Stopped a 1-pixel horizontal jitter in the centred address bar and right toolbar group when trailing toolbar controls have fractional pixel widths.
+- **Cleared localStorage in site data and reset**: Clearing site data or running `wren ctl reset` now removes cleared origins from `about:sites` and remote stats immediately, without waiting for background disk writes to finish.
+- **Remote wait for stable on animated pages**: `wren ctl wait stable` and `Wren.wait` now complete once layout, style, and pending page updates settle, instead of timing out on pages with continuous CSS or Web animations or playing media.
+- **WebAssembly module compilation deduplication**: Concurrent tabs and workers loading the same WebAssembly module now share one compilation instead of compiling duplicate copies in parallel and starving worker startup.
+
 ## [0.13.0] - 2026-11-25
 
 ### Added
@@ -1736,7 +1744,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.13.1...HEAD
+[0.13.1]: https://github.com/sachahjkl/wren/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/sachahjkl/wren/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/sachahjkl/wren/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/sachahjkl/wren/compare/v0.10.0...v0.11.0
