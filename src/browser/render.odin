@@ -339,6 +339,8 @@ paint_canvas_images :: proc(l: ^Layout, dc: ^draw.Context, origin, size: draw.Ve
 	boxes := bg_boxes(border, {}, {rb.border[0], rb.border[1], rb.border[2], rb.border[3]}, rb.padding)
 	viewport := draw.Rect{origin, origin + size}
 	layers := style.background_layers(cs)
+	prev_filter := draw.set_image_filter(dc, image_filter_of(cs))
+	defer draw.set_image_filter(dc, prev_filter)
 	for i := len(layers) - 1; i >= 0; i -= 1 {
 		layer := &layers[i]
 		pos_area, _ := area_of(&boxes, layer.origin)

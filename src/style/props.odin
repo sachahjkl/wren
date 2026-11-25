@@ -379,6 +379,7 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Vertical_Align: return fa(&c.vertical_align), nil
 	case .Aspect_Ratio: return fa(&c.aspect_ratio), fa(&c.aspect_ratio_auto)
 	case .Object_Fit: return fa(&c.object_fit), nil
+	case .Image_Rendering: return fa(&c.image_rendering), nil
 	case .Flex_Direction: return fa(&c.flex_direction), nil
 	case .Flex_Wrap: return fa(&c.flex_wrap), nil
 	case .Flex_Grow: return fa(&c.flex_grow), nil

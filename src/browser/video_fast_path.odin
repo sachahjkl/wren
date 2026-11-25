@@ -43,6 +43,7 @@ Video_Fast_Record :: struct {
 	page_rect: draw.Rect,   // the page area when it was recorded (to shift like the snapshot)
 	scroll:   draw.Vec2,      // the document's offsets then
 	frame:    u64,          // chrome_frames.frame_no it was recorded in (a record older than the snapshot is dropped)
+	filter:   draw.Image_Filter,
 	eligible: bool,
 }
 
@@ -85,14 +86,14 @@ video_fast_path_begin_frame :: proc(app: ^App) {
 
 // Called from video_paint_content for each video painted in the real page pass: remembers its picture and box so a
 // chrome frame can keep it moving.
-video_fast_path_record :: proc(app: ^App, p: ^page.Page, node: base.Handle, tex: render.Texture, dst: draw.Rect, eligible: bool) {
+video_fast_path_record :: proc(app: ^App, p: ^page.Page, node: base.Handle, tex: render.Texture, dst: draw.Rect, eligible: bool, filter := draw.Image_Filter.Smooth) {
 	if app.vfast.mode == .Off || app.chrome_frames.nested { return }
 	t := current_tab(app)
 	if t == nil || t.page != p { return }
 	wnd := active_window(app)
 	append(&app.vfast.records, Video_Fast_Record{
 		tab = t.id, page = page.page_id(p), node = node, tex = tex, dst = dst,
-		page_rect = wnd.page_rect, scroll = doc_scroll_vec(t), frame = app.chrome_frames.frame_no, eligible = eligible,
+		page_rect = wnd.page_rect, scroll = doc_scroll_vec(t), frame = app.chrome_frames.frame_no, filter = filter, eligible = eligible,
 	})
 }
 
@@ -116,7 +117,9 @@ video_fast_path_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: dra
 		covered := draw.rect_intersect(rect, dst)
 		if covered.max.x <= covered.min.x || covered.max.y <= covered.min.y { continue }
 		draw.push_clip(dc, rect)
+		prev_filter := draw.set_image_filter(dc, r.filter)
 		draw.image(dc, tex, dst, {}, draw.Color{1, 1, 1, 1})
+		draw.set_image_filter(dc, prev_filter)
 		draw.pop_clip(dc)
 		drawn += 1
 		app.vfast.overlaid += 1

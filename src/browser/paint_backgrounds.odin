@@ -51,6 +51,8 @@ paint_backgrounds :: proc(dc: ^draw.Context, cs: ^style.Computed, b: ^Bg_Boxes, 
 		col := to_draw(cs.background_color)
 		draw.rect_corners(dc, clip, {col, col, col, col}, radii)
 	}
+	prev_filter := draw.set_image_filter(dc, image_filter_of(cs))
+	defer draw.set_image_filter(dc, prev_filter)
 	for i := len(layers) - 1; i >= 0; i -= 1 {
 		layer := &layers[i]
 		pos_area, _ := area_of(b, layer.origin)

@@ -218,13 +218,16 @@ video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle,
 		radii := content_radii(cs, border, content, scale)
 		clip := dst.min.x < content.min.x || dst.min.y < content.min.y || dst.max.x > content.max.x || dst.max.y > content.max.y || radii != {}
 		if clip { draw.push_clip_rounded(dc, content, radii) }
+		filter := image_filter_of(cs)
+		prev_filter := draw.set_image_filter(dc, filter)
 		draw.image(dc, t.tex, dst, {}, draw.Color{1, 1, 1, 1})
+		draw.set_image_filter(dc, prev_filter)
 		if clip { draw.pop_clip(dc) }
 		app.vshell.painted += 1
 		// the fast path: remember this video's picture and where it sits so a chrome frame can keep it moving while a
 		// long script freezes the rest of the page (video_fast_path.odin). Eligible only when it fills its box opaquely
 		// and nothing is drawn over it, so overlaying it over the page's last frame cannot show a wrong pixel.
-		video_fast_path_record(app, p, node, t.tex, dst, !clip && !view.paused)
+		video_fast_path_record(app, p, node, t.tex, dst, !clip && !view.paused, filter)
 	}
 	video_paint_subtitles(dc, app, p, node, content, scale)
 	return true

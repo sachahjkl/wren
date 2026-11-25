@@ -300,6 +300,7 @@ raster_hash :: proc(cs: ^style.Computed, cache: ^map[^style.Computed]u64) -> u64
 	h = mix(h, u64(transmute(u32)cs.outline_width) | u64(transmute(u32)cs.outline_offset) << 32)
 	h = hash_of(h, cs.outline_style)
 	h = hash_of(h, cs.outline_color)
+	h = hash_of(h, cs.image_rendering)
 	h = hash_of(h, cs.list_style_type)
 	h = hash_string(mix(h, u64(cs.list_style.style)), cs.list_style.text)
 	if cache != nil { cache[cs] = h }

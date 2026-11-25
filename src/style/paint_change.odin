@@ -34,7 +34,7 @@ PAINT_PROPS :: [?]Prop{
 	.Animation_Name, .Animation_Duration, .Animation_Timing_Function, .Animation_Delay, .Animation_Iteration_Count,
 	.Animation_Direction, .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition,
 	.Animation_Timeline, .Animation_Range_Start, .Animation_Range_End, .Scroll_Timeline_Name, .Scroll_Timeline_Axis, .View_Timeline_Name, .View_Timeline_Axis, .View_Timeline_Inset, .Timeline_Scope,
-	.Object_Position, .Filter, .Backdrop_Filter, .Clip_Path, .Clip,
+	.Object_Position, .Image_Rendering, .Filter, .Backdrop_Filter, .Clip_Path, .Clip,
 	.Scroll_Behavior, .Overflow_Anchor, .Overscroll_Behavior_X, .Overscroll_Behavior_Y, .Caret_Color, .Accent_Color,
 	.Mask_Image, .Mask_Mode, .Mask_Repeat, .Mask_Position, .Mask_Size, .Mask_Origin, .Mask_Clip, .Mask_Composite,
 	.Text_Fill_Color, .Text_Stroke_Color, .Text_Stroke_Width, .Text_Emphasis_Color, .Text_Emphasis_Style, .Text_Emphasis_Position, .Text_Emphasis_Skip,

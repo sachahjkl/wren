@@ -867,6 +867,17 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		c.aspect_ratio = ratio
 		c.aspect_ratio_auto = auto && have
 	case .Object_Fit: return set_enum(vs, &c.object_fit)
+	case .Image_Rendering:
+		id, ok := ident_raw(vs)
+		if !ok { return false }
+		switch base.ascii_lower(id) {
+		case "auto", "optimizequality": c.image_rendering = .Auto
+		case "smooth": c.image_rendering = .Smooth
+		case "high-quality": c.image_rendering = .High_Quality
+		case "crisp-edges", "-moz-crisp-edges", "-webkit-optimize-contrast": c.image_rendering = .Crisp_Edges
+		case "pixelated", "optimizespeed": c.image_rendering = .Pixelated
+		case: return false
+		}
 	case .Flex_Direction: return set_enum(vs, &c.flex_direction)
 	case .Flex_Wrap: return set_enum(vs, &c.flex_wrap)
 	case .Flex_Grow, .Flex_Shrink:

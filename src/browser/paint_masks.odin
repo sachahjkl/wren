@@ -29,6 +29,8 @@ paint_mask_layers :: proc(e: ^Effects, b: ^lay.Box, off: draw.Vec2) {
 	radii := lay.border_radii(cs, b.size.x, b.size.y, l.scale)
 	boxes := bg_boxes(border, radii, {b.border[0], b.border[1], b.border[2], b.border[3]}, b.padding)
 	layers := style.mask_layers(cs)
+	prev_filter := draw.set_image_filter(dc, image_filter_of(cs))
+	defer draw.set_image_filter(dc, prev_filter)
 	for i := len(layers) - 1; i >= 0; i -= 1 {
 		ml := &layers[i]
 		mode := draw.Mask_Mode.Alpha
@@ -91,6 +93,8 @@ paint_backgrounds_text :: proc(l: ^Layout, dc: ^draw.Context, v: ^lay.View, it: 
 			draw.rect_corners(dc, clip, {col, col, col, col}, radii)
 		}
 	}
+	prev_filter := draw.set_image_filter(dc, image_filter_of(cs))
+	defer draw.set_image_filter(dc, prev_filter)
 	for i := n - 1; i >= 0; i -= 1 {
 		layer := &layers[i]
 		text := layer.clip == .Text

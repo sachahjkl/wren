@@ -85,6 +85,7 @@ User_Select :: enum u8 { Auto, None, Text, All }
 Touch_Gesture :: enum u8 { Pan_Left, Pan_Right, Pan_Up, Pan_Down, Pinch_Zoom, Double_Tap }
 Touch_Blocked :: bit_set[Touch_Gesture; u8]
 Object_Fit :: enum u8 { Fill, Contain, Cover, None, Scale_Down }
+Image_Rendering :: enum u8 { Auto, Smooth, High_Quality, Crisp_Edges, Pixelated }
 Repeat :: enum u8 { Repeat, No_Repeat, Repeat_X, Repeat_Y, Space, Round }
 Flex_Direction :: enum u8 { Row, Row_Reverse, Column, Column_Reverse }
 Flex_Wrap :: enum u8 { Nowrap, Wrap, Wrap_Reverse }
@@ -278,6 +279,7 @@ Inherited_Group :: struct {
 	border_collapse:         bool,
 	cursor:                  Cursor,
 	pointer_events:          bool,
+	image_rendering:         Image_Rendering,
 	writing_mode:            Writing_Mode,
 	text_orientation:        Text_Orientation,
 	text_combine_upright:    Text_Combine_Upright,
@@ -469,7 +471,7 @@ Prop :: enum u8 {
 	Border_Top_Width, Border_Right_Width, Border_Bottom_Width, Border_Left_Width,
 	Border_Top_Color, Border_Right_Color, Border_Bottom_Color, Border_Left_Color,
 	Border_Top_Left_Radius, Border_Top_Right_Radius, Border_Bottom_Right_Radius, Border_Bottom_Left_Radius,
-	Overflow_X, Overflow_Y, Visibility, Opacity, Vertical_Align, Aspect_Ratio, Object_Fit,
+	Overflow_X, Overflow_Y, Visibility, Opacity, Vertical_Align, Aspect_Ratio, Object_Fit, Image_Rendering,
 	Flex_Direction, Flex_Wrap, Flex_Grow, Flex_Shrink, Flex_Basis, Justify_Content, Align_Items, Align_Self, Align_Content,
 	Order, Row_Gap, Column_Gap,
 	Background_Color, Background_Image, Background_Repeat, Background_Position, Background_Size,
@@ -508,7 +510,7 @@ INHERITED_PROPS :: [?]Prop{
 	.Text_Wrap_Style, .Word_Break, .Overflow_Wrap, .Hyphens, .Tab_Size, .Direction, .Text_Shadow, .Text_Underline_Offset,
 	.Text_Underline_Position, .Text_Decoration_Skip_Ink, .Text_Decoration_Skip_Spaces,
 	.Text_Emphasis_Style, .Text_Emphasis_Color, .Text_Emphasis_Position, .Text_Emphasis_Skip, .Text_Stroke_Width, .Text_Stroke_Color,
-	.Visibility, .List_Style_Type, .List_Style_Position, .Cursor, .Pointer_Events, .Border_Collapse, .Border_Spacing,
+	.Visibility, .List_Style_Type, .List_Style_Position, .Cursor, .Pointer_Events, .Image_Rendering, .Border_Collapse, .Border_Spacing,
 	.Quotes, .Caret_Color, .Accent_Color, .Scrollbar_Color, .Orphans, .Widows, .Writing_Mode, .Text_Orientation,
 	.Text_Combine_Upright,
 	.Font_Feature_Settings, .Font_Variation_Settings, .Font_Kerning, .Font_Variant_Ligatures, .Font_Variant_Numeric,

@@ -423,7 +423,7 @@ COMPUTED_PROPERTIES :: [?]string{
 	"border-right-width", "border-spacing", "border-top-color", "border-top-left-radius", "border-top-right-radius",
 	"border-top-style", "border-top-width", "bottom", "box-shadow", "box-sizing", "break-after", "break-before", "break-inside", "clear", "color", "column-count", "column-fill", "column-gap", "column-rule-color", "column-rule-style", "column-rule-width", "column-span", "column-width", "content",
 	"cursor", "direction", "display", "fill", "fill-opacity", "flex-basis", "flex-direction", "flex-grow", "flex-shrink", "flex-wrap", "float",
-	"font-family", "font-size", "font-stretch", "font-style", "font-weight", "height", "justify-content", "left",
+	"font-family", "font-size", "font-stretch", "font-style", "font-weight", "height", "image-rendering", "justify-content", "left",
 	"letter-spacing", "line-height", "list-style-position", "list-style-type", "margin-bottom", "margin-left", "margin-right",
 	"margin-top", "max-height", "max-width", "min-height", "min-width", "object-fit", "opacity", "order", "orphans", "outline-color",
 	"outline-offset", "outline-style", "outline-width", "overflow-wrap", "overflow-x", "overflow-y", "padding-bottom",
@@ -671,6 +671,7 @@ computed_value :: proc(cs: ^style.Computed, name_in: string, used: Used_Box) -> 
 		return kw(cs.vertical_align.kind)
 	case "aspect-ratio": return cs.aspect_ratio == 0 ? "auto" : fmt.tprintf("%s / 1", css_num(cs.aspect_ratio))
 	case "object-fit": return kw(cs.object_fit)
+	case "image-rendering": return kw(cs.image_rendering)
 	case "flex-direction": return kw(cs.flex_direction)
 	case "flex-wrap": return kw(cs.flex_wrap)
 	case "flex-grow": return css_num(cs.flex_grow)

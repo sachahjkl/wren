@@ -49,6 +49,7 @@ specified_values_apply_as_their_tokens :: proc(t: ^testing.T) {
 		"font-style: italic", "text-align: -webkit-center", "text-align: match-parent", "text-align: justify-all",
 		"text-align: end", "text-transform: uppercase", "text-overflow: ellipsis", "text-overflow: clip",
 		"word-break: break-all", "overflow-wrap: anywhere", "direction: rtl", "object-fit: scale-down",
+		"image-rendering: pixelated", "image-rendering: crisp-edges", "image-rendering: -moz-crisp-edges", "image-rendering: optimizeSpeed",
 		"flex-direction: column-reverse", "flex-wrap: wrap", "justify-content: space-between", "justify-content: left",
 		"align-items: self-end", "align-self: anchor-center", "align-content: stretch", "list-style-position: inside",
 		"pointer-events: visiblePainted", "pointer-events: none", "user-select: all", "border-collapse: collapse",

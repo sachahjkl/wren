@@ -108,7 +108,7 @@ is_keyword_prop :: proc(p: Prop) -> bool {
 	case .Stroke_Linecap, .Stroke_Linejoin, .Font_Style, .Text_Align, .Text_Transform, .Text_Overflow, .Word_Break,
 	     .Overflow_Wrap, .Direction, .Display, .Position, .Float, .Clear, .Box_Sizing,
 	     .Border_Top_Style, .Border_Right_Style, .Border_Bottom_Style, .Border_Left_Style, .Overflow_X, .Overflow_Y,
-	     .Visibility, .Object_Fit, .Flex_Direction, .Flex_Wrap, .Justify_Content, .Align_Items, .Align_Self,
+	     .Visibility, .Object_Fit, .Image_Rendering, .Flex_Direction, .Flex_Wrap, .Justify_Content, .Align_Items, .Align_Self,
 	     .Align_Content, .List_Style_Position, .Pointer_Events, .User_Select, .Outline_Style, .Border_Collapse:
 		return true
 	}
@@ -139,6 +139,7 @@ keyword_get :: proc(c: ^Computed, p: Prop) -> (u8, bool) {
 	case .Overflow_Y: return u8(c.overflow_y), true
 	case .Visibility: return u8(c.visibility), true
 	case .Object_Fit: return u8(c.object_fit), true
+	case .Image_Rendering: return u8(c.image_rendering), true
 	case .Flex_Direction: return u8(c.flex_direction), true
 	case .Flex_Wrap: return u8(c.flex_wrap), true
 	case .Justify_Content: return u8(c.justify_content), true
@@ -178,6 +179,7 @@ keyword_set :: proc(c: ^Computed, p: Prop, k: u8) {
 	case .Overflow_Y: c.overflow_y = Overflow(k)
 	case .Visibility: c.visibility = Visibility(k)
 	case .Object_Fit: c.object_fit = Object_Fit(k)
+	case .Image_Rendering: c.image_rendering = Image_Rendering(k)
 	case .Flex_Direction: c.flex_direction = Flex_Direction(k)
 	case .Flex_Wrap: c.flex_wrap = Flex_Wrap(k)
 	case .Justify_Content: c.justify_content = Content_Align(k)

@@ -446,6 +446,17 @@ content_radii :: proc(cs: ^style.Computed, border, content: draw.Rect, scale: f3
 	return padding_radii(outer, {content.min.y - border.min.y, border.max.x - content.max.x, border.max.y - content.max.y, content.min.x - border.min.x})
 }
 
+// Maps CSS image-rendering (CSS Images 3 §5.3) to the toolkit's image sampling mode.
+image_filter_of :: proc(cs: ^style.Computed) -> draw.Image_Filter {
+	if cs == nil { return .Smooth }
+	switch cs.image_rendering {
+	case .Auto, .Smooth, .High_Quality: return .Smooth
+	case .Pixelated:   return .Pixelated
+	case .Crisp_Edges: return .Nearest
+	}
+	return .Smooth
+}
+
 // The content of an image element; false for other replaced elements (the next painter takes them). `parts`: of an
 // inline <svg>'s picture, those the item draws.
 images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, fid: font.Font_Id, font_size, scale: f32, parts: lay.Svg_Parts) -> bool {
@@ -454,7 +465,7 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 	n := dom.get(d, node)
 	if n == nil || n.kind != .Element { return false }
 	if n.name == "svg" {
-		paint_inline_svg(dc, node, content, scale, parts)
+		paint_inline_svg(dc, node, content, cs, scale, parts)
 		return true
 	}
 	if n.name == "video" { return video_paint_content(dc, p, node, content, border, cs, scale) }   // (video_shell.odin)
@@ -488,7 +499,9 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 		radii := content_radii(cs, border, content, scale)
 		clip := dst.min.x < content.min.x || dst.min.y < content.min.y || dst.max.x > content.max.x || dst.max.y > content.max.y || radii != {}
 		if clip { draw.push_clip_rounded(dc, content, radii) }
+		prev_filter := draw.set_image_filter(dc, image_filter_of(cs))
 		the_app.images_shell.api.draw(the_app.images_shell.api.user, dc, tex, dst, {}, WHITE_TINT, {})
+		draw.set_image_filter(dc, prev_filter)
 		if clip { draw.pop_clip(dc) }
 	}
 	return true
@@ -517,7 +530,9 @@ paint_canvas :: proc(dc: ^draw.Context, node: base.Handle, content, border: draw
 	radii := content_radii(cs, border, content, scale)
 	clip := dst.min.x < content.min.x || dst.min.y < content.min.y || dst.max.x > content.max.x || dst.max.y > content.max.y || radii != {}
 	if clip { draw.push_clip_rounded(dc, content, radii) }
+	prev_filter := draw.set_image_filter(dc, image_filter_of(cs))
 	the_app.images_shell.api.draw(the_app.images_shell.api.user, dc, tex, dst, {}, WHITE_TINT, {})
+	draw.set_image_filter(dc, prev_filter)
 	if clip { draw.pop_clip(dc) }
 }
 
@@ -592,7 +607,7 @@ canvas_texture_for :: proc(v: page.Canvas_View, want_mips: bool) -> (Image_Textu
 // An inline <svg>: its markup rendered at the content box's device size (while new markup is being rendered, the
 // picture of the old one; nothing before the first, nothing when it cannot be: an inline SVG has no broken-image icon).
 @(private = "file")
-paint_inline_svg :: proc(dc: ^draw.Context, node: base.Handle, content: draw.Rect, scale: f32, parts: lay.Svg_Parts) {
+paint_inline_svg :: proc(dc: ^draw.Context, node: base.Handle, content: draw.Rect, cs: ^style.Computed, scale: f32, parts: lay.Svg_Parts) {
 	s := max(scale, 0.01)
 	cw, ch := content.max.x - content.min.x, content.max.y - content.min.y
 	if cw < 0.5 || ch < 0.5 { return }
@@ -601,7 +616,9 @@ paint_inline_svg :: proc(dc: ^draw.Context, node: base.Handle, content: draw.Rec
 	if !fp.ok { return }
 	tex, ok := texture_for(fp.texture, fp)
 	if !ok { return }
+	prev_filter := draw.set_image_filter(dc, image_filter_of(cs))
 	the_app.images_shell.api.draw(the_app.images_shell.api.user, dc, tex, content, {}, WHITE_TINT, {})
+	draw.set_image_filter(dc, prev_filter)
 }
 
 // A broken image: a thin frame when the box is larger than the icon, the icon at the top left, the alt text after it.

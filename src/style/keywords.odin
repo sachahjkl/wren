@@ -13,7 +13,7 @@ KEYWORD_ENUMS := [?]typeid{
 	Break_Inside, Break_Value, Clear, Color_Space, Column_Fill, Column_Span, Composition, Container_Type, Content_Align,
 	Content_Visibility, Counter_Style, Cursor, Direction, Display, Fill_Mode, Flex_Direction, Flex_Wrap, Float,
 	Font_Display, Font_Kerning, Font_Optical_Sizing, Font_Style, Font_Variant_Caps, Font_Variant_Position, Geometry_Box,
-	Hyphens, Isolation, List_Style_Position, List_Style_Type, Mask_Box, Mask_Composite, Mask_Mode, Object_Fit, Overflow,
+	Hyphens, Image_Rendering, Isolation, List_Style_Position, List_Style_Type, Mask_Box, Mask_Composite, Mask_Mode, Object_Fit, Overflow,
 	Overflow_Anchor, Overflow_Wrap, Overscroll, Play_State, Position, Repeat, Resize, Scroll_Behavior, Scrollbar_Gutter,
 	Scrollbar_Width, Stroke_Linecap, Stroke_Linejoin, Table_Layout, Text_Align, Text_Combine_Upright,
 	Text_Decoration_Skip_Ink, Text_Decoration_Style, Text_Orientation, Text_Rendering, Text_Transform, Text_Wrap_Mode,

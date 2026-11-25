@@ -172,7 +172,7 @@ dev_inherited_property :: proc(name: string) -> bool {
 	     "text-transform", "text-shadow", "white-space", "word-spacing", "word-break", "overflow-wrap", "visibility", "quotes", "tab-size", "border-collapse",
 	     "border-spacing", "caption-side", "empty-cells", "caret-color", "color-scheme", "font-kerning", "font-feature-settings", "hyphens", "text-rendering",
 	     "font-optical-sizing", "font-variation-settings", "font-variant-ligatures", "font-variant-numeric", "font-variant-east-asian", "font-variant-position",
-	     "text-decoration-skip-ink", "text-align-last", "text-justify", "writing-mode", "pointer-events", "accent-color", "fill", "stroke":
+	     "text-decoration-skip-ink", "text-align-last", "text-justify", "writing-mode", "pointer-events", "image-rendering", "accent-color", "fill", "stroke":
 		return true
 	}
 	return strings.has_prefix(name, "--")
