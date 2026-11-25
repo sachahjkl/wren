@@ -3,8 +3,26 @@ package page
 // Preferences of the web APIs of JavaScript that the page answers (api/js_web.widl: navigator, beacons). Registered by
 // register_prefs; copied into Settings.js_web by settings_from_prefs.
 
+import "base:runtime"
 import "core:strings"
 import config "toolkit:config"
+
+// Matches the operating system token in network.user_agent (src/net/settings.odin).
+navigator_platform_for_os :: proc(os: runtime.Odin_OS_Type) -> string {
+	#partial switch os {
+	case .Windows: return "Win32"
+	case .Darwin:  return "MacIntel"
+	case:          return "Linux x86_64"
+	}
+}
+
+when ODIN_OS == .Windows {
+	@(private = "file") DEFAULT_NAVIGATOR_PLATFORM :: "Win32"
+} else when ODIN_OS == .Darwin {
+	@(private = "file") DEFAULT_NAVIGATOR_PLATFORM :: "MacIntel"
+} else {
+	@(private = "file") DEFAULT_NAVIGATOR_PLATFORM :: "Linux x86_64"
+}
 
 Js_Web_Settings :: struct {
 	platform:             string,   // owned
@@ -17,8 +35,8 @@ Js_Web_Settings :: struct {
 }
 
 JS_WEB_PREFS := [?]config.Def{
-	{name = "navigator.platform", kind = .String, default = {s = "Win32"},
-		description = "What navigator.platform says. Scripts use it to tell operating systems apart; browsers on Windows say Win32."},
+	{name = "navigator.platform", kind = .String, default = {s = DEFAULT_NAVIGATOR_PLATFORM},
+		description = "What navigator.platform says. Scripts use it to tell operating systems apart (Win32 on Windows, MacIntel on macOS, Linux x86_64 on Linux)."},
 	{name = "navigator.vendor", kind = .String, default = {s = ""},
 		description = "What navigator.vendor says (Chromium-based browsers say \"Google Inc.\", Firefox nothing)."},
 	{name = "navigator.hardware_concurrency", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 1024,
