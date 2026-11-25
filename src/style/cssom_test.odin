@@ -137,3 +137,41 @@ cssom_nested_rule_edits :: proc(t: ^testing.T) {
 	testing.expect_value(t, color_of(e, doc, "b"), [4]f32{0, 0, 0, 1})
 	testing.expect_value(t, color_of(e, doc, "c"), [4]f32{0, 0, 1, 1})
 }
+
+// Reading CSSOM cssRules on a sheet with escaped quotes in selectors (such as Tailwind v4 arbitrary utilities) and a
+// dropped invalid rule must keep every valid rule after it intact across subsequent engine rebuilds.
+@(test)
+cssom_escaped_quote_selector_preserves_rules_after_rebuild :: proc(t: ^testing.T) {
+	doc := dom.document_create(nil)
+	defer dom.document_destroy(doc)
+	src := `<style id=s>` +
+		`:-moz-focusring { outline: none } ` +
+		`.before { color: red } ` +
+		`.\[font-feature-settings\:\'ss01\'\] { font-feature-settings: "ss01" } ` +
+		`:root { --x-modal-bg: rgb(0, 255, 0); } ` +
+		`#modal { color: var(--x-modal-bg); }` +
+		`</style><div id=modal>ok</div>`
+	html.parse_into(doc, doc.root, transmute([]byte)src, 1 << 20)
+	s := settings_default()
+	e := engine_make(s)
+	settings_destroy(&s)
+	defer engine_destroy(e)
+	sync_document_sheets(e, doc, "about:test")
+	sh := engine_style_element_sheet(e, doc, dom.find_by_id(doc, "s"), "about:test")
+	testing.expect(t, sh != nil)
+	testing.expect_value(t, color_of(e, doc, "modal"), [4]f32{0, 1, 0, 1})
+
+	// Reading cssRules triggers cssom_list; all 4 valid rules must remain (never truncated at the escaped quote).
+	testing.expect_value(t, engine_sheet_rule_count(e, sh.id), 4)
+	testing.expect_value(t, engine_sheet_rule(e, sh.id, 3).selector_text, "#modal")
+
+	// Force a full rebuild of the sheet's rules; later custom properties and rules must still apply.
+	engine_sheet_set_disabled(e, sh.id, true)
+	testing.expect_value(t, color_of(e, doc, "modal"), [4]f32{0, 0, 0, 1})
+	engine_sheet_set_disabled(e, sh.id, false)
+	testing.expect_value(t, color_of(e, doc, "modal"), [4]f32{0, 1, 0, 1})
+
+	// insertRule also accepts a rule whose selector contains escaped quotes.
+	testing.expect_value(t, engine_sheet_insert_rule(e, sh.id, `.\[a\:\'b\'\] { color: blue }`, 4), Rule_Edit_Error.None)
+	testing.expect_value(t, engine_sheet_rule_count(e, sh.id), 5)
+}

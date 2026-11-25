@@ -53,78 +53,21 @@ cssom_list_free :: proc(s: ^Sheet) {
 	s.cssom = nil
 }
 
-// The top-level rules of a stylesheet's text, as written (the source of each, trimmed): what cssRules lists.
-// Strings, comments and nested blocks are skipped over; a rule ends at its block's closing brace, or at a semicolon
-// for a statement at-rule.
+// Top-level syntactic rules of `text`, delegated to package css's tokenizer-backed splitter.
 split_rules :: proc(text: string, allocator := context.temp_allocator) -> [dynamic]string {
-	out := make([dynamic]string, allocator)
-	depth, start := 0, 0
-	i := 0
-	for i < len(text) {
-		ch := text[i]
-		switch {
-		case ch == '/' && i + 1 < len(text) && text[i + 1] == '*':
-			end := strings.index(text[i + 2:], "*/")
-			if start == i && depth == 0 { start = end < 0 ? len(text) : i + 2 + end + 2 }   // a comment before a rule
-			i = end < 0 ? len(text) : i + 2 + end + 2
-			continue
-		case ch == '"' || ch == '\'':
-			i += 1
-			for i < len(text) && text[i] != ch {
-				if text[i] == '\\' { i += 1 }
-				i += 1
-			}
-		case ch == '{': depth += 1
-		case ch == '}':
-			depth -= 1
-			if depth <= 0 {
-				depth = 0
-				if r := strings.trim_space(text[start:i + 1]); r != "" { append(&out, r) }
-				start = i + 1
-			}
-		case ch == ';' && depth == 0:
-			if r := strings.trim_space(text[start:i + 1]); r != "" { append(&out, r) }
-			start = i + 1
-		}
-		i += 1
-	}
-	if r := strings.trim_space(text[min(start, len(text)):]); r != "" { append(&out, r) }
-	return out
+	return css.split_rules(text, allocator)
 }
 
 is_import_text :: proc(r: string) -> bool { return len(r) >= 7 && base.ascii_equal_fold(r[:7], "@import") }
 
-// The sheet's list, made on first use. When its text splits into as many rules as were parsed (a sheet without
-// invalid rules: nearly always) the parsed rules are taken as they are; otherwise each piece is parsed alone, so that
-// the texts and the rules agree one to one (a piece that is not a valid rule is left out of both, as the parser left
-// it out). @import rules keep the rule their load slot points to.
+// The sheet's list, made on first use from the rules already parsed by css.parse_stylesheet and their recorded source
+// spans. Rules are never re-parsed or dropped here, and @import rules keep the pointers their load slots hold.
 @(private)
 cssom_list :: proc(e: ^Engine, s: ^Sheet) -> ^Cssom_List {
 	if s.cssom != nil { return s.cssom }
 	l := new(Cssom_List)
-	pieces := split_rules(s.sheet.source)
-	if len(pieces) == len(s.sheet.rules) {
-		append(&l.rules, ..s.sheet.rules)
-		for t in pieces { append(&l.texts, strings.clone(t)) }
-	} else {
-		opt := parse_options(&e.settings)
-		imp := 0
-		for t in pieces {
-			if is_import_text(t) {
-				if imp < len(s.imports) {
-					append(&l.rules, s.imports[imp].rule)
-					append(&l.texts, strings.clone(t))
-					imp += 1
-				}
-				continue
-			}
-			// (what the sheet's own parse reported of a piece left out is in its errors already)
-			r, _ := css.parse_rule_into(s.sheet, t, opt)
-			if r == nil || r.kind == .Import { continue }
-			append(&l.rules, r)
-			append(&l.texts, strings.clone(t))
-		}
-	}
+	append(&l.rules, ..s.sheet.rules)
+	for t in css.stylesheet_rule_texts(s.sheet, context.temp_allocator) { append(&l.texts, strings.clone(t)) }
 	for r in l.rules { rule_number(e, r) }
 	s.sheet.rules = l.rules[:]
 	s.cssom = l

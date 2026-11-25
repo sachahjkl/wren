@@ -66,14 +66,15 @@ Keyframe :: struct {
 }
 
 Stylesheet :: struct {
-	arena:  base.Arena,
-	alloc:  Arena_Alloc,
-	source: string,            // the text it was parsed from (its owner compares it to know whether to parse again)
-	newlines: []u32,           // the byte offsets of its line feeds in the preprocessed source (line_of)
-	rules:  []^Rule,
-	errors: [dynamic]string,   // parse problems, for the console
-	errors_dropped: int,       // ... and how many more there were than Parse_Options.max_errors_kept
-	namespaces: Namespaces,    // its @namespace rules, which its selectors read
+	arena:      base.Arena,
+	alloc:      Arena_Alloc,
+	source:     string,            // the text it was parsed from (its owner compares it to know whether to parse again)
+	newlines:   []u32,             // the byte offsets of its line feeds in the preprocessed source (line_of)
+	rules:      []^Rule,
+	rule_spans: [][2]u32,          // byte range [start, end) of each top-level rule in the preprocessed source
+	errors:     [dynamic]string,   // parse problems, for the console
+	errors_dropped: int,           // ... and how many more there were than Parse_Options.max_errors_kept
+	namespaces: Namespaces,        // its @namespace rules, which its selectors read
 }
 
 // Limits for hostile input. The style system fills them from preferences (`style.*`).
@@ -115,6 +116,7 @@ Parser :: struct {
 	scratch: Arena_Alloc,
 	va:      Arena_Alloc,
 	rule_arena: ^base.Arena,   // a rule's own scratch memory, emptied after it (parse_outer_rule); nil: `scratch`
+	spans:   ^[dynamic][2]u32, // top-level rule byte ranges in `src` (parse_stylesheet only; nil elsewhere)
 }
 
 @(private) p_scratch :: #force_inline proc(p: ^Parser) -> Arena_Alloc { return p.scratch.procedure != nil ? p.scratch : p.a }
@@ -162,9 +164,101 @@ parse_stylesheet :: proc(source: string, opt: Parse_Options) -> ^Stylesheet {
 	rule_scratch: base.Arena
 	_ = base.arena_init_growing(&rule_scratch)
 	defer base.arena_destroy(&rule_scratch)
-	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors, dropped = &s.errors_dropped, src = src, scratch = sa, ns = &s.namespaces, ns_open = true, rule_arena = &rule_scratch}
+	spans := make([dynamic][2]u32, sa)
+	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &s.errors, dropped = &s.errors_dropped, src = src, scratch = sa, ns = &s.namespaces, ns_open = true, rule_arena = &rule_scratch, spans = &spans}
 	s.rules = parse_rule_list(&p, true)
+	if len(spans) > 0 {
+		s.rule_spans = make([][2]u32, len(spans), s.alloc)
+		copy(s.rule_spans, spans[:])
+	}
 	return s
+}
+
+// Source text of each top-level rule kept by `parse_stylesheet`, trimmed, in order with `s.rules`.
+stylesheet_rule_texts :: proc(s: ^Stylesheet, allocator := context.temp_allocator) -> []string {
+	if len(s.rule_spans) == 0 { return nil }
+	src, _ := preprocess(s.source, allocator)
+	out := make([]string, len(s.rule_spans), allocator)
+	for sp, i in s.rule_spans {
+		a := min(int(sp[0]), len(src))
+		b := min(max(int(sp[1]), a), len(src))
+		out[i] = strings.trim_space(src[a:b])
+	}
+	return out
+}
+
+// Splits `text` into top-level syntactic rules using the CSS tokenizer (CSS Syntax §5.3.1).
+// Escapes, strings, comments, unquoted url() tokens, CDO/CDC and nested (), [] and {} blocks are scanned as the parser does.
+split_rules :: proc(text: string, allocator := context.temp_allocator) -> [dynamic]string {
+	out := make([dynamic]string, allocator)
+	src, _ := preprocess(text, allocator)
+	scratch: base.Arena
+	_ = base.arena_init_growing(&scratch)
+	defer base.arena_destroy(&scratch)
+	sa := base.arena_allocator(&scratch)
+	l := Lexer{src = src, arena = sa, buf = make([dynamic]u8, 0, 64, sa), keep = true}
+	closers := make([dynamic]Token_Kind, 0, 16, sa)
+	for {
+		start := 0
+		tok: Token
+		for {
+			skip_comments(&l)
+			start = l.pos
+			tok = next_token(&l)
+			if tok.kind == .EOF { return out }
+			if tok.kind == .Whitespace || tok.kind == .CDO || tok.kind == .CDC { continue }
+			break
+		}
+		is_at := tok.kind == .At_Keyword
+		in_body := false
+		clear(&closers)
+		tok_start := start
+		for {
+			if tok.kind == .EOF {
+				if r := strings.trim_space(src[start:l.pos]); r != "" { append(&out, r) }
+				return out
+			}
+			if len(closers) == 0 {
+				if is_at && tok.kind == .Semicolon {
+					if r := strings.trim_space(src[start:l.pos]); r != "" { append(&out, r) }
+					break
+				}
+				if is_at && tok.kind == .Close_Curly {
+					// stray } terminates an at-rule prelude without consuming }, matching parse_at_rule
+					if r := strings.trim_space(src[start:tok_start]); r != "" { append(&out, r) }
+					l.pos = tok_start
+					break
+				}
+				#partial switch tok.kind {
+				case .Open_Curly:
+					in_body = true
+					append(&closers, Token_Kind.Close_Curly)
+				case .Open_Paren, .Function:
+					append(&closers, Token_Kind.Close_Paren)
+				case .Open_Square:
+					append(&closers, Token_Kind.Close_Square)
+				}
+			} else {
+				if tok.kind == closers[len(closers) - 1] {
+					pop(&closers)
+					if len(closers) == 0 && in_body {
+						if r := strings.trim_space(src[start:l.pos]); r != "" { append(&out, r) }
+						break
+					}
+				} else {
+					#partial switch tok.kind {
+					case .Open_Curly:            append(&closers, Token_Kind.Close_Curly)
+					case .Open_Paren, .Function: append(&closers, Token_Kind.Close_Paren)
+					case .Open_Square:           append(&closers, Token_Kind.Close_Square)
+					}
+				}
+			}
+			skip_comments(&l)
+			tok_start = l.pos
+			tok = next_token(&l)
+		}
+	}
+	return out
 }
 
 // CSSOM "parse a CSS rule" (insertRule): `text` holds one rule, whitespace around it. The rule is made in the memory of
@@ -306,6 +400,15 @@ trim_values :: proc(v: []Value) -> []Value {
 }
 
 @(private)
+rule_end_offset :: proc(p: ^Parser, start_tok: int) -> u32 {
+	if p.pos > start_tok {
+		last := p.toks[p.pos - 1]
+		if last.kind == .Close_Curly || last.kind == .Semicolon { return last.pos + 1 }
+	}
+	return p.pos < len(p.toks) ? p.toks[p.pos].pos : u32(len(p.src))
+}
+
+@(private)
 parse_rule_list :: proc(p: ^Parser, top_level: bool) -> []^Rule {
 	rules := make([dynamic]^Rule, p_scratch(p))
 	keep :: proc(p: ^Parser, rules: [dynamic]^Rule) -> []^Rule {
@@ -324,14 +427,17 @@ parse_rule_list :: proc(p: ^Parser, top_level: bool) -> []^Rule {
 			if !top_level { return keep(p, rules) }
 		}
 		if p.rules >= p.opt.max_rules { perr(p, "too many rules: the rest of the sheet is ignored"); p.pos = len(p.toks); break }
+		start_tok := p.pos
 		if t.kind == .At_Keyword {
 			p.pos += 1
 			if r := parse_at_rule(p, t.text); r != nil {
 				append(&rules, r)
+				if top_level && p.spans != nil { append(p.spans, [2]u32{t.pos, rule_end_offset(p, start_tok)}) }
 				if r.kind != .Import && r.kind != .Namespace && r.kind != .Layer_Statement { p.ns_open = false }
 			}
 		} else if r := parse_outer_rule(p); r != nil {
 			append(&rules, r)
+			if top_level && p.spans != nil { append(p.spans, [2]u32{t.pos, rule_end_offset(p, start_tok)}) }
 			p.ns_open = false
 		}
 	}

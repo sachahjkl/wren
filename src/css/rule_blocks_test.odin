@@ -96,3 +96,44 @@ dimension_units_classified :: proc(t: ^testing.T) {
 	u, rok := relative_unit("SVH")
 	testing.expect(t, rok && u == .Vh, "svh")
 }
+
+// Top-level rule splitting uses the CSS tokenizer: escaped quotes/braces/semicolons in selectors, unquoted url() with
+// semicolons, parenthesized blocks, unterminated strings at newlines, and CDO/CDC do not merge or split rules.
+@(test)
+split_rules_handles_css_syntax :: proc(t: ^testing.T) {
+	p1 := split_rules(`.\[font-feature-settings\:\'ss01\'\] { font-feature-settings: "ss01" } .after { color: red }`)
+	testing.expect_value(t, len(p1), 2)
+	if len(p1) == 2 {
+		testing.expect_value(t, p1[1], `.after { color: red }`)
+	}
+
+	p2 := split_rules(`.a\"b { color: red } .c\{d\} { color: blue } .e\;f { color: lime }`)
+	testing.expect_value(t, len(p2), 3)
+
+	p3 := split_rules(`@import url(data:text/css;base64,abc); .b { color: red }`)
+	testing.expect_value(t, len(p3), 2)
+	if len(p3) == 2 {
+		testing.expect_value(t, p3[0], `@import url(data:text/css;base64,abc);`)
+		testing.expect_value(t, p3[1], `.b { color: red }`)
+	}
+
+	p4 := split_rules(`@supports (a: 1; b: 2) { .x { color: red } } .y { color: blue }`)
+	testing.expect_value(t, len(p4), 2)
+
+	p5 := split_rules("a { content: \"unterminated\n } .b { color: red }")
+	testing.expect_value(t, len(p5), 2)
+
+	p6 := split_rules(`<!-- /* lead */ .a { color: red } --> /* mid */ .b { color: blue } /* trail */`)
+	testing.expect_value(t, len(p6), 2)
+
+	// stylesheet_rule_texts matches s.rules 1-to-1 across dropped rules and CRLF input
+	s := parse_stylesheet("/* head */\r\n:-moz-focusring { outline: none }\r\n.\\[a\\:\\'b\\'\\] { color: red }\r\n:root { --x: 1 }\r\n", OPT)
+	defer { stylesheet_destroy(s); free(s) }
+	texts := stylesheet_rule_texts(s)
+	testing.expect_value(t, len(s.rules), 2)
+	testing.expect_value(t, len(texts), 2)
+	if len(texts) == 2 {
+		testing.expect_value(t, texts[0], `.\[a\:\'b\'\] { color: red }`)
+		testing.expect_value(t, texts[1], `:root { --x: 1 }`)
+	}
+}
