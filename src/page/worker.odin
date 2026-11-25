@@ -377,6 +377,7 @@ worker_csp_violation :: proc(user: rawptr, v: csp.Violation) {
 @(private)
 worker_script_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	h := (^Worker_Host)(user)
+	if h.terminated { return }
 	p := h.page
 	#partial switch ev.kind {
 	case .Response:
@@ -871,15 +872,17 @@ worker_main :: proc(data: rawptr) {
 	g.page = p
 	g.settings.wasm.stop = &l.stop   // terminate interrupts the module's running task
 	ok: bool
-	if g.javascript {
-		g.settings.workers.wasm.stop = &l.stop
-		ok = js_worker_start(p, g)   // js_workers.odin
-	} else {
-		err: string
-		_, ok, err = instantiate(p, g.image, g.url, g.settings.wasm, worker_import_filter)
-		if err != "" {
-			if !realm_halted(p) { worker_send_error(g, err) }
-			delete(err)
+	if !link_stopping(l) {
+		if g.javascript {
+			g.settings.workers.wasm.stop = &l.stop
+			ok = js_worker_start(p, g)   // js_workers.odin
+		} else {
+			err: string
+			_, ok, err = instantiate(p, g.image, g.url, g.settings.wasm, worker_import_filter)
+			if err != "" {
+				if !realm_halted(p) { worker_send_error(g, err) }
+				delete(err)
+			}
 		}
 	}
 	delete(g.image)

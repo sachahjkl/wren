@@ -378,6 +378,10 @@ wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) 
 @(private)
 wt_instantiate :: proc(inst: ^Instance, image: []byte, filter: Import_Filter, digest: ^Digest = nil) -> (ok: bool, err: string) {
 	name := inst.name
+	// Skip compilation and instantiation if the caller already stopped this instance (e.g. a terminated worker).
+	if inst.opt.stop != nil && sync.atomic_load(inst.opt.stop) {
+		return false, strings.clone("interrupted: the module is being stopped")
+	}
 	// Untrusted page modules (those with an import filter) must supply a standard WebAssembly binary, never Wren's internal compressed container.
 	if filter != nil && is_packed_image(image) {
 		return false, fmt.aprintf("%s: not a WebAssembly module (bad magic or version)", name)

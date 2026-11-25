@@ -250,13 +250,47 @@ terminate_stops_a_worker_busy_in_a_long_computation :: proc(t: ^testing.T) {
 	testing.expect(t, spin_logged, "the worker runs its module")
 	testing.expect_value(t, worker_terminate_object(p, w), dom.Error.None)
 	object_release(p, w)
+	// Pump the UI loop until .Exited is drained (joining the thread, decrementing workers_running(), and freeing the host).
 	start = time.tick_now()
-	for len(p.workers.hosts) > 0 && time.duration_seconds(time.tick_since(start)) < WORKER_STOP_DEADLINE_S { host.loop_wait(&e.loop, 1) }
+	for (len(p.workers.hosts) > 0 || workers_running() > 0) && time.duration_seconds(time.tick_since(start)) < WORKER_STOP_DEADLINE_S {
+		host.loop_wait(&e.loop, 1)
+	}
 	testing.expect_value(t, len(p.workers.hosts), 0)
-	// (the count falls as the thread ends, a moment after its host went: longer under AddressSanitizer)
-	Nothing :: struct {}
-	nothing: Nothing
-	base.await(&nothing, proc(_: ^Nothing) -> bool { return workers_running() == 0 })
+	testing.expect_value(t, workers_running(), 0)
+}
+
+@(test)
+terminate_before_worker_runs_exits_cleanly :: proc(t: ^testing.T) {
+	test_pages(t)
+	context.allocator = base.process_allocator()
+	e: Env
+	env_init(&e)
+	defer env_destroy(&e)
+	p := test_page(&e.loop, &e.loader, &e.settings, e.scope)
+
+	// Terminate while the script fetch is still queued (before worker_spawn starts a thread).
+	w1 := worker_create(p, spin_url(), "early-fetch", 0)
+	testing.expect(t, w1 != 0)
+	testing.expect_value(t, worker_terminate_object(p, w1), dom.Error.None)
+	object_release(p, w1)
+	start := time.tick_now()
+	for (len(p.workers.hosts) > 0 || workers_running() > 0) && time.duration_seconds(time.tick_since(start)) < WORKER_STOP_DEADLINE_S {
+		host.loop_wait(&e.loop, 1)
+	}
+	testing.expect_value(t, len(p.workers.hosts), 0)
+	testing.expect_value(t, workers_running(), 0)
+
+	// Terminate right after the worker thread starts, before waiting for wb_main to execute.
+	w2 := worker_create(p, spin_url(), "early-thread", 0)
+	testing.expect(t, w2 != 0)
+	testing.expect(t, wait_running(&e, p, 1), "the worker thread started")
+	testing.expect_value(t, worker_terminate_object(p, w2), dom.Error.None)
+	object_release(p, w2)
+	start = time.tick_now()
+	for (len(p.workers.hosts) > 0 || workers_running() > 0) && time.duration_seconds(time.tick_since(start)) < WORKER_STOP_DEADLINE_S {
+		host.loop_wait(&e.loop, 1)
+	}
+	testing.expect_value(t, len(p.workers.hosts), 0)
 	testing.expect_value(t, workers_running(), 0)
 }
 

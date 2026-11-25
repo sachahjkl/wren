@@ -17,6 +17,7 @@ import "core:os"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
+import "core:sync"
 import "wb:base"
 import "wb:host"
 import "wb:js"
@@ -142,15 +143,20 @@ js_image_from_env :: proc() {
 	js_image_override = data
 }
 
+@(private = "file")
+js_code_env_once: sync.Once
+
 // WREN_JS_CODE=<file>: other machine code for the engine's image in place of the program's (jsengine precompile): an A/B of CPU features with one browser. Never
 // in a release: an address in the environment is not where machine code comes from.
 js_code_from_env :: proc() {
 	when #config(WREN_CHANNEL, "dev") != "release" {
-		path := os.get_env("WREN_JS_CODE", context.temp_allocator)
-		if path == "" { return }
-		data, err := os.read_entire_file(path, base.process_allocator())
-		if err != nil { fmt.eprintfln("WREN_JS_CODE: cannot read %s", path); return }
-		wasm.shipped_set(data)
+		sync.once_do(&js_code_env_once, proc() {
+			path := os.get_env("WREN_JS_CODE", context.temp_allocator)
+			if path == "" { return }
+			data, err := os.read_entire_file(path, base.process_allocator())
+			if err != nil { fmt.eprintfln("WREN_JS_CODE: cannot read %s", path); return }
+			wasm.shipped_set(data)
+		})
 	}
 }
 

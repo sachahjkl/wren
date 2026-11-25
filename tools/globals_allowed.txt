@@ -456,6 +456,7 @@ page/js_host.odin engine_span_start thread  # WREN_SPANS: when each stage of the
 page/js_intersection_observer.odin io_vt const  # a host object's table of procedures
 page/js_load.odin js_mime_types const  # a table
 page/js_load_settings.odin JS_LOAD_PREFS const  # a table
+page/js_profile.odin js_code_env_once process  # WREN_JS_CODE loaded once per process
 page/js_realm.odin js_engine_version process  # the engine's image, read once
 page/js_realm.odin js_engine_digest process  # ... its digest
 page/js_realm.odin js_engine_digest_known process  # ... it is known

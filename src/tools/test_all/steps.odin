@@ -310,9 +310,9 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	e2e_step(&t, "a font on its way holds its text and not the page (src\\tools\\e2e\\font_first_paint.odin)", "font_first_paint")
 	e2e_step(&t, "what wrentool replay stands on: any name to a recording, the test world, a load recorded (src\\tools\\e2e\\replay_bench.odin)", "replay_bench")
 	e2e_step(&t, "a navigation that ends with no document gives the old page back, and a held page goes in the page phase (src\\tools\\e2e\\tab_navigation.odin: Stop, a stopped traversal, a download, one unload per document, each window's wake)", "tab_navigation")
-	// (what only pages of their own saw: a flag of a freed block read as a plain value)
+	// (what only pages of their own saw: a flag of a freed block read as a plain value; WREN_JS_CODE avoids compiling the JS engine under WREN_POISON_PAGES=1, which otherwise takes over a minute and starves worker tests)
 	page_tests := odin_test("src/page", exe("build/page_poison_test"), {TOOLKIT, WB, POISON})
-	page_tests.env = strs("WREN_POISON_PAGES=1")
+	page_tests.env = strs("WREN_POISON_PAGES=1", "WREN_JS_CODE=build/js/wren_js.code")
 	append(&t, Step{name = "IndexedDB, loads cut short and the end of the browser with every block on pages of its own (WREN_POISON_PAGES=1, src\\base\\poison_windows.odin: any touch of a freed block faults)",
 		actions = slice_of(pages_run("src/tools/e2e/web_jsweb.odin", strs("jsweb_idb", "jsweb_sections_cut_short_after_100_turns")), pages_run("src/tools/e2e/autoscroll.odin", strs("autoscroll_end_to_end")), page_tests), needs = COMMON_NEEDS + {.Guests, .E2E, .Test_Server}, inputs = .Tree})
 	e2e_step(&t, "the developer tools resized (src\\tools\\e2e\\devtools_resize.odin: a real window, never shown, and the panel's own keep their surface while they resize, 1:1 and clipped)", "devtools_resize", marks = {.No_CI})   // (a runner's screen is smaller than these real windows)

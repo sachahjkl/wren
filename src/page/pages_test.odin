@@ -7,6 +7,7 @@ import "wb:images"
 
 // What a test's pages share (Pages), bound to the test's thread, let go of with the test.
 test_pages :: proc(t: ^testing.T) -> ^Pages {
+	js_code_from_env()
 	s := new(Pages)
 	bind(s)
 	testing.cleanup(t, proc(p: rawptr) {

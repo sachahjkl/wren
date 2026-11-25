@@ -45,13 +45,39 @@ runs:
         rustup default $env:RUST_VERSION
         rustc --version
 
-    # (Go's build cache: the test server's two programs and its tests compile the same packages, quic-go and HTTP/2, which took 135 s
-    # and 122 s from nothing in every run: docs/test-review.md, 4.4)
+    # Go's own setup-go cache is disabled: jobs that hit "Cache the test server" never invoke go and save an empty archive under the
+    # go.sum key, forcing "go test" to download quic-go from proxy.golang.org on every run. Instead, cache GOMODCACHE explicitly and
+    # populate it with retries on cache miss so the saved cache always holds the modules.
     - uses: actions/setup-go@v5
       with:
         go-version-file: tools/testserver/go.mod
-        cache: true
-        cache-dependency-path: tools/testserver/go.sum
+        cache: false
+
+    - name: Cache Go modules
+      id: go-mod-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/go/pkg/mod
+        key: go-mod-v1-${{ runner.os }}-${{ hashFiles('tools/testserver/go.sum') }}
+
+    - name: Download Go modules
+      if: steps.go-mod-cache.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        Push-Location tools/testserver
+        try {
+          for ($attempt = 1; $attempt -le 5; $attempt++) {
+            go mod download
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            if ($attempt -lt 5) {
+              Write-Warning "go mod download failed (attempt $attempt/5); retrying in 5 s..."
+              Start-Sleep -Seconds 5
+            }
+          }
+          exit 1
+        } finally {
+          Pop-Location
+        }
 
     # (the test server's library: go build -buildmode=c-shared calls a C compiler; the runner's MinGW)
     - shell: powershell
