@@ -10,6 +10,19 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.13.2] - 2026-11-25
+
+### Changed
+- **Horizontal chrome hairline border**: the top toolbar and the bookmarks bar now draw a bottom hairline matching the vertical tab sidebar edge, cleanly separating the chrome from the sidebar and the page below it in light and dark themes.
+
+### Fixed
+- **Vault PIN unlock.** Unlocking the Vault with a PIN keeps the session open through the sync that follows instead of asking for the master password again, and the helper's PIN flag is saved to the profile account file on startup.
+- **Readable DevTools Styles checkboxes and accent badges**: DevTools now uses high-contrast solid-accent ink (meeting WCAG AA in every light and dark theme) instead of soft-button text ink, and draws a crisp 12 px vector checkmark in the Styles pane.
+- **2D canvas colors on Linux**: 2D canvases now keep their exact sRGB colors instead of appearing washed out or semi-transparent.
+- **Stylesheets with escaped quotes in selectors no longer lose later rules after CSSOM access**: reading `sheet.cssRules` on stylesheets containing escaped quotes (such as Tailwind v4 arbitrary-value classes on x.com) previously dropped every subsequent rule on the next style rebuild, leaving modal overlays transparent and mispositioned.
+- **`navigator.platform` default on Linux and macOS** (`navigator.platform`): `navigator.platform` now defaults to `Linux x86_64` on Linux and `MacIntel` on macOS (keeping `Win32` on Windows), matching the operating system token in `User-Agent` instead of reporting `Win32` on every platform.
+- **Tree-tab connector elbows**: curved guide lines for nested tabs in the vertical sidebar now render as a single smooth stroke with uniform opacity instead of overlapping segments that produced dark dots at joints.
+
 ## [0.13.1] - 2026-11-25
 
 ### Fixed
@@ -1744,7 +1757,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.13.2...HEAD
+[0.13.2]: https://github.com/sachahjkl/wren/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/sachahjkl/wren/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/sachahjkl/wren/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/sachahjkl/wren/compare/v0.11.0...v0.12.0

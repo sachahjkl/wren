@@ -46,11 +46,28 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-13-1">
+      <article class="release latest" id="v0-13-2">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-11-25">November 25, 2026</time></p>
-          <div class="release-title"><h3>0.13.1</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.13.2</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>Vault PIN unlock (<code>wren-vault</code> 0.5.1)</strong>: unlocking the Vault with a PIN keeps the session open through the sync that follows instead of prompting for the master password again, and saves the helper's PIN flag to the profile account file on startup.</li>
+            <li><strong>2D canvas colors on Linux</strong>: software 2D canvases keep exact sRGB colors on WGPU instead of appearing washed out or semi-transparent.</li>
+            <li><strong>Stylesheets with escaped quotes in selectors</strong>: reading <code>sheet.cssRules</code> on stylesheets containing escaped quotes (such as Tailwind v4 arbitrary-value classes on x.com) keeps all subsequent rules intact across style rebuilds.</li>
+            <li><strong>Readable checkboxes and accent badges</strong>: DevTools uses WCAG AA solid-accent ink in every light and dark theme with a crisp 12 px vector checkmark in Styles, paired with <code>gui_toolkit</code> 0.358.1 checkbox contrast and a deeper Ember Light accent.</li>
+            <li><strong>Chrome hairline border and smooth tree-tab elbows</strong>: the top toolbar and bookmarks bar draw a bottom hairline matching the vertical tab sidebar edge, and nested tree-tab connectors render as one smooth stroke without dark dots at joints.</li>
+            <li><strong>OS-matched <code>navigator.platform</code> default</strong>: <code>navigator.platform</code> defaults to <code>Linux x86_64</code> on Linux and <code>MacIntel</code> on macOS (keeping <code>Win32</code> on Windows), matching <code>User-Agent</code>.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.13.2.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.13.2">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-13-1">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-11-25">November 25, 2026</time></p>
+          <div class="release-title"><h3>0.13.1</h3></div>
           <ul class="release-list">
             <li><strong>WebAssembly module compilation deduplication</strong>: concurrent tabs and workers loading the same WebAssembly module share one compilation instead of compiling duplicate copies in parallel and starving worker startup.</li>
             <li><strong>Remote <code>wait stable</code> on animated pages</strong>: <code>wren ctl wait stable</code> and <code>Wren.wait</code> complete once layout, style, and pending page updates settle instead of timing out on pages with continuous CSS or Web animations or playing media.</li>
