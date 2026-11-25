@@ -60,7 +60,6 @@ browser/canvas_shell.odin color_glyph_next_uid thread  # the next name of a cach
 browser/cdp.odin the_cdp process  # the DevTools-protocol server of the process (the debugging port: one per process)
 browser/chrome_style.odin CHROME_PREFS const  # a table
 browser/chrome_style.odin CHROME_STYLE_NAMES const  # a table
-browser/closed_tabs.odin CLOSED_PREFS const  # a table
 browser/commands.odin OPEN_PAGE_ARGUMENTS const  # a table
 browser/commands.odin RESERVED_SHORTCUTS const  # a table
 browser/compositor.odin COMPOSITOR_PREFS const  # a table
@@ -179,7 +178,6 @@ browser/remote_shell.odin remote_exit_code process  # what the process ends with
 browser/remote_shell.odin remote_fast_exit process  # the process ends at once, without the teardown
 browser/remote_state.odin KEEP_NAMES const  # a table
 browser/render_settings.odin RENDER_PREFS const  # a table
-browser/search_engines.odin BUILTIN_ENGINES const  # a table
 browser/session.odin SESSION_PREFS const  # a table
 browser/settings.odin PREFS const  # a table
 browser/settings_page.odin SETTINGS_PAGES const  # a table

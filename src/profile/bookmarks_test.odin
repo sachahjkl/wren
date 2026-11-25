@@ -1,7 +1,9 @@
-package browser
+package profile
 
+import "core:os"
 import "core:strings"
 import "core:testing"
+import "wb:base"
 
 // A file as Chrome writes it: <DT> and <p> never closed, a toolbar folder, icons, a nested folder, an entity, a script.
 @(private = "file")
@@ -151,4 +153,46 @@ bookmarks_move_to_a_place :: proc(t: ^testing.T) {
 	o = order(items[:], f)
 	testing.expectf(t, len(o) == 2 && o[0] == b && o[1] == c, "%v", o)
 	testing.expect(t, !bookmark_move_to(&items, f, f, 0), "not into itself")
+}
+
+// Store lifecycle without browser.App: add, save, reload, notify callback, and unreadable file quarantine.
+@(test)
+bookmarks_store_lifecycle :: proc(t: ^testing.T) {
+	dir := strings.concatenate({"build/tmp/profile_bms_", base.unique_name(context.temp_allocator)}, context.temp_allocator)
+	_ = os.make_directory_all(dir)
+	defer base.remove_tree(dir)
+
+	notified := 0
+	h := Store_Host{
+		dir = dir,
+		persist = true,
+		on_change = proc(user: rawptr) { (^int)(user)^ += 1 },
+		user = &notified,
+	}
+	b: Bookmarks
+	bookmarks_init(&b, h)
+	id, added := bookmarks_add_page(&b, "https://example.org/", "Example")
+	testing.expect(t, added && id != 0)
+	testing.expect(t, notified > 0)
+	id2, added2 := bookmarks_add_page(&b, "https://example.org/", "Example")
+	testing.expect(t, !added2 && id2 == id)
+	bookmarks_shutdown(&b)
+
+	reloaded: Bookmarks
+	bookmarks_init(&reloaded, h)
+	defer bookmarks_shutdown(&reloaded)
+	testing.expect(t, reloaded.toolbar != 0)
+	testing.expect(t, bookmark_of_url(reloaded.items[:], "https://example.org/") >= 0)
+
+	// Unreadable file is moved aside to bookmarks.html.bad once.
+	bad_dir := strings.concatenate({"build/tmp/profile_bms_bad_", base.unique_name(context.temp_allocator)}, context.temp_allocator)
+	_ = os.make_directory_all(bad_dir)
+	defer base.remove_tree(bad_dir)
+	bad_path := strings.concatenate({bad_dir, "/", BOOKMARKS_FILE}, context.temp_allocator)
+	_ = os.write_entire_file(bad_path, transmute([]byte)string("not bookmarks"))
+	b2: Bookmarks
+	bookmarks_init(&b2, Store_Host{dir = bad_dir, persist = true})
+	defer bookmarks_shutdown(&b2)
+	testing.expect(t, !b2.unreadable)
+	testing.expect(t, os.exists(strings.concatenate({bad_path, ".bad"}, context.temp_allocator)))
 }

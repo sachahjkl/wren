@@ -1,143 +1,27 @@
 package browser
 
-// What was closed, most recent last: a tab, a window, or the session of the run before when this start did not reopen it.
-// Ctrl+Shift+T takes them back one at a time, each with what it had: a tab its whole history tree, its place in the strip, its
-// group and where it was left, a window its tabs and its rectangle, a session all its windows.
-//
-// Every item is the text of a session file (session.odin), so an item opens the way a restored session does. The list lives in
-// closed.txt in the profile, a line `item <kind> <closed ms> <index> <tabs> <address> <title>` before the session text of each:
-//
-//     wren-closed 1
-//     item	0	1793000000000	2	1	https://example.com/	Example
-//     wren-session 2
-//     current 0
-//     tab https://example.com/
-//     e	...
-//
-// It is read at its first use, not at start-up, and session.txt with it: the session of the run before goes on the list then
-// (closed_load), before the first autosave replaces that file. Reading is forgiving as for a session file; an item whose session
-// cannot be read opens its address.
+// Browser bridge for the closed tabs/windows/sessions store (src/profile/closed_tabs.odin):
+// captures and restores tabs, windows, and previous sessions using session.odin.
 
 import "core:fmt"
 import "core:os"
-import "core:strconv"
 import "core:strings"
-import "wb:base"
-import config "toolkit:config"
-import "wb:host"
 import i18n "toolkit:i18n"
+import "wb:profile"
 
-CLOSED_HEADER :: "wren-closed 1"
-@(private = "file") CLOSED_ITEM_TAG :: "item\t"
-@(private = "file") CLOSED_ITEM_FIELDS :: 7
+CLOSED_HEADER :: profile.CLOSED_HEADER
 
-CLOSED_PREFS := [?]config.Def{
-	{name = "browser.tabs.closed_sessions_max", kind = .Int, default = {i = 3}, bounded = true, min = 0, max = 100,
-		description = "Earlier sessions kept among what Ctrl+Shift+T can reopen (they count in browser.tabs.closed_max)."},
-}
+register_closed_prefs :: profile.register_closed_prefs
 
-register_closed_prefs :: proc(p: ^config.Prefs) { config.register(p, CLOSED_PREFS[:]) }
+Closed_Kind :: profile.Closed_Kind
+Closed_Item :: profile.Closed_Item
+Closed_Tabs :: profile.Closed_Tabs
 
-Closed_Kind :: enum u8 { Tab, Window, Session }
+closed_serialize :: profile.closed_serialize
+closed_parse :: profile.closed_parse
+closed_cap :: profile.closed_cap
 
-Closed_Item :: struct {
-	kind:    Closed_Kind,
-	at_ms:   i64,      // when it was closed
-	index:   int,      // a tab: its place in the strip
-	tabs:    int,      // how many it opens
-	address: string,   // owned: of the tab, or of the front one
-	title:   string,   // owned: the same
-	text:    string,   // owned: a session file
-}
-
-Closed_Tabs :: struct {
-	items:         [dynamic]Closed_Item,
-	loaded:        bool,
-	dirty:         bool,   // closed.txt is behind the list
-	session_waits: bool,   // this start did not reopen session.txt: it is the session of the run before
-	file:          host.Profile_File,   // closed.txt (profile_writes.odin)
-}
-
-closed_path :: proc(app: ^App) -> string { return strings.concatenate({app.profile_dir, "/closed.txt"}, context.temp_allocator) }
-
-@(private = "file")
-closed_item_destroy :: proc(item: Closed_Item) {
-	delete(item.address)
-	delete(item.title)
-	delete(item.text)
-}
-
-// (pure: closed_tabs_test.odin)
-closed_serialize :: proc(items: []Closed_Item, max_url_bytes: int, allocator := context.temp_allocator) -> string {
-	sb := strings.builder_make(allocator)
-	strings.write_string(&sb, CLOSED_HEADER)
-	strings.write_byte(&sb, '\n')
-	for it in items {
-		if len(it.address) > max_url_bytes { continue }
-		fmt.sbprintf(&sb, "%s%d\t%d\t%d\t%d\t", CLOSED_ITEM_TAG, int(it.kind), it.at_ms, it.index, it.tabs)
-		base.field_escape(&sb, it.address)
-		strings.write_byte(&sb, '\t')
-		base.field_escape(&sb, it.title)
-		strings.write_byte(&sb, '\n')
-		strings.write_string(&sb, it.text)
-		if !strings.has_suffix(it.text, "\n") { strings.write_byte(&sb, '\n') }
-	}
-	return strings.to_string(sb)
-}
-
-// The items of a closed.txt (strings owned, the most recent last); a file that is not one has none, a damaged item is left out.
-closed_parse :: proc(text: string) -> [dynamic]Closed_Item {
-	items: [dynamic]Closed_Item
-	rest := text
-	head, ok := strings.split_lines_iterator(&rest)
-	if !ok || strings.trim_right(head, "\r") != CLOSED_HEADER { return items }
-	for strings.has_prefix(rest, CLOSED_ITEM_TAG) {
-		next := strings.index(rest, "\n" + CLOSED_ITEM_TAG)
-		chunk := next < 0 ? rest : rest[:next + 1]
-		rest = next < 0 ? "" : rest[next + 1:]
-		end := strings.index_byte(chunk, '\n')
-		if end < 0 { continue }
-		f := strings.split(strings.trim_right(chunk[:end], "\r"), "\t", context.temp_allocator)
-		if len(f) != CLOSED_ITEM_FIELDS { continue }
-		kind, k_ok := strconv.parse_int(f[1])
-		at_ms, a_ok := strconv.parse_i64(f[2])
-		index, i_ok := strconv.parse_int(f[3])
-		tabs, t_ok := strconv.parse_int(f[4])
-		if !k_ok || !a_ok || !i_ok || !t_ok || kind < 0 || kind > int(max(Closed_Kind)) { continue }
-		append(&items, Closed_Item{kind = Closed_Kind(kind), at_ms = at_ms, index = index, tabs = tabs, address = base.field_unescape(f[5]),
-			title = base.field_unescape(f[6]), text = strings.clone(chunk[end + 1:])})
-	}
-	return items
-}
-
-// No more than the most recent `max_items`, of which `max_sessions` sessions.
-closed_cap :: proc(items: ^[dynamic]Closed_Item, max_items, max_sessions: int) {
-	// the sessions older than the newest `max_sessions` go: counted from the end, the kept ones moved down in one pass
-	sessions := 0
-	for it in items { if it.kind == .Session { sessions += 1 } }
-	drop := max(sessions - max(max_sessions, 0), 0)
-	if drop > 0 {
-		k := 0
-		for it in items {
-			if it.kind == .Session && drop > 0 { closed_item_destroy(it); drop -= 1; continue }
-			items[k] = it
-			k += 1
-		}
-		resize(items, k)
-	}
-	if n := len(items) - max(max_items, 0); n > 0 {
-		for it in items[:n] { closed_item_destroy(it) }
-		remove_range(items, 0, n)
-	}
-}
-
-@(private = "file")
-closed_append :: proc(app: ^App, item: Closed_Item) {
-	c := &app.closed
-	append(&c.items, item)
-	closed_cap(&c.items, app.ix.closed_tabs_max, app.session_cfg.closed_sessions_max)
-	c.dirty = true
-}
+closed_path :: proc(app: ^App) -> string { return profile.closed_path(app.profile_dir) }
 
 // The session of the run before goes on the list, without the tabs this start already reopened (browser.tabs.restore_pinned).
 @(private = "file")
@@ -157,21 +41,15 @@ closed_take_session :: proc(app: ^App) {
 	c := &app.closed
 	if n := len(c.items); n > 0 && c.items[n - 1].text == text { return }   // (it went on the list in a run that ended before writing session.txt)
 	front := windows[0].tabs[windows[0].current]
-	closed_append(app, {kind = .Session, at_ms = now_ms(), tabs = tabs, address = strings.clone(front.url), title = strings.clone(session_tab_title(front)), text = strings.clone(text)})
+	profile.closed_append(c, {kind = .Session, at_ms = now_ms(), tabs = tabs, address = strings.clone(front.url), title = strings.clone(session_tab_title(front)), text = strings.clone(text)},
+		app.ix.closed_tabs_max, app.session_cfg.closed_sessions_max)
 }
 
 // closed.txt, and the session of the run before: at the first use of the list. (A profile's files are read before they are replaced.)
 closed_load :: proc(app: ^App) {
-	c := &app.closed
-	if c.loaded { return }
-	c.loaded = true
-	if !app.cfg.persist_profile || app.ix.closed_tabs_max <= 0 { return }
-	if data, err := os.read_entire_file(closed_path(app), context.temp_allocator); err == nil {
-		c.items = closed_parse(string(data))
-		closed_cap(&c.items, app.ix.closed_tabs_max, app.session_cfg.closed_sessions_max)
+	if profile.closed_load_file(&app.closed, profile_store_host(app), app.ix.closed_tabs_max, app.session_cfg.closed_sessions_max) {
+		closed_take_session(app)
 	}
-	if c.session_waits { closed_take_session(app) }
-	c.session_waits = false
 }
 
 // The list as it is (the most recent last).
@@ -180,13 +58,9 @@ closed_items :: proc(app: ^App) -> []Closed_Item {
 	return app.closed.items[:]
 }
 
-// Writes closed.txt when it changed (session_save), on the blocking pool (profile_writes.odin: a failed write is made again).
+// Writes closed.txt when it changed (session_save), on the blocking pool.
 closed_save :: proc(app: ^App) {
-	c := &app.closed
-	if !c.dirty { return }
-	host.profile_file_init(&c.file, &app.writer, closed_path(app))
-	host.profile_file_write(&c.file, closed_serialize(c.items[:], app.session_cfg.max_url_bytes))
-	c.dirty = false
+	profile.closed_save(&app.closed, profile_store_host(app), app.session_cfg.max_url_bytes)
 }
 
 // A tab closing (tab_close_in), before it leaves `w`'s strip: a tab that shows nothing is not worth reopening.
@@ -199,7 +73,8 @@ closed_tab_push :: proc(app: ^App, w: ^Browser_Window, t: ^Tab, index: int) {
 	groups: []Session_Group
 	if gi := group_index(w.groups[:], t.group); gi >= 0 { groups = session_groups_of(w.groups[gi:gi + 1]) }
 	text := session_text_of(app, {{tabs = {st}, groups = groups}})
-	closed_append(app, {kind = .Tab, at_ms = now_ms(), index = index, tabs = 1, address = strings.clone(st.url), title = strings.clone(t.title), text = strings.clone(text)})
+	profile.closed_append(&app.closed, {kind = .Tab, at_ms = now_ms(), index = index, tabs = 1, address = strings.clone(st.url), title = strings.clone(t.title), text = strings.clone(text)},
+		app.ix.closed_tabs_max, app.session_cfg.closed_sessions_max)
 }
 
 // A window closing (window_close), with its tabs still in it: they come back together.
@@ -212,7 +87,8 @@ closed_window_push :: proc(app: ^App, w: ^Browser_Window) {
 	if !worth { return }
 	front := sw.tabs[sw.current]
 	text := session_text_of(app, {sw}, rects = true)
-	closed_append(app, {kind = .Window, at_ms = now_ms(), tabs = len(sw.tabs), address = strings.clone(front.url), title = strings.clone(session_tab_title(front)), text = strings.clone(text)})
+	profile.closed_append(&app.closed, {kind = .Window, at_ms = now_ms(), tabs = len(sw.tabs), address = strings.clone(front.url), title = strings.clone(session_tab_title(front)), text = strings.clone(text)},
+		app.ix.closed_tabs_max, app.session_cfg.closed_sessions_max)
 }
 
 // Opens an item. false: nothing of it could be read.
@@ -245,12 +121,11 @@ closed_item_open :: proc(app: ^App, item: Closed_Item) -> bool {
 // Ctrl+Shift+T: the last thing closed comes back.
 reopen_closed_tab :: proc(app: ^App) {
 	if app.rest_text != "" { return }   // (windows are still to open: session_open_other_windows)
-	c := &app.closed
 	closed_load(app)
-	for len(c.items) > 0 {
-		item := pop(&c.items)
-		defer closed_item_destroy(item)
-		c.dirty = true
+	for {
+		item, ok := profile.closed_pop(&app.closed)
+		if !ok { break }
+		defer profile.closed_item_destroy(item)
 		if closed_item_open(app, item) { break }
 	}
 }
@@ -258,17 +133,11 @@ reopen_closed_tab :: proc(app: ^App) {
 // The one the palette chose, the most recent of that address.
 reopen_closed_address :: proc(app: ^App, address: string) {
 	if app.rest_text != "" { return }
-	c := &app.closed
 	closed_load(app)
-	for i := len(c.items) - 1; i >= 0; i -= 1 {
-		if c.items[i].address != address { continue }
-		item := c.items[i]
-		ordered_remove(&c.items, i)
-		defer closed_item_destroy(item)
-		c.dirty = true
-		closed_item_open(app, item)
-		return
-	}
+	item, ok := profile.closed_take_address(&app.closed, address)
+	if !ok { return }
+	defer profile.closed_item_destroy(item)
+	closed_item_open(app, item)
 }
 
 // What the palette calls it (temporary allocator).
@@ -297,28 +166,15 @@ closed_reopen_title :: proc(app: ^App) -> string {
 
 // What was closed between two times goes with the history of those times (global_history_remove_range).
 closed_forget_range :: proc(app: ^App, from_ms, to_ms: i64) {
-	c := &app.closed
 	closed_load(app)
-	for i := len(c.items) - 1; i >= 0; i -= 1 {
-		if c.items[i].at_ms < from_ms || c.items[i].at_ms > to_ms { continue }
-		closed_item_destroy(c.items[i])
-		ordered_remove(&c.items, i)
-		c.dirty = true
-	}
+	profile.closed_forget_range(&app.closed, from_ms, to_ms)
 }
 
 // The list emptied, and closed.txt at the next save (a reset of the browser's state).
 closed_tabs_clear :: proc(app: ^App) {
-	c := &app.closed
-	for item in c.items { closed_item_destroy(item) }
-	clear(&c.items)
-	c.loaded, c.dirty, c.session_waits = true, true, false
+	profile.closed_tabs_clear(&app.closed)
 }
 
 closed_tabs_destroy :: proc(app: ^App) {
-	c := &app.closed
-	for item in c.items { closed_item_destroy(item) }
-	delete(c.items)
-	host.profile_file_destroy(&c.file)   // (written by profile_files_flush, before the loop ended)
-	c^ = {}
+	profile.closed_tabs_destroy(&app.closed)
 }

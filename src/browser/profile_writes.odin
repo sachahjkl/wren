@@ -11,6 +11,26 @@ import config "toolkit:config"
 import "wb:cookies"
 import "wb:fetch"
 import "wb:host"
+import "wb:profile"
+
+// Host environment for the pure profile stores in src/profile.
+profile_store_host :: proc(app: ^App) -> profile.Store_Host {
+	return {
+		dir       = app.profile_dir,
+		persist   = app.cfg.persist_profile,
+		writer    = &app.writer,
+		loop      = &app.loop,
+		blocking  = &app.blocking,
+		on_change = profile_store_changed,
+		user      = app,
+	}
+}
+
+@(private = "file")
+profile_store_changed :: proc(user: rawptr) {
+	app := (^App)(user)
+	if app != nil { request_frames(app, 2) }
+}
 
 // Sets App.writer up (app_pools_init): its failures are told in a toast while a window exists.
 profile_writer_init :: proc(app: ^App) {

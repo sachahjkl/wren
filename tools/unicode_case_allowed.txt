@@ -22,13 +22,8 @@ src/browser/downloads_ui.odin query := strings.to_lower(  # user text: the downl
 src/browser/downloads_ui.odin return strings.contains(strings.to_lower(x.name  # user text: the downloads' search
 src/browser/ext_toolbar.odin d.letter = strings.to_upper(  # user text: the first letter of an extension's name, drawn when it has no icon
 src/browser/find_bar.odin utf8.encode_rune(unicode.to_lower(r))  # user text: find in page
-src/browser/global_history.odin q := strings.to_lower(  # user text: the history's search
-src/browser/global_history.odin v.low = strings.concatenate({strings.to_lower(v.url  # user text: the history's search (its lower-case copy)
 src/browser/http_cache_ui.odin !strings.contains(strings.to_lower(e.key  # user text: the cache page's filter
 src/browser/http_cache_ui.odin needle := strings.to_lower(filter  # user text: the cache page's filter
-src/browser/search_engines.odin return strings.to_upper(e.name[i:]  # display text: a search engine's initial
-src/browser/search_engines.odin strings.equal_fold(e.keyword, kw)  # user text: a search engine's keyword
-src/browser/search_engines.odin strings.equal_fold(e.name, n)  # user text: a search engine's name
 src/browser/site_data_ui.odin needle := strings.to_lower(filter  # user text: the site data page's filter
 src/browser/urlbar.odin low := strings.to_lower(text  # user text: the address bar's highlights
 src/browser/urlbar.odin lt, lu := strings.to_lower(b.title  # user text: the address bar's bookmarks
@@ -48,6 +43,11 @@ src/layout/selection.odin case .Lowercase: out = unicode.to_lower(r)  # text-tra
 src/layout/selection.odin case .Uppercase: out = unicode.to_upper(r)  # text-transform: Unicode by CSS Text
 src/page/fs_store.odin when ODIN_OS == .Windows { return strings.equal_fold(a, b) }  # a Windows path of the disk
 src/page/fs_store.odin return strings.has_prefix(strings.to_lower(path  # a Windows path of the disk
+src/profile/global_history.odin q := strings.to_lower(  # user text: the history's search
+src/profile/global_history.odin v.low = strings.concatenate({strings.to_lower(v.url  # user text: the history's search (its lower-case copy)
+src/profile/search_engines.odin return strings.to_upper(e.name[i:]  # display text: a search engine's initial
+src/profile/search_engines.odin strings.equal_fold(e.keyword, kw)  # user text: a search engine's keyword
+src/profile/search_engines.odin strings.equal_fold(e.name, n)  # user text: a search engine's name
 src/remote/api/process_windows.odin return strings.equal_fold(a, b)  # a Windows path
 src/remote/api/process_windows.odin strings.equal_fold(name_of(v)  # a Windows program's name
 src/remote/client/commands.odin filter := len(args) > 0 ? strings.to_lower(  # user text: a filter typed at the command line
