@@ -309,3 +309,24 @@ every_file_of_end_to_end_tests_has_a_step :: proc(t: ^testing.T) {
 		testing.expectf(t, len(names) == 0 || f.name in seen, "%s has tests and no step", f.name)
 	}
 }
+
+// jsengine and test262 link build/native/wren_native.lib (Wasmtime C API): both must wait for .Native so -Jobs 2 does not race them against the Rust build.
+@(test)
+js_engine_and_test262_need_native :: proc(t: ^testing.T) {
+	context.allocator = runtime.heap_allocator()
+	cfg := Config{ci = true, quick = true}
+	table := windows_table(&cfg)
+	found_js, found_t262 := false, false
+	for s in table {
+		if .JS_Engine in s.makes {
+			found_js = true
+			testing.expect(t, .Native in s.needs, "JS_Engine maker must depend on .Native")
+		}
+		if .Test262 in s.makes {
+			found_t262 = true
+			testing.expect(t, .Native in s.needs, "Test262 maker must depend on .Native")
+		}
+	}
+	testing.expect(t, found_js, "windows_table must have a .JS_Engine maker")
+	testing.expect(t, found_t262, "windows_table must have a .Test262 maker")
+}

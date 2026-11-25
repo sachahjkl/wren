@@ -6,7 +6,7 @@ import "core:os"
 import "core:strings"
 
 // What is portable already (docs/portability.md): odin check for Linux of every package that is, then the unit tests of those that have tests, with the flags of the Windows steps (-vet, the memory
-// check; RLIMIT_STACK instead of /STACK). Needs build/wasmtime-linux (wrentool fetch wasmtime), build/lexbor-linux (wrentool build lexbor) and build/native-linux (wrentool build native -Features text,a11y).
+// check; RLIMIT_STACK instead of /STACK). Needs build/wasmtime/LICENSE (wrentool fetch wasmtime), the wgpu stub (wrentool fetch wgpu), build/lexbor-linux (wrentool build lexbor) and build/native-linux (wrentool build native -Features text,wgpu_capi).
 // Packages move from "not yet" to these lists as they are ported; tests that measure time stay out.
 
 linux_table :: proc(cfg: ^Config) -> []Step {
@@ -54,7 +54,7 @@ linux_table :: proc(cfg: ^Config) -> []Step {
 		argv := join({"odin", "test", fmt.aprintf("src/%s", p), "-vet", WB, TOOLKIT, MEM_CHECK, NAMES_RUNNING, POISON}, {out_flag(fmt.aprintf("build/linux/%s_poison_test", p))})
 		append(&t, Step{name = fmt.aprintf("unit tests on poisoned memory: %s", p), actions = slice_of(Command{argv = argv, pkg = fmt.aprintf("src/%s", p), rule = .Says_Successful})})
 	}
-	// browser: every portable test of src/browser on Linux, with the text backend Wren has there (build/native-linux built with -Features text,a11y)
+	// browser: every portable test of src/browser on Linux, with the text backend and wgpu C API Wren has there (build/native-linux built with -Features text,wgpu_capi)
 	if wgpu { linux_unit(&t, "browser", {"-define:FONT_BACKEND=native", "-define:FONT_NATIVE_LINK=false"}) }
 	// (the native libraries are made by hand on Linux, as the header says: no step to wait for)
 	fuzz_step(&t, cfg, {})

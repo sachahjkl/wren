@@ -25,6 +25,12 @@ jobs:
       - uses: ./.github/actions/setup
       - name: The JavaScript engine's image
         run: |
+          New-Item -ItemType Directory -Force build | Out-Null
+          odin build src/tools/wrentool -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/wrentool.exe
+          if ($LASTEXITCODE) { exit 1 }
+          # buildjs builds src/tools/jsengine, which links build/native/wren_native.lib (Wasmtime C API)
+          build/wrentool build native -Profile quick
+          if ($LASTEXITCODE) { exit 1 }
           odin run src/tools/buildjs -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/buildjs.exe
           if ($LASTEXITCODE) { exit 1 }
       - uses: actions/upload-artifact@v4

@@ -158,7 +158,7 @@ program_of :: proc(o: Options) -> string {
 // being replaced (a dev and a release build use different profiles of it).
 dependencies :: proc(o: Options) -> bool {
 	// (Linux: the text backend and wgpu C API are built into Wren's Rust library; Windows links wgpu_native.dll for WREN_RENDER=wgpu and AccessKit is Windows-only)
-	features := ODIN_OS == .Windows ? "" : "text,wgpu_capi"
+	features := ODIN_OS == .Windows ? "" : deps.LINUX_DEFAULT_FEATURES
 	return deps.all({profile = VARIANTS[o.variant].native_release ? "release" : "quick", features = features, tracy = o.tracy, log = o.log})
 }
 

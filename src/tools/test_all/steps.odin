@@ -269,7 +269,8 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	// What every build below embeds (nothing to do when up to date).
 	// (and the generated web API: the browser's build and the test program's compile both read it, so one step writes it before either)
 	append(&t, Step{name = "the dependencies of the dev build and the generated web API (wrentool build's steps 2 and 3; nothing to do when up to date)", actions = slice_of(Task{"the dependencies", task_dependencies, ""}), marks = {.No_Result}, makes = {.Native}, limit = dependencies_limit(cfg)})
-	append(&t, Step{name = "JavaScript engine (src\\tools\\tooling\\js_engine.odin; nothing to do when up to date)", actions = slice_of(Task{"the engine", task_js_engine, ""}), marks = {.No_Result}, makes = {.JS_Engine}, limit = build_limit(cfg)})
+	// (needs .Native: jsengine links build/native/wren_native.lib for Wasmtime, and native/js/odin compiles bindgen's bindings_gen.odin)
+	append(&t, Step{name = "JavaScript engine (src\\tools\\tooling\\js_engine.odin; nothing to do when up to date)", actions = slice_of(Task{"the engine", task_js_engine, ""}), marks = {.No_Result}, needs = {.Native}, makes = {.JS_Engine}, limit = build_limit(cfg)})
 	// (the two parts apart: everything waits for the program, nothing for its tests)
 	append(&t, Step{name = "console launcher: build\\wren.com (src\\tools\\wrencom; the browser embeds it)", actions = slice_of(Task{"wren.com", task_launcher, ""}), marks = {.No_Result}, makes = {.Launcher}, limit = build_limit(cfg)})
 	unit(&t, "unit tests: console launcher (when to wait for wren.exe and when to let go, the command line it hands over)", "src/tools/wrencom", exe("build/wrencom_test"))
@@ -404,7 +405,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	// the glue, beside the browser's engine and not after it) and the runner. Then the interpreter's run and the JIT's side by side: each writes its own error file.
 	test262_quick := cfg.quick ? strs("-quick") : nil
 	append(&t, Step{name = "test262: the suite, the test image of the engine and the runner (src\\tools\\test262\\prepare.odin, build\\test262; nothing to do when up to date)",
-		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "test262 quick" : "test262"}, Command{argv = strs(exe("build/test262"), "-prepare")}), marks = {.No_Result}, makes = {.Test262}, limit = suite_limit(cfg)})
+		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "test262 quick" : "test262"}, Command{argv = strs(exe("build/test262"), "-prepare")}), marks = {.No_Result}, needs = {.Native}, makes = {.Test262}, limit = suite_limit(cfg)})
 	append(&t, Step{name = "test262 in the Wasm engine (-Quick: every 25th test; fails on a failure src\\tools\\test262\\known_failures.txt does not list)",
 		actions = slice_of(Command{argv = join({exe("build/test262")}, test262_quick)}), weight = 40, needs = {.Test262}, inputs = .Tree, limit = suite_limit(cfg)})
 	append(&t, Step{name = "test262 with the JIT: examples\\jsbench\\jitcheck.js and recursion.js interpreted and compiled (every function and loop at once, synchronously and with the step path), then test262 the same way",

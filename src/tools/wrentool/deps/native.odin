@@ -17,6 +17,8 @@ NASM_SHA256 :: "3ee4782247bcb874378d02f7eab4e294a84d3d15f3f6ee2de2f47a46aa7226e6
 NASM_RELEASES :: "https://www.nasm.us/pub/nasm/releasebuilds"
 TOOLS_DIR :: "build/tools"
 BYTES_PER_MB :: 1024 * 1024
+// Default Cargo features for libwren_native.a on Linux: text backend and wgpu C API (vendor:wgpu links an empty stub).
+LINUX_DEFAULT_FEATURES :: "text,wgpu_capi"
 
 // What the library is made of: change any input and it is built again.
 @(private)
@@ -115,10 +117,11 @@ msvc_tool :: proc(env: []string, name: string) -> string {
 
 build_native :: proc(o: Options) -> bool {
 	profile := o.profile
+	features := o.features != "" ? o.features : LINUX_DEFAULT_FEATURES
 	out := "build/native-linux"
 	lib := fmt.tprintf("%s/libwren_native.a", out)
 	stamp_file := fmt.tprintf("%s/STAMP", out)
-	stamp := native_stamp(profile, o.features, strings.contains(o.features, "text"), strings.contains(o.features, "a11y"), strings.contains(o.features, "wgpu_capi"))
+	stamp := native_stamp(profile, features, strings.contains(features, "text"), strings.contains(features, "a11y"), strings.contains(features, "wgpu_capi"))
 	if !o.force && os.exists(lib) && read_stamp(stamp_file) == stamp {
 		tooling.say(o.log, fmt.tprintfln("wren_native (%s) up to date in %s", profile, out))
 		return true
@@ -128,13 +131,13 @@ build_native :: proc(o: Options) -> bool {
 	_ = os.make_directory_all(out)
 	cmd := make([dynamic]string, context.temp_allocator)
 	append(&cmd, "cargo", "build", "--profile", profile, "--locked", "--manifest-path", "native/Cargo.toml", "--target-dir", target, "-p", "wren_native")
-	if o.features != "" { append(&cmd, "--features", o.features) }
+	if features != "" { append(&cmd, "--features", features) }
 	if tooling.run({command = cmd[:], log = o.log}) != 0 { return fail(o, "cargo build failed") }
 	_ = os.remove(stamp_file)   // (a library half replaced is never taken for a built one)
 	if os.copy_file(lib, fmt.tprintf("%s/%s/libwren_native.a", target, profile)) != nil { return fail(o, "the library cannot be copied") }
 	if !write_stamp(stamp_file, stamp) { return fail(o, "the stamp cannot be written") }
 	fi, _ := os.stat(lib, context.temp_allocator)
-	tooling.say(o.log, fmt.tprintfln("built %s (%s%s%s, %d MB)", lib, profile, o.features != "" ? ", " : "", o.features, fi.size / BYTES_PER_MB))
+	tooling.say(o.log, fmt.tprintfln("built %s (%s%s%s, %d MB)", lib, profile, features != "" ? ", " : "", features, fi.size / BYTES_PER_MB))
 	return true
 }
 

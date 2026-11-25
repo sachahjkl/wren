@@ -102,7 +102,7 @@ runs:
           !build/native/target/${{ inputs.native-profile }}/deps/*.lib
           build/tools/nasm-*
           !build/tools/nasm-*.zip
-        key: native-${{ inputs.native-profile }}-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/Cargo.toml', 'native/media/src/**', 'native/media/Cargo.toml', 'native/wren_native/**', 'ext/gui_toolkit/native/text/src/**', 'ext/gui_toolkit/native/text/Cargo.toml', 'ext/gui_toolkit/native/a11y/src/**', 'ext/gui_toolkit/native/a11y/Cargo.toml', '.cargo/config.toml', 'src/tools/wrentool/deps/native.odin') }}
+        key: native-${{ inputs.native-profile }}-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/**/*.rs', 'native/**/Cargo.toml', 'ext/gui_toolkit/native/text/src/**', 'ext/gui_toolkit/native/text/Cargo.toml', 'ext/gui_toolkit/native/a11y/src/**', 'ext/gui_toolkit/native/a11y/Cargo.toml', '.cargo/config.toml', 'src/tools/wrentool/deps/native.odin') }}
         restore-keys: native-${{ inputs.native-profile }}-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-
 
     # the QuickJS-ng release source (test262's configuration), pinned in the toolkit's toolbox.test262_fetch; the engine itself links with Odin's wasm-ld
@@ -120,6 +120,7 @@ runs:
         path: |
           build/js/wren_js.wasm
           build/js/wren_js_raw.wasm
+          build/js/wren_js.wasmz
           build/js/wren_js.code
           build/js/STAMP
           build/js-test262/wren_js.wasm

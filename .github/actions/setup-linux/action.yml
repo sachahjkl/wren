@@ -1,9 +1,9 @@
 name: Set up the Wren toolchain on Linux
 description: >-
   For a job in the debian:bookworm container, after Debian's packages and the checkout: Odin (pinned release, SHA-256 checked), Rust
-  (pinned version), the caches of what wrentool fetches or builds (Wasmtime, Lexbor, the wgpu-native archive, the Rust library of
-  native/ and its crates, the JavaScript engine), then those native libraries and the engine. Every download is pinned as on Windows:
-  Odin by SHA-256 here, Wasmtime and wgpu-native in src/tools/wrentool/deps/fetch.odin, crates by Cargo.lock (--locked), Rust by version.
+  (pinned version), the caches of what wrentool fetches or builds (Lexbor, the Rust library of native/ and its crates, the JavaScript
+  engine), then those native libraries and the engine. Every download is pinned as on Windows: Odin by SHA-256 here, crates by
+  Cargo.lock (--locked), Rust by version.
 
 runs:
   using: composite
@@ -35,12 +35,11 @@ runs:
         path: |
           build/native-linux
           ~/.cargo/registry
-        key: native-linux-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/**/*.rs', 'native/**/Cargo.toml', 'src/tools/wrentool/deps/native.odin') }}
+        key: native-linux-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/**/*.rs', 'native/**/Cargo.toml', 'ext/gui_toolkit/native/text/src/**', 'ext/gui_toolkit/native/text/Cargo.toml', 'src/tools/wrentool/deps/native.odin') }}
         restore-keys: native-linux-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-
 
-    # Wasmtime's sealed archive (build/wasmtime-linux/VERSION), Lexbor (build/lexbor-linux/STAMP) and the wgpu-native archive that
-    # wrentool fetch wgpu seals into Odin's vendor folder (the download is kept in build/tmp and checked by its digest): each stamp
-    # says whether what was restored is up to date, so a hit is a no-op and a stale entry is only rebuilt.
+    # Lexbor (build/lexbor-linux/STAMP) and Wasmtime's copied license: each stamp says whether what was restored is up to date,
+    # so a hit is a no-op and a stale entry is only rebuilt.
     - name: Keys of the native libraries
       id: keys
       shell: bash
@@ -48,14 +47,12 @@ runs:
         git config --global --add safe.directory "*"   # (the container runs as root, the checkout and its submodules are not root's)
         echo "lexbor=$(git -C ext/lexbor rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-    - name: Cache Wasmtime, Lexbor and the wgpu-native archive
+    - name: Cache Lexbor and Wasmtime license
       uses: actions/cache@v4
       with:
         path: |
-          build/wasmtime-linux
           build/wasmtime/LICENSE
           build/lexbor-linux
-          build/tmp/wgpu-linux-*-release.zip
         key: linux-libs-${{ steps.keys.outputs.lexbor }}-${{ hashFiles('src/tools/wrentool/deps/fetch.odin', 'src/tools/wrentool/deps/fetch_linux.odin', 'src/tools/wrentool/deps/lexbor.odin', 'src/shim/**') }}
         restore-keys: linux-libs-
 
@@ -67,13 +64,14 @@ runs:
         path: |
           build/js/wren_js.wasm
           build/js/wren_js_raw.wasm
+          build/js/wren_js.wasmz
           build/js/wren_js.code
           build/js/STAMP
         key: linux-js-${{ hashFiles('native/js/**', 'ext/gui_toolkit/src/js/**', 'src/jscapi/**', 'src/config/**', 'src/wasm/*.odin', 'src/tools/jsengine/*.odin', 'src/tools/tooling/js_engine.odin') }}
         restore-keys: linux-js-
 
-    # (the Rust library with the toolkit's text backend and accessibility adapter, as build.sh builds it: the browser's tests that run here shape text)
-    - name: Native libraries (Wasmtime, Lexbor, the Rust library) and the JavaScript engine
+    # (the Rust library with the toolkit's text backend and the wgpu C API, as build.sh builds it: vendor:wgpu uses an empty stub while libwren_native.a supplies wgpu*)
+    - name: Native libraries (Lexbor, the Rust library) and the JavaScript engine
       shell: bash
       run: |
         mkdir -p build
@@ -81,6 +79,6 @@ runs:
         build/wrentool fetch wasmtime
         build/wrentool fetch wgpu
         CC=clang build/wrentool build lexbor
-        build/wrentool build native -Profile quick -Features text,a11y
+        build/wrentool build native -Profile quick -Features text,wgpu_capi
         # the JavaScript engine (build.sh deps): its pre-initialization needs the 64 MiB stack, its linker is lld's wasm-ld
         ( ulimit -s 65536 && odin run src/tools/buildjs -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -out:build/buildjs )
