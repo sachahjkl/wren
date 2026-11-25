@@ -27,9 +27,9 @@ GLOBALS_LIST :: "tools/globals_allowed.txt"
 // The packages whose globals are listed, under src.
 GLOBALS_DIRS :: [?]string{
 	"a11y", "adblock", "base", "blocker", "browser", "canvas2d", "cookies", "csp", "css",
-	"desktop", "dom", "e2e", "extensions", "fetch", "forms", "host", "html", "http",
+	"desktop", "dom", "e2e", "embed", "extensions", "fetch", "forms", "host", "html", "http",
 	"httpcache", "idb", "images", "js", "js/image", "jscapi", "layout", "license", "media",
-	"net", "page", "remote", "remote/api", "remote/client", "stacks", "style", "testenv",
+	"net", "page", "profile", "remote", "remote/api", "remote/client", "stacks", "style", "testenv",
 	"testserver", "trace", "update", "url", "urlpattern", "vault", "vault/pin", "wasm",
 	"webaudio", "webauthn", "webfont", "webgl", "xml",
 }

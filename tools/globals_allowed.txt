@@ -511,6 +511,8 @@ page/worker_test.odin SPIN_MODULE test
 page/worker_test.odin worker_tests test
 page/worker_test.odin LOGGING_SPIN_MODULE test
 page/worker_test.odin terminate_stops_a_worker_busy_in_a_long_computation.spin_logged test
+profile/closed_tabs.odin CLOSED_PREFS const  # a table
+profile/search_engines.odin BUILTIN_ENGINES const  # a table
 remote/server.odin srv process  # process-wide remote control IPC server (one per process)
 remote/server_test.odin held_started test
 remote/server_test.odin held_release test

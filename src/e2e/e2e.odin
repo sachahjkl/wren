@@ -616,7 +616,8 @@ one_shot_due :: proc(s: ^Session, moving_ok: bool) -> bool {
 frame_wanted :: proc(s: ^Session, moving_ok: bool) -> bool {
 	context = s.ctx
 	for w in s.app.windows {
-		if w.frames_requested != 0 && !(moving_ok && w.errands == {.Caret}) { return true }
+		if w.frames_requested != 0 { return true }
+		if w.causes != {} && !(moving_ok && w.causes == {.Caret}) { return true }
 		if len(w.win.injected) > 0 || ui.needs_frame(w.ui) || ui.wake_due(w.ui) { return true }
 	}
 	return false

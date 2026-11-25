@@ -277,7 +277,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "build the browser (wrentool build; nothing to do when newer than its sources)", actions = slice_of(Task{"wrentool build", task_browser, "dev"}), marks = {.No_Result, .Browser_Build}, needs = COMMON_NEEDS, makes = {.Browser}, limit = build_limit(cfg)})
 	if long_run { append(&t, Step{name = "build the check build of the browser (wrentool build check; nothing to do when newer than its sources)", actions = slice_of(Task{"wrentool build check", task_browser, "check"}), marks = {.No_Result, .Browser_Build}, needs = COMMON_NEEDS, makes = {.Check_Browser}, limit = build_limit(cfg), group = .Check_Build}) }
 
-	PACKAGES := []string{"base", "host", "dom", "html", "url", "urlpattern", "http", "cookies", "csp", "extensions", "httpcache", "fetch", "css", "style", "webfont", "xml", "images", "media", "webaudio", "canvas2d", "idb", "layout", "forms", "vault", "js", "page", "webauthn", "update", "desktop", "adblock", "blocker", "a11y", "browser"}
+	PACKAGES := []string{"base", "host", "dom", "html", "url", "urlpattern", "http", "cookies", "csp", "extensions", "httpcache", "fetch", "css", "style", "webfont", "xml", "images", "media", "webaudio", "canvas2d", "idb", "layout", "forms", "vault", "js", "page", "profile", "embed", "webauthn", "update", "desktop", "adblock", "blocker", "a11y", "browser"}
 	for pkg in PACKAGES {
 		flags := []string{TOOLKIT, WB}
 		// (images: its tests share the process-wide decoder pool and one of them sets its idle time: one test at a time)
