@@ -10,6 +10,25 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-25
+
+### Added
+- **Live window carry for Wayland tab tear-off**: dragging a tab out of its bar on Wayland compositors advertising `xdg-toplevel-drag-v1` now detaches and carries a real browser window attached to the pointer via `platform.Drag_Carry` (or carries the source window itself for a single-tab window), renders live frames while dragging, re-attaches cleanly when dropped back into a Wren tab strip, and falls back to the existing `application/x-wren-tab` drag path on compositors without `xdg-toplevel-drag-v1`.
+
+### Changed
+- **Smaller Linux release binary (~15 MiB reduction, 78.36 MiB to 63.69 MiB)**: Wasmtime 49.0.3 (minimal Cranelift, threads, GC, and profiling subset without Winch, WASI, async, or component model) and the WebGPU C API (v29.0.1.1 ABI) now build inside Wren's single Rust static library alongside WebGL (aligned to wgpu 29.0.3) and resvg 0.50.0 (sharing HarfRust 0.15 and Skrifa 0.49 with the text backend). This eliminates duplicate Rust standard libraries, duplicate wgpu/naga/ash and font stacks, and prebuilt Wasmtime/wgpu archive downloads while keeping offline Nix builds and runtime speed intact.
+- **Linux browser unit tests and JavaScript engine fuzzing**: `test_all` on Linux now runs every portable `src/browser` unit test automatically instead of a fixed allowlist (moving the D3D11-only GPU canvas suite to `canvas_gpu_test_windows.odin`), and `wrentool fuzz` and `test_all -Fuzz` now fuzz the JavaScript engine's front end, interpreter, and serialized bytecode reader (`js_src` and `js_bytecode`).
+- **Shared cached layout view per tab**: Reuse one `lay.View` across frame paint, observers, image distance checks, hit-testing, cursor resolution, and DOM layout queries with in-place buffer updates instead of rebuilding fresh view arrays multiple times per frame.
+- **Offload File System Access and cold Cache API disk I/O off the UI thread**: File System Access directory, file, and writable operations and cold Cache API `index.wcs` and entry body reads now run on the blocking worker pool and settle JavaScript Promises asynchronously with safe cancellation when a page closes.
+
+### Fixed
+- **CSS `image-rendering` (`pixelated`, `crisp-edges`)**: pixel art and crisp icons styled with `image-rendering: pixelated` or `crisp-edges` (including inherited values and `-moz-crisp-edges` / `-webkit-optimize-contrast`) now render with nearest-neighbour sampling on `<img>`, `<canvas>`, `<video>`, inline `<svg>`, and CSS `background-image` / `mask-image` layers instead of blurring when upscaled.
+- **Smooth rendering of animated 2D canvases and filtered pages** (`src/canvas2d`, `src/browser`, `src/page`, `src/style`):
+  - Added an axis-aligned fast path with sparse 64×64 tile tracking for software 2D canvas `clearRect` and partial texture uploads, and hoisted row-constant bilinear image sampling.
+  - Uploaded software 2D canvases directly as premultiplied RGBA8 textures in sRGB blend space on WGPU with on-demand mipmaps (skipping mipmap generation when drawn near or above 1:1 scale) and a reused fallback scratch buffer.
+  - Keyed effect-cache image invalidation per image generation instead of global page pixel generation, so animated canvases and inline SVGs no longer invalidate static `filter` / `drop-shadow` layers every frame.
+  - Skipped re-serializing static inline `<svg>` elements on unrelated animation ticks, reused one GPU texture per animating inline `<svg>`, and immediately freed dead single-frame animation cache entries.
+
 ## [0.12.0] - 2026-11-25
 
 ### Added
@@ -1717,7 +1736,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/sachahjkl/wren/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/sachahjkl/wren/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/sachahjkl/wren/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/sachahjkl/wren/compare/v0.9.0...v0.10.0

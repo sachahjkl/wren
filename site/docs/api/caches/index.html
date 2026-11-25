@@ -232,6 +232,7 @@
 <li><a href="../../../docs/releases/v0.10.0/">Wren 0.10.0</a></li>
 <li><a href="../../../docs/releases/v0.11.0/">Wren 0.11.0</a></li>
 <li><a href="../../../docs/releases/v0.12.0/">Wren 0.12.0</a></li>
+<li><a href="../../../docs/releases/v0.13.0/">Wren 0.13.0</a></li>
 <li><a href="../../../docs/releases/v0.2.0/">Wren 0.2.0</a></li>
 <li><a href="../../../docs/releases/v0.2.1/">Wren 0.2.1</a></li>
 <li><a href="../../../docs/releases/v0.3.0/">Wren 0.3.0</a></li>
@@ -318,8 +319,8 @@
 <h1 id="module-caches"><a class="anchor" href="#module-caches" aria-hidden="true">#</a>Module <code>caches</code></h1>
 <p>The Cache API (Service Workers §5: CacheStorage, Cache) on the browser's storage (src/page/cache_store.odin): named
 caches of request -&gt; response entries per origin, kept in the profile and shared by every realm of the origin (pages,
-workers, service workers). The engine (native/js/runtime/web_cache.c) makes the promises, the Request and Response
-objects; these functions are synchronous. Security for a realm that is not a secure context or has an opaque origin.</p>
+workers, service workers). Cold index.wcs and body disk reads run off the UI thread; operations return promises
+settled when ready. Security for a realm that is not a secure context or has an opaque origin.</p>
 <p>Exposed to: Window, Worker. Source: <code>api/caches.widl</code>.</p>
 <p>Odin: <code>import "wren:caches"</code>.</p>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
@@ -329,59 +330,49 @@ objects; these functions are synchronous. Security for a realm that is not a sec
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>CacheStorage_check :: proc(c: ^Call) -&gt; Api_Error</code></p>
 <h3 id="cachestorage-openname"><a class="anchor" href="#cachestorage-openname" aria-hidden="true">#</a><code>CacheStorage_openName</code></h3>
-<div class="code"><pre><code>void CacheStorage_openName(string name) raises</code></pre></div>
-<p>caches.open(name): the cache exists afterwards.</p>
+<div class="code"><pre><code>Promise CacheStorage_openName(string name) raises</code></pre></div>
+<p>caches.open(name): promise settling undefined once the cache exists.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
-<p>Host: <code>CacheStorage_openName :: proc(c: ^Call, name: string) -&gt; Api_Error</code></p>
+<p>Host: <code>CacheStorage_openName :: proc(c: ^Call, name: string) -&gt; (u64, Api_Error)</code></p>
 <h3 id="cachestorage-hasname"><a class="anchor" href="#cachestorage-hasname" aria-hidden="true">#</a><code>CacheStorage_hasName</code></h3>
-<div class="code"><pre><code>bool CacheStorage_hasName(string name) raises</code></pre></div>
-<p>caches.has(name)</p>
+<div class="code"><pre><code>Promise CacheStorage_hasName(string name) raises</code></pre></div>
+<p>caches.has(name): promise of bool (value 0/1).</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
-<p>Host: <code>CacheStorage_hasName :: proc(c: ^Call, name: string) -&gt; (bool, Api_Error)</code></p>
+<p>Host: <code>CacheStorage_hasName :: proc(c: ^Call, name: string) -&gt; (u64, Api_Error)</code></p>
 <h3 id="cachestorage-deletename"><a class="anchor" href="#cachestorage-deletename" aria-hidden="true">#</a><code>CacheStorage_deleteName</code></h3>
-<div class="code"><pre><code>bool CacheStorage_deleteName(string name) raises</code></pre></div>
-<p>caches.delete(name)</p>
+<div class="code"><pre><code>Promise CacheStorage_deleteName(string name) raises</code></pre></div>
+<p>caches.delete(name): promise of bool (value 0/1).</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
-<p>Host: <code>CacheStorage_deleteName :: proc(c: ^Call, name: string) -&gt; (bool, Api_Error)</code></p>
+<p>Host: <code>CacheStorage_deleteName :: proc(c: ^Call, name: string) -&gt; (u64, Api_Error)</code></p>
 <h3 id="cachestorage-names"><a class="anchor" href="#cachestorage-names" aria-hidden="true">#</a><code>CacheStorage_names</code></h3>
-<div class="code"><pre><code>string CacheStorage_names() raises</code></pre></div>
-<p>caches.keys(): the names in creation order, "\n"-separated.</p>
+<div class="code"><pre><code>Promise CacheStorage_names() raises</code></pre></div>
+<p>caches.keys(): promise whose text is the names in creation order, "\n"-separated.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
-<p>Host: <code>CacheStorage_names :: proc(c: ^Call) -&gt; (string, Api_Error)</code></p>
-<h3 id="cache-matchids"><a class="anchor" href="#cache-matchids" aria-hidden="true">#</a><code>Cache_matchIds</code></h3>
-<div class="code"><pre><code>string Cache_matchIds(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises</code></pre></div>
-<p>The ids of the entries of <code>cache</code> matching the request (url "" = every entry), decimal, "\n"-separated. Unless
-ignore_vary, an entry whose response has a Vary header matches only when the named request headers are the same
-in <code>request_headers</code> ("Name: value" lines) as in its stored request (Vary: * never matches).</p>
+<p>Host: <code>CacheStorage_names :: proc(c: ^Call) -&gt; (u64, Api_Error)</code></p>
+<h3 id="cache-match"><a class="anchor" href="#cache-match" aria-hidden="true">#</a><code>Cache_match</code></h3>
+<div class="code"><pre><code>Promise Cache_match(string cache, bool all_caches, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary, bool multiple) raises</code></pre></div>
+<p>cache.match / cache.matchAll / caches.match: promise of a Buffer handle (0 when none matched) packing matched
+entries: u32 count, then per entry: i32 status, u32+bytes status_text, u32+bytes response_url, u32+bytes headers,
+u8 has_body, u32+bytes body. When <code>all_caches</code> is true, searches every cache in creation order.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
-<p>Host: <code>Cache_matchIds :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -&gt; (string, Api_Error)</code></p>
-<h3 id="cache-entryrequestheaders"><a class="anchor" href="#cache-entryrequestheaders" aria-hidden="true">#</a><code>Cache_entryRequestHeaders</code></h3>
-<div class="code"><pre><code>string Cache_entryRequestHeaders(string cache, u64 id) raises</code></pre></div>
-<p>The header lines of an entry's request (Not_Found when it is gone).</p>
+<p>Host: <code>Cache_match :: proc(c: ^Call, cache: string, all_caches: bool, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool, multiple: bool) -&gt; (u64, Api_Error)</code></p>
+<h3 id="cache-keys"><a class="anchor" href="#cache-keys" aria-hidden="true">#</a><code>Cache_keys</code></h3>
+<div class="code"><pre><code>Promise Cache_keys(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises</code></pre></div>
+<p>cache.keys(request, options): promise of a Buffer handle (0 when none matched) packing matched requests: u32 count,
+then per entry: u32+bytes url, u32+bytes request_headers.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
-<p>Host: <code>Cache_entryRequestHeaders :: proc(c: ^Call, cache: string, id: u64) -&gt; (string, Api_Error)</code></p>
-<h3 id="cache-entryhead"><a class="anchor" href="#cache-entryhead" aria-hidden="true">#</a><code>Cache_entryHead</code></h3>
-<div class="code"><pre><code>string Cache_entryHead(string cache, u64 id) raises</code></pre></div>
-<p>An entry's head: status, statusText, the response's URL, the request's method, the request's URL, then the
-response's header lines, "\n"-separated (Not_Found when it is gone).</p>
-<p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
-<p>Host: <code>Cache_entryHead :: proc(c: ^Call, cache: string, id: u64) -&gt; (string, Api_Error)</code></p>
-<h3 id="cache-entrybody"><a class="anchor" href="#cache-entrybody" aria-hidden="true">#</a><code>Cache_entryBody</code></h3>
-<div class="code"><pre><code>bytes Cache_entryBody(string cache, u64 id) raises</code></pre></div>
-<p>An entry's body (Not_Found when it is gone).</p>
-<p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
-<p>Host: <code>Cache_entryBody :: proc(c: ^Call, cache: string, id: u64) -&gt; ([]u8, Api_Error)</code></p>
+<p>Host: <code>Cache_keys :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -&gt; (u64, Api_Error)</code></p>
 <h3 id="cache-putentry"><a class="anchor" href="#cache-putentry" aria-hidden="true">#</a><code>Cache_putEntry</code></h3>
-<div class="code"><pre><code>void Cache_putEntry(string cache, string url, string request_headers, i32 status, string status_text, string response_url, string headers, bytes body) raises</code></pre></div>
+<div class="code"><pre><code>Promise Cache_putEntry(string cache, string url, string request_headers, i32 status, string status_text, string response_url, string headers, bytes body) raises</code></pre></div>
 <p>cache.put(request, response) with the response's body read: replaces the entries the request matches (Vary
 considered). Quota past caches.max_bytes_per_origin.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
-<p>Host: <code>Cache_putEntry :: proc(c: ^Call, cache: string, url: string, request_headers: string, status: i32, status_text: string, response_url: string, headers: string, body: []u8) -&gt; Api_Error</code></p>
+<p>Host: <code>Cache_putEntry :: proc(c: ^Call, cache: string, url: string, request_headers: string, status: i32, status_text: string, response_url: string, headers: string, body: []u8) -&gt; (u64, Api_Error)</code></p>
 <h3 id="cache-deleteentries"><a class="anchor" href="#cache-deleteentries" aria-hidden="true">#</a><code>Cache_deleteEntries</code></h3>
-<div class="code"><pre><code>bool Cache_deleteEntries(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises</code></pre></div>
-<p>cache.delete(request, options)</p>
+<div class="code"><pre><code>Promise Cache_deleteEntries(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises</code></pre></div>
+<p>cache.delete(request, options): promise of bool (value 0/1).</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
-<p>Host: <code>Cache_deleteEntries :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -&gt; (bool, Api_Error)</code></p>
+<p>Host: <code>Cache_deleteEntries :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -&gt; (u64, Api_Error)</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../../docs/api/bloburl/"><span>Previous</span><strong>Module bloburl</strong></a>
 <a class="doc-next" href="../../../docs/api/canvas/"><span>Next</span><strong>Module canvas</strong></a>
@@ -397,10 +388,8 @@ considered). Quota past caches.max_bytes_per_origin.</p>
 <li class="lvl3"><a href="#cachestorage-hasname">CacheStorage_hasName</a></li>
 <li class="lvl3"><a href="#cachestorage-deletename">CacheStorage_deleteName</a></li>
 <li class="lvl3"><a href="#cachestorage-names">CacheStorage_names</a></li>
-<li class="lvl3"><a href="#cache-matchids">Cache_matchIds</a></li>
-<li class="lvl3"><a href="#cache-entryrequestheaders">Cache_entryRequestHeaders</a></li>
-<li class="lvl3"><a href="#cache-entryhead">Cache_entryHead</a></li>
-<li class="lvl3"><a href="#cache-entrybody">Cache_entryBody</a></li>
+<li class="lvl3"><a href="#cache-match">Cache_match</a></li>
+<li class="lvl3"><a href="#cache-keys">Cache_keys</a></li>
 <li class="lvl3"><a href="#cache-putentry">Cache_putEntry</a></li>
 <li class="lvl3"><a href="#cache-deleteentries">Cache_deleteEntries</a></li>
 </ul>
