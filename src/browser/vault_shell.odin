@@ -814,12 +814,12 @@ vault_dialogs_build :: proc(app: ^App) {
 }
 
 // What the login dialog shows, by the Vault's state.
-@(private = "file")
+@(private)
 Vault_Dialog_Mode :: struct {
 	busy, two_factor, device, approval, passkey, waiting, unlock, use_pin, login: bool,
 }
 
-@(private = "file")
+@(private)
 vault_dialog_mode :: proc(s: ^Vault_Shell) -> (m: Vault_Dialog_Mode) {
 	v := &s.v
 	m.busy = v.state == .Logging_In || v.state == .Unlocking || v.state == .Locating
@@ -836,7 +836,7 @@ vault_dialog_mode :: proc(s: ^Vault_Shell) -> (m: Vault_Dialog_Mode) {
 
 // Each frame: the login dialog given up (Cancel, Escape, its cross, a click outside) drops what it waits for; it closes
 // by itself once done, or when there is nothing to log in to (the panel says why).
-@(private = "file")
+@(private)
 vault_login_answer :: proc(app: ^App) {
 	s := &app.vault
 	v := &s.v
@@ -1079,7 +1079,7 @@ vault_login_view :: proc(view: ^ui.View, app: ^App) {
 }
 
 // What the dialog's Log in, Unlock or Continue does. The secret fields go once their frame has its copy.
-@(private = "file")
+@(private)
 vault_login_submit :: proc(app: ^App, login, unlock, use_pin: bool) {
 	s := &app.vault
 	v := &s.v

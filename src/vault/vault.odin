@@ -1521,8 +1521,8 @@ vault_deliver :: proc(v: ^Vault, t: ^Transport, a: ^Answer, exited, broken: bool
 				string_wipe(&v.email)
 				v.email = strings.clone(a.email, base.process_allocator())
 			}
-			v.pin = a.pin
-			if v.passkey != a.passkey {
+			if v.pin != a.pin || v.passkey != a.passkey {
+				v.pin = a.pin
 				v.passkey = a.passkey
 				write_account(v)
 			}

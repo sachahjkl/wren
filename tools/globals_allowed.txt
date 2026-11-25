@@ -200,6 +200,7 @@ browser/third_party.odin LICENSE_TEXTS const  # a table
 browser/touch_shell.odin TOUCH_PREFS const  # a table
 browser/urlbar.odin URLBAR_PREFS const  # a table
 browser/urlbar_test.odin globals_lock test
+browser/vault_shell_test.odin vault_shell_script thread  # fake transport script for PIN unlock test
 browser/web_font_faces.odin WEB_FACE_PREFS const  # a table
 browser/web_font_faces.odin GENERIC_FAMILIES const  # a table
 browser/window_chrome.odin WINDOW_PREFS const  # a table

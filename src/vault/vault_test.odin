@@ -1079,6 +1079,46 @@ a_pin_unlocks_and_too_many_wrong_ones_remove_it :: proc(t: ^testing.T) {
 	testing.expect_value(t, x.script.secrets[len(x.script.secrets) - 1], "unlock:pin")
 }
 
+// A valid PIN unlocks the vault and syncs without logging out; `hello` persists a changed PIN flag to the account file.
+@(test)
+pin_unlock_opens_and_syncs_and_hello_persists_pin :: proc(t: ^testing.T) {
+	x := fx_make(enabled = false, profile = true)
+	defer fx_destroy(x)
+	dir := join_path({x.profile, "vault"})
+	file := join_path({dir, ACCOUNT_FILE})
+	_ = os.make_directory_all(dir)
+	_ = os.write_entire_file(file, transmute([]byte)account_text({email = "me@example.com", identity = US_IDENTITY_URL, pin = false}))
+	set_pref(x, "vault.enabled", "true")
+	testing.expect_value(t, x.v.state, State.Locked)
+	testing.expect(t, !x.v.pin)
+
+	// helper reports pin=true in hello: written back to the account file so the next start offers the PIN directly
+	answer(x, "hello", `"ok":true,"account":"locked","email":"me@example.com","pin":true`)
+	answer(x, "unlock", `"ok":true`)
+	answer(x, "sync", `"ok":true,"items":2,"last_sync":42`)
+	testing.expect(t, vault_unlock(&x.v, "master"))
+	settle(x)
+	testing.expect_value(t, x.v.state, State.Unlocked)
+	testing.expect(t, x.v.pin)
+	bytes, err := os.read_entire_file(file, context.temp_allocator)
+	testing.expect(t, err == nil)
+	testing.expect(t, account_parse(string(bytes)).pin)
+
+	// lock and unlock with PIN: transitions straight to Unlocked and completes the immediate sync
+	vault_lock(&x.v)
+	settle(x)
+	testing.expect_value(t, x.v.state, State.Locked)
+	testing.expect(t, vault_unlock(&x.v, "1234", pin = true))
+	settle(x)
+	testing.expect_value(t, x.v.state, State.Unlocked)
+	testing.expect(t, x.v.pin)
+	testing.expect_value(t, x.v.last_sync, i64(42))
+	testing.expect(t, !x.v.syncing)
+	testing.expect_value(t, x.v.message, "")
+	testing.expect_value(t, last_op(x), "sync")
+	testing.expect_value(t, x.script.secrets[len(x.script.secrets) - 1], "unlock:pin")
+}
+
 @(test)
 no_pin_without_a_kept_profile :: proc(t: ^testing.T) {
 	x := unlocked_fx(t)
