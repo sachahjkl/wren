@@ -1,5 +1,5 @@
 # wren-vault, the Vault's helper, that this Wren runs and ships (src/md/features/vault-helper-delivery.md).
 # Written by `wrentool vault pin <version>` from the signed manifests of the release: do not edit by hand.
-version 0.5.0
-windows-x64 10077696 57b79aef496f72c73f02ddff85637c3ab32d952e5305071838b1964a81dc4c9c
-linux-x64 13205944 397734647e1f45f4b4bd917aadbfdb70d76ce280af80b6a984649e771cb5cd40
+version 0.5.1
+windows-x64 10071552 6eecfdfaaf2889fe77c1e677f3c5fb3af732c11bc9c97cf1fe5f8e0d785482aa
+linux-x64 13206432 4b4d054ef7c1a09e2cd9d9d60f6977cc1859dc36d89ed60b6b20bcdd36215c23
