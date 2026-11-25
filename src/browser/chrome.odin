@@ -161,7 +161,8 @@ address_row :: proc(app: ^App, t: ^Tab) {
 		// follows the bar is as wide as last frame (its chips come and go: one frame late, as in sidebar_titlebar)
 		lead := em * (0.5 + 3 * NAV_BUTTON_EM) + math.round(em * ui.CONTROL_GAP)   // (ui.space rounds its gap)
 		trail: f32
-		if end := ui.prev_box("###toolbar_end"); end != nil { trail = end.rect.max.x - end.rect.min.x }
+		// size.x is the unrounded layout width; rounded rect width (max.x - min.x) varies by 1 px with x and oscillates.
+		if end := ui.prev_box("###toolbar_end"); end != nil { trail = end.size.x }
 		before, width := address_bar_span(f32(active_window(app).win.size.x), lead, trail, ADDRESS_BAR_MAX_EM * em)
 		ui.spacer(ui.px(before))
 		address_bar(app, t, ui.px(width))

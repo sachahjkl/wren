@@ -234,6 +234,9 @@ Frame_Causes :: bit_set[Frame_Cause; u16]
 // Errand causes: quiet maintenance while the browser is otherwise at rest (no status bar sample, no memory_trim activity).
 FRAME_ERRAND_CAUSES :: Frame_Causes{.Caret, .Status_Bar, .Reader}
 
+// Continuous per-frame causes: ongoing motion or media playback that does not block `tab_stable`.
+FRAME_CONTINUOUS_CAUSES :: Frame_Causes{.Animation, .Media}
+
 // Bound on consecutive automatic .Layout follow-up frames without another cause (prevents layout oscillation).
 MAX_LAYOUT_FOLLOWUPS :: 3
 
@@ -297,7 +300,8 @@ window_frame_begin :: proc(w: ^Browser_Window, why: Loop_Causes) {
 	w.frame_causes = w.causes
 	w.causes = {}
 	w.frame_errand_only = why == {.Asked} && w.frames_requested == 0 && w.frame_causes != {} && w.frame_causes <= FRAME_ERRAND_CAUSES
-	if why != {.Asked} || w.frames_requested > 0 || (w.frame_causes - {.Layout}) != {} {
+	// Continuous motion and errands must not reset the oscillation budget; real activity (or settling) does.
+	if !(why <= {.Asked, .Page}) || w.frames_requested > 0 || (w.frame_causes - {.Layout} - FRAME_CONTINUOUS_CAUSES - FRAME_ERRAND_CAUSES) != {} {
 		w.layout_followups = 0
 	}
 }
@@ -358,7 +362,10 @@ window_note_layout :: proc(w: ^Browser_Window, sig: u64, loc := #caller_location
 		w.layout_sig = sig
 		return false
 	}
-	if w.layout_settled && sig == w.layout_sig { return false }
+	if w.layout_settled && sig == w.layout_sig {
+		w.layout_followups = 0
+		return false
+	}
 	w.layout_settled = true
 	w.layout_sig = sig
 	if w.layout_followups >= MAX_LAYOUT_FOLLOWUPS { return false }

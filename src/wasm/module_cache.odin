@@ -70,9 +70,19 @@ Cached_Import :: struct {
 }
 
 @(private)
+Inflight_Compile :: struct {
+	cond:    sync.Cond,
+	done:    bool,
+	result:  ^Cached,
+	err:     string,
+	waiters: int,
+}
+
+@(private)
 Cache :: struct {
 	lock:      sync.Mutex,
 	entries:   map[Digest]^Cached,
+	inflight:  map[Digest]^Inflight_Compile,
 	total:     int,
 	clock:     u64,
 	max_bytes: i64,
@@ -88,6 +98,7 @@ cache: Cache
 cache_start :: proc(rs: Runtime_Settings) {
 	context.allocator = base.process_allocator()
 	cache.entries = make(map[Digest]^Cached)
+	cache.inflight = make(map[Digest]^Inflight_Compile)
 	cache.max_bytes = rs.cache_memory_bytes
 	cache.files = {magic = DISK_MAGIC, ext = DISK_EXT, max_bytes = rs.cache_disk_max_bytes, stop_budget = DISK_STOP_BUDGET, warn = "wasm: compiled-code disk cache"}
 	cache.disk = rs.cache_dir != "" && disk_start(&cache.files, rs.cache_dir)
@@ -100,6 +111,7 @@ cache_stop :: proc() {
 	host.shutdown_step("wasm.runtime_destroy: compiled modules")
 	for _, c in cache.entries { cached_free(c) }
 	delete(cache.entries)
+	delete(cache.inflight)
 	cache = {}
 }
 
@@ -144,6 +156,21 @@ cached_free :: proc(c: ^Cached) {
 	free(c)
 }
 
+// Under cache.lock. Publishes the outcome of an in-flight compile and wakes waiting threads.
+@(private = "file")
+cache_inflight_finish :: proc(key: Digest, inf: ^Inflight_Compile, c: ^Cached, err_text: string) {
+	delete_key(&cache.inflight, key)
+	if inf.waiters > 0 {
+		if c != nil { c.users += 1 }   // pinned until the last waiter takes its own reference
+		inf.result = c
+		if err_text != "" { inf.err = strings.clone(err_text, base.process_allocator()) }
+		inf.done = true
+		sync.cond_broadcast(&inf.cond)
+	} else {
+		free(inf, base.process_allocator())
+	}
+}
+
 // The compiled module of `image`, ready to instantiate (`pre`), or an error message (allocated). Pair with
 // cache_release. `no_compile`: nil and no error when the module is not to be had without compiling it.
 @(private)
@@ -165,17 +192,65 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, no_compile := false, 
 	}
 
 	sync.mutex_lock(&cache.lock)
-	if found, ok := cache.entries[key]; ok {
-		found.users += 1
-		cache.clock += 1
-		found.last_use = cache.clock
-		cache.stats.memory_hits += 1
-		ensure_pre(found)
-		sync.mutex_unlock(&cache.lock)
-		return found, ""
+	for {
+		if found, ok := cache.entries[key]; ok {
+			found.users += 1
+			cache.clock += 1
+			found.last_use = cache.clock
+			cache.stats.memory_hits += 1
+			ensure_pre(found)
+			sync.mutex_unlock(&cache.lock)
+			return found, ""
+		}
+		if inf, ok := cache.inflight[key]; ok {
+			inf.waiters += 1
+			for !inf.done { sync.cond_wait(&inf.cond, &cache.lock) }
+			res := inf.result
+			wait_err := inf.err != "" ? strings.clone(inf.err, caller) : ""
+			inf.waiters -= 1
+			last := inf.waiters == 0
+			if res != nil {
+				res.users += 1
+				cache.clock += 1
+				res.last_use = cache.clock
+				cache.stats.memory_hits += 1
+				ensure_pre(res)
+			}
+			if last {
+				if res != nil {
+					res.users -= 1
+					if !res.in_map && res.users == 0 { cached_free(res) }
+				}
+				delete(inf.err, base.process_allocator())
+				free(inf, base.process_allocator())
+			}
+			if res != nil || wait_err != "" {
+				sync.mutex_unlock(&cache.lock)
+				return res, wait_err
+			}
+			// Leader ran with no_compile=true and missed; retry to compile if we allow compiling.
+			if no_compile {
+				sync.mutex_unlock(&cache.lock)
+				return nil, ""
+			}
+			continue
+		}
+		break
 	}
+	if no_compile && !cache.disk && len(shipped_code) == 0 {
+		sync.mutex_unlock(&cache.lock)
+		return nil, ""
+	}
+	inf := new(Inflight_Compile)
+	cache.inflight[key] = inf
 	sync.mutex_unlock(&cache.lock)
-	if no_compile && !cache.disk && len(shipped_code) == 0 { return nil, "" }
+
+	finished := false
+	defer if !finished {
+		sync.mutex_lock(&cache.lock)
+		cache_inflight_finish(key, inf, nil, err)
+		sync.mutex_unlock(&cache.lock)
+	}
 
 	filekey: Digest
 	path: string
@@ -246,6 +321,7 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, no_compile := false, 
 
 	sync.mutex_lock(&cache.lock)
 	defer sync.mutex_unlock(&cache.lock)
+	finished = true
 	switch {
 	case from_shipped: cache.stats.shipped_hits += 1
 	case from_disk:    cache.stats.disk_hits += 1
@@ -255,6 +331,7 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, no_compile := false, 
 		cached_free(c)
 		found.users += 1
 		ensure_pre(found)
+		cache_inflight_finish(key, inf, found, "")
 		return found, ""
 	}
 	c.users = 1
@@ -267,6 +344,7 @@ cache_acquire :: proc(image: []byte, known: ^Digest = nil, no_compile := false, 
 		cache.total += c.code_bytes + MODULE_BYTES
 		evict_memory()
 	}
+	cache_inflight_finish(key, inf, c, "")
 	return c, ""
 }
 
@@ -337,6 +415,8 @@ read_imports :: proc(c: ^Cached) {
 // with another type, becomes a function that traps when called; a missing import of another kind is an error.
 @(private)
 ensure_pre :: proc(c: ^Cached) {
+	sync.mutex_lock(&linker_lock)
+	defer sync.mutex_unlock(&linker_lock)
 	if c.pre != nil && c.pre_gen == wt.linker_gen { return }
 	context.allocator = base.process_allocator()
 	if c.pre != nil { wasmtime_instance_pre_delete(c.pre); c.pre = nil }

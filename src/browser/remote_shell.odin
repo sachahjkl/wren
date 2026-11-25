@@ -592,7 +592,9 @@ tab_idle :: proc(app: ^App, t: ^Tab) -> bool {
 tab_stable :: proc(app: ^App, t: ^Tab) -> bool {
 	if !tab_idle(app, t) { return false }
 	wnd := active_window(app)
-	if wnd.frames_requested > 1 || (wnd.causes - FRAME_ERRAND_CAUSES) != {} || ui_needs_frame(app) { return false }
+	// Errands and continuous page motion (.Animation, .Media) do not represent unsettled layout or pending work;
+	// toolkit chrome animations are still checked by ui_needs_frame below.
+	if wnd.frames_requested > 1 || (wnd.causes - FRAME_ERRAND_CAUSES - FRAME_CONTINUOUS_CAUSES) != {} || ui_needs_frame(app) { return false }
 	if t.page != nil && t.kind == .Web {
 		if t.layout.mutations != t.page.doc.mutations { return false }
 		if page_has_script(t) {

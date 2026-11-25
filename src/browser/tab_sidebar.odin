@@ -310,7 +310,8 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 	// the chips' width is last frame's (they appear with a zoom or a passkey dialog; the field absorbs the difference)
 	chips_w: f32
 	if bar := ui.prev_box("###tabstrip"); bar != nil {
-		if c := ui.box_from_key(ui.key_from_string(bar.key, TITLEBAR_SLOT_IDS[.Chips])); c != nil { chips_w = c.rect.max.x - c.rect.min.x }
+		// size.x is position-invariant; rounded rect width varies by 1 px with x and oscillates.
+		if c := ui.box_from_key(ui.key_from_string(bar.key, TITLEBAR_SLOT_IDS[.Chips])); c != nil { chips_w = c.size.x }
 	}
 	want, drag_min := titlebar_wants(app, chips_w)
 	field_max := (app.wchrome.cfg.address_sizing == .Full_Width) ? 0 : ADDRESS_BAR_MAX_EM * em   // (chrome.odin: centred, as in the toolbar)

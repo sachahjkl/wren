@@ -207,11 +207,17 @@ wt_start :: proc(rs: Runtime_Settings) -> bool {
 	wt.fingerprint, _ = sha256(transmute([]byte)text)
 	wt.linker = wasmtime_linker_new(wt.engine)
 	if wt.linker == nil { wt_start_rollback(); return false }
-	for im in registry {
-		if !define_import(wt.linker, im, false) { wt_start_rollback(); return false }
-		if wt.polled_linker != nil && !define_import(wt.polled_linker, im, false) { wt_start_rollback(); return false }
+	defined := true
+	{
+		sync.mutex_lock(&linker_lock)
+		defer sync.mutex_unlock(&linker_lock)
+		for im in registry {
+			if !define_import(wt.linker, im, false) { defined = false; break }
+			if wt.polled_linker != nil && !define_import(wt.polled_linker, im, false) { defined = false; break }
+		}
+		if defined { wt.linker_gen += 1 }
 	}
-	wt.linker_gen += 1
+	if !defined { wt_start_rollback(); return false }
 	sync.atomic_store(&wt.ticker_stop, false)
 	wt.ticker = host.thread_start(wt_ticker_main, nil, name = "wren-wasm-epoch")
 	if wt.ticker == nil { wt_start_rollback(); return false }

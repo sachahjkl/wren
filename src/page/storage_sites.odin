@@ -103,7 +103,8 @@ storage_sites :: proc(m: ^Storage_Manager, allocator := context.temp_allocator) 
 		switch a.kind {
 		case .Local:
 			s.local_keys = len(a.items)
-			s.local_bytes = max(s.local_bytes, i64(a.used) * 2)
+			// Loaded memory is authoritative over a stale disk file whose async clear or write is still in flight.
+			s.local_bytes = len(a.items) == 0 ? 0 : max(s.local_bytes, i64(a.used) * 2)
 		case .Session:
 			s.session_keys += len(a.items)
 			s.session_bytes += i64(a.used) * 2
@@ -129,7 +130,7 @@ storage_sites :: proc(m: ^Storage_Manager, allocator := context.temp_allocator) 
 		// (an area that was cleared leaves an empty file: nothing to list)
 		if s.local_bytes <= 8 && s.local_keys <= 0 { s.local_bytes = 0 }
 		extra := s.opfs_bytes + s.cache_bytes
-		if s.local_bytes == 0 && s.session_bytes == 0 && s.session_keys == 0 && s.idb_bytes - extra <= 8 && s.idb_dbs <= 0 && extra == 0 && s.service_workers == 0 { continue }
+		if s.local_bytes == 0 && s.local_keys <= 0 && s.session_bytes == 0 && s.session_keys == 0 && s.idb_bytes - extra <= 8 && s.idb_dbs <= 0 && extra == 0 && s.service_workers == 0 { continue }
 		append(&list, s^)
 	}
 	slice.sort_by(list[:], proc(a, b: Site_Data) -> bool { return a.key < b.key })
@@ -142,6 +143,7 @@ storage_clear_site :: proc(m: ^Storage_Manager, key: string, kinds: Site_Kinds) 
 	if .Local in kinds {
 		if a, ok := m.areas[key]; ok && a.kind == .Local {
 			area_clear(a)
+			a.state = .Loaded   // authoritative empty: discards any in-flight storage_prefetch and hides stale disk bytes
 			a.dirty = false
 			area_write(m, a)   // an empty snapshot: ordered with the writes in flight, never overtaken by an older one
 		} else if m.dir != "" {

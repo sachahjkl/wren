@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:path/filepath"
 import "core:testing"
 import "wb:base"
+import "wb:host"
 
 @(test)
 storage_keys_round_trip_through_file_names :: proc(t: ^testing.T) {
@@ -119,4 +120,54 @@ local_storage_is_put_back_from_its_images :: proc(t: ^testing.T) {
 		storage_manager_destroy(&m)
 		base.remove_tree(dir)
 	}
+}
+
+@(test)
+cleared_local_storage_is_absent_while_async_write_is_pending :: proc(t: ^testing.T) {
+	test_pages(t)
+	dir := fmt.tprintf("%s/wren_sites_async_clear_%s", base.temp_dir(context.temp_allocator), base.unique_name(context.temp_allocator))
+	base.remove_tree(dir)
+	defer base.remove_tree(dir)
+
+	// Persist a non-empty .wls file on disk synchronously first.
+	{
+		seed: Storage_Manager
+		storage_manager_init(&seed, nil, nil, dir)
+		a := area_new(&seed, "http://127.0.0.1:8765", "http://127.0.0.1:8765", .Local)
+		a.state = .Loaded
+		area_put(a, "reset_key", "kept?")
+		a.dirty = true
+		storage_flush(&seed)
+		storage_manager_destroy(&seed)
+	}
+
+	// Open a manager backed by an async File_Writer (as in the real browser), clear the site, and check
+	// storage_sites immediately before the blocking pool finishes rewriting the .wls file.
+	loop: host.Loop
+	host.loop_init(&loop)
+	defer host.loop_destroy(&loop)
+	pool: host.Blocking_Pool
+	host.blocking_init(&pool, &loop, 1)
+	defer host.blocking_destroy(&pool)
+	writer := new(host.File_Writer)
+	host.file_writer_init(writer, &loop, &pool)
+	defer {
+		host.file_writer_flush(writer)
+		host.file_writer_destroy(writer)
+		free(writer)
+	}
+
+	m: Storage_Manager
+	storage_manager_init(&m, &loop, &pool, dir, writer)
+	defer storage_manager_destroy(&m)
+
+	testing.expect_value(t, len(storage_sites(&m)), 1)
+	storage_clear_site(&m, "http://127.0.0.1:8765", {.Local, .Session, .Indexed_Db})
+	// Immediately after clear, even while the async empty-file write is still queued or running, no site remains.
+	testing.expect_value(t, len(storage_sites(&m)), 0)
+
+	// Even with a stale non-empty .wls on disk and a loaded empty area in memory (e.g. before a delayed write fires),
+	// storage_sites trusts the loaded empty area.
+	area := m.areas["http://127.0.0.1:8765"]
+	testing.expect(t, area != nil && area.state == .Loaded && len(area.items) == 0, "cleared origin stays loaded and empty")
 }

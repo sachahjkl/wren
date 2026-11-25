@@ -84,6 +84,20 @@ live_instances: int   // atomic
 @(private) sync_lock :: proc() { sync.mutex_lock(&runtime_lock) }
 @(private) sync_unlock :: proc() { sync.mutex_unlock(&runtime_lock) }
 
+@(private = "file")
+apply_test_shared_cache :: proc(rs: ^Runtime_Settings) {
+	// A test run's processes share one disk cache (src/e2e and test_all set it): the JavaScript engine's image compiles in 5 s of CPU, and a run starts
+	// hundreds of them, each on a throwaway profile or on none. Never in a release: an address in the environment is not where machine code comes from.
+	when #config(WREN_CHANNEL, "dev") != "release" {
+		if rs.test_shared_cache {
+			if shared := os.get_env("WREN_TEST_WASM_CACHE", context.temp_allocator); shared != "" {
+				delete(rs.cache_dir, base.process_allocator())
+				rs.cache_dir = strings.clone(shared, base.process_allocator())
+			}
+		}
+	}
+}
+
 // Engine-level settings (compiler, proposals, caches). Call before `runtime_init`; an engine already started keeps its
 // configuration until `runtime_destroy`.
 configure :: proc(rs: Runtime_Settings) {
@@ -92,16 +106,7 @@ configure :: proc(rs: Runtime_Settings) {
 	context.allocator = base.process_allocator()
 	runtime_settings_destroy(&settings)
 	settings = clone_settings(rs)
-	// A test run's processes share one disk cache (src/e2e sets it): the JavaScript engine's image compiles in 5 s of CPU, and a run starts
-	// hundreds of them, each on a throwaway profile or on none. Never in a release: an address in the environment is not where machine code comes from.
-	when #config(WREN_CHANNEL, "dev") != "release" {
-		if rs.test_shared_cache {
-			if shared := os.get_env("WREN_TEST_WASM_CACHE", context.temp_allocator); shared != "" {
-				delete(settings.cache_dir)
-				settings.cache_dir = strings.clone(shared)
-			}
-		}
-	}
+	apply_test_shared_cache(&settings)
 	settings_set = true
 }
 
@@ -109,7 +114,12 @@ configure :: proc(rs: Runtime_Settings) {
 runtime_init :: proc() -> bool {
 	sync.mutex_lock(&runtime_lock)
 	defer sync.mutex_unlock(&runtime_lock)
-	if !settings_set { settings = runtime_settings_default(); settings_set = true }
+	if !settings_set {
+		context.allocator = base.process_allocator()
+		settings = runtime_settings_default()
+		apply_test_shared_cache(&settings)
+		settings_set = true
+	}
 	return wt_start(settings)
 }
 

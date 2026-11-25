@@ -749,6 +749,7 @@ wasm/guest_time.odin guest_clock thread
 wasm/guest_time.odin guest_span_depth thread
 wasm/guest_time.odin guest_span_start thread
 wasm/guest_time.odin guest_span_label thread
+wasm/host.odin linker_lock process  # leaf mutex protecting Wasm host import registry and shared linkers
 wasm/host.odin registry process  # process-wide Wasm host import registry
 wasm/host.odin registry_index process  # process-wide Wasm host import lookup map
 wasm/host_profile.odin timed process  # process-wide Wasm host call profiler entries

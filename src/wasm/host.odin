@@ -18,6 +18,7 @@ package wasm
 import "core:fmt"
 import "core:hash"
 import "core:strings"
+import "core:sync"
 import "wb:base"
 
 Val_Kind :: enum u8 { I32, I64, F32, F64 }
@@ -118,6 +119,10 @@ register_compact :: proc(modules: []string, sigs: []string, names: string, impor
 	return register(expanded)
 }
 
+// Leaf lock for registry, registry_index, wt.linker, wt.polled_linker, and wt.linker_gen.
+// Lock order: runtime_lock > cache.lock > linker_lock.
+@(private)
+linker_lock: sync.Mutex
 @(private)
 registry: [dynamic]^Import
 @(private)
@@ -140,6 +145,8 @@ register :: proc(imports: []Import) -> bool {
 // Under runtime_lock.
 @(private)
 register_unlocked :: proc(imports: []Import) -> bool {
+	sync.mutex_lock(&linker_lock)
+	defer sync.mutex_unlock(&linker_lock)
 	context.allocator = base.process_allocator()
 	fresh := make([dynamic]^Import, 0, len(imports), context.temp_allocator)
 	seen := make(map[string]bool, len(imports), context.temp_allocator)
@@ -178,7 +185,7 @@ register_unlocked :: proc(imports: []Import) -> bool {
 		if wt.engine != nil { ok &&= define_import(wt.linker, im, false) }
 		if wt.polled_linker != nil { ok &&= define_import(wt.polled_linker, im, false) }
 	}
-	if wt.engine != nil { wt.linker_gen += 1 }
+	if wt.engine != nil && len(fresh) > 0 { wt.linker_gen += 1 }
 	return ok
 }
 
@@ -192,13 +199,19 @@ clone_kinds :: proc(k: []Val_Kind) -> []Val_Kind {
 
 // The availability bits of an import, and whether it exists.
 import_realms :: proc(module, name: string) -> (realms: u32, ok: bool) {
+	sync.mutex_lock(&linker_lock)
+	defer sync.mutex_unlock(&linker_lock)
 	im := registry_find(module, name)
 	if im == nil { return 0, false }
 	return im.realms, true
 }
 
 // How many host functions are registered.
-import_count :: proc() -> int { return len(registry) }
+import_count :: proc() -> int {
+	sync.mutex_lock(&linker_lock)
+	defer sync.mutex_unlock(&linker_lock)
+	return len(registry)
+}
 
 @(private)
 registry_find :: proc(module, name: string) -> ^Import {
@@ -207,6 +220,8 @@ registry_find :: proc(module, name: string) -> ^Import {
 
 @(private)
 registry_destroy :: proc() {
+	sync.mutex_lock(&linker_lock)
+	defer sync.mutex_unlock(&linker_lock)
 	context.allocator = base.process_allocator()
 	for im in registry {
 		delete(im.module); delete(im.name)

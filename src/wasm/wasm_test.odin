@@ -1095,3 +1095,47 @@ packed_image_shipped_hit_and_fallback_roundtrip :: proc(t: ^testing.T) {
 	s = cache_stats()
 	testing.expectf(t, s.shipped_hits == 1 && s.compiles == 0 && s.shipped_refused == 0, "stripped shipped blob hit: %v", s)
 }
+
+@(test)
+cache_acquire_deduplicates_concurrent_compiles :: proc(t: ^testing.T) {
+	setup(t)
+	defer runtime_destroy()
+	raw := wat(t, MODULE)
+	// Clone into process allocator so worker threads never read the test's temp allocator.
+	image := make([]byte, len(raw), base.process_allocator())
+	copy(image, raw)
+	defer delete(image, base.process_allocator())
+
+	WORKERS :: 4
+	Shared :: struct {
+		image: []byte,
+		ready: i32,
+		go:    b32,
+		ok:    i32,
+	}
+	sh := Shared{image = image}
+	threads: [WORKERS]^thread.Thread
+	for i in 0 ..< WORKERS {
+		threads[i] = thread.create_and_start_with_data(&sh, proc(data: rawptr) {
+			context = base.process_context()
+			sh := (^Shared)(data)
+			sync.atomic_add(&sh.ready, 1)
+			for !sync.atomic_load(&sh.go) { sync.cpu_relax() }
+			inst, err := instance_create(sh.image, rawptr(uintptr(42)), nil, options_default(), "concurrent")
+			if inst != nil {
+				r, res := call_i32(inst, "add", 20, 22)
+				if res == .Ok && r == 42 { sync.atomic_add(&sh.ok, 1) }
+				destroy(inst)
+			}
+			delete(err)
+		})
+	}
+	for sync.atomic_load(&sh.ready) < WORKERS { sync.cpu_relax() }
+	sync.atomic_store(&sh.go, true)
+	for th in threads { thread.destroy(th) }
+
+	testing.expect_value(t, int(sync.atomic_load(&sh.ok)), WORKERS)
+	st := cache_stats()
+	testing.expect_value(t, st.compiles, 1)
+	testing.expect_value(t, st.memory_hits, WORKERS - 1)
+}

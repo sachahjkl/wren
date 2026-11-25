@@ -301,3 +301,116 @@ window_layout_followup_is_bounded_and_preserves_errands :: proc(t: ^testing.T) {
 	testing.expect_value(t, b.causes, Frame_Causes{})
 	app.active = nil
 }
+
+@(test)
+tab_stable_ignores_errand_and_continuous_causes_but_waits_for_active_work :: proc(t: ^testing.T) {
+	app := test_app(t)
+	state := new(ui.State)
+	theme: ui.Theme
+	defer {
+		ui.destroy(state)
+		free(state)
+		ui.theme_destroy(&theme)
+	}
+	ui.init(state, &app.fonts, &theme)
+	w := active_window(app)
+	w.ui = state
+	defer { w.ui = nil }
+
+	tab := tab_new_bare(app, w, "https://example.test/")
+	testing.expect(t, tab_stable(app, tab), "quiet loaded tab is stable")
+
+	// Errands and continuous motion (.Animation, .Media) do not block tab_stable.
+	for c in ([]Frame_Cause{.Caret, .Status_Bar, .Reader, .Animation, .Media}) {
+		w.causes = {c}
+		testing.expectf(t, tab_stable(app, tab), "tab_stable ignores cause %v", c)
+	}
+	w.causes = FRAME_ERRAND_CAUSES + FRAME_CONTINUOUS_CAUSES
+	testing.expect(t, tab_stable(app, tab), "tab_stable ignores combined errand and continuous causes")
+
+	// Active unsettled work blocks tab_stable.
+	for c in ([]Frame_Cause{.Input, .Layout, .Style, .Page, .Chrome, .Remote}) {
+		w.causes = {c}
+		testing.expectf(t, !tab_stable(app, tab), "tab_stable waits for active cause %v", c)
+	}
+	w.causes = {}
+}
+
+@(test)
+window_layout_followup_stays_bounded_during_continuous_animation :: proc(t: ^testing.T) {
+	app, a, b := two_windows(t)
+	defer free_windows(app, a, b)
+
+	// Continuous animation (.Animation + .Page loop cause) must not reset layout_followups on every frame.
+	window_invalidate(a, .Animation)
+	window_frame_begin(a, {.Asked, .Page})
+	for i in 0 ..< MAX_LAYOUT_FOLLOWUPS {
+		testing.expectf(t, window_note_layout(a, u64(200 + i)), "animated follow-up %d allowed", i + 1)
+		window_invalidate(a, .Animation)
+		window_frame_begin(a, {.Asked, .Page})
+	}
+	testing.expect(t, !window_note_layout(a, 300), "oscillating layout stops after MAX_LAYOUT_FOLLOWUPS even while animating")
+	testing.expect(t, .Layout not_in a.causes, "no .Layout queued once budget is spent during animation")
+
+	// Once the layout signature stops changing, the budget resets for future legitimate layout changes.
+	window_invalidate(a, .Animation)
+	window_frame_begin(a, {.Asked, .Page})
+	testing.expect(t, !window_note_layout(a, 300), "unchanged signature schedules no follow-up")
+	testing.expect_value(t, a.layout_followups, 0)
+	testing.expect(t, window_note_layout(a, 301), "settled window gets a fresh follow-up budget")
+	testing.expect(t, .Layout in a.causes, ".Layout queued after budget restored")
+}
+
+@(test)
+centred_toolbar_converges_without_1px_oscillation :: proc(t: ^testing.T) {
+	app := test_app(t)
+	app_fonts_init(app)
+	ui_font, ok := font.load_embedded(&app.fonts, font.FALLBACK_UI_DATA)
+	if !testing.expect(t, ok, "embedded UI font") { return }
+
+	state := new(ui.State)
+	theme: ui.Theme
+	defer {
+		ui.destroy(state)
+		free(state)
+		ui.theme_destroy(&theme)
+		free_all(context.temp_allocator)
+	}
+	ui.init(state, &app.fonts, &theme)
+
+	w: Browser_Window
+	w.ui = state
+
+	// Reproduce a 900 px toolbar whose trailing children_sum box has a fractional width (118.4 px)
+	// and a 672 px max address bar: using prev_box.size.x must settle cleanly with zero 1 px ping-pong.
+	step :: proc(w: ^Browser_Window, f: font.Font_Id) -> bool {
+		window_frame_begin(w, {.Asked})
+		base := ui.Style{pref = {.X = ui.px(100), .Y = ui.px(32)}, font = f, font_size = 14}
+		ui.begin_build(w.ui, {window_size = {900, 42}, dt = 1.0 / 60, animations = false, dpi_scale = 1, base = base})
+		ui.next({width = ui.fill(), height = ui.px(42)})
+		if ui.row(.Center, {}, "###toolbar") {
+			lead: f32 = 109.6
+			ui.spacer(ui.px(lead))
+			trail: f32
+			if end := ui.prev_box("###toolbar_end"); end != nil { trail = end.size.x }
+			before, width := address_bar_span(900, lead, trail, ADDRESS_BAR_MAX_EM * 14)
+			ui.spacer(ui.px(before))
+			ui.next({width = ui.px(width), height = ui.px(30)})
+			_ = ui.build_box({}, "###address_bar")
+			ui.spacer(ui.fill())
+			ui.next({width = ui.children_sum(), height = ui.pct(1), axis = .X, cross = .Center})
+			if ui.parent(ui.build_box({}, "###toolbar_end")) {
+				ui.spacer(ui.px(118.4))
+			}
+		}
+		ui.end_build()
+		return window_layout_check(w)
+	}
+
+	window_invalidate(&w, .Chrome)
+	_ = step(&w, ui_font) // frame 1: prev_box absent, establishes ###toolbar_end size
+	_ = step(&w, ui_font) // frame 2: applies ###toolbar_end size.x
+	for i in 0 ..< 5 {
+		testing.expectf(t, !step(&w, ui_font), "toolbar must stay settled on frame %d", i + 3)
+	}
+}
