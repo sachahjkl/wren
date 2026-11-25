@@ -1024,3 +1024,251 @@ cache_usage :: proc(dir, origin: string) -> i64 {
 	defer sync.mutex_unlock(&store.mu)
 	return oc.bytes
 }
+
+////////////////////////////////
+// Async-read helpers (cold index.wcs & <id>.body offloaded off the UI thread)
+
+// Whether `origin` in profile `dir` is already loaded in RAM (or memory-only, requiring no disk read).
+cache_origin_loaded :: proc(dir, origin: string) -> bool {
+	if dir == "" { return true }
+	store := &the_pages.cache_store
+	key := strings.concatenate({dir, "\x00", origin}, context.temp_allocator)
+	sync.mutex_lock(&store.mu)
+	_, ok := store.origins[key]
+	sync.mutex_unlock(&store.mu)
+	return ok
+}
+
+// Acquires `store.mu` and returns `oc` ONLY if already in RAM (or memory-only); never touches disk.
+// When `ok` is true, caller MUST unlock `store.mu`. When `ok` is false, `store.mu` is NOT held.
+@(private = "file")
+origin_caches_try_lock :: proc(store: ^Cache_Store, dir, origin: string) -> (oc: ^Origin_Caches, key: string, ok: bool) {
+	key = strings.concatenate({dir, "\x00", origin}, context.temp_allocator)
+	sync.mutex_lock(&store.mu)
+	if existing, found := store.origins[key]; found { return existing, key, true }
+	if dir != "" {
+		sync.mutex_unlock(&store.mu)
+		return nil, "", false
+	}
+	pa := cache_alloc()
+	fresh := new(Origin_Caches, pa)
+	fresh.origin = strings.clone(origin, pa)
+	if store.origins == nil { store.origins = make(map[string]^Origin_Caches, allocator = pa) }
+	store.origins[strings.clone(key, pa)] = fresh
+	return fresh, key, true
+}
+
+@(private = "file")
+cache_null_body_status :: proc(status: int) -> bool {
+	switch status {
+	case 0, 101, 103, 204, 205, 304: return true
+	}
+	return false
+}
+
+@(private = "file")
+pack_u32 :: proc(b: ^[dynamic]byte, v: u32) {
+	append(b, u8(v), u8(v >> 8), u8(v >> 16), u8(v >> 24))
+}
+
+@(private = "file")
+pack_str :: proc(b: ^[dynamic]byte, s: string) {
+	pack_u32(b, u32(len(s)))
+	if len(s) > 0 { append(b, ..transmute([]byte)s) }
+}
+
+@(private = "file")
+Cache_Matched_Entry :: struct {
+	status:       int,
+	status_text:  string,
+	response_url: string,
+	headers:      string,
+	has_body:     bool,
+	body:         []byte,   // temp_allocator (when resident)
+	disk_path:    string,   // temp_allocator (when cold on disk)
+}
+
+@(private = "file")
+cache_collect_matches_locked :: proc(oc: ^Origin_Caches, c: ^Named_Cache, url, method: string, q: Cache_Query, req_headers: string, multiple, allow_disk: bool, out: ^[dynamic]Cache_Matched_Entry) -> (need_disk: bool) {
+	t := context.temp_allocator
+	if url == "" {
+		for &e in c.entries {
+			if cache_append_match(oc, &e, allow_disk, out) { return true }
+			if !multiple { return false }
+		}
+		return false
+	}
+	candidates: []u64
+	if q.ignore_search {
+		if list, ok := c.by_base_url[cache_url_key(url, true)]; ok { candidates = list[:] }
+	} else {
+		if list, ok := c.by_url[cache_url_key(url, false)]; ok { candidates = list[:] }
+	}
+	for id in candidates {
+		idx, ok := c.by_id[id]
+		if !ok { continue }
+		e := &c.entries[idx]
+		if !cache_entry_matches(e, url, method, q, req_headers) { continue }
+		if cache_append_match(oc, e, allow_disk, out) { return true }
+		if !multiple { return false }
+	}
+	_ = t
+	return false
+}
+
+@(private = "file")
+cache_append_match :: proc(oc: ^Origin_Caches, e: ^Cached_Response, allow_disk: bool, out: ^[dynamic]Cache_Matched_Entry) -> (need_disk: bool) {
+	t := context.temp_allocator
+	null_body := cache_null_body_status(e.status)
+	item := Cache_Matched_Entry{
+		status       = e.status,
+		status_text  = strings.clone(e.status_text, t),
+		response_url = strings.clone(e.response_url, t),
+		headers      = strings.clone(e.headers, t),
+	}
+	if !null_body {
+		if e.body_resident || oc.dir == "" {
+			item.has_body = true
+			if len(e.body) > 0 {
+				item.body = make([]byte, len(e.body), t)
+				copy(item.body, e.body)
+			}
+		} else {
+			if !allow_disk { return true }
+			item.disk_path = body_path(oc, e.id, t)
+		}
+	}
+	append(out, item)
+	return false
+}
+
+// Matches and packs Cache entries into a binary Buffer payload.
+// When `allow_disk` is false, never performs any filesystem I/O and returns `need_disk = true` if either `index.wcs`
+// or any matched entry body must be read from disk.
+cache_match_pack :: proc(
+	dir, origin, cache_name: string,
+	all_caches: bool,
+	url, method: string,
+	q: Cache_Query,
+	req_headers: string,
+	multiple: bool,
+	allow_disk: bool,
+	allocator := context.allocator,
+) -> (packed: [dynamic]byte, found: bool, need_disk: bool) {
+	if url != "" && !q.ignore_method && method != "GET" && method != "" {
+		return nil, false, false
+	}
+	store := &the_pages.cache_store
+	oc: ^Origin_Caches
+	if allow_disk {
+		oc, _ = origin_caches_lock(store, dir, origin)
+	} else {
+		ok: bool
+		oc, _, ok = origin_caches_try_lock(store, dir, origin)
+		if !ok { return nil, false, true }
+	}
+
+	matched := make([dynamic]Cache_Matched_Entry, context.temp_allocator)
+	if all_caches {
+		for c in oc.caches {
+			if cache_collect_matches_locked(oc, c, url, method, q, req_headers, false, allow_disk, &matched) {
+				sync.mutex_unlock(&store.mu)
+				return nil, false, true
+			}
+			if len(matched) > 0 { break }
+		}
+	} else if c := find_cache_fast(oc, cache_name); c != nil {
+		if cache_collect_matches_locked(oc, c, url, method, q, req_headers, multiple, allow_disk, &matched) {
+			sync.mutex_unlock(&store.mu)
+			return nil, false, true
+		}
+	}
+	sync.mutex_unlock(&store.mu)
+
+	if len(matched) == 0 { return nil, false, false }
+
+	// Cold disk body reads happen completely outside `store.mu` (and only when `allow_disk == true`).
+	for &item in matched {
+		if item.disk_path != "" {
+			if data, err := os.read_entire_file(item.disk_path, context.temp_allocator); err == nil {
+				item.has_body = true
+				item.body = data
+			}
+		}
+	}
+
+	packed = make([dynamic]byte, 0, 64, allocator)
+	pack_u32(&packed, u32(len(matched)))
+	for item in matched {
+		pack_u32(&packed, u32(i32(item.status)))
+		pack_str(&packed, item.status_text)
+		pack_str(&packed, item.response_url)
+		pack_str(&packed, item.headers)
+		append(&packed, item.has_body ? 1 : 0)
+		pack_u32(&packed, u32(len(item.body)))
+		if len(item.body) > 0 { append(&packed, ..item.body) }
+	}
+	return packed, true, false
+}
+
+// Matches and packs Cache request keys into a binary Buffer payload.
+// When `allow_disk` is false, never reads `index.wcs` and returns `need_disk = true` if the origin is cold.
+cache_keys_pack :: proc(
+	dir, origin, cache_name, url, method: string,
+	q: Cache_Query,
+	req_headers: string,
+	allow_disk: bool,
+	allocator := context.allocator,
+) -> (packed: [dynamic]byte, found: bool, need_disk: bool) {
+	if url != "" && !q.ignore_method && method != "GET" && method != "" {
+		return nil, false, false
+	}
+	store := &the_pages.cache_store
+	oc: ^Origin_Caches
+	if allow_disk {
+		oc, _ = origin_caches_lock(store, dir, origin)
+	} else {
+		ok: bool
+		oc, _, ok = origin_caches_try_lock(store, dir, origin)
+		if !ok { return nil, false, true }
+	}
+	defer sync.mutex_unlock(&store.mu)
+
+	c := find_cache_fast(oc, cache_name)
+	if c == nil { return nil, false, false }
+
+	count: u32
+	if url == "" {
+		count = u32(len(c.entries))
+		if count == 0 { return nil, false, false }
+		packed = make([dynamic]byte, 0, 64, allocator)
+		pack_u32(&packed, count)
+		for &e in c.entries {
+			pack_str(&packed, e.url)
+			pack_str(&packed, e.req_headers)
+		}
+		return packed, true, false
+	}
+
+	candidates: []u64
+	if q.ignore_search {
+		if list, ok := c.by_base_url[cache_url_key(url, true)]; ok { candidates = list[:] }
+	} else {
+		if list, ok := c.by_url[cache_url_key(url, false)]; ok { candidates = list[:] }
+	}
+	matched := make([dynamic]int, context.temp_allocator)
+	for id in candidates {
+		idx, ok := c.by_id[id]
+		if !ok { continue }
+		if cache_entry_matches(&c.entries[idx], url, method, q, req_headers) { append(&matched, idx) }
+	}
+	if len(matched) == 0 { return nil, false, false }
+	packed = make([dynamic]byte, 0, 64, allocator)
+	pack_u32(&packed, u32(len(matched)))
+	for idx in matched {
+		e := &c.entries[idx]
+		pack_str(&packed, e.url)
+		pack_str(&packed, e.req_headers)
+	}
+	return packed, true, false
+}

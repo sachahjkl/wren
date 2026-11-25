@@ -1042,30 +1042,26 @@ foreign import _wr_wj_caches "caches"
 foreign _wr_wj_caches {
 	// Whether the calling realm may use caches.
 	@(link_name = "CacheStorage_check") wr_CacheStorage_check :: proc() -> i32 ---
-	// caches.open(name): the cache exists afterwards.
-	@(link_name = "CacheStorage_openName") wr_CacheStorage_openName :: proc(name: [^]u8, name_len: u32) -> i32 ---
-	// caches.has(name)
-	@(link_name = "CacheStorage_hasName") wr_CacheStorage_hasName :: proc(name: [^]u8, name_len: u32, _ret: ^u8) -> i32 ---
-	// caches.delete(name)
-	@(link_name = "CacheStorage_deleteName") wr_CacheStorage_deleteName :: proc(name: [^]u8, name_len: u32, _ret: ^u8) -> i32 ---
-	// caches.keys(): the names in creation order, "\n"-separated.
-	@(link_name = "CacheStorage_names") wr_CacheStorage_names :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
-	// The ids of the entries of `cache` matching the request (url "" = every entry), decimal, "\n"-separated. Unless
-	// ignore_vary, an entry whose response has a Vary header matches only when the named request headers are the same
-	// in `request_headers` ("Name: value" lines) as in its stored request (Vary: * never matches).
-	@(link_name = "Cache_matchIds") wr_Cache_matchIds :: proc(cache: [^]u8, cache_len: u32, url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, request_headers: [^]u8, request_headers_len: u32, ignore_search: i32, ignore_method: i32, ignore_vary: i32, _buf: [^]u8, _cap: u32) -> i32 ---
-	// The header lines of an entry's request (Not_Found when it is gone).
-	@(link_name = "Cache_entryRequestHeaders") wr_Cache_entryRequestHeaders :: proc(cache: [^]u8, cache_len: u32, id: u64, _buf: [^]u8, _cap: u32) -> i32 ---
-	// An entry's head: status, statusText, the response's URL, the request's method, the request's URL, then the
-	// response's header lines, "\n"-separated (Not_Found when it is gone).
-	@(link_name = "Cache_entryHead") wr_Cache_entryHead :: proc(cache: [^]u8, cache_len: u32, id: u64, _buf: [^]u8, _cap: u32) -> i32 ---
-	// An entry's body (Not_Found when it is gone).
-	@(link_name = "Cache_entryBody") wr_Cache_entryBody :: proc(cache: [^]u8, cache_len: u32, id: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	// caches.open(name): promise settling undefined once the cache exists.
+	@(link_name = "CacheStorage_openName") wr_CacheStorage_openName :: proc(name: [^]u8, name_len: u32, _ret: ^u64) -> i32 ---
+	// caches.has(name): promise of bool (value 0/1).
+	@(link_name = "CacheStorage_hasName") wr_CacheStorage_hasName :: proc(name: [^]u8, name_len: u32, _ret: ^u64) -> i32 ---
+	// caches.delete(name): promise of bool (value 0/1).
+	@(link_name = "CacheStorage_deleteName") wr_CacheStorage_deleteName :: proc(name: [^]u8, name_len: u32, _ret: ^u64) -> i32 ---
+	// caches.keys(): promise whose text is the names in creation order, "\n"-separated.
+	@(link_name = "CacheStorage_names") wr_CacheStorage_names :: proc(_ret: ^u64) -> i32 ---
+	// cache.match / cache.matchAll / caches.match: promise of a Buffer handle (0 when none matched) packing matched
+	// entries: u32 count, then per entry: i32 status, u32+bytes status_text, u32+bytes response_url, u32+bytes headers,
+	// u8 has_body, u32+bytes body. When `all_caches` is true, searches every cache in creation order.
+	@(link_name = "Cache_match") wr_Cache_match :: proc(cache: [^]u8, cache_len: u32, all_caches: i32, url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, request_headers: [^]u8, request_headers_len: u32, ignore_search: i32, ignore_method: i32, ignore_vary: i32, multiple: i32, _ret: ^u64) -> i32 ---
+	// cache.keys(request, options): promise of a Buffer handle (0 when none matched) packing matched requests: u32 count,
+	// then per entry: u32+bytes url, u32+bytes request_headers.
+	@(link_name = "Cache_keys") wr_Cache_keys :: proc(cache: [^]u8, cache_len: u32, url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, request_headers: [^]u8, request_headers_len: u32, ignore_search: i32, ignore_method: i32, ignore_vary: i32, _ret: ^u64) -> i32 ---
 	// cache.put(request, response) with the response's body read: replaces the entries the request matches (Vary
 	// considered). Quota past caches.max_bytes_per_origin.
-	@(link_name = "Cache_putEntry") wr_Cache_putEntry :: proc(cache: [^]u8, cache_len: u32, url: [^]u8, url_len: u32, request_headers: [^]u8, request_headers_len: u32, status: i32, status_text: [^]u8, status_text_len: u32, response_url: [^]u8, response_url_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32) -> i32 ---
-	// cache.delete(request, options)
-	@(link_name = "Cache_deleteEntries") wr_Cache_deleteEntries :: proc(cache: [^]u8, cache_len: u32, url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, request_headers: [^]u8, request_headers_len: u32, ignore_search: i32, ignore_method: i32, ignore_vary: i32, _ret: ^u8) -> i32 ---
+	@(link_name = "Cache_putEntry") wr_Cache_putEntry :: proc(cache: [^]u8, cache_len: u32, url: [^]u8, url_len: u32, request_headers: [^]u8, request_headers_len: u32, status: i32, status_text: [^]u8, status_text_len: u32, response_url: [^]u8, response_url_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, _ret: ^u64) -> i32 ---
+	// cache.delete(request, options): promise of bool (value 0/1).
+	@(link_name = "Cache_deleteEntries") wr_Cache_deleteEntries :: proc(cache: [^]u8, cache_len: u32, url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, request_headers: [^]u8, request_headers_len: u32, ignore_search: i32, ignore_method: i32, ignore_vary: i32, _ret: ^u64) -> i32 ---
 }
 
 // module canvas
@@ -2830,27 +2826,29 @@ foreign _wr_wj_frames {
 foreign import _wr_wj_fs "fs"
 @(default_calling_convention = "contextless")
 foreign _wr_wj_fs {
-	// navigator.storage.getDirectory(): the root of the realm's origin private file system. Security outside a secure
-	// context, for an opaque origin or a profile without a folder. `bucket`: a storage bucket's (StorageBucket.getDirectory),
-	// "" for the default one; Invalid_State once the bucket was deleted.
+	// navigator.storage.getDirectory(): a promise of the root id of the realm's origin private file system. Security
+	// outside a secure context, for an opaque origin or a profile without a folder. `bucket`: a storage bucket's
+	// (StorageBucket.getDirectory), "" for the default one; Invalid_State once the bucket was deleted.
 	@(link_name = "Fs_opfsRoot") wr_Fs_opfsRoot :: proc(bucket: [^]u8, bucket_len: u32, _ret: ^u64) -> i32 ---
-	// getFileHandle / getDirectoryHandle(name, {create}) on the directory at `path`: the child's path. Not_Found,
-	// Type (an invalid name), Not_Allowed (no permission), Invalid_State ("TypeMismatchError": the other kind).
-	@(link_name = "Fs_getEntry") wr_Fs_getEntry :: proc(root: u64, path: [^]u8, path_len: u32, name: [^]u8, name_len: u32, directory: i32, create: i32, _buf: [^]u8, _cap: u32) -> i32 ---
-	// removeEntry(name, {recursive}): Invalid_Modification for a directory that is not empty, No_Modification_Allowed
-	// for an entry in use.
-	@(link_name = "Fs_removeEntry") wr_Fs_removeEntry :: proc(root: u64, path: [^]u8, path_len: u32, name: [^]u8, name_len: u32, recursive: i32) -> i32 ---
-	// The directory's entries: "f" or "d", a tab, the name, one per line.
-	@(link_name = "Fs_list") wr_Fs_list :: proc(root: u64, path: [^]u8, path_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	// getFileHandle / getDirectoryHandle(name, {create}) on the directory at `path`: a promise whose text is the
+	// child's path. Not_Found, Type (an invalid name), Not_Allowed (no permission), Invalid_State ("TypeMismatchError":
+	// the other kind).
+	@(link_name = "Fs_getEntry") wr_Fs_getEntry :: proc(root: u64, path: [^]u8, path_len: u32, name: [^]u8, name_len: u32, directory: i32, create: i32, _ret: ^u64) -> i32 ---
+	// removeEntry(name, {recursive}): a promise settling undefined. Invalid_Modification for a directory that is not
+	// empty, No_Modification_Allowed for an entry in use.
+	@(link_name = "Fs_removeEntry") wr_Fs_removeEntry :: proc(root: u64, path: [^]u8, path_len: u32, name: [^]u8, name_len: u32, recursive: i32, _ret: ^u64) -> i32 ---
+	// The directory's entries: a promise whose text is "f" or "d", a tab, the name, one per line.
+	@(link_name = "Fs_list") wr_Fs_list :: proc(root: u64, path: [^]u8, path_len: u32, _ret: ^u64) -> i32 ---
 	// resolve(): the names from the first entry down to the second, "/"-joined (Not_Found: not below it).
 	@(link_name = "Fs_resolve") wr_Fs_resolve :: proc(root: u64, path: [^]u8, path_len: u32, root2: u64, path2: [^]u8, path2_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	// isSameEntry
 	@(link_name = "Fs_same") wr_Fs_same :: proc(root: u64, path: [^]u8, path_len: u32, root2: u64, path2: [^]u8, path2_len: u32) -> i32 ---
-	// getFile(): a File object (a LocalFile of module dnd: read on demand).
+	// getFile(): a promise of a LocalFile handle (module dnd: read on demand).
 	@(link_name = "Fs_getFile") wr_Fs_getFile :: proc(root: u64, path: [^]u8, path_len: u32, _ret: ^u64) -> i32 ---
 	// createWritable({keepExistingData}) (a temporary file) or createSyncAccessHandle() (`sync`: the file itself,
-	// exclusive): an open entry's id. No_Modification_Allowed while it is locked.
+	// exclusive): a promise of an open entry's id. No_Modification_Allowed while it is locked.
 	@(link_name = "Fs_open") wr_Fs_open :: proc(root: u64, path: [^]u8, path_len: u32, keep: i32, sync: i32, _ret: ^u64) -> i32 ---
+	// Synchronous FileSystemSyncAccessHandle operations (dedicated worker thread).
 	// Writes at `at` (-1: the cursor): the bytes written. Quota past opfs.max_bytes_per_origin.
 	@(link_name = "Fs_write") wr_Fs_write :: proc(id: u64, at: i64, data: [^]u8, data_len: u32, _ret: ^i64) -> i32 ---
 	// Reads into `into` from `at` (-1: the cursor): the bytes read.
@@ -2861,6 +2859,13 @@ foreign _wr_wj_fs {
 	@(link_name = "Fs_flush") wr_Fs_flush :: proc(id: u64) -> i32 ---
 	// close(): a writable's temporary file replaces the entry (`commit` false: abort); a sync handle's lock goes.
 	@(link_name = "Fs_close") wr_Fs_close :: proc(id: u64, commit: i32) -> i32 ---
+	// Asynchronous FileSystemWritableFileStream operations (off the UI thread).
+	// Writes at `at` (-1: the cursor): promise of the bytes written. Quota past opfs.max_bytes_per_origin.
+	@(link_name = "Fs_writeAsync") wr_Fs_writeAsync :: proc(id: u64, at: i64, data: [^]u8, data_len: u32, _ret: ^u64) -> i32 ---
+	// Truncates an open writable to `size`: promise settling undefined.
+	@(link_name = "Fs_truncateAsync") wr_Fs_truncateAsync :: proc(id: u64, size: i64, _ret: ^u64) -> i32 ---
+	// Closes an open writable (`commit` true: atomic rename over target; false: abort and remove temp file).
+	@(link_name = "Fs_closeAsync") wr_Fs_closeAsync :: proc(id: u64, commit: i32, _ret: ^u64) -> i32 ---
 	// queryPermission: 0 granted, 1 prompt, 2 denied.
 	@(link_name = "Fs_permission") wr_Fs_permission :: proc(root: u64, write: i32) -> i32 ---
 	// requestPermission({mode}): a promise of the state after (the user may be asked).

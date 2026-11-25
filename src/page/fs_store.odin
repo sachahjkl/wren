@@ -1,8 +1,8 @@
 package page
 
 // File handles (WHATWG File System, WICG File System Access), the browser's side, shared by every realm and thread (one
-// mutex for the registries, never held during a realm's code; the file operations themselves run on the calling
-// thread, outside it).
+// mutex for the registries, never held during disk I/O or a realm's code; per-open mutex + refcount serialize
+// concurrent writes/closes across blocking workers and page teardown).
 //
 //   * A handle is (root, path, kind): `path` is the "/"-joined names from the root ("" is the root itself). A root is
 //     the origin private file system of a storage key (<profile>/opfs/<key>/, names encoded so that any valid name,
@@ -17,6 +17,7 @@ package page
 //   * Quota: what the origin private file system of a key holds (kept up to date, computed by a walk the first time)
 //     never goes past opfs.max_bytes_per_origin (QuotaExceededError); navigator.storage.estimate() counts it.
 
+import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "wb:base"
@@ -28,12 +29,13 @@ Fs_Root_Kind :: enum u8 { Opfs, Local }
 Fs_Permission :: enum u8 { Granted, Prompt, Denied }
 
 Fs_Root :: struct {
-	id:     u64,
-	kind:   Fs_Root_Kind,
-	key:    string,         // Opfs: the storage key; Local: the origin it was given to
-	dir:    string,         // its folder on the disk
+	id:      u64,
+	kind:    Fs_Root_Kind,
+	key:     string,         // Opfs: the storage key; Local: the origin it was given to
+	dir:     string,         // its folder on the disk
 	read, write: Fs_Permission,
-	usage:  i64,            // Opfs: bytes held (-1: not computed yet)
+	usage:   i64,            // Opfs: bytes held (-1: not computed yet)
+	ensured: bool,           // Opfs: root directory created on disk
 }
 
 Fs_Error :: enum u8 { None, Not_Found, Type_Mismatch, Invalid_Name, Not_Allowed, Locked, Not_Empty, Quota, Io, Security }
@@ -43,16 +45,19 @@ Fs_Lock :: struct { shared: int, exclusive: bool }
 
 // An open writable stream (temporary file) or sync access handle.
 Fs_Open :: struct {
-	id:      u64,
-	root:    u64,
-	path:    string,         // the entry
-	target:  string,         // its file on the disk
-	temp:    string,         // a writable's temporary file ("" for a sync access handle)
-	file:    ^os.File,
-	cursor:  i64,
-	size:    i64,
-	base:    i64,            // the entry's size when it was opened (quota: what the commit adds)
+	id:          u64,
+	root:        u64,
+	path:        string,         // the entry
+	target:      string,         // its file on the disk
+	temp:        string,         // a writable's temporary file ("" for a sync access handle)
+	file:        ^os.File,
+	cursor:      i64,
+	size:        i64,
+	base:        i64,            // the entry's size when it was opened (quota: what the commit adds)
 	sync_handle: bool,
+	op_mu:       sync.Mutex,     // serializes read/write/truncate/flush/close on this handle (ordered before fs_store.mu)
+	refs:        int,            // guarded by fs_store.mu; freed when 0
+	closed:      bool,           // guarded by op_mu (and checked on acquire under fs_store.mu)
 }
 
 @(private)
@@ -64,6 +69,8 @@ Fs_Store :: struct {
 	next:   u64,
 }
 
+@(private = "file")
+fs_alloc :: #force_inline proc() -> runtime.Allocator { return base.process_allocator() }
 
 ////////////////////////////////
 // Names
@@ -163,15 +170,35 @@ opfs_dir :: proc(profile_dir, key: string, allocator := context.allocator) -> st
 	return strings.to_string(b)
 }
 
-// The root of the origin private file system of `key` (made on first use).
-fs_opfs_root :: proc(profile_dir, key: string) -> (u64, Fs_Error) {
+// Registers the OPFS root of `key` in memory without touching disk (used by structured-clone restore on the UI thread).
+fs_opfs_root_register :: proc(profile_dir, key: string) -> (u64, Fs_Error) {
 	dir := opfs_dir(profile_dir, key, context.temp_allocator)
 	if dir == "" { return 0, .Security }
 	sync.mutex_lock(&the_pages.fs_store.mu)
 	defer sync.mutex_unlock(&the_pages.fs_store.mu)
 	for id, r in the_pages.fs_store.roots { if r.kind == .Opfs && r.dir == dir { return id, .None } }
-	if os.make_directory_all(dir) != nil && !os.exists(dir) { return 0, .Io }
 	return fs_root_add_locked(.Opfs, key, dir, .Granted, .Granted), .None
+}
+
+// Ensures an OPFS root's directory exists on disk (runs outside fs_store.mu, on a worker thread for async calls).
+@(private)
+fs_opfs_ensure_dir :: proc(r: Fs_Root) -> Fs_Error {
+	if r.kind != .Opfs || r.ensured { return .None }
+	if os.make_directory_all(r.dir) != nil && !os.exists(r.dir) { return .Io }
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	if stored, ok := the_pages.fs_store.roots[r.id]; ok { stored.ensured = true }
+	sync.mutex_unlock(&the_pages.fs_store.mu)
+	return .None
+}
+
+// The root of the origin private file system of `key` (made on first use).
+fs_opfs_root :: proc(profile_dir, key: string) -> (u64, Fs_Error) {
+	id, err := fs_opfs_root_register(profile_dir, key)
+	if err != .None { return 0, err }
+	r, ok := fs_root(id)
+	if !ok { return 0, .Not_Found }
+	if ee := fs_opfs_ensure_dir(r); ee != .None { return 0, ee }
+	return id, .None
 }
 
 @(private)
@@ -210,10 +237,15 @@ fs_local_root :: proc(origin, dir: string, read, write: Fs_Permission) -> u64 {
 
 @(private)
 fs_root_add_locked :: proc(kind: Fs_Root_Kind, key, dir: string, read, write: Fs_Permission) -> u64 {
-	if the_pages.fs_store.roots == nil { the_pages.fs_store.roots = make(map[u64]^Fs_Root) }
+	pa := fs_alloc()
+	if the_pages.fs_store.roots == nil { the_pages.fs_store.roots = make(map[u64]^Fs_Root, allocator = pa) }
 	the_pages.fs_store.next += 1
-	r := new(Fs_Root)
-	r^ = Fs_Root{id = the_pages.fs_store.next, kind = kind, key = strings.clone(key), dir = strings.clone(dir), read = read, write = write, usage = -1}
+	r := new(Fs_Root, pa)
+	r^ = Fs_Root{
+		id = the_pages.fs_store.next, kind = kind,
+		key = strings.clone(key, pa), dir = strings.clone(dir, pa),
+		read = read, write = write, usage = -1,
+	}
 	the_pages.fs_store.roots[r.id] = r
 	return r.id
 }
@@ -292,6 +324,7 @@ fs_kind :: proc(root: u64, path: string) -> (is_dir: bool, err: Fs_Error) {
 	r, ok := fs_root(root)
 	if !ok { return false, .Not_Found }
 	if r.read != .Granted { return false, .Not_Allowed }
+	if r.kind == .Opfs { fs_opfs_ensure_dir(r) or_return }
 	p := fs_disk_path_safe(r, path) or_return
 	info, e := fs_stat_entry(r, path, p)
 	if e != nil { return false, .Not_Found }
@@ -305,6 +338,7 @@ fs_get_entry :: proc(root: u64, dir_path, name: string, directory, create: bool)
 	if !ok { return "", .Not_Found }
 	if !fs_name_valid(name) || (r.kind == .Local && !fs_disk_name_valid(name)) { return "", .Invalid_Name }
 	if r.read != .Granted { return "", .Not_Allowed }
+	if r.kind == .Opfs { fs_opfs_ensure_dir(r) or_return }
 	parent := fs_disk_path_safe(r, dir_path) or_return
 	pinfo, pe := fs_stat_entry(r, dir_path, parent)
 	if pe != nil { return "", .Not_Found }
@@ -335,6 +369,7 @@ fs_remove_entry :: proc(root: u64, dir_path, name: string, recursive: bool) -> F
 	if !ok { return .Not_Found }
 	if !fs_name_valid(name) || (r.kind == .Local && !fs_disk_name_valid(name)) { return .Invalid_Name }
 	if r.write != .Granted { return .Not_Allowed }
+	if r.kind == .Opfs { fs_opfs_ensure_dir(r) or_return }
 	child := fs_join(dir_path, name)
 	p := fs_disk_path_safe(r, child) or_return
 	info, e := fs_stat_entry(r, child, p)
@@ -372,6 +407,7 @@ fs_list :: proc(root: u64, dir_path: string) -> (listing: string, err: Fs_Error)
 	r, ok := fs_root(root)
 	if !ok { return "", .Not_Found }
 	if r.read != .Granted { return "", .Not_Allowed }
+	if r.kind == .Opfs { fs_opfs_ensure_dir(r) or_return }
 	p := fs_disk_path_safe(r, dir_path) or_return
 	if r.kind == .Local {
 		if info, se := fs_stat_entry(r, dir_path, p); se != nil {
@@ -506,7 +542,7 @@ opfs_clear :: proc(profile_dir, key: string) {
 	_ = base.remove_tree(dir)
 	sync.mutex_lock(&the_pages.fs_store.mu)
 	defer sync.mutex_unlock(&the_pages.fs_store.mu)
-	for _, r in the_pages.fs_store.roots { if r.kind == .Opfs && r.dir == dir { r.usage = 0 } }
+	for _, r in the_pages.fs_store.roots { if r.kind == .Opfs && r.dir == dir { r.usage = 0; r.ensured = false } }
 }
 
 ////////////////////////////////
@@ -514,9 +550,11 @@ opfs_clear :: proc(profile_dir, key: string) {
 
 // createWritable({keepExistingData}) / createSyncAccessHandle(): an open entry (its id).
 fs_open :: proc(root: u64, path: string, keep: bool, sync_handle: bool) -> (open_id: u64, open_err: Fs_Error) {
+	pa := fs_alloc()
 	r, ok := fs_root(root)
 	if !ok { return 0, .Not_Found }
 	if r.write != .Granted { return 0, .Not_Allowed }
+	if r.kind == .Opfs { fs_opfs_ensure_dir(r) or_return }
 	target := fs_disk_path_safe(r, path) or_return
 	info, e := fs_stat_entry(r, path, target)
 	if e != nil { return 0, .Not_Found }
@@ -524,16 +562,17 @@ fs_open :: proc(root: u64, path: string, keep: bool, sync_handle: bool) -> (open
 	if info.type == .Directory { return 0, .Type_Mismatch }
 	key := fs_lock_key(root, path)
 	sync.mutex_lock(&the_pages.fs_store.mu)
+	if the_pages.fs_store.locks == nil { the_pages.fs_store.locks = make(map[string]Fs_Lock, allocator = pa) }
 	l := the_pages.fs_store.locks[key]
 	if l.exclusive || (sync_handle && l.shared > 0) { sync.mutex_unlock(&the_pages.fs_store.mu); return 0, .Locked }
 	if sync_handle { l.exclusive = true } else { l.shared += 1 }
-	if _, had := the_pages.fs_store.locks[key]; had { the_pages.fs_store.locks[key] = l } else { the_pages.fs_store.locks[strings.clone(key)] = l }
+	if _, had := the_pages.fs_store.locks[key]; had { the_pages.fs_store.locks[key] = l } else { the_pages.fs_store.locks[strings.clone(key, pa)] = l }
 	the_pages.fs_store.next += 1
 	id := the_pages.fs_store.next
 	sync.mutex_unlock(&the_pages.fs_store.mu)
 
-	o := new(Fs_Open)
-	o.id, o.root, o.path, o.target, o.sync_handle, o.base = id, root, strings.clone(path), strings.clone(target), sync_handle, info.size
+	o := new(Fs_Open, pa)
+	o.id, o.root, o.path, o.target, o.sync_handle, o.base, o.refs = id, root, strings.clone(path, pa), strings.clone(target, pa), sync_handle, info.size, 1
 	err: Fs_Error
 	if sync_handle {
 		f, oe := os.open(target, {.Read, .Write})
@@ -543,9 +582,9 @@ fs_open :: proc(root: u64, path: string, keep: bool, sync_handle: bool) -> (open
 		if r.kind == .Opfs {
 			tmp_dir := strings.concatenate({r.dir, "/.tmp"}, context.temp_allocator)
 			_ = os.make_directory_all(tmp_dir)
-			o.temp = fmt.aprintf("%s/%d-%d", tmp_dir, id, time.time_to_unix_nano(time.now()))
+			o.temp = fmt.aprintf("%s/%d-%d", tmp_dir, id, time.time_to_unix_nano(time.now()), allocator = pa)
 		} else {
-			o.temp = strings.concatenate({target, ".crswap"})
+			o.temp = strings.concatenate({target, ".crswap"}, pa)
 			// A pre-existing symlink at the .crswap path would redirect the write outside the granted folder.
 			if fs_is_symlink(o.temp) { err = .Security }
 		}
@@ -557,7 +596,7 @@ fs_open :: proc(root: u64, path: string, keep: bool, sync_handle: bool) -> (open
 	}
 	if err != .None { fs_open_free(o, false); fs_unlock(root, path, sync_handle); return 0, err }
 	sync.mutex_lock(&the_pages.fs_store.mu)
-	if the_pages.fs_store.opens == nil { the_pages.fs_store.opens = make(map[u64]^Fs_Open) }
+	if the_pages.fs_store.opens == nil { the_pages.fs_store.opens = make(map[u64]^Fs_Open, allocator = pa) }
 	the_pages.fs_store.opens[id] = o
 	sync.mutex_unlock(&the_pages.fs_store.mu)
 	return id, .None
@@ -565,6 +604,7 @@ fs_open :: proc(root: u64, path: string, keep: bool, sync_handle: bool) -> (open
 
 @(private)
 fs_unlock :: proc(root: u64, path: string, exclusive: bool) {
+	pa := fs_alloc()
 	sync.mutex_lock(&the_pages.fs_store.mu)
 	defer sync.mutex_unlock(&the_pages.fs_store.mu)
 	key := fs_lock_key(root, path)
@@ -573,31 +613,69 @@ fs_unlock :: proc(root: u64, path: string, exclusive: bool) {
 	if exclusive { l.exclusive = false } else { l.shared = max(l.shared - 1, 0) }
 	if l.shared == 0 && !l.exclusive {
 		stored, _ := delete_key(&the_pages.fs_store.locks, key)
-		delete(stored)
+		delete(stored, pa)
 	} else {
 		the_pages.fs_store.locks[key] = l
 	}
 }
 
 @(private)
-fs_open_free :: proc(o: ^Fs_Open, remove_temp := true) {
-	if o.file != nil { os.close(o.file) }
-	if remove_temp && o.temp != "" { _ = os.remove(o.temp) }
-	delete(o.path); delete(o.target); delete(o.temp)
-	free(o)
+fs_open_close_resources :: proc(o: ^Fs_Open, remove_temp := true) {
+	pa := fs_alloc()
+	if o.file != nil {
+		os.close(o.file)
+		o.file = nil
+	}
+	if o.temp != "" {
+		if remove_temp { _ = os.remove(o.temp) }
+		delete(o.temp, pa)
+		o.temp = ""
+	}
 }
 
 @(private)
-fs_open_get :: proc(id: u64) -> ^Fs_Open {
+fs_open_free :: proc(o: ^Fs_Open, remove_temp := true) {
+	pa := fs_alloc()
+	fs_open_close_resources(o, remove_temp)
+	delete(o.path, pa); delete(o.target, pa)
+	free(o, pa)
+}
+
+@(private)
+fs_open_acquire :: proc(id: u64) -> ^Fs_Open {
 	sync.mutex_lock(&the_pages.fs_store.mu)
 	defer sync.mutex_unlock(&the_pages.fs_store.mu)
-	return the_pages.fs_store.opens[id]
+	o := the_pages.fs_store.opens[id]
+	if o == nil { return nil }
+	o.refs += 1
+	return o
+}
+
+@(private)
+fs_open_release :: proc(o: ^Fs_Open) {
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	o.refs -= 1
+	dead := o.refs == 0
+	sync.mutex_unlock(&the_pages.fs_store.mu)
+	if dead { fs_open_free(o) }
+}
+
+@(private)
+fs_open_exists :: proc(pages: ^Pages, id: u64) -> bool {
+	if pages == nil { return false }
+	sync.mutex_lock(&pages.fs_store.mu)
+	defer sync.mutex_unlock(&pages.fs_store.mu)
+	return pages.fs_store.opens[id] != nil
 }
 
 // Writes `data` at `at` (-1: the cursor), which moves past it. Quota for what the file grows by.
 fs_write :: proc(id: u64, at: i64, data: []byte, max_bytes: i64) -> (int, Fs_Error) {
-	o := fs_open_get(id)
-	if o == nil || o.file == nil { return 0, .Not_Found }
+	o := fs_open_acquire(id)
+	if o == nil { return 0, .Not_Found }
+	defer fs_open_release(o)
+	sync.mutex_lock(&o.op_mu)
+	defer sync.mutex_unlock(&o.op_mu)
+	if o.closed || o.file == nil { return 0, .Not_Found }
 	pos := at >= 0 ? at : o.cursor
 	end := pos + i64(len(data))
 	grow := max(end, o.size) - max(o.size, o.base)
@@ -620,8 +698,12 @@ fs_write :: proc(id: u64, at: i64, data: []byte, max_bytes: i64) -> (int, Fs_Err
 
 // Reads into `into` from `at` (-1: the cursor), which moves past what was read.
 fs_read :: proc(id: u64, at: i64, into: []byte) -> (int, Fs_Error) {
-	o := fs_open_get(id)
-	if o == nil || o.file == nil { return 0, .Not_Found }
+	o := fs_open_acquire(id)
+	if o == nil { return 0, .Not_Found }
+	defer fs_open_release(o)
+	sync.mutex_lock(&o.op_mu)
+	defer sync.mutex_unlock(&o.op_mu)
+	if o.closed || o.file == nil { return 0, .Not_Found }
 	pos := at >= 0 ? at : o.cursor
 	if pos >= o.size { o.cursor = pos; return 0, .None }
 	n, e := os.read_at(o.file, into[:min(i64(len(into)), o.size - pos)], pos)
@@ -631,16 +713,24 @@ fs_read :: proc(id: u64, at: i64, into: []byte) -> (int, Fs_Error) {
 }
 
 fs_seek :: proc(id: u64, pos: i64) -> Fs_Error {
-	o := fs_open_get(id)
+	o := fs_open_acquire(id)
 	if o == nil { return .Not_Found }
+	defer fs_open_release(o)
+	sync.mutex_lock(&o.op_mu)
+	defer sync.mutex_unlock(&o.op_mu)
+	if o.closed { return .Not_Found }
 	o.cursor = pos
 	return .None
 }
 
 // truncate(size): the cursor stays before the new end.
 fs_truncate :: proc(id: u64, size: i64, max_bytes: i64) -> Fs_Error {
-	o := fs_open_get(id)
-	if o == nil || o.file == nil { return .Not_Found }
+	o := fs_open_acquire(id)
+	if o == nil { return .Not_Found }
+	defer fs_open_release(o)
+	sync.mutex_lock(&o.op_mu)
+	defer sync.mutex_unlock(&o.op_mu)
+	if o.closed || o.file == nil { return .Not_Found }
 	if !fs_quota_ok(o.root, size - max(o.size, o.base), max_bytes) { return .Quota }
 	if os.truncate(o.file, size) != nil { return .Io }
 	if o.sync_handle { fs_usage_add(o.root, size - o.size); o.base = size }
@@ -650,26 +740,37 @@ fs_truncate :: proc(id: u64, size: i64, max_bytes: i64) -> Fs_Error {
 }
 
 fs_size :: proc(id: u64) -> (i64, Fs_Error) {
-	o := fs_open_get(id)
+	o := fs_open_acquire(id)
 	if o == nil { return 0, .Not_Found }
+	defer fs_open_release(o)
+	sync.mutex_lock(&o.op_mu)
+	defer sync.mutex_unlock(&o.op_mu)
+	if o.closed { return 0, .Not_Found }
 	return o.size, .None
 }
 
 fs_flush :: proc(id: u64) -> Fs_Error {
-	o := fs_open_get(id)
-	if o == nil || o.file == nil { return .Not_Found }
+	o := fs_open_acquire(id)
+	if o == nil { return .Not_Found }
+	defer fs_open_release(o)
+	sync.mutex_lock(&o.op_mu)
+	defer sync.mutex_unlock(&o.op_mu)
+	if o.closed || o.file == nil { return .Not_Found }
 	return os.sync(o.file) == nil ? .None : .Io
 }
 
 // close(): a writable's temporary file replaces the target in one rename (`commit` false: it is dropped); a sync
 // access handle lets its lock go.
 fs_close :: proc(id: u64, commit: bool, max_bytes: i64) -> Fs_Error {
+	pa := fs_alloc()
 	sync.mutex_lock(&the_pages.fs_store.mu)
 	o, ok := the_pages.fs_store.opens[id]
 	if ok { delete_key(&the_pages.fs_store.opens, id) }
 	sync.mutex_unlock(&the_pages.fs_store.mu)
 	if !ok { return .Not_Found }
 	err: Fs_Error
+	sync.mutex_lock(&o.op_mu)
+	o.closed = true
 	if !o.sync_handle && commit {
 		r, okr := fs_root(o.root)
 		if !fs_quota_ok(o.root, o.size - o.base, max_bytes) {
@@ -687,24 +788,33 @@ fs_close :: proc(id: u64, commit: bool, max_bytes: i64) -> Fs_Error {
 				err = .Io
 			} else {
 				if okr && r.kind == .Opfs { fs_usage_add(o.root, o.size - o.base) }
-				delete(o.temp)
+				delete(o.temp, pa)
 				o.temp = ""
 			}
 		}
 	}
+	// Close fd and clean up any uncommitted temp file while holding op_mu and the entry lock, before fs_unlock lets
+	// another opener reuse target or .crswap (skip os.remove if a symlink was planted at o.temp).
+	keep_temp := err == .Security && o.temp != "" && fs_is_symlink(o.temp)
+	fs_open_close_resources(o, remove_temp = !keep_temp)
+	sync.mutex_unlock(&o.op_mu)
 	fs_unlock(o.root, o.path, o.sync_handle)
-	fs_open_free(o)
+	fs_open_release(o)
 	return err
 }
 
 // Process end: open entries are dropped (writables' temporary files removed).
 fs_store_shutdown :: proc() {
+	pa := fs_alloc()
+	prev_alloc := context.allocator
+	context.allocator = pa
+	defer context.allocator = prev_alloc
 	sync.mutex_lock(&the_pages.fs_store.mu)
 	for _, o in the_pages.fs_store.opens { fs_open_free(o) }
 	delete(the_pages.fs_store.opens)
-	for k in the_pages.fs_store.locks { delete(k) }
+	for k in the_pages.fs_store.locks { delete(k, pa) }
 	delete(the_pages.fs_store.locks)
-	for _, r in the_pages.fs_store.roots { delete(r.key); delete(r.dir); free(r) }
+	for _, r in the_pages.fs_store.roots { delete(r.key, pa); delete(r.dir, pa); free(r, pa) }
 	delete(the_pages.fs_store.roots)
 	the_pages.fs_store.opens, the_pages.fs_store.locks, the_pages.fs_store.roots = nil, nil, nil   // (not the whole struct: a mutex wiped while held stays locked, and the next start waits for it for ever)
 	sync.mutex_unlock(&the_pages.fs_store.mu)

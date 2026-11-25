@@ -1,33 +1,29 @@
 /// The Cache API (Service Workers §5: CacheStorage, Cache) on the browser's storage (src/page/cache_store.odin): named
 /// caches of request -> response entries per origin, kept in the profile and shared by every realm of the origin (pages,
-/// workers, service workers). The engine (native/js/runtime/web_cache.c) makes the promises, the Request and Response
-/// objects; these functions are synchronous. Security for a realm that is not a secure context or has an opaque origin.
+/// workers, service workers). Cold index.wcs and body disk reads run off the UI thread; operations return promises
+/// settled when ready. Security for a realm that is not a secure context or has an opaque origin.
 [Exposed=(Window,Worker)]
 module caches {
   /// Whether the calling realm may use caches.
   void CacheStorage_check() raises;
-  /// caches.open(name): the cache exists afterwards.
-  void CacheStorage_openName(string name) raises;
-  /// caches.has(name)
-  bool CacheStorage_hasName(string name) raises;
-  /// caches.delete(name)
-  bool CacheStorage_deleteName(string name) raises;
-  /// caches.keys(): the names in creation order, "\n"-separated.
-  string CacheStorage_names() raises;
-  /// The ids of the entries of `cache` matching the request (url "" = every entry), decimal, "\n"-separated. Unless
-  /// ignore_vary, an entry whose response has a Vary header matches only when the named request headers are the same
-  /// in `request_headers` ("Name: value" lines) as in its stored request (Vary: * never matches).
-  string Cache_matchIds(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises;
-  /// The header lines of an entry's request (Not_Found when it is gone).
-  string Cache_entryRequestHeaders(string cache, u64 id) raises;
-  /// An entry's head: status, statusText, the response's URL, the request's method, the request's URL, then the
-  /// response's header lines, "\n"-separated (Not_Found when it is gone).
-  string Cache_entryHead(string cache, u64 id) raises;
-  /// An entry's body (Not_Found when it is gone).
-  bytes Cache_entryBody(string cache, u64 id) raises;
+  /// caches.open(name): promise settling undefined once the cache exists.
+  Promise CacheStorage_openName(string name) raises;
+  /// caches.has(name): promise of bool (value 0/1).
+  Promise CacheStorage_hasName(string name) raises;
+  /// caches.delete(name): promise of bool (value 0/1).
+  Promise CacheStorage_deleteName(string name) raises;
+  /// caches.keys(): promise whose text is the names in creation order, "\n"-separated.
+  Promise CacheStorage_names() raises;
+  /// cache.match / cache.matchAll / caches.match: promise of a Buffer handle (0 when none matched) packing matched
+  /// entries: u32 count, then per entry: i32 status, u32+bytes status_text, u32+bytes response_url, u32+bytes headers,
+  /// u8 has_body, u32+bytes body. When `all_caches` is true, searches every cache in creation order.
+  Promise Cache_match(string cache, bool all_caches, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary, bool multiple) raises;
+  /// cache.keys(request, options): promise of a Buffer handle (0 when none matched) packing matched requests: u32 count,
+  /// then per entry: u32+bytes url, u32+bytes request_headers.
+  Promise Cache_keys(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises;
   /// cache.put(request, response) with the response's body read: replaces the entries the request matches (Vary
   /// considered). Quota past caches.max_bytes_per_origin.
-  void Cache_putEntry(string cache, string url, string request_headers, i32 status, string status_text, string response_url, string headers, bytes body) raises;
-  /// cache.delete(request, options)
-  bool Cache_deleteEntries(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises;
+  Promise Cache_putEntry(string cache, string url, string request_headers, i32 status, string status_text, string response_url, string headers, bytes body) raises;
+  /// cache.delete(request, options): promise of bool (value 0/1).
+  Promise Cache_deleteEntries(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises;
 }

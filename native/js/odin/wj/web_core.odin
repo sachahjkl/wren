@@ -291,6 +291,13 @@ web_error_value :: proc "c" (ctx: ^Context, code: i32, msg_in: [^]u8, n_in: uint
 	case .Index_Size: name = "IndexSizeError"
 	case .Not_Allowed: name = "NotAllowedError"
 	case .Invalid_Access: name = "InvalidAccessError"
+	case .Invalid_Character: name = "InvalidCharacterError"
+	case .Namespace: name = "NamespaceError"
+	case .In_Use_Attribute: name = "InUseAttributeError"
+	case .Wrong_Document: name = "WrongDocumentError"
+	case .Invalid_Node_Type: name = "InvalidNodeTypeError"
+	case .Invalid_Modification: name = "InvalidModificationError"
+	case .No_Modification_Allowed: name = "NoModificationAllowedError"
 	case: name = "OperationError"
 	}
 	r := web_dom_exception(ctx, name, cstring(msg))

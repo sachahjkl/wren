@@ -1,9 +1,12 @@
 package page
 
 import "core:os"
-import "wb:base"
 import "core:strings"
 import "core:testing"
+import "core:time"
+import "wb:base"
+import "wb:fetch"
+import "wb:host"
 
 @(test)
 fs_names_are_checked_and_encoded :: proc(t: ^testing.T) {
@@ -213,4 +216,267 @@ fs_local_symlink_escape_and_case_sensitivity :: proc(t: ^testing.T) {
 		_, e_r_trav := fs_get_entry(link_root, "escape_dir", "secret.txt", false, false)
 		testing.expect_value(t, e_r_trav, Fs_Error.Security)
 	}
+}
+
+@(private = "file")
+fs_test_await :: proc(t: ^testing.T, loop: ^host.Loop, p: ^Page, pr: u64) -> ^Promise {
+	start := time.tick_now()
+	for time.duration_seconds(time.tick_since(start)) < 5.0 {
+		if x := promise_get(p, pr); x != nil && x.state != .Pending { return x }
+		host.loop_wait(loop, 5)
+	}
+	testing.expect(t, false, "timed out waiting for async fs promise")
+	return promise_get(p, pr)
+}
+
+// Verifies async File System Access host calls offload disk I/O onto the blocking pool, preserve local symlink
+// security invariants, and resolve/reject promises via p.loop without leaking memory.
+@(test)
+fs_async_api_roundtrip_and_symlink_security :: proc(t: ^testing.T) {
+	test_pages(t)
+	dir := strings.concatenate({"build/tmp/fs_async_test_", base.unique_name(context.temp_allocator)}, context.temp_allocator)
+	defer { fs_store_shutdown(); _ = base.remove_tree(dir) }
+
+	loop: host.Loop
+	host.loop_init(&loop)
+	defer host.loop_destroy(&loop)
+	pool: host.Blocking_Pool
+	host.blocking_init(&pool, &loop, 2)
+	defer host.blocking_destroy(&pool)
+	loader := fetch.Loader{loop = &loop, blocking = &pool}
+	sm: Storage_Manager
+	storage_manager_init(&sm, &loop, &pool, dir)
+	defer storage_manager_destroy(&sm)
+	settings := settings_default()
+	defer settings_destroy(&settings)
+	scope := base.scope_make("fs-async-test")
+	defer base.scope_close(scope)
+
+	p := page_create(&loop, &loader, &settings, scope, "https://fs-async.example/")
+	set_embedder(p, Embedder{storage = &sm})
+	c := Call{page = p, owner = 0}
+
+	// OPFS root resolves asynchronously off the UI thread.
+	pr_root, err_root := Fs_opfsRoot(&c, "")
+	testing.expect_value(t, err_root, Api_Error.None)
+	r_root := fs_test_await(t, &loop, p, pr_root)
+	testing.expect(t, r_root != nil && r_root.state == .Fulfilled && r_root.value > 0)
+	root := u64(r_root.value)
+	object_release(p, pr_root)
+
+	// Create file and directory asynchronously, and verify TypeMismatchError rejection.
+	pr_file, _ := Fs_getEntry(&c, root, "", "hello.txt", false, true)
+	r_file := fs_test_await(t, &loop, p, pr_file)
+	testing.expect(t, r_file != nil && r_file.state == .Fulfilled && r_file.text == "hello.txt")
+	object_release(p, pr_file)
+
+	pr_mm, _ := Fs_getEntry(&c, root, "", "hello.txt", true, false)
+	r_mm := fs_test_await(t, &loop, p, pr_mm)
+	testing.expect(t, r_mm != nil && r_mm.state == .Rejected && strings.has_prefix(r_mm.text, "TypeMismatchError: "))
+	object_release(p, pr_mm)
+
+	pr_sub, _ := Fs_getEntry(&c, root, "", "sub", true, true)
+	r_sub := fs_test_await(t, &loop, p, pr_sub)
+	testing.expect(t, r_sub != nil && r_sub.state == .Fulfilled && r_sub.text == "sub")
+	object_release(p, pr_sub)
+
+	// Writable stream roundtrip: open -> write -> truncate -> commit close -> getFile -> list -> remove.
+	pr_open, _ := Fs_open(&c, root, "hello.txt", false, false)
+	r_open := fs_test_await(t, &loop, p, pr_open)
+	testing.expect(t, r_open != nil && r_open.state == .Fulfilled && r_open.value > 0)
+	open_id := u64(r_open.value)
+	object_release(p, pr_open)
+
+	pr_wr, _ := Fs_writeAsync(&c, open_id, -1, transmute([]u8)string("async-ok-extra"))
+	r_wr := fs_test_await(t, &loop, p, pr_wr)
+	testing.expect(t, r_wr != nil && r_wr.state == .Fulfilled && r_wr.value == 14)
+	object_release(p, pr_wr)
+
+	pr_tr, _ := Fs_truncateAsync(&c, open_id, 8)
+	r_tr := fs_test_await(t, &loop, p, pr_tr)
+	testing.expect(t, r_tr != nil && r_tr.state == .Fulfilled)
+	object_release(p, pr_tr)
+
+	pr_cl, _ := Fs_closeAsync(&c, open_id, true)
+	r_cl := fs_test_await(t, &loop, p, pr_cl)
+	testing.expect(t, r_cl != nil && r_cl.state == .Fulfilled)
+	object_release(p, pr_cl)
+
+	pr_gf, _ := Fs_getFile(&c, root, "hello.txt")
+	r_gf := fs_test_await(t, &loop, p, pr_gf)
+	testing.expect(t, r_gf != nil && r_gf.state == .Fulfilled && r_gf.value != 0)
+	lf := (^Local_File)(object_data(p, u64(r_gf.value), &local_file_vt))
+	testing.expect(t, lf != nil && lf.file.name == "hello.txt" && lf.file.size == 8)
+	object_release(p, u64(r_gf.value))
+	object_release(p, pr_gf)
+
+	pr_list, _ := Fs_list(&c, root, "")
+	r_list := fs_test_await(t, &loop, p, pr_list)
+	testing.expect(t, r_list != nil && r_list.state == .Fulfilled && strings.contains(r_list.text, "f\thello.txt") && strings.contains(r_list.text, "d\tsub"))
+	object_release(p, pr_list)
+
+	// Fs_restore registers the OPFS root in memory without disk I/O and subsequent async listing succeeds.
+	restored, err_rest := Fs_restore(&c, "o")
+	testing.expect(t, err_rest == .None && restored == root)
+
+	pr_rm, _ := Fs_removeEntry(&c, root, "", "sub", false)
+	r_rm := fs_test_await(t, &loop, p, pr_rm)
+	testing.expect(t, r_rm != nil && r_rm.state == .Fulfilled)
+	object_release(p, pr_rm)
+
+	// Local symlink security is preserved through async FS calls.
+	when ODIN_OS != .Windows {
+		outside := strings.concatenate({dir, "/outside"}, context.temp_allocator)
+		granted := strings.concatenate({dir, "/granted"}, context.temp_allocator)
+		testing.expect(t, os.make_directory_all(outside) == nil && os.make_directory_all(granted) == nil)
+		secret := strings.concatenate({outside, "/secret.txt"}, context.temp_allocator)
+		testing.expect(t, os.write_entire_file(secret, transmute([]byte)string("SECRET")) == nil)
+		abs_secret, _ := os.get_absolute_path(secret, context.temp_allocator)
+		abs_outside, _ := os.get_absolute_path(outside, context.temp_allocator)
+		testing.expect(t, os.symlink(abs_secret, strings.concatenate({granted, "/esc_f"}, context.temp_allocator)) == nil)
+		testing.expect(t, os.symlink(abs_outside, strings.concatenate({granted, "/esc_d"}, context.temp_allocator)) == nil)
+
+		lroot := fs_local_root("https://fs-async.example", granted, .Granted, .Granted)
+		p1, _ := Fs_getEntry(&c, lroot, "", "esc_f", false, false)
+		p2, _ := Fs_list(&c, lroot, "esc_d")
+		p3, _ := Fs_getFile(&c, lroot, "esc_f")
+		p4, _ := Fs_open(&c, lroot, "esc_f", false, false)
+		p5, _ := Fs_removeEntry(&c, lroot, "", "esc_f", false)
+		for pr_sec in ([?]u64{p1, p2, p3, p4, p5}) {
+			res := fs_test_await(t, &loop, p, pr_sec)
+			testing.expect(t, res != nil && res.state == .Rejected && res.value == i64(Api_Error.Security))
+			object_release(p, pr_sec)
+		}
+	}
+
+	host.blocking_settle(&pool)
+}
+
+// Closing a page while async FS operations are in flight on the blocking pool must cancel cleanly with zero UAF,
+// zero leaks, and no dangling locks.
+@(test)
+fs_async_page_close_cancels_inflight_without_leaks :: proc(t: ^testing.T) {
+	test_pages(t)
+	dir := strings.concatenate({"build/tmp/fs_cancel_test_", base.unique_name(context.temp_allocator)}, context.temp_allocator)
+	defer { fs_store_shutdown(); _ = base.remove_tree(dir) }
+
+	loop: host.Loop
+	host.loop_init(&loop)
+	defer host.loop_destroy(&loop)
+	pool: host.Blocking_Pool
+	host.blocking_init(&pool, &loop, 2)
+	defer host.blocking_destroy(&pool)
+	loader := fetch.Loader{loop = &loop, blocking = &pool}
+	sm: Storage_Manager
+	storage_manager_init(&sm, &loop, &pool, dir)
+	defer storage_manager_destroy(&sm)
+	settings := settings_default()
+	defer settings_destroy(&settings)
+	scope := base.scope_make("fs-cancel-test")
+	defer base.scope_close(scope)
+
+	root, e0 := fs_opfs_root(dir, "https://fs-cancel.example")
+	testing.expect_value(t, e0, Fs_Error.None)
+	_, e1 := fs_get_entry(root, "", "target.txt", false, true)
+	testing.expect_value(t, e1, Fs_Error.None)
+
+	p := page_create(&loop, &loader, &settings, scope, "https://fs-cancel.example/")
+	set_embedder(p, Embedder{storage = &sm})
+	c := Call{page = p, owner = 0}
+
+	// Queue several async disk ops and immediately close the page while they are in flight.
+	for _ in 0 ..< 8 {
+		_, _ = Fs_getEntry(&c, root, "", "target.txt", false, false)
+		_, _ = Fs_list(&c, root, "")
+		_, _ = Fs_getFile(&c, root, "target.txt")
+		_, _ = Fs_open(&c, root, "target.txt", false, false)
+	}
+	page_close(p)
+	host.blocking_settle(&pool)
+
+	// Any open writable that raced with page_close must have been closed and unlocked.
+	sync_id, es := fs_open(root, "target.txt", false, true)
+	testing.expect_value(t, es, Fs_Error.None)
+	testing.expect_value(t, fs_close(sync_id, false, 1 << 20), Fs_Error.None)
+}
+
+// End-to-end JavaScript roundtrip through web_fs.odin (Wasm) exercising async promises, iterators, writables,
+// and DOMException error names over the blocking pool.
+@(test)
+fs_js_async_roundtrip :: proc(t: ^testing.T) {
+	test_pages(t)
+	context.allocator = base.process_allocator()
+	register_imports()
+	dir := strings.concatenate({"build/tmp/fs_js_test_", base.unique_name(context.temp_allocator)}, context.temp_allocator)
+	defer { fs_store_shutdown(); _ = base.remove_tree(dir) }
+
+	loop: host.Loop
+	host.loop_init(&loop)
+	defer host.loop_destroy(&loop)
+	pool: host.Blocking_Pool
+	host.blocking_init(&pool, &loop, 2)
+	defer host.blocking_destroy(&pool)
+	loader := fetch.Loader{loop = &loop, blocking = &pool}
+	sm: Storage_Manager
+	storage_manager_init(&sm, &loop, &pool, dir)
+	defer storage_manager_destroy(&sm)
+	settings := settings_default()
+	defer settings_destroy(&settings)
+	settings.threads.parse_html = false
+	scope := base.scope_make("fs-js-test")
+	defer base.scope_close(scope)
+
+	Result :: struct { done: bool, text: string, last_log: string }
+	res: Result
+	defer { delete(res.text); delete(res.last_log) }
+	on_log :: proc(user: rawptr, _: Log_Level, msg: string) {
+		r := (^Result)(user)
+		if strings.has_prefix(msg, "FS_RESULT:") {
+			delete(r.text)
+			r.text = strings.clone(msg[10:])
+			r.done = true
+		} else {
+			delete(r.last_log)
+			r.last_log = strings.clone(msg)
+		}
+	}
+
+	p := page_create(&loop, &loader, &settings, scope, "https://fs-js.example/", on_log, &res)
+	set_embedder(p, Embedder{storage = &sm})
+	load_html(p, transmute([]byte)string(`<!doctype html><body></body>`))
+
+	st := js_run(p, transmute([]byte)string(`(async () => {
+		const errName = async (p) => { try { await p; return "ok"; } catch (e) { return e.name; } };
+		const r = await navigator.storage.getDirectory();
+		const f = await r.getFileHandle("notes.txt", { create: true });
+		const w = await f.createWritable();
+		await w.write("hello");
+		await w.seek(5);
+		await w.write(" world!");
+		await w.truncate(11);
+		await w.close();
+		const txt = await (await f.getFile()).text();
+		const d = await r.getDirectoryHandle("sub", { create: true });
+		await d.getFileHandle("x", { create: true });
+		const names = [];
+		for await (const [k, h] of r.entries()) names.push(k + ":" + h.kind);
+		names.sort();
+		const eType = await errName(r.getDirectoryHandle("notes.txt"));
+		const eNotEmpty = await errName(r.removeEntry("sub"));
+		const wLock = await f.createWritable();
+		const eLocked = await errName(r.removeEntry("notes.txt"));
+		await wLock.abort();
+		await r.removeEntry("sub", { recursive: true });
+		console.log("FS_RESULT:" + [txt, names.join(","), eType, eNotEmpty, eLocked].join("|"));
+	})().catch((e) => console.log("FS_RESULT:ERR:" + e.name + ":" + e.message));`), "fs_js_test.js")
+	testing.expectf(t, st == .Ok, "js_run failed: status=%v log=%q", st, res.last_log)
+
+	start := time.tick_now()
+	for !res.done && time.duration_seconds(time.tick_since(start)) < 10.0 {
+		host.loop_wait(&loop, 5)
+	}
+	testing.expect(t, res.done, "async JS FS script finished")
+	testing.expect_value(t, res.text, "hello world|notes.txt:file,sub:directory|TypeMismatchError|InvalidModificationError|NoModificationAllowedError")
+	page_close(p)
+	host.blocking_settle(&pool)
 }

@@ -3,7 +3,7 @@
 # Module `fs`
 
 File handles (WHATWG File System, WICG File System Access; src/page/fs_store.odin, fs_api.odin;
-native/js/runtime/web_fs.c). A handle is a root (the origin private file system of the realm's storage key, or a
+native/js/odin/web_fs.odin). A handle is a root (the origin private file system of the realm's storage key, or a
 folder of the user's disk given by a picker or a drop) and a "/"-joined path of names below it ("" is the root).
 Errors carry their DOMException's name first in the message ("TypeMismatchError: ...").
 
@@ -16,12 +16,12 @@ Odin: `import "wren:fs"`.
 ### `Fs_opfsRoot`
 
 ```
-u64 Fs_opfsRoot(usvstring bucket) raises
+Promise Fs_opfsRoot(usvstring bucket) raises
 ```
 
-navigator.storage.getDirectory(): the root of the realm's origin private file system. Security outside a secure
-context, for an opaque origin or a profile without a folder. `bucket`: a storage bucket's (StorageBucket.getDirectory),
-"" for the default one; Invalid_State once the bucket was deleted.
+navigator.storage.getDirectory(): a promise of the root id of the realm's origin private file system. Security
+outside a secure context, for an opaque origin or a profile without a folder. `bucket`: a storage bucket's
+(StorageBucket.getDirectory), "" for the default one; Invalid_State once the bucket was deleted.
 
 Odin: `fs.opfsRoot`.
 
@@ -32,46 +32,47 @@ Host: `Fs_opfsRoot :: proc(c: ^Call, bucket: string) -> (u64, Api_Error)`
 ### `Fs_getEntry`
 
 ```
-string Fs_getEntry(u64 root, string path, string name, bool directory, bool create) raises
+Promise Fs_getEntry(u64 root, string path, string name, bool directory, bool create) raises
 ```
 
-getFileHandle / getDirectoryHandle(name, {create}) on the directory at `path`: the child's path. Not_Found,
-Type (an invalid name), Not_Allowed (no permission), Invalid_State ("TypeMismatchError": the other kind).
+getFileHandle / getDirectoryHandle(name, {create}) on the directory at `path`: a promise whose text is the
+child's path. Not_Found, Type (an invalid name), Not_Allowed (no permission), Invalid_State ("TypeMismatchError":
+the other kind).
 
 Odin: `fs.getEntry`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Fs_getEntry :: proc(c: ^Call, root: u64, path: string, name: string, directory: bool, create: bool) -> (string, Api_Error)`
+Host: `Fs_getEntry :: proc(c: ^Call, root: u64, path: string, name: string, directory: bool, create: bool) -> (u64, Api_Error)`
 
 ### `Fs_removeEntry`
 
 ```
-void Fs_removeEntry(u64 root, string path, string name, bool recursive) raises
+Promise Fs_removeEntry(u64 root, string path, string name, bool recursive) raises
 ```
 
-removeEntry(name, {recursive}): Invalid_Modification for a directory that is not empty, No_Modification_Allowed
-for an entry in use.
+removeEntry(name, {recursive}): a promise settling undefined. Invalid_Modification for a directory that is not
+empty, No_Modification_Allowed for an entry in use.
 
 Odin: `fs.removeEntry`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Fs_removeEntry :: proc(c: ^Call, root: u64, path: string, name: string, recursive: bool) -> Api_Error`
+Host: `Fs_removeEntry :: proc(c: ^Call, root: u64, path: string, name: string, recursive: bool) -> (u64, Api_Error)`
 
 ### `Fs_list`
 
 ```
-string Fs_list(u64 root, string path) raises
+Promise Fs_list(u64 root, string path) raises
 ```
 
-The directory's entries: "f" or "d", a tab, the name, one per line.
+The directory's entries: a promise whose text is "f" or "d", a tab, the name, one per line.
 
 Odin: `fs.list`.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Fs_list :: proc(c: ^Call, root: u64, path: string) -> (string, Api_Error)`
+Host: `Fs_list :: proc(c: ^Call, root: u64, path: string) -> (u64, Api_Error)`
 
 ### `Fs_resolve`
 
@@ -102,10 +103,10 @@ Host: `Fs_same :: proc(c: ^Call, root: u64, path: string, root2: u64, path2: str
 ### `Fs_getFile`
 
 ```
-u64 Fs_getFile(u64 root, string path) raises
+Promise Fs_getFile(u64 root, string path) raises
 ```
 
-getFile(): a File object (a LocalFile of module dnd: read on demand).
+getFile(): a promise of a LocalFile handle (module dnd: read on demand).
 
 Odin: `fs.getFile`.
 
@@ -116,11 +117,11 @@ Host: `Fs_getFile :: proc(c: ^Call, root: u64, path: string) -> (u64, Api_Error)
 ### `Fs_open`
 
 ```
-u64 Fs_open(u64 root, string path, bool keep, bool sync) raises
+Promise Fs_open(u64 root, string path, bool keep, bool sync) raises
 ```
 
 createWritable({keepExistingData}) (a temporary file) or createSyncAccessHandle() (`sync`: the file itself,
-exclusive): an open entry's id. No_Modification_Allowed while it is locked.
+exclusive): a promise of an open entry's id. No_Modification_Allowed while it is locked.
 
 Odin: `fs.open`.
 
@@ -134,6 +135,7 @@ Host: `Fs_open :: proc(c: ^Call, root: u64, path: string, keep: bool, sync: bool
 i64 Fs_write(u64 id, i64 at, bytes data) raises
 ```
 
+Synchronous FileSystemSyncAccessHandle operations (dedicated worker thread).
 Writes at `at` (-1: the cursor): the bytes written. Quota past opfs.max_bytes_per_origin.
 
 Odin: `fs.write`.
@@ -217,6 +219,49 @@ Odin: `fs.close`.
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Fs_close :: proc(c: ^Call, id: u64, commit: bool) -> Api_Error`
+
+### `Fs_writeAsync`
+
+```
+Promise Fs_writeAsync(u64 id, i64 at, bytes data) raises
+```
+
+Asynchronous FileSystemWritableFileStream operations (off the UI thread).
+Writes at `at` (-1: the cursor): promise of the bytes written. Quota past opfs.max_bytes_per_origin.
+
+Odin: `fs.writeAsync`.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Fs_writeAsync :: proc(c: ^Call, id: u64, at: i64, data: []u8) -> (u64, Api_Error)`
+
+### `Fs_truncateAsync`
+
+```
+Promise Fs_truncateAsync(u64 id, i64 size) raises
+```
+
+Truncates an open writable to `size`: promise settling undefined.
+
+Odin: `fs.truncateAsync`.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Fs_truncateAsync :: proc(c: ^Call, id: u64, size: i64) -> (u64, Api_Error)`
+
+### `Fs_closeAsync`
+
+```
+Promise Fs_closeAsync(u64 id, bool commit) raises
+```
+
+Closes an open writable (`commit` true: atomic rename over target; false: abort and remove temp file).
+
+Odin: `fs.closeAsync`.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Fs_closeAsync :: proc(c: ^Call, id: u64, commit: bool) -> (u64, Api_Error)`
 
 ### `Fs_permission`
 

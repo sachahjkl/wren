@@ -4,8 +4,8 @@
 // FileSystemSyncAccessHandle (dedicated workers), navigator.storage.getDirectory(), showOpenFilePicker /
 // showSaveFilePicker / showDirectoryPicker, DataTransferItem.getAsFileSystemHandle(), and the description a handle is
 // structured-cloned as (runtime/clone.c). A handle is the browser's root id and a "/"-joined path below it; the
-// browser checks names, permissions, locks and quotas, and names its errors ("TypeMismatchError: ..."). Ported from
-// native/js/runtime/web_fs.c: same wjr_* / web_fs_* symbols and behaviour; the host calls are declared in
+// browser checks names, permissions, locks and quotas, and runs disk I/O off the UI thread, settling host promises.
+// Ported from native/js/runtime/web_fs.c: same wjr_* / web_fs_* symbols and behaviour; the host calls are declared in
 // native/js/odin_abi/api_decl/fs.odin and made through jsb.
 package odin_glue
 
@@ -73,6 +73,37 @@ fs_throw :: proc(ctx: ^wj.Context, st: abi.Api_Error, what: cstring) -> wj.JSVal
 fs_reject :: proc(ctx: ^wj.Context, st: abi.Api_Error, what: cstring) -> wj.JSValue {
 	fs_throw(ctx, st, what)
 	return wj.web_promise_reject_pending(ctx)
+}
+
+// Converts a rejected host promise into a JS DOMException/TypeError (preserving TypeMismatchError).
+@(private = "file")
+fs_reject_from_host :: proc "contextless" (ctx: ^wj.Context, host: u64, value: i64) -> wj.JSValue {
+	PREFIX :: "TypeMismatchError: "
+	text := wj.wj_host_promise_text(ctx, host)
+	defer wj.JS_FreeValue(ctx, text)
+	n: uint
+	s := wj.to_cstring_len(ctx, &n, text)
+	defer if s != nil { wj.free_cstring(ctx, s) }
+	msg := s != nil ? string(([^]u8)(rawptr(s))[:n]) : ""
+	if len(msg) >= len(PREFIX) && msg[:len(PREFIX)] == PREFIX {
+		rest := wj.web_strndup(raw_data(msg[len(PREFIX):]), uint(len(msg) - len(PREFIX)))
+		r := wj.web_dom_exception(ctx, "TypeMismatchError", rest != nil ? wj.cstr(rest) : "")
+		wj.libc_free(rest)
+		return r
+	}
+	return wj.web_error_value(ctx, i32(value), wj.raw_bytes(msg), uint(len(msg)))
+}
+
+@(private = "file")
+settle_void :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	if state != 1 { reject^ = true; return fs_reject_from_host(ctx, host, value) }
+	return wj.UNDEFINED
+}
+
+@(private = "file")
+settle_abort :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	reject^ = false
+	return wj.UNDEFINED
 }
 
 // A promise of `v` (taken), or the pending exception as a rejection when v is one.
@@ -229,6 +260,28 @@ bool_option :: proc "contextless" (ctx: ^wj.Context, opt: wj.JSValue, dict: cstr
 	return value, true
 }
 
+// data: [root (f64), dir (bool), name (string)]
+@(private = "file")
+settle_child :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	if state != 1 { reject^ = true; return fs_reject_from_host(ctx, host, value) }
+	root_v := wj.JS_GetPropertyUint32(ctx, data, 0)
+	dir_v := wj.JS_GetPropertyUint32(ctx, data, 1)
+	name_v := wj.JS_GetPropertyUint32(ctx, data, 2)
+	defer { wj.JS_FreeValue(ctx, root_v); wj.JS_FreeValue(ctx, dir_v); wj.JS_FreeValue(ctx, name_v) }
+	root := data_id(ctx, root_v)
+	dir := wj.JS_ToBool(ctx, dir_v) > 0
+	text := wj.wj_host_promise_text(ctx, host)
+	defer wj.JS_FreeValue(ctx, text)
+	cl, nl: uint
+	cs := wj.to_cstring_len(ctx, &cl, text)
+	defer if cs != nil { wj.free_cstring(ctx, cs) }
+	ns := wj.to_cstring_len(ctx, &nl, name_v)
+	defer if ns != nil { wj.free_cstring(ctx, ns) }
+	child := cs != nil ? string(([^]u8)(rawptr(cs))[:cl]) : ""
+	name := ns != nil ? string(([^]u8)(rawptr(ns))[:nl]) : ""
+	return handle_new(ctx, root, child, dir, name)
+}
+
 @(private = "file")
 get_child :: proc(ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue, dir: bool) -> wj.JSValue {
 	h := fsh_this(ctx, t, .Directory)
@@ -241,11 +294,17 @@ get_child :: proc(ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValu
 	create, ok := bool_option(ctx, wj.arg(argc, argv, 1), dir ? "FileSystemGetDirectoryOptions" : "FileSystemGetFileOptions", "create")
 	if !ok { return wj.web_promise_reject_pending(ctx) }
 	n := string(wj.str_slice(name))
-	child: string
-	if st := jsb.host(&child, api_decl.Fs_getEntry, wj.wr_Fs_getEntry, h.root, h.path, n, dir, create); st != .None {
+	hp: abi.Handle
+	if st := jsb.host(&hp, api_decl.Fs_getEntry, wj.wr_Fs_getEntry, h.root, h.path, n, dir, create); st != .None {
 		return fs_reject(ctx, st, what)
 	}
-	return settled(ctx, handle_new(ctx, h.root, child, dir, n))
+	info := wj.JS_NewArray(ctx)
+	wj.JS_SetPropertyUint32(ctx, info, 0, wj.new_float64(ctx, f64(h.root)))
+	wj.JS_SetPropertyUint32(ctx, info, 1, wj.new_bool(dir))
+	wj.JS_SetPropertyUint32(ctx, info, 2, wj.new_string_len(ctx, n))
+	pr := wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_TEXT, settle_child, info)
+	wj.JS_FreeValue(ctx, info)
+	return pr
 }
 
 @(export, link_name = "wjr_FileSystemDirectoryHandle_getFileHandle")
@@ -270,10 +329,11 @@ wjr_FileSystemDirectoryHandle_removeEntry :: proc "c" (ctx: ^wj.Context, t: wj.J
 	defer wj.wj_str_free(ctx, &name)
 	recursive, ok := bool_option(ctx, wj.arg(argc, argv, 1), "FileSystemRemoveOptions", "recursive")
 	if !ok { return wj.web_promise_reject_pending(ctx) }
-	if st := jsb.host(&none, api_decl.Fs_removeEntry, wj.wr_Fs_removeEntry, h.root, h.path, string(wj.str_slice(name)), recursive); st != .None {
+	hp: abi.Handle
+	if st := jsb.host(&hp, api_decl.Fs_removeEntry, wj.wr_Fs_removeEntry, h.root, h.path, string(wj.str_slice(name)), recursive); st != .None {
 		return fs_reject(ctx, st, "removeEntry")
 	}
-	return wj.web_promise_take(ctx, wj.UNDEFINED)
+	return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_UNDEFINED, settle_void, wj.UNDEFINED)
 }
 
 @(export, link_name = "wjr_FileSystemDirectoryHandle_resolve")
@@ -310,26 +370,57 @@ lines_split :: proc "contextless" (ctx: ^wj.Context, text: string, sep: u8) -> w
 	return arr
 }
 
-// entries() / keys() / values(): an async iterator over the entries listed when it was made. Its `next` carries
-// [handle, list (array of [name, isDir]), index (in an array), which].
+// entries() / keys() / values(): an async iterator over the entries listed off the UI thread when it was made.
+// Its `next` carries [handle, list_promise (resolves to array of [name, isDir]), index (in an array), which].
 @(private = "file")
-Iter_Data :: enum i32 { Handle, List, Index, Which }
+Iter_Data :: enum i32 { Handle, List_Prom, Index, Which }
+@(private = "file")
+Iter_Step_Data :: enum i32 { Handle, Index, Which }
 @(private = "file")
 Iter_Kind :: enum i32 { Entries, Keys, Values }
 
 @(private = "file")
-iter_next :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
-	h := fsh_of(data[Iter_Data.Handle])
+settle_list :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	if state != 1 { reject^ = true; return fs_reject_from_host(ctx, host, value) }
+	text := wj.wj_host_promise_text(ctx, host)
+	defer wj.JS_FreeValue(ctx, text)
+	n: uint
+	s := wj.to_cstring_len(ctx, &n, text)
+	defer if s != nil { wj.free_cstring(ctx, s) }
+	listing := s != nil ? string(([^]u8)(rawptr(s))[:n]) : ""
+	list := wj.JS_NewArray(ctx)
+	k: u32
+	rest := listing
+	for len(rest) > 0 {
+		cut := len(rest)
+		for j in 0 ..< len(rest) { if rest[j] == '\n' { cut = j; break } }
+		line := rest[:cut]
+		if len(line) > 2 {
+			e := wj.JS_NewArray(ctx)
+			wj.JS_SetPropertyUint32(ctx, e, 0, wj.new_string_len(ctx, line[2:]))
+			wj.JS_SetPropertyUint32(ctx, e, 1, wj.new_bool(line[0] == 'd'))
+			wj.JS_SetPropertyUint32(ctx, list, k, e)
+			k += 1
+		}
+		rest = cut < len(rest) ? rest[cut + 1:] : ""
+	}
+	return list
+}
+
+@(private = "file")
+iter_step :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
+	list := wj.arg(argc, argv, 0)
+	h := fsh_of(data[Iter_Step_Data.Handle])
 	i, which: i32
-	iv := wj.JS_GetPropertyUint32(ctx, data[Iter_Data.Index], 0)
+	iv := wj.JS_GetPropertyUint32(ctx, data[Iter_Step_Data.Index], 0)
 	wj.JS_ToInt32(ctx, &i, iv)
 	wj.JS_FreeValue(ctx, iv)
-	wj.JS_ToInt32(ctx, &which, data[Iter_Data.Which])
+	wj.JS_ToInt32(ctx, &which, data[Iter_Step_Data.Which])
 	n: i64
-	wj.JS_GetLength(ctx, data[Iter_Data.List], &n)
-	if h == nil || i64(i) >= n { return wj.web_promise_take(ctx, wj.web_iter_result(ctx, wj.UNDEFINED, true)) }
-	wj.JS_SetPropertyUint32(ctx, data[Iter_Data.Index], 0, wj.new_int32(i + 1))
-	e := wj.JS_GetPropertyUint32(ctx, data[Iter_Data.List], u32(i))
+	wj.JS_GetLength(ctx, list, &n)
+	if h == nil || i64(i) >= n { return wj.web_iter_result(ctx, wj.UNDEFINED, true) }
+	wj.JS_SetPropertyUint32(ctx, data[Iter_Step_Data.Index], 0, wj.new_int32(i + 1))
+	e := wj.JS_GetPropertyUint32(ctx, list, u32(i))
 	name := wj.JS_GetPropertyUint32(ctx, e, 0)
 	isdir := wj.JS_GetPropertyUint32(ctx, e, 1)
 	wj.JS_FreeValue(ctx, e)
@@ -355,7 +446,7 @@ iter_next :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: 
 		wj.free_cstring(ctx, ns)
 	}
 	wj.JS_FreeValue(ctx, isdir)
-	if wj.is_exception(handle) { wj.JS_FreeValue(ctx, name); return wj.web_promise_reject_pending(ctx) }
+	if wj.is_exception(handle) { wj.JS_FreeValue(ctx, name); return wj.EXCEPTION }
 	v: wj.JSValue
 	switch Iter_Kind(which) {
 	case .Entries:
@@ -369,12 +460,17 @@ iter_next :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: 
 		v = handle
 		wj.JS_FreeValue(ctx, name)
 	}
-	return wj.web_promise_take(ctx, wj.web_iter_result(ctx, v, false))
+	return wj.web_iter_result(ctx, v, false)
 }
 
 @(private = "file")
-ret_data0 :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
-	return wj.JS_DupValue(ctx, data[0])
+iter_next :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
+	step_data := [Iter_Step_Data]wj.JSValue{
+		.Handle = data[Iter_Data.Handle],
+		.Index  = data[Iter_Data.Index],
+		.Which  = data[Iter_Data.Which],
+	}
+	return wj.web_then(ctx, data[Iter_Data.List_Prom], rawptr(iter_step), nil, i32(len(step_data)), &step_data[.Handle])
 }
 
 @(private = "file")
@@ -397,37 +493,14 @@ symbol_atom :: proc "contextless" (ctx: ^wj.Context, name: cstring) -> wj.Atom {
 make_iterator :: proc(ctx: ^wj.Context, t: wj.JSValue, which: Iter_Kind) -> wj.JSValue {
 	h := fsh_this(ctx, t, .Directory)
 	if h == nil { return wj.EXCEPTION }
-	listing: string
-	st := jsb.host(&listing, api_decl.Fs_list, wj.wr_Fs_list, h.root, h.path)
-	list := wj.JS_NewArray(ctx)
-	k: u32
-	rest := listing
-	for len(rest) > 0 {
-		cut := len(rest)
-		for j in 0 ..< len(rest) { if rest[j] == '\n' { cut = j; break } }
-		line := rest[:cut]
-		if len(line) > 2 {
-			e := wj.JS_NewArray(ctx)
-			wj.JS_SetPropertyUint32(ctx, e, 0, wj.new_string_len(ctx, line[2:]))
-			wj.JS_SetPropertyUint32(ctx, e, 1, wj.new_bool(line[0] == 'd'))
-			wj.JS_SetPropertyUint32(ctx, list, k, e)
-			k += 1
-		}
-		rest = cut < len(rest) ? rest[cut + 1:] : ""
-	}
-	// (a listing that failed: the iterator rejects at its first step)
+	hp: abi.Handle
+	st := jsb.host(&hp, api_decl.Fs_list, wj.wr_Fs_list, h.root, h.path)
+	list_prom := st != .None ? fs_reject(ctx, st, "entries") : wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_TEXT, settle_list, wj.UNDEFINED)
 	it := wj.JS_NewObject(ctx)
 	idx := wj.JS_NewArray(ctx)
 	wj.JS_SetPropertyUint32(ctx, idx, 0, wj.new_int32(0))
-	data := [Iter_Data]wj.JSValue{ .Handle = wj.JS_DupValue(ctx, t), .List = list, .Index = idx, .Which = wj.new_int32(i32(which)) }
-	if st != .None {
-		fs_throw(ctx, st, "entries")
-		rej := wj.web_promise_rejected(ctx, wj.JS_GetException(ctx))
-		wj.JS_SetPropertyStr(ctx, it, "next", wj.JS_NewCFunctionData(ctx, ret_data0, 0, 0, 1, &rej))
-		wj.JS_FreeValue(ctx, rej)
-	} else {
-		wj.JS_SetPropertyStr(ctx, it, "next", wj.JS_NewCFunctionData(ctx, iter_next, 0, 0, i32(len(data)), &data[.Handle]))
-	}
+	data := [Iter_Data]wj.JSValue{ .Handle = wj.JS_DupValue(ctx, t), .List_Prom = list_prom, .Index = idx, .Which = wj.new_int32(i32(which)) }
+	wj.JS_SetPropertyStr(ctx, it, "next", wj.JS_NewCFunctionData(ctx, iter_next, 0, 0, i32(len(data)), &data[.Handle]))
 	for v in data { wj.JS_FreeValue(ctx, v) }
 	a := symbol_atom(ctx, "asyncIterator")
 	wj.JS_DefinePropertyValue(ctx, it, a, wj.new_cfunction(ctx, iter_self, "[Symbol.asyncIterator]", 0), wj.PROP_WRITABLE | wj.PROP_CONFIGURABLE)
@@ -453,14 +526,20 @@ wjr_FileSystemDirectoryHandle_values :: proc "c" (ctx: ^wj.Context, t: wj.JSValu
 
 // ---- FileSystemFileHandle ----
 
+@(private = "file")
+settle_file :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	if state != 1 { reject^ = true; return fs_reject_from_host(ctx, host, value) }
+	return web_file_from_host(ctx, u64(value))
+}
+
 @(export, link_name = "wjr_FileSystemFileHandle_getFile")
 wjr_FileSystemFileHandle_getFile :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	context = jsb.glue_context()
 	h := fsh_this(ctx, t, .File)
 	if h == nil { return wj.web_promise_reject_pending(ctx) }
-	lf: abi.Handle
-	if st := jsb.host(&lf, api_decl.Fs_getFile, wj.wr_Fs_getFile, h.root, h.path); st != .None { return fs_reject(ctx, st, "getFile") }
-	return settled(ctx, web_file_from_host(ctx, u64(lf)))
+	hp: abi.Handle
+	if st := jsb.host(&hp, api_decl.Fs_getFile, wj.wr_Fs_getFile, h.root, h.path); st != .None { return fs_reject(ctx, st, "getFile") }
+	return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_NUMBER, settle_file, wj.UNDEFINED)
 }
 
 // The writable's sink: each method carries [id (a number)].
@@ -473,9 +552,9 @@ data_id :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue) -> u64 {
 
 @(private = "file")
 write_bytes :: proc(ctx: ^wj.Context, id: u64, at: i64, bytes: []u8) -> wj.JSValue {
-	wrote: i64
-	if st := jsb.host(&wrote, api_decl.Fs_write, wj.wr_Fs_write, id, at, bytes); st != .None { return fs_reject(ctx, st, "write") }
-	return wj.web_promise_take(ctx, wj.UNDEFINED)
+	hp: abi.Handle
+	if st := jsb.host(&hp, api_decl.Fs_writeAsync, wj.wr_Fs_writeAsync, id, at, bytes); st != .None { return fs_reject(ctx, st, "write") }
+	return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_UNDEFINED, settle_void, wj.UNDEFINED)
 }
 
 // A Blob's bytes read (arrayBuffer() settled): [id, position]
@@ -487,11 +566,7 @@ blob_read :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: 
 	if argc < 1 || !wj.wj_to_buffer_source(ctx, argv[0], &p, &n, 0, "write") { return wj.EXCEPTION }
 	at := f64(-1)
 	wj.JS_ToFloat64(ctx, &at, data[1])
-	wrote: i64
-	if st := jsb.host(&wrote, api_decl.Fs_write, wj.wr_Fs_write, data_id(ctx, data[0]), i64(at), bytes_of(p, n)); st != .None {
-		return fs_throw(ctx, st, "write")
-	}
-	return wj.UNDEFINED
+	return write_bytes(ctx, data_id(ctx, data[0]), i64(at), bytes_of(p, n))
 }
 
 @(private = "file")
@@ -570,8 +645,9 @@ sink_write :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv:
 		return wj.web_promise_take(ctx, wj.UNDEFINED)
 	case .Truncate:
 		if !has { wj.wj_throw_dom(ctx, "SyntaxError", "truncate needs a size"); return wj.web_promise_reject_pending(ctx) }
-		if st := jsb.host(&none, api_decl.Fs_truncate, wj.wr_Fs_truncate, id, i64(num)); st != .None { return fs_reject(ctx, st, "truncate") }
-		return wj.web_promise_take(ctx, wj.UNDEFINED)
+		hp: abi.Handle
+		if st := jsb.host(&hp, api_decl.Fs_truncateAsync, wj.wr_Fs_truncateAsync, id, i64(num)); st != .None { return fs_reject(ctx, st, "truncate") }
+		return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_UNDEFINED, settle_void, wj.UNDEFINED)
 	case .Write:
 		d := wj.JS_GetPropertyStr(ctx, chunk, "data")
 		if wj.is_nullish(d) { wj.JS_FreeValue(ctx, d); wj.wj_throw_dom(ctx, "SyntaxError", "write needs data"); return wj.web_promise_reject_pending(ctx) }
@@ -586,8 +662,26 @@ sink_write :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv:
 @(private = "file")
 sink_close :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, fdata: [^]wj.JSValue) -> wj.JSValue {
 	context = jsb.glue_context()
-	st := jsb.host(&none, api_decl.Fs_close, wj.wr_Fs_close, data_id(ctx, fdata[0]), magic == 0)
-	return st != .None && magic == 0 ? fs_reject(ctx, st, "close") : wj.web_promise_take(ctx, wj.UNDEFINED)
+	hp: abi.Handle
+	st := jsb.host(&hp, api_decl.Fs_closeAsync, wj.wr_Fs_closeAsync, data_id(ctx, fdata[0]), magic == 0)
+	if st != .None {
+		return magic == 0 ? fs_reject(ctx, st, "close") : wj.web_promise_take(ctx, wj.UNDEFINED)
+	}
+	return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_UNDEFINED, magic == 0 ? settle_void : settle_abort, wj.UNDEFINED)
+}
+
+@(private = "file")
+settle_writable :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	if state != 1 { reject^ = true; return fs_reject_from_host(ctx, host, value) }
+	idv := wj.new_float64(ctx, f64(u64(value)))
+	sink := wj.JS_NewObject(ctx)
+	wj.JS_SetPropertyStr(ctx, sink, "write", wj.JS_NewCFunctionData(ctx, sink_write, 2, 0, 1, &idv))
+	wj.JS_SetPropertyStr(ctx, sink, "close", wj.JS_NewCFunctionData(ctx, sink_close, 0, 0, 1, &idv))
+	wj.JS_SetPropertyStr(ctx, sink, "abort", wj.JS_NewCFunctionData(ctx, sink_close, 1, 1, 1, &idv))
+	s := web_writable_new(ctx, fs_iface(.Writable), sink, 1, wj.UNDEFINED)
+	wj.JS_FreeValue(ctx, sink)
+	wj.JS_FreeValue(ctx, idv)
+	return s
 }
 
 @(export, link_name = "wjr_FileSystemFileHandle_createWritable")
@@ -597,17 +691,9 @@ wjr_FileSystemFileHandle_createWritable :: proc "c" (ctx: ^wj.Context, t: wj.JSV
 	if h == nil { return wj.web_promise_reject_pending(ctx) }
 	keep, ok := bool_option(ctx, wj.arg(argc, argv, 0), "FileSystemCreateWritableOptions", "keepExistingData")
 	if !ok { return wj.web_promise_reject_pending(ctx) }
-	id: u64
-	if st := jsb.host(&id, api_decl.Fs_open, wj.wr_Fs_open, h.root, h.path, keep, false); st != .None { return fs_reject(ctx, st, "createWritable") }
-	idv := wj.new_float64(ctx, f64(id))
-	sink := wj.JS_NewObject(ctx)
-	wj.JS_SetPropertyStr(ctx, sink, "write", wj.JS_NewCFunctionData(ctx, sink_write, 2, 0, 1, &idv))
-	wj.JS_SetPropertyStr(ctx, sink, "close", wj.JS_NewCFunctionData(ctx, sink_close, 0, 0, 1, &idv))
-	wj.JS_SetPropertyStr(ctx, sink, "abort", wj.JS_NewCFunctionData(ctx, sink_close, 1, 1, 1, &idv))
-	s := web_writable_new(ctx, fs_iface(.Writable), sink, 1, wj.UNDEFINED)
-	wj.JS_FreeValue(ctx, sink)
-	wj.JS_FreeValue(ctx, idv)
-	return settled(ctx, s)
+	hp: abi.Handle
+	if st := jsb.host(&hp, api_decl.Fs_open, wj.wr_Fs_open, h.root, h.path, keep, false); st != .None { return fs_reject(ctx, st, "createWritable") }
+	return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_NUMBER, settle_writable, wj.UNDEFINED)
 }
 
 @(export, link_name = "wjr_FileSystemWritableFileStream_write")
@@ -650,21 +736,28 @@ sync_free :: proc "c" (p: rawptr) {
 	wj.libc_free(s)
 }
 
+@(private = "file")
+settle_sync_handle :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	context = jsb.glue_context()
+	if state != 1 { reject^ = true; return fs_reject_from_host(ctx, host, value) }
+	id := u64(value)
+	s := (^Sync_Impl)(wj.libc_calloc(1, size_of(Sync_Impl)))
+	if s == nil {
+		jsb.host(&none, api_decl.Fs_close, wj.wr_Fs_close, id, false)
+		return wj.JS_ThrowOutOfMemory(ctx)
+	}
+	s.id = id
+	return wj.wj_new_object(ctx, fs_iface(.Sync), s, sync_free)
+}
+
 @(export, link_name = "wjr_FileSystemFileHandle_createSyncAccessHandle")
 wjr_FileSystemFileHandle_createSyncAccessHandle :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	context = jsb.glue_context()
 	h := fsh_this(ctx, t, .File)
 	if h == nil { return wj.web_promise_reject_pending(ctx) }
-	id: u64
-	if st := jsb.host(&id, api_decl.Fs_open, wj.wr_Fs_open, h.root, h.path, true, true); st != .None { return fs_reject(ctx, st, "createSyncAccessHandle") }
-	s := (^Sync_Impl)(wj.libc_calloc(1, size_of(Sync_Impl)))
-	if s == nil {
-		jsb.host(&none, api_decl.Fs_close, wj.wr_Fs_close, id, false)
-		wj.JS_ThrowOutOfMemory(ctx)
-		return wj.web_promise_reject_pending(ctx)
-	}
-	s.id = id
-	return settled(ctx, wj.wj_new_object(ctx, fs_iface(.Sync), s, sync_free))
+	hp: abi.Handle
+	if st := jsb.host(&hp, api_decl.Fs_open, wj.wr_Fs_open, h.root, h.path, true, true); st != .None { return fs_reject(ctx, st, "createSyncAccessHandle") }
+	return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_NUMBER, settle_sync_handle, wj.UNDEFINED)
 }
 
 @(private = "file")
@@ -767,6 +860,12 @@ wjr_FileSystemSyncAccessHandle_close :: proc "c" (ctx: ^wj.Context, t: wj.JSValu
 
 // ---- getDirectory, pickers, drops ----
 
+@(private = "file")
+settle_opfs_root :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	if state != 1 { reject^ = true; return fs_reject_from_host(ctx, host, value) }
+	return handle_new(ctx, u64(value), "", true, "")
+}
+
 // navigator.storage.getDirectory() and StorageBucket.getDirectory(): an origin private file system's root (the
 // bucket's name, "" for the default one).
 @(export, link_name = "web_fs_get_directory")
@@ -774,11 +873,11 @@ web_fs_get_directory :: proc "c" (ctx: ^wj.Context, bucket: wj.JSValue) -> wj.JS
 	context = jsb.glue_context()
 	b: wj.Str
 	if wj.is_string(bucket) && !wj.web_to_usv(ctx, bucket, &b) { return wj.web_promise_reject_pending(ctx) }
-	root: u64
-	st := jsb.host(&root, api_decl.Fs_opfsRoot, wj.wr_Fs_opfsRoot, string(wj.str_slice(b)))
+	hp: abi.Handle
+	st := jsb.host(&hp, api_decl.Fs_opfsRoot, wj.wr_Fs_opfsRoot, string(wj.str_slice(b)))
 	wj.wj_str_free(ctx, &b)
 	if st != .None { return fs_reject(ctx, st, "getDirectory") }
-	return settled(ctx, handle_new(ctx, root, "", true, ""))
+	return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_NUMBER, settle_opfs_root, wj.UNDEFINED)
 }
 
 // The picker's handles: `data` is 1 when the result is a sequence (showOpenFilePicker).

@@ -3441,20 +3441,25 @@ _t_caches_CacheStorage_check :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	return _end_status(&t, _err)
 }
 
-// CacheStorage_openName :: proc(c: ^Call, name: string) -> Api_Error
+// CacheStorage_openName :: proc(c: ^Call, name: string) -> (u64, Api_Error)
 @(private = "file")
 _t_caches_CacheStorage_openName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	t: _Tramp = ---
 	context = _enter(&t, env, caller, a, "caches.CacheStorage_openName", .Status)
 	_ok: bool
-	_p0: string
-	_p0, _ok = _str(&t, 0, "name")
+	_s0: []u8
+	_s0, _ok = _span(&t, 0, "name")
 	if !_ok { return t.trap }
-	_err := CacheStorage_openName(&t.c, _p0)
-	return _end_status(&t, _err)
+	_rs: [^]u8
+	_rs, _ok = _ret_ptr(&t, 2, 8)
+	if !_ok { return t.trap }
+	_p0 := string(_s0)
+	if !_utf8(&t, _p0, "name") { return t.trap }
+	_r, _err := CacheStorage_openName(&t.c, _p0)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
 }
 
-// CacheStorage_hasName :: proc(c: ^Call, name: string) -> (bool, Api_Error)
+// CacheStorage_hasName :: proc(c: ^Call, name: string) -> (u64, Api_Error)
 @(private = "file")
 _t_caches_CacheStorage_hasName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	t: _Tramp = ---
@@ -3464,15 +3469,15 @@ _t_caches_CacheStorage_hasName :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_s0, _ok = _span(&t, 0, "name")
 	if !_ok { return t.trap }
 	_rs: [^]u8
-	_rs, _ok = _ret_ptr(&t, 2, 1)
+	_rs, _ok = _ret_ptr(&t, 2, 8)
 	if !_ok { return t.trap }
 	_p0 := string(_s0)
 	if !_utf8(&t, _p0, "name") { return t.trap }
 	_r, _err := CacheStorage_hasName(&t.c, _p0)
-	return _end_ret_u8(&t, _rs, u8(1 if _r else 0), _err)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
 }
 
-// CacheStorage_deleteName :: proc(c: ^Call, name: string) -> (bool, Api_Error)
+// CacheStorage_deleteName :: proc(c: ^Call, name: string) -> (u64, Api_Error)
 @(private = "file")
 _t_caches_CacheStorage_deleteName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	t: _Tramp = ---
@@ -3482,32 +3487,70 @@ _t_caches_CacheStorage_deleteName :: proc "c" (env: rawptr, caller: wasm.Caller,
 	_s0, _ok = _span(&t, 0, "name")
 	if !_ok { return t.trap }
 	_rs: [^]u8
-	_rs, _ok = _ret_ptr(&t, 2, 1)
+	_rs, _ok = _ret_ptr(&t, 2, 8)
 	if !_ok { return t.trap }
 	_p0 := string(_s0)
 	if !_utf8(&t, _p0, "name") { return t.trap }
 	_r, _err := CacheStorage_deleteName(&t.c, _p0)
-	return _end_ret_u8(&t, _rs, u8(1 if _r else 0), _err)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
 }
 
-// CacheStorage_names :: proc(c: ^Call) -> (string, Api_Error)
+// CacheStorage_names :: proc(c: ^Call) -> (u64, Api_Error)
 @(private = "file")
 _t_caches_CacheStorage_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	t: _Tramp = ---
-	context = _enter(&t, env, caller, a, "caches.CacheStorage_names", .Out_Raise)
+	context = _enter(&t, env, caller, a, "caches.CacheStorage_names", .Status)
 	_ok: bool
-	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 72, "")
+	_rs: [^]u8
+	_rs, _ok = _ret_ptr(&t, 0, 8)
 	if !_ok { return t.trap }
 	_r, _err := CacheStorage_names(&t.c)
-	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
 }
 
-// Cache_matchIds :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -> (string, Api_Error)
+// Cache_match :: proc(c: ^Call, cache: string, all_caches: bool, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool, multiple: bool) -> (u64, Api_Error)
 @(private = "file")
-_t_caches_Cache_matchIds :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+_t_caches_Cache_match :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	t: _Tramp = ---
-	context = _enter(&t, env, caller, a, "caches.Cache_matchIds", .Out_Raise)
+	context = _enter(&t, env, caller, a, "caches.Cache_match", .Status)
+	_ok: bool
+	_s0: []u8
+	_s0, _ok = _span(&t, 0, "cache")
+	if !_ok { return t.trap }
+	_s2: []u8
+	_s2, _ok = _span(&t, 3, "url")
+	if !_ok { return t.trap }
+	_s3: []u8
+	_s3, _ok = _span(&t, 5, "method")
+	if !_ok { return t.trap }
+	_s4: []u8
+	_s4, _ok = _span(&t, 7, "request_headers")
+	if !_ok { return t.trap }
+	_rs: [^]u8
+	_rs, _ok = _ret_ptr(&t, 13, 8)
+	if !_ok { return t.trap }
+	_p0 := string(_s0)
+	if !_utf8(&t, _p0, "cache") { return t.trap }
+	_p2 := string(_s2)
+	if !_utf8(&t, _p2, "url") { return t.trap }
+	_p3 := string(_s3)
+	if !_utf8(&t, _p3, "method") { return t.trap }
+	_p4 := string(_s4)
+	if !_utf8(&t, _p4, "request_headers") { return t.trap }
+	_p1 := a[2].i32 != 0
+	_p5 := a[9].i32 != 0
+	_p6 := a[10].i32 != 0
+	_p7 := a[11].i32 != 0
+	_p8 := a[12].i32 != 0
+	_r, _err := Cache_match(&t.c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
+}
+
+// Cache_keys :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_caches_Cache_keys :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	t: _Tramp = ---
+	context = _enter(&t, env, caller, a, "caches.Cache_keys", .Status)
 	_ok: bool
 	_s0: []u8
 	_s0, _ok = _span(&t, 0, "cache")
@@ -3521,8 +3564,8 @@ _t_caches_Cache_matchIds :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_s3: []u8
 	_s3, _ok = _span(&t, 6, "request_headers")
 	if !_ok { return t.trap }
-	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 11, 73, "ssssiii")
+	_rs: [^]u8
+	_rs, _ok = _ret_ptr(&t, 11, 8)
 	if !_ok { return t.trap }
 	_p0 := string(_s0)
 	if !_utf8(&t, _p0, "cache") { return t.trap }
@@ -3535,71 +3578,11 @@ _t_caches_Cache_matchIds :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_p4 := a[8].i32 != 0
 	_p5 := a[9].i32 != 0
 	_p6 := a[10].i32 != 0
-	_r, _err := Cache_matchIds(&t.c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
-	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
+	_r, _err := Cache_keys(&t.c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
 }
 
-// Cache_entryRequestHeaders :: proc(c: ^Call, cache: string, id: u64) -> (string, Api_Error)
-@(private = "file")
-_t_caches_Cache_entryRequestHeaders :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	t: _Tramp = ---
-	context = _enter(&t, env, caller, a, "caches.Cache_entryRequestHeaders", .Out_Raise)
-	_ok: bool
-	_s0: []u8
-	_s0, _ok = _span(&t, 0, "cache")
-	if !_ok { return t.trap }
-	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 74, "sl")
-	if !_ok { return t.trap }
-	_p0 := string(_s0)
-	if !_utf8(&t, _p0, "cache") { return t.trap }
-	api_route(&t.c, u64(a[2].i64))
-	_p1 := u64(a[2].i64)
-	_r, _err := Cache_entryRequestHeaders(&t.c, _p0, _p1)
-	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
-}
-
-// Cache_entryHead :: proc(c: ^Call, cache: string, id: u64) -> (string, Api_Error)
-@(private = "file")
-_t_caches_Cache_entryHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	t: _Tramp = ---
-	context = _enter(&t, env, caller, a, "caches.Cache_entryHead", .Out_Raise)
-	_ok: bool
-	_s0: []u8
-	_s0, _ok = _span(&t, 0, "cache")
-	if !_ok { return t.trap }
-	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 75, "sl")
-	if !_ok { return t.trap }
-	_p0 := string(_s0)
-	if !_utf8(&t, _p0, "cache") { return t.trap }
-	api_route(&t.c, u64(a[2].i64))
-	_p1 := u64(a[2].i64)
-	_r, _err := Cache_entryHead(&t.c, _p0, _p1)
-	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
-}
-
-// Cache_entryBody :: proc(c: ^Call, cache: string, id: u64) -> ([]u8, Api_Error)
-@(private = "file")
-_t_caches_Cache_entryBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	t: _Tramp = ---
-	context = _enter(&t, env, caller, a, "caches.Cache_entryBody", .Out_Raise)
-	_ok: bool
-	_s0: []u8
-	_s0, _ok = _span(&t, 0, "cache")
-	if !_ok { return t.trap }
-	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 76, "sl")
-	if !_ok { return t.trap }
-	_p0 := string(_s0)
-	if !_utf8(&t, _p0, "cache") { return t.trap }
-	api_route(&t.c, u64(a[2].i64))
-	_p1 := u64(a[2].i64)
-	_r, _err := Cache_entryBody(&t.c, _p0, _p1)
-	return _end_out_str(&t, &_o, _r, _err)
-}
-
-// Cache_putEntry :: proc(c: ^Call, cache: string, url: string, request_headers: string, status: i32, status_text: string, response_url: string, headers: string, body: []u8) -> Api_Error
+// Cache_putEntry :: proc(c: ^Call, cache: string, url: string, request_headers: string, status: i32, status_text: string, response_url: string, headers: string, body: []u8) -> (u64, Api_Error)
 @(private = "file")
 _t_caches_Cache_putEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	t: _Tramp = ---
@@ -3626,6 +3609,9 @@ _t_caches_Cache_putEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_s7: []u8
 	_s7, _ok = _span(&t, 13, "body")
 	if !_ok { return t.trap }
+	_rs: [^]u8
+	_rs, _ok = _ret_ptr(&t, 15, 8)
+	if !_ok { return t.trap }
 	_p0 := string(_s0)
 	if !_utf8(&t, _p0, "cache") { return t.trap }
 	_p1 := string(_s1)
@@ -3640,11 +3626,11 @@ _t_caches_Cache_putEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if !_utf8(&t, _p6, "headers") { return t.trap }
 	_p7 := _s7
 	_p3 := a[6].i32
-	_err := Cache_putEntry(&t.c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7)
-	return _end_status(&t, _err)
+	_r, _err := Cache_putEntry(&t.c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
 }
 
-// Cache_deleteEntries :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -> (bool, Api_Error)
+// Cache_deleteEntries :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -> (u64, Api_Error)
 @(private = "file")
 _t_caches_Cache_deleteEntries :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	t: _Tramp = ---
@@ -3663,7 +3649,7 @@ _t_caches_Cache_deleteEntries :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_s3, _ok = _span(&t, 6, "request_headers")
 	if !_ok { return t.trap }
 	_rs: [^]u8
-	_rs, _ok = _ret_ptr(&t, 11, 1)
+	_rs, _ok = _ret_ptr(&t, 11, 8)
 	if !_ok { return t.trap }
 	_p0 := string(_s0)
 	if !_utf8(&t, _p0, "cache") { return t.trap }
@@ -3677,7 +3663,7 @@ _t_caches_Cache_deleteEntries :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_p5 := a[9].i32 != 0
 	_p6 := a[10].i32 != 0
 	_r, _err := Cache_deleteEntries(&t.c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
-	return _end_ret_u8(&t, _rs, u8(1 if _r else 0), _err)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
 }
 
 // HTMLCanvasElement_width :: proc(c: ^Call, canvas: Api_HTMLCanvasElement) -> u32
@@ -4020,7 +4006,7 @@ _t_canvas_CanvasCompositing_globalCompositeOperation :: proc "c" (env: rawptr, c
 	context = _enter(&t, env, caller, a, "canvas.CanvasCompositing_globalCompositeOperation", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 102, "l")
+	_ok = _out_buf(&t, &_o, 1, 100, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -4079,7 +4065,7 @@ _t_canvas_CanvasImageSmoothing_imageSmoothingQuality :: proc "c" (env: rawptr, c
 	context = _enter(&t, env, caller, a, "canvas.CanvasImageSmoothing_imageSmoothingQuality", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 106, "l")
+	_ok = _out_buf(&t, &_o, 1, 104, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -4125,7 +4111,7 @@ _t_canvas_CanvasStyle_color :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	context = _enter(&t, env, caller, a, "canvas.CanvasStyle_color", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 109, "li")
+	_ok = _out_buf(&t, &_o, 2, 107, "li")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -4384,7 +4370,7 @@ _t_canvas_CanvasShadowStyles_shadowColor :: proc "c" (env: rawptr, caller: wasm.
 	context = _enter(&t, env, caller, a, "canvas.CanvasShadowStyles_shadowColor", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 125, "l")
+	_ok = _out_buf(&t, &_o, 1, 123, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -4416,7 +4402,7 @@ _t_canvas_CanvasFilters_filter :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "canvas.CanvasFilters_filter", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 127, "l")
+	_ok = _out_buf(&t, &_o, 1, 125, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -4918,7 +4904,7 @@ _t_canvas_CanvasPathDrawingStyles_lineCap :: proc "c" (env: rawptr, caller: wasm
 	context = _enter(&t, env, caller, a, "canvas.CanvasPathDrawingStyles_lineCap", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 159, "l")
+	_ok = _out_buf(&t, &_o, 1, 157, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -4950,7 +4936,7 @@ _t_canvas_CanvasPathDrawingStyles_lineJoin :: proc "c" (env: rawptr, caller: was
 	context = _enter(&t, env, caller, a, "canvas.CanvasPathDrawingStyles_lineJoin", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 161, "l")
+	_ok = _out_buf(&t, &_o, 1, 159, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -5080,7 +5066,7 @@ _t_canvas_CanvasTextDrawingStyles_lang :: proc "c" (env: rawptr, caller: wasm.Ca
 	context = _enter(&t, env, caller, a, "canvas.CanvasTextDrawingStyles_lang", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 170, "l")
+	_ok = _out_buf(&t, &_o, 1, 168, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -5112,7 +5098,7 @@ _t_canvas_CanvasTextDrawingStyles_font :: proc "c" (env: rawptr, caller: wasm.Ca
 	context = _enter(&t, env, caller, a, "canvas.CanvasTextDrawingStyles_font", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 172, "l")
+	_ok = _out_buf(&t, &_o, 1, 170, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -5144,7 +5130,7 @@ _t_canvas_CanvasTextDrawingStyles_textAlign :: proc "c" (env: rawptr, caller: wa
 	context = _enter(&t, env, caller, a, "canvas.CanvasTextDrawingStyles_textAlign", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 174, "l")
+	_ok = _out_buf(&t, &_o, 1, 172, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -5176,7 +5162,7 @@ _t_canvas_CanvasTextDrawingStyles_textBaseline :: proc "c" (env: rawptr, caller:
 	context = _enter(&t, env, caller, a, "canvas.CanvasTextDrawingStyles_textBaseline", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 176, "l")
+	_ok = _out_buf(&t, &_o, 1, 174, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -5208,7 +5194,7 @@ _t_canvas_CanvasTextDrawingStyles_direction :: proc "c" (env: rawptr, caller: wa
 	context = _enter(&t, env, caller, a, "canvas.CanvasTextDrawingStyles_direction", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 178, "l")
+	_ok = _out_buf(&t, &_o, 1, 176, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -5240,7 +5226,7 @@ _t_canvas_CanvasTextDrawingStyles_letterSpacing :: proc "c" (env: rawptr, caller
 	context = _enter(&t, env, caller, a, "canvas.CanvasTextDrawingStyles_letterSpacing", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 180, "l")
+	_ok = _out_buf(&t, &_o, 1, 178, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -5272,7 +5258,7 @@ _t_canvas_CanvasTextDrawingStyles_wordSpacing :: proc "c" (env: rawptr, caller: 
 	context = _enter(&t, env, caller, a, "canvas.CanvasTextDrawingStyles_wordSpacing", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 182, "l")
+	_ok = _out_buf(&t, &_o, 1, 180, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -5304,7 +5290,7 @@ _t_canvas_CanvasTextDrawingStyles_fontKerning :: proc "c" (env: rawptr, caller: 
 	context = _enter(&t, env, caller, a, "canvas.CanvasTextDrawingStyles_fontKerning", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 184, "l")
+	_ok = _out_buf(&t, &_o, 1, 182, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -5336,7 +5322,7 @@ _t_canvas_CanvasTextDrawingStyles_fontStretch :: proc "c" (env: rawptr, caller: 
 	context = _enter(&t, env, caller, a, "canvas.CanvasTextDrawingStyles_fontStretch", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 186, "l")
+	_ok = _out_buf(&t, &_o, 1, 184, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -5368,7 +5354,7 @@ _t_canvas_CanvasTextDrawingStyles_fontVariantCaps :: proc "c" (env: rawptr, call
 	context = _enter(&t, env, caller, a, "canvas.CanvasTextDrawingStyles_fontVariantCaps", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 188, "l")
+	_ok = _out_buf(&t, &_o, 1, 186, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -5400,7 +5386,7 @@ _t_canvas_CanvasTextDrawingStyles_textRendering :: proc "c" (env: rawptr, caller
 	context = _enter(&t, env, caller, a, "canvas.CanvasTextDrawingStyles_textRendering", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 190, "l")
+	_ok = _out_buf(&t, &_o, 1, 188, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CanvasRenderingContext2D
 	_p0, _ok = _h_CanvasRenderingContext2D(&t, 0, "ctx")
@@ -5971,7 +5957,7 @@ _t_compression_Compression_push :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	_s1, _ok = _span(&t, 1, "input")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 224, "ls")
+	_ok = _out_buf(&t, &_o, 3, 222, "ls")
 	if !_ok { return t.trap }
 	_p1 := _s1
 	_p0: Api_Compressor
@@ -5988,7 +5974,7 @@ _t_compression_Compression_finish :: proc "c" (env: rawptr, caller: wasm.Caller,
 	context = _enter(&t, env, caller, a, "compression.Compression_finish", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 225, "l")
+	_ok = _out_buf(&t, &_o, 1, 223, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Compressor
 	_p0, _ok = _h_Compressor(&t, 0, "compressor")
@@ -6004,7 +5990,7 @@ _t_compression_Compression_output :: proc "c" (env: rawptr, caller: wasm.Caller,
 	context = _enter(&t, env, caller, a, "compression.Compression_output", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 226, "l")
+	_ok = _out_buf(&t, &_o, 1, 224, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Compressor
 	_p0, _ok = _h_Compressor(&t, 0, "compressor")
@@ -6171,7 +6157,7 @@ _t_credentials_PublicKeyCredential_id :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = _enter(&t, env, caller, a, "credentials.PublicKeyCredential_id", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 239, "l")
+	_ok = _out_buf(&t, &_o, 1, 237, "l")
 	if !_ok { return t.trap }
 	_p0: Api_PublicKeyCredential
 	_p0, _ok = _h_PublicKeyCredential(&t, 0, "credential")
@@ -6206,7 +6192,7 @@ _t_credentials_PublicKeyCredential_authenticatorAttachment :: proc "c" (env: raw
 	context = _enter(&t, env, caller, a, "credentials.PublicKeyCredential_authenticatorAttachment", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 241, "l")
+	_ok = _out_buf(&t, &_o, 1, 239, "l")
 	if !_ok { return t.trap }
 	_p0: Api_PublicKeyCredential
 	_p0, _ok = _h_PublicKeyCredential(&t, 0, "credential")
@@ -6222,7 +6208,7 @@ _t_credentials_PublicKeyCredential_transports :: proc "c" (env: rawptr, caller: 
 	context = _enter(&t, env, caller, a, "credentials.PublicKeyCredential_transports", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 242, "l")
+	_ok = _out_buf(&t, &_o, 1, 240, "l")
 	if !_ok { return t.trap }
 	_p0: Api_PublicKeyCredential
 	_p0, _ok = _h_PublicKeyCredential(&t, 0, "credential")
@@ -6251,7 +6237,7 @@ _t_credentials_PublicKeyCredential_clientExtensionResults :: proc "c" (env: rawp
 	context = _enter(&t, env, caller, a, "credentials.PublicKeyCredential_clientExtensionResults", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 244, "l")
+	_ok = _out_buf(&t, &_o, 1, 242, "l")
 	if !_ok { return t.trap }
 	_p0: Api_PublicKeyCredential
 	_p0, _ok = _h_PublicKeyCredential(&t, 0, "credential")
@@ -6267,7 +6253,7 @@ _t_credentials_PublicKeyCredential_toJSON :: proc "c" (env: rawptr, caller: wasm
 	context = _enter(&t, env, caller, a, "credentials.PublicKeyCredential_toJSON", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 245, "l")
+	_ok = _out_buf(&t, &_o, 1, 243, "l")
 	if !_ok { return t.trap }
 	_p0: Api_PublicKeyCredential
 	_p0, _ok = _h_PublicKeyCredential(&t, 0, "credential")
@@ -6297,7 +6283,7 @@ _t_crypto_Crypto_randomUUID :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	context = _enter(&t, env, caller, a, "crypto.Crypto_randomUUID", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 247, "")
+	_ok = _out_buf(&t, &_o, 0, 245, "")
 	if !_ok { return t.trap }
 	_r, _err := Crypto_randomUUID(&t.c)
 	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
@@ -6465,7 +6451,7 @@ _t_crypto_CryptoKey_export :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_s1, _ok = _span(&t, 1, "part")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 255, "ls")
+	_ok = _out_buf(&t, &_o, 3, 253, "ls")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "part") { return t.trap }
@@ -6496,7 +6482,7 @@ _t_crypto_CryptoKey_serialize :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = _enter(&t, env, caller, a, "crypto.CryptoKey_serialize", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 257, "l")
+	_ok = _out_buf(&t, &_o, 1, 255, "l")
 	if !_ok { return t.trap }
 	_p0: Api_CryptoKeyData
 	_p0, _ok = _h_CryptoKeyData(&t, 0, "key")
@@ -6707,7 +6693,7 @@ _t_document_Document_URL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = _enter(&t, env, caller, a, "document.Document_URL", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 266, "")
+	_ok = _out_buf(&t, &_o, 0, 264, "")
 	if !_ok { return t.trap }
 	_r, _err := Document_URL(&t.c)
 	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
@@ -6720,7 +6706,7 @@ _t_document_Window_origin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	context = _enter(&t, env, caller, a, "document.Window_origin", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 267, "")
+	_ok = _out_buf(&t, &_o, 0, 265, "")
 	if !_ok { return t.trap }
 	_r := Window_origin(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -6742,7 +6728,7 @@ _t_document_Document_cookie_get :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	context = _enter(&t, env, caller, a, "document.Document_cookie_get", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 269, "")
+	_ok = _out_buf(&t, &_o, 0, 267, "")
 	if !_ok { return t.trap }
 	_r, _err := Document_cookie_get(&t.c)
 	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
@@ -7007,7 +6993,7 @@ _t_dom_Node_getTextContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	context = _enter(&t, env, caller, a, "dom.Node_getTextContent", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 288, "l")
+	_ok = _out_buf(&t, &_o, 1, 286, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "node")
@@ -7023,7 +7009,7 @@ _t_dom_Element_tagName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	context = _enter(&t, env, caller, a, "dom.Element_tagName", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 289, "l")
+	_ok = _out_buf(&t, &_o, 1, 287, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -7065,7 +7051,7 @@ _t_dom_Element_getAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_s1, _ok = _span(&t, 1, "name")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 291, "ls")
+	_ok = _out_buf(&t, &_o, 3, 289, "ls")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "name") { return t.trap }
@@ -7162,7 +7148,7 @@ _t_encoding_TextDecoder_encoding :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	context = _enter(&t, env, caller, a, "encoding.TextDecoder_encoding", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 296, "l")
+	_ok = _out_buf(&t, &_o, 1, 294, "l")
 	if !_ok { return t.trap }
 	_p0: Api_TextDecoder
 	_p0, _ok = _h_TextDecoder(&t, 0, "decoder")
@@ -7194,7 +7180,7 @@ _t_encoding_TextDecoder_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_s1, _ok = _span(&t, 1, "input")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 4, 298, "lsi")
+	_ok = _out_buf(&t, &_o, 4, 296, "lsi")
 	if !_ok { return t.trap }
 	_p1 := _s1
 	_p0: Api_TextDecoder
@@ -7212,7 +7198,7 @@ _t_encoding_TextDecoder_decodeBuffer :: proc "c" (env: rawptr, caller: wasm.Call
 	context = _enter(&t, env, caller, a, "encoding.TextDecoder_decodeBuffer", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 299, "lli")
+	_ok = _out_buf(&t, &_o, 3, 297, "lli")
 	if !_ok { return t.trap }
 	_p0: Api_TextDecoder
 	_p0, _ok = _h_TextDecoder(&t, 0, "decoder")
@@ -7232,7 +7218,7 @@ _t_encoding_TextDecoder_output :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "encoding.TextDecoder_output", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 300, "l")
+	_ok = _out_buf(&t, &_o, 1, 298, "l")
 	if !_ok { return t.trap }
 	_p0: Api_TextDecoder
 	_p0, _ok = _h_TextDecoder(&t, 0, "decoder")
@@ -7373,7 +7359,7 @@ _t_events_Event_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	context = _enter(&t, env, caller, a, "events.Event_type", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 309, "l")
+	_ok = _out_buf(&t, &_o, 1, 307, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Event
 	_p0, _ok = _h_Event(&t, 0, "event")
@@ -7402,7 +7388,7 @@ _t_events_Event_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	context = _enter(&t, env, caller, a, "events.Event_data", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 311, "l")
+	_ok = _out_buf(&t, &_o, 1, 309, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Event
 	_p0, _ok = _h_Event(&t, 0, "event")
@@ -7418,7 +7404,7 @@ _t_events_Event_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	context = _enter(&t, env, caller, a, "events.Event_text", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 312, "l")
+	_ok = _out_buf(&t, &_o, 1, 310, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Event
 	_p0, _ok = _h_Event(&t, 0, "event")
@@ -7544,7 +7530,7 @@ _t_eventsource_EventSource_url :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "eventsource.EventSource_url", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 321, "l")
+	_ok = _out_buf(&t, &_o, 1, 319, "l")
 	if !_ok { return t.trap }
 	_p0: Api_EventSource
 	_p0, _ok = _h_EventSource(&t, 0, "source")
@@ -7586,7 +7572,7 @@ _t_eventsource_MessageEvent_origin :: proc "c" (env: rawptr, caller: wasm.Caller
 	context = _enter(&t, env, caller, a, "eventsource.MessageEvent_origin", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 324, "l")
+	_ok = _out_buf(&t, &_o, 1, 322, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Event
 	_p0, _ok = _h_Event(&t, 0, "event")
@@ -7602,7 +7588,7 @@ _t_eventsource_MessageEvent_lastEventId :: proc "c" (env: rawptr, caller: wasm.C
 	context = _enter(&t, env, caller, a, "eventsource.MessageEvent_lastEventId", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 325, "l")
+	_ok = _out_buf(&t, &_o, 1, 323, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Event
 	_p0, _ok = _h_Event(&t, 0, "event")
@@ -7618,7 +7604,7 @@ _t_ext_Ext_info :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 	context = _enter(&t, env, caller, a, "ext.Ext_info", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 326, "")
+	_ok = _out_buf(&t, &_o, 0, 324, "")
 	if !_ok { return t.trap }
 	_r := Ext_info(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -7631,7 +7617,7 @@ _t_ext_Ext_manifest :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	context = _enter(&t, env, caller, a, "ext.Ext_manifest", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 327, "")
+	_ok = _out_buf(&t, &_o, 0, 325, "")
 	if !_ok { return t.trap }
 	_r := Ext_manifest(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -7650,7 +7636,7 @@ _t_ext_Ext_message :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	_s1, _ok = _span(&t, 2, "subs")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 4, 328, "ss")
+	_ok = _out_buf(&t, &_o, 4, 326, "ss")
 	if !_ok { return t.trap }
 	_p0 := string(_s0)
 	if !_utf8(&t, _p0, "name") { return t.trap }
@@ -7701,7 +7687,7 @@ _t_ext_Ext_take :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 	context = _enter(&t, env, caller, a, "ext.Ext_take", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 331, "")
+	_ok = _out_buf(&t, &_o, 0, 329, "")
 	if !_ok { return t.trap }
 	_r := Ext_take(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -8075,7 +8061,7 @@ _t_forms_forms_value :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	context = _enter(&t, env, caller, a, "forms.HTMLInputElement_value", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 351, "l")
+	_ok = _out_buf(&t, &_o, 1, 349, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "control")
@@ -8107,7 +8093,7 @@ _t_forms_forms_defaultValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	context = _enter(&t, env, caller, a, "forms.HTMLInputElement_defaultValue", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 353, "l")
+	_ok = _out_buf(&t, &_o, 1, 351, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "control")
@@ -8220,7 +8206,7 @@ _t_forms_forms_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	context = _enter(&t, env, caller, a, "forms.HTMLInputElement_type", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 361, "l")
+	_ok = _out_buf(&t, &_o, 1, 359, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "control")
@@ -8236,7 +8222,7 @@ _t_forms_forms_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	context = _enter(&t, env, caller, a, "forms.HTMLInputElement_name", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 362, "l")
+	_ok = _out_buf(&t, &_o, 1, 360, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "control")
@@ -8372,7 +8358,7 @@ _t_forms_forms_validationMessage :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	context = _enter(&t, env, caller, a, "forms.HTMLInputElement_validationMessage", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 372, "l")
+	_ok = _out_buf(&t, &_o, 1, 370, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "control")
@@ -8469,7 +8455,7 @@ _t_forms_forms_selectionDirection :: proc "c" (env: rawptr, caller: wasm.Caller,
 	context = _enter(&t, env, caller, a, "forms.HTMLInputElement_selectionDirection", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 379, "l")
+	_ok = _out_buf(&t, &_o, 1, 377, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "control")
@@ -8645,7 +8631,7 @@ _t_forms_forms_fileName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	context = _enter(&t, env, caller, a, "forms.HTMLInputElement_fileName", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 391, "li")
+	_ok = _out_buf(&t, &_o, 2, 389, "li")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "control")
@@ -8676,7 +8662,7 @@ _t_forms_forms_fileType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	context = _enter(&t, env, caller, a, "forms.HTMLInputElement_fileType", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 393, "li")
+	_ok = _out_buf(&t, &_o, 2, 391, "li")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "control")
@@ -8841,7 +8827,7 @@ _t_forms_HTMLOptionElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	context = _enter(&t, env, caller, a, "forms.HTMLOptionElement_text", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 405, "l")
+	_ok = _out_buf(&t, &_o, 1, 403, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "option")
@@ -8857,7 +8843,7 @@ _t_forms_HTMLOptionElement_label :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	context = _enter(&t, env, caller, a, "forms.HTMLOptionElement_label", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 406, "l")
+	_ok = _out_buf(&t, &_o, 1, 404, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "option")
@@ -9019,7 +9005,7 @@ _t_forms_HTMLDialogElement_returnValue :: proc "c" (env: rawptr, caller: wasm.Ca
 	context = _enter(&t, env, caller, a, "forms.HTMLDialogElement_returnValue", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 418, "l")
+	_ok = _out_buf(&t, &_o, 1, 416, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "dialog")
@@ -9192,7 +9178,7 @@ _t_forms_FormData_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_s1, _ok = _span(&t, 1, "name")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 427, "ls")
+	_ok = _out_buf(&t, &_o, 3, 425, "ls")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "name") { return t.trap }
@@ -9213,7 +9199,7 @@ _t_forms_FormData_getAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	_s1, _ok = _span(&t, 1, "name")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 4, 428, "lsi")
+	_ok = _out_buf(&t, &_o, 4, 426, "lsi")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "name") { return t.trap }
@@ -9245,7 +9231,7 @@ _t_forms_FormData_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = _enter(&t, env, caller, a, "forms.FormData_nameAt", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 430, "li")
+	_ok = _out_buf(&t, &_o, 2, 428, "li")
 	if !_ok { return t.trap }
 	_p0: Api_FormData
 	_p0, _ok = _h_FormData(&t, 0, "data")
@@ -9262,7 +9248,7 @@ _t_forms_FormData_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	context = _enter(&t, env, caller, a, "forms.FormData_valueAt", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 431, "li")
+	_ok = _out_buf(&t, &_o, 2, 429, "li")
 	if !_ok { return t.trap }
 	_p0: Api_FormData
 	_p0, _ok = _h_FormData(&t, 0, "data")
@@ -9310,7 +9296,7 @@ _t_forms_FormData_fileTypeAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = _enter(&t, env, caller, a, "forms.FormData_fileTypeAt", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 434, "li")
+	_ok = _out_buf(&t, &_o, 2, 432, "li")
 	if !_ok { return t.trap }
 	_p0: Api_FormData
 	_p0, _ok = _h_FormData(&t, 0, "data")
@@ -9452,7 +9438,7 @@ _t_frames_Frame_childNames :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	context = _enter(&t, env, caller, a, "frames.Frame_childNames", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 443, "l")
+	_ok = _out_buf(&t, &_o, 1, 441, "l")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -9580,7 +9566,7 @@ _t_frames_Frame_bridgeReply :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	context = _enter(&t, env, caller, a, "frames.Frame_bridgeReply", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 454, "")
+	_ok = _out_buf(&t, &_o, 0, 452, "")
 	if !_ok { return t.trap }
 	_r := Frame_bridgeReply(&t.c)
 	return _end_out_str_ok(&t, &_o, _r)
@@ -9593,7 +9579,7 @@ _t_frames_Frame_adoptNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	context = _enter(&t, env, caller, a, "frames.Frame_adoptNode", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 455, "ll")
+	_ok = _out_buf(&t, &_o, 2, 453, "ll")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -9729,7 +9715,7 @@ _t_frames_Window_get_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	context = _enter(&t, env, caller, a, "frames.Window_get_name", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 463, "")
+	_ok = _out_buf(&t, &_o, 0, 461, "")
 	if !_ok { return t.trap }
 	_r := Window_get_name(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -9755,7 +9741,7 @@ _t_dom_HTMLIFrameElement_srcdoc :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	context = _enter(&t, env, caller, a, "dom.HTMLIFrameElement_srcdoc", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 465, "l")
+	_ok = _out_buf(&t, &_o, 1, 463, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -9794,14 +9780,14 @@ _t_fs_Fs_opfsRoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	if !_ok { return t.trap }
 	_p0 := utf8_scrub(string(_s0), context.temp_allocator)
 	_r, _err := Fs_opfsRoot(&t.c, _p0)
-	return _end_ret_u64(&t, _rs, _r, _err)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
 }
 
-// Fs_getEntry :: proc(c: ^Call, root: u64, path: string, name: string, directory: bool, create: bool) -> (string, Api_Error)
+// Fs_getEntry :: proc(c: ^Call, root: u64, path: string, name: string, directory: bool, create: bool) -> (u64, Api_Error)
 @(private = "file")
 _t_fs_Fs_getEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	t: _Tramp = ---
-	context = _enter(&t, env, caller, a, "fs.Fs_getEntry", .Out_Raise)
+	context = _enter(&t, env, caller, a, "fs.Fs_getEntry", .Status)
 	_ok: bool
 	_s1: []u8
 	_s1, _ok = _span(&t, 1, "path")
@@ -9809,8 +9795,8 @@ _t_fs_Fs_getEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	_s2: []u8
 	_s2, _ok = _span(&t, 3, "name")
 	if !_ok { return t.trap }
-	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 7, 468, "lssii")
+	_rs: [^]u8
+	_rs, _ok = _ret_ptr(&t, 7, 8)
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "path") { return t.trap }
@@ -9821,10 +9807,10 @@ _t_fs_Fs_getEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	_p3 := a[5].i32 != 0
 	_p4 := a[6].i32 != 0
 	_r, _err := Fs_getEntry(&t.c, _p0, _p1, _p2, _p3, _p4)
-	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
 }
 
-// Fs_removeEntry :: proc(c: ^Call, root: u64, path: string, name: string, recursive: bool) -> Api_Error
+// Fs_removeEntry :: proc(c: ^Call, root: u64, path: string, name: string, recursive: bool) -> (u64, Api_Error)
 @(private = "file")
 _t_fs_Fs_removeEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	t: _Tramp = ---
@@ -9836,6 +9822,9 @@ _t_fs_Fs_removeEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	_s2: []u8
 	_s2, _ok = _span(&t, 3, "name")
 	if !_ok { return t.trap }
+	_rs: [^]u8
+	_rs, _ok = _ret_ptr(&t, 6, 8)
+	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "path") { return t.trap }
 	_p2 := string(_s2)
@@ -9843,28 +9832,28 @@ _t_fs_Fs_removeEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p3 := a[5].i32 != 0
-	_err := Fs_removeEntry(&t.c, _p0, _p1, _p2, _p3)
-	return _end_status(&t, _err)
+	_r, _err := Fs_removeEntry(&t.c, _p0, _p1, _p2, _p3)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
 }
 
-// Fs_list :: proc(c: ^Call, root: u64, path: string) -> (string, Api_Error)
+// Fs_list :: proc(c: ^Call, root: u64, path: string) -> (u64, Api_Error)
 @(private = "file")
 _t_fs_Fs_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	t: _Tramp = ---
-	context = _enter(&t, env, caller, a, "fs.Fs_list", .Out_Raise)
+	context = _enter(&t, env, caller, a, "fs.Fs_list", .Status)
 	_ok: bool
 	_s1: []u8
 	_s1, _ok = _span(&t, 1, "path")
 	if !_ok { return t.trap }
-	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 470, "ls")
+	_rs: [^]u8
+	_rs, _ok = _ret_ptr(&t, 3, 8)
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "path") { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r, _err := Fs_list(&t.c, _p0, _p1)
-	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
 }
 
 // Fs_resolve :: proc(c: ^Call, root: u64, path: string, root2: u64, path2: string) -> (string, Api_Error)
@@ -9880,7 +9869,7 @@ _t_fs_Fs_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	_s3, _ok = _span(&t, 4, "path2")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 6, 471, "lsls")
+	_ok = _out_buf(&t, &_o, 6, 469, "lsls")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "path") { return t.trap }
@@ -9935,7 +9924,7 @@ _t_fs_Fs_getFile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r, _err := Fs_getFile(&t.c, _p0, _p1)
-	return _end_ret_u64(&t, _rs, _r, _err)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
 }
 
 // Fs_open :: proc(c: ^Call, root: u64, path: string, keep: bool, sync: bool) -> (u64, Api_Error)
@@ -9957,7 +9946,7 @@ _t_fs_Fs_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	_p2 := a[3].i32 != 0
 	_p3 := a[4].i32 != 0
 	_r, _err := Fs_open(&t.c, _p0, _p1, _p2, _p3)
-	return _end_ret_u64(&t, _rs, _r, _err)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
 }
 
 // Fs_write :: proc(c: ^Call, id: u64, at: i64, data: []u8) -> (i64, Api_Error)
@@ -10062,6 +10051,58 @@ _t_fs_Fs_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	return _end_status(&t, _err)
 }
 
+// Fs_writeAsync :: proc(c: ^Call, id: u64, at: i64, data: []u8) -> (u64, Api_Error)
+@(private = "file")
+_t_fs_Fs_writeAsync :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	t: _Tramp = ---
+	context = _enter(&t, env, caller, a, "fs.Fs_writeAsync", .Status)
+	_ok: bool
+	_s2: []u8
+	_s2, _ok = _span(&t, 2, "data")
+	if !_ok { return t.trap }
+	_rs: [^]u8
+	_rs, _ok = _ret_ptr(&t, 4, 8)
+	if !_ok { return t.trap }
+	_p2 := _s2
+	api_route(&t.c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i64
+	_r, _err := Fs_writeAsync(&t.c, _p0, _p1, _p2)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
+}
+
+// Fs_truncateAsync :: proc(c: ^Call, id: u64, size: i64) -> (u64, Api_Error)
+@(private = "file")
+_t_fs_Fs_truncateAsync :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	t: _Tramp = ---
+	context = _enter(&t, env, caller, a, "fs.Fs_truncateAsync", .Status)
+	_ok: bool
+	_rs: [^]u8
+	_rs, _ok = _ret_ptr(&t, 2, 8)
+	if !_ok { return t.trap }
+	api_route(&t.c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i64
+	_r, _err := Fs_truncateAsync(&t.c, _p0, _p1)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
+}
+
+// Fs_closeAsync :: proc(c: ^Call, id: u64, commit: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_fs_Fs_closeAsync :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	t: _Tramp = ---
+	context = _enter(&t, env, caller, a, "fs.Fs_closeAsync", .Status)
+	_ok: bool
+	_rs: [^]u8
+	_rs, _ok = _ret_ptr(&t, 2, 8)
+	if !_ok { return t.trap }
+	api_route(&t.c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32 != 0
+	_r, _err := Fs_closeAsync(&t.c, _p0, _p1)
+	return _end_ret_u64(&t, _rs, u64(_r), _err)
+}
+
 // Fs_permission :: proc(c: ^Call, root: u64, write: bool) -> i32
 @(private = "file")
 _t_fs_Fs_permission :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -10141,7 +10182,7 @@ _t_fs_Fs_describe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	context = _enter(&t, env, caller, a, "fs.Fs_describe", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 485, "l")
+	_ok = _out_buf(&t, &_o, 1, 486, "l")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -10298,7 +10339,7 @@ _t_history_Location_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	context = _enter(&t, env, caller, a, "history.Location_get", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 498, "i")
+	_ok = _out_buf(&t, &_o, 1, 499, "i")
 	if !_ok { return t.trap }
 	_e0 := i32(a[0].i32)
 	if !_valid_URLComponent(_e0) { return _fail_enum(&t, "component", "URLComponent") }
@@ -10374,7 +10415,7 @@ _t_history_History_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = _enter(&t, env, caller, a, "history.History_state", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 504, "")
+	_ok = _out_buf(&t, &_o, 0, 505, "")
 	if !_ok { return t.trap }
 	_r, _err := History_state(&t.c)
 	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
@@ -10465,7 +10506,7 @@ _t_idb_Idb_call :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 	_s1, _ok = _span(&t, 1, "args")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 510, "is")
+	_ok = _out_buf(&t, &_o, 3, 511, "is")
 	if !_ok { return t.trap }
 	_p1 := _s1
 	_p0 := a[0].i32
@@ -10519,7 +10560,7 @@ _t_images_HTMLImageElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = _enter(&t, env, caller, a, "images.HTMLImageElement_currentSrc", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 514, "l")
+	_ok = _out_buf(&t, &_o, 1, 515, "l")
 	if !_ok { return t.trap }
 	_p0: Api_HTMLImageElement
 	_p0, _ok = _h_HTMLImageElement(&t, 0, "image")
@@ -10626,7 +10667,7 @@ _t_js_Engine_timeZone :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	context = _enter(&t, env, caller, a, "js.Engine_timeZone", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 521, "")
+	_ok = _out_buf(&t, &_o, 0, 522, "")
 	if !_ok { return t.trap }
 	_r := Engine_timeZone(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -10639,7 +10680,7 @@ _t_js_Engine_locale :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	context = _enter(&t, env, caller, a, "js.Engine_locale", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 522, "")
+	_ok = _out_buf(&t, &_o, 0, 523, "")
 	if !_ok { return t.trap }
 	_r := Engine_locale(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -10854,7 +10895,7 @@ _t_dom_CSSStyleSheet_hrefOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	context = _enter(&t, env, caller, a, "dom.CSSStyleSheet_hrefOf", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 538, "l")
+	_ok = _out_buf(&t, &_o, 1, 539, "l")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -10869,7 +10910,7 @@ _t_dom_CSSStyleSheet_titleOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = _enter(&t, env, caller, a, "dom.CSSStyleSheet_titleOf", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 539, "l")
+	_ok = _out_buf(&t, &_o, 1, 540, "l")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -10930,7 +10971,7 @@ _t_dom_CustomElements_take :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	context = _enter(&t, env, caller, a, "dom.CustomElements_take", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 544, "")
+	_ok = _out_buf(&t, &_o, 0, 545, "")
 	if !_ok { return t.trap }
 	_r := CustomElements_take(&t.c)
 	return _end_out_str_ok(&t, &_o, _r)
@@ -11047,7 +11088,7 @@ _t_dnd_DataTransfer_get_dropEffect :: proc "c" (env: rawptr, caller: wasm.Caller
 	context = _enter(&t, env, caller, a, "dnd.DataTransfer_get_dropEffect", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 552, "l")
+	_ok = _out_buf(&t, &_o, 1, 553, "l")
 	if !_ok { return t.trap }
 	_p0: Api_DataTransfer
 	_p0, _ok = _h_DataTransfer(&t, 0, "dt")
@@ -11079,7 +11120,7 @@ _t_dnd_DataTransfer_get_effectAllowed :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = _enter(&t, env, caller, a, "dnd.DataTransfer_get_effectAllowed", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 554, "l")
+	_ok = _out_buf(&t, &_o, 1, 555, "l")
 	if !_ok { return t.trap }
 	_p0: Api_DataTransfer
 	_p0, _ok = _h_DataTransfer(&t, 0, "dt")
@@ -11114,7 +11155,7 @@ _t_dnd_DataTransfer_getData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_s1, _ok = _span(&t, 1, "format")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 556, "ls")
+	_ok = _out_buf(&t, &_o, 3, 557, "ls")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "format") { return t.trap }
@@ -11189,7 +11230,7 @@ _t_dnd_DataTransfer_typeList :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = _enter(&t, env, caller, a, "dnd.DataTransfer_typeList", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 560, "l")
+	_ok = _out_buf(&t, &_o, 1, 561, "l")
 	if !_ok { return t.trap }
 	_p0: Api_DataTransfer
 	_p0, _ok = _h_DataTransfer(&t, 0, "dt")
@@ -11235,7 +11276,7 @@ _t_dnd_DataTransfer_itemType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = _enter(&t, env, caller, a, "dnd.DataTransfer_itemType", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 563, "li")
+	_ok = _out_buf(&t, &_o, 2, 564, "li")
 	if !_ok { return t.trap }
 	_p0: Api_DataTransfer
 	_p0, _ok = _h_DataTransfer(&t, 0, "dt")
@@ -11252,7 +11293,7 @@ _t_dnd_DataTransfer_itemString :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "dnd.DataTransfer_itemString", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 564, "li")
+	_ok = _out_buf(&t, &_o, 2, 565, "li")
 	if !_ok { return t.trap }
 	_p0: Api_DataTransfer
 	_p0, _ok = _h_DataTransfer(&t, 0, "dt")
@@ -11423,7 +11464,7 @@ _t_dnd_LocalFile_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	context = _enter(&t, env, caller, a, "dnd.LocalFile_name", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 574, "l")
+	_ok = _out_buf(&t, &_o, 1, 575, "l")
 	if !_ok { return t.trap }
 	_p0: Api_LocalFile
 	_p0, _ok = _h_LocalFile(&t, 0, "file")
@@ -11439,7 +11480,7 @@ _t_dnd_LocalFile_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	context = _enter(&t, env, caller, a, "dnd.LocalFile_type", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 575, "l")
+	_ok = _out_buf(&t, &_o, 1, 576, "l")
 	if !_ok { return t.trap }
 	_p0: Api_LocalFile
 	_p0, _ok = _h_LocalFile(&t, 0, "file")
@@ -11496,7 +11537,7 @@ _t_dnd_DataTransfer_itemFsHandle :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	context = _enter(&t, env, caller, a, "dnd.DataTransfer_itemFsHandle", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 578, "li")
+	_ok = _out_buf(&t, &_o, 2, 579, "li")
 	if !_ok { return t.trap }
 	_p0: Api_DataTransfer
 	_p0, _ok = _h_DataTransfer(&t, 0, "dt")
@@ -11572,7 +11613,7 @@ _t_dom_Document_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	context = _enter(&t, env, caller, a, "dom.Document_readyState", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 583, "")
+	_ok = _out_buf(&t, &_o, 0, 584, "")
 	if !_ok { return t.trap }
 	_r := Document_readyState(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -11606,7 +11647,7 @@ _t_dom_Document_resolveURL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_s0, _ok = _span(&t, 0, "url")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 586, "s")
+	_ok = _out_buf(&t, &_o, 2, 587, "s")
 	if !_ok { return t.trap }
 	_p0 := string(_s0)
 	if !_utf8(&t, _p0, "url") { return t.trap }
@@ -11621,7 +11662,7 @@ _t_dom_Element_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	context = _enter(&t, env, caller, a, "dom.Element_id", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 587, "l")
+	_ok = _out_buf(&t, &_o, 1, 588, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -11653,7 +11694,7 @@ _t_dom_Element_className :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = _enter(&t, env, caller, a, "dom.Element_className", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 589, "l")
+	_ok = _out_buf(&t, &_o, 1, 590, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -11745,7 +11786,7 @@ _t_dom_Collection_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	context = _enter(&t, env, caller, a, "dom.Collection_names", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 595, "l")
+	_ok = _out_buf(&t, &_o, 1, 596, "l")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -11763,7 +11804,7 @@ _t_dom_ParentNode_querySelectorAllPacked :: proc "c" (env: rawptr, caller: wasm.
 	_s1, _ok = _span(&t, 1, "selectors")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 596, "ls")
+	_ok = _out_buf(&t, &_o, 3, 597, "ls")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "selectors") { return t.trap }
@@ -11837,7 +11878,7 @@ _t_dom_TokenList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_s1, _ok = _span(&t, 1, "attr")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 4, 600, "lsi")
+	_ok = _out_buf(&t, &_o, 4, 601, "lsi")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "attr") { return t.trap }
@@ -12012,7 +12053,7 @@ _t_dom_Dataset_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	_s1, _ok = _span(&t, 1, "name")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 607, "ls")
+	_ok = _out_buf(&t, &_o, 3, 608, "ls")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "name") { return t.trap }
@@ -12069,7 +12110,7 @@ _t_dom_Dataset_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	context = _enter(&t, env, caller, a, "dom.Dataset_names", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 610, "l")
+	_ok = _out_buf(&t, &_o, 1, 611, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12085,7 +12126,7 @@ _t_dom_Element_namespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	context = _enter(&t, env, caller, a, "dom.Element_namespaceURI", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 611, "l")
+	_ok = _out_buf(&t, &_o, 1, 612, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12101,7 +12142,7 @@ _t_dom_Element_prefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	context = _enter(&t, env, caller, a, "dom.Element_prefix", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 612, "l")
+	_ok = _out_buf(&t, &_o, 1, 613, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12117,7 +12158,7 @@ _t_dom_Element_localName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = _enter(&t, env, caller, a, "dom.Element_localName", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 613, "l")
+	_ok = _out_buf(&t, &_o, 1, 614, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12133,7 +12174,7 @@ _t_dom_Element_qualifiedTagName :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	context = _enter(&t, env, caller, a, "dom.Element_qualifiedTagName", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 614, "l")
+	_ok = _out_buf(&t, &_o, 1, 615, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12149,7 +12190,7 @@ _t_dom_Element_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	context = _enter(&t, env, caller, a, "dom.Element_slot", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 615, "l")
+	_ok = _out_buf(&t, &_o, 1, 616, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12194,7 +12235,7 @@ _t_dom_Element_attributeNames :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = _enter(&t, env, caller, a, "dom.Element_attributeNames", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 618, "l")
+	_ok = _out_buf(&t, &_o, 1, 619, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12223,7 +12264,7 @@ _t_dom_Element_attributeNameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "dom.Element_attributeNameAt", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 620, "li")
+	_ok = _out_buf(&t, &_o, 2, 621, "li")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12240,7 +12281,7 @@ _t_dom_Element_attributeNamespaceAt :: proc "c" (env: rawptr, caller: wasm.Calle
 	context = _enter(&t, env, caller, a, "dom.Element_attributeNamespaceAt", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 621, "li")
+	_ok = _out_buf(&t, &_o, 2, 622, "li")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12332,7 +12373,7 @@ _t_dom_Element_getAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_s2, _ok = _span(&t, 3, "local_name")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 5, 625, "los")
+	_ok = _out_buf(&t, &_o, 5, 626, "los")
 	if !_ok { return t.trap }
 	_p1: Maybe(string)
 	_p1, _ok = _opt_str(&t, _s1, "namespace")
@@ -12624,7 +12665,7 @@ _t_dom_Element_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = _enter(&t, env, caller, a, "dom.Element_innerHTML", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 638, "l")
+	_ok = _out_buf(&t, &_o, 1, 639, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12656,7 +12697,7 @@ _t_dom_Element_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = _enter(&t, env, caller, a, "dom.Element_outerHTML", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 640, "l")
+	_ok = _out_buf(&t, &_o, 1, 641, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12714,7 +12755,7 @@ _t_dom_HTMLElement_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	context = _enter(&t, env, caller, a, "dom.HTMLElement_dir", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 644, "l")
+	_ok = _out_buf(&t, &_o, 1, 645, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12827,7 +12868,7 @@ _t_dom_HTMLElement_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = _enter(&t, env, caller, a, "dom.HTMLElement_innerText", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 652, "l")
+	_ok = _out_buf(&t, &_o, 1, 653, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12859,7 +12900,7 @@ _t_dom_HTMLElement_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = _enter(&t, env, caller, a, "dom.HTMLElement_outerText", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 654, "l")
+	_ok = _out_buf(&t, &_o, 1, 655, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12891,7 +12932,7 @@ _t_dom_HTMLElement_accessKeyLabel :: proc "c" (env: rawptr, caller: wasm.Caller,
 	context = _enter(&t, env, caller, a, "dom.HTMLElement_accessKeyLabel", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 656, "l")
+	_ok = _out_buf(&t, &_o, 1, 657, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12934,7 +12975,7 @@ _t_dom_HTMLOrSVGOrMathMLElement_nonce :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = _enter(&t, env, caller, a, "dom.HTMLOrSVGOrMathMLElement_nonce", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 659, "l")
+	_ok = _out_buf(&t, &_o, 1, 660, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -12966,7 +13007,7 @@ _t_dom_ElementContentEditable_contentEditable :: proc "c" (env: rawptr, caller: 
 	context = _enter(&t, env, caller, a, "dom.ElementContentEditable_contentEditable", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 661, "l")
+	_ok = _out_buf(&t, &_o, 1, 662, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -13011,7 +13052,7 @@ _t_dom_HTMLHyperlinkElementUtils_href :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = _enter(&t, env, caller, a, "dom.HTMLHyperlinkElementUtils_href", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 664, "l")
+	_ok = _out_buf(&t, &_o, 1, 665, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -13043,7 +13084,7 @@ _t_dom_HyperlinkElementUtils_origin :: proc "c" (env: rawptr, caller: wasm.Calle
 	context = _enter(&t, env, caller, a, "dom.HyperlinkElementUtils_origin", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 666, "l")
+	_ok = _out_buf(&t, &_o, 1, 667, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -13059,7 +13100,7 @@ _t_dom_HyperlinkElementUtils_protocol :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = _enter(&t, env, caller, a, "dom.HyperlinkElementUtils_protocol", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 667, "l")
+	_ok = _out_buf(&t, &_o, 1, 668, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -13091,7 +13132,7 @@ _t_dom_HyperlinkElementUtils_username :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = _enter(&t, env, caller, a, "dom.HyperlinkElementUtils_username", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 669, "l")
+	_ok = _out_buf(&t, &_o, 1, 670, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -13123,7 +13164,7 @@ _t_dom_HyperlinkElementUtils_password :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = _enter(&t, env, caller, a, "dom.HyperlinkElementUtils_password", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 671, "l")
+	_ok = _out_buf(&t, &_o, 1, 672, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -13155,7 +13196,7 @@ _t_dom_HyperlinkElementUtils_host :: proc "c" (env: rawptr, caller: wasm.Caller,
 	context = _enter(&t, env, caller, a, "dom.HyperlinkElementUtils_host", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 673, "l")
+	_ok = _out_buf(&t, &_o, 1, 674, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -13187,7 +13228,7 @@ _t_dom_HyperlinkElementUtils_hostname :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = _enter(&t, env, caller, a, "dom.HyperlinkElementUtils_hostname", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 675, "l")
+	_ok = _out_buf(&t, &_o, 1, 676, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -13219,7 +13260,7 @@ _t_dom_HyperlinkElementUtils_port :: proc "c" (env: rawptr, caller: wasm.Caller,
 	context = _enter(&t, env, caller, a, "dom.HyperlinkElementUtils_port", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 677, "l")
+	_ok = _out_buf(&t, &_o, 1, 678, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -13251,7 +13292,7 @@ _t_dom_HyperlinkElementUtils_pathname :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = _enter(&t, env, caller, a, "dom.HyperlinkElementUtils_pathname", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 679, "l")
+	_ok = _out_buf(&t, &_o, 1, 680, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -13283,7 +13324,7 @@ _t_dom_HyperlinkElementUtils_search :: proc "c" (env: rawptr, caller: wasm.Calle
 	context = _enter(&t, env, caller, a, "dom.HyperlinkElementUtils_search", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 681, "l")
+	_ok = _out_buf(&t, &_o, 1, 682, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -13315,7 +13356,7 @@ _t_dom_HyperlinkElementUtils_hash :: proc "c" (env: rawptr, caller: wasm.Caller,
 	context = _enter(&t, env, caller, a, "dom.HyperlinkElementUtils_hash", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 683, "l")
+	_ok = _out_buf(&t, &_o, 1, 684, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -13347,7 +13388,7 @@ _t_dom_HTMLAnchorElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = _enter(&t, env, caller, a, "dom.HTMLAnchorElement_text", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 685, "l")
+	_ok = _out_buf(&t, &_o, 1, 686, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -13585,7 +13626,7 @@ _t_events_UiEvent_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	context = _enter(&t, env, caller, a, "events.UiEvent_key", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 696, "l")
+	_ok = _out_buf(&t, &_o, 1, 697, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Event
 	_p0, _ok = _h_Event(&t, 0, "event")
@@ -13601,7 +13642,7 @@ _t_events_UiEvent_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	context = _enter(&t, env, caller, a, "events.UiEvent_code", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 697, "l")
+	_ok = _out_buf(&t, &_o, 1, 698, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Event
 	_p0, _ok = _h_Event(&t, 0, "event")
@@ -14015,7 +14056,7 @@ _t_dom_HTMLTitleElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = _enter(&t, env, caller, a, "dom.HTMLTitleElement_text", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 726, "l")
+	_ok = _out_buf(&t, &_o, 1, 727, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -14047,7 +14088,7 @@ _t_dom_HTMLScriptElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = _enter(&t, env, caller, a, "dom.HTMLScriptElement_text", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 728, "l")
+	_ok = _out_buf(&t, &_o, 1, 729, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -14092,7 +14133,7 @@ _t_dom_HTMLDialogElement_closedBy :: proc "c" (env: rawptr, caller: wasm.Caller,
 	context = _enter(&t, env, caller, a, "dom.HTMLDialogElement_closedBy", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 731, "l")
+	_ok = _out_buf(&t, &_o, 1, 732, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "dialog")
@@ -14204,7 +14245,7 @@ _t_dom_Element_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	context = _enter(&t, env, caller, a, "dom.Element_clientRectsPacked", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 738, "l")
+	_ok = _out_buf(&t, &_o, 1, 739, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -14616,7 +14657,7 @@ _t_dom_Range_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "dom.Range_clientRectsPacked", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 4, 772, "lili")
+	_ok = _out_buf(&t, &_o, 4, 773, "lili")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "start")
@@ -14678,7 +14719,7 @@ _t_dom_MutationObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.Calle
 	context = _enter(&t, env, caller, a, "dom.MutationObserver_takeRecords", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 776, "l")
+	_ok = _out_buf(&t, &_o, 1, 777, "l")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -14733,7 +14774,7 @@ _t_dom_Range_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	context = _enter(&t, env, caller, a, "dom.Range_text", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 4, 780, "lili")
+	_ok = _out_buf(&t, &_o, 4, 781, "lili")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "start")
@@ -14844,7 +14885,7 @@ _t_dom_Selection_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	context = _enter(&t, env, caller, a, "dom.Selection_text", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 786, "")
+	_ok = _out_buf(&t, &_o, 0, 787, "")
 	if !_ok { return t.trap }
 	_r := Selection_text(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -14860,7 +14901,7 @@ _t_dom_InlineStyle_getProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_s1, _ok = _span(&t, 1, "name")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 787, "ls")
+	_ok = _out_buf(&t, &_o, 3, 788, "ls")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "name") { return t.trap }
@@ -14881,7 +14922,7 @@ _t_dom_InlineStyle_priority :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	_s1, _ok = _span(&t, 1, "name")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 788, "ls")
+	_ok = _out_buf(&t, &_o, 3, 789, "ls")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "name") { return t.trap }
@@ -14930,7 +14971,7 @@ _t_dom_InlineStyle_removeProperty :: proc "c" (env: rawptr, caller: wasm.Caller,
 	_s1, _ok = _span(&t, 1, "name")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 790, "ls")
+	_ok = _out_buf(&t, &_o, 3, 791, "ls")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "name") { return t.trap }
@@ -14948,7 +14989,7 @@ _t_dom_InlineStyle_cssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	context = _enter(&t, env, caller, a, "dom.InlineStyle_cssText", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 791, "l")
+	_ok = _out_buf(&t, &_o, 1, 792, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -14993,7 +15034,7 @@ _t_dom_InlineStyle_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	context = _enter(&t, env, caller, a, "dom.InlineStyle_item", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 794, "li")
+	_ok = _out_buf(&t, &_o, 2, 795, "li")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "element")
@@ -15016,7 +15057,7 @@ _t_dom_ComputedStyle_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_s2, _ok = _span(&t, 3, "name")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 5, 795, "lss")
+	_ok = _out_buf(&t, &_o, 5, 796, "lss")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "pseudo") { return t.trap }
@@ -15045,7 +15086,7 @@ _t_dom_ComputedStyle_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	context = _enter(&t, env, caller, a, "dom.ComputedStyle_name", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 797, "i")
+	_ok = _out_buf(&t, &_o, 1, 798, "i")
 	if !_ok { return t.trap }
 	_p0 := u32(a[0].i32)
 	_r := ComputedStyle_name(&t.c, _p0)
@@ -15092,7 +15133,7 @@ _t_dom_Node_nodeName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	context = _enter(&t, env, caller, a, "dom.Node_nodeName", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 800, "l")
+	_ok = _out_buf(&t, &_o, 1, 801, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "node")
@@ -15108,7 +15149,7 @@ _t_dom_Node_baseURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	context = _enter(&t, env, caller, a, "dom.Node_baseURI", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 801, "l")
+	_ok = _out_buf(&t, &_o, 1, 802, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "node")
@@ -15176,7 +15217,7 @@ _t_dom_Node_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	context = _enter(&t, env, caller, a, "dom.Node_nodeValue", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 806, "l")
+	_ok = _out_buf(&t, &_o, 1, 807, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "node")
@@ -15208,7 +15249,7 @@ _t_dom_Node_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	context = _enter(&t, env, caller, a, "dom.Node_textContent", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 808, "l")
+	_ok = _out_buf(&t, &_o, 1, 809, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "node")
@@ -15354,7 +15395,7 @@ _t_dom_Node_lookupPrefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_s1, _ok = _span_opt(&t, 1, "namespace")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 817, "lo")
+	_ok = _out_buf(&t, &_o, 3, 818, "lo")
 	if !_ok { return t.trap }
 	_p1: Maybe(string)
 	_p1, _ok = _opt_str(&t, _s1, "namespace")
@@ -15376,7 +15417,7 @@ _t_dom_Node_lookupNamespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_s1, _ok = _span_opt(&t, 1, "prefix")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 818, "lo")
+	_ok = _out_buf(&t, &_o, 3, 819, "lo")
 	if !_ok { return t.trap }
 	_p1: Maybe(string)
 	_p1, _ok = _opt_str(&t, _s1, "prefix")
@@ -15650,7 +15691,7 @@ _t_dom_CharacterData_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	context = _enter(&t, env, caller, a, "dom.CharacterData_data", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 836, "l")
+	_ok = _out_buf(&t, &_o, 1, 837, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "node")
@@ -15695,7 +15736,7 @@ _t_dom_CharacterData_substringData :: proc "c" (env: rawptr, caller: wasm.Caller
 	context = _enter(&t, env, caller, a, "dom.CharacterData_substringData", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 839, "lii")
+	_ok = _out_buf(&t, &_o, 3, 840, "lii")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "node")
@@ -15796,7 +15837,7 @@ _t_dom_Text_wholeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	context = _enter(&t, env, caller, a, "dom.Text_wholeText", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 845, "l")
+	_ok = _out_buf(&t, &_o, 1, 846, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "node")
@@ -15812,7 +15853,7 @@ _t_dom_DocumentType_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = _enter(&t, env, caller, a, "dom.DocumentType_name", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 846, "l")
+	_ok = _out_buf(&t, &_o, 1, 847, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "node")
@@ -15828,7 +15869,7 @@ _t_dom_DocumentType_publicId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = _enter(&t, env, caller, a, "dom.DocumentType_publicId", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 847, "l")
+	_ok = _out_buf(&t, &_o, 1, 848, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "node")
@@ -15844,7 +15885,7 @@ _t_dom_DocumentType_systemId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = _enter(&t, env, caller, a, "dom.DocumentType_systemId", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 848, "l")
+	_ok = _out_buf(&t, &_o, 1, 849, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "node")
@@ -16035,7 +16076,7 @@ _t_dom_Document_documentURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	context = _enter(&t, env, caller, a, "dom.Document_documentURI", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 858, "l")
+	_ok = _out_buf(&t, &_o, 1, 859, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "document")
@@ -16051,7 +16092,7 @@ _t_dom_Document_compatMode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	context = _enter(&t, env, caller, a, "dom.Document_compatMode", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 859, "")
+	_ok = _out_buf(&t, &_o, 0, 860, "")
 	if !_ok { return t.trap }
 	_r := Document_compatMode(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -16064,7 +16105,7 @@ _t_dom_Document_characterSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = _enter(&t, env, caller, a, "dom.Document_characterSet", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 860, "")
+	_ok = _out_buf(&t, &_o, 0, 861, "")
 	if !_ok { return t.trap }
 	_r := Document_characterSet(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -16077,7 +16118,7 @@ _t_dom_Document_charset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	context = _enter(&t, env, caller, a, "dom.Document_charset", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 861, "")
+	_ok = _out_buf(&t, &_o, 0, 862, "")
 	if !_ok { return t.trap }
 	_r := Document_charset(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -16090,7 +16131,7 @@ _t_dom_Document_inputEncoding :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = _enter(&t, env, caller, a, "dom.Document_inputEncoding", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 862, "")
+	_ok = _out_buf(&t, &_o, 0, 863, "")
 	if !_ok { return t.trap }
 	_r := Document_inputEncoding(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -16103,7 +16144,7 @@ _t_dom_Document_contentType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	context = _enter(&t, env, caller, a, "dom.Document_contentType", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 863, "")
+	_ok = _out_buf(&t, &_o, 0, 864, "")
 	if !_ok { return t.trap }
 	_r := Document_contentType(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -16125,7 +16166,7 @@ _t_dom_Document_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	context = _enter(&t, env, caller, a, "dom.Document_title", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 865, "")
+	_ok = _out_buf(&t, &_o, 0, 866, "")
 	if !_ok { return t.trap }
 	_r := Document_title(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -16151,7 +16192,7 @@ _t_dom_Document_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	context = _enter(&t, env, caller, a, "dom.Document_dir", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 867, "")
+	_ok = _out_buf(&t, &_o, 0, 868, "")
 	if !_ok { return t.trap }
 	_r := Document_dir(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -16186,7 +16227,7 @@ _t_dom_Document_referrer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = _enter(&t, env, caller, a, "dom.Document_referrer", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 870, "")
+	_ok = _out_buf(&t, &_o, 0, 871, "")
 	if !_ok { return t.trap }
 	_r := Document_referrer(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -16199,7 +16240,7 @@ _t_dom_Document_lastModified :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = _enter(&t, env, caller, a, "dom.Document_lastModified", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 871, "")
+	_ok = _out_buf(&t, &_o, 0, 872, "")
 	if !_ok { return t.trap }
 	_r := Document_lastModified(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -16212,7 +16253,7 @@ _t_dom_Document_domain :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	context = _enter(&t, env, caller, a, "dom.Document_domain", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 872, "")
+	_ok = _out_buf(&t, &_o, 0, 873, "")
 	if !_ok { return t.trap }
 	_r := Document_domain(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -16343,7 +16384,7 @@ _t_dom_ProcessingInstruction_target :: proc "c" (env: rawptr, caller: wasm.Calle
 	context = _enter(&t, env, caller, a, "dom.ProcessingInstruction_target", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 880, "l")
+	_ok = _out_buf(&t, &_o, 1, 881, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "node")
@@ -16359,7 +16400,7 @@ _t_dom_Document_xmlContentType :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "dom.Document_xmlContentType", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 881, "l")
+	_ok = _out_buf(&t, &_o, 1, 882, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "document")
@@ -16508,7 +16549,7 @@ _t_entries_FsEntry_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	context = _enter(&t, env, caller, a, "entries.FsEntry_name", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 888, "l")
+	_ok = _out_buf(&t, &_o, 1, 889, "l")
 	if !_ok { return t.trap }
 	_p0: Api_FsEntry
 	_p0, _ok = _h_FsEntry(&t, 0, "entry")
@@ -16524,7 +16565,7 @@ _t_entries_FsEntry_fullPath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	context = _enter(&t, env, caller, a, "entries.FsEntry_fullPath", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 889, "l")
+	_ok = _out_buf(&t, &_o, 1, 890, "l")
 	if !_ok { return t.trap }
 	_p0: Api_FsEntry
 	_p0, _ok = _h_FsEntry(&t, 0, "entry")
@@ -16540,7 +16581,7 @@ _t_entries_FsEntry_filesystemName :: proc "c" (env: rawptr, caller: wasm.Caller,
 	context = _enter(&t, env, caller, a, "entries.FsEntry_filesystemName", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 890, "l")
+	_ok = _out_buf(&t, &_o, 1, 891, "l")
 	if !_ok { return t.trap }
 	_p0: Api_FsEntry
 	_p0, _ok = _h_FsEntry(&t, 0, "entry")
@@ -16916,7 +16957,7 @@ _t_scripts_Script_baseName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	context = _enter(&t, env, caller, a, "scripts.Script_baseName", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 918, "")
+	_ok = _out_buf(&t, &_o, 0, 919, "")
 	if !_ok { return t.trap }
 	_r := Script_baseName(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -16935,7 +16976,7 @@ _t_scripts_Module_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	_s1, _ok = _span(&t, 2, "base")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 4, 919, "ss")
+	_ok = _out_buf(&t, &_o, 4, 920, "ss")
 	if !_ok { return t.trap }
 	_p0 := utf8_scrub(string(_s0), context.temp_allocator)
 	_p1 := utf8_scrub(string(_s1), context.temp_allocator)
@@ -16953,7 +16994,7 @@ _t_scripts_Module_source :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_s0, _ok = _span(&t, 0, "url")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 920, "s")
+	_ok = _out_buf(&t, &_o, 2, 921, "s")
 	if !_ok { return t.trap }
 	_p0 := utf8_scrub(string(_s0), context.temp_allocator)
 	_r, _err := Module_source(&t.c, _p0)
@@ -17076,7 +17117,7 @@ _t_scripts_WorkerGlobalScope_importScript :: proc "c" (env: rawptr, caller: wasm
 	_s0, _ok = _span(&t, 0, "url")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 927, "s")
+	_ok = _out_buf(&t, &_o, 2, 928, "s")
 	if !_ok { return t.trap }
 	_p0 := utf8_scrub(string(_s0), context.temp_allocator)
 	_r, _err := WorkerGlobalScope_importScript(&t.c, _p0)
@@ -17152,7 +17193,7 @@ _t_scripts_Worker_pendingError :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "scripts.Worker_pendingError", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 931, "")
+	_ok = _out_buf(&t, &_o, 0, 932, "")
 	if !_ok { return t.trap }
 	_r := Worker_pendingError(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -17278,7 +17319,7 @@ _t_dom_ResizeObserver_takeEntries :: proc "c" (env: rawptr, caller: wasm.Caller,
 	context = _enter(&t, env, caller, a, "dom.ResizeObserver_takeEntries", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 940, "l")
+	_ok = _out_buf(&t, &_o, 1, 941, "l")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -17324,7 +17365,7 @@ _t_dom_IntersectionObserver_rootMargin :: proc "c" (env: rawptr, caller: wasm.Ca
 	context = _enter(&t, env, caller, a, "dom.IntersectionObserver_rootMargin", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 942, "l")
+	_ok = _out_buf(&t, &_o, 1, 943, "l")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -17339,7 +17380,7 @@ _t_dom_IntersectionObserver_scrollMargin :: proc "c" (env: rawptr, caller: wasm.
 	context = _enter(&t, env, caller, a, "dom.IntersectionObserver_scrollMargin", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 943, "l")
+	_ok = _out_buf(&t, &_o, 1, 944, "l")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -17406,7 +17447,7 @@ _t_dom_IntersectionObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.C
 	context = _enter(&t, env, caller, a, "dom.IntersectionObserver_takeRecords", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 948, "l")
+	_ok = _out_buf(&t, &_o, 1, 949, "l")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -17477,7 +17518,7 @@ _t_dom_ShadowRoot_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	context = _enter(&t, env, caller, a, "dom.ShadowRoot_mode", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 953, "l")
+	_ok = _out_buf(&t, &_o, 1, 954, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "root")
@@ -17532,7 +17573,7 @@ _t_dom_ShadowRoot_slotAssignment :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	context = _enter(&t, env, caller, a, "dom.ShadowRoot_slotAssignment", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 957, "l")
+	_ok = _out_buf(&t, &_o, 1, 958, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "root")
@@ -17561,7 +17602,7 @@ _t_dom_ShadowRoot_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	context = _enter(&t, env, caller, a, "dom.ShadowRoot_innerHTML", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 959, "l")
+	_ok = _out_buf(&t, &_o, 1, 960, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "root")
@@ -17609,7 +17650,7 @@ _t_dom_Node_getHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	_s2, _n2, _ok = _span_el(&t, 2, 8, "roots")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 4, 962, "li8")
+	_ok = _out_buf(&t, &_o, 4, 963, "li8")
 	if !_ok { return t.trap }
 	_p2 := ([^]u64)(_s2)[:_n2]
 	_p0: Api_Node
@@ -17688,7 +17729,7 @@ _t_dom_HTMLSlotElement_assignedPacked :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = _enter(&t, env, caller, a, "dom.HTMLSlotElement_assignedPacked", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 967, "lii")
+	_ok = _out_buf(&t, &_o, 3, 968, "lii")
 	if !_ok { return t.trap }
 	_p0: Api_Element
 	_p0, _ok = _h_Element(&t, 0, "slot")
@@ -17726,7 +17767,7 @@ _t_dom_Document_shadowIncludingByName :: proc "c" (env: rawptr, caller: wasm.Cal
 	_s0, _ok = _span(&t, 0, "name")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 969, "s")
+	_ok = _out_buf(&t, &_o, 2, 970, "s")
 	if !_ok { return t.trap }
 	_p0 := string(_s0)
 	if !_utf8(&t, _p0, "name") { return t.trap }
@@ -17741,7 +17782,7 @@ _t_dom_DocumentOrShadowRoot_elementsFromPointPacked :: proc "c" (env: rawptr, ca
 	context = _enter(&t, env, caller, a, "dom.DocumentOrShadowRoot_elementsFromPointPacked", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 970, "ldd")
+	_ok = _out_buf(&t, &_o, 3, 971, "ldd")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "root")
@@ -17779,7 +17820,7 @@ _t_dom_Node_shadowIncludingElements :: proc "c" (env: rawptr, caller: wasm.Calle
 	context = _enter(&t, env, caller, a, "dom.Node_shadowIncludingElements", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 973, "l")
+	_ok = _out_buf(&t, &_o, 1, 974, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "root")
@@ -17795,7 +17836,7 @@ _t_events_Event_composedPathPacked :: proc "c" (env: rawptr, caller: wasm.Caller
 	context = _enter(&t, env, caller, a, "events.Event_composedPathPacked", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 974, "l")
+	_ok = _out_buf(&t, &_o, 1, 975, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Event
 	_p0, _ok = _h_Event(&t, 0, "event")
@@ -17958,7 +17999,7 @@ _t_dom_CustomStates_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = _enter(&t, env, caller, a, "dom.CustomStates_list", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 987, "l")
+	_ok = _out_buf(&t, &_o, 1, 988, "l")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -18020,7 +18061,7 @@ _t_dom_CSSStyleSheet_ruleText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = _enter(&t, env, caller, a, "dom.CSSStyleSheet_ruleText", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 991, "li")
+	_ok = _out_buf(&t, &_o, 2, 992, "li")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -18039,7 +18080,7 @@ _t_dom_CSSStyleSheet_setRuleSelector :: proc "c" (env: rawptr, caller: wasm.Call
 	_s2, _ok = _span(&t, 2, "selector")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 4, 992, "lis")
+	_ok = _out_buf(&t, &_o, 4, 993, "lis")
 	if !_ok { return t.trap }
 	_p2 := string(_s2)
 	if !_utf8(&t, _p2, "selector") { return t.trap }
@@ -18057,7 +18098,7 @@ _t_dom_CSSStyleSheet_ruleTextOf :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	context = _enter(&t, env, caller, a, "dom.CSSStyleSheet_ruleTextOf", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 993, "li")
+	_ok = _out_buf(&t, &_o, 2, 994, "li")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -18205,7 +18246,7 @@ _t_dom_CSSStyleSheet_mediaText :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "dom.CSSStyleSheet_mediaText", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1003, "l")
+	_ok = _out_buf(&t, &_o, 1, 1004, "l")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -18281,7 +18322,7 @@ _t_navigator_Navigator_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	context = _enter(&t, env, caller, a, "navigator.Navigator_get", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1009, "i")
+	_ok = _out_buf(&t, &_o, 1, 1010, "i")
 	if !_ok { return t.trap }
 	_e0 := i32(a[0].i32)
 	if !_valid_NavigatorField(_e0) { return _fail_enum(&t, "field", "NavigatorField") }
@@ -18410,7 +18451,7 @@ _t_media_MediaQueryList_media :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = _enter(&t, env, caller, a, "media.MediaQueryList_media", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1020, "l")
+	_ok = _out_buf(&t, &_o, 1, 1021, "l")
 	if !_ok { return t.trap }
 	_p0: Api_MediaQueryList
 	_p0, _ok = _h_MediaQueryList(&t, 0, "list")
@@ -18518,7 +18559,7 @@ _t_dom_XMLSerializer_serialize :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "dom.XMLSerializer_serialize", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1026, "l")
+	_ok = _out_buf(&t, &_o, 1, 1027, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Node
 	_p0, _ok = _h_Node(&t, 0, "node")
@@ -18577,7 +18618,7 @@ _t_locks_LockManager_queryName :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "locks.LockManager_queryName", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1030, "ii")
+	_ok = _out_buf(&t, &_o, 2, 1031, "ii")
 	if !_ok { return t.trap }
 	_p0 := a[0].i32 != 0
 	_p1 := a[1].i32
@@ -18592,7 +18633,7 @@ _t_locks_LockManager_queryMode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "locks.LockManager_queryMode", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1031, "ii")
+	_ok = _out_buf(&t, &_o, 2, 1032, "ii")
 	if !_ok { return t.trap }
 	_p0 := a[0].i32 != 0
 	_p1 := a[1].i32
@@ -18607,7 +18648,7 @@ _t_locks_LockManager_queryClient :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	context = _enter(&t, env, caller, a, "locks.LockManager_queryClient", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1032, "ii")
+	_ok = _out_buf(&t, &_o, 2, 1033, "ii")
 	if !_ok { return t.trap }
 	_p0 := a[0].i32 != 0
 	_p1 := a[1].i32
@@ -18622,7 +18663,7 @@ _t_htmlmedia_HTMLMediaElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.
 	context = _enter(&t, env, caller, a, "htmlmedia.HTMLMediaElement_currentSrc", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1033, "l")
+	_ok = _out_buf(&t, &_o, 1, 1034, "l")
 	if !_ok { return t.trap }
 	_p0: Api_HTMLMediaElement
 	_p0, _ok = _h_HTMLMediaElement(&t, 0, "element")
@@ -18878,7 +18919,7 @@ _t_htmlmedia_HTMLMediaElement_ranges :: proc "c" (env: rawptr, caller: wasm.Call
 	context = _enter(&t, env, caller, a, "htmlmedia.HTMLMediaElement_ranges", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1052, "li")
+	_ok = _out_buf(&t, &_o, 2, 1053, "li")
 	if !_ok { return t.trap }
 	_p0: Api_HTMLMediaElement
 	_p0, _ok = _h_HTMLMediaElement(&t, 0, "element")
@@ -18923,7 +18964,7 @@ _t_htmlmedia_HTMLMediaElement_errorMessage :: proc "c" (env: rawptr, caller: was
 	context = _enter(&t, env, caller, a, "htmlmedia.HTMLMediaElement_errorMessage", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1055, "l")
+	_ok = _out_buf(&t, &_o, 1, 1056, "l")
 	if !_ok { return t.trap }
 	_p0: Api_HTMLMediaElement
 	_p0, _ok = _h_HTMLMediaElement(&t, 0, "element")
@@ -18981,7 +19022,7 @@ _t_htmlmedia_HTMLMediaElement_canPlayType :: proc "c" (env: rawptr, caller: wasm
 	_s1, _ok = _span(&t, 1, "type")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 1059, "ls")
+	_ok = _out_buf(&t, &_o, 3, 1060, "ls")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "type") { return t.trap }
@@ -19025,7 +19066,7 @@ _t_htmlmedia_HTMLVideoElement_playbackQuality :: proc "c" (env: rawptr, caller: 
 	context = _enter(&t, env, caller, a, "htmlmedia.HTMLVideoElement_playbackQuality", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1062, "l")
+	_ok = _out_buf(&t, &_o, 1, 1063, "l")
 	if !_ok { return t.trap }
 	_p0: Api_HTMLMediaElement
 	_p0, _ok = _h_HTMLMediaElement(&t, 0, "element")
@@ -19071,7 +19112,7 @@ _t_htmlmedia_HTMLVideoElement_videoFrameMetadata :: proc "c" (env: rawptr, calle
 	context = _enter(&t, env, caller, a, "htmlmedia.HTMLVideoElement_videoFrameMetadata", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1065, "ll")
+	_ok = _out_buf(&t, &_o, 2, 1066, "ll")
 	if !_ok { return t.trap }
 	_p0: Api_HTMLMediaElement
 	_p0, _ok = _h_HTMLMediaElement(&t, 0, "element")
@@ -19313,7 +19354,7 @@ _t_mse_MediaSource_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = _enter(&t, env, caller, a, "mse.MediaSource_readyState", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1081, "l")
+	_ok = _out_buf(&t, &_o, 1, 1082, "l")
 	if !_ok { return t.trap }
 	_p0: Api_MediaSource
 	_p0, _ok = _h_MediaSource(&t, 0, "source")
@@ -19467,7 +19508,7 @@ _t_mse_SourceBuffer_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = _enter(&t, env, caller, a, "mse.SourceBuffer_mode", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1091, "l")
+	_ok = _out_buf(&t, &_o, 1, 1092, "l")
 	if !_ok { return t.trap }
 	_p0: Api_SourceBuffer
 	_p0, _ok = _h_SourceBuffer(&t, 0, "buffer")
@@ -19512,7 +19553,7 @@ _t_mse_SourceBuffer_ranges :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	context = _enter(&t, env, caller, a, "mse.SourceBuffer_ranges", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1094, "l")
+	_ok = _out_buf(&t, &_o, 1, 1095, "l")
 	if !_ok { return t.trap }
 	_p0: Api_SourceBuffer
 	_p0, _ok = _h_SourceBuffer(&t, 0, "buffer")
@@ -19821,7 +19862,7 @@ _t_mediatracks_AudioTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = _enter(&t, env, caller, a, "mediatracks.AudioTrack_id", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1115, "l")
+	_ok = _out_buf(&t, &_o, 1, 1116, "l")
 	if !_ok { return t.trap }
 	_p0: Api_AudioTrack
 	_p0, _ok = _h_AudioTrack(&t, 0, "track")
@@ -19837,7 +19878,7 @@ _t_mediatracks_AudioTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "mediatracks.AudioTrack_kind", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1116, "l")
+	_ok = _out_buf(&t, &_o, 1, 1117, "l")
 	if !_ok { return t.trap }
 	_p0: Api_AudioTrack
 	_p0, _ok = _h_AudioTrack(&t, 0, "track")
@@ -19853,7 +19894,7 @@ _t_mediatracks_AudioTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	context = _enter(&t, env, caller, a, "mediatracks.AudioTrack_label", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1117, "l")
+	_ok = _out_buf(&t, &_o, 1, 1118, "l")
 	if !_ok { return t.trap }
 	_p0: Api_AudioTrack
 	_p0, _ok = _h_AudioTrack(&t, 0, "track")
@@ -19869,7 +19910,7 @@ _t_mediatracks_AudioTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller
 	context = _enter(&t, env, caller, a, "mediatracks.AudioTrack_language", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1118, "l")
+	_ok = _out_buf(&t, &_o, 1, 1119, "l")
 	if !_ok { return t.trap }
 	_p0: Api_AudioTrack
 	_p0, _ok = _h_AudioTrack(&t, 0, "track")
@@ -19912,7 +19953,7 @@ _t_mediatracks_VideoTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = _enter(&t, env, caller, a, "mediatracks.VideoTrack_id", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1121, "l")
+	_ok = _out_buf(&t, &_o, 1, 1122, "l")
 	if !_ok { return t.trap }
 	_p0: Api_VideoTrack
 	_p0, _ok = _h_VideoTrack(&t, 0, "track")
@@ -19928,7 +19969,7 @@ _t_mediatracks_VideoTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "mediatracks.VideoTrack_kind", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1122, "l")
+	_ok = _out_buf(&t, &_o, 1, 1123, "l")
 	if !_ok { return t.trap }
 	_p0: Api_VideoTrack
 	_p0, _ok = _h_VideoTrack(&t, 0, "track")
@@ -19944,7 +19985,7 @@ _t_mediatracks_VideoTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	context = _enter(&t, env, caller, a, "mediatracks.VideoTrack_label", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1123, "l")
+	_ok = _out_buf(&t, &_o, 1, 1124, "l")
 	if !_ok { return t.trap }
 	_p0: Api_VideoTrack
 	_p0, _ok = _h_VideoTrack(&t, 0, "track")
@@ -19960,7 +20001,7 @@ _t_mediatracks_VideoTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller
 	context = _enter(&t, env, caller, a, "mediatracks.VideoTrack_language", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1124, "l")
+	_ok = _out_buf(&t, &_o, 1, 1125, "l")
 	if !_ok { return t.trap }
 	_p0: Api_VideoTrack
 	_p0, _ok = _h_VideoTrack(&t, 0, "track")
@@ -20003,7 +20044,7 @@ _t_mediatracks_TextTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = _enter(&t, env, caller, a, "mediatracks.TextTrack_kind", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1127, "l")
+	_ok = _out_buf(&t, &_o, 1, 1128, "l")
 	if !_ok { return t.trap }
 	_p0: Api_TextTrack
 	_p0, _ok = _h_TextTrack(&t, 0, "track")
@@ -20019,7 +20060,7 @@ _t_mediatracks_TextTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "mediatracks.TextTrack_label", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1128, "l")
+	_ok = _out_buf(&t, &_o, 1, 1129, "l")
 	if !_ok { return t.trap }
 	_p0: Api_TextTrack
 	_p0, _ok = _h_TextTrack(&t, 0, "track")
@@ -20035,7 +20076,7 @@ _t_mediatracks_TextTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller,
 	context = _enter(&t, env, caller, a, "mediatracks.TextTrack_language", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1129, "l")
+	_ok = _out_buf(&t, &_o, 1, 1130, "l")
 	if !_ok { return t.trap }
 	_p0: Api_TextTrack
 	_p0, _ok = _h_TextTrack(&t, 0, "track")
@@ -20051,7 +20092,7 @@ _t_mediatracks_TextTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	context = _enter(&t, env, caller, a, "mediatracks.TextTrack_id", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1130, "l")
+	_ok = _out_buf(&t, &_o, 1, 1131, "l")
 	if !_ok { return t.trap }
 	_p0: Api_TextTrack
 	_p0, _ok = _h_TextTrack(&t, 0, "track")
@@ -20067,7 +20108,7 @@ _t_mediatracks_TextTrack_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = _enter(&t, env, caller, a, "mediatracks.TextTrack_mode", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1131, "l")
+	_ok = _out_buf(&t, &_o, 1, 1132, "l")
 	if !_ok { return t.trap }
 	_p0: Api_TextTrack
 	_p0, _ok = _h_TextTrack(&t, 0, "track")
@@ -20157,7 +20198,7 @@ _t_mediatracks_TextTrackCue_id :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "mediatracks.TextTrackCue_id", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1137, "l")
+	_ok = _out_buf(&t, &_o, 1, 1138, "l")
 	if !_ok { return t.trap }
 	_p0: Api_TextTrackCue
 	_p0, _ok = _h_TextTrackCue(&t, 0, "cue")
@@ -20303,7 +20344,7 @@ _t_mediatracks_VTTCue_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	context = _enter(&t, env, caller, a, "mediatracks.VTTCue_text", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1147, "l")
+	_ok = _out_buf(&t, &_o, 1, 1148, "l")
 	if !_ok { return t.trap }
 	_p0: Api_TextTrackCue
 	_p0, _ok = _h_TextTrackCue(&t, 0, "cue")
@@ -20407,7 +20448,7 @@ _t_navigation_Navigation_entries :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	context = _enter(&t, env, caller, a, "navigation.Navigation_entries", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1154, "")
+	_ok = _out_buf(&t, &_o, 0, 1155, "")
 	if !_ok { return t.trap }
 	_r := Navigation_entries(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -20429,7 +20470,7 @@ _t_navigation_Navigation_getState :: proc "c" (env: rawptr, caller: wasm.Caller,
 	context = _enter(&t, env, caller, a, "navigation.Navigation_getState", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1156, "ll")
+	_ok = _out_buf(&t, &_o, 2, 1157, "ll")
 	if !_ok { return t.trap }
 	_p0 := a[0].i64
 	_p1 := a[1].i64
@@ -20502,7 +20543,7 @@ _t_navigation_Navigation_pending :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	context = _enter(&t, env, caller, a, "navigation.Navigation_pending", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1161, "")
+	_ok = _out_buf(&t, &_o, 0, 1162, "")
 	if !_ok { return t.trap }
 	_r, _err := Navigation_pending(&t.c)
 	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
@@ -20515,7 +20556,7 @@ _t_navigation_Navigation_pendingState :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = _enter(&t, env, caller, a, "navigation.Navigation_pendingState", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1162, "")
+	_ok = _out_buf(&t, &_o, 0, 1163, "")
 	if !_ok { return t.trap }
 	_r, _err := Navigation_pendingState(&t.c)
 	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
@@ -20546,7 +20587,7 @@ _t_navigation_Navigation_activation :: proc "c" (env: rawptr, caller: wasm.Calle
 	context = _enter(&t, env, caller, a, "navigation.Navigation_activation", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1164, "")
+	_ok = _out_buf(&t, &_o, 0, 1165, "")
 	if !_ok { return t.trap }
 	_r := Navigation_activation(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -20638,7 +20679,7 @@ _t_net_Fetch_statusText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	context = _enter(&t, env, caller, a, "net.Fetch_statusText", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1169, "l")
+	_ok = _out_buf(&t, &_o, 1, 1170, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Fetch
 	_p0, _ok = _h_Fetch(&t, 0, "request")
@@ -20693,7 +20734,7 @@ _t_net_Fetch_headers :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	context = _enter(&t, env, caller, a, "net.Fetch_headers", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1173, "l")
+	_ok = _out_buf(&t, &_o, 1, 1174, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Fetch
 	_p0, _ok = _h_Fetch(&t, 0, "request")
@@ -20709,7 +20750,7 @@ _t_net_Fetch_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	context = _enter(&t, env, caller, a, "net.Fetch_url", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1174, "l")
+	_ok = _out_buf(&t, &_o, 1, 1175, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Fetch
 	_p0, _ok = _h_Fetch(&t, 0, "request")
@@ -20725,7 +20766,7 @@ _t_net_Fetch_error :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	context = _enter(&t, env, caller, a, "net.Fetch_error", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1175, "l")
+	_ok = _out_buf(&t, &_o, 1, 1176, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Fetch
 	_p0, _ok = _h_Fetch(&t, 0, "request")
@@ -20799,7 +20840,7 @@ _t_notification_Notification_permission :: proc "c" (env: rawptr, caller: wasm.C
 	context = _enter(&t, env, caller, a, "notification.Notification_permission", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1180, "")
+	_ok = _out_buf(&t, &_o, 0, 1181, "")
 	if !_ok { return t.trap }
 	_r := Notification_permission(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -20994,7 +21035,7 @@ _t_performance_Performance_entryName :: proc "c" (env: rawptr, caller: wasm.Call
 	_s0, _ok = _span(&t, 0, "name")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 4, 1193, "sii")
+	_ok = _out_buf(&t, &_o, 4, 1194, "sii")
 	if !_ok { return t.trap }
 	_p0 := string(_s0)
 	if !_utf8(&t, _p0, "name") { return t.trap }
@@ -21061,7 +21102,7 @@ _t_performance_Performance_timeline :: proc "c" (env: rawptr, caller: wasm.Calle
 	context = _enter(&t, env, caller, a, "performance.Performance_timeline", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1197, "il")
+	_ok = _out_buf(&t, &_o, 2, 1198, "il")
 	if !_ok { return t.trap }
 	_e0 := i32(a[0].i32)
 	if !_valid_PerformanceEntryType(_e0) { return _fail_enum(&t, "entry_type", "PerformanceEntryType") }
@@ -21360,7 +21401,7 @@ _t_ports_MessageEvent_portEnds :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "ports.MessageEvent_portEnds", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1219, "l")
+	_ok = _out_buf(&t, &_o, 1, 1220, "l")
 	if !_ok { return t.trap }
 	_p0: Api_Event
 	_p0, _ok = _h_Event(&t, 0, "event")
@@ -21478,7 +21519,7 @@ _t_serviceworker_ServiceWorker_registrationIds :: proc "c" (env: rawptr, caller:
 	context = _enter(&t, env, caller, a, "serviceworker.ServiceWorker_registrationIds", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1227, "")
+	_ok = _out_buf(&t, &_o, 0, 1228, "")
 	if !_ok { return t.trap }
 	_r := ServiceWorker_registrationIds(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -21500,7 +21541,7 @@ _t_serviceworker_ServiceWorkerRegistration_info :: proc "c" (env: rawptr, caller
 	context = _enter(&t, env, caller, a, "serviceworker.ServiceWorkerRegistration_info", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1229, "l")
+	_ok = _out_buf(&t, &_o, 1, 1230, "l")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -21515,7 +21556,7 @@ _t_serviceworker_ServiceWorker_info :: proc "c" (env: rawptr, caller: wasm.Calle
 	context = _enter(&t, env, caller, a, "serviceworker.ServiceWorker_info", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1230, "l")
+	_ok = _out_buf(&t, &_o, 1, 1231, "l")
 	if !_ok { return t.trap }
 	api_route(&t.c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
@@ -21559,7 +21600,7 @@ _t_serviceworker_ServiceWorkerRegistration_preload :: proc "c" (env: rawptr, cal
 	_s2, _ok = _span(&t, 2, "header")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 4, 1233, "lis")
+	_ok = _out_buf(&t, &_o, 4, 1234, "lis")
 	if !_ok { return t.trap }
 	_p2 := string(_s2)
 	if !_utf8(&t, _p2, "header") { return t.trap }
@@ -21593,7 +21634,7 @@ _t_serviceworker_ServiceWorker_takeMessage :: proc "c" (env: rawptr, caller: was
 	context = _enter(&t, env, caller, a, "serviceworker.ServiceWorker_takeMessage", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1235, "")
+	_ok = _out_buf(&t, &_o, 0, 1236, "")
 	if !_ok { return t.trap }
 	_r, _err := ServiceWorker_takeMessage(&t.c)
 	return _end_out_str(&t, &_o, _r, _err)
@@ -21624,7 +21665,7 @@ _t_serviceworker_ServiceWorkerGlobalScope_scope :: proc "c" (env: rawptr, caller
 	context = _enter(&t, env, caller, a, "serviceworker.ServiceWorkerGlobalScope_scope", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1238, "")
+	_ok = _out_buf(&t, &_o, 0, 1239, "")
 	if !_ok { return t.trap }
 	_r := ServiceWorkerGlobalScope_scope(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -21637,7 +21678,7 @@ _t_serviceworker_ServiceWorkerGlobalScope_scriptURL :: proc "c" (env: rawptr, ca
 	context = _enter(&t, env, caller, a, "serviceworker.ServiceWorkerGlobalScope_scriptURL", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1239, "")
+	_ok = _out_buf(&t, &_o, 0, 1240, "")
 	if !_ok { return t.trap }
 	_r := ServiceWorkerGlobalScope_scriptURL(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -21671,7 +21712,7 @@ _t_serviceworker_SwEvent_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = _enter(&t, env, caller, a, "serviceworker.SwEvent_text", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1241, "i")
+	_ok = _out_buf(&t, &_o, 1, 1242, "i")
 	if !_ok { return t.trap }
 	_p0 := a[0].i32
 	_r := SwEvent_text(&t.c, _p0)
@@ -21685,7 +21726,7 @@ _t_serviceworker_SwEvent_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = _enter(&t, env, caller, a, "serviceworker.SwEvent_body", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1242, "")
+	_ok = _out_buf(&t, &_o, 0, 1243, "")
 	if !_ok { return t.trap }
 	_r := SwEvent_body(&t.c)
 	return _end_out_str_ok(&t, &_o, _r)
@@ -21751,7 +21792,7 @@ _t_storage_Storage_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	context = _enter(&t, env, caller, a, "storage.Storage_key", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1246, "ii")
+	_ok = _out_buf(&t, &_o, 2, 1247, "ii")
 	if !_ok { return t.trap }
 	_e0 := i32(a[0].i32)
 	if !_valid_StorageArea(_e0) { return _fail_enum(&t, "area", "StorageArea") }
@@ -21771,7 +21812,7 @@ _t_storage_Storage_getItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_s1, _ok = _span(&t, 1, "key")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 1247, "is")
+	_ok = _out_buf(&t, &_o, 3, 1248, "is")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "key") { return t.trap }
@@ -21838,7 +21879,7 @@ _t_storage_StorageEvent_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	context = _enter(&t, env, caller, a, "storage.StorageEvent_get", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1251, "li")
+	_ok = _out_buf(&t, &_o, 2, 1252, "li")
 	if !_ok { return t.trap }
 	_p0: Api_Event
 	_p0, _ok = _h_Event(&t, 0, "event")
@@ -22154,7 +22195,7 @@ _t_url_URL_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	context = _enter(&t, env, caller, a, "url.URL_get", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1274, "li")
+	_ok = _out_buf(&t, &_o, 2, 1275, "li")
 	if !_ok { return t.trap }
 	_p0: Api_URL
 	_p0, _ok = _h_URL(&t, 0, "url")
@@ -22284,7 +22325,7 @@ _t_url_URLSearchParams_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_s1, _ok = _span(&t, 1, "name")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 1281, "ls")
+	_ok = _out_buf(&t, &_o, 3, 1282, "ls")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "name") { return t.trap }
@@ -22321,7 +22362,7 @@ _t_url_URLSearchParams_getNth :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_s1, _ok = _span(&t, 1, "name")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 4, 1283, "lsi")
+	_ok = _out_buf(&t, &_o, 4, 1284, "lsi")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "name") { return t.trap }
@@ -22398,7 +22439,7 @@ _t_url_URLSearchParams_toString :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	context = _enter(&t, env, caller, a, "url.URLSearchParams_toString", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1287, "l")
+	_ok = _out_buf(&t, &_o, 1, 1288, "l")
 	if !_ok { return t.trap }
 	_p0: Api_URLSearchParams
 	_p0, _ok = _h_URLSearchParams(&t, 0, "params")
@@ -22414,7 +22455,7 @@ _t_url_URLSearchParams_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = _enter(&t, env, caller, a, "url.URLSearchParams_nameAt", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1288, "li")
+	_ok = _out_buf(&t, &_o, 2, 1289, "li")
 	if !_ok { return t.trap }
 	_p0: Api_URLSearchParams
 	_p0, _ok = _h_URLSearchParams(&t, 0, "params")
@@ -22431,7 +22472,7 @@ _t_url_URLSearchParams_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	context = _enter(&t, env, caller, a, "url.URLSearchParams_valueAt", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1289, "li")
+	_ok = _out_buf(&t, &_o, 2, 1290, "li")
 	if !_ok { return t.trap }
 	_p0: Api_URLSearchParams
 	_p0, _ok = _h_URLSearchParams(&t, 0, "params")
@@ -22541,7 +22582,7 @@ _t_url_URLPattern_component :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	context = _enter(&t, env, caller, a, "url.URLPattern_component", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1292, "li")
+	_ok = _out_buf(&t, &_o, 2, 1293, "li")
 	if !_ok { return t.trap }
 	_p0: Api_URLPattern
 	_p0, _ok = _h_URLPattern(&t, 0, "pattern")
@@ -22677,7 +22718,7 @@ _t_url_URLPattern_resultInput :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	context = _enter(&t, env, caller, a, "url.URLPattern_resultInput", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1297, "li")
+	_ok = _out_buf(&t, &_o, 2, 1298, "li")
 	if !_ok { return t.trap }
 	_p0: Api_URLPattern
 	_p0, _ok = _h_URLPattern(&t, 0, "pattern")
@@ -22694,7 +22735,7 @@ _t_url_URLPattern_componentInput :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	context = _enter(&t, env, caller, a, "url.URLPattern_componentInput", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1298, "li")
+	_ok = _out_buf(&t, &_o, 2, 1299, "li")
 	if !_ok { return t.trap }
 	_p0: Api_URLPattern
 	_p0, _ok = _h_URLPattern(&t, 0, "pattern")
@@ -22729,7 +22770,7 @@ _t_url_URLPattern_groupName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	context = _enter(&t, env, caller, a, "url.URLPattern_groupName", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 1300, "lii")
+	_ok = _out_buf(&t, &_o, 3, 1301, "lii")
 	if !_ok { return t.trap }
 	_p0: Api_URLPattern
 	_p0, _ok = _h_URLPattern(&t, 0, "pattern")
@@ -22749,7 +22790,7 @@ _t_url_URLPattern_groupValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	context = _enter(&t, env, caller, a, "url.URLPattern_groupValue", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 3, 1301, "lii")
+	_ok = _out_buf(&t, &_o, 3, 1302, "lii")
 	if !_ok { return t.trap }
 	_p0: Api_URLPattern
 	_p0, _ok = _h_URLPattern(&t, 0, "pattern")
@@ -22778,7 +22819,7 @@ _t_web_Exception_message :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	context = _enter(&t, env, caller, a, "web.Exception_message", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1303, "")
+	_ok = _out_buf(&t, &_o, 0, 1304, "")
 	if !_ok { return t.trap }
 	_r := Exception_message(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -22845,7 +22886,7 @@ _t_webassembly_WebAssembly_Module_imports :: proc "c" (env: rawptr, caller: wasm
 	context = _enter(&t, env, caller, a, "webassembly.WebAssembly_Module_imports", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1308, "l")
+	_ok = _out_buf(&t, &_o, 1, 1309, "l")
 	if !_ok { return t.trap }
 	_p0: Api_WebAssemblyModule
 	_p0, _ok = _h_WebAssemblyModule(&t, 0, "module")
@@ -22861,7 +22902,7 @@ _t_webassembly_WebAssembly_Module_exports :: proc "c" (env: rawptr, caller: wasm
 	context = _enter(&t, env, caller, a, "webassembly.WebAssembly_Module_exports", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1309, "l")
+	_ok = _out_buf(&t, &_o, 1, 1310, "l")
 	if !_ok { return t.trap }
 	_p0: Api_WebAssemblyModule
 	_p0, _ok = _h_WebAssemblyModule(&t, 0, "module")
@@ -22896,7 +22937,7 @@ _t_webassembly_WebAssembly_Module_customSection :: proc "c" (env: rawptr, caller
 	_s1, _ok = _span(&t, 1, "name")
 	if !_ok { return t.trap }
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 4, 1311, "lsi")
+	_ok = _out_buf(&t, &_o, 4, 1312, "lsi")
 	if !_ok { return t.trap }
 	_p1 := string(_s1)
 	if !_utf8(&t, _p1, "name") { return t.trap }
@@ -22915,7 +22956,7 @@ _t_webassembly_WebAssembly_Module_linkInfo :: proc "c" (env: rawptr, caller: was
 	context = _enter(&t, env, caller, a, "webassembly.WebAssembly_Module_linkInfo", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1312, "l")
+	_ok = _out_buf(&t, &_o, 1, 1313, "l")
 	if !_ok { return t.trap }
 	_p0: Api_WebAssemblyModule
 	_p0, _ok = _h_WebAssemblyModule(&t, 0, "module")
@@ -22931,7 +22972,7 @@ _t_webassembly_WebAssembly_lastError :: proc "c" (env: rawptr, caller: wasm.Call
 	context = _enter(&t, env, caller, a, "webassembly.WebAssembly_lastError", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1313, "")
+	_ok = _out_buf(&t, &_o, 0, 1314, "")
 	if !_ok { return t.trap }
 	_r := WebAssembly_lastError(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -23173,7 +23214,7 @@ _t_webassembly_WebAssembly_Table_element :: proc "c" (env: rawptr, caller: wasm.
 	context = _enter(&t, env, caller, a, "webassembly.WebAssembly_Table_element", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1333, "i")
+	_ok = _out_buf(&t, &_o, 1, 1334, "i")
 	if !_ok { return t.trap }
 	_p0 := a[0].i32
 	_r := WebAssembly_Table_element(&t.c, _p0)
@@ -23252,7 +23293,7 @@ _t_webassembly_WebAssembly_Global_type :: proc "c" (env: rawptr, caller: wasm.Ca
 	context = _enter(&t, env, caller, a, "webassembly.WebAssembly_Global_type", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1339, "i")
+	_ok = _out_buf(&t, &_o, 1, 1340, "i")
 	if !_ok { return t.trap }
 	_p0 := a[0].i32
 	_r := WebAssembly_Global_type(&t.c, _p0)
@@ -23301,7 +23342,7 @@ _t_webassembly_WebAssembly_Func_sig :: proc "c" (env: rawptr, caller: wasm.Calle
 	context = _enter(&t, env, caller, a, "webassembly.WebAssembly_Func_sig", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1343, "i")
+	_ok = _out_buf(&t, &_o, 1, 1344, "i")
 	if !_ok { return t.trap }
 	_p0 := a[0].i32
 	_r := WebAssembly_Func_sig(&t.c, _p0)
@@ -23330,7 +23371,7 @@ _t_webassembly_WebAssembly_Func_results :: proc "c" (env: rawptr, caller: wasm.C
 	context = _enter(&t, env, caller, a, "webassembly.WebAssembly_Func_results", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1345, "")
+	_ok = _out_buf(&t, &_o, 0, 1346, "")
 	if !_ok { return t.trap }
 	_r := WebAssembly_Func_results(&t.c)
 	return _end_out_str_ok(&t, &_o, _r)
@@ -23343,7 +23384,7 @@ _t_webassembly_WebAssembly_import_args :: proc "c" (env: rawptr, caller: wasm.Ca
 	context = _enter(&t, env, caller, a, "webassembly.WebAssembly_import_args", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1346, "")
+	_ok = _out_buf(&t, &_o, 0, 1347, "")
 	if !_ok { return t.trap }
 	_r := WebAssembly_import_args(&t.c)
 	return _end_out_str_ok(&t, &_o, _r)
@@ -23396,7 +23437,7 @@ _t_webassembly_WebAssembly_Tag_sig :: proc "c" (env: rawptr, caller: wasm.Caller
 	context = _enter(&t, env, caller, a, "webassembly.WebAssembly_Tag_sig", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1350, "i")
+	_ok = _out_buf(&t, &_o, 1, 1351, "i")
 	if !_ok { return t.trap }
 	_p0 := a[0].i32
 	_r := WebAssembly_Tag_sig(&t.c, _p0)
@@ -23460,7 +23501,7 @@ _t_webassembly_WebAssembly_Instance_exports :: proc "c" (env: rawptr, caller: wa
 	context = _enter(&t, env, caller, a, "webassembly.WebAssembly_Instance_exports", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 2, 1355, "il")
+	_ok = _out_buf(&t, &_o, 2, 1356, "il")
 	if !_ok { return t.trap }
 	_p0 := a[0].i32
 	_p1: Api_WebAssemblyModule
@@ -25378,7 +25419,7 @@ _t_webcodecs_image_ImageDecoder_type :: proc "c" (env: rawptr, caller: wasm.Call
 	context = _enter(&t, env, caller, a, "webcodecs_image.ImageDecoder_type", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1482, "l")
+	_ok = _out_buf(&t, &_o, 1, 1483, "l")
 	if !_ok { return t.trap }
 	_p0: Api_ImageDecoder
 	_p0, _ok = _h_ImageDecoder(&t, 0, "decoder")
@@ -25761,7 +25802,7 @@ _t_webgl_WebGL_createError :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	context = _enter(&t, env, caller, a, "webgl.WebGL_createError", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1508, "")
+	_ok = _out_buf(&t, &_o, 0, 1509, "")
 	if !_ok { return t.trap }
 	_r := WebGL_createError(&t.c)
 	return _end_out_str_ok(&t, &_o, transmute([]u8)_r)
@@ -25973,7 +26014,7 @@ _t_websocket_WebSocket_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	context = _enter(&t, env, caller, a, "websocket.WebSocket_url", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1522, "l")
+	_ok = _out_buf(&t, &_o, 1, 1523, "l")
 	if !_ok { return t.trap }
 	_p0: Api_WebSocket
 	_p0, _ok = _h_WebSocket(&t, 0, "socket")
@@ -25989,7 +26030,7 @@ _t_websocket_WebSocket_protocol :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	context = _enter(&t, env, caller, a, "websocket.WebSocket_protocol", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1523, "l")
+	_ok = _out_buf(&t, &_o, 1, 1524, "l")
 	if !_ok { return t.trap }
 	_p0: Api_WebSocket
 	_p0, _ok = _h_WebSocket(&t, 0, "socket")
@@ -26005,7 +26046,7 @@ _t_websocket_WebSocket_extensions :: proc "c" (env: rawptr, caller: wasm.Caller,
 	context = _enter(&t, env, caller, a, "websocket.WebSocket_extensions", .Out)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 1, 1524, "l")
+	_ok = _out_buf(&t, &_o, 1, 1525, "l")
 	if !_ok { return t.trap }
 	_p0: Api_WebSocket
 	_p0, _ok = _h_WebSocket(&t, 0, "socket")
@@ -26219,7 +26260,7 @@ _t_workers_DedicatedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: was
 	context = _enter(&t, env, caller, a, "workers.DedicatedWorkerGlobalScope_name", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1538, "")
+	_ok = _out_buf(&t, &_o, 0, 1539, "")
 	if !_ok { return t.trap }
 	_r, _err := DedicatedWorkerGlobalScope_name(&t.c)
 	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
@@ -26241,7 +26282,7 @@ _t_workers_SharedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: wasm.C
 	context = _enter(&t, env, caller, a, "workers.SharedWorkerGlobalScope_name", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1540, "")
+	_ok = _out_buf(&t, &_o, 0, 1541, "")
 	if !_ok { return t.trap }
 	_r, _err := SharedWorkerGlobalScope_name(&t.c)
 	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
@@ -26254,7 +26295,7 @@ _t_workers_WorkerGlobalScope_location :: proc "c" (env: rawptr, caller: wasm.Cal
 	context = _enter(&t, env, caller, a, "workers.WorkerGlobalScope_location", .Out_Raise)
 	_ok: bool
 	_o: _Out = ---
-	_ok = _out_buf(&t, &_o, 0, 1541, "")
+	_ok = _out_buf(&t, &_o, 0, 1542, "")
 	if !_ok { return t.trap }
 	_r, _err := WorkerGlobalScope_location(&t.c)
 	return _end_out_str(&t, &_o, transmute([]u8)_r, _err)
@@ -26287,38 +26328,37 @@ api_modules := [61]string{
 }
 
 @(private = "file")
-api_sigs := [241]string{
+api_sigs := [240]string{
 	">l", "l>l", "llpp>", "l>i", "lpp>p", "lpp>l", "dp>i", "ppp>i",
 	"ii>l", "llppdddddiippi>i", "l>", "li>", "ld>", "l>d", "ld>i", "li>d",
 	"lipp>p", "liip>", ">d", "lilipp>l", "ll>", "lipp>i", "pp>i", "ii>",
 	"llpp>i", "lii>", "pp>l", "lp>i", "lllp>i", "pppppp>", "pp>", ">i",
-	"pp>p", "ppppppppiiipp>p", "pplpp>p", "ppppppipppppppp>i", "ppppppppiiip>i", "liip>i", "lppdp>i", "ldd>",
-	"ldddddd>", "lpp>", "li>i", "li>l", "lil>", "ldddd>l", "lddddddp>i", "lddd>l",
-	"llppp>i", "ldpp>i", "ldddd>", "llddpp>i", "lldd>i", "lppdddi>", "llidddddddd>i", "liiiipp>i",
-	"lppiiiiiiii>", "lddddd>i", "lddddpp>i", "ldddddi>i", "ldddddddi>i", "lldddddd>", "llp>i", "ll>i",
-	"liddddiiiiiip>i", "ppiiiiiiiip>i", "lip>i", "lli>i", "iip>i", "lpppp>p", "ppil>l", "pppp>l",
+	"p>i", "ppippppppiiiip>i", "ppppppppiiip>i", "ppppppippppppppp>i", "liip>i", "lppdp>i", "ldd>", "ldddddd>",
+	"lpp>", "li>i", "li>l", "lil>", "ldddd>l", "lddddddp>i", "lddd>l", "llppp>i",
+	"ldpp>i", "ldddd>", "llddpp>i", "lldd>i", "lppdddi>", "llidddddddd>i", "liiiipp>i", "lppiiiiiiii>",
+	"lddddd>i", "lddddpp>i", "ldddddi>i", "ldddddddi>i", "lldddddd>", "llp>i", "ll>i", "liddddiiiiiip>i",
+	"ppiiiiiiiip>i", "lip>i", "lli>i", "iip>i", "lpppp>p", "ppil>l", "pp>p", "pppp>l",
 	"ppl>l", "ppppppii>l", "ppippi>l", "ppppppppppppppppi>l", "ppii>l", "ppilppppipp>l", "ilpp>l", "ilpppppp>l",
 	"pplppipp>l", "pplppipppp>l", "ll>l", "lppppppli>l", "lll>i", "lpp>i", "lpppp>i", "ppppp>",
 	"ppip>i", "lppipp>p", "llipp>p", "lppiiip>i", "lppip>i", "pppppp>p", "ppi>", "lppi>",
 	"lppll>", "pppppppplliiiiiippp>i", "ppiipppppplliiiiiip>i", "ppppppppiiiiiiip>i", "i>", "liii>i", "lppiii>i", "lpplpppp>i",
-	"ppliippppiiiiiii>l", "llpp>p", "lppi>i", "ppppppp>i", ">", "lpppppp>i", "lppppiipp>p", "lppppi>i",
-	"lpplpppp>p", "lpplpp>i", "lppp>i", "lppiip>i", "ippiipppplppppip>i", "lili>", "ipp>p", "ipp>i",
+	"ppliippppiiiiiii>l", "llpp>p", "lppi>i", "ppppppp>i", ">", "lpppppp>i", "lppppiip>i", "lppppip>i",
+	"lppp>i", "lpplpppp>p", "lpplpp>i", "lppiip>i", "ippiipppplppppip>i", "lili>", "ipp>p", "ipp>i",
 	"pppp>i", "ipppp>p", "ipp>", "ppppppii>", "d>i", "i>i", "pppp>", "lippl>",
-	"lipp>", "lpppp>", "llii>", "lppppppd>i", "lp>", "pppp>p", "lippp>i", "lppppip>i",
-	"lppppppp>i", "lppppp>i", "lpppppp>p", "lpplp>i", "lddi>", "dd>l", "ddii>", "lilip>",
-	"lilipp>p", "llipp>i", "lili>i", "liliip>i", "p>", "liipp>p", "lii>i", "liipp>i",
-	"ppppp>i", "p>i", "pppplp>i", "lppi>l", "lppildp>i", "ppppi>i", "ippppi>i", "ppppip>i",
-	"ppppiip>i", "ppppippp>i", "ppppiippp>i", "iilppppppp>i", "liiiiip>i", "ppii>", "lipppp>p", "lddpp>p",
-	"ppipp>l", "lippip>i", "pppppp>i", "ppiiiiiii>l", "iipp>p", "lii>l", "ldd>i", "ddppp>i",
-	"ppiippppppiiiiii>l", "ppppppi>l", "ppd>i", "ppdd>i", "ppi>i", "ppii>d", "ppiipp>p", "ppiip>i",
-	"ilpp>p", "i>l", "ili>l", "i>d", "lilp>i", "iiid>l", "ppppppip>i", "illpppppp>",
-	"ip>i", "ipppp>i", "ppd>", "iid>l", "ild>l", "ppippippippippippippippippiip>i", "lppippippippippippippippippi>i", "il>l",
-	"ilpp>i", "il>i", "iilill>l", "ilild>i", "ili>i", "pplll>i", "ill>i", "ill>l",
-	"ppil>i", "diidii>l", "lidd>i", "liiiii>i", "liid>", "lii>d", "liddd>", "lid>",
-	"lippppi>", "lil>i", "liid>i", "liii>", "liiidddpp>i", "liidi>", "lipppppp>", "lipppp>",
-	"liipp>", "ppd>l", "liidddi>", "llilip>i", "ppiiilliiiiiiiiippppiiiiiip>i", "liiiiiippppip>i", "lppiiiiiippppip>i", "iiiip>i",
-	"lppppii>i", "lillipp>i", "illippp>i", "idiilppp>i", "lppiiiiip>i", "liiipp>l", "lppppi>", "lpppp>d",
-	"lpppppp>d",
+	"lipp>", "lpppp>", "llii>", "lppppppd>i", "lp>", "pppp>p", "lippp>i", "lppppppp>i",
+	"lppppp>i", "lpppppp>p", "lpplp>i", "lddi>", "dd>l", "ddii>", "lilip>", "lilipp>p",
+	"llipp>i", "lili>i", "liliip>i", "p>", "liipp>p", "lii>i", "liipp>i", "ppppp>i",
+	"pppplp>i", "lppi>l", "lppildp>i", "ppppi>i", "ippppi>i", "ppppip>i", "ppppiip>i", "ppppippp>i",
+	"ppppiippp>i", "iilppppppp>i", "liiiiip>i", "ppii>", "lipppp>p", "lddpp>p", "ppipp>l", "lippip>i",
+	"pppppp>i", "ppiiiiiii>l", "iipp>p", "lii>l", "ldd>i", "ddppp>i", "ppiippppppiiiiii>l", "ppppppi>l",
+	"ppd>i", "ppdd>i", "ppi>i", "ppii>d", "ppiipp>p", "ppiip>i", "ilpp>p", "i>l",
+	"ili>l", "i>d", "lilp>i", "iiid>l", "ppppppip>i", "illpppppp>", "ip>i", "ipppp>i",
+	"ppd>", "iid>l", "ild>l", "ppippippippippippippippippiip>i", "lppppi>i", "lppippippippippippippippippi>i", "il>l", "ilpp>i",
+	"il>i", "iilill>l", "ilild>i", "ili>i", "pplll>i", "ill>i", "ill>l", "ppil>i",
+	"diidii>l", "lidd>i", "liiiii>i", "liid>", "lii>d", "liddd>", "lid>", "lippppi>",
+	"lil>i", "liid>i", "liii>", "liiidddpp>i", "liidi>", "lipppppp>", "lipppp>", "liipp>",
+	"ppd>l", "liidddi>", "llilip>i", "ppiiilliiiiiiiiippppiiiiiip>i", "liiiiiippppip>i", "lppiiiiiippppip>i", "iiiip>i", "lppppii>i",
+	"lillipp>i", "illippp>i", "idiilppp>i", "lppiiiiip>i", "liiipp>l", "lppppi>", "lpppp>d", "lpppppp>d",
 }
 
 @(private = "file")
@@ -26331,11 +26371,11 @@ api_names ::
 	"ProgressTimeline_currentTime\x00ProgressTimeline_source\x00ProgressTimeline_offset\x00Animation_setProgressTimeline\x00Animation_isProgress\x00Animation_setRange\x00Animation_range\x00" +
 	"Animation_validEasing\x00queueMicrotask\x00Promise_create\x00Promise_resolve\x00Promise_reject\x00Promise_then\x00Promise_state\x00Promise_value\x00Promise_text\x00Promise_all\x00Object_release\x00" +
 	"Object_kind\x00Buffer_create\x00Buffer_alloc\x00Buffer_length\x00Buffer_read\x00Buffer_write\x00Buffer_slice\x00BlobURL_register\x00BlobURL_revoke\x00CacheStorage_check\x00CacheStorage_openName\x00" +
-	"CacheStorage_hasName\x00CacheStorage_deleteName\x00CacheStorage_names\x00Cache_matchIds\x00Cache_entryRequestHeaders\x00Cache_entryHead\x00Cache_entryBody\x00Cache_putEntry\x00Cache_deleteEntries\x00" +
-	"HTMLCanvasElement_width\x00HTMLCanvasElement_set_width\x00HTMLCanvasElement_height\x00HTMLCanvasElement_set_height\x00HTMLCanvasElement_context2d\x00Canvas_encode\x00CanvasRenderingContext2D_canvas\x00" +
-	"OffscreenCanvasRenderingContext2D_canvas\x00CanvasSettings_alpha\x00CanvasSettings_willReadFrequently\x00CanvasState_save\x00CanvasState_restore\x00CanvasState_reset\x00CanvasState_isContextLost\x00" +
-	"CanvasTransform_scale\x00CanvasTransform_rotate\x00CanvasTransform_translate\x00CanvasTransform_transform\x00CanvasTransform_setTransform\x00CanvasTransform_resetTransform\x00CanvasTransform_matrixElement\x00" +
-	"CanvasCompositing_globalAlpha\x00CanvasCompositing_set_globalAlpha\x00CanvasCompositing_globalCompositeOperation\x00CanvasCompositing_set_globalCompositeOperation\x00CanvasImageSmoothing_imageSmoothingEnabled\x00" +
+	"CacheStorage_hasName\x00CacheStorage_deleteName\x00CacheStorage_names\x00Cache_match\x00Cache_keys\x00Cache_putEntry\x00Cache_deleteEntries\x00HTMLCanvasElement_width\x00HTMLCanvasElement_set_width\x00" +
+	"HTMLCanvasElement_height\x00HTMLCanvasElement_set_height\x00HTMLCanvasElement_context2d\x00Canvas_encode\x00CanvasRenderingContext2D_canvas\x00OffscreenCanvasRenderingContext2D_canvas\x00" +
+	"CanvasSettings_alpha\x00CanvasSettings_willReadFrequently\x00CanvasState_save\x00CanvasState_restore\x00CanvasState_reset\x00CanvasState_isContextLost\x00CanvasTransform_scale\x00CanvasTransform_rotate\x00" +
+	"CanvasTransform_translate\x00CanvasTransform_transform\x00CanvasTransform_setTransform\x00CanvasTransform_resetTransform\x00CanvasTransform_matrixElement\x00CanvasCompositing_globalAlpha\x00" +
+	"CanvasCompositing_set_globalAlpha\x00CanvasCompositing_globalCompositeOperation\x00CanvasCompositing_set_globalCompositeOperation\x00CanvasImageSmoothing_imageSmoothingEnabled\x00" +
 	"CanvasImageSmoothing_set_imageSmoothingEnabled\x00CanvasImageSmoothing_imageSmoothingQuality\x00CanvasImageSmoothing_set_imageSmoothingQuality\x00CanvasStyle_kind\x00CanvasStyle_color\x00" +
 	"CanvasStyle_object\x00CanvasStyle_setColor\x00CanvasStyle_setObject\x00CanvasFillStrokeStyles_createLinearGradient\x00CanvasFillStrokeStyles_createRadialGradient\x00CanvasFillStrokeStyles_createConicGradient\x00" +
 	"Canvas_createPattern\x00CanvasGradient_addColorStop\x00CanvasPattern_setTransformMatrix\x00CanvasShadowStyles_shadowOffsetX\x00CanvasShadowStyles_set_shadowOffsetX\x00CanvasShadowStyles_shadowOffsetY\x00" +
@@ -26404,12 +26444,12 @@ api_names ::
 	"Fetch_startFormData\x00Frame_self\x00Frame_ofElement\x00Frame_parent\x00Frame_top\x00Frame_length\x00Frame_child\x00Frame_named\x00Frame_childNames\x00Frame_closed\x00Frame_sameOrigin\x00Frame_documentOf\x00" +
 	"Frame_elementOf\x00Frame_ofDocument\x00Frame_target\x00Frame_windowTarget\x00Frame_realmSelf\x00Frame_realmOf\x00Frame_bridge\x00Frame_bridgeReply\x00Frame_adoptNode\x00Frame_postMessage\x00" +
 	"Frame_navigate\x00Frame_open\x00Frame_opener\x00Frame_close\x00Frame_disown\x00Frame_postMessagePorts\x00Window_get_name\x00Window_set_name\x00HTMLIFrameElement_srcdoc\x00HTMLIFrameElement_set_srcdoc\x00" +
-	"Fs_opfsRoot\x00Fs_getEntry\x00Fs_removeEntry\x00Fs_list\x00Fs_resolve\x00Fs_same\x00Fs_getFile\x00Fs_open\x00Fs_write\x00Fs_read\x00Fs_seek\x00Fs_truncate\x00Fs_size\x00Fs_flush\x00Fs_close\x00Fs_permission\x00" +
-	"Fs_requestPermission\x00Fs_showPicker\x00Fs_describe\x00Fs_restore\x00Element_requestFullscreen\x00Document_exitFullscreen\x00Document_fullscreenElement\x00ShadowRoot_fullscreenElement\x00" +
-	"Document_fullscreenEnabled\x00Document_fullscreen\x00Highlights_clear\x00Highlights_add\x00Highlights_addRange\x00Window_self\x00Document_self\x00Location_get\x00Location_set\x00Location_assign\x00" +
-	"Location_replace\x00Location_reload\x00History_length\x00History_state\x00History_pushState\x00History_replaceState\x00History_go\x00History_scrollRestoration\x00History_set_scrollRestoration\x00" +
-	"Idb_call\x00HTMLImageElement_naturalWidth\x00HTMLImageElement_naturalHeight\x00HTMLImageElement_complete\x00HTMLImageElement_currentSrc\x00HTMLImageElement_decode\x00Image_decode\x00" +
-	"Engine_console\x00Engine_reportException\x00Engine_storeBytecode\x00Engine_timezoneOffset\x00Engine_timeZone\x00Engine_locale\x00Engine_jitCompile\x00Engine_jitPoll\x00Engine_stackMove\x00" +
+	"Fs_opfsRoot\x00Fs_getEntry\x00Fs_removeEntry\x00Fs_list\x00Fs_resolve\x00Fs_same\x00Fs_getFile\x00Fs_open\x00Fs_write\x00Fs_read\x00Fs_seek\x00Fs_truncate\x00Fs_size\x00Fs_flush\x00Fs_close\x00Fs_writeAsync\x00" +
+	"Fs_truncateAsync\x00Fs_closeAsync\x00Fs_permission\x00Fs_requestPermission\x00Fs_showPicker\x00Fs_describe\x00Fs_restore\x00Element_requestFullscreen\x00Document_exitFullscreen\x00Document_fullscreenElement\x00" +
+	"ShadowRoot_fullscreenElement\x00Document_fullscreenEnabled\x00Document_fullscreen\x00Highlights_clear\x00Highlights_add\x00Highlights_addRange\x00Window_self\x00Document_self\x00Location_get\x00" +
+	"Location_set\x00Location_assign\x00Location_replace\x00Location_reload\x00History_length\x00History_state\x00History_pushState\x00History_replaceState\x00History_go\x00History_scrollRestoration\x00" +
+	"History_set_scrollRestoration\x00Idb_call\x00HTMLImageElement_naturalWidth\x00HTMLImageElement_naturalHeight\x00HTMLImageElement_complete\x00HTMLImageElement_currentSrc\x00HTMLImageElement_decode\x00" +
+	"Image_decode\x00Engine_console\x00Engine_reportException\x00Engine_storeBytecode\x00Engine_timezoneOffset\x00Engine_timeZone\x00Engine_locale\x00Engine_jitCompile\x00Engine_jitPoll\x00Engine_stackMove\x00" +
 	"Engine_nativeStackLow\x00Engine_span\x00Node_wrap\x00Document_createElementWrapped\x00Document_createTextWrapped\x00Node_unpin\x00Node_treeRoots\x00LinkStyle_sheetOf\x00DocumentOrShadowRoot_sheetCount\x00" +
 	"DocumentOrShadowRoot_sheetAt\x00CSSStyleSheet_isSheet\x00CSSStyleSheet_ownerNodeOf\x00CSSStyleSheet_hrefOf\x00CSSStyleSheet_titleOf\x00CSSStyleSheet_rulesVersion\x00CSSStyleSheet_ruleId\x00" +
 	"CustomElements_define\x00CustomElements_pending\x00CustomElements_take\x00CustomElements_release\x00CustomElements_create\x00Element_setCustomState\x00Element_isFormAssociated\x00Element_setFormValue\x00" +
@@ -26546,7 +26586,7 @@ api_names ::
 	"DedicatedWorkerGlobalScope_close\x00DedicatedWorkerGlobalScope_name\x00SharedWorkerGlobalScope_close\x00SharedWorkerGlobalScope_name\x00WorkerGlobalScope_location\x00MessageEvent_transfer\x00"
 
 // Every import, for wasm.register_compact.
-api_imports := [1641]wasm.Compact_Import{
+api_imports := [1642]wasm.Compact_Import{
 	{fn = _t_abort_AbortController_create, name_off = 0, mod_idx = 0, realms = 1, sig_idx = 0},
 	{fn = _t_abort_AbortController_signal, name_off = 23, mod_idx = 0, realms = 1, sig_idx = 1},
 	{fn = _t_abort_AbortController_abort, name_off = 46, mod_idx = 0, realms = 1, sig_idx = 2},
@@ -26615,1579 +26655,1580 @@ api_imports := [1641]wasm.Compact_Import{
 	{fn = _t_bloburl_BlobURL_register, name_off = 1263, mod_idx = 3, realms = 3, sig_idx = 29},
 	{fn = _t_bloburl_BlobURL_revoke, name_off = 1280, mod_idx = 3, realms = 3, sig_idx = 30},
 	{fn = _t_caches_CacheStorage_check, name_off = 1295, mod_idx = 4, realms = 3, sig_idx = 31},
-	{fn = _t_caches_CacheStorage_openName, name_off = 1314, mod_idx = 4, realms = 3, sig_idx = 22},
+	{fn = _t_caches_CacheStorage_openName, name_off = 1314, mod_idx = 4, realms = 3, sig_idx = 7},
 	{fn = _t_caches_CacheStorage_hasName, name_off = 1336, mod_idx = 4, realms = 3, sig_idx = 7},
 	{fn = _t_caches_CacheStorage_deleteName, name_off = 1357, mod_idx = 4, realms = 3, sig_idx = 7},
 	{fn = _t_caches_CacheStorage_names, name_off = 1381, mod_idx = 4, realms = 3, sig_idx = 32},
-	{fn = _t_caches_Cache_matchIds, name_off = 1400, mod_idx = 4, realms = 3, sig_idx = 33},
-	{fn = _t_caches_Cache_entryRequestHeaders, name_off = 1415, mod_idx = 4, realms = 3, sig_idx = 34},
-	{fn = _t_caches_Cache_entryHead, name_off = 1441, mod_idx = 4, realms = 3, sig_idx = 34},
-	{fn = _t_caches_Cache_entryBody, name_off = 1457, mod_idx = 4, realms = 3, sig_idx = 34},
-	{fn = _t_caches_Cache_putEntry, name_off = 1473, mod_idx = 4, realms = 3, sig_idx = 35},
-	{fn = _t_caches_Cache_deleteEntries, name_off = 1488, mod_idx = 4, realms = 3, sig_idx = 36},
-	{fn = _t_canvas_HTMLCanvasElement_width, name_off = 1508, mod_idx = 5, realms = 3, sig_idx = 3},
-	{fn = _t_canvas_HTMLCanvasElement_set_width, name_off = 1532, mod_idx = 5, realms = 3, sig_idx = 11},
-	{fn = _t_canvas_HTMLCanvasElement_height, name_off = 1560, mod_idx = 5, realms = 3, sig_idx = 3},
-	{fn = _t_canvas_HTMLCanvasElement_set_height, name_off = 1585, mod_idx = 5, realms = 3, sig_idx = 11},
-	{fn = _t_canvas_HTMLCanvasElement_context2d, name_off = 1614, mod_idx = 5, realms = 3, sig_idx = 37},
-	{fn = _t_canvas_Canvas_encode, name_off = 1642, mod_idx = 5, realms = 3, sig_idx = 38},
-	{fn = _t_canvas_CanvasRenderingContext2D_canvas, name_off = 1656, mod_idx = 5, realms = 3, sig_idx = 1},
-	{fn = _t_canvas_OffscreenCanvasRenderingContext2D_canvas, name_off = 1688, mod_idx = 5, realms = 3, sig_idx = 1},
-	{fn = _t_canvas_CanvasSettings_alpha, name_off = 1729, mod_idx = 5, realms = 3, sig_idx = 3},
-	{fn = _t_canvas_CanvasSettings_willReadFrequently, name_off = 1750, mod_idx = 5, realms = 3, sig_idx = 3},
-	{fn = _t_canvas_CanvasState_save, name_off = 1784, mod_idx = 5, realms = 3, sig_idx = 10},
-	{fn = _t_canvas_CanvasState_restore, name_off = 1801, mod_idx = 5, realms = 3, sig_idx = 10},
-	{fn = _t_canvas_CanvasState_reset, name_off = 1821, mod_idx = 5, realms = 3, sig_idx = 10},
-	{fn = _t_canvas_CanvasState_isContextLost, name_off = 1839, mod_idx = 5, realms = 3, sig_idx = 3},
-	{fn = _t_canvas_CanvasTransform_scale, name_off = 1865, mod_idx = 5, realms = 3, sig_idx = 39},
-	{fn = _t_canvas_CanvasTransform_rotate, name_off = 1887, mod_idx = 5, realms = 3, sig_idx = 12},
-	{fn = _t_canvas_CanvasTransform_translate, name_off = 1910, mod_idx = 5, realms = 3, sig_idx = 39},
-	{fn = _t_canvas_CanvasTransform_transform, name_off = 1936, mod_idx = 5, realms = 3, sig_idx = 40},
-	{fn = _t_canvas_CanvasTransform_setTransform, name_off = 1962, mod_idx = 5, realms = 3, sig_idx = 40},
-	{fn = _t_canvas_CanvasTransform_resetTransform, name_off = 1991, mod_idx = 5, realms = 3, sig_idx = 10},
-	{fn = _t_canvas_CanvasTransform_matrixElement, name_off = 2022, mod_idx = 5, realms = 3, sig_idx = 15},
-	{fn = _t_canvas_CanvasCompositing_globalAlpha, name_off = 2052, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_CanvasCompositing_set_globalAlpha, name_off = 2082, mod_idx = 5, realms = 3, sig_idx = 12},
-	{fn = _t_canvas_CanvasCompositing_globalCompositeOperation, name_off = 2116, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasCompositing_set_globalCompositeOperation, name_off = 2159, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasImageSmoothing_imageSmoothingEnabled, name_off = 2206, mod_idx = 5, realms = 3, sig_idx = 3},
-	{fn = _t_canvas_CanvasImageSmoothing_set_imageSmoothingEnabled, name_off = 2249, mod_idx = 5, realms = 3, sig_idx = 11},
-	{fn = _t_canvas_CanvasImageSmoothing_imageSmoothingQuality, name_off = 2296, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasImageSmoothing_set_imageSmoothingQuality, name_off = 2339, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasStyle_kind, name_off = 2386, mod_idx = 5, realms = 3, sig_idx = 42},
-	{fn = _t_canvas_CanvasStyle_color, name_off = 2403, mod_idx = 5, realms = 3, sig_idx = 16},
-	{fn = _t_canvas_CanvasStyle_object, name_off = 2421, mod_idx = 5, realms = 3, sig_idx = 43},
-	{fn = _t_canvas_CanvasStyle_setColor, name_off = 2440, mod_idx = 5, realms = 3, sig_idx = 21},
-	{fn = _t_canvas_CanvasStyle_setObject, name_off = 2461, mod_idx = 5, realms = 3, sig_idx = 44},
-	{fn = _t_canvas_CanvasFillStrokeStyles_createLinearGradient, name_off = 2483, mod_idx = 5, realms = 3, sig_idx = 45},
-	{fn = _t_canvas_CanvasFillStrokeStyles_createRadialGradient, name_off = 2527, mod_idx = 5, realms = 3, sig_idx = 46},
-	{fn = _t_canvas_CanvasFillStrokeStyles_createConicGradient, name_off = 2571, mod_idx = 5, realms = 3, sig_idx = 47},
-	{fn = _t_canvas_Canvas_createPattern, name_off = 2614, mod_idx = 5, realms = 3, sig_idx = 48},
-	{fn = _t_canvas_CanvasGradient_addColorStop, name_off = 2635, mod_idx = 5, realms = 3, sig_idx = 49},
-	{fn = _t_canvas_CanvasPattern_setTransformMatrix, name_off = 2663, mod_idx = 5, realms = 3, sig_idx = 40},
-	{fn = _t_canvas_CanvasShadowStyles_shadowOffsetX, name_off = 2696, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_CanvasShadowStyles_set_shadowOffsetX, name_off = 2729, mod_idx = 5, realms = 3, sig_idx = 12},
-	{fn = _t_canvas_CanvasShadowStyles_shadowOffsetY, name_off = 2766, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_CanvasShadowStyles_set_shadowOffsetY, name_off = 2799, mod_idx = 5, realms = 3, sig_idx = 12},
-	{fn = _t_canvas_CanvasShadowStyles_shadowBlur, name_off = 2836, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_CanvasShadowStyles_set_shadowBlur, name_off = 2866, mod_idx = 5, realms = 3, sig_idx = 12},
-	{fn = _t_canvas_CanvasShadowStyles_shadowColor, name_off = 2900, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasShadowStyles_set_shadowColor, name_off = 2931, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasFilters_filter, name_off = 2966, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasFilters_set_filter, name_off = 2987, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasRect_clearRect, name_off = 3012, mod_idx = 5, realms = 3, sig_idx = 50},
-	{fn = _t_canvas_CanvasRect_fillRect, name_off = 3033, mod_idx = 5, realms = 3, sig_idx = 50},
-	{fn = _t_canvas_CanvasRect_strokeRect, name_off = 3053, mod_idx = 5, realms = 3, sig_idx = 50},
-	{fn = _t_canvas_CanvasDrawPath_beginPath, name_off = 3075, mod_idx = 5, realms = 3, sig_idx = 10},
-	{fn = _t_canvas_CanvasDrawPath_fill, name_off = 3100, mod_idx = 5, realms = 3, sig_idx = 2},
-	{fn = _t_canvas_CanvasDrawPath_stroke, name_off = 3120, mod_idx = 5, realms = 3, sig_idx = 20},
-	{fn = _t_canvas_CanvasDrawPath_clip, name_off = 3142, mod_idx = 5, realms = 3, sig_idx = 2},
-	{fn = _t_canvas_CanvasDrawPath_isPointInPath, name_off = 3162, mod_idx = 5, realms = 3, sig_idx = 51},
-	{fn = _t_canvas_CanvasDrawPath_isPointInStroke, name_off = 3191, mod_idx = 5, realms = 3, sig_idx = 52},
-	{fn = _t_canvas_CanvasText_fillText, name_off = 3222, mod_idx = 5, realms = 3, sig_idx = 53},
-	{fn = _t_canvas_CanvasText_strokeText, name_off = 3242, mod_idx = 5, realms = 3, sig_idx = 53},
-	{fn = _t_canvas_CanvasText_measureText, name_off = 3264, mod_idx = 5, realms = 3, sig_idx = 5},
-	{fn = _t_canvas_TextMetrics_width, name_off = 3287, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_TextMetrics_actualBoundingBoxLeft, name_off = 3305, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_TextMetrics_actualBoundingBoxRight, name_off = 3339, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_TextMetrics_fontBoundingBoxAscent, name_off = 3374, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_TextMetrics_fontBoundingBoxDescent, name_off = 3408, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_TextMetrics_actualBoundingBoxAscent, name_off = 3443, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_TextMetrics_actualBoundingBoxDescent, name_off = 3479, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_TextMetrics_emHeightAscent, name_off = 3516, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_TextMetrics_emHeightDescent, name_off = 3543, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_TextMetrics_hangingBaseline, name_off = 3571, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_TextMetrics_alphabeticBaseline, name_off = 3599, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_TextMetrics_ideographicBaseline, name_off = 3630, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_CanvasDrawImage_drawImage, name_off = 3662, mod_idx = 5, realms = 3, sig_idx = 54},
-	{fn = _t_canvas_CanvasImageData_maxBytes, name_off = 3688, mod_idx = 5, realms = 3, sig_idx = 0},
-	{fn = _t_canvas_CanvasImageData_get, name_off = 3713, mod_idx = 5, realms = 3, sig_idx = 55},
-	{fn = _t_canvas_CanvasImageData_put, name_off = 3733, mod_idx = 5, realms = 3, sig_idx = 56},
-	{fn = _t_canvas_CanvasPathDrawingStyles_lineWidth, name_off = 3753, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_CanvasPathDrawingStyles_set_lineWidth, name_off = 3787, mod_idx = 5, realms = 3, sig_idx = 12},
-	{fn = _t_canvas_CanvasPathDrawingStyles_lineCap, name_off = 3825, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasPathDrawingStyles_set_lineCap, name_off = 3857, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasPathDrawingStyles_lineJoin, name_off = 3893, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasPathDrawingStyles_set_lineJoin, name_off = 3926, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasPathDrawingStyles_miterLimit, name_off = 3963, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_CanvasPathDrawingStyles_set_miterLimit, name_off = 3998, mod_idx = 5, realms = 3, sig_idx = 12},
-	{fn = _t_canvas_CanvasPathDrawingStyles_lineDashOffset, name_off = 4037, mod_idx = 5, realms = 3, sig_idx = 13},
-	{fn = _t_canvas_CanvasPathDrawingStyles_set_lineDashOffset, name_off = 4076, mod_idx = 5, realms = 3, sig_idx = 12},
-	{fn = _t_canvas_CanvasPathDrawingStyles_setLineDash, name_off = 4119, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasPathDrawingStyles_lineDashCount, name_off = 4155, mod_idx = 5, realms = 3, sig_idx = 3},
-	{fn = _t_canvas_CanvasPathDrawingStyles_lineDashAt, name_off = 4193, mod_idx = 5, realms = 3, sig_idx = 15},
-	{fn = _t_canvas_CanvasTextDrawingStyles_lang, name_off = 4228, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasTextDrawingStyles_set_lang, name_off = 4257, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasTextDrawingStyles_font, name_off = 4290, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasTextDrawingStyles_set_font, name_off = 4319, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasTextDrawingStyles_textAlign, name_off = 4352, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasTextDrawingStyles_set_textAlign, name_off = 4386, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasTextDrawingStyles_textBaseline, name_off = 4424, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasTextDrawingStyles_set_textBaseline, name_off = 4461, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasTextDrawingStyles_direction, name_off = 4502, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasTextDrawingStyles_set_direction, name_off = 4536, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasTextDrawingStyles_letterSpacing, name_off = 4574, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasTextDrawingStyles_set_letterSpacing, name_off = 4612, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasTextDrawingStyles_wordSpacing, name_off = 4654, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasTextDrawingStyles_set_wordSpacing, name_off = 4690, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasTextDrawingStyles_fontKerning, name_off = 4730, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasTextDrawingStyles_set_fontKerning, name_off = 4766, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasTextDrawingStyles_fontStretch, name_off = 4806, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasTextDrawingStyles_set_fontStretch, name_off = 4842, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasTextDrawingStyles_fontVariantCaps, name_off = 4882, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasTextDrawingStyles_set_fontVariantCaps, name_off = 4922, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasTextDrawingStyles_textRendering, name_off = 4966, mod_idx = 5, realms = 3, sig_idx = 4},
-	{fn = _t_canvas_CanvasTextDrawingStyles_set_textRendering, name_off = 5004, mod_idx = 5, realms = 3, sig_idx = 41},
-	{fn = _t_canvas_CanvasPath_closePath, name_off = 5046, mod_idx = 5, realms = 3, sig_idx = 10},
-	{fn = _t_canvas_CanvasPath_moveTo, name_off = 5067, mod_idx = 5, realms = 3, sig_idx = 39},
-	{fn = _t_canvas_CanvasPath_lineTo, name_off = 5085, mod_idx = 5, realms = 3, sig_idx = 39},
-	{fn = _t_canvas_CanvasPath_quadraticCurveTo, name_off = 5103, mod_idx = 5, realms = 3, sig_idx = 50},
-	{fn = _t_canvas_CanvasPath_bezierCurveTo, name_off = 5131, mod_idx = 5, realms = 3, sig_idx = 40},
-	{fn = _t_canvas_CanvasPath_arcTo, name_off = 5156, mod_idx = 5, realms = 3, sig_idx = 57},
-	{fn = _t_canvas_CanvasPath_rect, name_off = 5173, mod_idx = 5, realms = 3, sig_idx = 50},
-	{fn = _t_canvas_CanvasPath_roundRect, name_off = 5189, mod_idx = 5, realms = 3, sig_idx = 58},
-	{fn = _t_canvas_CanvasPath_arc, name_off = 5210, mod_idx = 5, realms = 3, sig_idx = 59},
-	{fn = _t_canvas_CanvasPath_ellipse, name_off = 5225, mod_idx = 5, realms = 3, sig_idx = 60},
-	{fn = _t_canvas_Path2D_create, name_off = 5244, mod_idx = 5, realms = 3, sig_idx = 5},
-	{fn = _t_canvas_Path2D_addPath, name_off = 5258, mod_idx = 5, realms = 3, sig_idx = 61},
-	{fn = _t_canvas_HTMLCanvasElement_transferControl, name_off = 5273, mod_idx = 5, realms = 3, sig_idx = 27},
-	{fn = _t_canvas_OffscreenCanvas_takeForTransfer, name_off = 5307, mod_idx = 5, realms = 3, sig_idx = 27},
-	{fn = _t_canvas_OffscreenCanvas_adoptTransfer, name_off = 5339, mod_idx = 5, realms = 3, sig_idx = 27},
-	{fn = _t_canvas_OffscreenCanvas_create, name_off = 5369, mod_idx = 5, realms = 3, sig_idx = 62},
-	{fn = _t_canvas_OffscreenCanvas_width, name_off = 5392, mod_idx = 5, realms = 3, sig_idx = 1},
-	{fn = _t_canvas_OffscreenCanvas_height, name_off = 5414, mod_idx = 5, realms = 3, sig_idx = 1},
-	{fn = _t_canvas_OffscreenCanvas_set_width, name_off = 5437, mod_idx = 5, realms = 3, sig_idx = 63},
-	{fn = _t_canvas_OffscreenCanvas_set_height, name_off = 5463, mod_idx = 5, realms = 3, sig_idx = 63},
-	{fn = _t_canvas_OffscreenCanvas_context2d, name_off = 5490, mod_idx = 5, realms = 3, sig_idx = 37},
-	{fn = _t_canvas_OffscreenCanvas_transferToImageBitmap, name_off = 5516, mod_idx = 5, realms = 3, sig_idx = 27},
-	{fn = _t_canvas_ImageBitmap_width, name_off = 5554, mod_idx = 5, realms = 3, sig_idx = 3},
-	{fn = _t_canvas_ImageBitmap_height, name_off = 5572, mod_idx = 5, realms = 3, sig_idx = 3},
-	{fn = _t_canvas_ImageBitmap_close, name_off = 5591, mod_idx = 5, realms = 3, sig_idx = 10},
-	{fn = _t_canvas_Canvas_createBitmap, name_off = 5609, mod_idx = 5, realms = 3, sig_idx = 64},
-	{fn = _t_canvas_Canvas_bitmapFromPixels, name_off = 5629, mod_idx = 5, realms = 3, sig_idx = 65},
-	{fn = _t_canvas_HTMLCanvasElement_bitmapRenderer, name_off = 5653, mod_idx = 5, realms = 3, sig_idx = 66},
-	{fn = _t_canvas_OffscreenCanvas_bitmapRenderer, name_off = 5686, mod_idx = 5, realms = 3, sig_idx = 66},
-	{fn = _t_canvas_ImageBitmapRenderingContext_canvas, name_off = 5717, mod_idx = 5, realms = 3, sig_idx = 1},
-	{fn = _t_canvas_ImageBitmapRenderingContext_transferFromImageBitmap, name_off = 5752, mod_idx = 5, realms = 3, sig_idx = 67},
-	{fn = _t_compression_Compression_create, name_off = 5804, mod_idx = 6, realms = 3, sig_idx = 68},
-	{fn = _t_compression_Compression_push, name_off = 5823, mod_idx = 6, realms = 3, sig_idx = 69},
-	{fn = _t_compression_Compression_finish, name_off = 5840, mod_idx = 6, realms = 3, sig_idx = 4},
-	{fn = _t_compression_Compression_output, name_off = 5859, mod_idx = 6, realms = 3, sig_idx = 4},
-	{fn = _t_console_console_log, name_off = 5878, mod_idx = 7, realms = 3, sig_idx = 30},
-	{fn = _t_console_console_warn, name_off = 5890, mod_idx = 7, realms = 3, sig_idx = 30},
-	{fn = _t_console_console_error, name_off = 5903, mod_idx = 7, realms = 3, sig_idx = 30},
-	{fn = _t_credentials_CredentialsContainer_create, name_off = 5917, mod_idx = 8, realms = 1, sig_idx = 70},
-	{fn = _t_credentials_CredentialsContainer_get, name_off = 5945, mod_idx = 8, realms = 1, sig_idx = 70},
-	{fn = _t_credentials_CredentialsContainer_preventSilentAccess, name_off = 5970, mod_idx = 8, realms = 1, sig_idx = 0},
-	{fn = _t_credentials_PublicKeyCredential_enabled, name_off = 6011, mod_idx = 8, realms = 1, sig_idx = 31},
-	{fn = _t_credentials_PublicKeyCredential_isUserVerifyingPlatformAuthenticatorAvailable, name_off = 6039, mod_idx = 8, realms = 1, sig_idx = 0},
-	{fn = _t_credentials_PublicKeyCredential_isConditionalMediationAvailable, name_off = 6105, mod_idx = 8, realms = 1, sig_idx = 0},
-	{fn = _t_credentials_PublicKeyCredential_getClientCapabilities, name_off = 6157, mod_idx = 8, realms = 1, sig_idx = 0},
-	{fn = _t_credentials_PublicKeyCredential_checkRpId, name_off = 6199, mod_idx = 8, realms = 1, sig_idx = 22},
-	{fn = _t_credentials_PublicKeyCredential_isAssertion, name_off = 6229, mod_idx = 8, realms = 1, sig_idx = 3},
-	{fn = _t_credentials_PublicKeyCredential_id, name_off = 6261, mod_idx = 8, realms = 1, sig_idx = 4},
-	{fn = _t_credentials_PublicKeyCredential_bytes, name_off = 6284, mod_idx = 8, realms = 1, sig_idx = 66},
-	{fn = _t_credentials_PublicKeyCredential_authenticatorAttachment, name_off = 6310, mod_idx = 8, realms = 1, sig_idx = 4},
-	{fn = _t_credentials_PublicKeyCredential_transports, name_off = 6354, mod_idx = 8, realms = 1, sig_idx = 4},
-	{fn = _t_credentials_PublicKeyCredential_publicKeyAlgorithm, name_off = 6385, mod_idx = 8, realms = 1, sig_idx = 3},
-	{fn = _t_credentials_PublicKeyCredential_clientExtensionResults, name_off = 6424, mod_idx = 8, realms = 1, sig_idx = 4},
-	{fn = _t_credentials_PublicKeyCredential_toJSON, name_off = 6467, mod_idx = 8, realms = 1, sig_idx = 4},
-	{fn = _t_crypto_Crypto_getRandomValues, name_off = 6494, mod_idx = 9, realms = 3, sig_idx = 22},
-	{fn = _t_crypto_Crypto_randomUUID, name_off = 6517, mod_idx = 9, realms = 3, sig_idx = 32},
-	{fn = _t_crypto_SubtleCrypto_digest, name_off = 6535, mod_idx = 9, realms = 3, sig_idx = 71},
-	{fn = _t_crypto_SubtleCrypto_digestBuffer, name_off = 6555, mod_idx = 9, realms = 3, sig_idx = 72},
-	{fn = _t_crypto_CryptoKey_importRaw, name_off = 6581, mod_idx = 9, realms = 3, sig_idx = 73},
-	{fn = _t_crypto_CryptoKey_importDer, name_off = 6601, mod_idx = 9, realms = 3, sig_idx = 74},
-	{fn = _t_crypto_CryptoKey_importRsa, name_off = 6621, mod_idx = 9, realms = 3, sig_idx = 75},
-	{fn = _t_crypto_CryptoKey_generate, name_off = 6641, mod_idx = 9, realms = 3, sig_idx = 76},
-	{fn = _t_crypto_CryptoKey_publicOf, name_off = 6660, mod_idx = 9, realms = 3, sig_idx = 1},
-	{fn = _t_crypto_CryptoKey_export, name_off = 6679, mod_idx = 9, realms = 3, sig_idx = 69},
-	{fn = _t_crypto_CryptoKey_modulusBits, name_off = 6696, mod_idx = 9, realms = 3, sig_idx = 3},
-	{fn = _t_crypto_CryptoKey_serialize, name_off = 6718, mod_idx = 9, realms = 3, sig_idx = 4},
-	{fn = _t_crypto_CryptoKey_deserialize, name_off = 6738, mod_idx = 9, realms = 3, sig_idx = 26},
-	{fn = _t_crypto_SubtleCrypto_aes, name_off = 6760, mod_idx = 9, realms = 3, sig_idx = 77},
-	{fn = _t_crypto_SubtleCrypto_aesKw, name_off = 6777, mod_idx = 9, realms = 3, sig_idx = 78},
-	{fn = _t_crypto_SubtleCrypto_rsaOaep, name_off = 6796, mod_idx = 9, realms = 3, sig_idx = 79},
-	{fn = _t_crypto_SubtleCrypto_sign, name_off = 6817, mod_idx = 9, realms = 3, sig_idx = 80},
-	{fn = _t_crypto_SubtleCrypto_verify, name_off = 6835, mod_idx = 9, realms = 3, sig_idx = 81},
-	{fn = _t_crypto_SubtleCrypto_agree, name_off = 6855, mod_idx = 9, realms = 3, sig_idx = 82},
-	{fn = _t_crypto_SubtleCrypto_derive, name_off = 6874, mod_idx = 9, realms = 3, sig_idx = 83},
-	{fn = _t_document_Document_URL, name_off = 6894, mod_idx = 10, realms = 3, sig_idx = 32},
-	{fn = _t_document_Window_origin, name_off = 6907, mod_idx = 10, realms = 3, sig_idx = 32},
-	{fn = _t_document_Window_isSecureContext, name_off = 6921, mod_idx = 10, realms = 3, sig_idx = 31},
-	{fn = _t_document_Document_cookie_get, name_off = 6944, mod_idx = 10, realms = 3, sig_idx = 32},
-	{fn = _t_document_Document_cookie_set, name_off = 6964, mod_idx = 10, realms = 3, sig_idx = 7},
-	{fn = _t_dom_Document_documentElement, name_off = 6984, mod_idx = 11, realms = 3, sig_idx = 0},
-	{fn = _t_dom_Document_head, name_off = 7009, mod_idx = 11, realms = 3, sig_idx = 0},
-	{fn = _t_dom_Document_body, name_off = 7023, mod_idx = 11, realms = 3, sig_idx = 0},
-	{fn = _t_dom_Document_createElement, name_off = 7037, mod_idx = 11, realms = 3, sig_idx = 7},
-	{fn = _t_dom_Document_createTextNode, name_off = 7060, mod_idx = 11, realms = 3, sig_idx = 7},
-	{fn = _t_dom_Document_getElementById, name_off = 7084, mod_idx = 11, realms = 3, sig_idx = 26},
-	{fn = _t_dom_Node_appendChild, name_off = 7108, mod_idx = 11, realms = 3, sig_idx = 63},
-	{fn = _t_dom_Node_insertBefore, name_off = 7125, mod_idx = 11, realms = 3, sig_idx = 84},
-	{fn = _t_dom_Node_removeChild, name_off = 7143, mod_idx = 11, realms = 3, sig_idx = 63},
-	{fn = _t_dom_Node_release, name_off = 7160, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Node_parentNode, name_off = 7173, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_Node_firstChild, name_off = 7189, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_Node_lastChild, name_off = 7205, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_Node_previousSibling, name_off = 7220, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_Node_nextSibling, name_off = 7241, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_Node_nodeType, name_off = 7258, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Node_setTextContent, name_off = 7272, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_Node_getTextContent, name_off = 7292, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Element_tagName, name_off = 7312, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Element_setAttribute, name_off = 7328, mod_idx = 11, realms = 3, sig_idx = 86},
-	{fn = _t_dom_Element_getAttribute, name_off = 7349, mod_idx = 11, realms = 3, sig_idx = 69},
-	{fn = _t_dom_Element_removeAttribute, name_off = 7370, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_encoding_TextEncoder_encode, name_off = 7394, mod_idx = 12, realms = 3, sig_idx = 7},
-	{fn = _t_encoding_TextEncoder_encodeInto, name_off = 7413, mod_idx = 12, realms = 3, sig_idx = 87},
-	{fn = _t_encoding_TextDecoder_create, name_off = 7436, mod_idx = 12, realms = 3, sig_idx = 88},
-	{fn = _t_encoding_TextDecoder_encoding, name_off = 7455, mod_idx = 12, realms = 3, sig_idx = 4},
-	{fn = _t_encoding_TextDecoder_flags, name_off = 7476, mod_idx = 12, realms = 3, sig_idx = 3},
-	{fn = _t_encoding_TextDecoder_decode, name_off = 7494, mod_idx = 12, realms = 3, sig_idx = 89},
-	{fn = _t_encoding_TextDecoder_decodeBuffer, name_off = 7513, mod_idx = 12, realms = 3, sig_idx = 90},
-	{fn = _t_encoding_TextDecoder_output, name_off = 7538, mod_idx = 12, realms = 3, sig_idx = 4},
-	{fn = _t_events_EventTarget_addEventListener, name_off = 7557, mod_idx = 13, realms = 3, sig_idx = 91},
-	{fn = _t_events_EventTarget_removeEventListener, name_off = 7586, mod_idx = 13, realms = 3, sig_idx = 42},
-	{fn = _t_events_EventTarget_dispatchEvent, name_off = 7618, mod_idx = 13, realms = 3, sig_idx = 92},
-	{fn = _t_events_Event_preventDefault, name_off = 7644, mod_idx = 13, realms = 3, sig_idx = 10},
-	{fn = _t_events_Event_stopPropagation, name_off = 7665, mod_idx = 13, realms = 3, sig_idx = 10},
-	{fn = _t_events_Event_stopImmediatePropagation, name_off = 7687, mod_idx = 13, realms = 3, sig_idx = 10},
-	{fn = _t_events_Event_target, name_off = 7718, mod_idx = 13, realms = 3, sig_idx = 1},
-	{fn = _t_events_Event_currentTarget, name_off = 7731, mod_idx = 13, realms = 3, sig_idx = 1},
-	{fn = _t_events_Event_type, name_off = 7751, mod_idx = 13, realms = 3, sig_idx = 4},
-	{fn = _t_events_Event_defaultPrevented, name_off = 7762, mod_idx = 13, realms = 3, sig_idx = 3},
-	{fn = _t_events_Event_data, name_off = 7785, mod_idx = 13, realms = 3, sig_idx = 4},
-	{fn = _t_events_Event_text, name_off = 7796, mod_idx = 13, realms = 3, sig_idx = 4},
-	{fn = _t_events_Event_code, name_off = 7807, mod_idx = 13, realms = 3, sig_idx = 1},
-	{fn = _t_events_Event_object, name_off = 7818, mod_idx = 13, realms = 3, sig_idx = 1},
-	{fn = _t_events_MouseEvent_clientX, name_off = 7831, mod_idx = 13, realms = 3, sig_idx = 13},
-	{fn = _t_events_MouseEvent_clientY, name_off = 7850, mod_idx = 13, realms = 3, sig_idx = 13},
-	{fn = _t_events_MouseEvent_button, name_off = 7869, mod_idx = 13, realms = 3, sig_idx = 3},
-	{fn = _t_events_KeyboardEvent_keyCode, name_off = 7887, mod_idx = 13, realms = 3, sig_idx = 3},
-	{fn = _t_eventsource_EventSource_create, name_off = 7909, mod_idx = 14, realms = 1, sig_idx = 88},
-	{fn = _t_eventsource_EventSource_readyState, name_off = 7928, mod_idx = 14, realms = 1, sig_idx = 3},
-	{fn = _t_eventsource_EventSource_url, name_off = 7951, mod_idx = 14, realms = 1, sig_idx = 4},
-	{fn = _t_eventsource_EventSource_withCredentials, name_off = 7967, mod_idx = 14, realms = 1, sig_idx = 3},
-	{fn = _t_eventsource_EventSource_close, name_off = 7995, mod_idx = 14, realms = 1, sig_idx = 10},
-	{fn = _t_eventsource_MessageEvent_origin, name_off = 8013, mod_idx = 14, realms = 1, sig_idx = 4},
-	{fn = _t_eventsource_MessageEvent_lastEventId, name_off = 8033, mod_idx = 14, realms = 1, sig_idx = 4},
-	{fn = _t_ext_Ext_info, name_off = 8058, mod_idx = 15, realms = 3, sig_idx = 32},
-	{fn = _t_ext_Ext_manifest, name_off = 8067, mod_idx = 15, realms = 3, sig_idx = 32},
-	{fn = _t_ext_Ext_message, name_off = 8080, mod_idx = 15, realms = 3, sig_idx = 93},
-	{fn = _t_ext_Ext_call, name_off = 8092, mod_idx = 15, realms = 3, sig_idx = 71},
-	{fn = _t_ext_Ext_listen, name_off = 8101, mod_idx = 15, realms = 3, sig_idx = 94},
-	{fn = _t_ext_Ext_take, name_off = 8112, mod_idx = 15, realms = 3, sig_idx = 32},
-	{fn = _t_ext_Ext_respond, name_off = 8121, mod_idx = 15, realms = 3, sig_idx = 95},
-	{fn = _t_ext_Ext_connect, name_off = 8133, mod_idx = 15, realms = 3, sig_idx = 41},
-	{fn = _t_ext_Ext_connectTab, name_off = 8145, mod_idx = 15, realms = 3, sig_idx = 96},
-	{fn = _t_ext_Ext_portPost, name_off = 8160, mod_idx = 15, realms = 3, sig_idx = 41},
-	{fn = _t_ext_Ext_portClose, name_off = 8173, mod_idx = 15, realms = 3, sig_idx = 10},
-	{fn = _t_fetch_Fetch_promise, name_off = 8187, mod_idx = 16, realms = 1, sig_idx = 97},
-	{fn = _t_fetch_Fetch_startWithSignal, name_off = 8201, mod_idx = 16, realms = 1, sig_idx = 98},
-	{fn = _t_fetch_Fetch_sync, name_off = 8223, mod_idx = 16, realms = 1, sig_idx = 99},
-	{fn = _t_fetch_Response_text, name_off = 8234, mod_idx = 16, realms = 1, sig_idx = 1},
-	{fn = _t_fetch_Response_arrayBuffer, name_off = 8248, mod_idx = 16, realms = 1, sig_idx = 1},
-	{fn = _t_fetch_Response_bytes, name_off = 8269, mod_idx = 16, realms = 1, sig_idx = 1},
-	{fn = _t_fetch_Response_bodyUsed, name_off = 8284, mod_idx = 16, realms = 1, sig_idx = 3},
-	{fn = _t_fetch_Response_body, name_off = 8302, mod_idx = 16, realms = 1, sig_idx = 27},
-	{fn = _t_fetch_Stream_read, name_off = 8316, mod_idx = 16, realms = 1, sig_idx = 1},
-	{fn = _t_fetch_Stream_cancel, name_off = 8328, mod_idx = 16, realms = 1, sig_idx = 10},
-	{fn = _t_fontface_FontFace_addRule, name_off = 8342, mod_idx = 17, realms = 1, sig_idx = 22},
-	{fn = _t_fontface_FontFace_removeRule, name_off = 8359, mod_idx = 17, realms = 1, sig_idx = 100},
-	{fn = _t_fontface_FontFaceSet_loading, name_off = 8379, mod_idx = 17, realms = 1, sig_idx = 31},
-	{fn = _t_fontface_FontFaceSet_ready, name_off = 8399, mod_idx = 17, realms = 1, sig_idx = 0},
-	{fn = _t_forms_forms_value, name_off = 8417, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_caches_Cache_match, name_off = 1400, mod_idx = 4, realms = 3, sig_idx = 33},
+	{fn = _t_caches_Cache_keys, name_off = 1412, mod_idx = 4, realms = 3, sig_idx = 34},
+	{fn = _t_caches_Cache_putEntry, name_off = 1423, mod_idx = 4, realms = 3, sig_idx = 35},
+	{fn = _t_caches_Cache_deleteEntries, name_off = 1438, mod_idx = 4, realms = 3, sig_idx = 34},
+	{fn = _t_canvas_HTMLCanvasElement_width, name_off = 1458, mod_idx = 5, realms = 3, sig_idx = 3},
+	{fn = _t_canvas_HTMLCanvasElement_set_width, name_off = 1482, mod_idx = 5, realms = 3, sig_idx = 11},
+	{fn = _t_canvas_HTMLCanvasElement_height, name_off = 1510, mod_idx = 5, realms = 3, sig_idx = 3},
+	{fn = _t_canvas_HTMLCanvasElement_set_height, name_off = 1535, mod_idx = 5, realms = 3, sig_idx = 11},
+	{fn = _t_canvas_HTMLCanvasElement_context2d, name_off = 1564, mod_idx = 5, realms = 3, sig_idx = 36},
+	{fn = _t_canvas_Canvas_encode, name_off = 1592, mod_idx = 5, realms = 3, sig_idx = 37},
+	{fn = _t_canvas_CanvasRenderingContext2D_canvas, name_off = 1606, mod_idx = 5, realms = 3, sig_idx = 1},
+	{fn = _t_canvas_OffscreenCanvasRenderingContext2D_canvas, name_off = 1638, mod_idx = 5, realms = 3, sig_idx = 1},
+	{fn = _t_canvas_CanvasSettings_alpha, name_off = 1679, mod_idx = 5, realms = 3, sig_idx = 3},
+	{fn = _t_canvas_CanvasSettings_willReadFrequently, name_off = 1700, mod_idx = 5, realms = 3, sig_idx = 3},
+	{fn = _t_canvas_CanvasState_save, name_off = 1734, mod_idx = 5, realms = 3, sig_idx = 10},
+	{fn = _t_canvas_CanvasState_restore, name_off = 1751, mod_idx = 5, realms = 3, sig_idx = 10},
+	{fn = _t_canvas_CanvasState_reset, name_off = 1771, mod_idx = 5, realms = 3, sig_idx = 10},
+	{fn = _t_canvas_CanvasState_isContextLost, name_off = 1789, mod_idx = 5, realms = 3, sig_idx = 3},
+	{fn = _t_canvas_CanvasTransform_scale, name_off = 1815, mod_idx = 5, realms = 3, sig_idx = 38},
+	{fn = _t_canvas_CanvasTransform_rotate, name_off = 1837, mod_idx = 5, realms = 3, sig_idx = 12},
+	{fn = _t_canvas_CanvasTransform_translate, name_off = 1860, mod_idx = 5, realms = 3, sig_idx = 38},
+	{fn = _t_canvas_CanvasTransform_transform, name_off = 1886, mod_idx = 5, realms = 3, sig_idx = 39},
+	{fn = _t_canvas_CanvasTransform_setTransform, name_off = 1912, mod_idx = 5, realms = 3, sig_idx = 39},
+	{fn = _t_canvas_CanvasTransform_resetTransform, name_off = 1941, mod_idx = 5, realms = 3, sig_idx = 10},
+	{fn = _t_canvas_CanvasTransform_matrixElement, name_off = 1972, mod_idx = 5, realms = 3, sig_idx = 15},
+	{fn = _t_canvas_CanvasCompositing_globalAlpha, name_off = 2002, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_CanvasCompositing_set_globalAlpha, name_off = 2032, mod_idx = 5, realms = 3, sig_idx = 12},
+	{fn = _t_canvas_CanvasCompositing_globalCompositeOperation, name_off = 2066, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasCompositing_set_globalCompositeOperation, name_off = 2109, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasImageSmoothing_imageSmoothingEnabled, name_off = 2156, mod_idx = 5, realms = 3, sig_idx = 3},
+	{fn = _t_canvas_CanvasImageSmoothing_set_imageSmoothingEnabled, name_off = 2199, mod_idx = 5, realms = 3, sig_idx = 11},
+	{fn = _t_canvas_CanvasImageSmoothing_imageSmoothingQuality, name_off = 2246, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasImageSmoothing_set_imageSmoothingQuality, name_off = 2289, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasStyle_kind, name_off = 2336, mod_idx = 5, realms = 3, sig_idx = 41},
+	{fn = _t_canvas_CanvasStyle_color, name_off = 2353, mod_idx = 5, realms = 3, sig_idx = 16},
+	{fn = _t_canvas_CanvasStyle_object, name_off = 2371, mod_idx = 5, realms = 3, sig_idx = 42},
+	{fn = _t_canvas_CanvasStyle_setColor, name_off = 2390, mod_idx = 5, realms = 3, sig_idx = 21},
+	{fn = _t_canvas_CanvasStyle_setObject, name_off = 2411, mod_idx = 5, realms = 3, sig_idx = 43},
+	{fn = _t_canvas_CanvasFillStrokeStyles_createLinearGradient, name_off = 2433, mod_idx = 5, realms = 3, sig_idx = 44},
+	{fn = _t_canvas_CanvasFillStrokeStyles_createRadialGradient, name_off = 2477, mod_idx = 5, realms = 3, sig_idx = 45},
+	{fn = _t_canvas_CanvasFillStrokeStyles_createConicGradient, name_off = 2521, mod_idx = 5, realms = 3, sig_idx = 46},
+	{fn = _t_canvas_Canvas_createPattern, name_off = 2564, mod_idx = 5, realms = 3, sig_idx = 47},
+	{fn = _t_canvas_CanvasGradient_addColorStop, name_off = 2585, mod_idx = 5, realms = 3, sig_idx = 48},
+	{fn = _t_canvas_CanvasPattern_setTransformMatrix, name_off = 2613, mod_idx = 5, realms = 3, sig_idx = 39},
+	{fn = _t_canvas_CanvasShadowStyles_shadowOffsetX, name_off = 2646, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_CanvasShadowStyles_set_shadowOffsetX, name_off = 2679, mod_idx = 5, realms = 3, sig_idx = 12},
+	{fn = _t_canvas_CanvasShadowStyles_shadowOffsetY, name_off = 2716, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_CanvasShadowStyles_set_shadowOffsetY, name_off = 2749, mod_idx = 5, realms = 3, sig_idx = 12},
+	{fn = _t_canvas_CanvasShadowStyles_shadowBlur, name_off = 2786, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_CanvasShadowStyles_set_shadowBlur, name_off = 2816, mod_idx = 5, realms = 3, sig_idx = 12},
+	{fn = _t_canvas_CanvasShadowStyles_shadowColor, name_off = 2850, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasShadowStyles_set_shadowColor, name_off = 2881, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasFilters_filter, name_off = 2916, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasFilters_set_filter, name_off = 2937, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasRect_clearRect, name_off = 2962, mod_idx = 5, realms = 3, sig_idx = 49},
+	{fn = _t_canvas_CanvasRect_fillRect, name_off = 2983, mod_idx = 5, realms = 3, sig_idx = 49},
+	{fn = _t_canvas_CanvasRect_strokeRect, name_off = 3003, mod_idx = 5, realms = 3, sig_idx = 49},
+	{fn = _t_canvas_CanvasDrawPath_beginPath, name_off = 3025, mod_idx = 5, realms = 3, sig_idx = 10},
+	{fn = _t_canvas_CanvasDrawPath_fill, name_off = 3050, mod_idx = 5, realms = 3, sig_idx = 2},
+	{fn = _t_canvas_CanvasDrawPath_stroke, name_off = 3070, mod_idx = 5, realms = 3, sig_idx = 20},
+	{fn = _t_canvas_CanvasDrawPath_clip, name_off = 3092, mod_idx = 5, realms = 3, sig_idx = 2},
+	{fn = _t_canvas_CanvasDrawPath_isPointInPath, name_off = 3112, mod_idx = 5, realms = 3, sig_idx = 50},
+	{fn = _t_canvas_CanvasDrawPath_isPointInStroke, name_off = 3141, mod_idx = 5, realms = 3, sig_idx = 51},
+	{fn = _t_canvas_CanvasText_fillText, name_off = 3172, mod_idx = 5, realms = 3, sig_idx = 52},
+	{fn = _t_canvas_CanvasText_strokeText, name_off = 3192, mod_idx = 5, realms = 3, sig_idx = 52},
+	{fn = _t_canvas_CanvasText_measureText, name_off = 3214, mod_idx = 5, realms = 3, sig_idx = 5},
+	{fn = _t_canvas_TextMetrics_width, name_off = 3237, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_TextMetrics_actualBoundingBoxLeft, name_off = 3255, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_TextMetrics_actualBoundingBoxRight, name_off = 3289, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_TextMetrics_fontBoundingBoxAscent, name_off = 3324, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_TextMetrics_fontBoundingBoxDescent, name_off = 3358, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_TextMetrics_actualBoundingBoxAscent, name_off = 3393, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_TextMetrics_actualBoundingBoxDescent, name_off = 3429, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_TextMetrics_emHeightAscent, name_off = 3466, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_TextMetrics_emHeightDescent, name_off = 3493, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_TextMetrics_hangingBaseline, name_off = 3521, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_TextMetrics_alphabeticBaseline, name_off = 3549, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_TextMetrics_ideographicBaseline, name_off = 3580, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_CanvasDrawImage_drawImage, name_off = 3612, mod_idx = 5, realms = 3, sig_idx = 53},
+	{fn = _t_canvas_CanvasImageData_maxBytes, name_off = 3638, mod_idx = 5, realms = 3, sig_idx = 0},
+	{fn = _t_canvas_CanvasImageData_get, name_off = 3663, mod_idx = 5, realms = 3, sig_idx = 54},
+	{fn = _t_canvas_CanvasImageData_put, name_off = 3683, mod_idx = 5, realms = 3, sig_idx = 55},
+	{fn = _t_canvas_CanvasPathDrawingStyles_lineWidth, name_off = 3703, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_CanvasPathDrawingStyles_set_lineWidth, name_off = 3737, mod_idx = 5, realms = 3, sig_idx = 12},
+	{fn = _t_canvas_CanvasPathDrawingStyles_lineCap, name_off = 3775, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasPathDrawingStyles_set_lineCap, name_off = 3807, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasPathDrawingStyles_lineJoin, name_off = 3843, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasPathDrawingStyles_set_lineJoin, name_off = 3876, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasPathDrawingStyles_miterLimit, name_off = 3913, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_CanvasPathDrawingStyles_set_miterLimit, name_off = 3948, mod_idx = 5, realms = 3, sig_idx = 12},
+	{fn = _t_canvas_CanvasPathDrawingStyles_lineDashOffset, name_off = 3987, mod_idx = 5, realms = 3, sig_idx = 13},
+	{fn = _t_canvas_CanvasPathDrawingStyles_set_lineDashOffset, name_off = 4026, mod_idx = 5, realms = 3, sig_idx = 12},
+	{fn = _t_canvas_CanvasPathDrawingStyles_setLineDash, name_off = 4069, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasPathDrawingStyles_lineDashCount, name_off = 4105, mod_idx = 5, realms = 3, sig_idx = 3},
+	{fn = _t_canvas_CanvasPathDrawingStyles_lineDashAt, name_off = 4143, mod_idx = 5, realms = 3, sig_idx = 15},
+	{fn = _t_canvas_CanvasTextDrawingStyles_lang, name_off = 4178, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasTextDrawingStyles_set_lang, name_off = 4207, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasTextDrawingStyles_font, name_off = 4240, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasTextDrawingStyles_set_font, name_off = 4269, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasTextDrawingStyles_textAlign, name_off = 4302, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasTextDrawingStyles_set_textAlign, name_off = 4336, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasTextDrawingStyles_textBaseline, name_off = 4374, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasTextDrawingStyles_set_textBaseline, name_off = 4411, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasTextDrawingStyles_direction, name_off = 4452, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasTextDrawingStyles_set_direction, name_off = 4486, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasTextDrawingStyles_letterSpacing, name_off = 4524, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasTextDrawingStyles_set_letterSpacing, name_off = 4562, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasTextDrawingStyles_wordSpacing, name_off = 4604, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasTextDrawingStyles_set_wordSpacing, name_off = 4640, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasTextDrawingStyles_fontKerning, name_off = 4680, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasTextDrawingStyles_set_fontKerning, name_off = 4716, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasTextDrawingStyles_fontStretch, name_off = 4756, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasTextDrawingStyles_set_fontStretch, name_off = 4792, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasTextDrawingStyles_fontVariantCaps, name_off = 4832, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasTextDrawingStyles_set_fontVariantCaps, name_off = 4872, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasTextDrawingStyles_textRendering, name_off = 4916, mod_idx = 5, realms = 3, sig_idx = 4},
+	{fn = _t_canvas_CanvasTextDrawingStyles_set_textRendering, name_off = 4954, mod_idx = 5, realms = 3, sig_idx = 40},
+	{fn = _t_canvas_CanvasPath_closePath, name_off = 4996, mod_idx = 5, realms = 3, sig_idx = 10},
+	{fn = _t_canvas_CanvasPath_moveTo, name_off = 5017, mod_idx = 5, realms = 3, sig_idx = 38},
+	{fn = _t_canvas_CanvasPath_lineTo, name_off = 5035, mod_idx = 5, realms = 3, sig_idx = 38},
+	{fn = _t_canvas_CanvasPath_quadraticCurveTo, name_off = 5053, mod_idx = 5, realms = 3, sig_idx = 49},
+	{fn = _t_canvas_CanvasPath_bezierCurveTo, name_off = 5081, mod_idx = 5, realms = 3, sig_idx = 39},
+	{fn = _t_canvas_CanvasPath_arcTo, name_off = 5106, mod_idx = 5, realms = 3, sig_idx = 56},
+	{fn = _t_canvas_CanvasPath_rect, name_off = 5123, mod_idx = 5, realms = 3, sig_idx = 49},
+	{fn = _t_canvas_CanvasPath_roundRect, name_off = 5139, mod_idx = 5, realms = 3, sig_idx = 57},
+	{fn = _t_canvas_CanvasPath_arc, name_off = 5160, mod_idx = 5, realms = 3, sig_idx = 58},
+	{fn = _t_canvas_CanvasPath_ellipse, name_off = 5175, mod_idx = 5, realms = 3, sig_idx = 59},
+	{fn = _t_canvas_Path2D_create, name_off = 5194, mod_idx = 5, realms = 3, sig_idx = 5},
+	{fn = _t_canvas_Path2D_addPath, name_off = 5208, mod_idx = 5, realms = 3, sig_idx = 60},
+	{fn = _t_canvas_HTMLCanvasElement_transferControl, name_off = 5223, mod_idx = 5, realms = 3, sig_idx = 27},
+	{fn = _t_canvas_OffscreenCanvas_takeForTransfer, name_off = 5257, mod_idx = 5, realms = 3, sig_idx = 27},
+	{fn = _t_canvas_OffscreenCanvas_adoptTransfer, name_off = 5289, mod_idx = 5, realms = 3, sig_idx = 27},
+	{fn = _t_canvas_OffscreenCanvas_create, name_off = 5319, mod_idx = 5, realms = 3, sig_idx = 61},
+	{fn = _t_canvas_OffscreenCanvas_width, name_off = 5342, mod_idx = 5, realms = 3, sig_idx = 1},
+	{fn = _t_canvas_OffscreenCanvas_height, name_off = 5364, mod_idx = 5, realms = 3, sig_idx = 1},
+	{fn = _t_canvas_OffscreenCanvas_set_width, name_off = 5387, mod_idx = 5, realms = 3, sig_idx = 62},
+	{fn = _t_canvas_OffscreenCanvas_set_height, name_off = 5413, mod_idx = 5, realms = 3, sig_idx = 62},
+	{fn = _t_canvas_OffscreenCanvas_context2d, name_off = 5440, mod_idx = 5, realms = 3, sig_idx = 36},
+	{fn = _t_canvas_OffscreenCanvas_transferToImageBitmap, name_off = 5466, mod_idx = 5, realms = 3, sig_idx = 27},
+	{fn = _t_canvas_ImageBitmap_width, name_off = 5504, mod_idx = 5, realms = 3, sig_idx = 3},
+	{fn = _t_canvas_ImageBitmap_height, name_off = 5522, mod_idx = 5, realms = 3, sig_idx = 3},
+	{fn = _t_canvas_ImageBitmap_close, name_off = 5541, mod_idx = 5, realms = 3, sig_idx = 10},
+	{fn = _t_canvas_Canvas_createBitmap, name_off = 5559, mod_idx = 5, realms = 3, sig_idx = 63},
+	{fn = _t_canvas_Canvas_bitmapFromPixels, name_off = 5579, mod_idx = 5, realms = 3, sig_idx = 64},
+	{fn = _t_canvas_HTMLCanvasElement_bitmapRenderer, name_off = 5603, mod_idx = 5, realms = 3, sig_idx = 65},
+	{fn = _t_canvas_OffscreenCanvas_bitmapRenderer, name_off = 5636, mod_idx = 5, realms = 3, sig_idx = 65},
+	{fn = _t_canvas_ImageBitmapRenderingContext_canvas, name_off = 5667, mod_idx = 5, realms = 3, sig_idx = 1},
+	{fn = _t_canvas_ImageBitmapRenderingContext_transferFromImageBitmap, name_off = 5702, mod_idx = 5, realms = 3, sig_idx = 66},
+	{fn = _t_compression_Compression_create, name_off = 5754, mod_idx = 6, realms = 3, sig_idx = 67},
+	{fn = _t_compression_Compression_push, name_off = 5773, mod_idx = 6, realms = 3, sig_idx = 68},
+	{fn = _t_compression_Compression_finish, name_off = 5790, mod_idx = 6, realms = 3, sig_idx = 4},
+	{fn = _t_compression_Compression_output, name_off = 5809, mod_idx = 6, realms = 3, sig_idx = 4},
+	{fn = _t_console_console_log, name_off = 5828, mod_idx = 7, realms = 3, sig_idx = 30},
+	{fn = _t_console_console_warn, name_off = 5840, mod_idx = 7, realms = 3, sig_idx = 30},
+	{fn = _t_console_console_error, name_off = 5853, mod_idx = 7, realms = 3, sig_idx = 30},
+	{fn = _t_credentials_CredentialsContainer_create, name_off = 5867, mod_idx = 8, realms = 1, sig_idx = 69},
+	{fn = _t_credentials_CredentialsContainer_get, name_off = 5895, mod_idx = 8, realms = 1, sig_idx = 69},
+	{fn = _t_credentials_CredentialsContainer_preventSilentAccess, name_off = 5920, mod_idx = 8, realms = 1, sig_idx = 0},
+	{fn = _t_credentials_PublicKeyCredential_enabled, name_off = 5961, mod_idx = 8, realms = 1, sig_idx = 31},
+	{fn = _t_credentials_PublicKeyCredential_isUserVerifyingPlatformAuthenticatorAvailable, name_off = 5989, mod_idx = 8, realms = 1, sig_idx = 0},
+	{fn = _t_credentials_PublicKeyCredential_isConditionalMediationAvailable, name_off = 6055, mod_idx = 8, realms = 1, sig_idx = 0},
+	{fn = _t_credentials_PublicKeyCredential_getClientCapabilities, name_off = 6107, mod_idx = 8, realms = 1, sig_idx = 0},
+	{fn = _t_credentials_PublicKeyCredential_checkRpId, name_off = 6149, mod_idx = 8, realms = 1, sig_idx = 22},
+	{fn = _t_credentials_PublicKeyCredential_isAssertion, name_off = 6179, mod_idx = 8, realms = 1, sig_idx = 3},
+	{fn = _t_credentials_PublicKeyCredential_id, name_off = 6211, mod_idx = 8, realms = 1, sig_idx = 4},
+	{fn = _t_credentials_PublicKeyCredential_bytes, name_off = 6234, mod_idx = 8, realms = 1, sig_idx = 65},
+	{fn = _t_credentials_PublicKeyCredential_authenticatorAttachment, name_off = 6260, mod_idx = 8, realms = 1, sig_idx = 4},
+	{fn = _t_credentials_PublicKeyCredential_transports, name_off = 6304, mod_idx = 8, realms = 1, sig_idx = 4},
+	{fn = _t_credentials_PublicKeyCredential_publicKeyAlgorithm, name_off = 6335, mod_idx = 8, realms = 1, sig_idx = 3},
+	{fn = _t_credentials_PublicKeyCredential_clientExtensionResults, name_off = 6374, mod_idx = 8, realms = 1, sig_idx = 4},
+	{fn = _t_credentials_PublicKeyCredential_toJSON, name_off = 6417, mod_idx = 8, realms = 1, sig_idx = 4},
+	{fn = _t_crypto_Crypto_getRandomValues, name_off = 6444, mod_idx = 9, realms = 3, sig_idx = 22},
+	{fn = _t_crypto_Crypto_randomUUID, name_off = 6467, mod_idx = 9, realms = 3, sig_idx = 70},
+	{fn = _t_crypto_SubtleCrypto_digest, name_off = 6485, mod_idx = 9, realms = 3, sig_idx = 71},
+	{fn = _t_crypto_SubtleCrypto_digestBuffer, name_off = 6505, mod_idx = 9, realms = 3, sig_idx = 72},
+	{fn = _t_crypto_CryptoKey_importRaw, name_off = 6531, mod_idx = 9, realms = 3, sig_idx = 73},
+	{fn = _t_crypto_CryptoKey_importDer, name_off = 6551, mod_idx = 9, realms = 3, sig_idx = 74},
+	{fn = _t_crypto_CryptoKey_importRsa, name_off = 6571, mod_idx = 9, realms = 3, sig_idx = 75},
+	{fn = _t_crypto_CryptoKey_generate, name_off = 6591, mod_idx = 9, realms = 3, sig_idx = 76},
+	{fn = _t_crypto_CryptoKey_publicOf, name_off = 6610, mod_idx = 9, realms = 3, sig_idx = 1},
+	{fn = _t_crypto_CryptoKey_export, name_off = 6629, mod_idx = 9, realms = 3, sig_idx = 68},
+	{fn = _t_crypto_CryptoKey_modulusBits, name_off = 6646, mod_idx = 9, realms = 3, sig_idx = 3},
+	{fn = _t_crypto_CryptoKey_serialize, name_off = 6668, mod_idx = 9, realms = 3, sig_idx = 4},
+	{fn = _t_crypto_CryptoKey_deserialize, name_off = 6688, mod_idx = 9, realms = 3, sig_idx = 26},
+	{fn = _t_crypto_SubtleCrypto_aes, name_off = 6710, mod_idx = 9, realms = 3, sig_idx = 77},
+	{fn = _t_crypto_SubtleCrypto_aesKw, name_off = 6727, mod_idx = 9, realms = 3, sig_idx = 78},
+	{fn = _t_crypto_SubtleCrypto_rsaOaep, name_off = 6746, mod_idx = 9, realms = 3, sig_idx = 79},
+	{fn = _t_crypto_SubtleCrypto_sign, name_off = 6767, mod_idx = 9, realms = 3, sig_idx = 80},
+	{fn = _t_crypto_SubtleCrypto_verify, name_off = 6785, mod_idx = 9, realms = 3, sig_idx = 81},
+	{fn = _t_crypto_SubtleCrypto_agree, name_off = 6805, mod_idx = 9, realms = 3, sig_idx = 82},
+	{fn = _t_crypto_SubtleCrypto_derive, name_off = 6824, mod_idx = 9, realms = 3, sig_idx = 83},
+	{fn = _t_document_Document_URL, name_off = 6844, mod_idx = 10, realms = 3, sig_idx = 70},
+	{fn = _t_document_Window_origin, name_off = 6857, mod_idx = 10, realms = 3, sig_idx = 70},
+	{fn = _t_document_Window_isSecureContext, name_off = 6871, mod_idx = 10, realms = 3, sig_idx = 31},
+	{fn = _t_document_Document_cookie_get, name_off = 6894, mod_idx = 10, realms = 3, sig_idx = 70},
+	{fn = _t_document_Document_cookie_set, name_off = 6914, mod_idx = 10, realms = 3, sig_idx = 7},
+	{fn = _t_dom_Document_documentElement, name_off = 6934, mod_idx = 11, realms = 3, sig_idx = 0},
+	{fn = _t_dom_Document_head, name_off = 6959, mod_idx = 11, realms = 3, sig_idx = 0},
+	{fn = _t_dom_Document_body, name_off = 6973, mod_idx = 11, realms = 3, sig_idx = 0},
+	{fn = _t_dom_Document_createElement, name_off = 6987, mod_idx = 11, realms = 3, sig_idx = 7},
+	{fn = _t_dom_Document_createTextNode, name_off = 7010, mod_idx = 11, realms = 3, sig_idx = 7},
+	{fn = _t_dom_Document_getElementById, name_off = 7034, mod_idx = 11, realms = 3, sig_idx = 26},
+	{fn = _t_dom_Node_appendChild, name_off = 7058, mod_idx = 11, realms = 3, sig_idx = 62},
+	{fn = _t_dom_Node_insertBefore, name_off = 7075, mod_idx = 11, realms = 3, sig_idx = 84},
+	{fn = _t_dom_Node_removeChild, name_off = 7093, mod_idx = 11, realms = 3, sig_idx = 62},
+	{fn = _t_dom_Node_release, name_off = 7110, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Node_parentNode, name_off = 7123, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_Node_firstChild, name_off = 7139, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_Node_lastChild, name_off = 7155, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_Node_previousSibling, name_off = 7170, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_Node_nextSibling, name_off = 7191, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_Node_nodeType, name_off = 7208, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Node_setTextContent, name_off = 7222, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_Node_getTextContent, name_off = 7242, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Element_tagName, name_off = 7262, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Element_setAttribute, name_off = 7278, mod_idx = 11, realms = 3, sig_idx = 86},
+	{fn = _t_dom_Element_getAttribute, name_off = 7299, mod_idx = 11, realms = 3, sig_idx = 68},
+	{fn = _t_dom_Element_removeAttribute, name_off = 7320, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_encoding_TextEncoder_encode, name_off = 7344, mod_idx = 12, realms = 3, sig_idx = 7},
+	{fn = _t_encoding_TextEncoder_encodeInto, name_off = 7363, mod_idx = 12, realms = 3, sig_idx = 87},
+	{fn = _t_encoding_TextDecoder_create, name_off = 7386, mod_idx = 12, realms = 3, sig_idx = 88},
+	{fn = _t_encoding_TextDecoder_encoding, name_off = 7405, mod_idx = 12, realms = 3, sig_idx = 4},
+	{fn = _t_encoding_TextDecoder_flags, name_off = 7426, mod_idx = 12, realms = 3, sig_idx = 3},
+	{fn = _t_encoding_TextDecoder_decode, name_off = 7444, mod_idx = 12, realms = 3, sig_idx = 89},
+	{fn = _t_encoding_TextDecoder_decodeBuffer, name_off = 7463, mod_idx = 12, realms = 3, sig_idx = 90},
+	{fn = _t_encoding_TextDecoder_output, name_off = 7488, mod_idx = 12, realms = 3, sig_idx = 4},
+	{fn = _t_events_EventTarget_addEventListener, name_off = 7507, mod_idx = 13, realms = 3, sig_idx = 91},
+	{fn = _t_events_EventTarget_removeEventListener, name_off = 7536, mod_idx = 13, realms = 3, sig_idx = 41},
+	{fn = _t_events_EventTarget_dispatchEvent, name_off = 7568, mod_idx = 13, realms = 3, sig_idx = 92},
+	{fn = _t_events_Event_preventDefault, name_off = 7594, mod_idx = 13, realms = 3, sig_idx = 10},
+	{fn = _t_events_Event_stopPropagation, name_off = 7615, mod_idx = 13, realms = 3, sig_idx = 10},
+	{fn = _t_events_Event_stopImmediatePropagation, name_off = 7637, mod_idx = 13, realms = 3, sig_idx = 10},
+	{fn = _t_events_Event_target, name_off = 7668, mod_idx = 13, realms = 3, sig_idx = 1},
+	{fn = _t_events_Event_currentTarget, name_off = 7681, mod_idx = 13, realms = 3, sig_idx = 1},
+	{fn = _t_events_Event_type, name_off = 7701, mod_idx = 13, realms = 3, sig_idx = 4},
+	{fn = _t_events_Event_defaultPrevented, name_off = 7712, mod_idx = 13, realms = 3, sig_idx = 3},
+	{fn = _t_events_Event_data, name_off = 7735, mod_idx = 13, realms = 3, sig_idx = 4},
+	{fn = _t_events_Event_text, name_off = 7746, mod_idx = 13, realms = 3, sig_idx = 4},
+	{fn = _t_events_Event_code, name_off = 7757, mod_idx = 13, realms = 3, sig_idx = 1},
+	{fn = _t_events_Event_object, name_off = 7768, mod_idx = 13, realms = 3, sig_idx = 1},
+	{fn = _t_events_MouseEvent_clientX, name_off = 7781, mod_idx = 13, realms = 3, sig_idx = 13},
+	{fn = _t_events_MouseEvent_clientY, name_off = 7800, mod_idx = 13, realms = 3, sig_idx = 13},
+	{fn = _t_events_MouseEvent_button, name_off = 7819, mod_idx = 13, realms = 3, sig_idx = 3},
+	{fn = _t_events_KeyboardEvent_keyCode, name_off = 7837, mod_idx = 13, realms = 3, sig_idx = 3},
+	{fn = _t_eventsource_EventSource_create, name_off = 7859, mod_idx = 14, realms = 1, sig_idx = 88},
+	{fn = _t_eventsource_EventSource_readyState, name_off = 7878, mod_idx = 14, realms = 1, sig_idx = 3},
+	{fn = _t_eventsource_EventSource_url, name_off = 7901, mod_idx = 14, realms = 1, sig_idx = 4},
+	{fn = _t_eventsource_EventSource_withCredentials, name_off = 7917, mod_idx = 14, realms = 1, sig_idx = 3},
+	{fn = _t_eventsource_EventSource_close, name_off = 7945, mod_idx = 14, realms = 1, sig_idx = 10},
+	{fn = _t_eventsource_MessageEvent_origin, name_off = 7963, mod_idx = 14, realms = 1, sig_idx = 4},
+	{fn = _t_eventsource_MessageEvent_lastEventId, name_off = 7983, mod_idx = 14, realms = 1, sig_idx = 4},
+	{fn = _t_ext_Ext_info, name_off = 8008, mod_idx = 15, realms = 3, sig_idx = 70},
+	{fn = _t_ext_Ext_manifest, name_off = 8017, mod_idx = 15, realms = 3, sig_idx = 70},
+	{fn = _t_ext_Ext_message, name_off = 8030, mod_idx = 15, realms = 3, sig_idx = 93},
+	{fn = _t_ext_Ext_call, name_off = 8042, mod_idx = 15, realms = 3, sig_idx = 71},
+	{fn = _t_ext_Ext_listen, name_off = 8051, mod_idx = 15, realms = 3, sig_idx = 94},
+	{fn = _t_ext_Ext_take, name_off = 8062, mod_idx = 15, realms = 3, sig_idx = 70},
+	{fn = _t_ext_Ext_respond, name_off = 8071, mod_idx = 15, realms = 3, sig_idx = 95},
+	{fn = _t_ext_Ext_connect, name_off = 8083, mod_idx = 15, realms = 3, sig_idx = 40},
+	{fn = _t_ext_Ext_connectTab, name_off = 8095, mod_idx = 15, realms = 3, sig_idx = 96},
+	{fn = _t_ext_Ext_portPost, name_off = 8110, mod_idx = 15, realms = 3, sig_idx = 40},
+	{fn = _t_ext_Ext_portClose, name_off = 8123, mod_idx = 15, realms = 3, sig_idx = 10},
+	{fn = _t_fetch_Fetch_promise, name_off = 8137, mod_idx = 16, realms = 1, sig_idx = 97},
+	{fn = _t_fetch_Fetch_startWithSignal, name_off = 8151, mod_idx = 16, realms = 1, sig_idx = 98},
+	{fn = _t_fetch_Fetch_sync, name_off = 8173, mod_idx = 16, realms = 1, sig_idx = 99},
+	{fn = _t_fetch_Response_text, name_off = 8184, mod_idx = 16, realms = 1, sig_idx = 1},
+	{fn = _t_fetch_Response_arrayBuffer, name_off = 8198, mod_idx = 16, realms = 1, sig_idx = 1},
+	{fn = _t_fetch_Response_bytes, name_off = 8219, mod_idx = 16, realms = 1, sig_idx = 1},
+	{fn = _t_fetch_Response_bodyUsed, name_off = 8234, mod_idx = 16, realms = 1, sig_idx = 3},
+	{fn = _t_fetch_Response_body, name_off = 8252, mod_idx = 16, realms = 1, sig_idx = 27},
+	{fn = _t_fetch_Stream_read, name_off = 8266, mod_idx = 16, realms = 1, sig_idx = 1},
+	{fn = _t_fetch_Stream_cancel, name_off = 8278, mod_idx = 16, realms = 1, sig_idx = 10},
+	{fn = _t_fontface_FontFace_addRule, name_off = 8292, mod_idx = 17, realms = 1, sig_idx = 22},
+	{fn = _t_fontface_FontFace_removeRule, name_off = 8309, mod_idx = 17, realms = 1, sig_idx = 100},
+	{fn = _t_fontface_FontFaceSet_loading, name_off = 8329, mod_idx = 17, realms = 1, sig_idx = 31},
+	{fn = _t_fontface_FontFaceSet_ready, name_off = 8349, mod_idx = 17, realms = 1, sig_idx = 0},
+	{fn = _t_forms_forms_value, name_off = 8367, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_value, name_off = 8390, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_value, name_off = 8416, mod_idx = 18, realms = 1, sig_idx = 4},
 	{fn = _t_forms_forms_value, name_off = 8440, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_value, name_off = 8466, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_value, name_off = 8490, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_value, name_off = 8514, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_value, name_off = 8538, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_setValue, name_off = 8562, mod_idx = 18, realms = 1, sig_idx = 85},
-	{fn = _t_forms_forms_setValue, name_off = 8588, mod_idx = 18, realms = 1, sig_idx = 85},
-	{fn = _t_forms_forms_setValue, name_off = 8617, mod_idx = 18, realms = 1, sig_idx = 85},
-	{fn = _t_forms_forms_setValue, name_off = 8644, mod_idx = 18, realms = 1, sig_idx = 85},
-	{fn = _t_forms_forms_setValue, name_off = 8671, mod_idx = 18, realms = 1, sig_idx = 85},
-	{fn = _t_forms_forms_setValue, name_off = 8698, mod_idx = 18, realms = 1, sig_idx = 85},
-	{fn = _t_forms_forms_defaultValue, name_off = 8725, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_defaultValue, name_off = 8755, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_defaultValue, name_off = 8788, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_setDefaultValue, name_off = 8819, mod_idx = 18, realms = 1, sig_idx = 85},
-	{fn = _t_forms_forms_setDefaultValue, name_off = 8852, mod_idx = 18, realms = 1, sig_idx = 85},
-	{fn = _t_forms_forms_setDefaultValue, name_off = 8888, mod_idx = 18, realms = 1, sig_idx = 85},
-	{fn = _t_forms_forms_checked, name_off = 8922, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_setChecked, name_off = 8947, mod_idx = 18, realms = 1, sig_idx = 42},
-	{fn = _t_forms_forms_defaultChecked, name_off = 8975, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_setDefaultChecked, name_off = 9007, mod_idx = 18, realms = 1, sig_idx = 11},
-	{fn = _t_forms_forms_indeterminate, name_off = 9042, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_setIndeterminate, name_off = 9073, mod_idx = 18, realms = 1, sig_idx = 11},
-	{fn = _t_forms_forms_type, name_off = 9107, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_type, name_off = 9129, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_type, name_off = 9154, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_type, name_off = 9177, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_type, name_off = 9200, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_type, name_off = 9223, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_type, name_off = 9248, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_name, name_off = 9271, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_name, name_off = 9293, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_name, name_off = 9318, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_name, name_off = 9341, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_name, name_off = 9364, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_name, name_off = 9387, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_name, name_off = 9412, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_form, name_off = 9435, mod_idx = 18, realms = 1, sig_idx = 1},
-	{fn = _t_forms_forms_form, name_off = 9457, mod_idx = 18, realms = 1, sig_idx = 1},
-	{fn = _t_forms_forms_form, name_off = 9482, mod_idx = 18, realms = 1, sig_idx = 1},
-	{fn = _t_forms_forms_form, name_off = 9505, mod_idx = 18, realms = 1, sig_idx = 1},
-	{fn = _t_forms_forms_form, name_off = 9528, mod_idx = 18, realms = 1, sig_idx = 1},
-	{fn = _t_forms_forms_form, name_off = 9551, mod_idx = 18, realms = 1, sig_idx = 1},
-	{fn = _t_forms_forms_form, name_off = 9576, mod_idx = 18, realms = 1, sig_idx = 1},
-	{fn = _t_forms_forms_form, name_off = 9599, mod_idx = 18, realms = 1, sig_idx = 1},
-	{fn = _t_forms_forms_form, name_off = 9622, mod_idx = 18, realms = 1, sig_idx = 1},
-	{fn = _t_forms_forms_form, name_off = 9644, mod_idx = 18, realms = 1, sig_idx = 1},
-	{fn = _t_forms_forms_disabled, name_off = 9667, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_disabled, name_off = 9693, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_disabled, name_off = 9722, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_disabled, name_off = 9749, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_disabled, name_off = 9776, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_disabled, name_off = 9805, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_disabled, name_off = 9832, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_setDisabled, name_off = 9861, mod_idx = 18, realms = 1, sig_idx = 11},
-	{fn = _t_forms_forms_setDisabled, name_off = 9890, mod_idx = 18, realms = 1, sig_idx = 11},
-	{fn = _t_forms_forms_setDisabled, name_off = 9922, mod_idx = 18, realms = 1, sig_idx = 11},
-	{fn = _t_forms_forms_setDisabled, name_off = 9952, mod_idx = 18, realms = 1, sig_idx = 11},
-	{fn = _t_forms_forms_setDisabled, name_off = 9982, mod_idx = 18, realms = 1, sig_idx = 11},
-	{fn = _t_forms_forms_setDisabled, name_off = 10014, mod_idx = 18, realms = 1, sig_idx = 11},
-	{fn = _t_forms_forms_setDisabled, name_off = 10044, mod_idx = 18, realms = 1, sig_idx = 11},
-	{fn = _t_forms_forms_readOnly, name_off = 10076, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_readOnly, name_off = 10102, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_setReadOnly, name_off = 10131, mod_idx = 18, realms = 1, sig_idx = 11},
-	{fn = _t_forms_forms_setReadOnly, name_off = 10160, mod_idx = 18, realms = 1, sig_idx = 11},
-	{fn = _t_forms_forms_required, name_off = 10192, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_required, name_off = 10218, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_required, name_off = 10247, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_setRequired, name_off = 10274, mod_idx = 18, realms = 1, sig_idx = 11},
-	{fn = _t_forms_forms_setRequired, name_off = 10303, mod_idx = 18, realms = 1, sig_idx = 11},
-	{fn = _t_forms_forms_setRequired, name_off = 10335, mod_idx = 18, realms = 1, sig_idx = 11},
-	{fn = _t_forms_forms_willValidate, name_off = 10365, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_willValidate, name_off = 10395, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_willValidate, name_off = 10428, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_willValidate, name_off = 10459, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_willValidate, name_off = 10490, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_willValidate, name_off = 10521, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_willValidate, name_off = 10554, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_validity, name_off = 10585, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_validity, name_off = 10611, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_validity, name_off = 10640, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_validity, name_off = 10667, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_validity, name_off = 10694, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_validity, name_off = 10721, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_validity, name_off = 10750, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_validationMessage, name_off = 10777, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_validationMessage, name_off = 10812, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_validationMessage, name_off = 10850, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_validationMessage, name_off = 10886, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_validationMessage, name_off = 10922, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_validationMessage, name_off = 10958, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_validationMessage, name_off = 10996, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_setCustomValidity, name_off = 11032, mod_idx = 18, realms = 1, sig_idx = 41},
-	{fn = _t_forms_forms_setCustomValidity, name_off = 11067, mod_idx = 18, realms = 1, sig_idx = 41},
-	{fn = _t_forms_forms_setCustomValidity, name_off = 11105, mod_idx = 18, realms = 1, sig_idx = 41},
-	{fn = _t_forms_forms_setCustomValidity, name_off = 11141, mod_idx = 18, realms = 1, sig_idx = 41},
-	{fn = _t_forms_forms_setCustomValidity, name_off = 11177, mod_idx = 18, realms = 1, sig_idx = 41},
-	{fn = _t_forms_forms_setCustomValidity, name_off = 11213, mod_idx = 18, realms = 1, sig_idx = 41},
-	{fn = _t_forms_forms_setCustomValidity, name_off = 11251, mod_idx = 18, realms = 1, sig_idx = 41},
-	{fn = _t_forms_forms_checkValidity, name_off = 11287, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_checkValidity, name_off = 11318, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_checkValidity, name_off = 11352, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_checkValidity, name_off = 11384, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_checkValidity, name_off = 11416, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_checkValidity, name_off = 11448, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_checkValidity, name_off = 11482, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_checkValidity, name_off = 11514, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_reportValidity, name_off = 11544, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_reportValidity, name_off = 11576, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_reportValidity, name_off = 11611, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_reportValidity, name_off = 11644, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_reportValidity, name_off = 11677, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_reportValidity, name_off = 11710, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_reportValidity, name_off = 11745, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_reportValidity, name_off = 11778, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_select, name_off = 11809, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_select, name_off = 11833, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_selectionStart, name_off = 11860, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_selectionStart, name_off = 11892, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_selectionEnd, name_off = 11927, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_selectionEnd, name_off = 11957, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_selectionDirection, name_off = 11990, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_selectionDirection, name_off = 12026, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_forms_setSelectionRange, name_off = 12065, mod_idx = 18, realms = 1, sig_idx = 101},
-	{fn = _t_forms_forms_setSelectionRange, name_off = 12100, mod_idx = 18, realms = 1, sig_idx = 101},
-	{fn = _t_forms_forms_setRangeText, name_off = 12138, mod_idx = 18, realms = 1, sig_idx = 102},
-	{fn = _t_forms_forms_setRangeText, name_off = 12168, mod_idx = 18, realms = 1, sig_idx = 102},
-	{fn = _t_forms_forms_maxLength, name_off = 12201, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_maxLength, name_off = 12228, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_minLength, name_off = 12258, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_minLength, name_off = 12285, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_stepUp, name_off = 12315, mod_idx = 18, realms = 1, sig_idx = 42},
-	{fn = _t_forms_forms_stepDown, name_off = 12339, mod_idx = 18, realms = 1, sig_idx = 42},
-	{fn = _t_forms_forms_valueAsNumber, name_off = 12365, mod_idx = 18, realms = 1, sig_idx = 13},
-	{fn = _t_forms_forms_setValueAsNumber, name_off = 12396, mod_idx = 18, realms = 1, sig_idx = 14},
-	{fn = _t_forms_forms_valueAsDate, name_off = 12430, mod_idx = 18, realms = 1, sig_idx = 13},
-	{fn = _t_forms_forms_setValueAsDate, name_off = 12459, mod_idx = 18, realms = 1, sig_idx = 14},
-	{fn = _t_forms_forms_files_length, name_off = 12491, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_forms_fileName, name_off = 12521, mod_idx = 18, realms = 1, sig_idx = 16},
-	{fn = _t_forms_forms_fileSize, name_off = 12547, mod_idx = 18, realms = 1, sig_idx = 43},
-	{fn = _t_forms_forms_fileType, name_off = 12573, mod_idx = 18, realms = 1, sig_idx = 16},
-	{fn = _t_forms_HTMLSelectElement_selectedIndex, name_off = 12599, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_HTMLSelectElement_setSelectedIndex, name_off = 12631, mod_idx = 18, realms = 1, sig_idx = 42},
-	{fn = _t_forms_HTMLSelectElement_length, name_off = 12666, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_HTMLSelectElement_item, name_off = 12691, mod_idx = 18, realms = 1, sig_idx = 43},
-	{fn = _t_forms_HTMLSelectElement_selectedOptions_length, name_off = 12714, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_HTMLSelectElement_selectedOptions_item, name_off = 12755, mod_idx = 18, realms = 1, sig_idx = 43},
-	{fn = _t_forms_HTMLOptionElement_selected, name_off = 12794, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_HTMLOptionElement_setSelected, name_off = 12821, mod_idx = 18, realms = 1, sig_idx = 42},
-	{fn = _t_forms_HTMLOptionElement_defaultSelected, name_off = 12851, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_HTMLOptionElement_setDefaultSelected, name_off = 12885, mod_idx = 18, realms = 1, sig_idx = 42},
-	{fn = _t_forms_HTMLOptionElement_index, name_off = 12922, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_HTMLOptionElement_text, name_off = 12946, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_HTMLOptionElement_label, name_off = 12969, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_HTMLFormElement_submit, name_off = 12993, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_HTMLFormElement_requestSubmit, name_off = 13016, mod_idx = 18, realms = 1, sig_idx = 63},
-	{fn = _t_forms_HTMLFormElement_reset, name_off = 13046, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_HTMLFormElement_length, name_off = 13068, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_HTMLFormElement_elements, name_off = 13091, mod_idx = 18, realms = 1, sig_idx = 43},
-	{fn = _t_forms_HTMLFormElement_namedItem, name_off = 13116, mod_idx = 18, realms = 1, sig_idx = 5},
-	{fn = _t_forms_HTMLLabelElement_control, name_off = 13142, mod_idx = 18, realms = 1, sig_idx = 1},
-	{fn = _t_forms_HTMLElement_focus, name_off = 13167, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_HTMLElement_blur, name_off = 13185, mod_idx = 18, realms = 1, sig_idx = 10},
-	{fn = _t_forms_HTMLElement_click, name_off = 13202, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_Document_activeElement, name_off = 13220, mod_idx = 18, realms = 1, sig_idx = 0},
-	{fn = _t_forms_HTMLDialogElement_returnValue, name_off = 13243, mod_idx = 18, realms = 1, sig_idx = 4},
-	{fn = _t_forms_HTMLDialogElement_set_returnValue, name_off = 13273, mod_idx = 18, realms = 1, sig_idx = 41},
-	{fn = _t_forms_FormData_create, name_off = 13307, mod_idx = 18, realms = 1, sig_idx = 62},
-	{fn = _t_forms_FormData_append, name_off = 13323, mod_idx = 18, realms = 1, sig_idx = 86},
-	{fn = _t_forms_FormData_appendBlob, name_off = 13339, mod_idx = 18, realms = 1, sig_idx = 103},
-	{fn = _t_forms_FormData_set, name_off = 13359, mod_idx = 18, realms = 1, sig_idx = 86},
-	{fn = _t_forms_FormData_delete, name_off = 13372, mod_idx = 18, realms = 1, sig_idx = 41},
-	{fn = _t_forms_FormData_has, name_off = 13388, mod_idx = 18, realms = 1, sig_idx = 85},
-	{fn = _t_forms_FormData_count, name_off = 13401, mod_idx = 18, realms = 1, sig_idx = 85},
-	{fn = _t_forms_FormData_get, name_off = 13416, mod_idx = 18, realms = 1, sig_idx = 69},
-	{fn = _t_forms_FormData_getAt, name_off = 13429, mod_idx = 18, realms = 1, sig_idx = 89},
-	{fn = _t_forms_FormData_size, name_off = 13444, mod_idx = 18, realms = 1, sig_idx = 3},
-	{fn = _t_forms_FormData_nameAt, name_off = 13458, mod_idx = 18, realms = 1, sig_idx = 16},
-	{fn = _t_forms_FormData_valueAt, name_off = 13474, mod_idx = 18, realms = 1, sig_idx = 16},
-	{fn = _t_forms_FormData_isFileAt, name_off = 13491, mod_idx = 18, realms = 1, sig_idx = 66},
-	{fn = _t_forms_FormData_fileSizeAt, name_off = 13509, mod_idx = 18, realms = 1, sig_idx = 43},
-	{fn = _t_forms_FormData_fileTypeAt, name_off = 13529, mod_idx = 18, realms = 1, sig_idx = 16},
-	{fn = _t_fetch_Fetch_startFormData, name_off = 13549, mod_idx = 16, realms = 1, sig_idx = 104},
-	{fn = _t_frames_Frame_self, name_off = 13569, mod_idx = 19, realms = 1, sig_idx = 0},
-	{fn = _t_frames_Frame_ofElement, name_off = 13580, mod_idx = 19, realms = 1, sig_idx = 1},
-	{fn = _t_frames_Frame_parent, name_off = 13596, mod_idx = 19, realms = 1, sig_idx = 1},
-	{fn = _t_frames_Frame_top, name_off = 13609, mod_idx = 19, realms = 1, sig_idx = 1},
-	{fn = _t_frames_Frame_length, name_off = 13619, mod_idx = 19, realms = 1, sig_idx = 3},
-	{fn = _t_frames_Frame_child, name_off = 13632, mod_idx = 19, realms = 1, sig_idx = 43},
-	{fn = _t_frames_Frame_named, name_off = 13644, mod_idx = 19, realms = 1, sig_idx = 5},
-	{fn = _t_frames_Frame_childNames, name_off = 13656, mod_idx = 19, realms = 1, sig_idx = 4},
-	{fn = _t_frames_Frame_closed, name_off = 13673, mod_idx = 19, realms = 1, sig_idx = 3},
-	{fn = _t_frames_Frame_sameOrigin, name_off = 13686, mod_idx = 19, realms = 1, sig_idx = 3},
-	{fn = _t_frames_Frame_documentOf, name_off = 13703, mod_idx = 19, realms = 1, sig_idx = 1},
-	{fn = _t_frames_Frame_elementOf, name_off = 13720, mod_idx = 19, realms = 1, sig_idx = 1},
-	{fn = _t_frames_Frame_ofDocument, name_off = 13736, mod_idx = 19, realms = 1, sig_idx = 1},
-	{fn = _t_frames_Frame_target, name_off = 13753, mod_idx = 19, realms = 1, sig_idx = 3},
-	{fn = _t_frames_Frame_windowTarget, name_off = 13766, mod_idx = 19, realms = 1, sig_idx = 1},
-	{fn = _t_frames_Frame_realmSelf, name_off = 13785, mod_idx = 19, realms = 1, sig_idx = 0},
-	{fn = _t_frames_Frame_realmOf, name_off = 13801, mod_idx = 19, realms = 1, sig_idx = 1},
-	{fn = _t_frames_Frame_bridge, name_off = 13815, mod_idx = 19, realms = 1, sig_idx = 85},
-	{fn = _t_frames_Frame_bridgeReply, name_off = 13828, mod_idx = 19, realms = 1, sig_idx = 32},
-	{fn = _t_frames_Frame_adoptNode, name_off = 13846, mod_idx = 19, realms = 1, sig_idx = 105},
-	{fn = _t_frames_Frame_postMessage, name_off = 13862, mod_idx = 19, realms = 1, sig_idx = 86},
-	{fn = _t_frames_Frame_navigate, name_off = 13880, mod_idx = 19, realms = 1, sig_idx = 106},
-	{fn = _t_frames_Frame_open, name_off = 13895, mod_idx = 19, realms = 1, sig_idx = 107},
-	{fn = _t_frames_Frame_opener, name_off = 13906, mod_idx = 19, realms = 1, sig_idx = 1},
-	{fn = _t_frames_Frame_close, name_off = 13919, mod_idx = 19, realms = 1, sig_idx = 10},
-	{fn = _t_frames_Frame_disown, name_off = 13931, mod_idx = 19, realms = 1, sig_idx = 108},
-	{fn = _t_frames_Frame_postMessagePorts, name_off = 13944, mod_idx = 19, realms = 1, sig_idx = 109},
-	{fn = _t_frames_Window_get_name, name_off = 13967, mod_idx = 19, realms = 1, sig_idx = 32},
-	{fn = _t_frames_Window_set_name, name_off = 13983, mod_idx = 19, realms = 1, sig_idx = 30},
-	{fn = _t_dom_HTMLIFrameElement_srcdoc, name_off = 13999, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HTMLIFrameElement_set_srcdoc, name_off = 14024, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_fs_Fs_opfsRoot, name_off = 14053, mod_idx = 20, realms = 3, sig_idx = 7},
-	{fn = _t_fs_Fs_getEntry, name_off = 14065, mod_idx = 20, realms = 3, sig_idx = 110},
-	{fn = _t_fs_Fs_removeEntry, name_off = 14077, mod_idx = 20, realms = 3, sig_idx = 111},
-	{fn = _t_fs_Fs_list, name_off = 14092, mod_idx = 20, realms = 3, sig_idx = 69},
-	{fn = _t_fs_Fs_resolve, name_off = 14100, mod_idx = 20, realms = 3, sig_idx = 112},
-	{fn = _t_fs_Fs_same, name_off = 14111, mod_idx = 20, realms = 3, sig_idx = 113},
-	{fn = _t_fs_Fs_getFile, name_off = 14119, mod_idx = 20, realms = 3, sig_idx = 114},
-	{fn = _t_fs_Fs_open, name_off = 14130, mod_idx = 20, realms = 3, sig_idx = 115},
-	{fn = _t_fs_Fs_write, name_off = 14138, mod_idx = 20, realms = 3, sig_idx = 48},
-	{fn = _t_fs_Fs_read, name_off = 14147, mod_idx = 20, realms = 3, sig_idx = 48},
-	{fn = _t_fs_Fs_seek, name_off = 14155, mod_idx = 20, realms = 3, sig_idx = 63},
-	{fn = _t_fs_Fs_truncate, name_off = 14163, mod_idx = 20, realms = 3, sig_idx = 63},
-	{fn = _t_fs_Fs_size, name_off = 14175, mod_idx = 20, realms = 3, sig_idx = 27},
-	{fn = _t_fs_Fs_flush, name_off = 14183, mod_idx = 20, realms = 3, sig_idx = 3},
-	{fn = _t_fs_Fs_close, name_off = 14192, mod_idx = 20, realms = 3, sig_idx = 42},
-	{fn = _t_fs_Fs_permission, name_off = 14201, mod_idx = 20, realms = 3, sig_idx = 42},
-	{fn = _t_fs_Fs_requestPermission, name_off = 14215, mod_idx = 20, realms = 3, sig_idx = 66},
-	{fn = _t_fs_Fs_showPicker, name_off = 14236, mod_idx = 20, realms = 3, sig_idx = 116},
-	{fn = _t_fs_Fs_describe, name_off = 14250, mod_idx = 20, realms = 3, sig_idx = 4},
-	{fn = _t_fs_Fs_restore, name_off = 14262, mod_idx = 20, realms = 3, sig_idx = 7},
-	{fn = _t_fullscreen_Element_requestFullscreen, name_off = 14273, mod_idx = 21, realms = 1, sig_idx = 43},
-	{fn = _t_fullscreen_Document_exitFullscreen, name_off = 14299, mod_idx = 21, realms = 1, sig_idx = 0},
-	{fn = _t_fullscreen_Document_fullscreenElement, name_off = 14323, mod_idx = 21, realms = 1, sig_idx = 0},
-	{fn = _t_fullscreen_ShadowRoot_fullscreenElement, name_off = 14350, mod_idx = 21, realms = 1, sig_idx = 1},
-	{fn = _t_fullscreen_Document_fullscreenEnabled, name_off = 14379, mod_idx = 21, realms = 1, sig_idx = 31},
-	{fn = _t_fullscreen_Document_fullscreen, name_off = 14406, mod_idx = 21, realms = 1, sig_idx = 31},
-	{fn = _t_highlight_Highlights_clear, name_off = 14426, mod_idx = 22, realms = 1, sig_idx = 108},
-	{fn = _t_highlight_Highlights_add, name_off = 14443, mod_idx = 22, realms = 1, sig_idx = 94},
-	{fn = _t_highlight_Highlights_addRange, name_off = 14458, mod_idx = 22, realms = 1, sig_idx = 117},
-	{fn = _t_history_Window_self, name_off = 14478, mod_idx = 23, realms = 1, sig_idx = 0},
-	{fn = _t_history_Document_self, name_off = 14490, mod_idx = 23, realms = 1, sig_idx = 0},
-	{fn = _t_history_Location_get, name_off = 14504, mod_idx = 23, realms = 1, sig_idx = 118},
-	{fn = _t_history_Location_set, name_off = 14517, mod_idx = 23, realms = 1, sig_idx = 119},
-	{fn = _t_history_Location_assign, name_off = 14530, mod_idx = 23, realms = 1, sig_idx = 22},
-	{fn = _t_history_Location_replace, name_off = 14546, mod_idx = 23, realms = 1, sig_idx = 22},
-	{fn = _t_history_Location_reload, name_off = 14563, mod_idx = 23, realms = 1, sig_idx = 108},
-	{fn = _t_history_History_length, name_off = 14579, mod_idx = 23, realms = 1, sig_idx = 31},
-	{fn = _t_history_History_state, name_off = 14594, mod_idx = 23, realms = 1, sig_idx = 32},
-	{fn = _t_history_History_pushState, name_off = 14608, mod_idx = 23, realms = 1, sig_idx = 120},
-	{fn = _t_history_History_replaceState, name_off = 14626, mod_idx = 23, realms = 1, sig_idx = 120},
-	{fn = _t_history_History_go, name_off = 14647, mod_idx = 23, realms = 1, sig_idx = 100},
-	{fn = _t_history_History_scrollRestoration, name_off = 14658, mod_idx = 23, realms = 1, sig_idx = 31},
-	{fn = _t_history_History_set_scrollRestoration, name_off = 14684, mod_idx = 23, realms = 1, sig_idx = 100},
-	{fn = _t_idb_Idb_call, name_off = 14714, mod_idx = 24, realms = 3, sig_idx = 121},
-	{fn = _t_images_HTMLImageElement_naturalWidth, name_off = 14723, mod_idx = 25, realms = 3, sig_idx = 3},
-	{fn = _t_images_HTMLImageElement_naturalHeight, name_off = 14753, mod_idx = 25, realms = 3, sig_idx = 3},
-	{fn = _t_images_HTMLImageElement_complete, name_off = 14784, mod_idx = 25, realms = 3, sig_idx = 3},
-	{fn = _t_images_HTMLImageElement_currentSrc, name_off = 14810, mod_idx = 25, realms = 3, sig_idx = 4},
-	{fn = _t_images_HTMLImageElement_decode, name_off = 14838, mod_idx = 25, realms = 3, sig_idx = 1},
-	{fn = _t_images_Image_decode, name_off = 14862, mod_idx = 25, realms = 3, sig_idx = 1},
-	{fn = _t_js_Engine_console, name_off = 14875, mod_idx = 26, realms = 3, sig_idx = 122},
-	{fn = _t_js_Engine_reportException, name_off = 14890, mod_idx = 26, realms = 3, sig_idx = 123},
-	{fn = _t_js_Engine_storeBytecode, name_off = 14913, mod_idx = 26, realms = 3, sig_idx = 30},
-	{fn = _t_js_Engine_timezoneOffset, name_off = 14934, mod_idx = 26, realms = 3, sig_idx = 124},
-	{fn = _t_js_Engine_timeZone, name_off = 14956, mod_idx = 26, realms = 3, sig_idx = 32},
-	{fn = _t_js_Engine_locale, name_off = 14972, mod_idx = 26, realms = 3, sig_idx = 32},
-	{fn = _t_js_Engine_jitCompile, name_off = 14986, mod_idx = 26, realms = 3, sig_idx = 22},
-	{fn = _t_js_Engine_jitPoll, name_off = 15004, mod_idx = 26, realms = 3, sig_idx = 125},
-	{fn = _t_js_Engine_stackMove, name_off = 15019, mod_idx = 26, realms = 3, sig_idx = 125},
-	{fn = _t_js_Engine_nativeStackLow, name_off = 15036, mod_idx = 26, realms = 3, sig_idx = 31},
-	{fn = _t_js_Engine_span, name_off = 15058, mod_idx = 26, realms = 3, sig_idx = 23},
-	{fn = _t_js_Node_wrap, name_off = 15070, mod_idx = 26, realms = 3, sig_idx = 3},
-	{fn = _t_js_Document_createElementWrapped, name_off = 15080, mod_idx = 26, realms = 3, sig_idx = 7},
-	{fn = _t_js_Document_createTextWrapped, name_off = 15110, mod_idx = 26, realms = 3, sig_idx = 7},
-	{fn = _t_js_Node_unpin, name_off = 15137, mod_idx = 26, realms = 3, sig_idx = 10},
-	{fn = _t_js_Node_treeRoots, name_off = 15148, mod_idx = 26, realms = 3, sig_idx = 126},
-	{fn = _t_dom_LinkStyle_sheetOf, name_off = 15163, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_DocumentOrShadowRoot_sheetCount, name_off = 15181, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_DocumentOrShadowRoot_sheetAt, name_off = 15213, mod_idx = 11, realms = 3, sig_idx = 43},
-	{fn = _t_dom_CSSStyleSheet_isSheet, name_off = 15242, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_CSSStyleSheet_ownerNodeOf, name_off = 15264, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_CSSStyleSheet_hrefOf, name_off = 15290, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_CSSStyleSheet_titleOf, name_off = 15311, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_CSSStyleSheet_rulesVersion, name_off = 15333, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_CSSStyleSheet_ruleId, name_off = 15360, mod_idx = 11, realms = 3, sig_idx = 42},
-	{fn = _t_dom_CustomElements_define, name_off = 15381, mod_idx = 11, realms = 3, sig_idx = 94},
-	{fn = _t_dom_CustomElements_pending, name_off = 15403, mod_idx = 11, realms = 3, sig_idx = 31},
-	{fn = _t_dom_CustomElements_take, name_off = 15426, mod_idx = 11, realms = 3, sig_idx = 32},
-	{fn = _t_dom_CustomElements_release, name_off = 15446, mod_idx = 11, realms = 3, sig_idx = 30},
-	{fn = _t_dom_CustomElements_create, name_off = 15469, mod_idx = 11, realms = 3, sig_idx = 7},
-	{fn = _t_dom_Element_setCustomState, name_off = 15491, mod_idx = 11, realms = 3, sig_idx = 11},
-	{fn = _t_dom_Element_isFormAssociated, name_off = 15514, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Element_setFormValue, name_off = 15539, mod_idx = 11, realms = 3, sig_idx = 127},
-	{fn = _t_dom_Element_setFormValidity, name_off = 15560, mod_idx = 11, realms = 3, sig_idx = 128},
-	{fn = _t_dnd_DataTransfer_create, name_off = 15584, mod_idx = 27, realms = 1, sig_idx = 0},
-	{fn = _t_dnd_DataTransfer_get_dropEffect, name_off = 15604, mod_idx = 27, realms = 1, sig_idx = 4},
-	{fn = _t_dnd_DataTransfer_set_dropEffect, name_off = 15632, mod_idx = 27, realms = 1, sig_idx = 41},
-	{fn = _t_dnd_DataTransfer_get_effectAllowed, name_off = 15660, mod_idx = 27, realms = 1, sig_idx = 4},
-	{fn = _t_dnd_DataTransfer_set_effectAllowed, name_off = 15691, mod_idx = 27, realms = 1, sig_idx = 41},
-	{fn = _t_dnd_DataTransfer_getData, name_off = 15722, mod_idx = 27, realms = 1, sig_idx = 69},
-	{fn = _t_dnd_DataTransfer_setData, name_off = 15743, mod_idx = 27, realms = 1, sig_idx = 129},
-	{fn = _t_dnd_DataTransfer_clearData, name_off = 15764, mod_idx = 27, realms = 1, sig_idx = 41},
-	{fn = _t_dnd_DataTransfer_setDragImage, name_off = 15787, mod_idx = 27, realms = 1, sig_idx = 130},
-	{fn = _t_dnd_DataTransfer_typeList, name_off = 15813, mod_idx = 27, realms = 1, sig_idx = 4},
-	{fn = _t_dnd_DataTransfer_itemCount, name_off = 15835, mod_idx = 27, realms = 1, sig_idx = 3},
-	{fn = _t_dnd_DataTransfer_itemKind, name_off = 15858, mod_idx = 27, realms = 1, sig_idx = 66},
-	{fn = _t_dnd_DataTransfer_itemType, name_off = 15880, mod_idx = 27, realms = 1, sig_idx = 16},
-	{fn = _t_dnd_DataTransfer_itemString, name_off = 15902, mod_idx = 27, realms = 1, sig_idx = 16},
-	{fn = _t_dnd_DataTransfer_itemFile, name_off = 15926, mod_idx = 27, realms = 1, sig_idx = 66},
-	{fn = _t_dnd_DataTransfer_addString, name_off = 15948, mod_idx = 27, realms = 1, sig_idx = 86},
-	{fn = _t_dnd_DataTransfer_addFile, name_off = 15971, mod_idx = 27, realms = 1, sig_idx = 63},
-	{fn = _t_dnd_DataTransfer_addBytes, name_off = 15992, mod_idx = 27, realms = 1, sig_idx = 131},
-	{fn = _t_dnd_DataTransfer_removeItem, name_off = 16014, mod_idx = 27, realms = 1, sig_idx = 42},
-	{fn = _t_dnd_DataTransfer_clearItems, name_off = 16038, mod_idx = 27, realms = 1, sig_idx = 3},
-	{fn = _t_dnd_DataTransfer_fileCount, name_off = 16062, mod_idx = 27, realms = 1, sig_idx = 3},
-	{fn = _t_dnd_DataTransfer_file, name_off = 16085, mod_idx = 27, realms = 1, sig_idx = 66},
-	{fn = _t_dnd_DataTransfer_mode, name_off = 16103, mod_idx = 27, realms = 1, sig_idx = 3},
-	{fn = _t_dnd_LocalFile_name, name_off = 16121, mod_idx = 27, realms = 3, sig_idx = 4},
-	{fn = _t_dnd_LocalFile_type, name_off = 16136, mod_idx = 27, realms = 3, sig_idx = 4},
-	{fn = _t_dnd_LocalFile_info, name_off = 16151, mod_idx = 27, realms = 3, sig_idx = 132},
-	{fn = _t_dnd_LocalFile_read, name_off = 16166, mod_idx = 27, realms = 3, sig_idx = 48},
-	{fn = _t_dnd_DataTransfer_itemFsHandle, name_off = 16181, mod_idx = 27, realms = 1, sig_idx = 16},
-	{fn = _t_dnd_DragEvent_dataTransfer, name_off = 16207, mod_idx = 27, realms = 1, sig_idx = 1},
-	{fn = _t_dnd_InputFiles_count, name_off = 16230, mod_idx = 27, realms = 1, sig_idx = 3},
-	{fn = _t_dnd_InputFiles_item, name_off = 16247, mod_idx = 27, realms = 1, sig_idx = 66},
-	{fn = _t_dnd_InputFiles_assign, name_off = 16263, mod_idx = 27, realms = 1, sig_idx = 63},
-	{fn = _t_dom_Document_readyState, name_off = 16281, mod_idx = 11, realms = 3, sig_idx = 32},
-	{fn = _t_dom_Document_currentScript, name_off = 16301, mod_idx = 11, realms = 3, sig_idx = 0},
-	{fn = _t_dom_Window_document, name_off = 16324, mod_idx = 11, realms = 3, sig_idx = 0},
-	{fn = _t_dom_Document_resolveURL, name_off = 16340, mod_idx = 11, realms = 3, sig_idx = 133},
-	{fn = _t_dom_Element_id, name_off = 16360, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Element_set_id, name_off = 16371, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_Element_className, name_off = 16386, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Element_set_className, name_off = 16404, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_Collection_create, name_off = 16426, mod_idx = 11, realms = 3, sig_idx = 134},
-	{fn = _t_dom_Collection_length, name_off = 16444, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Collection_item, name_off = 16462, mod_idx = 11, realms = 3, sig_idx = 43},
-	{fn = _t_dom_Collection_namedItem, name_off = 16478, mod_idx = 11, realms = 3, sig_idx = 5},
-	{fn = _t_dom_Collection_names, name_off = 16499, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_ParentNode_querySelectorAllPacked, name_off = 16516, mod_idx = 11, realms = 3, sig_idx = 69},
-	{fn = _t_dom_HTMLFormElement_namedControl, name_off = 16550, mod_idx = 11, realms = 3, sig_idx = 5},
-	{fn = _t_dom_ParentNode_querySelector, name_off = 16579, mod_idx = 11, realms = 3, sig_idx = 114},
-	{fn = _t_dom_TokenList_length, name_off = 16604, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_TokenList_item, name_off = 16621, mod_idx = 11, realms = 3, sig_idx = 89},
-	{fn = _t_dom_TokenList_contains, name_off = 16636, mod_idx = 11, realms = 3, sig_idx = 86},
-	{fn = _t_dom_TokenList_add, name_off = 16655, mod_idx = 11, realms = 3, sig_idx = 86},
-	{fn = _t_dom_TokenList_remove, name_off = 16669, mod_idx = 11, realms = 3, sig_idx = 86},
-	{fn = _t_dom_TokenList_toggle, name_off = 16686, mod_idx = 11, realms = 3, sig_idx = 135},
-	{fn = _t_dom_TokenList_replace, name_off = 16703, mod_idx = 11, realms = 3, sig_idx = 136},
-	{fn = _t_dom_TokenList_supports, name_off = 16721, mod_idx = 11, realms = 3, sig_idx = 137},
-	{fn = _t_dom_Dataset_get, name_off = 16740, mod_idx = 11, realms = 3, sig_idx = 69},
-	{fn = _t_dom_Dataset_set, name_off = 16752, mod_idx = 11, realms = 3, sig_idx = 86},
-	{fn = _t_dom_Dataset_delete, name_off = 16764, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_Dataset_names, name_off = 16779, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Element_namespaceURI, name_off = 16793, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Element_prefix, name_off = 16814, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Element_localName, name_off = 16829, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Element_qualifiedTagName, name_off = 16847, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Element_slot, name_off = 16872, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Element_set_slot, name_off = 16885, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_Element_hasAttributes, name_off = 16902, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Element_attributeNames, name_off = 16924, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Element_attributeCount, name_off = 16947, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Element_attributeNameAt, name_off = 16970, mod_idx = 11, realms = 3, sig_idx = 16},
-	{fn = _t_dom_Element_attributeNamespaceAt, name_off = 16994, mod_idx = 11, realms = 3, sig_idx = 16},
-	{fn = _t_dom_Element_attributeIndex, name_off = 17023, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_Element_attributeIndexNS, name_off = 17046, mod_idx = 11, realms = 3, sig_idx = 86},
-	{fn = _t_dom_Element_setAttributeOfAttr, name_off = 17071, mod_idx = 11, realms = 3, sig_idx = 109},
-	{fn = _t_dom_Element_getAttributeNS, name_off = 17098, mod_idx = 11, realms = 3, sig_idx = 138},
-	{fn = _t_dom_Element_setAttributeChecked, name_off = 17121, mod_idx = 11, realms = 3, sig_idx = 86},
-	{fn = _t_dom_Element_setAttributeNS, name_off = 17149, mod_idx = 11, realms = 3, sig_idx = 109},
-	{fn = _t_dom_Element_removeAttributeNS, name_off = 17172, mod_idx = 11, realms = 3, sig_idx = 129},
-	{fn = _t_dom_Element_toggleAttributeChecked, name_off = 17198, mod_idx = 11, realms = 3, sig_idx = 92},
-	{fn = _t_dom_Element_hasAttribute, name_off = 17229, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_Element_hasAttributeNS, name_off = 17250, mod_idx = 11, realms = 3, sig_idx = 86},
-	{fn = _t_dom_Element_closest, name_off = 17273, mod_idx = 11, realms = 3, sig_idx = 114},
-	{fn = _t_dom_Element_matches, name_off = 17289, mod_idx = 11, realms = 3, sig_idx = 114},
-	{fn = _t_dom_Element_webkitMatchesSelector, name_off = 17305, mod_idx = 11, realms = 3, sig_idx = 114},
-	{fn = _t_dom_Element_insertAdjacentElement, name_off = 17335, mod_idx = 11, realms = 3, sig_idx = 139},
-	{fn = _t_dom_Element_insertAdjacentText, name_off = 17365, mod_idx = 11, realms = 3, sig_idx = 86},
-	{fn = _t_dom_Element_insertAdjacentHTML, name_off = 17392, mod_idx = 11, realms = 3, sig_idx = 86},
-	{fn = _t_dom_Element_innerHTML, name_off = 17419, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Element_set_innerHTML, name_off = 17437, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_Element_outerHTML, name_off = 17459, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Element_set_outerHTML, name_off = 17477, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_Element_shadowRoot, name_off = 17499, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_HTMLElement_hiddenState, name_off = 17518, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_HTMLElement_dir, name_off = 17542, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HTMLElement_set_dir, name_off = 17558, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HTMLElement_translate, name_off = 17578, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_HTMLElement_set_translate, name_off = 17600, mod_idx = 11, realms = 3, sig_idx = 42},
-	{fn = _t_dom_HTMLElement_draggable, name_off = 17626, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_HTMLElement_set_draggable, name_off = 17648, mod_idx = 11, realms = 3, sig_idx = 42},
-	{fn = _t_dom_HTMLElement_spellcheck, name_off = 17674, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_HTMLElement_set_spellcheck, name_off = 17697, mod_idx = 11, realms = 3, sig_idx = 42},
-	{fn = _t_dom_HTMLElement_innerText, name_off = 17724, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HTMLElement_set_innerText, name_off = 17746, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HTMLElement_outerText, name_off = 17772, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HTMLElement_set_outerText, name_off = 17794, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HTMLElement_accessKeyLabel, name_off = 17820, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HTMLOrSVGOrMathMLElement_tabIndex, name_off = 17847, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_HTMLOrSVGOrMathMLElement_set_tabIndex, name_off = 17881, mod_idx = 11, realms = 3, sig_idx = 42},
-	{fn = _t_dom_HTMLOrSVGOrMathMLElement_nonce, name_off = 17919, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HTMLOrSVGOrMathMLElement_set_nonce, name_off = 17950, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_ElementContentEditable_contentEditable, name_off = 17985, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_ElementContentEditable_set_contentEditable, name_off = 18024, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_ElementContentEditable_isContentEditable, name_off = 18067, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_HTMLHyperlinkElementUtils_href, name_off = 18108, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HTMLHyperlinkElementUtils_set_href, name_off = 18139, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HyperlinkElementUtils_origin, name_off = 18174, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HyperlinkElementUtils_protocol, name_off = 18203, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HyperlinkElementUtils_set_protocol, name_off = 18234, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HyperlinkElementUtils_username, name_off = 18269, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HyperlinkElementUtils_set_username, name_off = 18300, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HyperlinkElementUtils_password, name_off = 18335, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HyperlinkElementUtils_set_password, name_off = 18366, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HyperlinkElementUtils_host, name_off = 18401, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HyperlinkElementUtils_set_host, name_off = 18428, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HyperlinkElementUtils_hostname, name_off = 18459, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HyperlinkElementUtils_set_hostname, name_off = 18490, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HyperlinkElementUtils_port, name_off = 18525, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HyperlinkElementUtils_set_port, name_off = 18552, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HyperlinkElementUtils_pathname, name_off = 18583, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HyperlinkElementUtils_set_pathname, name_off = 18614, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HyperlinkElementUtils_search, name_off = 18649, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HyperlinkElementUtils_set_search, name_off = 18678, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HyperlinkElementUtils_hash, name_off = 18711, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HyperlinkElementUtils_set_hash, name_off = 18738, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HTMLAnchorElement_text, name_off = 18769, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HTMLAnchorElement_set_text, name_off = 18792, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HTMLTemplateElement_content, name_off = 18819, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_events_TouchEvent_count, name_off = 18847, mod_idx = 13, realms = 3, sig_idx = 42},
-	{fn = _t_events_TouchEvent_touch, name_off = 18864, mod_idx = 13, realms = 3, sig_idx = 37},
-	{fn = _t_events_PointerCapture_set, name_off = 18881, mod_idx = 13, realms = 3, sig_idx = 42},
-	{fn = _t_events_PointerCapture_release, name_off = 18900, mod_idx = 13, realms = 3, sig_idx = 42},
-	{fn = _t_events_PointerCapture_has, name_off = 18923, mod_idx = 13, realms = 3, sig_idx = 42},
-	{fn = _t_events_PointerEvent_coalescedCount, name_off = 18942, mod_idx = 13, realms = 3, sig_idx = 3},
-	{fn = _t_events_PointerEvent_coalescedAt, name_off = 18970, mod_idx = 13, realms = 3, sig_idx = 66},
-	{fn = _t_events_Event_uiData, name_off = 18995, mod_idx = 13, realms = 3, sig_idx = 132},
-	{fn = _t_events_UiEvent_key, name_off = 19008, mod_idx = 13, realms = 3, sig_idx = 4},
-	{fn = _t_events_UiEvent_code, name_off = 19020, mod_idx = 13, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HTMLInputElement_set_type, name_off = 19033, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HTMLInputElement_set_maxLength, name_off = 19059, mod_idx = 11, realms = 3, sig_idx = 42},
-	{fn = _t_dom_HTMLInputElement_set_minLength, name_off = 19090, mod_idx = 11, realms = 3, sig_idx = 42},
-	{fn = _t_dom_HTMLTextAreaElement_set_maxLength, name_off = 19121, mod_idx = 11, realms = 3, sig_idx = 42},
-	{fn = _t_dom_HTMLTextAreaElement_set_minLength, name_off = 19155, mod_idx = 11, realms = 3, sig_idx = 42},
-	{fn = _t_dom_HTMLOptionElement_set_text, name_off = 19189, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HTMLTableElement_caption, name_off = 19216, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_HTMLTableElement_set_caption, name_off = 19241, mod_idx = 11, realms = 3, sig_idx = 63},
-	{fn = _t_dom_HTMLTableElement_createCaption, name_off = 19270, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_HTMLTableElement_deleteCaption, name_off = 19301, mod_idx = 11, realms = 3, sig_idx = 10},
-	{fn = _t_dom_HTMLTableElement_tHead, name_off = 19332, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_HTMLTableElement_set_tHead, name_off = 19355, mod_idx = 11, realms = 3, sig_idx = 63},
-	{fn = _t_dom_HTMLTableElement_createTHead, name_off = 19382, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_HTMLTableElement_deleteTHead, name_off = 19411, mod_idx = 11, realms = 3, sig_idx = 10},
-	{fn = _t_dom_HTMLTableElement_tFoot, name_off = 19440, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_HTMLTableElement_set_tFoot, name_off = 19463, mod_idx = 11, realms = 3, sig_idx = 63},
-	{fn = _t_dom_HTMLTableElement_createTFoot, name_off = 19490, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_HTMLTableElement_deleteTFoot, name_off = 19519, mod_idx = 11, realms = 3, sig_idx = 10},
-	{fn = _t_dom_HTMLTableElement_createTBody, name_off = 19548, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_HTMLTableElement_insertRow, name_off = 19577, mod_idx = 11, realms = 3, sig_idx = 66},
-	{fn = _t_dom_HTMLTableElement_deleteRow, name_off = 19604, mod_idx = 11, realms = 3, sig_idx = 42},
-	{fn = _t_dom_HTMLTableSectionElement_insertRow, name_off = 19631, mod_idx = 11, realms = 3, sig_idx = 66},
-	{fn = _t_dom_HTMLTableSectionElement_deleteRow, name_off = 19665, mod_idx = 11, realms = 3, sig_idx = 42},
-	{fn = _t_dom_HTMLTableRowElement_insertCell, name_off = 19699, mod_idx = 11, realms = 3, sig_idx = 66},
-	{fn = _t_dom_HTMLTableRowElement_deleteCell, name_off = 19730, mod_idx = 11, realms = 3, sig_idx = 42},
-	{fn = _t_dom_HTMLTableRowElement_rowIndex, name_off = 19761, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_HTMLTableRowElement_sectionRowIndex, name_off = 19790, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_HTMLTableCellElement_cellIndex, name_off = 19826, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_HTMLTitleElement_text, name_off = 19857, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HTMLTitleElement_set_text, name_off = 19879, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HTMLScriptElement_text, name_off = 19905, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HTMLScriptElement_set_text, name_off = 19928, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_HTMLInputElement_list, name_off = 19955, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_HTMLDialogElement_closedBy, name_off = 19977, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_HTMLDialogElement_set_closedBy, name_off = 20004, mod_idx = 11, realms = 3, sig_idx = 41},
-	{fn = _t_dom_HTMLDialogElement_show, name_off = 20035, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_HTMLDialogElement_showModal, name_off = 20058, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_HTMLDialogElement_close, name_off = 20086, mod_idx = 11, realms = 3, sig_idx = 41},
-	{fn = _t_dom_HTMLDialogElement_requestClose, name_off = 20110, mod_idx = 11, realms = 3, sig_idx = 41},
-	{fn = _t_dom_Element_boundingRect, name_off = 20141, mod_idx = 11, realms = 3, sig_idx = 132},
-	{fn = _t_dom_Element_clientRectsPacked, name_off = 20162, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Element_clientTop, name_off = 20188, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Element_clientLeft, name_off = 20206, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Element_clientWidth, name_off = 20225, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Element_clientHeight, name_off = 20245, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Element_scrollTop, name_off = 20266, mod_idx = 11, realms = 3, sig_idx = 13},
-	{fn = _t_dom_Element_set_scrollTop, name_off = 20284, mod_idx = 11, realms = 3, sig_idx = 12},
-	{fn = _t_dom_Element_scrollLeft, name_off = 20306, mod_idx = 11, realms = 3, sig_idx = 13},
-	{fn = _t_dom_Element_set_scrollLeft, name_off = 20325, mod_idx = 11, realms = 3, sig_idx = 12},
-	{fn = _t_dom_Element_scrollWidth, name_off = 20348, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Element_scrollHeight, name_off = 20368, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Element_scrollToXY, name_off = 20389, mod_idx = 11, realms = 3, sig_idx = 140},
-	{fn = _t_dom_Element_scrollIntoViewAt, name_off = 20408, mod_idx = 11, realms = 3, sig_idx = 25},
-	{fn = _t_dom_HTMLElement_offsetParent, name_off = 20433, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_HTMLElement_offsetTop, name_off = 20458, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_HTMLElement_offsetLeft, name_off = 20480, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_HTMLElement_offsetWidth, name_off = 20503, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_HTMLElement_offsetHeight, name_off = 20527, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Document_elementFromPoint, name_off = 20552, mod_idx = 11, realms = 3, sig_idx = 141},
-	{fn = _t_dom_Window_innerWidth, name_off = 20578, mod_idx = 11, realms = 3, sig_idx = 31},
-	{fn = _t_dom_Window_innerHeight, name_off = 20596, mod_idx = 11, realms = 3, sig_idx = 31},
-	{fn = _t_dom_Window_outerWidth, name_off = 20615, mod_idx = 11, realms = 3, sig_idx = 31},
-	{fn = _t_dom_Window_outerHeight, name_off = 20633, mod_idx = 11, realms = 3, sig_idx = 31},
-	{fn = _t_dom_Window_scrollX, name_off = 20652, mod_idx = 11, realms = 3, sig_idx = 18},
-	{fn = _t_dom_Window_scrollY, name_off = 20667, mod_idx = 11, realms = 3, sig_idx = 18},
-	{fn = _t_dom_Window_pageXOffset, name_off = 20682, mod_idx = 11, realms = 3, sig_idx = 18},
-	{fn = _t_dom_Window_pageYOffset, name_off = 20701, mod_idx = 11, realms = 3, sig_idx = 18},
-	{fn = _t_dom_Window_devicePixelRatio, name_off = 20720, mod_idx = 11, realms = 3, sig_idx = 18},
-	{fn = _t_dom_Window_screenX, name_off = 20744, mod_idx = 11, realms = 3, sig_idx = 31},
-	{fn = _t_dom_Window_screenY, name_off = 20759, mod_idx = 11, realms = 3, sig_idx = 31},
-	{fn = _t_dom_Window_screenLeft, name_off = 20774, mod_idx = 11, realms = 3, sig_idx = 31},
-	{fn = _t_dom_Window_screenTop, name_off = 20792, mod_idx = 11, realms = 3, sig_idx = 31},
-	{fn = _t_dom_Window_scrollToXY, name_off = 20809, mod_idx = 11, realms = 3, sig_idx = 142},
-	{fn = _t_dom_Range_boundingRect, name_off = 20827, mod_idx = 11, realms = 3, sig_idx = 143},
-	{fn = _t_dom_Range_clientRectsPacked, name_off = 20846, mod_idx = 11, realms = 3, sig_idx = 144},
-	{fn = _t_dom_MutationObserver_create, name_off = 20870, mod_idx = 11, realms = 3, sig_idx = 8},
-	{fn = _t_dom_MutationObserver_observe, name_off = 20894, mod_idx = 11, realms = 3, sig_idx = 145},
-	{fn = _t_dom_MutationObserver_disconnect, name_off = 20919, mod_idx = 11, realms = 3, sig_idx = 10},
-	{fn = _t_dom_MutationObserver_takeRecords, name_off = 20947, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_MutationObserver_release, name_off = 20976, mod_idx = 11, realms = 3, sig_idx = 10},
-	{fn = _t_dom_MutationObserver_live, name_off = 21001, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Range_comparePoints, name_off = 21023, mod_idx = 11, realms = 3, sig_idx = 146},
-	{fn = _t_dom_Range_text, name_off = 21043, mod_idx = 11, realms = 3, sig_idx = 144},
-	{fn = _t_dom_Range_contents, name_off = 21054, mod_idx = 11, realms = 3, sig_idx = 147},
-	{fn = _t_dom_Range_createContextualFragment, name_off = 21069, mod_idx = 11, realms = 3, sig_idx = 114},
-	{fn = _t_dom_Selection_state, name_off = 21100, mod_idx = 11, realms = 3, sig_idx = 148},
-	{fn = _t_dom_Selection_setRange, name_off = 21116, mod_idx = 11, realms = 3, sig_idx = 146},
-	{fn = _t_dom_Selection_clear, name_off = 21135, mod_idx = 11, realms = 3, sig_idx = 108},
-	{fn = _t_dom_Selection_text, name_off = 21151, mod_idx = 11, realms = 3, sig_idx = 32},
-	{fn = _t_dom_InlineStyle_getProperty, name_off = 21166, mod_idx = 11, realms = 3, sig_idx = 69},
-	{fn = _t_dom_InlineStyle_priority, name_off = 21190, mod_idx = 11, realms = 3, sig_idx = 69},
-	{fn = _t_dom_InlineStyle_setProperty, name_off = 21211, mod_idx = 11, realms = 3, sig_idx = 109},
-	{fn = _t_dom_InlineStyle_removeProperty, name_off = 21235, mod_idx = 11, realms = 3, sig_idx = 69},
-	{fn = _t_dom_InlineStyle_cssText, name_off = 21262, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_InlineStyle_setCssText, name_off = 21282, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_InlineStyle_length, name_off = 21305, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_InlineStyle_item, name_off = 21324, mod_idx = 11, realms = 3, sig_idx = 16},
-	{fn = _t_dom_ComputedStyle_get, name_off = 21341, mod_idx = 11, realms = 3, sig_idx = 138},
-	{fn = _t_dom_ComputedStyle_count, name_off = 21359, mod_idx = 11, realms = 3, sig_idx = 31},
-	{fn = _t_dom_ComputedStyle_name, name_off = 21379, mod_idx = 11, realms = 3, sig_idx = 118},
-	{fn = _t_dom_CSS_supportsDeclaration, name_off = 21398, mod_idx = 11, realms = 3, sig_idx = 120},
-	{fn = _t_dom_CSS_supportsCondition, name_off = 21422, mod_idx = 11, realms = 3, sig_idx = 22},
-	{fn = _t_dom_Node_nodeName, name_off = 21444, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Node_baseURI, name_off = 21458, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Node_isConnected, name_off = 21471, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Node_ownerDocument, name_off = 21488, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_Node_parentElement, name_off = 21507, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_Node_hasChildNodes, name_off = 21526, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Node_nodeValue, name_off = 21545, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Node_set_nodeValue, name_off = 21560, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_Node_textContent, name_off = 21579, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Node_set_textContent, name_off = 21596, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_Node_normalize, name_off = 21617, mod_idx = 11, realms = 3, sig_idx = 10},
-	{fn = _t_dom_Node_cloneNode, name_off = 21632, mod_idx = 11, realms = 3, sig_idx = 66},
-	{fn = _t_dom_Document_importNodeCopy, name_off = 21647, mod_idx = 11, realms = 3, sig_idx = 66},
-	{fn = _t_dom_Node_isEqualNode, name_off = 21671, mod_idx = 11, realms = 3, sig_idx = 63},
-	{fn = _t_dom_Node_isSameNode, name_off = 21688, mod_idx = 11, realms = 3, sig_idx = 63},
-	{fn = _t_dom_Node_compareDocumentPosition, name_off = 21704, mod_idx = 11, realms = 3, sig_idx = 63},
-	{fn = _t_dom_Node_contains, name_off = 21733, mod_idx = 11, realms = 3, sig_idx = 63},
-	{fn = _t_dom_Node_lookupPrefix, name_off = 21747, mod_idx = 11, realms = 3, sig_idx = 69},
-	{fn = _t_dom_Node_lookupNamespaceURI, name_off = 21765, mod_idx = 11, realms = 3, sig_idx = 69},
-	{fn = _t_dom_Node_isDefaultNamespace, name_off = 21789, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_Node_rootNode, name_off = 21813, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_Node_length, name_off = 21827, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Node_preInsert, name_off = 21839, mod_idx = 11, realms = 3, sig_idx = 84},
-	{fn = _t_dom_Node_moveBefore, name_off = 21854, mod_idx = 11, realms = 3, sig_idx = 84},
-	{fn = _t_dom_Node_replaceChildChecked, name_off = 21870, mod_idx = 11, realms = 3, sig_idx = 84},
-	{fn = _t_dom_Node_preRemove, name_off = 21895, mod_idx = 11, realms = 3, sig_idx = 63},
-	{fn = _t_dom_Node_insertItems, name_off = 21910, mod_idx = 11, realms = 3, sig_idx = 21},
-	{fn = _t_dom_Node_pinAll, name_off = 21927, mod_idx = 11, realms = 3, sig_idx = 30},
-	{fn = _t_dom_Node_unpinAll, name_off = 21939, mod_idx = 11, realms = 3, sig_idx = 30},
-	{fn = _t_dom_ParentNode_firstElementChild, name_off = 21953, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_ParentNode_lastElementChild, name_off = 21982, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_ParentNode_childElementCount, name_off = 22010, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_ChildNode_remove, name_off = 22039, mod_idx = 11, realms = 3, sig_idx = 10},
-	{fn = _t_dom_NonDocumentTypeChildNode_previousElementSibling, name_off = 22056, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_NonDocumentTypeChildNode_nextElementSibling, name_off = 22104, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_NonElementParentNode_getElementById, name_off = 22148, mod_idx = 11, realms = 3, sig_idx = 5},
-	{fn = _t_dom_CharacterData_data, name_off = 22184, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_CharacterData_set_data, name_off = 22203, mod_idx = 11, realms = 3, sig_idx = 41},
-	{fn = _t_dom_CharacterData_length, name_off = 22226, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_CharacterData_substringData, name_off = 22247, mod_idx = 11, realms = 3, sig_idx = 149},
-	{fn = _t_dom_CharacterData_appendData, name_off = 22275, mod_idx = 11, realms = 3, sig_idx = 41},
-	{fn = _t_dom_CharacterData_insertData, name_off = 22300, mod_idx = 11, realms = 3, sig_idx = 21},
-	{fn = _t_dom_CharacterData_deleteData, name_off = 22325, mod_idx = 11, realms = 3, sig_idx = 150},
-	{fn = _t_dom_CharacterData_replaceData, name_off = 22350, mod_idx = 11, realms = 3, sig_idx = 151},
-	{fn = _t_dom_Text_splitText, name_off = 22376, mod_idx = 11, realms = 3, sig_idx = 66},
-	{fn = _t_dom_Text_wholeText, name_off = 22391, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_DocumentType_name, name_off = 22406, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_DocumentType_publicId, name_off = 22424, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_DocumentType_systemId, name_off = 22446, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Document_createElementChecked, name_off = 22468, mod_idx = 11, realms = 3, sig_idx = 7},
-	{fn = _t_dom_Document_createElementInert, name_off = 22498, mod_idx = 11, realms = 3, sig_idx = 7},
-	{fn = _t_dom_Document_createElementNSChecked, name_off = 22526, mod_idx = 11, realms = 3, sig_idx = 152},
-	{fn = _t_dom_Document_validateAttributeNS, name_off = 22558, mod_idx = 11, realms = 3, sig_idx = 120},
-	{fn = _t_dom_Document_createDocumentFragment, name_off = 22587, mod_idx = 11, realms = 3, sig_idx = 153},
-	{fn = _t_dom_Document_createComment, name_off = 22619, mod_idx = 11, realms = 3, sig_idx = 7},
-	{fn = _t_dom_Document_createCDATASection, name_off = 22642, mod_idx = 11, realms = 3, sig_idx = 114},
-	{fn = _t_dom_Document_createProcessingInstruction, name_off = 22670, mod_idx = 11, realms = 3, sig_idx = 152},
-	{fn = _t_dom_Document_adoptNode, name_off = 22707, mod_idx = 11, realms = 3, sig_idx = 62},
-	{fn = _t_dom_Document_documentURI, name_off = 22726, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Document_compatMode, name_off = 22747, mod_idx = 11, realms = 3, sig_idx = 32},
-	{fn = _t_dom_Document_characterSet, name_off = 22767, mod_idx = 11, realms = 3, sig_idx = 32},
-	{fn = _t_dom_Document_charset, name_off = 22789, mod_idx = 11, realms = 3, sig_idx = 32},
-	{fn = _t_dom_Document_inputEncoding, name_off = 22806, mod_idx = 11, realms = 3, sig_idx = 32},
-	{fn = _t_dom_Document_contentType, name_off = 22829, mod_idx = 11, realms = 3, sig_idx = 32},
-	{fn = _t_dom_Document_doctype, name_off = 22850, mod_idx = 11, realms = 3, sig_idx = 0},
-	{fn = _t_dom_Document_title, name_off = 22867, mod_idx = 11, realms = 3, sig_idx = 32},
-	{fn = _t_dom_Document_set_title, name_off = 22882, mod_idx = 11, realms = 3, sig_idx = 30},
-	{fn = _t_dom_Document_dir, name_off = 22901, mod_idx = 11, realms = 3, sig_idx = 32},
-	{fn = _t_dom_Document_set_dir, name_off = 22914, mod_idx = 11, realms = 3, sig_idx = 30},
-	{fn = _t_dom_Document_hasFocus, name_off = 22931, mod_idx = 11, realms = 3, sig_idx = 31},
-	{fn = _t_dom_Document_referrer, name_off = 22949, mod_idx = 11, realms = 3, sig_idx = 32},
-	{fn = _t_dom_Document_lastModified, name_off = 22967, mod_idx = 11, realms = 3, sig_idx = 32},
-	{fn = _t_dom_Document_domain, name_off = 22989, mod_idx = 11, realms = 3, sig_idx = 32},
-	{fn = _t_dom_Document_set_domain, name_off = 23005, mod_idx = 11, realms = 3, sig_idx = 22},
-	{fn = _t_dom_Document_scrollingElement, name_off = 23025, mod_idx = 11, realms = 3, sig_idx = 0},
-	{fn = _t_dom_Document_set_body, name_off = 23051, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_DOMImplementation_createHTMLDocument, name_off = 23069, mod_idx = 11, realms = 3, sig_idx = 7},
-	{fn = _t_dom_DOMParser_parseHTMLNode, name_off = 23106, mod_idx = 11, realms = 3, sig_idx = 7},
-	{fn = _t_dom_DOMParser_parseXMLNode, name_off = 23130, mod_idx = 11, realms = 3, sig_idx = 152},
-	{fn = _t_dom_Document_parseResponse, name_off = 23153, mod_idx = 11, realms = 3, sig_idx = 152},
-	{fn = _t_dom_ProcessingInstruction_target, name_off = 23176, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Document_xmlContentType, name_off = 23205, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_Document_createXMLElement, name_off = 23229, mod_idx = 11, realms = 3, sig_idx = 135},
-	{fn = _t_dom_DOMImplementation_createDocument, name_off = 23255, mod_idx = 11, realms = 3, sig_idx = 154},
-	{fn = _t_dom_DOMImplementation_createDocumentType, name_off = 23288, mod_idx = 11, realms = 3, sig_idx = 107},
-	{fn = _t_dom_Document_partOf, name_off = 23325, mod_idx = 11, realms = 3, sig_idx = 43},
-	{fn = _t_entries_DataTransfer_itemEntry, name_off = 23341, mod_idx = 28, realms = 1, sig_idx = 66},
-	{fn = _t_entries_FsEntry_info, name_off = 23364, mod_idx = 28, realms = 1, sig_idx = 132},
-	{fn = _t_entries_FsEntry_name, name_off = 23377, mod_idx = 28, realms = 1, sig_idx = 4},
-	{fn = _t_entries_FsEntry_fullPath, name_off = 23390, mod_idx = 28, realms = 1, sig_idx = 4},
-	{fn = _t_entries_FsEntry_filesystemName, name_off = 23407, mod_idx = 28, realms = 1, sig_idx = 4},
-	{fn = _t_entries_FsEntry_parent, name_off = 23430, mod_idx = 28, realms = 1, sig_idx = 1},
-	{fn = _t_entries_FsEntry_root, name_off = 23445, mod_idx = 28, realms = 1, sig_idx = 1},
-	{fn = _t_entries_FsEntry_file, name_off = 23458, mod_idx = 28, realms = 1, sig_idx = 1},
-	{fn = _t_entries_FsEntry_lookup, name_off = 23471, mod_idx = 28, realms = 1, sig_idx = 155},
-	{fn = _t_entries_FsEntry_createReader, name_off = 23486, mod_idx = 28, realms = 1, sig_idx = 1},
-	{fn = _t_entries_FsReader_read, name_off = 23507, mod_idx = 28, realms = 1, sig_idx = 1},
-	{fn = _t_entries_FsReader_entry, name_off = 23521, mod_idx = 28, realms = 1, sig_idx = 43},
-	{fn = _t_events_EventTarget_dispatchEngineEvent, name_off = 23536, mod_idx = 13, realms = 3, sig_idx = 156},
-	{fn = _t_events_Event_engineId, name_off = 23568, mod_idx = 13, realms = 3, sig_idx = 1},
-	{fn = _t_events_Event_interface, name_off = 23583, mod_idx = 13, realms = 3, sig_idx = 3},
-	{fn = _t_events_Event_isLive, name_off = 23599, mod_idx = 13, realms = 3, sig_idx = 3},
-	{fn = _t_events_Event_bubbles, name_off = 23612, mod_idx = 13, realms = 3, sig_idx = 3},
-	{fn = _t_events_Event_cancelable, name_off = 23626, mod_idx = 13, realms = 3, sig_idx = 3},
-	{fn = _t_events_Event_composed, name_off = 23643, mod_idx = 13, realms = 3, sig_idx = 3},
-	{fn = _t_events_Event_eventPhase, name_off = 23658, mod_idx = 13, realms = 3, sig_idx = 3},
-	{fn = _t_events_Event_timeStamp, name_off = 23675, mod_idx = 13, realms = 3, sig_idx = 13},
-	{fn = _t_events_Event_isTrusted, name_off = 23691, mod_idx = 13, realms = 3, sig_idx = 3},
-	{fn = _t_events_Event_propagationStopped, name_off = 23707, mod_idx = 13, realms = 3, sig_idx = 3},
-	{fn = _t_events_EventTarget_create, name_off = 23732, mod_idx = 13, realms = 3, sig_idx = 0},
-	{fn = _t_scripts_Document_writeMarkup, name_off = 23751, mod_idx = 29, realms = 3, sig_idx = 22},
-	{fn = _t_scripts_Document_openStream, name_off = 23772, mod_idx = 29, realms = 3, sig_idx = 31},
-	{fn = _t_scripts_Document_closeStream, name_off = 23792, mod_idx = 29, realms = 3, sig_idx = 31},
-	{fn = _t_scripts_HTMLScriptElement_forceAsync, name_off = 23813, mod_idx = 29, realms = 3, sig_idx = 3},
-	{fn = _t_scripts_HTMLScriptElement_setForceAsync, name_off = 23842, mod_idx = 29, realms = 3, sig_idx = 11},
-	{fn = _t_scripts_Script_allowInline, name_off = 23874, mod_idx = 29, realms = 3, sig_idx = 21},
-	{fn = _t_scripts_Script_allowEval, name_off = 23893, mod_idx = 29, realms = 3, sig_idx = 22},
-	{fn = _t_scripts_Script_javascriptResult, name_off = 23910, mod_idx = 29, realms = 3, sig_idx = 30},
-	{fn = _t_scripts_Script_baseName, name_off = 23934, mod_idx = 29, realms = 3, sig_idx = 32},
-	{fn = _t_scripts_Module_resolve, name_off = 23950, mod_idx = 29, realms = 3, sig_idx = 93},
-	{fn = _t_scripts_Module_source, name_off = 23965, mod_idx = 29, realms = 3, sig_idx = 133},
-	{fn = _t_scripts_Module_request, name_off = 23979, mod_idx = 29, realms = 3, sig_idx = 157},
-	{fn = _t_scripts_Module_import, name_off = 23994, mod_idx = 29, realms = 3, sig_idx = 158},
-	{fn = _t_scripts_Engine_queueRejectionCheck, name_off = 24008, mod_idx = 29, realms = 3, sig_idx = 108},
-	{fn = _t_scripts_Worker_createScript, name_off = 24035, mod_idx = 29, realms = 3, sig_idx = 159},
-	{fn = _t_scripts_Worker_postSerialized, name_off = 24055, mod_idx = 29, realms = 3, sig_idx = 85},
-	{fn = _t_scripts_DedicatedWorkerGlobalScope_postSerialized, name_off = 24077, mod_idx = 29, realms = 3, sig_idx = 22},
-	{fn = _t_scripts_WorkerGlobalScope_importScript, name_off = 24119, mod_idx = 29, realms = 3, sig_idx = 133},
-	{fn = _t_scripts_WorkerGlobalScope_isModule, name_off = 24150, mod_idx = 29, realms = 3, sig_idx = 31},
-	{fn = _t_scripts_SharedWorker_connect, name_off = 24177, mod_idx = 29, realms = 3, sig_idx = 160},
-	{fn = _t_scripts_Worker_createScriptBytes, name_off = 24198, mod_idx = 29, realms = 3, sig_idx = 161},
-	{fn = _t_scripts_Worker_pendingError, name_off = 24223, mod_idx = 29, realms = 3, sig_idx = 32},
-	{fn = _t_scripts_SharedWorker_connectBytes, name_off = 24243, mod_idx = 29, realms = 3, sig_idx = 162},
-	{fn = _t_scripts_SharedWorker_portEnd, name_off = 24269, mod_idx = 29, realms = 3, sig_idx = 1},
-	{fn = _t_scripts_SharedWorkerGlobalScope_takeConnection, name_off = 24290, mod_idx = 29, realms = 3, sig_idx = 0},
-	{fn = _t_dom_ResizeObserver_create, name_off = 24329, mod_idx = 11, realms = 3, sig_idx = 8},
-	{fn = _t_dom_ResizeObserver_observe, name_off = 24351, mod_idx = 11, realms = 3, sig_idx = 67},
-	{fn = _t_dom_ResizeObserver_unobserve, name_off = 24374, mod_idx = 11, realms = 3, sig_idx = 20},
-	{fn = _t_dom_ResizeObserver_disconnect, name_off = 24399, mod_idx = 11, realms = 3, sig_idx = 10},
-	{fn = _t_dom_ResizeObserver_observed, name_off = 24425, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_ResizeObserver_takeEntries, name_off = 24449, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_IntersectionObserver_create, name_off = 24476, mod_idx = 11, realms = 3, sig_idx = 163},
-	{fn = _t_dom_IntersectionObserver_rootMargin, name_off = 24504, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_IntersectionObserver_scrollMargin, name_off = 24536, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_IntersectionObserver_observe, name_off = 24570, mod_idx = 11, realms = 3, sig_idx = 63},
-	{fn = _t_dom_IntersectionObserver_unobserve, name_off = 24599, mod_idx = 11, realms = 3, sig_idx = 20},
-	{fn = _t_dom_IntersectionObserver_disconnect, name_off = 24630, mod_idx = 11, realms = 3, sig_idx = 10},
-	{fn = _t_dom_IntersectionObserver_observed, name_off = 24662, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_IntersectionObserver_takeRecords, name_off = 24692, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_IntersectionObserver_release, name_off = 24725, mod_idx = 11, realms = 3, sig_idx = 10},
-	{fn = _t_dom_Window_print, name_off = 24754, mod_idx = 11, realms = 3, sig_idx = 108},
-	{fn = _t_dom_Element_attachShadowInit, name_off = 24767, mod_idx = 11, realms = 3, sig_idx = 164},
-	{fn = _t_dom_CustomElements_disable, name_off = 24792, mod_idx = 11, realms = 3, sig_idx = 165},
-	{fn = _t_dom_ShadowRoot_mode, name_off = 24815, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_ShadowRoot_delegatesFocus, name_off = 24831, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_ShadowRoot_clonable, name_off = 24857, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_ShadowRoot_serializable, name_off = 24877, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_ShadowRoot_slotAssignment, name_off = 24901, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_ShadowRoot_host, name_off = 24927, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_ShadowRoot_innerHTML, name_off = 24943, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_ShadowRoot_set_innerHTML, name_off = 24964, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_ShadowRoot_activeElement, name_off = 24989, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_Node_getHTML, name_off = 25014, mod_idx = 11, realms = 3, sig_idx = 166},
-	{fn = _t_dom_Node_setHTMLUnsafe, name_off = 25027, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_Document_parseHTMLUnsafeNode, name_off = 25046, mod_idx = 11, realms = 3, sig_idx = 7},
-	{fn = _t_dom_Node_rootNodeComposed, name_off = 25075, mod_idx = 11, realms = 3, sig_idx = 43},
-	{fn = _t_dom_Slottable_assignedSlot, name_off = 25097, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_HTMLSlotElement_assignedPacked, name_off = 25120, mod_idx = 11, realms = 3, sig_idx = 149},
-	{fn = _t_dom_HTMLSlotElement_assignNodes, name_off = 25151, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_Document_shadowIncludingByName, name_off = 25179, mod_idx = 11, realms = 3, sig_idx = 133},
-	{fn = _t_dom_DocumentOrShadowRoot_elementsFromPointPacked, name_off = 25210, mod_idx = 11, realms = 3, sig_idx = 167},
-	{fn = _t_dom_Shadow_fireSlotChanges, name_off = 25255, mod_idx = 11, realms = 3, sig_idx = 108},
-	{fn = _t_dom_Node_isLive, name_off = 25278, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Node_shadowIncludingElements, name_off = 25290, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_events_Event_composedPathPacked, name_off = 25319, mod_idx = 13, realms = 3, sig_idx = 4},
-	{fn = _t_events_EventTarget_lastTarget, name_off = 25344, mod_idx = 13, realms = 3, sig_idx = 0},
-	{fn = _t_events_EventTarget_lastRelated, name_off = 25367, mod_idx = 13, realms = 3, sig_idx = 0},
-	{fn = _t_events_Event_setNextRelated, name_off = 25391, mod_idx = 13, realms = 3, sig_idx = 10},
-	{fn = _t_events_Event_relatedNow, name_off = 25412, mod_idx = 13, realms = 3, sig_idx = 1},
-	{fn = _t_events_Event_inShadowTreeNow, name_off = 25429, mod_idx = 13, realms = 3, sig_idx = 3},
-	{fn = _t_dom_Element_attachInternals, name_off = 25451, mod_idx = 11, realms = 3, sig_idx = 27},
-	{fn = _t_dom_ElementInternals_shadowRootOf, name_off = 25475, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_ElementInternals_element, name_off = 25505, mod_idx = 11, realms = 3, sig_idx = 1},
-	{fn = _t_dom_CustomStates_add, name_off = 25530, mod_idx = 11, realms = 3, sig_idx = 41},
-	{fn = _t_dom_CustomStates_delete, name_off = 25547, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_CustomStates_has, name_off = 25567, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_CustomStates_clear, name_off = 25584, mod_idx = 11, realms = 3, sig_idx = 10},
-	{fn = _t_dom_CustomStates_list, name_off = 25603, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_CSSStyleSheet_create, name_off = 25621, mod_idx = 11, realms = 3, sig_idx = 168},
-	{fn = _t_dom_CSSStyleSheet_replaceText, name_off = 25642, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_dom_CSSStyleSheet_ruleCount, name_off = 25668, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_CSSStyleSheet_ruleText, name_off = 25692, mod_idx = 11, realms = 3, sig_idx = 16},
-	{fn = _t_dom_CSSStyleSheet_setRuleSelector, name_off = 25715, mod_idx = 11, realms = 3, sig_idx = 166},
-	{fn = _t_dom_CSSStyleSheet_ruleTextOf, name_off = 25745, mod_idx = 11, realms = 3, sig_idx = 16},
-	{fn = _t_dom_CSSStyleSheet_setRuleStyle, name_off = 25770, mod_idx = 11, realms = 3, sig_idx = 128},
-	{fn = _t_dom_CSSStyleSheet_childCount, name_off = 25797, mod_idx = 11, realms = 3, sig_idx = 42},
-	{fn = _t_dom_CSSStyleSheet_childId, name_off = 25822, mod_idx = 11, realms = 3, sig_idx = 150},
-	{fn = _t_dom_CSSStyleSheet_insertChildAt, name_off = 25844, mod_idx = 11, realms = 3, sig_idx = 169},
-	{fn = _t_dom_CSSStyleSheet_deleteChildAt, name_off = 25872, mod_idx = 11, realms = 3, sig_idx = 150},
-	{fn = _t_dom_CSSStyleSheet_insertRuleAt, name_off = 25900, mod_idx = 11, realms = 3, sig_idx = 92},
-	{fn = _t_dom_CSSStyleSheet_deleteRuleAt, name_off = 25927, mod_idx = 11, realms = 3, sig_idx = 42},
-	{fn = _t_dom_CSSStyleSheet_isDisabled, name_off = 25954, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_CSSStyleSheet_setDisabled, name_off = 25979, mod_idx = 11, realms = 3, sig_idx = 11},
-	{fn = _t_dom_CSSStyleSheet_mediaText, name_off = 26005, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_dom_CSSStyleSheet_setMediaText, name_off = 26029, mod_idx = 11, realms = 3, sig_idx = 41},
-	{fn = _t_dom_CSSStyleSheet_isConstructed, name_off = 26056, mod_idx = 11, realms = 3, sig_idx = 3},
-	{fn = _t_dom_DocumentOrShadowRoot_adopt, name_off = 26084, mod_idx = 11, realms = 3, sig_idx = 85},
-	{fn = _t_storageaccess_Document_hasStorageAccess, name_off = 26111, mod_idx = 30, realms = 1, sig_idx = 0},
-	{fn = _t_storageaccess_Document_requestStorageAccess, name_off = 26137, mod_idx = 30, realms = 1, sig_idx = 0},
-	{fn = _t_navigator_Navigator_get, name_off = 26167, mod_idx = 31, realms = 3, sig_idx = 118},
-	{fn = _t_navigator_Navigator_hardwareConcurrency, name_off = 26181, mod_idx = 31, realms = 3, sig_idx = 31},
-	{fn = _t_navigator_Navigator_onLine, name_off = 26211, mod_idx = 31, realms = 3, sig_idx = 31},
-	{fn = _t_navigator_Navigator_maxTouchPoints, name_off = 26228, mod_idx = 31, realms = 3, sig_idx = 31},
-	{fn = _t_navigator_Navigator_cookieEnabled, name_off = 26253, mod_idx = 31, realms = 3, sig_idx = 31},
-	{fn = _t_navigator_UserActivation_isActive, name_off = 26277, mod_idx = 31, realms = 3, sig_idx = 31},
-	{fn = _t_navigator_UserActivation_hasBeenActive, name_off = 26301, mod_idx = 31, realms = 3, sig_idx = 31},
-	{fn = _t_navigator_Beacon_send, name_off = 26330, mod_idx = 31, realms = 3, sig_idx = 170},
-	{fn = _t_navigator_Clipboard_writeText, name_off = 26342, mod_idx = 31, realms = 3, sig_idx = 26},
-	{fn = _t_navigator_Clipboard_readText, name_off = 26362, mod_idx = 31, realms = 3, sig_idx = 0},
-	{fn = _t_media_MediaQueryList_create, name_off = 26381, mod_idx = 32, realms = 1, sig_idx = 26},
-	{fn = _t_media_MediaQueryList_media, name_off = 26403, mod_idx = 32, realms = 1, sig_idx = 4},
-	{fn = _t_media_MediaQueryList_matches, name_off = 26424, mod_idx = 32, realms = 1, sig_idx = 3},
-	{fn = _t_media_Screen_get, name_off = 26447, mod_idx = 32, realms = 1, sig_idx = 125},
-	{fn = _t_forms_FormData_fileAt, name_off = 26458, mod_idx = 18, realms = 1, sig_idx = 66},
-	{fn = _t_forms_FormData_setBlob, name_off = 26474, mod_idx = 18, realms = 1, sig_idx = 103},
-	{fn = _t_forms_FormData_encode, name_off = 26491, mod_idx = 18, realms = 1, sig_idx = 114},
-	{fn = _t_dom_XMLSerializer_serialize, name_off = 26507, mod_idx = 11, realms = 3, sig_idx = 4},
-	{fn = _t_locks_LockManager_request, name_off = 26531, mod_idx = 33, realms = 3, sig_idx = 171},
-	{fn = _t_locks_LockManager_release, name_off = 26551, mod_idx = 33, realms = 3, sig_idx = 10},
-	{fn = _t_locks_LockManager_queryCount, name_off = 26571, mod_idx = 33, realms = 3, sig_idx = 125},
-	{fn = _t_locks_LockManager_queryName, name_off = 26594, mod_idx = 33, realms = 3, sig_idx = 172},
-	{fn = _t_locks_LockManager_queryMode, name_off = 26616, mod_idx = 33, realms = 3, sig_idx = 172},
-	{fn = _t_locks_LockManager_queryClient, name_off = 26638, mod_idx = 33, realms = 3, sig_idx = 172},
-	{fn = _t_htmlmedia_HTMLMediaElement_currentSrc, name_off = 26662, mod_idx = 34, realms = 1, sig_idx = 4},
-	{fn = _t_htmlmedia_HTMLMediaElement_networkState, name_off = 26690, mod_idx = 34, realms = 1, sig_idx = 3},
-	{fn = _t_htmlmedia_HTMLMediaElement_readyState, name_off = 26720, mod_idx = 34, realms = 1, sig_idx = 3},
-	{fn = _t_htmlmedia_HTMLMediaElement_seeking, name_off = 26748, mod_idx = 34, realms = 1, sig_idx = 3},
-	{fn = _t_htmlmedia_HTMLMediaElement_currentTime, name_off = 26773, mod_idx = 34, realms = 1, sig_idx = 13},
-	{fn = _t_htmlmedia_HTMLMediaElement_set_currentTime, name_off = 26802, mod_idx = 34, realms = 1, sig_idx = 12},
-	{fn = _t_htmlmedia_HTMLMediaElement_duration, name_off = 26835, mod_idx = 34, realms = 1, sig_idx = 13},
-	{fn = _t_htmlmedia_HTMLMediaElement_paused, name_off = 26861, mod_idx = 34, realms = 1, sig_idx = 3},
-	{fn = _t_htmlmedia_HTMLMediaElement_ended, name_off = 26885, mod_idx = 34, realms = 1, sig_idx = 3},
-	{fn = _t_htmlmedia_HTMLMediaElement_defaultPlaybackRate, name_off = 26908, mod_idx = 34, realms = 1, sig_idx = 13},
-	{fn = _t_htmlmedia_HTMLMediaElement_set_defaultPlaybackRate, name_off = 26945, mod_idx = 34, realms = 1, sig_idx = 12},
-	{fn = _t_htmlmedia_HTMLMediaElement_playbackRate, name_off = 26986, mod_idx = 34, realms = 1, sig_idx = 13},
-	{fn = _t_htmlmedia_HTMLMediaElement_set_playbackRate, name_off = 27016, mod_idx = 34, realms = 1, sig_idx = 12},
-	{fn = _t_htmlmedia_HTMLMediaElement_preservesPitch, name_off = 27050, mod_idx = 34, realms = 1, sig_idx = 3},
-	{fn = _t_htmlmedia_HTMLMediaElement_set_preservesPitch, name_off = 27082, mod_idx = 34, realms = 1, sig_idx = 11},
-	{fn = _t_htmlmedia_HTMLMediaElement_volume, name_off = 27118, mod_idx = 34, realms = 1, sig_idx = 13},
-	{fn = _t_htmlmedia_HTMLMediaElement_set_volume, name_off = 27142, mod_idx = 34, realms = 1, sig_idx = 14},
-	{fn = _t_htmlmedia_HTMLMediaElement_muted, name_off = 27170, mod_idx = 34, realms = 1, sig_idx = 3},
-	{fn = _t_htmlmedia_HTMLMediaElement_set_muted, name_off = 27193, mod_idx = 34, realms = 1, sig_idx = 11},
-	{fn = _t_htmlmedia_HTMLMediaElement_ranges, name_off = 27220, mod_idx = 34, realms = 1, sig_idx = 16},
-	{fn = _t_htmlmedia_HTMLMediaElement_setSourceHandle, name_off = 27244, mod_idx = 34, realms = 1, sig_idx = 63},
-	{fn = _t_htmlmedia_HTMLMediaElement_errorCode, name_off = 27277, mod_idx = 34, realms = 1, sig_idx = 3},
-	{fn = _t_htmlmedia_HTMLMediaElement_errorMessage, name_off = 27304, mod_idx = 34, realms = 1, sig_idx = 4},
-	{fn = _t_htmlmedia_HTMLMediaElement_play, name_off = 27334, mod_idx = 34, realms = 1, sig_idx = 1},
-	{fn = _t_htmlmedia_HTMLMediaElement_pause, name_off = 27356, mod_idx = 34, realms = 1, sig_idx = 10},
-	{fn = _t_htmlmedia_HTMLMediaElement_load, name_off = 27379, mod_idx = 34, realms = 1, sig_idx = 10},
-	{fn = _t_htmlmedia_HTMLMediaElement_canPlayType, name_off = 27401, mod_idx = 34, realms = 1, sig_idx = 69},
-	{fn = _t_htmlmedia_HTMLVideoElement_videoWidth, name_off = 27430, mod_idx = 34, realms = 1, sig_idx = 3},
-	{fn = _t_htmlmedia_HTMLVideoElement_videoHeight, name_off = 27458, mod_idx = 34, realms = 1, sig_idx = 3},
-	{fn = _t_htmlmedia_HTMLVideoElement_playbackQuality, name_off = 27487, mod_idx = 34, realms = 1, sig_idx = 4},
-	{fn = _t_htmlmedia_HTMLVideoElement_requestVideoFrameCallback, name_off = 27520, mod_idx = 34, realms = 1, sig_idx = 173},
-	{fn = _t_htmlmedia_HTMLVideoElement_cancelVideoFrameCallback, name_off = 27563, mod_idx = 34, realms = 1, sig_idx = 20},
-	{fn = _t_htmlmedia_HTMLVideoElement_videoFrameMetadata, name_off = 27605, mod_idx = 34, realms = 1, sig_idx = 105},
-	{fn = _t_htmlmedia_HTMLMediaElement_audioTracks, name_off = 27641, mod_idx = 34, realms = 1, sig_idx = 1},
-	{fn = _t_htmlmedia_HTMLMediaElement_videoTracks, name_off = 27670, mod_idx = 34, realms = 1, sig_idx = 1},
-	{fn = _t_htmlmedia_HTMLMediaElement_textTracks, name_off = 27699, mod_idx = 34, realms = 1, sig_idx = 1},
-	{fn = _t_htmlmedia_HTMLMediaElement_addTextTrack, name_off = 27727, mod_idx = 34, realms = 1, sig_idx = 136},
-	{fn = _t_mse_MediaSource_create, name_off = 27757, mod_idx = 35, realms = 3, sig_idx = 153},
-	{fn = _t_mse_ManagedMediaSource_create, name_off = 27776, mod_idx = 35, realms = 3, sig_idx = 153},
-	{fn = _t_mse_ManagedMediaSource_streaming, name_off = 27802, mod_idx = 35, realms = 3, sig_idx = 3},
-	{fn = _t_mse_MediaSource_registerObjectURL, name_off = 27831, mod_idx = 35, realms = 3, sig_idx = 85},
-	{fn = _t_mse_MediaSource_handle, name_off = 27861, mod_idx = 35, realms = 3, sig_idx = 27},
-	{fn = _t_mse_MediaSourceHandle_take, name_off = 27880, mod_idx = 35, realms = 3, sig_idx = 27},
-	{fn = _t_mse_MediaSourceHandle_adopt, name_off = 27903, mod_idx = 35, realms = 3, sig_idx = 27},
-	{fn = _t_mse_MediaSource_revokeObjectURL, name_off = 27927, mod_idx = 35, realms = 3, sig_idx = 30},
-	{fn = _t_mse_MediaSource_isTypeSupported, name_off = 27955, mod_idx = 35, realms = 3, sig_idx = 22},
-	{fn = _t_mse_MediaSource_sourceBuffers, name_off = 27983, mod_idx = 35, realms = 3, sig_idx = 1},
-	{fn = _t_mse_MediaSource_activeSourceBuffers, name_off = 28009, mod_idx = 35, realms = 3, sig_idx = 1},
-	{fn = _t_mse_MediaSource_readyState, name_off = 28041, mod_idx = 35, realms = 3, sig_idx = 4},
-	{fn = _t_mse_MediaSource_duration, name_off = 28064, mod_idx = 35, realms = 3, sig_idx = 13},
-	{fn = _t_mse_MediaSource_set_duration, name_off = 28085, mod_idx = 35, realms = 3, sig_idx = 14},
-	{fn = _t_mse_MediaSource_addSourceBuffer, name_off = 28110, mod_idx = 35, realms = 3, sig_idx = 114},
-	{fn = _t_mse_MediaSource_removeSourceBuffer, name_off = 28138, mod_idx = 35, realms = 3, sig_idx = 63},
-	{fn = _t_mse_MediaSource_endOfStream, name_off = 28169, mod_idx = 35, realms = 3, sig_idx = 85},
-	{fn = _t_mse_MediaSource_setLiveSeekableRange, name_off = 28193, mod_idx = 35, realms = 3, sig_idx = 174},
-	{fn = _t_mse_MediaSource_clearLiveSeekableRange, name_off = 28226, mod_idx = 35, realms = 3, sig_idx = 3},
-	{fn = _t_mse_SourceBufferList_length, name_off = 28261, mod_idx = 35, realms = 3, sig_idx = 3},
-	{fn = _t_mse_SourceBufferList_item, name_off = 28285, mod_idx = 35, realms = 3, sig_idx = 66},
-	{fn = _t_mse_SourceBuffer_mode, name_off = 28307, mod_idx = 35, realms = 3, sig_idx = 4},
-	{fn = _t_mse_SourceBuffer_set_mode, name_off = 28325, mod_idx = 35, realms = 3, sig_idx = 85},
-	{fn = _t_mse_SourceBuffer_updating, name_off = 28347, mod_idx = 35, realms = 3, sig_idx = 3},
-	{fn = _t_mse_SourceBuffer_ranges, name_off = 28369, mod_idx = 35, realms = 3, sig_idx = 4},
-	{fn = _t_mse_SourceBuffer_timestampOffset, name_off = 28389, mod_idx = 35, realms = 3, sig_idx = 13},
-	{fn = _t_mse_SourceBuffer_set_timestampOffset, name_off = 28418, mod_idx = 35, realms = 3, sig_idx = 14},
-	{fn = _t_mse_SourceBuffer_appendWindowStart, name_off = 28451, mod_idx = 35, realms = 3, sig_idx = 13},
-	{fn = _t_mse_SourceBuffer_set_appendWindowStart, name_off = 28482, mod_idx = 35, realms = 3, sig_idx = 14},
-	{fn = _t_mse_SourceBuffer_appendWindowEnd, name_off = 28517, mod_idx = 35, realms = 3, sig_idx = 13},
-	{fn = _t_mse_SourceBuffer_set_appendWindowEnd, name_off = 28546, mod_idx = 35, realms = 3, sig_idx = 14},
-	{fn = _t_mse_SourceBuffer_appendBuffer, name_off = 28579, mod_idx = 35, realms = 3, sig_idx = 85},
-	{fn = _t_mse_SourceBuffer_abort, name_off = 28605, mod_idx = 35, realms = 3, sig_idx = 3},
-	{fn = _t_mse_SourceBuffer_changeType, name_off = 28624, mod_idx = 35, realms = 3, sig_idx = 85},
-	{fn = _t_mse_SourceBuffer_remove, name_off = 28648, mod_idx = 35, realms = 3, sig_idx = 174},
-	{fn = _t_mediatracks_AudioTrackList_length, name_off = 28668, mod_idx = 36, realms = 1, sig_idx = 3},
-	{fn = _t_mediatracks_AudioTrackList_item, name_off = 28690, mod_idx = 36, realms = 1, sig_idx = 66},
-	{fn = _t_mediatracks_AudioTrackList_getTrackById, name_off = 28710, mod_idx = 36, realms = 1, sig_idx = 5},
-	{fn = _t_mediatracks_VideoTrackList_length, name_off = 28738, mod_idx = 36, realms = 1, sig_idx = 3},
-	{fn = _t_mediatracks_VideoTrackList_item, name_off = 28760, mod_idx = 36, realms = 1, sig_idx = 66},
-	{fn = _t_mediatracks_VideoTrackList_getTrackById, name_off = 28780, mod_idx = 36, realms = 1, sig_idx = 5},
-	{fn = _t_mediatracks_VideoTrackList_selectedIndex, name_off = 28808, mod_idx = 36, realms = 1, sig_idx = 3},
-	{fn = _t_mediatracks_TextTrackList_length, name_off = 28837, mod_idx = 36, realms = 1, sig_idx = 3},
-	{fn = _t_mediatracks_TextTrackList_item, name_off = 28858, mod_idx = 36, realms = 1, sig_idx = 66},
-	{fn = _t_mediatracks_TextTrackList_getTrackById, name_off = 28877, mod_idx = 36, realms = 1, sig_idx = 5},
-	{fn = _t_mediatracks_AudioTrack_id, name_off = 28904, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_AudioTrack_kind, name_off = 28918, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_AudioTrack_label, name_off = 28934, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_AudioTrack_language, name_off = 28951, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_AudioTrack_enabled, name_off = 28971, mod_idx = 36, realms = 1, sig_idx = 3},
-	{fn = _t_mediatracks_AudioTrack_set_enabled, name_off = 28990, mod_idx = 36, realms = 1, sig_idx = 11},
-	{fn = _t_mediatracks_VideoTrack_id, name_off = 29013, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_VideoTrack_kind, name_off = 29027, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_VideoTrack_label, name_off = 29043, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_VideoTrack_language, name_off = 29060, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_VideoTrack_selected, name_off = 29080, mod_idx = 36, realms = 1, sig_idx = 3},
-	{fn = _t_mediatracks_VideoTrack_set_selected, name_off = 29100, mod_idx = 36, realms = 1, sig_idx = 11},
-	{fn = _t_mediatracks_TextTrack_kind, name_off = 29124, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_TextTrack_label, name_off = 29139, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_TextTrack_language, name_off = 29155, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_TextTrack_id, name_off = 29174, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_TextTrack_mode, name_off = 29187, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_TextTrack_set_mode, name_off = 29202, mod_idx = 36, realms = 1, sig_idx = 41},
-	{fn = _t_mediatracks_TextTrack_cues, name_off = 29221, mod_idx = 36, realms = 1, sig_idx = 1},
-	{fn = _t_mediatracks_TextTrack_activeCues, name_off = 29236, mod_idx = 36, realms = 1, sig_idx = 1},
-	{fn = _t_mediatracks_TextTrack_addCue, name_off = 29257, mod_idx = 36, realms = 1, sig_idx = 63},
-	{fn = _t_mediatracks_TextTrack_removeCue, name_off = 29274, mod_idx = 36, realms = 1, sig_idx = 63},
-	{fn = _t_mediatracks_TextTrackCue_id, name_off = 29294, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_TextTrackCue_set_id, name_off = 29310, mod_idx = 36, realms = 1, sig_idx = 41},
-	{fn = _t_mediatracks_TextTrackCue_startTime, name_off = 29330, mod_idx = 36, realms = 1, sig_idx = 13},
-	{fn = _t_mediatracks_TextTrackCue_set_startTime, name_off = 29353, mod_idx = 36, realms = 1, sig_idx = 12},
-	{fn = _t_mediatracks_TextTrackCue_endTime, name_off = 29380, mod_idx = 36, realms = 1, sig_idx = 13},
-	{fn = _t_mediatracks_TextTrackCue_set_endTime, name_off = 29401, mod_idx = 36, realms = 1, sig_idx = 12},
-	{fn = _t_mediatracks_TextTrackCue_pauseOnExit, name_off = 29426, mod_idx = 36, realms = 1, sig_idx = 3},
-	{fn = _t_mediatracks_TextTrackCue_set_pauseOnExit, name_off = 29451, mod_idx = 36, realms = 1, sig_idx = 11},
-	{fn = _t_mediatracks_TextTrackCue_track, name_off = 29480, mod_idx = 36, realms = 1, sig_idx = 1},
-	{fn = _t_mediatracks_VTTCue_create, name_off = 29499, mod_idx = 36, realms = 1, sig_idx = 175},
-	{fn = _t_mediatracks_VTTCue_text, name_off = 29513, mod_idx = 36, realms = 1, sig_idx = 4},
-	{fn = _t_mediatracks_VTTCue_set_text, name_off = 29525, mod_idx = 36, realms = 1, sig_idx = 41},
-	{fn = _t_mediatracks_TextTrackCueList_length, name_off = 29541, mod_idx = 36, realms = 1, sig_idx = 3},
-	{fn = _t_mediatracks_TextTrackCueList_item, name_off = 29565, mod_idx = 36, realms = 1, sig_idx = 66},
-	{fn = _t_mediatracks_TextTrackCueList_getCueById, name_off = 29587, mod_idx = 36, realms = 1, sig_idx = 5},
-	{fn = _t_mediatracks_HTMLTrackElement_track, name_off = 29615, mod_idx = 36, realms = 1, sig_idx = 1},
-	{fn = _t_mediatracks_HTMLTrackElement_readyState, name_off = 29638, mod_idx = 36, realms = 1, sig_idx = 3},
-	{fn = _t_navigation_Navigation_entries, name_off = 29666, mod_idx = 37, realms = 1, sig_idx = 32},
-	{fn = _t_navigation_Navigation_serial, name_off = 29685, mod_idx = 37, realms = 1, sig_idx = 0},
-	{fn = _t_navigation_Navigation_getState, name_off = 29703, mod_idx = 37, realms = 1, sig_idx = 105},
-	{fn = _t_navigation_Navigation_updateCurrentEntry, name_off = 29723, mod_idx = 37, realms = 1, sig_idx = 22},
-	{fn = _t_navigation_Navigation_navigate, name_off = 29753, mod_idx = 37, realms = 1, sig_idx = 157},
-	{fn = _t_navigation_Navigation_reload, name_off = 29773, mod_idx = 37, realms = 1, sig_idx = 22},
-	{fn = _t_navigation_Navigation_traverseTo, name_off = 29791, mod_idx = 37, realms = 1, sig_idx = 3},
-	{fn = _t_navigation_Navigation_pending, name_off = 29813, mod_idx = 37, realms = 1, sig_idx = 32},
-	{fn = _t_navigation_Navigation_pendingState, name_off = 29832, mod_idx = 37, realms = 1, sig_idx = 32},
-	{fn = _t_navigation_Navigation_pendingSource, name_off = 29856, mod_idx = 37, realms = 1, sig_idx = 148},
-	{fn = _t_navigation_Navigation_activation, name_off = 29881, mod_idx = 37, realms = 1, sig_idx = 32},
-	{fn = _t_navigation_Navigation_scroll, name_off = 29903, mod_idx = 37, realms = 1, sig_idx = 100},
-	{fn = _t_net_Fetch_start, name_off = 29921, mod_idx = 38, realms = 3, sig_idx = 176},
-	{fn = _t_net_Fetch_state, name_off = 29933, mod_idx = 38, realms = 3, sig_idx = 3},
-	{fn = _t_net_Fetch_status, name_off = 29945, mod_idx = 38, realms = 3, sig_idx = 3},
-	{fn = _t_net_Fetch_statusText, name_off = 29958, mod_idx = 38, realms = 3, sig_idx = 4},
-	{fn = _t_net_Fetch_hasBody, name_off = 29975, mod_idx = 38, realms = 3, sig_idx = 3},
-	{fn = _t_net_Fetch_type, name_off = 29989, mod_idx = 38, realms = 3, sig_idx = 3},
-	{fn = _t_net_Fetch_redirected, name_off = 30000, mod_idx = 38, realms = 3, sig_idx = 3},
-	{fn = _t_net_Fetch_headers, name_off = 30017, mod_idx = 38, realms = 3, sig_idx = 4},
-	{fn = _t_net_Fetch_url, name_off = 30031, mod_idx = 38, realms = 3, sig_idx = 4},
-	{fn = _t_net_Fetch_error, name_off = 30041, mod_idx = 38, realms = 3, sig_idx = 4},
-	{fn = _t_net_Fetch_errorKind, name_off = 30053, mod_idx = 38, realms = 3, sig_idx = 3},
-	{fn = _t_net_Fetch_bodyLength, name_off = 30069, mod_idx = 38, realms = 3, sig_idx = 1},
-	{fn = _t_net_Fetch_readBody, name_off = 30086, mod_idx = 38, realms = 3, sig_idx = 24},
-	{fn = _t_net_Fetch_release, name_off = 30101, mod_idx = 38, realms = 3, sig_idx = 3},
-	{fn = _t_notification_Notification_permission, name_off = 30115, mod_idx = 39, realms = 1, sig_idx = 32},
-	{fn = _t_notification_Notification_ask, name_off = 30139, mod_idx = 39, realms = 1, sig_idx = 0},
-	{fn = _t_notification_Notification_show, name_off = 30156, mod_idx = 39, realms = 1, sig_idx = 177},
-	{fn = _t_notification_Notification_next, name_off = 30174, mod_idx = 39, realms = 1, sig_idx = 1},
-	{fn = _t_notification_Notification_close, name_off = 30192, mod_idx = 39, realms = 1, sig_idx = 10},
-	{fn = _t_performance_Performance_now, name_off = 30211, mod_idx = 40, realms = 3, sig_idx = 18},
-	{fn = _t_performance_Performance_timeOrigin, name_off = 30227, mod_idx = 40, realms = 3, sig_idx = 18},
-	{fn = _t_performance_Performance_mark, name_off = 30250, mod_idx = 40, realms = 3, sig_idx = 178},
-	{fn = _t_performance_Performance_measure, name_off = 30267, mod_idx = 40, realms = 3, sig_idx = 170},
-	{fn = _t_performance_Performance_measureTimes, name_off = 30287, mod_idx = 40, realms = 3, sig_idx = 179},
-	{fn = _t_performance_Performance_entryCount, name_off = 30312, mod_idx = 40, realms = 3, sig_idx = 180},
-	{fn = _t_performance_Performance_entryStartTime, name_off = 30335, mod_idx = 40, realms = 3, sig_idx = 181},
-	{fn = _t_performance_Performance_entryDuration, name_off = 30362, mod_idx = 40, realms = 3, sig_idx = 181},
-	{fn = _t_performance_Performance_entryName, name_off = 30388, mod_idx = 40, realms = 3, sig_idx = 182},
-	{fn = _t_performance_Performance_entryType, name_off = 30410, mod_idx = 40, realms = 3, sig_idx = 183},
-	{fn = _t_performance_Performance_clearMarks, name_off = 30432, mod_idx = 40, realms = 3, sig_idx = 30},
-	{fn = _t_performance_Performance_clearMeasures, name_off = 30455, mod_idx = 40, realms = 3, sig_idx = 30},
-	{fn = _t_performance_Performance_timeline, name_off = 30481, mod_idx = 40, realms = 3, sig_idx = 184},
-	{fn = _t_performance_Performance_timelineNextSeq, name_off = 30502, mod_idx = 40, realms = 3, sig_idx = 185},
-	{fn = _t_performance_Performance_timelineNode, name_off = 30530, mod_idx = 40, realms = 3, sig_idx = 186},
-	{fn = _t_performance_Performance_timelineInterest, name_off = 30555, mod_idx = 40, realms = 3, sig_idx = 100},
-	{fn = _t_performance_Performance_onTimeline, name_off = 30584, mod_idx = 40, realms = 3, sig_idx = 23},
-	{fn = _t_performance_Performance_setResourceTimingBufferSize, name_off = 30607, mod_idx = 40, realms = 3, sig_idx = 100},
-	{fn = _t_performance_Performance_clearResourceTimings, name_off = 30647, mod_idx = 40, realms = 3, sig_idx = 108},
-	{fn = _t_performance_Performance_timingOf, name_off = 30680, mod_idx = 40, realms = 3, sig_idx = 187},
-	{fn = _t_popover_Popover_show, name_off = 30701, mod_idx = 41, realms = 1, sig_idx = 63},
-	{fn = _t_popover_Popover_hide, name_off = 30714, mod_idx = 41, realms = 1, sig_idx = 3},
-	{fn = _t_popover_Popover_toggle, name_off = 30727, mod_idx = 41, realms = 1, sig_idx = 188},
-	{fn = _t_popover_Popover_state, name_off = 30742, mod_idx = 41, realms = 1, sig_idx = 3},
-	{fn = _t_popover_Popover_targetOf, name_off = 30756, mod_idx = 41, realms = 1, sig_idx = 1},
-	{fn = _t_ports_Port_entangle, name_off = 30773, mod_idx = 42, realms = 3, sig_idx = 0},
-	{fn = _t_ports_Port_bind, name_off = 30787, mod_idx = 42, realms = 3, sig_idx = 3},
-	{fn = _t_ports_Port_ship, name_off = 30797, mod_idx = 42, realms = 3, sig_idx = 10},
-	{fn = _t_ports_Port_post, name_off = 30807, mod_idx = 42, realms = 3, sig_idx = 86},
-	{fn = _t_ports_Port_close, name_off = 30817, mod_idx = 42, realms = 3, sig_idx = 10},
-	{fn = _t_ports_Worker_postSerializedPorts, name_off = 30828, mod_idx = 42, realms = 3, sig_idx = 86},
-	{fn = _t_ports_DedicatedWorkerGlobalScope_postSerializedPorts, name_off = 30855, mod_idx = 42, realms = 3, sig_idx = 120},
-	{fn = _t_ports_Broadcast_open, name_off = 30902, mod_idx = 42, realms = 3, sig_idx = 26},
-	{fn = _t_ports_Broadcast_post, name_off = 30917, mod_idx = 42, realms = 3, sig_idx = 85},
-	{fn = _t_ports_MessageEvent_portEnds, name_off = 30932, mod_idx = 42, realms = 3, sig_idx = 4},
-	{fn = _t_scheduler_Scheduler_post, name_off = 30954, mod_idx = 43, realms = 3, sig_idx = 189},
-	{fn = _t_scheduler_Scheduler_cancel, name_off = 30969, mod_idx = 43, realms = 3, sig_idx = 3},
-	{fn = _t_scheduler_Scheduler_setPriority, name_off = 30986, mod_idx = 43, realms = 3, sig_idx = 42},
-	{fn = _t_scheduler_Scheduler_isInputPending, name_off = 31008, mod_idx = 43, realms = 3, sig_idx = 125},
-	{fn = _t_serviceworker_ServiceWorker_register, name_off = 31033, mod_idx = 44, realms = 3, sig_idx = 190},
-	{fn = _t_serviceworker_ServiceWorker_ready, name_off = 31056, mod_idx = 44, realms = 3, sig_idx = 0},
-	{fn = _t_serviceworker_ServiceWorker_getRegistration, name_off = 31076, mod_idx = 44, realms = 3, sig_idx = 26},
-	{fn = _t_serviceworker_ServiceWorker_registrationIds, name_off = 31106, mod_idx = 44, realms = 3, sig_idx = 32},
-	{fn = _t_serviceworker_ServiceWorker_controller, name_off = 31136, mod_idx = 44, realms = 3, sig_idx = 0},
-	{fn = _t_serviceworker_ServiceWorkerRegistration_info, name_off = 31161, mod_idx = 44, realms = 3, sig_idx = 4},
-	{fn = _t_serviceworker_ServiceWorker_info, name_off = 31192, mod_idx = 44, realms = 3, sig_idx = 4},
-	{fn = _t_serviceworker_ServiceWorkerRegistration_unregisterId, name_off = 31211, mod_idx = 44, realms = 3, sig_idx = 3},
-	{fn = _t_serviceworker_ServiceWorkerRegistration_updateId, name_off = 31250, mod_idx = 44, realms = 3, sig_idx = 27},
-	{fn = _t_serviceworker_ServiceWorkerRegistration_preload, name_off = 31285, mod_idx = 44, realms = 3, sig_idx = 166},
-	{fn = _t_serviceworker_ServiceWorker_postToWorker, name_off = 31319, mod_idx = 44, realms = 3, sig_idx = 85},
-	{fn = _t_serviceworker_ServiceWorker_takeMessage, name_off = 31346, mod_idx = 44, realms = 3, sig_idx = 32},
-	{fn = _t_serviceworker_ServiceWorkerGlobalScope_registration, name_off = 31372, mod_idx = 44, realms = 3, sig_idx = 0},
-	{fn = _t_serviceworker_ServiceWorkerGlobalScope_version, name_off = 31410, mod_idx = 44, realms = 3, sig_idx = 0},
-	{fn = _t_serviceworker_ServiceWorkerGlobalScope_scope, name_off = 31443, mod_idx = 44, realms = 3, sig_idx = 32},
-	{fn = _t_serviceworker_ServiceWorkerGlobalScope_scriptURL, name_off = 31474, mod_idx = 44, realms = 3, sig_idx = 32},
-	{fn = _t_serviceworker_SwEvent_next, name_off = 31509, mod_idx = 44, realms = 3, sig_idx = 148},
-	{fn = _t_serviceworker_SwEvent_text, name_off = 31522, mod_idx = 44, realms = 3, sig_idx = 118},
-	{fn = _t_serviceworker_SwEvent_body, name_off = 31535, mod_idx = 44, realms = 3, sig_idx = 32},
-	{fn = _t_serviceworker_SwEvent_done, name_off = 31548, mod_idx = 44, realms = 3, sig_idx = 108},
-	{fn = _t_serviceworker_ServiceWorkerGlobalScope_reply, name_off = 31561, mod_idx = 44, realms = 3, sig_idx = 191},
-	{fn = _t_storage_Storage_length, name_off = 31592, mod_idx = 45, realms = 1, sig_idx = 192},
-	{fn = _t_storage_Storage_key, name_off = 31607, mod_idx = 45, realms = 1, sig_idx = 172},
-	{fn = _t_storage_Storage_getItem, name_off = 31619, mod_idx = 45, realms = 1, sig_idx = 121},
-	{fn = _t_storage_Storage_setItem, name_off = 31635, mod_idx = 45, realms = 1, sig_idx = 193},
-	{fn = _t_storage_Storage_removeItem, name_off = 31651, mod_idx = 45, realms = 1, sig_idx = 119},
-	{fn = _t_storage_Storage_clear, name_off = 31670, mod_idx = 45, realms = 1, sig_idx = 125},
-	{fn = _t_storage_StorageEvent_get, name_off = 31684, mod_idx = 45, realms = 1, sig_idx = 16},
-	{fn = _t_storage_StorageEvent_storageArea, name_off = 31701, mod_idx = 45, realms = 1, sig_idx = 27},
-	{fn = _t_testhost_TestHost_testBegin, name_off = 31726, mod_idx = 46, realms = 1, sig_idx = 30},
-	{fn = _t_testhost_TestHost_testEnd, name_off = 31745, mod_idx = 46, realms = 1, sig_idx = 30},
-	{fn = _t_testhost_TestHost_check, name_off = 31762, mod_idx = 46, realms = 1, sig_idx = 122},
-	{fn = _t_testhost_TestHost_measure, name_off = 31777, mod_idx = 46, realms = 1, sig_idx = 194},
-	{fn = _t_testhost_TestHost_note, name_off = 31794, mod_idx = 46, realms = 1, sig_idx = 30},
-	{fn = _t_testhost_TestHost_signal, name_off = 31808, mod_idx = 46, realms = 1, sig_idx = 30},
-	{fn = _t_testhost_TestHost_skip, name_off = 31824, mod_idx = 46, realms = 1, sig_idx = 122},
-	{fn = _t_testhost_TestHost_done, name_off = 31838, mod_idx = 46, realms = 1, sig_idx = 108},
-	{fn = _t_timers_Timers_setTimeout, name_off = 31852, mod_idx = 47, realms = 3, sig_idx = 195},
-	{fn = _t_timers_Timers_setInterval, name_off = 31870, mod_idx = 47, realms = 3, sig_idx = 195},
-	{fn = _t_timers_Timers_setTimeout64, name_off = 31889, mod_idx = 47, realms = 3, sig_idx = 196},
-	{fn = _t_timers_Timers_setInterval64, name_off = 31909, mod_idx = 47, realms = 3, sig_idx = 196},
-	{fn = _t_timers_Timers_clear, name_off = 31930, mod_idx = 47, realms = 3, sig_idx = 3},
-	{fn = _t_timers_Timers_now, name_off = 31943, mod_idx = 47, realms = 3, sig_idx = 18},
-	{fn = _t_timers_requestAnimationFrame, name_off = 31954, mod_idx = 47, realms = 3, sig_idx = 8},
-	{fn = _t_timers_cancelAnimationFrame, name_off = 31976, mod_idx = 47, realms = 3, sig_idx = 3},
-	{fn = _t_timers_requestIdleCallback, name_off = 31997, mod_idx = 47, realms = 3, sig_idx = 195},
-	{fn = _t_timers_cancelIdleCallback, name_off = 32017, mod_idx = 47, realms = 3, sig_idx = 3},
-	{fn = _t_timers_Document_visibilityState, name_off = 32036, mod_idx = 47, realms = 3, sig_idx = 31},
-	{fn = _t_url_URL_parse, name_off = 32061, mod_idx = 48, realms = 3, sig_idx = 152},
-	{fn = _t_url_URL_canParse, name_off = 32071, mod_idx = 48, realms = 3, sig_idx = 120},
-	{fn = _t_url_URL_get, name_off = 32084, mod_idx = 48, realms = 3, sig_idx = 16},
-	{fn = _t_url_URL_set, name_off = 32092, mod_idx = 48, realms = 3, sig_idx = 21},
-	{fn = _t_url_URL_searchParams, name_off = 32100, mod_idx = 48, realms = 3, sig_idx = 1},
-	{fn = _t_url_URLSearchParams_create, name_off = 32117, mod_idx = 48, realms = 3, sig_idx = 7},
-	{fn = _t_url_URLSearchParams_size, name_off = 32140, mod_idx = 48, realms = 3, sig_idx = 3},
-	{fn = _t_url_URLSearchParams_append, name_off = 32161, mod_idx = 48, realms = 3, sig_idx = 129},
-	{fn = _t_url_URLSearchParams_delete, name_off = 32184, mod_idx = 48, realms = 3, sig_idx = 129},
-	{fn = _t_url_URLSearchParams_get, name_off = 32207, mod_idx = 48, realms = 3, sig_idx = 69},
-	{fn = _t_url_URLSearchParams_count, name_off = 32227, mod_idx = 48, realms = 3, sig_idx = 85},
-	{fn = _t_url_URLSearchParams_getNth, name_off = 32249, mod_idx = 48, realms = 3, sig_idx = 89},
-	{fn = _t_url_URLSearchParams_has, name_off = 32272, mod_idx = 48, realms = 3, sig_idx = 86},
-	{fn = _t_url_URLSearchParams_set, name_off = 32292, mod_idx = 48, realms = 3, sig_idx = 129},
-	{fn = _t_url_URLSearchParams_sort, name_off = 32312, mod_idx = 48, realms = 3, sig_idx = 10},
-	{fn = _t_url_URLSearchParams_toString, name_off = 32333, mod_idx = 48, realms = 3, sig_idx = 4},
-	{fn = _t_url_URLSearchParams_nameAt, name_off = 32358, mod_idx = 48, realms = 3, sig_idx = 16},
-	{fn = _t_url_URLSearchParams_valueAt, name_off = 32381, mod_idx = 48, realms = 3, sig_idx = 16},
-	{fn = _t_url_URLPattern_createString, name_off = 32405, mod_idx = 48, realms = 3, sig_idx = 160},
-	{fn = _t_url_URLPattern_createInit, name_off = 32429, mod_idx = 48, realms = 3, sig_idx = 197},
-	{fn = _t_url_URLPattern_component, name_off = 32451, mod_idx = 48, realms = 3, sig_idx = 16},
-	{fn = _t_url_URLPattern_hasRegExpGroups, name_off = 32472, mod_idx = 48, realms = 3, sig_idx = 3},
-	{fn = _t_url_URLPattern_execString, name_off = 32499, mod_idx = 48, realms = 3, sig_idx = 111},
-	{fn = _t_url_URLPattern_execInit, name_off = 32521, mod_idx = 48, realms = 3, sig_idx = 198},
-	{fn = _t_url_URLPattern_resultInputCount, name_off = 32541, mod_idx = 48, realms = 3, sig_idx = 3},
-	{fn = _t_url_URLPattern_resultInput, name_off = 32569, mod_idx = 48, realms = 3, sig_idx = 16},
-	{fn = _t_url_URLPattern_componentInput, name_off = 32592, mod_idx = 48, realms = 3, sig_idx = 16},
-	{fn = _t_url_URLPattern_groupCount, name_off = 32618, mod_idx = 48, realms = 3, sig_idx = 42},
-	{fn = _t_url_URLPattern_groupName, name_off = 32640, mod_idx = 48, realms = 3, sig_idx = 149},
-	{fn = _t_url_URLPattern_groupValue, name_off = 32661, mod_idx = 48, realms = 3, sig_idx = 149},
-	{fn = _t_web_Exception_code, name_off = 32683, mod_idx = 49, realms = 3, sig_idx = 31},
-	{fn = _t_web_Exception_message, name_off = 32698, mod_idx = 49, realms = 3, sig_idx = 32},
-	{fn = _t_webassembly_WebAssembly_enabled, name_off = 32716, mod_idx = 50, realms = 3, sig_idx = 31},
-	{fn = _t_webassembly_WebAssembly_validate, name_off = 32736, mod_idx = 50, realms = 3, sig_idx = 22},
-	{fn = _t_webassembly_WebAssembly_compile, name_off = 32757, mod_idx = 50, realms = 3, sig_idx = 7},
-	{fn = _t_webassembly_WebAssembly_compileAsync, name_off = 32777, mod_idx = 50, realms = 3, sig_idx = 26},
-	{fn = _t_webassembly_WebAssembly_Module_imports, name_off = 32802, mod_idx = 50, realms = 3, sig_idx = 4},
-	{fn = _t_webassembly_WebAssembly_Module_exports, name_off = 32829, mod_idx = 50, realms = 3, sig_idx = 4},
-	{fn = _t_webassembly_WebAssembly_Module_customSectionCount, name_off = 32856, mod_idx = 50, realms = 3, sig_idx = 85},
-	{fn = _t_webassembly_WebAssembly_Module_customSection, name_off = 32894, mod_idx = 50, realms = 3, sig_idx = 89},
-	{fn = _t_webassembly_WebAssembly_Module_linkInfo, name_off = 32927, mod_idx = 50, realms = 3, sig_idx = 4},
-	{fn = _t_webassembly_WebAssembly_lastError, name_off = 32955, mod_idx = 50, realms = 3, sig_idx = 32},
-	{fn = _t_webassembly_WebAssembly_Memory_create, name_off = 32977, mod_idx = 50, realms = 3, sig_idx = 63},
-	{fn = _t_webassembly_WebAssembly_Memory_pages, name_off = 33003, mod_idx = 50, realms = 3, sig_idx = 185},
-	{fn = _t_webassembly_WebAssembly_Memory_grow, name_off = 33028, mod_idx = 50, realms = 3, sig_idx = 199},
-	{fn = _t_webassembly_WebAssembly_Memory_read, name_off = 33052, mod_idx = 50, realms = 3, sig_idx = 200},
-	{fn = _t_webassembly_WebAssembly_Memory_write, name_off = 33076, mod_idx = 50, realms = 3, sig_idx = 200},
-	{fn = _t_webassembly_WebAssembly_Memory_createShared, name_off = 33101, mod_idx = 50, realms = 3, sig_idx = 84},
-	{fn = _t_webassembly_WebAssembly_Memory_release, name_off = 33133, mod_idx = 50, realms = 3, sig_idx = 100},
-	{fn = _t_webassembly_WebAssembly_Memory_byteLength, name_off = 33160, mod_idx = 50, realms = 3, sig_idx = 185},
-	{fn = _t_webassembly_WebAssembly_Memory_growBytes, name_off = 33190, mod_idx = 50, realms = 3, sig_idx = 201},
-	{fn = _t_webassembly_WebAssembly_Memory_atomic, name_off = 33219, mod_idx = 50, realms = 3, sig_idx = 202},
-	{fn = _t_webassembly_WebAssembly_Memory_wait, name_off = 33245, mod_idx = 50, realms = 3, sig_idx = 203},
-	{fn = _t_webassembly_WebAssembly_Memory_notify, name_off = 33269, mod_idx = 50, realms = 3, sig_idx = 204},
-	{fn = _t_webassembly_WebAssembly_Memory_share, name_off = 33295, mod_idx = 50, realms = 3, sig_idx = 185},
-	{fn = _t_webassembly_WebAssembly_Memory_adopt, name_off = 33320, mod_idx = 50, realms = 3, sig_idx = 3},
-	{fn = _t_webassembly_WebAssembly_Module_share, name_off = 33345, mod_idx = 50, realms = 3, sig_idx = 1},
-	{fn = _t_webassembly_WebAssembly_Module_adopt, name_off = 33370, mod_idx = 50, realms = 3, sig_idx = 27},
-	{fn = _t_webassembly_WebAssembly_crossOriginIsolated, name_off = 33395, mod_idx = 50, realms = 3, sig_idx = 31},
-	{fn = _t_webassembly_WebAssembly_canBlock, name_off = 33427, mod_idx = 50, realms = 3, sig_idx = 31},
-	{fn = _t_webassembly_WebAssembly_Table_create, name_off = 33448, mod_idx = 50, realms = 3, sig_idx = 205},
-	{fn = _t_webassembly_WebAssembly_Table_element, name_off = 33473, mod_idx = 50, realms = 3, sig_idx = 118},
-	{fn = _t_webassembly_WebAssembly_Table_length, name_off = 33499, mod_idx = 50, realms = 3, sig_idx = 185},
-	{fn = _t_webassembly_WebAssembly_Table_get, name_off = 33524, mod_idx = 50, realms = 3, sig_idx = 200},
-	{fn = _t_webassembly_WebAssembly_Table_set, name_off = 33546, mod_idx = 50, realms = 3, sig_idx = 206},
-	{fn = _t_webassembly_WebAssembly_Table_grow, name_off = 33568, mod_idx = 50, realms = 3, sig_idx = 207},
-	{fn = _t_webassembly_WebAssembly_Global_create, name_off = 33591, mod_idx = 50, realms = 3, sig_idx = 208},
-	{fn = _t_webassembly_WebAssembly_Global_type, name_off = 33617, mod_idx = 50, realms = 3, sig_idx = 118},
-	{fn = _t_webassembly_WebAssembly_Global_get, name_off = 33641, mod_idx = 50, realms = 3, sig_idx = 185},
-	{fn = _t_webassembly_WebAssembly_Global_set, name_off = 33664, mod_idx = 50, realms = 3, sig_idx = 201},
-	{fn = _t_webassembly_WebAssembly_Func_import, name_off = 33687, mod_idx = 50, realms = 3, sig_idx = 119},
-	{fn = _t_webassembly_WebAssembly_Func_sig, name_off = 33711, mod_idx = 50, realms = 3, sig_idx = 118},
-	{fn = _t_webassembly_WebAssembly_Func_call, name_off = 33732, mod_idx = 50, realms = 3, sig_idx = 119},
-	{fn = _t_webassembly_WebAssembly_Func_results, name_off = 33754, mod_idx = 50, realms = 3, sig_idx = 32},
-	{fn = _t_webassembly_WebAssembly_import_args, name_off = 33779, mod_idx = 50, realms = 3, sig_idx = 32},
-	{fn = _t_webassembly_WebAssembly_import_results, name_off = 33803, mod_idx = 50, realms = 3, sig_idx = 30},
-	{fn = _t_webassembly_WebAssembly_import_failed, name_off = 33830, mod_idx = 50, realms = 3, sig_idx = 30},
-	{fn = _t_webassembly_WebAssembly_Tag_create, name_off = 33856, mod_idx = 50, realms = 3, sig_idx = 22},
-	{fn = _t_webassembly_WebAssembly_Tag_sig, name_off = 33879, mod_idx = 50, realms = 3, sig_idx = 118},
-	{fn = _t_webassembly_WebAssembly_exception_tag, name_off = 33899, mod_idx = 50, realms = 3, sig_idx = 31},
-	{fn = _t_webassembly_WebAssembly_import_throw, name_off = 33925, mod_idx = 50, realms = 3, sig_idx = 122},
-	{fn = _t_webassembly_WebAssembly_extern_released, name_off = 33950, mod_idx = 50, realms = 3, sig_idx = 31},
-	{fn = _t_webassembly_WebAssembly_Instance_create, name_off = 33978, mod_idx = 50, realms = 3, sig_idx = 85},
-	{fn = _t_webassembly_WebAssembly_Instance_exports, name_off = 34006, mod_idx = 50, realms = 3, sig_idx = 184},
-	{fn = _t_webaudio_WebAudio_enabled, name_off = 34035, mod_idx = 51, realms = 1, sig_idx = 31},
-	{fn = _t_webaudio_WebAudio_fullyActive, name_off = 34052, mod_idx = 51, realms = 1, sig_idx = 31},
-	{fn = _t_webaudio_WebAudio_defaultRate, name_off = 34073, mod_idx = 51, realms = 1, sig_idx = 18},
-	{fn = _t_webaudio_WebAudio_maxBufferBytes, name_off = 34094, mod_idx = 51, realms = 1, sig_idx = 18},
-	{fn = _t_webaudio_WebAudio_create, name_off = 34118, mod_idx = 51, realms = 1, sig_idx = 209},
-	{fn = _t_webaudio_WebAudio_resume, name_off = 34134, mod_idx = 51, realms = 1, sig_idx = 10},
-	{fn = _t_webaudio_WebAudio_suspend, name_off = 34150, mod_idx = 51, realms = 1, sig_idx = 3},
-	{fn = _t_webaudio_WebAudio_close, name_off = 34167, mod_idx = 51, realms = 1, sig_idx = 10},
-	{fn = _t_webaudio_WebAudio_time, name_off = 34182, mod_idx = 51, realms = 1, sig_idx = 13},
-	{fn = _t_webaudio_WebAudio_queued, name_off = 34196, mod_idx = 51, realms = 1, sig_idx = 13},
-	{fn = _t_webaudio_WebAudio_render, name_off = 34212, mod_idx = 51, realms = 1, sig_idx = 42},
-	{fn = _t_webaudio_WebAudio_takeResult, name_off = 34228, mod_idx = 51, realms = 1, sig_idx = 1},
-	{fn = _t_webaudio_WebAudio_offlineSuspend, name_off = 34248, mod_idx = 51, realms = 1, sig_idx = 14},
-	{fn = _t_webaudio_WebAudio_offlineResume, name_off = 34272, mod_idx = 51, realms = 1, sig_idx = 10},
-	{fn = _t_webaudio_WebAudio_nodeCreate, name_off = 34295, mod_idx = 51, realms = 1, sig_idx = 210},
-	{fn = _t_webaudio_WebAudio_nodeRelease, name_off = 34315, mod_idx = 51, realms = 1, sig_idx = 11},
-	{fn = _t_webaudio_WebAudio_connect, name_off = 34336, mod_idx = 51, realms = 1, sig_idx = 211},
-	{fn = _t_webaudio_WebAudio_disconnect, name_off = 34353, mod_idx = 51, realms = 1, sig_idx = 211},
-	{fn = _t_webaudio_WebAudio_nodeSet, name_off = 34373, mod_idx = 51, realms = 1, sig_idx = 212},
-	{fn = _t_webaudio_WebAudio_nodeGet, name_off = 34390, mod_idx = 51, realms = 1, sig_idx = 213},
-	{fn = _t_webaudio_WebAudio_start, name_off = 34407, mod_idx = 51, realms = 1, sig_idx = 214},
-	{fn = _t_webaudio_WebAudio_stop, name_off = 34422, mod_idx = 51, realms = 1, sig_idx = 215},
-	{fn = _t_webaudio_WebAudio_setBuffer, name_off = 34436, mod_idx = 51, realms = 1, sig_idx = 44},
-	{fn = _t_webaudio_WebAudio_setConvolver, name_off = 34455, mod_idx = 51, realms = 1, sig_idx = 117},
-	{fn = _t_webaudio_WebAudio_setCurve, name_off = 34477, mod_idx = 51, realms = 1, sig_idx = 128},
-	{fn = _t_webaudio_WebAudio_setWave, name_off = 34495, mod_idx = 51, realms = 1, sig_idx = 216},
-	{fn = _t_webaudio_WebAudio_captureElement, name_off = 34512, mod_idx = 51, realms = 1, sig_idx = 217},
-	{fn = _t_webaudio_WebAudio_paramGet, name_off = 34536, mod_idx = 51, realms = 1, sig_idx = 213},
-	{fn = _t_webaudio_WebAudio_paramSet, name_off = 34554, mod_idx = 51, realms = 1, sig_idx = 218},
-	{fn = _t_webaudio_WebAudio_paramRate, name_off = 34572, mod_idx = 51, realms = 1, sig_idx = 219},
-	{fn = _t_webaudio_WebAudio_paramEvent, name_off = 34591, mod_idx = 51, realms = 1, sig_idx = 220},
-	{fn = _t_webaudio_WebAudio_paramCancel, name_off = 34611, mod_idx = 51, realms = 1, sig_idx = 221},
-	{fn = _t_webaudio_WebAudio_biquadResponse, name_off = 34632, mod_idx = 51, realms = 1, sig_idx = 222},
-	{fn = _t_webaudio_WebAudio_setIir, name_off = 34656, mod_idx = 51, realms = 1, sig_idx = 223},
-	{fn = _t_webaudio_WebAudio_iirResponse, name_off = 34672, mod_idx = 51, realms = 1, sig_idx = 222},
-	{fn = _t_webaudio_WebAudio_analyserRead, name_off = 34693, mod_idx = 51, realms = 1, sig_idx = 151},
-	{fn = _t_webaudio_WebAudio_scriptPull, name_off = 34715, mod_idx = 51, realms = 1, sig_idx = 128},
-	{fn = _t_webaudio_WebAudio_scriptPush, name_off = 34735, mod_idx = 51, realms = 1, sig_idx = 128},
-	{fn = _t_webaudio_WebAudio_pcmCreate, name_off = 34755, mod_idx = 51, realms = 1, sig_idx = 195},
-	{fn = _t_webaudio_WebAudio_pcmWrite, name_off = 34774, mod_idx = 51, realms = 1, sig_idx = 224},
-	{fn = _t_webaudio_WebAudio_pcmRead, name_off = 34792, mod_idx = 51, realms = 1, sig_idx = 224},
-	{fn = _t_webaudio_WebAudio_pcmInfo, name_off = 34809, mod_idx = 51, realms = 1, sig_idx = 15},
-	{fn = _t_webaudio_WebAudio_decode, name_off = 34826, mod_idx = 51, realms = 1, sig_idx = 225},
-	{fn = _t_webaudio_WebAudio_workletStart, name_off = 34842, mod_idx = 51, realms = 1, sig_idx = 1},
-	{fn = _t_webaudio_WebAudio_workletStop, name_off = 34864, mod_idx = 51, realms = 1, sig_idx = 10},
-	{fn = _t_webaudio_WebAudio_workletNode, name_off = 34885, mod_idx = 51, realms = 1, sig_idx = 55},
-	{fn = _t_webaudio_WebAudio_workletParam, name_off = 34906, mod_idx = 51, realms = 1, sig_idx = 226},
-	{fn = _t_webaudio_AudioWorkletRealm_sampleRate, name_off = 34928, mod_idx = 51, realms = 2, sig_idx = 18},
-	{fn = _t_webaudio_AudioWorkletRealm_frame, name_off = 34957, mod_idx = 51, realms = 2, sig_idx = 18},
-	{fn = _t_webaudio_AudioWorkletRealm_layout, name_off = 34981, mod_idx = 51, realms = 2, sig_idx = 22},
-	{fn = _t_webaudio_AudioWorkletRealm_read, name_off = 35006, mod_idx = 51, realms = 2, sig_idx = 122},
-	{fn = _t_webaudio_AudioWorkletRealm_write, name_off = 35029, mod_idx = 51, realms = 2, sig_idx = 122},
-	{fn = _t_webaudio_AudioWorkletRealm_finish, name_off = 35053, mod_idx = 51, realms = 2, sig_idx = 100},
-	{fn = _t_webaudio_AudioWorkletRealm_dropped, name_off = 35078, mod_idx = 51, realms = 2, sig_idx = 31},
-	{fn = _t_webcodecs_VideoFrame_fromImage, name_off = 35104, mod_idx = 52, realms = 3, sig_idx = 227},
-	{fn = _t_webcodecs_VideoFrame_fromBuffer, name_off = 35125, mod_idx = 52, realms = 3, sig_idx = 228},
-	{fn = _t_webcodecs_VideoFrame_format, name_off = 35147, mod_idx = 52, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_VideoFrame_codedWidth, name_off = 35165, mod_idx = 52, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_VideoFrame_codedHeight, name_off = 35187, mod_idx = 52, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_VideoFrame_displayWidth, name_off = 35210, mod_idx = 52, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_VideoFrame_displayHeight, name_off = 35234, mod_idx = 52, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_VideoFrame_timestamp, name_off = 35259, mod_idx = 52, realms = 3, sig_idx = 1},
-	{fn = _t_webcodecs_VideoFrame_duration, name_off = 35280, mod_idx = 52, realms = 3, sig_idx = 1},
-	{fn = _t_webcodecs_VideoFrame_visibleRect, name_off = 35300, mod_idx = 52, realms = 3, sig_idx = 15},
-	{fn = _t_webcodecs_VideoFrame_colorSpace, name_off = 35323, mod_idx = 52, realms = 3, sig_idx = 42},
-	{fn = _t_webcodecs_VideoFrame_isClosed, name_off = 35345, mod_idx = 52, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_VideoFrame_allocationSize, name_off = 35365, mod_idx = 52, realms = 3, sig_idx = 229},
-	{fn = _t_webcodecs_VideoFrame_copyTo, name_off = 35391, mod_idx = 52, realms = 3, sig_idx = 230},
-	{fn = _t_webcodecs_VideoFrame_copyLayout, name_off = 35409, mod_idx = 52, realms = 3, sig_idx = 150},
-	{fn = _t_webcodecs_VideoFrame_clone, name_off = 35431, mod_idx = 52, realms = 3, sig_idx = 27},
-	{fn = _t_webcodecs_VideoFrame_close, name_off = 35448, mod_idx = 52, realms = 3, sig_idx = 10},
-	{fn = _t_webcodecs_VideoFrame_transfer, name_off = 35465, mod_idx = 52, realms = 3, sig_idx = 66},
-	{fn = _t_webcodecs_VideoFrame_takeForTransfer, name_off = 35485, mod_idx = 52, realms = 3, sig_idx = 1},
-	{fn = _t_webcodecs_VideoFrame_adoptTransfer, name_off = 35512, mod_idx = 52, realms = 3, sig_idx = 1},
-	{fn = _t_webcodecs_audio_decoder_AudioDecoder_create, name_off = 35537, mod_idx = 53, realms = 3, sig_idx = 231},
-	{fn = _t_webcodecs_audio_decoder_AudioDecoder_isConfigSupported, name_off = 35557, mod_idx = 53, realms = 3, sig_idx = 22},
-	{fn = _t_webcodecs_audio_decoder_AudioDecoder_configure, name_off = 35588, mod_idx = 53, realms = 3, sig_idx = 232},
-	{fn = _t_webcodecs_audio_decoder_AudioDecoder_decode, name_off = 35611, mod_idx = 53, realms = 3, sig_idx = 233},
-	{fn = _t_webcodecs_audio_decoder_AudioDecoder_flush, name_off = 35631, mod_idx = 53, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_audio_decoder_AudioDecoder_reset, name_off = 35650, mod_idx = 53, realms = 3, sig_idx = 10},
-	{fn = _t_webcodecs_audio_decoder_AudioDecoder_close, name_off = 35669, mod_idx = 53, realms = 3, sig_idx = 10},
-	{fn = _t_webcodecs_audio_decoder_AudioDecoder_decodeQueueSize, name_off = 35688, mod_idx = 53, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_audio_decoder_AudioDecoder_state, name_off = 35717, mod_idx = 53, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_codec_EncodedVideoChunk_create, name_off = 35736, mod_idx = 54, realms = 3, sig_idx = 234},
-	{fn = _t_webcodecs_codec_EncodedAudioChunk_create, name_off = 35761, mod_idx = 54, realms = 3, sig_idx = 234},
-	{fn = _t_webcodecs_codec_EncodedVideoChunk_type, name_off = 35786, mod_idx = 54, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_codec_EncodedVideoChunk_timestamp, name_off = 35809, mod_idx = 54, realms = 3, sig_idx = 1},
-	{fn = _t_webcodecs_codec_EncodedVideoChunk_duration, name_off = 35837, mod_idx = 54, realms = 3, sig_idx = 1},
-	{fn = _t_webcodecs_codec_EncodedVideoChunk_byteLength, name_off = 35864, mod_idx = 54, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_codec_EncodedVideoChunk_copyTo, name_off = 35893, mod_idx = 54, realms = 3, sig_idx = 114},
-	{fn = _t_webcodecs_codec_EncodedAudioChunk_type, name_off = 35918, mod_idx = 54, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_codec_EncodedAudioChunk_timestamp, name_off = 35941, mod_idx = 54, realms = 3, sig_idx = 1},
-	{fn = _t_webcodecs_codec_EncodedAudioChunk_duration, name_off = 35969, mod_idx = 54, realms = 3, sig_idx = 1},
-	{fn = _t_webcodecs_codec_EncodedAudioChunk_byteLength, name_off = 35996, mod_idx = 54, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_codec_EncodedAudioChunk_copyTo, name_off = 36025, mod_idx = 54, realms = 3, sig_idx = 114},
-	{fn = _t_webcodecs_codec_AudioData_create, name_off = 36050, mod_idx = 54, realms = 3, sig_idx = 235},
-	{fn = _t_webcodecs_codec_AudioData_format, name_off = 36067, mod_idx = 54, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_codec_AudioData_sampleRate, name_off = 36084, mod_idx = 54, realms = 3, sig_idx = 13},
-	{fn = _t_webcodecs_codec_AudioData_numberOfFrames, name_off = 36105, mod_idx = 54, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_codec_AudioData_numberOfChannels, name_off = 36130, mod_idx = 54, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_codec_AudioData_timestamp, name_off = 36157, mod_idx = 54, realms = 3, sig_idx = 1},
-	{fn = _t_webcodecs_codec_AudioData_duration, name_off = 36177, mod_idx = 54, realms = 3, sig_idx = 1},
-	{fn = _t_webcodecs_codec_AudioData_allocationSize, name_off = 36196, mod_idx = 54, realms = 3, sig_idx = 164},
-	{fn = _t_webcodecs_codec_AudioData_copyTo, name_off = 36221, mod_idx = 54, realms = 3, sig_idx = 236},
-	{fn = _t_webcodecs_codec_AudioData_clone, name_off = 36238, mod_idx = 54, realms = 3, sig_idx = 27},
-	{fn = _t_webcodecs_codec_AudioData_close, name_off = 36254, mod_idx = 54, realms = 3, sig_idx = 10},
-	{fn = _t_webcodecs_encoders_VideoEncoder_create, name_off = 36270, mod_idx = 55, realms = 3, sig_idx = 231},
-	{fn = _t_webcodecs_encoders_AudioEncoder_create, name_off = 36290, mod_idx = 55, realms = 3, sig_idx = 231},
-	{fn = _t_webcodecs_encoders_VideoEncoder_isConfigSupported, name_off = 36310, mod_idx = 55, realms = 3, sig_idx = 22},
-	{fn = _t_webcodecs_encoders_AudioEncoder_isConfigSupported, name_off = 36341, mod_idx = 55, realms = 3, sig_idx = 22},
-	{fn = _t_webcodecs_encoders_VideoEncoder_configure, name_off = 36372, mod_idx = 55, realms = 3, sig_idx = 85},
-	{fn = _t_webcodecs_encoders_AudioEncoder_configure, name_off = 36395, mod_idx = 55, realms = 3, sig_idx = 85},
-	{fn = _t_webcodecs_encoders_VideoEncoder_encode, name_off = 36418, mod_idx = 55, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_encoders_AudioEncoder_encode, name_off = 36438, mod_idx = 55, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_encoders_VideoEncoder_flush, name_off = 36458, mod_idx = 55, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_encoders_AudioEncoder_flush, name_off = 36477, mod_idx = 55, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_encoders_VideoEncoder_reset, name_off = 36496, mod_idx = 55, realms = 3, sig_idx = 10},
-	{fn = _t_webcodecs_encoders_AudioEncoder_reset, name_off = 36515, mod_idx = 55, realms = 3, sig_idx = 10},
-	{fn = _t_webcodecs_encoders_VideoEncoder_close, name_off = 36534, mod_idx = 55, realms = 3, sig_idx = 10},
-	{fn = _t_webcodecs_encoders_AudioEncoder_close, name_off = 36553, mod_idx = 55, realms = 3, sig_idx = 10},
-	{fn = _t_webcodecs_encoders_VideoEncoder_encodeQueueSize, name_off = 36572, mod_idx = 55, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_encoders_AudioEncoder_encodeQueueSize, name_off = 36601, mod_idx = 55, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_encoders_VideoEncoder_state, name_off = 36630, mod_idx = 55, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_encoders_AudioEncoder_state, name_off = 36649, mod_idx = 55, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_image_ImageDecoder_create, name_off = 36668, mod_idx = 56, realms = 3, sig_idx = 159},
-	{fn = _t_webcodecs_image_ImageDecoder_isTypeSupported, name_off = 36688, mod_idx = 56, realms = 3, sig_idx = 22},
-	{fn = _t_webcodecs_image_ImageDecoder_type, name_off = 36717, mod_idx = 56, realms = 3, sig_idx = 4},
-	{fn = _t_webcodecs_image_ImageDecoder_complete, name_off = 36735, mod_idx = 56, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_image_ImageDecoder_frameCount, name_off = 36757, mod_idx = 56, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_image_ImageDecoder_decode, name_off = 36781, mod_idx = 56, realms = 3, sig_idx = 66},
-	{fn = _t_webcodecs_image_ImageDecoder_reset, name_off = 36801, mod_idx = 56, realms = 3, sig_idx = 10},
-	{fn = _t_webcodecs_image_ImageDecoder_close, name_off = 36820, mod_idx = 56, realms = 3, sig_idx = 10},
-	{fn = _t_webcodecs_image_ImageDecoder_tracks, name_off = 36839, mod_idx = 56, realms = 3, sig_idx = 1},
-	{fn = _t_webcodecs_image_ImageTrackList_length, name_off = 36859, mod_idx = 56, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_image_ImageTrackList_item, name_off = 36881, mod_idx = 56, realms = 3, sig_idx = 66},
-	{fn = _t_webcodecs_image_ImageTrackList_selectedIndex, name_off = 36901, mod_idx = 56, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_image_ImageTrack_animated, name_off = 36930, mod_idx = 56, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_image_ImageTrack_frameCount, name_off = 36950, mod_idx = 56, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_image_ImageTrack_repetitionCount, name_off = 36972, mod_idx = 56, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_image_ImageTrack_selected, name_off = 36999, mod_idx = 56, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_video_decoder_VideoDecoder_create, name_off = 37019, mod_idx = 57, realms = 3, sig_idx = 231},
-	{fn = _t_webcodecs_video_decoder_VideoDecoder_isConfigSupported, name_off = 37039, mod_idx = 57, realms = 3, sig_idx = 22},
-	{fn = _t_webcodecs_video_decoder_VideoDecoder_configure, name_off = 37070, mod_idx = 57, realms = 3, sig_idx = 232},
-	{fn = _t_webcodecs_video_decoder_VideoDecoder_decode, name_off = 37093, mod_idx = 57, realms = 3, sig_idx = 233},
-	{fn = _t_webcodecs_video_decoder_VideoDecoder_flush, name_off = 37113, mod_idx = 57, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_video_decoder_VideoDecoder_reset, name_off = 37132, mod_idx = 57, realms = 3, sig_idx = 10},
-	{fn = _t_webcodecs_video_decoder_VideoDecoder_close, name_off = 37151, mod_idx = 57, realms = 3, sig_idx = 10},
-	{fn = _t_webcodecs_video_decoder_VideoDecoder_decodeQueueSize, name_off = 37170, mod_idx = 57, realms = 3, sig_idx = 3},
-	{fn = _t_webcodecs_video_decoder_VideoDecoder_state, name_off = 37199, mod_idx = 57, realms = 3, sig_idx = 3},
-	{fn = _t_webgl_WebGL_enabled, name_off = 37218, mod_idx = 58, realms = 3, sig_idx = 125},
-	{fn = _t_webgl_WebGL_create, name_off = 37232, mod_idx = 58, realms = 3, sig_idx = 237},
-	{fn = _t_webgl_WebGL_createOffscreen, name_off = 37245, mod_idx = 58, realms = 3, sig_idx = 237},
-	{fn = _t_webgl_WebGL_createError, name_off = 37267, mod_idx = 58, realms = 3, sig_idx = 32},
-	{fn = _t_webgl_WebGL_submit, name_off = 37285, mod_idx = 58, realms = 3, sig_idx = 238},
-	{fn = _t_webgl_WebGL_query, name_off = 37298, mod_idx = 58, realms = 3, sig_idx = 239},
-	{fn = _t_webgl_WebGL_queryText, name_off = 37310, mod_idx = 58, realms = 3, sig_idx = 240},
-	{fn = _t_webgl_WebGL_upload, name_off = 37326, mod_idx = 58, realms = 3, sig_idx = 139},
-	{fn = _t_webgl_WebGL_width, name_off = 37339, mod_idx = 58, realms = 3, sig_idx = 3},
-	{fn = _t_webgl_WebGL_height, name_off = 37351, mod_idx = 58, realms = 3, sig_idx = 3},
-	{fn = _t_webgl_WebGL_snapshot, name_off = 37364, mod_idx = 58, realms = 3, sig_idx = 10},
-	{fn = _t_webgl_WebGL_commit, name_off = 37379, mod_idx = 58, realms = 3, sig_idx = 10},
-	{fn = _t_webgl_WebGL_isLost, name_off = 37392, mod_idx = 58, realms = 3, sig_idx = 3},
-	{fn = _t_webgl_WebGL_lose, name_off = 37405, mod_idx = 58, realms = 3, sig_idx = 10},
-	{fn = _t_webgl_WebGL_restore, name_off = 37416, mod_idx = 58, realms = 3, sig_idx = 3},
-	{fn = _t_websocket_WebSocket_create, name_off = 37430, mod_idx = 59, realms = 1, sig_idx = 152},
-	{fn = _t_websocket_WebSocket_readyState, name_off = 37447, mod_idx = 59, realms = 1, sig_idx = 3},
-	{fn = _t_websocket_WebSocket_url, name_off = 37468, mod_idx = 59, realms = 1, sig_idx = 4},
-	{fn = _t_websocket_WebSocket_protocol, name_off = 37482, mod_idx = 59, realms = 1, sig_idx = 4},
-	{fn = _t_websocket_WebSocket_extensions, name_off = 37501, mod_idx = 59, realms = 1, sig_idx = 4},
-	{fn = _t_websocket_WebSocket_bufferedAmount, name_off = 37522, mod_idx = 59, realms = 1, sig_idx = 1},
-	{fn = _t_websocket_WebSocket_binaryType, name_off = 37547, mod_idx = 59, realms = 1, sig_idx = 3},
-	{fn = _t_websocket_WebSocket_setBinaryType, name_off = 37568, mod_idx = 59, realms = 1, sig_idx = 42},
-	{fn = _t_websocket_WebSocket_send, name_off = 37592, mod_idx = 59, realms = 1, sig_idx = 85},
-	{fn = _t_websocket_WebSocket_sendBuffer, name_off = 37607, mod_idx = 59, realms = 1, sig_idx = 63},
-	{fn = _t_websocket_WebSocket_close, name_off = 37628, mod_idx = 59, realms = 1, sig_idx = 21},
-	{fn = _t_websocket_CloseEvent_wasClean, name_off = 37644, mod_idx = 59, realms = 1, sig_idx = 3},
-	{fn = _t_workers_Worker_create, name_off = 37664, mod_idx = 60, realms = 3, sig_idx = 152},
-	{fn = _t_workers_Worker_postMessage, name_off = 37678, mod_idx = 60, realms = 3, sig_idx = 86},
-	{fn = _t_workers_Worker_terminate, name_off = 37697, mod_idx = 60, realms = 3, sig_idx = 3},
-	{fn = _t_workers_DedicatedWorkerGlobalScope_self, name_off = 37714, mod_idx = 60, realms = 3, sig_idx = 0},
-	{fn = _t_workers_DedicatedWorkerGlobalScope_postMessage, name_off = 37746, mod_idx = 60, realms = 3, sig_idx = 120},
-	{fn = _t_workers_DedicatedWorkerGlobalScope_close, name_off = 37785, mod_idx = 60, realms = 3, sig_idx = 31},
-	{fn = _t_workers_DedicatedWorkerGlobalScope_name, name_off = 37818, mod_idx = 60, realms = 3, sig_idx = 32},
-	{fn = _t_workers_SharedWorkerGlobalScope_close, name_off = 37850, mod_idx = 60, realms = 3, sig_idx = 31},
-	{fn = _t_workers_SharedWorkerGlobalScope_name, name_off = 37880, mod_idx = 60, realms = 3, sig_idx = 32},
-	{fn = _t_workers_WorkerGlobalScope_location, name_off = 37909, mod_idx = 60, realms = 3, sig_idx = 32},
-	{fn = _t_workers_MessageEvent_transfer, name_off = 37936, mod_idx = 60, realms = 3, sig_idx = 43},
+	{fn = _t_forms_forms_value, name_off = 8464, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_value, name_off = 8488, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_setValue, name_off = 8512, mod_idx = 18, realms = 1, sig_idx = 85},
+	{fn = _t_forms_forms_setValue, name_off = 8538, mod_idx = 18, realms = 1, sig_idx = 85},
+	{fn = _t_forms_forms_setValue, name_off = 8567, mod_idx = 18, realms = 1, sig_idx = 85},
+	{fn = _t_forms_forms_setValue, name_off = 8594, mod_idx = 18, realms = 1, sig_idx = 85},
+	{fn = _t_forms_forms_setValue, name_off = 8621, mod_idx = 18, realms = 1, sig_idx = 85},
+	{fn = _t_forms_forms_setValue, name_off = 8648, mod_idx = 18, realms = 1, sig_idx = 85},
+	{fn = _t_forms_forms_defaultValue, name_off = 8675, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_defaultValue, name_off = 8705, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_defaultValue, name_off = 8738, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_setDefaultValue, name_off = 8769, mod_idx = 18, realms = 1, sig_idx = 85},
+	{fn = _t_forms_forms_setDefaultValue, name_off = 8802, mod_idx = 18, realms = 1, sig_idx = 85},
+	{fn = _t_forms_forms_setDefaultValue, name_off = 8838, mod_idx = 18, realms = 1, sig_idx = 85},
+	{fn = _t_forms_forms_checked, name_off = 8872, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_setChecked, name_off = 8897, mod_idx = 18, realms = 1, sig_idx = 41},
+	{fn = _t_forms_forms_defaultChecked, name_off = 8925, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_setDefaultChecked, name_off = 8957, mod_idx = 18, realms = 1, sig_idx = 11},
+	{fn = _t_forms_forms_indeterminate, name_off = 8992, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_setIndeterminate, name_off = 9023, mod_idx = 18, realms = 1, sig_idx = 11},
+	{fn = _t_forms_forms_type, name_off = 9057, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_type, name_off = 9079, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_type, name_off = 9104, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_type, name_off = 9127, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_type, name_off = 9150, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_type, name_off = 9173, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_type, name_off = 9198, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_name, name_off = 9221, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_name, name_off = 9243, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_name, name_off = 9268, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_name, name_off = 9291, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_name, name_off = 9314, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_name, name_off = 9337, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_name, name_off = 9362, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_form, name_off = 9385, mod_idx = 18, realms = 1, sig_idx = 1},
+	{fn = _t_forms_forms_form, name_off = 9407, mod_idx = 18, realms = 1, sig_idx = 1},
+	{fn = _t_forms_forms_form, name_off = 9432, mod_idx = 18, realms = 1, sig_idx = 1},
+	{fn = _t_forms_forms_form, name_off = 9455, mod_idx = 18, realms = 1, sig_idx = 1},
+	{fn = _t_forms_forms_form, name_off = 9478, mod_idx = 18, realms = 1, sig_idx = 1},
+	{fn = _t_forms_forms_form, name_off = 9501, mod_idx = 18, realms = 1, sig_idx = 1},
+	{fn = _t_forms_forms_form, name_off = 9526, mod_idx = 18, realms = 1, sig_idx = 1},
+	{fn = _t_forms_forms_form, name_off = 9549, mod_idx = 18, realms = 1, sig_idx = 1},
+	{fn = _t_forms_forms_form, name_off = 9572, mod_idx = 18, realms = 1, sig_idx = 1},
+	{fn = _t_forms_forms_form, name_off = 9594, mod_idx = 18, realms = 1, sig_idx = 1},
+	{fn = _t_forms_forms_disabled, name_off = 9617, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_disabled, name_off = 9643, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_disabled, name_off = 9672, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_disabled, name_off = 9699, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_disabled, name_off = 9726, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_disabled, name_off = 9755, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_disabled, name_off = 9782, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_setDisabled, name_off = 9811, mod_idx = 18, realms = 1, sig_idx = 11},
+	{fn = _t_forms_forms_setDisabled, name_off = 9840, mod_idx = 18, realms = 1, sig_idx = 11},
+	{fn = _t_forms_forms_setDisabled, name_off = 9872, mod_idx = 18, realms = 1, sig_idx = 11},
+	{fn = _t_forms_forms_setDisabled, name_off = 9902, mod_idx = 18, realms = 1, sig_idx = 11},
+	{fn = _t_forms_forms_setDisabled, name_off = 9932, mod_idx = 18, realms = 1, sig_idx = 11},
+	{fn = _t_forms_forms_setDisabled, name_off = 9964, mod_idx = 18, realms = 1, sig_idx = 11},
+	{fn = _t_forms_forms_setDisabled, name_off = 9994, mod_idx = 18, realms = 1, sig_idx = 11},
+	{fn = _t_forms_forms_readOnly, name_off = 10026, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_readOnly, name_off = 10052, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_setReadOnly, name_off = 10081, mod_idx = 18, realms = 1, sig_idx = 11},
+	{fn = _t_forms_forms_setReadOnly, name_off = 10110, mod_idx = 18, realms = 1, sig_idx = 11},
+	{fn = _t_forms_forms_required, name_off = 10142, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_required, name_off = 10168, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_required, name_off = 10197, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_setRequired, name_off = 10224, mod_idx = 18, realms = 1, sig_idx = 11},
+	{fn = _t_forms_forms_setRequired, name_off = 10253, mod_idx = 18, realms = 1, sig_idx = 11},
+	{fn = _t_forms_forms_setRequired, name_off = 10285, mod_idx = 18, realms = 1, sig_idx = 11},
+	{fn = _t_forms_forms_willValidate, name_off = 10315, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_willValidate, name_off = 10345, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_willValidate, name_off = 10378, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_willValidate, name_off = 10409, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_willValidate, name_off = 10440, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_willValidate, name_off = 10471, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_willValidate, name_off = 10504, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_validity, name_off = 10535, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_validity, name_off = 10561, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_validity, name_off = 10590, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_validity, name_off = 10617, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_validity, name_off = 10644, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_validity, name_off = 10671, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_validity, name_off = 10700, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_validationMessage, name_off = 10727, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_validationMessage, name_off = 10762, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_validationMessage, name_off = 10800, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_validationMessage, name_off = 10836, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_validationMessage, name_off = 10872, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_validationMessage, name_off = 10908, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_validationMessage, name_off = 10946, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_setCustomValidity, name_off = 10982, mod_idx = 18, realms = 1, sig_idx = 40},
+	{fn = _t_forms_forms_setCustomValidity, name_off = 11017, mod_idx = 18, realms = 1, sig_idx = 40},
+	{fn = _t_forms_forms_setCustomValidity, name_off = 11055, mod_idx = 18, realms = 1, sig_idx = 40},
+	{fn = _t_forms_forms_setCustomValidity, name_off = 11091, mod_idx = 18, realms = 1, sig_idx = 40},
+	{fn = _t_forms_forms_setCustomValidity, name_off = 11127, mod_idx = 18, realms = 1, sig_idx = 40},
+	{fn = _t_forms_forms_setCustomValidity, name_off = 11163, mod_idx = 18, realms = 1, sig_idx = 40},
+	{fn = _t_forms_forms_setCustomValidity, name_off = 11201, mod_idx = 18, realms = 1, sig_idx = 40},
+	{fn = _t_forms_forms_checkValidity, name_off = 11237, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_checkValidity, name_off = 11268, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_checkValidity, name_off = 11302, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_checkValidity, name_off = 11334, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_checkValidity, name_off = 11366, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_checkValidity, name_off = 11398, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_checkValidity, name_off = 11432, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_checkValidity, name_off = 11464, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_reportValidity, name_off = 11494, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_reportValidity, name_off = 11526, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_reportValidity, name_off = 11561, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_reportValidity, name_off = 11594, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_reportValidity, name_off = 11627, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_reportValidity, name_off = 11660, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_reportValidity, name_off = 11695, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_reportValidity, name_off = 11728, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_select, name_off = 11759, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_select, name_off = 11783, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_selectionStart, name_off = 11810, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_selectionStart, name_off = 11842, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_selectionEnd, name_off = 11877, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_selectionEnd, name_off = 11907, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_selectionDirection, name_off = 11940, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_selectionDirection, name_off = 11976, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_forms_setSelectionRange, name_off = 12015, mod_idx = 18, realms = 1, sig_idx = 101},
+	{fn = _t_forms_forms_setSelectionRange, name_off = 12050, mod_idx = 18, realms = 1, sig_idx = 101},
+	{fn = _t_forms_forms_setRangeText, name_off = 12088, mod_idx = 18, realms = 1, sig_idx = 102},
+	{fn = _t_forms_forms_setRangeText, name_off = 12118, mod_idx = 18, realms = 1, sig_idx = 102},
+	{fn = _t_forms_forms_maxLength, name_off = 12151, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_maxLength, name_off = 12178, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_minLength, name_off = 12208, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_minLength, name_off = 12235, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_stepUp, name_off = 12265, mod_idx = 18, realms = 1, sig_idx = 41},
+	{fn = _t_forms_forms_stepDown, name_off = 12289, mod_idx = 18, realms = 1, sig_idx = 41},
+	{fn = _t_forms_forms_valueAsNumber, name_off = 12315, mod_idx = 18, realms = 1, sig_idx = 13},
+	{fn = _t_forms_forms_setValueAsNumber, name_off = 12346, mod_idx = 18, realms = 1, sig_idx = 14},
+	{fn = _t_forms_forms_valueAsDate, name_off = 12380, mod_idx = 18, realms = 1, sig_idx = 13},
+	{fn = _t_forms_forms_setValueAsDate, name_off = 12409, mod_idx = 18, realms = 1, sig_idx = 14},
+	{fn = _t_forms_forms_files_length, name_off = 12441, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_forms_fileName, name_off = 12471, mod_idx = 18, realms = 1, sig_idx = 16},
+	{fn = _t_forms_forms_fileSize, name_off = 12497, mod_idx = 18, realms = 1, sig_idx = 42},
+	{fn = _t_forms_forms_fileType, name_off = 12523, mod_idx = 18, realms = 1, sig_idx = 16},
+	{fn = _t_forms_HTMLSelectElement_selectedIndex, name_off = 12549, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_HTMLSelectElement_setSelectedIndex, name_off = 12581, mod_idx = 18, realms = 1, sig_idx = 41},
+	{fn = _t_forms_HTMLSelectElement_length, name_off = 12616, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_HTMLSelectElement_item, name_off = 12641, mod_idx = 18, realms = 1, sig_idx = 42},
+	{fn = _t_forms_HTMLSelectElement_selectedOptions_length, name_off = 12664, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_HTMLSelectElement_selectedOptions_item, name_off = 12705, mod_idx = 18, realms = 1, sig_idx = 42},
+	{fn = _t_forms_HTMLOptionElement_selected, name_off = 12744, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_HTMLOptionElement_setSelected, name_off = 12771, mod_idx = 18, realms = 1, sig_idx = 41},
+	{fn = _t_forms_HTMLOptionElement_defaultSelected, name_off = 12801, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_HTMLOptionElement_setDefaultSelected, name_off = 12835, mod_idx = 18, realms = 1, sig_idx = 41},
+	{fn = _t_forms_HTMLOptionElement_index, name_off = 12872, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_HTMLOptionElement_text, name_off = 12896, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_HTMLOptionElement_label, name_off = 12919, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_HTMLFormElement_submit, name_off = 12943, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_HTMLFormElement_requestSubmit, name_off = 12966, mod_idx = 18, realms = 1, sig_idx = 62},
+	{fn = _t_forms_HTMLFormElement_reset, name_off = 12996, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_HTMLFormElement_length, name_off = 13018, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_HTMLFormElement_elements, name_off = 13041, mod_idx = 18, realms = 1, sig_idx = 42},
+	{fn = _t_forms_HTMLFormElement_namedItem, name_off = 13066, mod_idx = 18, realms = 1, sig_idx = 5},
+	{fn = _t_forms_HTMLLabelElement_control, name_off = 13092, mod_idx = 18, realms = 1, sig_idx = 1},
+	{fn = _t_forms_HTMLElement_focus, name_off = 13117, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_HTMLElement_blur, name_off = 13135, mod_idx = 18, realms = 1, sig_idx = 10},
+	{fn = _t_forms_HTMLElement_click, name_off = 13152, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_Document_activeElement, name_off = 13170, mod_idx = 18, realms = 1, sig_idx = 0},
+	{fn = _t_forms_HTMLDialogElement_returnValue, name_off = 13193, mod_idx = 18, realms = 1, sig_idx = 4},
+	{fn = _t_forms_HTMLDialogElement_set_returnValue, name_off = 13223, mod_idx = 18, realms = 1, sig_idx = 40},
+	{fn = _t_forms_FormData_create, name_off = 13257, mod_idx = 18, realms = 1, sig_idx = 61},
+	{fn = _t_forms_FormData_append, name_off = 13273, mod_idx = 18, realms = 1, sig_idx = 86},
+	{fn = _t_forms_FormData_appendBlob, name_off = 13289, mod_idx = 18, realms = 1, sig_idx = 103},
+	{fn = _t_forms_FormData_set, name_off = 13309, mod_idx = 18, realms = 1, sig_idx = 86},
+	{fn = _t_forms_FormData_delete, name_off = 13322, mod_idx = 18, realms = 1, sig_idx = 40},
+	{fn = _t_forms_FormData_has, name_off = 13338, mod_idx = 18, realms = 1, sig_idx = 85},
+	{fn = _t_forms_FormData_count, name_off = 13351, mod_idx = 18, realms = 1, sig_idx = 85},
+	{fn = _t_forms_FormData_get, name_off = 13366, mod_idx = 18, realms = 1, sig_idx = 68},
+	{fn = _t_forms_FormData_getAt, name_off = 13379, mod_idx = 18, realms = 1, sig_idx = 89},
+	{fn = _t_forms_FormData_size, name_off = 13394, mod_idx = 18, realms = 1, sig_idx = 3},
+	{fn = _t_forms_FormData_nameAt, name_off = 13408, mod_idx = 18, realms = 1, sig_idx = 16},
+	{fn = _t_forms_FormData_valueAt, name_off = 13424, mod_idx = 18, realms = 1, sig_idx = 16},
+	{fn = _t_forms_FormData_isFileAt, name_off = 13441, mod_idx = 18, realms = 1, sig_idx = 65},
+	{fn = _t_forms_FormData_fileSizeAt, name_off = 13459, mod_idx = 18, realms = 1, sig_idx = 42},
+	{fn = _t_forms_FormData_fileTypeAt, name_off = 13479, mod_idx = 18, realms = 1, sig_idx = 16},
+	{fn = _t_fetch_Fetch_startFormData, name_off = 13499, mod_idx = 16, realms = 1, sig_idx = 104},
+	{fn = _t_frames_Frame_self, name_off = 13519, mod_idx = 19, realms = 1, sig_idx = 0},
+	{fn = _t_frames_Frame_ofElement, name_off = 13530, mod_idx = 19, realms = 1, sig_idx = 1},
+	{fn = _t_frames_Frame_parent, name_off = 13546, mod_idx = 19, realms = 1, sig_idx = 1},
+	{fn = _t_frames_Frame_top, name_off = 13559, mod_idx = 19, realms = 1, sig_idx = 1},
+	{fn = _t_frames_Frame_length, name_off = 13569, mod_idx = 19, realms = 1, sig_idx = 3},
+	{fn = _t_frames_Frame_child, name_off = 13582, mod_idx = 19, realms = 1, sig_idx = 42},
+	{fn = _t_frames_Frame_named, name_off = 13594, mod_idx = 19, realms = 1, sig_idx = 5},
+	{fn = _t_frames_Frame_childNames, name_off = 13606, mod_idx = 19, realms = 1, sig_idx = 4},
+	{fn = _t_frames_Frame_closed, name_off = 13623, mod_idx = 19, realms = 1, sig_idx = 3},
+	{fn = _t_frames_Frame_sameOrigin, name_off = 13636, mod_idx = 19, realms = 1, sig_idx = 3},
+	{fn = _t_frames_Frame_documentOf, name_off = 13653, mod_idx = 19, realms = 1, sig_idx = 1},
+	{fn = _t_frames_Frame_elementOf, name_off = 13670, mod_idx = 19, realms = 1, sig_idx = 1},
+	{fn = _t_frames_Frame_ofDocument, name_off = 13686, mod_idx = 19, realms = 1, sig_idx = 1},
+	{fn = _t_frames_Frame_target, name_off = 13703, mod_idx = 19, realms = 1, sig_idx = 3},
+	{fn = _t_frames_Frame_windowTarget, name_off = 13716, mod_idx = 19, realms = 1, sig_idx = 1},
+	{fn = _t_frames_Frame_realmSelf, name_off = 13735, mod_idx = 19, realms = 1, sig_idx = 0},
+	{fn = _t_frames_Frame_realmOf, name_off = 13751, mod_idx = 19, realms = 1, sig_idx = 1},
+	{fn = _t_frames_Frame_bridge, name_off = 13765, mod_idx = 19, realms = 1, sig_idx = 85},
+	{fn = _t_frames_Frame_bridgeReply, name_off = 13778, mod_idx = 19, realms = 1, sig_idx = 70},
+	{fn = _t_frames_Frame_adoptNode, name_off = 13796, mod_idx = 19, realms = 1, sig_idx = 105},
+	{fn = _t_frames_Frame_postMessage, name_off = 13812, mod_idx = 19, realms = 1, sig_idx = 86},
+	{fn = _t_frames_Frame_navigate, name_off = 13830, mod_idx = 19, realms = 1, sig_idx = 106},
+	{fn = _t_frames_Frame_open, name_off = 13845, mod_idx = 19, realms = 1, sig_idx = 107},
+	{fn = _t_frames_Frame_opener, name_off = 13856, mod_idx = 19, realms = 1, sig_idx = 1},
+	{fn = _t_frames_Frame_close, name_off = 13869, mod_idx = 19, realms = 1, sig_idx = 10},
+	{fn = _t_frames_Frame_disown, name_off = 13881, mod_idx = 19, realms = 1, sig_idx = 108},
+	{fn = _t_frames_Frame_postMessagePorts, name_off = 13894, mod_idx = 19, realms = 1, sig_idx = 109},
+	{fn = _t_frames_Window_get_name, name_off = 13917, mod_idx = 19, realms = 1, sig_idx = 70},
+	{fn = _t_frames_Window_set_name, name_off = 13933, mod_idx = 19, realms = 1, sig_idx = 30},
+	{fn = _t_dom_HTMLIFrameElement_srcdoc, name_off = 13949, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HTMLIFrameElement_set_srcdoc, name_off = 13974, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_fs_Fs_opfsRoot, name_off = 14003, mod_idx = 20, realms = 3, sig_idx = 7},
+	{fn = _t_fs_Fs_getEntry, name_off = 14015, mod_idx = 20, realms = 3, sig_idx = 110},
+	{fn = _t_fs_Fs_removeEntry, name_off = 14027, mod_idx = 20, realms = 3, sig_idx = 111},
+	{fn = _t_fs_Fs_list, name_off = 14042, mod_idx = 20, realms = 3, sig_idx = 112},
+	{fn = _t_fs_Fs_resolve, name_off = 14050, mod_idx = 20, realms = 3, sig_idx = 113},
+	{fn = _t_fs_Fs_same, name_off = 14061, mod_idx = 20, realms = 3, sig_idx = 114},
+	{fn = _t_fs_Fs_getFile, name_off = 14069, mod_idx = 20, realms = 3, sig_idx = 112},
+	{fn = _t_fs_Fs_open, name_off = 14080, mod_idx = 20, realms = 3, sig_idx = 115},
+	{fn = _t_fs_Fs_write, name_off = 14088, mod_idx = 20, realms = 3, sig_idx = 47},
+	{fn = _t_fs_Fs_read, name_off = 14097, mod_idx = 20, realms = 3, sig_idx = 47},
+	{fn = _t_fs_Fs_seek, name_off = 14105, mod_idx = 20, realms = 3, sig_idx = 62},
+	{fn = _t_fs_Fs_truncate, name_off = 14113, mod_idx = 20, realms = 3, sig_idx = 62},
+	{fn = _t_fs_Fs_size, name_off = 14125, mod_idx = 20, realms = 3, sig_idx = 27},
+	{fn = _t_fs_Fs_flush, name_off = 14133, mod_idx = 20, realms = 3, sig_idx = 3},
+	{fn = _t_fs_Fs_close, name_off = 14142, mod_idx = 20, realms = 3, sig_idx = 41},
+	{fn = _t_fs_Fs_writeAsync, name_off = 14151, mod_idx = 20, realms = 3, sig_idx = 47},
+	{fn = _t_fs_Fs_truncateAsync, name_off = 14165, mod_idx = 20, realms = 3, sig_idx = 61},
+	{fn = _t_fs_Fs_closeAsync, name_off = 14182, mod_idx = 20, realms = 3, sig_idx = 65},
+	{fn = _t_fs_Fs_permission, name_off = 14196, mod_idx = 20, realms = 3, sig_idx = 41},
+	{fn = _t_fs_Fs_requestPermission, name_off = 14210, mod_idx = 20, realms = 3, sig_idx = 65},
+	{fn = _t_fs_Fs_showPicker, name_off = 14231, mod_idx = 20, realms = 3, sig_idx = 116},
+	{fn = _t_fs_Fs_describe, name_off = 14245, mod_idx = 20, realms = 3, sig_idx = 4},
+	{fn = _t_fs_Fs_restore, name_off = 14257, mod_idx = 20, realms = 3, sig_idx = 7},
+	{fn = _t_fullscreen_Element_requestFullscreen, name_off = 14268, mod_idx = 21, realms = 1, sig_idx = 42},
+	{fn = _t_fullscreen_Document_exitFullscreen, name_off = 14294, mod_idx = 21, realms = 1, sig_idx = 0},
+	{fn = _t_fullscreen_Document_fullscreenElement, name_off = 14318, mod_idx = 21, realms = 1, sig_idx = 0},
+	{fn = _t_fullscreen_ShadowRoot_fullscreenElement, name_off = 14345, mod_idx = 21, realms = 1, sig_idx = 1},
+	{fn = _t_fullscreen_Document_fullscreenEnabled, name_off = 14374, mod_idx = 21, realms = 1, sig_idx = 31},
+	{fn = _t_fullscreen_Document_fullscreen, name_off = 14401, mod_idx = 21, realms = 1, sig_idx = 31},
+	{fn = _t_highlight_Highlights_clear, name_off = 14421, mod_idx = 22, realms = 1, sig_idx = 108},
+	{fn = _t_highlight_Highlights_add, name_off = 14438, mod_idx = 22, realms = 1, sig_idx = 94},
+	{fn = _t_highlight_Highlights_addRange, name_off = 14453, mod_idx = 22, realms = 1, sig_idx = 117},
+	{fn = _t_history_Window_self, name_off = 14473, mod_idx = 23, realms = 1, sig_idx = 0},
+	{fn = _t_history_Document_self, name_off = 14485, mod_idx = 23, realms = 1, sig_idx = 0},
+	{fn = _t_history_Location_get, name_off = 14499, mod_idx = 23, realms = 1, sig_idx = 118},
+	{fn = _t_history_Location_set, name_off = 14512, mod_idx = 23, realms = 1, sig_idx = 119},
+	{fn = _t_history_Location_assign, name_off = 14525, mod_idx = 23, realms = 1, sig_idx = 22},
+	{fn = _t_history_Location_replace, name_off = 14541, mod_idx = 23, realms = 1, sig_idx = 22},
+	{fn = _t_history_Location_reload, name_off = 14558, mod_idx = 23, realms = 1, sig_idx = 108},
+	{fn = _t_history_History_length, name_off = 14574, mod_idx = 23, realms = 1, sig_idx = 31},
+	{fn = _t_history_History_state, name_off = 14589, mod_idx = 23, realms = 1, sig_idx = 70},
+	{fn = _t_history_History_pushState, name_off = 14603, mod_idx = 23, realms = 1, sig_idx = 120},
+	{fn = _t_history_History_replaceState, name_off = 14621, mod_idx = 23, realms = 1, sig_idx = 120},
+	{fn = _t_history_History_go, name_off = 14642, mod_idx = 23, realms = 1, sig_idx = 100},
+	{fn = _t_history_History_scrollRestoration, name_off = 14653, mod_idx = 23, realms = 1, sig_idx = 31},
+	{fn = _t_history_History_set_scrollRestoration, name_off = 14679, mod_idx = 23, realms = 1, sig_idx = 100},
+	{fn = _t_idb_Idb_call, name_off = 14709, mod_idx = 24, realms = 3, sig_idx = 121},
+	{fn = _t_images_HTMLImageElement_naturalWidth, name_off = 14718, mod_idx = 25, realms = 3, sig_idx = 3},
+	{fn = _t_images_HTMLImageElement_naturalHeight, name_off = 14748, mod_idx = 25, realms = 3, sig_idx = 3},
+	{fn = _t_images_HTMLImageElement_complete, name_off = 14779, mod_idx = 25, realms = 3, sig_idx = 3},
+	{fn = _t_images_HTMLImageElement_currentSrc, name_off = 14805, mod_idx = 25, realms = 3, sig_idx = 4},
+	{fn = _t_images_HTMLImageElement_decode, name_off = 14833, mod_idx = 25, realms = 3, sig_idx = 1},
+	{fn = _t_images_Image_decode, name_off = 14857, mod_idx = 25, realms = 3, sig_idx = 1},
+	{fn = _t_js_Engine_console, name_off = 14870, mod_idx = 26, realms = 3, sig_idx = 122},
+	{fn = _t_js_Engine_reportException, name_off = 14885, mod_idx = 26, realms = 3, sig_idx = 123},
+	{fn = _t_js_Engine_storeBytecode, name_off = 14908, mod_idx = 26, realms = 3, sig_idx = 30},
+	{fn = _t_js_Engine_timezoneOffset, name_off = 14929, mod_idx = 26, realms = 3, sig_idx = 124},
+	{fn = _t_js_Engine_timeZone, name_off = 14951, mod_idx = 26, realms = 3, sig_idx = 70},
+	{fn = _t_js_Engine_locale, name_off = 14967, mod_idx = 26, realms = 3, sig_idx = 70},
+	{fn = _t_js_Engine_jitCompile, name_off = 14981, mod_idx = 26, realms = 3, sig_idx = 22},
+	{fn = _t_js_Engine_jitPoll, name_off = 14999, mod_idx = 26, realms = 3, sig_idx = 125},
+	{fn = _t_js_Engine_stackMove, name_off = 15014, mod_idx = 26, realms = 3, sig_idx = 125},
+	{fn = _t_js_Engine_nativeStackLow, name_off = 15031, mod_idx = 26, realms = 3, sig_idx = 31},
+	{fn = _t_js_Engine_span, name_off = 15053, mod_idx = 26, realms = 3, sig_idx = 23},
+	{fn = _t_js_Node_wrap, name_off = 15065, mod_idx = 26, realms = 3, sig_idx = 3},
+	{fn = _t_js_Document_createElementWrapped, name_off = 15075, mod_idx = 26, realms = 3, sig_idx = 7},
+	{fn = _t_js_Document_createTextWrapped, name_off = 15105, mod_idx = 26, realms = 3, sig_idx = 7},
+	{fn = _t_js_Node_unpin, name_off = 15132, mod_idx = 26, realms = 3, sig_idx = 10},
+	{fn = _t_js_Node_treeRoots, name_off = 15143, mod_idx = 26, realms = 3, sig_idx = 126},
+	{fn = _t_dom_LinkStyle_sheetOf, name_off = 15158, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_DocumentOrShadowRoot_sheetCount, name_off = 15176, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_DocumentOrShadowRoot_sheetAt, name_off = 15208, mod_idx = 11, realms = 3, sig_idx = 42},
+	{fn = _t_dom_CSSStyleSheet_isSheet, name_off = 15237, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_CSSStyleSheet_ownerNodeOf, name_off = 15259, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_CSSStyleSheet_hrefOf, name_off = 15285, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_CSSStyleSheet_titleOf, name_off = 15306, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_CSSStyleSheet_rulesVersion, name_off = 15328, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_CSSStyleSheet_ruleId, name_off = 15355, mod_idx = 11, realms = 3, sig_idx = 41},
+	{fn = _t_dom_CustomElements_define, name_off = 15376, mod_idx = 11, realms = 3, sig_idx = 94},
+	{fn = _t_dom_CustomElements_pending, name_off = 15398, mod_idx = 11, realms = 3, sig_idx = 31},
+	{fn = _t_dom_CustomElements_take, name_off = 15421, mod_idx = 11, realms = 3, sig_idx = 70},
+	{fn = _t_dom_CustomElements_release, name_off = 15441, mod_idx = 11, realms = 3, sig_idx = 30},
+	{fn = _t_dom_CustomElements_create, name_off = 15464, mod_idx = 11, realms = 3, sig_idx = 7},
+	{fn = _t_dom_Element_setCustomState, name_off = 15486, mod_idx = 11, realms = 3, sig_idx = 11},
+	{fn = _t_dom_Element_isFormAssociated, name_off = 15509, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Element_setFormValue, name_off = 15534, mod_idx = 11, realms = 3, sig_idx = 127},
+	{fn = _t_dom_Element_setFormValidity, name_off = 15555, mod_idx = 11, realms = 3, sig_idx = 128},
+	{fn = _t_dnd_DataTransfer_create, name_off = 15579, mod_idx = 27, realms = 1, sig_idx = 0},
+	{fn = _t_dnd_DataTransfer_get_dropEffect, name_off = 15599, mod_idx = 27, realms = 1, sig_idx = 4},
+	{fn = _t_dnd_DataTransfer_set_dropEffect, name_off = 15627, mod_idx = 27, realms = 1, sig_idx = 40},
+	{fn = _t_dnd_DataTransfer_get_effectAllowed, name_off = 15655, mod_idx = 27, realms = 1, sig_idx = 4},
+	{fn = _t_dnd_DataTransfer_set_effectAllowed, name_off = 15686, mod_idx = 27, realms = 1, sig_idx = 40},
+	{fn = _t_dnd_DataTransfer_getData, name_off = 15717, mod_idx = 27, realms = 1, sig_idx = 68},
+	{fn = _t_dnd_DataTransfer_setData, name_off = 15738, mod_idx = 27, realms = 1, sig_idx = 129},
+	{fn = _t_dnd_DataTransfer_clearData, name_off = 15759, mod_idx = 27, realms = 1, sig_idx = 40},
+	{fn = _t_dnd_DataTransfer_setDragImage, name_off = 15782, mod_idx = 27, realms = 1, sig_idx = 130},
+	{fn = _t_dnd_DataTransfer_typeList, name_off = 15808, mod_idx = 27, realms = 1, sig_idx = 4},
+	{fn = _t_dnd_DataTransfer_itemCount, name_off = 15830, mod_idx = 27, realms = 1, sig_idx = 3},
+	{fn = _t_dnd_DataTransfer_itemKind, name_off = 15853, mod_idx = 27, realms = 1, sig_idx = 65},
+	{fn = _t_dnd_DataTransfer_itemType, name_off = 15875, mod_idx = 27, realms = 1, sig_idx = 16},
+	{fn = _t_dnd_DataTransfer_itemString, name_off = 15897, mod_idx = 27, realms = 1, sig_idx = 16},
+	{fn = _t_dnd_DataTransfer_itemFile, name_off = 15921, mod_idx = 27, realms = 1, sig_idx = 65},
+	{fn = _t_dnd_DataTransfer_addString, name_off = 15943, mod_idx = 27, realms = 1, sig_idx = 86},
+	{fn = _t_dnd_DataTransfer_addFile, name_off = 15966, mod_idx = 27, realms = 1, sig_idx = 62},
+	{fn = _t_dnd_DataTransfer_addBytes, name_off = 15987, mod_idx = 27, realms = 1, sig_idx = 131},
+	{fn = _t_dnd_DataTransfer_removeItem, name_off = 16009, mod_idx = 27, realms = 1, sig_idx = 41},
+	{fn = _t_dnd_DataTransfer_clearItems, name_off = 16033, mod_idx = 27, realms = 1, sig_idx = 3},
+	{fn = _t_dnd_DataTransfer_fileCount, name_off = 16057, mod_idx = 27, realms = 1, sig_idx = 3},
+	{fn = _t_dnd_DataTransfer_file, name_off = 16080, mod_idx = 27, realms = 1, sig_idx = 65},
+	{fn = _t_dnd_DataTransfer_mode, name_off = 16098, mod_idx = 27, realms = 1, sig_idx = 3},
+	{fn = _t_dnd_LocalFile_name, name_off = 16116, mod_idx = 27, realms = 3, sig_idx = 4},
+	{fn = _t_dnd_LocalFile_type, name_off = 16131, mod_idx = 27, realms = 3, sig_idx = 4},
+	{fn = _t_dnd_LocalFile_info, name_off = 16146, mod_idx = 27, realms = 3, sig_idx = 132},
+	{fn = _t_dnd_LocalFile_read, name_off = 16161, mod_idx = 27, realms = 3, sig_idx = 47},
+	{fn = _t_dnd_DataTransfer_itemFsHandle, name_off = 16176, mod_idx = 27, realms = 1, sig_idx = 16},
+	{fn = _t_dnd_DragEvent_dataTransfer, name_off = 16202, mod_idx = 27, realms = 1, sig_idx = 1},
+	{fn = _t_dnd_InputFiles_count, name_off = 16225, mod_idx = 27, realms = 1, sig_idx = 3},
+	{fn = _t_dnd_InputFiles_item, name_off = 16242, mod_idx = 27, realms = 1, sig_idx = 65},
+	{fn = _t_dnd_InputFiles_assign, name_off = 16258, mod_idx = 27, realms = 1, sig_idx = 62},
+	{fn = _t_dom_Document_readyState, name_off = 16276, mod_idx = 11, realms = 3, sig_idx = 70},
+	{fn = _t_dom_Document_currentScript, name_off = 16296, mod_idx = 11, realms = 3, sig_idx = 0},
+	{fn = _t_dom_Window_document, name_off = 16319, mod_idx = 11, realms = 3, sig_idx = 0},
+	{fn = _t_dom_Document_resolveURL, name_off = 16335, mod_idx = 11, realms = 3, sig_idx = 133},
+	{fn = _t_dom_Element_id, name_off = 16355, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Element_set_id, name_off = 16366, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_Element_className, name_off = 16381, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Element_set_className, name_off = 16399, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_Collection_create, name_off = 16421, mod_idx = 11, realms = 3, sig_idx = 134},
+	{fn = _t_dom_Collection_length, name_off = 16439, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Collection_item, name_off = 16457, mod_idx = 11, realms = 3, sig_idx = 42},
+	{fn = _t_dom_Collection_namedItem, name_off = 16473, mod_idx = 11, realms = 3, sig_idx = 5},
+	{fn = _t_dom_Collection_names, name_off = 16494, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_ParentNode_querySelectorAllPacked, name_off = 16511, mod_idx = 11, realms = 3, sig_idx = 68},
+	{fn = _t_dom_HTMLFormElement_namedControl, name_off = 16545, mod_idx = 11, realms = 3, sig_idx = 5},
+	{fn = _t_dom_ParentNode_querySelector, name_off = 16574, mod_idx = 11, realms = 3, sig_idx = 112},
+	{fn = _t_dom_TokenList_length, name_off = 16599, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_TokenList_item, name_off = 16616, mod_idx = 11, realms = 3, sig_idx = 89},
+	{fn = _t_dom_TokenList_contains, name_off = 16631, mod_idx = 11, realms = 3, sig_idx = 86},
+	{fn = _t_dom_TokenList_add, name_off = 16650, mod_idx = 11, realms = 3, sig_idx = 86},
+	{fn = _t_dom_TokenList_remove, name_off = 16664, mod_idx = 11, realms = 3, sig_idx = 86},
+	{fn = _t_dom_TokenList_toggle, name_off = 16681, mod_idx = 11, realms = 3, sig_idx = 111},
+	{fn = _t_dom_TokenList_replace, name_off = 16698, mod_idx = 11, realms = 3, sig_idx = 135},
+	{fn = _t_dom_TokenList_supports, name_off = 16716, mod_idx = 11, realms = 3, sig_idx = 136},
+	{fn = _t_dom_Dataset_get, name_off = 16735, mod_idx = 11, realms = 3, sig_idx = 68},
+	{fn = _t_dom_Dataset_set, name_off = 16747, mod_idx = 11, realms = 3, sig_idx = 86},
+	{fn = _t_dom_Dataset_delete, name_off = 16759, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_Dataset_names, name_off = 16774, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Element_namespaceURI, name_off = 16788, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Element_prefix, name_off = 16809, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Element_localName, name_off = 16824, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Element_qualifiedTagName, name_off = 16842, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Element_slot, name_off = 16867, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Element_set_slot, name_off = 16880, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_Element_hasAttributes, name_off = 16897, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Element_attributeNames, name_off = 16919, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Element_attributeCount, name_off = 16942, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Element_attributeNameAt, name_off = 16965, mod_idx = 11, realms = 3, sig_idx = 16},
+	{fn = _t_dom_Element_attributeNamespaceAt, name_off = 16989, mod_idx = 11, realms = 3, sig_idx = 16},
+	{fn = _t_dom_Element_attributeIndex, name_off = 17018, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_Element_attributeIndexNS, name_off = 17041, mod_idx = 11, realms = 3, sig_idx = 86},
+	{fn = _t_dom_Element_setAttributeOfAttr, name_off = 17066, mod_idx = 11, realms = 3, sig_idx = 109},
+	{fn = _t_dom_Element_getAttributeNS, name_off = 17093, mod_idx = 11, realms = 3, sig_idx = 137},
+	{fn = _t_dom_Element_setAttributeChecked, name_off = 17116, mod_idx = 11, realms = 3, sig_idx = 86},
+	{fn = _t_dom_Element_setAttributeNS, name_off = 17144, mod_idx = 11, realms = 3, sig_idx = 109},
+	{fn = _t_dom_Element_removeAttributeNS, name_off = 17167, mod_idx = 11, realms = 3, sig_idx = 129},
+	{fn = _t_dom_Element_toggleAttributeChecked, name_off = 17193, mod_idx = 11, realms = 3, sig_idx = 92},
+	{fn = _t_dom_Element_hasAttribute, name_off = 17224, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_Element_hasAttributeNS, name_off = 17245, mod_idx = 11, realms = 3, sig_idx = 86},
+	{fn = _t_dom_Element_closest, name_off = 17268, mod_idx = 11, realms = 3, sig_idx = 112},
+	{fn = _t_dom_Element_matches, name_off = 17284, mod_idx = 11, realms = 3, sig_idx = 112},
+	{fn = _t_dom_Element_webkitMatchesSelector, name_off = 17300, mod_idx = 11, realms = 3, sig_idx = 112},
+	{fn = _t_dom_Element_insertAdjacentElement, name_off = 17330, mod_idx = 11, realms = 3, sig_idx = 138},
+	{fn = _t_dom_Element_insertAdjacentText, name_off = 17360, mod_idx = 11, realms = 3, sig_idx = 86},
+	{fn = _t_dom_Element_insertAdjacentHTML, name_off = 17387, mod_idx = 11, realms = 3, sig_idx = 86},
+	{fn = _t_dom_Element_innerHTML, name_off = 17414, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Element_set_innerHTML, name_off = 17432, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_Element_outerHTML, name_off = 17454, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Element_set_outerHTML, name_off = 17472, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_Element_shadowRoot, name_off = 17494, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_HTMLElement_hiddenState, name_off = 17513, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_HTMLElement_dir, name_off = 17537, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HTMLElement_set_dir, name_off = 17553, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HTMLElement_translate, name_off = 17573, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_HTMLElement_set_translate, name_off = 17595, mod_idx = 11, realms = 3, sig_idx = 41},
+	{fn = _t_dom_HTMLElement_draggable, name_off = 17621, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_HTMLElement_set_draggable, name_off = 17643, mod_idx = 11, realms = 3, sig_idx = 41},
+	{fn = _t_dom_HTMLElement_spellcheck, name_off = 17669, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_HTMLElement_set_spellcheck, name_off = 17692, mod_idx = 11, realms = 3, sig_idx = 41},
+	{fn = _t_dom_HTMLElement_innerText, name_off = 17719, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HTMLElement_set_innerText, name_off = 17741, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HTMLElement_outerText, name_off = 17767, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HTMLElement_set_outerText, name_off = 17789, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HTMLElement_accessKeyLabel, name_off = 17815, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HTMLOrSVGOrMathMLElement_tabIndex, name_off = 17842, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_HTMLOrSVGOrMathMLElement_set_tabIndex, name_off = 17876, mod_idx = 11, realms = 3, sig_idx = 41},
+	{fn = _t_dom_HTMLOrSVGOrMathMLElement_nonce, name_off = 17914, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HTMLOrSVGOrMathMLElement_set_nonce, name_off = 17945, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_ElementContentEditable_contentEditable, name_off = 17980, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_ElementContentEditable_set_contentEditable, name_off = 18019, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_ElementContentEditable_isContentEditable, name_off = 18062, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_HTMLHyperlinkElementUtils_href, name_off = 18103, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HTMLHyperlinkElementUtils_set_href, name_off = 18134, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HyperlinkElementUtils_origin, name_off = 18169, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HyperlinkElementUtils_protocol, name_off = 18198, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HyperlinkElementUtils_set_protocol, name_off = 18229, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HyperlinkElementUtils_username, name_off = 18264, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HyperlinkElementUtils_set_username, name_off = 18295, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HyperlinkElementUtils_password, name_off = 18330, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HyperlinkElementUtils_set_password, name_off = 18361, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HyperlinkElementUtils_host, name_off = 18396, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HyperlinkElementUtils_set_host, name_off = 18423, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HyperlinkElementUtils_hostname, name_off = 18454, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HyperlinkElementUtils_set_hostname, name_off = 18485, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HyperlinkElementUtils_port, name_off = 18520, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HyperlinkElementUtils_set_port, name_off = 18547, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HyperlinkElementUtils_pathname, name_off = 18578, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HyperlinkElementUtils_set_pathname, name_off = 18609, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HyperlinkElementUtils_search, name_off = 18644, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HyperlinkElementUtils_set_search, name_off = 18673, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HyperlinkElementUtils_hash, name_off = 18706, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HyperlinkElementUtils_set_hash, name_off = 18733, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HTMLAnchorElement_text, name_off = 18764, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HTMLAnchorElement_set_text, name_off = 18787, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HTMLTemplateElement_content, name_off = 18814, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_events_TouchEvent_count, name_off = 18842, mod_idx = 13, realms = 3, sig_idx = 41},
+	{fn = _t_events_TouchEvent_touch, name_off = 18859, mod_idx = 13, realms = 3, sig_idx = 36},
+	{fn = _t_events_PointerCapture_set, name_off = 18876, mod_idx = 13, realms = 3, sig_idx = 41},
+	{fn = _t_events_PointerCapture_release, name_off = 18895, mod_idx = 13, realms = 3, sig_idx = 41},
+	{fn = _t_events_PointerCapture_has, name_off = 18918, mod_idx = 13, realms = 3, sig_idx = 41},
+	{fn = _t_events_PointerEvent_coalescedCount, name_off = 18937, mod_idx = 13, realms = 3, sig_idx = 3},
+	{fn = _t_events_PointerEvent_coalescedAt, name_off = 18965, mod_idx = 13, realms = 3, sig_idx = 65},
+	{fn = _t_events_Event_uiData, name_off = 18990, mod_idx = 13, realms = 3, sig_idx = 132},
+	{fn = _t_events_UiEvent_key, name_off = 19003, mod_idx = 13, realms = 3, sig_idx = 4},
+	{fn = _t_events_UiEvent_code, name_off = 19015, mod_idx = 13, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HTMLInputElement_set_type, name_off = 19028, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HTMLInputElement_set_maxLength, name_off = 19054, mod_idx = 11, realms = 3, sig_idx = 41},
+	{fn = _t_dom_HTMLInputElement_set_minLength, name_off = 19085, mod_idx = 11, realms = 3, sig_idx = 41},
+	{fn = _t_dom_HTMLTextAreaElement_set_maxLength, name_off = 19116, mod_idx = 11, realms = 3, sig_idx = 41},
+	{fn = _t_dom_HTMLTextAreaElement_set_minLength, name_off = 19150, mod_idx = 11, realms = 3, sig_idx = 41},
+	{fn = _t_dom_HTMLOptionElement_set_text, name_off = 19184, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HTMLTableElement_caption, name_off = 19211, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_HTMLTableElement_set_caption, name_off = 19236, mod_idx = 11, realms = 3, sig_idx = 62},
+	{fn = _t_dom_HTMLTableElement_createCaption, name_off = 19265, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_HTMLTableElement_deleteCaption, name_off = 19296, mod_idx = 11, realms = 3, sig_idx = 10},
+	{fn = _t_dom_HTMLTableElement_tHead, name_off = 19327, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_HTMLTableElement_set_tHead, name_off = 19350, mod_idx = 11, realms = 3, sig_idx = 62},
+	{fn = _t_dom_HTMLTableElement_createTHead, name_off = 19377, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_HTMLTableElement_deleteTHead, name_off = 19406, mod_idx = 11, realms = 3, sig_idx = 10},
+	{fn = _t_dom_HTMLTableElement_tFoot, name_off = 19435, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_HTMLTableElement_set_tFoot, name_off = 19458, mod_idx = 11, realms = 3, sig_idx = 62},
+	{fn = _t_dom_HTMLTableElement_createTFoot, name_off = 19485, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_HTMLTableElement_deleteTFoot, name_off = 19514, mod_idx = 11, realms = 3, sig_idx = 10},
+	{fn = _t_dom_HTMLTableElement_createTBody, name_off = 19543, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_HTMLTableElement_insertRow, name_off = 19572, mod_idx = 11, realms = 3, sig_idx = 65},
+	{fn = _t_dom_HTMLTableElement_deleteRow, name_off = 19599, mod_idx = 11, realms = 3, sig_idx = 41},
+	{fn = _t_dom_HTMLTableSectionElement_insertRow, name_off = 19626, mod_idx = 11, realms = 3, sig_idx = 65},
+	{fn = _t_dom_HTMLTableSectionElement_deleteRow, name_off = 19660, mod_idx = 11, realms = 3, sig_idx = 41},
+	{fn = _t_dom_HTMLTableRowElement_insertCell, name_off = 19694, mod_idx = 11, realms = 3, sig_idx = 65},
+	{fn = _t_dom_HTMLTableRowElement_deleteCell, name_off = 19725, mod_idx = 11, realms = 3, sig_idx = 41},
+	{fn = _t_dom_HTMLTableRowElement_rowIndex, name_off = 19756, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_HTMLTableRowElement_sectionRowIndex, name_off = 19785, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_HTMLTableCellElement_cellIndex, name_off = 19821, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_HTMLTitleElement_text, name_off = 19852, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HTMLTitleElement_set_text, name_off = 19874, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HTMLScriptElement_text, name_off = 19900, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HTMLScriptElement_set_text, name_off = 19923, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_HTMLInputElement_list, name_off = 19950, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_HTMLDialogElement_closedBy, name_off = 19972, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_HTMLDialogElement_set_closedBy, name_off = 19999, mod_idx = 11, realms = 3, sig_idx = 40},
+	{fn = _t_dom_HTMLDialogElement_show, name_off = 20030, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_HTMLDialogElement_showModal, name_off = 20053, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_HTMLDialogElement_close, name_off = 20081, mod_idx = 11, realms = 3, sig_idx = 40},
+	{fn = _t_dom_HTMLDialogElement_requestClose, name_off = 20105, mod_idx = 11, realms = 3, sig_idx = 40},
+	{fn = _t_dom_Element_boundingRect, name_off = 20136, mod_idx = 11, realms = 3, sig_idx = 132},
+	{fn = _t_dom_Element_clientRectsPacked, name_off = 20157, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Element_clientTop, name_off = 20183, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Element_clientLeft, name_off = 20201, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Element_clientWidth, name_off = 20220, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Element_clientHeight, name_off = 20240, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Element_scrollTop, name_off = 20261, mod_idx = 11, realms = 3, sig_idx = 13},
+	{fn = _t_dom_Element_set_scrollTop, name_off = 20279, mod_idx = 11, realms = 3, sig_idx = 12},
+	{fn = _t_dom_Element_scrollLeft, name_off = 20301, mod_idx = 11, realms = 3, sig_idx = 13},
+	{fn = _t_dom_Element_set_scrollLeft, name_off = 20320, mod_idx = 11, realms = 3, sig_idx = 12},
+	{fn = _t_dom_Element_scrollWidth, name_off = 20343, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Element_scrollHeight, name_off = 20363, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Element_scrollToXY, name_off = 20384, mod_idx = 11, realms = 3, sig_idx = 139},
+	{fn = _t_dom_Element_scrollIntoViewAt, name_off = 20403, mod_idx = 11, realms = 3, sig_idx = 25},
+	{fn = _t_dom_HTMLElement_offsetParent, name_off = 20428, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_HTMLElement_offsetTop, name_off = 20453, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_HTMLElement_offsetLeft, name_off = 20475, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_HTMLElement_offsetWidth, name_off = 20498, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_HTMLElement_offsetHeight, name_off = 20522, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Document_elementFromPoint, name_off = 20547, mod_idx = 11, realms = 3, sig_idx = 140},
+	{fn = _t_dom_Window_innerWidth, name_off = 20573, mod_idx = 11, realms = 3, sig_idx = 31},
+	{fn = _t_dom_Window_innerHeight, name_off = 20591, mod_idx = 11, realms = 3, sig_idx = 31},
+	{fn = _t_dom_Window_outerWidth, name_off = 20610, mod_idx = 11, realms = 3, sig_idx = 31},
+	{fn = _t_dom_Window_outerHeight, name_off = 20628, mod_idx = 11, realms = 3, sig_idx = 31},
+	{fn = _t_dom_Window_scrollX, name_off = 20647, mod_idx = 11, realms = 3, sig_idx = 18},
+	{fn = _t_dom_Window_scrollY, name_off = 20662, mod_idx = 11, realms = 3, sig_idx = 18},
+	{fn = _t_dom_Window_pageXOffset, name_off = 20677, mod_idx = 11, realms = 3, sig_idx = 18},
+	{fn = _t_dom_Window_pageYOffset, name_off = 20696, mod_idx = 11, realms = 3, sig_idx = 18},
+	{fn = _t_dom_Window_devicePixelRatio, name_off = 20715, mod_idx = 11, realms = 3, sig_idx = 18},
+	{fn = _t_dom_Window_screenX, name_off = 20739, mod_idx = 11, realms = 3, sig_idx = 31},
+	{fn = _t_dom_Window_screenY, name_off = 20754, mod_idx = 11, realms = 3, sig_idx = 31},
+	{fn = _t_dom_Window_screenLeft, name_off = 20769, mod_idx = 11, realms = 3, sig_idx = 31},
+	{fn = _t_dom_Window_screenTop, name_off = 20787, mod_idx = 11, realms = 3, sig_idx = 31},
+	{fn = _t_dom_Window_scrollToXY, name_off = 20804, mod_idx = 11, realms = 3, sig_idx = 141},
+	{fn = _t_dom_Range_boundingRect, name_off = 20822, mod_idx = 11, realms = 3, sig_idx = 142},
+	{fn = _t_dom_Range_clientRectsPacked, name_off = 20841, mod_idx = 11, realms = 3, sig_idx = 143},
+	{fn = _t_dom_MutationObserver_create, name_off = 20865, mod_idx = 11, realms = 3, sig_idx = 8},
+	{fn = _t_dom_MutationObserver_observe, name_off = 20889, mod_idx = 11, realms = 3, sig_idx = 144},
+	{fn = _t_dom_MutationObserver_disconnect, name_off = 20914, mod_idx = 11, realms = 3, sig_idx = 10},
+	{fn = _t_dom_MutationObserver_takeRecords, name_off = 20942, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_MutationObserver_release, name_off = 20971, mod_idx = 11, realms = 3, sig_idx = 10},
+	{fn = _t_dom_MutationObserver_live, name_off = 20996, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Range_comparePoints, name_off = 21018, mod_idx = 11, realms = 3, sig_idx = 145},
+	{fn = _t_dom_Range_text, name_off = 21038, mod_idx = 11, realms = 3, sig_idx = 143},
+	{fn = _t_dom_Range_contents, name_off = 21049, mod_idx = 11, realms = 3, sig_idx = 146},
+	{fn = _t_dom_Range_createContextualFragment, name_off = 21064, mod_idx = 11, realms = 3, sig_idx = 112},
+	{fn = _t_dom_Selection_state, name_off = 21095, mod_idx = 11, realms = 3, sig_idx = 147},
+	{fn = _t_dom_Selection_setRange, name_off = 21111, mod_idx = 11, realms = 3, sig_idx = 145},
+	{fn = _t_dom_Selection_clear, name_off = 21130, mod_idx = 11, realms = 3, sig_idx = 108},
+	{fn = _t_dom_Selection_text, name_off = 21146, mod_idx = 11, realms = 3, sig_idx = 70},
+	{fn = _t_dom_InlineStyle_getProperty, name_off = 21161, mod_idx = 11, realms = 3, sig_idx = 68},
+	{fn = _t_dom_InlineStyle_priority, name_off = 21185, mod_idx = 11, realms = 3, sig_idx = 68},
+	{fn = _t_dom_InlineStyle_setProperty, name_off = 21206, mod_idx = 11, realms = 3, sig_idx = 109},
+	{fn = _t_dom_InlineStyle_removeProperty, name_off = 21230, mod_idx = 11, realms = 3, sig_idx = 68},
+	{fn = _t_dom_InlineStyle_cssText, name_off = 21257, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_InlineStyle_setCssText, name_off = 21277, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_InlineStyle_length, name_off = 21300, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_InlineStyle_item, name_off = 21319, mod_idx = 11, realms = 3, sig_idx = 16},
+	{fn = _t_dom_ComputedStyle_get, name_off = 21336, mod_idx = 11, realms = 3, sig_idx = 137},
+	{fn = _t_dom_ComputedStyle_count, name_off = 21354, mod_idx = 11, realms = 3, sig_idx = 31},
+	{fn = _t_dom_ComputedStyle_name, name_off = 21374, mod_idx = 11, realms = 3, sig_idx = 118},
+	{fn = _t_dom_CSS_supportsDeclaration, name_off = 21393, mod_idx = 11, realms = 3, sig_idx = 120},
+	{fn = _t_dom_CSS_supportsCondition, name_off = 21417, mod_idx = 11, realms = 3, sig_idx = 22},
+	{fn = _t_dom_Node_nodeName, name_off = 21439, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Node_baseURI, name_off = 21453, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Node_isConnected, name_off = 21466, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Node_ownerDocument, name_off = 21483, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_Node_parentElement, name_off = 21502, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_Node_hasChildNodes, name_off = 21521, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Node_nodeValue, name_off = 21540, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Node_set_nodeValue, name_off = 21555, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_Node_textContent, name_off = 21574, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Node_set_textContent, name_off = 21591, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_Node_normalize, name_off = 21612, mod_idx = 11, realms = 3, sig_idx = 10},
+	{fn = _t_dom_Node_cloneNode, name_off = 21627, mod_idx = 11, realms = 3, sig_idx = 65},
+	{fn = _t_dom_Document_importNodeCopy, name_off = 21642, mod_idx = 11, realms = 3, sig_idx = 65},
+	{fn = _t_dom_Node_isEqualNode, name_off = 21666, mod_idx = 11, realms = 3, sig_idx = 62},
+	{fn = _t_dom_Node_isSameNode, name_off = 21683, mod_idx = 11, realms = 3, sig_idx = 62},
+	{fn = _t_dom_Node_compareDocumentPosition, name_off = 21699, mod_idx = 11, realms = 3, sig_idx = 62},
+	{fn = _t_dom_Node_contains, name_off = 21728, mod_idx = 11, realms = 3, sig_idx = 62},
+	{fn = _t_dom_Node_lookupPrefix, name_off = 21742, mod_idx = 11, realms = 3, sig_idx = 68},
+	{fn = _t_dom_Node_lookupNamespaceURI, name_off = 21760, mod_idx = 11, realms = 3, sig_idx = 68},
+	{fn = _t_dom_Node_isDefaultNamespace, name_off = 21784, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_Node_rootNode, name_off = 21808, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_Node_length, name_off = 21822, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Node_preInsert, name_off = 21834, mod_idx = 11, realms = 3, sig_idx = 84},
+	{fn = _t_dom_Node_moveBefore, name_off = 21849, mod_idx = 11, realms = 3, sig_idx = 84},
+	{fn = _t_dom_Node_replaceChildChecked, name_off = 21865, mod_idx = 11, realms = 3, sig_idx = 84},
+	{fn = _t_dom_Node_preRemove, name_off = 21890, mod_idx = 11, realms = 3, sig_idx = 62},
+	{fn = _t_dom_Node_insertItems, name_off = 21905, mod_idx = 11, realms = 3, sig_idx = 21},
+	{fn = _t_dom_Node_pinAll, name_off = 21922, mod_idx = 11, realms = 3, sig_idx = 30},
+	{fn = _t_dom_Node_unpinAll, name_off = 21934, mod_idx = 11, realms = 3, sig_idx = 30},
+	{fn = _t_dom_ParentNode_firstElementChild, name_off = 21948, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_ParentNode_lastElementChild, name_off = 21977, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_ParentNode_childElementCount, name_off = 22005, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_ChildNode_remove, name_off = 22034, mod_idx = 11, realms = 3, sig_idx = 10},
+	{fn = _t_dom_NonDocumentTypeChildNode_previousElementSibling, name_off = 22051, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_NonDocumentTypeChildNode_nextElementSibling, name_off = 22099, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_NonElementParentNode_getElementById, name_off = 22143, mod_idx = 11, realms = 3, sig_idx = 5},
+	{fn = _t_dom_CharacterData_data, name_off = 22179, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_CharacterData_set_data, name_off = 22198, mod_idx = 11, realms = 3, sig_idx = 40},
+	{fn = _t_dom_CharacterData_length, name_off = 22221, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_CharacterData_substringData, name_off = 22242, mod_idx = 11, realms = 3, sig_idx = 148},
+	{fn = _t_dom_CharacterData_appendData, name_off = 22270, mod_idx = 11, realms = 3, sig_idx = 40},
+	{fn = _t_dom_CharacterData_insertData, name_off = 22295, mod_idx = 11, realms = 3, sig_idx = 21},
+	{fn = _t_dom_CharacterData_deleteData, name_off = 22320, mod_idx = 11, realms = 3, sig_idx = 149},
+	{fn = _t_dom_CharacterData_replaceData, name_off = 22345, mod_idx = 11, realms = 3, sig_idx = 150},
+	{fn = _t_dom_Text_splitText, name_off = 22371, mod_idx = 11, realms = 3, sig_idx = 65},
+	{fn = _t_dom_Text_wholeText, name_off = 22386, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_DocumentType_name, name_off = 22401, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_DocumentType_publicId, name_off = 22419, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_DocumentType_systemId, name_off = 22441, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Document_createElementChecked, name_off = 22463, mod_idx = 11, realms = 3, sig_idx = 7},
+	{fn = _t_dom_Document_createElementInert, name_off = 22493, mod_idx = 11, realms = 3, sig_idx = 7},
+	{fn = _t_dom_Document_createElementNSChecked, name_off = 22521, mod_idx = 11, realms = 3, sig_idx = 151},
+	{fn = _t_dom_Document_validateAttributeNS, name_off = 22553, mod_idx = 11, realms = 3, sig_idx = 120},
+	{fn = _t_dom_Document_createDocumentFragment, name_off = 22582, mod_idx = 11, realms = 3, sig_idx = 32},
+	{fn = _t_dom_Document_createComment, name_off = 22614, mod_idx = 11, realms = 3, sig_idx = 7},
+	{fn = _t_dom_Document_createCDATASection, name_off = 22637, mod_idx = 11, realms = 3, sig_idx = 112},
+	{fn = _t_dom_Document_createProcessingInstruction, name_off = 22665, mod_idx = 11, realms = 3, sig_idx = 151},
+	{fn = _t_dom_Document_adoptNode, name_off = 22702, mod_idx = 11, realms = 3, sig_idx = 61},
+	{fn = _t_dom_Document_documentURI, name_off = 22721, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Document_compatMode, name_off = 22742, mod_idx = 11, realms = 3, sig_idx = 70},
+	{fn = _t_dom_Document_characterSet, name_off = 22762, mod_idx = 11, realms = 3, sig_idx = 70},
+	{fn = _t_dom_Document_charset, name_off = 22784, mod_idx = 11, realms = 3, sig_idx = 70},
+	{fn = _t_dom_Document_inputEncoding, name_off = 22801, mod_idx = 11, realms = 3, sig_idx = 70},
+	{fn = _t_dom_Document_contentType, name_off = 22824, mod_idx = 11, realms = 3, sig_idx = 70},
+	{fn = _t_dom_Document_doctype, name_off = 22845, mod_idx = 11, realms = 3, sig_idx = 0},
+	{fn = _t_dom_Document_title, name_off = 22862, mod_idx = 11, realms = 3, sig_idx = 70},
+	{fn = _t_dom_Document_set_title, name_off = 22877, mod_idx = 11, realms = 3, sig_idx = 30},
+	{fn = _t_dom_Document_dir, name_off = 22896, mod_idx = 11, realms = 3, sig_idx = 70},
+	{fn = _t_dom_Document_set_dir, name_off = 22909, mod_idx = 11, realms = 3, sig_idx = 30},
+	{fn = _t_dom_Document_hasFocus, name_off = 22926, mod_idx = 11, realms = 3, sig_idx = 31},
+	{fn = _t_dom_Document_referrer, name_off = 22944, mod_idx = 11, realms = 3, sig_idx = 70},
+	{fn = _t_dom_Document_lastModified, name_off = 22962, mod_idx = 11, realms = 3, sig_idx = 70},
+	{fn = _t_dom_Document_domain, name_off = 22984, mod_idx = 11, realms = 3, sig_idx = 70},
+	{fn = _t_dom_Document_set_domain, name_off = 23000, mod_idx = 11, realms = 3, sig_idx = 22},
+	{fn = _t_dom_Document_scrollingElement, name_off = 23020, mod_idx = 11, realms = 3, sig_idx = 0},
+	{fn = _t_dom_Document_set_body, name_off = 23046, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_DOMImplementation_createHTMLDocument, name_off = 23064, mod_idx = 11, realms = 3, sig_idx = 7},
+	{fn = _t_dom_DOMParser_parseHTMLNode, name_off = 23101, mod_idx = 11, realms = 3, sig_idx = 7},
+	{fn = _t_dom_DOMParser_parseXMLNode, name_off = 23125, mod_idx = 11, realms = 3, sig_idx = 151},
+	{fn = _t_dom_Document_parseResponse, name_off = 23148, mod_idx = 11, realms = 3, sig_idx = 151},
+	{fn = _t_dom_ProcessingInstruction_target, name_off = 23171, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Document_xmlContentType, name_off = 23200, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_Document_createXMLElement, name_off = 23224, mod_idx = 11, realms = 3, sig_idx = 111},
+	{fn = _t_dom_DOMImplementation_createDocument, name_off = 23250, mod_idx = 11, realms = 3, sig_idx = 152},
+	{fn = _t_dom_DOMImplementation_createDocumentType, name_off = 23283, mod_idx = 11, realms = 3, sig_idx = 107},
+	{fn = _t_dom_Document_partOf, name_off = 23320, mod_idx = 11, realms = 3, sig_idx = 42},
+	{fn = _t_entries_DataTransfer_itemEntry, name_off = 23336, mod_idx = 28, realms = 1, sig_idx = 65},
+	{fn = _t_entries_FsEntry_info, name_off = 23359, mod_idx = 28, realms = 1, sig_idx = 132},
+	{fn = _t_entries_FsEntry_name, name_off = 23372, mod_idx = 28, realms = 1, sig_idx = 4},
+	{fn = _t_entries_FsEntry_fullPath, name_off = 23385, mod_idx = 28, realms = 1, sig_idx = 4},
+	{fn = _t_entries_FsEntry_filesystemName, name_off = 23402, mod_idx = 28, realms = 1, sig_idx = 4},
+	{fn = _t_entries_FsEntry_parent, name_off = 23425, mod_idx = 28, realms = 1, sig_idx = 1},
+	{fn = _t_entries_FsEntry_root, name_off = 23440, mod_idx = 28, realms = 1, sig_idx = 1},
+	{fn = _t_entries_FsEntry_file, name_off = 23453, mod_idx = 28, realms = 1, sig_idx = 1},
+	{fn = _t_entries_FsEntry_lookup, name_off = 23466, mod_idx = 28, realms = 1, sig_idx = 153},
+	{fn = _t_entries_FsEntry_createReader, name_off = 23481, mod_idx = 28, realms = 1, sig_idx = 1},
+	{fn = _t_entries_FsReader_read, name_off = 23502, mod_idx = 28, realms = 1, sig_idx = 1},
+	{fn = _t_entries_FsReader_entry, name_off = 23516, mod_idx = 28, realms = 1, sig_idx = 42},
+	{fn = _t_events_EventTarget_dispatchEngineEvent, name_off = 23531, mod_idx = 13, realms = 3, sig_idx = 154},
+	{fn = _t_events_Event_engineId, name_off = 23563, mod_idx = 13, realms = 3, sig_idx = 1},
+	{fn = _t_events_Event_interface, name_off = 23578, mod_idx = 13, realms = 3, sig_idx = 3},
+	{fn = _t_events_Event_isLive, name_off = 23594, mod_idx = 13, realms = 3, sig_idx = 3},
+	{fn = _t_events_Event_bubbles, name_off = 23607, mod_idx = 13, realms = 3, sig_idx = 3},
+	{fn = _t_events_Event_cancelable, name_off = 23621, mod_idx = 13, realms = 3, sig_idx = 3},
+	{fn = _t_events_Event_composed, name_off = 23638, mod_idx = 13, realms = 3, sig_idx = 3},
+	{fn = _t_events_Event_eventPhase, name_off = 23653, mod_idx = 13, realms = 3, sig_idx = 3},
+	{fn = _t_events_Event_timeStamp, name_off = 23670, mod_idx = 13, realms = 3, sig_idx = 13},
+	{fn = _t_events_Event_isTrusted, name_off = 23686, mod_idx = 13, realms = 3, sig_idx = 3},
+	{fn = _t_events_Event_propagationStopped, name_off = 23702, mod_idx = 13, realms = 3, sig_idx = 3},
+	{fn = _t_events_EventTarget_create, name_off = 23727, mod_idx = 13, realms = 3, sig_idx = 0},
+	{fn = _t_scripts_Document_writeMarkup, name_off = 23746, mod_idx = 29, realms = 3, sig_idx = 22},
+	{fn = _t_scripts_Document_openStream, name_off = 23767, mod_idx = 29, realms = 3, sig_idx = 31},
+	{fn = _t_scripts_Document_closeStream, name_off = 23787, mod_idx = 29, realms = 3, sig_idx = 31},
+	{fn = _t_scripts_HTMLScriptElement_forceAsync, name_off = 23808, mod_idx = 29, realms = 3, sig_idx = 3},
+	{fn = _t_scripts_HTMLScriptElement_setForceAsync, name_off = 23837, mod_idx = 29, realms = 3, sig_idx = 11},
+	{fn = _t_scripts_Script_allowInline, name_off = 23869, mod_idx = 29, realms = 3, sig_idx = 21},
+	{fn = _t_scripts_Script_allowEval, name_off = 23888, mod_idx = 29, realms = 3, sig_idx = 22},
+	{fn = _t_scripts_Script_javascriptResult, name_off = 23905, mod_idx = 29, realms = 3, sig_idx = 30},
+	{fn = _t_scripts_Script_baseName, name_off = 23929, mod_idx = 29, realms = 3, sig_idx = 70},
+	{fn = _t_scripts_Module_resolve, name_off = 23945, mod_idx = 29, realms = 3, sig_idx = 93},
+	{fn = _t_scripts_Module_source, name_off = 23960, mod_idx = 29, realms = 3, sig_idx = 133},
+	{fn = _t_scripts_Module_request, name_off = 23974, mod_idx = 29, realms = 3, sig_idx = 155},
+	{fn = _t_scripts_Module_import, name_off = 23989, mod_idx = 29, realms = 3, sig_idx = 156},
+	{fn = _t_scripts_Engine_queueRejectionCheck, name_off = 24003, mod_idx = 29, realms = 3, sig_idx = 108},
+	{fn = _t_scripts_Worker_createScript, name_off = 24030, mod_idx = 29, realms = 3, sig_idx = 157},
+	{fn = _t_scripts_Worker_postSerialized, name_off = 24050, mod_idx = 29, realms = 3, sig_idx = 85},
+	{fn = _t_scripts_DedicatedWorkerGlobalScope_postSerialized, name_off = 24072, mod_idx = 29, realms = 3, sig_idx = 22},
+	{fn = _t_scripts_WorkerGlobalScope_importScript, name_off = 24114, mod_idx = 29, realms = 3, sig_idx = 133},
+	{fn = _t_scripts_WorkerGlobalScope_isModule, name_off = 24145, mod_idx = 29, realms = 3, sig_idx = 31},
+	{fn = _t_scripts_SharedWorker_connect, name_off = 24172, mod_idx = 29, realms = 3, sig_idx = 158},
+	{fn = _t_scripts_Worker_createScriptBytes, name_off = 24193, mod_idx = 29, realms = 3, sig_idx = 159},
+	{fn = _t_scripts_Worker_pendingError, name_off = 24218, mod_idx = 29, realms = 3, sig_idx = 70},
+	{fn = _t_scripts_SharedWorker_connectBytes, name_off = 24238, mod_idx = 29, realms = 3, sig_idx = 160},
+	{fn = _t_scripts_SharedWorker_portEnd, name_off = 24264, mod_idx = 29, realms = 3, sig_idx = 1},
+	{fn = _t_scripts_SharedWorkerGlobalScope_takeConnection, name_off = 24285, mod_idx = 29, realms = 3, sig_idx = 0},
+	{fn = _t_dom_ResizeObserver_create, name_off = 24324, mod_idx = 11, realms = 3, sig_idx = 8},
+	{fn = _t_dom_ResizeObserver_observe, name_off = 24346, mod_idx = 11, realms = 3, sig_idx = 66},
+	{fn = _t_dom_ResizeObserver_unobserve, name_off = 24369, mod_idx = 11, realms = 3, sig_idx = 20},
+	{fn = _t_dom_ResizeObserver_disconnect, name_off = 24394, mod_idx = 11, realms = 3, sig_idx = 10},
+	{fn = _t_dom_ResizeObserver_observed, name_off = 24420, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_ResizeObserver_takeEntries, name_off = 24444, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_IntersectionObserver_create, name_off = 24471, mod_idx = 11, realms = 3, sig_idx = 161},
+	{fn = _t_dom_IntersectionObserver_rootMargin, name_off = 24499, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_IntersectionObserver_scrollMargin, name_off = 24531, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_IntersectionObserver_observe, name_off = 24565, mod_idx = 11, realms = 3, sig_idx = 62},
+	{fn = _t_dom_IntersectionObserver_unobserve, name_off = 24594, mod_idx = 11, realms = 3, sig_idx = 20},
+	{fn = _t_dom_IntersectionObserver_disconnect, name_off = 24625, mod_idx = 11, realms = 3, sig_idx = 10},
+	{fn = _t_dom_IntersectionObserver_observed, name_off = 24657, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_IntersectionObserver_takeRecords, name_off = 24687, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_IntersectionObserver_release, name_off = 24720, mod_idx = 11, realms = 3, sig_idx = 10},
+	{fn = _t_dom_Window_print, name_off = 24749, mod_idx = 11, realms = 3, sig_idx = 108},
+	{fn = _t_dom_Element_attachShadowInit, name_off = 24762, mod_idx = 11, realms = 3, sig_idx = 162},
+	{fn = _t_dom_CustomElements_disable, name_off = 24787, mod_idx = 11, realms = 3, sig_idx = 163},
+	{fn = _t_dom_ShadowRoot_mode, name_off = 24810, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_ShadowRoot_delegatesFocus, name_off = 24826, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_ShadowRoot_clonable, name_off = 24852, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_ShadowRoot_serializable, name_off = 24872, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_ShadowRoot_slotAssignment, name_off = 24896, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_ShadowRoot_host, name_off = 24922, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_ShadowRoot_innerHTML, name_off = 24938, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_ShadowRoot_set_innerHTML, name_off = 24959, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_ShadowRoot_activeElement, name_off = 24984, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_Node_getHTML, name_off = 25009, mod_idx = 11, realms = 3, sig_idx = 164},
+	{fn = _t_dom_Node_setHTMLUnsafe, name_off = 25022, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_Document_parseHTMLUnsafeNode, name_off = 25041, mod_idx = 11, realms = 3, sig_idx = 7},
+	{fn = _t_dom_Node_rootNodeComposed, name_off = 25070, mod_idx = 11, realms = 3, sig_idx = 42},
+	{fn = _t_dom_Slottable_assignedSlot, name_off = 25092, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_HTMLSlotElement_assignedPacked, name_off = 25115, mod_idx = 11, realms = 3, sig_idx = 148},
+	{fn = _t_dom_HTMLSlotElement_assignNodes, name_off = 25146, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_Document_shadowIncludingByName, name_off = 25174, mod_idx = 11, realms = 3, sig_idx = 133},
+	{fn = _t_dom_DocumentOrShadowRoot_elementsFromPointPacked, name_off = 25205, mod_idx = 11, realms = 3, sig_idx = 165},
+	{fn = _t_dom_Shadow_fireSlotChanges, name_off = 25250, mod_idx = 11, realms = 3, sig_idx = 108},
+	{fn = _t_dom_Node_isLive, name_off = 25273, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Node_shadowIncludingElements, name_off = 25285, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_events_Event_composedPathPacked, name_off = 25314, mod_idx = 13, realms = 3, sig_idx = 4},
+	{fn = _t_events_EventTarget_lastTarget, name_off = 25339, mod_idx = 13, realms = 3, sig_idx = 0},
+	{fn = _t_events_EventTarget_lastRelated, name_off = 25362, mod_idx = 13, realms = 3, sig_idx = 0},
+	{fn = _t_events_Event_setNextRelated, name_off = 25386, mod_idx = 13, realms = 3, sig_idx = 10},
+	{fn = _t_events_Event_relatedNow, name_off = 25407, mod_idx = 13, realms = 3, sig_idx = 1},
+	{fn = _t_events_Event_inShadowTreeNow, name_off = 25424, mod_idx = 13, realms = 3, sig_idx = 3},
+	{fn = _t_dom_Element_attachInternals, name_off = 25446, mod_idx = 11, realms = 3, sig_idx = 27},
+	{fn = _t_dom_ElementInternals_shadowRootOf, name_off = 25470, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_ElementInternals_element, name_off = 25500, mod_idx = 11, realms = 3, sig_idx = 1},
+	{fn = _t_dom_CustomStates_add, name_off = 25525, mod_idx = 11, realms = 3, sig_idx = 40},
+	{fn = _t_dom_CustomStates_delete, name_off = 25542, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_CustomStates_has, name_off = 25562, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_CustomStates_clear, name_off = 25579, mod_idx = 11, realms = 3, sig_idx = 10},
+	{fn = _t_dom_CustomStates_list, name_off = 25598, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_CSSStyleSheet_create, name_off = 25616, mod_idx = 11, realms = 3, sig_idx = 166},
+	{fn = _t_dom_CSSStyleSheet_replaceText, name_off = 25637, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_dom_CSSStyleSheet_ruleCount, name_off = 25663, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_CSSStyleSheet_ruleText, name_off = 25687, mod_idx = 11, realms = 3, sig_idx = 16},
+	{fn = _t_dom_CSSStyleSheet_setRuleSelector, name_off = 25710, mod_idx = 11, realms = 3, sig_idx = 164},
+	{fn = _t_dom_CSSStyleSheet_ruleTextOf, name_off = 25740, mod_idx = 11, realms = 3, sig_idx = 16},
+	{fn = _t_dom_CSSStyleSheet_setRuleStyle, name_off = 25765, mod_idx = 11, realms = 3, sig_idx = 128},
+	{fn = _t_dom_CSSStyleSheet_childCount, name_off = 25792, mod_idx = 11, realms = 3, sig_idx = 41},
+	{fn = _t_dom_CSSStyleSheet_childId, name_off = 25817, mod_idx = 11, realms = 3, sig_idx = 149},
+	{fn = _t_dom_CSSStyleSheet_insertChildAt, name_off = 25839, mod_idx = 11, realms = 3, sig_idx = 167},
+	{fn = _t_dom_CSSStyleSheet_deleteChildAt, name_off = 25867, mod_idx = 11, realms = 3, sig_idx = 149},
+	{fn = _t_dom_CSSStyleSheet_insertRuleAt, name_off = 25895, mod_idx = 11, realms = 3, sig_idx = 92},
+	{fn = _t_dom_CSSStyleSheet_deleteRuleAt, name_off = 25922, mod_idx = 11, realms = 3, sig_idx = 41},
+	{fn = _t_dom_CSSStyleSheet_isDisabled, name_off = 25949, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_CSSStyleSheet_setDisabled, name_off = 25974, mod_idx = 11, realms = 3, sig_idx = 11},
+	{fn = _t_dom_CSSStyleSheet_mediaText, name_off = 26000, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_dom_CSSStyleSheet_setMediaText, name_off = 26024, mod_idx = 11, realms = 3, sig_idx = 40},
+	{fn = _t_dom_CSSStyleSheet_isConstructed, name_off = 26051, mod_idx = 11, realms = 3, sig_idx = 3},
+	{fn = _t_dom_DocumentOrShadowRoot_adopt, name_off = 26079, mod_idx = 11, realms = 3, sig_idx = 85},
+	{fn = _t_storageaccess_Document_hasStorageAccess, name_off = 26106, mod_idx = 30, realms = 1, sig_idx = 0},
+	{fn = _t_storageaccess_Document_requestStorageAccess, name_off = 26132, mod_idx = 30, realms = 1, sig_idx = 0},
+	{fn = _t_navigator_Navigator_get, name_off = 26162, mod_idx = 31, realms = 3, sig_idx = 118},
+	{fn = _t_navigator_Navigator_hardwareConcurrency, name_off = 26176, mod_idx = 31, realms = 3, sig_idx = 31},
+	{fn = _t_navigator_Navigator_onLine, name_off = 26206, mod_idx = 31, realms = 3, sig_idx = 31},
+	{fn = _t_navigator_Navigator_maxTouchPoints, name_off = 26223, mod_idx = 31, realms = 3, sig_idx = 31},
+	{fn = _t_navigator_Navigator_cookieEnabled, name_off = 26248, mod_idx = 31, realms = 3, sig_idx = 31},
+	{fn = _t_navigator_UserActivation_isActive, name_off = 26272, mod_idx = 31, realms = 3, sig_idx = 31},
+	{fn = _t_navigator_UserActivation_hasBeenActive, name_off = 26296, mod_idx = 31, realms = 3, sig_idx = 31},
+	{fn = _t_navigator_Beacon_send, name_off = 26325, mod_idx = 31, realms = 3, sig_idx = 168},
+	{fn = _t_navigator_Clipboard_writeText, name_off = 26337, mod_idx = 31, realms = 3, sig_idx = 26},
+	{fn = _t_navigator_Clipboard_readText, name_off = 26357, mod_idx = 31, realms = 3, sig_idx = 0},
+	{fn = _t_media_MediaQueryList_create, name_off = 26376, mod_idx = 32, realms = 1, sig_idx = 26},
+	{fn = _t_media_MediaQueryList_media, name_off = 26398, mod_idx = 32, realms = 1, sig_idx = 4},
+	{fn = _t_media_MediaQueryList_matches, name_off = 26419, mod_idx = 32, realms = 1, sig_idx = 3},
+	{fn = _t_media_Screen_get, name_off = 26442, mod_idx = 32, realms = 1, sig_idx = 125},
+	{fn = _t_forms_FormData_fileAt, name_off = 26453, mod_idx = 18, realms = 1, sig_idx = 65},
+	{fn = _t_forms_FormData_setBlob, name_off = 26469, mod_idx = 18, realms = 1, sig_idx = 103},
+	{fn = _t_forms_FormData_encode, name_off = 26486, mod_idx = 18, realms = 1, sig_idx = 112},
+	{fn = _t_dom_XMLSerializer_serialize, name_off = 26502, mod_idx = 11, realms = 3, sig_idx = 4},
+	{fn = _t_locks_LockManager_request, name_off = 26526, mod_idx = 33, realms = 3, sig_idx = 169},
+	{fn = _t_locks_LockManager_release, name_off = 26546, mod_idx = 33, realms = 3, sig_idx = 10},
+	{fn = _t_locks_LockManager_queryCount, name_off = 26566, mod_idx = 33, realms = 3, sig_idx = 125},
+	{fn = _t_locks_LockManager_queryName, name_off = 26589, mod_idx = 33, realms = 3, sig_idx = 170},
+	{fn = _t_locks_LockManager_queryMode, name_off = 26611, mod_idx = 33, realms = 3, sig_idx = 170},
+	{fn = _t_locks_LockManager_queryClient, name_off = 26633, mod_idx = 33, realms = 3, sig_idx = 170},
+	{fn = _t_htmlmedia_HTMLMediaElement_currentSrc, name_off = 26657, mod_idx = 34, realms = 1, sig_idx = 4},
+	{fn = _t_htmlmedia_HTMLMediaElement_networkState, name_off = 26685, mod_idx = 34, realms = 1, sig_idx = 3},
+	{fn = _t_htmlmedia_HTMLMediaElement_readyState, name_off = 26715, mod_idx = 34, realms = 1, sig_idx = 3},
+	{fn = _t_htmlmedia_HTMLMediaElement_seeking, name_off = 26743, mod_idx = 34, realms = 1, sig_idx = 3},
+	{fn = _t_htmlmedia_HTMLMediaElement_currentTime, name_off = 26768, mod_idx = 34, realms = 1, sig_idx = 13},
+	{fn = _t_htmlmedia_HTMLMediaElement_set_currentTime, name_off = 26797, mod_idx = 34, realms = 1, sig_idx = 12},
+	{fn = _t_htmlmedia_HTMLMediaElement_duration, name_off = 26830, mod_idx = 34, realms = 1, sig_idx = 13},
+	{fn = _t_htmlmedia_HTMLMediaElement_paused, name_off = 26856, mod_idx = 34, realms = 1, sig_idx = 3},
+	{fn = _t_htmlmedia_HTMLMediaElement_ended, name_off = 26880, mod_idx = 34, realms = 1, sig_idx = 3},
+	{fn = _t_htmlmedia_HTMLMediaElement_defaultPlaybackRate, name_off = 26903, mod_idx = 34, realms = 1, sig_idx = 13},
+	{fn = _t_htmlmedia_HTMLMediaElement_set_defaultPlaybackRate, name_off = 26940, mod_idx = 34, realms = 1, sig_idx = 12},
+	{fn = _t_htmlmedia_HTMLMediaElement_playbackRate, name_off = 26981, mod_idx = 34, realms = 1, sig_idx = 13},
+	{fn = _t_htmlmedia_HTMLMediaElement_set_playbackRate, name_off = 27011, mod_idx = 34, realms = 1, sig_idx = 12},
+	{fn = _t_htmlmedia_HTMLMediaElement_preservesPitch, name_off = 27045, mod_idx = 34, realms = 1, sig_idx = 3},
+	{fn = _t_htmlmedia_HTMLMediaElement_set_preservesPitch, name_off = 27077, mod_idx = 34, realms = 1, sig_idx = 11},
+	{fn = _t_htmlmedia_HTMLMediaElement_volume, name_off = 27113, mod_idx = 34, realms = 1, sig_idx = 13},
+	{fn = _t_htmlmedia_HTMLMediaElement_set_volume, name_off = 27137, mod_idx = 34, realms = 1, sig_idx = 14},
+	{fn = _t_htmlmedia_HTMLMediaElement_muted, name_off = 27165, mod_idx = 34, realms = 1, sig_idx = 3},
+	{fn = _t_htmlmedia_HTMLMediaElement_set_muted, name_off = 27188, mod_idx = 34, realms = 1, sig_idx = 11},
+	{fn = _t_htmlmedia_HTMLMediaElement_ranges, name_off = 27215, mod_idx = 34, realms = 1, sig_idx = 16},
+	{fn = _t_htmlmedia_HTMLMediaElement_setSourceHandle, name_off = 27239, mod_idx = 34, realms = 1, sig_idx = 62},
+	{fn = _t_htmlmedia_HTMLMediaElement_errorCode, name_off = 27272, mod_idx = 34, realms = 1, sig_idx = 3},
+	{fn = _t_htmlmedia_HTMLMediaElement_errorMessage, name_off = 27299, mod_idx = 34, realms = 1, sig_idx = 4},
+	{fn = _t_htmlmedia_HTMLMediaElement_play, name_off = 27329, mod_idx = 34, realms = 1, sig_idx = 1},
+	{fn = _t_htmlmedia_HTMLMediaElement_pause, name_off = 27351, mod_idx = 34, realms = 1, sig_idx = 10},
+	{fn = _t_htmlmedia_HTMLMediaElement_load, name_off = 27374, mod_idx = 34, realms = 1, sig_idx = 10},
+	{fn = _t_htmlmedia_HTMLMediaElement_canPlayType, name_off = 27396, mod_idx = 34, realms = 1, sig_idx = 68},
+	{fn = _t_htmlmedia_HTMLVideoElement_videoWidth, name_off = 27425, mod_idx = 34, realms = 1, sig_idx = 3},
+	{fn = _t_htmlmedia_HTMLVideoElement_videoHeight, name_off = 27453, mod_idx = 34, realms = 1, sig_idx = 3},
+	{fn = _t_htmlmedia_HTMLVideoElement_playbackQuality, name_off = 27482, mod_idx = 34, realms = 1, sig_idx = 4},
+	{fn = _t_htmlmedia_HTMLVideoElement_requestVideoFrameCallback, name_off = 27515, mod_idx = 34, realms = 1, sig_idx = 171},
+	{fn = _t_htmlmedia_HTMLVideoElement_cancelVideoFrameCallback, name_off = 27558, mod_idx = 34, realms = 1, sig_idx = 20},
+	{fn = _t_htmlmedia_HTMLVideoElement_videoFrameMetadata, name_off = 27600, mod_idx = 34, realms = 1, sig_idx = 105},
+	{fn = _t_htmlmedia_HTMLMediaElement_audioTracks, name_off = 27636, mod_idx = 34, realms = 1, sig_idx = 1},
+	{fn = _t_htmlmedia_HTMLMediaElement_videoTracks, name_off = 27665, mod_idx = 34, realms = 1, sig_idx = 1},
+	{fn = _t_htmlmedia_HTMLMediaElement_textTracks, name_off = 27694, mod_idx = 34, realms = 1, sig_idx = 1},
+	{fn = _t_htmlmedia_HTMLMediaElement_addTextTrack, name_off = 27722, mod_idx = 34, realms = 1, sig_idx = 135},
+	{fn = _t_mse_MediaSource_create, name_off = 27752, mod_idx = 35, realms = 3, sig_idx = 32},
+	{fn = _t_mse_ManagedMediaSource_create, name_off = 27771, mod_idx = 35, realms = 3, sig_idx = 32},
+	{fn = _t_mse_ManagedMediaSource_streaming, name_off = 27797, mod_idx = 35, realms = 3, sig_idx = 3},
+	{fn = _t_mse_MediaSource_registerObjectURL, name_off = 27826, mod_idx = 35, realms = 3, sig_idx = 85},
+	{fn = _t_mse_MediaSource_handle, name_off = 27856, mod_idx = 35, realms = 3, sig_idx = 27},
+	{fn = _t_mse_MediaSourceHandle_take, name_off = 27875, mod_idx = 35, realms = 3, sig_idx = 27},
+	{fn = _t_mse_MediaSourceHandle_adopt, name_off = 27898, mod_idx = 35, realms = 3, sig_idx = 27},
+	{fn = _t_mse_MediaSource_revokeObjectURL, name_off = 27922, mod_idx = 35, realms = 3, sig_idx = 30},
+	{fn = _t_mse_MediaSource_isTypeSupported, name_off = 27950, mod_idx = 35, realms = 3, sig_idx = 22},
+	{fn = _t_mse_MediaSource_sourceBuffers, name_off = 27978, mod_idx = 35, realms = 3, sig_idx = 1},
+	{fn = _t_mse_MediaSource_activeSourceBuffers, name_off = 28004, mod_idx = 35, realms = 3, sig_idx = 1},
+	{fn = _t_mse_MediaSource_readyState, name_off = 28036, mod_idx = 35, realms = 3, sig_idx = 4},
+	{fn = _t_mse_MediaSource_duration, name_off = 28059, mod_idx = 35, realms = 3, sig_idx = 13},
+	{fn = _t_mse_MediaSource_set_duration, name_off = 28080, mod_idx = 35, realms = 3, sig_idx = 14},
+	{fn = _t_mse_MediaSource_addSourceBuffer, name_off = 28105, mod_idx = 35, realms = 3, sig_idx = 112},
+	{fn = _t_mse_MediaSource_removeSourceBuffer, name_off = 28133, mod_idx = 35, realms = 3, sig_idx = 62},
+	{fn = _t_mse_MediaSource_endOfStream, name_off = 28164, mod_idx = 35, realms = 3, sig_idx = 85},
+	{fn = _t_mse_MediaSource_setLiveSeekableRange, name_off = 28188, mod_idx = 35, realms = 3, sig_idx = 172},
+	{fn = _t_mse_MediaSource_clearLiveSeekableRange, name_off = 28221, mod_idx = 35, realms = 3, sig_idx = 3},
+	{fn = _t_mse_SourceBufferList_length, name_off = 28256, mod_idx = 35, realms = 3, sig_idx = 3},
+	{fn = _t_mse_SourceBufferList_item, name_off = 28280, mod_idx = 35, realms = 3, sig_idx = 65},
+	{fn = _t_mse_SourceBuffer_mode, name_off = 28302, mod_idx = 35, realms = 3, sig_idx = 4},
+	{fn = _t_mse_SourceBuffer_set_mode, name_off = 28320, mod_idx = 35, realms = 3, sig_idx = 85},
+	{fn = _t_mse_SourceBuffer_updating, name_off = 28342, mod_idx = 35, realms = 3, sig_idx = 3},
+	{fn = _t_mse_SourceBuffer_ranges, name_off = 28364, mod_idx = 35, realms = 3, sig_idx = 4},
+	{fn = _t_mse_SourceBuffer_timestampOffset, name_off = 28384, mod_idx = 35, realms = 3, sig_idx = 13},
+	{fn = _t_mse_SourceBuffer_set_timestampOffset, name_off = 28413, mod_idx = 35, realms = 3, sig_idx = 14},
+	{fn = _t_mse_SourceBuffer_appendWindowStart, name_off = 28446, mod_idx = 35, realms = 3, sig_idx = 13},
+	{fn = _t_mse_SourceBuffer_set_appendWindowStart, name_off = 28477, mod_idx = 35, realms = 3, sig_idx = 14},
+	{fn = _t_mse_SourceBuffer_appendWindowEnd, name_off = 28512, mod_idx = 35, realms = 3, sig_idx = 13},
+	{fn = _t_mse_SourceBuffer_set_appendWindowEnd, name_off = 28541, mod_idx = 35, realms = 3, sig_idx = 14},
+	{fn = _t_mse_SourceBuffer_appendBuffer, name_off = 28574, mod_idx = 35, realms = 3, sig_idx = 85},
+	{fn = _t_mse_SourceBuffer_abort, name_off = 28600, mod_idx = 35, realms = 3, sig_idx = 3},
+	{fn = _t_mse_SourceBuffer_changeType, name_off = 28619, mod_idx = 35, realms = 3, sig_idx = 85},
+	{fn = _t_mse_SourceBuffer_remove, name_off = 28643, mod_idx = 35, realms = 3, sig_idx = 172},
+	{fn = _t_mediatracks_AudioTrackList_length, name_off = 28663, mod_idx = 36, realms = 1, sig_idx = 3},
+	{fn = _t_mediatracks_AudioTrackList_item, name_off = 28685, mod_idx = 36, realms = 1, sig_idx = 65},
+	{fn = _t_mediatracks_AudioTrackList_getTrackById, name_off = 28705, mod_idx = 36, realms = 1, sig_idx = 5},
+	{fn = _t_mediatracks_VideoTrackList_length, name_off = 28733, mod_idx = 36, realms = 1, sig_idx = 3},
+	{fn = _t_mediatracks_VideoTrackList_item, name_off = 28755, mod_idx = 36, realms = 1, sig_idx = 65},
+	{fn = _t_mediatracks_VideoTrackList_getTrackById, name_off = 28775, mod_idx = 36, realms = 1, sig_idx = 5},
+	{fn = _t_mediatracks_VideoTrackList_selectedIndex, name_off = 28803, mod_idx = 36, realms = 1, sig_idx = 3},
+	{fn = _t_mediatracks_TextTrackList_length, name_off = 28832, mod_idx = 36, realms = 1, sig_idx = 3},
+	{fn = _t_mediatracks_TextTrackList_item, name_off = 28853, mod_idx = 36, realms = 1, sig_idx = 65},
+	{fn = _t_mediatracks_TextTrackList_getTrackById, name_off = 28872, mod_idx = 36, realms = 1, sig_idx = 5},
+	{fn = _t_mediatracks_AudioTrack_id, name_off = 28899, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_AudioTrack_kind, name_off = 28913, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_AudioTrack_label, name_off = 28929, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_AudioTrack_language, name_off = 28946, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_AudioTrack_enabled, name_off = 28966, mod_idx = 36, realms = 1, sig_idx = 3},
+	{fn = _t_mediatracks_AudioTrack_set_enabled, name_off = 28985, mod_idx = 36, realms = 1, sig_idx = 11},
+	{fn = _t_mediatracks_VideoTrack_id, name_off = 29008, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_VideoTrack_kind, name_off = 29022, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_VideoTrack_label, name_off = 29038, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_VideoTrack_language, name_off = 29055, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_VideoTrack_selected, name_off = 29075, mod_idx = 36, realms = 1, sig_idx = 3},
+	{fn = _t_mediatracks_VideoTrack_set_selected, name_off = 29095, mod_idx = 36, realms = 1, sig_idx = 11},
+	{fn = _t_mediatracks_TextTrack_kind, name_off = 29119, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_TextTrack_label, name_off = 29134, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_TextTrack_language, name_off = 29150, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_TextTrack_id, name_off = 29169, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_TextTrack_mode, name_off = 29182, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_TextTrack_set_mode, name_off = 29197, mod_idx = 36, realms = 1, sig_idx = 40},
+	{fn = _t_mediatracks_TextTrack_cues, name_off = 29216, mod_idx = 36, realms = 1, sig_idx = 1},
+	{fn = _t_mediatracks_TextTrack_activeCues, name_off = 29231, mod_idx = 36, realms = 1, sig_idx = 1},
+	{fn = _t_mediatracks_TextTrack_addCue, name_off = 29252, mod_idx = 36, realms = 1, sig_idx = 62},
+	{fn = _t_mediatracks_TextTrack_removeCue, name_off = 29269, mod_idx = 36, realms = 1, sig_idx = 62},
+	{fn = _t_mediatracks_TextTrackCue_id, name_off = 29289, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_TextTrackCue_set_id, name_off = 29305, mod_idx = 36, realms = 1, sig_idx = 40},
+	{fn = _t_mediatracks_TextTrackCue_startTime, name_off = 29325, mod_idx = 36, realms = 1, sig_idx = 13},
+	{fn = _t_mediatracks_TextTrackCue_set_startTime, name_off = 29348, mod_idx = 36, realms = 1, sig_idx = 12},
+	{fn = _t_mediatracks_TextTrackCue_endTime, name_off = 29375, mod_idx = 36, realms = 1, sig_idx = 13},
+	{fn = _t_mediatracks_TextTrackCue_set_endTime, name_off = 29396, mod_idx = 36, realms = 1, sig_idx = 12},
+	{fn = _t_mediatracks_TextTrackCue_pauseOnExit, name_off = 29421, mod_idx = 36, realms = 1, sig_idx = 3},
+	{fn = _t_mediatracks_TextTrackCue_set_pauseOnExit, name_off = 29446, mod_idx = 36, realms = 1, sig_idx = 11},
+	{fn = _t_mediatracks_TextTrackCue_track, name_off = 29475, mod_idx = 36, realms = 1, sig_idx = 1},
+	{fn = _t_mediatracks_VTTCue_create, name_off = 29494, mod_idx = 36, realms = 1, sig_idx = 173},
+	{fn = _t_mediatracks_VTTCue_text, name_off = 29508, mod_idx = 36, realms = 1, sig_idx = 4},
+	{fn = _t_mediatracks_VTTCue_set_text, name_off = 29520, mod_idx = 36, realms = 1, sig_idx = 40},
+	{fn = _t_mediatracks_TextTrackCueList_length, name_off = 29536, mod_idx = 36, realms = 1, sig_idx = 3},
+	{fn = _t_mediatracks_TextTrackCueList_item, name_off = 29560, mod_idx = 36, realms = 1, sig_idx = 65},
+	{fn = _t_mediatracks_TextTrackCueList_getCueById, name_off = 29582, mod_idx = 36, realms = 1, sig_idx = 5},
+	{fn = _t_mediatracks_HTMLTrackElement_track, name_off = 29610, mod_idx = 36, realms = 1, sig_idx = 1},
+	{fn = _t_mediatracks_HTMLTrackElement_readyState, name_off = 29633, mod_idx = 36, realms = 1, sig_idx = 3},
+	{fn = _t_navigation_Navigation_entries, name_off = 29661, mod_idx = 37, realms = 1, sig_idx = 70},
+	{fn = _t_navigation_Navigation_serial, name_off = 29680, mod_idx = 37, realms = 1, sig_idx = 0},
+	{fn = _t_navigation_Navigation_getState, name_off = 29698, mod_idx = 37, realms = 1, sig_idx = 105},
+	{fn = _t_navigation_Navigation_updateCurrentEntry, name_off = 29718, mod_idx = 37, realms = 1, sig_idx = 22},
+	{fn = _t_navigation_Navigation_navigate, name_off = 29748, mod_idx = 37, realms = 1, sig_idx = 155},
+	{fn = _t_navigation_Navigation_reload, name_off = 29768, mod_idx = 37, realms = 1, sig_idx = 22},
+	{fn = _t_navigation_Navigation_traverseTo, name_off = 29786, mod_idx = 37, realms = 1, sig_idx = 3},
+	{fn = _t_navigation_Navigation_pending, name_off = 29808, mod_idx = 37, realms = 1, sig_idx = 70},
+	{fn = _t_navigation_Navigation_pendingState, name_off = 29827, mod_idx = 37, realms = 1, sig_idx = 70},
+	{fn = _t_navigation_Navigation_pendingSource, name_off = 29851, mod_idx = 37, realms = 1, sig_idx = 147},
+	{fn = _t_navigation_Navigation_activation, name_off = 29876, mod_idx = 37, realms = 1, sig_idx = 70},
+	{fn = _t_navigation_Navigation_scroll, name_off = 29898, mod_idx = 37, realms = 1, sig_idx = 100},
+	{fn = _t_net_Fetch_start, name_off = 29916, mod_idx = 38, realms = 3, sig_idx = 174},
+	{fn = _t_net_Fetch_state, name_off = 29928, mod_idx = 38, realms = 3, sig_idx = 3},
+	{fn = _t_net_Fetch_status, name_off = 29940, mod_idx = 38, realms = 3, sig_idx = 3},
+	{fn = _t_net_Fetch_statusText, name_off = 29953, mod_idx = 38, realms = 3, sig_idx = 4},
+	{fn = _t_net_Fetch_hasBody, name_off = 29970, mod_idx = 38, realms = 3, sig_idx = 3},
+	{fn = _t_net_Fetch_type, name_off = 29984, mod_idx = 38, realms = 3, sig_idx = 3},
+	{fn = _t_net_Fetch_redirected, name_off = 29995, mod_idx = 38, realms = 3, sig_idx = 3},
+	{fn = _t_net_Fetch_headers, name_off = 30012, mod_idx = 38, realms = 3, sig_idx = 4},
+	{fn = _t_net_Fetch_url, name_off = 30026, mod_idx = 38, realms = 3, sig_idx = 4},
+	{fn = _t_net_Fetch_error, name_off = 30036, mod_idx = 38, realms = 3, sig_idx = 4},
+	{fn = _t_net_Fetch_errorKind, name_off = 30048, mod_idx = 38, realms = 3, sig_idx = 3},
+	{fn = _t_net_Fetch_bodyLength, name_off = 30064, mod_idx = 38, realms = 3, sig_idx = 1},
+	{fn = _t_net_Fetch_readBody, name_off = 30081, mod_idx = 38, realms = 3, sig_idx = 24},
+	{fn = _t_net_Fetch_release, name_off = 30096, mod_idx = 38, realms = 3, sig_idx = 3},
+	{fn = _t_notification_Notification_permission, name_off = 30110, mod_idx = 39, realms = 1, sig_idx = 70},
+	{fn = _t_notification_Notification_ask, name_off = 30134, mod_idx = 39, realms = 1, sig_idx = 0},
+	{fn = _t_notification_Notification_show, name_off = 30151, mod_idx = 39, realms = 1, sig_idx = 175},
+	{fn = _t_notification_Notification_next, name_off = 30169, mod_idx = 39, realms = 1, sig_idx = 1},
+	{fn = _t_notification_Notification_close, name_off = 30187, mod_idx = 39, realms = 1, sig_idx = 10},
+	{fn = _t_performance_Performance_now, name_off = 30206, mod_idx = 40, realms = 3, sig_idx = 18},
+	{fn = _t_performance_Performance_timeOrigin, name_off = 30222, mod_idx = 40, realms = 3, sig_idx = 18},
+	{fn = _t_performance_Performance_mark, name_off = 30245, mod_idx = 40, realms = 3, sig_idx = 176},
+	{fn = _t_performance_Performance_measure, name_off = 30262, mod_idx = 40, realms = 3, sig_idx = 168},
+	{fn = _t_performance_Performance_measureTimes, name_off = 30282, mod_idx = 40, realms = 3, sig_idx = 177},
+	{fn = _t_performance_Performance_entryCount, name_off = 30307, mod_idx = 40, realms = 3, sig_idx = 178},
+	{fn = _t_performance_Performance_entryStartTime, name_off = 30330, mod_idx = 40, realms = 3, sig_idx = 179},
+	{fn = _t_performance_Performance_entryDuration, name_off = 30357, mod_idx = 40, realms = 3, sig_idx = 179},
+	{fn = _t_performance_Performance_entryName, name_off = 30383, mod_idx = 40, realms = 3, sig_idx = 180},
+	{fn = _t_performance_Performance_entryType, name_off = 30405, mod_idx = 40, realms = 3, sig_idx = 181},
+	{fn = _t_performance_Performance_clearMarks, name_off = 30427, mod_idx = 40, realms = 3, sig_idx = 30},
+	{fn = _t_performance_Performance_clearMeasures, name_off = 30450, mod_idx = 40, realms = 3, sig_idx = 30},
+	{fn = _t_performance_Performance_timeline, name_off = 30476, mod_idx = 40, realms = 3, sig_idx = 182},
+	{fn = _t_performance_Performance_timelineNextSeq, name_off = 30497, mod_idx = 40, realms = 3, sig_idx = 183},
+	{fn = _t_performance_Performance_timelineNode, name_off = 30525, mod_idx = 40, realms = 3, sig_idx = 184},
+	{fn = _t_performance_Performance_timelineInterest, name_off = 30550, mod_idx = 40, realms = 3, sig_idx = 100},
+	{fn = _t_performance_Performance_onTimeline, name_off = 30579, mod_idx = 40, realms = 3, sig_idx = 23},
+	{fn = _t_performance_Performance_setResourceTimingBufferSize, name_off = 30602, mod_idx = 40, realms = 3, sig_idx = 100},
+	{fn = _t_performance_Performance_clearResourceTimings, name_off = 30642, mod_idx = 40, realms = 3, sig_idx = 108},
+	{fn = _t_performance_Performance_timingOf, name_off = 30675, mod_idx = 40, realms = 3, sig_idx = 185},
+	{fn = _t_popover_Popover_show, name_off = 30696, mod_idx = 41, realms = 1, sig_idx = 62},
+	{fn = _t_popover_Popover_hide, name_off = 30709, mod_idx = 41, realms = 1, sig_idx = 3},
+	{fn = _t_popover_Popover_toggle, name_off = 30722, mod_idx = 41, realms = 1, sig_idx = 186},
+	{fn = _t_popover_Popover_state, name_off = 30737, mod_idx = 41, realms = 1, sig_idx = 3},
+	{fn = _t_popover_Popover_targetOf, name_off = 30751, mod_idx = 41, realms = 1, sig_idx = 1},
+	{fn = _t_ports_Port_entangle, name_off = 30768, mod_idx = 42, realms = 3, sig_idx = 0},
+	{fn = _t_ports_Port_bind, name_off = 30782, mod_idx = 42, realms = 3, sig_idx = 3},
+	{fn = _t_ports_Port_ship, name_off = 30792, mod_idx = 42, realms = 3, sig_idx = 10},
+	{fn = _t_ports_Port_post, name_off = 30802, mod_idx = 42, realms = 3, sig_idx = 86},
+	{fn = _t_ports_Port_close, name_off = 30812, mod_idx = 42, realms = 3, sig_idx = 10},
+	{fn = _t_ports_Worker_postSerializedPorts, name_off = 30823, mod_idx = 42, realms = 3, sig_idx = 86},
+	{fn = _t_ports_DedicatedWorkerGlobalScope_postSerializedPorts, name_off = 30850, mod_idx = 42, realms = 3, sig_idx = 120},
+	{fn = _t_ports_Broadcast_open, name_off = 30897, mod_idx = 42, realms = 3, sig_idx = 26},
+	{fn = _t_ports_Broadcast_post, name_off = 30912, mod_idx = 42, realms = 3, sig_idx = 85},
+	{fn = _t_ports_MessageEvent_portEnds, name_off = 30927, mod_idx = 42, realms = 3, sig_idx = 4},
+	{fn = _t_scheduler_Scheduler_post, name_off = 30949, mod_idx = 43, realms = 3, sig_idx = 187},
+	{fn = _t_scheduler_Scheduler_cancel, name_off = 30964, mod_idx = 43, realms = 3, sig_idx = 3},
+	{fn = _t_scheduler_Scheduler_setPriority, name_off = 30981, mod_idx = 43, realms = 3, sig_idx = 41},
+	{fn = _t_scheduler_Scheduler_isInputPending, name_off = 31003, mod_idx = 43, realms = 3, sig_idx = 125},
+	{fn = _t_serviceworker_ServiceWorker_register, name_off = 31028, mod_idx = 44, realms = 3, sig_idx = 188},
+	{fn = _t_serviceworker_ServiceWorker_ready, name_off = 31051, mod_idx = 44, realms = 3, sig_idx = 0},
+	{fn = _t_serviceworker_ServiceWorker_getRegistration, name_off = 31071, mod_idx = 44, realms = 3, sig_idx = 26},
+	{fn = _t_serviceworker_ServiceWorker_registrationIds, name_off = 31101, mod_idx = 44, realms = 3, sig_idx = 70},
+	{fn = _t_serviceworker_ServiceWorker_controller, name_off = 31131, mod_idx = 44, realms = 3, sig_idx = 0},
+	{fn = _t_serviceworker_ServiceWorkerRegistration_info, name_off = 31156, mod_idx = 44, realms = 3, sig_idx = 4},
+	{fn = _t_serviceworker_ServiceWorker_info, name_off = 31187, mod_idx = 44, realms = 3, sig_idx = 4},
+	{fn = _t_serviceworker_ServiceWorkerRegistration_unregisterId, name_off = 31206, mod_idx = 44, realms = 3, sig_idx = 3},
+	{fn = _t_serviceworker_ServiceWorkerRegistration_updateId, name_off = 31245, mod_idx = 44, realms = 3, sig_idx = 27},
+	{fn = _t_serviceworker_ServiceWorkerRegistration_preload, name_off = 31280, mod_idx = 44, realms = 3, sig_idx = 164},
+	{fn = _t_serviceworker_ServiceWorker_postToWorker, name_off = 31314, mod_idx = 44, realms = 3, sig_idx = 85},
+	{fn = _t_serviceworker_ServiceWorker_takeMessage, name_off = 31341, mod_idx = 44, realms = 3, sig_idx = 70},
+	{fn = _t_serviceworker_ServiceWorkerGlobalScope_registration, name_off = 31367, mod_idx = 44, realms = 3, sig_idx = 0},
+	{fn = _t_serviceworker_ServiceWorkerGlobalScope_version, name_off = 31405, mod_idx = 44, realms = 3, sig_idx = 0},
+	{fn = _t_serviceworker_ServiceWorkerGlobalScope_scope, name_off = 31438, mod_idx = 44, realms = 3, sig_idx = 70},
+	{fn = _t_serviceworker_ServiceWorkerGlobalScope_scriptURL, name_off = 31469, mod_idx = 44, realms = 3, sig_idx = 70},
+	{fn = _t_serviceworker_SwEvent_next, name_off = 31504, mod_idx = 44, realms = 3, sig_idx = 147},
+	{fn = _t_serviceworker_SwEvent_text, name_off = 31517, mod_idx = 44, realms = 3, sig_idx = 118},
+	{fn = _t_serviceworker_SwEvent_body, name_off = 31530, mod_idx = 44, realms = 3, sig_idx = 70},
+	{fn = _t_serviceworker_SwEvent_done, name_off = 31543, mod_idx = 44, realms = 3, sig_idx = 108},
+	{fn = _t_serviceworker_ServiceWorkerGlobalScope_reply, name_off = 31556, mod_idx = 44, realms = 3, sig_idx = 189},
+	{fn = _t_storage_Storage_length, name_off = 31587, mod_idx = 45, realms = 1, sig_idx = 190},
+	{fn = _t_storage_Storage_key, name_off = 31602, mod_idx = 45, realms = 1, sig_idx = 170},
+	{fn = _t_storage_Storage_getItem, name_off = 31614, mod_idx = 45, realms = 1, sig_idx = 121},
+	{fn = _t_storage_Storage_setItem, name_off = 31630, mod_idx = 45, realms = 1, sig_idx = 191},
+	{fn = _t_storage_Storage_removeItem, name_off = 31646, mod_idx = 45, realms = 1, sig_idx = 119},
+	{fn = _t_storage_Storage_clear, name_off = 31665, mod_idx = 45, realms = 1, sig_idx = 125},
+	{fn = _t_storage_StorageEvent_get, name_off = 31679, mod_idx = 45, realms = 1, sig_idx = 16},
+	{fn = _t_storage_StorageEvent_storageArea, name_off = 31696, mod_idx = 45, realms = 1, sig_idx = 27},
+	{fn = _t_testhost_TestHost_testBegin, name_off = 31721, mod_idx = 46, realms = 1, sig_idx = 30},
+	{fn = _t_testhost_TestHost_testEnd, name_off = 31740, mod_idx = 46, realms = 1, sig_idx = 30},
+	{fn = _t_testhost_TestHost_check, name_off = 31757, mod_idx = 46, realms = 1, sig_idx = 122},
+	{fn = _t_testhost_TestHost_measure, name_off = 31772, mod_idx = 46, realms = 1, sig_idx = 192},
+	{fn = _t_testhost_TestHost_note, name_off = 31789, mod_idx = 46, realms = 1, sig_idx = 30},
+	{fn = _t_testhost_TestHost_signal, name_off = 31803, mod_idx = 46, realms = 1, sig_idx = 30},
+	{fn = _t_testhost_TestHost_skip, name_off = 31819, mod_idx = 46, realms = 1, sig_idx = 122},
+	{fn = _t_testhost_TestHost_done, name_off = 31833, mod_idx = 46, realms = 1, sig_idx = 108},
+	{fn = _t_timers_Timers_setTimeout, name_off = 31847, mod_idx = 47, realms = 3, sig_idx = 193},
+	{fn = _t_timers_Timers_setInterval, name_off = 31865, mod_idx = 47, realms = 3, sig_idx = 193},
+	{fn = _t_timers_Timers_setTimeout64, name_off = 31884, mod_idx = 47, realms = 3, sig_idx = 194},
+	{fn = _t_timers_Timers_setInterval64, name_off = 31904, mod_idx = 47, realms = 3, sig_idx = 194},
+	{fn = _t_timers_Timers_clear, name_off = 31925, mod_idx = 47, realms = 3, sig_idx = 3},
+	{fn = _t_timers_Timers_now, name_off = 31938, mod_idx = 47, realms = 3, sig_idx = 18},
+	{fn = _t_timers_requestAnimationFrame, name_off = 31949, mod_idx = 47, realms = 3, sig_idx = 8},
+	{fn = _t_timers_cancelAnimationFrame, name_off = 31971, mod_idx = 47, realms = 3, sig_idx = 3},
+	{fn = _t_timers_requestIdleCallback, name_off = 31992, mod_idx = 47, realms = 3, sig_idx = 193},
+	{fn = _t_timers_cancelIdleCallback, name_off = 32012, mod_idx = 47, realms = 3, sig_idx = 3},
+	{fn = _t_timers_Document_visibilityState, name_off = 32031, mod_idx = 47, realms = 3, sig_idx = 31},
+	{fn = _t_url_URL_parse, name_off = 32056, mod_idx = 48, realms = 3, sig_idx = 151},
+	{fn = _t_url_URL_canParse, name_off = 32066, mod_idx = 48, realms = 3, sig_idx = 120},
+	{fn = _t_url_URL_get, name_off = 32079, mod_idx = 48, realms = 3, sig_idx = 16},
+	{fn = _t_url_URL_set, name_off = 32087, mod_idx = 48, realms = 3, sig_idx = 21},
+	{fn = _t_url_URL_searchParams, name_off = 32095, mod_idx = 48, realms = 3, sig_idx = 1},
+	{fn = _t_url_URLSearchParams_create, name_off = 32112, mod_idx = 48, realms = 3, sig_idx = 7},
+	{fn = _t_url_URLSearchParams_size, name_off = 32135, mod_idx = 48, realms = 3, sig_idx = 3},
+	{fn = _t_url_URLSearchParams_append, name_off = 32156, mod_idx = 48, realms = 3, sig_idx = 129},
+	{fn = _t_url_URLSearchParams_delete, name_off = 32179, mod_idx = 48, realms = 3, sig_idx = 129},
+	{fn = _t_url_URLSearchParams_get, name_off = 32202, mod_idx = 48, realms = 3, sig_idx = 68},
+	{fn = _t_url_URLSearchParams_count, name_off = 32222, mod_idx = 48, realms = 3, sig_idx = 85},
+	{fn = _t_url_URLSearchParams_getNth, name_off = 32244, mod_idx = 48, realms = 3, sig_idx = 89},
+	{fn = _t_url_URLSearchParams_has, name_off = 32267, mod_idx = 48, realms = 3, sig_idx = 86},
+	{fn = _t_url_URLSearchParams_set, name_off = 32287, mod_idx = 48, realms = 3, sig_idx = 129},
+	{fn = _t_url_URLSearchParams_sort, name_off = 32307, mod_idx = 48, realms = 3, sig_idx = 10},
+	{fn = _t_url_URLSearchParams_toString, name_off = 32328, mod_idx = 48, realms = 3, sig_idx = 4},
+	{fn = _t_url_URLSearchParams_nameAt, name_off = 32353, mod_idx = 48, realms = 3, sig_idx = 16},
+	{fn = _t_url_URLSearchParams_valueAt, name_off = 32376, mod_idx = 48, realms = 3, sig_idx = 16},
+	{fn = _t_url_URLPattern_createString, name_off = 32400, mod_idx = 48, realms = 3, sig_idx = 158},
+	{fn = _t_url_URLPattern_createInit, name_off = 32424, mod_idx = 48, realms = 3, sig_idx = 195},
+	{fn = _t_url_URLPattern_component, name_off = 32446, mod_idx = 48, realms = 3, sig_idx = 16},
+	{fn = _t_url_URLPattern_hasRegExpGroups, name_off = 32467, mod_idx = 48, realms = 3, sig_idx = 3},
+	{fn = _t_url_URLPattern_execString, name_off = 32494, mod_idx = 48, realms = 3, sig_idx = 196},
+	{fn = _t_url_URLPattern_execInit, name_off = 32516, mod_idx = 48, realms = 3, sig_idx = 197},
+	{fn = _t_url_URLPattern_resultInputCount, name_off = 32536, mod_idx = 48, realms = 3, sig_idx = 3},
+	{fn = _t_url_URLPattern_resultInput, name_off = 32564, mod_idx = 48, realms = 3, sig_idx = 16},
+	{fn = _t_url_URLPattern_componentInput, name_off = 32587, mod_idx = 48, realms = 3, sig_idx = 16},
+	{fn = _t_url_URLPattern_groupCount, name_off = 32613, mod_idx = 48, realms = 3, sig_idx = 41},
+	{fn = _t_url_URLPattern_groupName, name_off = 32635, mod_idx = 48, realms = 3, sig_idx = 148},
+	{fn = _t_url_URLPattern_groupValue, name_off = 32656, mod_idx = 48, realms = 3, sig_idx = 148},
+	{fn = _t_web_Exception_code, name_off = 32678, mod_idx = 49, realms = 3, sig_idx = 31},
+	{fn = _t_web_Exception_message, name_off = 32693, mod_idx = 49, realms = 3, sig_idx = 70},
+	{fn = _t_webassembly_WebAssembly_enabled, name_off = 32711, mod_idx = 50, realms = 3, sig_idx = 31},
+	{fn = _t_webassembly_WebAssembly_validate, name_off = 32731, mod_idx = 50, realms = 3, sig_idx = 22},
+	{fn = _t_webassembly_WebAssembly_compile, name_off = 32752, mod_idx = 50, realms = 3, sig_idx = 7},
+	{fn = _t_webassembly_WebAssembly_compileAsync, name_off = 32772, mod_idx = 50, realms = 3, sig_idx = 26},
+	{fn = _t_webassembly_WebAssembly_Module_imports, name_off = 32797, mod_idx = 50, realms = 3, sig_idx = 4},
+	{fn = _t_webassembly_WebAssembly_Module_exports, name_off = 32824, mod_idx = 50, realms = 3, sig_idx = 4},
+	{fn = _t_webassembly_WebAssembly_Module_customSectionCount, name_off = 32851, mod_idx = 50, realms = 3, sig_idx = 85},
+	{fn = _t_webassembly_WebAssembly_Module_customSection, name_off = 32889, mod_idx = 50, realms = 3, sig_idx = 89},
+	{fn = _t_webassembly_WebAssembly_Module_linkInfo, name_off = 32922, mod_idx = 50, realms = 3, sig_idx = 4},
+	{fn = _t_webassembly_WebAssembly_lastError, name_off = 32950, mod_idx = 50, realms = 3, sig_idx = 70},
+	{fn = _t_webassembly_WebAssembly_Memory_create, name_off = 32972, mod_idx = 50, realms = 3, sig_idx = 62},
+	{fn = _t_webassembly_WebAssembly_Memory_pages, name_off = 32998, mod_idx = 50, realms = 3, sig_idx = 183},
+	{fn = _t_webassembly_WebAssembly_Memory_grow, name_off = 33023, mod_idx = 50, realms = 3, sig_idx = 198},
+	{fn = _t_webassembly_WebAssembly_Memory_read, name_off = 33047, mod_idx = 50, realms = 3, sig_idx = 199},
+	{fn = _t_webassembly_WebAssembly_Memory_write, name_off = 33071, mod_idx = 50, realms = 3, sig_idx = 199},
+	{fn = _t_webassembly_WebAssembly_Memory_createShared, name_off = 33096, mod_idx = 50, realms = 3, sig_idx = 84},
+	{fn = _t_webassembly_WebAssembly_Memory_release, name_off = 33128, mod_idx = 50, realms = 3, sig_idx = 100},
+	{fn = _t_webassembly_WebAssembly_Memory_byteLength, name_off = 33155, mod_idx = 50, realms = 3, sig_idx = 183},
+	{fn = _t_webassembly_WebAssembly_Memory_growBytes, name_off = 33185, mod_idx = 50, realms = 3, sig_idx = 200},
+	{fn = _t_webassembly_WebAssembly_Memory_atomic, name_off = 33214, mod_idx = 50, realms = 3, sig_idx = 201},
+	{fn = _t_webassembly_WebAssembly_Memory_wait, name_off = 33240, mod_idx = 50, realms = 3, sig_idx = 202},
+	{fn = _t_webassembly_WebAssembly_Memory_notify, name_off = 33264, mod_idx = 50, realms = 3, sig_idx = 203},
+	{fn = _t_webassembly_WebAssembly_Memory_share, name_off = 33290, mod_idx = 50, realms = 3, sig_idx = 183},
+	{fn = _t_webassembly_WebAssembly_Memory_adopt, name_off = 33315, mod_idx = 50, realms = 3, sig_idx = 3},
+	{fn = _t_webassembly_WebAssembly_Module_share, name_off = 33340, mod_idx = 50, realms = 3, sig_idx = 1},
+	{fn = _t_webassembly_WebAssembly_Module_adopt, name_off = 33365, mod_idx = 50, realms = 3, sig_idx = 27},
+	{fn = _t_webassembly_WebAssembly_crossOriginIsolated, name_off = 33390, mod_idx = 50, realms = 3, sig_idx = 31},
+	{fn = _t_webassembly_WebAssembly_canBlock, name_off = 33422, mod_idx = 50, realms = 3, sig_idx = 31},
+	{fn = _t_webassembly_WebAssembly_Table_create, name_off = 33443, mod_idx = 50, realms = 3, sig_idx = 204},
+	{fn = _t_webassembly_WebAssembly_Table_element, name_off = 33468, mod_idx = 50, realms = 3, sig_idx = 118},
+	{fn = _t_webassembly_WebAssembly_Table_length, name_off = 33494, mod_idx = 50, realms = 3, sig_idx = 183},
+	{fn = _t_webassembly_WebAssembly_Table_get, name_off = 33519, mod_idx = 50, realms = 3, sig_idx = 199},
+	{fn = _t_webassembly_WebAssembly_Table_set, name_off = 33541, mod_idx = 50, realms = 3, sig_idx = 205},
+	{fn = _t_webassembly_WebAssembly_Table_grow, name_off = 33563, mod_idx = 50, realms = 3, sig_idx = 206},
+	{fn = _t_webassembly_WebAssembly_Global_create, name_off = 33586, mod_idx = 50, realms = 3, sig_idx = 207},
+	{fn = _t_webassembly_WebAssembly_Global_type, name_off = 33612, mod_idx = 50, realms = 3, sig_idx = 118},
+	{fn = _t_webassembly_WebAssembly_Global_get, name_off = 33636, mod_idx = 50, realms = 3, sig_idx = 183},
+	{fn = _t_webassembly_WebAssembly_Global_set, name_off = 33659, mod_idx = 50, realms = 3, sig_idx = 200},
+	{fn = _t_webassembly_WebAssembly_Func_import, name_off = 33682, mod_idx = 50, realms = 3, sig_idx = 119},
+	{fn = _t_webassembly_WebAssembly_Func_sig, name_off = 33706, mod_idx = 50, realms = 3, sig_idx = 118},
+	{fn = _t_webassembly_WebAssembly_Func_call, name_off = 33727, mod_idx = 50, realms = 3, sig_idx = 119},
+	{fn = _t_webassembly_WebAssembly_Func_results, name_off = 33749, mod_idx = 50, realms = 3, sig_idx = 70},
+	{fn = _t_webassembly_WebAssembly_import_args, name_off = 33774, mod_idx = 50, realms = 3, sig_idx = 70},
+	{fn = _t_webassembly_WebAssembly_import_results, name_off = 33798, mod_idx = 50, realms = 3, sig_idx = 30},
+	{fn = _t_webassembly_WebAssembly_import_failed, name_off = 33825, mod_idx = 50, realms = 3, sig_idx = 30},
+	{fn = _t_webassembly_WebAssembly_Tag_create, name_off = 33851, mod_idx = 50, realms = 3, sig_idx = 22},
+	{fn = _t_webassembly_WebAssembly_Tag_sig, name_off = 33874, mod_idx = 50, realms = 3, sig_idx = 118},
+	{fn = _t_webassembly_WebAssembly_exception_tag, name_off = 33894, mod_idx = 50, realms = 3, sig_idx = 31},
+	{fn = _t_webassembly_WebAssembly_import_throw, name_off = 33920, mod_idx = 50, realms = 3, sig_idx = 122},
+	{fn = _t_webassembly_WebAssembly_extern_released, name_off = 33945, mod_idx = 50, realms = 3, sig_idx = 31},
+	{fn = _t_webassembly_WebAssembly_Instance_create, name_off = 33973, mod_idx = 50, realms = 3, sig_idx = 85},
+	{fn = _t_webassembly_WebAssembly_Instance_exports, name_off = 34001, mod_idx = 50, realms = 3, sig_idx = 182},
+	{fn = _t_webaudio_WebAudio_enabled, name_off = 34030, mod_idx = 51, realms = 1, sig_idx = 31},
+	{fn = _t_webaudio_WebAudio_fullyActive, name_off = 34047, mod_idx = 51, realms = 1, sig_idx = 31},
+	{fn = _t_webaudio_WebAudio_defaultRate, name_off = 34068, mod_idx = 51, realms = 1, sig_idx = 18},
+	{fn = _t_webaudio_WebAudio_maxBufferBytes, name_off = 34089, mod_idx = 51, realms = 1, sig_idx = 18},
+	{fn = _t_webaudio_WebAudio_create, name_off = 34113, mod_idx = 51, realms = 1, sig_idx = 208},
+	{fn = _t_webaudio_WebAudio_resume, name_off = 34129, mod_idx = 51, realms = 1, sig_idx = 10},
+	{fn = _t_webaudio_WebAudio_suspend, name_off = 34145, mod_idx = 51, realms = 1, sig_idx = 3},
+	{fn = _t_webaudio_WebAudio_close, name_off = 34162, mod_idx = 51, realms = 1, sig_idx = 10},
+	{fn = _t_webaudio_WebAudio_time, name_off = 34177, mod_idx = 51, realms = 1, sig_idx = 13},
+	{fn = _t_webaudio_WebAudio_queued, name_off = 34191, mod_idx = 51, realms = 1, sig_idx = 13},
+	{fn = _t_webaudio_WebAudio_render, name_off = 34207, mod_idx = 51, realms = 1, sig_idx = 41},
+	{fn = _t_webaudio_WebAudio_takeResult, name_off = 34223, mod_idx = 51, realms = 1, sig_idx = 1},
+	{fn = _t_webaudio_WebAudio_offlineSuspend, name_off = 34243, mod_idx = 51, realms = 1, sig_idx = 14},
+	{fn = _t_webaudio_WebAudio_offlineResume, name_off = 34267, mod_idx = 51, realms = 1, sig_idx = 10},
+	{fn = _t_webaudio_WebAudio_nodeCreate, name_off = 34290, mod_idx = 51, realms = 1, sig_idx = 209},
+	{fn = _t_webaudio_WebAudio_nodeRelease, name_off = 34310, mod_idx = 51, realms = 1, sig_idx = 11},
+	{fn = _t_webaudio_WebAudio_connect, name_off = 34331, mod_idx = 51, realms = 1, sig_idx = 210},
+	{fn = _t_webaudio_WebAudio_disconnect, name_off = 34348, mod_idx = 51, realms = 1, sig_idx = 210},
+	{fn = _t_webaudio_WebAudio_nodeSet, name_off = 34368, mod_idx = 51, realms = 1, sig_idx = 211},
+	{fn = _t_webaudio_WebAudio_nodeGet, name_off = 34385, mod_idx = 51, realms = 1, sig_idx = 212},
+	{fn = _t_webaudio_WebAudio_start, name_off = 34402, mod_idx = 51, realms = 1, sig_idx = 213},
+	{fn = _t_webaudio_WebAudio_stop, name_off = 34417, mod_idx = 51, realms = 1, sig_idx = 214},
+	{fn = _t_webaudio_WebAudio_setBuffer, name_off = 34431, mod_idx = 51, realms = 1, sig_idx = 43},
+	{fn = _t_webaudio_WebAudio_setConvolver, name_off = 34450, mod_idx = 51, realms = 1, sig_idx = 117},
+	{fn = _t_webaudio_WebAudio_setCurve, name_off = 34472, mod_idx = 51, realms = 1, sig_idx = 128},
+	{fn = _t_webaudio_WebAudio_setWave, name_off = 34490, mod_idx = 51, realms = 1, sig_idx = 215},
+	{fn = _t_webaudio_WebAudio_captureElement, name_off = 34507, mod_idx = 51, realms = 1, sig_idx = 216},
+	{fn = _t_webaudio_WebAudio_paramGet, name_off = 34531, mod_idx = 51, realms = 1, sig_idx = 212},
+	{fn = _t_webaudio_WebAudio_paramSet, name_off = 34549, mod_idx = 51, realms = 1, sig_idx = 217},
+	{fn = _t_webaudio_WebAudio_paramRate, name_off = 34567, mod_idx = 51, realms = 1, sig_idx = 218},
+	{fn = _t_webaudio_WebAudio_paramEvent, name_off = 34586, mod_idx = 51, realms = 1, sig_idx = 219},
+	{fn = _t_webaudio_WebAudio_paramCancel, name_off = 34606, mod_idx = 51, realms = 1, sig_idx = 220},
+	{fn = _t_webaudio_WebAudio_biquadResponse, name_off = 34627, mod_idx = 51, realms = 1, sig_idx = 221},
+	{fn = _t_webaudio_WebAudio_setIir, name_off = 34651, mod_idx = 51, realms = 1, sig_idx = 222},
+	{fn = _t_webaudio_WebAudio_iirResponse, name_off = 34667, mod_idx = 51, realms = 1, sig_idx = 221},
+	{fn = _t_webaudio_WebAudio_analyserRead, name_off = 34688, mod_idx = 51, realms = 1, sig_idx = 150},
+	{fn = _t_webaudio_WebAudio_scriptPull, name_off = 34710, mod_idx = 51, realms = 1, sig_idx = 128},
+	{fn = _t_webaudio_WebAudio_scriptPush, name_off = 34730, mod_idx = 51, realms = 1, sig_idx = 128},
+	{fn = _t_webaudio_WebAudio_pcmCreate, name_off = 34750, mod_idx = 51, realms = 1, sig_idx = 193},
+	{fn = _t_webaudio_WebAudio_pcmWrite, name_off = 34769, mod_idx = 51, realms = 1, sig_idx = 223},
+	{fn = _t_webaudio_WebAudio_pcmRead, name_off = 34787, mod_idx = 51, realms = 1, sig_idx = 223},
+	{fn = _t_webaudio_WebAudio_pcmInfo, name_off = 34804, mod_idx = 51, realms = 1, sig_idx = 15},
+	{fn = _t_webaudio_WebAudio_decode, name_off = 34821, mod_idx = 51, realms = 1, sig_idx = 224},
+	{fn = _t_webaudio_WebAudio_workletStart, name_off = 34837, mod_idx = 51, realms = 1, sig_idx = 1},
+	{fn = _t_webaudio_WebAudio_workletStop, name_off = 34859, mod_idx = 51, realms = 1, sig_idx = 10},
+	{fn = _t_webaudio_WebAudio_workletNode, name_off = 34880, mod_idx = 51, realms = 1, sig_idx = 54},
+	{fn = _t_webaudio_WebAudio_workletParam, name_off = 34901, mod_idx = 51, realms = 1, sig_idx = 225},
+	{fn = _t_webaudio_AudioWorkletRealm_sampleRate, name_off = 34923, mod_idx = 51, realms = 2, sig_idx = 18},
+	{fn = _t_webaudio_AudioWorkletRealm_frame, name_off = 34952, mod_idx = 51, realms = 2, sig_idx = 18},
+	{fn = _t_webaudio_AudioWorkletRealm_layout, name_off = 34976, mod_idx = 51, realms = 2, sig_idx = 22},
+	{fn = _t_webaudio_AudioWorkletRealm_read, name_off = 35001, mod_idx = 51, realms = 2, sig_idx = 122},
+	{fn = _t_webaudio_AudioWorkletRealm_write, name_off = 35024, mod_idx = 51, realms = 2, sig_idx = 122},
+	{fn = _t_webaudio_AudioWorkletRealm_finish, name_off = 35048, mod_idx = 51, realms = 2, sig_idx = 100},
+	{fn = _t_webaudio_AudioWorkletRealm_dropped, name_off = 35073, mod_idx = 51, realms = 2, sig_idx = 31},
+	{fn = _t_webcodecs_VideoFrame_fromImage, name_off = 35099, mod_idx = 52, realms = 3, sig_idx = 226},
+	{fn = _t_webcodecs_VideoFrame_fromBuffer, name_off = 35120, mod_idx = 52, realms = 3, sig_idx = 227},
+	{fn = _t_webcodecs_VideoFrame_format, name_off = 35142, mod_idx = 52, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_VideoFrame_codedWidth, name_off = 35160, mod_idx = 52, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_VideoFrame_codedHeight, name_off = 35182, mod_idx = 52, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_VideoFrame_displayWidth, name_off = 35205, mod_idx = 52, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_VideoFrame_displayHeight, name_off = 35229, mod_idx = 52, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_VideoFrame_timestamp, name_off = 35254, mod_idx = 52, realms = 3, sig_idx = 1},
+	{fn = _t_webcodecs_VideoFrame_duration, name_off = 35275, mod_idx = 52, realms = 3, sig_idx = 1},
+	{fn = _t_webcodecs_VideoFrame_visibleRect, name_off = 35295, mod_idx = 52, realms = 3, sig_idx = 15},
+	{fn = _t_webcodecs_VideoFrame_colorSpace, name_off = 35318, mod_idx = 52, realms = 3, sig_idx = 41},
+	{fn = _t_webcodecs_VideoFrame_isClosed, name_off = 35340, mod_idx = 52, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_VideoFrame_allocationSize, name_off = 35360, mod_idx = 52, realms = 3, sig_idx = 228},
+	{fn = _t_webcodecs_VideoFrame_copyTo, name_off = 35386, mod_idx = 52, realms = 3, sig_idx = 229},
+	{fn = _t_webcodecs_VideoFrame_copyLayout, name_off = 35404, mod_idx = 52, realms = 3, sig_idx = 149},
+	{fn = _t_webcodecs_VideoFrame_clone, name_off = 35426, mod_idx = 52, realms = 3, sig_idx = 27},
+	{fn = _t_webcodecs_VideoFrame_close, name_off = 35443, mod_idx = 52, realms = 3, sig_idx = 10},
+	{fn = _t_webcodecs_VideoFrame_transfer, name_off = 35460, mod_idx = 52, realms = 3, sig_idx = 65},
+	{fn = _t_webcodecs_VideoFrame_takeForTransfer, name_off = 35480, mod_idx = 52, realms = 3, sig_idx = 1},
+	{fn = _t_webcodecs_VideoFrame_adoptTransfer, name_off = 35507, mod_idx = 52, realms = 3, sig_idx = 1},
+	{fn = _t_webcodecs_audio_decoder_AudioDecoder_create, name_off = 35532, mod_idx = 53, realms = 3, sig_idx = 230},
+	{fn = _t_webcodecs_audio_decoder_AudioDecoder_isConfigSupported, name_off = 35552, mod_idx = 53, realms = 3, sig_idx = 22},
+	{fn = _t_webcodecs_audio_decoder_AudioDecoder_configure, name_off = 35583, mod_idx = 53, realms = 3, sig_idx = 231},
+	{fn = _t_webcodecs_audio_decoder_AudioDecoder_decode, name_off = 35606, mod_idx = 53, realms = 3, sig_idx = 232},
+	{fn = _t_webcodecs_audio_decoder_AudioDecoder_flush, name_off = 35626, mod_idx = 53, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_audio_decoder_AudioDecoder_reset, name_off = 35645, mod_idx = 53, realms = 3, sig_idx = 10},
+	{fn = _t_webcodecs_audio_decoder_AudioDecoder_close, name_off = 35664, mod_idx = 53, realms = 3, sig_idx = 10},
+	{fn = _t_webcodecs_audio_decoder_AudioDecoder_decodeQueueSize, name_off = 35683, mod_idx = 53, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_audio_decoder_AudioDecoder_state, name_off = 35712, mod_idx = 53, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_codec_EncodedVideoChunk_create, name_off = 35731, mod_idx = 54, realms = 3, sig_idx = 233},
+	{fn = _t_webcodecs_codec_EncodedAudioChunk_create, name_off = 35756, mod_idx = 54, realms = 3, sig_idx = 233},
+	{fn = _t_webcodecs_codec_EncodedVideoChunk_type, name_off = 35781, mod_idx = 54, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_codec_EncodedVideoChunk_timestamp, name_off = 35804, mod_idx = 54, realms = 3, sig_idx = 1},
+	{fn = _t_webcodecs_codec_EncodedVideoChunk_duration, name_off = 35832, mod_idx = 54, realms = 3, sig_idx = 1},
+	{fn = _t_webcodecs_codec_EncodedVideoChunk_byteLength, name_off = 35859, mod_idx = 54, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_codec_EncodedVideoChunk_copyTo, name_off = 35888, mod_idx = 54, realms = 3, sig_idx = 112},
+	{fn = _t_webcodecs_codec_EncodedAudioChunk_type, name_off = 35913, mod_idx = 54, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_codec_EncodedAudioChunk_timestamp, name_off = 35936, mod_idx = 54, realms = 3, sig_idx = 1},
+	{fn = _t_webcodecs_codec_EncodedAudioChunk_duration, name_off = 35964, mod_idx = 54, realms = 3, sig_idx = 1},
+	{fn = _t_webcodecs_codec_EncodedAudioChunk_byteLength, name_off = 35991, mod_idx = 54, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_codec_EncodedAudioChunk_copyTo, name_off = 36020, mod_idx = 54, realms = 3, sig_idx = 112},
+	{fn = _t_webcodecs_codec_AudioData_create, name_off = 36045, mod_idx = 54, realms = 3, sig_idx = 234},
+	{fn = _t_webcodecs_codec_AudioData_format, name_off = 36062, mod_idx = 54, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_codec_AudioData_sampleRate, name_off = 36079, mod_idx = 54, realms = 3, sig_idx = 13},
+	{fn = _t_webcodecs_codec_AudioData_numberOfFrames, name_off = 36100, mod_idx = 54, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_codec_AudioData_numberOfChannels, name_off = 36125, mod_idx = 54, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_codec_AudioData_timestamp, name_off = 36152, mod_idx = 54, realms = 3, sig_idx = 1},
+	{fn = _t_webcodecs_codec_AudioData_duration, name_off = 36172, mod_idx = 54, realms = 3, sig_idx = 1},
+	{fn = _t_webcodecs_codec_AudioData_allocationSize, name_off = 36191, mod_idx = 54, realms = 3, sig_idx = 162},
+	{fn = _t_webcodecs_codec_AudioData_copyTo, name_off = 36216, mod_idx = 54, realms = 3, sig_idx = 235},
+	{fn = _t_webcodecs_codec_AudioData_clone, name_off = 36233, mod_idx = 54, realms = 3, sig_idx = 27},
+	{fn = _t_webcodecs_codec_AudioData_close, name_off = 36249, mod_idx = 54, realms = 3, sig_idx = 10},
+	{fn = _t_webcodecs_encoders_VideoEncoder_create, name_off = 36265, mod_idx = 55, realms = 3, sig_idx = 230},
+	{fn = _t_webcodecs_encoders_AudioEncoder_create, name_off = 36285, mod_idx = 55, realms = 3, sig_idx = 230},
+	{fn = _t_webcodecs_encoders_VideoEncoder_isConfigSupported, name_off = 36305, mod_idx = 55, realms = 3, sig_idx = 22},
+	{fn = _t_webcodecs_encoders_AudioEncoder_isConfigSupported, name_off = 36336, mod_idx = 55, realms = 3, sig_idx = 22},
+	{fn = _t_webcodecs_encoders_VideoEncoder_configure, name_off = 36367, mod_idx = 55, realms = 3, sig_idx = 85},
+	{fn = _t_webcodecs_encoders_AudioEncoder_configure, name_off = 36390, mod_idx = 55, realms = 3, sig_idx = 85},
+	{fn = _t_webcodecs_encoders_VideoEncoder_encode, name_off = 36413, mod_idx = 55, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_encoders_AudioEncoder_encode, name_off = 36433, mod_idx = 55, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_encoders_VideoEncoder_flush, name_off = 36453, mod_idx = 55, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_encoders_AudioEncoder_flush, name_off = 36472, mod_idx = 55, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_encoders_VideoEncoder_reset, name_off = 36491, mod_idx = 55, realms = 3, sig_idx = 10},
+	{fn = _t_webcodecs_encoders_AudioEncoder_reset, name_off = 36510, mod_idx = 55, realms = 3, sig_idx = 10},
+	{fn = _t_webcodecs_encoders_VideoEncoder_close, name_off = 36529, mod_idx = 55, realms = 3, sig_idx = 10},
+	{fn = _t_webcodecs_encoders_AudioEncoder_close, name_off = 36548, mod_idx = 55, realms = 3, sig_idx = 10},
+	{fn = _t_webcodecs_encoders_VideoEncoder_encodeQueueSize, name_off = 36567, mod_idx = 55, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_encoders_AudioEncoder_encodeQueueSize, name_off = 36596, mod_idx = 55, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_encoders_VideoEncoder_state, name_off = 36625, mod_idx = 55, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_encoders_AudioEncoder_state, name_off = 36644, mod_idx = 55, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_image_ImageDecoder_create, name_off = 36663, mod_idx = 56, realms = 3, sig_idx = 157},
+	{fn = _t_webcodecs_image_ImageDecoder_isTypeSupported, name_off = 36683, mod_idx = 56, realms = 3, sig_idx = 22},
+	{fn = _t_webcodecs_image_ImageDecoder_type, name_off = 36712, mod_idx = 56, realms = 3, sig_idx = 4},
+	{fn = _t_webcodecs_image_ImageDecoder_complete, name_off = 36730, mod_idx = 56, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_image_ImageDecoder_frameCount, name_off = 36752, mod_idx = 56, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_image_ImageDecoder_decode, name_off = 36776, mod_idx = 56, realms = 3, sig_idx = 65},
+	{fn = _t_webcodecs_image_ImageDecoder_reset, name_off = 36796, mod_idx = 56, realms = 3, sig_idx = 10},
+	{fn = _t_webcodecs_image_ImageDecoder_close, name_off = 36815, mod_idx = 56, realms = 3, sig_idx = 10},
+	{fn = _t_webcodecs_image_ImageDecoder_tracks, name_off = 36834, mod_idx = 56, realms = 3, sig_idx = 1},
+	{fn = _t_webcodecs_image_ImageTrackList_length, name_off = 36854, mod_idx = 56, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_image_ImageTrackList_item, name_off = 36876, mod_idx = 56, realms = 3, sig_idx = 65},
+	{fn = _t_webcodecs_image_ImageTrackList_selectedIndex, name_off = 36896, mod_idx = 56, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_image_ImageTrack_animated, name_off = 36925, mod_idx = 56, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_image_ImageTrack_frameCount, name_off = 36945, mod_idx = 56, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_image_ImageTrack_repetitionCount, name_off = 36967, mod_idx = 56, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_image_ImageTrack_selected, name_off = 36994, mod_idx = 56, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_video_decoder_VideoDecoder_create, name_off = 37014, mod_idx = 57, realms = 3, sig_idx = 230},
+	{fn = _t_webcodecs_video_decoder_VideoDecoder_isConfigSupported, name_off = 37034, mod_idx = 57, realms = 3, sig_idx = 22},
+	{fn = _t_webcodecs_video_decoder_VideoDecoder_configure, name_off = 37065, mod_idx = 57, realms = 3, sig_idx = 231},
+	{fn = _t_webcodecs_video_decoder_VideoDecoder_decode, name_off = 37088, mod_idx = 57, realms = 3, sig_idx = 232},
+	{fn = _t_webcodecs_video_decoder_VideoDecoder_flush, name_off = 37108, mod_idx = 57, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_video_decoder_VideoDecoder_reset, name_off = 37127, mod_idx = 57, realms = 3, sig_idx = 10},
+	{fn = _t_webcodecs_video_decoder_VideoDecoder_close, name_off = 37146, mod_idx = 57, realms = 3, sig_idx = 10},
+	{fn = _t_webcodecs_video_decoder_VideoDecoder_decodeQueueSize, name_off = 37165, mod_idx = 57, realms = 3, sig_idx = 3},
+	{fn = _t_webcodecs_video_decoder_VideoDecoder_state, name_off = 37194, mod_idx = 57, realms = 3, sig_idx = 3},
+	{fn = _t_webgl_WebGL_enabled, name_off = 37213, mod_idx = 58, realms = 3, sig_idx = 125},
+	{fn = _t_webgl_WebGL_create, name_off = 37227, mod_idx = 58, realms = 3, sig_idx = 236},
+	{fn = _t_webgl_WebGL_createOffscreen, name_off = 37240, mod_idx = 58, realms = 3, sig_idx = 236},
+	{fn = _t_webgl_WebGL_createError, name_off = 37262, mod_idx = 58, realms = 3, sig_idx = 70},
+	{fn = _t_webgl_WebGL_submit, name_off = 37280, mod_idx = 58, realms = 3, sig_idx = 237},
+	{fn = _t_webgl_WebGL_query, name_off = 37293, mod_idx = 58, realms = 3, sig_idx = 238},
+	{fn = _t_webgl_WebGL_queryText, name_off = 37305, mod_idx = 58, realms = 3, sig_idx = 239},
+	{fn = _t_webgl_WebGL_upload, name_off = 37321, mod_idx = 58, realms = 3, sig_idx = 138},
+	{fn = _t_webgl_WebGL_width, name_off = 37334, mod_idx = 58, realms = 3, sig_idx = 3},
+	{fn = _t_webgl_WebGL_height, name_off = 37346, mod_idx = 58, realms = 3, sig_idx = 3},
+	{fn = _t_webgl_WebGL_snapshot, name_off = 37359, mod_idx = 58, realms = 3, sig_idx = 10},
+	{fn = _t_webgl_WebGL_commit, name_off = 37374, mod_idx = 58, realms = 3, sig_idx = 10},
+	{fn = _t_webgl_WebGL_isLost, name_off = 37387, mod_idx = 58, realms = 3, sig_idx = 3},
+	{fn = _t_webgl_WebGL_lose, name_off = 37400, mod_idx = 58, realms = 3, sig_idx = 10},
+	{fn = _t_webgl_WebGL_restore, name_off = 37411, mod_idx = 58, realms = 3, sig_idx = 3},
+	{fn = _t_websocket_WebSocket_create, name_off = 37425, mod_idx = 59, realms = 1, sig_idx = 151},
+	{fn = _t_websocket_WebSocket_readyState, name_off = 37442, mod_idx = 59, realms = 1, sig_idx = 3},
+	{fn = _t_websocket_WebSocket_url, name_off = 37463, mod_idx = 59, realms = 1, sig_idx = 4},
+	{fn = _t_websocket_WebSocket_protocol, name_off = 37477, mod_idx = 59, realms = 1, sig_idx = 4},
+	{fn = _t_websocket_WebSocket_extensions, name_off = 37496, mod_idx = 59, realms = 1, sig_idx = 4},
+	{fn = _t_websocket_WebSocket_bufferedAmount, name_off = 37517, mod_idx = 59, realms = 1, sig_idx = 1},
+	{fn = _t_websocket_WebSocket_binaryType, name_off = 37542, mod_idx = 59, realms = 1, sig_idx = 3},
+	{fn = _t_websocket_WebSocket_setBinaryType, name_off = 37563, mod_idx = 59, realms = 1, sig_idx = 41},
+	{fn = _t_websocket_WebSocket_send, name_off = 37587, mod_idx = 59, realms = 1, sig_idx = 85},
+	{fn = _t_websocket_WebSocket_sendBuffer, name_off = 37602, mod_idx = 59, realms = 1, sig_idx = 62},
+	{fn = _t_websocket_WebSocket_close, name_off = 37623, mod_idx = 59, realms = 1, sig_idx = 21},
+	{fn = _t_websocket_CloseEvent_wasClean, name_off = 37639, mod_idx = 59, realms = 1, sig_idx = 3},
+	{fn = _t_workers_Worker_create, name_off = 37659, mod_idx = 60, realms = 3, sig_idx = 151},
+	{fn = _t_workers_Worker_postMessage, name_off = 37673, mod_idx = 60, realms = 3, sig_idx = 86},
+	{fn = _t_workers_Worker_terminate, name_off = 37692, mod_idx = 60, realms = 3, sig_idx = 3},
+	{fn = _t_workers_DedicatedWorkerGlobalScope_self, name_off = 37709, mod_idx = 60, realms = 3, sig_idx = 0},
+	{fn = _t_workers_DedicatedWorkerGlobalScope_postMessage, name_off = 37741, mod_idx = 60, realms = 3, sig_idx = 120},
+	{fn = _t_workers_DedicatedWorkerGlobalScope_close, name_off = 37780, mod_idx = 60, realms = 3, sig_idx = 31},
+	{fn = _t_workers_DedicatedWorkerGlobalScope_name, name_off = 37813, mod_idx = 60, realms = 3, sig_idx = 70},
+	{fn = _t_workers_SharedWorkerGlobalScope_close, name_off = 37845, mod_idx = 60, realms = 3, sig_idx = 31},
+	{fn = _t_workers_SharedWorkerGlobalScope_name, name_off = 37875, mod_idx = 60, realms = 3, sig_idx = 70},
+	{fn = _t_workers_WorkerGlobalScope_location, name_off = 37904, mod_idx = 60, realms = 3, sig_idx = 70},
+	{fn = _t_workers_MessageEvent_transfer, name_off = 37931, mod_idx = 60, realms = 3, sig_idx = 42},
 }
 
 // Defines every import of the API on the engine (once per process).

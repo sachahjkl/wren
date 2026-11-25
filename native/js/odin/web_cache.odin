@@ -1,16 +1,14 @@
 // web_cache.odin: the Cache API (CacheStorage, Cache) on the browser's storage (module caches,
-// src/page/cache_store.odin). The browser's functions are synchronous; the promises, the Request and Response objects
-// are made here. A put reads the response's body (arrayBuffer) and stores it once it is complete; add / addAll fetch
-// first. Ported from native/js/runtime/web_cache.c: same wjr_* symbols and behaviour; the browser calls are declared
-// in native/js/odin_abi/api_decl/caches.odin and made through jsb.
+// src/page/cache_store.odin, cache_api.odin). All Cache / CacheStorage host operations return host promises settled
+// off the UI thread on cold index.wcs or body disk reads; match / matchAll / keys decode a packed host Buffer in one
+// settlement callback. A put reads the response's body (arrayBuffer) and stores it once it is complete; add / addAll
+// fetch first.
 package odin_glue
 
 import "../odin_abi/abi"
 import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
-
-@(private = "file") none: abi.Nothing
 
 @(private = "file") Cache_Iface :: enum { Cache, CacheStorage, Request, Response }
 @(private = "file") cache_iface_names := [Cache_Iface]cstring{ .Cache = "Cache", .CacheStorage = "CacheStorage", .Request = "Request", .Response = "Response" }
@@ -42,6 +40,17 @@ global_ctor :: proc "contextless" (ctx: ^wj.Context, name: cstring) -> wj.JSValu
 reject_status :: proc "contextless" (ctx: ^wj.Context, st: abi.Api_Error, what: cstring) -> wj.JSValue {
 	wj.wj_throw_status(ctx, i32(st), what)
 	return wj.web_promise_reject_pending(ctx)
+}
+
+@(private = "file")
+cache_reject_from_host :: proc "contextless" (ctx: ^wj.Context, host: u64, value: i64) -> wj.JSValue {
+	text := wj.wj_host_promise_text(ctx, host)
+	defer wj.JS_FreeValue(ctx, text)
+	n: uint
+	s := wj.to_cstring_len(ctx, &n, text)
+	defer if s != nil { wj.free_cstring(ctx, s) }
+	msg := s != nil ? string(([^]u8)(rawptr(s))[:n]) : ""
+	return wj.web_error_value(ctx, i32(value), wj.raw_bytes(msg), uint(len(msg)))
 }
 
 // The options of a query (CacheQueryOptions) and the request's header lines (Vary).
@@ -108,41 +117,6 @@ query_options :: proc "contextless" (ctx: ^wj.Context, opt: wj.JSValue, q: ^Quer
 	return true
 }
 
-// The ids of the entries of a cache matching a query, as a decimal list ("\n"-separated) copied out of the scratch
-// buffer (libc heap: libc_free). url nil: every entry.
-@(private = "file")
-match_ids :: proc(name: string, url: Maybe(string), method: string, q: ^Query) -> (ids: Id_List, st: abi.Api_Error) {
-	text: string
-	st = jsb.host(&text, api_decl.Cache_matchIds, wj.wr_Cache_matchIds, name, url.? or_else "", method, query_headers(q),
-		q.ignore_search, q.ignore_method, q.ignore_vary)
-	if st != .None { return }
-	p := wj.web_strndup(wj.raw_bytes(text), uint(len(text)))
-	if p == nil { return {}, .Quota }
-	return { p, string(p[:len(text)]) }, .None
-}
-
-// A copied list of decimal ids, walked with id_next.
-@(private = "file")
-Id_List :: struct { mem: [^]u8, rest: string }
-
-@(private = "file")
-id_next :: proc "contextless" (l: ^Id_List) -> (id: u64, ok: bool) {
-	for len(l.rest) > 0 {
-		cut := len(l.rest)
-		for j in 0 ..< len(l.rest) { if l.rest[j] == '\n' { cut = j; break } }
-		line := l.rest[:cut]
-		l.rest = cut < len(l.rest) ? l.rest[cut + 1:] : ""
-		if len(line) == 0 { continue }
-		v: u64
-		for c in transmute([]u8)line { v = v * 10 + u64(c - '0') }
-		return v, true
-	}
-	return 0, false
-}
-
-@(private = "file")
-id_free :: proc "contextless" (l: ^Id_List) { wj.libc_free(l.mem); l^ = {} }
-
 // "Name: value" lines into a new Headers (guard none)
 @(private = "file")
 headers_of :: proc "contextless" (ctx: ^wj.Context, lines: string) -> wj.JSValue {
@@ -151,104 +125,175 @@ headers_of :: proc "contextless" (ctx: ^wj.Context, lines: string) -> wj.JSValue
 	return h
 }
 
-// The head of an entry, split: status, statusText, the response's URL, the request's method, the request's URL, the
-// response's header lines.
-@(private = "file")
-Head :: enum { Status, Status_Text, Response_Url, Method, Url, Headers }
+// ---- Packed host Buffer reader (Cache_match / Cache_keys) ----
 
 @(private = "file")
-split_head :: proc "contextless" (text: string) -> (f: [Head]string) {
-	rest := text
-	for i in Head.Status ..< Head.Headers {
-		cut := -1
-		for j in 0 ..< len(rest) { if rest[j] == '\n' { cut = j; break } }
-		if cut < 0 { f[i] = rest; rest = ""; return }
-		f[i] = rest[:cut]
-		rest = rest[cut + 1:]
+Pack_Reader :: struct {
+	data: []u8,
+	at:   int,
+}
+
+@(private = "file")
+pack_u8 :: proc "contextless" (r: ^Pack_Reader) -> (u8, bool) {
+	if len(r.data) - r.at < 1 { return 0, false }
+	v := r.data[r.at]
+	r.at += 1
+	return v, true
+}
+
+@(private = "file")
+pack_u32 :: proc "contextless" (r: ^Pack_Reader) -> (u32, bool) {
+	if len(r.data) - r.at < 4 { return 0, false }
+	v := u32(r.data[r.at]) | (u32(r.data[r.at + 1]) << 8) | (u32(r.data[r.at + 2]) << 16) | (u32(r.data[r.at + 3]) << 24)
+	r.at += 4
+	return v, true
+}
+
+@(private = "file")
+pack_bytes :: proc "contextless" (r: ^Pack_Reader) -> ([]u8, bool) {
+	n, ok := pack_u32(r)
+	if !ok || int(n) > len(r.data) - r.at { return nil, false }
+	out := r.data[r.at:r.at + int(n)]
+	r.at += int(n)
+	return out, true
+}
+
+@(private = "file")
+pack_str :: proc "contextless" (r: ^Pack_Reader) -> (string, bool) {
+	b, ok := pack_bytes(r)
+	return string(b), ok
+}
+
+// Copies a host Buffer into libc heap memory and releases the host Buffer handle.
+@(private = "file")
+take_host_buffer :: proc "contextless" (buffer: u64) -> (mem: [^]u8, length: uint, ok: bool) {
+	defer if buffer != 0 { wj.wr_Object_release(buffer) }
+	n := buffer != 0 ? wj.wr_Buffer_length(buffer) : 0
+	if n <= 0 { return nil, 0, true }
+	p := ([^]u8)(wj.libc_malloc(uint(n)))
+	if p == nil { return nil, 0, false }
+	done: uint = 0
+	for i64(done) < n {
+		chunk := uint(n) - done
+		if chunk > 0x40000000 { chunk = 0x40000000 }
+		got := wj.wr_Buffer_read(buffer, i64(done), p[done:], u32(chunk))
+		if got <= 0 { break }
+		done += uint(got)
 	}
-	f[.Headers] = rest
-	return
+	return p, done, true
 }
 
 @(private = "file")
-atoi :: proc "contextless" (s: string) -> i32 {
-	v: i32
-	neg := false
-	i := 0
-	for i < len(s) && (s[i] == ' ' || s[i] == '\t') { i += 1 }
-	if i < len(s) && (s[i] == '-' || s[i] == '+') { neg = s[i] == '-'; i += 1 }
-	for ; i < len(s) && s[i] >= '0' && s[i] <= '9'; i += 1 { v = v * 10 + i32(s[i] - '0') }
-	return neg ? -v : v
-}
+decode_response :: proc "contextless" (ctx: ^wj.Context, r: ^Pack_Reader) -> wj.JSValue {
+	st_u, ok1 := pack_u32(r)
+	status_text, ok2 := pack_str(r)
+	response_url, ok3 := pack_str(r)
+	headers, ok4 := pack_str(r)
+	has_body, ok5 := pack_u8(r)
+	body_bytes, ok6 := pack_bytes(r)
+	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 { return wj.UNDEFINED }
 
-// A Response for an entry (undefined when it is gone).
-@(private = "file")
-entry_response :: proc(ctx: ^wj.Context, name: string, id: u64) -> wj.JSValue {
-	text: string
-	if jsb.host(&text, api_decl.Cache_entryHead, wj.wr_Cache_entryHead, name, id) != .None { return wj.UNDEFINED }
-	head_mem := wj.web_strndup(wj.raw_bytes(text), uint(len(text)))
-	if head_mem == nil { return wj.JS_ThrowOutOfMemory(ctx) }
-	defer wj.libc_free(head_mem)
-	f := split_head(string(head_mem[:len(text)]))
-	status := atoi(f[.Status])
+	status := i32(st_u)
 	opaque := status == 0   // (the only response stored with this status: Response's constructor refuses it)
 	null_body := opaque
 	switch status { case 101, 103, 204, 205, 304: null_body = true }
 	if status < 200 || status > 599 { status = 200 }
 	body := wj.NULL
-	if !null_body {
-		bytes: []u8
-		if jsb.host(&bytes, api_decl.Cache_entryBody, wj.wr_Cache_entryBody, name, id) == .None {
-			body = wj.JS_NewArrayBufferCopy(ctx, raw_data(bytes), uint(len(bytes)))
-		}
+	if !null_body && has_body != 0 {
+		body = wj.JS_NewArrayBufferCopy(ctx, raw_data(body_bytes), uint(len(body_bytes)))
 	}
 	init := wj.JS_NewObject(ctx)
 	wj.JS_SetPropertyStr(ctx, init, "status", wj.new_int32(status))
-	wj.JS_SetPropertyStr(ctx, init, "statusText", wj.new_string_len(ctx, f[.Status_Text]))
-	wj.JS_SetPropertyStr(ctx, init, "headers", headers_of(ctx, f[.Headers]))
+	wj.JS_SetPropertyStr(ctx, init, "statusText", wj.new_string_len(ctx, status_text))
+	wj.JS_SetPropertyStr(ctx, init, "headers", headers_of(ctx, headers))
 	ctor := global_ctor(ctx, "Response")
 	args := [2]wj.JSValue{ body, init }
-	r := wj.JS_CallConstructor(ctx, ctor, 2, &args[0])
+	resp := wj.JS_CallConstructor(ctx, ctor, 2, &args[0])
 	wj.JS_FreeValue(ctx, ctor)
 	wj.JS_FreeValue(ctx, body)
 	wj.JS_FreeValue(ctx, init)
 	if opaque {
-		if !wj.is_exception(r) { web_response_make_opaque(ctx, r, raw_data(f[.Response_Url]), uint(len(f[.Response_Url]))) }
-		return r
+		if !wj.is_exception(resp) { web_response_make_opaque(ctx, resp, raw_data(response_url), uint(len(response_url))) }
+		return resp
 	}
 	// the response keeps the URL it had ("" for a Response a script constructed, as stored)
-	if !wj.is_exception(r) && len(f[.Response_Url]) > 0 {
-		web_response_set_url(ctx, r, raw_data(f[.Response_Url]), uint(len(f[.Response_Url])))
+	if !wj.is_exception(resp) && len(response_url) > 0 {
+		web_response_set_url(ctx, resp, raw_data(response_url), uint(len(response_url)))
 	}
-	return r
+	return resp
 }
 
-// A Request for an entry's request (undefined when it is gone), with the stored request's headers (those Vary was
-// matched against).
 @(private = "file")
-entry_request :: proc(ctx: ^wj.Context, name: string, id: u64) -> wj.JSValue {
-	text: string
-	if jsb.host(&text, api_decl.Cache_entryHead, wj.wr_Cache_entryHead, name, id) != .None { return wj.UNDEFINED }
-	f := split_head(text)
-	url := wj.new_string_len(ctx, f[.Url][:min(len(f[.Url]), index_of(f[.Url], '\n'))])
+decode_request :: proc "contextless" (ctx: ^wj.Context, r: ^Pack_Reader) -> wj.JSValue {
+	url, ok1 := pack_str(r)
+	req_headers, ok2 := pack_str(r)
+	if !ok1 || !ok2 { return wj.UNDEFINED }
+	url_v := wj.new_string_len(ctx, url)
 	init := wj.JS_NewObject(ctx)
-	lines: string
-	if jsb.host(&lines, api_decl.Cache_entryRequestHeaders, wj.wr_Cache_entryRequestHeaders, name, id) == .None && len(lines) > 0 {
-		wj.JS_SetPropertyStr(ctx, init, "headers", headers_of(ctx, lines))
+	if len(req_headers) > 0 {
+		wj.JS_SetPropertyStr(ctx, init, "headers", headers_of(ctx, req_headers))
 	}
 	ctor := global_ctor(ctx, "Request")
-	args := [2]wj.JSValue{ url, init }
-	r := wj.JS_CallConstructor(ctx, ctor, 2, &args[0])
+	args := [2]wj.JSValue{ url_v, init }
+	req := wj.JS_CallConstructor(ctx, ctor, 2, &args[0])
 	wj.JS_FreeValue(ctx, ctor)
-	wj.JS_FreeValue(ctx, url)
+	wj.JS_FreeValue(ctx, url_v)
 	wj.JS_FreeValue(ctx, init)
-	return r
+	return req
+}
+
+// data: bool (true for matchAll, false for match)
+@(private = "file")
+settle_match :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	if state != 1 { reject^ = true; return cache_reject_from_host(ctx, host, value) }
+	multiple := wj.JS_ToBool(ctx, data) != 0
+	if value == 0 {
+		if !multiple { return wj.UNDEFINED }
+		arr := wj.JS_NewArray(ctx)
+		wj.web_freeze(ctx, arr)
+		return arr
+	}
+	mem, n, ok := take_host_buffer(u64(value))
+	if !ok { return wj.JS_ThrowOutOfMemory(ctx) }
+	defer wj.libc_free(mem)
+	r := Pack_Reader{data = mem != nil ? mem[:n] : nil}
+	count, cok := pack_u32(&r)
+	if !cok || count == 0 {
+		if !multiple { return wj.UNDEFINED }
+		arr := wj.JS_NewArray(ctx)
+		wj.web_freeze(ctx, arr)
+		return arr
+	}
+	if !multiple {
+		return decode_response(ctx, &r)
+	}
+	arr := wj.JS_NewArray(ctx)
+	for i in u32(0) ..< count {
+		v := decode_response(ctx, &r)
+		if wj.is_exception(v) { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)) } else { wj.JS_SetPropertyUint32(ctx, arr, i, v) }
+	}
+	wj.web_freeze(ctx, arr)
+	return arr
 }
 
 @(private = "file")
-index_of :: proc "contextless" (s: string, c: u8) -> int {
-	for i in 0 ..< len(s) { if s[i] == c { return i } }
-	return len(s)
+settle_keys :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	if state != 1 { reject^ = true; return cache_reject_from_host(ctx, host, value) }
+	arr := wj.JS_NewArray(ctx)
+	if value != 0 {
+		mem, n, ok := take_host_buffer(u64(value))
+		if !ok { wj.JS_FreeValue(ctx, arr); return wj.JS_ThrowOutOfMemory(ctx) }
+		defer wj.libc_free(mem)
+		r := Pack_Reader{data = mem != nil ? mem[:n] : nil}
+		if count, cok := pack_u32(&r); cok {
+			for i in u32(0) ..< count {
+				v := decode_request(ctx, &r)
+				if wj.is_exception(v) { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)) } else { wj.JS_SetPropertyUint32(ctx, arr, i, v) }
+			}
+		}
+	}
+	wj.web_freeze(ctx, arr)
+	return arr
 }
 
 @(private = "file")
@@ -286,30 +331,27 @@ cache_query :: proc(ctx: ^wj.Context, name_v: wj.JSValue, op: Cache_Op, request:
 		request_headers(request, &q)
 	}
 	defer if has_req { wj.wj_str_free(ctx, &url_s); wj.wj_str_free(ctx, &method_s) }
-	url, method := string(wj.str_slice(url_s)), string(wj.str_slice(method_s))
-	if op == .Delete {
-		removed: bool
-		st := jsb.host(&removed, api_decl.Cache_deleteEntries, wj.wr_Cache_deleteEntries, name, url, method, query_headers(&q),
+	url, method := has_req ? string(wj.str_slice(url_s)) : "", string(wj.str_slice(method_s))
+	hp: abi.Handle
+	switch op {
+	case .Delete:
+		st := jsb.host(&hp, api_decl.Cache_deleteEntries, wj.wr_Cache_deleteEntries, name, url, method, query_headers(&q),
 			q.ignore_search, q.ignore_method, q.ignore_vary)
-		return st != .None ? reject_status(ctx, st, "Cache.delete") : wj.web_promise_take(ctx, wj.new_bool(removed))
+		if st != .None { return reject_status(ctx, st, "Cache.delete") }
+		return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_BOOL, nil, wj.UNDEFINED)
+	case .Match, .Match_All:
+		multiple := op == .Match_All
+		st := jsb.host(&hp, api_decl.Cache_match, wj.wr_Cache_match, name, false, url, method, query_headers(&q),
+			q.ignore_search, q.ignore_method, q.ignore_vary, multiple)
+		if st != .None { return reject_status(ctx, st, "Cache.match") }
+		return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_NUMBER, settle_match, wj.new_bool(multiple))
+	case .Keys:
+		st := jsb.host(&hp, api_decl.Cache_keys, wj.wr_Cache_keys, name, url, method, query_headers(&q),
+			q.ignore_search, q.ignore_method, q.ignore_vary)
+		if st != .None { return reject_status(ctx, st, "Cache.keys") }
+		return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_NUMBER, settle_keys, wj.UNDEFINED)
 	}
-	ids, st := match_ids(name, has_req ? url : nil, method, &q)
-	if st != .None { return reject_status(ctx, st, "Cache.match") }
-	defer id_free(&ids)
-	if op == .Match {
-		v := wj.UNDEFINED
-		if id, ok := id_next(&ids); ok { v = entry_response(ctx, name, id) }
-		return wj.is_exception(v) ? wj.web_promise_reject_pending(ctx) : wj.web_promise_take(ctx, v)
-	}
-	arr := wj.JS_NewArray(ctx)
-	i: u32
-	for id in id_next(&ids) {
-		v := op == .Keys ? entry_request(ctx, name, id) : entry_response(ctx, name, id)
-		if wj.is_exception(v) { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)) } else { wj.JS_SetPropertyUint32(ctx, arr, i, v) }
-		i += 1
-	}
-	wj.web_freeze(ctx, arr)
-	return wj.web_promise_take(ctx, arr)
+	return wj.UNDEFINED
 }
 
 @(export, link_name = "wjr_Cache_match")
@@ -384,11 +426,12 @@ put_body_read :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, ar
 	rhl: uint
 	rh := wj.to_cstring_len(ctx, &rhl, data[Put_Data.Request_Headers])
 	defer if rh != nil { wj.free_cstring(ctx, rh) }
-	st := jsb.host(&none, api_decl.Cache_putEntry, wj.wr_Cache_putEntry, string(wj.str_slice(name)), string(wj.str_slice(url)),
+	hp: abi.Handle
+	st := jsb.host(&hp, api_decl.Cache_putEntry, wj.wr_Cache_putEntry, string(wj.str_slice(name)), string(wj.str_slice(url)),
 		rh != nil ? string(([^]u8)(rawptr(rh))[:rhl]) : "", status, string(wj.str_slice(st_text)), string(wj.str_slice(rurl)),
 		string(wj.web_buf_bytes(&lines)), bytes != nil ? bytes[:n] : nil)
 	if st != .None { return wj.wj_throw_status(ctx, i32(st), "Cache.put") }
-	return wj.UNDEFINED
+	return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_UNDEFINED, nil, wj.UNDEFINED)
 }
 
 // cache.put(request, response) (also the second half of add / addAll): checks, then the body read and stored
@@ -548,18 +591,25 @@ storage_name_arg :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, argc: i
 	return wj.wj_to_str(ctx, argv[0], out, 0, nil)
 }
 
+@(private = "file")
+settle_open :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	if state != 1 { reject^ = true; return cache_reject_from_host(ctx, host, value) }
+	return cache_new(ctx, data)
+}
+
 @(export, link_name = "wjr_CacheStorage_open")
 wjr_CacheStorage_open :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	context = jsb.glue_context()
 	name: wj.Str
 	if !storage_name_arg(ctx, t, argc, argv, "CacheStorage.open", &name) { return wj.web_promise_reject_pending(ctx) }
-	st := jsb.host(&none, api_decl.CacheStorage_openName, wj.wr_CacheStorage_openName, string(wj.str_slice(name)))
+	hp: abi.Handle
+	st := jsb.host(&hp, api_decl.CacheStorage_openName, wj.wr_CacheStorage_openName, string(wj.str_slice(name)))
 	nv := wj.new_string_len(ctx, wj.str_slice(name))
 	wj.wj_str_free(ctx, &name)
 	if st != .None { wj.JS_FreeValue(ctx, nv); return reject_status(ctx, st, "CacheStorage.open") }
-	c := cache_new(ctx, nv)
+	pr := wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_UNDEFINED, settle_open, nv)
 	wj.JS_FreeValue(ctx, nv)
-	return wj.is_exception(c) ? wj.web_promise_reject_pending(ctx) : wj.web_promise_take(ctx, c)
+	return pr
 }
 
 @(export, link_name = "wjr_CacheStorage_has")
@@ -567,10 +617,11 @@ wjr_CacheStorage_has :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, ar
 	context = jsb.glue_context()
 	name: wj.Str
 	if !storage_name_arg(ctx, t, argc, argv, "CacheStorage.has", &name) { return wj.web_promise_reject_pending(ctx) }
-	r: bool
-	st := jsb.host(&r, api_decl.CacheStorage_hasName, wj.wr_CacheStorage_hasName, string(wj.str_slice(name)))
+	hp: abi.Handle
+	st := jsb.host(&hp, api_decl.CacheStorage_hasName, wj.wr_CacheStorage_hasName, string(wj.str_slice(name)))
 	wj.wj_str_free(ctx, &name)
-	return st != .None ? reject_status(ctx, st, "CacheStorage.has") : wj.web_promise_take(ctx, wj.new_bool(r))
+	if st != .None { return reject_status(ctx, st, "CacheStorage.has") }
+	return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_BOOL, nil, wj.UNDEFINED)
 }
 
 @(export, link_name = "wjr_CacheStorage_delete")
@@ -578,10 +629,11 @@ wjr_CacheStorage_delete :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32,
 	context = jsb.glue_context()
 	name: wj.Str
 	if !storage_name_arg(ctx, t, argc, argv, "CacheStorage.delete", &name) { return wj.web_promise_reject_pending(ctx) }
-	r: bool
-	st := jsb.host(&r, api_decl.CacheStorage_deleteName, wj.wr_CacheStorage_deleteName, string(wj.str_slice(name)))
+	hp: abi.Handle
+	st := jsb.host(&hp, api_decl.CacheStorage_deleteName, wj.wr_CacheStorage_deleteName, string(wj.str_slice(name)))
 	wj.wj_str_free(ctx, &name)
-	return st != .None ? reject_status(ctx, st, "CacheStorage.delete") : wj.web_promise_take(ctx, wj.new_bool(r))
+	if st != .None { return reject_status(ctx, st, "CacheStorage.delete") }
+	return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_BOOL, nil, wj.UNDEFINED)
 }
 
 // the names as an array (the lines of `text`)
@@ -601,13 +653,24 @@ names_array :: proc "contextless" (ctx: ^wj.Context, text: string) -> wj.JSValue
 	return arr
 }
 
+@(private = "file")
+settle_names :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	if state != 1 { reject^ = true; return cache_reject_from_host(ctx, host, value) }
+	text := wj.wj_host_promise_text(ctx, host)
+	defer wj.JS_FreeValue(ctx, text)
+	n: uint
+	s := wj.to_cstring_len(ctx, &n, text)
+	defer if s != nil { wj.free_cstring(ctx, s) }
+	return names_array(ctx, s != nil ? string(([^]u8)(rawptr(s))[:n]) : "")
+}
+
 @(export, link_name = "wjr_CacheStorage_keys")
 wjr_CacheStorage_keys :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	context = jsb.glue_context()
 	if wj.wj_this(ctx, t, cache_iface(.CacheStorage)) == nil { return wj.web_promise_reject_pending(ctx) }
-	text: string
-	if st := jsb.host(&text, api_decl.CacheStorage_names, wj.wr_CacheStorage_names); st != .None { return reject_status(ctx, st, "CacheStorage.keys") }
-	return wj.web_promise_take(ctx, names_array(ctx, text))
+	hp: abi.Handle
+	if st := jsb.host(&hp, api_decl.CacheStorage_names, wj.wr_CacheStorage_names); st != .None { return reject_status(ctx, st, "CacheStorage.keys") }
+	return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_TEXT, settle_names, wj.UNDEFINED)
 }
 
 // caches.match(request, {cacheName}): the first match in the named cache, else in every cache in creation order
@@ -624,39 +687,23 @@ wjr_CacheStorage_match :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, 
 	if !request_parts(ctx, argv[0], &url, &method) { wj.JS_FreeValue(ctx, cache_name); return wj.web_promise_reject_pending(ctx) }
 	defer { wj.wj_str_free(ctx, &url); wj.wj_str_free(ctx, &method) }
 	request_headers(argv[0], &q)
-	names: wj.JSValue
-	if !wj.is_undefined(cache_name) {
-		names = wj.JS_NewArray(ctx)
-		wj.JS_SetPropertyUint32(ctx, names, 0, wj.JS_ToString(ctx, cache_name))
-	} else {
-		text: string
-		if st := jsb.host(&text, api_decl.CacheStorage_names, wj.wr_CacheStorage_names); st != .None {
+	all_caches := wj.is_undefined(cache_name)
+	cn_s: wj.Str
+	if !all_caches {
+		if !wj.wj_to_str(ctx, cache_name, &cn_s, 0, nil) {
 			wj.JS_FreeValue(ctx, cache_name)
-			return reject_status(ctx, st, "CacheStorage.match")
+			return wj.web_promise_reject_pending(ctx)
 		}
-		names = names_array(ctx, text)
 	}
 	wj.JS_FreeValue(ctx, cache_name)
-	found := wj.UNDEFINED
-	count: i64
-	wj.JS_GetLength(ctx, names, &count)
-	for i: i64 = 0; i < count && wj.is_undefined(found); i += 1 {
-		nv := wj.JS_GetPropertyInt64(ctx, names, i)
-		name: wj.Str
-		if wj.wj_to_str(ctx, nv, &name, 0, nil) {
-			n := string(wj.str_slice(name))
-			ids, st := match_ids(n, string(wj.str_slice(url)), string(wj.str_slice(method)), &q)
-			if st == .None {
-				if id, ok := id_next(&ids); ok { found = entry_response(ctx, n, id) }
-				id_free(&ids)
-			}
-			wj.wj_str_free(ctx, &name)
-		}
-		wj.JS_FreeValue(ctx, nv)
-	}
-	wj.JS_FreeValue(ctx, names)
-	if wj.is_exception(found) { return wj.web_promise_reject_pending(ctx) }
-	return wj.web_promise_take(ctx, found)
+	defer if !all_caches { wj.wj_str_free(ctx, &cn_s) }
+	hp: abi.Handle
+	st := jsb.host(&hp, api_decl.Cache_match, wj.wr_Cache_match,
+		all_caches ? "" : string(wj.str_slice(cn_s)), all_caches,
+		string(wj.str_slice(url)), string(wj.str_slice(method)), query_headers(&q),
+		q.ignore_search, q.ignore_method, q.ignore_vary, false)
+	if st != .None { return reject_status(ctx, st, "CacheStorage.match") }
+	return wj.wj_promise_from_host(ctx, u64(hp), wj.HOST_NUMBER, settle_match, wj.FALSE)
 }
 
 // crossOriginIsolated: HTML's capability, from the document's headers (apply_isolation_headers in src/page/page.odin)

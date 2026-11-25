@@ -4,8 +4,8 @@
 
 The Cache API (Service Workers §5: CacheStorage, Cache) on the browser's storage (src/page/cache_store.odin): named
 caches of request -> response entries per origin, kept in the profile and shared by every realm of the origin (pages,
-workers, service workers). The engine (native/js/runtime/web_cache.c) makes the promises, the Request and Response
-objects; these functions are synchronous. Security for a realm that is not a secure context or has an opaque origin.
+workers, service workers). Cold index.wcs and body disk reads run off the UI thread; operations return promises
+settled when ready. Security for a realm that is not a secure context or has an opaque origin.
 
 Exposed to: Window, Worker. Source: `api/caches.widl`.
 
@@ -28,106 +28,82 @@ Host: `CacheStorage_check :: proc(c: ^Call) -> Api_Error`
 ### `CacheStorage_openName`
 
 ```
-void CacheStorage_openName(string name) raises
+Promise CacheStorage_openName(string name) raises
 ```
 
-caches.open(name): the cache exists afterwards.
+caches.open(name): promise settling undefined once the cache exists.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `CacheStorage_openName :: proc(c: ^Call, name: string) -> Api_Error`
+Host: `CacheStorage_openName :: proc(c: ^Call, name: string) -> (u64, Api_Error)`
 
 ### `CacheStorage_hasName`
 
 ```
-bool CacheStorage_hasName(string name) raises
+Promise CacheStorage_hasName(string name) raises
 ```
 
-caches.has(name)
+caches.has(name): promise of bool (value 0/1).
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `CacheStorage_hasName :: proc(c: ^Call, name: string) -> (bool, Api_Error)`
+Host: `CacheStorage_hasName :: proc(c: ^Call, name: string) -> (u64, Api_Error)`
 
 ### `CacheStorage_deleteName`
 
 ```
-bool CacheStorage_deleteName(string name) raises
+Promise CacheStorage_deleteName(string name) raises
 ```
 
-caches.delete(name)
+caches.delete(name): promise of bool (value 0/1).
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `CacheStorage_deleteName :: proc(c: ^Call, name: string) -> (bool, Api_Error)`
+Host: `CacheStorage_deleteName :: proc(c: ^Call, name: string) -> (u64, Api_Error)`
 
 ### `CacheStorage_names`
 
 ```
-string CacheStorage_names() raises
+Promise CacheStorage_names() raises
 ```
 
-caches.keys(): the names in creation order, "\n"-separated.
+caches.keys(): promise whose text is the names in creation order, "\n"-separated.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `CacheStorage_names :: proc(c: ^Call) -> (string, Api_Error)`
+Host: `CacheStorage_names :: proc(c: ^Call) -> (u64, Api_Error)`
 
-### `Cache_matchIds`
+### `Cache_match`
 
 ```
-string Cache_matchIds(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises
+Promise Cache_match(string cache, bool all_caches, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary, bool multiple) raises
 ```
 
-The ids of the entries of `cache` matching the request (url "" = every entry), decimal, "\n"-separated. Unless
-ignore_vary, an entry whose response has a Vary header matches only when the named request headers are the same
-in `request_headers` ("Name: value" lines) as in its stored request (Vary: * never matches).
+cache.match / cache.matchAll / caches.match: promise of a Buffer handle (0 when none matched) packing matched
+entries: u32 count, then per entry: i32 status, u32+bytes status_text, u32+bytes response_url, u32+bytes headers,
+u8 has_body, u32+bytes body. When `all_caches` is true, searches every cache in creation order.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Cache_matchIds :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -> (string, Api_Error)`
+Host: `Cache_match :: proc(c: ^Call, cache: string, all_caches: bool, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool, multiple: bool) -> (u64, Api_Error)`
 
-### `Cache_entryRequestHeaders`
+### `Cache_keys`
 
 ```
-string Cache_entryRequestHeaders(string cache, u64 id) raises
+Promise Cache_keys(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises
 ```
 
-The header lines of an entry's request (Not_Found when it is gone).
+cache.keys(request, options): promise of a Buffer handle (0 when none matched) packing matched requests: u32 count,
+then per entry: u32+bytes url, u32+bytes request_headers.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Cache_entryRequestHeaders :: proc(c: ^Call, cache: string, id: u64) -> (string, Api_Error)`
-
-### `Cache_entryHead`
-
-```
-string Cache_entryHead(string cache, u64 id) raises
-```
-
-An entry's head: status, statusText, the response's URL, the request's method, the request's URL, then the
-response's header lines, "\n"-separated (Not_Found when it is gone).
-
-Raises: returns an `Error` (see [web](web.md)).
-
-Host: `Cache_entryHead :: proc(c: ^Call, cache: string, id: u64) -> (string, Api_Error)`
-
-### `Cache_entryBody`
-
-```
-bytes Cache_entryBody(string cache, u64 id) raises
-```
-
-An entry's body (Not_Found when it is gone).
-
-Raises: returns an `Error` (see [web](web.md)).
-
-Host: `Cache_entryBody :: proc(c: ^Call, cache: string, id: u64) -> ([]u8, Api_Error)`
+Host: `Cache_keys :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -> (u64, Api_Error)`
 
 ### `Cache_putEntry`
 
 ```
-void Cache_putEntry(string cache, string url, string request_headers, i32 status, string status_text, string response_url, string headers, bytes body) raises
+Promise Cache_putEntry(string cache, string url, string request_headers, i32 status, string status_text, string response_url, string headers, bytes body) raises
 ```
 
 cache.put(request, response) with the response's body read: replaces the entries the request matches (Vary
@@ -135,17 +111,17 @@ considered). Quota past caches.max_bytes_per_origin.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Cache_putEntry :: proc(c: ^Call, cache: string, url: string, request_headers: string, status: i32, status_text: string, response_url: string, headers: string, body: []u8) -> Api_Error`
+Host: `Cache_putEntry :: proc(c: ^Call, cache: string, url: string, request_headers: string, status: i32, status_text: string, response_url: string, headers: string, body: []u8) -> (u64, Api_Error)`
 
 ### `Cache_deleteEntries`
 
 ```
-bool Cache_deleteEntries(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises
+Promise Cache_deleteEntries(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises
 ```
 
-cache.delete(request, options)
+cache.delete(request, options): promise of bool (value 0/1).
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Cache_deleteEntries :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -> (bool, Api_Error)`
+Host: `Cache_deleteEntries :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -> (u64, Api_Error)`
 
