@@ -763,32 +763,67 @@ Tree_Guide_Look :: struct {
 	color:                            draw.Color,
 }
 
+// Pure geometry of one row's tree-tab elbow (tab_tree_test.odin): the stroked rounded rectangle whose bottom-left
+// corner forms the quarter-circle elbow, its integer clip rect, and (for non-last children) the vertical trunk rect
+// ending on the clip's left edge so the trunk and curved branch share zero pixels.
+Tree_Elbow_Geom :: struct {
+	trunk:      draw.Rect,
+	clip:       draw.Rect,
+	frame:      draw.Rect,
+	radius:     f32,
+	has_branch: bool,
+}
+
+tree_elbow_geom :: proc(top, bottom, x, end, thick, radius: f32, last: bool) -> (g: Tree_Elbow_Geom) {
+	t := max(math.round(thick), 1)
+	x0 := math.round(x)
+	x1 := math.round(end)
+	y_top := math.round(top)
+	y_end := math.round(bottom)
+	hy := math.round((y_top + y_end - t) * 0.5)
+	y_bot := hy + t
+	if x1 <= x0 + t {
+		g.trunk = {{x0, y_top}, {x0 + t, last ? y_bot : y_end}}
+		return
+	}
+	r := clamp(math.round(radius + t * 0.5), 0, min(x1 - x0, y_bot - y_top))
+	pad := r + t + 2
+	g.frame = {{x0, y_top - pad}, {x1 + pad, y_bot}}
+	g.radius = r
+	g.has_branch = true
+	if last {
+		g.clip = {{x0, y_top}, {x1, y_bot}}
+	} else {
+		g.trunk = {{x0, y_top}, {x0 + t, y_end}}
+		g.clip = {{x0 + t, y_top}, {x1, y_bot}}
+	}
+	return
+}
+
 // Draws only inside its box, which is the row's indent: nothing reaches into a row.
 @(private = "file")
 tree_guide_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	l := (^Tree_Guide_Look)(user)
-	top, bottom := b.rect.min.y, b.rect.max.y
-	mid := math.round((top + bottom) * 0.5)
+	y_top, y_end := math.round(b.rect.min.y), math.round(b.rect.max.y)
 	left := b.rect.min.x
 	level_x :: proc(l: ^Tree_Guide_Look, left: f32, k: int) -> f32 { return math.round(left + f32(k) * l.step + l.axis - l.thick * 0.5) }
 	for k in 0 ..< l.depth - 1 {
 		if l.guide.rails & (1 << u64(k)) == 0 { continue }
 		x := level_x(l, left, k)
-		draw.rect(dc, {{x, top}, {x + l.thick, bottom}}, l.color)
+		draw.rect(dc, {{x, y_top}, {x + l.thick, y_end}}, l.color)
 	}
-	// the elbow: down the parent's line, a quarter circle, along to the row's edge; the line goes on when a sibling follows
+	// Analytical SDF quarter-circle elbow: one stroked rounded rect clipped to the row's quadrant so translucent
+	// strokes never overlap or dot at segment joints, and non-last trunks meet the branch on an exact pixel edge.
 	x := level_x(l, left, l.depth - 1)
-	end := b.rect.max.x - l.gap
-	r := min(l.radius, end - x - l.thick)
-	if !l.guide.last { draw.rect(dc, {{x, top}, {x + l.thick, bottom}}, l.color) } else { draw.rect(dc, {{x, top}, {x + l.thick, mid - r}}, l.color) }
-	cx := x + l.thick * 0.5
-	if r > 0 {
-		pts: [9]draw.Vec2
-		for s in 0 ..< len(pts) {
-			a := f32(s) / f32(len(pts) - 1) * math.PI * 0.5
-			pts[s] = {cx + r - r * math.cos(a), mid - r + r * math.sin(a)}
-		}
-		draw.polyline(dc, pts[:], l.thick, l.color)
+	g := tree_elbow_geom(y_top, y_end, x, b.rect.max.x - l.gap, l.thick, l.radius, l.guide.last)
+	if g.trunk.max.x > g.trunk.min.x && g.trunk.max.y > g.trunk.min.y {
+		draw.rect(dc, g.trunk, l.color)
 	}
-	draw.rect(dc, {{cx + max(r, 0), mid - l.thick * 0.5}, {end, mid + l.thick * 0.5}}, l.color)
+	if g.has_branch {
+		prev := draw.set_circular_corners(dc, true)
+		defer draw.set_circular_corners(dc, prev)
+		draw.push_clip(dc, g.clip)
+		draw.rect_corners(dc, g.frame, {l.color, l.color, l.color, l.color}, {0, g.radius, 0, 0}, border = l.thick, backdrop = ui.box_under(b))
+		draw.pop_clip(dc)
+	}
 }

@@ -1,6 +1,8 @@
 package browser
 
+import "core:math"
 import "core:testing"
+import "toolkit:draw"
 
 @(private = "file")
 tree_tabs :: proc(n: int) -> []^Tab {
@@ -141,4 +143,55 @@ tree_parent_at_depth_follows_the_tab_before :: proc(t: ^testing.T) {
 	testing.expect_value(t, tree_parent_at_depth(tabs, 0, 2), u64(0))   // nothing before: a root
 	tabs[3].group = 7
 	testing.expect_value(t, tree_parent_at_depth(tabs, 3, 1), u64(0))   // another group than the tab before's
+}
+
+// Analytical SDF tree-tab elbow geometry: single stroked rounded rect for last children (zero trunk overlap),
+// strictly disjoint trunk and branch clip rects for non-last children, exact integer pixel edges at all DPIs
+// (including odd stroke widths), and contiguous snapping across consecutive rows during fractional scrolling.
+@(test)
+tree_elbow_geometry_has_no_overlap_at_any_dpi :: proc(t: ^testing.T) {
+	is_int :: proc(v: f32) -> bool { return v == math.round(v) }
+	for dpi in ([?]f32{1.0, 1.5, 2.0}) {
+		thick := max(math.round(1.5 * dpi), 1)
+		rh := math.round(36 * dpi)
+		rad := math.round(6 * dpi)
+		x := math.round(17 * dpi)
+		end := math.round(28 * dpi)
+
+		// Last child (╰): single clipped stroked rect, no separate trunk.
+		last := tree_elbow_geom(100, 100 + rh, x, end, thick, rad, true)
+		testing.expectf(t, last.has_branch, "dpi=%.1f last: has branch", dpi)
+		testing.expect_value(t, last.trunk, draw.Rect{})
+		testing.expectf(t, is_int(last.clip.min.x) && is_int(last.clip.min.y) && is_int(last.clip.max.x) && is_int(last.clip.max.y),
+			"dpi=%.1f last: integer clip %v", dpi, last.clip)
+		testing.expect_value(t, last.frame.min.x, last.clip.min.x)
+		testing.expect_value(t, last.frame.max.y, last.clip.max.y)
+		testing.expectf(t, last.frame.max.x - last.frame.min.x >= 2 * last.radius + thick, "dpi=%.1f last: frame width holds full corner", dpi)
+		testing.expectf(t, last.frame.max.y - last.frame.min.y >= 2 * last.radius + thick, "dpi=%.1f last: frame height holds full corner", dpi)
+		testing.expectf(t, last.clip.max.y - last.clip.min.y >= thick, "dpi=%.1f last: horizontal arm fits inside clip", dpi)
+
+		// Non-last child (├): vertical trunk and clipped branch share zero pixels (meet on exact integer x + thick).
+		mid := tree_elbow_geom(100, 100 + rh, x, end, thick, rad, false)
+		testing.expectf(t, mid.has_branch, "dpi=%.1f non-last: has branch", dpi)
+		testing.expect_value(t, mid.trunk.min.x, x)
+		testing.expect_value(t, mid.trunk.max.x, x + thick)
+		testing.expect_value(t, mid.trunk.min.y, f32(100))
+		testing.expect_value(t, mid.trunk.max.y, 100 + rh)
+		testing.expect_value(t, mid.clip.min.x, mid.trunk.max.x)   // strictly disjoint on exact pixel column
+		testing.expect_value(t, mid.frame.min.x, mid.trunk.min.x)
+		testing.expect_value(t, mid.frame.max.y, mid.clip.max.y)
+		testing.expectf(t, is_int(mid.clip.min.x) && is_int(mid.clip.min.y) && is_int(mid.clip.max.x) && is_int(mid.clip.max.y),
+			"dpi=%.1f non-last: integer clip %v", dpi, mid.clip)
+	}
+
+	// Fractional smooth-scroll offsets: consecutive rows snap to exact contiguous pixel boundaries.
+	r0 := tree_elbow_geom(100.4, 136.4, 17, 28, 2, 6, false)
+	r1 := tree_elbow_geom(136.4, 172.4, 17, 28, 2, 6, true)
+	testing.expect_value(t, r0.trunk.max.y, r1.clip.min.y)
+
+	// Degenerate narrow indent (no room past trunk): trunk only, no broken branch.
+	narrow := tree_elbow_geom(0, 36, 17, 18, 2, 6, true)
+	testing.expect(t, !narrow.has_branch)
+	testing.expect_value(t, narrow.trunk.min.x, f32(17))
+	testing.expect_value(t, narrow.trunk.max.x, f32(19))
 }
