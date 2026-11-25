@@ -1,8 +1,14 @@
 package browser
 
+import "core:os"
 import "core:strings"
 import "core:testing"
 import config "toolkit:config"
+import "toolkit:font"
+import "toolkit:platform"
+import "toolkit:ui"
+import "wb:base"
+import "wb:net"
 
 // about:config's model: the rows and the category counts for a search, the filters and the folded groups.
 
@@ -146,4 +152,128 @@ every_preference_has_a_distinct_title :: proc(t: ^testing.T) {
 		}
 		seen[key] = r.name
 	}
+}
+
+// Editing a free-text String (such as network.user_agent), Int or Float preference in about:config commits on blur,
+// filter/unmount and tab leave (not only Enter); Reset and Escape clear fields whose default is empty; and the saved
+// prefs.txt reloads cleanly into net.settings_from_prefs.
+@(test)
+config_page_commits_edits_on_blur_filter_and_leave :: proc(t: ^testing.T) {
+	app := test_app(t)
+	app_prefs_init(app)
+	app_settings_read(app)
+	defer config_view_destroy(&app.config_view)
+	defer profile_writes_destroy(&app.recovery.writes)
+
+	fonts: font.State
+	font.init(&fonts)
+	defer font.destroy(&fonts)
+	ui_font, ok := font.load_embedded(&fonts, font.FALLBACK_UI_DATA)
+	if !testing.expect(t, ok) { return }
+	theme: ui.Theme
+	ui.apply_palette(&theme, ui.palette_of("Graphite"))
+	defer ui.theme_destroy(&theme)
+	s := new(ui.State)
+	defer free(s)
+	ui.init(s, &fonts, &theme)
+	defer ui.destroy(s)
+
+	build_cfg :: proc(app: ^App, s: ^ui.State, ui_font: font.Font_Id, events: []platform.Event = nil) {
+		ui.begin_build(s, {
+			window_size = {1100, 800}, events = events, dt = 1.0 / 60, animations = false, dpi_scale = 1,
+			base = ui.Style{pref = {.X = ui.text_size(), .Y = ui.px(30)}, font = ui_font, font_size = 15, text_pad = 6},
+		})
+		config_page(app, &app.config_view, &app.prefs)
+		ui.end_build()
+	}
+
+	edit_and_blur :: proc(t: ^testing.T, app: ^App, s: ^ui.State, ui_font: font.Font_Id, pref_name, text: string) {
+		ui.line_edit_set(&app.config_view.search, pref_name)
+		build_cfg(app, s, ui_font)
+		build_cfg(app, s, ui_font)
+		st, has := app.config_view.rows[pref_name]
+		if !testing.expectf(t, has && st.editor != 0, "editor built for %s", pref_name) { return }
+		// Focus the field, replace its text, then blur by clicking outside without pressing Enter.
+		ui.set_focus(st.editor)
+		build_cfg(app, s, ui_font)
+		ui.line_edit_set(&st.field, text)
+		build_cfg(app, s, ui_font)
+		ui.set_focus(0)
+		build_cfg(app, s, ui_font)
+	}
+
+	// 1. Free-text String (network.user_agent), Int, and Float all commit on blur without Enter.
+	edit_and_blur(t, app, s, ui_font, "network.user_agent", "Mozilla/5.0 CustomWren/2.0")
+	testing.expect_value(t, config.string_of(&app.prefs, "network.user_agent"), "Mozilla/5.0 CustomWren/2.0")
+	testing.expect_value(t, config.entry(&app.prefs, config.ref_of(&app.prefs, "network.user_agent")).source, config.Source.User)
+
+	edit_and_blur(t, app, s, ui_font, "network.max_connections_per_host", "12")
+	testing.expect_value(t, config.int_of(&app.prefs, "network.max_connections_per_host"), i64(12))
+
+	edit_and_blur(t, app, s, ui_font, "browser.scroll.key_line_px", "64.5")
+	testing.expect_value(t, config.float_of(&app.prefs, "browser.scroll.key_line_px"), f64(64.5))
+
+	// 2. Filtering away while the field still holds focus commits the edit instead of dropping it.
+	ui.line_edit_set(&app.config_view.search, "network.user_agent")
+	build_cfg(app, s, ui_font)
+	st := app.config_view.rows["network.user_agent"]
+	ui.set_focus(st.editor)
+	build_cfg(app, s, ui_font)
+	ui.line_edit_set(&st.field, "FilteredOutUA/3.0")
+	build_cfg(app, s, ui_font)
+	ui.line_edit_set(&app.config_view.search, "browser.homepage")
+	build_cfg(app, s, ui_font)
+	testing.expect_value(t, config.string_of(&app.prefs, "network.user_agent"), "FilteredOutUA/3.0")
+
+	// 3. Leaving the about:config tab while focused (page_view switching away) commits the edit.
+	ui.line_edit_set(&app.config_view.search, "network.user_agent")
+	build_cfg(app, s, ui_font)
+	st = app.config_view.rows["network.user_agent"]
+	ui.set_focus(st.editor)
+	build_cfg(app, s, ui_font)
+	ui.line_edit_set(&st.field, "TabLeaveUA/4.0")
+	build_cfg(app, s, ui_font)
+	ui.begin_build(s, {
+		window_size = {1100, 800}, dt = 1.0 / 60, animations = false, dpi_scale = 1,
+		base = ui.Style{pref = {.X = ui.text_size(), .Y = ui.px(30)}, font = ui_font, font_size = 15, text_pad = 6},
+	})
+	page_view(app, nil)
+	ui.end_build()
+	testing.expect_value(t, config.string_of(&app.prefs, "network.user_agent"), "TabLeaveUA/4.0")
+
+	// 4. Reset and Escape resync fields whose default/current value is "" (empty-string sentinel check).
+	build_cfg(app, s, ui_font)
+	config_reset(&app.config_view, &app.prefs, st, "network.user_agent")
+	build_cfg(app, s, ui_font)
+	testing.expect_value(t, config.string_of(&app.prefs, "network.user_agent"), "")
+	testing.expect_value(t, ui.line_edit_string(&st.field), "")
+
+	ui.set_focus(st.editor)
+	build_cfg(app, s, ui_font)
+	ui.line_edit_set(&st.field, "CancelledDraft")
+	esc := [?]platform.Event{{kind = .Key_Press, key = .Escape}}
+	build_cfg(app, s, ui_font, esc[:])
+	build_cfg(app, s, ui_font)
+	testing.expect_value(t, config.string_of(&app.prefs, "network.user_agent"), "")
+	testing.expect_value(t, ui.line_edit_string(&st.field), "")
+
+	// 5. Save edited prefs to prefs.txt and reload into a fresh registry (startup order: load_file before register_all_prefs).
+	edit_and_blur(t, app, s, ui_font, "network.user_agent", "Mozilla/5.0 PersistedWren/9.9")
+	_ = os.make_directory_all("build/tmp")
+	dir := strings.concatenate({"build/tmp/config_ui_save_", base.unique_name(context.temp_allocator)}, context.temp_allocator)
+	_ = os.make_directory_all(dir)
+	defer base.remove_tree(dir)
+	prefs_path := strings.concatenate({dir, "/prefs.txt"}, context.temp_allocator)
+	profile_prefs_save(app, prefs_path)
+
+	reloaded := config.prefs_make()
+	defer config.prefs_destroy(&reloaded)
+	config.load_file(&reloaded, prefs_path, .User)
+	register_all_prefs(&reloaded)
+	testing.expect_value(t, config.string_of(&reloaded, "network.user_agent"), "Mozilla/5.0 PersistedWren/9.9")
+	testing.expect_value(t, config.int_of(&reloaded, "network.max_connections_per_host"), i64(12))
+	testing.expect_value(t, config.float_of(&reloaded, "browser.scroll.key_line_px"), f64(64.5))
+	ns := net.settings_from_prefs(&reloaded)
+	defer net.settings_destroy(&ns)
+	testing.expect_value(t, ns.user_agent, "Mozilla/5.0 PersistedWren/9.9")
 }

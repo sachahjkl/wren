@@ -210,6 +210,7 @@ app_free :: proc(app: ^App) {
 	if .Window in app.made { app_windows_end(app) }
 	if .Fonts in app.made { app_fonts_end(app) }
 	if .Pools in app.made { app_pools_end(app) }
+	profile_writes_destroy(&app.recovery.writes)
 	user_stylesheet_destroy(app)
 	licence_stop(app)   // license_shell.odin (after the windows' toolkit states: no answer of its tasks comes any more)
 	if .Loop in app.made { app_loop_end(app) }

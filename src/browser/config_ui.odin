@@ -40,13 +40,14 @@ import config "toolkit:config"
 import i18n "toolkit:i18n"
 
 Row_State :: struct {
-	field:   ui.Line_Edit,
-	synced:  string,     // the text the field was last synchronised with (owned)
-	error:   string,     // owned, shown under the row after a rejected edit
-	focused: bool,       // the editor had keyboard focus in the previous frame
-	editor:  ui.Key,     // the editor's box (last frame), for keyboard activation
-	want_focus: bool,    // give the editor the focus at the next build
-	expanded: bool,      // the details are open
+	field:      ui.Line_Edit,
+	synced:     string,     // the text the field was last synchronised with (owned)
+	has_synced: bool,       // synced holds a real value (distinguishes unsynced from empty string "")
+	error:      string,     // owned, shown under the row after a rejected edit
+	focused:    bool,       // the editor had keyboard focus in the previous frame
+	editor:     ui.Key,     // the editor's box (last frame), for keyboard activation
+	want_focus: bool,       // give the editor the focus at the next build
+	expanded:   bool,       // the details are open
 }
 
 Config_Row_Kind :: enum u8 { Header, Pref, Desktop, Engines }
@@ -102,6 +103,8 @@ Config_View :: struct {
 	model_key:     [6]u64,              // prefs version, entries, serial, modified_only, category, desktop row
 	model_valid:   bool,
 	started:       bool,                // the view was built once (no active row before the user picks one)
+	editing:       string,              // preference name whose text/number field currently holds focus (owned)
+	editing_seen:  bool,                // editing row was built and still focused in the current frame
 }
 
 config_view_destroy :: proc(v: ^Config_View) {
@@ -120,6 +123,7 @@ config_view_destroy :: proc(v: ^Config_View) {
 	delete(v.cats)
 	delete(v.model_query)
 	delete(v.category)
+	delete(v.editing)
 	engines_editor_destroy(&v.engines)
 }
 
@@ -323,6 +327,7 @@ config_set_category :: proc(v: ^Config_View, category: string) {
 
 // Builds the page. `prefs` is the registry; changes go through `config.set_from_string` so every observer runs.
 config_page :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs) {
+	v.editing_seen = false
 	with_desktop := desktop_available()
 	query := strings.to_lower(strings.trim_space(ui.line_edit_string(&v.search)), context.temp_allocator)
 	if !v.started { v.started = true; v.list.sel = -1 }
@@ -364,6 +369,8 @@ config_page :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs) {
 			config_list_keys(app, v, prefs)
 		}
 	}
+	// If the edited row left the built range (scroll, search, category switch, fold), commit its text now.
+	if v.editing != "" && !v.editing_seen { config_commit_active(v, prefs) }
 }
 
 @(private = "file")
@@ -654,10 +661,50 @@ config_apply :: proc(v: ^Config_View, prefs: ^config.Prefs, st: ^Row_State, name
 	if had || st.error != "" { v.serial += 1 }
 }
 
+@(private = "file")
+row_unsync :: proc(st: ^Row_State) {
+	delete(st.synced)
+	st.synced = ""
+	st.has_synced = false
+}
+
+@(private = "file")
+editing_clear :: proc(v: ^Config_View) {
+	delete(v.editing)
+	v.editing = ""
+	v.editing_seen = false
+}
+
+// Commits any active about:config text or number edit (blur, scroll-out, filter/category change, tab leave, quit).
+config_commit_active :: proc(v: ^Config_View, prefs: ^config.Prefs) {
+	if v.editing == "" { return }
+	name := v.editing
+	v.editing = ""
+	v.editing_seen = false
+	defer delete(name)
+	st, ok := v.rows[name]
+	if !ok { return }
+	st.focused = false
+	r := config.ref_of(prefs, name)
+	if r == config.NO_REF { return }
+	e := config.entry(prefs, r)
+	if e.source == .Policy || e.source == .Command_Line { return }
+	text := ui.line_edit_string(&st.field)
+	if text != config.value_string(prefs, r) {
+		config_apply(v, prefs, st, name, text)
+	}
+	row_unsync(st)
+}
+
 @(private)
 config_reset :: proc(v: ^Config_View, prefs: ^config.Prefs, st: ^Row_State, name: string) {
+	if v.editing == name { editing_clear(v) }
 	config.reset(prefs, name)
-	delete(st.synced); st.synced = ""
+	st.focused = false
+	row_unsync(st)
+	if r := config.ref_of(prefs, name); r != config.NO_REF {
+		ui.line_edit_set(&st.field, config.value_string(prefs, r))
+	}
 	if st.error != "" { v.serial += 1 }
 	delete(st.error); st.error = ""
 }
@@ -859,15 +906,44 @@ config_editor :: proc(app: ^App, v: ^Config_View, prefs: ^config.Prefs, r: confi
 			case .Int, .Float:
 				current := config.value_string(prefs, r)
 				// keep the field in step with the registry unless the user is typing in it
-				if st.synced != current && !st.focused { ui.line_edit_set(&st.field, current); delete(st.synced); st.synced = strings.clone(current) }
+				if (!st.has_synced || st.synced != current) && !st.focused {
+					ui.line_edit_set(&st.field, current)
+					delete(st.synced)
+					st.synced = strings.clone(current)
+					st.has_synced = true
+				}
 				number := e.def.kind != .String
 				ui.next({width = number ? ui.px(em * 9) : ui.fill(), height = ui.px(ui.dense(em * 2))})
 				res := ui.line_edit(fmt.tprintf("%s###e", id), &st.field)
 				st.editor = res.box.key
 				if st.want_focus { st.want_focus = false; ui.set_focus(res.box.key); ui.line_edit_select_all(&st.field) }
-				st.focused = res.focused
-				if res.committed { config_apply(v, prefs, st, name, ui.line_edit_string(&st.field)); delete(st.synced); st.synced = ""; v.focus_list = true }
-				if res.cancelled { delete(st.synced); st.synced = ""; if st.error != "" { v.serial += 1 }; delete(st.error); st.error = ""; v.focus_list = true }
+				was_focused := st.focused
+				switch {
+				case res.committed:
+					config_apply(v, prefs, st, name, ui.line_edit_string(&st.field))
+					if v.editing == name { editing_clear(v) }
+					row_unsync(st)
+					st.focused = false
+					v.focus_list = true
+				case res.cancelled:
+					if v.editing == name { editing_clear(v) }
+					row_unsync(st)
+					st.focused = false
+					if st.error != "" { v.serial += 1 }
+					delete(st.error); st.error = ""
+					v.focus_list = true
+				case res.focused:
+					if v.editing != name {
+						config_commit_active(v, prefs)
+						v.editing = strings.clone(name)
+					}
+					v.editing_seen = true
+					st.focused = true
+				case was_focused:
+					if v.editing == name { config_commit_active(v, prefs) } else { st.focused = false }
+				case:
+					st.focused = false
+				}
 				if number {
 					ui.space(ui.CONTROL_GAP)
 					if ui.tags("weak") {

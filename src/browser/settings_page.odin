@@ -101,7 +101,7 @@ settings_options :: proc(app: ^App) -> prefs_page.Page_Options {
 		pages = pages,
 		icon_font = app.lucide, search_icon = lucide.SEARCH, reset_icon = lucide.ROTATE_CCW,
 		file = app.cfg.persist_profile ? prefs_file : "",   // (a profile that is not kept has no file)
-		changed = proc(user: rawptr, name: string) { request_frames((^App)(user), 2) },
+		changed = proc(user: rawptr, name: string) { app := (^App)(user); profile_prefs_sync(app); request_frames(app, 2) },
 		choices = settings_choices,
 		themes = app.themes_file.all[:], themes_light = app.theme_shown.light,
 		themes_file = app.cfg.persist_profile ? &app.themes_file : nil,   // (a profile that is not kept has no file of themes)

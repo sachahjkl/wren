@@ -75,6 +75,14 @@ profile_prefs_save :: proc(app: ^App, path: string) {
 	host.profile_file_write(&w.prefs, text)
 }
 
+// Schedules a background prefs.txt write whenever the user's layer changed since the last write.
+profile_prefs_sync :: proc(app: ^App) {
+	if app == nil || app.profile_dir == "" { return }
+	if app.prefs.user_version == app.recovery.writes.prefs_written { return }
+	_, _, pf := profile_paths(app)
+	profile_prefs_save(app, pf)
+}
+
 @(private = "file")
 Stores_Job :: struct {
 	app:          ^App,

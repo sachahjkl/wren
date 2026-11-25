@@ -1099,6 +1099,9 @@ scroll_to_fragment :: proc(app: ^App, t: ^Tab) {
 
 // The page's own box (or the view of a built-in page): what fills the room the docked panels leave in the viewport.
 page_view :: proc(app: ^App, t: ^Tab) {
+	if (t == nil || t.kind != .Config) && app.config_view.editing != "" {
+		config_commit_active(&app.config_view, &app.prefs)
+	}
 	ui.next({width = ui.fill(), height = ui.fill()})
 	if t != nil && t.kind == .Config {
 		config_page(app, &app.config_view, &app.prefs)
@@ -1451,13 +1454,15 @@ apply_prefs :: proc(app: ^App, changed := "") {
 	user_stylesheet_sync(app)
 	for tab in tabs_all(app) { if tab.page != nil { page.configure_styles(tab.page) } }
 
+	old_autosave := app.cfg.autosave_ms
 	settings_destroy(&app.cfg)
 	app.cfg = settings_from_prefs(&app.prefs)
 	memory_trim_settings(app, &app.prefs)   // memory_trim.odin
 	app.show_console = app.cfg.show_console
 	if .Downloads in groups { downloads_apply(app); app.prefs_apply_counts[.Downloads] += 1 }
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
-	arm_autosave(app)
+	if app.cfg.autosave_ms != old_autosave { arm_autosave(app) }
+	profile_prefs_sync(app)
 	request_frames(app, 3)
 }
 
@@ -2134,6 +2139,7 @@ app_start :: proc(args: []string) -> ^App {
 app_turn :: proc(app: ^App) -> bool {
 	end_signal_check(app)   // end_signal_<os>.odin: SIGTERM, SIGINT, SIGHUP close the browser as its last window would
 	if !windows_pass(app) { return false }   // windows.odin: a frame for each window that has a cause, then of its views' windows (views_external.odin)
+	profile_prefs_sync(app)   // catches resets, imports, and locked-layer user edits whose user_version bumped outside apply_prefs
 	memcheck_drive(app)   // memcheck.odin: the check build's script, if any
 	memory_trim_tick(app)   // memory_trim.odin
 	remote_after_frame(app)   // remote_shell.odin: the waits of remote commands
@@ -2175,6 +2181,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	vault_shell_destroy(app)   // vault_shell.odin: a helper still at work is stopped (it holds keys: it never outlives the browser)
 	host.shutdown_step("session capture")
 	for t in tabs_all(app) { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
+	config_commit_active(&app.config_view, &app.prefs)
 	host.shutdown_step("profile_save")
 	profile_save(app, force = true)
 	host.shutdown_step("recovery_end")
