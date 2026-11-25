@@ -9,9 +9,6 @@ import "core:strings"
 // check; RLIMIT_STACK instead of /STACK). Needs build/wasmtime-linux (wrentool fetch wasmtime), build/lexbor-linux (wrentool build lexbor) and build/native-linux (wrentool build native -Features text,a11y).
 // Packages move from "not yet" to these lists as they are ported; tests that measure time stay out.
 
-// The tests of src/browser run on Linux (the package as a whole does not pass there yet).
-BROWSER_LINUX_TESTS :: "-define:ODIN_TEST_NAMES=browser.settings_pages_name_registered_preferences,browser.every_definition_is_valid,browser.tree_adopt_places_children_after_the_subtree,browser.tree_forget_and_detach_lift_the_children,browser.tree_repair_keeps_only_what_the_order_says,browser.tree_rows_fold_except_toward_the_current_tab,browser.tree_survives_the_session,browser.tree_guides_follow_the_siblings,browser.tree_parent_at_depth_follows_the_tab_before,browser.bookmarks_import_reads_a_chrome_export,browser.bookmarks_round_trip_and_merge,browser.bookmarks_remove_and_move,browser.bookmarks_bar_folder_is_kept_and_merged,browser.bookmarks_move_to_a_place,browser.a_full_folder_is_asked_about_first,browser.vault_follows_its_switch_and_starts_nothing_by_default,browser.a_new_app_has_the_vault_off,browser.a_key_from_the_settings_acts_in_wren,browser.open_page_offers_the_commands_pages,browser.registry_well_formed,browser.palette_table_follows_the_registry,browser.palette_job_items,browser.palette_settings_titles,browser.sizes_and_times_are_written_for_a_person,browser.the_cadence_model_decides_as_the_browser_did,browser.the_path_of_a_tab_drag_follows_what_the_system_tells,browser.a_tab_drag_with_no_target_detaches,browser.a_tab_drag_carries_its_id_in_its_own_type,browser.a_drop_on_a_window_bar_takes_the_slot_from_its_own_position,browser.queued_drop_events_belong_to_the_tab_drag_by_their_time,browser.a_style_pass_without_a_layout_stops_painting_from_the_layout,browser.webauthn_shell_wake_and_vault_passkey_destroy,browser.licence_retarget_follows_surviving_window_and_clears_on_last,browser.tab_drag_cancels_on_capture_loss_deactivate_escape_and_single_detach_no_op,browser.cdp_origin_guard_allows_loopback_ipv4_ipv6_and_blocks_rebinding,browser.cdp_inbuf_cap_and_fragmented_frames,browser.net_media_extension_is_sanitized,browser.font_cache_shares_system_cascades_and_evicts_lru_without_leaks,browser.bfcache_spares_release_leaves_layout_and_engine_reusable,browser.download_async_open_cancel_and_close,browser.user_stylesheet_cached_off_thread,browser.forms_color_popover_updates_commits_and_reverts,browser.compositor_csr_floors_and_node_items,browser.devtools_docks_inside_viewport_not_outer_chrome,browser.config_page_commits_edits_on_blur_filter_and_leave,browser.prefs_changes_persist_immediately_and_reload"
-
 linux_table :: proc(cfg: ^Config) -> []Step {
 	t: [dynamic]Step
 	// (js/image is out until the JS engine's wasm can be built on Linux.)
@@ -57,8 +54,8 @@ linux_table :: proc(cfg: ^Config) -> []Step {
 		argv := join({"odin", "test", fmt.aprintf("src/%s", p), "-vet", WB, TOOLKIT, MEM_CHECK, NAMES_RUNNING, POISON}, {out_flag(fmt.aprintf("build/linux/%s_poison_test", p))})
 		append(&t, Step{name = fmt.aprintf("unit tests on poisoned memory: %s", p), actions = slice_of(Command{argv = argv, pkg = fmt.aprintf("src/%s", p), rule = .Says_Successful})})
 	}
-	// browser: the tests of its own that hold on Linux, with the text backend Wren has there (build/native-linux built with -Features text,a11y)
-	if wgpu { linux_unit(&t, "browser", {BROWSER_LINUX_TESTS, "-define:FONT_BACKEND=native", "-define:FONT_NATIVE_LINK=false"}) }
+	// browser: every portable test of src/browser on Linux, with the text backend Wren has there (build/native-linux built with -Features text,a11y)
+	if wgpu { linux_unit(&t, "browser", {"-define:FONT_BACKEND=native", "-define:FONT_NATIVE_LINK=false"}) }
 	// (the native libraries are made by hand on Linux, as the header says: no step to wait for)
 	fuzz_step(&t, cfg, {})
 	return t[:]

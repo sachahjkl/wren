@@ -51,10 +51,10 @@ browser/blocker_ui.odin BLOCK_RED const  # a table
 browser/blocker_ui.odin COLUMNS const  # a table
 browser/bookmarks_bar.odin BOOKMARKS_BAR_PREFS const  # a table
 browser/bookmarks_ui.odin HTML_FILTERS const  # a table
-browser/canvas_gpu_test.odin test_lock test
-browser/canvas_gpu_test.odin op_global test
-browser/canvas_gpu_test.odin test_glyph_a test
-browser/canvas_gpu_test.odin test_glyph_o test
+browser/canvas_gpu_test_windows.odin test_lock test
+browser/canvas_gpu_test_windows.odin op_global test
+browser/canvas_gpu_test_windows.odin test_glyph_a test
+browser/canvas_gpu_test_windows.odin test_glyph_o test
 browser/canvas_shell.odin color_glyph_cache thread  # the cache of the colour glyph bitmaps of the canvas text (cleared with the canvases), of the thread that draws them
 browser/canvas_shell.odin color_glyph_next_uid thread  # the next name of a cached colour glyph bitmap, of that thread
 browser/cdp.odin the_cdp process  # the DevTools-protocol server of the process (the debugging port: one per process)

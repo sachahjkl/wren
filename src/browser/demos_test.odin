@@ -41,16 +41,25 @@ demos_cover_every_page :: proc(t: ^testing.T) {
 
 @(test)
 demos_links :: proc(t: ^testing.T) {
-	testing.expect_value(t, file_url_of_dir(`C:\wren\my demos\`), "file:///C:/wren/my%20demos/")
-	testing.expect_value(t, file_url_of_dir(`\\host\share\d`), "file://host/share/d/")
-	testing.expect_value(t, file_url_of_dir(`D:\Privé`), "file:///D:/Priv%C3%A9/")
+	when ODIN_OS == .Windows {
+		testing.expect_value(t, file_url_of_dir(`C:\wren\my demos\`), "file:///C:/wren/my%20demos/")
+		testing.expect_value(t, file_url_of_dir(`\\host\share\d`), "file://host/share/d/")
+		testing.expect_value(t, file_url_of_dir(`D:\Privé`), "file:///D:/Priv%C3%A9/")
+		demos_dir :: `C:\demos`
+		want_base :: "file:///C:/demos/"
+	} else {
+		testing.expect_value(t, file_url_of_dir("/wren/my demos/"), "file:///wren/my%20demos/")
+		testing.expect_value(t, file_url_of_dir("/Privé"), "file:///Priv%C3%A9/")
+		demos_dir :: "/demos"
+		want_base :: "file:///demos/"
+	}
 
 	app := app_make()
 	defer app_free(app)
 	app_prefs_init(app)
-	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.demos.path", `C:\demos`, .User), config.Set_Error.None)
+	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.demos.path", demos_dir, .User), config.Set_Error.None)
 	base_url, source := demos_base(app)
-	testing.expect_value(t, base_url, "file:///C:/demos/")
+	testing.expect_value(t, base_url, want_base)
 	testing.expect_value(t, source, Demos_Source.Preference)
 	for d in DEMOS {
 		href := demo_href(app, d, base_url)
@@ -58,10 +67,10 @@ demos_links :: proc(t: ^testing.T) {
 		case d.path == "": testing.expect_value(t, href, "")
 		case strings.has_prefix(d.path, "/"): testing.expectf(t, href == strings.concatenate({"http://127.0.0.1:8765", d.path}, context.temp_allocator), "%s -> %s", d.path, href)
 		case d.server: testing.expectf(t, href == strings.concatenate({"http://127.0.0.1:8765/site/", d.path}, context.temp_allocator), "%s -> %s", d.path, href)
-		case !d.perf: testing.expectf(t, href == strings.concatenate({"file:///C:/demos/", d.path}, context.temp_allocator), "%s -> %s", d.path, href)
+		case !d.perf: testing.expectf(t, href == strings.concatenate({want_base, d.path}, context.temp_allocator), "%s -> %s", d.path, href)
 		}
 	}
 	html := demos_html(app)
-	testing.expect(t, strings.contains(html, `href="file:///C:/demos/effects.html"`), "a static page links into the folder")
+	testing.expect(t, strings.contains(html, strings.concatenate({`href="`, want_base, `effects.html"`}, context.temp_allocator)), "a static page links into the folder")
 	testing.expect(t, strings.contains(html, `href="http://127.0.0.1:8765/site/images.html"`), "a server page links to the server")
 }

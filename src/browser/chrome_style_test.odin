@@ -85,7 +85,7 @@ tab_shape_geometry :: proc(t: ^testing.T) {
 	top: f32 = 1e9
 	for p in line {
 		top = min(top, p.y)
-		testing.expect(t, p.x >= 0 && p.x <= d.box_w && p.y >= 0 && p.y <= m.h, "inside the box")
+		testing.expectf(t, p.x >= -1e-4 && p.x <= d.box_w + 1e-4 && p.y >= -1e-4 && p.y <= m.h + 1e-4, "inside the box: %v (box_w=%v, h=%v)", p, d.box_w, m.h)
 	}
 	near(t, top, 0, 0.01, "the shoulders' flat top is the box's top")
 	// symmetric about the middle

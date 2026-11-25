@@ -27,6 +27,7 @@ Cursor_Fx :: struct {
 fx_open :: proc(f: ^Cursor_Fx, src: string) -> bool {
 	font.init(&f.fonts)
 	ui, ok := font.load_system(&f.fonts, "Segoe UI")
+	if !ok { ui, ok = font.load_embedded(&f.fonts, font.FALLBACK_UI_DATA) }
 	if !ok { return false }
 	page_fonts_init(&the_app.page_render.fonts, &f.fonts, ui)
 	the_app.page_render.settings = lay.settings_default()

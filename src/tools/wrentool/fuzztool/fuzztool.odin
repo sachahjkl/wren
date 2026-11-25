@@ -40,7 +40,7 @@ usage :: proc() {
 	fmt.eprintln("wrentool fuzz [-Target name|a,b|all] [-Seconds n] [-Iterations n] [-Seed n] [-HangSeconds n] [-Asan] [-Speed]")
 	fmt.eprintln("wrentool fuzz -Target name -Repro file | -Target name -Minimize file | -List")
 	fmt.eprintln("  -Seconds: per target (default 60). -Iterations: a fixed count, the same inputs at each run. -Asan: AddressSanitizer in place of the poison (Linux).")
-	fmt.eprintln("  Findings: build/fuzz/<target>/<crash|leak|hang>-<hash>. The JavaScript engine: ext/gui_toolkit/tools/js_judge (fuzz, fuzzsrc).")
+	fmt.eprintln("  Findings: build/fuzz/<target>/<crash|leak|hang>-<hash>.")
 }
 
 run :: proc(args: []string) -> int {
@@ -58,9 +58,7 @@ run :: proc(args: []string) -> int {
 	tooling.raise_stack()
 
 	if tooling.flag_has(f, "-List") {
-		code := tooling.run({command = {worker, "-List"}})
-		fmt.println("js\tthe JavaScript engine: from ext/gui_toolkit, tools/js_judge fuzz | fuzzsrc <dir> [iterations] [seed] (src/md/features/fuzzing.md)")
-		return code
+		return tooling.run({command = {worker, "-List"}})
 	}
 	target := tooling.flag(f, "-Target", "all")
 	hang := max(tooling.flag_int(f, "-HangSeconds", DEFAULT_HANG_SECONDS), 1)

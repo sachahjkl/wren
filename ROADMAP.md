@@ -4,9 +4,6 @@
 
 ## Next
 
-- **The JavaScript engine fuzzed in the test run.** The parsers of untrusted input are fuzzed by `wrentool fuzz`
-  ([src/md/features/fuzzing.md](src/md/features/fuzzing.md)); the engine's bytecode reader and front end have fuzzers in
-  the toolkit's judge that no run starts: a toolkit command that builds and runs them, called by `test_all -Fuzz`.
 - **One page embedding, the browser without its shell.** A page's embedding is built in 5 places and the navigation algorithm exists twice: one `embed` package holds both ([docs/organisation-review.md](docs/organisation-review.md), section 1).
 - **`src/browser` cut into packages.** It is one package of 235 files, its App has about 170 fields and `the_app` is used 1092 times: 8 packages, the leaves first (section 2).
 - **Preferences read one way.** They are read 3 ways today: one settings struct and one watch per group (section 4).

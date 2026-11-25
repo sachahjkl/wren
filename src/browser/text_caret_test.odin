@@ -26,7 +26,8 @@ Caret_Fx :: struct {
 cf_open :: proc(f: ^Caret_Fx, src: string) -> bool {
 	font.init(&f.fonts)
 	ui, ok := font.load_system(&f.fonts, "Segoe UI")
-	if !ok { return false }
+	if !ok { ui, ok = font.load_embedded(&f.fonts, font.FALLBACK_UI_DATA) }
+	if !ok { font.destroy(&f.fonts); return false }
 	page_fonts_init(&the_app.page_render.fonts, &f.fonts, ui)
 	the_app.page_render.settings = lay.settings_default()
 	f.doc = dom.document_create(nil)
@@ -65,7 +66,8 @@ caret_through_clusters :: proc(t: ^testing.T) {
 	f := new(Caret_Fx)
 	defer free(f)
 	if !cf_open(f, `<body style="margin:0;font:20px 'Segoe UI'"><p>office \u2190 back</p><p>abc <span>&#x5E9;&#x5DC;&#x5D5;&#x5DD;</span> def</p></body>`) {
-		testing.fail_now(t, "no Segoe UI")
+		testing.expect(t, false, "no font")
+		return
 	}
 	defer cf_close(f)
 	// left to right: carets grow with the index, hit testing finds them again
@@ -106,7 +108,8 @@ selection_positions_through_clusters :: proc(t: ^testing.T) {
 	f := new(Caret_Fx)
 	defer free(f)
 	if !cf_open(f, `<body style="margin:0;font:20px 'Segoe UI'"><p id="a">office</p><p id="b">&#x633;&#x644;&#x627;&#x645; &#x639;&#x644;&#x64A;&#x643;&#x645;</p></body>`) {
-		testing.fail_now(t, "no Segoe UI")
+		testing.expect(t, false, "no font")
+		return
 	}
 	defer cf_close(f)
 	api := page_text_api(&the_app.page_render.fonts, &f.m, &f.ss)

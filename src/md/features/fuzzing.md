@@ -15,8 +15,10 @@ the hangs before a page does.
 - **A finding must replay.** The same seed and the same corpus give the same inputs. One command replays one input.
 - **wrentool links no native library** (its head says so). The parsers link Lexbor and the Rust library. So the
   targets live in a program of their own, and wrentool drives it.
-- **The JavaScript engine is the toolkit's.** Its fuzzers already exist: `ext/gui_toolkit/tools/js_judge`, commands
-  `fuzz` (the bytecode reader) and `fuzzsrc` (the front end and the interpreter). Wren does not copy them.
+- **The JavaScript engine is the toolkit's.** `src/tools/fuzz` links `toolkit:js` and `toolkit:js/frontend` directly
+  as the `js_src` and `js_bytecode` targets, so `wrentool fuzz -Target all` and `test_all -Fuzz` run them under the
+  same memory tracker, poisoner, hang watchdog and replay workflow. `ext/gui_toolkit/tools/js_judge` (`fuzz`, `fuzzsrc`)
+  remains available for standalone test262-corpus runs inside the toolkit.
 
 ## The design
 
@@ -90,11 +92,12 @@ calls the entry point that the browser calls on the network's bytes, and frees w
 | `ext_manifest` | `extensions.manifest_parse`, `extensions.pattern_parse` |
 | `ext_archive` | `extensions.archive_open`, `extensions.archive_read` of each entry (CRX3 and zip) |
 | `wasm` | `wasm.analyze_image`, `wasm.patch_image`, `wasm.unbound_tables` |
+| `js_src` | `toolkit:js/frontend.compile_program` (module), `toolkit:js.eval_source`, `toolkit:js.run_jobs` (bounded heap, stack, 20 ms interrupt) |
+| `js_bytecode` | `toolkit:js.read_object`, `toolkit:js.bytecode_read_all` on mutated compiled script and module bytecode images |
 
-The JavaScript engine: from `ext/gui_toolkit`, build the judge (`odin build tools/js_judge -collection:gt=src
--out:build/js_judge -o:speed`, with `/STACK:67108864` on Windows or `ulimit -s 65536` on Linux), then
-`build/js_judge fuzz <dir of .js> [iterations] [seed]` or `fuzzsrc`. Its crash input is `build/fuzz/last.bin` or
-`last.js`; `build/js_judge fuzzrun <file>` replays it.
+For standalone test262-corpus fuzzing inside `ext/gui_toolkit`, build the judge (`odin build tools/js_judge
+-collection:gt=src -out:build/js_judge -o:speed`, with `/STACK:67108864` on Windows or `ulimit -s 65536` on Linux),
+then run `build/js_judge fuzz <dir of .js> [iterations] [seed]` or `fuzzsrc`.
 
 ### test_all
 

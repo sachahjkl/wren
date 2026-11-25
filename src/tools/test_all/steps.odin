@@ -552,7 +552,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 // a program that links every parser, and runs minutes. What it finds is in build/fuzz, with the command that replays it.
 FUZZ_ITERATIONS :: "2000"
 FUZZ_SECONDS_PER_TARGET :: "30"
-// 18 targets at their bound, the build of the worker and the warm-up of every corpus.
+// 20 targets at their bound, the build of the worker and the warm-up of every corpus.
 FUZZ_LIMIT_SECONDS :: 1800
 
 // `needs`: what the worker links, where a step of the table makes it (Windows: the native libraries).
@@ -561,7 +561,7 @@ fuzz_step :: proc(t: ^[dynamic]Step, cfg: ^Config, needs: Products) {
 		fmt.println("fuzz: skipped, run with -Fuzz (test_all -Fuzz, or WREN_FUZZ=1): the parsers of untrusted input on mutated inputs")
 		return
 	}
-	append(t, Step{name = "fuzz the parsers of untrusted input (wrentool fuzz -Target all -Seed 1 -Iterations 2000: HTML, CSS, URLs, images, fonts, media, headers, cookies, CSP, filter lists, extensions, Wasm; a finding is kept in build\\fuzz with its replay command)",
+	append(t, Step{name = "fuzz the parsers of untrusted input (wrentool fuzz -Target all -Seed 1 -Iterations 2000: HTML, CSS, URLs, images, fonts, media, headers, cookies, CSP, filter lists, extensions, Wasm, JavaScript; a finding is kept in build\\fuzz with its replay command)",
 		actions = slice_of(tool_build("src/tools/wrentool", exe("build/wrentool_fuzz")),
 			Command{argv = strs(exe("build/wrentool_fuzz"), "fuzz", "-Target", "all", "-Seed", "1", "-Iterations", FUZZ_ITERATIONS, "-Seconds", FUZZ_SECONDS_PER_TARGET)}),
 		needs = needs, inputs = .Tree, limit = FUZZ_LIMIT_SECONDS * cfg.slow})

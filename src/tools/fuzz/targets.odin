@@ -37,4 +37,6 @@ TARGETS := []Target{
 	{name = "ext_manifest", about = "extensions.manifest_parse, extensions.pattern_parse", run = target_ext_manifest, seeds = MANIFEST_SEEDS, files = MANIFEST_FILES, dictionary = MANIFEST_TOKENS},
 	{name = "ext_archive", about = "extensions.archive_open, extensions.archive_read of each entry (CRX3 and zip)", run = target_ext_archive, make_seeds = archive_seeds, dictionary = ARCHIVE_TOKENS},
 	{name = "wasm", about = "wasm.analyze_image, wasm.patch_image, wasm.unbound_tables", run = target_wasm, seeds = WASM_SEEDS, files = WASM_FILES, dictionary = WASM_TOKENS},
+	{name = "js_src", about = "toolkit:js/frontend compile_program (module), toolkit:js eval_source and run_jobs", run = target_js_src, seeds = JS_SRC_SEEDS, files = JS_SRC_FILES, dictionary = JS_SRC_TOKENS},
+	{name = "js_bytecode", about = "toolkit:js read_object and bytecode_read_all on serialized bytecode images", run = target_js_bytecode, make_seeds = js_bytecode_seeds, dictionary = JS_BC_TOKENS},
 }

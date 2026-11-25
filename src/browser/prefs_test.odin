@@ -63,8 +63,13 @@ emoji_font_reaches_the_font_settings :: proc(t: ^testing.T) {
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)
 	s := font_settings_start(&p)
-	testing.expect_value(t, s.color_engine, font.Color_Engine.Builtin)
-	testing.expect_value(t, emoji_font_path(&p), EMOJI_BUILTIN)   // compiled in (build.bat fetches it before tests)
+	when #exists("../../build/emoji/NotoColorEmoji-COLRv1.ttf") {
+		testing.expect_value(t, s.color_engine, font.Color_Engine.Builtin)
+		testing.expect_value(t, emoji_font_path(&p), EMOJI_BUILTIN)   // compiled in (build.bat fetches it before tests)
+	} else {
+		testing.expect_value(t, s.color_engine, font.Color_Engine.System)
+		testing.expect_value(t, emoji_font_path(&p), "")
+	}
 	testing.expect_value(t, config.set_from_string(&p, "appearance.text.emoji_font", "D:\\fonts\\Twemoji.ttf", .User), config.Set_Error.None)
 	testing.expect_value(t, emoji_font_path(&p), "D:\\fonts\\Twemoji.ttf")
 	testing.expect_value(t, font_settings_start(&p).color_engine, font.Color_Engine.Builtin)
