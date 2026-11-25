@@ -1102,6 +1102,9 @@ page_view :: proc(app: ^App, t: ^Tab) {
 	if (t == nil || t.kind != .Config) && app.config_view.editing != "" {
 		config_commit_active(&app.config_view, &app.prefs)
 	}
+	if t == nil || t.kind != .Settings {
+		prefs_page.flush(&app.settings_view)
+	}
 	ui.next({width = ui.fill(), height = ui.fill()})
 	if t != nil && t.kind == .Config {
 		config_page(app, &app.config_view, &app.prefs)
@@ -2182,6 +2185,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("session capture")
 	for t in tabs_all(app) { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
 	config_commit_active(&app.config_view, &app.prefs)
+	prefs_page.flush(&app.settings_view)
 	host.shutdown_step("profile_save")
 	profile_save(app, force = true)
 	host.shutdown_step("recovery_end")
