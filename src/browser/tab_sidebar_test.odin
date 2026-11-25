@@ -4,6 +4,7 @@ import "core:math"
 import "core:testing"
 import "toolkit:draw"
 import "toolkit:font"
+import lucide "toolkit:lucide"
 import "toolkit:platform"
 import "toolkit:ui"
 import config "toolkit:config"
@@ -377,4 +378,117 @@ titlebar_row_regions :: proc(t: ^testing.T) {
 	testing.expect_value(t, hit(c, mid(l, .Field), H + 10), platform.Hit.Client)         // below the row: the page's
 	testing.expect_value(t, hit(c, mid(l, .Drag), 3, {.Top}), platform.Hit.Top)          // the top band resizes
 	testing.expect_value(t, hit(c, mid(l, .Field), 3, {.Top}), platform.Hit.Top)
+}
+
+// The top chrome bar draws the same hairline along its bottom edge as the vertical tab sidebar draws along its inner
+// edge (full window width, meeting the sidebar edge cleanly with zero overlap), in top-tabs and sidebar modes, light
+// and dark themes, with and without bookmarks bar, and without doubling in classic style or fullscreen.
+@(test)
+chrome_toolbar_draws_matching_bottom_hairline :: proc(t: ^testing.T) {
+	page_render_test_lock()
+	defer page_render_test_unlock()
+	WIN :: [2]int{1280, 800}
+
+	app := app_make()
+	defer {
+		app_free(app)
+		free_all(context.temp_allocator)
+	}
+	refused := app_prefs_init(app, {
+		"appearance.mode=light",
+		"browser.tabs.position=left",
+		"browser.ui.chrome_style=modern",
+		"browser.bookmarks.bar=false",
+	})
+	testing.expectf(t, refused == "", "prefs applied: %s", refused)
+	app_settings_read(app)
+	app.favs.disk.offline = true
+	app_loop_init(app)
+	frame_gate_init()
+	app_fonts_init(app)
+	win := platform.open_window_offscreen("chrome-border", WIN, 1)
+	wnd := window_adopt_primary(app, win)
+	ok: bool
+	app.ui_font, ok = font.load_embedded(&app.fonts, font.FALLBACK_UI_DATA)
+	if !testing.expect(t, ok, "embedded UI font") { return }
+	app.lucide, ok = font.load_embedded(&app.fonts, lucide.DATA)
+	if !testing.expect(t, ok, "embedded icon font") { return }
+	app_ui_init(app)
+	app_interface_init(app)
+	wnd.ui.caption_font_tried = true
+	tab := tab_new_bare(app, wnd, "https://example.test/", "Example")
+	tab.kind = .Web
+
+	find_box :: proc(s: ^ui.State, name: string) -> ^ui.Box {
+		for _, b in s.boxes {
+			if b.last_build == s.build_index && b.name == name { return b }
+		}
+		return nil
+	}
+	step :: proc(app: ^App, wnd: ^Browser_Window) -> draw.Color {
+		size := draw.Vec2{f32(wnd.win.size.x), f32(wnd.win.size.y)}
+		want: draw.Color
+		for _ in 0 ..< 3 {
+			style := chrome_frame_style(app)
+			window_chrome_frame(app)
+			ui.begin_build(wnd.ui, {
+				window_size = size, dt = 1.0 / 60, animations = false, dpi_scale = 1,
+				base = style, disable_zoom = true, window = wnd.win,
+			})
+			want = chrome_hairline_color()
+			build_ui(app)
+			ui.end_build()
+			free_all(context.temp_allocator)
+		}
+		return want
+	}
+
+	// 1. Modern light & dark: left/right sidebar + top tabs, integrated and system title bars, with and without bookmarks bar.
+	for mode in ([?]string{"light", "dark"}) {
+		testing.expect_value(t, config.set_from_string(&app.prefs, "appearance.mode", mode, .User), config.Set_Error.None)
+		for pos in ([?]string{"left", "right", "top"}) {
+			testing.expect_value(t, config.set_from_string(&app.prefs, "browser.tabs.position", pos, .User), config.Set_Error.None)
+			for sys_title in ([?]string{"false", "true"}) {
+				testing.expect_value(t, config.set_from_string(&app.prefs, "window.system_title", sys_title, .User), config.Set_Error.None)
+				for bm_on in ([?]string{"false", "true"}) {
+					testing.expect_value(t, config.set_from_string(&app.prefs, "browser.bookmarks.bar", bm_on, .User), config.Set_Error.None)
+					want := step(app, wnd)
+					// When tabs are in a sidebar with an integrated title bar, sidebar_titlebar owns the top bar (###tabstrip);
+					// otherwise toolbar_row owns it (###toolbar).
+					integrated_side := pos != "top" && sys_title == "false"
+					top_bar := find_box(wnd.ui, integrated_side ? "tabstrip" : "toolbar")
+					if !testing.expectf(t, top_bar != nil, "%s/%s/sys=%s/bm=%s: top bar built", mode, pos, sys_title, bm_on) { continue }
+					testing.expectf(t, .Draw_Side_Bottom in top_bar.flags, "%s/%s/sys=%s/bm=%s: top bar draws bottom hairline", mode, pos, sys_title, bm_on)
+					testing.expectf(t, top_bar.border == want, "%s/%s/sys=%s/bm=%s: top bar border %v matches chrome_hairline_color %v", mode, pos, sys_title, bm_on, top_bar.border, want)
+					testing.expectf(t, top_bar.rect.min.x == 0 && top_bar.rect.max.x == f32(WIN.x), "%s/%s/sys=%s: top bar spans window width, got %v", mode, pos, sys_title, top_bar.rect)
+					if pos != "top" {
+						side := find_box(wnd.ui, "sidebar")
+						edge := find_box(wnd.ui, "side_edge")
+						if testing.expectf(t, side != nil && edge != nil, "%s/%s/sys=%s: sidebar and edge exist", mode, pos, sys_title) {
+							// Vertical sidebar edge starts at toolbar.max.y, meeting the bottom hairline with zero overlap.
+							testing.expectf(t, edge.rect.min.y == top_bar.rect.max.y, "%s/%s/sys=%s: edge min.y %v == top_bar max.y %v", mode, pos, sys_title, edge.rect.min.y, top_bar.rect.max.y)
+						}
+					}
+					if bm_on == "true" {
+						bm := find_box(wnd.ui, "bookmarks_bar")
+						if testing.expectf(t, bm != nil, "%s/%s/sys=%s: bookmarks bar built", mode, pos, sys_title) {
+							testing.expectf(t, .Draw_Side_Bottom in bm.flags && bm.border == want, "%s/%s/sys=%s: bookmarks bar draws matching bottom hairline", mode, pos, sys_title)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// 2. Classic style draws its own bottom rule in toolbar_draw / titlebar_toolbar_draw: no .Draw_Side_Bottom doubling.
+	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.ui.chrome_style", "classic", .User), config.Set_Error.None)
+	testing.expect_value(t, config.set_from_string(&app.prefs, "window.system_title", "false", .User), config.Set_Error.None)
+	for pos in ([?]string{"left", "top"}) {
+		testing.expect_value(t, config.set_from_string(&app.prefs, "browser.tabs.position", pos, .User), config.Set_Error.None)
+		_ = step(app, wnd)
+		top_bar := find_box(wnd.ui, pos != "top" ? "tabstrip" : "toolbar")
+		if testing.expectf(t, top_bar != nil, "classic/%s: top bar built", pos) {
+			testing.expectf(t, .Draw_Side_Bottom not_in top_bar.flags, "classic/%s: no duplicate .Draw_Side_Bottom", pos)
+		}
+	}
 }

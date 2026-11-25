@@ -210,7 +210,8 @@ fullscreen_bars :: proc(app: ^App, t: ^Tab) {
 	if !fw.revealed { fw.overlay = {}; return }
 	placed := fw.overlay != {}
 	ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(f32(wnd.win.size.x)), height = ui.children_sum(), axis = .Y})
-	col := ui.build_box({.Draw_Background, .Draw_Side_Bottom}, "###fullscreen_bars")
+	// toolbar_row draws the bottom hairline in every chrome style; adding .Draw_Side_Bottom here would double it.
+	col := ui.build_box({.Draw_Background}, "###fullscreen_bars")
 	if ui.parent(col) {
 		tab_strip(app, false)
 		toolbar_row(app, t)   // chrome_style.odin

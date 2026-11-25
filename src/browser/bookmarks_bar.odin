@@ -92,9 +92,11 @@ bookmarks_bar :: proc(app: ^App, t: ^Tab) {
 		title := b.title != "" ? b.title : default_tab_title(b.url)
 		widths[n] = math.round(min(em * BAR_ITEM_MAX_EM, em * (BAR_ICON_EM + 0.45) + ui.text_width(font, em, safe_label(title, 40)) + pad * 2))
 	}
+	hairline := chrome_hairline_color()
 	ui.next({width = ui.fill(), height = ui.px(h), axis = .X, cross = .Center, flags = {.Clip}})
 	bar: ^ui.Box
-	if ui.tags("panel") { bar = ui.build_box({.Clickable, .Draw_Background}, "###bookmarks_bar") }
+	if ui.tags("panel") { bar = ui.build_box({.Clickable, .Draw_Background, .Draw_Side_Bottom}, "###bookmarks_bar") }
+	bar.border = hairline
 	v.bar.key = bar.key
 	room := max(bar.rect.max.x - bar.rect.min.x, 0)   // (last frame's width: the bar keeps its size)
 	more_w := math.round(em * 2)

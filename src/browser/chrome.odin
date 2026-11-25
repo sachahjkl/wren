@@ -108,6 +108,15 @@ burger_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 
 // Corner radius of the chrome's buttons (back, forward, reload, the zoom chip, the menu), in em: one shape for all
 CHROME_BUTTON_RADIUS :: 0.4
+// Hairline separating chrome regions (sidebar inner edge, bottom of toolbar and bookmarks bar): light on dark themes
+// and subtle grey on light themes (the toolkit's border color is too close to dark panels against a dark page).
+CHROME_HAIRLINE_ALPHA :: 0.22
+
+chrome_hairline_color :: proc() -> draw.Color {
+	c := ui.color("text")
+	c.a *= CHROME_HAIRLINE_ALPHA
+	return c
+}
 // Height of a control (field, button, choice) in the rows of about:blocker and about:config's search engines, in em
 TOOL_CONTROL_H_EM :: 1.9
 

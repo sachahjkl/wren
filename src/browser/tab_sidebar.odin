@@ -339,7 +339,12 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 		case .Gap_Before, .Gap_After, .Drag:   // (the window's)
 		}
 	}, tb)
-	if classic_on(app) { bar.custom, bar.custom_user = titlebar_toolbar_draw, classic_colors_frame(app) }
+	if classic_on(app) {
+		bar.custom, bar.custom_user = titlebar_toolbar_draw, classic_colors_frame(app)
+	} else {
+		bar.flags += {.Draw_Side_Bottom}
+		bar.border = chrome_hairline_color()
+	}
 }
 
 // The sidebar: header, list of tabs and, over its inner edge, the width handle. It is built whole: what changes the list of tabs
@@ -472,8 +477,7 @@ sidebar_edge :: proc(pos: Tabs_Position, extent: f32, cc: ^Classic_Colors) {
 	th := cc != nil ? cc.edge : max(math.round(ui.scale()), 1)
 	ui.next({fixed_x = pos == .Left ? extent - th : 0, fixed_y = 0, width = ui.px(th), height = ui.pct(1)})
 	col := ui.frame_new(draw.Color)
-	col^ = ui.color("text")
-	col.a *= 0.22
+	col^ = chrome_hairline_color()
 	if cc != nil {
 		// the two strokes of a classic tab's outline, which the current tab's feet end on (classic_side_tab_draw)
 		line := ui.frame_new(Classic_Edge)
