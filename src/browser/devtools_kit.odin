@@ -75,7 +75,8 @@ dt_begin :: proc(app: ^App) {
 	if ui.tags("weak") { c.weak = ui.color("text") }
 	if ui.tags("bar") { c.bar = ui.color("background") }
 	if ui.tags("input") { c.input = ui.color("background") }
-	if ui.tags("accent_button") { c.accent_text = ui.color("text") }
+	// Painted directly on solid `c.accent` (checkboxes, repeat badges, filled buttons); `accent_button` text belongs to a soft tint, not solid accent.
+	c.accent_text = dt_accent_text(c.accent)
 	if ui.tags("good") { c.good = ui.color("text") }
 	if ui.tags("warn") { c.warn = ui.color("text") }
 	if ui.tags("bad") { c.bad = ui.color("text") }
@@ -96,6 +97,17 @@ dt_begin :: proc(app: ^App) {
 }
 
 with_alpha :: proc(c: draw.Color, a: f32) -> draw.Color { r := c; r.a = a; return r }
+
+// Foreground ink that reads on solid `accent` (WCAG AA, 4.5): the theme's `accent_text`, else `ui.ink_on`.
+@(private)
+dt_accent_text :: proc(accent: draw.Color) -> draw.Color {
+	ink := ui.color("accent_text")
+	ink.a = 1
+	ground := accent
+	ground.a = 1
+	if ui.contrast(ink, ground) < 4.5 { return ui.ink_on(ground) }
+	return ink
+}
 
 ////////////////////////////////
 // Text

@@ -367,6 +367,18 @@ Sty_Draw :: struct {
 	name_w:   f32,
 }
 
+// Vector check mark inside a Styles checkbox: thicker and sharper at 12 px than the thin Lucide glyph.
+@(private)
+sty_draw_check :: proc(dc: ^draw.Context, box: draw.Rect, col: draw.Color) {
+	cs := box.max.x - box.min.x
+	pts := [3]draw.Vec2{
+		{box.min.x + cs * 0.22, box.min.y + cs * 0.53},
+		{box.min.x + cs * 0.43, box.min.y + cs * 0.74},
+		{box.min.x + cs * 0.79, box.min.y + cs * 0.30},
+	}
+	draw.polyline(dc, pts[:], max(cs * 0.14, 1.5), col)
+}
+
 @(private = "file")
 sty_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Sty_Draw)(user)
@@ -394,11 +406,12 @@ sty_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		x := r.min.x + dt_px(STY_DECL_X)
 		// the switch
 		if d.decl.enabled || d.hot || d.editing {
-			cs := dt_px(11)
-			box := draw.Rect{{x, cy - cs * 0.5}, {x + cs, cy + cs * 0.5}}
+			cs := dt_px(12)
+			by := math.round(cy - cs * 0.5)
+			box := draw.Rect{{x, by}, {x + cs, by + cs}}
 			draw.rect(dc, box, d.decl.enabled ? the_app.dtc.accent : the_app.dtc.input, dt_px(2))
 			draw.rect(dc, box, d.decl.enabled ? the_app.dtc.accent : the_app.dtc.faint, dt_px(2), the_app.dtm.line)
-			if d.decl.enabled { dt_icon(dc, .Check, draw.rect_center(box), cs * 0.9, the_app.dtc.accent_text, the_app.dtm.sc) }
+			if d.decl.enabled { sty_draw_check(dc, box, the_app.dtc.accent_text) }
 		}
 		x += dt_px(STY_SWITCH_W)
 		if d.editing { return }

@@ -629,3 +629,60 @@ devtools_docks_inside_viewport_not_outer_chrome :: proc(t: ^testing.T) {
 		}
 	}
 }
+
+// DevTools draws `dtc.accent_text` directly on solid `dtc.accent` (Styles checkboxes, Console repeat badges, filled
+// accent buttons). Reading soft `accent_button` text gave low-contrast tint ink on solid accent (2.51:1 in Ember
+// Light, ~1.4:1 in Ember Dark). Verify WCAG AA (>= 4.5:1) across every theme in ui.THEMES and spoiled palettes.
+@(test)
+devtools_accent_text_reads_on_solid_accent_in_every_theme :: proc(t: ^testing.T) {
+	app := test_app(t)
+	wnd: Browser_Window
+	append(&app.windows, &wnd)
+	defer delete(app.windows)
+	app.active = &wnd
+	font.init(&app.fonts)
+	defer font.destroy(&app.fonts)
+	ui_font, ok := font.load_embedded(&app.fonts, font.FALLBACK_UI_DATA)
+	if !testing.expect(t, ok) { return }
+	app.ui_font = ui_font
+
+	theme: ui.Theme
+	defer ui.theme_destroy(&theme)
+	s := new(ui.State)
+	defer free(s)
+	ui.init(s, &app.fonts, &theme)
+	defer ui.destroy(s)
+	wnd.ui = s
+
+	for th in ui.THEMES {
+		for light in ([?]bool{false, true}) {
+			if (light && th.versions == .Dark_Only) || (!light && th.versions == .Light_Only) { continue }
+			for spoiled in ([?]bool{false, true}) {
+				pal := ui.theme_palette(th, light)
+				if spoiled { pal.accent_text = pal.accent }
+				ui.apply_palette(&theme, pal)
+				ui.begin_build(s, {
+					window_size = {800, 600}, dt = 1.0 / 60, animations = false, dpi_scale = 1,
+					base = ui.Style{pref = {.X = ui.text_size(), .Y = ui.px(24)}, font = ui_font, font_size = 12},
+				})
+				dt_begin(app)
+				ui.end_build()
+				c := ui.contrast(app.dtc.accent_text, app.dtc.accent)
+				testing.expectf(t, c >= 4.5, "%s (%s%s): accent_text contrast %.2f < 4.5",
+					th.name, light ? "light" : "dark", spoiled ? ", spoiled" : "", c)
+			}
+		}
+	}
+
+	// The Styles checkbox check mark emits two crisp vector segments in `dtc.accent_text`.
+	dc: draw.Context
+	defer draw.destroy(&dc)
+	append(&dc.clips, draw.Clip{rect = {{0, 0}, {100, 100}}})
+	append(&dc.alphas, 1)
+	append(&dc.xforms, draw.Transform{m = {a = 1, d = 1}, simple = true})
+	sty_draw_check(&dc, {{0, 0}, {12, 12}}, app.dtc.accent_text)
+	testing.expect_value(t, len(dc.insts), 2)
+	for inst in dc.insts {
+		testing.expect_value(t, inst.colors[0], app.dtc.accent_text)
+	}
+}
