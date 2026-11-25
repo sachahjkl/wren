@@ -1,30 +1,89 @@
 package canvas2d
 
+import "base:intrinsics"
 import "base:runtime"
+import "core:mem"
 
 // Hard ceiling on one side of a bitmap: Direct3D 11's texture limit is 16384 on most hardware and 32767 is the
 // largest size the browser would ever hold; the page's preferences (canvas.max_dimension, canvas.max_pixels) are
 // tighter.
 MAX_SIDE :: 32767
 
+// Sparse tile grid for fast clearRect and partial texture upload (64x64 pixels = 16 KiB per tile).
+TILE_SHIFT :: 6
+TILE_SIZE :: 1 << TILE_SHIFT
+
 // Pixels are RGBA8, premultiplied alpha, sRGB-encoded (the canvas blends encoded values, as browsers do), rows top
 // to bottom. `version` grows with every change; `dirty` is the part changed since `bitmap_clean` (half-open pixel
 // rectangle, empty when min >= max): the shell uploads only that part to its texture.
 Bitmap :: struct {
-	w, h:      int,
-	pix:       []u8,
-	version:   u64,
-	dirty_min: [2]int,
-	dirty_max: [2]int,
-	opaque:    bool,   // getContext("2d", { alpha: false }): alpha is always 1, the canvas is composited over black
-	all_opaque: bool,  // every alpha is 1 as of the last version (said by who wrote the pixels: a WebGL frame): reading it needs no conversion
-	allocator: runtime.Allocator,
-	uid:       u64,    // names the bitmap for the GPU's cache of uploaded sources (0: not a bitmap made by bitmap_create)
-	accounted: int,    // bytes the owner charged to a budget for it (a GPU canvas charges what its pixels would take)
+	w, h:         int,
+	pix:          []u8,
+	version:      u64,
+	dirty_min:    [2]int,
+	dirty_max:    [2]int,
+	tiles_w:      int,
+	tiles_h:      int,
+	tile_nonzero: []u64,   // bit per 64x64 tile: may hold non-cleared pixels (for opaque: pixels other than opaque black)
+	tile_dirty:   []u64,   // bit per 64x64 tile: changed since bitmap_clean
+	opaque:       bool,    // getContext("2d", { alpha: false }): alpha is always 1, the canvas is composited over black
+	all_opaque:   bool,    // every alpha is 1 as of the last version (said by who wrote the pixels: a WebGL frame): reading it needs no conversion
+	allocator:    runtime.Allocator,
+	uid:          u64,     // names the bitmap for the GPU's cache of uploaded sources (0: not a bitmap made by bitmap_create)
+	accounted:    int,     // bytes the owner charged to a budget for it (a GPU canvas charges what its pixels would take)
 }
 
 @(private)
 next_bitmap_uid: u64
+
+@(private = "file")
+tile_bit_get :: #force_inline proc "contextless" (bits: []u64, idx: int) -> bool #no_bounds_check {
+	return (bits[uint(idx) >> 6] & (u64(1) << (uint(idx) & 63))) != 0
+}
+
+@(private = "file")
+tile_bit_set :: #force_inline proc "contextless" (bits: []u64, idx: int) #no_bounds_check {
+	bits[uint(idx) >> 6] |= u64(1) << (uint(idx) & 63)
+}
+
+@(private = "file")
+tile_bit_clear :: #force_inline proc "contextless" (bits: []u64, idx: int) #no_bounds_check {
+	bits[uint(idx) >> 6] &~= u64(1) << (uint(idx) & 63)
+}
+
+@(private = "file")
+tile_mark_rect :: proc "contextless" (bits: []u64, tw, th, x0, y0, x1, y1: int) #no_bounds_check {
+	if len(bits) == 0 || x0 >= x1 || y0 >= y1 { return }
+	tx0 := clamp(x0 >> TILE_SHIFT, 0, tw - 1)
+	tx1 := clamp((x1 - 1) >> TILE_SHIFT, 0, tw - 1)
+	ty0 := clamp(y0 >> TILE_SHIFT, 0, th - 1)
+	ty1 := clamp((y1 - 1) >> TILE_SHIFT, 0, th - 1)
+	for ty in ty0 ..= ty1 {
+		base := ty * tw
+		for tx in tx0 ..= tx1 { tile_bit_set(bits, base + tx) }
+	}
+}
+
+@(private = "file")
+tile_set_all :: proc "contextless" (bits: []u64, count: int) {
+	if len(bits) == 0 || count <= 0 { return }
+	full := count >> 6
+	for i in 0 ..< full { bits[i] = ~u64(0) }
+	if rem := uint(count & 63); rem > 0 { bits[full] = (u64(1) << rem) - 1 }
+}
+
+@(private = "file")
+fill_cleared_span :: #force_inline proc "contextless" (dst: []u8, opaque: bool) #no_bounds_check {
+	if len(dst) == 0 { return }
+	if !opaque {
+		mem.zero(raw_data(dst), len(dst))
+		return
+	}
+	black := transmute(u32)[4]u8{0, 0, 0, 255}
+	n := len(dst) >> 2
+	p := ([^]u32)(raw_data(dst))
+	for i in 0 ..< n { intrinsics.unaligned_store(&p[i], black) }
+}
 
 // A transparent bitmap. false: a side is over MAX_SIDE, the byte count would overflow or pass `max_bytes`, or the
 // memory could not be had (the bitmap is then empty: 0 x 0).
@@ -37,6 +96,14 @@ bitmap_create :: proc(w, h: int, max_bytes := max(int), allocator := context.all
 		err: runtime.Allocator_Error
 		b.pix, err = make([]u8, n, allocator)
 		if err != nil { return }
+		tw := (w + TILE_SIZE - 1) >> TILE_SHIFT
+		th := (h + TILE_SIZE - 1) >> TILE_SHIFT
+		words := (tw * th + 63) >> 6
+		b.tile_nonzero, err = make([]u64, words, allocator)
+		if err != nil { delete(b.pix, allocator); b.pix = nil; return }
+		b.tile_dirty, err = make([]u64, words, allocator)
+		if err != nil { delete(b.tile_nonzero, allocator); delete(b.pix, allocator); b.tile_nonzero, b.pix = nil, nil; return }
+		b.tiles_w, b.tiles_h = tw, th
 	}
 	b.w, b.h = w, h
 	next_bitmap_uid += 1
@@ -55,6 +122,8 @@ bitmap_virtual :: proc(w, h: int, accounted: int) -> (b: Bitmap, ok: bool) {
 
 bitmap_destroy :: proc(b: ^Bitmap) {
 	if b.pix != nil { delete(b.pix, b.allocator) }
+	if b.tile_nonzero != nil { delete(b.tile_nonzero, b.allocator) }
+	if b.tile_dirty != nil { delete(b.tile_dirty, b.allocator) }
 	alloc := b.allocator
 	b^ = {}
 	b.allocator = alloc
@@ -77,6 +146,8 @@ bitmap_touch :: proc "contextless" (b: ^Bitmap, ax0, ay0, ax1, ay1: int) {
 	x0, y0, x1, y1 := max(ax0, 0), max(ay0, 0), min(ax1, b.w), min(ay1, b.h)
 	if x0 >= x1 || y0 >= y1 { return }
 	b.version += 1
+	tile_mark_rect(b.tile_nonzero, b.tiles_w, b.tiles_h, x0, y0, x1, y1)
+	tile_mark_rect(b.tile_dirty, b.tiles_w, b.tiles_h, x0, y0, x1, y1)
 	if b.dirty_min.x >= b.dirty_max.x || b.dirty_min.y >= b.dirty_max.y {
 		b.dirty_min, b.dirty_max = {x0, y0}, {x1, y1}
 		return
@@ -88,17 +159,24 @@ bitmap_touch :: proc "contextless" (b: ^Bitmap, ax0, ay0, ax1, ay1: int) {
 bitmap_touch_all :: proc "contextless" (b: ^Bitmap) {
 	b.version += 1
 	b.dirty_min, b.dirty_max = {0, 0}, {b.w, b.h}
+	count := b.tiles_w * b.tiles_h
+	tile_set_all(b.tile_nonzero, count)
+	tile_set_all(b.tile_dirty, count)
 }
 
 // The initial contents: transparent black, or opaque black for an opaque canvas.
 bitmap_reset_contents :: proc "contextless" (b: ^Bitmap) {
-	for i := 0; i < len(b.pix); i += 4 {
-		b.pix[i], b.pix[i + 1], b.pix[i + 2], b.pix[i + 3] = 0, 0, 0, b.opaque ? 255 : 0
-	}
-	bitmap_touch_all(b)
+	fill_cleared_span(b.pix, b.opaque)
+	b.version += 1
+	b.dirty_min, b.dirty_max = {0, 0}, {b.w, b.h}
+	if len(b.tile_nonzero) > 0 { mem.zero(raw_data(b.tile_nonzero), len(b.tile_nonzero) * size_of(u64)) }
+	tile_set_all(b.tile_dirty, b.tiles_w * b.tiles_h)
 }
 
-bitmap_clean :: proc "contextless" (b: ^Bitmap) { b.dirty_min, b.dirty_max = {}, {} }
+bitmap_clean :: proc "contextless" (b: ^Bitmap) {
+	b.dirty_min, b.dirty_max = {}, {}
+	if len(b.tile_dirty) > 0 { mem.zero(raw_data(b.tile_dirty), len(b.tile_dirty) * size_of(u64)) }
+}
 
 bitmap_has_dirty :: proc "contextless" (b: ^Bitmap) -> bool {
 	return b.dirty_min.x < b.dirty_max.x && b.dirty_min.y < b.dirty_max.y
@@ -241,9 +319,114 @@ bitmap_clone :: proc(b: ^Bitmap, max_bytes := max(int), allocator := context.all
 clear_rect_pixels :: proc "contextless" (b: ^Bitmap, ax0, ay0, ax1, ay1: int) {
 	x0, y0, x1, y1 := max(ax0, 0), max(ay0, 0), min(ax1, b.w), min(ay1, b.h)
 	if x0 >= x1 || y0 >= y1 { return }
-	for y in y0 ..< y1 {
-		row := b.pix[(y * b.w + x0) * 4:(y * b.w + x1) * 4]
-		for i in 0 ..< len(row) { row[i] = 0 }
+	if len(b.tile_nonzero) == 0 {
+		if x0 == 0 && x1 == b.w {
+			fill_cleared_span(b.pix[y0 * b.w * 4:y1 * b.w * 4], b.opaque)
+		} else {
+			for y in y0 ..< y1 {
+				fill_cleared_span(b.pix[(y * b.w + x0) * 4:(y * b.w + x1) * 4], b.opaque)
+			}
+		}
+		bitmap_touch(b, x0, y0, x1, y1)
+		return
 	}
-	bitmap_touch(b, x0, y0, x1, y1)
+	tx0 := clamp(x0 >> TILE_SHIFT, 0, b.tiles_w - 1)
+	tx1 := clamp((x1 - 1) >> TILE_SHIFT, 0, b.tiles_w - 1)
+	ty0 := clamp(y0 >> TILE_SHIFT, 0, b.tiles_h - 1)
+	ty1 := clamp((y1 - 1) >> TILE_SHIFT, 0, b.tiles_h - 1)
+	changed := false
+	dmin_x, dmin_y := max(int), max(int)
+	dmax_x, dmax_y := min(int), min(int)
+	for ty in ty0 ..= ty1 {
+		ry0 := max(y0, ty << TILE_SHIFT)
+		ry1 := min(y1, min((ty + 1) << TILE_SHIFT, b.h))
+		full_y := ry0 == (ty << TILE_SHIFT) && ry1 == min((ty + 1) << TILE_SHIFT, b.h)
+		base := ty * b.tiles_w
+		tx := tx0
+		for tx <= tx1 {
+			if !tile_bit_get(b.tile_nonzero, base + tx) { tx += 1; continue }
+			run0 := tx
+			for tx <= tx1 && tile_bit_get(b.tile_nonzero, base + tx) { tx += 1 }
+			rx0 := max(x0, run0 << TILE_SHIFT)
+			rx1 := min(x1, min(tx << TILE_SHIFT, b.w))
+			if rx0 == 0 && rx1 == b.w {
+				fill_cleared_span(b.pix[ry0 * b.w * 4:ry1 * b.w * 4], b.opaque)
+			} else {
+				for y in ry0 ..< ry1 {
+					fill_cleared_span(b.pix[(y * b.w + rx0) * 4:(y * b.w + rx1) * 4], b.opaque)
+				}
+			}
+			for t := run0; t < tx; t += 1 {
+				tile_bit_set(b.tile_dirty, base + t)
+				if full_y && rx0 <= (t << TILE_SHIFT) && rx1 >= min((t + 1) << TILE_SHIFT, b.w) {
+					tile_bit_clear(b.tile_nonzero, base + t)
+				}
+			}
+			dmin_x, dmin_y = min(dmin_x, rx0), min(dmin_y, ry0)
+			dmax_x, dmax_y = max(dmax_x, rx1), max(dmax_y, ry1)
+			changed = true
+		}
+	}
+	if !changed { return }
+	b.version += 1
+	if b.dirty_min.x >= b.dirty_max.x || b.dirty_min.y >= b.dirty_max.y {
+		b.dirty_min, b.dirty_max = {dmin_x, dmin_y}, {dmax_x, dmax_y}
+	} else {
+		b.dirty_min = {min(b.dirty_min.x, dmin_x), min(b.dirty_min.y, dmin_y)}
+		b.dirty_max = {max(b.dirty_max.x, dmax_x), max(b.dirty_max.y, dmax_y)}
+	}
+}
+
+// Collects half-open dirty pixel rectangles [x0, y0, x1, y1] for partial texture upload.
+// Sparse tile updates are coalesced into horizontal/vertical rectangles; dense updates collapse to the bounding rect.
+bitmap_dirty_rects :: proc(b: ^Bitmap, out: ^[dynamic][4]int) {
+	if !bitmap_has_dirty(b) { return }
+	x0, y0, x1, y1 := b.dirty_min.x, b.dirty_min.y, b.dirty_max.x, b.dirty_max.y
+	if len(b.tile_dirty) == 0 {
+		append(out, [4]int{x0, y0, x1, y1})
+		return
+	}
+	tx0 := clamp(x0 >> TILE_SHIFT, 0, b.tiles_w - 1)
+	tx1 := clamp((x1 - 1) >> TILE_SHIFT, 0, b.tiles_w - 1)
+	ty0 := clamp(y0 >> TILE_SHIFT, 0, b.tiles_h - 1)
+	ty1 := clamp((y1 - 1) >> TILE_SHIFT, 0, b.tiles_h - 1)
+	bbox_tiles := (tx1 - tx0 + 1) * (ty1 - ty0 + 1)
+	if bbox_tiles <= 4 {
+		append(out, [4]int{x0, y0, x1, y1})
+		return
+	}
+	dirty_tiles := 0
+	for ty in ty0 ..= ty1 {
+		base := ty * b.tiles_w
+		for tx in tx0 ..= tx1 {
+			if tile_bit_get(b.tile_dirty, base + tx) { dirty_tiles += 1 }
+		}
+	}
+	if dirty_tiles == 0 { return }
+	if dirty_tiles * 100 >= bbox_tiles * 65 {
+		append(out, [4]int{x0, y0, x1, y1})
+		return
+	}
+	for ty in ty0 ..= ty1 {
+		ry0 := max(y0, ty << TILE_SHIFT)
+		ry1 := min(y1, (ty + 1) << TILE_SHIFT)
+		base := ty * b.tiles_w
+		tx := tx0
+		for tx <= tx1 {
+			if !tile_bit_get(b.tile_dirty, base + tx) { tx += 1; continue }
+			run0 := tx
+			for tx <= tx1 && tile_bit_get(b.tile_dirty, base + tx) { tx += 1 }
+			rx0 := max(x0, run0 << TILE_SHIFT)
+			rx1 := min(x1, tx << TILE_SHIFT)
+			merged := false
+			for j := len(out) - 1; j >= 0; j -= 1 {
+				if out[j][0] == rx0 && out[j][2] == rx1 && out[j][3] == ry0 {
+					out[j][3] = ry1
+					merged = true
+					break
+				}
+			}
+			if !merged { append(out, [4]int{rx0, ry0, rx1, ry1}) }
+		}
+	}
 }

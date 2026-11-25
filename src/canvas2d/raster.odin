@@ -31,6 +31,7 @@ Raster :: struct {
 	area:    [dynamic]f32,
 	delta:   [dynamic]f32,
 	cov:     [dynamic]f32,
+	line:    [dynamic]f32,
 	min_pt:  [2]f64,
 	max_pt:  [2]f64,
 	any:     bool,
@@ -43,6 +44,7 @@ raster_destroy :: proc(r: ^Raster) {
 	delete(r.area)
 	delete(r.delta)
 	delete(r.cov)
+	delete(r.line)
 	r^ = {}
 }
 
@@ -217,13 +219,14 @@ raster_fill_rect :: proc(r: ^Raster, rx0, ry0, rx1, ry1: f64, cx0, cy0, cx1, cy1
 		r.cov[x - x0] = f32(max(min(f64(x + 1), rx1) - max(f64(x), rx0), 0))
 	}
 	cx := r.cov[:x1 - x0]
-	line := make([]f32, x1 - x0, context.temp_allocator)
 	for y in y0 ..< y1 {
 		cy := f32(max(min(f64(y + 1), ry1) - max(f64(y), ry0), 0))
 		if cy <= 0 { continue }
 		if cy == 1 {
 			row(user, y, x0, cx)
 		} else {
+			resize(&r.line, len(cx))
+			line := r.line[:len(cx)]
 			for i in 0 ..< len(cx) { line[i] = cx[i] * cy }
 			row(user, y, x0, line)
 		}

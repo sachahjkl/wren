@@ -54,20 +54,21 @@ Texture_Api :: struct {
 	max_size:   proc(user: rawptr) -> int,   // optional: largest texture side
 	// optional: a texture filled with premultiplied sRGB-encoded RGBA8 as it is (a CPU canvas's own bytes, no conversion);
 	// create gives 0 when the renderer has none (then `create` and `update` with straight alpha)
-	create_premultiplied: proc(user: rawptr, w, h: int) -> Image_Texture,
+	create_premultiplied: proc(user: rawptr, w, h: int, mips: bool) -> Image_Texture,
 	update_premultiplied: proc(user: rawptr, tex: Image_Texture, x, y, w, h: int, pixels: []u8, stride: int),
 	placeholder: bool,                        // draws placeholders, not pixels
 }
 
-@(private = "file")
+@(private)
 Shell_Texture :: struct {
-	tex:        Image_Texture,
-	w, h:       int,
-	generation: u64,
-	frame:      int,
-	bytes:      int,
-	epoch:      u64,
+	tex:           Image_Texture,
+	w, h:          int,
+	generation:    u64,
+	frame:         int,
+	bytes:         int,
+	epoch:         u64,
 	premultiplied: bool,   // made by create_premultiplied: filled by update_premultiplied
+	mips:          bool,   // created with mipmaps
 }
 
 @(private = "file")
@@ -93,10 +94,12 @@ Images_Shell :: struct {
 	next_ms:    f64,                 // earliest frame change among the images drawn this frame (< 0 = none)
 	now_ms:     f64,
 	evicted:    [dynamic]u64,
-	fake_next:  Image_Texture,
+	fake_next:         Image_Texture,
 	device_generation: u64,          // render.Renderer.device_generation the textures were made on
-	after_cache: [8]Images_After_Key,
-	after_next:  int,
+	blend_space:       render.Blend_Space,
+	canvas_scratch:    [dynamic]u8,  // reused for straight-alpha fallback canvas uploads (avoids per-frame temp mmap)
+	after_cache:       [8]Images_After_Key,
+	after_next:        int,
 }
 
 
@@ -185,6 +188,7 @@ images_shell_destroy :: proc(app: ^App) {
 	release_all_textures()
 	delete(app.images_shell.textures)
 	delete(app.images_shell.evicted)
+	delete(app.images_shell.canvas_scratch)
 	if app.images_shell.wake != base.NIL_HANDLE { host.clear_timer(&app.loop, app.images_shell.wake) }
 	app.images_shell = {}
 }
@@ -280,9 +284,11 @@ images_after_layout :: proc(t: ^Tab, size: draw.Vec2, scale: f32) {
 
 // Before painting a page: a new epoch for the cache and the texture budget, and the clock of animations.
 images_paint_begin_frame :: proc(app: ^App) {
-	// the GPU device was recreated (render.recover): texture contents are gone, decoded frames are uploaded again
-	if app.r.device_generation != app.images_shell.device_generation {
+	// the GPU device was recreated (render.recover) or the blend space changed: textures are remade
+	space := render.blend_space(&app.r)
+	if app.r.device_generation != app.images_shell.device_generation || space != app.images_shell.blend_space {
 		app.images_shell.device_generation = app.r.device_generation
+		app.images_shell.blend_space = space
 		release_all_textures()
 	}
 	page.images_paint_begin()
@@ -494,6 +500,10 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 paint_canvas :: proc(dc: ^draw.Context, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, scale: f32) {
 	v := page.canvas_view(the_app.images_shell.page, node)
 	if !v.ok { return }
+	// object-fit and border-radius apply to a canvas like to any replaced element
+	nat := [2]f32{f32(v.bmp.w), f32(v.bmp.h)}
+	dst := fit_rect(content, nat, cs, scale)
+	want_mips := (dst.max.x - dst.min.x) < nat.x * 0.75 || (dst.max.y - dst.min.y) < nat.y * 0.75
 	tex: Image_Texture
 	ok: bool
 	if v.gpu != nil {
@@ -501,12 +511,9 @@ paint_canvas :: proc(dc: ^draw.Context, node: base.Handle, content, border: draw
 		t, tok := canvas_gpu_present(v.gpu)
 		tex, ok = Image_Texture(t), tok
 	} else {
-		tex, ok = canvas_texture_for(v)
+		tex, ok = canvas_texture_for(v, want_mips)
 	}
 	if !ok { return }
-	// object-fit and border-radius apply to a canvas like to any replaced element
-	nat := [2]f32{f32(v.bmp.w), f32(v.bmp.h)}
-	dst := fit_rect(content, nat, cs, scale)
 	radii := content_radii(cs, border, content, scale)
 	clip := dst.min.x < content.min.x || dst.min.y < content.min.y || dst.max.x > content.max.x || dst.max.y > content.max.y || radii != {}
 	if clip { draw.push_clip_rounded(dc, content, radii) }
@@ -514,46 +521,66 @@ paint_canvas :: proc(dc: ^draw.Context, node: base.Handle, content, border: draw
 	if clip { draw.pop_clip(dc) }
 }
 
-// The texture of a canvas bitmap. Created at the bitmap's size; the changed rectangle is uploaded (all of it for a new
-// texture): as it is, premultiplied, when the renderer takes that (Direct3D), else converted to straight alpha (the
-// renderer premultiplies it again). The bitmap's dirty rectangle is cleared by the upload.
-@(private = "file")
-canvas_texture_for :: proc(v: page.Canvas_View) -> (Image_Texture, bool) {
+// The texture of a canvas bitmap. Created at the bitmap's size; only the changed tile regions are uploaded (all of it
+// for a new texture): directly premultiplied when the renderer takes that (Direct3D canvas textures or WGPU RGBA8
+// data textures in sRGB blend space), else converted to straight alpha through a persistent scratch buffer.
+@(private)
+canvas_texture_for :: proc(v: page.Canvas_View, want_mips: bool) -> (Image_Texture, bool) {
 	bmp := v.bmp
 	st := the_app.images_shell.textures[v.id]
-	if st != nil && (st.w != bmp.w || st.h != bmp.h) { release_texture(v.id); st = nil }
+	if st != nil && (st.w != bmp.w || st.h != bmp.h || (want_mips && !st.mips)) { release_texture(v.id); st = nil }
 	fresh := false
 	if st == nil {
 		api := &the_app.images_shell.api
 		tex: Image_Texture
 		premultiplied := false
+		mips := want_mips
+		prof_begin(.Tex_Create)
 		if api.create_premultiplied != nil && api.update_premultiplied != nil {
-			tex = api.create_premultiplied(api.user, bmp.w, bmp.h)
+			tex = api.create_premultiplied(api.user, bmp.w, bmp.h, mips)
 			premultiplied = tex != 0
 		}
-		if tex == 0 { tex = api.create(api.user, bmp.w, bmp.h) }
+		if tex == 0 {
+			tex = api.create(api.user, bmp.w, bmp.h)
+			mips = true
+		}
+		prof_end(.Tex_Create)
 		if tex == 0 { return 0, false }
 		st = new(Shell_Texture)
-		st.tex, st.w, st.h, st.premultiplied = tex, bmp.w, bmp.h, premultiplied
-		st.bytes = bmp.w * bmp.h * 4 * 4 / 3
+		st.tex, st.w, st.h, st.premultiplied, st.mips = tex, bmp.w, bmp.h, premultiplied, mips
+		st.bytes = mips ? bmp.w * bmp.h * 4 * 4 / 3 : bmp.w * bmp.h * 4
 		the_app.images_shell.bytes += st.bytes
 		the_app.images_shell.textures[v.id] = st
 		fresh = true
 	}
 	if fresh || st.generation != bmp.version {
-		x0, y0, x1, y1 := 0, 0, bmp.w, bmp.h
-		if !fresh && canvas2d.bitmap_has_dirty(bmp) { x0, y0, x1, y1 = bmp.dirty_min.x, bmp.dirty_min.y, bmp.dirty_max.x, bmp.dirty_max.y }
-		w, h := x1 - x0, y1 - y0
-		switch {
-		case st.premultiplied:
-			the_app.images_shell.api.update_premultiplied(the_app.images_shell.api.user, st.tex, x0, y0, w, h, bmp.pix[(y0 * bmp.w + x0) * 4:], bmp.w * 4)
-		case bmp.all_opaque:
-			// (premultiplied and straight are the same bytes: a WebGL frame of a whole screen costs no conversion)
-			the_app.images_shell.api.update(the_app.images_shell.api.user, st.tex, x0, y0, w, h, bmp.pix[(y0 * bmp.w + x0) * 4:], bmp.w * 4)
-		case:
-			scratch := make([]u8, w * h * 4, context.temp_allocator)
-			canvas2d.bitmap_read_straight_fast(bmp, x0, y0, w, h, scratch)
-			the_app.images_shell.api.update(the_app.images_shell.api.user, st.tex, x0, y0, w, h, scratch, w * 4)
+		rects := make([dynamic][4]int, 0, 16, context.temp_allocator)
+		if fresh || !canvas2d.bitmap_has_dirty(bmp) {
+			append(&rects, [4]int{0, 0, bmp.w, bmp.h})
+		} else {
+			canvas2d.bitmap_dirty_rects(bmp, &rects)
+		}
+		if len(rects) > 0 {
+			prof_begin(.Tex_Upload)
+			api := &the_app.images_shell.api
+			for r in rects {
+				x0, y0, w, h := r[0], r[1], r[2] - r[0], r[3] - r[1]
+				if w <= 0 || h <= 0 { continue }
+				switch {
+				case st.premultiplied:
+					api.update_premultiplied(api.user, st.tex, x0, y0, w, h, bmp.pix[(y0 * bmp.w + x0) * 4:], bmp.w * 4)
+				case bmp.all_opaque:
+					// (premultiplied and straight are the same bytes: a WebGL frame of a whole screen costs no conversion)
+					api.update(api.user, st.tex, x0, y0, w, h, bmp.pix[(y0 * bmp.w + x0) * 4:], bmp.w * 4)
+				case:
+					need := w * h * 4
+					if len(the_app.images_shell.canvas_scratch) < need { resize(&the_app.images_shell.canvas_scratch, need) }
+					scratch := the_app.images_shell.canvas_scratch[:need]
+					canvas2d.bitmap_read_straight_fast(bmp, x0, y0, w, h, scratch)
+					api.update(api.user, st.tex, x0, y0, w, h, scratch, w * 4)
+				}
+			}
+			prof_end(.Tex_Upload)
 		}
 		canvas2d.bitmap_clean(bmp)
 		st.generation = bmp.version
@@ -697,12 +724,25 @@ renderer_texture_api :: proc(app: ^App) -> Texture_Api {
 		draw     = proc(u: rawptr, dc: ^draw.Context, t: Image_Texture, dst, src: draw.Rect, tint: draw.Color, radii: [4]f32) { draw.image_corners(dc, render.Texture(t), dst, src, tint, radii) },
 		draw_tiled = proc(u: rawptr, dc: ^draw.Context, t: Image_Texture, dst, tile: draw.Rect, tint: draw.Color, radii: [4]f32) { draw.image_tiled(dc, render.Texture(t), dst, tile, tint, radii) },
 		max_size = proc(u: rawptr) -> int { return render.max_texture_size(&(^App)(u).r) },
-		// a canvas source texture of the renderer (render.canvas_texture_create: premultiplied sRGB RGBA8; Direct3D only, 0 elsewhere)
-		create_premultiplied = proc(u: rawptr, w, h: int) -> Image_Texture {
+		// a premultiplied sRGB RGBA8 texture (Direct3D canvas textures, or WGPU RGBA8 data textures in sRGB blend space:
+		// same RGBA8Unorm format, zero CPU unpremultiply/re-premultiply roundtrip)
+		create_premultiplied = proc(u: rawptr, w, h: int, mips: bool) -> Image_Texture {
 			r := &(^App)(u).r
-			if !render.canvas_supported(r) { return 0 }
-			return Image_Texture(render.canvas_texture_create(r, w, h, false, true))
+			if render.canvas_supported(r) {
+				return Image_Texture(render.canvas_texture_create(r, w, h, false, mips))
+			}
+			if render.blend_space(r) == .Srgb {
+				return Image_Texture(render.create_texture_data(r, w, h, .RGBA8, mips))
+			}
+			return 0
 		},
-		update_premultiplied = proc(u: rawptr, t: Image_Texture, x, y, w, h: int, px: []u8, stride: int) { render.canvas_upload(&(^App)(u).r, render.Texture(t), x, y, w, h, px, stride) },
+		update_premultiplied = proc(u: rawptr, t: Image_Texture, x, y, w, h: int, px: []u8, stride: int) {
+			r := &(^App)(u).r
+			if render.canvas_supported(r) {
+				render.canvas_upload(r, render.Texture(t), x, y, w, h, px, stride)
+			} else {
+				render.update_texture_data(r, render.Texture(t), x, y, w, h, px, stride)
+			}
+		},
 	}
 }

@@ -578,6 +578,47 @@ ctx_clear_rect :: proc(c: ^Context, x, y, w, h: f64) {
 	if !all_finite(x, y, w, h) || w == 0 || h == 0 || c.bmp == nil || c.bmp.w == 0 { return }
 	if c.gpu != nil { gpu_clear_rect(c, x, y, w, h); return }
 	m := c.state.ctm
+	if m.b == 0 && m.c == 0 && (c.state.clip == nil || c.state.clip.mask == nil) {
+		// Axis-aligned clear with no mask clip: clear interior pixels directly (skipping already-empty tiles)
+		// and only scale alpha on up to four 1-pixel fractional border strips.
+		p0, p1 := matrix_apply(m, {x, y}), matrix_apply(m, {x + w, y + h})
+		rx0, rx1 := min(p0.x, p1.x), max(p0.x, p1.x)
+		ry0, ry1 := min(p0.y, p1.y), max(p0.y, p1.y)
+		bx0, by0, bx1, by1 := draw_bounds(c)
+		cx0 := max(bx0, int(clamp(math.floor(rx0), -1e9, 1e9)))
+		cy0 := max(by0, int(clamp(math.floor(ry0), -1e9, 1e9)))
+		cx1 := min(bx1, int(clamp(math.ceil(rx1), -1e9, 1e9)))
+		cy1 := min(by1, int(clamp(math.ceil(ry1), -1e9, 1e9)))
+		if cx0 >= cx1 || cy0 >= cy1 { return }
+		ix0 := clamp(int(clamp(math.ceil(rx0), -1e9, 1e9)), cx0, cx1)
+		iy0 := clamp(int(clamp(math.ceil(ry0), -1e9, 1e9)), cy0, cy1)
+		ix1 := clamp(int(clamp(math.floor(rx1), -1e9, 1e9)), ix0, cx1)
+		iy1 := clamp(int(clamp(math.floor(ry1), -1e9, 1e9)), iy0, cy1)
+		if ix0 < ix1 && iy0 < iy1 {
+			clear_rect_pixels(c.bmp, ix0, iy0, ix1, iy1)
+		}
+		if cx0 == ix0 && cy0 == iy0 && cx1 == ix1 && cy1 == iy1 { return }
+		clear_partial_strip :: proc(b: ^Bitmap, x0, y0, x1, y1: int, rx0, ry0, rx1, ry1: f64) {
+			if x0 >= x1 || y0 >= y1 { return }
+			for py in y0 ..< y1 {
+				cy := f32(max(min(f64(py + 1), ry1) - max(f64(py), ry0), 0))
+				if cy <= 0 { continue }
+				for px in x0 ..< x1 {
+					cx := f32(max(min(f64(px + 1), rx1) - max(f64(px), rx0), 0))
+					a := cx * cy
+					if a <= 0 { continue }
+					d := load_px(b, px, py)
+					store_px(b, px, py, d * (1 - a))
+				}
+			}
+			bitmap_touch(b, x0, y0, x1, y1)
+		}
+		clear_partial_strip(c.bmp, cx0, cy0, cx1, iy0, rx0, ry0, rx1, ry1)
+		clear_partial_strip(c.bmp, cx0, iy1, cx1, cy1, rx0, ry0, rx1, ry1)
+		clear_partial_strip(c.bmp, cx0, iy0, ix0, iy1, rx0, ry0, rx1, ry1)
+		clear_partial_strip(c.bmp, ix1, iy0, cx1, iy1, rx0, ry0, rx1, ry1)
+		return
+	}
 	corners := [4][2]f64{
 		clamp_pt(matrix_apply(m, {x, y})), clamp_pt(matrix_apply(m, {x + w, y})),
 		clamp_pt(matrix_apply(m, {x + w, y + h})), clamp_pt(matrix_apply(m, {x, y + h})),

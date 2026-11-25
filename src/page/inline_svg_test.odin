@@ -183,3 +183,85 @@ inline_svg_css_animation_serializes_and_is_seen :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, fp.ok, "continuous animation ticks must not starve inline SVG rasterization")
 }
+
+// Static inline <svg> elements skip re-serialization when unrelated elements animate, while animating inline <svg>
+// elements reuse a single stable texture key and do not accumulate dead single-frame entries in the image cache.
+@(test)
+inline_svg_skips_static_re_serialize_and_reuses_animated_texture :: proc(t: ^testing.T) {
+	test_pages(t)
+	loop: host.Loop
+	host.loop_init(&loop)
+	defer test_loop_destroy(&loop)
+	settings := settings_default()
+	defer settings_destroy(&settings)
+	loader: fetch.Loader
+	scope := base.scope_make("test")
+	defer base.scope_close(scope)
+	p := page_create(&loop, &loader, &settings, scope, "http://127.0.0.1:8765/svg_perf.html")
+	defer page_close(p)
+
+	html_src := `<!doctype html><style>
+		@keyframes twinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+		#r { animation: twinkle 1s linear infinite; }
+	</style>
+	<svg id="static" viewBox="0 0 16 16"><rect width="16" height="16" fill="#00f"/></svg>
+	<svg id="anim" viewBox="0 0 16 16"><rect id="r" width="16" height="16" fill="#f00"/></svg>`
+	load_html(p, transmute([]byte)html_src)
+
+	svg_static := dom.find_by_id(p.doc, "static")
+	svg_anim := dom.find_by_id(p.doc, "anim")
+	testing.expect(t, svg_static != base.NIL_HANDLE && svg_anim != base.NIL_HANDLE, "both svgs exist")
+	if svg_static == base.NIL_HANDLE || svg_anim == base.NIL_HANDLE { return }
+
+	set_frame_time(p, 1000)
+	_ = styles(p, 800, 600, 1)
+
+	wait_pixels :: proc(loop: ^host.Loop, p: ^Page, h: base.Handle) -> Frame_Pixels {
+		start := time.tick_now()
+		fp := inline_svg_pixels(p, h, 16, 16, {}, 16, 16, 0, 0)
+		for !fp.ok && time.duration_seconds(time.tick_since(start)) < SVG_PIXELS_DEADLINE_S {
+			host.loop_wait(loop, SVG_PIXELS_POLL_MS)
+			fp = inline_svg_pixels(p, h, 16, 16, {}, 16, 16, 0, 0)
+		}
+		return fp
+	}
+
+	s0 := wait_pixels(&loop, p, svg_static)
+	a0 := wait_pixels(&loop, p, svg_anim)
+	testing.expect(t, s0.ok && a0.ok, "initial rasters ready")
+	if !s0.ok || !a0.ok { return }
+
+	static_rec := p.images.svgs[Svg_Key{svg_static, {}}]
+	static_req := static_rec.request
+	static_hash := static_rec.hash
+
+	// Advance animation across multiple frames and wait for each animated frame to rasterize.
+	base_entries := len(the_pages.image_cache.by_id)
+	stable_tex: u64
+	gens_seen := 0
+	prev_gen := a0.generation
+	for step in 1 ..= 6 {
+		_ = style.timeline_tick(p.anim.timeline, p.doc, p.styled, 1000 + f64(step) * 80)
+		s_now := inline_svg_pixels(p, svg_static, 16, 16, {}, 16, 16, 0, 0)
+		testing.expect(t, s_now.ok && s_now.texture == s0.texture, "static svg keeps same texture across unrelated animation ticks")
+		testing.expect(t, static_rec.request == static_req && static_rec.hash == static_hash, "static svg request untouched")
+
+		start := time.tick_now()
+		a_now := inline_svg_pixels(p, svg_anim, 16, 16, {}, 16, 16, 0, 0)
+		for a_now.ok && a_now.generation == prev_gen && time.duration_seconds(time.tick_since(start)) < SVG_PIXELS_DEADLINE_S {
+			host.loop_wait(&loop, SVG_PIXELS_POLL_MS)
+			a_now = inline_svg_pixels(p, svg_anim, 16, 16, {}, 16, 16, 0, 0)
+		}
+		if a_now.ok && a_now.generation != prev_gen {
+			if stable_tex == 0 {
+				stable_tex = a_now.texture
+			} else {
+				testing.expect_value(t, a_now.texture, stable_tex)
+			}
+			prev_gen = a_now.generation
+			gens_seen += 1
+		}
+	}
+	testing.expectf(t, gens_seen >= 4, "animated svg produced updated generations: %d", gens_seen)
+	testing.expectf(t, len(the_pages.image_cache.by_id) <= base_entries + 2, "dead animated svg cache entries did not accumulate: %d (base %d)", len(the_pages.image_cache.by_id), base_entries)
+}

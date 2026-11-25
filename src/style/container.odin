@@ -106,6 +106,7 @@ restyle_containers :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled) -> (chang
 	e.last_restyle.taken = p.matched_taken
 	if p.changed {
 		s.serial = styled_next_serial()
+		s.restyle_serial = s.serial
 		if p.layout_changed { s.layout_serial = s.serial }
 		journal_stamp(s)
 		update_canvas(s, doc)

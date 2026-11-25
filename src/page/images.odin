@@ -1638,6 +1638,7 @@ Image_State :: enum u8 { None, Loading, Ready, Broken }
 // What an element (or a CSS image) shows, for layout and painting.
 Image_View :: struct {
 	id:          u64,        // cache entry: the key of the painter's texture; 0 = nothing to draw
+	generation:  u64,        // changes when the entry's decoded pixels or SVG rasters change
 	state:       Image_State,
 	natural:     [2]f32,     // CSS px, density applied
 	pixel_size:  [2]int,     // image pixels (orientation applied)
@@ -1662,6 +1663,7 @@ view_of :: proc(r: ^Img_Request, density: f32) -> Image_View {
 	e := r.entry
 	if e == nil || r.state != .Ready { return v }
 	v.id = e.id
+	v.generation = e.generation
 	v.pixel_size = {e.info.width, e.info.height}
 	d := density > 0 ? density : 1
 	v.natural = {f32(e.info.width) / d, f32(e.info.height) / d}

@@ -248,27 +248,77 @@ image_row :: proc(s: ^Image_Source, inv: Matrix, x, y, n: int, buf: ^[dynamic]u8
 }
 
 // The bilinear half of image_row. Each (u, v) is computed from the row's first one, not accumulated, so a long row
-// does not drift.
+// does not drift. When inv.b == 0 (axis-aligned scale/translate), y interpolation and source row pointers are constant
+// across the row.
 @(private)
-image_row_bilinear :: proc(s: ^Image_Source, inv: Matrix, x, y, n: int, buf: ^[dynamic]u8) {
+image_row_bilinear :: proc(s: ^Image_Source, inv: Matrix, x, y, n: int, buf: ^[dynamic]u8) #no_bounds_check {
 	resize(buf, n * 4)
 	out := buf[:]
 	b := s.bmp
 	q := matrix_apply(inv, {f64(x) + 0.5, f64(y) + 0.5})
+	bw := b.w
+	sx0, sx1 := s.x0, s.x1 - 1
+	sy0, sy1 := s.y0, s.y1 - 1
+	if inv.b == 0 {
+		fv := q.y - 0.5
+		iv := math.floor(fv)
+		wy := u32((fv - iv) * 256 + 0.5)
+		iwy := 256 - wy
+		ty := int(clamp(iv, -1e9, 1e9))
+		ya, yb := clamp(ty, sy0, sy1), clamp(ty + 1, sy0, sy1)
+		row_a := b.pix[ya * bw * 4:]
+		row_b := b.pix[yb * bw * 4:]
+		fu0 := q.x - 0.5
+		for i in 0 ..< n {
+			fu := fu0 + f64(i) * inv.a
+			iu := math.floor(fu)
+			wx := u32((fu - iu) * 256 + 0.5)
+			iwx := 256 - wx
+			tx := int(clamp(iu, -1e9, 1e9))
+			xa, xb := clamp(tx, sx0, sx1), clamp(tx + 1, sx0, sx1)
+			pa0 := intrinsics.unaligned_load((^u32)(&row_a[xa * 4]))
+			pa1 := intrinsics.unaligned_load((^u32)(&row_a[xb * 4]))
+			pb0 := intrinsics.unaligned_load((^u32)(&row_b[xa * 4]))
+			pb1 := intrinsics.unaligned_load((^u32)(&row_b[xb * 4]))
+			if (pa0 | pa1 | pb0 | pb1) == 0 {
+				intrinsics.unaligned_store((^u32)(&out[i * 4]), 0)
+				continue
+			}
+			p00, p10 := row_a[xa * 4:], row_a[xb * 4:]
+			p01, p11 := row_b[xa * 4:], row_b[xb * 4:]
+			o := out[i * 4:]
+			for k in 0 ..< 4 {
+				top := u32(p00[k]) * iwx + u32(p10[k]) * wx
+				bot := u32(p01[k]) * iwx + u32(p11[k]) * wx
+				o[k] = u8((top * iwy + bot * wy + 32768) >> 16)
+			}
+		}
+		return
+	}
 	for i in 0 ..< n {
 		fu, fv := q.x + f64(i) * inv.a - 0.5, q.y + f64(i) * inv.b - 0.5
 		iu, iv := math.floor(fu), math.floor(fv)
 		wx, wy := u32((fu - iu) * 256 + 0.5), u32((fv - iv) * 256 + 0.5)
+		iwx, iwy := 256 - wx, 256 - wy
 		tx, ty := int(clamp(iu, -1e9, 1e9)), int(clamp(iv, -1e9, 1e9))
-		xa, xb := clamp(tx, s.x0, s.x1 - 1), clamp(tx + 1, s.x0, s.x1 - 1)
-		ya, yb := clamp(ty, s.y0, s.y1 - 1), clamp(ty + 1, s.y0, s.y1 - 1)
-		p00, p10 := b.pix[(ya * b.w + xa) * 4:][:4], b.pix[(ya * b.w + xb) * 4:][:4]
-		p01, p11 := b.pix[(yb * b.w + xa) * 4:][:4], b.pix[(yb * b.w + xb) * 4:][:4]
-		o := out[i * 4:][:4]
+		xa, xb := clamp(tx, sx0, sx1), clamp(tx + 1, sx0, sx1)
+		ya, yb := clamp(ty, sy0, sy1), clamp(ty + 1, sy0, sy1)
+		off_a, off_b := ya * bw, yb * bw
+		pa0 := intrinsics.unaligned_load((^u32)(&b.pix[(off_a + xa) * 4]))
+		pa1 := intrinsics.unaligned_load((^u32)(&b.pix[(off_a + xb) * 4]))
+		pb0 := intrinsics.unaligned_load((^u32)(&b.pix[(off_b + xa) * 4]))
+		pb1 := intrinsics.unaligned_load((^u32)(&b.pix[(off_b + xb) * 4]))
+		if (pa0 | pa1 | pb0 | pb1) == 0 {
+			intrinsics.unaligned_store((^u32)(&out[i * 4]), 0)
+			continue
+		}
+		p00, p10 := b.pix[(off_a + xa) * 4:], b.pix[(off_a + xb) * 4:]
+		p01, p11 := b.pix[(off_b + xa) * 4:], b.pix[(off_b + xb) * 4:]
+		o := out[i * 4:]
 		for k in 0 ..< 4 {
-			top := u32(p00[k]) * (256 - wx) + u32(p10[k]) * wx
-			bot := u32(p01[k]) * (256 - wx) + u32(p11[k]) * wx
-			o[k] = u8((top * (256 - wy) + bot * wy + 32768) >> 16)
+			top := u32(p00[k]) * iwx + u32(p10[k]) * wx
+			bot := u32(p01[k]) * iwx + u32(p11[k]) * wx
+			o[k] = u8((top * iwy + bot * wy + 32768) >> 16)
 		}
 	}
 }

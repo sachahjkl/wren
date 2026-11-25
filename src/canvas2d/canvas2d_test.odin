@@ -734,3 +734,108 @@ overflow_nan_and_limits :: proc(t: ^testing.T) {
 	tm, ok := ctx_measure_text(&c, "abcdefghij")
 	testing.expect(t, ok && abs(tm.width - 4 * 6) < 1e-4, "the text is cut at canvas.max_text_bytes")
 }
+
+// Fast axis-aligned clearRect (integer interior + fractional border strips, opaque canvases, clipped clears)
+// and sparse 64x64 tile dirty/nonzero tracking.
+@(test)
+clear_rect_fast_path_and_sparse_tiles :: proc(t: ^testing.T) {
+	c, b := make_ctx(512, 512)
+	defer free_ctx(&c, b)
+
+	// First full clear resets initial conservative tile_nonzero bits.
+	ctx_clear_rect(&c, 0, 0, 512, 512)
+	bitmap_clean(b)
+
+	// Clearing an already-empty canvas is a no-op (no version bump, no dirty region).
+	ver0 := b.version
+	ctx_clear_rect(&c, 0, 0, 512, 512)
+	testing.expect_value(t, b.version, ver0)
+	testing.expect(t, !bitmap_has_dirty(b), "empty clear leaves bitmap clean")
+
+	// Draw in two opposite corners, clean, then clear the entire 512x512 canvas.
+	style_set_color(&c.state.fill, {1, 0, 0, 1})
+	ctx_fill_rect(&c, 10, 10, 20, 20)
+	ctx_fill_rect(&c, 480, 480, 20, 20)
+	bitmap_clean(b)
+
+	ctx_clear_rect(&c, 0, 0, 512, 512)
+	testing.expect_value(t, px(b, 15, 15), [4]u8{0, 0, 0, 0})
+	testing.expect_value(t, px(b, 485, 485), [4]u8{0, 0, 0, 0})
+
+	rects := make([dynamic][4]int)
+	defer delete(rects)
+	bitmap_dirty_rects(b, &rects)
+	dirty_area := 0
+	for r in rects { dirty_area += (r[2] - r[0]) * (r[3] - r[1]) }
+	testing.expectf(t, len(rects) == 2 && dirty_area <= 2 * TILE_SIZE * TILE_SIZE, "sparse clear dirties only touched tiles: rects=%v area=%d", rects, dirty_area)
+
+	// Fractional clearRect: interior is zeroed, fractional edges scale alpha accurately.
+	bitmap_clean(b)
+	style_set_color(&c.state.fill, {0, 1, 0, 1})
+	ctx_fill_rect(&c, 0, 0, 40, 40)
+	ctx_clear_rect(&c, 10.5, 10.5, 19.0, 19.0)
+	testing.expect_value(t, px(b, 15, 15), [4]u8{0, 0, 0, 0})     // fully cleared interior
+	testing.expect_value(t, px(b, 5, 5), [4]u8{0, 255, 0, 255})   // untouched outside
+	testing.expect(t, near(px(b, 10, 15)[3], 128, 2), "half-covered left edge")
+	testing.expect(t, near(px(b, 10, 10)[3], 191, 2), "quarter-covered corner (0.75 remaining)")
+
+	// Negative width/height and rect clip are respected.
+	context_save(&c)
+	path_clear(&c.path)
+	path_rect(&c.path, IDENTITY, 0, 0, 8, 8)
+	ctx_clip(&c, .Nonzero)
+	ctx_clear_rect(&c, 10, 10, -10, -10)
+	context_restore(&c)
+	testing.expect_value(t, px(b, 4, 4), [4]u8{0, 0, 0, 0})
+	testing.expect_value(t, px(b, 9, 9), [4]u8{0, 255, 0, 255})
+
+	// Opaque canvas clears to opaque black {0, 0, 0, 255}.
+	ob, ook := bitmap_create(128, 128)
+	testing.expect(t, ook, "opaque bitmap created")
+	defer bitmap_destroy(&ob)
+	ob.opaque = true
+	bitmap_reset_contents(&ob)
+	oc: Context
+	context_init(&oc, &ob, DEFAULT_OPTIONS)
+	defer context_destroy(&oc)
+	style_set_color(&oc.state.fill, {1, 0, 0, 1})
+	ctx_fill_rect(&oc, 10, 10, 20, 20)
+	ctx_clear_rect(&oc, 0, 0, 128, 128)
+	testing.expect_value(t, px(&ob, 15, 15), [4]u8{0, 0, 0, 255})
+	testing.expect_value(t, px(&ob, 100, 100), [4]u8{0, 0, 0, 255})
+}
+
+// Hoisted axis-aligned image_row_bilinear (inv.b == 0) and transparent quad skip match sample().
+@(test)
+image_row_bilinear_matches_sample :: proc(t: ^testing.T) {
+	src, sok := bitmap_create(32, 32)
+	testing.expect(t, sok, "source bitmap created")
+	defer bitmap_destroy(&src)
+	// Leave outer border transparent to exercise the 2x2 zero-quad fast skip.
+	for y in 8 ..< 24 {
+		for x in 8 ..< 24 {
+			p := src.pix[(y * 32 + x) * 4:][:4]
+			p[0], p[1], p[2], p[3] = u8(x * 10), u8(y * 10), u8((x + y) * 5), 200
+		}
+	}
+	is := Image_Source{bmp = &src, x0 = 0, y0 = 0, x1 = 32, y1 = 32, wrap_x = .Clamp, wrap_y = .Clamp, smooth = true}
+	buf := make([dynamic]u8)
+	defer delete(buf)
+	for inv in ([2]Matrix{
+		{2.25, 0, 0, 2.25, -1.5, -1.5},     // axis-aligned (inv.b == 0)
+		{1.5, 0.4, -0.4, 1.5, 2.0, -3.0},   // rotated (inv.b != 0)
+	}) {
+		for y in 0 ..< 16 {
+			image_row_bilinear(&is, inv, 0, y, 16, &buf)
+			for x in 0 ..< 16 {
+				q := matrix_apply(inv, {f64(x) + 0.5, f64(y) + 0.5})
+				ref := sample(&is, q.x, q.y)
+				got := buf[x * 4:][:4]
+				for k in 0 ..< 4 {
+					want := u8(clamp(ref[k], 0, 1) * 255 + 0.5)
+					testing.expectf(t, near(got[k], want, 1), "inv=%v (%d,%d)[%d]: got %d want %d", inv, x, y, k, got[k], want)
+				}
+			}
+		}
+	}
+}

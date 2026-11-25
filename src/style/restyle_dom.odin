@@ -1749,6 +1749,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	}
 	if w.changed > 0 {
 		s.serial = styled_next_serial()
+		s.restyle_serial = s.serial
 		if w.layout_changed { s.layout_serial = s.serial }
 		journal_stamp(s)
 		update_canvas(s, doc)
@@ -1763,6 +1764,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 @(private)
 styled_superseded :: proc(s: ^Styled) {
 	s.serial = styled_next_serial()
+	s.restyle_serial = s.serial
 }
 
 // Restyles `roots` in place: elements whose own rules changed and that no rule change reaches below (the elements that a flipped
@@ -1806,6 +1808,7 @@ restyle_roots :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, p: ^Pass, root
 	e.last_restyle.changed = w.changed
 	if w.changed > 0 {
 		s.serial = styled_next_serial()
+		s.restyle_serial = s.serial
 		if w.layout_changed { s.layout_serial = s.serial }
 		journal_stamp(s)
 		update_canvas(s, doc)

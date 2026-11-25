@@ -179,7 +179,7 @@ item_sig_at :: proc(e: ^Effects, x: ^Fx_Cache, c: ^Comp, idx: i32, anchor: draw.
 		if n == nil || n.kind != .Element || n.name != "img" { return h, false }
 		v := page.image_view(x.page, it.node)
 		if v.animated { return h, false }
-		h = fx_mix(fx_mix(h, v.id), u64(v.state))
+		h = fx_mix(fx_mix(fx_mix(h, v.id), u64(v.state)), v.generation)
 	case .Box, .Inline_Box:
 		if the_app.page_render.bare != nil && the_app.page_render.bare(the_app.page_render.content_user, c.doc, it.node) { return h, false }
 		if it.cs != nil && background_clips_text(it.cs) {
@@ -199,7 +199,7 @@ item_sig_at :: proc(e: ^Effects, x: ^Fx_Cache, c: ^Comp, idx: i32, anchor: draw.
 					if x.page == nil { return h, false }
 					v := page.css_image_view(x.page, im.url)
 					if v.animated { return h, false }
-					h = fx_mix(fx_mix(h, v.id), u64(v.state))
+					h = fx_mix(fx_mix(fx_mix(h, v.id), u64(v.state)), v.generation)
 				}
 			}
 		}
@@ -291,7 +291,7 @@ mask_sig_at :: proc(e: ^Effects, x: ^Fx_Cache, g: i32, anchor: draw.Vec2) -> (h:
 			if x.page == nil { return h, false }
 			v := page.css_image_view(x.page, im.url)
 			if v.animated { return h, false }
-			h = fx_mix(fx_mix(h, v.id), u64(v.state))
+			h = fx_mix(fx_mix(fx_mix(h, v.id), u64(v.state)), v.generation)
 		}
 	}
 	return h, true
@@ -329,7 +329,8 @@ fx_cache_begin :: proc(x: ^Fx_Cache, c: ^Comp, e: ^Effects, screen: lay.Rect) {
 	salt = fx_f32(salt, s.blur_sigma_limit)
 	salt = fx_f32(salt, l.scale)
 	salt = fx_mix(salt, c.sel_key)
-	if x.page != nil { salt = fx_mix(salt, page.images_pixels_generation(x.page)) }
+	// Image pixel generations are keyed per image in item_sig_at and mask_sig_at so animating canvases or
+	// unrelated images do not invalidate static filtered groups across the page.
 	x.salt = salt
 	if n == 0 || !the_app.fx_settings.enabled { return }
 	for g in 0 ..< n {

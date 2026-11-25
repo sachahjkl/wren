@@ -39,22 +39,74 @@ Svg_Key :: struct {
 }
 
 Inline_Svg :: struct {
-	node:         base.Handle,
-	request:      ^Img_Request,   // holds the cache entry of the markup
-	shown:        ^Img_Request,   // a reference of its own to the markup last drawn: drawn while `request` has no pixels yet
-	hash:         u64,
-	mutations:    u64,            // document mutation count the markup was made at
-	style_serial: u64,
-	css_w, css_h: f32,            // box size it was made for (matters only without a viewBox)
-	has_view_box: bool,
-	error:        string,         // owned: why there is no picture
+	node:           base.Handle,
+	request:        ^Img_Request,   // holds the cache entry of the markup
+	shown:          ^Img_Request,   // a reference of its own to the markup last drawn: drawn while `request` has no pixels yet
+	hash:           u64,
+	mutations:      u64,            // document mutation count the markup was made at
+	style_serial:   u64,
+	restyle_serial: u64,            // last cascade/restyle serial (unchanged by paint-only animation overlay ticks)
+	css_w, css_h:   f32,            // box size it was made for (matters only without a viewBox)
+	has_view_box:   bool,
+	had_overlay:    bool,           // an animated overlay touched this <svg> or an inherited ancestor on the last serialize
+	transient:      bool,           // animated frame: unmap dead single-frame cache entries when replaced and reuse tex_id
+	tex_id:         u64,            // stable GPU texture key for animating inline <svg> (avoids per-frame tex_create churn)
+	error:          string,         // owned: why there is no picture
 }
 
 @(private)
 inline_svg_free :: proc(s: ^Inline_Svg, live: bool) {
-	if live { request_release(s.request); request_release(s.shown) }
+	if s.tex_id != 0 && the_pages.image_cache.ready {
+		append(&the_pages.image_cache.evicted, s.tex_id)
+		s.tex_id = 0
+	}
+	if live {
+		inline_svg_release_request(s.request, s.transient)
+		inline_svg_release_request(s.shown, s.transient)
+	}
 	delete(s.error)
 	free(s)
+}
+
+@(private = "file")
+inline_svg_release_request :: proc(r: ^Img_Request, transient: bool) {
+	if r == nil { return }
+	if transient && r.refs == 1 && r.entry != nil && len(r.entry.requests) == 1 {
+		entry_unmap(r.entry)
+	}
+	request_release(r)
+}
+
+// Whether any element inside `node`'s subtree (or an ancestor when an inherited SVG property is animated) currently
+// carries a live animation overlay in `p.styled.overlaid`.
+@(private = "file")
+svg_has_overlay :: proc(p: ^Page, node: base.Handle) -> bool {
+	if p.styled == nil || len(p.styled.overlaid) == 0 { return false }
+	d := p.doc
+	// Check ancestors (for inherited properties like color, fill, stroke, font-*, visibility).
+	for anc := node; anc != base.NIL_HANDLE; {
+		if anc in p.styled.overlaid { return true }
+		n := dom.get(d, anc)
+		if n == nil { break }
+		anc = n.parent
+	}
+	// Check descendants inside the <svg> subtree.
+	stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
+	if root := dom.get(d, node); root != nil {
+		for ch := root.first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next {
+			append(&stack, ch)
+		}
+	}
+	for len(stack) > 0 {
+		h := pop(&stack)
+		if h in p.styled.overlaid { return true }
+		n := dom.get(d, h)
+		if n == nil || n.kind != .Element || n.name == "foreignobject" { continue }
+		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next {
+			append(&stack, ch)
+		}
+	}
+	return false
 }
 
 @(private)
@@ -181,27 +233,43 @@ inline_svg_resolve :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts
 		pi.svgs[key] = rec
 	}
 	style_serial := p.styled != nil ? p.styled.serial : 0
-	stale := !found || rec.mutations != p.doc.mutations || rec.style_serial != style_serial
-	if !rec.has_view_box && (abs(rec.css_w - css_w) > 0.5 || abs(rec.css_h - css_h) > 0.5) { stale = true }
+	restyle_serial := p.styled != nil ? p.styled.restyle_serial : 0
+	size_changed := !rec.has_view_box && (abs(rec.css_w - css_w) > 0.5 || abs(rec.css_h - css_h) > 0.5)
+	base_stale := !found || rec.mutations != p.doc.mutations || rec.restyle_serial != restyle_serial || size_changed
+	overlay_now := false
+	overlay_stale := false
+	if !base_stale && rec.style_serial != style_serial {
+		overlay_now = svg_has_overlay(p, node)
+		if overlay_now || rec.had_overlay {
+			overlay_stale = true
+		} else {
+			// Only an unrelated element on the page animated: skip re-serializing this static <svg>.
+			rec.style_serial = style_serial
+		}
+	}
+	stale := base_stale || overlay_stale
 	// While a previous frame's rasterization is still in flight, let it finish before queuing a newer one so continuous
 	// 60 Hz CSS animations on complex SVGs do not repeatedly cancel in-flight decodes and starve `rec.shown`.
 	in_flight := keep_in_flight && rec.request != nil && rec.request != rec.shown && rec.request.state != .Broken
 	if stale && !in_flight {
-		rec.mutations, rec.style_serial, rec.css_w, rec.css_h = p.doc.mutations, style_serial, css_w, css_h
+		if base_stale { overlay_now = svg_has_overlay(p, node) }
+		rec.mutations, rec.style_serial, rec.restyle_serial, rec.css_w, rec.css_h = p.doc.mutations, style_serial, restyle_serial, css_w, css_h
+		rec.had_overlay = overlay_now
 		_, rec.has_view_box = svg_view_box(p.doc, node)
 		markup, ok := svg_serialize(p, node, css_w, css_h, parts)
 		if !ok {
-			request_release(rec.request)
-			request_release(rec.shown)
+			inline_svg_release_request(rec.request, rec.transient)
+			inline_svg_release_request(rec.shown, rec.transient)
 			rec.request, rec.shown, rec.hash = nil, nil, 0
 			set_string(&rec.error, "inline <svg> too large or too deep (images.svg.inline_max_bytes, images.svg.max_depth)")
 		} else {
 			hv := hash.fnv64a(transmute([]byte)markup)
 			if rec.request == nil || hv != rec.hash {
+				if overlay_stale { rec.transient = true }
 				old := rec.request
 				rec.request = inline_request(p, hv, markup)
 				rec.hash = hv
-				request_release(old)
+				inline_svg_release_request(old, rec.transient)
 				set_string(&rec.error, "")
 			}
 		}
@@ -217,25 +285,39 @@ inline_svg_pixels :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32, parts:
 	v := inline_svg_resolve(p, node, css_w, css_h, parts, keep_in_flight = true)
 	if v.state != .Ready && v.state != .Loading { return {} }
 	rec := p.images.svgs[Svg_Key{node, parts}]
+	apply_tex :: proc(rec: ^Inline_Svg, fp: Frame_Pixels) -> Frame_Pixels {
+		if !rec.transient { return fp }
+		if rec.tex_id == 0 {
+			the_pages.image_cache.next_id += 1
+			rec.tex_id = the_pages.image_cache.next_id
+		}
+		out := fp
+		out.generation = fp.texture
+		out.texture = rec.tex_id
+		return out
+	}
 	if v.state == .Ready {
 		if fp := frame_pixels(v.id, now_ms, want_w, want_h, priority); fp.ok {
 			if rec.shown != rec.request {
+				old_shown := rec.shown
 				rec.request.refs += 1
-				request_release(rec.shown)
 				rec.shown = rec.request
+				inline_svg_release_request(old_shown, rec.transient)
 			}
 			// If styles or DOM moved on while this request was decoding, kick off the next frame right away.
 			style_serial := p.styled != nil ? p.styled.serial : 0
 			if rec.mutations != p.doc.mutations || rec.style_serial != style_serial {
 				_ = inline_svg_resolve(p, node, css_w, css_h, parts, keep_in_flight = false)
 			}
-			return fp
+			return apply_tex(rec, fp)
 		}
 	}
 	if rec.shown == nil || rec.shown == rec.request { return {} }
 	sv := view_of(rec.shown, 1)
 	if sv.state != .Ready { return {} }
-	return frame_pixels(sv.id, now_ms, want_w, want_h, priority)
+	fp := frame_pixels(sv.id, now_ms, want_w, want_h, priority)
+	if !fp.ok { return {} }
+	return apply_tex(rec, fp)
 }
 
 // The page's request for an inline document, by the hash of its markup: shared with every element of the same markup,

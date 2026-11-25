@@ -96,6 +96,7 @@ Styled :: struct {
 	mutations:      u64,     // the document's mutation counter when this was computed
 	serial:         u64,     // unique per pass: lets layout notice that styles changed even if nothing else did
 	layout_serial:  u64,     // the serial of the last change that was not paint-only (paint_change.odin)
+	restyle_serial: u64,     // unique per cascade/restyle (unchanged by paint-only animation overlay ticks)
 	line_height_normal: f32, // what `line-height: normal` means (a multiple of the font size), from the preferences
 	quirks:         bool,    // the document is in quirks mode and its quirks apply (style.quirks_mode.enabled): layout's
 	                         // quirks follow it
@@ -309,6 +310,7 @@ base_style_of :: proc(s: ^Styled, h: base.Handle) -> ^Computed {
 styled_touch :: proc(s: ^Styled) {
 	s.serial = styled_next_serial()
 	s.layout_serial = s.serial
+	s.restyle_serial = s.serial
 	journal_stamp(s)
 }
 
@@ -1426,6 +1428,7 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	s.state.target_id = strings.clone(state.target_id, s.alloc)
 	s.serial = styled_next_serial()
 	s.layout_serial = s.serial
+	s.restyle_serial = s.serial
 	s.pass_id = s.serial
 	s.line_height_normal = e.settings.line_height_normal
 	s.quirks = e.settings.quirks_rules && doc.mode == .Quirks
@@ -1726,6 +1729,7 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 	set_state(s, new_state)
 	if p.changed {
 		s.serial = styled_next_serial()
+		s.restyle_serial = s.serial
 		if p.layout_changed { s.layout_serial = s.serial }
 		journal_stamp(s)
 		update_canvas(s, doc)

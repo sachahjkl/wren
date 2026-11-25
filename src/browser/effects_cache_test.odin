@@ -265,3 +265,33 @@ filter_lengths_follow_the_transform :: proc(t: ^testing.T) {
 	}
 	testing.expectf(t, abs(scales[0] - 4) < 0.001 && scales[1] == 1, "scaled 4 times, untransformed: %v", scales)
 }
+
+// Static filtered groups keep their cached effect key when an unrelated <canvas> updates on the same page.
+@(test)
+kept_effects_survive_unrelated_canvas_updates :: proc(t: ^testing.T) {
+	test_app(t)
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
+	page_render_test_lock()
+	defer page_render_test_unlock()
+	f := new(Fx_Cx)
+	defer free(f)
+	if !fx_open(f, `<!doctype html><html><body style="margin:0"><div id="card" style="width:80px;height:40px;background:#40c057;filter:drop-shadow(0 3px 3px rgba(0,0,0,0.4))">hi</div><canvas id="c" width="64" height="64"></canvas></body></html>`) {
+		testing.fail_now(t, "no renderer or font")
+	}
+	defer fx_close(f)
+	fx_paint(f, false)
+	s0 := fx_same(t, f, "static filter with sibling canvas")
+	testing.expectf(t, s0.hits >= 1 && s0.misses == 0, "static filtered group hits cache: %v", s0)
+	// Confirm fx_cache_begin does not mix global canvas generation into the salt.
+	size := draw.Vec2{f32(FX_SIZE.x), f32(FX_SIZE.y)}
+	v := lay.view_make(&f.l, size, 0, cull = false)
+	e := Effects{l = &f.l, v = &v, screen = lay.Rect{{0, 0}, size}}
+	c := comp_of(&f.l)
+	e.groups = plan_groups(&e)
+	fxc1, fxc2: Fx_Cache
+	fx_cache_begin(&fxc1, c, &e, e.screen)
+	fx_cache_begin(&fxc2, c, &e, e.screen)
+	testing.expect_value(t, fxc1.salt, fxc2.salt)
+	testing.expect(t, len(fxc1.key) > 0 && fxc1.key[0] == fxc2.key[0], "filtered group key stays identical across frames")
+}
