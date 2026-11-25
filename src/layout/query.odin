@@ -1,6 +1,7 @@
 package layout
 
 import "core:math"
+import "core:mem"
 import "core:slice"
 import "wb:base"
 
@@ -81,18 +82,49 @@ build_bands :: proc(l: ^Layout, band_h: f32) {
 // product of the transforms, outermost first, each taken around where its box is drawn. Inside a 3D plane (Space.plane !=
 // NONE) the product starts at the plane: mats is relative to the plane's frame, and ccs projects the plane.
 View :: struct {
-	offsets:  []Vec2,
-	mats:     []Matrix,   // per space
-	invs:     []Matrix,   // per space: inverse of mats (viewport -> untransformed)
-	accs:     []Matrix4,  // per plane space: its frame -> the frame of what receives it (plane.odin)
-	singular: []bool,     // per space: a transform above flattens it to nothing (not drawn, not hit)
-	clips:    []Rect,     // per clip: bounds in viewport coordinates, intersected with the enclosing clips' bounds
-	alphas:   []f32,
-	visible:  []u32,
-	viewport: Vec2,
-	doc_scroll: f32,
-	doc_scroll_x: f32,    // doc_scroll_x_snapped when the view was made
-	transformed: bool,    // some space is under a transform
+	offsets:      []Vec2,
+	mats:         []Matrix,   // per space
+	invs:         []Matrix,   // per space: inverse of mats (viewport -> untransformed)
+	accs:         []Matrix4,  // per plane space: its frame -> the frame of what receives it (plane.odin)
+	singular:     []bool,     // per space: a transform above flattens it to nothing (not drawn, not hit)
+	clips:        []Rect,     // per clip: bounds in viewport coordinates, intersected with the enclosing clips' bounds
+	alphas:       []f32,
+	visible:      []u32,
+	viewport:     Vec2,
+	doc_scroll:   f32,
+	doc_scroll_x: f32,        // doc_scroll_x_snapped when the view was made
+	transformed:  bool,       // some space is under a transform
+	culled:       bool,       // `visible` was computed for this view
+	// Backing buffers reused across view_update calls without reallocating once warmed up.
+	offs_buf:     [dynamic]Vec2,
+	mats_buf:     [dynamic]Matrix,
+	invs_buf:     [dynamic]Matrix,
+	accs_buf:     [dynamic]Matrix4,
+	sing_buf:     [dynamic]bool,
+	clips_buf:    [dynamic]Rect,
+	alphas_buf:   [dynamic]f32,
+	vis_buf:      [dynamic]u32,
+}
+
+// Fingerprint of every layout and viewport input that determines a View.
+View_Key :: struct {
+	layout:        rawptr,
+	passes:        u64,
+	restyled:      u64,
+	items_ver:     u64,
+	tree_gen:      u64,
+	serial:        u64,
+	scroll_digest: u64,
+	viewport:      Vec2,
+	doc_scroll:    f32,
+	scale:         f32,
+}
+
+// Reusable cached View backed by persistent buffers; free with view_cache_destroy.
+View_Cache :: struct {
+	view:  View,
+	key:   View_Key,
+	valid: bool,
 }
 
 // The space draws untransformed (only its offset applies).
@@ -207,64 +239,37 @@ doc_scroll_y_range :: #force_inline proc(l: ^Layout, height: f32) -> (lo, hi: f3
 	return l.doc_min_y, max(l.height - max(height - l.doc_bars.y, 0), 0)
 }
 
-// `viewport`: device px; `doc_scroll`: the page's vertical scroll offset (device px); the horizontal one is the layout's
-// (doc_scroll_x). With `cull`, `visible` lists the items intersecting the viewport.
-view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, allocator := context.temp_allocator) -> View {
-	v := View{viewport = viewport, doc_scroll = doc_scroll, doc_scroll_x = doc_scroll_x_snapped(l)}
-	ns := len(l.spaces)
-	v.offsets = make([]Vec2, ns, allocator)
-	v.mats = make([]Matrix, ns, allocator)
-	v.invs = make([]Matrix, ns, allocator)
-	if len(l.planes) > 0 { v.accs = make([]Matrix4, len(l.planes), allocator) }
-	v.singular = make([]bool, ns, allocator)
-	for i in 0 ..< ns {
-		sp := &l.spaces[i]
-		switch sp.kind {
-		case .Document: v.offsets[i] = {-v.doc_scroll_x, -doc_scroll}
-		case .Fixed: v.offsets[i] = {0, 0}
-		case .Scroll: v.offsets[i] = v.offsets[sp.parent] - scroll_offset_of(l, sp)
-		case .Sticky: v.offsets[i] = v.offsets[sp.parent] + sticky_offset(l, sp, viewport, doc_scroll)
-		case .Transform: v.offsets[i] = v.offsets[sp.parent]
-		case .Anchored: v.offsets[i] = v.offsets[sp.parent] + anchored_shift(l, sp, viewport, doc_scroll)
-		case .Flow: v.offsets[i] = v.offsets[sp.parent]
-		case .Column: v.offsets[i] = v.offsets[sp.parent] + sp.data.column.shift
-		}
-		v.mats[i], v.invs[i] = IDENTITY, IDENTITY
-		if space_is_plane(sp) {
-			// a plane: its frame starts here (its own transform is the projection, accs)
-			acc, ok := plane_acc(l, &v, i32(i))
-			v.accs[sp.data.transform.plane_data] = acc
-			v.singular[i] = !ok || (sp.parent != NONE && v.singular[sp.parent])
-			v.transformed = true
-		} else if sp.kind == .Transform {
-			// the box's transform, around where the box is drawn, then whatever encloses it
-			outer := sp.parent != NONE ? v.mats[sp.parent] : IDENTITY
-			m := mat_mul(outer, mat_shifted(sp.data.transform.mat, v.offsets[i]))
-			inv, ok := mat_inverse(m)
-			v.mats[i], v.invs[i] = m, inv
-			v.singular[i] = !ok || (sp.parent != NONE && v.singular[sp.parent])
-			v.transformed = true
-		} else if sp.parent != NONE {
-			v.mats[i], v.invs[i], v.singular[i] = v.mats[sp.parent], v.invs[sp.parent], v.singular[sp.parent]
-		}
+@(private = "file")
+view_buf_ensure :: proc(buf: ^[dynamic]$T, n: int, allocator: mem.Allocator) -> []T {
+	if buf.allocator.procedure == nil { buf.allocator = allocator }
+	if n == 0 { clear(buf); return nil }
+	non_zero_resize(buf, n)
+	return buf[:n]
+}
+
+// Frees the backing buffers of a View created with view_update or a non-temp view_make.
+view_destroy :: proc(v: ^View) {
+	if v == nil { return }
+	delete(v.offs_buf)
+	delete(v.mats_buf)
+	delete(v.invs_buf)
+	delete(v.accs_buf)
+	delete(v.sing_buf)
+	delete(v.clips_buf)
+	delete(v.alphas_buf)
+	delete(v.vis_buf)
+	v^ = {}
+}
+
+// Computes `v.visible` for an already-populated View `v`, reusing `v.vis_buf` without reallocating after warmup.
+view_cull :: proc(v: ^View, l: ^Layout, allocator: mem.Allocator = {}) {
+	alloc := allocator.procedure != nil ? allocator : base.process_allocator()
+	if v.vis_buf.allocator.procedure == nil { v.vis_buf.allocator = alloc }
+	clear(&v.vis_buf)
+	if len(l.items) > 0 && cap(v.vis_buf) == 0 {
+		reserve(&v.vis_buf, min(len(l.items), 1024))
 	}
-	v.clips = make([]Rect, len(l.clips), allocator)
-	for i in 0 ..< len(l.clips) {
-		cl := &l.clips[i]
-		r := rect_shift(cl.rect, v.offsets[cl.space])
-		if !space_plain(l, cl.space) { r = v.singular[cl.space] ? Rect{} : mat_bounds(v.mats[cl.space], r) }
-		// (bounds of clips in different frames, a plane's and the page's, do not compare)
-		if cl.parent != NONE && l.spaces[cl.space].plane == l.spaces[l.clips[cl.parent].space].plane { r = rect_intersect(r, v.clips[cl.parent]) }
-		v.clips[i] = r
-	}
-	v.alphas = make([]f32, len(l.groups), allocator)
-	for i in 0 ..< len(l.groups) {
-		g := &l.groups[i]
-		v.alphas[i] = g.alpha * (g.parent != NONE ? v.alphas[g.parent] : 1)
-	}
-	if !cull { return v }
-	vis := make([dynamic]u32, 0, 1024, allocator)
-	screen := Rect{{0, 0}, viewport}
+	screen := Rect{{0, 0}, v.viewport}
 	// filters spread what items paint: bands are searched that much further (each item then by its own groups' reach)
 	reach: f32
 	for &g in l.groups { reach = max(reach, g.reach) }
@@ -293,7 +298,7 @@ view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, all
 			g := int(sp.band_first) + b
 			for idx in l.band_items[l.band_start[g]:l.band_start[g + 1]] {
 				r := l.items[idx].rect
-				if l.items[idx].kind == .Box && len(l.items[idx].cs.box_shadow) > 0 { append(&vis, idx); continue }
+				if l.items[idx].kind == .Box && len(l.items[idx].cs.box_shadow) > 0 { append(&v.vis_buf, idx); continue }
 				// filters (blur, drop shadows) of the groups around it spread what it paints
 				if g := l.items[idx].group; g != NONE && l.groups[g].reach > 0 { r = Rect{r.min - l.groups[g].reach, r.max + l.groups[g].reach} }
 				if r.max.y < local.min.y || r.min.y > local.max.y || r.max.x < local.min.x || r.min.x > local.max.x {
@@ -301,19 +306,140 @@ view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, all
 					// text shadows and italic overhang reach a little outside the item
 					if r.max.y + 8 < local.min.y || r.min.y - 8 > local.max.y { continue }
 				}
-				append(&vis, idx)
+				append(&v.vis_buf, idx)
 			}
 		}
 	}
-	slice.sort(vis[:])
+	slice.sort(v.vis_buf[:])
 	n := 0
-	for i in 0 ..< len(vis) {
-		if n > 0 && vis[n - 1] == vis[i] { continue }
-		vis[n] = vis[i]
+	for i in 0 ..< len(v.vis_buf) {
+		if n > 0 && v.vis_buf[n - 1] == v.vis_buf[i] { continue }
+		v.vis_buf[n] = v.vis_buf[i]
 		n += 1
 	}
-	v.visible = vis[:n]
+	v.visible = v.vis_buf[:n]
+	v.culled = true
+}
+
+// Recomputes `v` in place for `l`, `viewport` (device px) and `doc_scroll` (device px), reusing `v`'s backing arrays
+// without reallocating once their capacities fit. Call `view_destroy` when the owner drops `v`.
+view_update :: proc(v: ^View, l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := false, allocator: mem.Allocator = {}) {
+	alloc := allocator.procedure != nil ? allocator : base.process_allocator()
+	v.viewport = viewport
+	v.doc_scroll = doc_scroll
+	v.doc_scroll_x = doc_scroll_x_snapped(l)
+	v.transformed = false
+	v.culled = false
+	v.visible = nil
+	if v.vis_buf.allocator.procedure == nil { v.vis_buf.allocator = alloc }
+	ns := len(l.spaces)
+	v.offsets = view_buf_ensure(&v.offs_buf, ns, alloc)
+	v.mats = view_buf_ensure(&v.mats_buf, ns, alloc)
+	v.invs = view_buf_ensure(&v.invs_buf, ns, alloc)
+	v.accs = view_buf_ensure(&v.accs_buf, len(l.planes), alloc)
+	if len(v.accs) > 0 { slice.zero(v.accs) }
+	v.singular = view_buf_ensure(&v.sing_buf, ns, alloc)
+	for i in 0 ..< ns {
+		sp := &l.spaces[i]
+		switch sp.kind {
+		case .Document: v.offsets[i] = {-v.doc_scroll_x, -doc_scroll}
+		case .Fixed: v.offsets[i] = {0, 0}
+		case .Scroll: v.offsets[i] = v.offsets[sp.parent] - scroll_offset_of(l, sp)
+		case .Sticky: v.offsets[i] = v.offsets[sp.parent] + sticky_offset(l, sp, viewport, doc_scroll)
+		case .Transform: v.offsets[i] = v.offsets[sp.parent]
+		case .Anchored: v.offsets[i] = v.offsets[sp.parent] + anchored_shift(l, sp, viewport, doc_scroll)
+		case .Flow: v.offsets[i] = v.offsets[sp.parent]
+		case .Column: v.offsets[i] = v.offsets[sp.parent] + sp.data.column.shift
+		}
+		v.mats[i], v.invs[i], v.singular[i] = IDENTITY, IDENTITY, false
+		if space_is_plane(sp) {
+			// a plane: its frame starts here (its own transform is the projection, accs)
+			acc, ok := plane_acc(l, v, i32(i))
+			v.accs[sp.data.transform.plane_data] = acc
+			v.singular[i] = !ok || (sp.parent != NONE && v.singular[sp.parent])
+			v.transformed = true
+		} else if sp.kind == .Transform {
+			// the box's transform, around where the box is drawn, then whatever encloses it
+			outer := sp.parent != NONE ? v.mats[sp.parent] : IDENTITY
+			m := mat_mul(outer, mat_shifted(sp.data.transform.mat, v.offsets[i]))
+			inv, ok := mat_inverse(m)
+			v.mats[i], v.invs[i] = m, inv
+			v.singular[i] = !ok || (sp.parent != NONE && v.singular[sp.parent])
+			v.transformed = true
+		} else if sp.parent != NONE {
+			v.mats[i], v.invs[i], v.singular[i] = v.mats[sp.parent], v.invs[sp.parent], v.singular[sp.parent]
+		}
+	}
+	v.clips = view_buf_ensure(&v.clips_buf, len(l.clips), alloc)
+	for i in 0 ..< len(l.clips) {
+		cl := &l.clips[i]
+		r := rect_shift(cl.rect, v.offsets[cl.space])
+		if !space_plain(l, cl.space) { r = v.singular[cl.space] ? Rect{} : mat_bounds(v.mats[cl.space], r) }
+		// (bounds of clips in different frames, a plane's and the page's, do not compare)
+		if cl.parent != NONE && l.spaces[cl.space].plane == l.spaces[l.clips[cl.parent].space].plane { r = rect_intersect(r, v.clips[cl.parent]) }
+		v.clips[i] = r
+	}
+	v.alphas = view_buf_ensure(&v.alphas_buf, len(l.groups), alloc)
+	for i in 0 ..< len(l.groups) {
+		g := &l.groups[i]
+		v.alphas[i] = g.alpha * (g.parent != NONE ? v.alphas[g.parent] : 1)
+	}
+	if !cull {
+		clear(&v.vis_buf)
+		return
+	}
+	view_cull(v, l, alloc)
+}
+
+// `viewport`: device px; `doc_scroll`: the page's vertical scroll offset (device px); the horizontal one is the layout's
+// (doc_scroll_x). With `cull`, `visible` lists the items intersecting the viewport.
+view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, allocator := context.temp_allocator) -> View {
+	v: View
+	view_update(&v, l, viewport, doc_scroll, cull = cull, allocator = allocator)
 	return v
+}
+
+view_key_of :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32) -> View_Key {
+	if l == nil { return {} }
+	return View_Key{
+		layout        = l,
+		passes        = l.passes[.Full] + l.passes[.Incremental] + l.passes[.Refresh],
+		restyled      = l.restyled,
+		items_ver     = l.items_ver,
+		tree_gen      = l.tree_gen,
+		serial        = l.serial,
+		scroll_digest = scroll_digest(l),
+		viewport      = viewport,
+		doc_scroll    = doc_scroll,
+		scale         = l.scale,
+	}
+}
+
+// Returns the cached View in O(1) when the layout, scroll, viewport and scale match; otherwise updates it in place.
+// Returns `hit = true` when space/clip/alpha math was reused without recomputing.
+view_cache_get :: proc(c: ^View_Cache, l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := false, allocator: mem.Allocator = {}) -> (v: ^View, hit: bool) {
+	if c == nil || l == nil || !l.valid { return nil, false }
+	key := view_key_of(l, viewport, doc_scroll)
+	if c.valid && c.key == key {
+		if cull && !c.view.culled { view_cull(&c.view, l, allocator) }
+		return &c.view, true
+	}
+	view_update(&c.view, l, viewport, doc_scroll, cull = cull, allocator = allocator)
+	c.key = key
+	c.valid = true
+	return &c.view, false
+}
+
+// Marks the cache stale while keeping its backing buffers allocated for zero-allocation reuse.
+view_cache_invalidate :: proc(c: ^View_Cache) {
+	if c != nil { c.valid = false }
+}
+
+// Releases the cached View's backing buffers and resets the cache.
+view_cache_destroy :: proc(c: ^View_Cache) {
+	if c == nil { return }
+	view_destroy(&c.view)
+	c^ = {}
 }
 
 // Viewport rect of an item for this view, and whether its clip leaves anything of it.
@@ -327,11 +453,10 @@ Hit :: struct {
 	item: i32,
 }
 
-// Topmost hittable item under `p` (viewport coordinates): stacking order, clips (rounded corners included),
-// transforms (the point goes through the inverse of each transformed space), pointer-events and visibility respected.
-hit_test :: proc(l: ^Layout, p: Vec2, viewport: Vec2, doc_scroll: f32) -> Hit {
-	if !l.valid || len(l.items) == 0 { return Hit{box = NONE, item = NONE} }
-	v := view_make(l, viewport, doc_scroll, cull = false)
+// Topmost hittable item under `p` (viewport coordinates) using an existing View: stacking order, clips (rounded corners
+// included), transforms, pointer-events and visibility respected.
+hit_test_view :: proc(l: ^Layout, v: ^View, p: Vec2) -> Hit {
+	if !l.valid || len(l.items) == 0 || v == nil { return Hit{box = NONE, item = NONE} }
 	best := i32(-1)
 	best_plane, best_ctx := NONE, NONE   // the plane the best item is in, and the root of its 3D context
 	best_z: f32
@@ -339,13 +464,13 @@ hit_test :: proc(l: ^Layout, p: Vec2, viewport: Vec2, doc_scroll: f32) -> Hit {
 		sp := &l.spaces[i]
 		if sp.band_count == 0 { continue }
 		if sp.clip != NONE && sp.plane == NONE && !rect_contains(v.clips[sp.clip], p) { continue }
-		local, ok := view_to_local(l, &v, i32(i), p)
+		local, ok := view_to_local(l, v, i32(i), p)
 		if !ok { continue }
 		// where the ray meets the plane the space is in: items of planes in one 3D context are ordered by depth
 		z: f32
 		ctx := NONE
 		if sp.plane != NONE {
-			_, z, _ = plane_point(l, &v, sp.plane, p)
+			_, z, _ = plane_point(l, v, sp.plane, p)
 			ctx = space_plane(l, sp.plane).ctx
 		}
 		// in f32 first: a point mapped through an extreme transform can be huge or NaN, which int() turns negative
@@ -360,8 +485,8 @@ hit_test :: proc(l: ^Layout, p: Vec2, viewport: Vec2, doc_scroll: f32) -> Hit {
 			if idx <= best && !sorted { break }
 			it := &l.items[idx]
 			if .Hit not_in it.flags || !rect_contains(it.rect, local) { continue }
-			if it.clip != NONE && !clip_contains(l, &v, it.clip, p) { continue }
-			if it.group != NONE && !group_clips_contain(l, &v, it.group, p) { continue }
+			if it.clip != NONE && !clip_contains(l, v, it.clip, p) { continue }
+			if it.group != NONE && !group_clips_contain(l, v, it.group, p) { continue }
 			// nearer wins inside a 3D context (equal depth: the later item); anywhere else the later item
 			if sorted && best >= 0 {
 				if z < best_z - 1e-4 || (abs(z - best_z) <= 1e-4 && idx < best) { break }
@@ -375,10 +500,18 @@ hit_test :: proc(l: ^Layout, p: Vec2, viewport: Vec2, doc_scroll: f32) -> Hit {
 	return Hit{node = it.node, box = it.box, item = best}
 }
 
-// Wheel scrolling: the deepest scroll container under `p` that can still move in the direction of `delta` (device px,
-// positive = towards the end) takes it. false: none did; the page scrolls.
-scroll_wheel :: proc(l: ^Layout, p: Vec2, delta: Vec2, viewport: Vec2, doc_scroll: f32) -> bool {
-	h := hit_test(l, p, viewport, doc_scroll)
+// Topmost hittable item under `p` (viewport coordinates): stacking order, clips (rounded corners included),
+// transforms (the point goes through the inverse of each transformed space), pointer-events and visibility respected.
+hit_test :: proc(l: ^Layout, p: Vec2, viewport: Vec2, doc_scroll: f32) -> Hit {
+	if !l.valid || len(l.items) == 0 { return Hit{box = NONE, item = NONE} }
+	v := view_make(l, viewport, doc_scroll, cull = false)
+	return hit_test_view(l, &v, p)
+}
+
+// Wheel scrolling using an existing View: the deepest scroll container under `p` that can still move in the direction of
+// `delta` (device px, positive = towards the end) takes it. false: none did; the page scrolls.
+scroll_wheel_view :: proc(l: ^Layout, v: ^View, p: Vec2, delta: Vec2) -> bool {
+	h := hit_test_view(l, v, p)
 	if h.item == NONE { return false }
 	try :: proc(l: ^Layout, s: i32, delta: Vec2) -> bool {
 		sp := &l.spaces[s]
@@ -396,6 +529,14 @@ scroll_wheel :: proc(l: ^Layout, p: Vec2, delta: Vec2, viewport: Vec2, doc_scrol
 		if l.spaces[s].kind == .Scroll && try(l, s, delta) { return true }
 	}
 	return false
+}
+
+// Wheel scrolling: the deepest scroll container under `p` that can still move in the direction of `delta` (device px,
+// positive = towards the end) takes it. false: none did; the page scrolls.
+scroll_wheel :: proc(l: ^Layout, p: Vec2, delta: Vec2, viewport: Vec2, doc_scroll: f32) -> bool {
+	if !l.valid || len(l.items) == 0 { return false }
+	v := view_make(l, viewport, doc_scroll, cull = false)
+	return scroll_wheel_view(l, &v, p, delta)
 }
 
 // The bounds of clip `ci` alone (viewport coordinates, device px): the padding box of the box that clips, where it is

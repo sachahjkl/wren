@@ -65,7 +65,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	loaf_style_ms, loaf_layout_ms: f64
 	loaf_t0 := qpc()
 	prof_begin(.Styles)
-	page.scroll_timelines_sample(t.page, &t.layout, page_viewport(t, size, scale))   // scroll-driven animations stand where the scrollers do now
+	page.scroll_timelines_sample(t.page, &t.layout, page_viewport(t, size, scale), tab_view(t, size, t.scroll, cull = false))   // scroll-driven animations stand where the scrollers do now
 	styled := page.styles(t.page, size.x / scale, size.y / scale, f64(scale))
 	prof_end(.Styles)
 	loaf_style_ms = qpc_ms_since(loaf_t0)
@@ -121,12 +121,13 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	// Performance Timeline entries that depend on the paint (page/timeline_lcp.odin): the largest contentful paint and the
 	// element-timing entries from the layout just settled, and the layout shifts against the previous frame
 	vp := page_viewport(t, size, scale)
-	if page.scroll_timelines_sample(t.page, &t.layout, vp) { request_frames(app, 2) }   // (this layout moved a timeline: the next frame shows it)
-	page.timeline_present(t.page, &t.layout, vp)
+	v := tab_view(t, size, t.scroll, cull = false)
+	if page.scroll_timelines_sample(t.page, &t.layout, vp, v) { request_frames(app, 2) }   // (this layout moved a timeline: the next frame shows it)
+	page.timeline_present(t.page, &t.layout, vp, v)
 	page.timeline_loaf_render(t.page, loaf_style_ms, loaf_layout_ms)
 	page.scripts_frame_took(t.page, loaf_style_ms + loaf_layout_ms)
 	if !t.page.render.contentful && layout_contentful(&t.layout) { page.first_contentful_done(t.page) }
-	page.timeline_layout_shift_check(t.page, &t.layout, vp)
+	page.timeline_layout_shift_check(t.page, &t.layout, vp, v)
 	frames_prepare(app, t, size, scale)   // its frames at their boxes' sizes (frames_shell.odin)
 	page_prep.state = .Ready
 }
@@ -169,7 +170,7 @@ page_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
 	images_paint_begin_frame(app)
 	selection_paint_begin(app, t)
 	frames_paint_begin(t.page)   // frames paint their documents in their boxes (frames_shell.odin)
-	paint(&t.layout, dc, t.page.doc, rect.min, paint_size, t.scroll, rect, doc_scrollbar = false)
+	paint(&t.layout, dc, t.page.doc, rect.min, paint_size, t.scroll, rect, doc_scrollbar = false, view_cache = &t.view_cache)
 	forms_paint_overlays(app, dc, rect)
 	images_after_paint(app)
 	shell_capture(app, t, dc, rect, to_draw(p.canvas))   // shell_frames.odin: shown while the page is busy (without the scroll bar: it is drawn there at the wheel's position)

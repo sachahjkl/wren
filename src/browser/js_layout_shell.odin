@@ -16,7 +16,7 @@ import "wb:style"
 attach_js_layout :: proc(app: ^App, t: ^Tab, p: ^page.Page) {
 	// (a view's tab, the popup's: its document is laid out at the view's size, not the window's page area)
 	if t.view != nil { page_view_attach_js(t.view, p); return }
-	page.set_layout_embedder(p, {user = t, update = js_layout_update, viewport = js_layout_viewport, scroll_to = js_layout_scroll, repaint = js_layout_repaint})
+	page.set_layout_embedder(p, {user = t, update = js_layout_update, viewport = js_layout_viewport, scroll_to = js_layout_scroll, repaint = js_layout_repaint, view = js_layout_view})
 }
 
 // The page area (physical pixels) a tab's document is laid out for: the one painted last. Before any (a document
@@ -98,3 +98,10 @@ js_layout_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
 
 @(private = "file")
 js_layout_repaint :: proc(user: rawptr, p: ^page.Page) { request_frames(the_app, 2) }
+
+@(private = "file")
+js_layout_view :: proc(user: rawptr, p: ^page.Page, l: ^lay.Layout, viewport: lay.Vec2, doc_scroll: f32) -> ^lay.View {
+	t := (^Tab)(user)
+	if t == nil || t.page != p || l != &t.layout { return nil }
+	return tab_view(t, viewport, doc_scroll, cull = false)
+}

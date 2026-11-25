@@ -54,7 +54,7 @@ Lcp_Candidate :: struct {
 // it painted and the viewport it used. Finds the largest contentful element now and, when it beats every earlier
 // candidate, records a Largest Contentful Paint entry; records Element Timing entries for elements that ask for them and
 // are painted now. The shell passes its own layout so this never re-enters the layout pass.
-timeline_present :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
+timeline_present :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport, view: ^lay.View = nil) {
 	if p.web == nil || p.worker != nil { return }
 	if l == nil || !l.valid { return }
 	t := tl_of(p)
@@ -71,7 +71,13 @@ timeline_present :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 	t.lcp_scan_w, t.lcp_scan_h, t.lcp_scan_scroll, t.lcp_scan_scroll_x = vp.width, vp.height, vp.scroll_y, vp.scroll_x
 	now_ms := page_now_ms(p)
 	scale := f32(vp.scale)
-	view := lay.view_make(l, {f32(vp.width) * scale, f32(vp.height) * scale}, f32(vp.scroll_y) * scale, cull = false)
+	v := view
+	local_view: lay.View
+	if v == nil { v = page_layout_view(p, l, vp) }
+	if v == nil {
+		local_view = lay.view_make(l, {f32(vp.width) * scale, f32(vp.height) * scale}, f32(vp.scroll_y) * scale, cull = false)
+		v = &local_view
+	}
 	vp_area := vp.width * vp.height
 
 	if want_et {
@@ -83,7 +89,7 @@ timeline_present :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 			i += 1
 			bi := lay.box_index(l, node)
 			if bi == lay.NONE { continue }
-			if cand, ok := lcp_candidate_of(p, l, &view, vp, &l.boxes[bi], vp_area); ok { element_timing_consider(p, t, node, cand, now_ms) }
+			if cand, ok := lcp_candidate_of(p, l, v, vp, &l.boxes[bi], vp_area); ok { element_timing_consider(p, t, node, cand, now_ms) }
 		}
 	}
 	if !want_lcp { return }
@@ -95,14 +101,14 @@ timeline_present :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 		if node == base.NIL_HANDLE || .Anonymous in b.flags || .Dead in b.flags { continue }
 		// a box whose visible part is no larger than the largest candidate so far cannot be the next one: its border box
 		// clamped to the viewport, from the layout's arrays, settles most boxes before the candidate's checks
-		if border, transformed := lay.box_border(l, &view, i32(bi), &near); !transformed {
+		if border, transformed := lay.box_border(l, v, i32(bi), &near); !transformed {
 			x0 := max(f64(border.min.x / scale) - vp.scroll_x, 0)
 			y0 := max(f64(border.min.y / scale) - vp.scroll_y, 0)
 			x1 := min(f64(border.max.x / scale) - vp.scroll_x, vp.width)
 			y1 := min(f64(border.max.y / scale) - vp.scroll_y, vp.height)
 			if x1 <= x0 || y1 <= y0 || (x1 - x0) * (y1 - y0) <= max(t.lcp_largest, best.area) * LCP_PREFILTER_SLACK { continue }
 		}
-		cand, ok := lcp_candidate_of(p, l, &view, vp, &b, vp_area)
+		cand, ok := lcp_candidate_of(p, l, v, vp, &b, vp_area)
 		if !ok { continue }
 		if cand.area > best.area { best = cand }
 	}
@@ -307,7 +313,7 @@ ls_boxes_destroy :: proc(b: ^Ls_Boxes) {
 
 // After a frame is laid out, compare where visible non-fixed boxes are to where they were, and record a layout-shift entry
 // for the frame when content moved. The shell passes the layout it painted and its viewport (no re-entrant layout).
-timeline_layout_shift_check :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
+timeline_layout_shift_check :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport, view: ^lay.View = nil) {
 	if p.web == nil || p.worker != nil { return }
 	if l == nil || !l.valid { return }
 	s := &p.settings.timeline
@@ -321,7 +327,13 @@ timeline_layout_shift_check :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 	t.ls_scan_w, t.ls_scan_h = vp.width, vp.height
 	now_ms := page_now_ms(p)
 	scale := f32(vp.scale)
-	view := lay.view_make(l, {f32(vp.width) * scale, f32(vp.height) * scale}, f32(vp.scroll_y) * scale, cull = false)
+	v := view
+	local_view: lay.View
+	if v == nil { v = page_layout_view(p, l, vp) }
+	if v == nil {
+		local_view = lay.view_make(l, {f32(vp.width) * scale, f32(vp.height) * scale}, f32(vp.scroll_y) * scale, cull = false)
+		v = &local_view
+	}
 	vp_area := vp.width * vp.height
 	if vp_area <= 0 { return }
 
@@ -348,7 +360,7 @@ timeline_layout_shift_check :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 		if cs.position == .Fixed { continue }   // fixed boxes do not shift the page
 		bi := lay.box_index(l, node)   // (the node's box: a box of the same node, a ::before, reads it)
 		if bi == lay.NONE || .Hidden in l.boxes[bi].flags { continue }
-		border, transformed := lay.box_border(l, &view, bi, &near)
+		border, transformed := lay.box_border(l, v, bi, &near)
 		if transformed { continue }   // a transform move is not a layout shift
 		doc := lay.Rect{border.min / scale, border.max / scale}
 		i := int(base.handle_index(node))

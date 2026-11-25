@@ -47,8 +47,8 @@ animations_seen_begin :: proc(user: rawptr) {
 	// (the viewport went through CSS px and back: equal to a fraction of a device pixel)
 	same_size := abs(l.viewport.x - size.x) < SEEN_SIZE_SLACK_PX && abs(l.viewport.y - size.y) < SEEN_SIZE_SLACK_PX
 	if !l.valid || l.anchor_stale || l.mutations != p.doc.mutations || l.serial != p.styled.serial || !same_size { return }
-	s.frame = Obs_Frame{ok = true, l = l, vp = vp, view = lay.view_make(l, size, f32(vp.scroll_y * vp.scale), cull = false)}
-	s.ok = true
+	s.frame = obs_frame_from(l, vp, p)
+	s.ok = s.frame.ok
 }
 
 @(private)
@@ -86,7 +86,7 @@ animations_seen :: proc(user: rawptr, node: base.Handle, moves_boxes: bool) -> b
 		if n > SEEN_BOXES_MAX { return true }
 		b := &l.boxes[at]
 		if b.node != base.NIL_HANDLE {
-			r, ok := lay.box_of_view(l, &s.frame.view, b.node)
+			r, ok := lay.box_of_view(l, obs_view(&s.frame), b.node)
 			g := geometry_of_rects(l, s.frame.vp, b.node, r, ok)
 			if g.ok {
 				c := g.client

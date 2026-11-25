@@ -112,7 +112,7 @@ route_device_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	din := &window_own(app).devices
 	scale := page_scale(app)
 	inside := draw.rect_contains(wnd.page_rect, ev.pos)
-	hit := inside ? hit_test(&t.layout, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) : base.NIL_HANDLE
+	hit := inside ? tab_hit_test(t, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll).node : base.NIL_HANDLE
 	cx, cy := f64((ev.pos.x - wnd.page_rect.min.x) / max(scale, 0.01)), f64((ev.pos.y - wnd.page_rect.min.y) / max(scale, 0.01))
 	pd := device_details(ev, scale)
 	id := pd.id

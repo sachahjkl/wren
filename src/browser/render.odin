@@ -83,8 +83,42 @@ set_replaced_sizes :: proc(api: lay.Replaced_Api) { the_app.page_render.replaced
 
 register_layout_prefs :: proc(p: ^config.Prefs) { lay.register_prefs(p) }
 
-layout_reset :: proc(l: ^Layout) { composite_forget(l); text_clip_forget(l); lay.reset(l) }
-layout_destroy :: proc(l: ^Layout) { composite_forget(l); text_clip_forget(l); lay.destroy(l) }
+layout_reset :: proc(l: ^Layout) { composite_forget(l); text_clip_forget(l); tab_view_forget(l); lay.reset(l) }
+layout_destroy :: proc(l: ^Layout) { composite_forget(l); text_clip_forget(l); tab_view_forget(l); lay.destroy(l) }
+
+// Returns the tab's cached lay.View in O(1) when layout, scroll, viewport and scale match; otherwise updates it in
+// place without heap churn after warmup. Returns nil when the tab has no valid layout.
+tab_view :: proc(t: ^Tab, viewport: draw.Vec2, doc_scroll: f32, cull := false) -> ^lay.View {
+	if t == nil || !t.layout.valid { return nil }
+	v, _ := lay.view_cache_get(&t.view_cache, &t.layout, viewport, doc_scroll, cull = cull)
+	return v
+}
+
+// Marks the tab's cached lay.View stale while retaining its backing buffers for zero-allocation reuse.
+tab_view_invalidate :: proc(t: ^Tab) {
+	if t != nil { lay.view_cache_invalidate(&t.view_cache) }
+}
+
+// Frees the backing buffers of the tab's cached lay.View.
+tab_view_destroy :: proc(t: ^Tab) {
+	if t != nil { lay.view_cache_destroy(&t.view_cache) }
+}
+
+// Releases the cached lay.View of whichever tab owns layout `l` (called by layout_reset / layout_destroy).
+tab_view_forget :: proc(l: ^Layout) {
+	if l == nil || the_app == nil { return }
+	for w in the_app.windows {
+		for t in w.tabs {
+			if &t.layout == l { tab_view_destroy(t); return }
+		}
+	}
+	for t in the_app.bare.tabs {
+		if &t.layout == l { tab_view_destroy(t); return }
+	}
+	for _, fv in the_app.frame_views {
+		if fv != nil && fv.tab != nil && &fv.tab.layout == l { tab_view_destroy(fv.tab); return }
+	}
+}
 
 // `viewport`: size of the page area in physical pixels; `scale`: physical pixels per CSS px. `images_gen` /
 // `fonts_gen`: change counters of the natural sizes of images and of the page's web fonts (lay.Input).
@@ -134,10 +168,32 @@ hit_test :: proc(l: ^Layout, p, viewport: draw.Vec2, scroll: f32) -> base.Handle
 	return lay.hit_test(l, p, viewport, scroll).node
 }
 
+// Hit test over a tab using its shared cached lay.View.
+tab_hit_test :: proc(t: ^Tab, p, viewport: draw.Vec2, scroll: f32) -> lay.Hit {
+	page_world_check("hit_test: a layout read in a chrome frame, or during a page thread pass")
+	v := tab_view(t, viewport, scroll, cull = false)
+	if v == nil { return {box = lay.NONE, item = lay.NONE} }
+	return lay.hit_test_view(&t.layout, v, p)
+}
+
+// Element box geometry over a tab using its shared cached lay.View.
+tab_box_of :: proc(t: ^Tab, node: base.Handle, viewport: draw.Vec2, scroll: f32) -> (lay.Box_Rects, bool) {
+	v := tab_view(t, viewport, scroll, cull = false)
+	if v == nil { return {}, false }
+	return lay.box_of_view(&t.layout, v, node)
+}
+
 // Wheel over the page: scroll containers under the pointer first. false: the page itself should scroll.
 page_wheel :: proc(l: ^Layout, p, delta, viewport: draw.Vec2, scroll: f32) -> bool {
 	if !l.valid { return false }
 	return lay.scroll_wheel(l, p, delta, viewport, scroll)
+}
+
+// Wheel over a tab's page using its shared cached lay.View.
+tab_wheel :: proc(t: ^Tab, p, delta, viewport: draw.Vec2, scroll: f32) -> bool {
+	v := tab_view(t, viewport, scroll, cull = false)
+	if v == nil { return false }
+	return lay.scroll_wheel_view(&t.layout, v, p, delta)
 }
 
 // CSS colors are sRGB; draw takes linear colors and mixes them in the renderer's blend space (render.blend_space).
@@ -162,7 +218,7 @@ dr :: #force_inline proc(r: lay.Rect) -> draw.Rect { return draw.Rect{r.min, r.m
 // The page origin and the scroll offset are snapped to device pixels, as browsers do: text stays on the pixel grid and
 // a retained picture lands exactly where direct drawing would.
 // `doc_scrollbar` false: no bar for the document (a frame with scrolling="no").
-paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size: draw.Vec2, page_scroll: f32, clip: draw.Rect, doc_scrollbar := true) {
+paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size: draw.Vec2, page_scroll: f32, clip: draw.Rect, doc_scrollbar := true, view_cache: ^lay.View_Cache = nil) {
 	if !l.valid { return }
 	comp_stuck = nil   // (the compositor's list of the fixed and sticky parts is of the frame it paints: temp memory)
 	origin := draw.Vec2{math.round(page_origin.x), math.round(page_origin.y)}
@@ -174,14 +230,20 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size
 	interp := draw.set_interpolation(dc, .Srgb)
 	defer draw.set_interpolation(dc, interp)
 	paint_canvas_images(l, dc, origin, size, scroll)
-	if !(the_app.compositor_settings.enabled && composite_paint(l, dc, d, origin, size, scroll)) {
-		v := lay.view_make(l, size, scroll)
-		fx := effects_make(l, &v, dc, origin, size)
+	if !(the_app.compositor_settings.enabled && composite_paint(l, dc, d, origin, size, scroll, view_cache)) {
+		local_v: lay.View
+		v: ^lay.View
+		if view_cache != nil { v, _ = lay.view_cache_get(view_cache, l, size, scroll, cull = true) }
+		if v == nil {
+			local_v = lay.view_make(l, size, scroll)
+			v = &local_v
+		}
+		fx := effects_make(l, v, dc, origin, size)
 		for idx in v.visible {
 			it := &l.items[idx]
 			if !effects_for(&fx, it) { continue }
 			off := v.offsets[it.space] + fx.origin
-			paint_item(l, dc, d, &v, it, draw.rect_shift(dr(it.rect), off), off, fx.origin)
+			paint_item(l, dc, d, v, it, draw.rect_shift(dr(it.rect), off), off, fx.origin)
 		}
 		effects_end(&fx)
 	}

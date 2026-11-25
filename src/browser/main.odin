@@ -32,6 +32,7 @@ import "wb:fetch"
 import "wb:host"
 import "wb:html"
 import "wb:http"
+import lay "wb:layout"
 import "wb:net"
 import "wb:page"
 import "wb:style"
@@ -105,8 +106,9 @@ Tab :: struct {
 	console_added: u64,         // lines ever added to console: line i of it is number console_added - len + i (devtools_console.odin)
 	net:      Net_Log,         // the document's requests, for the Network tab (devtools_net_model.odin)
 	conlog:   Con_Log,         // what the Console tab keeps beside the lines: their times, kinds, counts (devtools_console_log.odin)
-	layout:   Layout,
-	scroll:   f32,
+	layout:     Layout,
+	view_cache: lay.View_Cache,   // cached lay.View shared across paint, observers, images, hit-testing, and DOM layout queries
+	scroll:     f32,
 	scroll_dpi: f32,            // the window scale `scroll` was in (zoom.odin tab_scale_follow; 0: not known yet)
 	layout_ms: f64,             // page_thread.odin: how long its last layout pass took (whether the next goes to the page thread)
 	layout_ms_known: bool,
@@ -409,6 +411,7 @@ tab_new_bare :: proc(app: ^App, w: ^Browser_Window, url := "", title := "") -> ^
 // A tab of tab_new_bare, out of the map of ids (its strip is the caller's). What the caller gave it besides is the caller's to free.
 tab_bare_free :: proc(app: ^App, t: ^Tab) {
 	tab_forget(app, t)
+	tab_view_destroy(t)
 	delete(t.url); delete(t.title); delete(t.status)
 	free(t)
 }
@@ -488,6 +491,7 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 	delete(t.console)
 	net_log_destroy(&t.net)
 	console_log_destroy(t)
+	tab_view_destroy(t)
 	layout_destroy(&t.layout)
 	layout_destroy(&t.shown.layout)
 	smooth_destroy(&t.smooth)
@@ -1232,7 +1236,7 @@ page_move_flush :: proc(app: ^App, t: ^Tab, last_move: platform.Event, moves: []
 	// its pointer events stay where they were: the card under a menu used to light up as the pointer crossed the menu)
 	over_chrome := ui.menu_any_open() || ui.hot_key() != 0 || hud_captures(app, last_move.pos)
 	scrollbar_over_move(app, t, last_move.pos, !over_chrome && draw.rect_contains(wnd.page_rect, last_move.pos))
-	if !over_chrome && draw.rect_contains(wnd.page_rect, last_move.pos) && t.layout.valid { hovered = hit_or_root(t, hit_test(&t.layout, last_move.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll)) }
+	if !over_chrome && draw.rect_contains(wnd.page_rect, last_move.pos) && t.layout.valid { hovered = hit_or_root(t, tab_hit_test(t, last_move.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll).node) }
 	st := t.page.style_state
 	was := st.hover
 	st.hover = hovered
@@ -1335,7 +1339,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			if !inside || !t.layout.valid { continue }
 			if ui.menu_any_open() { continue }   // the press closes the menu (the toolkit's)
 			local := ev.pos - wnd.page_rect.min + doc_scroll_vec(t)
-			pressed := hit_test(&t.layout, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll)
+			pressed := tab_hit_test(t, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll).node
 			t.scroll_target = pressed
 			free := gesture_free(g)
 			if ev.button == .Left && free { gesture_press(app, t, t.page, .Page_Press, ev) }
@@ -1357,7 +1361,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			}
 			if !t.layout.valid { continue }
 			local := ev.pos - wnd.page_rect.min + doc_scroll_vec(t)
-			released := inside ? hit_test(&t.layout, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) : base.NIL_HANDLE
+			released := inside ? tab_hit_test(t, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll).node : base.NIL_HANDLE
 			target, clicked := forms_pointer_up(app, t, ev, released, local, ended)
 			if t.page == nil { return }
 			// a middle release on a link opens it in a new tab (Chrome: autoscroll bailed on the link at the press);

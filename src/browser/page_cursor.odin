@@ -175,15 +175,14 @@ node_within :: proc(d: ^dom.Document, h, top: base.Handle) -> bool {
 // is as tall as line-height), where the hit test finds the element's box. Chromium's line boxes reach across it: the
 // nearer of the text above and the text below, in the element and across `p`, counts (the line's text item).
 @(private = "file")
-line_gap_text :: proc(l: ^Layout, d: ^dom.Document, box: ^lay.Display_Item, p, viewport: [2]f32, scroll: f32) -> i32 {
-	v := lay.view_make(l, viewport, scroll, cull = false)
+line_gap_text :: proc(l: ^Layout, v: ^lay.View, d: ^dom.Document, box: ^lay.Display_Item, p: [2]f32) -> i32 {
 	above, below := i32(lay.NONE), i32(lay.NONE)
 	da, db := max(f32), max(f32)
 	ha: f32
 	for i in 0 ..< len(l.items) {
 		it := &l.items[i]
 		if it.kind != .Text || .Hit not_in it.flags || it.space != box.space || l.spaces[it.space].xform != lay.NONE { continue }
-		r := lay.item_rect(l, &v, it)
+		r := lay.item_rect(l, v, it)
 		if p.x < r.min.x || p.x >= r.max.x { continue }
 		if r.max.y <= p.y && p.y - r.max.y < da {
 			if node_within(d, it.node, box.node) { above, da, ha = i32(i), p.y - r.max.y, r.max.y - r.min.y }
@@ -198,14 +197,13 @@ line_gap_text :: proc(l: ^Layout, d: ^dom.Document, box: ^lay.Display_Item, p, v
 
 // Is `p` on a scroll bar of a scroll container (drawn in the layout's display list, not transformed)?
 @(private = "file")
-on_scrollbar :: proc(l: ^Layout, p, viewport: [2]f32, scroll: f32) -> bool {
-	v := lay.view_make(l, viewport, scroll, cull = false, allocator = context.temp_allocator)
+on_scrollbar :: proc(l: ^Layout, v: ^lay.View, p: [2]f32) -> bool {
 	for i := len(l.items) - 1; i >= 0; i -= 1 {
 		it := &l.items[i]
 		if it.kind != .Scrollbar || l.spaces[it.space].xform != lay.NONE { continue }
-		r := lay.item_rect(l, &v, it)
+		r := lay.item_rect(l, v, it)
 		if p.x < r.min.x || p.y < r.min.y || p.x >= r.max.x || p.y >= r.max.y { continue }
-		if it.clip != lay.NONE && !lay.clip_contains(l, &v, it.clip, p) { continue }
+		if it.clip != lay.NONE && !lay.clip_contains(l, v, it.clip, p) { continue }
 		return true
 	}
 	return false
@@ -213,10 +211,16 @@ on_scrollbar :: proc(l: ^Layout, p, viewport: [2]f32, scroll: f32) -> bool {
 
 // The page's cursor at `p` (page-area device pixels; `viewport` its size, `scroll` the document's scroll).
 // `css`: the page's cursor property counts (browser.cursor.page_css); without it every cursor is `auto`'s.
-page_cursor_at :: proc(l: ^Layout, d: ^dom.Document, st: ^style.Styled, p, viewport: [2]f32, scroll: f32, css := true) -> (pc: Page_Cursor) {
+page_cursor_at :: proc(l: ^Layout, d: ^dom.Document, st: ^style.Styled, p, viewport: [2]f32, scroll: f32, css := true, view: ^lay.View = nil) -> (pc: Page_Cursor) {
 	pc.keyword = .Arrow
 	if l == nil || !l.valid || d == nil || st == nil { return }
-	h := lay.hit_test(l, p, viewport, scroll)
+	v := view
+	local_v: lay.View
+	if v == nil {
+		local_v = lay.view_make(l, viewport, scroll, cull = false)
+		v = &local_v
+	}
+	h := lay.hit_test_view(l, v, p)
 	cs: ^style.Computed
 	is_text := false
 	if h.item == lay.NONE {
@@ -231,11 +235,11 @@ page_cursor_at :: proc(l: ^Layout, d: ^dom.Document, st: ^style.Styled, p, viewp
 		}
 		if pc.node != base.NIL_HANDLE { cs = style.style_of(st, pc.node) }
 	} else {
-		if on_scrollbar(l, p, viewport, scroll) { return }   // the arrow over scroll bars, whatever the page says
+		if on_scrollbar(l, v, p) { return }   // the arrow over scroll bars, whatever the page says
 		it := &l.items[h.item]
 		if it.kind == .Scrollbar { return }
 		if it.kind == .Box || it.kind == .Inline_Box {
-			if gap := line_gap_text(l, d, it, p, viewport, scroll); gap != lay.NONE { it = &l.items[gap] }
+			if gap := line_gap_text(l, v, d, it, p); gap != lay.NONE { it = &l.items[gap] }
 		}
 		pc.node = it.node
 		cs = it.cs != nil ? it.cs : style.style_of(st, it.node)
@@ -342,7 +346,7 @@ page_window_cursor :: proc(app: ^App, t: ^Tab, pos: [2]f32) -> Window_Cursor {
 	if fv := frame_under(app, t, pos, wnd.page_rect); fv != nil && fv.tab.page != nil && fv.tab.page.styled != nil && fv.tab.layout.valid {
 		ct, origin, area = fv.tab, fv.rect.min, draw.rect_size(fv.rect)
 	}
-	pc := page_cursor_at(&ct.layout, ct.page.doc, ct.page.styled, pos - origin, area, ct.scroll, app.ccfg.page_css)
+	pc := page_cursor_at(&ct.layout, ct.page.doc, ct.page.styled, pos - origin, area, ct.scroll, app.ccfg.page_css, tab_view(ct, area, ct.scroll, cull = false))
 	wc := Window_Cursor{keyword = pc.keyword, scale = scale}
 	wc.custom = cursor_image(app, ct, pc.images, pos, scale)
 	// while the tab loads, the arrow is the arrow with the "working in background" sign (as Chromium does)

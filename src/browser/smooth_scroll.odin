@@ -372,7 +372,8 @@ scroller_axes_under :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> (node: base.Han
 		return abs(nx - pend.x) >= 0.01 || abs(ny - pend.y) >= 0.01
 	}
 	l := &t.layout
-	h := lay.hit_test(l, p, draw.rect_size(active_window(app).page_rect), t.scroll)
+	v := tab_view(t, draw.rect_size(active_window(app).page_rect), t.scroll, cull = false)
+	h := lay.hit_test_view(l, v, p)
 	// walk the hit element's box and its scroll spaces, as wheel_scroller does: the first that can move anywhere is the
 	// one the session starts from, the axes are those of all of them
 	chain := make([dynamic]base.Handle, 0, 4, context.temp_allocator)
@@ -424,7 +425,8 @@ scroll_chain_by :: proc(app: ^App, t: ^Tab, node: base.Handle, d: draw.Vec2) {
 // NIL: the document. (Chrome frames ask it of the layout with what they show set on it: shell_shown.odin shell_wheel_box.)
 wheel_scroller :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2) -> base.Handle {
 	l := &t.layout
-	h := lay.hit_test(l, p, draw.rect_size(active_window(app).page_rect), t.scroll)
+	v := tab_view(t, draw.rect_size(active_window(app).page_rect), t.scroll, cull = false)
+	h := lay.hit_test_view(l, v, p)
 	if h.item == lay.NONE { return base.NIL_HANDLE }
 	can :: proc(app: ^App, t: ^Tab, node: base.Handle, d: draw.Vec2) -> bool {
 		_, limit, ok := scroller_state(app, t, node)
@@ -507,13 +509,14 @@ scrollbar_at :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> (hit: Bar_Hit, ok: boo
 		lo, hi := lay.doc_scroll_x_range(l, size.x)
 		return bar_hit(l, base.NIL_HANDLE, false, track, thumb, lo, hi, port.x), true
 	}
-	v := lay.view_make(l, size, t.scroll, cull = false)
+	v := tab_view(t, size, t.scroll, cull = false)
+	if v == nil { return }
 	for i := len(l.items) - 1; i >= 0; i -= 1 {
 		it := &l.items[i]
 		if it.kind != .Scrollbar || l.spaces[it.space].xform != lay.NONE { continue }
-		track := lay.item_rect(l, &v, it)
+		track := lay.item_rect(l, v, it)
 		if !inside(grow(track, slop), p) { continue }
-		if it.clip != lay.NONE && !lay.clip_contains(l, &v, it.clip, p) { continue }
+		if it.clip != lay.NONE && !lay.clip_contains(l, v, it.clip, p) { continue }
 		b := &l.boxes[it.box]
 		ss := l.fin[it.box].scroll_space
 		if ss == lay.NONE { continue }
@@ -521,7 +524,7 @@ scrollbar_at :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> (hit: Bar_Hit, ok: boo
 		vertical := .Vertical in it.flags
 		ax := vertical ? 1 : 0
 		sport := sp.data.scroll.port.max - sp.data.scroll.port.min
-		return bar_hit(l, b.node, vertical, track, lay.scrollbar_thumb(l, &v, it), sp.data.scroll.min_scroll[ax], sp.data.scroll.max_scroll[ax], sport[ax]), true
+		return bar_hit(l, b.node, vertical, track, lay.scrollbar_thumb(l, v, it), sp.data.scroll.min_scroll[ax], sp.data.scroll.max_scroll[ax], sport[ax]), true
 	}
 	return
 }

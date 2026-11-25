@@ -68,8 +68,9 @@ page_view_prepare :: proc(app: ^App, pv: ^Page_View, size: draw.Vec2, scale: f32
 	// Performance Timeline entries that depend on the real paint (timeline_lcp.odin): the largest contentful element and
 	// the element-timing entries from the layout just settled, and the layout shifts against the previous frame.
 	vp := page_view_viewport(pv)
-	page.timeline_present(p, &t.layout, vp)
-	page.timeline_layout_shift_check(p, &t.layout, vp)
+	v := tab_view(t, size, t.scroll, cull = false)
+	page.timeline_present(p, &t.layout, vp, v)
+	page.timeline_layout_shift_check(p, &t.layout, vp, v)
 	frames_prepare(app, t, size, scale)
 }
 
@@ -82,7 +83,14 @@ page_view_viewport :: proc(pv: ^Page_View) -> page.Viewport {
 // The geometry for the scripts of the view's document `p` (page.Layout_Embedder): its own layout, brought up to date.
 page_view_attach_js :: proc(pv: ^Page_View, p: ^page.Page) {
 	page.set_layout_embedder(p, {user = pv, update = page_view_js_layout, viewport = page_view_js_viewport, scroll_to = page_view_js_scroll,
-		repaint = proc(user: rawptr, p: ^page.Page) { request_frames(the_app, 2) }})
+		repaint = proc(user: rawptr, p: ^page.Page) { request_frames(the_app, 2) }, view = page_view_js_view})
+}
+
+@(private = "file")
+page_view_js_view :: proc(user: rawptr, p: ^page.Page, l: ^lay.Layout, viewport: lay.Vec2, doc_scroll: f32) -> ^lay.View {
+	pv := (^Page_View)(user)
+	if pv == nil || pv.tab == nil || pv.tab.page != p || l != &pv.tab.layout { return nil }
+	return tab_view(pv.tab, viewport, doc_scroll, cull = false)
 }
 
 @(private = "file")
@@ -124,7 +132,7 @@ page_view_paint :: proc(app: ^App, dc: ^draw.Context, pv: ^Page_View, content: d
 	parent_highlights := app.spaint   // (its own selection and highlights)
 	selection_paint_begin(app, t)
 	draw.push_clip(dc, content)
-	paint(&t.layout, dc, t.page.doc, content.min, pv.size, t.scroll, content, doc_scrollbar = !pv.no_scroll)
+	paint(&t.layout, dc, t.page.doc, content.min, pv.size, t.scroll, content, doc_scrollbar = !pv.no_scroll, view_cache = &t.view_cache)
 	draw.pop_clip(dc)
 	app.spaint = parent_highlights
 	images_shell_page_swap(saved)
@@ -199,7 +207,7 @@ page_views_route_pointer :: proc(app: ^App, t, doc: ^Tab, rect: draw.Rect, root:
 	defer wnd.page_rect = saved
 	used := page_view_pointer_event(app, fv, ev, index, ended)
 	if ev.kind == .Mouse_Move && fv.tab.page != nil {
-		hovered := draw.rect_contains(fv.rect, ev.pos) ? hit_test(&fv.tab.layout, ev.pos - fv.rect.min, draw.rect_size(fv.rect), fv.tab.scroll) : base.NIL_HANDLE
+		hovered := draw.rect_contains(fv.rect, ev.pos) ? tab_hit_test(fv.tab, ev.pos - fv.rect.min, draw.rect_size(fv.rect), fv.tab.scroll).node : base.NIL_HANDLE
 		if captured || draw.rect_contains(fv.rect, ev.pos) { hovered = hit_or_root(fv.tab, hovered) }   // (the root element when no box is there, or outside it while its button is held)
 		st := fv.tab.page.style_state
 		was := st.hover
@@ -226,7 +234,7 @@ page_view_pointer_event :: proc(app: ^App, fv: ^Page_View, ev: platform.Event, i
 	case .Scroll:
 		if .Ctrl in ev.mods { return false }   // zoom is the tab's
 		d := wheel_axes(ev) * wheel_step(app) * fv.scale
-		if page_wheel(&t.layout, ev.pos - rect.min, d, size, t.scroll) {
+		if tab_wheel(t, ev.pos - rect.min, d, size, t.scroll) {
 			request_frames(app, 2)
 			return true
 		}
@@ -240,14 +248,14 @@ page_view_pointer_event :: proc(app: ^App, fv: ^Page_View, ev: platform.Event, i
 		request_frames(app, 2)
 	case .Mouse_Press:
 		local := ev.pos - rect.min + doc_scroll_vec(t)
-		pressed := hit_test(&t.layout, ev.pos - rect.min, size, t.scroll)
+		pressed := tab_hit_test(t, ev.pos - rect.min, size, t.scroll).node
 		t.scroll_target = pressed
 		forms_pointer_down(app, t, ev, pressed, local)
 		if t.page == nil { return true }
 		if ev.button == .Left && gesture_of(app).owner == .Frame { page_set_active(t.page, pressed) }
 	case .Mouse_Release:
 		local := ev.pos - rect.min + doc_scroll_vec(t)
-		released := draw.rect_contains(rect, ev.pos) ? hit_test(&t.layout, ev.pos - rect.min, size, t.scroll) : base.NIL_HANDLE
+		released := draw.rect_contains(rect, ev.pos) ? tab_hit_test(t, ev.pos - rect.min, size, t.scroll).node : base.NIL_HANDLE
 		target, clicked := forms_pointer_up(app, t, ev, released, local, ended)
 		if !clicked || t.page == nil { return true }
 		not_prevented := forms_click(app, t, target, ev, local)

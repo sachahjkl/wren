@@ -318,7 +318,7 @@ is_rendered :: proc(p: ^page.Page, h: base.Handle) -> bool {
 // the bounds of the transformed box when a CSS transform applies.
 @(private = "file")
 layout_rect :: proc(app: ^App, t: ^Tab, h: base.Handle) -> (draw.Rect, bool) {
-	r, ok := lay.box_of(&t.layout, h, draw.rect_size(active_window(app).page_rect), t.scroll)
+	r, ok := tab_box_of(t, h, draw.rect_size(active_window(app).page_rect), t.scroll)
 	if !ok { return {}, false }
 	return draw.Rect{r.bounds.min, r.bounds.max}, true
 }
@@ -326,7 +326,7 @@ layout_rect :: proc(app: ^App, t: ^Tab, h: base.Handle) -> (draw.Rect, bool) {
 // A document point relative to the border box of `h`, in the box's own (untransformed) coordinates: offsetX / offsetY.
 @(private = "file")
 layout_offset :: proc(app: ^App, t: ^Tab, h: base.Handle, doc_pos: [2]f32) -> ([2]f32, bool) {
-	r, ok := lay.box_of(&t.layout, h, draw.rect_size(active_window(app).page_rect), t.scroll)
+	r, ok := tab_box_of(t, h, draw.rect_size(active_window(app).page_rect), t.scroll)
 	if !ok { return {}, false }
 	return lay.box_point_to_local(r, doc_pos) - r.border.min, true
 }

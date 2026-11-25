@@ -36,23 +36,46 @@ Layout_Embedder :: struct {
 	scroll_to: proc(user: rawptr, p: ^Page, x, y: f64, smooth: bool),
 	// Optional: something visible changed outside the document (a scroll container's offset): paint again.
 	repaint:   proc(user: rawptr, p: ^Page),
+	// Optional: returns a cached View for `l`, `viewport` (device px) and `doc_scroll` (device px), owned by the embedder.
+	view:      proc(user: rawptr, p: ^Page, l: ^lay.Layout, viewport: lay.Vec2, doc_scroll: f32) -> ^lay.View,
 }
 
 @(private)
 Js_Layout :: struct {
-	embedder:  Layout_Embedder,
-	has:       bool,
-	result:    ^lay.Layout,
-	mutations: u64,
-	serial:    u64,
-	vp:        Viewport,
-	updates:   u64,     // how many times the embedder was asked (tests, measurements)
+	embedder:   Layout_Embedder,
+	has:        bool,
+	result:     ^lay.Layout,
+	mutations:  u64,
+	serial:     u64,
+	vp:         Viewport,
+	updates:    u64,            // how many times the embedder was asked (tests, measurements)
+	view_cache: lay.View_Cache, // fallback reusable View when embedder.view is nil
 }
 
 // Connects the page to the embedder that lays it out. Call after page_create; a zero value disconnects.
 set_layout_embedder :: proc(p: ^Page, e: Layout_Embedder) {
 	s := js_dom_state(p)
+	lay.view_cache_destroy(&s.layout.view_cache)
 	s.layout = Js_Layout{embedder = e, has = e.update != nil && e.viewport != nil}
+}
+
+// Returns a shared cached View for `l` and `vp` (cull = false): the embedder's Tab cache when provided, else the
+// page's own reusable View_Cache (zero allocations after warmup). Returns nil only when `p.jsdom` is absent or `l` is invalid.
+@(private)
+page_layout_view :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) -> ^lay.View {
+	if l == nil || !l.valid { return nil }
+	s := f32(vp.scale > 0 ? vp.scale : 1)
+	size := lay.Vec2{f32(vp.width) * s, f32(vp.height) * s}
+	doc_scroll := f32(vp.scroll_y) * s
+	if p != nil && p.jsdom != nil {
+		jl := &p.jsdom.layout
+		if jl.has && jl.embedder.view != nil {
+			if v := jl.embedder.view(jl.embedder.user, p, l, size, doc_scroll); v != nil { return v }
+		}
+		v, _ := lay.view_cache_get(&jl.view_cache, l, size, doc_scroll, cull = false)
+		return v
+	}
+	return nil
 }
 
 // How many times readings had to bring the layout up to date (the fast path does not count).
@@ -120,8 +143,9 @@ element_geometry :: proc(p: ^Page, h: base.Handle) -> (Element_Geometry, ^lay.La
 	g: Element_Geometry
 	l, vp := js_layout_now(p)
 	if l == nil || !l.valid { return g, l, vp }
-	s := f32(vp.scale)
-	r, ok := lay.box_of(l, h, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s)
+	view := page_layout_view(p, l, vp)
+	if view == nil { return g, l, vp }
+	r, ok := lay.box_of_view(l, view, h)
 	return geometry_of_rects(l, vp, h, r, ok), l, vp
 }
 
@@ -204,14 +228,15 @@ Element_clientRectsPacked :: proc(c: ^Call, element: Api_Element) -> []u8 {
 	bi := lay.box_index(l, h)
 	if bi == lay.NONE { return nil }
 	s := f32(vp.scale)
-	view := lay.view_make(l, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s, cull = false)
-	r, ok := lay.box_of_view(l, &view, h)
+	view := page_layout_view(c.page, l, vp)
+	if view == nil { return nil }
+	r, ok := lay.box_of_view(l, view, h)
 	g := geometry_of_rects(l, vp, h, r, ok)
 	if !g.ok { return nil }
 	// transformed: the bounds of the box, drawn where it is (no fragment is told apart)
 	if !lay.space_plain(l, l.boxes[bi].space) { return pack_rects({g.client}) }
 	rects := make([dynamic]lay.Rect, 0, 4, context.temp_allocator)
-	if !lay.box_client_rects(l, &view, h, &rects) || len(rects) <= 1 { return pack_rects({g.client}) }
+	if !lay.box_client_rects(l, view, h, &rects) || len(rects) <= 1 { return pack_rects({g.client}) }
 	dom_rects := make([]Api_DomRect, min(len(rects), c.page.settings.dom.max_rects), context.temp_allocator)
 	for &d, i in dom_rects {
 		rc := rects[i]
@@ -406,14 +431,14 @@ scroll_into_view :: proc(p: ^Page, h: base.Handle, block, inline_pos: Scroll_Ali
 		return start
 	}
 	if l, vp := js_layout_now(p); l != nil && l.valid {
-		s := f32(vp.scale)
-		view := [2]f32{f32(vp.width), f32(vp.height)} * s
 		e := &js_dom_state(p).layout.embedder
 		for sc := dom.flat_parent(p.doc, h); sc != base.NIL_HANDLE && !is_scrolling_element(p, sc); sc = dom.flat_parent(p.doc, sc) {
 			cur, ok := lay.scroll_of(l, sc)
 			if !ok { continue }
-			el, eok := lay.box_of(l, h, view, f32(vp.scroll_y) * s)
-			port, pok := lay.box_of(l, sc, view, f32(vp.scroll_y) * s)
+			view := page_layout_view(p, l, vp)
+			if view == nil { break }
+			el, eok := lay.box_of_view(l, view, h)
+			port, pok := lay.box_of_view(l, view, sc)
 			if !eok || !pok { break }
 			// where the element is in the container's scrolled content, device px
 			x0, x1 := f64(el.border.min.x - port.padding.min.x + cur.x), f64(el.border.max.x - port.padding.min.x + cur.x)
@@ -493,16 +518,16 @@ offset_parent :: proc(p: ^Page, h: base.Handle) -> base.Handle {
 offset_rect :: proc(p: ^Page, h: base.Handle) -> (x, y, w, hh: f64, ok: bool) {
 	l, vp := js_layout_now(p)
 	if l == nil || !l.valid || lay.box_index(l, h) == lay.NONE { return }
-	s := f32(vp.scale)
-	view := lay.view_make(l, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s, cull = false)
-	r, rok := lay.box_of_view(l, &view, h)
+	view := page_layout_view(p, l, vp)
+	if view == nil { return }
+	r, rok := lay.box_of_view(l, view, h)
 	g := geometry_of_rects(l, vp, h, r, rok)
 	if !g.ok { return }
 	x, y = f64(g.border.min.x), f64(g.border.min.y)
 	w, hh = f64(g.border.max.x - g.border.min.x), f64(g.border.max.y - g.border.min.y)
 	parent := offset_parent(p, h)
 	if parent != base.NIL_HANDLE && parent != jd_body(p.doc) {
-		pr, pok := lay.box_of_view(l, &view, parent)
+		pr, pok := lay.box_of_view(l, view, parent)
 		pg := geometry_of_rects(l, vp, parent, pr, pok)
 		if pg.ok { x -= f64(pg.padding.min.x); y -= f64(pg.padding.min.y) }
 	}
@@ -519,7 +544,8 @@ Document_elementFromPoint :: proc(c: ^Call, x: f64, y: f64) -> u64 {
 	l, vp := js_layout_now(p)
 	if l == nil || !l.valid || x < 0 || y < 0 || x > vp.width || y > vp.height { return 0 }
 	s := f32(vp.scale)
-	hit := lay.hit_test(l, {f32(x) * s, f32(y) * s}, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s)
+	view := page_layout_view(p, l, vp)
+	hit := lay.hit_test_view(l, view, {f32(x) * s, f32(y) * s})
 	// a text node hit: its flat-tree parent element; retargeted: an element of a shadow tree shows as its host
 	cur := hit.node
 	for cur != base.NIL_HANDLE && !jd_is_element(p.doc, cur) { cur = dom.flat_parent(p.doc, cur) }
@@ -539,7 +565,8 @@ DocumentOrShadowRoot_elementsFromPointPacked :: proc(c: ^Call, root: Api_Node, x
 	l, vp := js_layout_now(p)
 	if l == nil || !l.valid || x < 0 || y < 0 || x > vp.width || y > vp.height { return nil }
 	s := f32(vp.scale)
-	hit := lay.hit_test(l, {f32(x) * s, f32(y) * s}, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s)
+	view := page_layout_view(p, l, vp)
+	hit := lay.hit_test_view(l, view, {f32(x) * s, f32(y) * s})
 	r := H(root.handle)
 	for cur := hit.node; cur != base.NIL_HANDLE; cur = dom.flat_parent(d, cur) {
 		if !jd_is_element(d, cur) { continue }
@@ -638,8 +665,8 @@ range_rects :: proc(c: ^Call, start: base.Handle, so: u32, end: base.Handle, eo:
 	limit := p.settings.dom.max_rects
 	l, vp := js_layout_now(p)
 	if l == nil || !l.valid { return out }
-	s := f32(vp.scale)
-	view := lay.view_make(l, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s, cull = false)
+	view := page_layout_view(p, l, vp)
+	if view == nil { return out }
 	for cur := first; cur != base.NIL_HANDLE && len(out) < limit; cur = dom.next_in_tree(d, cur, d.root) {
 		n := dom.get(d, cur)
 		target := cur
@@ -647,7 +674,7 @@ range_rects :: proc(c: ^Call, start: base.Handle, so: u32, end: base.Handle, eo:
 		if n.kind == .Element || n.kind == .Text {
 			if !(target in seen) {
 				seen[target] = true
-				r, ok := lay.box_of_view(l, &view, target)
+				r, ok := lay.box_of_view(l, view, target)
 				if g := geometry_of_rects(l, vp, target, r, ok); g.ok { append(&out, g.client) }
 			}
 		}

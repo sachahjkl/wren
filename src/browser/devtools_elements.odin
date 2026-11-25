@@ -1201,7 +1201,7 @@ elements_picker :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	if !dev().picking { return }
 	mp := ui.mouse_pos()
 	if !draw.rect_contains(wnd.page_rect, mp) || !t.layout.valid { return }
-	h := hit_test(&t.layout, mp - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll)
+	h := tab_hit_test(t, mp - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll).node
 	if h == base.NIL_HANDLE { return }
 	e.picked = h
 	request_frames(app, 2)
@@ -1214,7 +1214,7 @@ devtools_pick_event :: proc(app: ^App, t: ^Tab, kind: int, pos: draw.Vec2, press
 	if !draw.rect_contains(wnd.page_rect, pos) { return false }
 	if pressed {
 		h := dev().els.picked
-		if h == base.NIL_HANDLE && t.layout.valid { h = hit_test(&t.layout, pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) }
+		if h == base.NIL_HANDLE && t.layout.valid { h = tab_hit_test(t, pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll).node }
 		if h != base.NIL_HANDLE { elements_select(t, h) }
 		dev().picking = false
 		request_frames(app, 3)
@@ -1231,7 +1231,7 @@ elements_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, area: draw.Rect,
 	n := dom.get(p.doc, h)
 	if n == nil { return }
 	if n.kind == .Text { h = n.parent } else if n.kind != .Element { return }   // a comment, the doctype: nothing on the page
-	r, ok := lay.box_of(&t.layout, h, draw.rect_size(area), t.scroll)
+	r, ok := tab_box_of(t, h, draw.rect_size(area), t.scroll)
 	if !ok || !r.visible { return }
 	shift := area.min - doc_scroll_vec(t)   // (box_of: document coordinates, position: fixed boxes included)
 	at :: proc(q: lay.Rect, s: draw.Vec2) -> draw.Rect { return {q.min + s, q.max + s} }

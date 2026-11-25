@@ -17,6 +17,7 @@ import "wb:base"
 import "wb:css"
 import "wb:dom"
 import "wb:forms"
+import lay "wb:layout"
 import "wb:style"
 
 // The page's state of the DOM bindings (created on first use, freed with the page).
@@ -58,6 +59,7 @@ js_dom_state :: proc(p: ^Page) -> ^Js_Dom_State {
 		ce_destroy(p, &s.ce)
 		js_shadow_destroy(p, &s.shadow)
 		js_cssom_destroy(p, &s.cssom)
+		lay.view_cache_destroy(&s.layout.view_cache)
 		free(s)
 		p.jsdom = nil
 	}, p)

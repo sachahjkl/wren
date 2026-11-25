@@ -253,7 +253,8 @@ images_after_layout :: proc(t: ^Tab, size: draw.Vec2, scale: f32) {
 	}
 	watched := page.images_watched(t.page)
 	if len(watched) == 0 { return }
-	v := lay.view_make(l, size, t.scroll, cull = false)
+	v := tab_view(t, size, t.scroll, cull = false)
+	if v == nil { return }
 	for node in watched {
 		bi := lay.box_index(l, node)
 		if bi == lay.NONE { page.images_set_distance(t.page, node, max(f32)); continue }

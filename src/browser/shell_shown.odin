@@ -128,6 +128,8 @@ shell_shown_set :: proc(app: ^App, t: ^Tab, painting := false) -> (sh: Shown) {
 			l.scroll[b.node] = b.to
 		}
 	}
+	// Space transforms, group alphas, and scroll offsets were patched in place for this chrome frame.
+	tab_view_invalidate(t)
 	return
 }
 
@@ -179,6 +181,7 @@ shell_shown_put :: proc(sh: ^Shown) {
 	for s in sh.scrolls {
 		if s.had { l.scroll[s.node] = s.off } else { delete_key(&l.scroll, s.node) }
 	}
+	tab_view_invalidate(sh.t)
 	sh.set = false
 }
 

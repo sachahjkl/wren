@@ -297,7 +297,8 @@ selection_preview_press :: proc(app: ^App, t: ^Tab, ev: platform.Event) {
 	p := t.page
 	if p == nil || ev.button != .Left || .Shift in ev.mods || !gesture_free(g) || !preview_possible(app, t) || click_next(app, g.clicks, ev) != 1 { return }
 	if page.page_listens(p, "mousedown") || page.page_listens(p, "pointerdown") { return }
-	target := lay.hit_test(&t.layout, ev.pos - active_window(app).page_rect.min, page_viewport(app), shell_shown_scroll(t).y).node
+	pv := tab_view(t, page_viewport(app), shell_shown_scroll(t).y, cull = false)
+	target := lay.hit_test_view(&t.layout, pv, ev.pos - active_window(app).page_rect.min).node
 	if target != base.NIL_HANDLE {
 		if _, drag := page.drag_source_for(p, target); drag != .None || in_control(t, target) { return }
 	}
@@ -426,7 +427,7 @@ selection_shell_frame :: proc(app: ^App) {
 	if g.owner != .Selecting || !g.sel.moved || app.ix.autoscroll_speed <= 0 { return }
 	port := wnd.page_rect
 	if g.sel.scroller != base.NIL_HANDLE {
-		if r, ok := lay.box_of(&t.layout, g.sel.scroller, page_viewport(app), t.scroll); ok {
+		if r, ok := tab_box_of(t, g.sel.scroller, page_viewport(app), t.scroll); ok {
 			off := wnd.page_rect.min - doc_scroll_vec(t)   // (document coordinates, position: fixed boxes included)
 			port = draw.Rect{r.padding.min + off, r.padding.max + off}
 			port = {{max(port.min.x, wnd.page_rect.min.x), max(port.min.y, wnd.page_rect.min.y)}, {min(port.max.x, wnd.page_rect.max.x), min(port.max.y, wnd.page_rect.max.y)}}

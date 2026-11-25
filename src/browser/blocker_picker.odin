@@ -9,7 +9,6 @@ import "wb:base"
 import "wb:blocker"
 import i18n "toolkit:i18n"
 import "wb:dom"
-import lay "wb:layout"
 import "wb:page"
 import "wb:style"
 
@@ -211,7 +210,7 @@ outline_node :: proc(dc: ^draw.Context, d: ^Pick_Draw, h: base.Handle, fill, lin
 	t := d.t
 	if t.page == nil || !t.layout.valid { return }
 	area := active_window(d.app).page_rect
-	r, ok := lay.box_of(&t.layout, h, draw.rect_size(area), t.scroll)
+	r, ok := tab_box_of(t, h, draw.rect_size(area), t.scroll)
 	if !ok || !r.visible { return }
 	shift := area.min - doc_scroll_vec(t)   // (box_of: document coordinates, position: fixed boxes included)
 	b := draw.Rect{r.bounds.min + shift, r.bounds.max + shift}
@@ -246,7 +245,7 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 		box := ui.custom("###bl_pick_overlay", pick_overlay_draw, d, {.Clickable})
 		sig := ui.signal(box)
 		if sig.hovering {
-			app.pick.hover = hit_test(&t.layout, ui.mouse_pos() - area.min, draw.rect_size(area), t.scroll)
+			app.pick.hover = tab_hit_test(t, ui.mouse_pos() - area.min, draw.rect_size(area), t.scroll).node
 			request_frames(app, 2)
 		}
 		if sig.clicked && app.pick.hover != base.NIL_HANDLE { picker_choose(t, app.pick.hover); request_frames(app, 3) }

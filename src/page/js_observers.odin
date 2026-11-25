@@ -51,18 +51,28 @@ Layout_Observers :: struct {
 // make a new one after running any.
 @(private)
 Obs_Frame :: struct {
-	ok:   bool,
-	l:    ^lay.Layout,
-	vp:   Viewport,
-	view: lay.View,
+	ok:       bool,
+	l:        ^lay.Layout,
+	vp:       Viewport,
+	view_ptr: ^lay.View,   // non-nil: borrowed cached View (Tab or Js_Layout)
+	view:     lay.View,    // fallback View when view_ptr is nil
 }
 
 @(private)
-obs_frame_from :: proc(l: ^lay.Layout, vp: Viewport) -> (f: Obs_Frame) {
+obs_view :: #force_inline proc(f: ^Obs_Frame) -> ^lay.View {
+	return f.view_ptr != nil ? f.view_ptr : &f.view
+}
+
+@(private)
+obs_frame_from :: proc(l: ^lay.Layout, vp: Viewport, p: ^Page = nil) -> (f: Obs_Frame) {
 	f.l, f.vp = l, vp
 	if l == nil || !l.valid { return }
-	s := f32(vp.scale)
-	f.view = lay.view_make(l, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s, cull = false)
+	if v := page_layout_view(p, l, vp); v != nil {
+		f.view_ptr = v
+	} else {
+		s := f32(vp.scale)
+		f.view = lay.view_make(l, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s, cull = false)
+	}
 	f.ok = true
 	return
 }
@@ -70,13 +80,13 @@ obs_frame_from :: proc(l: ^lay.Layout, vp: Viewport) -> (f: Obs_Frame) {
 @(private)
 obs_frame :: proc(p: ^Page) -> Obs_Frame {
 	l, vp := js_layout_now(p)
-	return obs_frame_from(l, vp)
+	return obs_frame_from(l, vp, p)
 }
 
 @(private)
 obs_geometry :: proc(f: ^Obs_Frame, h: base.Handle) -> Element_Geometry {
 	if !f.ok { return {} }
-	r, ok := lay.box_of_view(f.l, &f.view, h)
+	r, ok := lay.box_of_view(f.l, obs_view(f), h)
 	return geometry_of_rects(f.l, f.vp, h, r, ok)
 }
 

@@ -746,7 +746,7 @@ plan :: proc(c: ^Comp, e: ^Effects) -> []Group_Paint {
 }
 
 // Paints the page through its retained pictures. false: not possible (too many chunks): paint directly.
-composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: draw.Vec2, scroll: f32) -> bool {
+composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin, size: draw.Vec2, scroll: f32, view_cache: ^lay.View_Cache = nil) -> bool {
 	c := comp_of(l)
 	c.doc = d
 	c.dc = dc
@@ -778,9 +778,15 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 		c.sel_key = k
 		for &ch in c.chunks { if !ch.immediate { ch.recorded = false } }
 	}
-	v := lay.view_make(l, size, scroll, cull = false)
+	local_v: lay.View
+	v: ^lay.View
+	if view_cache != nil { v, _ = lay.view_cache_get(view_cache, l, size, scroll, cull = false) }
+	if v == nil {
+		local_v = lay.view_make(l, size, scroll, cull = false)
+		v = &local_v
+	}
 	screen := lay.Rect{origin, origin + size}
-	e := Effects{l = l, v = &v, dc = dc, origin = origin, page_origin = origin, screen = screen, xform = lay.NONE, clip = -2, group = -2,
+	e := Effects{l = l, v = v, dc = dc, origin = origin, page_origin = origin, screen = screen, xform = lay.NONE, clip = -2, group = -2,
 		chain = make([dynamic]i32, 0, 8, context.temp_allocator), open = make([dynamic]Open_Group, 0, 4, context.temp_allocator),
 		pending = make([dynamic]Pending_Plane, 0, 4, context.temp_allocator)}
 	composite_stats.chunks = len(c.chunks)
@@ -791,7 +797,7 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 		for b in ch.bounds {
 			if v.singular[b.space] { continue }
 			o := fo(&e, b.space)
-			r := lay.mat_bounds(lay.mat_mul(lay.Matrix{1, 0, 0, 1, o.x, o.y}, lay.space_world(&v, b.space)), b.r)
+			r := lay.mat_bounds(lay.mat_mul(lay.Matrix{1, 0, 0, 1, o.x, o.y}, lay.space_world(v, b.space)), b.r)
 			ch.screen = first ? r : lay.rect_union(ch.screen, r)
 			first = false
 		}
@@ -832,20 +838,20 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 				fx_cache_under(&e, nil, item = i)
 				if fx_cache_skipping(&e) { continue }
 				off := v.offsets[it.space] + e.origin
-				paint_item(l, dc, d, &v, it, draw.Rect{it.rect.min + off, it.rect.max + off}, off, e.origin)
+				paint_item(l, dc, d, v, it, draw.Rect{it.rect.min + off, it.rect.max + off}, off, e.origin)
 				composite_stats.immediate_items += 1
 				if lay.space_stuck(l, it.space) { ink := item_ink(&e, it); append(&comp_stuck, draw.Rect{ink.min, ink.max}) }
 			}
 			continue
 		}
-		root := lay.space_world(&v, ch.root)
+		root := lay.space_world(v, ch.root)
 		set_group(&e, ch.group)   // (may open a plane: e.origin is that of the target the chunk is replayed into)
 		m := draw.Affine{1, 0, 0, 1, root[4] + e.origin.x, root[5] + e.origin.y}
 		ras := draw.affine_scale_factor(draw.current_transform(dc))   // (a plane layer is rasterized denser or sparser than 1)
-		if !ch.recorded { record_chunk(c, l, dc, d, &v, &ch, ras) }
+		if !ch.recorded { record_chunk(c, l, dc, d, v, &ch, ras) }
 		// the space matrices of this frame (scroll offsets, sticky shifts, transforms)
 		for b in ch.slots {
-			sm := slot_matrix(&v, ch.root, b.space)
+			sm := slot_matrix(v, ch.root, b.space)
 			draw.picture_set_slot(ch.pic, b.slot, sm)
 			composite_stats.slots_set += 1
 		}
@@ -857,7 +863,7 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 		res := draw.replay(dc, ch.pic, m, compare = true)   // (partial redraw: an unchanged chunk is not drawn again)
 		if res == .Stale {
 			// glyphs at another size, or the atlas was reset: record again at this scale
-			record_chunk(c, l, dc, d, &v, &ch, math.sqrt(abs(root[0] * root[3] - root[1] * root[2])) * ras)
+			record_chunk(c, l, dc, d, v, &ch, math.sqrt(abs(root[0] * root[3] - root[1] * root[2])) * ras)
 			res = draw.replay(dc, ch.pic, m, compare = true)
 		}
 		if res == .Drawn { composite_stats.replayed += 1 }
@@ -866,7 +872,7 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 			for b in ch.bounds {
 				if v.singular[b.space] || !lay.space_stuck(l, b.space) { continue }
 				o := fo(&e, b.space)
-				r := lay.mat_bounds(lay.mat_mul(lay.Matrix{1, 0, 0, 1, o.x, o.y}, lay.space_world(&v, b.space)), b.r)
+				r := lay.mat_bounds(lay.mat_mul(lay.Matrix{1, 0, 0, 1, o.x, o.y}, lay.space_world(v, b.space)), b.r)
 				append(&comp_stuck, draw.Rect{r.min, r.max})
 			}
 		}

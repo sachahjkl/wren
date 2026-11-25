@@ -160,6 +160,7 @@ hold_step :: proc(app: ^App, t: ^Tab, ev: Hold_Event, target := "") {
 	case .Navigation:
 		if holdable(t, target) {
 			hold_step(app, t, .Over)   // a page already held goes: the current one painted after it
+			tab_view_destroy(t)
 			h.state = .Waiting
 			h.nav, h.page, h.load, h.no_store = t.nav, t.page, t.load, t.nav_state.no_store
 			h.layout, t.layout = t.layout, h.layout   // the held frame; the tab gets the old memory back
@@ -187,6 +188,7 @@ hold_step :: proc(app: ^App, t: ^Tab, ev: Hold_Event, target := "") {
 		h.state, h.nav, h.page, h.load = .None, nil, nil, nil
 	case .Back:
 		left := t.nav
+		tab_view_destroy(t)
 		t.nav, t.page, t.load, t.nav_state.no_store = h.nav, h.page, h.load, h.no_store
 		t.layout, h.layout = h.layout, t.layout
 		t.scroll = h.scroll

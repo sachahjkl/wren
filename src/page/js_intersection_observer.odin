@@ -287,7 +287,7 @@ io_clipped :: proc(p: ^Page, f: ^Obs_Frame, io: ^Intersection_Observer, g: Eleme
 		for ci := g.box.clip; ci != lay.NONE; ci = f.l.clips[ci].parent {
 			// the clips of the root element and of what is outside it are not between the target and the root
 			if io.root_element && f.l.boxes[f.l.clips[ci].box].node == io.root { break }
-			b, ok := lay.clip_bounds(f.l, &f.view, ci)
+			b, ok := lay.clip_bounds(f.l, obs_view(f), ci)
 			if !ok { continue }
 			c := io_grow(Io_Rect{f64(b.min.x) / s, f64(b.min.y) / s, f64(b.max.x) / s, f64(b.max.y) / s}, io.scroll)
 			r = io_intersect(r, c)
@@ -356,7 +356,7 @@ intersection_observers_update :: proc(p: ^Page) {
 	l, vp := js_layout_now(p)
 	key := io_key_of(p, l, vp)
 	if w.observers.io_has_key && key == w.observers.io_key { return }
-	f := obs_frame_from(l, vp)
+	f := obs_frame_from(l, vp, p)
 	time := page_now_ms(p)
 	queued := false
 	// (no script runs here: the list cannot change under the loop)

@@ -9,8 +9,24 @@ import "wb:style"
 
 @(private = "file")
 Timeline_Reading :: struct {
-	l:  ^lay.Layout,
-	vp: Viewport,
+	p:          ^Page,
+	l:          ^lay.Layout,
+	vp:         Viewport,
+	view:       ^lay.View,
+	local_view: lay.View,
+}
+
+@(private = "file")
+reading_view :: proc(r: ^Timeline_Reading) -> ^lay.View {
+	if r.view != nil { return r.view }
+	if v := page_layout_view(r.p, r.l, r.vp); v != nil {
+		r.view = v
+		return v
+	}
+	s := f32(r.vp.scale)
+	r.local_view = lay.view_make(r.l, {f32(r.vp.width) * s, f32(r.vp.height) * s}, f32(r.vp.scroll_y) * s, cull = false)
+	r.view = &r.local_view
+	return r.view
 }
 
 @(private = "file")
@@ -42,14 +58,13 @@ reading_scroller :: proc(user: rawptr, node: base.Handle) -> (m: style.Scroll_Me
 reading_subject :: proc(user: rawptr, subject, source: base.Handle) -> (lo, hi: [2]f64, ok: bool) {
 	r := (^Timeline_Reading)(user)
 	l, s := r.l, f32(r.vp.scale)
-	view := [2]f32{f32(r.vp.width) * s, f32(r.vp.height) * s}
-	doc_scroll := f32(r.vp.scroll_y) * s
-	box, found := lay.box_of(l, subject, view, doc_scroll)
+	v := reading_view(r)
+	box, found := lay.box_of_view(l, v, subject)
 	if !found { return }
 	at := [2]f32{}
 	if source != base.NIL_HANDLE {
-		// (box_of applies the containers' offsets: the scrollable area of `source` starts at its padding box, at offset zero)
-		src, has := lay.box_of(l, source, view, doc_scroll)
+		// (box_of_view applies the containers' offsets: the scrollable area of `source` starts at its padding box, at offset zero)
+		src, has := lay.box_of_view(l, v, source)
 		off, scrolls := lay.scroll_of(l, source)
 		if !has || !scrolls { return }
 		at = src.padding.min - off
@@ -69,9 +84,9 @@ scroll_timelines_frame :: proc(p: ^Page) {
 }
 
 // Measures the page's timelines on layout `l`, shown as `vp` says. True: what they show moved.
-scroll_timelines_sample :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) -> bool {
+scroll_timelines_sample :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport, view: ^lay.View = nil) -> bool {
 	if p == nil || p.closed || p.styled == nil || l == nil || !l.valid || p.doc == nil { return false }
-	r := Timeline_Reading{l, vp}
+	r := Timeline_Reading{p = p, l = l, vp = vp, view = view}
 	if r.vp.scale <= 0 { r.vp.scale = 1 }
 	probe := style.Timeline_Probe{user = &r, root = jd_document_element(p.doc), scroller = reading_scroller, subject = reading_subject}
 	return style.timeline_scroll_sample(p.anim.timeline, p.doc, p.styled, probe)

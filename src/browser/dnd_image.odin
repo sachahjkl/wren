@@ -125,7 +125,7 @@ dnd_image_begin :: proc(app: ^App, t: ^Tab, p: ^page.Page, pointer: [2]f32) {
 @(private = "file")
 element_paint_bounds :: proc(app: ^App, t: ^Tab, el: base.Handle) -> (draw.Rect, bool) {
 	if t.page == nil || !t.layout.valid { return {}, false }
-	r, found := lay.box_of(&t.layout, el, draw.rect_size(active_window(app).page_rect), t.scroll)
+	r, found := tab_box_of(t, el, draw.rect_size(active_window(app).page_rect), t.scroll)
 	if !found || r.bounds.max.x <= r.bounds.min.x || r.bounds.max.y <= r.bounds.min.y { return {}, false }
 	return draw.rect_shift(draw.Rect{r.bounds.min, r.bounds.max}, -doc_scroll_vec(t)), true
 }
@@ -137,7 +137,8 @@ selection_bounds :: proc(app: ^App, t: ^Tab) -> (draw.Rect, bool) {
 	a, b, ok := page.selection_range(p)
 	if !ok || a == b || !t.layout.valid { return {}, false }
 	l := &t.layout
-	v := lay.view_make(l, draw.rect_size(active_window(app).page_rect), t.scroll, cull = false)
+	v := tab_view(t, draw.rect_size(active_window(app).page_rect), t.scroll, cull = false)
+	if v == nil { return {}, false }
 	api := page_text_api(&app.page_render.fonts, &app.measure, &app.page_settings.style)
 	out: draw.Rect
 	found := false
@@ -189,7 +190,12 @@ paint_picture :: proc(app: ^App, dc: ^draw.Context) -> render.Readback_Id {
 	if !draw.offscreen_begin(dc, size) { return 0 }
 	circular := draw.set_circular_corners(dc, true)
 	interp := draw.set_interpolation(dc, .Srgb)
-	v := lay.view_make(l, draw.rect_size(active_window(app).page_rect), t.scroll, cull = false)
+	v := tab_view(t, draw.rect_size(active_window(app).page_rect), t.scroll, cull = false)
+	if v == nil {
+		draw.set_interpolation(dc, interp)
+		draw.set_circular_corners(dc, circular)
+		return draw.offscreen_end(dc)
+	}
 	sel_a, sel_b, has_sel := page.selection_range(p)
 	api := page_text_api(&app.page_render.fonts, &app.measure, &app.page_settings.style)
 	for i in 0 ..< len(l.items) {
@@ -215,7 +221,7 @@ paint_picture :: proc(app: ^App, dc: ^draw.Context) -> render.Readback_Id {
 			case: continue
 			}
 		}
-		paint_item(l, dc, d, &v, it, r, off, -b.min)
+		paint_item(l, dc, d, v, it, r, off, -b.min)
 		if clipped { draw.pop_clip(dc) }
 	}
 	draw.set_interpolation(dc, interp)

@@ -190,7 +190,7 @@ chrome_open :: proc(app: ^App, address: string, pos: [2]f32) {
 page_point :: proc(app: ^App, t: ^Tab, pos: [2]f32) -> (hit: base.Handle, cx, cy: f64) {
 	wnd := active_window(app)
 	scale := max(page_scale(app), 0.01)
-	if t.layout.valid { hit = hit_test(&t.layout, pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) }
+	if t.layout.valid { hit = tab_hit_test(t, pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll).node }
 	if hit == base.NIL_HANDLE && t.page != nil { hit = t.page.body }
 	return hit, f64((pos.x - wnd.page_rect.min.x) / scale), f64((pos.y - wnd.page_rect.min.y) / scale)
 }

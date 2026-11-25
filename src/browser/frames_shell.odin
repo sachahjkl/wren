@@ -80,6 +80,7 @@ frame_view_closed :: proc(data: rawptr) {
 	delete_key(&the_app.frame_views, p)
 	page_view_forget(the_app, p)
 	page_fonts_drop(&the_app.page_render.fonts, fv.tab)
+	tab_view_destroy(fv.tab)
 	layout_destroy(&fv.tab.layout)
 	smooth_destroy(&fv.tab.smooth)
 	free(fv.tab)
@@ -103,8 +104,8 @@ page_view_forget :: proc(app: ^App, p: ^page.Page) {
 // The content box of a frame element in a laid out document: viewport coordinates of that document (its own scroll
 // applied), in physical pixels. ok false: the element has no box (display: none...).
 @(private = "file")
-frame_box :: proc(l: ^Layout, el: base.Handle, viewport: draw.Vec2, scroll: f32) -> (r: lay.Box_Rects, ok: bool) {
-	r, ok = lay.box_of(l, el, viewport, scroll)
+frame_box :: proc(t: ^Tab, el: base.Handle, viewport: draw.Vec2, scroll: f32) -> (r: lay.Box_Rects, ok: bool) {
+	r, ok = tab_box_of(t, el, viewport, scroll)
 	if !ok || !r.visible { return {}, false }
 	return r, true
 }
@@ -119,7 +120,7 @@ frames_prepare :: proc(app: ^App, t: ^Tab, viewport: draw.Vec2, scale: f32) {
 		fv := frame_view_of(child)
 		if fv == nil { continue }
 		fv.host = t.view != nil ? t.view.host : t
-		r, ok := frame_box(&t.layout, n.element, viewport, t.scroll)
+		r, ok := frame_box(t, n.element, viewport, t.scroll)
 		if !ok {
 			page.frames_set_distance(p, n.element, max(f32))
 			page.set_page_visible(child, false)
@@ -203,14 +204,14 @@ paint_scale_of :: proc(app: ^App, p: ^page.Page) -> f32 {
 // away) is already dropped by frame_box; a destroyed frame has no view.
 frame_under :: proc(app: ^App, t: ^Tab, pos: draw.Vec2, rect: draw.Rect) -> ^Page_View {
 	if t == nil || t.page == nil || t.page.frames == nil || !t.layout.valid || !draw.rect_contains(rect, pos) { return nil }
-	h := hit_test(&t.layout, pos - rect.min, draw.rect_size(rect), t.scroll)
+	h := tab_hit_test(t, pos - rect.min, draw.rect_size(rect), t.scroll).node
 	if h == base.NIL_HANDLE { return nil }
 	n := page.frame_of_element(t.page, h)
 	if n == nil || n.page == nil { return nil }
 	fv := frame_view_of(n.page)
 	if fv == nil || !fv.ready { return nil }
 	// the frame's content box, in the parent's document coordinates, from the layout hit_test already read
-	r, ok := frame_box(&t.layout, n.element, draw.rect_size(rect), t.scroll)
+	r, ok := frame_box(t, n.element, draw.rect_size(rect), t.scroll)
 	if !ok { return nil }
 	// a box under a transform: its on-screen quad is not axis-aligned; input is not routed (as before), and `rect`
 	// would only be its bounds

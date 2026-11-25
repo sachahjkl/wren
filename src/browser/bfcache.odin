@@ -133,6 +133,7 @@ bfcache_take :: proc(app: ^App, t: ^Tab) -> bool {
 	page_fonts_transfer(&app.page_render.fonts, t, e)   // its web faces stay with its layout
 	composite_forget(&t.layout)
 	text_clip_forget(&t.layout)
+	tab_view_destroy(t)
 	t.layout = {}
 	lay.release_spares(&e.layout)
 	if e.page.engine != nil { style.engine_release_spares(e.page.engine) }
@@ -161,6 +162,7 @@ bfcache_take_held :: proc(app: ^App, t: ^Tab) -> bool {
 	}
 	composite_forget(&h.layout)
 	text_clip_forget(&h.layout)
+	tab_view_destroy(t)
 	h.layout = {}
 	lay.release_spares(&e.layout)
 	if e.page.engine != nil { style.engine_release_spares(e.page.engine) }
@@ -279,6 +281,7 @@ bfcache_restore :: proc(app: ^App, t: ^Tab, entry: ^page.History_Entry) -> bool 
 		layout_reset(&t.layout)
 	}
 	page_fonts_drop(&app.page_render.fonts, t)
+	tab_view_destroy(t)
 	layout_destroy(&t.layout)
 	t.nav, t.page, t.layout, t.load, t.kind = e.nav, e.page, e.layout, nil, .Web
 	page.navigable_attach(t.top, t.page)   // (the tab's window shows it again: its WindowProxy is the tab's)
