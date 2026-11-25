@@ -13,6 +13,7 @@ package browser
 // The gesture itself is the toolkit's (platform.Touch_Gesture, pure); what to scroll and how far is decided by pure
 // procedures here (touch_scroll_delta, touch_blocked_along, touch_pinch_steps), tested in touch_shell_test.odin.
 
+import "core:strings"
 import "core:time"
 import "toolkit:platform"
 import "wb:base"
@@ -39,11 +40,39 @@ TOUCH_PREFS := [?]config.Def{
 
 register_touch_prefs :: proc(p: ^config.Prefs) { config.register(p, TOUCH_PREFS[:]) }
 
+Touch_Settings :: struct {
+	expose:          string,   // owned
+	pan_slop_px:     f32,
+	long_press_ms:   f64,
+	fling:           bool,
+	fling_friction:  f32,
+	fling_min_speed: f32,
+	pinch_step:      f32,
+}
+
+touch_settings_from_prefs :: proc(p: ^config.Prefs) -> Touch_Settings {
+	expose := config.ref_of(p, "browser.touch.expose") != config.NO_REF ? config.string_of(p, "browser.touch.expose") : "auto"
+	return {
+		expose = strings.clone(expose),
+		pan_slop_px = f32(config.float_of(p, "browser.touch.pan_slop_px")),
+		long_press_ms = f64(config.int_of(p, "browser.touch.long_press_ms")),
+		fling = config.bool_of(p, "browser.touch.fling"),
+		fling_friction = f32(config.float_of(p, "browser.touch.fling_friction")),
+		fling_min_speed = f32(config.float_of(p, "browser.touch.fling_min_speed")),
+		pinch_step = f32(config.float_of(p, "browser.touch.pinch_step")),
+	}
+}
+
+touch_settings_destroy :: proc(s: ^Touch_Settings) {
+	delete(s.expose)
+	s^ = {}
+}
+
 // The devices pages are told about (at start and when browser.touch.expose changes).
 touch_devices_apply :: proc(app: ^App) {
 	d := platform.input_devices()
 	js.set_touch_points(d.touch_points)
-	points, _ := js.touch_exposure(config.string_of(&app.prefs, "browser.touch.expose"), d.touch_points)
+	points, _ := js.touch_exposure(app.tsh.cfg.expose, d.touch_points)
 	shown := d
 	shown.touch_points = points
 	style.set_pointer_caps(pointer_caps_of(shown))
@@ -107,6 +136,7 @@ touch_pinch_steps :: proc(acc: ^f32, scale, step: f32) -> int {
 
 @(private)
 Touch_Shell :: struct {
+	cfg:       Touch_Settings,
 	g:         platform.Touch_Gesture,
 	tab:       ^Tab,
 	page:      ^page.Page,
@@ -132,9 +162,9 @@ touch_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event, hit: base.Handle, 
 	scale := max(page_scale(app), 0.01)
 	if !platform.touch_gesture_active(&app.tsh.g) && ev.kind == .Pointer_Down {
 		s := platform.TOUCH_GESTURE_DEFAULTS
-		s.slop = f32(config.float_of(&app.prefs, "browser.touch.pan_slop_px")) * scale
-		s.long_press_ms = f64(config.int_of(&app.prefs, "browser.touch.long_press_ms"))
-		s.fling_min_speed = f32(config.float_of(&app.prefs, "browser.touch.fling_min_speed")) * scale
+		s.slop = app.tsh.cfg.pan_slop_px * scale
+		s.long_press_ms = app.tsh.cfg.long_press_ms
+		s.fling_min_speed = app.tsh.cfg.fling_min_speed * scale
 		platform.touch_gesture_init(&app.tsh.g, s)
 		app.tsh.tab, app.tsh.page, app.tsh.cancelled, app.tsh.panned, app.tsh.pinch, app.tsh.hit = t, p, false, false, 1, hit
 		app.tsh.blocked = touch_blocked_along(p, hit)
@@ -176,7 +206,7 @@ touch_apply :: proc(app: ^App, t: ^Tab, ge: platform.Touch_Gesture_Event) {
 		app.tsh.panned = true
 		if app.tsh.cancelled { return }
 		if ge.kind == .Pinch && .Pinch_Zoom not_in app.tsh.blocked {
-			if n := touch_pinch_steps(&app.tsh.pinch, ge.scale, f32(config.float_of(&app.prefs, "browser.touch.pinch_step"))); n != 0 {
+			if n := touch_pinch_steps(&app.tsh.pinch, ge.scale, app.tsh.cfg.pinch_step); n != 0 {
 				for _ in 0 ..< abs(n) { zoom_step(app, t, n > 0 ? 1 : -1) }
 			}
 		}
@@ -184,8 +214,8 @@ touch_apply :: proc(app: ^App, t: ^Tab, ge: platform.Touch_Gesture_Event) {
 		d := touch_scroll_delta(ge.pan, app.tsh.x_ok, app.tsh.y_ok)
 		if d != {} { app.tsh.scroller = touch_scroll(app, t, ge.pos - wnd.page_rect.min, d) }
 	case .Fling:
-		if app.tsh.cancelled || !config.bool_of(&app.prefs, "browser.touch.fling") { return }
-		dist, ms := platform.touch_fling(ge.velocity, f32(config.float_of(&app.prefs, "browser.touch.fling_friction")))
+		if app.tsh.cancelled || !app.tsh.cfg.fling { return }
+		dist, ms := platform.touch_fling(ge.velocity, app.tsh.cfg.fling_friction)
 		d := touch_scroll_delta(dist, app.tsh.x_ok, app.tsh.y_ok)
 		if d != {} && ms > 0 { smooth_scroll_by(app, t, app.tsh.scroller, d, ms) }
 	case .Tap:

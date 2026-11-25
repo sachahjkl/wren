@@ -135,7 +135,7 @@ closed_cap :: proc(items: ^[dynamic]Closed_Item, max_items, max_sessions: int) {
 closed_append :: proc(app: ^App, item: Closed_Item) {
 	c := &app.closed
 	append(&c.items, item)
-	closed_cap(&c.items, app.ix.closed_tabs_max, int(config.int_of(&app.prefs, "browser.tabs.closed_sessions_max")))
+	closed_cap(&c.items, app.ix.closed_tabs_max, app.session_cfg.closed_sessions_max)
 	c.dirty = true
 }
 
@@ -146,7 +146,7 @@ closed_take_session :: proc(app: ^App) {
 	if err != nil { return }
 	windows, ok := session_windows_of(app, string(data))
 	if !ok { return }
-	windows = session_kept(windows, drop_pinned = config.bool_of(&app.prefs, "browser.tabs.restore_pinned"))
+	windows = session_kept(windows, drop_pinned = app.session_cfg.restore_pinned)
 	tabs, worth := 0, false
 	for w in windows {
 		tabs += len(w.tabs)
@@ -168,7 +168,7 @@ closed_load :: proc(app: ^App) {
 	if !app.cfg.persist_profile || app.ix.closed_tabs_max <= 0 { return }
 	if data, err := os.read_entire_file(closed_path(app), context.temp_allocator); err == nil {
 		c.items = closed_parse(string(data))
-		closed_cap(&c.items, app.ix.closed_tabs_max, int(config.int_of(&app.prefs, "browser.tabs.closed_sessions_max")))
+		closed_cap(&c.items, app.ix.closed_tabs_max, app.session_cfg.closed_sessions_max)
 	}
 	if c.session_waits { closed_take_session(app) }
 	c.session_waits = false
@@ -185,7 +185,7 @@ closed_save :: proc(app: ^App) {
 	c := &app.closed
 	if !c.dirty { return }
 	host.profile_file_init(&c.file, &app.writer, closed_path(app))
-	host.profile_file_write(&c.file, closed_serialize(c.items[:], int(config.int_of(&app.prefs, "browser.session.max_url_bytes"))))
+	host.profile_file_write(&c.file, closed_serialize(c.items[:], app.session_cfg.max_url_bytes))
 	c.dirty = false
 }
 

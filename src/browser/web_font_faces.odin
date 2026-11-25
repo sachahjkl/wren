@@ -45,8 +45,8 @@ Shared_Faces :: struct {
 
 @(private = "file")
 web_faces_kept :: proc() -> int {
-	if the_app == nil || config.ref_of(&the_app.prefs, "font.web_faces.kept") == config.NO_REF { return 64 }
-	return int(config.int_of(&the_app.prefs, "font.web_faces.kept"))
+	if the_app == nil || !the_app.font_cfg.web_faces_loaded { return 64 }
+	return the_app.font_cfg.web_faces_kept
 }
 
 shared_face_acquire :: proc(pf: ^Page_Fonts, data: []byte, family: string, weight: int, style: font.Font_Style) -> (font.Font_Id, bool) {

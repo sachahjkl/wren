@@ -48,7 +48,7 @@ app_command_run :: proc(data: rawptr) {
 	post := (^App_Command_Post)(data)
 	app, cmd := post.app, post.cmd
 	free(post)
-	if !config.bool_of(&app.prefs, "browser.mouse.back_forward_buttons") { return }
+	if !app.cfg.back_forward_buttons { return }
 	t := current_tab(app)
 	if t == nil { return }
 	switch cmd {

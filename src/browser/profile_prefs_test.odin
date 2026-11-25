@@ -60,7 +60,7 @@ prefs_changes_persist_immediately_and_reload :: proc(t: ^testing.T) {
 	app.profile_dir = dir
 	defer { app.profile_dir = "" }
 
-	config.watch(&app.prefs, "", on_pref_change, app)
+	prefs_bind_runtime(app)
 
 	testing.expect_value(t, config.set_from_string(&app.prefs, "network.user_agent", "SavedNow/1.0", .User), config.Set_Error.None)
 	testing.expect_value(t, config.set_from_string(&app.prefs, "privacy.do_not_track", "true", .User), config.Set_Error.None)

@@ -580,4 +580,5 @@ lint_steps :: proc(steps: ^[dynamic]Step) {
 	// (Everything: flake.lock and the submodule's checkout are what it compares)
 	append(t, Step{name = "the flake's toolkit is the submodule's commit (src\\tools\\test_all\\lint_flake.odin: flake.lock pins gui_toolkit where ext\\gui_toolkit is)", actions = slice_of(Task{"the flake's toolkit", task_lint_flake_toolkit, ""}), marks = {.Light}, inputs = .Everything})
 	append(t, Step{name = "the product's layers (src\\tools\\test_all\\lint_layers.odin: no import of wb:tools/* outside src\\tools, core:sys/windows only in *_windows.odin)", actions = slice_of(Task{"the layers", task_lint_layers, ""}), marks = {.Light}, inputs = .Sources})
+	append(t, Step{name = "preferences read one way (src\\tools\\test_all\\lint_prefs.odin: no config.*_of outside *_settings_from_prefs or documented UI/toggle helpers in src\\browser)", actions = slice_of(Task{"preferences reads", task_lint_prefs, ""}), marks = {.Light}, inputs = .Sources})
 }

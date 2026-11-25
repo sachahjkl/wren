@@ -79,19 +79,21 @@ RETIRED_FRAME_PREFS :: [?]string{
 register_frame_prefs :: proc(p: ^config.Prefs) { config.register(p, FRAME_PREFS[:]) }
 
 Pacer_Settings :: struct {
-	target_hz:  f64,                   // 0 = the display's (rendering.frame_rate)
-	rate:       string,                // rendering.frame_rate as it is written (the commands' check marks)
-	uncapped:   bool,
-	mode:       render.Present_Mode,
-	timeout_ms: int,
+	target_hz:    f64,                   // 0 = the display's (rendering.frame_rate)
+	rate:         string,                // rendering.frame_rate as it is written (the commands' check marks)
+	uncapped:     bool,
+	mode:         render.Present_Mode,
+	timeout_ms:   int,
+	swap_buffers: int,
 	latency_probe: bool,
-	drag_probe: bool,
-	variable:   platform.Variable_Refresh,
+	drag_probe:   bool,
+	variable:     platform.Variable_Refresh,
 }
 
 pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
 	s := Pacer_Settings{
 		timeout_ms = int(config.int_of(p, "browser.frame.wait_timeout_ms")),
+		swap_buffers = int(config.int_of(p, "browser.frame.swap_buffers")),
 		drag_probe = config.bool_of(p, "browser.frame.drag_probe"),
 		latency_probe = config.bool_of(p, "browser.frame.latency_probe") || os.get_env("WREN_LATENCY", context.temp_allocator) == "1",
 	}
@@ -156,9 +158,6 @@ Pacer :: struct {
 // What the windows' pacers share: the preferences and the timer of timed frames (App.pacing).
 Pacing :: struct {
 	cfg:   Pacer_Settings,
-	watch: int,
-	watch_present: int,   // the standard rendering.present
-	watch_rate:    int,   // the standard rendering.frame_rate
 	timer: rawptr,   // the timing of timed frames (a high-resolution waitable timer on Windows; none elsewhere)
 	waiting: bool,   // atomic: a frame waits for its slot on the timer and runs the loop's tasks as they come (pacer_slot_wait)
 }
@@ -182,27 +181,20 @@ frame_seconds :: proc(app: ^App) -> f32 {
 frame_now_ms :: proc() -> f64 { return the_app != nil ? pacer_of(the_app).frame_ms : 0 }
 
 pacer_init :: proc(app: ^App) {
-	app.pacing.cfg = pacer_settings_from_prefs(&app.prefs)
 	render.set_latency_probe(&app.r, app.pacing.cfg.latency_probe)
 	app.pacing.timer = pacer_timer_create()   // pacing_timer_<os>.odin: a high-resolution waitable timer on Windows, else none
-	changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
-		app := (^App)(user)
-		app.pacing.cfg = pacer_settings_from_prefs(p)
-		render.set_latency_probe(&app.r, app.pacing.cfg.latency_probe)
-		for w in app.windows { w.pacer.display.serial = 0 }   // plan again, every window
-		active_window(app).pacer.display.serial = 0
-		request_frames(app, 2)
-	}
-	app.pacing.watch = config.watch(&app.prefs, "browser.frame.", changed, app)
-	app.pacing.watch_present = config.watch(&app.prefs, "rendering.present", changed, app)
-	app.pacing.watch_rate = config.watch(&app.prefs, FRAME_RATE_PREF, changed, app)
 	pacer_update(app)
 }
 
+pacer_on_pref :: proc(app: ^App) {
+	if .Renderer not_in app.made { return }
+	render.set_latency_probe(&app.r, app.pacing.cfg.latency_probe)
+	for w in app.windows { w.pacer.display.serial = 0 }   // plan again, every window
+	active_window(app).pacer.display.serial = 0
+	request_frames(app, 2)
+}
+
 pacer_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, app.pacing.watch)
-	config.unwatch(&app.prefs, app.pacing.watch_present)
-	config.unwatch(&app.prefs, app.pacing.watch_rate)
 	pacer_timer_destroy(app.pacing.timer)
 	app.pacing = {}
 }

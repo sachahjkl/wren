@@ -69,25 +69,28 @@ effects_settings_from_prefs :: proc(p: ^config.Prefs) -> Effects_Settings {
 
 // Shell start-up: the effect preferences, applied to the renderer and followed.
 effects_init :: proc(app: ^App) {
-	app.effects_settings = effects_settings_from_prefs(&app.prefs)
+	config.bind(&app.prefs, "paint.effects.", &app.effects_settings, effects_settings_from_prefs, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
+		a := (^App)(user)
+		render.set_blur_sigma_limit(&a.r, a.effects_settings.blur_sigma_limit)
+	}, user = app)
 	render.set_blur_sigma_limit(&app.r, app.effects_settings.blur_sigma_limit)
-	app.fx_settings = fx_settings_from_prefs(&app.prefs)
+	config.bind(&app.prefs, "paint.effects.", &app.fx_settings, fx_settings_from_prefs, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
+		fx_settings_apply((^App)(user))
+	}, user = app)
 	fx_settings_apply(app)
 	planes_init(app)
-	changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
+	config.watch(&app.prefs, "rendering.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		a := (^App)(user)
 		a.effects_settings = effects_settings_from_prefs(p)
 		render.set_blur_sigma_limit(&a.r, a.effects_settings.blur_sigma_limit)
 		a.fx_settings = fx_settings_from_prefs(p)
 		fx_settings_apply(a)
-	}
-	app.watches[.Effects] = config.watch(&app.prefs, "paint.effects.", changed, app)
-	app.watches[.Effects_Rendering] = config.watch(&app.prefs, "rendering.", changed, app)   // (the standard blur limit and filter precision)
+	}, app)   // (the standard blur limit and filter precision)
 	// kept text shadows were rasterized with the text settings of their time
-	app.watches[.Effects_Font] = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		draw.layer_cache_clear(&(^App)(user).dc)
 	}, app)
-	app.watches[.Effects_Text] = config.watch(&app.prefs, "appearance.text.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	config.watch(&app.prefs, "appearance.text.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		draw.layer_cache_clear(&(^App)(user).dc)
 	}, app)
 }

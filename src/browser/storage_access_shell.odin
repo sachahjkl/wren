@@ -8,7 +8,6 @@ import "core:fmt"
 import "core:strings"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
-import config "toolkit:config"
 import i18n "toolkit:i18n"
 import "wb:page"
 
@@ -27,7 +26,7 @@ storage_access_shell_destroy :: proc(app: ^App) {
 @(private = "file")
 storage_access_shell_ask :: proc(user: rawptr, p: ^page.Page, req: ^page.Storage_Access_Ask) {
 	app := (^App)(user)
-	switch config.string_of(&app.prefs, "browser.dialogs.test_answer") {
+	switch app.cfg.dialogs_test_answer {
 	case "": append(&app.sa_queue, req)
 	case "cancel": page.storage_access_done(req, false)
 	case: page.storage_access_done(req, true)

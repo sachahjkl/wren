@@ -136,7 +136,7 @@ shell_shown_set :: proc(app: ^App, t: ^Tab, painting := false) -> (sh: Shown) {
 // A chrome frame may lay out what its animations change: a whole pass of the page is cheap enough to pay in a frame, and it has not been too long lately.
 @(private = "file")
 shell_shown_lays_out :: proc(app: ^App, t: ^Tab) -> bool {
-	limit := config.float_of(&app.prefs, "browser.shell.shown_layout_max_ms")
+	limit := app.chrome_frames.cfg.shown_layout_max_ms
 	if limit <= 0 || t.full_layout_ms <= 0 || t.full_layout_ms > limit { return false }
 	return t.shown.page != t.page || t.shown.ms <= limit
 }

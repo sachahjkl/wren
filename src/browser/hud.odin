@@ -249,7 +249,6 @@ Hud_Numbers :: struct {
 Hud :: struct {
 	cfg:          Hud_Settings,
 	cfg_serial:   u64,                 // bumped when cfg is read again (what the status bar's cache is keyed by: status_bar.odin)
-	watch:        int,
 	history:      ui.Frame_History,   // series = the CPU phases (stats); the GPU time is drawn on top (v[GPU])
 	details:      []Frame_Detail,      // indexed by serial % len
 	serial:       u64,
@@ -290,20 +289,24 @@ hud_displayed :: proc(d: render.Displayed_Frame) {
 }
 
 hud_init :: proc(app: ^App) {
-	app.hud.cfg = hud_settings_from_prefs(&app.prefs)
-	hud_resize(app)
-	app.hud.gpu_applied = -1
-	app.hud.watch = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		if !strings.has_prefix(name, "browser.status_bar.") && !strings.has_prefix(name, "browser.title.") { return }
-		app := (^App)(user)
-		hud_settings_destroy(&app.hud.cfg)
-		app.hud.cfg = hud_settings_from_prefs(p)
+	hud_applied :: proc(app: ^App) {
 		app.hud.cfg_serial += 1
 		hud_resize(app)
 		app.hud.nums.at_ms = 0   // shows the change at the next frame
 		for w in app.windows { w.title_ms = 0 }   // (each window's title too)
 		request_frames(app, 2)
+	}
+	config.bind(&app.prefs, "browser.status_bar.", &app.hud.cfg, hud_settings_from_prefs, destroy = hud_settings_destroy, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
+		hud_applied((^App)(user))
+	}, user = app)
+	config.watch(&app.prefs, "browser.title.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		app := (^App)(user)
+		hud_settings_destroy(&app.hud.cfg)
+		app.hud.cfg = hud_settings_from_prefs(p)
+		hud_applied(app)
 	}, app)
+	hud_resize(app)
+	app.hud.gpu_applied = -1
 }
 
 @(private = "file")
@@ -323,7 +326,6 @@ hud_resize :: proc(app: ^App) {
 
 hud_destroy :: proc(app: ^App) {
 	if app.hud.settle != base.NIL_HANDLE { host.clear_timer(&app.loop, app.hud.settle); app.hud.settle = base.NIL_HANDLE }
-	config.unwatch(&app.prefs, app.hud.watch)
 	hud_settings_destroy(&app.hud.cfg)
 	ui.history_destroy(&app.hud.history)
 	delete(app.hud.details)

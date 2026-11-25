@@ -15,8 +15,30 @@ OS_SETTINGS_PREFS := [?]config.Def{
 
 register_os_settings_prefs :: proc(p: ^config.Prefs) { config.register(p, OS_SETTINGS_PREFS[:]) }
 
+Os_Anim_Mode :: enum u8 { System, On, Off }
+
+Os_Anim_Settings :: struct {
+	mode:       Os_Anim_Mode,
+	refresh_ms: i64,
+}
+
+os_anim_settings_from_prefs :: proc(p: ^config.Prefs) -> Os_Anim_Settings {
+	mode := Os_Anim_Mode.System
+	if config.ref_of(p, "appearance.animations") != config.NO_REF {
+		switch config.string_of(p, "appearance.animations") {
+		case "on":  mode = .On
+		case "off": mode = .Off
+		}
+	}
+	return {
+		mode = mode,
+		refresh_ms = config.int_of(p, "browser.ui.os_settings_refresh_ms"),
+	}
+}
+
 // The system's animation setting as last read (App.os_anim).
 Os_Anim :: struct {
+	cfg:   Os_Anim_Settings,
 	value: bool,
 	known: bool,
 	at:    time.Tick,
@@ -25,11 +47,12 @@ Os_Anim :: struct {
 // Whether the interface animates: the standard appearance.animations, and for `system` platform.os_animations_enabled, at
 // most browser.ui.os_settings_refresh_ms old.
 os_animations_enabled :: proc(app: ^App) -> bool {
-	switch config.string_of(&app.prefs, "appearance.animations") {
-	case "on": return true
-	case "off": return false
+	switch app.os_anim.cfg.mode {
+	case .On:  return true
+	case .Off: return false
+	case .System:
 	}
-	every := config.int_of(&app.prefs, "browser.ui.os_settings_refresh_ms")
+	every := app.os_anim.cfg.refresh_ms
 	if !app.os_anim.known || every <= 0 || time.duration_milliseconds(time.tick_since(app.os_anim.at)) >= f64(every) {
 		app.os_anim.value = platform.os_animations_enabled()
 		app.os_anim.known = true

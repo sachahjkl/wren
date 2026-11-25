@@ -42,6 +42,24 @@ register_dnd_prefs :: proc(p: ^config.Prefs) {
 	register_touch_prefs(p)                  // touch_shell.odin
 }
 
+Dnd_Settings :: struct {
+	src_page_events: bool,
+	open_files:      bool,
+	open_links:      bool,
+	image_max_px:    int,
+	image_opacity:   f32,
+}
+
+dnd_settings_from_prefs :: proc(p: ^config.Prefs) -> Dnd_Settings {
+	return {
+		src_page_events = config.bool_of(p, "browser.dnd.src_page_events"),
+		open_files = config.bool_of(p, "browser.drop.open_files"),
+		open_links = config.bool_of(p, "browser.drop.open_links"),
+		image_max_px = int(config.int_of(p, "browser.dnd.image_max_px")),
+		image_opacity = f32(config.float_of(p, "browser.dnd.image_opacity")),
+	}
+}
+
 // A press that may become a drag (Pointer_Gesture.candidate).
 Drag_Candidate :: struct {
 	source: base.Handle,
@@ -67,6 +85,7 @@ Page_Drag :: struct {
 
 // Drags of the system over a window.
 Dnd_Shell :: struct {
+	cfg:         Dnd_Settings,
 	external:    bool,
 	ext_page:    ^page.Page,
 	over_chrome: bool,
@@ -93,7 +112,7 @@ dnd_handoff_pending :: proc(app: ^App) -> bool {
 }
 
 
-dnd_page_events :: proc(app: ^App) -> bool { return config.bool_of(&app.prefs, "browser.dnd.src_page_events") }
+dnd_page_events :: proc(app: ^App) -> bool { return app.dnd.cfg.src_page_events }
 
 // Start-up (local_paths.odin's drop_files_init): the window becomes a drop target, unless elevated.
 dnd_init :: proc(app: ^App) {
@@ -584,8 +603,8 @@ dnd_external :: proc(app: ^App, ev: platform.Event) {
 @(private = "file")
 default_drop_allowed :: proc(app: ^App, d: ^platform.Drag_Data) -> bool {
 	if d == nil { return false }
-	if len(d.files) > 0 { return config.bool_of(&app.prefs, "browser.drop.open_files") }
-	return config.bool_of(&app.prefs, "browser.drop.open_links")
+	if len(d.files) > 0 { return app.dnd.cfg.open_files }
+	return app.dnd.cfg.open_links
 }
 
 // What the browser does with a drop no page took: files open (the first here, the others in new tabs), a link loads.

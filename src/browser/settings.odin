@@ -37,15 +37,29 @@ Settings :: struct {
 	persist_profile:   bool,
 	layout_band_px:    f32,
 	blocking_threads:  int,
-	// read at every frame: kept here, read again on each change (apply_prefs), never looked up by name per frame
-	loaded:              bool,   // made from the preferences (an App of a test has none: its zero value)
-	partial_redraw:      bool,   // rendering.partial_redraw (a standard setting)
-	bookmarks_bar:       bool,   // browser.bookmarks.bar (bookmarks_bar.odin)
-	tabs_tree:           bool,   // browser.tabs.tree (tab_tree.odin, tab_sidebar_list.odin)
-	audio_indicator:     bool,   // browser.tabs.audio_indicator (tab_sound.odin)
-	audio_hold_ms:       f64,    // browser.tabs.audio_hold_ms
-	page_thread:         bool,   // browser.shell.page_thread (page_thread.odin)
-	page_thread_min_ms:  f64,    // browser.shell.page_thread_min_ms
+	// read at every frame: kept here, bound via config.bind, never looked up by name per frame
+	loaded:                   bool,   // made from the preferences (an App of a test has none: its zero value)
+	partial_redraw:           bool,   // rendering.partial_redraw (a standard setting)
+	bookmarks_bar:            bool,   // browser.bookmarks.bar (bookmarks_bar.odin)
+	tabs_tree:                bool,   // browser.tabs.tree (tab_tree.odin, tab_sidebar_list.odin)
+	audio_indicator:          bool,   // browser.tabs.audio_indicator (tab_sound.odin)
+	audio_hold_ms:            f64,    // browser.tabs.audio_hold_ms
+	page_thread:              bool,   // browser.shell.page_thread (page_thread.odin)
+	page_thread_min_ms:       f64,    // browser.shell.page_thread_min_ms
+	page_thread_stack_mb:     int,    // browser.shell.page_thread_stack_mb
+	shutdown_warn_ms:         int,    // browser.shell.shutdown_warn_ms
+	shutdown_force_ms:        int,    // browser.shell.shutdown_force_ms
+	shutdown_surface_wait_ms: int,    // browser.shell.shutdown_surface_wait_ms
+	dialogs_test_answer:      string, // owned: browser.dialogs.test_answer
+	newtab_focus_address:     bool,   // browser.newtab.focus_address
+	back_forward_buttons:     bool,   // browser.mouse.back_forward_buttons
+	single_instance:          bool,   // browser.single_instance
+	notifications_enabled:    bool,   // browser.notifications.enabled
+	print_notice:             bool,   // browser.print.notice
+	print_notice_interval_ms: f64,    // browser.print.notice_interval_ms
+	chrome_zoom:              f32,    // appearance.zoom (1 when unset)
+	wasm_compiler:            string, // owned: wasm.wasmtime.compiler
+	js_enabled:               bool,   // javascript.enabled
 }
 
 PREFS := [?]config.Def{
@@ -203,6 +217,15 @@ ui_scale_of :: proc(app: ^App, of: ^platform.Window = nil) -> f32 {
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
+	zoom := f32(1)
+	if config.ref_of(p, "appearance.zoom") != config.NO_REF {
+		zoom = f32(config.float_of(p, "appearance.zoom"))
+	}
+	wasm_compiler := ""
+	if config.ref_of(p, "wasm.wasmtime.compiler") != config.NO_REF {
+		wasm_compiler = strings.clone(config.string_of(p, "wasm.wasmtime.compiler"))
+	}
+	js_enabled := config.ref_of(p, "javascript.enabled") != config.NO_REF ? config.bool_of(p, "javascript.enabled") : true
 	return Settings{
 		console_max_lines = int(config.int_of(p, "browser.console.max_lines")),
 		show_console = config.bool_of(p, "browser.console.visible"),
@@ -225,12 +248,28 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		audio_hold_ms = f64(config.int_of(p, "browser.tabs.audio_hold_ms")),
 		page_thread = config.bool_of(p, "browser.shell.page_thread"),
 		page_thread_min_ms = config.float_of(p, "browser.shell.page_thread_min_ms"),
+		page_thread_stack_mb = int(config.int_of(p, "browser.shell.page_thread_stack_mb")),
+		shutdown_warn_ms = int(config.int_of(p, "browser.shell.shutdown_warn_ms")),
+		shutdown_force_ms = int(config.int_of(p, "browser.shell.shutdown_force_ms")),
+		shutdown_surface_wait_ms = int(config.int_of(p, "browser.shell.shutdown_surface_wait_ms")),
+		dialogs_test_answer = strings.clone(config.string_of(p, "browser.dialogs.test_answer")),
+		newtab_focus_address = config.bool_of(p, "browser.newtab.focus_address"),
+		back_forward_buttons = config.bool_of(p, "browser.mouse.back_forward_buttons"),
+		single_instance = config.bool_of(p, "browser.single_instance"),
+		notifications_enabled = config.bool_of(p, "browser.notifications.enabled"),
+		print_notice = config.bool_of(p, "browser.print.notice"),
+		print_notice_interval_ms = f64(config.int_of(p, "browser.print.notice_interval_ms")),
+		chrome_zoom = zoom,
+		wasm_compiler = wasm_compiler,
+		js_enabled = js_enabled,
 	}
 }
 
 // What settings_from_prefs owns.
 settings_destroy :: proc(s: ^Settings) {
 	delete(s.homepage)
+	delete(s.dialogs_test_answer)
+	delete(s.wasm_compiler)
 	prefs_page.appearance_destroy(&s.look)
-	s.homepage = ""
+	s^ = {}
 }

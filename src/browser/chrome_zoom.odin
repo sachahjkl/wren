@@ -11,14 +11,12 @@ import "core:fmt"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
-import config "toolkit:config"
 
 @(private = "file") CHROME_ZOOM_PREF :: "appearance.zoom"
 @(private = "file") CHROME_ZOOM_FRAMES :: 3   // a change of scale settles in a few frames (layout, then what follows its size)
 
 chrome_zoom_of :: proc(app: ^App) -> f32 {
-	if CHROME_ZOOM_PREF not_in app.prefs.index { return 1 }   // (an App of a test, without preferences)
-	return f32(config.float_of(&app.prefs, CHROME_ZOOM_PREF))
+	return app.cfg.chrome_zoom > 0 ? app.cfg.chrome_zoom : 1
 }
 
 // dir: 1 larger, -1 smaller, 0 back to 100 %.

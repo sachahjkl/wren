@@ -20,7 +20,6 @@ import "core:strings"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
-import config "toolkit:config"
 import desktop "toolkit:desktop"
 import process "toolkit:process"
 import prefs_page "toolkit:prefs_page"
@@ -57,13 +56,12 @@ setup_config :: proc(app: ^App) -> setup.Setup_Options {
 // reads both). Before the modal opens and before the Installation page builds (its controller starts there).
 setup_follow_prefs :: proc(app: ^App) {
 	if app.install.dialog.open || app.install.dialog.job != nil { return }
-	p := &app.prefs
-	app.stp.choices[Setup_Choice.Add_To_Path] = {label = "Add Wren to PATH", on = config.bool_of(p, "browser.desktop_integration.add_to_path")}
-	app.stp.choices[Setup_Choice.Register_Browser] = {label = "Register as a browser", on = config.bool_of(p, "browser.desktop_integration.register_browser")}
+	app.stp.choices[Setup_Choice.Add_To_Path] = {label = "Add Wren to PATH", on = app.desktop_cfg.add_to_path}
+	app.stp.choices[Setup_Choice.Register_Browser] = {label = "Register as a browser", on = app.desktop_cfg.register_browser}
 	when UPDATES_SELF {
-		app.stp.choices[Setup_Choice.Update_By_Itself] = {label = "Update by itself", on = config.bool_of(p, prefs_page.UPDATE_AUTO_PREF)}
+		app.stp.choices[Setup_Choice.Update_By_Itself] = {label = "Update by itself", on = app.desktop_cfg.update_auto}
 	}
-	types := config.string_of(p, "browser.desktop_integration.file_types")
+	types := app.desktop_cfg.file_types
 	if types != app.stp.file_types {
 		delete(app.stp.file_types)
 		app.stp.file_types = strings.clone(types)
@@ -178,7 +176,7 @@ portable_profile_dir :: proc() -> string {
 setup_startup :: proc(app: ^App, profile_explicit: bool, force: bool) {
 	if !desktop.supported() { return }
 	prefs_page.install_init(&app.install, &app.prefs, setup_config(app), &app.announcer)   // (install_follow says there when the desktop refuses general.menu or general.autostart)
-	offer := config.bool_of(&app.prefs, "browser.desktop_integration.on_first_run")
+	offer := app.desktop_cfg.on_first_run
 	if v, ok := os.lookup_env("WREN_DESKTOP_INTEGRATION", context.temp_allocator); ok && v == "off" { offer = false }   // src/e2e sets it for every test
 	if desktop_profile_is_disposable(app, profile_explicit) || app.portable || force { offer = false }
 	// (always read: the installed copy deletes what an update replaced, and the updater learns which copy runs)

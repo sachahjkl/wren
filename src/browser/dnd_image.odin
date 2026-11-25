@@ -81,10 +81,10 @@ dnd_image_begin :: proc(app: ^App, t: ^Tab, p: ^page.Page, pointer: [2]f32) {
 	if s == nil { return }
 	window_own(app).dimg.state, window_own(app).dimg.pos, window_own(app).dimg.shown = .Ready, pointer, true
 	scale := page_scale(app)
-	limit := int(config.int_of(&app.prefs, "browser.dnd.image_max_px"))
+	limit := app.dnd.cfg.image_max_px
 	el, off := page.drag_session_image(p)
 	given := el != base.NIL_HANDLE
-	fade := given ? f32(1) : f32(config.float_of(&app.prefs, "browser.dnd.image_opacity"))
+	fade := given ? f32(1) : app.dnd.cfg.image_opacity
 	local := pointer - active_window(app).page_rect.min
 	if !given {
 		if s.kind == .Selection && page.selection_active(p) {
@@ -113,7 +113,7 @@ dnd_image_begin :: proc(app: ^App, t: ^Tab, p: ^page.Page, pointer: [2]f32) {
 	// picture: the dragged element's ghost then, as browsers do)
 	b, ok := element_paint_bounds(app, t, el)
 	if !ok && given && s.source != base.NIL_HANDLE {
-		el, given, fade = s.source, false, f32(config.float_of(&app.prefs, "browser.dnd.image_opacity"))
+		el, given, fade = s.source, false, app.dnd.cfg.image_opacity
 		b, ok = element_paint_bounds(app, t, el)
 	}
 	if !ok { window_own(app).dimg.state = .None; return }
@@ -263,7 +263,7 @@ set_picture :: proc(app: ^App, w: ^Browser_Window, img: platform.Drag_Image, fad
 @(private = "file")
 set_plain_picture :: proc(app: ^App, w: ^Browser_Window) {
 	d := &w.own.dimg
-	limit := int(config.int_of(&app.prefs, "browser.dnd.image_max_px"))
+	limit := app.dnd.cfg.image_max_px
 	size := [2]f32{d.bounds.max.x - d.bounds.min.x, d.bounds.max.y - d.bounds.min.y}
 	if size.x < 1 || size.y < 1 { d.state = .None; window_request(app, w, 2); return }
 	k := min(f32(1), f32(limit) / max(size.x, size.y))
@@ -305,7 +305,7 @@ readback_tick :: proc(data: rawptr) {
 		set_plain_picture(app, w)
 	case .Ready:
 		d.state, d.readback = .Ready, 0
-		set_picture(app, w, platform.Drag_Image{pixels, size, {int(math.round(d.hot.x)), int(math.round(d.hot.y))}}, d.fade, int(config.int_of(&app.prefs, "browser.dnd.image_max_px")))
+		set_picture(app, w, platform.Drag_Image{pixels, size, {int(math.round(d.hot.x)), int(math.round(d.hot.y))}}, d.fade, app.dnd.cfg.image_max_px)
 	}
 }
 

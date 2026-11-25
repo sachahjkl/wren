@@ -154,20 +154,25 @@ NETWORK_PREFS := [?]config.Def{
 network_register_prefs :: proc(p: ^config.Prefs) { config.register(p, NETWORK_PREFS[:]) }
 
 Net_Prefs :: struct {
-	max_entries: int,
-	max_body:    int,     // bytes of one body
-	max_total:   i64,     // bytes of all the bodies of a tab
-	keep_media:  bool,
-	preserve:    bool,
+	max_entries:   int,
+	max_body:      int,     // bytes of one body
+	max_total:     i64,     // bytes of all the bodies of a tab
+	keep_media:    bool,
+	preserve:      bool,
 	disable_cache: bool,
-	waterfall:   bool,
-	profile:     string,   // owned: the id of the speed profile the tabs start from
+	waterfall:     bool,
+	profile:       string,  // owned: the id of the speed profile the tabs start from
+	profiles:      string,  // owned: browser.devtools.network.profiles
+	columns:       string,  // owned: browser.devtools.network.columns
+	sort:          string,  // owned: browser.devtools.network.sort
+	types:         u32,     // browser.devtools.network.types
+	split:         f32,     // browser.devtools.network.split
+	detail_fold:   string,  // owned: browser.devtools.network.detail_fold
+	detail_tab:    string,  // owned: browser.devtools.network.detail_tab
 }
 
-
-network_apply_prefs :: proc(app: ^App, p: ^config.Prefs) {
-	old_profile := app.net_prefs.profile
-	app.net_prefs = {
+devtools_net_settings_from_prefs :: proc(p: ^config.Prefs) -> Net_Prefs {
+	return {
 		max_entries = int(config.int_of(p, "browser.devtools.network.max_entries")),
 		max_body = int(config.int_of(p, "browser.devtools.network.max_body_kb")) * BYTES_PER_KIB,
 		max_total = config.int_of(p, "browser.devtools.network.max_body_mb") * BYTES_PER_MIB,
@@ -175,11 +180,25 @@ network_apply_prefs :: proc(app: ^App, p: ^config.Prefs) {
 		preserve = config.bool_of(p, "browser.devtools.network.preserve"),
 		disable_cache = config.bool_of(p, "browser.devtools.network.disable_cache"),
 		waterfall = config.bool_of(p, "browser.devtools.network.waterfall"),
+		profile = strings.clone(config.string_of(p, "browser.devtools.network.throttle")),
+		profiles = strings.clone(config.string_of(p, "browser.devtools.network.profiles")),
+		columns = strings.clone(config.string_of(p, "browser.devtools.network.columns")),
+		sort = strings.clone(config.string_of(p, "browser.devtools.network.sort")),
+		types = u32(config.int_of(p, "browser.devtools.network.types")),
+		split = f32(config.float_of(p, "browser.devtools.network.split")),
+		detail_fold = strings.clone(config.string_of(p, NET_DETAIL_FOLD_PREF)),
+		detail_tab = strings.clone(config.string_of(p, "browser.devtools.network.detail_tab")),
 	}
-	delete(old_profile)
-	app.net_prefs.profile = strings.clone(config.string_of(p, "browser.devtools.network.throttle"))
-	net_profiles_load(config.string_of(p, "browser.devtools.network.profiles"))
-	network_sync_observer(app)
+}
+
+devtools_net_settings_destroy :: proc(s: ^Net_Prefs) {
+	delete(s.profile)
+	delete(s.profiles)
+	delete(s.columns)
+	delete(s.sort)
+	delete(s.detail_fold)
+	delete(s.detail_tab)
+	s^ = {}
 }
 
 // The loader passes on pieces of bodies only while the panel is open and keeps are allowed.

@@ -36,5 +36,5 @@ appearance_post :: proc(app: ^App) {
 appearance_changed :: proc(data: rawptr) {
 	app := (^App)(data)
 	if !style.set_os_appearance(read_os_appearance()) { return }
-	apply_prefs(app, "browser.appearance")   // derives every setting again (`system` colors) and restyles every page (auto color scheme); nothing of the network
+	if !shell_defer_pref(app, .Page) { page_settings_apply(app) }   // derives page settings again (`system` colors) and restyles every page (auto color scheme); nothing of the network
 }

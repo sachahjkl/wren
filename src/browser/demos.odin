@@ -29,6 +29,24 @@ DEMOS_PREFS := [?]config.Def{
 
 register_demos_prefs :: proc(p: ^config.Prefs) { config.register(p, DEMOS_PREFS[:]) }
 
+Demos_Settings :: struct {
+	path:       string,   // owned
+	server_url: string,   // owned
+}
+
+demos_settings_from_prefs :: proc(p: ^config.Prefs) -> Demos_Settings {
+	return {
+		path = strings.clone(strings.trim_space(config.string_of(p, "browser.demos.path"))),
+		server_url = strings.clone(strings.trim_space(config.string_of(p, "browser.demos.server_url"))),
+	}
+}
+
+demos_settings_destroy :: proc(s: ^Demos_Settings) {
+	delete(s.path)
+	delete(s.server_url)
+	s^ = {}
+}
+
 Demo_Theme :: enum u8 { Css, Layout, Rendering, Text, Images, Wasm, JavaScript, Network, Performance, E2e }
 
 @(private)
@@ -275,7 +293,7 @@ Demos_Source :: enum u8 { Preference, Package, Repository, Server }
 // Where the pages are: a base URL ending in '/', and where it came from.
 demos_base :: proc(app: ^App, allocator := context.temp_allocator) -> (base_url: string, source: Demos_Source) {
 	server := demos_server(app)
-	if p := strings.trim_space(config.string_of(&app.prefs, "browser.demos.path")); p != "" {
+	if p := app.demos_cfg.path; p != "" {
 		if strings.contains(p, "://") { return with_slash(p, allocator), .Preference }
 		return file_url_of_dir(p, allocator), .Preference
 	}
@@ -293,7 +311,7 @@ demos_base :: proc(app: ^App, allocator := context.temp_allocator) -> (base_url:
 
 @(private = "file")
 demos_server :: proc(app: ^App) -> string {
-	s := strings.trim_space(config.string_of(&app.prefs, "browser.demos.server_url"))
+	s := app.demos_cfg.server_url
 	if s == "" { s = "http://127.0.0.1:8765/" }
 	return with_slash(s, context.temp_allocator)
 }

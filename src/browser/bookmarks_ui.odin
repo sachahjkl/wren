@@ -19,7 +19,6 @@ import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
 import lucide "toolkit:lucide"
-import config "toolkit:config"
 import "wb:host"
 import i18n "toolkit:i18n"
 
@@ -454,7 +453,7 @@ bookmarks_file_job :: proc(app: ^App, export: bool) {
 	j := new(File_Job)
 	j.app, j.export = app, export
 	j.owner = active_window(app).win
-	j.test = strings.clone(config.string_of(&app.prefs, "browser.dialogs.test_answer"))
+	j.test = strings.clone(app.cfg.dialogs_test_answer)
 	if export { j.text = strings.clone(bookmarks_serialize(app.bms.items[:], app.bms.toolbar)) }
 	// (a thread of its own, host.run_dialog: the dialog holds it until the user answers)
 	started := host.run_dialog(&app.dialogs, proc(data: rawptr) {

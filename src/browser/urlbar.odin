@@ -120,7 +120,6 @@ Urlbar_View :: struct {
 
 Urlbar :: struct {
 	cfg:          Urlbar_Settings,
-	watch:        int,
 	idx:          Url_Index,
 	query_ms:     f64,                 // time of the last query of the index (measurement)
 	job:          Urlbar_Index_Job,    // a full build of the index on the blocking pool (a large history)
@@ -205,11 +204,9 @@ urlbar_index_adopt :: proc() {
 
 urlbar_init :: proc(app: ^App) {
 	app.ub.app = app
-	app.ub.cfg = urlbar_settings_from_prefs(&app.prefs)
-	app.ub.watch = config.watch(&app.prefs, "browser.urlbar.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		the_app.ub.cfg = urlbar_settings_from_prefs(p)
+	config.bind(&app.prefs, "browser.urlbar.", &app.ub.cfg, urlbar_settings_from_prefs, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
 		urlbar_close(urlbar_view((^App)(user)))
-	}, app)
+	}, user = app)
 }
 
 // The suggestions of the window being framed.
@@ -223,7 +220,6 @@ urlbar_view_destroy :: proc(uv: ^Urlbar_View) {
 }
 
 urlbar_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, app.ub.watch)
 	// a build on the pool: waited for (the pool is still running, so a queued one starts), then freed
 	for sync.atomic_load(&app.ub.job.state) == .Running { time.sleep(time.Millisecond) }
 	if app.ub.job.state == .Built { urlbar_index_adopt() }

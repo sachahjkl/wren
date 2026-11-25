@@ -165,10 +165,10 @@ side_of :: proc(user: rawptr, name: string) -> (u32, bool) {
 
 // The layout of the preference (not when it is the dock's own: its save); a view it does not name joins Styles. `first`: the
 // window's first read, where an old profile's side pane (browser.devtools.elements.sidebar, side_tab) is migrated.
-elements_layout_load :: proc(e: ^Dev_Elements, p: ^config.Prefs, first: bool) {
-	text := config.string_of(p, DEV_ELEMENTS_LAYOUT_PREF)
+elements_layout_load :: proc(e: ^Dev_Elements, cfg: ^Devtools_Settings, p: ^config.Prefs, first: bool) {
+	text := cfg.elements_layout
 	if len(e.layout.nodes) > 0 && ui.dock_format(&e.layout, side_name, nil) == text { return }
-	migrated := first && config.is_default(p, config.ref_of(p, DEV_ELEMENTS_LAYOUT_PREF)) && elements_layout_migrate(e, p)
+	migrated := first && cfg.elements_layout_default && elements_layout_migrate(e, p)
 	if !migrated && !ui.dock_parse(&e.layout, text, side_of, nil) { ui.dock_parse(&e.layout, DEV_ELEMENTS_LAYOUT_DEFAULT, side_of, nil) }
 	for x in Dev_Side { ui.dock_add(&e.layout, u32(x), ui.dock_with(&e.layout, u32(Dev_Side.Styles))) }
 	if migrated { _ = config.set_from_string(p, DEV_ELEMENTS_LAYOUT_PREF, ui.dock_format(&e.layout, side_name, nil), .User) }

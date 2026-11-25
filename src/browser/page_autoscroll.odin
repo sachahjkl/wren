@@ -49,13 +49,10 @@ autoscroll_settings_from_prefs :: proc(p: ^config.Prefs) -> Autoscroll_Settings_
 }
 
 autoscroll_init :: proc(app: ^App) {
-	app.autoscroll_cfg = autoscroll_settings_from_prefs(&app.prefs)
-	app.watches[.Autoscroll] = config.watch(&app.prefs, "scrolling.autoscroll.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		(^App)(user).autoscroll_cfg = autoscroll_settings_from_prefs(p)
-	}, app)
+	config.bind(&app.prefs, "scrolling.autoscroll.", &app.autoscroll_cfg, autoscroll_settings_from_prefs)
 }
 
-autoscroll_shutdown :: proc(app: ^App) { config.unwatch(&app.prefs, app.watches[.Autoscroll]) }
+autoscroll_shutdown :: proc(app: ^App) {}
 
 // The page autoscroll session of one window: the toolkit state, the scroller it drives, and the anchor in window
 // pixels (for the marker). `applied` guards against another scroll stealing the scroller (as smooth_tick does).

@@ -74,7 +74,7 @@ notification_shell_destroy :: proc(app: ^App) {
 @(private = "file")
 note_permission :: proc(user: rawptr, origin: string) -> i32 {
 	app := (^App)(user)
-	if !config.bool_of(&app.prefs, "browser.notifications.enabled") || !platform.notify_supported() { return 2 }
+	if !app.cfg.notifications_enabled || !platform.notify_supported() { return 2 }
 	granted, known := app.notes.decided[origin]
 	if !known { return 0 }
 	return granted ? 1 : 2
@@ -83,7 +83,7 @@ note_permission :: proc(user: rawptr, origin: string) -> i32 {
 @(private = "file")
 note_ask :: proc(user: rawptr, p: ^page.Page, req: ^page.Notification_Ask) {
 	app := (^App)(user)
-	switch config.string_of(&app.prefs, "browser.dialogs.test_answer") {
+	switch app.cfg.dialogs_test_answer {
 	case "": append(&app.notes.asks, req)
 	case "cancel": note_decide(app, req, false)
 	case: note_decide(app, req, true)

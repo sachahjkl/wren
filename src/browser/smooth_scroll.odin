@@ -156,15 +156,13 @@ ARROW_REPEAT_MS :: 50
 AUTOSCROLL_MIN_RANGE :: 0.5
 
 smooth_init :: proc(app: ^App) {
-	app.smooth_cfg = smooth_settings_from_prefs(&app.prefs)
-	// (browser.scroll.smooth.* and the standard scrolling.*: two prefixes, one watch of every change)
-	app.watches[.Smooth_Scroll] = config.watch(&app.prefs, "", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		app := (^App)(user)
-		app.smooth_cfg = smooth_settings_from_prefs(p)
+	config.bind(&app.prefs, "scrolling.", &app.smooth_cfg, smooth_settings_from_prefs)
+	config.watch(&app.prefs, "browser.scroll.smooth.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		(^App)(user).smooth_cfg = smooth_settings_from_prefs(p)
 	}, app)
 }
 
-smooth_shutdown :: proc(app: ^App) { config.unwatch(&app.prefs, app.watches[.Smooth_Scroll]) }
+smooth_shutdown :: proc(app: ^App) {}
 
 smooth_destroy :: proc(s: ^Smooth_Scroll) {
 	delete(s.anims)

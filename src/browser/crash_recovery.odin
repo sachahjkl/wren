@@ -257,10 +257,10 @@ Recovery :: struct {
 
 recovery_limits :: proc(app: ^App) -> Recovery_Limits {
 	return {
-		max_tabs = int(config.int_of(&app.prefs, "browser.session.max_tabs")),
-		max_url_bytes = int(config.int_of(&app.prefs, "browser.session.max_url_bytes")),
-		max_entries = int(config.int_of(&app.prefs, "history.tree.max_nodes")),
-		keep_backups = int(config.int_of(&app.prefs, "browser.session.crash_backups")),
+		max_tabs = app.session_cfg.max_tabs,
+		max_url_bytes = app.session_cfg.max_url_bytes,
+		max_entries = app.session_cfg.max_entries,
+		keep_backups = app.session_cfg.crash_backups,
 	}
 }
 
@@ -268,7 +268,7 @@ recovery_limits :: proc(app: ^App) -> Recovery_Limits {
 // so that a start that ends before it has a window is counted too.
 recovery_start :: proc(app: ^App) {
 	app.recovery = {}
-	if !app.cfg.persist_profile || !config.bool_of(&app.prefs, "browser.session.crash_recovery") { return }
+	if !app.cfg.persist_profile || !app.session_cfg.crash_recovery { return }
 	plan := recovery_plan(app.profile_dir, instance_owns_profile(), marker_process_alive, recovery_limits(app))
 	defer { plan.text = ""; plan.backup = ""; recovery_plan_destroy(&plan) }   // (the strings below are taken)
 	app.recovery.kind, app.recovery.prev = plan.kind, plan.prev
@@ -295,7 +295,7 @@ recovery_open :: proc(app: ^App, rest: []string) -> bool {
 	case .Crashed:
 		if app.recovery.text != "" {
 			l := recovery_limits(app)
-			windows, ok := session_parse_windows(app.recovery.text, l.max_tabs, l.max_url_bytes, context.temp_allocator, l.max_entries, int(config.int_of(&app.prefs, "browser.session.max_windows")))
+			windows, ok := session_parse_windows(app.recovery.text, l.max_tabs, l.max_url_bytes, context.temp_allocator, l.max_entries, app.session_cfg.max_windows)
 			n := 0
 			for w in windows { n += len(w.tabs) }
 			if ok && n > 0 && session_open_windows(app, windows, app.recovery.text) {
@@ -309,7 +309,7 @@ recovery_open :: proc(app: ^App, rest: []string) -> bool {
 	delete(app.recovery.text)
 	app.recovery.text = ""
 	if app.recovery.self.restoring && app.recovery.stable_timer == base.NIL_HANDLE {
-		app.recovery.stable_timer = host.set_timer(&app.loop, f64(config.int_of(&app.prefs, "browser.session.crash_stable_ms")), 0, recovery_stable, app)
+		app.recovery.stable_timer = host.set_timer(&app.loop, f64(app.session_cfg.crash_stable_ms), 0, recovery_stable, app)
 	}
 	if handled && len(rest) > 0 {
 		wnd := active_window(app)   // (the front one: session_open_windows made the others)
@@ -387,7 +387,7 @@ recovery_touch :: proc(app: ^App) {
 	if !app.recovery.active || app.recovery.closing { return }
 	app.recovery.dirty = true
 	if app.recovery.snap_timer != base.NIL_HANDLE { return }
-	app.recovery.snap_timer = host.set_timer(&app.loop, f64(config.int_of(&app.prefs, "browser.session.crash_snapshot_ms")), 0, recovery_fire, app)
+	app.recovery.snap_timer = host.set_timer(&app.loop, f64(app.session_cfg.crash_snapshot_ms), 0, recovery_fire, app)
 }
 
 Snapshot_Job :: struct {
@@ -403,7 +403,7 @@ recovery_fire :: proc(data: rawptr) {
 	host.quiet_note(&app.loop)   // (the disk, not the screen)
 	if !app.recovery.active || app.recovery.closing || !app.recovery.dirty { return }
 	if app.recovery.inflight {   // (the write before this one is not done: the changes wait for it)
-		app.recovery.snap_timer = host.set_timer(&app.loop, f64(config.int_of(&app.prefs, "browser.session.crash_snapshot_ms")), 0, recovery_fire, app)
+		app.recovery.snap_timer = host.set_timer(&app.loop, f64(app.session_cfg.crash_snapshot_ms), 0, recovery_fire, app)
 		return
 	}
 	app.recovery.dirty = false

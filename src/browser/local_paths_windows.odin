@@ -8,7 +8,6 @@ package browser
 import "core:strings"
 import win "core:sys/windows"
 import "toolkit:platform"
-import config "toolkit:config"
 import "wb:fetch"
 import "wb:host"
 import "toolkit:instance"
@@ -106,7 +105,7 @@ drop_files_platform_destroy :: proc(app: ^App) {
 // Whether the shell asks the window for WM_DROPFILES: only when the toolkit drop target is off (an elevated browser) and
 // the preference allows it. Called by drop_files_apply (local_paths.odin) on start-up and when the preference changes.
 drop_files_platform_apply :: proc(app: ^App) {
-	if app.native.drop_hwnd != nil { win.DragAcceptFiles(app.native.drop_hwnd, win.BOOL(config.bool_of(&app.prefs, "browser.drop.open_files") && !platform.drop_target_enabled(active_window(app).win))) }
+	if app.native.drop_hwnd != nil { win.DragAcceptFiles(app.native.drop_hwnd, win.BOOL(app.dnd.cfg.open_files && !platform.drop_target_enabled(active_window(app).win))) }
 }
 
 @(private = "file")
@@ -147,6 +146,6 @@ drop_open :: proc(data: rawptr) {
 	d := (^Dropped)(data)
 	defer dropped_free(d)
 	app := d.app
-	if !config.bool_of(&app.prefs, "browser.drop.open_files") { return }
+	if !app.dnd.cfg.open_files { return }
 	open_dropped_paths(app, d.paths[:])
 }

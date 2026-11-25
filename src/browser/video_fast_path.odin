@@ -50,27 +50,21 @@ Video_Fast_Record :: struct {
 @(private)
 Video_Fast :: struct {
 	mode:    Video_Fast_Mode,
-	watch:   int,
 	records: [dynamic]Video_Fast_Record,
 	overlaid: u64,          // statistics: pictures drawn by the fast path
 }
 
 video_fast_path_init :: proc(app: ^App) {
-	app.vfast.mode = video_fast_mode(&app.prefs)
-	app.vfast.watch = config.watch(&app.prefs, "browser.video.fast_path", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		app := (^App)(user)
-		app.vfast.mode = video_fast_mode(p)
-	}, app)
+	config.bind(&app.prefs, "browser.video.fast_path", &app.vfast.mode, video_fast_settings_from_prefs)
 }
 
 video_fast_path_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, app.vfast.watch)
 	delete(app.vfast.records)
 	app.vfast = {}
 }
 
 @(private = "file")
-video_fast_mode :: proc(p: ^config.Prefs) -> Video_Fast_Mode {
+video_fast_settings_from_prefs :: proc(p: ^config.Prefs) -> Video_Fast_Mode {
 	switch config.string_of(p, "browser.video.fast_path") {
 	case "off": return .Off
 	case "verify": return .Verify

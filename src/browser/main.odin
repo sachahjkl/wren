@@ -169,7 +169,10 @@ App :: struct {
 	page_settings: page.Settings,
 	config_view:   Config_View,
 	settings_view: prefs_page.Page,   // about:settings (settings_page.odin)
-	autosave_timer: base.Handle,
+	autosave_timer:    base.Handle,
+	autosave_armed_ms: int,
+	prefs_deferred:    Pref_Deferred_Set,
+	shell_prefs_bound: bool,
 	profile:  fetch.Profile,
 	loader:   fetch.Loader,
 	storage:  page.Storage_Manager,   // localStorage / sessionStorage of the profile
@@ -203,7 +206,6 @@ App :: struct {
 
 	// What the shell's subsystems keep for the App, the file that owns each named beside it (docs/architecture.md, Where state lives: what
 	// is one App's is not a global, so that several Apps can live in one process)
-	watches:       [Pref_Watch]int,          // the preference watches of the subsystems that follow their preferences
 	cmds:          Command_Registry,         // commands.odin: the commands of the menu, the palette and the shortcuts
 	ghist:         Global_History,           // global_history.odin: the profile's history
 	bms:           Bookmarks,                // bookmarks.odin: the profile's bookmarks
@@ -237,9 +239,14 @@ App :: struct {
 	render_settings: Render_Settings,        // render_settings.odin
 	chrome_cfg:    Chrome_Style_Settings,    // chrome_style.odin
 	ccfg:          Cursor_Settings,          // page_cursor.odin
-	pcs:           Page_Cursor_State,        // page_cursor.odin: its preference watch and log
 	autoscroll_cfg: Autoscroll_Settings_B,   // page_autoscroll.odin
 	smooth_cfg:    Smooth_Settings,          // smooth_scroll.odin
+	session_cfg:   Session_Settings,         // session.odin
+	demos_cfg:     Demos_Settings,           // demos.odin
+	license_cfg:   License_Settings,         // license_shell.odin
+	desktop_cfg:   Desktop_Settings,         // desktop_shell.odin
+	font_cfg:      Font_Generics_Settings,   // font_settings.odin
+	devtools_cfg:  Devtools_Settings,        // devtools.odin
 	net_prefs:     Net_Prefs,                // devtools_net_model.odin
 	vfast:         Video_Fast,               // video_fast_path.odin: what each video drew in the last page frame
 	emoji_applied: string,                   // font_settings.odin: what the font state has: a path (heap), EMOJI_BUILTIN, or "" for none
@@ -272,7 +279,6 @@ App :: struct {
 	frame_views:   map[^page.Page]^Page_View,    // frames_shell.odin: the views of the frames (iframes) of the pages
 	paint_stack:   [dynamic]^page.Page,      // frames_shell.odin: the documents being painted, innermost last
 	os_anim:       Os_Anim,                  // os_settings.odin
-	font_watch:    int,                      // font_settings.odin: the generic families' preference watch
 	look_watch:    Look_Watch,               // appearance_windows.odin: the system's colours, read and watched
 	con_prefs:     Con_Prefs,                // devtools_console_log.odin
 	tcfg:          Tree_Settings,            // history_tree.odin
@@ -323,9 +329,6 @@ App :: struct {
 	frame_log:     Frame_Log,                // frame_log.odin: when the frames were presented (a ring of FRAME_LOG_CAP)
 }
 
-// The preference watches of the App's subsystems (App.watches).
-Pref_Watch :: enum u8 { Render, First_Paint, Planes, Effects, Effects_Font, Effects_Text, Effects_Rendering, History_Tree, History, Devtools, Autoscroll, Chrome_Style, Interaction, Smooth_Scroll }
-
 // The App of this thread: the one whose loop it runs (app_start's thread), or whose page thread it is (page_thread.odin). What reaches
 // the App through it is code that does not take the App yet (a callback of the system, a hook of a package): a thread of its own sees nil.
 @(thread_local)
@@ -360,7 +363,7 @@ tab_open :: proc(app: ^App, address := "", from: ^page.Page = nil, origin := Nav
 tab_open_new :: proc(app: ^App) -> ^Tab {
 	t := tab_open(app)
 	address_sync(app, active_window(app), drop_edit = true)   // (the user asked for a new tab: what was typed is not for it)
-	if config.bool_of(&app.prefs, "browser.newtab.focus_address") { window_ask(app, .Address_Focus) }
+	if app.cfg.newtab_focus_address { window_ask(app, .Address_Focus) }
 	return t
 }
 
@@ -1437,58 +1440,18 @@ autosave :: proc(data: rawptr) {
 // (Re)arms the autosave timer from the current preference.
 arm_autosave :: proc(app: ^App) {
 	if app.autosave_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.autosave_timer); app.autosave_timer = base.NIL_HANDLE }
+	app.autosave_armed_ms = app.cfg.autosave_ms
 	if app.cfg.autosave_ms > 0 {
 		app.autosave_timer = host.set_timer(&app.loop, f64(app.cfg.autosave_ms), f64(app.cfg.autosave_ms), autosave, app)
 	}
 }
 
-// Every setting struct is derived from the registry; when any preference changes they are all refreshed and handed to
-// their subsystems. Preferences marked "restart" are read again at the next start (the subsystem keeps what it opened with).
-// `changed`: the preference written ("" = any): the network, the HTTP cache, the downloads and the touch devices are
-// configured again only for their own (prefs_apply.odin).
-apply_prefs :: proc(app: ^App, changed := "") {
-	groups := pref_groups_of(changed)
-	if .Net in groups { net_apply(app) }
-
-	fetch.settings_destroy(&app.profile.settings)
-	app.profile.settings = fetch.settings_from_prefs(&app.prefs)
-	app.profile.jar.settings = cookies.settings_from_prefs(&app.prefs)
-	if .Http_Cache in groups { http_cache_apply(app); app.prefs_apply_counts[.Http_Cache] += 1 }
-	if .Touch in groups { touch_devices_apply(app) }
-
-	page.settings_destroy(&app.page_settings)
-	app.page_settings = page.settings_from_prefs(&app.prefs)
-	user_stylesheet_sync(app)
-	for tab in tabs_all(app) { if tab.page != nil { page.configure_styles(tab.page) } }
-
-	old_autosave := app.cfg.autosave_ms
-	settings_destroy(&app.cfg)
-	app.cfg = settings_from_prefs(&app.prefs)
-	memory_trim_settings(app, &app.prefs)   // memory_trim.odin
-	app.show_console = app.cfg.show_console
-	if .Downloads in groups { downloads_apply(app); app.prefs_apply_counts[.Downloads] += 1 }
-	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
-	if app.cfg.autosave_ms != old_autosave { arm_autosave(app) }
-	profile_prefs_sync(app)
-	request_frames(app, 3)
-}
-
-// The pages' settings derived again and the pages restyled for the browser's new look (style.set_browser_look), and
-// nothing else: apply_prefs would read every setting of the shell from the preferences again. Not under a page that
-// holds the thread (a chrome frame): its settings are not replaced there; the next full frame does it.
+// The pages' settings derived again and the pages restyled for the browser's new look (style.set_browser_look).
+// Not under a page that holds the thread (a chrome frame): its settings are not replaced there; the next full frame does it.
 pages_follow_look :: proc(app: ^App) {
 	if !app.look_changed || shell_nested() { return }
 	app.look_changed = false
-	page.settings_destroy(&app.page_settings)
-	app.page_settings = page.settings_from_prefs(&app.prefs)
-	user_stylesheet_sync(app)
-	for tab in tabs_all(app) { if tab.page != nil { page.configure_styles(tab.page) } }
-	request_frames(app, 3)
-}
-
-on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) {
-	if shell_defer({kind = .Prefs}) { return }   // (shell_frames.odin: pages' settings are not replaced under a running page)
-	apply_prefs((^App)(user), name)
+	page_settings_apply(app)
 }
 ////////////////////////////////
 // Loop
@@ -1992,11 +1955,11 @@ app_start :: proc(args: []string) -> ^App {
 		// offscreen target the capture reads. The size and the DPI are physical pixels at the emulated scale (window --size /
 		// --dpi, or a remote client's setDeviceMetricsOverride, resize it). The scale is browser.ui.scale (0: no display to
 		// follow, so 1).
-		scale := f32(config.float_of(&app.prefs, "browser.ui.scale"))
+		scale := app.cfg.ui_scale
 		if scale <= 0 { scale = 1 }
 		first_window = platform.open_window_offscreen(APP_NAME, {int(1280 * scale + 0.5), int(800 * scale + 0.5)}, dpi_scale = scale)
 	} else {
-		first_window = platform.open_window(APP_NAME, {1280, 800}, transparent = config.bool_of(&app.prefs, "browser.window.fixed_surface"), integrated_title = !config.bool_of(&app.prefs, prefs_page.SYSTEM_TITLE_PREF))
+		first_window = platform.open_window(APP_NAME, {1280, 800}, transparent = app.wchrome.cfg.fixed_surface, integrated_title = app.wchrome.cfg.integrated)
 	}
 	if first_window == nil { log.error("cannot open the window"); app_start_rollback(app, done, preload); return nil }
 	window_adopt_primary(app, first_window)   // windows.odin: the window the App's per-window fields are about
@@ -2035,7 +1998,7 @@ app_start :: proc(args: []string) -> ^App {
 
 	host.phase("profile_load")
 	profile_load(app)
-	config.watch(&app.prefs, "", on_pref_change, app)
+	prefs_bind_runtime(app)
 	arm_autosave(app)
 	vault_shell_init(app)   // vault_shell.odin: the Vault (off unless vault.enabled; its helper starts only at a login or an unlock)
 
@@ -2064,8 +2027,8 @@ app_start :: proc(args: []string) -> ^App {
 	done += {.Shell_State}
 
 	host.phase("renderer")   // (the device made early, then the swap chain or the offscreen target)
-	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
-	fixed_surface := config.bool_of(&app.prefs, "browser.window.fixed_surface")
+	app.r.swap_buffers = app.pacing.cfg.swap_buffers   // pacing.odin
+	fixed_surface := app.wchrome.cfg.fixed_surface
 	if headless_mode {
 		// no window: the renderer draws into an offscreen target of the window's size. Captures read it (render.capture_*,
 		// on both backends). It resizes with the window (window_resize_offscreen).
@@ -2081,7 +2044,7 @@ app_start :: proc(args: []string) -> ^App {
 		// (browser.window.fixed_surface; render.set_fixed_surface; the developer tools' window does the same)
 		render.set_fixed_surface(&app.r, fixed_size)
 	}
-	render.set_teardown_wait(&app.r, int(config.int_of(&app.prefs, "browser.shell.shutdown_surface_wait_ms")))   // (see the preference: the compositor may be slow to let go of the surface)
+	render.set_teardown_wait(&app.r, app.cfg.shutdown_surface_wait_ms)   // (see the preference: the compositor may be slow to let go of the surface)
 	prof_mark(.Renderer)
 	host.phase("fonts finish")
 	if !fonts_preload_finish(app, preload) { preload.th = nil; log.error("cannot load the UI or icon font"); app_start_rollback(app, done, preload); return nil }
@@ -2162,7 +2125,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	// closed means gone from the screen at once, whatever the teardown below takes (a headless window has no surface anyway)
 	native_hide_all(app)   // shell_native_*.odin
 	windows_shutdown_begin(app)   // windows.odin: the other windows give up their own state
-	host.shutdown_begin(strings.concatenate({app.profile_dir, "/shutdown.log"}, context.temp_allocator), int(config.int_of(&app.prefs, "browser.shell.shutdown_warn_ms")), int(config.int_of(&app.prefs, "browser.shell.shutdown_force_ms")))   // shutdown.odin (host): names what the teardown waits for
+	host.shutdown_begin(strings.concatenate({app.profile_dir, "/shutdown.log"}, context.temp_allocator), app.cfg.shutdown_warn_ms, app.cfg.shutdown_force_ms)   // shutdown.odin (host): names what the teardown waits for
 	host.shutdown_step("remote_stop")
 	cdp_stop(app)      // cdp.odin: the CDP / BiDi WebSocket server and its clients
 	ui_cdp_stop(app)   // ui_cdp.odin: the toolkit's endpoint for the interface

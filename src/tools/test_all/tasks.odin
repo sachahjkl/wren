@@ -131,6 +131,10 @@ task_lint_unicode_case :: proc(t: ^Task_Run) -> bool {
 	return lint_unicode_case(log = t.log)
 }
 
+task_lint_prefs :: proc(t: ^Task_Run) -> bool {
+	return lint_prefs(log = t.log)
+}
+
 // A licence issued with the development pair verifies; an altered one and one of another key do not; keygen refuses a path inside the repository.
 task_license_tool :: proc(t: ^Task_Run) -> bool {
 	LICENSE_FILE :: "build/tmp/license_tool_test.wrenlicense"

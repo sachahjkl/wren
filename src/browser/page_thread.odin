@@ -80,7 +80,7 @@ page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, 
 		return
 	}
 	if app.pt.thread == nil {
-		stack := int(config.int_of(&app.prefs, "browser.shell.page_thread_stack_mb")) << 20
+		stack := (app.cfg.page_thread_stack_mb > 0 ? app.cfg.page_thread_stack_mb : 32) << 20
 		context = base.process_context()
 		app.pt.thread = host.thread_start(page_thread_main, &app.pt, stack, name = "wren-page-layout")
 		if app.pt.thread == nil { layout_job_run(&job); return }

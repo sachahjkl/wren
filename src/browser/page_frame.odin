@@ -10,7 +10,6 @@ package browser
 
 import "core:fmt"
 import "toolkit:draw"
-import config "toolkit:config"
 import "wb:css"
 import lay "wb:layout"
 import "wb:page"
@@ -142,7 +141,7 @@ page_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
 	// (a document changed since the page phase, by the developer tools' edit of a text in the interface's build: the items of its layout show strings that were freed)
 	behind := p.state == .Ready && layout_behind(&t.layout, t.page.doc)
 	if p.frame != app.chrome_frames.frame_no || p.tab != t || p.page != t.page || p.size != size || p.scale != page_scale(app) || behind {
-		if !behind && p.frame == app.chrome_frames.frame_no && p.tab == t && p.page == t.page && p.scale == page_scale(app) && p.state == .Ready && pacer_resizing(app) && page_layout_is_long(app, t) && config.bool_of(&app.prefs, "browser.shell.resize_anchored") {
+		if !behind && p.frame == app.chrome_frames.frame_no && p.tab == t && p.page == t.page && p.scale == page_scale(app) && p.state == .Ready && pacer_resizing(app) && page_layout_is_long(app, t) && app.chrome_frames.cfg.resize_anchored {
 			// only the size changed since the page phase, the window is being resized, and this page's layout is long:
 			// what was laid out is painted at its size, anchored at the top left, never stretched; the next frame lays
 			// it out at the new size (on the page thread, the chrome drawing meanwhile). Not while a panel inside the

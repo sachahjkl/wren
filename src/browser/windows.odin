@@ -33,7 +33,6 @@ import "toolkit:render"
 import prefs_page "toolkit:prefs_page"
 import "toolkit:ui"
 import "wb:base"
-import config "toolkit:config"
 import "wb:host"
 import "wb:page"
 
@@ -493,7 +492,7 @@ window_placement_set :: proc(w: ^Browser_Window, rect: [4]int, maximized: bool) 
 // A new window, empty (the caller puts a tab in it). `size` is in logical pixels; `at` is where its top left goes on the screen
 // (physical pixels), else the system centres it. nil when the system could not make the window or its swap chain.
 window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := true) -> ^Browser_Window {
-	fixed := config.bool_of(&app.prefs, "browser.window.fixed_surface")
+	fixed := app.wchrome.cfg.fixed_surface
 	bw := new(Browser_Window)
 	nw: ^platform.Window
 	if app.headless {
@@ -762,7 +761,7 @@ window_new :: proc(app: ^App) -> ^Browser_Window {
 	t := tab_open(app)   // (in the active window, then taken from it: the window it left shows what it showed)
 	nw := tab_to_new_window(app, t, src, nil, false, true)
 	window_current(app, src)^ = clamp(was, 0, max(len(window_tabs(app, src)) - 1, 0))
-	if nw != nil && config.bool_of(&app.prefs, "browser.newtab.focus_address") { nw.own.asked += {.Address_Focus} }
+	if nw != nil && app.cfg.newtab_focus_address { nw.own.asked += {.Address_Focus} }
 	return nw
 }
 

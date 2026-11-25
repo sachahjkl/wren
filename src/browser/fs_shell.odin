@@ -13,7 +13,6 @@ import "base:runtime"
 import "toolkit:platform"
 import lucide "toolkit:lucide"
 import "toolkit:ui"
-import config "toolkit:config"
 import "wb:host"
 import i18n "toolkit:i18n"
 import "wb:page"
@@ -49,7 +48,7 @@ fs_shell_pick :: proc(user: rawptr, p: ^page.Page, req: ^page.Fs_Pick) {
 	app := (^App)(user)
 	j := new(Pick_Job)
 	j.app, j.req = app, req
-	j.test = strings.clone(config.string_of(&app.prefs, "browser.dialogs.test_answer"))
+	j.test = strings.clone(app.cfg.dialogs_test_answer)
 	d := &j.dialog
 	d.owner = active_window(app).win
 	d.multiple = req.multiple
@@ -117,7 +116,7 @@ pick_done :: proc(data: rawptr) {
 @(private = "file")
 fs_shell_ask :: proc(user: rawptr, p: ^page.Page, req: ^page.Fs_Ask) {
 	app := (^App)(user)
-	switch config.string_of(&app.prefs, "browser.dialogs.test_answer") {
+	switch app.cfg.dialogs_test_answer {
 	case "": append(&app.ask_state.queue, req)
 	case "cancel": page.fs_ask_done(req, false)
 	case: page.fs_ask_done(req, true)

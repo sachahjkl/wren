@@ -343,10 +343,40 @@ Download :: struct {
 	checked_ms: i64,            // when `missing` was last asked for (downloads_check_files)
 }
 
+Download_Settings :: struct {
+	ask:       bool,
+	dir:       string,   // owned
+	max_bytes: int,
+	flush:     int,
+	list_max:  int,
+	suffix:    string,   // owned
+	button:    string,   // owned
+}
+
+download_settings_from_prefs :: proc(p: ^config.Prefs) -> Download_Settings {
+	suffix := config.string_of(p, "browser.download.temp_suffix")
+	return {
+		button = strings.clone(config.string_of(p, "browser.download.button")),
+		ask = config.bool_of(p, "browser.download.ask"),
+		dir = strings.clone(config.string_of(p, "browser.download.directory")),
+		max_bytes = int(config.int_of(p, "browser.download.max_bytes")),
+		flush = int(config.int_of(p, "browser.download.flush_bytes")),
+		list_max = int(config.int_of(p, "browser.download.list_max")),
+		suffix = strings.clone(suffix != "" ? suffix : ".wrenpart"),
+	}
+}
+
+download_settings_destroy :: proc(s: ^Download_Settings) {
+	delete(s.dir)
+	delete(s.suffix)
+	delete(s.button)
+	s^ = {}
+}
+
 Downloads :: struct {
 	list:  [dynamic]^Download,
 	ids:   u64,
-	cfg:   struct { ask: bool, dir: string, max_bytes, flush, list_max: int, suffix: string, button: string },
+	cfg:   Download_Settings,
 	// the applications that open the file of the download whose menu is open (downloads_ui.odin "Open with"): read once
 	// when its menu shows them, not at every frame
 	handlers_for: u64,
@@ -416,16 +446,8 @@ dl_now_ms :: proc() -> i64 { return time.time_to_unix_nano(time.now()) / 1e6 }
 
 @(private = "file")
 download_cfg :: proc(app: ^App) {
-	delete(app.dls.cfg.dir); delete(app.dls.cfg.suffix); delete(app.dls.cfg.button)
-	p := &app.prefs
-	app.dls.cfg.button = strings.clone(config.string_of(p, "browser.download.button"))
-	app.dls.cfg.ask = config.bool_of(p, "browser.download.ask")
-	app.dls.cfg.dir = strings.clone(config.string_of(p, "browser.download.directory"))
-	app.dls.cfg.max_bytes = int(config.int_of(p, "browser.download.max_bytes"))
-	app.dls.cfg.flush = int(config.int_of(p, "browser.download.flush_bytes"))
-	app.dls.cfg.list_max = int(config.int_of(p, "browser.download.list_max"))
-	suffix := config.string_of(p, "browser.download.temp_suffix")
-	app.dls.cfg.suffix = strings.clone(suffix != "" ? suffix : ".wrenpart")
+	download_settings_destroy(&app.dls.cfg)
+	app.dls.cfg = download_settings_from_prefs(&app.prefs)
 }
 
 // The folder downloads go to: the preference, else the system's Downloads folder, else the profile.
@@ -1245,6 +1267,6 @@ downloads_shutdown :: proc(app: ^App) {
 	delete(app.dls.list)
 	host.profile_file_destroy(&app.dls.file)
 	desktop.handlers_destroy(app.dls.handlers, base.process_allocator())
-	delete(app.dls.cfg.dir); delete(app.dls.cfg.suffix); delete(app.dls.cfg.button)
+	download_settings_destroy(&app.dls.cfg)
 	app.dls = {}
 }

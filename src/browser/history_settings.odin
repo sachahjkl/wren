@@ -98,19 +98,16 @@ history_settings_from_prefs :: proc(p: ^config.Prefs) -> History_Settings {
 
 // At start-up, before the first navigation.
 history_settings_init :: proc(app: ^App) {
-	app.hcfg = history_settings_from_prefs(&app.prefs)
-	history_tree_settings_init(app)
-	app.watches[.History] = config.watch(&app.prefs, "history.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	config.bind(&app.prefs, "history.", &app.hcfg, history_settings_from_prefs, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
-		app.hcfg = history_settings_from_prefs(p)
 		bfcache_evict(app)
 		global_history_apply(app)
 		for t in tabs_all(app) { tab_history_limits(app, t) }
-	}, app)
+	}, user = app)
+	history_tree_settings_init(app)
 }
 
 history_settings_shutdown :: proc(app: ^App) {
-	config.unwatch(&app.prefs, app.watches[.History])
 	history_tree_settings_shutdown(app)
 }
 

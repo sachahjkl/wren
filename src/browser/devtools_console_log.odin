@@ -72,8 +72,8 @@ Con_Prefs :: struct {
 
 
 
-console_apply_prefs :: proc(p: ^config.Prefs) {
-	the_app.con_prefs = {
+console_settings_from_prefs :: proc(p: ^config.Prefs) -> Con_Prefs {
+	return {
 		levels = u32(config.int_of(p, "browser.devtools.console.levels")),
 		timestamps = config.bool_of(p, "browser.devtools.console.timestamps"),
 		preserve = config.bool_of(p, "browser.devtools.console.preserve"),

@@ -23,6 +23,37 @@ FONT_PREFS := [?]config.Def{
 
 register_font_prefs :: proc(p: ^config.Prefs) { config.register(p, FONT_PREFS[:]) }
 
+Font_Generics_Settings :: struct {
+	generics_loaded:  bool,
+	web_faces_loaded: bool,
+	emoji:            string,   // owned
+	math:             string,   // owned
+	fangsong:         string,   // owned
+	web_faces_kept:   int,
+}
+
+font_generics_settings_from_prefs :: proc(p: ^config.Prefs) -> Font_Generics_Settings {
+	s := Font_Generics_Settings{web_faces_kept = 64}
+	if config.ref_of(p, "font.family.emoji") != config.NO_REF {
+		s.generics_loaded = true
+		s.emoji = strings.clone(config.string_of(p, "font.family.emoji"))
+		s.math = strings.clone(config.string_of(p, "font.family.math"))
+		s.fangsong = strings.clone(config.string_of(p, "font.family.fangsong"))
+	}
+	if config.ref_of(p, "font.web_faces.kept") != config.NO_REF {
+		s.web_faces_loaded = true
+		s.web_faces_kept = int(config.int_of(p, "font.web_faces.kept"))
+	}
+	return s
+}
+
+font_generics_settings_destroy :: proc(s: ^Font_Generics_Settings) {
+	delete(s.emoji)
+	delete(s.math)
+	delete(s.fangsong)
+	s^ = {}
+}
+
 // The font state's settings at its start: the toolkit's defaults, the page size of the atlas (appearance.text.page_size, which
 // font.init alone reads: standard_watch leaves it to the program) and the emoji engine of the emoji font (emoji_source_apply).
 // Every other text setting reaches the font state through standard_watch, once the first window's interface exists.
@@ -46,11 +77,17 @@ when #exists(EMOJI_FILE) {
 // What Wren's COLR interpreter draws emoji from: the font file appearance.text.emoji_font names, else EMOJI_BUILTIN (the
 // compiled-in font); "" when there is neither, and emoji come from the system's font.
 EMOJI_BUILTIN :: "<built-in>"
-emoji_font_path :: proc(p: ^config.Prefs, allocator := context.temp_allocator) -> string {
+
+@(private = "file")
+font_emoji_settings_from_prefs :: proc(p: ^config.Prefs, allocator := context.temp_allocator) -> string {
 	if config.ref_of(p, "appearance.text.emoji_font") != config.NO_REF {
 		if own := strings.trim_space(config.string_of(p, "appearance.text.emoji_font")); own != "" { return strings.clone(own, allocator) }
 	}
 	return len(emoji_builtin) > 0 ? EMOJI_BUILTIN : ""
+}
+
+emoji_font_path :: proc(p: ^config.Prefs, allocator := context.temp_allocator) -> string {
+	return font_emoji_settings_from_prefs(p, allocator)
 }
 
 // Hands the emoji font to the font state, with the engine that draws it: Wren's COLR interpreter for a font of its own, the
@@ -89,7 +126,7 @@ font_settings_init :: proc(app: ^App) {
 		a := (^App)(user)
 		host.post(&a.loop, proc(data: rawptr) { app := (^App)(data); request_frames(app, 2) }, a, .Input)
 	}, app)
-	app.font_watch = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		a := (^App)(user)
 		font_generics_apply(a)
 		request_frames(a, 2)
@@ -98,7 +135,6 @@ font_settings_init :: proc(app: ^App) {
 
 @(private)
 font_generics_apply :: proc(app: ^App) {
-	if config.ref_of(&app.prefs, "font.family.emoji") == config.NO_REF { return }
-	page_fonts_set_generics(&app.page_render.fonts, config.string_of(&app.prefs, "font.family.emoji"),
-		config.string_of(&app.prefs, "font.family.math"), config.string_of(&app.prefs, "font.family.fangsong"))
+	if !app.font_cfg.generics_loaded { return }
+	page_fonts_set_generics(&app.page_render.fonts, app.font_cfg.emoji, app.font_cfg.math, app.font_cfg.fangsong)
 }

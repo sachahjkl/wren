@@ -96,7 +96,7 @@ net_detail_panel :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, e: ^Net_Entry, fol
 	key := e.id * 0x9e3779b97f4a7c15 + u64(len(e.body)) * 31 + u64(d.pretty ? 1 : 0)
 	if d.cache_key != key { detail_reset(d, e, key) }
 	if d.tab == 0 {
-		pref := config_string(app, "browser.devtools.network.detail_tab")
+		pref := app.net_prefs.detail_tab
 		for p, i in DETAIL_PREFS { if p == pref { d.tab = i } }
 	}
 	// the tab strip

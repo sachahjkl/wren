@@ -16,7 +16,6 @@ import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
-import config "toolkit:config"
 
 // A view's window: its State (the toolkit builds the view in it: ui.views_window_build), its platform window, its
 // swap chain, and the browser window it belongs to.
@@ -60,7 +59,7 @@ view_window_open :: proc(user: rawptr, ask: ui.View_Window_Ask) -> (state: ^ui.S
 	if owner == nil { return }
 	vw := new(View_Window)
 	// (made as a browser window is: browser.window.fixed_surface, the program's decorations or the system's as its owner's)
-	fixed := config.bool_of(&app.prefs, "browser.window.fixed_surface")
+	fixed := app.wchrome.cfg.fixed_surface
 	// (its user is the record itself: the platform window goes before the record, so no call comes after it is freed)
 	on_frame := proc(user: rawptr) { view_window_loop_frame(the_app, (^View_Window)(user)) }
 	w: ^platform.Window

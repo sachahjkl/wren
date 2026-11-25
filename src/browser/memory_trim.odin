@@ -40,8 +40,12 @@ Trim_State :: struct {
 	last:    i64,         // (the loop's clock, ns) the last trim
 }
 
+trim_idle_ms_settings_from_prefs :: proc(p: ^config.Prefs) -> int {
+	return int(config.int_of(p, "browser.memory.trim_idle_ms"))
+}
+
 memory_trim_settings :: proc(app: ^App, p: ^config.Prefs) {
-	app.trim_state.idle_ms = int(config.int_of(p, "browser.memory.trim_idle_ms"))
+	app.trim_state.idle_ms = trim_idle_ms_settings_from_prefs(p)
 	app.trim_state.active = shell_now_ns()
 }
 

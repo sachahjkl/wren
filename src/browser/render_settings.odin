@@ -60,18 +60,20 @@ render_settings_from_prefs :: proc(p: ^config.Prefs) -> Render_Settings {
 // drawn; the theme follows at the next frame (ui.apply_palette).
 @(private)
 render_settings_init :: proc(app: ^App) {
-	render_settings_apply(app, render_settings_from_prefs(&app.prefs))
-	app.watches[.Render] = config.watch(&app.prefs, "render.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	config.bind(&app.prefs, "render.", &app.render_settings, render_settings_from_prefs, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
 		a := (^App)(user)
-		render_settings_apply(a, render_settings_from_prefs(p))
+		render_settings_apply(a, a.render_settings)
 		request_frames(a, 2)
-	}, app)
+	}, user = app)
+	config.bind(&app.prefs, "render.compositor.", &app.compositor_settings, compositor_settings_from_prefs, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
+		request_frames((^App)(user), 2)
+	}, user = app)
+	render_settings_apply(app, app.render_settings)
 }
 
 @(private)
 render_settings_apply :: proc(app: ^App, s: Render_Settings) {
 	app.render_settings = s
 	app.gradient_dither = s.dither
-	app.compositor_settings = compositor_settings_from_prefs(&app.prefs)
 	render.set_resize_slack(&app.r, s.resize_slack)
 }

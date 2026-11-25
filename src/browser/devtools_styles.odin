@@ -212,7 +212,7 @@ styles_refresh :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		return
 	}
 	free_blocks(s)
-	show_ua := config.bool_of(&app.prefs, "browser.devtools.elements.show_ua")
+	show_ua := app.devtools_cfg.show_ua
 	// element.style
 	inl := page.dev_inline_decls(p, e.selected)
 	ikey := uintptr(e.selected) | (1 << 62)
@@ -742,7 +742,7 @@ styles_view_of :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, view: Dev_Side) {
 					begin_decl_edit(s, 0, len(s.blocks[0].decls) - 1, 0)
 				}
 			}
-			ua := dt_btn("###dt_sty_ua", .Eye, tooltip = "Show the browser's own rules", on = config.bool_of(&app.prefs, "browser.devtools.elements.show_ua"))
+			ua := dt_btn("###dt_sty_ua", .Eye, tooltip = "Show the browser's own rules", on = app.devtools_cfg.show_ua)
 			if ua.clicked { dev_toggle_pref(app, "browser.devtools.elements.show_ua"); s.rev += 1 }
 			dt_gap(3)
 		}
@@ -844,12 +844,12 @@ computed_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	if dt_bar("###dt_cmp_bar", app.dtm.bar - dt_px(4)) {
 		dt_gap(3)
 		dt_search("###dt_cmp_filter", &s.filter, "Filter properties", 0, false)
-		all := config.bool_of(&app.prefs, "browser.devtools.elements.computed_all")
+		all := app.devtools_cfg.computed_all
 		if dt_chip("###dt_cmp_all", "Show all", all, "List the properties that have their initial value too").clicked { dev_toggle_pref(app, "browser.devtools.elements.computed_all") }
 		dt_gap(3)
 	}
 	dt_filter_prepare(&s.filter)
-	show_all := config.bool_of(&app.prefs, "browser.devtools.elements.computed_all")
+	show_all := app.devtools_cfg.computed_all
 	rows := make([dynamic]int, 0, 64, context.temp_allocator)
 	for c, i in s.computed {
 		if dt_filter_active(&s.filter) && !dt_filter_match(&s.filter, c[0]) && !dt_filter_match(&s.filter, c[1]) { continue }

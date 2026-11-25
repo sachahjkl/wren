@@ -572,7 +572,7 @@ frame_stats_source :: proc(app: ^App, t: ^Tab) -> (s: Panel_Source) {
 	s.gpu_have, s.gpu_last, s.gpu_cache = app.gpu_steps_state.have, app.gpu_steps_state.last, app.gpu_steps_state.cache
 	s.wasm_modules = t != nil && t.page != nil ? len(t.page.instances) : 0
 	s.wasm_timing = app.hud.cfg.wasm_timing
-	s.wasm_compiler = config.string_of(&app.prefs, "wasm.wasmtime.compiler")
+	s.wasm_compiler = app.cfg.wasm_compiler
 	s.tex = render.texture_memory(&app.r)
 	s.pic_used, s.pic_capacity = draw.retained_bytes(&app.dc)
 	s.images = page.images_stats(t != nil ? t.page : nil)

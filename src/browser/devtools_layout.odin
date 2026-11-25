@@ -38,10 +38,10 @@ dev_panel_of :: proc(user: rawptr, name: string) -> (u32, bool) {
 
 // The layout of the preference (not when it is the dock's own: its save); `first`: the window's first read, where an old
 // profile's drawer is migrated.
-dev_layout_load :: proc(d: ^Devtools, p: ^config.Prefs, first: bool) {
-	text := config.string_of(p, DEV_LAYOUT_PREF)
+dev_layout_load :: proc(d: ^Devtools, cfg: ^Devtools_Settings, p: ^config.Prefs, first: bool) {
+	text := cfg.layout
 	if len(d.layout.nodes) > 0 && ui.dock_format(&d.layout, dev_panel_name, nil) == text { return }
-	if first && config.is_default(p, config.ref_of(p, DEV_LAYOUT_PREF)) && dev_layout_migrate(d, p) { return }
+	if first && cfg.layout_default && dev_layout_migrate(d, p) { return }
 	// (the text is every window's; the panels a window shows are its own: they stay on top of their stacks, its last one too)
 	was := len(d.layout.nodes) > 0
 	if !ui.dock_parse(&d.layout, text, dev_panel_of, nil) { ui.dock_parse(&d.layout, DEV_LAYOUT_DEFAULT, dev_panel_of, nil) }

@@ -95,18 +95,32 @@ cdp_extract_args :: proc(args: []string) -> (port: int, have_port: bool, address
 	return
 }
 
+Cdp_Settings :: struct {
+	enabled:     bool,
+	port:        int,
+	max_clients: int,
+}
+
+cdp_settings_from_prefs :: proc(p: ^config.Prefs) -> Cdp_Settings {
+	return {
+		enabled = config.bool_of(p, "remote.cdp.enabled"),
+		port = int(config.int_of(p, "remote.cdp.port")),
+		max_clients = int(config.int_of(p, "remote.cdp.max_clients")),
+	}
+}
+
 // Starts the CDP channel when asked for. `cli_port` / `have_cli`: --remote-debugging-port. Called with remote_start (the
 // loop and the first tab exist). The address is ignored beyond a warning when it is not loopback: the server binds
 // 127.0.0.1 whatever is asked (a remote bind is a security hazard this build does not offer).
 cdp_start :: proc(app: ^App, cli_port: int, have_cli: bool, cli_address: string) {
 	c := &the_cdp
-	cfg_enabled := config.bool_of(&app.prefs, "remote.cdp.enabled")
-	if !have_cli && !cfg_enabled { return }
+	s := cdp_settings_from_prefs(&app.prefs)
+	if !have_cli && !s.enabled { return }
 	if cli_address != "" && cli_address != "127.0.0.1" && cli_address != "localhost" {
 		tab_log(current_tab(app), .Warn, fmt.tprintf("remote debugging binds 127.0.0.1 only; --remote-debugging-address=%s ignored", cli_address))
 	}
-	port := have_cli ? cli_port : int(config.int_of(app_prefs(app), "remote.cdp.port"))
-	max_clients := int(config.int_of(app_prefs(app), "remote.cdp.max_clients"))
+	port := have_cli ? cli_port : s.port
+	max_clients := s.max_clients
 	c.clients = make(map[u64]^Cdp_Client)
 	if err := remote.tcp_start(&app.loop, port, max_clients, cdp_handle, cdp_closed, nil); err != "" {
 		tab_log(current_tab(app), .Warn, fmt.tprintf("remote debugging: %s", err))
@@ -117,7 +131,7 @@ cdp_start :: proc(app: ^App, cli_port: int, have_cli: bool, cli_address: string)
 	c.active, c.started, c.port = true, true, remote.tcp_port()
 	// the engine that runs the scripts and the operations (wren ctl's) answers the CDP calls too: it works without the pipe
 	if !app.remote.active {
-		app.remote.cfg = remote.settings_from_prefs(app_prefs(app))
+		app.remote.cfg = remote.settings_from_prefs(&app.prefs)
 		app.remote.active = true
 		remote_take_baseline(app)
 	}
@@ -137,9 +151,6 @@ cdp_stop :: proc(app: ^App) {
 
 cdp_running :: proc() -> bool { return the_cdp.active }
 cdp_port :: proc() -> int { return the_cdp.port }
-
-@(private = "file")
-app_prefs :: proc(app: ^App) -> ^config.Prefs { return &app.prefs }
 
 @(private = "file")
 cdp_client_free :: proc(cl: ^Cdp_Client) {

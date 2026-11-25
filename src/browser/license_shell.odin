@@ -30,6 +30,27 @@ LICENSE_PREFS := [?]config.Def{
 
 register_license_prefs :: proc(p: ^config.Prefs) { config.register(p, LICENSE_PREFS[:]) }
 
+License_Settings :: struct {
+	path:        string,   // owned
+	public_key:  string,   // owned
+	support_url: string,   // owned
+}
+
+license_settings_from_prefs :: proc(p: ^config.Prefs) -> License_Settings {
+	return {
+		path = strings.clone(strings.trim_space(config.string_of(p, "browser.license.path"))),
+		public_key = strings.clone(strings.trim_space(config.string_of(p, "browser.license.public_key"))),
+		support_url = strings.clone(strings.trim_space(config.string_of(p, "browser.license.support_url"))),
+	}
+}
+
+license_settings_destroy :: proc(s: ^License_Settings) {
+	delete(s.path)
+	delete(s.public_key)
+	delete(s.support_url)
+	s^ = {}
+}
+
 // An experimental build (wrentool experimental: build.bat with WREN_ACCEPT_DEV_LICENSE_KEY=1) accepts the development pair's licences too, so that
 // the demonstration licence it is handed out with shows its card with no setting. A release never does.
 @(private = "file") ACCEPT_DEV_LICENSE_KEY :: IS_DEV_BUILD || #config(WREN_ACCEPT_DEV_LICENSE_KEY, false)
@@ -42,14 +63,14 @@ EMBEDDED_LICENSE :: #config(WREN_EMBEDDED_LICENSE, "")
 SETTINGS_LICENCE_URL :: SETTINGS_URL + "#" + prefs_page.LICENCE_PAGE
 
 license_support_url :: proc(app: ^App) -> string {
-	u := strings.trim_space(config.string_of(&app.prefs, "browser.license.support_url"))
+	u := app.license_cfg.support_url
 	// only a web page: the link is the one of the page's author, but a pref must not turn it into script or a file
 	return strings.has_prefix(u, "https://") || strings.has_prefix(u, "http://") ? u : SUPPORT_URL
 }
 
 // The file the key is kept in; "" when it is kept in memory only.
 license_path :: proc(app: ^App) -> string {
-	if p := strings.trim_space(config.string_of(&app.prefs, "browser.license.path")); p != "" { return p }
+	if app.license_cfg.path != "" { return app.license_cfg.path }
 	if !app.cfg.persist_profile || app.profile_dir == "" { return "" }
 	return strings.concatenate({app.profile_dir, "/license", license.WREN.file_extension}, context.temp_allocator)
 }
@@ -63,7 +84,7 @@ licence_start :: proc(app: ^App) {
 		store = {
 			product = license.WREN,
 			path = path, memory = path == "",
-			public_key = strings.trim_space(config.string_of(&app.prefs, "browser.license.public_key")),
+			public_key = app.license_cfg.public_key,
 			accept_dev = ACCEPT_DEV_LICENSE_KEY,
 			seed = EMBEDDED_LICENSE,
 		},

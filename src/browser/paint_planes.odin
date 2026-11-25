@@ -78,12 +78,10 @@ plane_settings_from_prefs :: proc(p: ^config.Prefs) -> Plane_Settings {
 }
 
 planes_init :: proc(app: ^App) {
-	app.plane_settings = plane_settings_from_prefs(&app.prefs)
-	app.watches[.Planes] = config.watch(&app.prefs, "paint.planes.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		the_app.plane_settings = plane_settings_from_prefs(p)
+	config.bind(&app.prefs, "paint.planes.", &app.plane_settings, plane_settings_from_prefs, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
 		clear(&plane_mem)
 		draw.layer_cache_clear(&(^App)(user).dc)   // kept planes were rasterized at the old scales
-	}, app)
+	}, user = app)
 }
 
 @(private)

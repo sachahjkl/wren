@@ -311,7 +311,7 @@ search_engines_init :: proc(app: ^App) {
 	path := engines_path(app)
 	if path != "" && engines_load_file(&app.sengines, path) { return }
 	custom, has_custom := config.user_text(&app.prefs, "browser.search.custom_url")
-	migrated := engines_migrate(&app.sengines, config.string_of(&app.prefs, "browser.search.engine"), custom, has_custom)
+	migrated := engines_migrate(&app.sengines, app.ix.search_engine, custom, has_custom)
 	// (a file that is there but not read, another version's, is left alone until the user changes the list)
 	if migrated && path != "" && !os.exists(path) { search_engines_save(app) }
 }

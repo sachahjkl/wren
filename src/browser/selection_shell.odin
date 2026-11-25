@@ -72,17 +72,13 @@ Sel_Preview :: struct {
 
 // Start-up: the preferences of this part of the shell, then follows them.
 interaction_init :: proc(app: ^App) {
-	app.ix = interaction_settings_from_prefs(&app.prefs)
-	search_engines_init(app)
-	app.watches[.Interaction] = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		interaction_settings_destroy(&the_app.ix)
-		the_app.ix = interaction_settings_from_prefs(p)
+	config.bind(&app.prefs, "browser.", &app.ix, interaction_settings_from_prefs, destroy = interaction_settings_destroy, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
 		request_frames((^App)(user), 2)
-	}, app)
+	}, user = app)
+	search_engines_init(app)
 }
 
 interaction_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, app.watches[.Interaction])
 	interaction_settings_destroy(&app.ix)
 	search_engines_destroy(app)
 	find_destroy(find_state(app))

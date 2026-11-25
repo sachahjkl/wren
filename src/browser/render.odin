@@ -37,7 +37,6 @@ Page_Render :: struct {
 	content_user: rawptr,
 	bare:       proc(user: rawptr, doc: ^dom.Document, node: base.Handle) -> bool,   // controls drawn entirely by `content` (no box)
 	replaced:   lay.Replaced_Api,   // natural sizes of images / videos, from whoever decodes them
-	watch_layout, watch_font, watch_text: int,
 	bar:        Bar_Over,   // smooth_scroll.odin: the scroll bar under the pointer
 }
 
@@ -45,22 +44,20 @@ Page_Render :: struct {
 // Shell start-up: the fonts of pages and the layout preferences.
 page_render_init :: proc(app: ^App) {
 	page_fonts_init(&app.page_render.fonts, &app.fonts, app.ui_font)
-	app.page_render.settings = lay.settings_from_prefs(&app.prefs)
+	config.bind(&app.prefs, "layout.", &app.page_render.settings, lay.settings_from_prefs, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
+		for t in active_window((^App)(user)).tabs { t.layout.valid = false }
+	}, user = app)
 	render_settings_init(app)
 	font_settings_init(app)
 	effects_init(app)
-	app.page_render.watch_layout = config.watch(&app.prefs, "layout.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		the_app.page_render.settings = lay.settings_from_prefs(p)
-		for t in active_window((^App)(user)).tabs { t.layout.valid = false }
-	}, app)
-	app.page_render.watch_font = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		page_fonts_forget(&the_app.page_render.fonts)
+	config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		page_fonts_forget(&(^App)(user).page_render.fonts)
 	}, app)
 	// (the text settings are the toolkit's: standard_watch gives them to the font state, the pages' faces are found again; the
 	// system's fallback changes what text measures, so the pages are laid out again)
-	app.page_render.watch_text = config.watch(&app.prefs, "appearance.text.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		page_fonts_forget(&the_app.page_render.fonts)
+	config.watch(&app.prefs, "appearance.text.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		a := (^App)(user)
+		page_fonts_forget(&a.page_render.fonts)
 		if name == "appearance.text.system_fallback" {
 			for w in a.windows { for t in w.tabs { t.layout.valid = false } }
 		}

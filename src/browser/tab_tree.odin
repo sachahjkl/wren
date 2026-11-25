@@ -94,7 +94,7 @@ tree_forget :: proc(tabs: []^Tab, t: ^Tab) {
 
 // A tab a page opened: under the page's tab when the tree is on (`opener`: the page's tab, nil: none).
 tab_tree_opened :: proc(app: ^App, t: ^Tab, opener: ^Tab) {
-	if opener == nil || opener == t || !config.bool_of(&app.prefs, "browser.tabs.tree") { return }
+	if opener == nil || opener == t || !app.cfg.tabs_tree { return }
 	w, _ := window_of_tab(app, t)
 	ow, _ := window_of_tab(app, opener)
 	if w == nil || w != ow { return }
@@ -109,7 +109,7 @@ tab_tree_opened :: proc(app: ^App, t: ^Tab, opener: ^Tab) {
 
 // Whether `t` has children in its window's tree (the tree on).
 tab_tree_has_children :: proc(app: ^App, t: ^Tab) -> bool {
-	if !config.bool_of(&app.prefs, "browser.tabs.tree") { return false }
+	if !app.cfg.tabs_tree { return false }
 	w, _ := window_of_tab(app, t)
 	if w == nil { return false }
 	tabs := window_tabs(app, w)

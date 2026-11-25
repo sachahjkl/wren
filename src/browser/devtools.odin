@@ -82,6 +82,43 @@ register_devtools_prefs :: proc(p: ^config.Prefs) {
 	elements_register_prefs(p)
 }
 
+Devtools_Settings :: struct {
+	visible:                 bool,
+	panel:                   Dev_Panel,
+	font_pt:                 f32,
+	density:                 Dt_Density,
+	layout:                  string,   // owned
+	layout_default:          bool,
+	elements_layout:         string,   // owned
+	elements_layout_default: bool,
+	show_ua:                 bool,
+	computed_all:            bool,
+}
+
+devtools_settings_from_prefs :: proc(p: ^config.Prefs) -> Devtools_Settings {
+	panel := Dev_Panel.Console
+	name := config.string_of(p, "browser.devtools.tab")
+	for n, x in DEV_PANEL_NAMES { if n == name { panel = x } }
+	return {
+		visible = config.bool_of(p, "browser.devtools.visible"),
+		panel = panel,
+		font_pt = f32(config.float_of(p, "browser.devtools.font_size")),
+		density = config.string_of(p, "browser.devtools.density") == "comfortable" ? .Comfortable : .Compact,
+		layout = strings.clone(config.string_of(p, DEV_LAYOUT_PREF)),
+		layout_default = config.is_default(p, config.ref_of(p, DEV_LAYOUT_PREF)),
+		elements_layout = strings.clone(config.string_of(p, DEV_ELEMENTS_LAYOUT_PREF)),
+		elements_layout_default = config.is_default(p, config.ref_of(p, DEV_ELEMENTS_LAYOUT_PREF)),
+		show_ua = config.bool_of(p, "browser.devtools.elements.show_ua"),
+		computed_all = config.bool_of(p, "browser.devtools.elements.computed_all"),
+	}
+}
+
+devtools_settings_destroy :: proc(s: ^Devtools_Settings) {
+	delete(s.layout)
+	delete(s.elements_layout)
+	s^ = {}
+}
+
 // The developer tools of one browser window (Window_Own.devtools): the view "devtools" whose instance is that window's
 // (views.odin), wherever the person put it; they show that window's current tab, go with a tab they show that moves to
 // another window (tab_move), and close with their window.
@@ -123,9 +160,16 @@ dev :: proc() -> ^Devtools {
 devtools_init :: proc(app: ^App) {
 	devtools_view_init(app, dev(), true)
 	if app.cfg.show_console && !dev().visible { dev().visible, dev().panel = true, .Console }   // browser.console.visible: the older way to ask for it
-	app.watches[.Devtools] = config.watch(&app.prefs, "browser.devtools.", proc(user: rawptr, name: string, p: ^config.Prefs) { devtools_pref_changed((^App)(user), name, p) }, app)
-	network_apply_prefs(app, &app.prefs)
-	console_apply_prefs(&app.prefs)
+	config.bind(&app.prefs, "browser.devtools.console.", &app.con_prefs, console_settings_from_prefs)
+	devtools_net_settings_destroy(&app.net_prefs)
+	config.bind(&app.prefs, "browser.devtools.network.", &app.net_prefs, devtools_net_settings_from_prefs, destroy = devtools_net_settings_destroy, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
+		a := (^App)(user)
+		net_profiles_load(a.net_prefs.profiles)
+		network_sync_observer(a)
+	}, user = app)
+	net_profiles_load(app.net_prefs.profiles)
+	network_sync_observer(app)
+	config.watch(&app.prefs, "browser.devtools.", proc(user: rawptr, name: string, p: ^config.Prefs) { devtools_pref_changed((^App)(user), name, p) }, app)
 	console_arm_all(app)
 	app.loader.observer = {user = app, event = net_observe, block = net_blocked, throttle = net_link_for}   // devtools_net_model.odin, devtools_network.odin
 }
@@ -133,22 +177,19 @@ devtools_init :: proc(app: ^App) {
 // The developer tools of a window that opens: their tab and text from the preferences (where they sit is the view's memory);
 // shown only in the first window (`shown`: the preference browser.devtools.visible), closed in the others until asked for there.
 devtools_view_init :: proc(app: ^App, d: ^Devtools, shown: bool) {
-	p := &app.prefs
-	d.visible = shown && config.bool_of(p, "browser.devtools.visible")
-	view_from_prefs(d, p, "")
+	d.visible = shown && app.devtools_cfg.visible
+	view_from_prefs(app, d, "")
 }
 
 @(private = "file")
-view_from_prefs :: proc(d: ^Devtools, p: ^config.Prefs, name: string) {
-	if name == "" || name == "browser.devtools.tab" {
-		panel := config.string_of(p, "browser.devtools.tab")
-		for n, x in DEV_PANEL_NAMES { if n == panel { d.panel = x } }
-	}
-	d.font_pt = f32(config.float_of(p, "browser.devtools.font_size"))
-	d.density = config.string_of(p, "browser.devtools.density") == "comfortable" ? .Comfortable : .Compact
+view_from_prefs :: proc(app: ^App, d: ^Devtools, name: string) {
+	cfg := &app.devtools_cfg
+	if name == "" || name == "browser.devtools.tab" { d.panel = cfg.panel }
+	d.font_pt = cfg.font_pt
+	d.density = cfg.density
 	// the layouts: every window's (the panels' places); the tab shown is of the window it was chosen in
-	if name == "" || name == "-" || name == "browser.devtools.layout" { dev_layout_load(d, p, name == "") }
-	if name == "" || name == "-" || name == "browser.devtools.elements.layout" { elements_layout_load(&d.els, p, name == "") }
+	if name == "" || name == "-" || name == "browser.devtools.layout" { dev_layout_load(d, cfg, &app.prefs, name == "") }
+	if name == "" || name == "-" || name == "browser.devtools.elements.layout" { elements_layout_load(&d.els, cfg, &app.prefs, name == "") }
 	if name == "" || name == "browser.devtools.tab" { ui.dock_activate(&d.layout, u32(d.panel)) }
 }
 
@@ -163,13 +204,11 @@ dev_shows :: proc(d: ^Devtools, p: Dev_Panel) -> bool {
 devtools_pref_changed :: proc(app: ^App, name: string, p: ^config.Prefs) {
 	if name == "browser.devtools.visible" {
 		d := dev()
-		d.visible = config.bool_of(p, name)
+		d.visible = app.devtools_cfg.visible
 		if !d.visible { d.picking = false }
 	}
-	view_from_prefs(dev(), p, name)
-	for w in app.windows { if w != app.active { view_from_prefs(&w.own.devtools, p, "-") } }
-	console_apply_prefs(p)
-	network_apply_prefs(app, p)
+	view_from_prefs(app, dev(), name)
+	for w in app.windows { if w != app.active { view_from_prefs(app, &w.own.devtools, "-") } }
 	console_arm_all(app)   // (the pages describe their console arguments while a panel is open)
 	for w in app.windows { window_request(app, w, 2) }
 }
@@ -193,11 +232,9 @@ devtools_view_destroy :: proc(app: ^App) {
 // keeps for them.
 devtools_destroy :: proc(app: ^App) {
 	devtools_view_destroy(app)
-	config.unwatch(&app.prefs, app.watches[.Devtools])
 	net_media_release(app)
 	net_profiles_destroy()
-	delete(app.net_prefs.profile)
-	app.net_prefs.profile = ""
+	devtools_net_settings_destroy(&app.net_prefs)
 	net_destroy_owner(app)
 }
 
@@ -630,11 +667,6 @@ devtools_inspect :: proc(app: ^App, t: ^Tab, h: base.Handle) {
 	devtools_open(app, .Elements)
 	elements_select(t, h)
 }
-
-// A preference of the registry, read where the panel needs it.
-config_string :: proc(app: ^App, name: string) -> string { return config.string_of(&app.prefs, name) }
-config_int :: proc(app: ^App, name: string) -> i64 { return config.int_of(&app.prefs, name) }
-config_float :: proc(app: ^App, name: string) -> f64 { return config.float_of(&app.prefs, name) }
 
 // A float preference set while a drag goes on (no toast on a refused value).
 set_pref_quiet :: proc(app: ^App, name: string, v: f32) {

@@ -100,6 +100,7 @@ Tab_Settings :: struct {
 	spinner_fps:                      f32,
 	spinner_max_ms:                   f64,
 	title_refresh_ms:                 f64,
+	group_name_max:                   int,
 }
 
 tab_settings_from_prefs :: proc(p: ^config.Prefs) -> Tab_Settings {
@@ -131,6 +132,7 @@ tab_settings_from_prefs :: proc(p: ^config.Prefs) -> Tab_Settings {
 		spinner_fps = f32(config.float_of(p, "browser.tabs.spinner_fps")),
 		spinner_max_ms = config.float_of(p, "browser.tabs.spinner_max_s") * 1000,
 		title_refresh_ms = f64(config.int_of(p, "browser.tabs.title_refresh_ms")),
+		group_name_max = int(config.int_of(p, "browser.tabs.group_name_max")),
 	}
 }
 
@@ -171,7 +173,6 @@ Favicon :: struct {
 
 Favicons :: struct {
 	cfg:      Tab_Settings,
-	watch:    int,
 	entries:  map[string]^Favicon,
 	sites:    map[string]^Favicon_Site,   // favicon_cache.odin: the icon of each site asked for, keys its origin
 	disk:     Favicon_Disk,               // favicon_cache.odin: the reads and writes of the profile's favicons folder
@@ -183,18 +184,11 @@ Favicons :: struct {
 }
 
 favicons_init :: proc(app: ^App) {
-	app.favs.cfg = tab_settings_from_prefs(&app.prefs)
 	app.favs.entries = make(map[string]^Favicon)
 	app.favs.sites = make(map[string]^Favicon_Site)
-	app.favs.watch = config.watch(&app.prefs, "browser.tabs.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		app := (^App)(user)
-		app.favs.cfg = tab_settings_from_prefs(p)
-		request_frames(app, 2)
-	}, app)
 }
 
 favicons_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, app.favs.watch)
 	if app.favs.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.favs.timer) }
 	if app.favs.spin != base.NIL_HANDLE { host.clear_timer(&app.loop, app.favs.spin) }
 	favicon_cache_destroy(app)   // (first: a disk job that ends now can still make an entry)

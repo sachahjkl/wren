@@ -421,19 +421,23 @@ devtools_old_drawer_and_side_pane_become_layouts :: proc(t: ^testing.T) {
 	_ = config.set_from_string(&p, "browser.devtools.elements.sidebar", "0 0 1 below", .User)
 	_ = config.set_from_string(&p, "browser.devtools.elements.side_tab", "computed", .User)
 	register_devtools_prefs(&p)
+	cfg := devtools_settings_from_prefs(&p)
+	defer devtools_settings_destroy(&cfg)
 	d: Devtools
 	defer { ui.dock_destroy(&d.layout); ui.dock_destroy(&d.els.layout) }
-	dev_layout_load(&d, &p, true)
-	elements_layout_load(&d.els, &p, true)
+	dev_layout_load(&d, &cfg, &p, true)
+	elements_layout_load(&d.els, &cfg, &p, true)
 	testing.expect_value(t, config.string_of(&p, DEV_LAYOUT_PREF), "dock1 y0.667([*elements,application,performance,memory] [*console,network])")
 	testing.expect_value(t, config.string_of(&p, DEV_ELEMENTS_LAYOUT_PREF), "dock1 y0.550f([*tree] [styles,*computed,layout,listeners,accessibility])")
 	// a profile with none: the panel as it came, every panel in it
 	q := config.prefs_make()
 	defer config.prefs_destroy(&q)
 	register_devtools_prefs(&q)
+	qcfg := devtools_settings_from_prefs(&q)
+	defer devtools_settings_destroy(&qcfg)
 	e: Devtools
 	defer ui.dock_destroy(&e.layout)
-	dev_layout_load(&e, &q, true)
+	dev_layout_load(&e, &qcfg, &q, true)
 	testing.expect_value(t, ui.dock_format(&e.layout, dev_panel_name, nil), DEV_LAYOUT_DEFAULT)
 	testing.expect(t, config.is_default(&q, config.ref_of(&q, DEV_LAYOUT_PREF)), "nothing saved")
 }

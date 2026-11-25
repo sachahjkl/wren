@@ -127,7 +127,10 @@ art_settings_from_prefs :: proc(p: ^config.Prefs) -> Art_Settings {
 	}
 }
 
-art_settings_destroy :: proc(s: ^Art_Settings) { delete(s.sources) }
+art_settings_destroy :: proc(s: ^Art_Settings) {
+	delete(s.sources)
+	s^ = {}
+}
 
 ////////////////////////////////
 // A cached painting
@@ -175,7 +178,6 @@ Art_Scan :: enum u8 { Not_Yet, Running, Done }
 Art :: struct {
 	app:        ^App,
 	cfg:        Art_Settings,
-	watch:      int,
 	dir:        string,         // the cache folder (owned); "" until art_ensure_dir
 
 	started:    bool,           // the background task is running (started on the first art new tab)
@@ -245,20 +247,17 @@ art_candidate_clone :: proc(c: Art_Candidate) -> Art_Candidate {
 
 art_init :: proc(app: ^App) {
 	app.art.app = app
-	app.art.cfg = art_settings_from_prefs(&app.prefs)
 	app.art.ready = make([dynamic]^Art_Item, base.process_allocator())
 	app.art.recent = make([dynamic]string, base.process_allocator())
 	app.art.candidates = make([dynamic]Art_Candidate, base.process_allocator())
-	app.art.watch = config.watch(&app.prefs, "browser.newtab.art.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		old := the_app.art.cfg
-		the_app.art.cfg = art_settings_from_prefs(p)
-		art_settings_destroy(&old)
+	config.bind(&app.prefs, "browser.newtab.art.", &app.art.cfg, art_settings_from_prefs, destroy = art_settings_destroy, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
+		a := (^App)(user)
 		// turning the option off while it ran stops it at once and lets the next new tab be the plain start page again
-		if !the_app.art.cfg.enabled && the_app.art.started { art_stop() }
-		if the_app.art.started { art_pump() }
+		if !a.art.cfg.enabled && a.art.started { art_stop() }
+		if a.art.started { art_pump() }
 		// the option was just turned on: the first painting is fetched now, not at the next new tab
-		if the_app.art.cfg.enabled && !the_app.art.started && the_app.art.warm_timer == base.NIL_HANDLE { art_warm_up(the_app) }
-	}, app)
+		if a.art.cfg.enabled && !a.art.started && a.art.warm_timer == base.NIL_HANDLE { art_warm_up(a) }
+	}, user = app)
 	// The person turned the art new tab on: the first painting is fetched a moment after the start (the window is up first), so that
 	// the first new tab already has one instead of a gradient that waits for a listing and a download. Off: no request, as always.
 	if app.art.cfg.enabled { art_warm_up(app) }
@@ -278,7 +277,6 @@ art_warm_up :: proc(app: ^App) {
 }
 
 art_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, app.art.watch)
 	art_cancel_io()
 	app.art.started = false   // (what comes back from a worker starts nothing)
 	for app.art.jobs > 0 { host.blocking_settle(&app.blocking) }

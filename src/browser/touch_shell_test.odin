@@ -1,21 +1,79 @@
 package browser
 
 import "core:testing"
+import config "toolkit:config"
 import "toolkit:platform"
+import "wb:fetch"
+import "wb:page"
 import "wb:style"
 
-// A write of a preference of the interface configures nothing of the network again (prefs_apply.odin).
+// A write of a preference of the interface configures nothing of the network, cache, downloads, or touch subsystems (prefs_apply.odin).
 @(test)
 pref_writes_reach_their_subsystem_only :: proc(t: ^testing.T) {
-	test_app(t)
-	testing.expect_value(t, pref_groups_of("browser.tabs.sidebar_width"), Pref_Groups{})
-	testing.expect_value(t, pref_groups_of("appearance.theme"), Pref_Groups{})
-	testing.expect_value(t, pref_groups_of("network.timeout.connect_ms"), Pref_Groups{.Net})
-	testing.expect_value(t, pref_groups_of("network.cache.memory.max_bytes"), Pref_Groups{.Http_Cache})
-	testing.expect_value(t, pref_groups_of("browser.download.directory"), Pref_Groups{.Downloads})
-	testing.expect_value(t, pref_groups_of("browser.touch.expose"), Pref_Groups{.Touch})
-	testing.expect_value(t, pref_groups_of(""), PREF_GROUPS_ALL)
-	testing.expect_value(t, pref_groups_of("browser.appearance"), Pref_Groups{})
+	app := test_app(t)
+	app_prefs_init(app)
+	app_loop_init(app)
+	app.page_settings = page.settings_from_prefs(&app.prefs)
+	defer page.settings_destroy(&app.page_settings)
+	defer fetch.profile_destroy(&app.profile)
+	prefs_bind_runtime(app)
+
+	zero: [Pref_Group]int
+	testing.expect_value(t, app.prefs_apply_counts, zero)
+
+	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.tabs.sidebar_width", "260", .User), config.Set_Error.None)
+	testing.expect_value(t, app.prefs_apply_counts, zero)
+
+	testing.expect_value(t, config.set_from_string(&app.prefs, "appearance.theme", "Ember", .User), config.Set_Error.None)
+	testing.expect_value(t, app.prefs_apply_counts, zero)
+
+	testing.expect_value(t, config.set_from_string(&app.prefs, "network.timeout.connect_ms", "9000", .User), config.Set_Error.None)
+	testing.expect_value(t, app.prefs_apply_counts, #partial [Pref_Group]int{.Net = 1})
+
+	testing.expect_value(t, config.set_from_string(&app.prefs, "network.cache.memory.max_bytes", "67108864", .User), config.Set_Error.None)
+	testing.expect_value(t, app.prefs_apply_counts, #partial [Pref_Group]int{.Net = 1, .Http_Cache = 1})
+
+	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.download.directory", "tmp-dl", .User), config.Set_Error.None)
+	testing.expect_value(t, app.prefs_apply_counts, #partial [Pref_Group]int{.Net = 1, .Http_Cache = 1, .Downloads = 1})
+	testing.expect_value(t, app.dls.cfg.dir, "tmp-dl")
+
+	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.touch.expose", "on", .User), config.Set_Error.None)
+	testing.expect_value(t, app.prefs_apply_counts, [Pref_Group]int{.Net = 1, .Http_Cache = 1, .Downloads = 1, .Touch = 1})
+	testing.expect_value(t, app.tsh.cfg.expose, "on")
+
+	testing.expect_value(t, app.page_settings.webcodecs.enabled, true)
+	testing.expect_value(t, config.set_from_string(&app.prefs, "webcodecs.enabled", "false", .User), config.Set_Error.None)
+	testing.expect_value(t, app.page_settings.webcodecs.enabled, false)
+	testing.expect_value(t, app.prefs_apply_counts, [Pref_Group]int{.Net = 1, .Http_Cache = 1, .Downloads = 1, .Touch = 1})
+}
+
+// While a chrome frame runs under a page (shell_nested), engine preference changes defer instead of mutating live settings.
+@(test)
+pref_writes_defer_while_shell_nested :: proc(t: ^testing.T) {
+	app := test_app(t)
+	app_prefs_init(app)
+	app_loop_init(app)
+	defer page.settings_destroy(&app.page_settings)
+	defer fetch.profile_destroy(&app.profile)
+	defer shell_frames_destroy(app)
+	prefs_bind_runtime(app)
+
+	testing.expect_value(t, app.profile.jar.settings.enabled, true)
+	app.chrome_frames.nested = true
+	testing.expect_value(t, config.set_from_string(&app.prefs, "network.timeout.connect_ms", "8000", .User), config.Set_Error.None)
+	testing.expect_value(t, config.set_from_string(&app.prefs, "cookies.enabled", "false", .User), config.Set_Error.None)
+	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.touch.expose", "off", .User), config.Set_Error.None)
+	testing.expect_value(t, app.prefs_apply_counts, [Pref_Group]int{})
+	testing.expect_value(t, app.profile.jar.settings.enabled, true)
+	testing.expect(t, .Net in app.prefs_deferred && .Fetch in app.prefs_deferred && .Cookies in app.prefs_deferred && .Touch in app.prefs_deferred, "deferred groups must be recorded")
+	testing.expect_value(t, len(app.chrome_frames.actions), 1)
+	testing.expect_value(t, app.chrome_frames.actions[0].kind, Shell_Action_Kind.Prefs)
+
+	app.chrome_frames.nested = false
+	prefs_flush_deferred(app)
+	testing.expect_value(t, app.prefs_deferred, Pref_Deferred_Set{})
+	testing.expect_value(t, app.profile.jar.settings.enabled, false)
+	testing.expect_value(t, app.prefs_apply_counts, #partial [Pref_Group]int{.Net = 1, .Touch = 1})
 }
 
 @(test)

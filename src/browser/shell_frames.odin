@@ -75,11 +75,13 @@ SHELL_FRAME_PREFS := [?]config.Def{
 register_shell_frame_prefs :: proc(p: ^config.Prefs) { config.register(p, SHELL_FRAME_PREFS[:]) }
 
 Shell_Frame_Settings :: struct {
-	preempt:       bool,
-	after_ms:      f64,
-	tick_ms:       int,
-	snapshot:      bool,
-	snapshot_tabs: int,
+	preempt:             bool,
+	after_ms:            f64,
+	tick_ms:             int,
+	snapshot:            bool,
+	snapshot_tabs:       int,
+	resize_anchored:     bool,
+	shown_layout_max_ms: f64,
 }
 
 shell_frame_settings_from_prefs :: proc(p: ^config.Prefs) -> Shell_Frame_Settings {
@@ -89,6 +91,8 @@ shell_frame_settings_from_prefs :: proc(p: ^config.Prefs) -> Shell_Frame_Setting
 		tick_ms = int(config.int_of(p, "browser.shell.preempt_tick_ms")),
 		snapshot = config.bool_of(p, "browser.shell.snapshot"),
 		snapshot_tabs = int(config.int_of(p, "browser.shell.snapshot_tabs")),
+		resize_anchored = config.bool_of(p, "browser.shell.resize_anchored"),
+		shown_layout_max_ms = config.float_of(p, "browser.shell.shown_layout_max_ms"),
 	}
 }
 
@@ -179,7 +183,6 @@ Shell_Action :: struct {
 
 Shell_Frames :: struct {
 	cfg:        Shell_Frame_Settings,
-	watch:      int,
 	phase:      Shell_Phase,
 	phase_start: time.Tick,
 	nested:     bool,            // a chrome frame is being made (under a guest call, a style pass, a layout pass)
@@ -198,15 +201,17 @@ Shell_Frames :: struct {
 	frames:     u64,             // chrome frames made (statistics)
 	captured:   u64,             // pictures kept (statistics)
 	skipped:    u64,             // preemptions that found the screen not ready for a frame
+	started:    bool,            // shell_frames_init ran: preference changes update the preempt hooks
 }
 
 
 shell_frames_init :: proc(app: ^App) {
-	app.chrome_frames.cfg = shell_frame_settings_from_prefs(&app.prefs)
-	app.chrome_frames.watch = config.watch(&app.prefs, "browser.shell.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		the_app.chrome_frames.cfg = shell_frame_settings_from_prefs(p)
-		shell_install_hook((^App)(user))
-	}, app)
+	app.chrome_frames.started = true
+	shell_install_hook(app)
+}
+
+shell_frames_on_pref :: proc(app: ^App) {
+	if !app.chrome_frames.started { return }
 	shell_install_hook(app)
 }
 
@@ -225,7 +230,6 @@ shell_install_hook :: proc(app: ^App) {
 shell_frames_destroy :: proc(app: ^App) {
 	wasm.set_preempt_hook(nil, nil)
 	host.set_parallel_wait_hook(nil, nil, 0)
-	config.unwatch(&app.prefs, app.chrome_frames.watch)
 	shell_snapshots_clear(app)
 	for a in app.chrome_frames.actions { delete(a.text) }
 	delete(app.chrome_frames.actions); delete(app.chrome_frames.deferred); delete(app.chrome_frames.boxes); delete(app.chrome_frames.outer); delete(app.chrome_frames.snaps)
@@ -793,7 +797,7 @@ shell_tab_by_id :: proc(app: ^App, id: u64) -> (^Tab, int) {
 
 @(private = "file")
 shell_run_action :: proc(app: ^App, a: Shell_Action) {
-	if a.kind == .Prefs { apply_prefs(app); return }
+	if a.kind == .Prefs { prefs_flush_deferred(app); return }
 	t, _ := shell_tab_by_id(app, a.tab)
 	if t == nil && a.kind != .Command { return }   // closed meanwhile
 	switch a.kind {

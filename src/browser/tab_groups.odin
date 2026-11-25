@@ -279,7 +279,7 @@ group_close :: proc(app: ^App, w: ^Browser_Window, id: u64) {
 
 group_name_clone :: proc(app: ^App, name: string) -> string {
 	s := strings.trim_space(name)
-	max_chars := int(config.int_of(&app.prefs, "browser.tabs.group_name_max"))
+	max_chars := app.favs.cfg.group_name_max > 0 ? app.favs.cfg.group_name_max : 64
 	n, cut := 0, len(s)
 	for _, b in s {
 		if n == max_chars { cut = b; break }

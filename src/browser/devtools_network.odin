@@ -104,7 +104,7 @@ net_col_default_w :: proc(c: Net_Col) -> f32 {
 @(private = "file")
 net_cols_load :: proc(app: ^App, v: ^Dev_Network) {
 	clear(&v.cols)
-	text := net_pref_string(app, "browser.devtools.network.columns")
+	text := app.net_prefs.columns
 	for part in strings.split(text, ",", context.temp_allocator) {
 		colon := strings.index_byte(part, ':')
 		name, ws := part, ""
@@ -126,19 +126,13 @@ net_cols_load :: proc(app: ^App, v: ^Dev_Network) {
 	if len(v.cols) == 0 { append(&v.cols, Net_Col_Cfg{.Name, 260}, Net_Col_Cfg{.Status, 74}, Net_Col_Cfg{.Size, 76}, Net_Col_Cfg{.Time, 70}) }
 	v.cols_ok = true
 	// the sort
-	sort := net_pref_string(app, "browser.devtools.network.sort")
+	sort := app.net_prefs.sort
 	v.sort_on = false
 	if colon := strings.index_byte(sort, ':'); colon > 0 {
 		for n, c in NET_COL_NAMES { if n == sort[:colon] { v.sort_on, v.sort_col, v.sort_desc = true, c, sort[colon + 1:] == "desc" } }
 	}
-	mask := net_pref_int(app, "browser.devtools.network.types")
-	v.types = u32(mask)
+	v.types = app.net_prefs.types
 }
-
-@(private = "file")
-net_pref_string :: proc(app: ^App, name: string) -> string { return config_string(app, name) }
-@(private = "file")
-net_pref_int :: proc(app: ^App, name: string) -> i64 { return config_int(app, name) }
 
 @(private = "file")
 net_cols_save :: proc(app: ^App, v: ^Dev_Network) {
@@ -403,7 +397,7 @@ network_panel :: proc(app: ^App, t: ^Tab) {
 	net_chips(app, t, v)
 
 	sel := net_entry_of_id(t, v)
-	split := f32(config_float(app, "browser.devtools.network.split"))
+	split := app.net_prefs.split
 	room_w := dev_width()
 	side := room_w >= dt_px(640)
 	menu_key := "###dt_net_menu"
@@ -451,7 +445,7 @@ NET_DETAIL_FOLD_PREF :: "browser.devtools.network.detail_fold"
 net_side_split :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, sel: ^Net_Entry, split, room: f32, menu_key: string) {
 	o := net_side_options(app, v, room)
 	p := ui.Side_Panel{width = 1 - split}
-	p.fold, _ = ui.side_fold_parse(config_string(app, NET_DETAIL_FOLD_PREF))   // (an unknown word: the zero value, open)
+	p.fold, _ = ui.side_fold_parse(app.net_prefs.detail_fold)   // (an unknown word: the zero value, open)
 	was := p
 	w, folded, crossed := ui.side_panel_begin(&p, room, o)
 	handle := dt_px(5)

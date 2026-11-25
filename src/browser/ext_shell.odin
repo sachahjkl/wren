@@ -21,7 +21,6 @@ Ext_Load_Kind :: enum u8 { Startup, Install, Reload }
 
 Ext_Shell :: struct {
 	started:  bool,
-	watch:    int,                          // the preferences' observer (extensions.*)
 	files:    map[string]^host.Profile_File,     // the profile's files of the extensions, by path (owned keys)
 	pending:  [dynamic]^extensions.Load_Result,   // loaded packages waiting for the install prompt's answer
 	notice:   string,                       // owned: what about:extensions says on top (the last result)
@@ -54,7 +53,7 @@ ext_shell_start :: proc(app: ^App) {
 		offscreen_open = ext_offscreen_open, offscreen_close = ext_offscreen_close, idle_seconds = ext_idle_seconds, reload = ext_reload_from_runtime,
 	}, &app.loader, &app.page_settings, &app.storage)
 	app.ext.last_input_ns = host.now_ns(&app.loop)
-	app.ext.watch = config.watch(&app.prefs, "extensions.", ext_prefs_changed, app)
+	config.watch(&app.prefs, "extensions.", ext_prefs_changed, app)
 	if !reg.settings.enabled || dir == "" { return }
 	// the list, read off the loop thread; each listed package is then loaded (ext_load)
 	Job :: struct { app: ^App, path, text: string }
@@ -82,7 +81,6 @@ ext_shell_start :: proc(app: ^App) {
 ext_shell_stop :: proc(app: ^App) {
 	if !app.ext.started { return }
 	app.ext.started = false
-	config.unwatch(&app.prefs, app.ext.watch)
 	ext_popup_close(app)   // ext_popup.odin: its tab is in no window (nothing else frees it)
 	ext_windows_destroy(app)   // ext_window_api.odin: the offscreen documents' tabs (in no window: nothing else frees them)
 	page.ext_router_destroy()

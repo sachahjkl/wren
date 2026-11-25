@@ -97,14 +97,12 @@ register_first_paint_prefs :: proc(p: ^config.Prefs) { config.register(p, FIRST_
 
 
 @(private = "file")
-pref_color :: proc(p: ^config.Prefs, name: string, fallback: css.Color) -> css.Color {
-	vs := css.parse_component_values(config.string_of(p, name), {max_nesting_depth = 32, max_rules = 1}, context.temp_allocator)
-	if cv, ok := css.parse_color(vs, nil); ok && cv.kind == .Rgba { return cv.rgba }
-	return fallback
-}
-
-@(private = "file")
-first_paint_settings_from :: proc(p: ^config.Prefs) -> First_Paint_Settings {
+first_paint_settings_from_prefs :: proc(p: ^config.Prefs) -> First_Paint_Settings {
+	pref_color :: proc(p: ^config.Prefs, name: string, fallback: css.Color) -> css.Color {
+		vs := css.parse_component_values(config.string_of(p, name), {max_nesting_depth = 32, max_rules = 1}, context.temp_allocator)
+		if cv, ok := css.parse_color(vs, nil); ok && cv.kind == .Rgba { return cv.rgba }
+		return fallback
+	}
 	return {
 		enabled = config.bool_of(p, "browser.paint_holding.enabled"),
 		timeout_ms = config.float_of(p, "browser.paint_holding.timeout_ms"),
@@ -120,10 +118,13 @@ first_paint_settings_from :: proc(p: ^config.Prefs) -> First_Paint_Settings {
 }
 
 first_paint_init :: proc(app: ^App) {
-	app.scheme_ui = first_paint_settings_from(&app.prefs)
-	app.watches[.First_Paint] = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		the_app.scheme_ui = first_paint_settings_from(p)
+	config.bind(&app.prefs, "browser.paint_holding.", &app.scheme_ui, first_paint_settings_from_prefs, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
 		request_frames((^App)(user), 2)
+	}, user = app)
+	config.watch(&app.prefs, "browser.scrollbar.dark.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		a := (^App)(user)
+		a.scheme_ui = first_paint_settings_from_prefs(p)
+		request_frames(a, 2)
 	}, app)
 }
 

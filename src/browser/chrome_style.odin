@@ -71,16 +71,12 @@ chrome_style_of :: proc(name: string) -> Chrome_Style {
 machined_on :: proc(app: ^App) -> bool { return app.cfg.look.finish == .Machined }
 
 chrome_style_init :: proc(app: ^App) {
-	app.chrome_cfg = chrome_settings_from_prefs(&app.prefs)
-	app.watches[.Chrome_Style] = config.watch(&app.prefs, "browser.ui.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		app := (^App)(user)
-		app.chrome_cfg = chrome_settings_from_prefs(p)
-		request_frames(app, 3)
-	}, app)
+	config.bind(&app.prefs, "browser.ui.", &app.chrome_cfg, chrome_settings_from_prefs, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
+		request_frames((^App)(user), 3)
+	}, user = app)
 }
 
 chrome_style_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, app.watches[.Chrome_Style])
 	tab_shapes_destroy(&app.shape_cache)
 	app.chrome_cfg = {}
 }

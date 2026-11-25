@@ -60,6 +60,38 @@ SESSION_PREFS := [?]config.Def{
 
 register_session_prefs :: proc(p: ^config.Prefs) { config.register(p, SESSION_PREFS[:]) }
 
+Session_Settings :: struct {
+	restore:             bool,
+	max_tabs:            int,
+	max_windows:         int,
+	max_url_bytes:       int,
+	max_state_bytes:     int,
+	crash_recovery:      bool,
+	crash_backups:       int,
+	crash_stable_ms:     int,
+	crash_snapshot_ms:   int,
+	restore_pinned:      bool,
+	closed_sessions_max: int,
+	max_entries:         int,
+}
+
+session_settings_from_prefs :: proc(p: ^config.Prefs) -> Session_Settings {
+	return {
+		restore = config.bool_of(p, "browser.session.restore"),
+		max_tabs = int(config.int_of(p, "browser.session.max_tabs")),
+		max_windows = int(config.int_of(p, "browser.session.max_windows")),
+		max_url_bytes = int(config.int_of(p, "browser.session.max_url_bytes")),
+		max_state_bytes = int(config.int_of(p, "browser.session.max_state_bytes")),
+		crash_recovery = config.bool_of(p, "browser.session.crash_recovery"),
+		crash_backups = int(config.int_of(p, "browser.session.crash_backups")),
+		crash_stable_ms = int(config.int_of(p, "browser.session.crash_stable_ms")),
+		crash_snapshot_ms = int(config.int_of(p, "browser.session.crash_snapshot_ms")),
+		restore_pinned = config.bool_of(p, "browser.tabs.restore_pinned"),
+		closed_sessions_max = int(config.int_of(p, "browser.tabs.closed_sessions_max")),
+		max_entries = config.ref_of(p, "history.tree.max_nodes") != config.NO_REF ? int(config.int_of(p, "history.tree.max_nodes")) : 500,
+	}
+}
+
 session_path :: proc(app: ^App) -> string { return strings.concatenate({app.profile_dir, "/session.txt"}, context.temp_allocator) }
 
 // One window of a session file: where it was, and its tabs.
@@ -369,12 +401,12 @@ session_window_of :: proc(app: ^App, w: ^Browser_Window) -> Session_Window {
 
 // The text of these windows, within the preferences' limits (temporary allocator).
 session_text_of :: proc(app: ^App, windows: []Session_Window, rects := false) -> string {
-	return session_serialize_windows(windows, int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")), rects = rects)
+	return session_serialize_windows(windows, app.session_cfg.max_url_bytes, app.session_cfg.max_state_bytes, rects = rects)
 }
 
 // The windows of a session's text, within the preferences' limits (temporary allocator).
 session_windows_of :: proc(app: ^App, text: string) -> (windows: []Session_Window, ok: bool) {
-	return session_parse_windows(text, int(config.int_of(&app.prefs, "browser.session.max_tabs")), int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), max_windows = int(config.int_of(&app.prefs, "browser.session.max_windows")))
+	return session_parse_windows(text, app.session_cfg.max_tabs, app.session_cfg.max_url_bytes, max_windows = app.session_cfg.max_windows)
 }
 
 // The windows that have tabs (pure, temporary allocator), without the pinned tabs if `drop_pinned`; each one's current tab stays its current tab, or the nearest.
@@ -428,7 +460,7 @@ session_save :: proc(app: ^App, force := false) {
 	w := &app.recovery.writes
 	if !force && w.session_made == w.session_serial { return }
 	w.session_made = w.session_serial
-	if !config.bool_of(&app.prefs, "browser.session.restore") { pinned_save(app) }
+	if !app.session_cfg.restore { pinned_save(app) }
 	text := session_text(app)
 	if text == app.session_last { return }
 	host.profile_file_init(&w.session, &app.writer, session_path(app))
@@ -439,10 +471,10 @@ session_save :: proc(app: ^App, force := false) {
 
 // The tabs to open at start-up (none when restoring is off, there is no file, or it is not a session file).
 session_load :: proc(app: ^App) -> (tabs: []Session_Tab, current: int) {
-	if !app.cfg.persist_profile || !config.bool_of(&app.prefs, "browser.session.restore") { return nil, 0 }
+	if !app.cfg.persist_profile || !app.session_cfg.restore { return nil, 0 }
 	data, err := os.read_entire_file(session_path(app), context.temp_allocator)
 	if err != nil { return nil, 0 }
-	t, c, ok := session_parse_tabs(string(data), int(config.int_of(&app.prefs, "browser.session.max_tabs")), int(config.int_of(&app.prefs, "browser.session.max_url_bytes")))
+	t, c, ok := session_parse_tabs(string(data), app.session_cfg.max_tabs, app.session_cfg.max_url_bytes)
 	if !ok { return nil, 0 }
 	return t, c
 }
@@ -450,7 +482,7 @@ session_load :: proc(app: ^App) -> (tabs: []Session_Tab, current: int) {
 // Opens the saved session at start-up: one tab per saved tab, with its history tree, only the current one loading now
 // (the others load when first shown, as in Chrome). False when there is nothing to restore.
 session_restore :: proc(app: ^App) -> bool {
-	if !app.cfg.persist_profile || !config.bool_of(&app.prefs, "browser.session.restore") { return false }
+	if !app.cfg.persist_profile || !app.session_cfg.restore { return false }
 	data, err := os.read_entire_file(session_path(app), context.temp_allocator)
 	if err != nil { return false }
 	text := string(data)
@@ -579,7 +611,7 @@ pinned_path :: proc(app: ^App) -> string { return strings.concatenate({app.profi
 pinned_save :: proc(app: ^App) {
 	w := &app.recovery.writes
 	pins := make([dynamic]Session_Tab, context.temp_allocator)
-	if config.bool_of(&app.prefs, "browser.tabs.restore_pinned") {
+	if app.session_cfg.restore_pinned {
 		for w in app.windows {
 			for t in window_tabs(app, w) {
 				if !t.pinned { continue }
@@ -590,7 +622,7 @@ pinned_save :: proc(app: ^App) {
 	}
 	text := ""
 	if len(pins) > 0 {
-		text = session_serialize_tabs(pins[:], 0, int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")))
+		text = session_serialize_tabs(pins[:], 0, app.session_cfg.max_url_bytes, app.session_cfg.max_state_bytes)
 	}
 	if w.pinned_known && text == w.pinned_last { return }
 	host.profile_file_init(&w.pinned, &app.writer, pinned_path(app))
@@ -601,10 +633,10 @@ pinned_save :: proc(app: ^App) {
 
 // At start-up, when the session was not restored: the pinned tabs saved by pinned_save, before the first tab.
 pinned_restore :: proc(app: ^App) {
-	if !app.cfg.persist_profile || !config.bool_of(&app.prefs, "browser.tabs.restore_pinned") { return }
+	if !app.cfg.persist_profile || !app.session_cfg.restore_pinned { return }
 	data, err := os.read_entire_file(pinned_path(app), context.temp_allocator)
 	if err != nil { return }
-	tabs, _, ok := session_parse_tabs(string(data), int(config.int_of(&app.prefs, "browser.session.max_tabs")), int(config.int_of(&app.prefs, "browser.session.max_url_bytes")))
+	tabs, _, ok := session_parse_tabs(string(data), app.session_cfg.max_tabs, app.session_cfg.max_url_bytes)
 	if !ok || len(tabs) == 0 { return }
 	for &t in tabs { t.pinned, t.group = true, 0 }
 	session_open_tabs(app, tabs, 0)

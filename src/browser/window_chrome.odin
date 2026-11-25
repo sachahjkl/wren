@@ -11,6 +11,7 @@ package browser
 // Full screen (F11): no frame, no title bar, no tabs nor address bar; they slide down over the page while the pointer
 // is at the top edge of the screen (browser.window.fullscreen_reveal), and go when it leaves them.
 
+import "core:strings"
 import "toolkit:draw"
 import "toolkit:platform"
 import prefs_page "toolkit:prefs_page"
@@ -57,18 +58,19 @@ register_window_prefs :: proc(p: ^config.Prefs) { config.register(p, WINDOW_PREF
 // composition swap chain (render.set_fixed_surface) and the developer tools' window's (render.surface_create) are made with it, so that both are
 // resized the same way: cut, never stretched. The monitor size comes from the toolkit (platform.monitor_size), so this is neutral across systems.
 fixed_surface_size :: proc(app: ^App, w: ^platform.Window) -> [2]int {
-	if !config.bool_of(&app.prefs, "browser.window.fixed_surface") { return {} }
+	if !app.wchrome.cfg.fixed_surface { return {} }
 	return platform.monitor_size(w)
 }
 
 Window_Settings :: struct {
-	integrated:  bool,
-	min_drag_em: f32,
-	reveal:      bool,
-	reveal_px:   f32,
+	integrated:      bool,
+	min_drag_em:     f32,
+	reveal:          bool,
+	reveal_px:       f32,
 	fullscreen_hint: bool,
-	square_corners: bool,
-	address_sizing: Address_Bar_Sizing,   // browser.address_bar.sizing_mode
+	square_corners:  bool,
+	fixed_surface:   bool,
+	address_sizing:  Address_Bar_Sizing,   // browser.address_bar.sizing_mode
 }
 
 window_settings_from_prefs :: proc(p: ^config.Prefs) -> Window_Settings {
@@ -80,6 +82,7 @@ window_settings_from_prefs :: proc(p: ^config.Prefs) -> Window_Settings {
 		reveal_px = f32(config.int_of(p, "browser.window.fullscreen_reveal_px")),
 		fullscreen_hint = config.bool_of(p, "browser.window.fullscreen_hint"),
 		square_corners = config.bool_of(p, "browser.window.square_corners"),
+		fixed_surface = config.bool_of(p, "browser.window.fixed_surface"),
 	}
 }
 
@@ -91,9 +94,6 @@ Window_Full :: struct {
 
 Window_Chrome :: struct {
 	cfg:          Window_Settings,
-	watch:        int,
-	watch_bar:    int,           // browser.address_bar.* (Window_Settings has them too)
-	watch_title:  int,           // the standard window.* (window.system_title)
 	icon:         render.Texture,
 	icon_px:      int,           // size of `icon` (0: none made yet)
 	icon_failed:  int,           // a size the exe's icon could not be loaded at
@@ -103,27 +103,20 @@ Window_Chrome :: struct {
 
 
 window_chrome_init :: proc(app: ^App) {
-	app.wchrome.cfg = window_settings_from_prefs(&app.prefs)
 	platform.set_square_corners(active_window(app).win, app.wchrome.cfg.square_corners)
-	window_changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
-		app := (^App)(user)
-		app.wchrome.cfg = window_settings_from_prefs(p)
-		platform.set_square_corners(active_window(app).win, app.wchrome.cfg.square_corners)
-		request_frames(app, 2)
+}
+
+window_chrome_on_pref :: proc(app: ^App, name: string) {
+	if len(app.windows) == 0 { return }
+	if !strings.has_prefix(name, "browser.address_bar.") {
+		if w := active_window(app); w.win != nil {
+			platform.set_square_corners(w.win, app.wchrome.cfg.square_corners)
+		}
 	}
-	app.wchrome.watch = config.watch(&app.prefs, "browser.window.", window_changed, app)
-	app.wchrome.watch_title = config.watch(&app.prefs, "window.", window_changed, app)
-	app.wchrome.watch_bar = config.watch(&app.prefs, "browser.address_bar.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		app := (^App)(user)
-		app.wchrome.cfg = window_settings_from_prefs(p)
-		request_frames(app, 2)
-	}, app)
+	request_frames(app, 2)
 }
 
 window_chrome_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, app.wchrome.watch)
-	config.unwatch(&app.prefs, app.wchrome.watch_bar)
-	config.unwatch(&app.prefs, app.wchrome.watch_title)
 	if .Renderer in app.made && app.wchrome.icon_px > 0 { render.destroy_texture(&app.r, app.wchrome.icon) }
 	app.wchrome = {}
 }

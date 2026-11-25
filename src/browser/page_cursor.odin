@@ -85,18 +85,10 @@ Page_Cursor_View :: struct {
 	shown:    Window_Cursor,
 }
 
-@(private)
-Page_Cursor_State :: struct {
-	watch:    int,
-}
-
 page_cursor_init :: proc(app: ^App) {
-	app.ccfg = cursor_settings_from_prefs(&app.prefs)
-	app.pcs.watch = config.watch(&app.prefs, "browser.cursor.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		app := (^App)(user)
-		app.ccfg = cursor_settings_from_prefs(p)
+	config.bind(&app.prefs, "browser.cursor.", &app.ccfg, cursor_settings_from_prefs, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
 		request_frames((^App)(user), 2)
-	}, app)
+	}, user = app)
 }
 
 // A window's view goes with it (its cursors go with the native window).
@@ -106,12 +98,10 @@ page_cursor_view_destroy :: proc(v: ^Page_Cursor_View) {
 }
 
 page_cursor_shutdown :: proc(app: ^App) {
-	config.unwatch(&app.prefs, app.pcs.watch)
 	platform.set_cursor(active_window(app).win, .Arrow)
 	v := &window_own(app).cursor
 	for e in v.cache { platform.custom_cursor_release(active_window(app).win, e.cc) }
 	page_cursor_view_destroy(v)
-	app.pcs = {}
 }
 
 ////////////////////////////////

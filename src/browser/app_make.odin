@@ -46,16 +46,16 @@ app_prefs_begin :: proc(app: ^App) {
 	app.made += {.Prefs}
 }
 
-// Every package's definitions (the values layered before them apply now).
+// Every package's definitions (the values layered before them apply now) and the shell's pure-data bindings.
 app_prefs_register :: proc(app: ^App) {
 	register_all_prefs(&app.prefs)
 	if app.private { private_prefs_apply(&app.prefs) }   // nothing written for later, no session restored
+	app_prefs_bind_shell(app)
 }
 
-// What the shell reads of the preferences once (the rest follows them through watches, set up by later stages).
+// Ensures the shell's settings are bound and current (idempotent after app_prefs_register).
 app_settings_read :: proc(app: ^App) {
-	app.cfg = settings_from_prefs(&app.prefs)
-	memory_trim_settings(app, &app.prefs)   // memory_trim.odin
+	app_prefs_bind_shell(app)
 }
 
 // The preferences at their defaults, then `values` ("name=value") as the user sets them. `refused`: the first value that did
@@ -73,7 +73,16 @@ app_prefs_init :: proc(app: ^App, values: []string = nil) -> (refused: string) {
 @(private = "file")
 app_prefs_end :: proc(app: ^App) {
 	settings_destroy(&app.cfg)
+	touch_settings_destroy(&app.tsh.cfg)
+	demos_settings_destroy(&app.demos_cfg)
+	license_settings_destroy(&app.license_cfg)
+	desktop_settings_destroy(&app.desktop_cfg)
+	font_generics_settings_destroy(&app.font_cfg)
+	devtools_settings_destroy(&app.devtools_cfg)
+	devtools_net_settings_destroy(&app.net_prefs)
+	download_settings_destroy(&app.dls.cfg)
 	config.prefs_destroy(&app.prefs)
+	app.shell_prefs_bound = false
 	app.made -= {.Prefs}
 }
 

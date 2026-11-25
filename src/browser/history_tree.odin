@@ -95,14 +95,12 @@ tree_settings_from_prefs :: proc(p: ^config.Prefs) -> Tree_Settings {
 
 // (history_settings_init / _shutdown)
 history_tree_settings_init :: proc(app: ^App) {
-	app.tcfg = tree_settings_from_prefs(&app.prefs)
-	app.watches[.History_Tree] = config.watch(&app.prefs, "browser.history.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		the_app.tcfg = tree_settings_from_prefs(p)
+	config.bind(&app.prefs, "browser.history.", &app.tcfg, tree_settings_from_prefs, on_change = proc(user: rawptr, name: string, p: ^config.Prefs) {
 		request_frames((^App)(user), 2)
-	}, app)
+	}, user = app)
 }
 
-history_tree_settings_shutdown :: proc(app: ^App) { config.unwatch(&app.prefs, app.watches[.History_Tree]) }
+history_tree_settings_shutdown :: proc(app: ^App) {}
 
 ////////////////////////////////
 // Geometry (pure: history_tree_test.odin). World units are em of the interface: a zoom of 1 draws the tree at the

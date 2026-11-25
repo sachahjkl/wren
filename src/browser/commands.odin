@@ -293,8 +293,8 @@ commands_build :: proc(r: ^Command_Registry) {
 		keys = command_keys(r, {key = .N, mods = cs}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { private_window_open(app) }})
 	add(r, {id = "browser.session_restore", label = i18n.later("Restore tabs at start-up"), group = "Tabs", tags = command_words(r, "session reopen previous startup"),
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return config.bool_of(&app.prefs, "browser.session.restore") },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.session.restore", !config.bool_of(&app.prefs, "browser.session.restore")) }})
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.session_cfg.restore },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.session.restore", !app.session_cfg.restore) }})
 	add(r, {id = "tab.restore_crashed", label = "Restore the tabs of the session that crashed", group = "Tabs", tags = command_words(r, "crash recovery reopen saved"),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.recovery.backup != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { recovery_restore_backup(app) }})
@@ -585,8 +585,8 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {id = "browser.clear_cache", label = "Clear the cache", group = "Browser", tags = command_words(r, "http cache empty delete purge stored responses"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { http_cache_clear(app) }})
 	add(r, {id = "browser.javascript", label = "JavaScript", group = "Browser", tags = command_words(r, "script js enable disable everywhere global"),
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return config.bool_of(&app.prefs, "javascript.enabled") },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "javascript.enabled", !config.bool_of(&app.prefs, "javascript.enabled")) }})
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.cfg.js_enabled },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "javascript.enabled", !app.cfg.js_enabled) }})
 	add(r, {id = "browser.downloads_folder", label = "Open the downloads folder", group = "Browser", tags = command_words(r, "explorer files"),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { shell_open_folder(download_dir(app)) }})
 	add(r, {id = "browser.profile_folder", label = "Open the profile folder", group = "Browser", tags = command_words(r, "explorer files cookies prefs data"),

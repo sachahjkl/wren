@@ -33,11 +33,14 @@ import "toolkit:ui"
 import "wb:base"
 import config "toolkit:config"
 import desktop "toolkit:desktop"
+import prefs_page "toolkit:prefs_page"
 import process "toolkit:process"
 import setup "toolkit:setup"
 import wren_desktop "wb:desktop"
 import "wb:host"
 import i18n "toolkit:i18n"
+
+_ :: prefs_page   // used when UPDATES_SELF is true
 
 DESKTOP_PREFS := [?]config.Def{
 	{name = "browser.desktop_integration.on_first_run", kind = .Bool, default = {b = APP_CHANNEL == .Release},
@@ -49,6 +52,36 @@ DESKTOP_PREFS := [?]config.Def{
 register_desktop_shell_prefs :: proc(p: ^config.Prefs) {
 	wren_desktop.register_prefs(p)
 	config.register(p, DESKTOP_PREFS[:])
+}
+
+Desktop_Settings :: struct {
+	status_refresh_ms: int,
+	add_to_path:       bool,
+	register_browser:  bool,
+	on_first_run:      bool,
+	update_auto:       bool,
+	file_types:        string,   // owned
+}
+
+desktop_settings_from_prefs :: proc(p: ^config.Prefs) -> Desktop_Settings {
+	s := Desktop_Settings{
+		status_refresh_ms = int(config.int_of(p, "browser.desktop_integration.status_refresh_ms")),
+		add_to_path = config.bool_of(p, "browser.desktop_integration.add_to_path"),
+		register_browser = config.bool_of(p, "browser.desktop_integration.register_browser"),
+		on_first_run = config.bool_of(p, "browser.desktop_integration.on_first_run"),
+		file_types = strings.clone(config.string_of(p, "browser.desktop_integration.file_types")),
+	}
+	when UPDATES_SELF {
+		if config.ref_of(p, prefs_page.UPDATE_AUTO_PREF) != config.NO_REF {
+			s.update_auto = config.bool_of(p, prefs_page.UPDATE_AUTO_PREF)
+		}
+	}
+	return s
+}
+
+desktop_settings_destroy :: proc(s: ^Desktop_Settings) {
+	delete(s.file_types)
+	s^ = {}
 }
 
 // What Wren is called on the desktop (src/desktop/identity.odin). A development build has its own entries (name, keys,
@@ -264,7 +297,7 @@ desktop_status_poll :: proc(app: ^App) {
 	if app.dsk.jobs > 0 { return }
 	stale := sync.atomic_load(&app.dsk.stale)
 	if app.dsk.known && !stale && app.dsk.watcher != nil { return }   // the system tells us: no periodic read at all
-	every := time.Duration(config.int_of(&app.prefs, "browser.desktop_integration.status_refresh_ms")) * time.Millisecond
+	every := time.Duration(app.desktop_cfg.status_refresh_ms) * time.Millisecond
 	if app.dsk.known && !stale && time.tick_since(app.dsk.read_at) < every { return }
 	if stale { sync.atomic_store(&app.dsk.stale, false) }
 	desktop_job_start(app, .Read, .Refresh)
