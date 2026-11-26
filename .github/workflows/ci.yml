@@ -67,6 +67,10 @@ jobs:
       - name: Build (optimized, development channel)
         if: matrix.group != 'check'
         timeout-minutes: 20
+        # (the runner is an administrator: elevated, the toolkit's programs install nothing, and the tests install. The
+        # release workflow never sets it. The package below is a development one, made from this build.)
+        env:
+          WREN_ODIN_EXTRA: -define:GT_ELEVATED_UNRESTRICTED=true
         run: |
           $sw = [Diagnostics.Stopwatch]::StartNew()
           build/wrentool build
@@ -98,6 +102,7 @@ jobs:
         timeout-minutes: 45
         env:
           WREN_CI_CACHE: ${{ github.event_name == 'pull_request' && '-Cache' || '' }}
+          WREN_ODIN_EXTRA: -define:GT_ELEVATED_UNRESTRICTED=true   # (the builds test_all makes: see the build step)
         run: |
           odin build src/tools/test_all -collection:wb=src -collection:toolkit=ext/gui_toolkit/src -vet -out:build/test_all.exe || exit /b 1
           build\test_all.exe -CI -NoAsan -Group ${{ matrix.group }} -Except "^test262" -RunTimeoutSec 2400 %WREN_CI_CACHE%
