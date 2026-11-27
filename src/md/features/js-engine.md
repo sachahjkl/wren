@@ -31,6 +31,8 @@ keeps the memory sandbox that the toolkit's native build does not have. Wren kee
   function names and symbols for profiling.
 - **test262 in the Wasm engine** (`src/tools/test262`), interpreted and with the JIT. The suite and QuickJS-ng's
   configuration come from `toolbox.test262_fetch`: one pin for Wren's runner and the toolkit's native one.
+- **The cost gate** (`jsengine cost`, [js-cost.md](js-cost.md)): the Wasm instructions of micro-cases and of Octane
+  benchmarks, interpreted, against limits.
 - **`wrentool engine rx-diff`** (`src/tools/rxdiff`): the regexp against QuickJS-ng's C. It needs the C sources and zig,
   which the toolkit does not want.
 

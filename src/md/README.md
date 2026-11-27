@@ -23,8 +23,10 @@ Wasm, run by Wasmtime. The window, the widgets, the settings, the install and th
 
 ## File Index
 
+- [features/debug-panel.md](features/debug-panel.md): Wren's panel in the toolkit's debug window (Ctrl+Alt+Shift+D, `tk cdp debug`): the counts it shows, the switches and the acts, why it reads only what is already kept, and what was refused.
 - [features/demo-states.md](features/demo-states.md): the toolkit's interface endpoint in Wren (`TOOLKIT_DEVTOOLS`) and its demo states: the Vault unlocked, locked, asking its PIN, a licence registered, each in memory only.
 - [features/fuzzing.md](features/fuzzing.md): the fuzzer of the parsers that read untrusted input (`wrentool fuzz`, `src/tools/fuzz`): why a mutation fuzzer of our own, the worker and its driver, the targets, how a finding replays.
+- [features/js-cost.md](features/js-cost.md): the cost gate of the engine: the Wasm instructions of cost.js's cases and of whole Octane benchmarks, interpreted, against limits; how a run is counted, what makes the count exact, what is left out, how to change a limit.
 - [features/js-engine.md](features/js-engine.md): why the JavaScript engine is the toolkit's `gt:js`, and what Wren keeps around it (Wasmtime, glue, bindings, the Wasm test262).
 - [features/keys.md](features/keys.md): how Wren connects the toolkit's keymap, and the command that opens a page in a new tab.
 - [features/licence.md](features/licence.md): Wren's licence as the toolkit's Licence page and card, what Wren gives it, and the HTML card with its CSS shaders that it replaces.

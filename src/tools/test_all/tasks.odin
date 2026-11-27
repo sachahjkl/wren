@@ -58,6 +58,19 @@ task_dependencies :: proc(t: ^Task_Run) -> bool {
 	return builder.dependencies(o) && builder.bindgen(o)
 }
 
+// The Octane files the cost gate measures (`arg`: its limits file, whose first word on a line is a benchmark), pinned (tooling.octane_fetch).
+task_octane :: proc(t: ^Task_Run) -> bool {
+	data, err := os.read_entire_file(t.arg, context.temp_allocator)
+	if err != nil { tooling.say(t.log, fmt.tprintfln("cannot read %s", t.arg)); return false }
+	names := make([dynamic]string, context.temp_allocator)
+	for line in strings.split_lines(string(data), context.temp_allocator) {
+		text := line
+		if k := strings.index_byte(text, '#'); k >= 0 { text = text[:k] }
+		if fields := strings.fields(text, context.temp_allocator); len(fields) > 0 { append(&names, fields[0]) }
+	}
+	return tooling.octane_fetch(tooling.OCTANE_DIR, names[:], t.log)
+}
+
 task_testserver :: proc(t: ^Task_Run) -> bool {
 	return tooling.ensure_testserver(t.log)
 }

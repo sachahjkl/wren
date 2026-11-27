@@ -1,0 +1,15 @@
+# The Wasm instructions of one run of Octane benchmarks, interpreted: `jsengine cost --pref wasm.wasmtime.fuel=true -octane build/bench/octane examples/jsbench/octane_cost.txt`
+# (test_all fetches the pinned files first; src/md/features/js-cost.md says how it counts). A line is "<benchmark> <runs measured> <limit>".
+# The limits are about a tenth over what the engine costs: a benchmark over its limit is a path that got longer.
+# Left out, by the time a run takes interpreted (instructions of one run): gbemu (12.9 G), typescript (36.8 G), mandreel (75.8 G), zlib (304 G).
+richards      10   153000000
+deltablue      8   238000000
+crypto         1  4500000000
+raytrace       2  1120000000
+earley-boyer   1  3420000000
+regexp         1  7160000000
+splay         20    35500000
+navier-stokes  1  2260000000
+box2d          1  3730000000
+code-load     10   202000000
+pdfjs          1  6730000000

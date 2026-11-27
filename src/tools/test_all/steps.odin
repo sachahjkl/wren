@@ -108,6 +108,8 @@ TRACK :: "-define:WREN_TRACK_MEMORY=true"
 POISON :: "-define:WREN_POISON_MEMORY=true"
 // How long a close and the interface's answer may take on the check build (no optimisation, every allocation tracked).
 SWEEP_CHECK_MS :: "60000"
+// What the Octane cost gate measures and its limits (src/md/features/js-cost.md).
+OCTANE_COST_LIMITS :: "examples/jsbench/octane_cost.txt"
 ONE_THREAD :: "-define:ODIN_TEST_THREADS=1"
 TOOLKIT :: "-collection:toolkit=ext/gui_toolkit/src"
 // (the toolkit's own tests name it gt:, as its tk tool does)
@@ -408,7 +410,8 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "test262 quick" : "test262"}, Command{argv = strs(exe("build/test262"), "-prepare")}), marks = {.No_Result}, needs = {.Native}, makes = {.Test262}, limit = suite_limit(cfg)})
 	append(&t, Step{name = "test262 in the Wasm engine (-Quick: every 25th test; fails on a failure src\\tools\\test262\\known_failures.txt does not list)",
 		actions = slice_of(Command{argv = join({exe("build/test262")}, test262_quick)}), weight = 40, needs = {.Test262}, inputs = .Tree, limit = suite_limit(cfg)})
-	append(&t, Step{name = "test262 with the JIT: examples\\jsbench\\jitcheck.js and recursion.js interpreted and compiled (every function and loop at once, synchronously and with the step path), then test262 the same way",
+	// (the Octane cost gate is here, not in a step of its own: it needs this step's jsengine_jit, and two steps must not both build it)
+	append(&t, Step{name = "test262 with the JIT: examples\\jsbench\\jitcheck.js and recursion.js interpreted and compiled (every function and loop at once, synchronously and with the step path), the instruction counts of cost.js and of Octane (octane_cost.txt; the files pinned, fetched once), then test262 the same way",
 		actions = slice_of(
 			Task{"the tool", task_runner, cfg.quick ? "jsengine=jsengine_jit quick" : "jsengine=jsengine_jit"},
 			Command{argv = strs(exe("build/jsengine_jit"), "verify", "-image", "build/js/wren_js.wasm", "-jit", "-jit-threshold", "1", "-jit-loop", "1", "-jit-sync", "examples/jsbench/jitcheck.js")},
@@ -420,6 +423,8 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 			Command{argv = strs(exe("build/jsengine_jit"), "cold", "-image", "build/js/wren_js.wasm", "examples/jsbench/jitcold.js")},
 			Command{argv = strs(exe("build/jsengine_jit"), "run", "-image", "build/js/wren_js.wasm", "examples/jsbench/hotcheck.js")},
 			Command{argv = strs(exe("build/jsengine_jit"), "cost", "-image", "build/js/wren_js.wasm", "--pref", "wasm.wasmtime.fuel=true", "examples/jsbench/cost.js")},
+			Task{"Octane", task_octane, OCTANE_COST_LIMITS},
+			Command{argv = strs(exe("build/jsengine_jit"), "cost", "-image", "build/js/wren_js.wasm", "--pref", "wasm.wasmtime.fuel=true", "-octane", tooling.OCTANE_DIR, OCTANE_COST_LIMITS)},
 			Command{argv = strs(exe("build/jsengine_jit"), "lazy", "-image", "build/js/wren_js.wasm")},
 			Command{argv = strs(exe("build/jsengine_jit"), "lazy", "-image", "build/js/wren_js.wasm", "-jit", "-jit-threshold", "1", "-jit-loop", "1", "-jit-sync")},
 			Command{argv = strs(exe("build/jsengine_jit"), "gc", "-image", "build/js/wren_js.wasm")},

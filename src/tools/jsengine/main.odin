@@ -13,6 +13,7 @@
 //   jsengine reach file.js   (the JIT: nothing refused, the hot code compiled)
 //   jsengine cold file.js    (the JIT: nothing translated at the default thresholds)
 //   jsengine cost --pref wasm.wasmtime.fuel=true file.js   (what each of the file's cases costs in Wasm instructions, against its limit)
+//   jsengine cost --pref wasm.wasmtime.fuel=true -octane <dir> limits.txt   (the same for a run of each Octane benchmark the file names)
 //                                               runs each script interpreted and with the JIT: same output
 //                                               measures realm creation (instantiate + start) and its memory
 //   jsengine hung file.js    (what never ends is stopped, and the host gets its turns under it)
@@ -247,13 +248,16 @@ Realm :: struct {
 image_digest: wasm.Digest
 image_digest_of: rawptr
 
-// A sampling profile runs on the engine with epoch checks: a sample falls at a check, and those are at function entries too.
-profiled: bool
+// Off: the realm runs on the engine with epoch checks. A sampling profile needs them: a sample falls at a check, and those are at function entries too.
+// cost -octane needs them: the ticker raises a polled realm's word by the clock, and each raise adds a poll's path to the count.
+polled := true
+// Not 0: Math.random's seed in every realm. cost -octane needs it: a benchmark may draw from Math.random as it loads, before base.js replaces it (crypto.js fills its pool).
+fixed_seed: u64
 
 realm_new :: proc(image: []byte, raw: bool, call_ms: i64 = -1, kind := js.Realm_Kind.Window, growth := 0) -> (r: Realm, ok: bool) {
 	opt := wasm.options_default()
 	opt.max_call_ms = call_ms
-	opt.polled = !profiled
+	opt.polled = polled
 	if image_digest_of != raw_data(image) { image_digest, _ = wasm.digest(image); image_digest_of = raw_data(image) }
 	inst, err := wasm.instance_create(image, nil, nil, opt, "jsengine", nil, &image_digest)
 	if inst == nil { fmt.eprintln("jsengine:", err); return }
@@ -262,8 +266,8 @@ realm_new :: proc(image: []byte, raw: bool, call_ms: i64 = -1, kind := js.Realm_
 		res, cr := wasm.call_i32(inst, "wj_preinit")
 		if cr != .Ok || res != 0 { fmt.eprintln("jsengine: wj_preinit failed:", res, inst.last_error); wasm.destroy(inst); return }
 	}
-	seed: u64
-	wasm.random_bytes(slice.bytes_from_ptr(&seed, 8))
+	seed := fixed_seed
+	if seed == 0 { wasm.random_bytes(slice.bytes_from_ptr(&seed, 8)) }
 	if !js.realm_start(inst, {kind = kind, seed = seed, max_heap_bytes = 1 << 30, gc_threshold = 2 << 20, gc_growth_percent = growth, gc_min_growth = GC_TEST_LEAST_GROWTH}) {
 		fmt.eprintln("jsengine: wj_realm_start failed:", inst.last_error)
 		wasm.destroy(inst)
@@ -308,6 +312,7 @@ COST_ITERATIONS :: 20_000
 cmd_cost :: proc(args: []string) {
 	c := parse_common(args)
 	setup()
+	if c.octane != "" { cost_octane(c); return }
 	r, ok := realm_new(read_file(c.image), c.raw)
 	if !ok { os.exit(1) }
 	r.inst.budget = -1
@@ -337,6 +342,96 @@ cmd_cost :: proc(args: []string) {
 	}
 	if failed > 0 {
 		fmt.eprintfln("cost: %d cases over their limits", failed)
+		os.exit(1)
+	}
+}
+
+// What each Octane benchmark runs before it is measured: its first runs make what later runs find (shapes, atoms, functions read, caches).
+OCTANE_COST_WARM_UP :: 1
+// Any value but 0: what matters is that it is the same in every run.
+OCTANE_COST_SEED :: 49734321
+
+// What cost -octane runs before base.js: a clock that advances by one millisecond at each read, from a fixed time. A benchmark that reads the clock
+// takes the same path in every run (pdfjs cuts its work into time slices).
+OCTANE_COST_CLOCK :: `
+(function () {
+  var Real = Date, now = 1e12;
+  function tick() { return now += 1; }
+  function Clock() {
+    if (!new.target) return new Real(tick()).toString();
+    return arguments.length === 0 ? new Real(tick()) : Reflect.construct(Real, arguments);
+  }
+  Clock.now = tick;
+  Clock.UTC = Real.UTC;
+  Clock.parse = Real.parse;
+  Clock.prototype = Real.prototype;
+  globalThis.Date = Clock;
+})();
+`
+
+// What cost -octane runs after the benchmark's files: its Benchmark objects, set up once, then n runs of each. Never RunSuites: it measures time.
+OCTANE_COST_HARNESS :: `
+var __cost = [];
+BenchmarkSuite.suites.forEach(function (s) { s.benchmarks.forEach(function (b) { __cost.push(b); }); });
+BenchmarkSuite.ResetRNG();
+__cost.forEach(function (b) { b.Setup(); });
+function __cost_run(n) { for (var i = 0; i < n; i++) for (var j = 0; j < __cost.length; j++) __cost[j].run(); }
+`
+
+// jsengine cost -octane <dir> <limits>: the Wasm instructions of one run of each Octane benchmark the limits file names, interpreted (src/md/features/js-cost.md).
+// A line of the file is "<benchmark> <runs> <limit>"; "#" starts a comment. Each benchmark has a realm of its own: its runs after the warm-up, less the same call with
+// none, divided by their number: what surrounds the runs goes out. Fails when one is over its limit, or throws.
+cost_octane :: proc(c: Common) {
+	if len(c.rest) != 1 { usage() }
+	image := read_file(c.image)
+	quiet = true
+	polled = false
+	fixed_seed = OCTANE_COST_SEED
+	spend :: proc(r: Realm, name, source: string) -> (fuel: u64, ok: bool) {
+		before, errors := r.inst.fuel_used, uncaught
+		if js.eval_script(r.inst, transmute([]byte)source, "cost") != .Ok || uncaught != errors { fmt.eprintfln("cost: %s failed: %s", name, r.inst.last_error); return }
+		return r.inst.fuel_used - before, true
+	}
+	failed, measured := 0, 0
+	started := time.tick_now()
+	for line in strings.split_lines(string(read_file(c.rest[0])), context.temp_allocator) {
+		text := line
+		if k := strings.index_byte(text, '#'); k >= 0 { text = text[:k] }
+		text = strings.trim_space(text)
+		if text == "" { continue }
+		fields := strings.fields(text, context.temp_allocator)
+		runs, limit: int
+		runs_ok, limit_ok: bool
+		if len(fields) == 3 {
+			runs, runs_ok = strconv.parse_int(fields[1])
+			limit, limit_ok = strconv.parse_int(fields[2])
+		}
+		if !runs_ok || !limit_ok || runs <= 0 { fmt.eprintfln("cost: %s: \"%s\" is not \"<benchmark> <runs> <limit>\"", c.rest[0], text); os.exit(2) }
+		name := fields[0]
+		t0 := time.tick_now()
+		r, ok := octane_realm(image, c.raw, c.octane, name, OCTANE_COST_CLOCK)
+		if r.inst == nil { os.exit(1) }
+		cost: int
+		measure: {
+			if !ok { break measure }
+			_ = spend(r, name, OCTANE_COST_HARNESS) or_break measure
+			_ = spend(r, name, fmt.tprintf("__cost_run(%d)", OCTANE_COST_WARM_UP)) or_break measure
+			js.collect(r.inst)   // (what is measured is the path: where a collection falls moves with every byte of the heap)
+			empty := spend(r, name, "__cost_run(0)") or_break measure
+			full := spend(r, name, fmt.tprintf("__cost_run(%d)", runs)) or_break measure
+			_ = spend(r, name, "__cost.forEach(function (b) { b.TearDown(); })") or_break measure
+			cost = int((full - empty) / u64(runs))
+		}
+		wasm.destroy(r.inst)
+		ms := time.duration_milliseconds(time.tick_since(t0))
+		if cost == 0 { failed += 1; continue }
+		measured += 1
+		fmt.printfln("%12d %12d %-14s (%d runs, %.0f ms)", cost, limit, name, runs, ms)
+		if cost > limit { failed += 1 }
+	}
+	fmt.printfln("cost: %d Octane benchmarks in %.1f s", measured, time.duration_seconds(time.tick_since(started)))
+	if failed > 0 {
+		fmt.eprintfln("cost: %d Octane benchmarks over their limits or failed", failed)
 		os.exit(1)
 	}
 }
@@ -784,6 +879,7 @@ Common :: struct {
 	iterations: int,
 	count: int,
 	profile: string,   // run: write a sampling profile of the engine there
+	octane: string,    // cost: Octane's folder; the file named is then its limits
 }
 
 parse_common :: proc(args: []string) -> (c: Common) {
@@ -803,7 +899,8 @@ parse_common :: proc(args: []string) -> (c: Common) {
 		case "-iterations": i += 1; c.iterations = max(1, tooling.parse_digits(args[i]))
 		case "-n": i += 1; c.count = max(1, tooling.parse_digits(args[i]))
 		case "-q": quiet = true
-		case "-profile": i += 1; c.profile = args[i]; profiled = true
+		case "-profile": i += 1; c.profile = args[i]; polled = false
+		case "-octane": i += 1; c.octane = args[i]
 		case "-jit": jit.enabled = true
 		case "-jit-threshold": i += 1; jit.call_threshold = max(1, tooling.parse_digits(args[i]))
 		case "-jit-step": jit.step_only = true
@@ -916,38 +1013,54 @@ BenchmarkSuite.RunSuites({
 // not implement yet throws) and without setTimeout (the harness then runs the suites synchronously).
 BENCH_PRELUDE :: `delete globalThis.performance; delete globalThis.setTimeout;`
 
-OCTANE_ORDER := [?]string{"richards", "deltablue", "crypto", "raytrace", "earley-boyer", "regexp", "splay", "navier-stokes", "box2d", "code-load", "gbemu", "pdfjs", "typescript", "zlib", "mandreel"}
+// What bench runs when no benchmark is named: the first of Octane's order, those that take seconds rather than minutes.
+BENCH_DEFAULT_COUNT :: 7
+
+// A worker realm with the prelude (BENCH_PRELUDE, then `prelude`), Octane's base.js (from `dir`) and the files of one of its benchmarks: what bench and cost -octane run in. False when a file fails.
+octane_realm :: proc(image: []byte, raw: bool, dir, name: string, prelude := "") -> (r: Realm, ok: bool) {
+	b, found := tooling.octane_benchmark(name)
+	if !found { fmt.eprintfln("jsengine: no Octane benchmark %s", name); return }
+	r = realm_new(image, raw, kind = .Worker) or_return
+	r.inst.budget = -1   // (with wasm.wasmtime.fuel, a file of several MB runs past any budget a page has)
+	files := make([dynamic]string, context.temp_allocator)
+	append(&files, tooling.OCTANE_HARNESS)
+	append(&files, ..b.files)
+	for script in ([]string{BENCH_PRELUDE, prelude}) {
+		if js.eval_script(r.inst, transmute([]byte)script, "prelude.js") != .Ok { fmt.eprintln("jsengine: the prelude failed:", r.inst.last_error); return r, false }
+	}
+	for f in files {
+		if js.eval_script(r.inst, read_file(filepath.join({dir, f}, context.temp_allocator) or_else ""), f) != .Ok { fmt.eprintfln("jsengine: %s failed: %s", f, r.inst.last_error); return r, false }
+	}
+	return r, true
+}
 
 cmd_bench :: proc(args: []string) {
 	c := parse_common(args)
 	if len(c.rest) < 1 { usage() }
 	dir := c.rest[0]
 	names := c.rest[1:]
-	if len(names) == 0 { names = OCTANE_ORDER[:7] }
+	if len(names) == 0 {
+		defaults := make([dynamic]string, context.temp_allocator)
+		for b in tooling.OCTANE_SUITE[:BENCH_DEFAULT_COUNT] { append(&defaults, b.name) }
+		names = defaults[:]
+	}
 	setup()
 	quiet = true
 	image := read_file(c.image)
-	base := read_file(filepath.join({dir, "base.js"}) or_else "")
 	fmt.printfln("%-14s %10s %12s", "benchmark", "score", "time (ms)")
 	for name in names {
-		files := make([dynamic]string, context.temp_allocator)
-		switch name {
-		case "gbemu": append(&files, "gbemu-part1.js", "gbemu-part2.js")
-		case "typescript": append(&files, "typescript-input.js", "typescript-compiler.js", "typescript.js")
-		case "zlib": append(&files, "zlib-data.js", "zlib.js")
-		case: append(&files, fmt.tprintf("%s.js", name))
-		}
 		scores := make([dynamic]f64, context.temp_allocator)
 		times := make([dynamic]f64, context.temp_allocator)
 		for _ in 0 ..< c.iterations {
-			r, ok := realm_new(image, c.raw, kind = .Worker)
-			if !ok { os.exit(1) }
 			strings.builder_reset(&console_out)
-			js.eval_script(r.inst, transmute([]byte)string(BENCH_PRELUDE), "prelude.js")
-			js.eval_script(r.inst, base, "base.js")
-			for f in files {
-				src := read_file(filepath.join({dir, f}) or_else "")
-				js.eval_script(r.inst, src, f)
+			r, ok := octane_realm(image, c.raw, dir, name)
+			if r.inst == nil { os.exit(1) }
+			if !ok {
+				// (a benchmark whose files fail shows "error", as one that fails while it runs)
+				append(&scores, -1)
+				append(&times, 0)
+				wasm.destroy(r.inst)
+				continue
 			}
 			t0 := time.tick_now()
 			st := js.eval_script(r.inst, transmute([]byte)string(BENCH_RUNNER), "runner.js")

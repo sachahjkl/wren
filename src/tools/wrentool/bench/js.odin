@@ -2,7 +2,7 @@ package bench
 
 // The JavaScript benchmarks: Octane in Wren's engine (QuickJS-ng compiled to Wasm, under Wasmtime) against the same engine compiled natively (qjs.exe of the release the engine is built from)
 // and against Microsoft Edge (V8); the DOM and binding micro-benchmarks of examples/jsbench/dom.html in Wren (build/jspage.exe, a page without a window) and in Edge; realm start-up and memory.
-// Octane is pinned: a commit of github.com/chromium/octane, every file by its SHA-256. Edge is the installed one (its version is printed), headless, with a profile of its own.
+// Octane is pinned: a commit of github.com/chromium/octane, every file by its SHA-256 (src/tools/tooling/octane.odin). Edge is the installed one (its version is printed), headless, with a profile of its own.
 // Each figure is the median of -Runs runs, a fresh realm or process each; Octane's scores are its own (higher is better).
 
 import "core:fmt"
@@ -18,9 +18,7 @@ import "wb:tools/tooling"
 JS_RUNS :: 3
 // What one run of anything may take: a whole Octane benchmark in the slowest engine.
 RUN_LIMIT :: 15 * time.Minute
-OCTANE_COMMIT :: "570ad1ccfe86e3eecba0636c8f932ac08edec517"
-OCTANE_URL :: "https://raw.githubusercontent.com/chromium/octane/" + OCTANE_COMMIT + "/"
-OCTANE_DIR :: OUT_DIR + "/octane"
+// (Octane's pins and its folder, build/bench/octane, are tooling's: the cost gate of test_all fetches the same files)
 OCTANE_COMMIT_SHOWN :: 12
 // qjs.exe of the QuickJS-ng release the engine is built from (the version is tooling.QJS_VERSION).
 QJS_EXE_SHA256 :: "2aeabf0092c3262d6b2609824418f7dd7ed1f1df939f73b2b15645230cac0d77"
@@ -43,41 +41,6 @@ EDGE_REL :: `\Microsoft\Edge\Application\msedge.exe`
 EDGE_ROOTS := []string{"ProgramFiles(x86)", "ProgramFiles"}
 EDGE_RESULTS_OPEN :: `<pre id="results">`
 EDGE_RESULTS_CLOSE :: "</pre>"
-
-Pinned :: struct { name, sha: string }
-
-OCTANE_FILES := []Pinned{
-	{"base.js", "216612c2e7096a02b3e52b57e9cf9351bbaf180d60938d5c60b85fd756232733"},
-	{"richards.js", "1246a64a24b931158bf01c24640343259fa74b0226e73bad630bd1f686aa0fa7"},
-	{"deltablue.js", "6c4784e82f3e8f5c18306d289653d08b17b38838f1bac16b38611d7318fa5a36"},
-	{"crypto.js", "b01b6b3fe534327fdef05131162927bc5508f100a3208e185d0c5a4efb200a39"},
-	{"raytrace.js", "64b8ff90969966dd69659100e28754976dfc3e9a4f8ee55b9232f974c66ed08c"},
-	{"earley-boyer.js", "8dd28a505f7e705642f86816232b012fd3c770ec8afc9f719ce89ce772dab347"},
-	{"regexp.js", "a292d6047900c5296ea9e2628453832cc3bfe397e49fddade8aff7b5876c8263"},
-	{"splay.js", "f9a6a60d8f205908f5542ad1180abc1902dcdab3dcb4278017c5ce179ee123f7"},
-	{"navier-stokes.js", "27926de809451c60b0c49a4185c08f97081310d0db166a30c1d202fb656556a2"},
-	{"box2d.js", "83b10c280f004e7b156a9e04d09ce4109892ea92788f7c6c963f7fadf29c7bd4"},
-	{"code-load.js", "32fd38d49bb8794b40e947c70c0c51276bfc2588833a8451a25b1b2bfccad96c"},
-	{"gbemu-part1.js", "67ae8c639b7acc5ebbcf0995c8b68821251a629f72c604e74cae8526c8e85965"},
-	{"gbemu-part2.js", "acd923e085cf70fce8a15b1420d1fa489bd8315e4a8c066775aeaa7104e609d3"},
-	{"pdfjs.js", "ced89e66a178a4b63a69ea33fc6f47d405bf9bd379817be25f060a4b2dcce351"},
-	{"mandreel.js", "fc4a9516e8899bb33df63a69db30797959a138d33233e9fb1ccc57cb91dcd164"},
-	{"typescript-input.js", "e23d2fe7b3df9dc069c720ab3fb112006c235d0eb416556ecde7c3a2766a0396"},
-	{"typescript-compiler.js", "9e99fe0ddfe48a2462eca622ade1e1ddd13bf49f8e461a6c53463bbbc1d5363a"},
-	{"typescript.js", "fbc5ec16d9c60b1bdcca7e7b9f66fba2fe46c0e04da64088203052e47922ff21"},
-	{"zlib-data.js", "b8d093321289574f36116e933e2b3b211bb98df9fe3e761ffb1be550d0e82aed"},
-	{"zlib.js", "d8c4bca32e84b38f573d3ee50a38b194afc9fb4e2f79754d952524bff01a898c"},
-}
-
-// Octane's order; the files of each benchmark after base.js.
-Octane_Benchmark :: struct { name: string, files: []string }
-
-OCTANE_SUITE := []Octane_Benchmark{
-	{"richards", {"richards.js"}}, {"deltablue", {"deltablue.js"}}, {"crypto", {"crypto.js"}}, {"raytrace", {"raytrace.js"}},
-	{"earley-boyer", {"earley-boyer.js"}}, {"regexp", {"regexp.js"}}, {"splay", {"splay.js"}}, {"navier-stokes", {"navier-stokes.js"}},
-	{"box2d", {"box2d.js"}}, {"code-load", {"code-load.js"}}, {"gbemu", {"gbemu-part1.js", "gbemu-part2.js"}}, {"pdfjs", {"pdfjs.js"}},
-	{"mandreel", {"mandreel.js"}}, {"typescript", {"typescript-input.js", "typescript-compiler.js", "typescript.js"}}, {"zlib", {"zlib-data.js", "zlib.js"}},
-}
 
 // What the shells of Octane run after the suite's files. zlib's Emscripten code takes a shell without a window for d8 and assigns its read(): qjs has none.
 OCTANE_RUNNER :: `BenchmarkSuite.RunSuites({ NotifyResult: function(n, r) {}, NotifyError: function(n, e) { print("ERROR " + n + " " + e); }, NotifyScore: function(s) { print("SCORE " + s); } });`
@@ -232,16 +195,14 @@ flat :: proc(text: string) -> string {
 Octane_Tools :: struct { jsengine, qjs: string }
 
 js_octane :: proc(o: ^Options, engines: bit_set[Engine]) -> int {
-	suite := make([dynamic]Octane_Benchmark, context.temp_allocator)
+	suite := make([dynamic]tooling.Octane_Benchmark, context.temp_allocator)
 	for name in tooling.flag_list(o.flags, "-Benchmarks", nil) {
-		found := false
-		for b in OCTANE_SUITE { if b.name == name { append(&suite, b); found = true } }
+		b, found := tooling.octane_benchmark(name)
 		if !found { fmt.eprintfln("no Octane benchmark %s", name); return EXIT_USAGE }
+		append(&suite, b)
 	}
-	if len(suite) == 0 { append(&suite, ..OCTANE_SUITE) }
-	for f in OCTANE_FILES {
-		if !tooling.download_pinned(strings.concatenate({OCTANE_URL, f.name}, context.temp_allocator), fmt.tprintf("%s/%s", OCTANE_DIR, f.name), f.sha) { return 1 }
-	}
+	if len(suite) == 0 { append(&suite, ..tooling.OCTANE_SUITE) }
+	if !tooling.octane_fetch(tooling.OCTANE_DIR, nil) { return 1 }
 	tools: Octane_Tools
 	if .Wasm in engines {
 		_ = tooling.build_js_engine({})
@@ -290,7 +251,7 @@ js_octane :: proc(o: ^Options, engines: bit_set[Engine]) -> int {
 	for e in Engine { total[e] = geomean(medians[e]) }
 	octane_row(&r, "score (geometric mean)", engines, total)
 	report_end(&r, o)
-	fmt.printfln("Octane %s, median of %d runs (a fresh realm or process each); Edge %s headless. A benchmark that fails shows n/a.", OCTANE_COMMIT[:OCTANE_COMMIT_SHOWN], o.runs, edge_version())
+	fmt.printfln("Octane %s, median of %d runs (a fresh realm or process each); Edge %s headless. A benchmark that fails shows n/a.", tooling.OCTANE_COMMIT[:OCTANE_COMMIT_SHOWN], o.runs, edge_version())
 	return 0
 }
 
@@ -306,10 +267,10 @@ octane_row :: proc(r: ^Report, name: string, engines: bit_set[Engine], v: [Engin
 
 // One run of one benchmark in one engine: what it printed and its score.
 @(private = "file")
-octane_once :: proc(e: Engine, b: Octane_Benchmark, tools: Octane_Tools) -> (out: string, score: f64, has: bool) {
+octane_once :: proc(e: Engine, b: tooling.Octane_Benchmark, tools: Octane_Tools) -> (out: string, score: f64, has: bool) {
 	switch e {
 	case .Wasm:
-		text, _ := run_text({tools.jsengine, "bench", "-iterations", WASM_ITERATIONS, OCTANE_DIR, b.name})
+		text, _ := run_text({tools.jsengine, "bench", "-iterations", WASM_ITERATIONS, tooling.OCTANE_DIR, b.name})
 		for line in strings.split_lines(text, context.temp_allocator) {
 			fields := strings.fields(line, context.temp_allocator)
 			if len(fields) >= 2 && fields[0] == b.name { score, has = strconv.parse_f64(fields[1]) }
@@ -341,7 +302,7 @@ octane_once :: proc(e: Engine, b: Octane_Benchmark, tools: Octane_Tools) -> (out
 
 @(private = "file")
 write_octane_file :: proc(b: ^strings.Builder, file: string) {
-	data, _ := os.read_entire_file(fmt.tprintf("%s/%s", OCTANE_DIR, file), context.temp_allocator)
+	data, _ := os.read_entire_file(fmt.tprintf("%s/%s", tooling.OCTANE_DIR, file), context.temp_allocator)
 	strings.write_string(b, string(data))
 	strings.write_byte(b, '\n')
 }
