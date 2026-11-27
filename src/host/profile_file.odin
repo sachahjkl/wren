@@ -157,11 +157,11 @@ file_append :: proc(w: ^File_Writer, path: string, data: []byte, by := #caller_l
 
 @(private = "file")
 put_now :: proc(path: string, data: []byte, flush, private: bool) -> bool {
-	if base.file_write_atomic(path, data, flush = flush, private = private) { return true }
+	if base.file_write_atomic(path, data, {flush = flush, private = private}) { return true }
 	// (a missing folder is made here, off the interface thread, so that no owner makes it on its own thread first)
 	dir := filepath.dir(path)
 	if dir == "" || dir == "." || os.exists(dir) || os.make_directory_all(dir) != nil { return false }
-	return base.file_write_atomic(path, data, flush = flush, private = private)
+	return base.file_write_atomic(path, data, {flush = flush, private = private})
 }
 
 @(private = "file")

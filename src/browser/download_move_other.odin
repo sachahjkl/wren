@@ -16,7 +16,7 @@ download_move :: proc(from, to: string) -> (ok: bool, why: string) {
 	data, rok := base.file_read_all(from)
 	if !rok { return false, "cannot read the downloaded file" }
 	defer delete(data)
-	if !base.file_write_atomic(to, data, flush = true) { return false, fmt.tprintf("cannot write %s", to) }
+	if !base.file_write_atomic(to, data, {flush = true}) { return false, fmt.tprintf("cannot write %s", to) }
 	os.remove(from)
 	return true, ""
 }
