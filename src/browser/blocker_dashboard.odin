@@ -182,14 +182,13 @@ blocker_page :: proc(app: ^App, t: ^Tab) {
 			}
 			labels := []string{i18n.tr("Settings"), i18n.tr("Filter lists"), i18n.tr("My filters"), i18n.tr("My rules"), i18n.tr("Whitelist"), i18n.tr("Journal"), i18n.tr("Statistics"), i18n.tr("About")}
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
+			// (ui.tabs draws the row's bottom line, out of which the chosen tab rises: no rule under it, no room before the first tab)
 			if ui.row(.Start, {}, "###bd_tabs_row") {
-				ui.space(ui.PAGE_MARGIN)   // (the tabs between the page's margins, under its title)
 				if ui.tabs("###bd_tabs", labels, nil, &app.dash.tab) {
 					a := fmt.tprintf("about:blocker#%s", DASH_NAMES[Dash_Tab(app.dash.tab)])
 					delete(t.url); t.url = strings.clone(a)
 				}
 			}
-			ui.hline(ui.fill())
 			ui.next({width = ui.fill(), height = ui.fill()})
 			if ui.column() {
 				switch Dash_Tab(app.dash.tab) {
