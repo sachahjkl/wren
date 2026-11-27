@@ -47,11 +47,27 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-13-2">
+      <article class="release latest" id="v0-14-0">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-11-27">November 27, 2026</time></p>
+          <div class="release-title"><h3>0.14.0</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>Closing a video never freezes the browser</strong>: when the system's video decoder stops answering, closing the tab, loading another page or quitting goes on at once. Before, the browser waited for the decoder until it was ended.</li>
+            <li><strong>Steadier wheel scrolling</strong>: a wheel that keeps turning keeps scrolling the view, even when a field or a menu slides under the pointer.</li>
+            <li><strong>Tighter dropdowns</strong>: less room at their sides, and an open list is never narrower than its rows.</li>
+            <li><strong>Tabs that read as tabs</strong>: the tabs of about:blocker, the docked panels and the views stand on one line, the chosen one rising out of it. The browser's own tabs keep their look.</li>
+            <li><strong>Readable find highlight</strong>: a text found on a page keeps its colour under a light highlight.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.14.0.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.14.0">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-13-2">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-11-25">November 25, 2026</time></p>
-          <div class="release-title"><h3>0.13.2</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.13.2</h3></div>
           <ul class="release-list">
             <li><strong>Vault PIN unlock (<code>wren-vault</code> 0.5.1)</strong>: unlocking the Vault with a PIN keeps the session open through the sync that follows instead of prompting for the master password again, and saves the helper's PIN flag to the profile account file on startup.</li>
             <li><strong>2D canvas colors on Linux</strong>: software 2D canvases keep exact sRGB colors on WGPU instead of appearing washed out or semi-transparent.</li>

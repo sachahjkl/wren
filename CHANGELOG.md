@@ -10,6 +10,15 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-27
+
+### Changed
+- **Scrolling and dropdowns.** A wheel that keeps turning keeps scrolling the view, even when a field or a menu slides under the pointer. Dropdowns are tighter at their sides, and an open list is never narrower than its rows.
+- **Tabs of panels and pages look like tabs.** The tabs of about:blocker, the docked panels and the views stand on one line, the chosen one rising out of it. A text found on a page keeps its colour under a light highlight.
+
+### Fixed
+- **Closing a video no longer freezes the browser.** When the system's video decoder stops answering, closing the tab, loading another page or quitting the browser goes on at once instead of freezing until the browser is ended.
+
 ## [0.13.2] - 2026-11-25
 
 ### Changed
@@ -1757,7 +1766,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.13.2...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/sachahjkl/wren/compare/v0.13.2...v0.14.0
 [0.13.2]: https://github.com/sachahjkl/wren/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/sachahjkl/wren/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/sachahjkl/wren/compare/v0.12.0...v0.13.0
