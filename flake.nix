@@ -5,7 +5,7 @@
     # The toolkit and Lexbor, at their submodules' commits: a flake fetched from GitHub is a tarball without submodules
     # (gui_toolkit docs/toolbox.md, "The flake's toolkit").
     gui_toolkit = {
-      url = "github:sachahjkl/gui_toolkit/43beab8eaae8acbcb0a7d57add78631f58b36031";
+      url = "github:sachahjkl/gui_toolkit/74a1a85b05c5894eae0b3c28a49b9dab2f26e2cf";
       flake = false;
     };
     lexbor = {
