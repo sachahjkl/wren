@@ -28,6 +28,7 @@ PREFS_READ_ALLOWED :: [?]Prefs_Allow{
 	{file = "commands.odin",          proc_ = "js_toggle_site",  reason = "per-site JavaScript override list toggle"},
 	{file = "devtools.odin",          proc_ = "set_pref_string", reason = "generic preference write-back comparison"},
 	{file = "devtools.odin",          proc_ = "dev_toggle_pref", reason = "generic boolean preference toggle helper"},
+	{file = "debug_panel.odin",       proc_ = "debug_panel",     reason = "debug window: generic boolean preference switches by name"},
 }
 
 @(private = "file")

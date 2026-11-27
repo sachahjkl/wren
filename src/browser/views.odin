@@ -93,7 +93,10 @@ views_register :: proc(app: ^App) {
 }
 
 // A browser window's State builds the program's views.
-views_attach :: proc(app: ^App, s: ^ui.State) { ui.set_views(s, &app.views) }
+views_attach :: proc(app: ^App, s: ^ui.State) {
+	ui.set_views(s, &app.views)
+	debug_panel_attach(app, s)   // debug_panel.odin: Wren's panel in the toolkit's debug window
+}
 
 ////////////////////////////////
 // A view of one browser window

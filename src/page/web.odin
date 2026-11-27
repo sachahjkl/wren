@@ -132,6 +132,9 @@ live_pages: map[u64]^Page
 @(private)
 next_page_id: u64   // (atomic: a page's id is unique in the process)
 
+// The pages alive on this thread: tabs, frames, kept pages (the debug panel's count: no walk).
+pages_alive :: proc() -> int { return len(live_pages) }
+
 @(private)
 // `live`: register the page in the registry of live pages (storage events, page_by_id). That registry belongs to the
 // UI thread (its App's thread): a worker's realm, which runs on its own thread, gets the web state without being registered.
