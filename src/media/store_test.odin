@@ -23,7 +23,7 @@ gop :: proc(s: ^Track_Store, start_ms: i64, frames: int) {
 @(test)
 store_sequential_appends_do_not_replace :: proc(t: ^testing.T) {
 	s := store_create()
-	defer store_destroy(s)
+	defer store_release(s)
 	gop(s, 0, 5)
 	gop(s, 500, 5)
 	testing.expect_value(t, len(s.frames), 10)
@@ -35,7 +35,7 @@ store_sequential_appends_do_not_replace :: proc(t: ^testing.T) {
 @(test)
 store_overlapping_group_replaces_what_it_covers :: proc(t: ^testing.T) {
 	s := store_create()
-	defer store_destroy(s)
+	defer store_release(s)
 	gop(s, 0, 5)
 	gop(s, 500, 5)
 	gop(s, 1000, 5)
@@ -51,7 +51,7 @@ store_overlapping_group_replaces_what_it_covers :: proc(t: ^testing.T) {
 @(test)
 store_max_end_follows_removals :: proc(t: ^testing.T) {
 	s := store_create()
-	defer store_destroy(s)
+	defer store_release(s)
 	gop(s, 0, 5)
 	gop(s, 500, 5)
 	testing.expect_value(t, s.max_end, Time(1_000_000_000))

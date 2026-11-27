@@ -160,14 +160,16 @@ av1_software_player_seeks_and_ends_on_a_machine_short_of_processors :: proc(t: ^
 			testing.expect_value(t, err, Player_Error.None)
 			if stage == .To_The_End && ended { break }
 			if time.tick_since(start) > SEEK_TEST_ROUND_LIMIT {
-				// (the player is left as it is: destroying it would wait for the stuck thread)
 				testing.expectf(t, false, "round %d: stuck at %v: %s", round, stage, player_debug(p))
+				player_destroy(p)   // (returns at once: the stuck thread keeps the player and the stores until it ends)
+				store_release(video)
+				store_release(audio)
 				return
 			}
 			time.sleep(SEEK_TEST_LOOK)
 		}
 		player_destroy(p)
 	}
-	store_destroy(video)
-	store_destroy(audio)
+	store_release(video)
+	store_release(audio)
 }

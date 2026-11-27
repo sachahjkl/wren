@@ -315,6 +315,9 @@ media/av1_soft.odin software_vp9 process  # ... the software VP9 decoder is on
 media/av1_soft.odin software_av1 process  # ... the software AV1 decoder is on
 media/av1_soft.odin software_preferred process  # ... before the system's
 media/backend_linux.odin audio_backend process  # the audio output of the process
+media/player.odin live_mu process  # the players not freed yet in the process (players_settle): its lock
+media/player.odin live_cv process  # ... what players_settle waits on
+media/player.odin live_count process  # ... their count: a player outlives its owner until its threads end
 media/backend_windows.odin audio_null_asked process  # the audio output of the process
 media/h264_linux.odin h264_backend process  # the H.264 decoder of the process
 media/h264_linux.odin h264_openh264_path process  # ... the library a preference names

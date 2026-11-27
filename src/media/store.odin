@@ -3,7 +3,9 @@ package media
 // The coded frames of one track, in decode order, with the time ranges they cover. It is what a SourceBuffer holds for each
 // of its tracks and what a progressive download fills: the container parsers write into it (on the interface thread), the
 // player's decode threads read from it, so every operation takes the mutex; the bytes of a frame are shared (reference
-// counted) so that a reader keeps its frame after the store removed it.
+// counted) so that a reader keeps its frame after the store removed it. The store itself is reference counted: its owner
+// and each player that reads it hold one, because a player's threads can outlive the owner's release
+// (src/md/infrastructure/media-player-lifetime.md).
 
 import "wb:base"
 import "core:slice"
@@ -54,6 +56,7 @@ Range :: struct { start, end: Time }
 Config_Entry :: struct { id: u32, track: Track }
 
 Track_Store :: struct {
+	refs:     i32,
 	mu:       sync.Mutex,
 	configs:  [dynamic]Config_Entry,
 	frames:   [dynamic]Coded,   // by dts
@@ -69,10 +72,22 @@ Track_Store :: struct {
 	ranges_ok:  bool,
 }
 
-store_create :: proc() -> ^Track_Store { return new(Track_Store, base.process_allocator()) }
+// The store, with one reference for the caller.
+store_create :: proc() -> ^Track_Store {
+	s := new(Track_Store, base.process_allocator())
+	s.refs = 1
+	// (the last release can run on a player's thread, after the caller's context is gone)
+	s.configs.allocator = base.process_allocator()
+	s.frames.allocator = base.process_allocator()
+	s.ranges.allocator = base.process_allocator()
+	return s
+}
 
-store_destroy :: proc(s: ^Track_Store) {
-	if s == nil { return }
+store_retain :: proc(s: ^Track_Store) { if s != nil { sync.atomic_add(&s.refs, 1) } }
+
+// Drops a reference; the last one frees the store.
+store_release :: proc(s: ^Track_Store) {
+	if s == nil || sync.atomic_sub(&s.refs, 1) != 1 { return }
 	for &c in s.frames { coded_release(&c) }
 	delete(s.frames)
 	delete(s.ranges)
@@ -211,7 +226,6 @@ store_ranges :: proc(s: ^Track_Store, tolerance: Time, allocator := context.allo
 		}
 	}
 	append(&out, cur)
-	if s.ranges.allocator.procedure == nil { s.ranges.allocator = base.process_allocator() }
 	clear(&s.ranges)
 	append(&s.ranges, ..out[:])
 	s.ranges_ver, s.ranges_tol, s.ranges_ok = s.version, tolerance, true

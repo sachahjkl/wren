@@ -33,6 +33,7 @@ import "core:testing"
 import "core:time"
 import "wb:base"
 import "wb:host"
+@(require) import "wb:media"   // (used only when every allocation is tracked)
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:browser"
@@ -280,8 +281,9 @@ end_of_test :: proc(s: ^Session) {
 	}
 	if testing.failed(s.t) { keep_failure(s) }
 	end_of_browser(s)
-	// (the test program is built with every allocation tracked: here nothing of the session may be left)
-	when base.TRACK_MEMORY { if !testing.failed(s.t) && !s.own_thread { testing.expectf(s.t, base.mem_report(s.name) == 0, "%s leaves nothing allocated: the report above", s.name) } }
+	// (the test program is built with every allocation tracked: here nothing of the session may be left; the media players
+	// of its pages end on their own threads, a moment after the pages)
+	when base.TRACK_MEMORY { if !testing.failed(s.t) && !s.own_thread { testing.expectf(s.t, media.players_settle(DEFAULT_DEADLINE), "%s: a media player's thread is still running", s.name); testing.expectf(s.t, base.mem_report(s.name) == 0, "%s leaves nothing allocated: the report above", s.name) } }
 	if !testing.failed(s.t) { base.remove_tree(s.out) }
 	delete(s.name, s.allocator)
 	delete(s.out, s.allocator)

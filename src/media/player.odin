@@ -10,6 +10,9 @@ package media
 // output cannot be opened, the clock follows the system's. The interface thread calls tick() often (it starts and
 // stops the clock, sees stalls and the end) and present() when it paints; everything else runs on the player's threads.
 // Nothing here knows the DOM: `notify` (any thread) tells the owner that tick() has something new to look at.
+//
+// The owner never waits for the threads (a system decoder can hang): the owner and each thread hold a reference, and the
+// last one to go frees the player (src/md/infrastructure/media-player-lifetime.md).
 
 import "wb:base"
 import "core:fmt"
@@ -50,9 +53,19 @@ Player_Stats :: struct {
 	width, height: int,
 }
 
+// Makes the video decoder for a track: the backend's, or a test's.
+Video_Decoder_Maker :: struct {
+	make: proc(user: rawptr, t: Track, prefer_gpu: bool) -> ^Video_Decoder,
+	user: rawptr,
+}
+
 Player :: struct {
+	refs:     i32,                 // the owner's, and one for each thread that runs
 	settings: Player_Settings,
-	video, audio: ^Track_Store,
+	video, audio: ^Track_Store,    // (one reference each, released when the player is freed)
+	maker:    Video_Decoder_Maker,
+	// notify and user are cut by player_destroy under notify_mu: the owner frees `user` once player_destroy returns
+	notify_mu: sync.Mutex,
 	notify:   proc(user: rawptr),
 	user:     rawptr,
 	notified: i32,
@@ -79,7 +92,6 @@ Player :: struct {
 	clock_pos: Time,               // media time at clock_at (while not running: where it stands)
 	clock_at:  i64,
 	// video
-	vthread:  ^thread.Thread,
 	queue:    [dynamic]Video_Frame,
 	cur:      Video_Frame,
 	has_cur:  bool,
@@ -91,7 +103,6 @@ Player :: struct {
 	vsize:    [2]int,
 	stats:    Player_Stats,
 	// audio
-	athread:  ^thread.Thread,
 	out:      ^Audio_Output,
 	a_done_gen: u32,
 	a_starved: bool,
@@ -108,10 +119,26 @@ Player :: struct {
 	last_time: Time,
 }
 
+// The players not freed yet, in the whole process (players_settle).
+@(private = "file") live_mu: sync.Mutex
+@(private = "file") live_cv: sync.Cond
+@(private = "file") live_count: int
+
 player_create :: proc(video, audio: ^Track_Store, settings: Player_Settings, notify: proc(user: rawptr), user: rawptr) -> ^Player {
+	return player_create_with(video, audio, settings, notify, user, {})
+}
+
+// player_create with the maker of the video decoder (a zero maker: the backend's).
+@(private)
+player_create_with :: proc(video, audio: ^Track_Store, settings: Player_Settings, notify: proc(user: rawptr), user: rawptr, maker: Video_Decoder_Maker) -> ^Player {
 	p := new(Player, base.process_allocator())
+	p.refs = 1
 	p.settings = settings
 	p.video, p.audio = video, audio
+	store_retain(video)
+	store_retain(audio)
+	p.maker = maker
+	p.queue.allocator = base.process_allocator()   // (freed by whoever drops the last reference, maybe a player thread)
 	p.notify, p.user = notify, user
 	p.rate = 1
 	p.gain = 1
@@ -120,29 +147,75 @@ player_create :: proc(video, audio: ^Track_Store, settings: Player_Settings, not
 	p.a_active = audio != nil
 	p.need_cur = true
 	p.clock_at = mono_ns()
-	if video != nil { p.vthread = thread.create_and_start_with_data(rawptr(p), proc(d: rawptr) { video_thread((^Player)(d)) }, context, .High) }
-	if audio != nil { p.athread = thread.create_and_start_with_data(rawptr(p), proc(d: rawptr) { audio_thread((^Player)(d)) }, context, .High) }
+	sync.mutex_lock(&live_mu)
+	live_count += 1
+	sync.mutex_unlock(&live_mu)
+	if video != nil { player_start_thread(p, proc(d: rawptr) { video_thread((^Player)(d)) }) }
+	if audio != nil { player_start_thread(p, proc(d: rawptr) { audio_thread((^Player)(d)) }) }
 	return p
 }
 
+// A thread of the player, holding a reference that it drops when it ends. Nothing joins it (self_cleanup frees the
+// Thread): the owner must not wait for a decoder that can hang.
+@(private = "file")
+player_start_thread :: proc(p: ^Player, body: proc(d: rawptr)) {
+	sync.atomic_add(&p.refs, 1)
+	if thread.create_and_start_with_data(rawptr(p), body, nil, .High, self_cleanup = true) == nil { player_release(p) }
+}
+
+// The owner is done: the threads are told to stop, the callbacks are cut, and the owner's reference goes. Returns at once,
+// whatever the threads are doing; when it returns, neither notify nor capture is called again.
 player_destroy :: proc(p: ^Player) {
 	if p == nil { return }
 	sync.mutex_lock(&p.mu)
 	p.quit = true
+	p.capture, p.capture_user = nil, nil   // (capture is called under p.mu: no call is in progress now)
 	sync.cond_broadcast(&p.cv)
 	sync.mutex_unlock(&p.mu)
-	if p.vthread != nil { thread.join(p.vthread); thread.destroy(p.vthread) }
-	if p.athread != nil { thread.join(p.athread); thread.destroy(p.athread) }
+	sync.mutex_lock(&p.notify_mu)   // (waits for a notify in progress: a short call, never a decoder)
+	p.notify, p.user = nil, nil
+	sync.mutex_unlock(&p.notify_mu)
+	player_release(p)
+}
+
+// Drops a reference; the last one frees the player. Runs on the owner's thread or at the end of a player thread.
+@(private)
+player_release :: proc(p: ^Player) {
+	if sync.atomic_sub(&p.refs, 1) != 1 { return }
 	if p.out != nil { p.out.stop(p.out); p.out.destroy(p.out) }
 	for &f in p.queue { frame_release(&f) }
 	delete(p.queue)
 	if p.has_cur { frame_release(&p.cur) }
+	video, audio := p.video, p.audio
 	free(p, base.process_allocator())
+	store_release(video)
+	store_release(audio)
+	sync.mutex_lock(&live_mu)
+	live_count -= 1
+	if live_count == 0 { sync.cond_broadcast(&live_cv) }
+	sync.mutex_unlock(&live_mu)
+}
+
+// Waits until every player of the process is freed, at most `bound`. False at the bound (a decoder that does not return
+// keeps its player). Not for a frame path: the end of the process or of a test, before memory is counted.
+players_settle :: proc(bound: time.Duration) -> bool {
+	deadline := time.tick_now()._nsec + i64(bound)
+	sync.mutex_lock(&live_mu)
+	defer sync.mutex_unlock(&live_mu)
+	for live_count > 0 {
+		left := deadline - time.tick_now()._nsec
+		if left <= 0 { return false }
+		sync.cond_wait_with_timeout(&live_cv, &live_mu, time.Duration(left))
+	}
+	return true
 }
 
 @(private)
 poke :: proc(p: ^Player) {
-	if p.notify != nil && sync.atomic_exchange(&p.notified, 1) == 0 { p.notify(p.user) }
+	if sync.atomic_exchange(&p.notified, 1) != 0 { return }
+	sync.mutex_lock(&p.notify_mu)
+	if p.notify != nil { p.notify(p.user) }
+	sync.mutex_unlock(&p.notify_mu)
 }
 
 // The owner looked at the player's state: the next change notifies again.
@@ -453,6 +526,8 @@ tracks_equal :: proc(a, b: Track) -> bool {
 
 @(private)
 video_thread :: proc(p: ^Player) {
+	context = base.process_context()   // (the thread can outlive its creator, a test or a page)
+	defer player_release(p)   // (first deferred: it runs last, after the decoder is gone)
 	name_current_thread("wren-video-decode")
 	com_thread_init_any()
 	dec: ^Video_Decoder
@@ -533,7 +608,7 @@ video_thread :: proc(p: ^Player) {
 					if dec != nil { dec.destroy(dec); dec = nil }
 					if have_track { track_destroy(&cur_track) }
 					cur_track, have_track = t, true
-					dec = backend_video_decoder(cur_track, p.settings.prefer_gpu)
+					dec = p.maker.make != nil ? p.maker.make(p.maker.user, cur_track, p.settings.prefer_gpu) : backend_video_decoder(cur_track, p.settings.prefer_gpu)
 					if dec == nil { set_error(p, .No_Video_Decoder); return }
 					sync.mutex_lock(&p.mu)
 					p.stats.hardware, p.stats.decoder = dec.hardware, dec.name
@@ -617,6 +692,8 @@ video_thread :: proc(p: ^Player) {
 
 @(private)
 audio_thread :: proc(p: ^Player) {
+	context = base.process_context()   // (the thread can outlive its creator, a test or a page)
+	defer player_release(p)   // (first deferred: it runs last, after the decoder is gone)
 	name_current_thread("wren-audio-decode")
 	com_thread_init_any()
 	dec: ^Audio_Decoder

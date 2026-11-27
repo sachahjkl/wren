@@ -1,8 +1,15 @@
 package page
 
+import "core:log"
+import "core:time"
 import "wb:images"
 import lay "wb:layout"
+import "wb:media"
 import "wb:wasm"
+
+// How long the end of the process waits for the media players' threads to end. Short: a system decoder that hangs must
+// not hold the exit (the shutdown watchdog is longer), and a player it keeps is only memory the process gives back.
+PLAYERS_SETTLE_BOUND :: 2 * time.Second
 
 // Frees what one embedder's pages share (the_pages: this thread's), once every page of it is closed: the passkey ceremonies, the timelines'
 // requests, the style threads, the image cache, the script compile threads, the navigables, the shared workers and ports, the Cache API's
@@ -22,8 +29,10 @@ pages_shutdown :: proc() {
 
 // Frees what the page stack keeps for the whole process, once no embedder has a page left (pages_shutdown, each): the layout threads, the
 // image decoders, the decoded web fonts, the headless clipboard, the bytecode cache, the Wasm engine and its host functions. Everything
-// starts again on demand afterwards.
+// starts again on demand afterwards. First the media players that closed pages left: their threads end on their own
+// (src/md/infrastructure/media-player-lifetime.md), and what is counted after this must not see them.
 process_shutdown :: proc() {
+	if !media.players_settle(PLAYERS_SETTLE_BOUND) { log.warnf("media: a player's thread did not end within %v (a decoder that does not return): the process ends without it", PLAYERS_SETTLE_BOUND) }
 	lay.shutdown_threads()
 	images.decoder_stop()
 	fonts_shutdown()

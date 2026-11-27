@@ -165,7 +165,7 @@ ms_free :: proc(ms: ^Media_Source_Object, release_children: bool) {
 sb_free_resources :: proc(sb: ^Source_Buffer_Object) {
 	if sb.mp4 != nil { media.mp4_destroy(sb.mp4); free(sb.mp4); sb.mp4 = nil }
 	if sb.webm != nil { media.webm_destroy(sb.webm); free(sb.webm); sb.webm = nil }
-	media.store_destroy(sb.vstore); media.store_destroy(sb.astore)
+	media.store_release(sb.vstore); media.store_release(sb.astore)
 	sb.vstore, sb.astore = nil, nil
 	if sb.has_vinfo { media.track_destroy(&sb.vinfo); sb.has_vinfo = false }
 	if sb.has_ainfo { media.track_destroy(&sb.ainfo); sb.has_ainfo = false }

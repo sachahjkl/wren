@@ -93,8 +93,8 @@ net_media_release :: proc(app: ^App) {
 	switch m.mode {
 	case .Player:
 		media.player_destroy(m.player)
-		media.store_destroy(m.vs)
-		media.store_destroy(m.as)
+		media.store_release(m.vs)
+		media.store_release(m.as)
 		if app != nil && m.tex != 0 { render.destroy_texture(&app.r, m.tex) }
 	case .System:
 		mci("close dtmedia")
@@ -241,7 +241,7 @@ net_media_open :: proc(app: ^App, e: ^Net_Entry) {
 			m.mode = .Player
 			return
 		}
-		media.store_destroy(m.vs); media.store_destroy(m.as)
+		media.store_release(m.vs); media.store_release(m.as)
 		m.vs, m.as, m.video, m.audio = nil, nil, false, false
 		m.err = strings.clone("This file could not be read (the container is damaged or has no track the decoders take).")
 		return

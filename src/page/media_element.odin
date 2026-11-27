@@ -379,7 +379,7 @@ media_teardown :: proc(el: ^Media_Element) {
 	if el.mp4 != nil { media.mp4_destroy(el.mp4); free(el.mp4); el.mp4 = nil }
 	if el.webm != nil { media.webm_destroy(el.webm); free(el.webm); el.webm = nil }
 	if el.ms != nil { media_source_detach(el) }
-	media.store_destroy(el.vstore); media.store_destroy(el.astore)
+	media.store_release(el.vstore); media.store_release(el.astore)
 	el.vstore, el.astore = nil, nil
 	if el.has_vinfo { media.track_destroy(&el.vinfo); el.has_vinfo = false }
 	if el.has_ainfo { media.track_destroy(&el.ainfo); el.has_ainfo = false }
