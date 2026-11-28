@@ -10,6 +10,11 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-28
+
+### Changed
+- **Scaled window controls, shared About dialog, and permanent panel header.** Window buttons (minimize, maximize, close) now follow the interface scale instead of staying at 100 %. "About Wren" in the menu and command palette opens the shared About dialog with a direct "What's new" button, version and diagnostics copy, and links to `about:wren` and `about:licenses`. Docked panels such as DevTools show a compact permanent header bar with drag grip and close button, the theme grid aligns incomplete last rows, and the debug window (`Ctrl+Alt+Shift+D`) is available in release builds.
+
 ## [0.14.0] - 2026-11-27
 
 ### Changed
@@ -1766,7 +1771,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/sachahjkl/wren/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/sachahjkl/wren/compare/v0.13.2...v0.14.0
 [0.13.2]: https://github.com/sachahjkl/wren/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/sachahjkl/wren/compare/v0.13.0...v0.13.1

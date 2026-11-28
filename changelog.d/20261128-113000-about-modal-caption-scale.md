@@ -1,3 +1,0 @@
-type: Changed
-
-**Scaled window controls, shared About dialog, and permanent panel header.** Window buttons (minimize, maximize, close) now follow the interface scale instead of staying at 100 %. "About Wren" in the menu and command palette opens the shared About dialog with a direct "What's new" button, version and diagnostics copy, and links to `about:wren` and `about:licenses`. Docked panels such as DevTools show a compact permanent header bar with drag grip and close button, the theme grid aligns incomplete last rows, and the debug window (`Ctrl+Alt+Shift+D`) is available in release builds.
