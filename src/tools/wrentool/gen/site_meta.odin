@@ -27,7 +27,7 @@ site_meta :: proc() -> tk_site.Meta {
 	copy(fields, ld[:])
 	// (the vendor's fields are the toolkit's, the same in every program's site)
 	m := tk_site.meta_default("Wren", "https://wren.froment.software/", "https://github.com/sachahjkl/wren",
-		"A browser where WebAssembly runs everything, JavaScript included", "#121212", "#f39a2e", card = "img/card.png")
+		"Web browser", "#121212", "#f39a2e", card = "img/card.png")
 	m.ld_fields, m.ico = fields, "assets/wren.ico"
 	m.root_domain = true   // (its own domain answers for /robots.txt and /favicon.ico)
 	m.licence = ""         // (PolyForm Strict, not the default MIT: Wren's own pages say it)

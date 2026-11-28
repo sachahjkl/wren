@@ -276,9 +276,9 @@ third_party_table :: proc(sb: ^strings.Builder, with_text_links: bool) {
 wren_page_html :: proc(d: Wren_Page) -> string {
 	sb := strings.builder_make(context.temp_allocator)
 	page_head(&sb, "About Wren", d.palette)
-	// the name, the version, the tagline, and the maker's signature as the last, small line of the header
-	fmt.sbprintf(&sb, "<div class=\"id\"><img class=\"mark\" src=\"%s\" width=\"96\" height=\"96\" alt=\"\"><div class=\"text\"><h1>%s</h1><p>Version %s%s</p><p class=\"weak\">%s</p>",
-		app_logo_url(), APP_NAME, APP_VERSION_SHOWN, IS_DEV_BUILD ? " (development build)" : "", escape_html(APP_TAGLINE))
+	// the name, the version, and the maker's signature as the last, small line of the header
+	fmt.sbprintf(&sb, "<div class=\"id\"><img class=\"mark\" src=\"%s\" width=\"96\" height=\"96\" alt=\"\"><div class=\"text\"><h1>%s</h1><p>Version %s%s</p>",
+		app_logo_url(), APP_NAME, APP_VERSION_SHOWN, IS_DEV_BUILD ? " (development build)" : "")
 	fmt.sbprintf(&sb, "<p class=\"sig\">by<img src=\"%s\" width=\"16\" height=\"16\" alt=\"\"><a href=\"%s\">Froment Software</a></p></div></div>\n",
 		png_url(FROMENT_LOGO_PNG), FROMENT_URL)
 	strings.write_string(&sb, "<p class=\"beta\"><b>Wren is a beta under development.</b> Every version is free; a license only supports development.</p>\n")

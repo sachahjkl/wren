@@ -11,13 +11,13 @@ import tk "toolkit:desktop"
 // The entry an installed Wren has on users' machines: the same text, so that it is still recognised and removed.
 @(test)
 desktop_entry_is_wrens :: proc(t: ^testing.T) {
-	o := tk.Integration_Options{identity = identity("Wren", "A small browser where WebAssembly runs everything.", dev = false, allocator = context.temp_allocator), exe = "/home/u/bin/wren", register_browser = true, file_types = {".html", ".htm", "svg", ".webp"}}
+	o := tk.Integration_Options{identity = identity("Wren", "Web browser", dev = false, allocator = context.temp_allocator), exe = "/home/u/bin/wren", register_browser = true, file_types = {".html", ".htm", "svg", ".webp"}}
 	want := `[Desktop Entry]
 Type=Application
 Version=1.0
 Name=Wren
 GenericName=Web Browser
-Comment=A small browser where WebAssembly runs everything.
+Comment=Web browser
 Exec=/home/u/bin/wren %U
 TryExec=/home/u/bin/wren
 Icon=wren

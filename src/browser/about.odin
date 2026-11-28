@@ -9,9 +9,9 @@ import "wb:page"
 import "wb:url"
 
 // Identity of the program. One place, so a rename touches nothing else.
-APP_NAME    :: "Wren"
-APP_VERSION :: "0.15.0"
-APP_TAGLINE :: "A small browser where WebAssembly runs everything, JavaScript included."
+APP_NAME        :: "Wren"
+APP_VERSION     :: "0.15.0"
+APP_DESCRIPTION :: "Web browser"
 
 // A label for a build that is not the release of this version, set when it is built (build.bat: `set WREN_VERSION_LABEL=experimental-2026-10-24`,
 // -define:WREN_VERSION_LABEL): "0.3.0-experimental-2026-10-24" is what the user is shown (about:wren, the menu, the status bar, the file's
@@ -158,7 +158,6 @@ HOME_TEMPLATE :: `<!doctype html>
   <div class="hero">
     <img class="mark" src="$LOGO$" width="112" height="112" alt="">
     <h1 class="logo"><span class="w">W</span>ren</h1>
-    <p class="tag">$TAGLINE$</p>
     $DEV$
   </div>
   <form class="search" action="about:home" method="get" role="search">
@@ -179,8 +178,7 @@ HOME_TEMPLATE :: `<!doctype html>
 `
 
 home_html :: proc(app: ^App) -> string {
-	s, _ := strings.replace_all(HOME_TEMPLATE, "$TAGLINE$", APP_TAGLINE, context.temp_allocator)
-	s, _ = strings.replace_all(s, "$NAME$", APP_NAME, context.temp_allocator)
+	s, _ := strings.replace_all(HOME_TEMPLATE, "$NAME$", APP_NAME, context.temp_allocator)
 	s, _ = strings.replace_all(s, "$VERSION$", APP_VERSION, context.temp_allocator)
 	s, _ = strings.replace_all(s, "$ACCENT$", IS_DEV_BUILD ? "#7fb2ff" : "#ffb84d", context.temp_allocator)
 	s, _ = strings.replace_all(s, "$ACCENT_LIGHT$", IS_DEV_BUILD ? "#1d5aa8" : "#d98200", context.temp_allocator)

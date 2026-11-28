@@ -1,5 +1,5 @@
 {
-  description = "Wren, a web browser where WebAssembly runs everything, JavaScript included";
+  description = "Web browser";
 
   inputs = {
     # The toolkit and Lexbor, at their submodules' commits: a flake fetched from GitHub is a tarball without submodules
@@ -123,7 +123,7 @@
       name = "wren";
       desktopName = "Wren";
       genericName = "Web Browser";
-      comment = "A browser where WebAssembly runs everything, JavaScript included";
+      comment = "Web browser";
       exec = "wren %U";
       icon = "wren";
       startupNotify = true;
@@ -248,7 +248,7 @@
       '';
 
       meta = {
-        description = "A web browser where WebAssembly runs everything, JavaScript included";
+        description = "Web browser";
         homepage = "https://github.com/sachahjkl/wren";
         license = lib.licenses.unfree; # PolyForm Strict
         platforms = [system];
@@ -274,7 +274,7 @@
     apps.${system}.default = {
       type = "app";
       program = lib.getExe wren;
-      meta.description = "Wren, built from this tree";
+      meta.description = "Web browser";
     };
 
     checks.${system} = {

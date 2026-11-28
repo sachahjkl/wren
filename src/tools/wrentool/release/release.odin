@@ -366,7 +366,7 @@ PackageUrl: https://github.com/%[3]s
 License: PolyForm Strict License 1.0.0
 LicenseUrl: https://polyformproject.org/licenses/strict/1.0.0/
 Copyright: Copyright (c) Sacha Froment
-ShortDescription: A small browser where WebAssembly runs everything, JavaScript included.
+ShortDescription: Web browser
 Description: |-
   Wren is a web browser written in Odin where WebAssembly is the only execution engine: there is no separate JavaScript
   virtual machine for the platform, and the web APIs are WebAssembly imports. The JavaScript interpreter runs page

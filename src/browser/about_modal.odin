@@ -51,7 +51,6 @@ about_modal_info :: proc(app: ^App, allocator := context.temp_allocator) -> ui.A
 	info := ui.About_Info{
 		name         = APP_NAME,
 		version      = version_long(),
-		tagline      = APP_TAGLINE,
 		licence      = about_modal_licence_text(app, allocator),
 		copyright    = "© 2026 Froment Software",
 		icon         = lucide.GLOBE,

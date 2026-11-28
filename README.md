@@ -8,7 +8,7 @@
 <img src="https://img.shields.io/badge/platform-Windows%20x64-555" alt="Windows x64">
 </p>
 
-<p align="center"><b>A small web browser where WebAssembly runs everything, JavaScript included.</b></p>
+<p align="center"><b>Web browser</b></p>
 
 Wren is a browser written in [Odin](https://odin-lang.org) where **WebAssembly is the only execution engine**. Pages
 can be written two ways, and both run inside the same Wasm sandbox:

@@ -89,7 +89,7 @@ desktop_settings_destroy :: proc(s: ^Desktop_Settings) {
 // strings are allocated, and the Setup dialog's thread and the options' copies share them.
 desktop_identity :: proc() -> desktop.Identity {
 	sync.once_do(&desktop_identity_once, proc() {
-		desktop_identity_value = wren_desktop.identity(APP_NAME, APP_TAGLINE, IS_DEV_BUILD, base.permanent_allocator())
+		desktop_identity_value = wren_desktop.identity(APP_NAME, APP_DESCRIPTION, IS_DEV_BUILD, base.permanent_allocator())
 	})
 	return desktop_identity_value
 }

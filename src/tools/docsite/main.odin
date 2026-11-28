@@ -203,7 +203,7 @@ write_header :: proc(b: ^strings.Builder, current: string) {
 write_footer :: proc(b: ^strings.Builder, classic: string) {
 	ws := strings.write_string
 	ws(b, "<footer class=\"site-foot\">\n<div class=\"wrap\">\n")
-	ws(b, "<p class=\"foot-line\">Wren · a browser where WebAssembly runs everything · by ")
+	ws(b, "<p class=\"foot-line\">Wren · Web browser · by ")
 	ws(b, "<span class=\"maker\"><img src=\"/img/froment-software-64.png\" alt=\"\" width=\"16\" height=\"16\"><a href=\"https://froment.software\">Froment Software</a></span></p>\n")
 	ws(b, "<nav class=\"foot-links\">\n")
 	ws(b, "<a href=\"/docs/\">Docs</a>\n")
