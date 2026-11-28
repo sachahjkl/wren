@@ -10,6 +10,12 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-11-28
+
+### Changed
+- **Short description and cleaner headers.** Wren uses "Web browser" as its short description in desktop entries and metadata, and omits the subtitle inside the About dialog, `about:wren`, and `about:home` headings.
+- **Tighter panel tabs and deduplicated command palette recents.** Panel and view tabs use tighter horizontal padding, stacked view tabs have a per-tab close button and middle-click close, and items shown under Recent in the command palette are no longer repeated underneath.
+
 ## [0.15.0] - 2026-11-28
 
 ### Changed
@@ -1771,7 +1777,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.15.1...HEAD
+[0.15.1]: https://github.com/sachahjkl/wren/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/sachahjkl/wren/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/sachahjkl/wren/compare/v0.13.2...v0.14.0
 [0.13.2]: https://github.com/sachahjkl/wren/compare/v0.13.1...v0.13.2
