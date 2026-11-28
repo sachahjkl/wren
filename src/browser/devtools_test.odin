@@ -567,7 +567,9 @@ devtools_docks_inside_viewport_not_outer_chrome :: proc(t: ^testing.T) {
 		sb := find_box(wnd.ui, "statusbar")
 		pg := find_box(wnd.ui, "page_area")
 		dt := find_box(wnd.ui, "dt_panel")
-		if !testing.expectf(t, win_box != nil && strip != nil && bar != nil && bm != nil && sb != nil && pg != nil && dt != nil,
+		stack := find_box(wnd.ui, "view_stack_0")
+		hdr := find_box(wnd.ui, "view_lone_header")
+		if !testing.expectf(t, win_box != nil && strip != nil && bar != nil && bm != nil && sb != nil && pg != nil && dt != nil && stack != nil && hdr != nil,
 			"top tabs (%v): all chrome and viewport boxes exist", dock) { continue }
 		testing.expectf(t, win_box.rect == {{0, 0}, {WIN_W, WIN_H}}, "top tabs (%v): window keeps full rect, got %v", dock, win_box.rect)
 		testing.expectf(t, strip.rect.min.x == 0 && strip.rect.max.x == WIN_W && strip.rect.min.y == 0,
@@ -579,23 +581,27 @@ devtools_docks_inside_viewport_not_outer_chrome :: proc(t: ^testing.T) {
 		testing.expectf(t, sb.rect.min.x == 0 && sb.rect.max.x == WIN_W && sb.rect.max.y == WIN_H,
 			"top tabs (%v): statusbar spans window bottom, got %v", dock, sb.rect)
 
+		// A lone docked view carries its permanent compact header bar above dt_panel inside view_stack_0.
 		vp := draw.Rect{{0, bm.rect.max.y}, {WIN_W, sb.rect.min.y}}
-		testing.expectf(t, non_empty(dt.rect) && inside(dt.rect, vp), "top tabs (%v): dt_panel %v inside viewport %v", dock, dt.rect, vp)
+		testing.expectf(t, non_empty(stack.rect) && inside(stack.rect, vp), "top tabs (%v): view_stack_0 %v inside viewport %v", dock, stack.rect, vp)
+		testing.expectf(t, non_empty(dt.rect) && inside(dt.rect, stack.rect), "top tabs (%v): dt_panel %v inside view_stack_0 %v", dock, dt.rect, stack.rect)
+		testing.expectf(t, non_empty(hdr.rect) && abs(hdr.rect.min.y - stack.rect.min.y) <= 0.5 && abs(dt.rect.min.y - hdr.rect.max.y) <= 0.5,
+			"top tabs (%v): lone header %v sits directly above dt_panel %v in %v", dock, hdr.rect, dt.rect, stack.rect)
 		testing.expectf(t, non_empty(pg.rect) && inside(pg.rect, vp), "top tabs (%v): page_area %v inside viewport %v", dock, pg.rect, vp)
-		testing.expectf(t, disjoint(dt.rect, pg.rect), "top tabs (%v): dt_panel %v and page_area %v do not overlap", dock, dt.rect, pg.rect)
+		testing.expectf(t, disjoint(stack.rect, pg.rect), "top tabs (%v): view_stack_0 %v and page_area %v do not overlap", dock, stack.rect, pg.rect)
 		switch dock {
 		case .Right:
-			testing.expectf(t, abs(dt.rect.max.x - vp.max.x) <= 0.5 && abs(dt.rect.min.y - vp.min.y) <= 0.5 && abs(dt.rect.max.y - vp.max.y) <= 0.5 && pg.rect.max.x <= dt.rect.min.x + 0.5,
-				"top tabs (Right): dt %v right of page %v in vp %v", dt.rect, pg.rect, vp)
+			testing.expectf(t, abs(stack.rect.max.x - vp.max.x) <= 0.5 && abs(stack.rect.min.y - vp.min.y) <= 0.5 && abs(stack.rect.max.y - vp.max.y) <= 0.5 && pg.rect.max.x <= stack.rect.min.x + 0.5,
+				"top tabs (Right): stack %v right of page %v in vp %v", stack.rect, pg.rect, vp)
 		case .Left:
-			testing.expectf(t, abs(dt.rect.min.x - vp.min.x) <= 0.5 && abs(dt.rect.min.y - vp.min.y) <= 0.5 && abs(dt.rect.max.y - vp.max.y) <= 0.5 && dt.rect.max.x <= pg.rect.min.x + 0.5,
-				"top tabs (Left): dt %v left of page %v in vp %v", dt.rect, pg.rect, vp)
+			testing.expectf(t, abs(stack.rect.min.x - vp.min.x) <= 0.5 && abs(stack.rect.min.y - vp.min.y) <= 0.5 && abs(stack.rect.max.y - vp.max.y) <= 0.5 && stack.rect.max.x <= pg.rect.min.x + 0.5,
+				"top tabs (Left): stack %v left of page %v in vp %v", stack.rect, pg.rect, vp)
 		case .Bottom:
-			testing.expectf(t, abs(dt.rect.min.x - vp.min.x) <= 0.5 && abs(dt.rect.max.x - vp.max.x) <= 0.5 && abs(dt.rect.max.y - vp.max.y) <= 0.5 && pg.rect.max.y <= dt.rect.min.y + 0.5,
-				"top tabs (Bottom): dt %v below page %v in vp %v", dt.rect, pg.rect, vp)
+			testing.expectf(t, abs(stack.rect.min.x - vp.min.x) <= 0.5 && abs(stack.rect.max.x - vp.max.x) <= 0.5 && abs(stack.rect.max.y - vp.max.y) <= 0.5 && pg.rect.max.y <= stack.rect.min.y + 0.5,
+				"top tabs (Bottom): stack %v below page %v in vp %v", stack.rect, pg.rect, vp)
 		case .Top:
-			testing.expectf(t, abs(dt.rect.min.x - vp.min.x) <= 0.5 && abs(dt.rect.max.x - vp.max.x) <= 0.5 && abs(dt.rect.min.y - vp.min.y) <= 0.5 && dt.rect.max.y <= pg.rect.min.y + 0.5,
-				"top tabs (Top): dt %v above page %v in vp %v", dt.rect, pg.rect, vp)
+			testing.expectf(t, abs(stack.rect.min.x - vp.min.x) <= 0.5 && abs(stack.rect.max.x - vp.max.x) <= 0.5 && abs(stack.rect.min.y - vp.min.y) <= 0.5 && stack.rect.max.y <= pg.rect.min.y + 0.5,
+				"top tabs (Top): stack %v above page %v in vp %v", stack.rect, pg.rect, vp)
 		case .Floating, .Window:
 		}
 	}

@@ -2,7 +2,7 @@ package browser
 
 // Wren's panel in the toolkit's debug window (src/md/features/debug-panel.md): the browser's own counts, a few
 // switches and acts, in the window (Ctrl+Alt+Shift+D) and for the tools (Toolkit.debugPanels, tk cdp debug). A build
-// without TOOLKIT_DEVTOOLS (the release) compiles every debug call to nothing.
+// with -define:TOOLKIT_DEBUG_WINDOW=false compiles every debug call to nothing.
 
 import "core:fmt"
 import config "toolkit:config"

@@ -46,7 +46,7 @@ Wren_Page :: struct {
 @(private = "file")
 hex_of :: proc(c: u32) -> string { return fmt.tprintf("#%06x", c >> 8) }
 
-@(private = "file")
+@(private)
 build_date_text :: proc() -> string {
 	t := time.unix(i64(ODIN_COMPILE_TIMESTAMP / 1_000_000_000), 0)
 	y, mo, d := time.date(t)

@@ -1203,6 +1203,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	forms_color_popover_build(app)   // forms_shell.odin: the toolkit colour picker popover for <input type="color"> (off Windows)
 	// the dialogs: each opens, closes and takes its answer here; the toolkit builds them at the end of the build (views.odin)
 	setup_build(app)   // setup.odin: the Setup dialog (toolkit:setup; it also collects the work of its thread)
+	about_modal_build(app)   // about_modal.odin: the toolkit's About modal
 	fs_shell_build(app)   // fs_shell.odin: a page's file permission prompt (nothing while none waits)
 	notification_shell_build(app)   // notification_shell.odin: a page's notification permission prompt
 	qr_build(app)   // qr_shell.odin: the QR code of the page's address

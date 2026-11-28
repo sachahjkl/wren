@@ -223,9 +223,32 @@ addresses_of_the_about_pages :: proc(t: ^testing.T) {
 	commands_build(&r)
 	defer commands_destroy(&r)
 	i, found := r.index["browser.about"]
-	testing.expect(t, found && r.list[i].url == WREN_URL && r.list[i].label == "About Wren", "the command opens about:wren")
+	testing.expect(t, found && r.list[i].label == "About Wren", "the command opens the About modal")
 	_, found = r.index["browser.about_licenses"]
 	testing.expect(t, found)
+}
+
+@(test)
+about_modal_shows_version_diagnostics_and_whats_new :: proc(t: ^testing.T) {
+	test_app(t)
+	app := app_make()
+	defer app_free(app)
+	assert(app_prefs_init(app) == "")
+
+	info := about_modal_info(app)
+	ver := ui.about_version_text(info)
+	diag := ui.about_diagnostics_text(info)
+	testing.expectf(t, strings.contains(ver, APP_NAME) && strings.contains(ver, APP_VERSION_SHOWN) && strings.contains(ver, ui.VERSION),
+		"version text carries Wren, version and gui_toolkit: %q", ver)
+	testing.expectf(t, strings.contains(diag, "Wasmtime:") && strings.contains(diag, "Channel:"),
+		"diagnostics include Wren build details: %q", diag)
+	testing.expect(t, info.on_whats_new != nil && info.on_link != nil, "built-in What's new and in-browser links are wired")
+	testing.expect_value(t, info.website_url, WREN_WEBSITE_URL)
+	testing.expect_value(t, info.releases_url, WREN_RELEASES_URL)
+
+	testing.expect(t, !window_own(app).about_open, "closed by default")
+	about_modal_open(app)
+	testing.expect(t, window_own(app).about_open, "about_modal_open opens the modal on the active window")
 }
 
 @(test)

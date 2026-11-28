@@ -574,8 +574,8 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, DEMOS_URL, origin = .User) }})
 	add(r, {id = "browser.about_pages", label = "Built-in pages", group = "Browser", tags = command_words(r, "about:about list"), url = ABOUT_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, ABOUT_URL, origin = .User) }})
-	add(r, {id = "browser.about", label = "About Wren", group = "Browser", tags = command_words(r, "about:wren version build info license license registered support credits third-party"), url = WREN_URL,
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_open(app, WREN_URL, origin = .User) }})
+	add(r, {id = "browser.about", label = "About Wren", group = "Browser", tags = command_words(r, "about:wren version build info license registered support credits third-party whats new"),
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { about_modal_open(app) }})
 	add(r, {id = "browser.about_licenses", label = "Third-party licenses", group = "Browser", tags = command_words(r, "about:licenses credits slug open source notices"), url = LICENSES_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, LICENSES_URL, origin = .User) }})
 	add(r, {id = "browser.about_cache", label = "HTTP cache", group = "Browser", tags = command_words(r, "about:cache stored responses statistics"), url = CACHE_URL,

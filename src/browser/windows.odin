@@ -111,6 +111,7 @@ Window_Own :: struct {
 	a11y:                Page_A11y,           // a11y_page.odin: the accessibility trees of the page shown and its frames
 	devtools:            Devtools,            // devtools.odin: the window's developer tools, wherever their view is (dev())
 	palette:             Window_Palette,      // palette.odin: the window's command palette and Wren's sources in it
+	about_open:          bool,                // about_modal.odin: the toolkit's About modal on this window
 	first_paint_timer:   base.Handle,         // first_paint.odin: a frame when a held or blocked first paint ends
 }
 

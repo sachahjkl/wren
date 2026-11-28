@@ -75,8 +75,8 @@ user's layer as for any other change. The switches:
 
 ## Builds
 
-The surface is compiled in when `TOOLKIT_DEVTOOLS` is true: a build with `-debug` (dev, quick, debug, check, profile)
-and a test. The release has none of it, so the panel has no changelog entry.
+Since `gui_toolkit` v0.368.0, the debug window is compiled in when `TOOLKIT_DEBUG_WINDOW` is true (the default in
+every build, releases included). The remote endpoint (`tk cdp debug`) stays behind `TOOLKIT_DEVTOOLS`.
 
 ## Refused
 
